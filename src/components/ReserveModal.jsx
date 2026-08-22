@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { dbCreate } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
+import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 
 export default function ReserveModal({ code, price, onClose, onDone }) {
+  const { user, refresh: refreshAuth } = useAuth();
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -13,13 +15,41 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [linkedin, setLinkedin] = useState('');
   const [instagram, setInstagram] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [acctEmail, setAcctEmail] = useState('');
+  const [acctPassword, setAcctPassword] = useState('');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Xarid paytida akkaunt: kirgan bo'lsa shart emas, aks holda
+  // email+parol kiritilsa avtomatik ro'yxatdan o'tadi va vizitka
+  // profilingizga biriktiriladi.
+  const wantAccount = !user && acctEmail.trim() && acctPassword;
+
+  const ensureAccount = async () => {
+    if (user) return;
+    if (!wantAccount) return;
+    try {
+      await authRegister(acctEmail.trim(), acctPassword);
+    } catch (err) {
+      if (String(err.message).startsWith('email_taken')) {
+        // Bu email bilan akkaunt mavjud — parol to'g'ri bo'lsa kiradi.
+        await authLogin(acctEmail.trim(), acctPassword);
+      } else {
+        throw err;
+      }
+    }
+    await refreshAuth();
+  };
+
   const submit = async () => {
     if (!name.trim()) { setMsg({ type: 'err', text: 'Ismingizni kiriting.' }); return; }
+    if (wantAccount && acctPassword.length < 6) {
+      setMsg({ type: 'err', text: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' });
+      return;
+    }
     setBusy(true);
     try {
+      await ensureAccount();
       const data = {
         name: name.trim(),
         role: role.trim(),
@@ -38,10 +68,13 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         setBusy(false);
         return;
       }
-      setMsg({ type: 'ok', text: 'nfcstore.uz/' + code + " muvaffaqiyatli band qilindi! O'z sahifasiga o'tkazilyapti..." });
-      setTimeout(() => { onDone(); navigate(code); }, 900);
+      setMsg({ type: 'ok', text: 'nfcstore.uz/' + code.toLowerCase() + " sizniki bo'ldi! Profilingizga o'tkazilyapti..." });
+      setTimeout(() => { onDone(); navigate('/' + code.toLowerCase()); }, 900);
     } catch (err) {
-      setMsg({ type: 'err', text: 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato") });
+      const text = String(err.message).startsWith('bad_credentials')
+        ? 'Bu email boshqa akkauntga tegishli va parol mos kelmadi.'
+        : 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato");
+      setMsg({ type: 'err', text });
       setBusy(false);
     }
   };
@@ -51,7 +84,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       <div className="modal">
         <button className="modal-close" onClick={onClose}>&times;</button>
         <h3>Vizitkani band qilish</h3>
-        <div className="modal-code mono">nfcstore.uz/{code}</div>
+        <div className="modal-code mono">nfcstore.uz/{code.toLowerCase()}</div>
 
         <div className="modal-scroll">
           <div className="field">
@@ -94,6 +127,33 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <label>Hashtaglar (vergul bilan)</label>
             <input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="IT_specialist, community_builder" />
           </div>
+
+          {!user ? (
+            <>
+              <div className="modal-divider"></div>
+              <div className="modal-acct-label">Akkaunt — profilingizni boshqarish uchun (tavsiya etiladi)</div>
+              <div className="field-row">
+                <div className="field">
+                  <label>Email (login)</label>
+                  <input type="email" value={acctEmail} onChange={(e) => setAcctEmail(e.target.value)} placeholder="ism@gmail.com" autoComplete="email" />
+                </div>
+                <div className="field">
+                  <label>Parol (min. 6 belgi)</label>
+                  <input type="password" value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" />
+                </div>
+              </div>
+              <p className="modal-hint">
+                Akkaunt bilan vizitkangiz profilingizga biriktiriladi va uni keyin /account sahifasidan tahrirlaysiz.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="modal-divider"></div>
+              <p className="modal-hint">
+                Vizitka profilingizga biriktiriladi: <b>{user.email}</b>. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="modal-total">

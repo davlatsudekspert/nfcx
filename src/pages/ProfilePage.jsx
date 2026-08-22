@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { dbGet, dbAddView } from '../lib/db.js';
+import { dbGet, dbAddView, dbBuy } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseCode } from '../lib/pricing.js';
+import { parseAnyCode } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
+import { useAuth } from '../lib/auth.jsx';
 import {
-  IconArrowLeft, IconSearch, IconShare, IconCheck,
-  IconLinkedIn, IconInstagram, IconTelegram, IconPhone, IconMail, IconDownload,
+  IconArrowLeft, IconShare, IconCheck, IconSearch,
+  IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
+  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag,
 } from '../components/Icons.jsx';
 
 function buildVcf(record) {
@@ -14,10 +16,12 @@ function buildVcf(record) {
     'VERSION:3.0',
     `FN:${record.name}`,
     record.role ? `TITLE:${record.role}` : '',
+    record.about ? `NOTE:${record.about.replace(/\n/g, ' ')}` : '',
     record.phone ? `TEL;TYPE=CELL:${record.phone}` : '',
     record.email ? `EMAIL:${record.email}` : '',
     record.tg ? `URL:https://t.me/${record.tg.replace('@', '')}` : '',
-    `NOTE:nfcstore.uz/${record.code}`,
+    record.website ? `URL:${record.website}` : '',
+    `NOTE2:nfcstore.uz/${record.code.toLowerCase()}`,
     'END:VCARD',
   ].filter(Boolean);
   return lines.join('\n');
@@ -33,10 +37,25 @@ function downloadVcf(record) {
   URL.revokeObjectURL(url);
 }
 
+function socialUrl(kind, handle) {
+  const h = String(handle || '').replace('@', '');
+  if (!h) return '';
+  switch (kind) {
+    case 'tg': return `https://t.me/${h}`;
+    case 'ig': return `https://instagram.com/${h}`;
+    case 'fb': return /^https?:/.test(h) ? h : `https://facebook.com/${h}`;
+    case 'x': return `https://x.com/${h}`;
+    case 'li': return /^https?:/.test(h) ? h : `https://${h}`;
+    default: return '';
+  }
+}
+
 export default function ProfilePage({ code }) {
   const [record, setRecord] = useState(undefined);
   const [toast, setToast] = useState('');
   const [tab, setTab] = useState('vizitka');
+  const [buying, setBuying] = useState(false);
+  const { user, myCards } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
@@ -70,10 +89,23 @@ export default function ProfilePage({ code }) {
     setTimeout(() => setToast(''), 2200);
   };
 
-  const shareLink = async () => {
-    const link = window.location.href;
-    try { await navigator.clipboard.writeText(link); flashToast('Havola nusxalandi!'); }
-    catch (e) { flashToast(link); }
+  const copyText = async (text, msg) => {
+    try { await navigator.clipboard.writeText(text); flashToast(msg); }
+    catch (e) { flashToast(text); }
+  };
+
+  const buyCard = async () => {
+    if (!user) { flashToast('Avval tizimga kiring...'); setTimeout(() => navigate('/login'), 800); return; }
+    setBuying(true);
+    try {
+      const bought = await dbBuy(code);
+      setRecord(bought);
+      flashToast("Tabriklaymiz — vizitka endi sizniki!");
+    } catch (err) {
+      flashToast(err.message || 'Xatolik yuz berdi.');
+    } finally {
+      setBuying(false);
+    }
   };
 
   if (record === undefined) {
@@ -85,44 +117,68 @@ export default function ProfilePage({ code }) {
   }
 
   if (record === null) {
-    const parsed = parseCode(code);
+    const parsed = parseAnyCode(code);
     return (
       <div className="vz">
         <div className="vz-empty">
-          <h2>nfcstore.uz/{code} hali bo'sh</h2>
+          <h2>nfcstore.uz/{code.toLowerCase()} hali bo'sh</h2>
           <p>Bu vizitka hech kimga tegishli emas. Uni birinchi bo'lib siz oling.</p>
           {parsed
-            ? <button className="vz-follow" onClick={() => navigate('')}>Bosh sahifada band qilish</button>
-            : <p style={{ fontSize: 13 }}>Format noto'g'ri: 3 harf + 2 raqam bo'lishi kerak.</p>}
+            ? <button className="vz-follow" onClick={() => navigate('/')}>Bosh sahifada band qilish</button>
+            : <p style={{ fontSize: 13 }}>Format noto'g'ri: ABZ07 yoki faqat harflardan iborat so'z bo'lishi kerak.</p>}
         </div>
       </div>
     );
   }
 
-  const tgUrl = record.tg ? `https://t.me/${record.tg.replace('@', '')}` : '';
-  const igUrl = record.instagram ? `https://instagram.com/${record.instagram.replace('@', '')}` : '';
-  const liUrl = record.linkedin ? (record.linkedin.startsWith('http') ? record.linkedin : `https://${record.linkedin}`) : '';
+  const isOwner = !!(user && myCards.some((c) => c.code === record.code));
+  const tgUrl = socialUrl('tg', record.tg);
+  const igUrl = socialUrl('ig', record.instagram);
+  const fbUrl = socialUrl('fb', record.facebook);
+  const xUrl = socialUrl('x', record.twitter);
+  const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
+  const wsUrl = record.website || '';
+  const hasSocials = tgUrl || igUrl || fbUrl || xUrl || liUrl;
 
   return (
-    <div className="vz">
+    <div className={`vz theme-${record.theme || 'classic'}`}>
       <div className="vz-topbar">
-        <button className="vz-back" onClick={() => navigate('')}><IconArrowLeft /> Bosh sahifaga</button>
+        <button className="vz-back" onClick={() => navigate('/')}><IconArrowLeft /> Bosh sahifaga</button>
         <div className="vz-search">
-          <input readOnly value={`nfcstore.uz/ ${record.code}`} />
-          <button onClick={() => navigate('')}><IconSearch /></button>
+          <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} />
+          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')}><IconSearch /></button>
         </div>
       </div>
 
       <div className="vz-meta">
         <div className="vz-meta-left">
           <span className="vz-code-pill"># {record.code}</span>
-          <span className="vz-price">{fmt(record.price)} so'm</span>
+          {record.forSale && <span className="vz-sale-badge"><IconTag /> SOTUVDA</span>}
+          {!record.forSale && <span className="vz-price">{fmt(record.price)} so'm</span>}
         </div>
-        <button className="vz-share" onClick={shareLink}><IconShare /></button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button className="vz-share" onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')}><IconCopy /></button>
+          <button className="vz-share" onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')}><IconShare /></button>
+        </div>
       </div>
+
+      {record.forSale && (
+        <div className="vz-salebox">
+          <div>
+            <b>Bu vizitka sotuvda</b>
+            <span>Narx: {fmt(record.salePrice || record.price)} so'm</span>
+          </div>
+          <button className="vz-buy" onClick={buyCard} disabled={buying}>
+            {buying ? 'Yuklanmoqda...' : 'Sotib olish'}
+          </button>
+        </div>
+      )}
 
       <div className="vz-card">
         <div className="vz-follow-row">
+          {isOwner && (
+            <button className="vz-follow" onClick={() => navigate('/account')}>Tahrirlash</button>
+          )}
           <button className="vz-follow" onClick={() => flashToast('Obuna bo\'lindi!')}>Obuna bo'lish</button>
         </div>
 
@@ -131,9 +187,10 @@ export default function ProfilePage({ code }) {
             {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} /> : initials(record.name)}
           </div>
           <div className="vz-name">{record.name}</div>
-          <div className="vz-username">{record.name} <IconCheck style={{ color: 'var(--vz-accent)' }} /></div>
+          <div className="vz-username">nfcstore.uz/{record.code.toLowerCase()} <IconCheck style={{ color: 'var(--vz-accent)' }} /></div>
           <div className="vz-lastseen">Faol bo'lgan: {timeAgo(record.ts)}</div>
           {record.role && <div className="vz-role">{record.role}</div>}
+          {record.about && <p className="vz-about">{record.about}</p>}
         </div>
 
         <div className="vz-stats">
@@ -159,13 +216,27 @@ export default function ProfilePage({ code }) {
             )}
 
             <div className="vz-links">
-              {liUrl && <a className="vz-link-btn" href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /> LinkedIn</a>}
-              {igUrl && <a className="vz-link-btn" href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {tgUrl && <a className="vz-link-btn" href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
+              {igUrl && <a className="vz-link-btn vz-btn-ig" href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
+              {fbUrl && <a className="vz-link-btn vz-btn-fb" href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
+              {xUrl && <a className="vz-link-btn" href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
+              {wsUrl && <a className="vz-link-btn" href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /> Veb-sayt</a>}
+              {liUrl && <a className="vz-link-btn" href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /> LinkedIn</a>}
               {record.phone && <a className="vz-link-btn" href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq qilish</a>}
             </div>
 
-            {record.tg && <div className="vz-handle">#{record.tg.replace('@', '')}</div>}
+            {(tgUrl || igUrl) && <div className="vz-handle">#{(record.tg || record.instagram).replace('@', '')}</div>}
+
+            {record.cardNumber && (
+              <>
+                <div className="vz-divider"></div>
+                <div className="vz-section-label">TO'LOV UCHUN KARTA</div>
+                <div className="vz-cardnum">
+                  <span className="mono">{record.cardNumber}</span>
+                  <button onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), 'Karta raqami nusxalandi!')}><IconCopy /></button>
+                </div>
+              </>
+            )}
 
             {(record.email || record.phone) && (
               <>
@@ -182,13 +253,16 @@ export default function ProfilePage({ code }) {
               </>
             )}
 
-            {(tgUrl || igUrl || liUrl) && (
+            {hasSocials && (
               <>
                 <div className="vz-divider"></div>
                 <div className="vz-social-row">
                   {tgUrl && <a className="vz-social-icon" href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /></a>}
                   {igUrl && <a className="vz-social-icon" href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /></a>}
+                  {fbUrl && <a className="vz-social-icon" href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /></a>}
+                  {xUrl && <a className="vz-social-icon" href={xUrl} target="_blank" rel="noreferrer"><IconX /></a>}
                   {liUrl && <a className="vz-social-icon" href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /></a>}
+                  {wsUrl && <a className="vz-social-icon" href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /></a>}
                 </div>
               </>
             )}

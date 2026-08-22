@@ -89,3 +89,64 @@ export async function dbAddView(code) {
     return null;
   }
 }
+
+// ---------- Sotuv ----------
+
+// Sotuvdagi vizitkalar ro'yxati.
+export async function dbListSales() {
+  try {
+    const list = await api('/sales');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+const SALE_ERRORS = {
+  unauthorized: "Sotib olish uchun avval tizimga kiring.",
+  own_card: "Bu vizitka allaqachon sizniki.",
+  not_for_sale: "Bu vizitka hozir sotuvda emas.",
+  not_found: "Vizitka topilmadi.",
+};
+
+export async function dbBuy(code) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/buy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(SALE_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  return data;
+}
+
+// Sotuvga qo'yish (list=true) yoki sotuvdan olish (list=false).
+export async function dbSetSale(code, list) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/sale`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ list: !!list }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(SALE_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  return data;
+}
+
+// Rasm yuklash: dataUrl (base64) -> /uploads/... manzil.
+export async function dbUploadImage(dataUrl) {
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ dataUrl }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'too_large') throw new Error('Rasm hajmi juda katta.');
+    if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    throw new Error('Rasmni yuklab bo\u2019lmadi.');
+  }
+  return data.url;
+}

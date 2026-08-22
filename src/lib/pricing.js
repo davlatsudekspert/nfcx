@@ -30,6 +30,30 @@ export function parseCode(raw) {
   return { code: c, letters, digits };
 }
 
+// Faqat harflardan iborat premium vizitka: ALI, UZBEKISTAN ...
+export const LETTER_CODE_RE = /^[A-Z]{3,12}$/;
+
+export function parseLetterCode(raw) {
+  const c = (raw || '').toUpperCase().replace(/[^A-Z]/g, '');
+  return LETTER_CODE_RE.test(c) ? { code: c } : null;
+}
+
+// Ikkaladan biri: AAA00 standart yoki faqat-harflar premium.
+// Raqam uchramasa — premium harfli kod deb qabul qilinadi.
+export function parseAnyCode(raw) {
+  const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!clean) return null;
+  if (/[0-9]/.test(clean)) return parseCode(clean);
+  return parseLetterCode(clean);
+}
+
+// Harfli vizitkalar oddiy vizitkalardan 3 barobar qimmat.
+export const LETTER_MULT = 3;
+
+export function letterPrice(sold = 0) {
+  return currentBase(sold) * LETTER_MULT;
+}
+
 export function letterPattern(l) {
   if (l[0] === l[1] && l[1] === l[2]) return { mult: 6, label: 'Uchala bir xil ×6', hot: true };
   if (l[0] === l[1] || l[1] === l[2] || l[0] === l[2]) return { mult: 2.5, label: 'Ikkitasi bir xil ×2.5', hot: true };

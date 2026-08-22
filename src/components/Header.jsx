@@ -1,7 +1,8 @@
 import { navigate } from '../lib/router.js';
+import { useAuth } from '../lib/auth.jsx';
 
 function scrollTo(id) {
-  navigate('');
+  navigate('/');
   setTimeout(() => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView();
@@ -9,10 +10,12 @@ function scrollTo(id) {
 }
 
 export default function Header() {
+  const { user } = useAuth();
+
   return (
     <header>
       <div className="headbar wrap" style={{ paddingLeft: 0, paddingRight: 0 }}>
-        <button className="brand" onClick={() => navigate('')}>
+        <button className="brand" onClick={() => navigate('/')}>
           <div className="badge">N00</div>NFCSTORE
         </button>
         <nav>
@@ -21,6 +24,11 @@ export default function Header() {
           <button onClick={() => scrollTo('savollar')}>Savollar</button>
         </nav>
         <div className="navcta">
+          {user ? (
+            <button className="btn btn-ghost" onClick={() => navigate('/account')}>Mening profilim</button>
+          ) : (
+            <button className="btn btn-ghost" onClick={() => navigate('/login')}>Kirish</button>
+          )}
           <button className="btn btn-brass" onClick={() => scrollTo('tekshir')}>Vizitka olish</button>
         </div>
       </div>
