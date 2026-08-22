@@ -105,6 +105,28 @@ export function IconImage(props) {
     </svg>
   );
 }
+export function IconChip(props) {
+  return (
+    <svg width="30" height="24" viewBox="0 0 30 24" fill="none" {...props}>
+      <rect x="0.5" y="0.5" width="29" height="23" rx="4.5" fill="url(#chipGrad)" stroke="rgba(0,0,0,0.35)" />
+      <path d="M9 0.5v23M21 0.5v23M0.5 8h29M0.5 16h9M20.5 16h9" stroke="rgba(0,0,0,0.3)" strokeWidth="0.6" />
+      <defs>
+        <linearGradient id="chipGrad" x1="0" y1="0" x2="30" y2="24" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#e8e8ea" /><stop offset="0.5" stopColor="#c7c7ca" /><stop offset="1" stopColor="#a9a9ac" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+export function IconWave(props) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...props}>
+      <path d="M6 16a9 9 0 0 1 0-8" opacity="0.5" /><path d="M9.5 13.5a4 4 0 0 1 0-3" />
+      <circle cx="13" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M16.5 9a4 4 0 0 1 0 6" /><path d="M20 6a9 9 0 0 1 0 12" opacity="0.5" />
+    </svg>
+  );
+}
 export function IconTag(props) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" {...props}>

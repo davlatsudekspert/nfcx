@@ -31,6 +31,11 @@ export function parseCode(raw) {
 }
 
 // Faqat harflardan iborat premium vizitka: ALI, UZBEKISTAN ...
+// HOZIRCHA O'CHIRILGAN — checker/kalkulyator/bandlash bu formatni taklif
+// qilmaydi. Backend hali ham qabul qiladi, shuning uchun bu yerda funksiya
+// qoldirilgan (kerak bo'lsa LETTER_CODES_ENABLED ni true qilib qaytarish
+// mumkin), lekin parseAnyCode uni endi ishlatmaydi.
+export const LETTER_CODES_ENABLED = false;
 export const LETTER_CODE_RE = /^[A-Z]{3,12}$/;
 
 export function parseLetterCode(raw) {
@@ -38,11 +43,11 @@ export function parseLetterCode(raw) {
   return LETTER_CODE_RE.test(c) ? { code: c } : null;
 }
 
-// Ikkaladan biri: AAA00 standart yoki faqat-harflar premium.
-// Raqam uchramasa — premium harfli kod deb qabul qilinadi.
+// Faqat standart AAA00 formatini qabul qiladi (harfli premium hozircha o'chiq).
 export function parseAnyCode(raw) {
   const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!clean) return null;
+  if (!LETTER_CODES_ENABLED) return parseCode(clean);
   if (/[0-9]/.test(clean)) return parseCode(clean);
   return parseLetterCode(clean);
 }
@@ -76,4 +81,18 @@ export function priceFor(letters, digits, sold = 0) {
   const base = currentBase(sold);
   const total = Math.max(base, roundPrice(base * lp.mult * dp.mult));
   return { total, lp, dp, base };
+}
+
+// Qo'lda belgilangan qat'iy narxlar (so'mda) — eksklyuziv kodlar uchun.
+// Naqsh ko'paytmalaridan qat'i nazar, narx hech qachon bundan past bo'lmaydi.
+export const FIXED_PRICES = {
+  VIP77: 6000000,
+};
+
+// Kod bo'yicha yakuniy narx: qat'iy narx mavjud bo'lsa u qo'llanadi,
+// aks holda standart naqsh hisobi.
+export function priceForCode(code, sold = 0) {
+  const info = priceFor(String(code || '').slice(0, 3), String(code || '').slice(3, 5), sold);
+  const fixed = FIXED_PRICES[code];
+  return fixed ? { ...info, total: Math.max(fixed, roundPrice(info.total)), fixed } : info;
 }

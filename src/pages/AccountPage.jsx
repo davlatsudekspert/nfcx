@@ -3,13 +3,16 @@ import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
 import { dbUploadImage, dbSetSale } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo } from '../lib/format.js';
+import NfcCard from '../components/NfcCard.jsx';
+
+const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
 
 const THEMES = [
-  { id: 'classic', label: 'Classic', css: 'linear-gradient(160deg,#eef1f3,#dfe4e8)', accent: '#1f8f6f' },
-  { id: 'midnight', label: 'Midnight', css: 'linear-gradient(160deg,#10141f,#1b2233)', accent: '#7aa2ff' },
-  { id: 'emerald', label: 'Emerald', css: 'linear-gradient(160deg,#0e1f19,#14352a)', accent: '#34d399' },
-  { id: 'royal', label: 'Royal', css: 'linear-gradient(160deg,#170f24,#241640)', accent: '#a78bfa' },
-  { id: 'sunset', label: 'Sunset', css: 'linear-gradient(160deg,#241014,#3c1a1e)', accent: '#fb7185' },
+  { id: 'classic', label: 'Classic', css: 'linear-gradient(160deg,#eef1f3,#dfe4e8)', accent: '#101112' },
+  { id: 'midnight', label: 'Onyx', css: 'linear-gradient(160deg,#0c0c0d,#1c1c1f)', accent: '#ffffff' },
+  { id: 'emerald', label: 'Graphite', css: 'linear-gradient(160deg,#e9eaeb,#c9cbcd)', accent: '#101112' },
+  { id: 'royal', label: 'Platinum', css: 'linear-gradient(160deg,#f6f6f7,#dcdde0)', accent: '#3a3c40' },
+  { id: 'sunset', label: 'Ink', css: 'linear-gradient(160deg,#141416,#28282b)', accent: '#f5f5f6' },
 ];
 
 // Rasmini klientda siqish: max 512px, JPEG ~85% (yuklash tez bo'lishi uchun).
@@ -155,6 +158,10 @@ function EditCardForm({ card, onSaved }) {
         </div>
       </div>
       {saleMsg && <div className={'modal-msg ' + saleMsg.type} style={{ marginBottom: 14 }}>{saleMsg.text}</div>}
+
+      <div className="hero-card-stage" style={{ padding: '10px 0 22px' }}>
+        <NfcCard code={card.code} name={form.name} since={card.ts} finish={THEME_FINISH[form.theme] || 'black'} size="sm" />
+      </div>
 
       {/* Profil ko'rinishi */}
       <div className="section-label" style={{ marginTop: 4 }}>PROFIL KO'RINISHI</div>

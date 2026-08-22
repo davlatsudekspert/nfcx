@@ -1,5 +1,6 @@
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
+import { IconWave } from './Icons.jsx';
 
 function scrollTo(id) {
   navigate('/');
@@ -17,9 +18,11 @@ export default function Header() {
       <div className="headbar wrap" style={{ paddingLeft: 0, paddingRight: 0 }}>
         <button className="brand" onClick={() => navigate('/')}>
           <div className="badge">N00</div>NFCSTORE
+          <IconWave className="brand-wave" style={{ color: 'var(--brass-bright)' }} />
         </button>
         <nav>
           <button onClick={() => scrollTo('tekshir')}>Tekshirish</button>
+          <button onClick={() => scrollTo('nomlar')}>Nomlar</button>
           <button onClick={() => scrollTo('katalog')}>Katalog</button>
           <button onClick={() => scrollTo('savollar')}>Savollar</button>
         </nav>

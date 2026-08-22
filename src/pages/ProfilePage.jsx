@@ -4,11 +4,14 @@ import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
+import NfcCard from '../components/NfcCard.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag,
 } from '../components/Icons.jsx';
+
+const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
 
 function buildVcf(record) {
   const lines = [
@@ -162,6 +165,12 @@ export default function ProfilePage({ code }) {
         </div>
       </div>
 
+      <div className="hero-card-stage" style={{ padding: '18px 0 4px' }}>
+        <div className="floaty">
+          <NfcCard code={record.code} name={record.name} since={record.ts} finish={THEME_FINISH[record.theme] || 'black'} size="md" />
+        </div>
+      </div>
+
       {record.forSale && (
         <div className="vz-salebox">
           <div>
@@ -174,7 +183,7 @@ export default function ProfilePage({ code }) {
         </div>
       )}
 
-      <div className="vz-card">
+      <div className="vz-card reveal">
         <div className="vz-follow-row">
           {isOwner && (
             <button className="vz-follow" onClick={() => navigate('/account')}>Tahrirlash</button>
