@@ -1,5 +1,25 @@
 export const TOTAL_COMBOS = 26 * 26 * 26 * 100;
-export const BASE_PRICE = 200000;
+
+// Dinamik narxlash: boshlang'ich narx har bir band qilingan vizitka bilan
+// oshib boradi (talab ortishi bilan qimmatlashadi).
+export const BASE_PRICE = 200000;      // start narxi
+export const PRICE_GROWTH = 0.01;      // har band qilingan vizitka: +1%
+export const MAX_PRICE_MULT = 4;       // shift: maksimal 4 barobar (800 000)
+
+const ROUND_TO = 5000;
+
+function roundPrice(n) {
+  return Math.round(n / ROUND_TO) * ROUND_TO;
+}
+
+export function currentBase(sold) {
+  const mult = Math.min(1 + (sold || 0) * PRICE_GROWTH, MAX_PRICE_MULT);
+  return roundPrice(BASE_PRICE * mult);
+}
+
+export function nextBase(sold) {
+  return currentBase((sold || 0) + 1);
+}
 
 export function parseCode(raw) {
   const c = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -26,9 +46,10 @@ export function digitPattern(d) {
   return { mult: 1, label: 'Oddiy ×1', hot: false };
 }
 
-export function priceFor(letters, digits) {
+export function priceFor(letters, digits, sold = 0) {
   const lp = letterPattern(letters);
   const dp = digitPattern(digits);
-  const total = Math.max(BASE_PRICE, Math.round((BASE_PRICE * lp.mult * dp.mult) / 5000) * 5000);
-  return { total, lp, dp, base: BASE_PRICE };
+  const base = currentBase(sold);
+  const total = Math.max(base, roundPrice(base * lp.mult * dp.mult));
+  return { total, lp, dp, base };
 }

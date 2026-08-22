@@ -38,7 +38,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         setBusy(false);
         return;
       }
-      setMsg({ type: 'ok', text: 'belgi.uz/' + code + " muvaffaqiyatli band qilindi! O'z sahifasiga o'tkazilyapti..." });
+      setMsg({ type: 'ok', text: 'nfcstore.uz/' + code + " muvaffaqiyatli band qilindi! O'z sahifasiga o'tkazilyapti..." });
       setTimeout(() => { onDone(); navigate(code); }, 900);
     } catch (err) {
       setMsg({ type: 'err', text: 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato") });
@@ -51,7 +51,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       <div className="modal">
         <button className="modal-close" onClick={onClose}>&times;</button>
         <h3>Vizitkani band qilish</h3>
-        <div className="modal-code mono">belgi.uz/{code}</div>
+        <div className="modal-code mono">nfcstore.uz/{code}</div>
 
         <div className="modal-scroll">
           <div className="field">

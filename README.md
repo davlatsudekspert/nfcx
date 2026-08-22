@@ -1,6 +1,14 @@
-# BELGI — raqamli vizitka xizmati
+# NFCSTORE (nfcstore.uz) — raqamli vizitka xizmati
 
 React (Vite) + Express + PostgreSQL (Railway). `AAA00` formatidagi (3 harf + 2 raqam) shaxsiy vizitka xizmati.
+
+## Dinamik narxlash
+
+- Boshlang'ich minimal narx: **200 000 so'm**
+- Har bir band qilingan vizitka barcha narxlarni **+1%**ga oshiradi
+- Shift (maximum): **×4 = 800 000 so'm**
+- Narxni **server hisoblaydi** (`INSERT` paytida) — client ko'rsatgan raqamga ishonilmaydi
+- Formula: `src/lib/pricing.js -> currentBase(sold)`
 
 ## Ishga tushirish (lokal)
 

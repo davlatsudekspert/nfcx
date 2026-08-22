@@ -2,9 +2,10 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { priceFor } from '../src/lib/pricing.js';
 import {
   initDb, isDbReady,
-  listRecords, getRecord, createRecord, incrementViews,
+  listRecords, getRecord, createRecord, countRecords, incrementViews,
 } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,10 +42,6 @@ function validateBody(body) {
       .filter(Boolean)
       .slice(0, 20);
   }
-  const price = Math.round(Number(body.price));
-  if (!Number.isFinite(price) || price < 0 || price > 1000000000) {
-    return { error: "Narx noto'g'ri." };
-  }
   return {
     record: {
       name,
@@ -56,7 +53,6 @@ function validateBody(body) {
       linkedin: cleanStr(body.linkedin, 200),
       instagram: cleanStr(body.instagram, 40).replace(/^@/, ''),
       hashtags,
-      price,
     },
   };
 }
@@ -98,9 +94,13 @@ app.post('/api/records/:code', async (req, res) => {
   if (error) return res.status(422).json({ error });
 
   try {
-    const created = await createRecord({ ...record, code });
+    // Narxni server o'zi hisoblaydi (client narxiga ishonmaymiz):
+    // joriy bazaviy narx = f(band qilingan vizitkalar soni).
+    const sold = await countRecords();
+    const price = priceFor(code.slice(0, 3), code.slice(3, 5), sold).total;
+    const created = await createRecord({ ...record, code, price });
     if (!created) return res.status(409).json({ error: 'already_taken' });
-    console.log(`[api] Band qilindi: ${code} — ${created.name}`);
+    console.log(`[api] Band qilindi: ${code} — ${created.name} (${price} so'm, ${sold + 1}-savdo)`);
     res.status(201).json(created);
   } catch (err) {
     console.error('[api] createRecord:', err.message);
@@ -140,6 +140,6 @@ initDb()
   .catch((err) => console.error('[db] Ulanish xatosi:', err.message))
   .finally(() => {
     app.listen(PORT, () => {
-      console.log(`[server] BELGI server ${PORT}-portda ishga tushdi. DB: ${isDbReady() ? 'ulangan' : 'ulanmagan (fallback rejim)'}`);
+      console.log(`[server] NFCSTORE server ${PORT}-portda ishga tushdi. DB: ${isDbReady() ? 'ulangan' : 'ulanmagan (fallback rejim)'}`);
     });
   });

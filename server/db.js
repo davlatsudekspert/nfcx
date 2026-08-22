@@ -103,6 +103,11 @@ export async function listRecords() {
   return rows.map(rowToRecord);
 }
 
+export async function countRecords() {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM cards`);
+  return Number(rows[0].n);
+}
+
 export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT ${SELECT_FIELDS} FROM cards WHERE code = $1`,

@@ -1,10 +1,10 @@
-// Persistence layer for BELGI records.
+// Persistence layer for NFCX records.
 //
 // Primary source: REST API (server/index.js -> PostgreSQL via Railway).
 // If the API is unreachable (e.g. local dev without DATABASE_URL), every
 // function transparently falls back to localStorage so the site keeps working.
 
-const LS_KEY = 'belgi:records';
+const LS_KEY = 'nfcx:records';
 
 function lsRead() {
   try {

@@ -17,7 +17,7 @@ function buildVcf(record) {
     record.phone ? `TEL;TYPE=CELL:${record.phone}` : '',
     record.email ? `EMAIL:${record.email}` : '',
     record.tg ? `URL:https://t.me/${record.tg.replace('@', '')}` : '',
-    `NOTE:belgi.uz/${record.code}`,
+    `NOTE:nfcstore.uz/${record.code}`,
     'END:VCARD',
   ].filter(Boolean);
   return lines.join('\n');
@@ -46,7 +46,7 @@ export default function ProfilePage({ code }) {
       if (cancelled) return;
       if (found) {
         setRecord(found);
-        const seenKey = 'belgi:viewed:' + code;
+        const seenKey = 'nfcx:viewed:' + code;
         try {
           if (!sessionStorage.getItem(seenKey)) {
             sessionStorage.setItem(seenKey, '1');
@@ -89,7 +89,7 @@ export default function ProfilePage({ code }) {
     return (
       <div className="vz">
         <div className="vz-empty">
-          <h2>belgi.uz/{code} hali bo'sh</h2>
+          <h2>nfcstore.uz/{code} hali bo'sh</h2>
           <p>Bu vizitka hech kimga tegishli emas. Uni birinchi bo'lib siz oling.</p>
           {parsed
             ? <button className="vz-follow" onClick={() => navigate('')}>Bosh sahifada band qilish</button>
@@ -108,7 +108,7 @@ export default function ProfilePage({ code }) {
       <div className="vz-topbar">
         <button className="vz-back" onClick={() => navigate('')}><IconArrowLeft /> Bosh sahifaga</button>
         <div className="vz-search">
-          <input readOnly value={`belgi.uz/ ${record.code}`} />
+          <input readOnly value={`nfcstore.uz/ ${record.code}`} />
           <button onClick={() => navigate('')}><IconSearch /></button>
         </div>
       </div>

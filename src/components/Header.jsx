@@ -13,7 +13,7 @@ export default function Header() {
     <header>
       <div className="headbar wrap" style={{ paddingLeft: 0, paddingRight: 0 }}>
         <button className="brand" onClick={() => navigate('')}>
-          <div className="badge">B00</div>BELGI
+          <div className="badge">N00</div>NFCSTORE
         </button>
         <nav>
           <button onClick={() => scrollTo('tekshir')}>Tekshirish</button>
