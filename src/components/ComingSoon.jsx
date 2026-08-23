@@ -21,10 +21,6 @@ export default function ComingSoon() {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Biz tez kunda ochamiz!</h1>
         <p className="text-gray-600 text-lg mb-8">Sizning uchun yuqori sifatli tajriba tayyorlaymiz. Kichikroq kutish - maxsus imtihon!</p>
         
-        {showCountdown && (
-          <div className="text-4xl font-extrabold text-gray-800 mb-4">{count <= 0 ? '00' : count.toString().padStart(2, '0')}</div>
-        )}
-
         </div>
     </div>
   );
