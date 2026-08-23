@@ -128,7 +128,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                     <span className="pill taken">Noto'g'ri format</span> 3 harf + 3 raqam kiriting, masalan ABZ007
                   </>}
                   {!checkResult.bad && checkResult.taken && <>
-                    <span className="pill taken">Band</span> nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan — <a onClick={() => navigate('/' + checkResult.code)} style={{ color: '#7dd3fc', cursor: 'pointer', textDecoration: 'underline' }}>sahifasini ko'rish</a>
+                    <span className="pill taken">Band</span> nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan — <a onClick={() => navigate('/' + checkResult.code)} style={{ color: '#9fb2c4', cursor: 'pointer', textDecoration: 'underline' }}>sahifasini ko'rish</a>
                   </>}
                   {!checkResult.bad && !checkResult.taken && <>
                     <span className="pill ok">Bo'sh</span> nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm
