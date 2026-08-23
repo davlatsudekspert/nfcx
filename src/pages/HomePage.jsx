@@ -5,6 +5,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
+import { IconWave, IconSearch } from '../components/Icons.jsx';
 
 function useMaskedCode() {
   const [value, setValue] = useState('');
@@ -96,43 +97,81 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
   return (
     <main className="wrap">
-      <section className="hero">
+      <section className="hero hero-v2">
         <div className="hero-grid-bg"></div>
-        <span className="orbit-dot" style={{ top: '8%', left: '6%', animationDelay: '.2s' }}></span>
-        <span className="orbit-dot" style={{ top: '18%', left: '92%', animationDelay: '1.1s' }}></span>
-        <span className="orbit-dot" style={{ top: '70%', left: '4%', animationDelay: '.6s' }}></span>
-        <span className="orbit-dot" style={{ top: '85%', left: '88%', animationDelay: '1.6s' }}></span>
-        <span className="orbit-dot orbit-dot-lg" style={{ top: '40%', left: '96%', animationDelay: '.9s' }}></span>
-        <span className="orbit-ring"></span>
+        <div className="hero-glow" aria-hidden="true"></div>
 
-        <div className="eyebrow reveal"><span className="dot"></span> O'z profilingiz — nfcstore.uz/ismingiz</div>
+        <div className="hero-inner">
+          <div className="hero-copy">
+            <div className="eyebrow reveal"><span className="dot"></span> O'z profilingiz — nfcstore.uz/ismingiz</div>
 
-        <h1 className="reveal reveal-1">
-          O'zingizga <span className="accent shine-text">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
-        </h1>
-        <p className="sub reveal reveal-2">
-          Format: <b className="mono">AAA000</b> — 3 lotin harfi + 3 raqam. Sizniki bo'lgach —
-          akkauntingizdan tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi.
-          Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.
-        </p>
+            <h1 className="reveal reveal-1">
+              O'zingizga <span className="accent shine-text">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
+            </h1>
+            <p className="sub reveal reveal-2">
+              Format: <b className="mono">AAA000</b> — 3 lotin harfi + 3 raqam. Sizniki bo'lgach —
+              akkauntingizdan tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi.
+              Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.
+            </p>
 
-        <div className="hero-card-stage reveal reveal-3">
-          <div className="card-stack">
-            <div className="card-ghost card-ghost-1"><NfcCard code="XYZ123" name=" " finish="graphite" size="lg" /></div>
-            <div className="card-ghost card-ghost-2"><NfcCard code="QRP888" name=" " finish="silver" size="lg" /></div>
-            <div className="floaty card-main">
-              <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="black" size="lg" />
+            <div className="glass-panel reveal reveal-3">
+              <div className="checker-row glass-checker-row">
+                <div className="code-input-group">
+                  <span className="pfx mono">nfcstore.uz/</span>
+                  <input value={checkVal} onChange={onCheckChange} maxLength={7} placeholder="ABZ 007" autoComplete="off" onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }} />
+                </div>
+                <button className="btn-round" onClick={doCheck} aria-label="Tekshirish"><IconSearch /></button>
+              </div>
+              {checkResult && (
+                <div className="check-result glass-check-result">
+                  {checkResult.bad && <>
+                    <span className="pill taken">Noto'g'ri format</span> 3 harf + 3 raqam kiriting, masalan ABZ007
+                  </>}
+                  {!checkResult.bad && checkResult.taken && <>
+                    <span className="pill taken">Band</span> nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan — <a onClick={() => navigate('/' + checkResult.code)} style={{ color: '#7dd3fc', cursor: 'pointer', textDecoration: 'underline' }}>sahifasini ko'rish</a>
+                  </>}
+                  {!checkResult.bad && !checkResult.taken && <>
+                    <span className="pill ok">Bo'sh</span> nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm
+                    <button className="btn btn-brass pulse" style={{ marginLeft: 10 }} onClick={() => setModalCode(checkResult.code)}>Bandlash</button>
+                  </>}
+                </div>
+              )}
+            </div>
+
+            <div className="stats-row reveal reveal-4">
+              <div className="stat"><b><CountUp value={catalog.length} /></b><span>Band qilingan</span></div>
+              <div className="stat"><b><CountUp value={currentBase(catalog.length)} suffix=" so'm" /></b><span>Hozirgi minimal narx</span></div>
+              <div className="stat"><b style={{ color: 'var(--brass-bright)' }}><CountUp value={nextBase(catalog.length)} suffix=" so'm" /></b><span>Keyingi savdodan boshlab</span></div>
             </div>
           </div>
-        </div>
-        <p className="plate-caption" style={{ textAlign: 'center', margin: '18px auto 0' }}>
-          Har bir vizitka noyob va faqat bitta egaga tegishli, o'z sahifasi va jismoniy NFC kartasi bilan.
-        </p>
 
-        <div className="stats-row reveal reveal-4">
-          <div className="stat"><b><CountUp value={catalog.length} /></b><span>Band qilingan</span></div>
-          <div className="stat"><b><CountUp value={currentBase(catalog.length)} suffix=" so'm" /></b><span>Hozirgi minimal narx</span></div>
-          <div className="stat"><b style={{ color: 'var(--brass-bright)' }}><CountUp value={nextBase(catalog.length)} suffix=" so'm" /></b><span>Keyingi savdodan boshlab</span></div>
+          <div className="hero-stage reveal reveal-2" aria-hidden="true">
+            <div className="stage-ring"></div>
+            <div className="stage-ring-spin"></div>
+            <div className="sat-orbit"><span className="ring-satellite"></span></div>
+            <div className="sat-orbit sat-orbit-b"><span className="ring-satellite ring-satellite-sm"></span></div>
+
+            <div className="stage-center floaty">
+              <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" className="rim-cyan" />
+            </div>
+
+            <div className="tap-coin tap-coin-1 floaty">
+              <IconWave />
+              <span>NFC TAP</span>
+            </div>
+            <div className="tap-coin tap-coin-2 floaty">
+              <IconWave />
+              <span>NFC TAG</span>
+            </div>
+
+            <div className="key-fob floaty">
+              <span className="key-ring"></span>
+              <div className="fob-body">
+                <IconWave />
+                <b>NFC</b>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -147,35 +186,6 @@ export default function HomePage({ catalog, refreshCatalog }) {
           </div>
         </div>
       )}
-
-      <RevealSection id="tekshir">
-        <div className="section-label">Tez tekshirish</div>
-        <h2>Vizitkangiz bo'shmi?</h2>
-        <p className="section-desc">3 harf + 3 raqam kiriting (masalan ABZ007) — bo'sh yoki bandligini shu zahoti ko'rasiz.</p>
-        <div className="panel glow-panel">
-          <div className="checker-row">
-            <div className="code-input-group">
-              <span className="pfx mono">nfcstore.uz/</span>
-              <input value={checkVal} onChange={onCheckChange} maxLength={7} placeholder="ABZ 007" autoComplete="off" onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }} />
-            </div>
-            <button className="btn btn-teal" onClick={doCheck}>Tekshirish</button>
-          </div>
-          {checkResult && (
-            <div className="check-result">
-              {checkResult.bad && <>
-                <span className="pill taken">Noto'g'ri format</span> 3 harf + 3 raqam kiriting, masalan ABZ007
-              </>}
-              {!checkResult.bad && checkResult.taken && <>
-                <span className="pill taken">Band</span> nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan — <a onClick={() => navigate('/' + checkResult.code)} style={{ color: 'var(--teal-bright)', cursor: 'pointer', textDecoration: 'underline' }}>sahifasini ko'rish</a>
-              </>}
-              {!checkResult.bad && !checkResult.taken && <>
-                <span className="pill ok">Bo'sh</span> nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm
-                <button className="btn btn-brass pulse" style={{ marginLeft: 10 }} onClick={() => setModalCode(checkResult.code)}>Bandlash</button>
-              </>}
-            </div>
-          )}
-        </div>
-      </RevealSection>
 
       <RevealSection id="sahifalar">
         <div className="section-label">Batafsil</div>
