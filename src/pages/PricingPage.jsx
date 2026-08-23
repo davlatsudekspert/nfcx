@@ -40,47 +40,86 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   ];
 
   return (
-    <main className="wrap">
-      <section className="hero" style={{ paddingBottom: 20 }}>
-        <div className="eyebrow reveal"><span className="dot"></span> Narxlar</div>
-        <h1 className="reveal reveal-1">Narx qanday <span className="accent shine-text">hisoblanadi</span>?</h1>
-        <p className="sub reveal reveal-2">
+    <main className="mx-auto max-w-6xl px-5 pb-16">
+      <section className="pt-14">
+        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+          Narxlar
+        </span>
+        <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
+          Narx qanday <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">hisoblanadi</span>?
+        </h1>
+        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-base-content/60">
           Minimal narx {fmt(BASE_PRICE)} so'mdan boshlanadi va har bandlangan vizitka bilan +{Math.round(PRICE_GROWTH * 100)}%ga
           oshib boradi (maksimal {MAX_PRICE_MULT}× gacha). Kamyob harf/raqam naqshlari — bir xil harflar,
           ketma-ketlik, "000" — narxni yanada oshiradi.
         </p>
-        <div className="stats-row reveal reveal-3">
-          <div className="stat"><b>{fmt(currentBase(catalog.length))} so'm</b><span>Hozirgi minimal narx</span></div>
-          <div className="stat"><b>{fmt(nextBase(catalog.length))} so'm</b><span>Keyingi savdodan boshlab</span></div>
-          <div className="stat"><b>{fmt(catalog.length)}</b><span>Hozirgacha band qilingan</span></div>
+        <div className="mt-6 grid max-w-xl gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="text-lg font-bold">{fmt(currentBase(catalog.length))} so'm</div>
+            <div className="text-xs text-base-content/50">Hozirgi minimal narx</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="text-lg font-bold">{fmt(nextBase(catalog.length))} so'm</div>
+            <div className="text-xs text-base-content/50">Keyingi savdodan boshlab</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="text-lg font-bold">{fmt(catalog.length)}</div>
+            <div className="text-xs text-base-content/50">Hozirgacha band qilingan</div>
+          </div>
         </div>
       </section>
 
-      <section id="kalkulyator">
-        <div className="section-label">Kalkulyator</div>
-        <h2>O'z vizitkangiz narxini hisoblang</h2>
-        <p className="section-desc">Kod kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.</p>
-        <div className="panel glow-panel">
-          <div className="calc-grid">
+      <section id="kalkulyator" className="mt-16">
+        <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Kalkulyator</div>
+        <h2 className="mt-2 text-2xl font-bold">O'z vizitkangiz narxini hisoblang</h2>
+        <p className="mt-2 text-sm text-base-content/55">Kod kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.</p>
+
+        <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
-              <div className="code-input-group" style={{ marginBottom: 16 }}>
-                <span className="pfx mono">nfcstore.uz/</span>
-                <input value={calcVal} onChange={onCalcChange} maxLength={7} placeholder="ABZ 007" autoComplete="off" />
+              <div className="flex items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-base-content/40">
+                <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">nfcstore.uz/</span>
+                <input
+                  value={calcVal}
+                  onChange={onCalcChange}
+                  maxLength={7}
+                  placeholder="ABZ 007"
+                  autoComplete="off"
+                  className="w-full bg-transparent px-2 py-3 font-mono text-sm uppercase tracking-wider outline-none placeholder:normal-case placeholder:tracking-normal"
+                />
               </div>
-              <div className="breakdown-row"><span className="k">Joriy minimal narx</span><span className="v">{fmt(calcInfo ? calcInfo.base : currentBase(catalog.length))} so'm</span></div>
-              <div className="breakdown-row"><span className="k">Harflar naqshi</span><span className="v">{calcInfo ? calcInfo.lp.label : '—'}</span></div>
-              <div className="breakdown-row"><span className="k">Raqamlar naqshi</span><span className="v">{calcInfo ? calcInfo.dp.label : '—'}</span></div>
-              <div className="breakdown-row"><span className="k">Holati</span><span className="v">{calcParsed ? (calcTaken ? <span className="pill taken">Band</span> : <span className="pill ok">Bo'sh</span>) : '—'}</span></div>
+              <div className="mt-5 space-y-2.5 text-sm">
+                {[['Joriy minimal narx', `${fmt(calcInfo ? calcInfo.base : currentBase(catalog.length))} so'm`],
+                  ['Harflar naqshi', calcInfo ? calcInfo.lp.label : '—'],
+                  ['Raqamlar naqshi', calcInfo ? calcInfo.dp.label : '—']].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <span className="text-base-content/55">{k}</span>
+                    <span className="font-medium">{v}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-base-content/55">Holati</span>
+                  <span>{calcParsed ? (calcTaken ? <span className="badge badge-error badge-sm">Band</span> : <span className="badge badge-success badge-sm">Bo'sh</span>) : '—'}</span>
+                </div>
+              </div>
             </div>
-            <div className="price-box">
-              <div className="amt">{calcInfo ? fmt(calcInfo.total) : fmt(BASE_PRICE)} <span style={{ fontSize: 16 }}>so'm</span></div>
-              <div className="lbl">Jami narx</div>
-              <div className="tag-row">
-                {calcInfo && calcInfo.lp.hot && <span className="tag hot">{calcInfo.lp.label}</span>}
-                {calcInfo && calcInfo.dp.hot && <span className="tag hot">{calcInfo.dp.label}</span>}
-                {calcInfo && !calcInfo.lp.hot && !calcInfo.dp.hot && <span className="tag">Standart kombinatsiya</span>}
+
+            <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-black/30 p-6 text-center">
+              <div className="text-3xl font-extrabold tracking-tight">
+                {calcInfo ? fmt(calcInfo.total) : fmt(BASE_PRICE)} <span className="text-base font-medium text-base-content/60">so'm</span>
               </div>
-              <button className="btn btn-brass pulse" style={{ marginTop: 18, width: '100%' }} disabled={!calcParsed || calcTaken} onClick={() => setModalCode(calcParsed.code)}>
+              <div className="mt-1 text-xs uppercase tracking-widest text-base-content/45">Jami narx</div>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {calcInfo && calcInfo.lp.hot && <span className="badge badge-accent badge-outline">{calcInfo.lp.label}</span>}
+                {calcInfo && calcInfo.dp.hot && <span className="badge badge-accent badge-outline">{calcInfo.dp.label}</span>}
+                {calcInfo && !calcInfo.lp.hot && !calcInfo.dp.hot && <span className="badge badge-ghost">Standart kombinatsiya</span>}
+              </div>
+              <button
+                className="btn btn-primary mt-5 w-full"
+                disabled={!calcParsed || calcTaken}
+                onClick={() => setModalCode(calcParsed.code)}
+              >
                 {!calcParsed ? 'Avval vizitka kiriting' : calcTaken ? 'Bu vizitka band' : ('Bandlash — ' + fmt(calcInfo.total) + " so'm")}
               </button>
             </div>
@@ -88,18 +127,18 @@ export default function PricingPage({ catalog, refreshCatalog }) {
         </div>
       </section>
 
-      <section id="misollar">
-        <div className="section-label">Misollar</div>
-        <h2>Naqshlar narxga qanday ta'sir qiladi</h2>
-        <p className="section-desc">Bir xil bazaviy narxdan boshlanib, quyidagi naqshlar narxni bir necha barobar oshiradi.</p>
-        <div className="grid">
+      <section id="misollar" className="mt-16">
+        <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Misollar</div>
+        <h2 className="mt-2 text-2xl font-bold">Naqshlar narxga qanday ta'sir qiladi</h2>
+        <p className="mt-2 text-sm text-base-content/55">Bir xil bazaviy narxdan boshlanib, quyidagi naqshlar narxni bir necha barobar oshiradi.</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {examples.map((ex) => {
             const info = priceForCode(ex.code, catalog.length);
             return (
-              <div className="card" key={ex.code} style={{ cursor: 'default' }}>
-                <div className="code">{ex.code}</div>
-                <div className="owner">{ex.note}</div>
-                <div className="meta">{fmt(info.total)} so'm</div>
+              <div key={ex.code} className="rounded-2xl border border-white/10 bg-base-200/60 p-5 transition-colors hover:border-white/20">
+                <div className="font-mono text-lg font-bold tracking-widest">{ex.code}</div>
+                <div className="mt-1 text-[13px] text-base-content/55">{ex.note}</div>
+                <div className="mt-3 text-sm font-semibold text-base-content/85">{fmt(info.total)} so'm</div>
               </div>
             );
           })}

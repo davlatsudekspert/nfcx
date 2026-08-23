@@ -13,20 +13,31 @@ export default function FaqPage({ catalog }) {
     { q: "Jismoniy NFC karta ham beriladimi?", a: "Profilingiz tayyor bo'lgach, uni jismoniy NFC kartaga yozdirib, telefon bilan bir tegishda ulashishingiz mumkin." },
   ];
   return (
-    <main className="wrap">
-      <section className="hero" style={{ paddingBottom: 10 }}>
-        <div className="eyebrow reveal"><span className="dot"></span> Savollar</div>
-        <h1 className="reveal reveal-1">Tez-tez so'raladigan <span className="accent shine-text">savollar</span></h1>
+    <main className="mx-auto max-w-3xl px-5 pb-16">
+      <section className="pt-14">
+        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+          Savollar
+        </span>
+        <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight">
+          Tez-tez so'raladigan <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">savollar</span>
+        </h1>
       </section>
-      <section>
-        <div className="panel glow-panel reveal" style={{ padding: '8px 28px' }}>
-          {items.map((f, i) => (
-            <div className={'faq-item' + (openFaq === i ? ' open' : '')} key={i}>
-              <button className="faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>{f.q} <span className="x">+</span></button>
-              <div className="faq-a">{f.a}</div>
+
+      <section className="mt-10 space-y-3">
+        {items.map((f, i) => (
+          <div key={i} className={`collapse collapse-arrow rounded-2xl border border-white/10 bg-base-200/60 ${openFaq === i ? 'collapse-open' : ''}`}>
+            <button
+              className="collapse-title cursor-pointer pr-12 text-left font-semibold"
+              onClick={() => setOpenFaq(openFaq === i ? null : i)}
+            >
+              {f.q}
+            </button>
+            <div className="collapse-content">
+              <p className="text-sm leading-relaxed text-base-content/60">{f.a}</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </section>
     </main>
   );

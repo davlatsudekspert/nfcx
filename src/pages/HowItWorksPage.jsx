@@ -11,31 +11,38 @@ const STEPS = [
 
 export default function HowItWorksPage() {
   return (
-    <main className="wrap">
-      <section className="hero" style={{ paddingBottom: 10 }}>
-        <div className="eyebrow reveal"><span className="dot"></span> Qanday ishlaydi</div>
-        <h1 className="reveal reveal-1">Bir kod. <span className="accent shine-text">Bir profil.</span> Bir siz.</h1>
-        <p className="sub reveal reveal-2">
+    <main className="mx-auto max-w-6xl px-5 pb-16">
+      <section className="pt-14 text-center">
+        <span className="inline-flex items-center justify-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+          Qanday ishlaydi
+        </span>
+        <h1 className="mx-auto mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
+          Bir kod. <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">Bir profil.</span> Bir siz.
+        </h1>
+        <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
           NFCSTORE orqali shaxsiy raqamli vizitka olish besh qadamdan iborat — bandlashdan tortib
           uni qayta sotishgacha.
         </p>
-        <div className="hero-card-stage reveal reveal-3" style={{ padding: '10px 0 0' }}>
-          <div className="floaty"><NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="black" size="md" /></div>
+        <div className="mt-8 flex justify-center">
+          <div className="animate-[floatY_5s_ease-in-out_infinite]">
+            <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="black" size="md" />
+          </div>
         </div>
       </section>
 
-      <section>
-        <div className="steps-grid">
+      <section className="mt-14">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {STEPS.map((s) => (
-            <div className="step-card reveal" key={s.n}>
-              <div className="step-num mono">{s.n}</div>
-              <h3>{s.title}</h3>
-              <p>{s.text}</p>
+            <div key={s.n} className="rounded-2xl border border-white/10 bg-base-200/60 p-6 transition-colors hover:border-white/25">
+              <div className="font-mono text-sm font-bold tracking-widest text-base-content/40">{s.n}</div>
+              <h3 className="mt-3 font-semibold">{s.title}</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">{s.text}</p>
             </div>
           ))}
         </div>
-        <div style={{ textAlign: 'center', marginTop: 34 }}>
-          <button className="btn btn-brass pulse" onClick={() => navigate('/narxlar')}>Narxlarni ko'rish</button>
+        <div className="mt-10 text-center">
+          <button className="btn btn-primary" onClick={() => navigate('/narxlar')}>Narxlarni ko'rish</button>
         </div>
       </section>
     </main>
