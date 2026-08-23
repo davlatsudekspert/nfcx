@@ -53,12 +53,12 @@ function socialUrl(kind, handle) {
   }
 }
 
-// Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "00" va h.k.) — shunday
+// Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "000" va h.k.) — shunday
 // bo'lsa profilga "Nodir vizitka" belgisi qo'yamiz.
 function rarity(code) {
-  if (!code || code.length !== 5) return null;
+  if (!code || code.length !== 6) return null;
   const lp = letterPattern(code.slice(0, 3));
-  const dp = digitPattern(code.slice(3, 5));
+  const dp = digitPattern(code.slice(3, 6));
   if (!lp.hot && !dp.hot) return null;
   const label = [lp.hot ? lp.label : null, dp.hot ? dp.label : null].filter(Boolean).join(' · ');
   return label;
@@ -139,7 +139,7 @@ export default function ProfilePage({ code, catalog }) {
           <p>Bu vizitka hech kimga tegishli emas. Uni birinchi bo'lib siz oling.</p>
           {parsed
             ? <button className="vz-follow" onClick={() => navigate('/')}>Bosh sahifada band qilish</button>
-            : <p style={{ fontSize: 13 }}>Format noto'g'ri: ABZ07 yoki faqat harflardan iborat so'z bo'lishi kerak.</p>}
+            : <p style={{ fontSize: 13 }}>Format noto'g'ri: ABZ007 yoki faqat harflardan iborat so'z bo'lishi kerak.</p>}
         </div>
       </div>
     );

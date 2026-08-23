@@ -397,7 +397,7 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
 .vz-section-label{
   font-size:11.5px; font-weight:800; letter-spacing:.08em; color:var(--vz-ink-faint); margin-bottom:12px;
 }
-.vz-contacts{background:#f7f8f9; border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:12px;}
+.vz-contacts{background:var(--vz-card); border:1px solid var(--vz-line); border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:12px;}
 .vz-contact-row{display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--vz-ink);}
 .vz-contact-row svg{flex-shrink:0; color:var(--vz-ink-dim);}
 .vz-contact-row a{text-decoration:none; color:inherit;}
@@ -434,6 +434,8 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
    (id'lar backend whitelist bilan mos: classic, midnight,
    emerald, royal, sunset — vizual nomlar endi monoxrom.)
    ========================================================= */
+/* Standart (classic) mavzus ham endi DARK — profil doim tungi ko'rinishda. */
+.vz.theme-classic,
 .vz.theme-midnight{
   --vz-bg-a:#0c0c0d; --vz-bg-b:#1a1a1c; --vz-card:#131315;
   --vz-ink:#f5f5f6; --vz-ink-dim:#a3a3a6; --vz-ink-faint:#6d6d70;
@@ -492,7 +494,7 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
 
 /* Karta atrofida sekin nafas oluvchi porlash */
 @keyframes cardBreath{ 0%,100%{box-shadow:0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 0 0 rgba(255,255,255,0);} 50%{box-shadow:0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 30px 2px rgba(255,255,255,0.06);} }
-.vz.theme-midnight .vz-card-glow, .vz.theme-sunset .vz-card-glow{ animation:cardBreath 4s ease-in-out infinite; }
+.vz.theme-classic .vz-card-glow, .vz.theme-midnight .vz-card-glow, .vz.theme-sunset .vz-card-glow{ animation:cardBreath 4s ease-in-out infinite; }
 
 /* Reyting va nodirlik belgilari */
 .vz-top-badge, .vz-rare-badge{
@@ -508,7 +510,7 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
   margin-top:16px; border:1px solid var(--vz-line); border-radius:14px; padding:14px 16px;
   background:linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.15));
 }
-.vz.theme-midnight .vz-notice-box, .vz.theme-sunset .vz-notice-box{
+.vz.theme-classic .vz-notice-box, .vz.theme-midnight .vz-notice-box, .vz.theme-sunset .vz-notice-box{
   background:linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
 }
 .vz-notice-title{

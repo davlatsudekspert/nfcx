@@ -12,7 +12,7 @@ const FINISHES = {
   graphite: { bg: 'linear-gradient(135deg, #3a3b3d 0%, #202123 55%, #3a3b3d 100%)', fg: '#f5f5f6', sub: 'rgba(245,245,246,0.55)' },
 };
 
-export default function NfcCard({ code = 'AAA00', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', className = '' }) {
+export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', className = '' }) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
   const f = FINISHES[finish] || FINISHES.black;

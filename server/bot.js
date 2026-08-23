@@ -90,7 +90,7 @@ async function welcomeText() {
     '',
     '<b>Qanday ishlaydi:</b>',
     '1\uFE0F\u20E3 <code>/katalog</code> \u2014 bo\u2019sh kodlarni ko\u2019rasiz',
-    '2\uFE0F\u20E3 <code>/sotib_olish VIP77</code> \u2014 buyurtma berishingiz',
+    '2\uFE0F\u20E3 <code>/sotib_olish VIP777</code> \u2014 buyurtma berishingiz',
     '3\uFE0F\u20E3 Kartaga pul ko\u2019chirib, screenshot yuborasiz',
     `4\uFE0F\u20E3 Admin tasdiqlaydi \u2014 kod sizniki! \u{1F389}`,
     '',
@@ -162,7 +162,7 @@ async function handleScreenshot(msg) {
   if (!order) {
     return sendMessage(
       chatId,
-      '\u{1F914} Avval buyurtma bering: <code>/sotib_olish VIP77</code>',
+      '\u{1F914} Avval buyurtma bering: <code>/sotib_olish VIP777</code>',
       { reply_markup: MAIN_KB }
     );
   }
@@ -290,7 +290,7 @@ async function handleMessage(msg) {
   let arg = null;
   if (lower.startsWith('/sotib_olish')) {
     arg = text.split(/\s+/)[1] || null;
-  } else if (/^[a-z0-9]{4,7}$/i.test(text.replace(/\s/g, ''))) {
+  } else if (/^[a-z0-9]{6,7}$/i.test(text.replace(/\s/g, ''))) {
     arg = text;
   }
   if (arg) return startPurchase(chatId, from, arg);

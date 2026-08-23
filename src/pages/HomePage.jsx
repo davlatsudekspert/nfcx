@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { parseAnyCode, priceFor, currentBase, nextBase } from '../lib/pricing.js';
+import { parseAnyCode, priceForCode, currentBase, nextBase } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
@@ -13,7 +13,7 @@ function useMaskedCode() {
     let letters = '', digits = '';
     for (const ch of raw) {
       if (letters.length < 3 && /[A-Z]/.test(ch)) letters += ch;
-      else if (/^[0-9]$/.test(ch) && digits.length < 2) digits += ch;
+      else if (/^[0-9]$/.test(ch) && digits.length < 3) digits += ch;
     }
     setValue(digits ? `${letters} ${digits}` : letters);
   };
@@ -89,7 +89,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
   };
 
   const checkParsed = parseAnyCode(checkVal);
-  const checkInfo = checkParsed ? priceFor(checkParsed.code.slice(0, 3), checkParsed.code.slice(3, 5), catalog.length) : null;
+  const checkInfo = checkParsed ? priceForCode(checkParsed.code, catalog.length) : null;
 
   const recent = [...catalog].sort((a, b) => b.ts - a.ts).slice(0, 10);
   const marqueeItems = recent.length ? [...recent, ...recent] : [];
@@ -111,17 +111,17 @@ export default function HomePage({ catalog, refreshCatalog }) {
           O'zingizga <span className="accent shine-text">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
         </h1>
         <p className="sub reveal reveal-2">
-          Format: <b className="mono">AAA00</b> — 3 lotin harfi + 2 raqam. Sizniki bo'lgach —
+          Format: <b className="mono">AAA000</b> — 3 lotin harfi + 3 raqam. Sizniki bo'lgach —
           akkauntingizdan tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi.
           Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.
         </p>
 
         <div className="hero-card-stage reveal reveal-3">
           <div className="card-stack">
-            <div className="card-ghost card-ghost-1"><NfcCard code="XYZ12" name=" " finish="graphite" size="lg" /></div>
-            <div className="card-ghost card-ghost-2"><NfcCard code="QRP88" name=" " finish="silver" size="lg" /></div>
+            <div className="card-ghost card-ghost-1"><NfcCard code="XYZ123" name=" " finish="graphite" size="lg" /></div>
+            <div className="card-ghost card-ghost-2"><NfcCard code="QRP888" name=" " finish="silver" size="lg" /></div>
             <div className="floaty card-main">
-              <NfcCard code="ABZ07" name="SIZNING ISMINGIZ" finish="black" size="lg" />
+              <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="black" size="lg" />
             </div>
           </div>
         </div>
@@ -151,19 +151,19 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <RevealSection id="tekshir">
         <div className="section-label">Tez tekshirish</div>
         <h2>Vizitkangiz bo'shmi?</h2>
-        <p className="section-desc">3 harf + 2 raqam kiriting (masalan ABZ07) — bo'sh yoki bandligini shu zahoti ko'rasiz.</p>
+        <p className="section-desc">3 harf + 3 raqam kiriting (masalan ABZ007) — bo'sh yoki bandligini shu zahoti ko'rasiz.</p>
         <div className="panel glow-panel">
           <div className="checker-row">
             <div className="code-input-group">
               <span className="pfx mono">nfcstore.uz/</span>
-              <input value={checkVal} onChange={onCheckChange} maxLength={6} placeholder="ABZ 07" autoComplete="off" onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }} />
+              <input value={checkVal} onChange={onCheckChange} maxLength={7} placeholder="ABZ 007" autoComplete="off" onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }} />
             </div>
             <button className="btn btn-teal" onClick={doCheck}>Tekshirish</button>
           </div>
           {checkResult && (
             <div className="check-result">
               {checkResult.bad && <>
-                <span className="pill taken">Noto'g'ri format</span> 3 harf + 2 raqam kiriting, masalan ABZ07
+                <span className="pill taken">Noto'g'ri format</span> 3 harf + 3 raqam kiriting, masalan ABZ007
               </>}
               {!checkResult.bad && checkResult.taken && <>
                 <span className="pill taken">Band</span> nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan — <a onClick={() => navigate('/' + checkResult.code)} style={{ color: 'var(--teal-bright)', cursor: 'pointer', textDecoration: 'underline' }}>sahifasini ko'rish</a>
@@ -194,7 +194,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
       {modalCode && (
         <ReserveModal
           code={modalCode}
-          price={priceFor(modalCode.slice(0, 3), modalCode.slice(3, 5), catalog.length).total}
+          price={priceForCode(modalCode, catalog.length).total}
           onClose={() => setModalCode(null)}
           onDone={refreshCatalog}
         />

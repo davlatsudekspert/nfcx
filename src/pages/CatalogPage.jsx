@@ -25,7 +25,7 @@ export default function CatalogPage({ catalog }) {
         <p className="sub reveal reveal-2">Jami {fmt(catalog.length)} ta vizitka band qilingan. Kod yoki ism bo'yicha qidiring.</p>
         <div className="code-input-group reveal reveal-3" style={{ maxWidth: 420 }}>
           <span className="pfx mono">qidirish</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ABZ07 yoki ism..." autoComplete="off" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ABZ007 yoki ism..." autoComplete="off" />
         </div>
       </section>
 

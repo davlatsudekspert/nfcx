@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { BASE_PRICE, parseAnyCode, priceFor, currentBase, nextBase, PRICE_GROWTH, MAX_PRICE_MULT } from '../lib/pricing.js';
+import { BASE_PRICE, parseAnyCode, priceForCode, currentBase, nextBase, PRICE_GROWTH, MAX_PRICE_MULT } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 
@@ -11,7 +11,7 @@ function useMaskedCode() {
     let letters = '', digits = '';
     for (const ch of raw) {
       if (letters.length < 3 && /[A-Z]/.test(ch)) letters += ch;
-      else if (/^[0-9]$/.test(ch) && digits.length < 2) digits += ch;
+      else if (/^[0-9]$/.test(ch) && digits.length < 3) digits += ch;
     }
     setValue(digits ? `${letters} ${digits}` : letters);
   };
@@ -27,15 +27,16 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   catalog.forEach((r) => { takenMap[r.code] = r; });
 
   const calcParsed = parseAnyCode(calcVal);
-  const calcInfo = calcParsed ? priceFor(calcParsed.code.slice(0, 3), calcParsed.code.slice(3, 5), catalog.length) : null;
+  const calcInfo = calcParsed ? priceForCode(calcParsed.code, catalog.length) : null;
   const calcTaken = calcParsed ? !!takenMap[calcParsed.code] : false;
 
   const examples = [
-    { code: 'MXK41', note: 'Oddiy kombinatsiya' },
-    { code: 'AAB19', note: 'Ikkitasi bir xil harf' },
-    { code: 'QQQ07', note: 'Uchala harf bir xil' },
-    { code: 'ABC55', note: 'Bir xil raqam' },
-    { code: 'KLM00', note: '"00" — maxsus' },
+    { code: 'MXK413', note: 'Oddiy kombinatsiya' },
+    { code: 'AAB197', note: 'Ikkitasi bir xil harf' },
+    { code: 'QQQ077', note: 'Uchala harf bir xil' },
+    { code: 'ABC555', note: 'Raqamlar bir xil' },
+    { code: 'KLM000', note: '"000" — maxsus' },
+    { code: 'VIP777', note: 'Eksklyuziv — maxsus narx' },
   ];
 
   return (
@@ -46,7 +47,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
         <p className="sub reveal reveal-2">
           Minimal narx {fmt(BASE_PRICE)} so'mdan boshlanadi va har bandlangan vizitka bilan +{Math.round(PRICE_GROWTH * 100)}%ga
           oshib boradi (maksimal {MAX_PRICE_MULT}× gacha). Kamyob harf/raqam naqshlari — bir xil harflar,
-          ketma-ketlik, "00" — narxni yanada oshiradi.
+          ketma-ketlik, "000" — narxni yanada oshiradi.
         </p>
         <div className="stats-row reveal reveal-3">
           <div className="stat"><b>{fmt(currentBase(catalog.length))} so'm</b><span>Hozirgi minimal narx</span></div>
@@ -64,7 +65,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
             <div>
               <div className="code-input-group" style={{ marginBottom: 16 }}>
                 <span className="pfx mono">nfcstore.uz/</span>
-                <input value={calcVal} onChange={onCalcChange} maxLength={6} placeholder="ABZ 07" autoComplete="off" />
+                <input value={calcVal} onChange={onCalcChange} maxLength={7} placeholder="ABZ 007" autoComplete="off" />
               </div>
               <div className="breakdown-row"><span className="k">Joriy minimal narx</span><span className="v">{fmt(calcInfo ? calcInfo.base : currentBase(catalog.length))} so'm</span></div>
               <div className="breakdown-row"><span className="k">Harflar naqshi</span><span className="v">{calcInfo ? calcInfo.lp.label : '—'}</span></div>
@@ -93,7 +94,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
         <p className="section-desc">Bir xil bazaviy narxdan boshlanib, quyidagi naqshlar narxni bir necha barobar oshiradi.</p>
         <div className="grid">
           {examples.map((ex) => {
-            const info = priceFor(ex.code.slice(0, 3), ex.code.slice(3, 5), catalog.length);
+            const info = priceForCode(ex.code, catalog.length);
             return (
               <div className="card" key={ex.code} style={{ cursor: 'default' }}>
                 <div className="code">{ex.code}</div>
@@ -108,7 +109,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
       {modalCode && (
         <ReserveModal
           code={modalCode}
-          price={priceFor(modalCode.slice(0, 3), modalCode.slice(3, 5), catalog.length).total}
+          price={priceForCode(modalCode, catalog.length).total}
           onClose={() => setModalCode(null)}
           onDone={refreshCatalog}
         />
