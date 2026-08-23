@@ -2,11 +2,11 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { priceFor } from '../src/lib/pricing.js';
+import { priceFor, priceForCode } from '../src/lib/pricing.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
-  createUser, getUserByEmail, createSession, getSessionUser, deleteSession,
+  createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner,
   listForSale, setForSale, transferCard,
 } from './db.js';
@@ -20,7 +20,7 @@ import { startBot } from './bot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
-const STD_CODE_RE = /^[A-Z]{3}[0-9]{2}$/;      // standart: AAA00
+const STD_CODE_RE = /^[A-Z]{3}[0-9]{3}$/;      // standart: AAA000
 const LETTER_CODE_RE = /^[A-Z]{3,12}$/;         // premium: faqat harflar — ALI, UZBEKISTAN
 const RESERVED_CODES = new Set([
   'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS',
@@ -39,7 +39,54 @@ const THEME_WHITELIST = ['classic', 'midnight', 'emerald', 'royal', 'sunset'];
 
 const app = express();
 app.disable('x-powered-by');
+// Railway reverse-proxy orqali: haqiqiy IP/protokolni olamiz.
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '100kb' }));
+
+// Oddiy xavfsizlik headerlari.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+function isSecureReq(req) {
+  return req.secure || req.headers['x-forwarded-proto'] === 'https';
+}
+
+// ---------- Rate limit (brute-force himoyasi, in-memory) ----------
+
+function rateLimit({ windowMs, max, keyFn }) {
+  const hits = new Map();
+  const timer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, arr] of hits) {
+      const fresh = arr.filter((t) => now - t < windowMs);
+      if (fresh.length) hits.set(key, fresh); else hits.delete(key);
+    }
+  }, Math.min(windowMs, 60_000));
+  timer.unref();
+  return (req, res, next) => {
+    if (!isDbReady()) return next();
+    const key = keyFn ? keyFn(req) : req.ip || '?';
+    const now = Date.now();
+    const arr = (hits.get(key) || []).filter((t) => now - t < windowMs);
+    if (arr.length >= max) {
+      return res.status(429).json({ error: 'too_many_requests' });
+    }
+    arr.push(now);
+    hits.set(key, arr);
+    next();
+  };
+}
+
+const authLimiter = rateLimit({ windowMs: 60_000, max: 20 });
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  max: 10,
+  keyFn: (req) => `${req.ip}:${String((req.body || {}).email || '').toLowerCase()}`,
+});
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
@@ -143,7 +190,33 @@ function validateAuthBody(body) {
   return { email, password };
 }
 
-app.post('/api/auth/register', async (req, res) => {
+// Admin akkauntni avtomatik yaratish/sinxronlash (Railway Variables:
+// ADMIN_EMAIL, ADMIN_PASSWORD). Akkaunt bo'lmasa — yaratadi; paroli
+// env'dagiga mos kelmasa — yangilaydi.
+async function ensureAdminUser() {
+  const email = cleanStr(process.env.ADMIN_EMAIL || '', 120).toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || '';
+  if (!email || !password) return;
+  if (!EMAIL_RE.test(email) || password.length < 6) {
+    console.warn('[auth] ADMIN_EMAIL/ADMIN_PASSWORD noto\u2019g\u2019ri — admin yaratilmadi.');
+    return;
+  }
+  try {
+    const existing = await getUserByEmail(email);
+    const hash = hashPassword(password);
+    if (!existing) {
+      await createUser(email, hash);
+      console.log(`[auth] Admin akkaunt avtomatik yaratildi: ${email}`);
+    } else if (!verifyPassword(password, existing.passwordHash)) {
+      await updateUserPassword(existing.id, hash);
+      console.log(`[auth] Admin paroli env bilan sinxronlandi: ${email}`);
+    }
+  } catch (err) {
+    console.error('[auth] ensureAdminUser:', err.message);
+  }
+}
+
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const { email, password, error } = validateAuthBody(req.body || {});
   if (error) return res.status(422).json({ error });
@@ -156,7 +229,7 @@ app.post('/api/auth/register', async (req, res) => {
     const token = newSessionToken();
     await createSession(token, user.id, SESSION_TTL_MS);
     console.log(`[auth] Yangi akkaunt: ${email}`);
-    res.setHeader('Set-Cookie', sessionCookie(token));
+    res.setHeader('Set-Cookie', sessionCookie(token, isSecureReq(req)));
     res.status(201).json({ user });
   } catch (err) {
     console.error('[auth] register:', err.message);
@@ -164,7 +237,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const { email, password, error } = validateAuthBody(req.body || {});
   if (error) return res.status(422).json({ error });
@@ -176,7 +249,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     const token = newSessionToken();
     await createSession(token, user.id, SESSION_TTL_MS);
-    res.setHeader('Set-Cookie', sessionCookie(token));
+    res.setHeader('Set-Cookie', sessionCookie(token, isSecureReq(req)));
     res.json({ user: { id: user.id, email: user.email } });
   } catch (err) {
     console.error('[auth] login:', err.message);
@@ -189,7 +262,7 @@ app.post('/api/auth/logout', async (req, res) => {
   if (token && isDbReady()) {
     try { await deleteSession(token); } catch { /* ignore */ }
   }
-  res.setHeader('Set-Cookie', clearedSessionCookie());
+  res.setHeader('Set-Cookie', clearedSessionCookie(isSecureReq(req)));
   res.json({ ok: true });
 });
 
@@ -245,8 +318,8 @@ app.post('/api/records/:code', async (req, res) => {
     // Faqat harflardan iborat premium vizitka — oddiy vizitkadan 3 barobar qimmat.
     const sold = await countRecords();
     const price = isLetterCode(code)
-      ? priceFor('AAA', '00', sold).base * 3
-      : priceFor(code.slice(0, 3), code.slice(3, 5), sold).total;
+      ? priceFor('AAA', '000', sold).base * 3
+      : priceForCode(code, sold).total;
     const created = await createRecord({ ...record, code, price });
     if (!created) return res.status(409).json({ error: 'already_taken' });
     // Agar foydalanuvchi tizimga kirgan (yoki xarid jarayonida ro'yxatdan
@@ -309,7 +382,7 @@ app.post('/api/records/:code/sale', async (req, res) => {
     let salePrice = null;
     if (list) {
       const sold = await countRecords();
-      salePrice = priceFor('AAA', '00', sold).base * 3;
+      salePrice = priceFor('AAA', '000', sold).base * 3;
     }
     const updated = await setForSale(code, list, salePrice);
     console.log(`[api] Sotuv ${list ? 'ochildi' : 'yopildi'}: ${code}${list ? ` — ${salePrice} so'm` : ''}`);
@@ -413,6 +486,7 @@ app.get('*', (req, res, next) => {
 });
 
 initDb()
+  .then(() => ensureAdminUser())
   .catch((err) => console.error('[db] Ulanish xatosi:', err.message))
   .finally(() => {
     app.listen(PORT, () => {

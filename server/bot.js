@@ -23,7 +23,7 @@ const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@nfcstore_admin';
 const STORE_CARD = process.env.STORE_CARD || '';
 
-const STD_CODE_RE = /^[A-Z]{3}[0-9]{2}$/;
+const STD_CODE_RE = /^[A-Z]{3}[0-9]{3}$/;
 const API = `https://api.telegram.org/bot${TOKEN}`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -120,7 +120,7 @@ async function catalogText() {
 async function startPurchase(chatId, from, rawCode) {
   const code = String(rawCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!STD_CODE_RE.test(code)) {
-    return sendMessage(chatId, '\u26D4 Format noto\u2019g\u2019ri. Masalan: <code>/sotib_olish VIP77</code>');
+    return sendMessage(chatId, '\u26D4 Format noto\u2019g\u2019ri. Masalan: <code>/sotib_olish VIP777</code>');
   }
 
   if (await getRecord(code)) {

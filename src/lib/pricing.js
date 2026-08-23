@@ -68,10 +68,12 @@ export function letterPattern(l) {
 }
 
 export function digitPattern(d) {
-  if (d === '00') return { mult: 4, label: "00 — maxsus ×4", hot: true };
-  if (d[0] === d[1]) return { mult: 3, label: 'Bir xil raqam ×3', hot: true };
-  const a = +d[0], b = +d[1];
-  if (Math.abs(a - b) === 1) return { mult: 1.5, label: 'Ketma-ket ×1.5', hot: false };
+  if (d === '000') return { mult: 4, label: "000 — maxsus ×4", hot: true };
+  const a = +d[0], b = +d[1], c = +d[2];
+  if (a === b && b === c) return { mult: 3, label: 'Uchalasi bir xil ×3', hot: true };
+  const asc = b - a === 1 && c - b === 1;
+  const desc = a - b === 1 && b - c === 1;
+  if (asc || desc) return { mult: 1.5, label: 'Ketma-ket (123) ×1.5', hot: false };
   return { mult: 1, label: 'Oddiy ×1', hot: false };
 }
 
@@ -81,4 +83,18 @@ export function priceFor(letters, digits, sold = 0) {
   const base = currentBase(sold);
   const total = Math.max(base, roundPrice(base * lp.mult * dp.mult));
   return { total, lp, dp, base };
+}
+
+// Qo'lda belgilangan qat'iy narxlar (so'mda) — eksklyuziv kodlar uchun.
+// Naqsh ko'paytmalaridan qat'i nazar, narx hech qachon bundan past bo'lmaydi.
+export const FIXED_PRICES = {
+  VIP777: 6000000,
+};
+
+// Kod bo'yicha yakuniy narx: qat'iy narx mavjud bo'lsa u qo'llanadi,
+// aks holda standart naqsh hisobi.
+export function priceForCode(code, sold = 0) {
+  const info = priceFor(String(code || '').slice(0, 3), String(code || '').slice(3, 6), sold);
+  const fixed = FIXED_PRICES[code];
+  return fixed ? { ...info, total: Math.max(fixed, roundPrice(info.total)), fixed } : info;
 }

@@ -1,6 +1,6 @@
 // "Chiroyli nomlar ro'yxati" — sayt formatiga moslashtirilgan eksklyuziv
-// kodlar to'plami (3 lotin harfi + 2 raqam). Narxlar bu yerda saqlanmaydi —
-// ular priceFor() orqali joriy savdolar soniga qarab jonli hisoblanadi.
+// kodlar to'plami (3 lotin harfi + 3 raqam). Narxlar bu yerda saqlanmaydi —
+// ular priceForCode() orqali joriy savdolar soniga qarab jonli hisoblanadi.
 //
 // Toifalar:
 //   top    — uchala harf bir xil + maxsus raqam (×6 harf)
@@ -11,21 +11,21 @@ export const PREMIUM_GROUPS = [
   {
     id: 'top',
     label: 'Top daraja',
-    desc: 'Uchala harf bir xil + maxsus raqam (VVV00) — eng yuqori toifa.',
+    desc: 'Uchala harf bir xil + maxsus raqam (AAA000) — eng yuqori toifa.',
     codes: [
-      'AAA00', 'VVV00', 'TTT00', 'SSS00', 'KKK00', 'MMM00', 'BBB00', 'ZZZ00', 'RRR00', 'GGG00',
-      'AAA77', 'VVV77', 'TTT77', 'SSS77', 'KKK77', 'MMM77', 'BBB77', 'ZZZ77', 'RRR77', 'GGG77',
+      'AAA000', 'VVV000', 'TTT000', 'SSS000', 'KKK000', 'MMM000', 'BBB000', 'ZZZ000', 'RRR000', 'GGG000',
+      'AAA777', 'VVV777', 'TTT777', 'SSS777', 'KKK777', 'MMM777', 'BBB777', 'ZZZ777', 'RRR777', 'GGG777',
     ],
   },
   {
     id: 'middle',
     label: "O'rta daraja",
-    desc: "Ikkita harf bir xil + \"00\" yoki \"77\" kombinatsiyasi.",
+    desc: 'Ikkita harf bir xil + "000" yoki "777" kombinatsiyasi.',
     codes: [
-      'AAB00', 'ABA00', 'VVA00', 'AVV00', 'SSA00', 'ASS00', 'TTA00', 'ATT00',
-      'MMA00', 'AMM00', 'KKA00', 'AKK00', 'BBA00', 'ABB00', 'GGA00', 'AGG00',
-      'AAB77', 'ABA77', 'VVA77', 'AVV77', 'SSA77', 'ASS77', 'TTA77', 'ATT77',
-      'MMA77', 'AMM77', 'KKA77', 'AKK77', 'BBA77', 'ABB77', 'GGA77', 'AGG77',
+      'AAB000', 'ABA000', 'VVA000', 'AVV000', 'SSA000', 'ASS000', 'TTA000', 'ATT000',
+      'MMA000', 'AMM000', 'KKA000', 'AKK000', 'BBA000', 'ABB000', 'GGA000', 'AGG000',
+      'AAB777', 'ABA777', 'VVA777', 'AVV777', 'SSA777', 'ASS777', 'TTA777', 'ATT777',
+      'MMA777', 'AMM777', 'KKA777', 'AKK777', 'BBA777', 'ABB777', 'GGA777', 'AGG777',
     ],
   },
   {
@@ -33,9 +33,9 @@ export const PREMIUM_GROUPS = [
     label: 'Nik-nomlar',
     desc: 'Tanish/mashhur so\'zlar — VIP uslubidagi nomlar.',
     codes: [
-      'VIP77', 'TOP77', 'MAX77', 'PRO77', 'ALI77', 'BEK77', 'JON77', 'NUR77',
-      'DON77', 'GUL77', 'BOY77', 'SHO77', 'TEZ77', 'SIR77', 'XON77', 'KUB77',
-      'ACE77', 'ISH77', 'OSH77', 'YER77',
+      'VIP777', 'TOP777', 'MAX777', 'PRO777', 'ALI777', 'BEK777', 'JON777', 'NUR777',
+      'DON777', 'GUL777', 'BOY777', 'SHO777', 'TEZ777', 'SIR777', 'XON777', 'KUB777',
+      'ACE777', 'ISH777', 'OSH777', 'YER777',
     ],
   },
 ];
