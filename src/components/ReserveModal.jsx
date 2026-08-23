@@ -79,91 +79,100 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
     }
   };
 
+  const field = 'form-control';
+  const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
+
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal">
-        <button className="modal-close" onClick={onClose}>&times;</button>
-        <h3>Vizitkani band qilish</h3>
-        <div className="modal-code mono">nfcstore.uz/{code.toLowerCase()}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="relative my-8 w-full max-w-lg rounded-2xl border border-white/10 bg-base-200 shadow-2xl">
+        <button className="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" onClick={onClose}>&times;</button>
+        <div className="p-6">
+          <h3 className="text-lg font-bold">Vizitkani band qilish</h3>
+          <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
 
-        <div className="modal-scroll">
-          <div className="field">
-            <label>Ismingiz *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Azizbek Turgunov" />
-          </div>
-          <div className="field">
-            <label>Kasb / sarlavha</label>
-            <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Mobile App Developer & Community Builder" />
-          </div>
-          <div className="field">
-            <label>Avatar rasm havolasi (ixtiyoriy)</label>
-            <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
-          </div>
-          <div className="field-row">
-            <div className="field">
-              <label>Telegram</label>
-              <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username" />
+          <div className="mt-5 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
+            <label className={field}>
+              <span className="text-xs font-semibold text-base-content/70">Ismingiz *</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Azizbek Turgunov" className={inp} />
+            </label>
+            <label className={field}>
+              <span className="text-xs font-semibold text-base-content/70">Kasb / sarlavha</span>
+              <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Mobile App Developer & Community Builder" className={inp} />
+            </label>
+            <label className={field}>
+              <span className="text-xs font-semibold text-base-content/70">Avatar rasm havolasi (ixtiyoriy)</span>
+              <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." className={inp} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={field}>
+                <span className="text-xs font-semibold text-base-content/70">Telegram</span>
+                <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username" className={inp} />
+              </label>
+              <label className={field}>
+                <span className="text-xs font-semibold text-base-content/70">Telefon</span>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 XX XXX XX XX" className={inp} />
+              </label>
             </div>
-            <div className="field">
-              <label>Telefon</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 XX XXX XX XX" />
+            <div className="grid grid-cols-2 gap-3">
+              <label className={field}>
+                <span className="text-xs font-semibold text-base-content/70">Email</span>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ism@gmail.com" className={inp} />
+              </label>
+              <label className={field}>
+                <span className="text-xs font-semibold text-base-content/70">LinkedIn</span>
+                <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="linkedin.com/in/..." className={inp} />
+              </label>
             </div>
-          </div>
-          <div className="field-row">
-            <div className="field">
-              <label>Email</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ism@gmail.com" />
-            </div>
-            <div className="field">
-              <label>LinkedIn</label>
-              <input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="linkedin.com/in/..." />
-            </div>
-          </div>
-          <div className="field">
-            <label>Instagram</label>
-            <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@username" />
-          </div>
-          <div className="field">
-            <label>Hashtaglar (vergul bilan)</label>
-            <input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="IT_specialist, community_builder" />
+            <label className={field}>
+              <span className="text-xs font-semibold text-base-content/70">Instagram</span>
+              <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@username" className={inp} />
+            </label>
+            <label className={field}>
+              <span className="text-xs font-semibold text-base-content/70">Hashtaglar (vergul bilan)</span>
+              <input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="IT_specialist, community_builder" className={inp} />
+            </label>
+
+            {!user ? (
+              <>
+                <div className="divider my-2"></div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/60">Akkaunt — profilingizni boshqarish uchun (tavsiya etiladi)</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={field}>
+                    <span className="text-xs font-semibold text-base-content/70">Email (login)</span>
+                    <input type="email" value={acctEmail} onChange={(e) => setAcctEmail(e.target.value)} placeholder="ism@gmail.com" autoComplete="email" className={inp} />
+                  </label>
+                  <label className={field}>
+                    <span className="text-xs font-semibold text-base-content/70">Parol (min. 6 belgi)</span>
+                    <input type="password" value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" className={inp} />
+                  </label>
+                </div>
+                <p className="text-xs leading-relaxed text-base-content/45">
+                  Akkaunt bilan vizitkangiz profilingizga biriktiriladi va uni keyin /account sahifasidan tahrirlaysiz.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="divider my-2"></div>
+                <p className="text-xs leading-relaxed text-base-content/45">
+                  Vizitka profilingizga biriktiriladi: <b>{user.email}</b>. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.
+                </p>
+              </>
+            )}
           </div>
 
-          {!user ? (
-            <>
-              <div className="modal-divider"></div>
-              <div className="modal-acct-label">Akkaunt — profilingizni boshqarish uchun (tavsiya etiladi)</div>
-              <div className="field-row">
-                <div className="field">
-                  <label>Email (login)</label>
-                  <input type="email" value={acctEmail} onChange={(e) => setAcctEmail(e.target.value)} placeholder="ism@gmail.com" autoComplete="email" />
-                </div>
-                <div className="field">
-                  <label>Parol (min. 6 belgi)</label>
-                  <input type="password" value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" />
-                </div>
-              </div>
-              <p className="modal-hint">
-                Akkaunt bilan vizitkangiz profilingizga biriktiriladi va uni keyin /account sahifasidan tahrirlaysiz.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="modal-divider"></div>
-              <p className="modal-hint">
-                Vizitka profilingizga biriktiriladi: <b>{user.email}</b>. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.
-              </p>
-            </>
+          <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
+            <span className="text-sm text-base-content/60">Jami</span>
+            <b className="text-lg">{fmt(price)} so'm</b>
+          </div>
+          <button className="btn btn-primary mt-3 w-full" onClick={submit} disabled={busy}>
+            {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Band qilish'}
+          </button>
+          {msg && (
+            <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
+              <span>{msg.text}</span>
+            </div>
           )}
         </div>
-
-        <div className="modal-total">
-          <span style={{ color: 'var(--ink-dim)', fontSize: 14 }}>Jami</span>
-          <b>{fmt(price)} so'm</b>
-        </div>
-        <button className="btn btn-brass" style={{ width: '100%' }} onClick={submit} disabled={busy}>
-          {busy ? 'Yuklanmoqda...' : 'Band qilish'}
-        </button>
-        {msg && <div className={'modal-msg ' + msg.type}>{msg.text}</div>}
       </div>
     </div>
   );

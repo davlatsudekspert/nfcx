@@ -58,17 +58,26 @@ function useReveal() {
   return [ref, shown];
 }
 
+function Reveal({ children, delay = '', as: Tag = 'div', className = '' }) {
+  const [ref, shown] = useReveal();
+  return (
+    <Tag ref={ref} className={`${className} transition-all duration-700 ease-out ${shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'} ${delay}`}>
+      {children}
+    </Tag>
+  );
+}
+
 function RevealSection({ id, children }) {
   const [ref, shown] = useReveal();
   return (
-    <section id={id} ref={ref} className={shown ? 'reveal' : ''} style={{ opacity: shown ? undefined : 0 }}>
+    <section id={id} ref={ref} className={`mt-16 transition-all duration-700 ease-out ${shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
       {children}
     </section>
   );
 }
 
 const TEASERS = [
-  { href: '/narxlar', title: 'Narxlar', desc: "Kalkulyator bilan aniq narxni hisoblang va naqshlar qanday ta'sir qilishini ko'ring.", go: 'Narxlarni ko\'rish →' },
+  { href: '/narxlar', title: 'Narxlar', desc: "Kalkulyator bilan aniq narxni hisoblang va naqshlar qanday ta'sir qilishini ko'ring.", go: "Narxlarni ko'rish →" },
   { href: '/qanday-ishlaydi', title: 'Qanday ishlaydi', desc: "Bandlashdan profilni sozlash va qayta sotishgacha — besh qadam.", go: "Qadamlarni ko'rish →" },
   { href: '/katalog', title: 'Katalog', desc: "Barcha band qilingan vizitkalar va sotuvdagi profillar ro'yxati.", go: "Katalogni ochish →" },
   { href: '/savollar', title: 'Savollar', desc: "Narx, egalik, qayta sotish va profil haqida ko'p so'raladigan savollar.", go: 'FAQ →' },
@@ -96,110 +105,175 @@ export default function HomePage({ catalog, refreshCatalog }) {
   const marqueeItems = recent.length ? [...recent, ...recent] : [];
 
   return (
-    <main className="wrap">
-      <section className="hero hero-v2">
-        <div className="hero-grid-bg"></div>
-        <div className="hero-glow" aria-hidden="true"></div>
+    <main>
+      {/* ================= HERO ================= */}
+      <section className="relative overflow-hidden bg-black">
+        <div className="pointer-events-none absolute -inset-x-[18%] -inset-y-[12%] bg-[radial-gradient(640px_460px_at_74%_38%,rgba(96,124,156,0.15),transparent_65%),radial-gradient(420px_320px_at_16%_86%,rgba(120,148,176,0.08),transparent_60%)]"></div>
 
-        <div className="hero-inner">
-          <div className="hero-copy">
-            <div className="eyebrow reveal"><span className="dot"></span> O'z profilingiz — nfcstore.uz/ismingiz</div>
+        <div className="relative z-[1] mx-auto grid max-w-6xl items-center gap-11 px-5 pb-8 pt-14 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div>
+            <Reveal>
+              <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+                <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+                O'z profilingiz — nfcstore.uz/ismingiz
+              </span>
+            </Reveal>
 
-            <h1 className="reveal reveal-1">
-              O'zingizga <span className="accent shine-text">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
-            </h1>
-            <p className="sub reveal reveal-2">
-              Format: <b className="mono">AAA000</b> — 3 lotin harfi + 3 raqam. Sizniki bo'lgach —
-              akkauntingizdan tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi.
-              Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.
-            </p>
+            <Reveal delay="[transition-delay:80ms]">
+              <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
+                O'zingizga <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
+              </h1>
+            </Reveal>
 
-            <div className="glass-panel reveal reveal-3">
-              <div className="checker-row glass-checker-row">
-                <div className="code-input-group">
-                  <span className="pfx mono">nfcstore.uz/</span>
-                  <input value={checkVal} onChange={onCheckChange} maxLength={7} placeholder="ABZ 007" autoComplete="off" onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }} />
+            <Reveal delay="[transition-delay:160ms]">
+              <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
+                Format: <b className="font-mono">AAA000</b> — 3 lotin harfi + 3 raqam. Sizniki bo'lgach — akkauntingizdan
+                tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi. Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.
+              </p>
+            </Reveal>
+
+            {/* Glassmorphism search */}
+            <Reveal delay="[transition-delay:240ms]">
+              <div className="mt-6 max-w-xl rounded-[20px] border border-[rgba(150,172,196,0.20)] bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-3 pl-[18px] shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex min-w-0 flex-1 items-center rounded-lg border border-[rgba(150,172,196,0.16)] bg-black/45 focus-within:border-[rgba(158,182,206,0.5)] focus-within:shadow-[0_0_0_3px_rgba(110,138,168,0.15)]">
+                    <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">nfcstore.uz/</span>
+                    <input
+                      value={checkVal}
+                      onChange={onCheckChange}
+                      maxLength={7}
+                      placeholder="ABZ 007"
+                      autoComplete="off"
+                      onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }}
+                      className="w-full bg-transparent px-2 py-3 font-mono text-sm uppercase tracking-wider outline-none placeholder:normal-case placeholder:tracking-normal"
+                    />
+                  </div>
+                  <button
+                    onClick={doCheck}
+                    aria-label="Tekshirish"
+                    className="btn btn-circle shrink-0 border-none bg-gradient-to-br from-[#7e99af] to-[#4f6f88] text-white shadow-[0_8px_24px_rgba(79,111,136,0.45)] hover:brightness-110"
+                  >
+                    <IconSearch />
+                  </button>
                 </div>
-                <button className="btn-round" onClick={doCheck} aria-label="Tekshirish"><IconSearch /></button>
+                {checkResult && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1 text-[13.5px]">
+                    {checkResult.bad && <>
+                      <span className="badge badge-error badge-outline">Noto'g'ri format</span>
+                      <span className="text-base-content/60">3 harf + 3 raqam kiriting, masalan ABZ007</span>
+                    </>}
+                    {!checkResult.bad && checkResult.taken && <>
+                      <span className="badge badge-error">Band</span>
+                      <span className="text-base-content/60">
+                        nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan —{' '}
+                        <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#9fb2c4] underline-offset-2 hover:text-base-content">sahifasini ko'rish</button>
+                      </span>
+                    </>}
+                    {!checkResult.bad && !checkResult.taken && <>
+                      <span className="badge badge-success">Bo'sh</span>
+                      <span className="text-base-content/60">nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm</span>
+                      <button className="btn btn-primary btn-xs ml-1" onClick={() => setModalCode(checkResult.code)}>Bandlash</button>
+                    </>}
+                  </div>
+                )}
               </div>
-              {checkResult && (
-                <div className="check-result glass-check-result">
-                  {checkResult.bad && <>
-                    <span className="pill taken">Noto'g'ri format</span> 3 harf + 3 raqam kiriting, masalan ABZ007
-                  </>}
-                  {!checkResult.bad && checkResult.taken && <>
-                    <span className="pill taken">Band</span> nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan — <a onClick={() => navigate('/' + checkResult.code)} style={{ color: '#9fb2c4', cursor: 'pointer', textDecoration: 'underline' }}>sahifasini ko'rish</a>
-                  </>}
-                  {!checkResult.bad && !checkResult.taken && <>
-                    <span className="pill ok">Bo'sh</span> nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm
-                    <button className="btn btn-brass pulse" style={{ marginLeft: 10 }} onClick={() => setModalCode(checkResult.code)}>Bandlash</button>
-                  </>}
-                </div>
-              )}
-            </div>
+            </Reveal>
 
-            <div className="stats-row reveal reveal-4">
-              <div className="stat"><b><CountUp value={catalog.length} /></b><span>Band qilingan</span></div>
-              <div className="stat"><b><CountUp value={currentBase(catalog.length)} suffix=" so'm" /></b><span>Hozirgi minimal narx</span></div>
-              <div className="stat"><b style={{ color: 'var(--brass-bright)' }}><CountUp value={nextBase(catalog.length)} suffix=" so'm" /></b><span>Keyingi savdodan boshlab</span></div>
-            </div>
+            {/* Stats */}
+            <Reveal delay="[transition-delay:320ms]">
+              <div className="mt-7 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <div className="text-lg font-bold"><CountUp value={catalog.length} /></div>
+                  <div className="text-xs text-base-content/50">Band qilingan</div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <div className="text-lg font-bold"><CountUp value={currentBase(catalog.length)} suffix=" so'm" /></div>
+                  <div className="text-xs text-base-content/50">Hozirgi minimal narx</div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <div className="text-lg font-bold"><CountUp value={nextBase(catalog.length)} suffix=" so'm" /></div>
+                  <div className="text-xs text-base-content/50">Keyingi savdodan boshlab</div>
+                </div>
+              </div>
+            </Reveal>
           </div>
 
-          <div className="hero-stage reveal reveal-2" aria-hidden="true">
-            <div className="stage-ring"></div>
-            <div className="stage-ring-spin"></div>
-            <div className="sat-orbit"><span className="ring-satellite"></span></div>
-            <div className="sat-orbit sat-orbit-b"><span className="ring-satellite ring-satellite-sm"></span></div>
+          {/* ===== Neon orbit kompozitsiyasi ===== */}
+          <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center lg:block">
+            <div className="relative h-[480px] w-[480px]" aria-hidden="true">
+              <div className="absolute inset-[5%] rounded-full border border-[rgba(132,154,178,0.30)] shadow-[0_0_70px_rgba(92,116,144,0.24),inset_0_0_55px_rgba(104,128,156,0.12)]"></div>
+              <div className="absolute -inset-[calc(5%-10px)] rounded-full border border-dashed border-[rgba(142,164,188,0.13)]"></div>
+              <div className="absolute inset-[5%] animate-[spinSlow_16s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0_76%,rgba(168,188,208,0.85)_94%,transparent_100%)] [-webkit-mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [filter:drop-shadow(0_0_8px_rgba(134,158,184,0.5))]"></div>
+              <div className="absolute inset-[5%] animate-[spinSlow_16s_linear_infinite] rounded-full">
+                <span className="absolute -top-[5px] left-1/2 ml-[-5px] h-2.5 w-2.5 rounded-full bg-[#b3c1cf] shadow-[0_0_14px_3px_rgba(140,164,190,0.5)]"></span>
+              </div>
+              <div className="absolute inset-[5%] animate-[spinSlow_26s_linear_infinite_reverse] rounded-full">
+                <span className="absolute -top-1 left-1/2 ml-[-4px] h-[7px] w-[7px] rounded-full bg-[#b3c1cf] opacity-75 shadow-[0_0_14px_3px_rgba(140,164,190,0.5)]"></span>
+              </div>
 
-            <div className="stage-center floaty">
-              <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" className="rim-cyan" />
-            </div>
+              <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-54%] animate-[floatY_5s_ease-in-out_infinite]">
+                <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" className="rim-cyan" />
+              </div>
 
-            <div className="tap-coin tap-coin-1 floaty">
-              <IconWave />
-              <span>NFC TAP</span>
-            </div>
-            <div className="tap-coin tap-coin-2 floaty">
-              <IconWave />
-              <span>NFC TAG</span>
-            </div>
-
-            <div className="key-fob floaty">
-              <span className="key-ring"></span>
-              <div className="fob-body">
+              <div className="absolute right-[4%] top-[2%] z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(152,174,198,0.18)] bg-gradient-to-br from-[#16181c] to-[#07080a] text-[#9fb2c4] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(112,138,166,0.12)] [animation-delay:0.6s]">
                 <IconWave />
-                <b>NFC</b>
+                <span className="font-mono text-[9px] tracking-[0.14em] text-[rgba(159,178,196,0.55)]">NFC TAP</span>
+              </div>
+              <div className="absolute bottom-[6%] left-0 z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(152,174,198,0.18)] bg-gradient-to-br from-[#16181c] to-[#07080a] text-[#9fb2c4] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(112,138,166,0.12)] [animation-delay:1.4s]">
+                <IconWave />
+                <span className="font-mono text-[9px] tracking-[0.14em] text-[rgba(159,178,196,0.55)]">NFC TAG</span>
+              </div>
+
+              <div className="absolute left-[6%] top-[13%] z-[2] flex animate-[floatY_5s_ease-in-out_infinite] flex-col items-center [animation-delay:1s]">
+                <span className="z-[1] -mb-1.5 h-[34px] w-[34px] rounded-full border-[5px] border-[#b9bcc2] border-t-[#e7e9ec] border-l-[#dfe1e6] shadow-md"></span>
+                <div className="flex h-[118px] w-[78px] flex-col items-center justify-center gap-2 rounded-[20px] border border-[rgba(152,174,198,0.14)] bg-gradient-to-b from-[#232427] via-[#101113] to-[#1a1b1e] text-[#9fb2c4] shadow-[0_20px_44px_rgba(0,0,0,0.6),0_0_20px_rgba(112,138,166,0.10)]">
+                  <IconWave />
+                  <b className="font-mono text-[11px] tracking-[0.2em] text-[rgba(159,178,196,0.5)]">NFC</b>
+                </div>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
+
+        {/* Marquee */}
+        {recent.length > 0 && (
+          <Reveal>
+            <div className="overflow-hidden border-y border-white/10 bg-white/[0.02] py-3.5 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
+              <div className="flex w-max animate-[marqueeScroll_26s_linear_infinite] gap-[34px]">
+                {marqueeItems.map((it, i) => (
+                  <span
+                    key={it.code + i}
+                    onClick={() => navigate('/' + it.code)}
+                    className="cursor-pointer whitespace-nowrap font-mono text-[12.5px] tracking-wide text-base-content/40 transition-colors hover:text-base-content"
+                  >
+                    nfcstore.uz/{it.code.toLowerCase()} · {it.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        )}
       </section>
 
-      {recent.length > 0 && (
-        <div className="marquee-wrap reveal">
-          <div className="marquee-track">
-            {marqueeItems.map((it, i) => (
-              <span className="marquee-item mono" key={it.code + i} onClick={() => navigate('/' + it.code)}>
-                nfcstore.uz/{it.code.toLowerCase()} <i>·</i> {it.name}
-              </span>
+      <div className="mx-auto max-w-6xl px-5 pb-16">
+        <RevealSection id="sahifalar">
+          <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Batafsil</div>
+          <h2 className="mt-2 text-2xl font-bold">Sayt bo'ylab</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {TEASERS.map((t) => (
+              <button
+                key={t.href}
+                onClick={() => navigate(t.href)}
+                className="group cursor-pointer rounded-2xl border border-white/10 bg-base-200/70 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200"
+              >
+                <h3 className="font-semibold">{t.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">{t.desc}</p>
+                <span className="mt-4 inline-block text-sm text-base-content/80 transition-transform group-hover:translate-x-1">{t.go}</span>
+              </button>
             ))}
           </div>
-        </div>
-      )}
-
-      <RevealSection id="sahifalar">
-        <div className="section-label">Batafsil</div>
-        <h2>Sayt bo'ylab</h2>
-        <div className="teaser-grid">
-          {TEASERS.map((t) => (
-            <a key={t.href} className="teaser-card" onClick={() => navigate(t.href)}>
-              <h3>{t.title}</h3>
-              <p>{t.desc}</p>
-              <span className="go">{t.go}</span>
-            </a>
-          ))}
-        </div>
-      </RevealSection>
+        </RevealSection>
+      </div>
 
       {modalCode && (
         <ReserveModal
