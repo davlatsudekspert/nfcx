@@ -131,6 +131,22 @@ export async function initDb() {
      WHERE table_name = 'cards' AND column_name = 'user_id'`
   );
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bot_orders (
+      id                 SERIAL PRIMARY KEY,
+      tg_user_id         BIGINT NOT NULL,
+      tg_username        TEXT,
+      tg_name            TEXT,
+      code               VARCHAR(16) NOT NULL,
+      price              INTEGER NOT NULL,
+      status             VARCHAR(20) NOT NULL DEFAULT 'pending',
+      screenshot_file_id TEXT,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS bot_orders_user_idx ON bot_orders (tg_user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS bot_orders_code_idx ON bot_orders (code)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -382,4 +398,100 @@ export async function transferCard(code, fromUserId, toUserId) {
     [code, fromUserId, toUserId]
   );
   return rows[0] ? rowToRecord(rows[0]) : null;
+}
+
+// ---------- Telegram bot buyurtmalari ----------
+
+const BOT_ORDER_FIELDS = `
+  id, tg_user_id AS "tgUserId", tg_username AS "tgUsername", tg_name AS "tgName",
+  code, price, status, screenshot_file_id AS "screenshotFileId",
+  created_at AS "createdAt"
+`;
+
+function rowToBotOrder(row) {
+  return {
+    ...row,
+    tgUsername: row.tgUsername || null,
+    tgName: row.tgName || null,
+    screenshotFileId: row.screenshotFileId || null,
+  };
+}
+
+export async function createBotOrder({ tgUserId, tgUsername, tgName, code, price }) {
+  const { rows } = await pool.query(
+    `INSERT INTO bot_orders (tg_user_id, tg_username, tg_name, code, price)
+     VALUES ($1,$2,$3,$4,$5) RETURNING ${BOT_ORDER_FIELDS}`,
+    [tgUserId, tgUsername || null, tgName || null, code, price]
+  );
+  return rows[0] ? rowToBotOrder(rows[0]) : null;
+}
+
+export async function getBotOrder(id) {
+  const { rows } = await pool.query(
+    `SELECT ${BOT_ORDER_FIELDS} FROM bot_orders WHERE id = $1`,
+    [id]
+  );
+  return rows[0] ? rowToBotOrder(rows[0]) : null;
+}
+
+export async function setBotOrderStatus(id, status, screenshotFileId) {
+  const { rows } = await pool.query(
+    `UPDATE bot_orders
+     SET status = $2,
+         screenshot_file_id = COALESCE($3, screenshot_file_id)
+     WHERE id = $1
+     RETURNING ${BOT_ORDER_FIELDS}`,
+    [id, status, screenshotFileId || null]
+  );
+  return rows[0] ? rowToBotOrder(rows[0]) : null;
+}
+
+export async function listBotOrdersByUser(tgUserId) {
+  const { rows } = await pool.query(
+    `SELECT ${BOT_ORDER_FIELDS} FROM bot_orders
+     WHERE tg_user_id = $1 ORDER BY created_at DESC LIMIT 20`,
+    [tgUserId]
+  );
+  return rows.map(rowToBotOrder);
+}
+
+export async function latestPendingBotOrder(tgUserId) {
+  const { rows } = await pool.query(
+    `SELECT ${BOT_ORDER_FIELDS} FROM bot_orders
+     WHERE tg_user_id = $1 AND status = 'pending'
+     ORDER BY created_at DESC LIMIT 1`,
+    [tgUserId]
+  );
+  return rows[0] ? rowToBotOrder(rows[0]) : null;
+}
+
+// Kod bo'yicha faol (to'lanmagan/pending) buyurtma bormi?
+export async function activeBotOrderByCode(code) {
+  const { rows } = await pool.query(
+    `SELECT ${BOT_ORDER_FIELDS} FROM bot_orders
+     WHERE code = $1 AND status IN ('pending','paid')
+     ORDER BY created_at DESC LIMIT 1`,
+    [code]
+  );
+  return rows[0] ? rowToBotOrder(rows[0]) : null;
+}
+
+export async function listPendingBotOrders() {
+  const { rows } = await pool.query(
+    `SELECT ${BOT_ORDER_FIELDS} FROM bot_orders
+     WHERE status = 'pending' ORDER BY created_at ASC LIMIT 50`
+  );
+  return rows.map(rowToBotOrder);
+}
+
+export async function countPaidBotOrders() {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM bot_orders WHERE status = 'paid'`);
+  return Number(rows[0].n);
+}
+
+export async function listActiveBotOrderCodes() {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT code FROM bot_orders WHERE status IN ('pending','paid')`
+  );
+  return rows.map((r) => r.code);
 }

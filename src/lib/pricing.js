@@ -1,4 +1,4 @@
-export const TOTAL_COMBOS = 26 * 26 * 26 * 100;
+export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
 // Dinamik narxlash: boshlang'ich narx har bir band qilingan vizitka bilan
 // oshib boradi (talab ortishi bilan qimmatlashadi).
@@ -23,10 +23,10 @@ export function nextBase(sold) {
 
 export function parseCode(raw) {
   const c = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (c.length !== 5) return null;
+  if (c.length !== 6) return null;
   const letters = c.slice(0, 3);
-  const digits = c.slice(3, 5);
-  if (!/^[A-Z]{3}$/.test(letters) || !/^[0-9]{2}$/.test(digits)) return null;
+  const digits = c.slice(3, 6);
+  if (!/^[A-Z]{3}$/.test(letters) || !/^[0-9]{3}$/.test(digits)) return null;
   return { code: c, letters, digits };
 }
 
@@ -43,7 +43,7 @@ export function parseLetterCode(raw) {
   return LETTER_CODE_RE.test(c) ? { code: c } : null;
 }
 
-// Faqat standart AAA00 formatini qabul qiladi (harfli premium hozircha o'chiq).
+// Faqat standart AAA000 formatini qabul qiladi (harfli premium hozircha o'chiq).
 export function parseAnyCode(raw) {
   const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!clean) return null;

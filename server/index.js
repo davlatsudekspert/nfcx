@@ -16,6 +16,7 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
+import { startBot } from './bot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -416,5 +417,6 @@ initDb()
   .finally(() => {
     app.listen(PORT, () => {
       console.log(`[server] NFCSTORE server ${PORT}-portda ishga tushdi. DB: ${isDbReady() ? 'ulangan' : 'ulanmagan (fallback rejim)'}`);
+      startBot();
     });
   });
