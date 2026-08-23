@@ -212,7 +212,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
               </div>
 
               <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-54%] animate-[floatY_5s_ease-in-out_infinite]">
-                <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" className="rim-cyan" />
+                <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" rim />
               </div>
 
               <div className="absolute right-[4%] top-[2%] z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(152,174,198,0.18)] bg-gradient-to-br from-[#16181c] to-[#07080a] text-[#9fb2c4] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(112,138,166,0.12)] [animation-delay:0.6s]">

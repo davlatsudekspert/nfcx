@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+}
+@plugin "daisyui/theme" {
+  name: "nfcstore";
+  default: true;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #0a0a0b;
+  --color-base-200: #131415;
+  --color-base-300: #191a1c;
+  --color-base-content: #f5f5f6;
+  --color-primary: #f5f5f6;
+  --color-primary-content: #101112;
+  --color-secondary: #d8d8db;
+  --color-secondary-content: #101112;
+  --color-accent: #7e99af;
+  --color-accent-content: #ffffff;
+  --color-neutral: #191a1c;
+  --color-neutral-content: #f5f5f6;
+  --color-info: #9fb2c4;
+  --color-success: #7fb28e;
+  --color-warning: #d3b06a;
+  --color-error: #c9573f;
+  --radius-selector: 0.75rem;
+  --radius-field: 0.6rem;
+  --radius-box: 1rem;
+}
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+  --font-display: "Space Grotesk", ui-sans-serif, sans-serif;
+}
+
+/* Keyframes referenced by animate-[...] utilities in components */
+@keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes shimmerSweep { 0% { transform: translateX(-140%) translateY(-140%) rotate(25deg); } 100% { transform: translateX(140%) translateY(140%) rotate(25deg); } }
+@keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.25); } 100% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } }
+@keyframes marqueeScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes glowBarPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.18), 0 14px 30px rgba(0,0,0,0.12); } 50% { box-shadow: 0 0 0 6px rgba(255,255,255,0.05), 0 14px 30px rgba(0,0,0,0.12); } }
+@keyframes cardBreath { 0%,100% { box-shadow: 0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 0 0 rgba(255,255,255,0); } 50% { box-shadow: 0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 30px 2px rgba(255,255,255,0.06); } }

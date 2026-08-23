@@ -161,36 +161,37 @@ function EditCardForm({ card, onSaved }) {
   };
 
   const preview = THEMES.find((t) => t.id === form.theme) || THEMES[0];
+  const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
 
   return (
-    <div className="acct-card">
-      <div className="acct-card-head">
+    <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="mono acct-code">nfcstore.uz/{card.code.toLowerCase()}</div>
-          <div className="acct-sub">
+          <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{card.code.toLowerCase()}</div>
+          <div className="mt-1 text-xs text-base-content/50">
             {fmt(card.price)} so'm · {timeAgo(card.ts)} · {fmt(card.views || 0)} ko'rish
-            {card.forSale && <span className="sale-pill"> SOTUVDA</span>}
+            {card.forSale && <span className="badge badge-accent badge-outline badge-xs ml-2 align-middle"> SOTUVDA</span>}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-teal" onClick={() => navigate('/' + card.code)}>Ko'rish</button>
-          <button className={'btn ' + (card.forSale ? 'btn-ghost' : 'btn-brass')} onClick={toggleSale} disabled={saleBusy}>
-            {saleBusy ? '...' : card.forSale ? "Sotuvdan olish" : 'Sotuvga qo\u2019yish'}
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/' + card.code)}>Ko'rish</button>
+          <button className={'btn btn-sm ' + (card.forSale ? 'btn-ghost' : 'btn-primary')} onClick={toggleSale} disabled={saleBusy}>
+            {saleBusy ? <span className="loading loading-spinner loading-xs"></span> : card.forSale ? "Sotuvdan olish" : 'Sotuvga qo\u2019yish'}
           </button>
         </div>
       </div>
-      {saleMsg && <div className={'modal-msg ' + saleMsg.type} style={{ marginBottom: 14 }}>{saleMsg.text}</div>}
+      {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{saleMsg.text}</span></div>}
 
-      <div className="hero-card-stage" style={{ padding: '10px 0 22px' }}>
+      <div className="flex justify-center py-6">
         <NfcCard code={card.code} name={form.name} since={card.ts} finish={THEME_FINISH[form.theme] || 'black'} size="sm" />
       </div>
 
       {/* Profil ko'rinishi */}
-      <div className="section-label" style={{ marginTop: 4 }}>PROFIL KO'RINISHI</div>
-      <div className="theme-grid">
+      <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Profil ko'rinishi</div>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {THEMES.map((t) => (
           <button key={t.id} type="button"
-            className={'theme-swatch' + (form.theme === t.id ? ' active' : '')}
+            className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === t.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
             style={{ background: t.css }}
             onClick={() => setForm((f) => ({ ...f, theme: t.id }))}>
             <span style={{ color: t.accent }}>{t.label}</span>
@@ -199,117 +200,85 @@ function EditCardForm({ card, onSaved }) {
       </div>
 
       {/* Avatar */}
-      <div className="acct-avatar-row">
-        <div className="acct-avatar-preview">
+      <div className="mt-6 flex items-start gap-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
           {form.avatarUrl
-            ? <img src={form.avatarUrl} alt="avatar" />
+            ? <img src={form.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
             : <span>{(form.name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>}
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
-          <button type="button" className="btn btn-ghost" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
-            {uploading ? 'Yuklanmoqda...' : 'Rasm tanlash'}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
+            {uploading ? <span className="loading loading-spinner loading-xs"></span> : 'Rasm tanlash'}
           </button>
-          <p className="modal-hint" style={{ marginTop: 8 }}>JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.</p>
-          <input className="acct-avatar-url" value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="https://... yoki /uploads/..." />
+          <p className="mt-2 text-xs text-base-content/45">JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.</p>
+          <input className={`${inp} font-mono text-xs`} value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="https://... yoki /uploads/..." />
         </div>
       </div>
 
-      <div className="field-row">
-        <div className="field">
-          <label>Ism *</label>
-          <input value={form.name} onChange={set('name')} />
-        </div>
-        <div className="field">
-          <label>Kasb / sarlavha</label>
-          <input value={form.role} onChange={set('role')} />
-        </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Ism *</span><input value={form.name} onChange={set('name')} className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Kasb / sarlavha</span><input value={form.role} onChange={set('role')} className={inp} /></label>
       </div>
-      <div className="field">
-        <label>O'zingiz haqingizda (bio)</label>
-        <textarea rows={3} value={form.about} onChange={set('about')} placeholder="Qisqacha o'zingiz haqingizda..." />
+      <label className="form-control mt-3 block">
+        <span className="text-xs font-semibold text-base-content/70">O'zingiz haqingizda (bio)</span>
+        <textarea rows={3} value={form.about} onChange={set('about')} placeholder="Qisqacha o'zingiz haqingizda..." className="textarea textarea-bordered mt-1 w-full bg-base-100" />
+      </label>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telegram</span><input value={form.tg} onChange={set('tg')} placeholder="@username" className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder="@username" className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder="username yoki havola" className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">X (Twitter)</span><input value={form.twitter} onChange={set('twitter')} placeholder="@username" className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Veb-sayt</span><input value={form.website} onChange={set('website')} placeholder="https://sayt.uz" className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">LinkedIn</span><input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telefon</span><input value={form.phone} onChange={set('phone')} className={inp} /></label>
+        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Email</span><input value={form.email} onChange={set('email')} className={inp} /></label>
+      </div>
+      <label className="form-control mt-3 block">
+        <span className="text-xs font-semibold text-base-content/70">To'lov karta raqami (asosiy, profilda ko'rinadi)</span>
+        <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" className={`${inp} font-mono`} />
+      </label>
+
+      <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Qo'shimcha karta raqamlari</div>
+        <div className="mt-3 space-y-2">
+          {form.cardNumbers.map((c, i) => (
+            <div className="flex gap-2" key={i}>
+              <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder="Nomi (masalan: Humo)" className={`${inp} !mt-0`} />
+              <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" className={`${inp} !mt-0 font-mono`} />
+              <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeCardNum(i)}>&times;</button>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addCardNum}>+ Karta qo'shish</button>
       </div>
 
-      <div className="field-row">
-        <div className="field">
-          <label>Telegram</label>
-          <input value={form.tg} onChange={set('tg')} placeholder="@username" />
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Qo'shimcha havolalar (istalgancha)</div>
+        <div className="mt-3 space-y-2">
+          {form.extraLinks.map((l, i) => (
+            <div className="flex gap-2" key={i}>
+              <input value={l.label} onChange={updateLink(i, 'label')} placeholder="Nomi (masalan: Portfolio)" className={`${inp} !mt-0`} />
+              <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." className={`${inp} !mt-0 font-mono`} />
+              <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeLink(i)}>&times;</button>
+            </div>
+          ))}
         </div>
-        <div className="field">
-          <label>Instagram</label>
-          <input value={form.instagram} onChange={set('instagram')} placeholder="@username" />
-        </div>
-      </div>
-      <div className="field-row">
-        <div className="field">
-          <label>Facebook</label>
-          <input value={form.facebook} onChange={set('facebook')} placeholder="username yoki havola" />
-        </div>
-        <div className="field">
-          <label>X (Twitter)</label>
-          <input value={form.twitter} onChange={set('twitter')} placeholder="@username" />
-        </div>
-      </div>
-      <div className="field-row">
-        <div className="field">
-          <label>Veb-sayt</label>
-          <input value={form.website} onChange={set('website')} placeholder="https://sayt.uz" />
-        </div>
-        <div className="field">
-          <label>LinkedIn</label>
-          <input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." />
-        </div>
-      </div>
-      <div className="field-row">
-        <div className="field">
-          <label>Telefon</label>
-          <input value={form.phone} onChange={set('phone')} />
-        </div>
-        <div className="field">
-          <label>Email</label>
-          <input value={form.email} onChange={set('email')} />
-        </div>
-      </div>
-      <div className="field">
-        <label>To'lov karta raqami (asosiy, profilda ko'rinadi)</label>
-        <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" />
+        <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addLink}>+ Havola qo'shish</button>
       </div>
 
-      <div className="dyn-field-block">
-        <label>Qo'shimcha karta raqamlari</label>
-        {form.cardNumbers.map((c, i) => (
-          <div className="dyn-row" key={i}>
-            <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder="Nomi (masalan: Humo)" />
-            <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" />
-            <button type="button" className="dyn-remove" onClick={() => removeCardNum(i)}>&times;</button>
-          </div>
-        ))}
-        <button type="button" className="btn btn-ghost dyn-add" onClick={addCardNum}>+ Karta qo'shish</button>
-      </div>
+      <label className="form-control mt-4 block">
+        <span className="text-xs font-semibold text-base-content/70">Hashtaglar (vergul bilan)</span>
+        <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
+      </label>
 
-      <div className="dyn-field-block">
-        <label>Qo'shimcha havolalar (istalgancha)</label>
-        {form.extraLinks.map((l, i) => (
-          <div className="dyn-row" key={i}>
-            <input value={l.label} onChange={updateLink(i, 'label')} placeholder="Nomi (masalan: Portfolio)" />
-            <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." />
-            <button type="button" className="dyn-remove" onClick={() => removeLink(i)}>&times;</button>
-          </div>
-        ))}
-        <button type="button" className="btn btn-ghost dyn-add" onClick={addLink}>+ Havola qo'shish</button>
-      </div>
-
-      <div className="field">
-        <label>Hashtaglar (vergul bilan)</label>
-        <input value={form.hashtags} onChange={set('hashtags')} />
-      </div>
-
-      <button className="btn btn-brass" onClick={submit} disabled={busy}>
-        {busy ? 'Yuklanmoqda...' : 'Profilni saqlash'}
+      <button className="btn btn-primary mt-5" onClick={submit} disabled={busy}>
+        {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Profilni saqlash'}
       </button>
-      {msg && <div className={'modal-msg ' + msg.type} style={{ marginTop: 12 }}>{msg.text}</div>}
+      {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
 
-      <p className="modal-hint" style={{ marginTop: 12 }}>
+      <p className="mt-4 text-xs text-base-content/45">
         Tanlangan mavzu: <b style={{ color: preview.accent }}>{preview.label}</b>. «Ko'rish» orqali profilingizni tekshirib ko'ring.
       </p>
     </div>
@@ -325,7 +294,7 @@ export default function AccountPage({ refreshCatalog }) {
 
   if (user === undefined || user === null) {
     return (
-      <main className="wrap"><section><p style={{ color: 'var(--ink-dim)' }}>Yuklanmoqda...</p></section></main>
+      <main className="mx-auto max-w-4xl px-5 pt-16 pb-16"><p className="text-base-content/60">Yuklanmoqda...</p></main>
     );
   }
 
@@ -342,31 +311,31 @@ export default function AccountPage({ refreshCatalog }) {
   };
 
   return (
-    <main className="wrap">
-      <section className="acct-head-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+    <main className="mx-auto max-w-4xl px-5 pb-16">
+      <section className="pt-14">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="section-label">Kabinet</div>
-            <h2 style={{ marginBottom: 4 }}>{user.email}</h2>
-            <p className="section-desc" style={{ marginBottom: 0 }}>
+            <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Kabinet</div>
+            <h1 className="mt-1 text-2xl font-bold">{user.email}</h1>
+            <p className="mt-1 text-sm text-base-content/55">
               Sizning profilingiz:{' '}
               {myCards.length
-                ? <b className="mono">{myCards.map((c) => 'nfcstore.uz/' + c.code.toLowerCase()).join(', ')}</b>
+                ? <b className="font-mono">{myCards.map((c) => 'nfcstore.uz/' + c.code.toLowerCase()).join(', ')}</b>
                 : '—'}
             </p>
           </div>
-          <button className="btn btn-ghost" onClick={logout}>Chiqish</button>
+          <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
         </div>
       </section>
 
-      <section style={{ paddingTop: 0 }}>
-        <h2>Mening vizitkalarim</h2>
+      <section className="pt-8">
+        <h2 className="text-xl font-bold">Mening vizitkalarim</h2>
         {myCards.length === 0 ? (
-          <div className="empty-note">
+          <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
             Hozircha vizitkangiz yo'q.{' '}
-            <a style={{ color: 'var(--teal-bright)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/')}>
+            <button className="cursor-pointer underline underline-offset-2 hover:text-base-content" onClick={() => navigate('/')}>
               Bosh sahifada band qilish &rarr;
-            </a>
+            </button>
           </div>
         ) : (
           myCards.map((card) => (
