@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { dbGet, dbAddView, dbBuy } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode } from '../lib/pricing.js';
+import { parseAnyCode, letterPattern, digitPattern } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag,
+  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink,
 } from '../components/Icons.jsx';
 
 const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
@@ -53,7 +53,18 @@ function socialUrl(kind, handle) {
   }
 }
 
-export default function ProfilePage({ code }) {
+// Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "00" va h.k.) — shunday
+// bo'lsa profilga "Nodir vizitka" belgisi qo'yamiz.
+function rarity(code) {
+  if (!code || code.length !== 5) return null;
+  const lp = letterPattern(code.slice(0, 3));
+  const dp = digitPattern(code.slice(3, 5));
+  if (!lp.hot && !dp.hot) return null;
+  const label = [lp.hot ? lp.label : null, dp.hot ? dp.label : null].filter(Boolean).join(' · ');
+  return label;
+}
+
+export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
   const [toast, setToast] = useState('');
   const [tab, setTab] = useState('vizitka');
@@ -142,6 +153,17 @@ export default function ProfilePage({ code }) {
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
   const wsUrl = record.website || '';
   const hasSocials = tgUrl || igUrl || fbUrl || xUrl || liUrl;
+  const rarityLabel = rarity(record.code);
+
+  // "TOP #N bu hafta" — ko'rishlar bo'yicha reyting (agar catalog uzatilgan bo'lsa).
+  let topRank = null;
+  if (Array.isArray(catalog) && catalog.length > 3) {
+    const ranked = [...catalog].sort((a, b) => (b.views || 0) - (a.views || 0));
+    const idx = ranked.findIndex((r) => r.code === record.code);
+    if (idx >= 0 && idx < 10 && (record.views || 0) > 0) topRank = idx + 1;
+  }
+
+  const otherCodes = isOwner ? myCards.filter((c) => c.code !== record.code) : [];
 
   return (
     <div className={`vz theme-${record.theme || 'classic'}`}>
@@ -155,7 +177,10 @@ export default function ProfilePage({ code }) {
 
       <div className="vz-meta">
         <div className="vz-meta-left">
-          <span className="vz-code-pill"># {record.code}</span>
+          {otherCodes.length > 0 && otherCodes.slice(0, 3).map((c) => (
+            <span key={c.code} className="vz-code-pill vz-code-pill-dim" onClick={() => navigate('/' + c.code)}># {c.code}</span>
+          ))}
+          <span className="vz-code-pill vz-code-pill-current"># {record.code}</span>
           {record.forSale && <span className="vz-sale-badge"><IconTag /> SOTUVDA</span>}
           {!record.forSale && <span className="vz-price">{fmt(record.price)} so'm</span>}
         </div>
@@ -172,9 +197,9 @@ export default function ProfilePage({ code }) {
       </div>
 
       {record.forSale && (
-        <div className="vz-salebox">
+        <div className="vz-salebox vz-glow-bar">
           <div>
-            <b>Bu vizitka sotuvda</b>
+            <b>Egasi buni sotuvga qo'ydi</b>
             <span>Narx: {fmt(record.salePrice || record.price)} so'm</span>
           </div>
           <button className="vz-buy" onClick={buyCard} disabled={buying}>
@@ -183,17 +208,37 @@ export default function ProfilePage({ code }) {
         </div>
       )}
 
-      <div className="vz-card reveal">
+      <div className="vz-card reveal vz-card-glow">
         <div className="vz-follow-row">
-          {isOwner && (
-            <button className="vz-follow" onClick={() => navigate('/account')}>Tahrirlash</button>
-          )}
-          <button className="vz-follow" onClick={() => flashToast('Obuna bo\'lindi!')}>Obuna bo'lish</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {topRank && <span className="vz-top-badge"><IconStar /> TOP #{topRank} bu hafta</span>}
+            {rarityLabel && <span className="vz-rare-badge">{rarityLabel}</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {isOwner && (
+              <button className="vz-follow" onClick={() => navigate('/account')}>Tahrirlash</button>
+            )}
+            <button className="vz-follow" onClick={() => flashToast('Obuna bo\'lindi!')}>Obuna bo'lish</button>
+          </div>
         </div>
 
+        {rarityLabel && (
+          <div className="vz-notice-box">
+            <div className="vz-notice-title"><IconStar /> NODIR VIZITKA</div>
+            <p>Bu kombinatsiya o'zining naqshi ({rarityLabel}) tufayli boshqalardan qimmatroq va kamyob hisoblanadi.</p>
+          </div>
+        )}
+
         <div className="vz-avatar-row">
-          <div className="vz-avatar">
-            {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} /> : initials(record.name)}
+          <div className="vz-avatar-deco">
+            <span className="deco-ring deco-ring-1"></span>
+            <span className="deco-ring deco-ring-2"></span>
+            <span className="deco-dot" style={{ top: '4%', left: '82%' }}></span>
+            <span className="deco-dot" style={{ top: '78%', left: '88%' }}></span>
+            <span className="deco-dot" style={{ top: '86%', left: '10%' }}></span>
+            <div className="vz-avatar">
+              {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} /> : initials(record.name)}
+            </div>
           </div>
           <div className="vz-name">{record.name}</div>
           <div className="vz-username">nfcstore.uz/{record.code.toLowerCase()} <IconCheck style={{ color: 'var(--vz-accent)' }} /></div>
@@ -209,7 +254,7 @@ export default function ProfilePage({ code }) {
 
         <div className="vz-tabs">
           <button className={'vz-tab' + (tab === 'vizitka' ? ' active' : '')} onClick={() => setTab('vizitka')}>Vizitka</button>
-          <button className={'vz-tab' + (tab === 'postlar' ? ' active' : '')} onClick={() => setTab('postlar')}>Postlar</button>
+          <button className={'vz-tab' + (tab === 'postlar' ? ' active' : '')} onClick={() => setTab('postlar')}>Postlar <span className="tab-dot"></span></button>
         </div>
 
         {tab === 'postlar' ? (
@@ -226,23 +271,37 @@ export default function ProfilePage({ code }) {
 
             <div className="vz-links">
               {tgUrl && <a className="vz-link-btn" href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
-              {igUrl && <a className="vz-link-btn vz-btn-ig" href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
-              {fbUrl && <a className="vz-link-btn vz-btn-fb" href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
+              {igUrl && <a className="vz-link-btn" href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
+              {fbUrl && <a className="vz-link-btn" href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className="vz-link-btn" href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
               {wsUrl && <a className="vz-link-btn" href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /> Veb-sayt</a>}
               {liUrl && <a className="vz-link-btn" href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /> LinkedIn</a>}
+              {record.cardNumber && <span className="vz-link-btn vz-link-static"><IconTag /> KARTA (to'lov)</span>}
               {record.phone && <a className="vz-link-btn" href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq qilish</a>}
+              {(record.extraLinks || []).map((l, i) => (
+                <a className="vz-link-btn" key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
+              ))}
             </div>
 
             {(tgUrl || igUrl) && <div className="vz-handle">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
-            {record.cardNumber && (
+            {(record.cardNumber || (record.cardNumbers && record.cardNumbers.length > 0)) && (
               <>
                 <div className="vz-divider"></div>
-                <div className="vz-section-label">TO'LOV UCHUN KARTA</div>
-                <div className="vz-cardnum">
-                  <span className="mono">{record.cardNumber}</span>
-                  <button onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), 'Karta raqami nusxalandi!')}><IconCopy /></button>
+                <div className="vz-section-label">TO'LOV UCHUN KARTALAR</div>
+                <div className="vz-cardnum-list">
+                  {record.cardNumber && (
+                    <div className="vz-cardnum">
+                      <span className="mono">{record.cardNumber}</span>
+                      <button onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), 'Karta raqami nusxalandi!')}><IconCopy /></button>
+                    </div>
+                  )}
+                  {(record.cardNumbers || []).map((c, i) => (
+                    <div className="vz-cardnum" key={i}>
+                      <span>{c.label && <b className="vz-cardnum-label">{c.label}</b>}<span className="mono">{c.number}</span></span>
+                      <button onClick={() => copyText(c.number.replace(/\s/g, ''), 'Karta raqami nusxalandi!')}><IconCopy /></button>
+                    </div>
+                  ))}
                 </div>
               </>
             )}
@@ -272,6 +331,18 @@ export default function ProfilePage({ code }) {
                   {xUrl && <a className="vz-social-icon" href={xUrl} target="_blank" rel="noreferrer"><IconX /></a>}
                   {liUrl && <a className="vz-social-icon" href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /></a>}
                   {wsUrl && <a className="vz-social-icon" href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /></a>}
+                </div>
+              </>
+            )}
+
+            {otherCodes.length > 0 && (
+              <>
+                <div className="vz-divider"></div>
+                <div className="vz-section-label" style={{ textAlign: 'center' }}>SIZNING BOSHQA VIZITKALARINGIZ</div>
+                <div className="vz-other-codes">
+                  {otherCodes.map((c) => (
+                    <span key={c.code} className="vz-other-chip" onClick={() => navigate('/' + c.code)}>nfcstore.uz/{c.code.toLowerCase()}</span>
+                  ))}
                 </div>
               </>
             )}

@@ -9,8 +9,28 @@ import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import AccountPage from './pages/AccountPage.jsx';
+import PricingPage from './pages/PricingPage.jsx';
+import HowItWorksPage from './pages/HowItWorksPage.jsx';
+import CatalogPage from './pages/CatalogPage.jsx';
+import FaqPage from './pages/FaqPage.jsx';
+import ContactPage from './pages/ContactPage.jsx';
+import TermsPage from './pages/TermsPage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 
-const RESERVED = new Set(['login', 'register', 'account']);
+const STATIC_ROUTES = {
+  '': null, // HomePage — handled separately
+  login: AuthPage,
+  register: AuthPage,
+  account: AccountPage,
+  narxlar: PricingPage,
+  'qanday-ishlaydi': HowItWorksPage,
+  katalog: CatalogPage,
+  savollar: FaqPage,
+  aloqa: ContactPage,
+  shartlar: TermsPage,
+  maxfiylik: PrivacyPage,
+};
+const RESERVED = new Set(Object.keys(STATIC_ROUTES).filter(Boolean));
 
 export default function App() {
   const route = usePathRoute();
@@ -25,19 +45,26 @@ export default function App() {
   useEffect(() => { refreshCatalog(); }, [refreshCatalog]);
 
   // Har bir band qilingan vizitka o'zining alohida sahifasiga ega:
-  // nfcstore.uz/aaa00 yoki nfcstore.uz/ali (harf katta-kichikligi farq qilmaydi).
+  // nfcstore.uz/aaa00 (harf katta-kichikligi farq qilmaydi).
   let page;
   let bare = false;
   if (!RESERVED.has(cleanRoute)) {
     const parsedRoute = cleanRoute ? parseAnyCode(cleanRoute) : null;
     if (parsedRoute) {
-      page = <ProfilePage key={parsedRoute.code} code={parsedRoute.code} />;
+      page = <ProfilePage key={parsedRoute.code} code={parsedRoute.code} catalog={catalog} />;
       bare = true;
     }
   }
   if (!page) {
     if (cleanRoute === 'login' || cleanRoute === 'register') page = <AuthPage mode={cleanRoute} />;
     else if (cleanRoute === 'account') page = <AccountPage refreshCatalog={refreshCatalog} />;
+    else if (cleanRoute === 'narxlar') page = <PricingPage catalog={catalog} refreshCatalog={refreshCatalog} />;
+    else if (cleanRoute === 'qanday-ishlaydi') page = <HowItWorksPage />;
+    else if (cleanRoute === 'katalog') page = <CatalogPage catalog={catalog} />;
+    else if (cleanRoute === 'savollar') page = <FaqPage catalog={catalog} />;
+    else if (cleanRoute === 'aloqa') page = <ContactPage />;
+    else if (cleanRoute === 'shartlar') page = <TermsPage />;
+    else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
   }
 

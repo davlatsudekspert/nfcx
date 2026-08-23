@@ -35,13 +35,13 @@ export function parseCookies(req) {
   return out;
 }
 
-export function sessionCookie(token, secure = false) {
+export function sessionCookie(token) {
   const maxAge = SESSION_TTL_DAYS * 24 * 60 * 60;
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}; Max-Age=${maxAge}`;
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
 }
 
-export function clearedSessionCookie(secure = false) {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}; Max-Age=0`;
+export function clearedSessionCookie() {
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
 export function sessionTokenFromReq(req) {

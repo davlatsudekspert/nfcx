@@ -53,6 +53,8 @@ function EditCardForm({ card, onSaved }) {
     website: card.website || '',
     about: card.about || '',
     cardNumber: card.cardNumber || '',
+    extraLinks: (card.extraLinks && card.extraLinks.length) ? card.extraLinks.map((l) => ({ ...l })) : [],
+    cardNumbers: (card.cardNumbers && card.cardNumbers.length) ? card.cardNumbers.map((c) => ({ ...c })) : [],
     theme: card.theme || 'classic',
     hashtags: (card.hashtags || []).join(', '),
   });
@@ -64,6 +66,20 @@ function EditCardForm({ card, onSaved }) {
   const fileRef = useRef(null);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const addLink = () => setForm((f) => ({ ...f, extraLinks: [...f.extraLinks, { label: '', url: '' }] }));
+  const updateLink = (i, key) => (e) => setForm((f) => {
+    const list = f.extraLinks.map((l, idx) => (idx === i ? { ...l, [key]: e.target.value } : l));
+    return { ...f, extraLinks: list };
+  });
+  const removeLink = (i) => setForm((f) => ({ ...f, extraLinks: f.extraLinks.filter((_, idx) => idx !== i) }));
+
+  const addCardNum = () => setForm((f) => ({ ...f, cardNumbers: [...f.cardNumbers, { label: '', number: '' }] }));
+  const updateCardNum = (i, key) => (e) => setForm((f) => {
+    const list = f.cardNumbers.map((c, idx) => (idx === i ? { ...c, [key]: e.target.value } : c));
+    return { ...f, cardNumbers: list };
+  });
+  const removeCardNum = (i) => setForm((f) => ({ ...f, cardNumbers: f.cardNumbers.filter((_, idx) => idx !== i) }));
 
   const onPickFile = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -121,6 +137,12 @@ function EditCardForm({ card, onSaved }) {
         website: form.website.trim(),
         about: form.about,
         cardNumber: form.cardNumber.trim(),
+        extraLinks: form.extraLinks
+          .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
+          .filter((l) => l.url),
+        cardNumbers: form.cardNumbers
+          .map((c) => ({ label: c.label.trim(), number: c.number.trim() }))
+          .filter((c) => c.number),
         theme: form.theme,
         hashtags: form.hashtags.split(',').map((h) => h.trim()).filter(Boolean),
       });
@@ -249,9 +271,34 @@ function EditCardForm({ card, onSaved }) {
         </div>
       </div>
       <div className="field">
-        <label>To'lov karta raqami (profilda ko'rinadi)</label>
+        <label>To'lov karta raqami (asosiy, profilda ko'rinadi)</label>
         <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" />
       </div>
+
+      <div className="dyn-field-block">
+        <label>Qo'shimcha karta raqamlari</label>
+        {form.cardNumbers.map((c, i) => (
+          <div className="dyn-row" key={i}>
+            <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder="Nomi (masalan: Humo)" />
+            <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" />
+            <button type="button" className="dyn-remove" onClick={() => removeCardNum(i)}>&times;</button>
+          </div>
+        ))}
+        <button type="button" className="btn btn-ghost dyn-add" onClick={addCardNum}>+ Karta qo'shish</button>
+      </div>
+
+      <div className="dyn-field-block">
+        <label>Qo'shimcha havolalar (istalgancha)</label>
+        {form.extraLinks.map((l, i) => (
+          <div className="dyn-row" key={i}>
+            <input value={l.label} onChange={updateLink(i, 'label')} placeholder="Nomi (masalan: Portfolio)" />
+            <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." />
+            <button type="button" className="dyn-remove" onClick={() => removeLink(i)}>&times;</button>
+          </div>
+        ))}
+        <button type="button" className="btn btn-ghost dyn-add" onClick={addLink}>+ Havola qo'shish</button>
+      </div>
+
       <div className="field">
         <label>Hashtaglar (vergul bilan)</label>
         <input value={form.hashtags} onChange={set('hashtags')} />

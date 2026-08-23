@@ -25,26 +25,18 @@ export async function initDb() {
     return false;
   }
 
-  // Railway'da Postgres konteyneri ilovadan keyin tayyorlanishi mumkin —
-  // bir necha marta qayta urinib ko'ramiz.
-  const MAX_TRIES = 5;
+  const attempts = [true, false];
   let lastErr = null;
 
-  outer: for (let attemptNo = 1; attemptNo <= MAX_TRIES; attemptNo++) {
-    for (const useSsl of [true, false]) {
-      const candidate = makePool(useSsl);
-      try {
-        await candidate.query('SELECT 1');
-        pool = candidate;
-        break outer;
-      } catch (err) {
-        lastErr = err;
-        await candidate.end().catch(() => {});
-      }
-    }
-    if (attemptNo < MAX_TRIES) {
-      console.warn(`[db] Ulanmadi (${attemptNo}/${MAX_TRIES}) — 3 soniyadan keyin yana urinaman...`);
-      await new Promise((r) => setTimeout(r, 3000));
+  for (const useSsl of attempts) {
+    const candidate = makePool(useSsl);
+    try {
+      await candidate.query('SELECT 1');
+      pool = candidate;
+      break;
+    } catch (err) {
+      lastErr = err;
+      await candidate.end().catch(() => {});
     }
   }
 
@@ -53,22 +45,6 @@ export async function initDb() {
     return false;
   }
 
-  // Muhim tartib: users -> sessions -> cards (user_id FK users'ga bog'langan).
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id            SERIAL PRIMARY KEY,
-      email         TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      token      TEXT PRIMARY KEY,
-      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL
-    )
-  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS cards (
       code        VARCHAR(16) PRIMARY KEY,
@@ -92,7 +68,6 @@ export async function initDb() {
       price       INTEGER NOT NULL,
       ts          BIGINT NOT NULL,
       views       INTEGER NOT NULL DEFAULT 0,
-      user_id     INTEGER REFERENCES users(id),
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -110,6 +85,8 @@ export async function initDb() {
     theme: `ALTER TABLE cards ADD COLUMN theme VARCHAR(20) NOT NULL DEFAULT 'classic'`,
     for_sale: `ALTER TABLE cards ADD COLUMN for_sale BOOLEAN NOT NULL DEFAULT FALSE`,
     sale_price: `ALTER TABLE cards ADD COLUMN sale_price BIGINT`,
+    extra_links: `ALTER TABLE cards ADD COLUMN extra_links JSONB NOT NULL DEFAULT '[]'::jsonb`,
+    card_numbers: `ALTER TABLE cards ADD COLUMN card_numbers JSONB NOT NULL DEFAULT '[]'::jsonb`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -125,12 +102,34 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
     }
   }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      email         TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token      TEXT PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `);
+
+  // Eski bazalar uchun: cards.user_id ustuni bo'lmasa qo'shamiz.
+  const col = await pool.query(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_name = 'cards' AND column_name = 'user_id'`
+  );
 
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
@@ -144,7 +143,8 @@ export function isDbReady() {
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
-  card_number AS "cardNumber", theme, for_sale AS "forSale",
+  card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
+  theme, for_sale AS "forSale",
   sale_price AS "salePrice", hashtags, price, ts, views
 `;
 
@@ -164,6 +164,8 @@ function rowToRecord(row) {
     twitter: row.twitter || '',
     website: row.website || '',
     cardNumber: row.cardNumber || '',
+    extraLinks: Array.isArray(row.extraLinks) ? row.extraLinks : [],
+    cardNumbers: Array.isArray(row.cardNumbers) ? row.cardNumbers : [],
     theme: row.theme || 'classic',
     forSale: !!row.forSale,
     salePrice: row.salePrice != null ? Number(row.salePrice) : null,
@@ -198,8 +200,8 @@ export async function createRecord(record) {
   const { rows } = await pool.query(
     `INSERT INTO cards
        (code, name, role, avatar_url, tg, phone, email, linkedin, instagram,
-        about, facebook, twitter, website, card_number, theme, hashtags, price, ts)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18)
+        about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17,$18::jsonb,$19,$20)
      ON CONFLICT (code) DO NOTHING
      RETURNING ${SELECT_FIELDS}`,
     [
@@ -217,6 +219,8 @@ export async function createRecord(record) {
       record.twitter || '',
       record.website || '',
       record.cardNumber || '',
+      JSON.stringify(record.extraLinks || []),
+      JSON.stringify(record.cardNumbers || []),
       record.theme || 'classic',
       JSON.stringify(record.hashtags),
       record.price,
@@ -254,13 +258,6 @@ export async function getUserByEmail(email) {
   return rows[0]
     ? { id: rows[0].id, email: rows[0].email, passwordHash: rows[0].password_hash }
     : null;
-}
-
-export async function updateUserPassword(userId, passwordHash) {
-  await pool.query(`UPDATE users SET password_hash = $2 WHERE id = $1`, [
-    userId,
-    passwordHash,
-  ]);
 }
 
 export async function createSession(token, userId, ttlMs) {
@@ -341,6 +338,14 @@ export async function updateRecord(code, fields) {
   if ('hashtags' in fields) {
     vals.push(JSON.stringify(fields.hashtags));
     sets.push(`hashtags = $${vals.length}::jsonb`);
+  }
+  if ('extraLinks' in fields) {
+    vals.push(JSON.stringify(fields.extraLinks));
+    sets.push(`extra_links = $${vals.length}::jsonb`);
+  }
+  if ('cardNumbers' in fields) {
+    vals.push(JSON.stringify(fields.cardNumbers));
+    sets.push(`card_numbers = $${vals.length}::jsonb`);
   }
   if (!sets.length) return getRecord(code);
   const { rows } = await pool.query(

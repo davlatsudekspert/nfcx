@@ -127,6 +127,22 @@ export function IconWave(props) {
     </svg>
   );
 }
+export function IconLink(props) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M9.5 14.5 14.5 9.5" />
+      <path d="M11 6.5 12.6 4.9a3.7 3.7 0 0 1 5.2 5.2L16.2 11.7" />
+      <path d="M13 17.5 11.4 19.1a3.7 3.7 0 0 1-5.2-5.2L7.8 12.3" />
+    </svg>
+  );
+}
+export function IconStar(props) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M12 2.5l2.9 6.3 6.9.7-5.2 4.7 1.5 6.8L12 17.7l-6.1 3.3 1.5-6.8-5.2-4.7 6.9-.7L12 2.5z" />
+    </svg>
+  );
+}
 export function IconTag(props) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" {...props}>

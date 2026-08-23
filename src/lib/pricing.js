@@ -82,17 +82,3 @@ export function priceFor(letters, digits, sold = 0) {
   const total = Math.max(base, roundPrice(base * lp.mult * dp.mult));
   return { total, lp, dp, base };
 }
-
-// Qo'lda belgilangan qat'iy narxlar (so'mda) — eksklyuziv kodlar uchun.
-// Naqsh ko'paytmalaridan qat'i nazar, narx hech qachon bundan past bo'lmaydi.
-export const FIXED_PRICES = {
-  VIP77: 6000000,
-};
-
-// Kod bo'yicha yakuniy narx: qat'iy narx mavjud bo'lsa u qo'llanadi,
-// aks holda standart naqsh hisobi.
-export function priceForCode(code, sold = 0) {
-  const info = priceFor(String(code || '').slice(0, 3), String(code || '').slice(3, 5), sold);
-  const fixed = FIXED_PRICES[code];
-  return fixed ? { ...info, total: Math.max(fixed, roundPrice(info.total)), fixed } : info;
-}
