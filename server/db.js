@@ -25,18 +25,26 @@ export async function initDb() {
     return false;
   }
 
-  const attempts = [true, false];
+  // Railway'da Postgres konteyneri ilovadan keyin tayyorlanishi mumkin —
+  // bir necha marta qayta urinib ko'ramiz.
+  const MAX_TRIES = 5;
   let lastErr = null;
 
-  for (const useSsl of attempts) {
-    const candidate = makePool(useSsl);
-    try {
-      await candidate.query('SELECT 1');
-      pool = candidate;
-      break;
-    } catch (err) {
-      lastErr = err;
-      await candidate.end().catch(() => {});
+  outer: for (let attemptNo = 1; attemptNo <= MAX_TRIES; attemptNo++) {
+    for (const useSsl of [true, false]) {
+      const candidate = makePool(useSsl);
+      try {
+        await candidate.query('SELECT 1');
+        pool = candidate;
+        break outer;
+      } catch (err) {
+        lastErr = err;
+        await candidate.end().catch(() => {});
+      }
+    }
+    if (attemptNo < MAX_TRIES) {
+      console.warn(`[db] Ulanmadi (${attemptNo}/${MAX_TRIES}) — 3 soniyadan keyin yana urinaman...`);
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 
@@ -45,6 +53,23 @@ export async function initDb() {
     return false;
   }
 
+  // MUHIM TARTIB: users -> sessions -> cards -> migratsiyalar.
+  // Aks holda yangi bazada cards.user_id FK 'users' topolmay xato beradi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      email         TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token      TEXT PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS cards (
       code        VARCHAR(16) PRIMARY KEY,
@@ -108,28 +133,6 @@ export async function initDb() {
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
     }
   }
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id            SERIAL PRIMARY KEY,
-      email         TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      token      TEXT PRIMARY KEY,
-      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL
-    )
-  `);
-
-  // Eski bazalar uchun: cards.user_id ustuni bo'lmasa qo'shamiz.
-  const col = await pool.query(
-    `SELECT column_name FROM information_schema.columns
-     WHERE table_name = 'cards' AND column_name = 'user_id'`
-  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bot_orders (
@@ -274,6 +277,13 @@ export async function getUserByEmail(email) {
   return rows[0]
     ? { id: rows[0].id, email: rows[0].email, passwordHash: rows[0].password_hash }
     : null;
+}
+
+export async function updateUserPassword(userId, passwordHash) {
+  await pool.query(`UPDATE users SET password_hash = $2 WHERE id = $1`, [
+    userId,
+    passwordHash,
+  ]);
 }
 
 export async function createSession(token, userId, ttlMs) {
