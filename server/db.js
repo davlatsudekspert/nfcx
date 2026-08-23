@@ -241,7 +241,7 @@ export async function createRecord(record) {
       JSON.stringify(record.extraLinks || []),
       JSON.stringify(record.cardNumbers || []),
       record.theme || 'classic',
-      JSON.stringify(record.hashtags),
+      JSON.stringify(record.hashtags || []),
       record.price,
       Date.now(),
     ]

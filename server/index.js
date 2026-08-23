@@ -9,6 +9,7 @@ import {
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner,
   listForSale, setForSale, transferCard,
+  getBotOrder, setBotOrderStatus,
 } from './db.js';
 import {
   hashPassword, verifyPassword, newSessionToken,
@@ -16,7 +17,8 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { startBot } from './bot.js';
+import { startBot, notifyOrderPaidAuto } from './bot.js';
+import { paynetEnabled, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -164,6 +166,48 @@ function validateBody(body) {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, db: isDbReady() });
+});
+
+// ---------- Paynet webhook (avtomatik to'lov tasdiqlash) ----------
+// Kabinetda Callback URL: https://<domen>/api/pay/paynet/webhook
+app.post('/api/pay/paynet/webhook', async (req, res) => {
+  try {
+    if (!paynetEnabled()) {
+      return res.status(503).json({ error_code: -1, message: 'paynet disabled' });
+    }
+    if (!verifyPaynetAuth(req)) {
+      return res.status(401).json({ error_code: -1, message: 'unauthorized' });
+    }
+
+    const cb = parsePaynetCallback(req.body);
+    if (!cb.orderId) {
+      // Buyurtma bizda yo'q — baribir 200 qaytaramiz, Paynet qayta-qayta yubormasin.
+      return res.json({ error_code: 0 });
+    }
+
+    const order = await getBotOrder(cb.orderId);
+    if (!order || order.status !== 'pending') {
+      return res.json({ error_code: 0 }); // allaqachon ishlangan (idempotent)
+    }
+
+    if (cb.status === 'paid') {
+      await setBotOrderStatus(order.id, 'paid');
+      // Sayt bilan sinxron: kodni band qilamiz ("Band" holati).
+      if (!(await getRecord(order.code))) {
+        await createRecord({ code: order.code, name: 'TELEGRAM MIJOZ', price: order.price });
+      }
+      notifyOrderPaidAuto(order).catch(() => {});
+      console.log(`[paynet] #${order.id} (${order.code}) avtomatik band qilindi.`);
+    } else if (cb.status === 'cancelled') {
+      await setBotOrderStatus(order.id, 'cancelled');
+      console.log(`[paynet] #${order.id} bekor qilindi.`);
+    }
+
+    return res.json({ error_code: 0 });
+  } catch (err) {
+    console.error('[paynet] webhook xatosi:', err.message);
+    return res.status(500).json({ error_code: -1, message: 'internal' });
+  }
 });
 
 // ---------- Auth ----------

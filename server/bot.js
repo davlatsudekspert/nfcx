@@ -7,6 +7,9 @@
 //   ADMIN_CHAT_ID       — adminning Telegram raqamli ID'si (tasdiqlash uchun)
 //   STORE_CARD          — to'lov kartasi (masalan 8600 1234 5678 9012)
 //   ADMIN_CONTACT       — admin username (masalan @nfcstore_admin)
+//
+// Paynet avtomatik to'lov (ixtiyoriy, server/paynet.js):
+//   PAYNET_MERCHANT_ID / PAYNET_WEBHOOK_LOGIN / PAYNET_WEBHOOK_PASSWORD
 
 import {
   getRecord, createRecord, countRecords, listRecords,
@@ -17,6 +20,7 @@ import {
 import { priceForCode } from '../src/lib/pricing.js';
 import { PREMIUM_GROUPS } from '../src/lib/premiumNames.js';
 import { fmt } from '../src/lib/format.js';
+import { paynetEnabled, paynetLink } from './paynet.js';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
@@ -153,7 +157,22 @@ async function startPurchase(chatId, from, rawCode) {
     '\u{1F4F8} To\u2019lov qilgach, <b>screenshotni shu chatga yuboring</b>.',
     'Admin tasdiqlagach kod sizning bo\u2019ladi!',
   ];
-  return sendMessage(chatId, lines.join('\n'), { reply_markup: MAIN_KB });
+  await sendMessage(chatId, lines.join('\n'), { reply_markup: MAIN_KB });
+
+  // Paynet ulangan bo'lsa: onlayn to'lov tugmasi — webhook o'zi tasdiqlaydi.
+  const payUrl = paynetEnabled() ? paynetLink(order.id, price) : '';
+  if (payUrl) {
+    await sendMessage(
+      chatId,
+      '\u{1F4B3} Yoki <b>Paynet</b> orqali to\u2019lang \u2014 kod <b>avtomatik</b> band qilinadi:',
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: `\u2705 To\u2019lash \u2014 ${fmt(price)} so\u2019m`, url: payUrl }]],
+        },
+      }
+    );
+  }
+  return undefined;
 }
 
 async function handleScreenshot(msg) {
@@ -260,6 +279,32 @@ async function handleCallback(cb) {
     await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Rad etildi' });
     return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
   }
+}
+
+// Paynet webhook'i to'lovni tasdiqlaganda mijozga va adminga xabar.
+// index.js tomonidan chaqiriladi (fire-and-forget).
+export async function notifyOrderPaidAuto(order) {
+  try {
+    await sendMessage(order.tgUserId, [
+      `\u{1F389} <b>To\u2019lov qabul qilindi!</b>`,
+      '',
+      `Kod: <code>${order.code}</code> endi sizniki.`,
+      `Buyurtma: <b>#${order.id}</b> \u2014 ${fmt(order.price)} so\u2019m`,
+      '',
+      'Profil sozlash: https://nfcstore.uz/register yoki admin bilan bog\u2019laning.',
+    ].join('\n'));
+  } catch (err) {
+    console.error('[bot] Mijozga avto-xabar yuborilmadi:', err.message);
+  }
+  try {
+    if (!isAdmin(order.tgUserId)) {
+      const who = order.tgUsername ? '@' + order.tgUsername : (order.tgName || order.tgUserId);
+      await sendMessage(
+        ADMIN_CHAT_ID || order.tgUserId,
+        `\u{1F916} Paynet orqali <b>#${order.id}</b> AVTOMATIK tasdiqlandi\nKod: <code>${order.code}</code>\nMijoz: ${who}`
+      );
+    }
+  } catch {}
 }
 
 async function handleMessage(msg) {
