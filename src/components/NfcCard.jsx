@@ -7,9 +7,9 @@ import { IconChip, IconWave } from './Icons.jsx';
 // (no third-party card-network branding), in black / silver / white
 // finishes to match the monochrome theme.
 const FINISHES = {
-  black: { bg: 'linear-gradient(135deg, #1c1d1f 0%, #0a0a0b 55%, #1c1d1f 100%)', fg: '#f5f5f6', sub: 'rgba(245,245,246,0.55)' },
-  silver: { bg: 'linear-gradient(135deg, #f4f4f5 0%, #d6d7d9 45%, #f4f4f5 100%)', fg: '#101112', sub: 'rgba(16,17,18,0.55)' },
-  graphite: { bg: 'linear-gradient(135deg, #3a3b3d 0%, #202123 55%, #3a3b3d 100%)', fg: '#f5f5f6', sub: 'rgba(245,245,246,0.55)' },
+  black: { bg: 'linear-gradient(135deg, #201a10 0%, #0a0908 55%, #201a10 100%)', fg: '#f6f2ea', sub: 'rgba(232,193,101,0.75)', code: '#e8c165' },
+  silver: { bg: 'linear-gradient(135deg, #f4f4f5 0%, #d6d7d9 45%, #f4f4f5 100%)', fg: '#101112', sub: 'rgba(16,17,18,0.55)', code: '#101112' },
+  graphite: { bg: 'linear-gradient(135deg, #3a3730 0%, #201f1a 55%, #3a3730 100%)', fg: '#f6f2ea', sub: 'rgba(232,193,101,0.6)', code: '#e8c165' },
 };
 
 const CARD_SIZES = {
@@ -19,7 +19,7 @@ const CARD_SIZES = {
 };
 
 const SHADOW_DEFAULT = '0 20px 45px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)';
-const SHADOW_RIM = '0 0 0 1px rgba(172,192,212,0.22), 0 0 40px rgba(108,136,166,0.22), 0 28px 70px rgba(0,0,0,0.65)';
+const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.28), 0 28px 70px rgba(0,0,0,0.65)';
 
 export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', rim = false }) {
   const ref = useRef(null);
@@ -63,7 +63,7 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
           <IconWave style={{ color: f.sub }} />
         </div>
         <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
-        <div className="relative z-[1] text-center font-mono text-[19px] font-bold tracking-[0.14em] [text-shadow:0_1px_1px_rgba(0,0,0,0.15)]">{spacedCode}</div>
+        <div className="relative z-[1] text-center font-mono text-[19px] font-bold tracking-[0.14em] [text-shadow:0_1px_1px_rgba(0,0,0,0.15)]" style={{ color: f.code }}>{spacedCode}</div>
         <div className="relative z-[1] flex items-center justify-between">
           <div className="font-display text-xs font-bold tracking-[0.04em] uppercase">{name || 'ISM FAMILIYA'}</div>
           <div className="text-right font-mono text-[8.5px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE<br />{year}</div>

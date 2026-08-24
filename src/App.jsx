@@ -16,7 +16,6 @@ import FaqPage from './pages/FaqPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
-import ComingSoon from './components/ComingSoon.jsx';
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -37,7 +36,6 @@ export default function App() {
   const route = usePathRoute();
   const cleanRoute = route.replace(/^\/+|\/+$/g, '');
   const [catalog, setCatalog] = useState([]);
-  const [showComingSoon, setShowComingSoon] = useState(true);
 
   const refreshCatalog = useCallback(async () => {
     const recs = await dbList();
@@ -72,9 +70,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      {showComingSoon ? (
-        <ComingSoon />
-      ) : bare ? page : (
+      {bare ? page : (
         <>
           <Header />
           {page}

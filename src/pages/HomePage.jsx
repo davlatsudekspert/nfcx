@@ -108,7 +108,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
     <main>
       {/* ================= HERO ================= */}
       <section className="relative overflow-hidden bg-black">
-        <div className="pointer-events-none absolute -inset-x-[18%] -inset-y-[12%] bg-[radial-gradient(640px_460px_at_74%_38%,rgba(96,124,156,0.15),transparent_65%),radial-gradient(420px_320px_at_16%_86%,rgba(120,148,176,0.08),transparent_60%)]"></div>
+        <div className="pointer-events-none absolute -inset-x-[18%] -inset-y-[12%] bg-[radial-gradient(640px_460px_at_74%_38%,rgba(201,162,39,0.16),transparent_65%),radial-gradient(420px_320px_at_16%_86%,rgba(180,140,50,0.09),transparent_60%)]"></div>
 
         <div className="relative z-[1] mx-auto grid max-w-6xl items-center gap-11 px-5 pb-8 pt-14 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div>
@@ -121,7 +121,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
             <Reveal delay="[transition-delay:80ms]">
               <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
-                O'zingizga <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
+                O'zingizga <span className="bg-gradient-to-br from-[#f0cf7a] to-[#b3860f] bg-clip-text text-transparent">shaxsiy vizitka</span> oling va profilingizga ega bo'ling.
               </h1>
             </Reveal>
 
@@ -134,9 +134,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
             {/* Glassmorphism search */}
             <Reveal delay="[transition-delay:240ms]">
-              <div className="mt-6 max-w-xl rounded-[20px] border border-[rgba(150,172,196,0.20)] bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-3 pl-[18px] shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+              <div className="mt-6 max-w-xl rounded-[20px] border border-[rgba(201,162,39,0.25)] bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-3 pl-[18px] shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex min-w-0 flex-1 items-center rounded-lg border border-[rgba(150,172,196,0.16)] bg-black/45 focus-within:border-[rgba(158,182,206,0.5)] focus-within:shadow-[0_0_0_3px_rgba(110,138,168,0.15)]">
+                  <div className="flex min-w-0 flex-1 items-center rounded-lg border border-[rgba(201,162,39,0.20)] bg-black/45 focus-within:border-[rgba(212,175,90,0.6)] focus-within:shadow-[0_0_0_3px_rgba(201,162,39,0.18)]">
                     <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">nfcstore.uz/</span>
                     <input
                       value={checkVal}
@@ -151,7 +151,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   <button
                     onClick={doCheck}
                     aria-label="Tekshirish"
-                    className="btn btn-circle shrink-0 border-none bg-gradient-to-br from-[#7e99af] to-[#4f6f88] text-white shadow-[0_8px_24px_rgba(79,111,136,0.45)] hover:brightness-110"
+                    className="btn btn-circle shrink-0 border-none bg-gradient-to-br from-[#e8c165] to-[#b3860f] text-[#17130a] shadow-[0_8px_24px_rgba(180,140,20,0.45)] hover:brightness-110"
                   >
                     <IconSearch />
                   </button>
@@ -166,7 +166,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                       <span className="badge badge-error">Band</span>
                       <span className="text-base-content/60">
                         nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan —{' '}
-                        <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#9fb2c4] underline-offset-2 hover:text-base-content">sahifasini ko'rish</button>
+                        <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-base-content">sahifasini ko'rish</button>
                       </span>
                     </>}
                     {!checkResult.bad && !checkResult.taken && <>
@@ -201,34 +201,34 @@ export default function HomePage({ catalog, refreshCatalog }) {
           {/* ===== Neon orbit kompozitsiyasi ===== */}
           <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center lg:block">
             <div className="relative h-[480px] w-[480px]" aria-hidden="true">
-              <div className="absolute inset-[5%] rounded-full border border-[rgba(132,154,178,0.30)] shadow-[0_0_70px_rgba(92,116,144,0.24),inset_0_0_55px_rgba(104,128,156,0.12)]"></div>
-              <div className="absolute -inset-[calc(5%-10px)] rounded-full border border-dashed border-[rgba(142,164,188,0.13)]"></div>
-              <div className="absolute inset-[5%] animate-[spinSlow_16s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0_76%,rgba(168,188,208,0.85)_94%,transparent_100%)] [-webkit-mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [filter:drop-shadow(0_0_8px_rgba(134,158,184,0.5))]"></div>
+              <div className="absolute inset-[5%] rounded-full border border-[rgba(201,162,39,0.30)] shadow-[0_0_70px_rgba(180,140,30,0.22),inset_0_0_55px_rgba(201,162,39,0.10)]"></div>
+              <div className="absolute -inset-[calc(5%-10px)] rounded-full border border-dashed border-[rgba(212,175,90,0.15)]"></div>
+              <div className="absolute inset-[5%] animate-[spinSlow_16s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0_76%,rgba(232,193,101,0.9)_94%,transparent_100%)] [-webkit-mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [filter:drop-shadow(0_0_8px_rgba(201,162,39,0.55))]"></div>
               <div className="absolute inset-[5%] animate-[spinSlow_16s_linear_infinite] rounded-full">
-                <span className="absolute -top-[5px] left-1/2 ml-[-5px] h-2.5 w-2.5 rounded-full bg-[#b3c1cf] shadow-[0_0_14px_3px_rgba(140,164,190,0.5)]"></span>
+                <span className="absolute -top-[5px] left-1/2 ml-[-5px] h-2.5 w-2.5 rounded-full bg-[#f0cf7a] shadow-[0_0_14px_3px_rgba(212,175,90,0.55)]"></span>
               </div>
               <div className="absolute inset-[5%] animate-[spinSlow_26s_linear_infinite_reverse] rounded-full">
-                <span className="absolute -top-1 left-1/2 ml-[-4px] h-[7px] w-[7px] rounded-full bg-[#b3c1cf] opacity-75 shadow-[0_0_14px_3px_rgba(140,164,190,0.5)]"></span>
+                <span className="absolute -top-1 left-1/2 ml-[-4px] h-[7px] w-[7px] rounded-full bg-[#f0cf7a] opacity-75 shadow-[0_0_14px_3px_rgba(212,175,90,0.55)]"></span>
               </div>
 
               <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-54%] animate-[floatY_5s_ease-in-out_infinite]">
                 <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" rim />
               </div>
 
-              <div className="absolute right-[4%] top-[2%] z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(152,174,198,0.18)] bg-gradient-to-br from-[#16181c] to-[#07080a] text-[#9fb2c4] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(112,138,166,0.12)] [animation-delay:0.6s]">
+              <div className="absolute right-[4%] top-[2%] z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(201,162,39,0.22)] bg-gradient-to-br from-[#1c1611] to-[#07070a] text-[#e8c165] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(180,140,30,0.14)] [animation-delay:0.6s]">
                 <IconWave />
-                <span className="font-mono text-[9px] tracking-[0.14em] text-[rgba(159,178,196,0.55)]">NFC TAP</span>
+                <span className="font-mono text-[9px] tracking-[0.14em] text-[rgba(232,193,101,0.65)]">NFC TAP</span>
               </div>
-              <div className="absolute bottom-[6%] left-0 z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(152,174,198,0.18)] bg-gradient-to-br from-[#16181c] to-[#07080a] text-[#9fb2c4] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(112,138,166,0.12)] [animation-delay:1.4s]">
+              <div className="absolute bottom-[6%] left-0 z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(201,162,39,0.22)] bg-gradient-to-br from-[#1c1611] to-[#07070a] text-[#e8c165] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(180,140,30,0.14)] [animation-delay:1.4s]">
                 <IconWave />
-                <span className="font-mono text-[9px] tracking-[0.14em] text-[rgba(159,178,196,0.55)]">NFC TAG</span>
+                <span className="font-mono text-[9px] tracking-[0.14em] text-[rgba(232,193,101,0.65)]">NFC TAG</span>
               </div>
 
               <div className="absolute left-[6%] top-[13%] z-[2] flex animate-[floatY_5s_ease-in-out_infinite] flex-col items-center [animation-delay:1s]">
-                <span className="z-[1] -mb-1.5 h-[34px] w-[34px] rounded-full border-[5px] border-[#b9bcc2] border-t-[#e7e9ec] border-l-[#dfe1e6] shadow-md"></span>
-                <div className="flex h-[118px] w-[78px] flex-col items-center justify-center gap-2 rounded-[20px] border border-[rgba(152,174,198,0.14)] bg-gradient-to-b from-[#232427] via-[#101113] to-[#1a1b1e] text-[#9fb2c4] shadow-[0_20px_44px_rgba(0,0,0,0.6),0_0_20px_rgba(112,138,166,0.10)]">
+                <span className="z-[1] -mb-1.5 h-[34px] w-[34px] rounded-full border-[5px] border-[#c9a227] border-t-[#f0cf7a] border-l-[#e8c165] shadow-md"></span>
+                <div className="flex h-[118px] w-[78px] flex-col items-center justify-center gap-2 rounded-[20px] border border-[rgba(201,162,39,0.18)] bg-gradient-to-b from-[#221c12] via-[#101010] to-[#1c1611] text-[#e8c165] shadow-[0_20px_44px_rgba(0,0,0,0.6),0_0_20px_rgba(180,140,30,0.12)]">
                   <IconWave />
-                  <b className="font-mono text-[11px] tracking-[0.2em] text-[rgba(159,178,196,0.5)]">NFC</b>
+                  <b className="font-mono text-[11px] tracking-[0.2em] text-[rgba(232,193,101,0.6)]">NFC</b>
                 </div>
               </div>
             </div>

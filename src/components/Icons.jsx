@@ -112,7 +112,7 @@ export function IconChip(props) {
       <path d="M9 0.5v23M21 0.5v23M0.5 8h29M0.5 16h9M20.5 16h9" stroke="rgba(0,0,0,0.3)" strokeWidth="0.6" />
       <defs>
         <linearGradient id="chipGrad" x1="0" y1="0" x2="30" y2="24" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#e8e8ea" /><stop offset="0.5" stopColor="#c7c7ca" /><stop offset="1" stopColor="#a9a9ac" />
+          <stop offset="0" stopColor="#f0d99a" /><stop offset="0.5" stopColor="#d4af5a" /><stop offset="1" stopColor="#a3811f" />
         </linearGradient>
       </defs>
     </svg>
