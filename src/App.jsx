@@ -16,6 +16,10 @@ import FaqPage from './pages/FaqPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
+import AuctionsPage from './pages/AuctionsPage.jsx';
+import AuctionPage from './pages/AuctionPage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
+import MessagesPage from './pages/MessagesPage.jsx';
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -29,6 +33,9 @@ const STATIC_ROUTES = {
   aloqa: ContactPage,
   shartlar: TermsPage,
   maxfiylik: PrivacyPage,
+  auksion: AuctionsPage,
+  admin: AdminPage,
+  xabarlar: MessagesPage,
 };
 const RESERVED = new Set(Object.keys(STATIC_ROUTES).filter(Boolean));
 
@@ -48,7 +55,9 @@ export default function App() {
   // nfcstore.uz/aaa00 (harf katta-kichikligi farq qilmaydi).
   let page;
   let bare = false;
-  if (!RESERVED.has(cleanRoute)) {
+  const isAuctionDetail = cleanRoute.startsWith('auksion/');
+  const isMessagesDetail = cleanRoute.startsWith('xabarlar/');
+  if (!RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail) {
     const parsedRoute = cleanRoute ? parseAnyCode(cleanRoute) : null;
     if (parsedRoute) {
       page = <ProfilePage key={parsedRoute.code} code={parsedRoute.code} catalog={catalog} />;
@@ -65,6 +74,11 @@ export default function App() {
     else if (cleanRoute === 'aloqa') page = <ContactPage />;
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
+    else if (cleanRoute === 'auksion') page = <AuctionsPage />;
+    else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
+    else if (isAuctionDetail) page = <AuctionPage key={cleanRoute} id={cleanRoute.slice('auksion/'.length)} />;
+    else if (cleanRoute === 'xabarlar') page = <MessagesPage />;
+    else if (isMessagesDetail) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
   }
 

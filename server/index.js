@@ -11,6 +11,14 @@ import {
   listForSale, setForSale, transferCard,
   getBotOrder, setBotOrderStatus,
   createWebOrder, getWebOrder, setWebOrderStatus, activeWebOrderByCode, listWebOrdersByUser,
+  createWalletTopup, getWallet,
+  createAuction, getActiveAuctionByCode, getAuction, listActiveAuctions, listExpiredActiveAuctions,
+  listBidsByAuction, placeBid, settleAuction,
+  isPhoneBotVerified,
+  createPhysicalCard, resolvePhysicalCard,
+  requestPremium, getUserById, getOwnerByCode, followUser, unfollowUser, getFollowStats,
+  getOrCreateConversation, listConversations, isConversationParticipant, listMessages,
+  sendMessage, markConversationRead, totalUnreadCount,
 } from './db.js';
 import {
   hashPassword, verifyPassword, newSessionToken,
@@ -20,13 +28,22 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import { startBot, notifyOrderPaidAuto } from './bot.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
+import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
+import { adminRouter } from './admin.js';
+
+const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
+const AUCTION_MAX_HOURS = 72;
+const PHYSICAL_CARD_FEE = 200_000; // NFC Coin / so'm — qat'iy, o'zgarmas narx
+const PREMIUM_UPGRADE_FEE = 5_000;  // Premium profil bo'lish narxi
+const PREMIUM_FOLLOW_FEE = 500;     // Premium profilga obuna bo'lish narxi
+const PREMIUM_FOLLOW_COMMISSION_PCT = Number(process.env.PREMIUM_FOLLOW_COMMISSION_PCT || 5);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
 const STD_CODE_RE = /^[A-Z]{3}[0-9]{3}$/;      // standart: AAA000
 const LETTER_CODE_RE = /^[A-Z]{3,12}$/;         // premium: faqat harflar — ALI, UZBEKISTAN
 const RESERVED_CODES = new Set([
-  'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS',
+  'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR',
 ]);
 
 function validCode(code) {
@@ -45,6 +62,7 @@ app.disable('x-powered-by');
 // Railway reverse-proxy orqali: haqiqiy IP/protokolni olamiz.
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '100kb' }));
+app.use('/api/admin', adminRouter);
 
 // Oddiy xavfsizlik headerlari.
 app.use((req, res, next) => {
@@ -179,6 +197,140 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, db: isDbReady() });
 });
 
+// Jismoniy karta tap qilinganda: chip ichiga yozilgan token (?t=...) shu
+// yerdan tekshiriladi. Frontend ProfilePage bu javobni ko'rib, agar
+// active=false bo'lsa "karta faol emas" xabarini ko'rsatadi, aks holda
+// oddiy profil sifatida davom etadi (parametrni URL'dan olib tashlaydi).
+app.get('/api/tap/:chipToken', async (req, res) => {
+  if (!isDbReady()) return res.json({ active: true }); // baza yo'q — bloklamaymiz
+  const card = await resolvePhysicalCard(req.params.chipToken);
+  if (!card) return res.json({ active: true }); // noma'lum token — jim o'tkazib yuboramiz
+  res.json({ active: card.active, linkedCode: card.linkedCode });
+});
+
+// ---------- Premium profil ----------
+
+app.post('/api/premium/request', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const result = await requestPremium(user.id, PREMIUM_UPGRADE_FEE);
+    if (result.error) return res.status(409).json(result);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('[api] requestPremium:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Obuna (follow) ----------
+
+app.post('/api/follow/:code', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  try {
+    const ownerId = await getOwnerByCode(code);
+    if (!ownerId) return res.status(404).json({ error: 'NOT_FOUND' });
+    const result = await followUser(user.id, ownerId, PREMIUM_FOLLOW_FEE, PREMIUM_FOLLOW_COMMISSION_PCT);
+    if (result.error) return res.status(409).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('[api] followUser:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/unfollow/:code', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const ownerId = await getOwnerByCode(code);
+  if (!ownerId) return res.status(404).json({ error: 'NOT_FOUND' });
+  // Diqqat: to'langan obuna puli qaytarilmaydi — bu bir martalik xizmat
+  // haqi sifatida ko'riladi (xuddi auksion komissiyasi kabi).
+  await unfollowUser(user.id, ownerId);
+  res.json({ ok: true });
+});
+
+app.get('/api/follow-stats/:code', async (req, res) => {
+  if (!isDbReady()) return res.json({ followers: 0, following: 0, isFollowing: false });
+  const code = String(req.params.code || '').toUpperCase();
+  const ownerId = await getOwnerByCode(code);
+  if (!ownerId) return res.json({ followers: 0, following: 0, isFollowing: false });
+  const user = await currentUser(req);
+  res.json(await getFollowStats(ownerId, user?.id));
+});
+
+// ---------- Xabarlar (Direct Messages) ----------
+//
+// XAVFSIZLIK: har bir endpoint currentUser(req) orqali session'dan userId
+// oladi va faqat SHU userId qatnashgan suhbatlarni ko'rsatadi — client
+// hech qachon "boshqa odam sifatida" so'ray olmaydi, chunki userId
+// clientdan emas, cookie orqali tasdiqlangan sessiyadan olinadi.
+
+app.get('/api/conversations', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.json({ conversations: [] });
+  res.json({ conversations: await listConversations(user.id) });
+});
+
+app.get('/api/conversations/unread-count', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.json({ count: 0 });
+  if (!isDbReady()) return res.json({ count: 0 });
+  res.json({ count: await totalUnreadCount(user.id) });
+});
+
+// Kod (profil) orqali suhbat boshlash/ochish — frontend userId'ni
+// bilmasligi ham mumkin, faqat profil kodini biladi.
+app.post('/api/conversations/with/:code', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const ownerId = await getOwnerByCode(code);
+  if (!ownerId) return res.status(404).json({ error: 'NOT_FOUND' });
+  if (ownerId === user.id) return res.status(400).json({ error: 'CANNOT_MESSAGE_SELF' });
+  const conversationId = await getOrCreateConversation(user.id, ownerId);
+  res.json({ conversationId });
+});
+
+app.get('/api/conversations/:id/messages', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.json({ messages: [] });
+  const id = Number(req.params.id);
+  // MUHIM: shu suhbatning ishtirokchisi ekanligini tekshirmasdan HECH
+  // qachon xabarlarni qaytarmaymiz — bu maxfiylikni ta'minlaydigan
+  // yagona to'siq (RLS o'rniga API darajasidagi tekshiruv).
+  if (!(await isConversationParticipant(id, user.id))) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const before = req.query.before ? new Date(req.query.before) : null;
+  const messages = await listMessages(id, { before, limit: 50 });
+  await markConversationRead(id, user.id);
+  res.json({ messages });
+});
+
+app.post('/api/conversations/:id/messages', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  if (!(await isConversationParticipant(id, user.id))) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const body = cleanStr(req.body?.body, 2000);
+  if (!body) return res.status(422).json({ error: 'empty_message' });
+  const message = await sendMessage(id, user.id, body);
+  res.status(201).json(message);
+});
+
 // ---------- Paynet webhook (avtomatik to'lov tasdiqlash) ----------
 // Kabinetda Callback URL: https://<domen>/api/pay/paynet/webhook
 app.post('/api/pay/paynet/webhook', async (req, res) => {
@@ -211,6 +363,15 @@ app.post('/api/pay/paynet/webhook', async (req, res) => {
           const created = await createRecord({ ...order.payload, code: order.code, price: order.price });
           if (created) {
             await attachCardToUser(order.code, order.userId);
+            if (order.payload?.physicalCard) {
+              await createPhysicalCard({
+                linkedCode: order.code,
+                ownerUserId: order.userId,
+                shippingName: order.payload.shippingName,
+                shippingPhone: order.payload.shippingPhone,
+                shippingAddress: order.payload.shippingAddress,
+              });
+            }
           }
           await setWebOrderStatus(order.id, 'paid');
           console.log(`[paynet] web#${order.id} (${order.code}) to'landi va foydalanuvchi #${order.userId}ga biriktirildi.`);
@@ -247,6 +408,132 @@ app.post('/api/pay/paynet/webhook', async (req, res) => {
   }
 });
 
+// ---------- Payme webhook (hamyonni to'ldirish) ----------
+// Kabinetda Callback URL: https://<domen>/api/pay/payme
+app.post('/api/pay/payme', async (req, res) => {
+  if (!paymeEnabled()) {
+    return res.json({ jsonrpc: '2.0', id: req.body?.id ?? null, error: { code: -32601, message: 'payme disabled' } });
+  }
+  if (!verifyPaymeAuth(req)) {
+    return res.status(200).json({ jsonrpc: '2.0', id: req.body?.id ?? null, error: { code: -32504, message: 'Ruxsat yo\u2019q' } });
+  }
+  const result = await handlePaymeRequest(req.body);
+  res.json(result);
+});
+
+// ---------- Hamyon (balans) ----------
+
+app.get('/api/wallet', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.json({ balance: 0, heldBalance: 0, available: 0 });
+  res.json(await getWallet(user.id));
+});
+
+app.post('/api/wallet/topup', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
+
+  const amount = Math.round(Number(req.body?.amount));
+  if (!amount || amount < 1000) return res.status(422).json({ error: 'bad_amount' });
+
+  try {
+    const order = await createWalletTopup({ userId: user.id, amount });
+    const payLink = paymeCheckoutLink(order.id, amount);
+    res.status(202).json({ orderId: order.id, amount, payLink });
+  } catch (err) {
+    console.error('[api] wallet/topup:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Auksion ----------
+
+// Auksionni bergan vaqtda muddati o'tgan auksionlarni yakunlaydi
+// (alohida cron server bo'lmagani uchun — har so'rovda "dangasa" tekshirish).
+async function settleExpiredAuctions() {
+  if (!isDbReady()) return;
+  try {
+    const expired = await listExpiredActiveAuctions();
+    for (const a of expired) {
+      const result = await settleAuction(a.id, AUCTION_COMMISSION_PCT);
+      if (result && !result.expired) {
+        console.log(`[auction] #${a.id} (${result.code}) yakunlandi: g'olib #${result.winnerId}, ${result.winAmount} so'm (komissiya ${result.commission}).`);
+      } else if (result) {
+        console.log(`[auction] #${a.id} (${a.code}) taklifsiz tugadi.`);
+      }
+    }
+  } catch (err) {
+    console.error('[auction] settle xatosi:', err.message);
+  }
+}
+
+app.get('/api/auctions', async (req, res) => {
+  if (!isDbReady()) return res.json({ auctions: [] });
+  await settleExpiredAuctions();
+  res.json({ auctions: await listActiveAuctions() });
+});
+
+app.get('/api/auctions/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await settleExpiredAuctions();
+  const id = Number(req.params.id);
+  const auction = await getAuction(id);
+  if (!auction) return res.status(404).json({ error: 'not_found' });
+  const bids = await listBidsByAuction(id);
+  res.json({ auction, bids });
+});
+
+// Kartani auksionga qo'yish (faqat egasi qo'ya oladi).
+app.post('/api/auctions', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const code = String(req.body?.code || '').toUpperCase();
+  const startPrice = Math.round(Number(req.body?.startPrice));
+  const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
+  const hours = Math.min(AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
+
+  if (!code || !startPrice || startPrice < 1000) return res.status(422).json({ error: 'bad_input' });
+  if (buyNowPrice && buyNowPrice <= startPrice) return res.status(422).json({ error: 'buy_now_too_low' });
+
+  try {
+    const ownerId = await getRecordOwner(code);
+    if (ownerId !== user.id) return res.status(403).json({ error: 'not_owner' });
+    if (await getActiveAuctionByCode(code)) return res.status(409).json({ error: 'already_in_auction' });
+
+    const auction = await createAuction({ code, sellerId: user.id, startPrice, buyNowPrice, hours });
+    res.status(201).json(auction);
+  } catch (err) {
+    console.error('[api] createAuction:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Narx taklif qilish.
+app.post('/api/auctions/:id/bid', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const id = Number(req.params.id);
+  const amount = Math.round(Number(req.body?.amount));
+  const idempotencyKey = typeof req.body?.idempotencyKey === 'string' ? req.body.idempotencyKey.slice(0, 100) : null;
+  if (!id || !amount) return res.status(422).json({ error: 'BAD_INPUT' });
+
+  try {
+    const result = await placeBid({ auctionId: id, userId: user.id, amount, idempotencyKey });
+    if (result.error) return res.status(409).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('[api] placeBid:', err.message);
+    res.status(503).json({ error: 'SYSTEM' });
+  }
+});
+
 // ---------- Auth ----------
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 kun
@@ -269,6 +556,18 @@ function validateAuthBody(body) {
   if (!EMAIL_RE.test(email)) return { error: 'Email formati noto\u2019g\u2019ri.' };
   if (password.length < 6) return { error: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' };
   return { email, password };
+}
+
+const PHONE_RE = /^\+?\d{9,15}$/;
+
+// Ro'yxatdan o'tishga xos qo'shimcha tekshiruv: telefon raqami va
+// "botga yozdim" tasdig'i — ikkalasi ham majburiy.
+function validateRegisterExtra(body) {
+  const phone = cleanStr(body.phone, 20).replace(/[\s\-()]/g, '');
+  const botAck = body.botAck === true;
+  if (!PHONE_RE.test(phone)) return { error: 'Telefon raqamini to\u2019g\u2019ri kiriting (masalan +998901234567).' };
+  if (!botAck) return { error: 'Avval Telegram botimizga yozib, tasdiqlash katagini belgilang.' };
+  return { phone, botAck };
 }
 
 // Admin akkauntni avtomatik yaratish/sinxronlash (Railway Variables:
@@ -301,15 +600,25 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const { email, password, error } = validateAuthBody(req.body || {});
   if (error) return res.status(422).json({ error });
+  const extra = validateRegisterExtra(req.body || {});
+  if (extra.error) return res.status(422).json({ error: extra.error });
 
   try {
+    // Haqiqiy tekshiruv: telefon raqami botga "Kontaktni ulashish" orqali
+    // yuborilgan bo'lishi shart (bot_verifications jadvali) — checkbox
+    // o'zi hech narsani isbotlamaydi, faqat bu tekshiruv isbotlaydi.
+    const verified = await isPhoneBotVerified(extra.phone);
+    if (!verified) {
+      return res.status(422).json({ error: 'phone_not_verified' });
+    }
+
     const existing = await getUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'email_taken' });
-    const user = await createUser(email, hashPassword(password));
+    const user = await createUser(email, hashPassword(password), { phone: extra.phone, botAck: extra.botAck });
     if (!user) return res.status(409).json({ error: 'email_taken' });
     const token = newSessionToken();
     await createSession(token, user.id, SESSION_TTL_MS);
-    console.log(`[auth] Yangi akkaunt: ${email}`);
+    console.log(`[auth] Yangi akkaunt: ${email} (${extra.phone})`);
     res.setHeader('Set-Cookie', sessionCookie(token, isSecureReq(req)));
     res.status(201).json({ user });
   } catch (err) {
@@ -399,14 +708,28 @@ app.post('/api/records/:code', async (req, res) => {
   const { record, error } = validateBody(req.body || {});
   if (error) return res.status(422).json({ error });
 
+  // Ixtiyoriy jismoniy karta qo'shimchasi — qat'iy, serverda hisoblanadigan narx.
+  const wantsPhysicalCard = req.body?.physicalCard === true;
+  let shipping = null;
+  if (wantsPhysicalCard) {
+    const shippingName = cleanStr(req.body?.shippingName, 100);
+    const shippingPhone = cleanStr(req.body?.shippingPhone, 20);
+    const shippingAddress = cleanStr(req.body?.shippingAddress, 300);
+    if (!shippingName || !shippingPhone || !shippingAddress) {
+      return res.status(422).json({ error: 'shipping_required' });
+    }
+    shipping = { shippingName, shippingPhone, shippingAddress };
+  }
+
   try {
     // Narxni server o'zi hisoblaydi (client narxiga ishonmaymiz):
     // joriy bazaviy narx = f(band qilingan vizitkalar soni).
     // Faqat harflardan iborat premium vizitka — oddiy vizitkadan 3 barobar qimmat.
     const sold = await countRecords();
-    const price = isLetterCode(code)
+    const basePrice = isLetterCode(code)
       ? priceFor('AAA', '000', sold).base * 3
       : priceForCode(code, sold).total;
+    const price = basePrice + (wantsPhysicalCard ? PHYSICAL_CARD_FEE : 0);
 
     if (await getRecord(code)) return res.status(409).json({ error: 'already_taken' });
 
@@ -416,6 +739,9 @@ app.post('/api/records/:code', async (req, res) => {
       const created = await createRecord({ ...record, code, price });
       if (!created) return res.status(409).json({ error: 'already_taken' });
       await attachCardToUser(code, user.id);
+      if (wantsPhysicalCard) {
+        await createPhysicalCard({ linkedCode: code, ownerUserId: user.id, ...shipping });
+      }
       console.log(`[api] (paynet o'chiq — dev rejim) Band qilindi: ${code} — ${created.name} (${price} so'm)`);
       return res.status(201).json(created);
     }
@@ -426,9 +752,12 @@ app.post('/api/records/:code', async (req, res) => {
     const existingOrder = await activeWebOrderByCode(code);
     if (existingOrder) return res.status(409).json({ error: 'reserved_pending_payment' });
 
-    const order = await createWebOrder({ userId: user.id, code, price, payload: record });
+    const order = await createWebOrder({
+      userId: user.id, code, price,
+      payload: { ...record, physicalCard: wantsPhysicalCard, ...shipping },
+    });
     const payLink = paynetLink(`W${order.id}`, price);
-    console.log(`[api] To'lov kutilmoqda: ${code} — buyurtma #${order.id} (${price} so'm)`);
+    console.log(`[api] To'lov kutilmoqda: ${code} — buyurtma #${order.id} (${price} so'm${wantsPhysicalCard ? ', jismoniy karta bilan' : ''})`);
     res.status(202).json({ pending: true, orderId: order.id, code, price, payLink });
   } catch (err) {
     console.error('[api] createRecord:', err.message);

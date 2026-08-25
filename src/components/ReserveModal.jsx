@@ -4,6 +4,12 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 
+// Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
+const BOT_USERNAME = 'NFCStoreBot';
+const BOT_LINK = `https://t.me/${BOT_USERNAME}`;
+
+const PHYSICAL_CARD_FEE = 200_000;
+
 export default function ReserveModal({ code, price, onClose, onDone }) {
   const { user, refresh: refreshAuth } = useAuth();
   const [name, setName] = useState('');
@@ -17,11 +23,18 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [hashtags, setHashtags] = useState('');
   const [acctEmail, setAcctEmail] = useState('');
   const [acctPassword, setAcctPassword] = useState('');
+  const [acctPhone, setAcctPhone] = useState('');
+  const [acctBotAck, setAcctBotAck] = useState(false);
+  const [wantPhysicalCard, setWantPhysicalCard] = useState(false);
+  const [shippingName, setShippingName] = useState('');
+  const [shippingPhone, setShippingPhone] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   // To'lov bosqichi: buyurtma yaratilgach shu yerga o'tamiz.
   const [order, setOrder] = useState(null); // { orderId, payLink, code, price }
   const pollRef = useRef(null);
+  const totalPrice = price + (wantPhysicalCard ? PHYSICAL_CARD_FEE : 0);
 
   // MUHIM: akkaunt endi tanlov emas, majburiy. Tizimga kirmagan bo'lsa,
   // email+parol kiritish shart — aks holda vizitka hech kimning
@@ -31,7 +44,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const ensureAccount = async () => {
     if (user) return;
     try {
-      await authRegister(acctEmail.trim(), acctPassword);
+      await authRegister(acctEmail.trim(), acctPassword, { phone: acctPhone.trim(), botAck: acctBotAck });
     } catch (err) {
       if (String(err.message).startsWith('email_taken')) {
         // Bu email bilan akkaunt mavjud — parol to'g'ri bo'lsa kiradi.
@@ -48,6 +61,14 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
     if (needsAccount) {
       if (!acctEmail.trim()) { setMsg({ type: 'err', text: 'Vizitkangizni boshqarish uchun email kiriting.' }); return; }
       if (acctPassword.length < 6) { setMsg({ type: 'err', text: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' }); return; }
+      if (!acctPhone.trim()) { setMsg({ type: 'err', text: 'Telefon raqamingizni kiriting.' }); return; }
+      if (!acctBotAck) { setMsg({ type: 'err', text: "Avval botga yozganingizni tasdiqlovchi katakchani belgilang." }); return; }
+    }
+    if (wantPhysicalCard) {
+      if (!shippingName.trim() || !shippingPhone.trim() || !shippingAddress.trim()) {
+        setMsg({ type: 'err', text: "Jismoniy karta uchun ism, telefon va manzilni to'liq kiriting." });
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -63,6 +84,12 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         instagram: instagram.trim(),
         hashtags: hashtags.split(',').map((h) => h.trim()).filter(Boolean),
         price,
+        physicalCard: wantPhysicalCard,
+        ...(wantPhysicalCard ? {
+          shippingName: shippingName.trim(),
+          shippingPhone: shippingPhone.trim(),
+          shippingAddress: shippingAddress.trim(),
+        } : {}),
       };
       const result = await dbCreate(code, data);
       if (!result) {
@@ -84,7 +111,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         ? 'Bu vizitka hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring.'
         : String(err.message).startsWith('bad_credentials')
           ? 'Bu email boshqa akkauntga tegishli va parol mos kelmadi.'
-          : 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato");
+          : String(err.message) === 'phone_not_verified'
+            ? `Bu telefon raqami botda tasdiqlanmagan. Avval ${BOT_LINK} ga o'ting, "Kontaktni ulashish" tugmasini bosing, so'ng shu raqamni qayta kiriting.`
+            : 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato");
       setMsg({ type: 'err', text });
       setBusy(false);
     }
@@ -198,6 +227,22 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                     <span className="text-xs font-semibold text-base-content/70">Parol (min. 6 belgi) *</span>
                     <input type="password" value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" className={inp} />
                   </label>
+                  <label className={field}>
+                    <span className="text-xs font-semibold text-base-content/70">Telefon raqamingiz *</span>
+                    <input type="tel" value={acctPhone} onChange={(e) => setAcctPhone(e.target.value)} placeholder="+998901234567" autoComplete="tel" className={inp} />
+                  </label>
+                </div>
+                <div className="rounded-xl border border-accent/30 bg-accent/5 p-3">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input type="checkbox" checked={acctBotAck} onChange={(e) => setAcctBotAck(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
+                    <span className="text-xs leading-relaxed text-base-content/75">
+                      <b>Ro'yxatdan o'tishdan oldin</b>, {' '}
+                      <a href={BOT_LINK} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">
+                        shu Telegram botimizga
+                      </a>{' '}
+                      o'ting va ism-familyangiz hamda telefon raqamingizni yozib qoldiring — bu jismoniy NFC kartangizni to'g'ri yetkazib berish uchun kerak. Bajargan bo'lsangiz, shu katakchani belgilang.
+                    </span>
+                  </label>
                 </div>
                 <p className="text-xs leading-relaxed text-base-content/45">
                   Akkauntsiz band qilish endi mumkin emas — aks holda vizitkangiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.
@@ -211,11 +256,26 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 </p>
               </>
             )}
+
+            <div className="divider my-2"></div>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 p-3">
+              <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
+              <span className="text-xs leading-relaxed text-base-content/75">
+                <b>Jismoniy NFC karta ham buyurtma qilish</b> — kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha <b>{fmt(PHYSICAL_CARD_FEE)} NFC Coin</b>.
+              </span>
+            </label>
+            {wantPhysicalCard && (
+              <div className="mt-2 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                <input value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder="Qabul qiluvchi ism-familya *" className={`${inp} !mt-0`} />
+                <input value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="Telefon (yetkazib berish uchun) *" className={`${inp} !mt-0`} />
+                <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="To'liq manzil (shahar, tuman, ko'cha, uy) *" rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
+              </div>
+            )}
           </div>
 
           <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
             <span className="text-sm text-base-content/60">Jami</span>
-            <b className="text-lg">{fmt(price)} so'm</b>
+            <b className="text-lg">{fmt(totalPrice)} so'm</b>
           </div>
           <button className="btn btn-primary mt-3 w-full" onClick={submit} disabled={busy}>
             {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Band qilish'}

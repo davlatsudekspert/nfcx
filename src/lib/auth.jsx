@@ -45,8 +45,8 @@ async function api(path, options) {
 export const authLogin = (email, password) =>
   api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
 
-export const authRegister = (email, password) =>
-  api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+export const authRegister = (email, password, extra = {}) =>
+  api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, ...extra }) });
 
 export const authLogout = () => api('/auth/logout', { method: 'POST' });
 

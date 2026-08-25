@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { dbGet, dbAddView, dbBuy } from '../lib/db.js';
+import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
@@ -99,7 +99,68 @@ export default function ProfilePage({ code, catalog }) {
   const [toast, setToast] = useState('');
   const [tab, setTab] = useState('vizitka');
   const [buying, setBuying] = useState(false);
+  const [tapInactive, setTapInactive] = useState(false);
+  const [followStats, setFollowStats] = useState(null);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [followMsg, setFollowMsg] = useState(null);
   const { user, myCards } = useAuth();
+
+  useEffect(() => {
+    dbFollowStats(code).then(setFollowStats).catch(() => {});
+  }, [code, user]);
+
+  const toggleFollow = async () => {
+    setFollowBusy(true);
+    setFollowMsg(null);
+    try {
+      if (followStats?.isFollowing) {
+        await dbUnfollow(code);
+      } else {
+        await dbFollow(code);
+      }
+      const stats = await dbFollowStats(code);
+      setFollowStats(stats);
+    } catch (err) {
+      if (err.code === 'unauthorized') { navigate('/login'); return; }
+      setFollowMsg(err.message + (err.available != null ? ` (mavjud: ${fmt(err.available)} NFC Coin)` : ''));
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  const startChat = async () => {
+    if (!user) { navigate('/login'); return; }
+    try {
+      const { conversationId } = await dbStartConversation(code);
+      navigate('/xabarlar/' + conversationId);
+    } catch (err) {
+      setFollowMsg(err.message);
+    }
+  };
+
+  // Jismoniy karta tegilganda chip ?t=<token> parametri bilan keladi.
+  // Buni serverda tekshiramiz: agar bu karta boshqa profilga o'tib
+  // (auksionda sotilib) deaktivatsiya qilingan bo'lsa — "karta faol emas"
+  // xabarini ko'rsatamiz. Aks holda parametrni URL'dan olib tashlaymiz,
+  // chunki u faqat bir martalik tekshiruv uchun kerak edi.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('t');
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/tap/${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (data && data.active === false) setTapInactive(true);
+      } catch {
+        // tarmoq xatosi — profilni ko'rsatishda davom etamiz, bloklamaymiz
+      } finally {
+        params.delete('t');
+        const clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState(null, '', clean);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +217,18 @@ export default function ProfilePage({ code, catalog }) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
         <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center text-sm">Yuklanmoqda...</div>
+      </div>
+    );
+  }
+
+  if (tapInactive) {
+    return (
+      <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('midnight')}>
+        <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
+          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">Bu karta endi faol emas</h2>
+          <p>Ushbu jismoniy karta boshqa profilga o'tkazilgan yoki bekor qilingan. Agar bu xato deb hisoblasangiz, biz bilan bog'laning.</p>
+          <button onClick={() => navigate('/aloqa')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">Aloqa</button>
+        </div>
       </div>
     );
   }
@@ -250,11 +323,35 @@ export default function ProfilePage({ code, catalog }) {
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}
             {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel}</span>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
-            <button className={pillBtn} onClick={() => flashToast('Obuna bo\'lindi!')}>Obuna bo'lish</button>
+            {!isOwner && (
+              <>
+                <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} Xabar yozish</button>
+                <button
+                  className={`${pillBtn} ${followStats?.isFollowing ? '!bg-transparent !text-[color:var(--vz-ink)] border border-[color:var(--vz-line)]' : ''}`}
+                  onClick={toggleFollow}
+                  disabled={followBusy}
+                >
+                  {followBusy
+                    ? '...'
+                    : followStats?.isFollowing
+                      ? 'Obunani bekor qilish'
+                      : record.isPremium
+                        ? `Obuna bo'lish \u2014 500 NFC Coin`
+                        : "Obuna bo'lish"}
+                </button>
+              </>
+            )}
           </div>
         </div>
+        {followStats && (
+          <div className="mt-2 flex gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
+            <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> obunachi</span>
+            <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> obuna</span>
+          </div>
+        )}
+        {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}
 
         {rarityLabel && (
           <div className="mt-4 rounded-2xl border border-[color:var(--vz-line)] p-4" style={{ background: dark ? 'linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))' : 'linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.15))' }}>

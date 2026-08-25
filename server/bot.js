@@ -16,6 +16,7 @@ import {
   createBotOrder, getBotOrder, setBotOrderStatus,
   listBotOrdersByUser, latestPendingBotOrder, activeBotOrderByCode,
   listPendingBotOrders, countPaidBotOrders, listActiveBotOrderCodes,
+  saveBotVerification,
 } from './db.js';
 import { priceForCode } from '../src/lib/pricing.js';
 import { PREMIUM_GROUPS } from '../src/lib/premiumNames.js';
@@ -69,6 +70,7 @@ const MAIN_KB = {
   keyboard: [
     [{ text: '\u{1F4C2} Katalog' }, { text: '\u{1F6D2} Sotib olish' }],
     [{ text: '\u{1F4E6} Buyurtmalarim' }, { text: '\u260E\uFE0F Admin' }],
+    [{ text: '\u{1F4C7} Kontaktni ulashish (ro\u2019yxatdan o\u2019tish uchun)', request_contact: true }],
   ],
   resize_keyboard: true,
 };
@@ -91,6 +93,9 @@ async function welcomeText() {
     '',
     'Bu yerda nfcstore.uz vizitka kodlarini sotib olasiz.',
     `\u{1F4CA} Ochiq statistika: <b>${sold}</b> ta muvaffaqiyatli savdo qilingan.`,
+    '',
+    '<b>Saytda ro\u2019yxatdan o\u2019tishdan oldin:</b>',
+    '\u{1F4C7} Pastdagi <b>"Kontaktni ulashish"</b> tugmasini bosing \u2014 shu orqali ism va telefon raqamingiz tasdiqlanadi. Bu jismoniy NFC kartangizni to\u2019g\u2019ri manzilga yetkazib berishimiz uchun kerak.',
     '',
     '<b>Qanday ishlaydi:</b>',
     '1\uFE0F\u20E3 <code>/katalog</code> \u2014 bo\u2019sh kodlarni ko\u2019rasiz',
@@ -313,6 +318,31 @@ async function handleMessage(msg) {
   const text = String(msg.text || '').trim();
 
   if (msg.photo && !text.startsWith('/')) return handleScreenshot(msg);
+
+  // Foydalanuvchi "Kontaktni ulashish" tugmasini bosdi — telefon raqami va
+  // ismi shu yerdan KELADI (Telegram tomonidan tasdiqlangan, soxta bo'lishi
+  // mumkin emas). Buni bot_verifications'ga yozamiz — saytda ro'yxatdan
+  // o'tishda shu jadval bilan tekshiriladi.
+  if (msg.contact) {
+    // Faqat o'zining kontaktini ulashishi kerak (boshqa birovnikini emas).
+    if (msg.contact.user_id && msg.contact.user_id !== from.id) {
+      return sendMessage(chatId, "\u26A0\uFE0F Iltimos, o'zingizning kontaktingizni ulashing.", { reply_markup: MAIN_KB });
+    }
+    let phone = String(msg.contact.phone_number || '').replace(/[\s\-()]/g, '');
+    if (phone && !phone.startsWith('+')) phone = '+' + phone;
+    const name = [msg.contact.first_name, msg.contact.last_name].filter(Boolean).join(' ') || from.username || String(from.id);
+    try {
+      await saveBotVerification({ phone, tgUserId: from.id, tgName: name });
+      return sendMessage(
+        chatId,
+        `\u2705 Rahmat, <b>${name}</b>! Kontaktingiz tasdiqlandi.\n\nEndi saytda ro'yxatdan o'tishda aynan shu telefon raqamni (<code>${phone}</code>) kiriting — tizim avtomatik tasdiqlaydi.`,
+        { reply_markup: MAIN_KB }
+      );
+    } catch (err) {
+      console.error('[bot] saveBotVerification:', err.message);
+      return sendMessage(chatId, "Xatolik yuz berdi, birozdan keyin qayta urinib ko'ring.", { reply_markup: MAIN_KB });
+    }
+  }
 
   const lower = text.toLowerCase();
   if (lower.startsWith('/start')) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbSetSale } from '../lib/db.js';
+import { dbUploadImage, dbSetSale, dbCreateAuction, dbGetWallet, dbWalletTopup, dbRequestPremium } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -121,6 +121,129 @@ function fileToCompressedDataUrl(file) {
   });
 }
 
+// NFC Pay paneli: NFC Coin balansi (1 NFC Coin = 1 so'm), bandlangan summa, to'ldirish (Payme).
+function WalletPanel() {
+  const [wallet, setWallet] = useState(null);
+  const [amount, setAmount] = useState('50000');
+  const [order, setOrder] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const pollRef = useRef(null);
+
+  const load = () => dbGetWallet().then(setWallet);
+  useEffect(() => { load(); }, []);
+
+  const topup = async () => {
+    const val = Math.round(Number(amount));
+    if (!val || val < 1000) { setMsg({ type: 'err', text: "Minimal summa 1 000 NFC Coin." }); return; }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await dbWalletTopup(val);
+      setOrder(res);
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message === 'payme_disabled' ? "To'lov tizimi hozircha yoqilmagan." : "Xatolik yuz berdi." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!order) return;
+    pollRef.current = setInterval(() => { load(); }, 4000);
+    return () => clearInterval(pollRef.current);
+  }, [order]);
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs text-base-content/50">NFC Pay balansi</div>
+          <div className="mt-1 text-2xl font-extrabold">
+            {wallet ? fmt(wallet.available) : '—'} <span className="text-sm font-normal text-base-content/50">NFC Coin</span>
+          </div>
+          {wallet && wallet.heldBalance > 0 && (
+            <div className="mt-0.5 text-xs text-base-content/45">+ {fmt(wallet.heldBalance)} NFC Coin auksionlarda bandlangan</div>
+          )}
+        </div>
+        {!order ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="input input-bordered input-sm w-32 bg-base-100"
+            />
+            <button className="btn btn-primary btn-sm" onClick={topup} disabled={busy}>
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : "To'ldirish"}
+            </button>
+          </div>
+        ) : (
+          <div className="text-right">
+            <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-sm">
+              {fmt(order.amount)} NFC Coin to'lash &rarr;
+            </a>
+            <button className="ml-2 text-xs text-base-content/45 underline" onClick={() => { setOrder(null); load(); }}>bekor qilish</button>
+          </div>
+        )}
+      </div>
+      {order && (
+        <p className="mt-3 flex items-center gap-2 text-xs text-base-content/45">
+          <span className="loading loading-spinner loading-xs"></span>
+          To'lovni amalga oshiring — balans avtomatik yangilanadi.
+        </p>
+      )}
+      {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+    </div>
+  );
+}
+
+const PREMIUM_FEE = 5000;
+
+// Premium profilga o'tish so'rovi — pul darhol ushlab qolinadi, admin
+// panelda tasdiqlanguncha "kutilmoqda" holatida turadi.
+function PremiumPanel({ user }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [requested, setRequested] = useState(false);
+
+  if (user?.isPremium) {
+    return (
+      <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
+        <div className="flex items-center gap-2 text-sm font-bold text-accent">{'\u2B50'} Siz premium foydalanuvchisiz</div>
+        <p className="mt-1 text-xs text-base-content/50">Boshqalar profilingizga obuna bo'lish uchun 500 NFC Coin to'laydi — bu mablag' to'g'ridan-to'g'ri hamyoningizga tushadi.</p>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await dbRequestPremium();
+      setRequested(true);
+      setMsg({ type: 'ok', text: "So'rovingiz yuborildi. Admin tasdiqlagach, profilingiz premium bo'ladi." });
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
+      <div className="text-sm font-bold">Premium profilga o'ting</div>
+      <p className="mt-1 text-xs text-base-content/50">
+        Premium profil bo'lsangiz, boshqa foydalanuvchilar sizga obuna bo'lish uchun <b>500 NFC Coin</b> to'laydi — bu pul to'g'ridan-to'g'ri sizning NFC Pay hamyoningizga tushadi. O'tish narxi: <b>{fmt(PREMIUM_FEE)} NFC Coin</b> (bir martalik).
+      </p>
+      <button className="btn btn-accent btn-sm mt-3" onClick={submit} disabled={busy || requested}>
+        {busy ? <span className="loading loading-spinner loading-xs"></span> : requested ? 'Yuborildi \u2014 kutilmoqda' : `So'rov yuborish \u2014 ${fmt(PREMIUM_FEE)} NFC Coin`}
+      </button>
+      {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+    </div>
+  );
+}
+
 function EditCardForm({ card, onSaved }) {
   const [form, setForm] = useState({
     name: card.name,
@@ -149,6 +272,10 @@ function EditCardForm({ card, onSaved }) {
   const [uploadingBg, setUploadingBg] = useState(false);
   const [saleBusy, setSaleBusy] = useState(false);
   const [saleMsg, setSaleMsg] = useState(null);
+  const [auctionOpen, setAuctionOpen] = useState(false);
+  const [auctionBusy, setAuctionBusy] = useState(false);
+  const [auctionMsg, setAuctionMsg] = useState(null);
+  const [auctionForm, setAuctionForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24' });
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
 
@@ -223,6 +350,24 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
+  const submitAuction = async () => {
+    const startPrice = Math.round(Number(auctionForm.startPrice));
+    const buyNowPrice = auctionForm.buyNowPrice ? Math.round(Number(auctionForm.buyNowPrice)) : null;
+    const hours = Math.min(72, Math.max(1, Math.round(Number(auctionForm.hours) || 24)));
+    if (!startPrice || startPrice < 1000) { setAuctionMsg({ type: 'err', text: "Boshlang'ich narx kamida 1 000 NFC Coin bo'lishi kerak." }); return; }
+    setAuctionBusy(true);
+    setAuctionMsg(null);
+    try {
+      const auction = await dbCreateAuction({ code: card.code, startPrice, buyNowPrice, hours });
+      setAuctionMsg({ type: 'ok', text: "Auksion yaratildi!" });
+      setTimeout(() => navigate('/auksion/' + auction.id), 800);
+    } catch (err) {
+      setAuctionMsg({ type: 'err', text: err.message });
+    } finally {
+      setAuctionBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: "Ism bo'sh bo'lmasligi kerak." }); return; }
     setBusy(true);
@@ -284,9 +429,36 @@ function EditCardForm({ card, onSaved }) {
           <button className={'btn btn-sm ' + (card.forSale ? 'btn-ghost' : 'btn-primary')} onClick={toggleSale} disabled={saleBusy}>
             {saleBusy ? <span className="loading loading-spinner loading-xs"></span> : card.forSale ? "Sotuvdan olish" : 'Sotuvga qo\u2019yish'}
           </button>
+          <button className="btn btn-outline btn-sm" onClick={() => setAuctionOpen((o) => !o)}>
+            Auksionga qo'yish
+          </button>
         </div>
       </div>
       {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{saleMsg.text}</span></div>}
+
+      {auctionOpen && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Auksion sharoitlari</div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <label className="form-control">
+              <span className="text-xs font-semibold text-base-content/70">Boshlang'ich narx (NFC Coin) *</span>
+              <input type="number" value={auctionForm.startPrice} onChange={(e) => setAuctionForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder="masalan 500000" className={inp} />
+            </label>
+            <label className="form-control">
+              <span className="text-xs font-semibold text-base-content/70">Darhol sotib olish, NFC Coin (ixtiyoriy)</span>
+              <input type="number" value={auctionForm.buyNowPrice} onChange={(e) => setAuctionForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder="masalan 2000000" className={inp} />
+            </label>
+            <label className="form-control">
+              <span className="text-xs font-semibold text-base-content/70">Davomiyligi (soat, maks. 72)</span>
+              <input type="number" max={72} value={auctionForm.hours} onChange={(e) => setAuctionForm((f) => ({ ...f, hours: e.target.value }))} className={inp} />
+            </label>
+          </div>
+          <button className="btn btn-primary btn-sm mt-3" onClick={submitAuction} disabled={auctionBusy}>
+            {auctionBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Auksionni boshlash'}
+          </button>
+          {auctionMsg && <div className={`alert mt-3 py-2 text-sm ${auctionMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{auctionMsg.text}</span></div>}
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="min-w-0">
@@ -494,6 +666,14 @@ export default function AccountPage({ refreshCatalog }) {
           </div>
           <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
         </div>
+      </section>
+
+      <section className="pt-8">
+        <WalletPanel />
+      </section>
+
+      <section className="pt-8">
+        <PremiumPanel user={user} />
       </section>
 
       {orders.filter((o) => o.status !== 'paid').length > 0 && (

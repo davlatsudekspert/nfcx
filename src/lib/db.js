@@ -168,3 +168,112 @@ export async function dbUploadImage(dataUrl) {
   }
   return data.url;
 }
+
+// ---------- Hamyon ----------
+
+export async function dbGetWallet() {
+  try {
+    return await api('/wallet');
+  } catch {
+    return null;
+  }
+}
+
+// { orderId, amount, payLink }
+export async function dbWalletTopup(amount) {
+  return api('/wallet/topup', { method: 'POST', body: JSON.stringify({ amount }) });
+}
+
+// ---------- Auksion ----------
+
+export async function dbListAuctions() {
+  const data = await api('/auctions');
+  return (data && data.auctions) || [];
+}
+
+export async function dbGetAuction(id) {
+  return api(`/auctions/${encodeURIComponent(id)}`);
+}
+
+const AUCTION_ERRORS = {
+  not_owner: 'Bu vizitka sizga tegishli emas.',
+  already_in_auction: 'Bu vizitka allaqachon auksionda.',
+  bad_input: "Kiritilgan ma'lumotlar noto'g'ri.",
+  BAD_INPUT: "Kiritilgan ma'lumotlar noto'g'ri.",
+  buy_now_too_low: "\u2018Darhol sotib olish\u2019 narxi boshlang'ich narxdan yuqori bo'lishi kerak.",
+  unauthorized: 'Avval tizimga kiring.',
+  AUCTION_NOT_FOUND: 'Auksion topilmadi.',
+  AUCTION_ALREADY_CLOSED: 'Auksion allaqachon yakunlangan.',
+  OWN_AUCTION: "O'z auksioningizga taklif qila olmaysiz.",
+  BID_TOO_LOW: "Taklifingiz joriy narxdan yuqori bo'lishi kerak.",
+  INSUFFICIENT_NFC_COINS: "NFC Pay hamyoningizda yetarli NFC Coin yo'q.",
+  SYSTEM: 'Tizim xatoligi yuz berdi, birozdan keyin qayta urinib ko\u2019ring.',
+};
+
+export async function dbCreateAuction({ code, startPrice, buyNowPrice, hours }) {
+  const res = await fetch('/api/auctions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ code, startPrice, buyNowPrice, hours }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  return data;
+}
+
+export async function dbPlaceBid(auctionId, amount, idempotencyKey) {
+  const res = await fetch(`/api/auctions/${encodeURIComponent(auctionId)}/bid`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ amount, idempotencyKey }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+    err.code = data && data.error;
+    err.available = data && data.available;
+    throw err;
+  }
+  return data;
+}
+
+// ---------- Premium / Follow / Xabarlar ----------
+
+const PREMIUM_FOLLOW_ERRORS = {
+  unauthorized: 'Avval tizimga kiring.',
+  ALREADY_PREMIUM: 'Siz allaqachon premium foydalanuvchisiz.',
+  ALREADY_PENDING: "So'rovingiz allaqachon ko'rib chiqilmoqda.",
+  INSUFFICIENT_NFC_COINS: "NFC Pay hamyoningizda yetarli NFC Coin yo'q.",
+  ALREADY_FOLLOWING: 'Siz allaqachon obuna bo\u2019lgansiz.',
+  CANNOT_FOLLOW_SELF: "O'zingizga obuna bo'la olmaysiz.",
+  NOT_FOUND: 'Topilmadi.',
+};
+
+async function dbApi(path, options) {
+  const res = await fetch('/api' + path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(PREMIUM_FOLLOW_ERRORS[data && data.error] || (data && data.error) || 'Xatolik yuz berdi.');
+    err.code = data && data.error;
+    err.available = data && data.available;
+    throw err;
+  }
+  return data;
+}
+
+export const dbRequestPremium = () => dbApi('/premium/request', { method: 'POST' });
+export const dbFollow = (code) => dbApi(`/follow/${encodeURIComponent(code)}`, { method: 'POST' });
+export const dbUnfollow = (code) => dbApi(`/unfollow/${encodeURIComponent(code)}`, { method: 'POST' });
+export const dbFollowStats = (code) => dbApi(`/follow-stats/${encodeURIComponent(code)}`);
+
+export const dbListConversations = () => dbApi('/conversations');
+export const dbUnreadCount = () => dbApi('/conversations/unread-count');
+export const dbStartConversation = (code) => dbApi(`/conversations/with/${encodeURIComponent(code)}`, { method: 'POST' });
+export const dbListMessages = (id, before) => dbApi(`/conversations/${id}/messages${before ? '?before=' + encodeURIComponent(before) : ''}`);
+export const dbSendMessage = (id, body) => dbApi(`/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ body }) });

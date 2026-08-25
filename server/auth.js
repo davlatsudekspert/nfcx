@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 
 const SESSION_COOKIE = 'nfc_session';
+const ADMIN_SESSION_COOKIE = 'nfc_admin_session';
 const SESSION_TTL_DAYS = 30;
 
 export function hashPassword(password) {
@@ -46,4 +47,20 @@ export function clearedSessionCookie(secure = false) {
 
 export function sessionTokenFromReq(req) {
   return parseCookies(req)[SESSION_COOKIE] || null;
+}
+
+// Admin sessiyasi ODDIY foydalanuvchi sessiyasidan ATAYIN alohida cookie'da
+// saqlanadi — bittasi kompromentatsiya bo'lsa, ikkinchisiga ta'sir qilmasin.
+// Admin qisqaroq muddatga (1 kun) kiradi, chunki bu imtiyozli kirish.
+export function adminSessionCookie(token, secure = false) {
+  const maxAge = 24 * 60 * 60;
+  return `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict${secure ? '; Secure' : ''}; Max-Age=${maxAge}`;
+}
+
+export function clearedAdminSessionCookie(secure = false) {
+  return `${ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict${secure ? '; Secure' : ''}; Max-Age=0`;
+}
+
+export function adminSessionTokenFromReq(req) {
+  return parseCookies(req)[ADMIN_SESSION_COOKIE] || null;
 }

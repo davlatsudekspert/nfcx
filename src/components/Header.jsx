@@ -1,17 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
+import { dbUnreadCount } from '../lib/db.js';
 
 const NAV = [
   ['Narxlar', '/narxlar'],
   ['Qanday ishlaydi', '/qanday-ishlaydi'],
   ['Katalog', '/katalog'],
+  ['Auksion', '/auksion'],
   ['Savollar', '/savollar'],
 ];
 
 export default function Header() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!user) { setUnread(0); return; }
+    const load = () => dbUnreadCount().then((d) => setUnread(d.count)).catch(() => {});
+    load();
+    const t = setInterval(load, 8000);
+    return () => clearInterval(t);
+  }, [user]);
 
   const go = (href) => { setOpen(false); navigate(href); };
 
@@ -34,6 +45,12 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
+          {user && (
+            <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
+              {'\u{1F4AC}'} Xabarlar
+              {unread > 0 && <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{unread}</span>}
+            </button>
+          )}
           {user ? (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/account')}>Mening profilim</button>
           ) : (
@@ -60,6 +77,11 @@ export default function Header() {
               </li>
             ))}
             <li className="mt-2 border-t border-white/10 pt-2">
+              {user && (
+                <button onClick={() => go('/xabarlar')} className="cursor-pointer">
+                  {'\u{1F4AC}'} Xabarlar {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
+                </button>
+              )}
               {user ? (
                 <button onClick={() => go('/account')} className="cursor-pointer">Mening profilim</button>
               ) : (
