@@ -4,7 +4,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 
 export default function ReserveModal({ code, price, onClose, onDone }) {
-  const { user, refresh: refreshAuth } = useAuth();
+  const { user, myCards, refresh: refreshAuth } = useAuth();
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -19,8 +19,27 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [createdCard, setCreatedCard] = useState(null);
+  const [useSaved, setUseSaved] = useState(false);
 
   const needsAccount = !user;
+  const hasSavedProfile = user && myCards.length > 0;
+  const lastCard = hasSavedProfile ? myCards[0] : null; // eng so'nggi (myCards tartibida)
+
+  // Agar saqlangan profil bo'lsa — avtomatik to'ldiramiz
+  useEffect(() => {
+    if (lastCard && !useSaved) {
+      setName(lastCard.name || '');
+      setRole(lastCard.role || '');
+      setAvatarUrl(lastCard.avatarUrl || '');
+      setTg(lastCard.tg || '');
+      setPhone(lastCard.phone || '');
+      setEmail(lastCard.email || '');
+      setLinkedin(lastCard.linkedin || '');
+      setInstagram(lastCard.instagram || '');
+      setHashtags((lastCard.hashtags || []).join(', '));
+      setUseSaved(true);
+    }
+  }, [lastCard, useSaved]);
 
   const ensureAccount = async () => {
     if (user) return;
@@ -70,7 +89,6 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         throw new Error((result && result.error) || 'api_error_' + res.status);
       }
       if (result.pending) {
-        // Karta 'pending' holatida yaratildi, user_id bilan bog'landi
         setCreatedCard(result);
         setBusy(false);
         return;
@@ -126,6 +144,24 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           <div className="p-6">
             <h3 className="text-lg font-bold">Vizitkani band qilish</h3>
             <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
+
+            {/* Saqlangan profil bor — tezkor tanlash */}
+            {hasSavedProfile && useSaved && (
+              <div className="mt-4 p-4 rounded-xl bg-info/10 border border-info/30">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="font-semibold text-info-content">✅ Sizda saqlangan profil bor</p>
+                    <p className="text-xs text-info-content">Oxirgi karta: <b>{lastCard.name}</b> (<code>{lastCard.code}</code>)</p>
+                  </div>
+                  <label className="swap swap-rotate">
+                    <input type="checkbox" checked={useSaved} onChange={(e) => setUseSaved(e.target.checked)} className="swap-on swap-off" />
+                  </label>
+                </div>
+                <p className="text-xs text-info-content">
+                  {useSaved ? 'Ma\'lumotlar avtomatik to\'ldirildi. Pastda o\'zgartirib bo\'ladi.' : 'Ma\'lumotlarni o\'zingiz kiriting.'}
+                </p>
+              </div>
+            )}
 
             <div className="mt-5 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
               <label className={field}>

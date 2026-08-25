@@ -358,6 +358,22 @@ async function handleCallback(cb) {
         `Kod: <code>${order.code}</code> endi sizniki.`,
         'Profil sozlash: https://nfcstore.uz/register yoki admin bilan bog\u2019laning.',
       ].join('\n'));
+      
+      // Admin ga tasdiqlash xabari
+      await sendMessage(
+        ADMIN_CHAT_ID,
+        [
+          `\u{1F389} <b>BOT BUYURTMASI TASDIQLANDI</b>`,
+          '',
+          `Buyurtma: <b>#${orderId}</b>`,
+          `Kod: <code>${order.code}</code> \u2014 \u2705`,
+          `Mijoz: ${order.tgUsername ? '@' + order.tgUsername : (order.tgName || order.tgUserId)} (<code>${order.tgUserId}</code>)`,
+          `Narx: ${fmt(order.price)} so'm`,
+          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
+        ].join('\n'),
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+      
       await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Tasdiqlandi \u2705' });
       return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
     }
@@ -368,6 +384,22 @@ async function handleCallback(cb) {
         `\u274C <b>#${orderId}</b> buyurtma rad etildi.`,
         'Sababini bilish uchun admin bilan bog\u2019laning: ' + ADMIN_CONTACT,
       ].join('\n'));
+      
+      // Admin ga rad etish xabari
+      await sendMessage(
+        ADMIN_CHAT_ID,
+        [
+          `\u274C <b>BOT BUYURTMASI RAD ETILDI</b>`,
+          '',
+          `Buyurtma: <b>#${orderId}</b>`,
+          `Kod: <code>${order.code}</code> \u2014 \u274C`,
+          `Mijoz: ${order.tgUsername ? '@' + order.tgUsername : (order.tgName || order.tgUserId)} (<code>${order.tgUserId}</code>)`,
+          `Narx: ${fmt(order.price)} so'm`,
+          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
+        ].join('\n'),
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+      
       await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Rad etildi' });
       return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
     }
@@ -398,6 +430,24 @@ async function handleCallback(cb) {
           'Profilingizga o\'ting: https://nfcstore.uz/' + code.toLowerCase(),
         ].join('\n')).catch(() => {});
       }
+      
+      // Admin ga tasdiqlash xabari (yangi "sahifa" kabi)
+      await sendMessage(
+        ADMIN_CHAT_ID,
+        [
+          `\u{1F389} <b>TASDIQLANDI</b>`,
+          '',
+          `Kod: <code>${code}</code> endi <b>faol</b> \u2705`,
+          `Ism: ${card.name}`,
+          `Narx: ${fmt(card.price)} so'm`,
+          `Sayt User ID: <code>${card.user_id || 'nom\'lum'}</code>`,
+          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
+          '',
+          `Profil: https://nfcstore.uz/${code.toLowerCase()}`,
+        ].join('\n'),
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+      
       await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Tasdiqlandi \u2705' });
       return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
     }
@@ -410,6 +460,22 @@ async function handleCallback(cb) {
           'Sababini bilish uchun admin bilan bog\u2019laning: ' + ADMIN_CONTACT,
         ].join('\n')).catch(() => {});
       }
+      
+      // Admin ga rad etish xabari
+      await sendMessage(
+        ADMIN_CHAT_ID,
+        [
+          `\u274C <b>RAD ETILDI</b>`,
+          '',
+          `Kod: <code>${code}</code> \u2014 <b>rad etildi</b>`,
+          `Ism: ${card.name}`,
+          `Narx: ${fmt(card.price)} so'm`,
+          `Sayt User ID: <code>${card.user_id || 'nom\'lum'}</code>`,
+          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
+        ].join('\n'),
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+      
       await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Rad etildi' });
       return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
     }
@@ -458,8 +524,16 @@ export async function notifyAdminNewWebOrder({ code, price, name, siteUserId }) 
         `Sayt User ID: <code>${siteUserId}</code>`,
         '',
         'Mijoz to\'lov qilgach, screenshotni @nfcsalebot ga yuboradi.',
-        'Sizga avtomatik keladi \u2014 tasdiqlashingiz kerak bo\'ladi.',
-      ].join('\n')
+        'Pastdagi tugmalar orqali tasdiqlash/rad etish mumkin.',
+      ].join('\n'),
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '\u2705 Tasdiqlash', callback_data: `web_approve:${code}` },
+            { text: '\u274C Rad etish', callback_data: `web_reject:${code}` },
+          ]],
+        }
+      }
     );
   } catch (err) {
     console.error('[bot] Admin new web order xabar yuborilmadi:', err.message);
