@@ -8,7 +8,7 @@ import {
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner,
-  listForSale, setForSale, transferCard,
+  listForSale, setForSale, transferCard, updateCardStatus,
   getBotOrder, setBotOrderStatus,
 } from './db.js';
 import {
@@ -18,7 +18,7 @@ import {
 import fs from 'fs/promises';
 import crypto from 'crypto';
 import { startBot, notifyOrderPaidAuto } from './bot.js';
-import { paynetEnabled, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
+import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -182,6 +182,32 @@ app.post('/api/pay/paynet/webhook', async (req, res) => {
     const cb = parsePaynetCallback(req.body);
     if (!cb.orderId) {
       // Buyurtma bizda yo'q — baribir 200 qaytaramiz, Paynet qayta-qayta yubormasin.
+      return res.json({ error_code: 0 });
+    }
+
+    if (cb.orderKind === 'web') {
+      const order = await getWebOrder(cb.orderId);
+      if (!order || order.status !== 'pending') {
+        return res.json({ error_code: 0 }); // allaqachon ishlangan (idempotent)
+      }
+      if (cb.status === 'paid') {
+        // To'lov paytida kodni boshqa birov olib ulgurmaganini tekshiramiz.
+        const existing = await getRecord(order.code);
+        if (existing) {
+          await setWebOrderStatus(order.id, 'failed_code_taken');
+          console.error(`[paynet] web#${order.id} (${order.code}) to'landi, lekin kod band edi — qo'lda qaytarish (refund) kerak!`);
+        } else {
+          const created = await createRecord({ ...order.payload, code: order.code, price: order.price });
+          if (created) {
+            await attachCardToUser(order.code, order.userId);
+          }
+          await setWebOrderStatus(order.id, 'paid');
+          console.log(`[paynet] web#${order.id} (${order.code}) to'landi va foydalanuvchi #${order.userId}ga biriktirildi.`);
+        }
+      } else if (cb.status === 'cancelled') {
+        await setWebOrderStatus(order.id, 'cancelled');
+        console.log(`[paynet] web#${order.id} bekor qilindi.`);
+      }
       return res.json({ error_code: 0 });
     }
 
@@ -353,6 +379,12 @@ app.post('/api/records/:code', async (req, res) => {
   if (RESERVED_CODES.has(code)) return res.status(400).json({ error: 'reserved' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
 
+  // MUHIM: akkauntsiz band qilishga ruxsat berilmaydi — aks holda karta
+  // bazada "egasiz" (user_id = NULL) qolib ketadi va hech kimning
+  // kabinetida ko'rinmaydi (VIP001 bilan yuz bergan holat).
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+
   const { record, error } = validateBody(req.body || {});
   if (error) return res.status(422).json({ error });
 
@@ -364,21 +396,55 @@ app.post('/api/records/:code', async (req, res) => {
     const price = isLetterCode(code)
       ? priceFor('AAA', '000', sold).base * 3
       : priceForCode(code, sold).total;
-    const created = await createRecord({ ...record, code, price });
+
+    // Kod bandligini tekshirish (pending statusli ham hisoblanadi)
+    const existing = await getRecord(code);
+    if (existing) return res.status(409).json({ error: 'already_taken' });
+
+    // Karta 'pending' holatida yaratiladi, user_id bilan bog'lanadi
+    // Admin (bot orqali) to'lovni tasdiqlagach status='active' bo'ladi
+    const created = await createRecord({ ...record, code, price, status: 'pending' });
     if (!created) return res.status(409).json({ error: 'already_taken' });
-    // Agar foydalanuvchi tizimga kirgan (yoki xarid jarayonida ro'yxatdan
-    // o'tgan) bo'lsa — vizitka uning profiliga biriktiriladi.
-    const user = await currentUser(req);
-    if (user) {
-      try { await attachCardToUser(code, user.id); } catch (err) {
-        console.error('[api] attachCardToUser:', err.message);
-      }
-    }
-    console.log(`[api] Band qilindi: ${code} — ${created.name} (${price} so'm, ${sold + 1}-savdo)`);
-    res.status(201).json(created);
+    await attachCardToUser(code, user.id);
+
+    console.log(`[api] Band qilindi (kutilmoqda): ${code} — ${created.name} (${price} so'm)`);
+    res.status(201).json({ ...created, pending: true, message: 'Karta yaratildi, to\'lov tasdiqlanishi kutilmoqda. Chek rasmini @nfcsalebot ga yuboring.' });
   } catch (err) {
     console.error('[api] createRecord:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Sayt buyurtmasi holatini tekshirish (karta statusi) — frontend
+// buyurtma yaratilgach shu endpointni pollaydi.
+app.get('/api/orders/:code', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  try {
+    const card = await getRecord(code);
+    if (!card || card.user_id !== user.id) return res.status(404).json({ error: 'not_found' });
+    res.json({ code: card.code, status: card.status, price: card.price, name: card.name });
+  } catch (err) {
+    console.error('[api] getOrder:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Foydalanuvchining barcha kutilayotgan kartalari (pending status)
+app.get('/api/orders', async (req, res) => {
+  if (!isDbReady()) return res.json({ orders: [] });
+  const user = await currentUser(req);
+  if (!user) return res.json({ orders: [] });
+  try {
+    const cards = await listRecordsByUser(user.id);
+    const pending = cards.filter(c => c.status === 'pending' || c.status === 'rejected');
+    res.json({ orders: pending.map(c => ({ code: c.code, status: c.status, price: c.price, name: c.name })) });
+  } catch (err) {
+    console.error('[api] listOrders:', err.message);
+    res.json({ orders: [] });
   }
 });
 

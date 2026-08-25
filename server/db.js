@@ -89,6 +89,7 @@ export async function initDb() {
       theme       VARCHAR(20) NOT NULL DEFAULT 'classic',
       for_sale    BOOLEAN NOT NULL DEFAULT FALSE,
       sale_price  BIGINT,
+      status      VARCHAR(20) NOT NULL DEFAULT 'pending',
       hashtags    JSONB NOT NULL DEFAULT '[]'::jsonb,
       price       INTEGER NOT NULL,
       ts          BIGINT NOT NULL,
@@ -110,6 +111,7 @@ export async function initDb() {
     theme: `ALTER TABLE cards ADD COLUMN theme VARCHAR(20) NOT NULL DEFAULT 'classic'`,
     for_sale: `ALTER TABLE cards ADD COLUMN for_sale BOOLEAN NOT NULL DEFAULT FALSE`,
     sale_price: `ALTER TABLE cards ADD COLUMN sale_price BIGINT`,
+    status: `ALTER TABLE cards ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'`,
     extra_links: `ALTER TABLE cards ADD COLUMN extra_links JSONB NOT NULL DEFAULT '[]'::jsonb`,
     card_numbers: `ALTER TABLE cards ADD COLUMN card_numbers JSONB NOT NULL DEFAULT '[]'::jsonb`,
   };
@@ -127,11 +129,34 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'status', 'extra_links', 'card_numbers']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
     }
+  }
+
+  // Migratsiya: bot_orders jadvaliga yangi ustunlar
+  const botOrderCols = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'bot_orders'`
+  );
+  const botCols = new Set(botOrderCols.rows.map((r) => r.column_name));
+  if (!botCols.has('source')) {
+    await pool.query(`ALTER TABLE bot_orders ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'bot'`);
+    console.log('[db] bot_orders.source ustuni qo\u2019shildi.');
+  }
+  if (!botCols.has('user_id')) {
+    await pool.query(`ALTER TABLE bot_orders ADD COLUMN user_id INTEGER REFERENCES users(id)`);
+    console.log('[db] bot_orders.user_id ustuni qo\u2019shildi.');
+  }
+  if (!botCols.has('record_data')) {
+    await pool.query(`ALTER TABLE bot_orders ADD COLUMN record_data JSONB`);
+    console.log('[db] bot_orders.record_data ustuni qo\u2019shildi.');
+  }
+  if (!botCols.has('screenshot_file_id')) {
+    // eski versiyada bo'lmasa
+    await pool.query(`ALTER TABLE bot_orders ADD COLUMN screenshot_file_id TEXT`);
+    console.log('[db] bot_orders.screenshot_file_id ustuni qo\u2019shildi.');
   }
 
   await pool.query(`
@@ -150,6 +175,22 @@ export async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS bot_orders_user_idx ON bot_orders (tg_user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS bot_orders_code_idx ON bot_orders (code)`);
 
+  // Sayt orqali beriladigan buyurtmalar: to'lov tasdiqlanmaguncha karta
+  // yaratilmaydi (avval "band qilish" to'lovsiz karta yaratib yuborardi).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS web_orders (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code       VARCHAR(16) NOT NULL,
+      price      INTEGER NOT NULL,
+      payload    JSONB NOT NULL,
+      status     VARCHAR(20) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_user_idx ON web_orders (user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_code_idx ON web_orders (code)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -164,7 +205,7 @@ const SELECT_FIELDS = `
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
   theme, for_sale AS "forSale",
-  sale_price AS "salePrice", hashtags, price, ts, views
+  sale_price AS "salePrice", status, hashtags, price, ts, views
 `;
 
 function rowToRecord(row) {
@@ -188,6 +229,7 @@ function rowToRecord(row) {
     theme: row.theme || 'classic',
     forSale: !!row.forSale,
     salePrice: row.salePrice != null ? Number(row.salePrice) : null,
+    status: row.status || 'pending',
     hashtags: Array.isArray(row.hashtags) ? row.hashtags : [],
     price: Number(row.price),
     ts: Number(row.ts),
@@ -219,10 +261,10 @@ export async function createRecord(record) {
   const { rows } = await pool.query(
     `INSERT INTO cards
        (code, name, role, avatar_url, tg, phone, email, linkedin, instagram,
-        about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17,$18::jsonb,$19,$20)
-     ON CONFLICT (code) DO NOTHING
-     RETURNING ${SELECT_FIELDS}`,
+        about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, status, hashtags, price, ts)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17,$18,$19::jsonb,$20,$21)
+    ON CONFLICT (code) DO NOTHING
+    RETURNING ${SELECT_FIELDS}`,
     [
       record.code,
       record.name,
@@ -241,6 +283,7 @@ export async function createRecord(record) {
       JSON.stringify(record.extraLinks || []),
       JSON.stringify(record.cardNumbers || []),
       record.theme || 'classic',
+      record.status || 'pending',
       JSON.stringify(record.hashtags || []),
       record.price,
       Date.now(),
@@ -410,6 +453,14 @@ export async function transferCard(code, fromUserId, toUserId) {
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
+export async function updateCardStatus(code, status) {
+  const { rows } = await pool.query(
+    `UPDATE cards SET status = $2 WHERE code = $1 RETURNING ${SELECT_FIELDS}`,
+    [code, status]
+  );
+  return rows[0] ? rowToRecord(rows[0]) : null;
+}
+
 // ---------- Telegram bot buyurtmalari ----------
 
 const BOT_ORDER_FIELDS = `
@@ -504,4 +555,53 @@ export async function listActiveBotOrderCodes() {
     `SELECT DISTINCT code FROM bot_orders WHERE status IN ('pending','paid')`
   );
   return rows.map((r) => r.code);
+}
+
+// ---------- Sayt buyurtmalari (to'lov tasdiqlangach karta yaratiladi) ----------
+
+const WEB_ORDER_FIELDS = `
+  id, user_id AS "userId", code, price, payload, status, created_at AS "createdAt"
+`;
+
+export async function createWebOrder({ userId, code, price, payload }) {
+  const { rows } = await pool.query(
+    `INSERT INTO web_orders (user_id, code, price, payload)
+     VALUES ($1,$2,$3,$4::jsonb) RETURNING ${WEB_ORDER_FIELDS}`,
+    [userId, code, price, JSON.stringify(payload || {})]
+  );
+  return rows[0] || null;
+}
+
+export async function getWebOrder(id) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE id = $1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+export async function setWebOrderStatus(id, status) {
+  const { rows } = await pool.query(
+    `UPDATE web_orders SET status = $2 WHERE id = $1 RETURNING ${WEB_ORDER_FIELDS}`,
+    [id, status]
+  );
+  return rows[0] || null;
+}
+
+// Kod bo'yicha faol (to'lanmagan) sayt buyurtmasi bormi? — shu kodni
+// boshqa birov bir vaqtning o'zida bosib olib qolmasligi uchun.
+export async function activeWebOrderByCode(code) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE code = $1 AND status = 'pending' LIMIT 1`,
+    [code]
+  );
+  return rows[0] || null;
+}
+
+export async function listWebOrdersByUser(userId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
+    [userId]
+  );
+  return rows;
 }

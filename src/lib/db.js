@@ -36,11 +36,19 @@ function lsSet(code, record) {
 
 async function api(path, options) {
   const res = await fetch('/api' + path, {
+    credentials: 'same-origin', // sessiya cookie'si albatta yuborilishi kerak
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error('api_error_' + res.status);
+  // 401/409/422 kabi holatlarda ham serverdan kelgan xabarni saqlab qo'yamiz,
+  // shunda chaqiruvchi kod "unauthorized" kabi aniq sababni bilib oladi.
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const err = new Error('api_error_' + res.status);
+    err.code = data && data.error;
+    throw err;
+  }
   return res.json();
 }
 
@@ -61,8 +69,12 @@ export async function dbList() {
   }
 }
 
-// Atomic reserve: returns the created record, or null if the code was
-// already taken (409) / storage unavailable.
+// Reserve a code. Three possible outcomes now:
+//  - 201: paynet disabled (dev fallback) -> full record returned immediately
+//  - 202: paynet enabled -> { pending: true, orderId, payLink, code, price }
+//  - 409: already taken -> null
+// Throws for auth errors (err.code === 'unauthorized') so the caller can
+// prompt the user to sign in / create an account first.
 export async function dbCreate(code, data) {
   try {
     return await api(`/records/${encodeURIComponent(code)}`, {
@@ -71,8 +83,14 @@ export async function dbCreate(code, data) {
     });
   } catch (err) {
     if (err && err.message === 'api_error_409') return null;
+    if (err && (err.code === 'unauthorized' || err.code === 'reserved_pending_payment')) throw err;
     return lsGet(code) ? null : lsSet(code, { ...data, code });
   }
+}
+
+// Buyurtma holatini tekshirish (to'lov tasdiqlanganmi?).
+export async function dbGetOrder(orderId) {
+  return api(`/orders/${encodeURIComponent(orderId)}`);
 }
 
 // Fire-and-forget view counter. Returns the new views count or null.

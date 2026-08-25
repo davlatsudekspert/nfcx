@@ -53,16 +53,28 @@ export function verifyPaynetAuth(req) {
 // Paynet turli shakllarda yuborishi mumkin — moslashuvchan o'qiymiz:
 //   { c, a, status } | { order_id, amount, event } | { params: { account: { order_id }, ... } }
 // Muhim holatlar: successfully_payment / cancelled_payment
+//
+// "c" (account) maydoni ikki xil buyurtmani anglatishi mumkin:
+//   - faqat raqam (masalan "482")        -> Telegram bot buyurtmasi (bot_orders)
+//   - "W" prefiksli (masalan "W17")      -> sayt orqali berilgan buyurtma (web_orders)
+// Shuning uchun avval xom (raw) qiymatni olib, keyin turini aniqlaymiz.
 export function parsePaynetCallback(body = {}) {
   const b = body || {};
-  const orderId =
-    Number(b.c) ||
-    Number(b.order_id) ||
-    Number(b.payment_id) ||
-    Number(b.params?.account?.order_id) ||
-    Number(b.account?.order_id) ||
-    Number(b.invoice?.account?.order_id) ||
-    0;
+  const raw = String(
+    b.c ?? b.order_id ?? b.payment_id ??
+    b.params?.account?.order_id ?? b.account?.order_id ??
+    b.invoice?.account?.order_id ?? ''
+  ).trim();
+
+  let orderKind = 'bot';
+  let orderId = 0;
+  if (/^W\d+$/i.test(raw)) {
+    orderKind = 'web';
+    orderId = Number(raw.slice(1));
+  } else {
+    orderKind = 'bot';
+    orderId = Number(raw) || 0;
+  }
 
   const rawStatus = String(b.status ?? b.event ?? b.type ?? b.state ?? '').toLowerCase();
   let status = 'unknown';
@@ -74,5 +86,5 @@ export function parsePaynetCallback(body = {}) {
   const rawAmount = Number(b.a ?? b.amount ?? b.params?.amount ?? 0);
   const amountSom = rawAmount > 10000 ? Math.round(rawAmount / 100) : rawAmount;
 
-  return { orderId, status, amountSom };
+  return { orderKind, orderId, status, amountSom };
 }

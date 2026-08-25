@@ -285,11 +285,34 @@ function EditCardForm({ card, onSaved }) {
   );
 }
 
+const ORDER_STATUS_LABEL = {
+  pending: { text: "To'lov kutilmoqda", cls: 'badge-warning' },
+  paid: { text: "To'landi", cls: 'badge-success' },
+  cancelled: { text: 'Bekor qilindi', cls: 'badge-ghost' },
+  failed_code_taken: { text: "Kod band bo'lib qoldi — pul qaytariladi", cls: 'badge-error' },
+};
+
 export default function AccountPage({ refreshCatalog }) {
   const { user, myCards, refresh } = useAuth();
+  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let stop = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/orders', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!stop) setOrders(Array.isArray(data.orders) ? data.orders : []);
+      } catch { /* jim tur — kritik emas */ }
+    };
+    load();
+    const t = setInterval(load, 5000);
+    return () => { stop = true; clearInterval(t); };
   }, [user]);
 
   if (user === undefined || user === null) {
@@ -327,6 +350,24 @@ export default function AccountPage({ refreshCatalog }) {
           <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
         </div>
       </section>
+
+      {orders.filter((o) => o.status !== 'paid').length > 0 && (
+        <section className="pt-8">
+          <h2 className="text-xl font-bold">Buyurtmalarim</h2>
+          <div className="mt-3 space-y-2">
+            {orders.filter((o) => o.status !== 'paid').map((o) => {
+              const st = ORDER_STATUS_LABEL[o.status] || { text: o.status, cls: 'badge-ghost' };
+              return (
+                <div key={o.id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-3 text-sm">
+                  <span className="font-mono">nfcstore.uz/{o.code.toLowerCase()}</span>
+                  <span className="text-base-content/50">{fmt(o.price)} so'm</span>
+                  <span className={`badge ${st.cls}`}>{st.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="pt-8">
         <h2 className="text-xl font-bold">Mening vizitkalarim</h2>
