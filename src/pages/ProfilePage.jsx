@@ -270,7 +270,7 @@ export default function ProfilePage({ code, catalog }) {
         </div>
       )}
 
-      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
+      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: record.backgroundImage ? `url(${record.backgroundImage}) center/cover no-repeat` : 'var(--vz-card)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}

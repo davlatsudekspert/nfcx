@@ -112,6 +112,7 @@ export async function initDb() {
     for_sale: `ALTER TABLE cards ADD COLUMN for_sale BOOLEAN NOT NULL DEFAULT FALSE`,
     sale_price: `ALTER TABLE cards ADD COLUMN sale_price BIGINT`,
     status: `ALTER TABLE cards ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'pending'`,
+    background_image: `ALTER TABLE cards ADD COLUMN background_image TEXT`,
     extra_links: `ALTER TABLE cards ADD COLUMN extra_links JSONB NOT NULL DEFAULT '[]'::jsonb`,
     card_numbers: `ALTER TABLE cards ADD COLUMN card_numbers JSONB NOT NULL DEFAULT '[]'::jsonb`,
   };
@@ -129,7 +130,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'status', 'extra_links', 'card_numbers']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'status', 'background_image', 'extra_links', 'card_numbers']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -205,7 +206,7 @@ const SELECT_FIELDS = `
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
   theme, for_sale AS "forSale",
-  sale_price AS "salePrice", status, hashtags, price, ts, views
+  sale_price AS "salePrice", status, background_image AS "backgroundImage", hashtags, price, ts, views
 `;
 
 function rowToRecord(row) {
@@ -230,6 +231,7 @@ function rowToRecord(row) {
     forSale: !!row.forSale,
     salePrice: row.salePrice != null ? Number(row.salePrice) : null,
     status: row.status || 'pending',
+    backgroundImage: row.backgroundImage || '',
     hashtags: Array.isArray(row.hashtags) ? row.hashtags : [],
     price: Number(row.price),
     ts: Number(row.ts),
@@ -261,8 +263,8 @@ export async function createRecord(record) {
   const { rows } = await pool.query(
     `INSERT INTO cards
        (code, name, role, avatar_url, tg, phone, email, linkedin, instagram,
-        about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, status, hashtags, price, ts)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17,$18,$19::jsonb,$20,$21)
+        about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, status, background_image, hashtags, price, ts)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17,$18,$19,$20::jsonb,$21,$22)
     ON CONFLICT (code) DO NOTHING
     RETURNING ${SELECT_FIELDS}`,
     [
@@ -284,6 +286,7 @@ export async function createRecord(record) {
       JSON.stringify(record.cardNumbers || []),
       record.theme || 'classic',
       record.status || 'pending',
+      record.backgroundImage || '',
       JSON.stringify(record.hashtags || []),
       record.price,
       Date.now(),
@@ -397,6 +400,7 @@ export async function updateRecord(code, fields) {
     website: 'website',
     cardNumber: 'card_number',
     theme: 'theme',
+    backgroundImage: 'background_image',
   };
   for (const [key, col] of Object.entries(map)) {
     if (key in fields) {

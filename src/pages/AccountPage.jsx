@@ -38,11 +38,45 @@ function fileToCompressedDataUrl(file) {
   });
 }
 
+// Orqa fon rasmi uchun: horizontal 4K (3840x2160) — kichik/vertical ham bo'lsa to'g'rilab beradi
+function fileToBackgroundDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Rasm formati noto\u2019g\u2019ri.'));
+      img.onload = () => {
+        const TARGET_W = 3840;
+        const TARGET_H = 2160;
+        const scale = Math.max(TARGET_W / img.width, TARGET_H / img.height);
+        const srcW = Math.min(img.width, TARGET_W / scale);
+        const srcH = Math.min(img.height, TARGET_H / scale);
+        const srcX = (img.width - srcW) / 2;
+        const srcY = (img.height - srcH) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = TARGET_W;
+        canvas.height = TARGET_H;
+        const ctx = canvas.getContext('2d');
+        // Fill with dark theme color first
+        ctx.fillStyle = '#0c0c0d';
+        ctx.fillRect(0, 0, TARGET_W, TARGET_H);
+        // Draw image centered, covering
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, TARGET_W, TARGET_H);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function EditCardForm({ card, onSaved }) {
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
     avatarUrl: card.avatarUrl || '',
+    backgroundImage: card.backgroundImage || '',
     tg: card.tg || '',
     phone: card.phone || '',
     email: card.email || '',
@@ -64,6 +98,7 @@ function EditCardForm({ card, onSaved }) {
   const [saleBusy, setSaleBusy] = useState(false);
   const [saleMsg, setSaleMsg] = useState(null);
   const fileRef = useRef(null);
+  const bgFileRef = useRef(null);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -96,6 +131,24 @@ function EditCardForm({ card, onSaved }) {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const onPickBackground = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    setMsg(null);
+    try {
+      const dataUrl = await fileToBackgroundDataUrl(file);
+      const url = await dbUploadImage(dataUrl);
+      setForm((f) => ({ ...f, backgroundImage: url }));
+      setMsg({ type: 'ok', text: 'Orqa fon rasmi yuklandi (4K horizontal). Saqlash tugmasini bosing.' });
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setUploading(false);
+      if (bgFileRef.current) bgFileRef.current.value = '';
     }
   };
 
@@ -200,7 +253,7 @@ function EditCardForm({ card, onSaved }) {
       </div>
 
       {/* Avatar */}
-      <div className="mt-6 flex items-start gap-4">
+<div className="mt-6 flex items-start gap-4">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
           {form.avatarUrl
             ? <img src={form.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
@@ -213,6 +266,26 @@ function EditCardForm({ card, onSaved }) {
           </button>
           <p className="mt-2 text-xs text-base-content/45">JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.</p>
           <input className={`${inp} font-mono text-xs`} value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="https://... yoki /uploads/..." />
+        </div>
+      </div>
+
+      {/* Orqa fon rasmi (4K horizontal) */}
+      <div className="mt-6 flex items-start gap-4">
+        <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-base-100 relative">
+          {form.backgroundImage ? (
+            <img src={form.backgroundImage} alt="background" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-xs text-base-content/45">Fon yo'q</span>
+          )}
+          <div className="absolute bottom-0 right-0 bg-primary/90 text-primary-content px-1.5 py-0.5 text-[9px] font-mono">4K</div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBackground} />
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current && bgFileRef.current.click()} disabled={uploading}>
+            {uploading ? <span className="loading loading-spinner loading-xs"></span> : 'Orqa fon tanlash (4K)'}
+          </button>
+          <p className="mt-2 text-xs text-base-content/45">Har qanday rasm (hatto kichik/vertical) → avtomatik 3840x2160 horizontal ga o'giriladi.</p>
+          <input className={`${inp} font-mono text-xs`} value={form.backgroundImage} onChange={set('backgroundImage')} placeholder="https://... yoki /uploads/..." />
         </div>
       </div>
 
