@@ -8,8 +8,9 @@ import {
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner,
-  listForSale, setForSale, transferCard, updateCardStatus,
+  listForSale, setForSale, transferCard,
   getBotOrder, setBotOrderStatus,
+  createWebOrder, getWebOrder, setWebOrderStatus, activeWebOrderByCode, listWebOrdersByUser,
 } from './db.js';
 import {
   hashPassword, verifyPassword, newSessionToken,
@@ -17,7 +18,7 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { startBot, notifyOrderPaidAuto, notifyAdminNewWebOrder } from './bot.js';
+import { startBot, notifyOrderPaidAuto } from './bot.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -141,11 +142,21 @@ function validateBody(body) {
   if (!avatarUrl && typeof body.avatarUrl === 'string' && body.avatarUrl.startsWith('/uploads/')) {
     avatarUrl = cleanStr(body.avatarUrl, 300).replace(/[^\w\-./]/g, '');
   }
+  // Fon rasmi: xuddi avatar kabi — tashqi havola yoki /uploads/...
+  let bgUrl = safeUrl(body.bgUrl);
+  if (!bgUrl && typeof body.bgUrl === 'string' && body.bgUrl.startsWith('/uploads/')) {
+    bgUrl = cleanStr(body.bgUrl, 300).replace(/[^\w\-./]/g, '');
+  }
+  // Diagonal naqshli fon — foydalanuvchi o'chirib qo'yishi mumkin
+  // (standart holatda yoqilgan, eski ko'rinishni buzmaslik uchun).
+  const bgPattern = body.bgPattern === false ? false : true;
   return {
     record: {
       name,
       role: cleanStr(body.role, 100),
       avatarUrl,
+      bgUrl,
+      bgPattern,
       tg: cleanStr(body.tg, 40).replace(/^@/, ''),
       phone: cleanStr(body.phone, 24),
       email: cleanStr(body.email, 120),
@@ -366,23 +377,6 @@ app.get('/api/records/:code', async (req, res) => {
   try {
     const rec = await getRecord(code);
     if (!rec) return res.status(404).json({ error: 'not_found' });
-    
-    // Agar karta pending/rejected bo'lsa — faqat egasi ko'ra oladi
-    const user = await currentUser(req);
-    const isOwner = user && rec.user_id === user.id;
-    if ((rec.status === 'pending' || rec.status === 'rejected') && !isOwner) {
-      // Egasi emas, lekin kod mavjud — minimal ma'lumot qaytaramiz
-      return res.json({ 
-        code: rec.code, 
-        name: rec.name, 
-        status: rec.status, 
-        pending: rec.status === 'pending',
-        message: rec.status === 'pending' 
-          ? 'Karta band qilindi, to\'lov tasdiqlanishi kutilmoqda' 
-          : 'To\'lov rad etilgan, admin bilan bog\'laning'
-      });
-    }
-    
     res.json(rec);
   } catch (err) {
     console.error('[api] getRecord:', err.message);
@@ -414,54 +408,60 @@ app.post('/api/records/:code', async (req, res) => {
       ? priceFor('AAA', '000', sold).base * 3
       : priceForCode(code, sold).total;
 
-    // Kod bandligini tekshirish (pending statusli ham hisoblanadi)
-    const existing = await getRecord(code);
-    if (existing) return res.status(409).json({ error: 'already_taken' });
+    if (await getRecord(code)) return res.status(409).json({ error: 'already_taken' });
 
-    // Karta 'pending' holatida yaratiladi, user_id bilan bog'lanadi
-    // Admin (bot orqali) to'lovni tasdiqlagach status='active' bo'ladi
-    const created = await createRecord({ ...record, code, price, status: 'pending' });
-    if (!created) return res.status(409).json({ error: 'already_taken' });
-    await attachCardToUser(code, user.id);
+    // Paynet ulanmagan bo'lsa (masalan lokal dev muhitida) — eskicha,
+    // to'lovsiz, darhol band qilamiz, aks holda test qilib bo'lmaydi.
+    if (!paynetEnabled()) {
+      const created = await createRecord({ ...record, code, price });
+      if (!created) return res.status(409).json({ error: 'already_taken' });
+      await attachCardToUser(code, user.id);
+      console.log(`[api] (paynet o'chiq — dev rejim) Band qilindi: ${code} — ${created.name} (${price} so'm)`);
+      return res.status(201).json(created);
+    }
 
-    // Admin (bot) ga xabar yuborish: yangi sayt buyurtmasi
-    notifyAdminNewWebOrder({ code, price, name: created.name, siteUserId: user.id }).catch(() => {});
+    // Real rejim: karta darhol YARATILMAYDI. Avval to'lov kutilayotgan
+    // buyurtma yaratiladi, to'lov Paynet webhook orqali tasdiqlangach
+    // karta yaratiladi va shu foydalanuvchiga biriktiriladi.
+    const existingOrder = await activeWebOrderByCode(code);
+    if (existingOrder) return res.status(409).json({ error: 'reserved_pending_payment' });
 
-    console.log(`[api] Band qilindi (kutilmoqda): ${code} — ${created.name} (${price} so'm)`);
-    res.status(201).json({ ...created, pending: true, message: 'Karta yaratildi, to\'lov tasdiqlanishi kutilmoqda. Chek rasmini @nfcsalebot ga yuboring.' });
+    const order = await createWebOrder({ userId: user.id, code, price, payload: record });
+    const payLink = paynetLink(`W${order.id}`, price);
+    console.log(`[api] To'lov kutilmoqda: ${code} — buyurtma #${order.id} (${price} so'm)`);
+    res.status(202).json({ pending: true, orderId: order.id, code, price, payLink });
   } catch (err) {
     console.error('[api] createRecord:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
 
-// Sayt buyurtmasi holatini tekshirish (karta statusi) — frontend
+// Sayt buyurtmasi holatini tekshirish (to'lov tasdiqlanganmi?) — frontend
 // buyurtma yaratilgach shu endpointni pollaydi.
-app.get('/api/orders/:code', async (req, res) => {
+app.get('/api/orders/:id', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
-  const code = String(req.params.code || '').toUpperCase();
-  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
   try {
-    const card = await getRecord(code);
-    if (!card || card.user_id !== user.id) return res.status(404).json({ error: 'not_found' });
-    res.json({ code: card.code, status: card.status, price: card.price, name: card.name });
+    const order = await getWebOrder(id);
+    if (!order || order.userId !== user.id) return res.status(404).json({ error: 'not_found' });
+    res.json({ id: order.id, code: order.code, status: order.status, price: order.price });
   } catch (err) {
     console.error('[api] getOrder:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
 
-// Foydalanuvchining barcha kutilayotgan kartalari (pending status)
+// Foydalanuvchining barcha sayt buyurtmalari (kutilayotgan/muvaffaqiyatsiz
+// bo'lganlarini "Mening profilim" sahifasida ko'rsatish uchun).
 app.get('/api/orders', async (req, res) => {
   if (!isDbReady()) return res.json({ orders: [] });
   const user = await currentUser(req);
   if (!user) return res.json({ orders: [] });
   try {
-    const cards = await listRecordsByUser(user.id);
-    const pending = cards.filter(c => c.status === 'pending' || c.status === 'rejected');
-    res.json({ orders: pending.map(c => ({ code: c.code, status: c.status, price: c.price, name: c.name })) });
+    res.json({ orders: await listWebOrdersByUser(user.id) });
   } catch (err) {
     console.error('[api] listOrders:', err.message);
     res.json({ orders: [] });

@@ -16,7 +16,6 @@ import {
   createBotOrder, getBotOrder, setBotOrderStatus,
   listBotOrdersByUser, latestPendingBotOrder, activeBotOrderByCode,
   listPendingBotOrders, countPaidBotOrders, listActiveBotOrderCodes,
-  updateCardStatus, getRecordOwner,
 } from './db.js';
 import { priceForCode } from '../src/lib/pricing.js';
 import { PREMIUM_GROUPS } from '../src/lib/premiumNames.js';
@@ -24,7 +23,7 @@ import { fmt } from '../src/lib/format.js';
 import { paynetEnabled, paynetLink } from './paynet.js';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '892463694';
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
 const ADMIN_CONTACT = process.env.ADMIN_CONTACT || '@nfcstore_admin';
 const STORE_CARD = process.env.STORE_CARD || '';
 
@@ -205,7 +204,7 @@ async function handleScreenshot(msg) {
       ADMIN_CHAT_ID || msg.chat.id,
       best.file_id,
       [
-        `\u{1F195} <b>Yangi to\u2019lov screenshoti (Bot)</b>`,
+        `\u{1F195} <b>Yangi to\u2019lov screenshoti</b>`,
         `Buyurtma: <b>#${order.id}</b>`,
         `Kod: <code>${order.code}</code> \u2014 ${fmt(order.price)} so\u2019m`,
         `Mijoz: ${who} (<code>${msg.from.id}</code>)`,
@@ -213,95 +212,6 @@ async function handleScreenshot(msg) {
       { reply_markup: orderButtons(order.id) }
     );
   }
-}
-
-// ---------- Website order screenshot handler ----------
-async function handleWebScreenshot(msg) {
-  const chatId = msg.chat.id;
-  const caption = String(msg.caption || '').trim().toUpperCase();
-  const text = String(msg.text || '').trim().toUpperCase();
-  
-  // Kodni caption yoki text dan topamiz
-  const codeMatch = (caption || text).match(/([A-Z]{3}[0-9]{3}|[A-Z]{3,12})/);
-  if (!codeMatch) {
-    return sendMessage(
-      chatId,
-      '\u26D4 Vizitka kodini topib bo\'lmadi. Rasmga <b>kodni caption (izoh) qilib yuboring</b>.\nMasalan: <code>VIP001</code>',
-      { reply_markup: MAIN_KB }
-    );
-  }
-  const code = codeMatch[1];
-
-  // Kartani topamiz (pending statusli, user_id bilan)
-  const card = await getRecord(code);
-  if (!card) {
-    return sendMessage(
-      chatId,
-      `\u274C <code>${code}</code> kodi topilmadi. Avval saytda "Band qilish" bosilgan bo'lishi kerak.`,
-      { reply_markup: MAIN_KB }
-    );
-  }
-  if (card.status === 'active') {
-    return sendMessage(
-      chatId,
-      `\u2705 <code>${code}</code> allaqachon <b>faol</b> holatda. To'lov tasdiqlangan.`,
-      { reply_markup: MAIN_KB }
-    );
-  }
-  if (card.status !== 'pending') {
-    return sendMessage(
-      chatId,
-      `\u26A0\uFE0F <code>${code}</code> kodi <b>${card.status}</b> holatda. Admin bilan bog'laning.`,
-      { reply_markup: MAIN_KB }
-    );
-  }
-
-  const photos = msg.photo || [];
-  const best = photos[photos.length - 1];
-  if (!best) return;
-
-  // Foydalanuvchiga xabar
-  await sendMessage(chatId, [
-    `\u2705 Screenshot qabul qilindi: <code>${code}</code>`,
-    'Admin tolovni tekshirib, tasdiqlashi kutilmoqda \u23F3',
-    '',
-    `Narx: <b>${fmt(card.price)} so'm</b>`,
-  ].join('\n'));
-
-  // Adminga yuborish (sizga - 892463694)
-  // Telegram user info (kim yuborgan)
-  const tgUser = msg.from;
-  const tgUsername = tgUser.username ? '@' + tgUser.username : 'yo\'q';
-  const tgName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || 'nom\'lum';
-  const tgId = tgUser.id;
-  
-  // Sayt user_id (agar bog'langan bo'lsa)
-  const siteUserId = card.user_id || 'bog\'lanmagan';
-
-  await sendPhoto(
-    ADMIN_CHAT_ID,
-    best.file_id,
-    [
-      '\u{1F514} <b>Yangi tolov screenshoti (Sayt buyurtmasi)</b>',
-      `Kod: <code>${code}</code> - ${fmt(card.price)} so'm`,
-      '',
-      '<b>Telegram mijoz (kim to\'lov qildi):</b>',
-      `ID: <code>${tgId}</code>`,
-      `Username: ${tgUsername}`,
-      `Ism: ${tgName}`,
-      '',
-      '<b>Sayt akkaunti (band qilgan):</b>',
-      `User ID: <code>${siteUserId}</code>`,
-    ].join('\n'),
-    {
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '\u2705 Tasdiqlash', callback_data: `web_approve:${code}` },
-          { text: '\u274C Rad etish', callback_data: `web_reject:${code}` },
-        ]],
-      }
-    }
-  );
 }
 
 async function myOrders(chatId, tgUserId) {
@@ -333,153 +243,41 @@ async function adminListPending(chatId) {
 
 async function handleCallback(cb) {
   const data = cb.data || '';
+  const [, action, idStr] = data.match(/^([a-z]+):(\d+)$/) || [];
+  if (!action) return;
+  const orderId = Number(idStr);
   if (!isAdmin(cb.from.id)) {
     return call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Faqat admin uchun.' });
   }
-
-  // Bot buyurtmalari: pay:123 / rej:123
-  let m = data.match(/^(pay|rej):(\d+)$/);
-  if (m) {
-    const action = m[1];
-    const orderId = Number(m[2]);
-    const order = await getBotOrder(orderId);
-    if (!order || order.status !== 'pending') {
-      return call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Buyurtma topilmadi/yopilgan.' });
-    }
-
-    if (action === 'pay') {
-      await setBotOrderStatus(orderId, 'paid');
-      if (!(await getRecord(order.code))) {
-        await createRecord({ code: order.code, name: 'TELEGRAM MIJOZ', price: order.price });
-      }
-      await sendMessage(order.tgUserId, [
-        `\u{1F389} <b>To\u2019lovingiz tasdiqlandi!</b>`,
-        '',
-        `Kod: <code>${order.code}</code> endi sizniki.`,
-        'Profil sozlash: https://nfcstore.uz/register yoki admin bilan bog\u2019laning.',
-      ].join('\n'));
-      
-      // Admin ga tasdiqlash xabari
-      await sendMessage(
-        ADMIN_CHAT_ID,
-        [
-          `\u{1F389} <b>BOT BUYURTMASI TASDIQLANDI</b>`,
-          '',
-          `Buyurtma: <b>#${orderId}</b>`,
-          `Kod: <code>${order.code}</code> \u2014 \u2705`,
-          `Mijoz: ${order.tgUsername ? '@' + order.tgUsername : (order.tgName || order.tgUserId)} (<code>${order.tgUserId}</code>)`,
-          `Narx: ${fmt(order.price)} so'm`,
-          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
-        ].join('\n'),
-        { parse_mode: 'HTML' }
-      ).catch(() => {});
-      
-      await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Tasdiqlandi \u2705' });
-      return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
-    }
-
-    if (action === 'rej') {
-      await setBotOrderStatus(orderId, 'rejected');
-      await sendMessage(order.tgUserId, [
-        `\u274C <b>#${orderId}</b> buyurtma rad etildi.`,
-        'Sababini bilish uchun admin bilan bog\u2019laning: ' + ADMIN_CONTACT,
-      ].join('\n'));
-      
-      // Admin ga rad etish xabari
-      await sendMessage(
-        ADMIN_CHAT_ID,
-        [
-          `\u274C <b>BOT BUYURTMASI RAD ETILDI</b>`,
-          '',
-          `Buyurtma: <b>#${orderId}</b>`,
-          `Kod: <code>${order.code}</code> \u2014 \u274C`,
-          `Mijoz: ${order.tgUsername ? '@' + order.tgUsername : (order.tgName || order.tgUserId)} (<code>${order.tgUserId}</code>)`,
-          `Narx: ${fmt(order.price)} so'm`,
-          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
-        ].join('\n'),
-        { parse_mode: 'HTML' }
-      ).catch(() => {});
-      
-      await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Rad etildi' });
-      return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
-    }
-    return;
+  const order = await getBotOrder(orderId);
+  if (!order || order.status !== 'pending') {
+    return call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Buyurtma topilmadi/yopilgan.' });
   }
 
-  // Sayt buyurtmalari: web_approve:CODE / web_reject:CODE
-  m = data.match(/^(web_approve|web_reject):([A-Z0-9]+)$/);
-  if (m) {
-    const action = m[1];
-    const code = m[2].toUpperCase();
-    const card = await getRecord(code);
-    if (!card) {
-      return call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Karta topilmadi.' });
+  if (action === 'pay') {
+    await setBotOrderStatus(orderId, 'paid');
+    // Sayt bilan sinxron: kodni band qilib qo'yamiz (saytda "Band" chiqadi).
+    if (!(await getRecord(order.code))) {
+      await createRecord({ code: order.code, name: 'TELEGRAM MIJOZ', price: order.price });
     }
-    if (card.status !== 'pending') {
-      return call('answerCallbackQuery', { callback_query_id: cb.id, text: `Karta allaqachon ${card.status} holatda.` });
-    }
+    await sendMessage(order.tgUserId, [
+      `\u{1F389} <b>To\u2019lovingiz tasdiqlandi!</b>`,
+      '',
+      `Kod: <code>${order.code}</code> endi sizniki.`,
+      'Profil sozlash: https://nfcstore.uz/register yoki admin bilan bog\u2019laning.',
+    ].join('\n'));
+    await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Tasdiqlandi \u2705' });
+    return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
+  }
 
-    if (action === 'web_approve') {
-      await updateCardStatus(code, 'active');
-      // Foydalanuvchiga xabar (user_id orqali)
-      if (card.user_id) {
-        await sendMessage(card.user_id, [
-          `\u{1F389} <b>To\u2019lovingiz tasdiqlandi!</b>`,
-          '',
-          `Kod: <code>${code}</code> endi <b>faol</b> holatda.`,
-          'Profilingizga o\'ting: https://nfcstore.uz/' + code.toLowerCase(),
-        ].join('\n')).catch(() => {});
-      }
-      
-      // Admin ga tasdiqlash xabari (yangi "sahifa" kabi)
-      await sendMessage(
-        ADMIN_CHAT_ID,
-        [
-          `\u{1F389} <b>TASDIQLANDI</b>`,
-          '',
-          `Kod: <code>${code}</code> endi <b>faol</b> \u2705`,
-          `Ism: ${card.name}`,
-          `Narx: ${fmt(card.price)} so'm`,
-          `Sayt User ID: <code>${card.user_id || 'nom\'lum'}</code>`,
-          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
-          '',
-          `Profil: https://nfcstore.uz/${code.toLowerCase()}`,
-        ].join('\n'),
-        { parse_mode: 'HTML' }
-      ).catch(() => {});
-      
-      await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Tasdiqlandi \u2705' });
-      return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
-    }
-
-    if (action === 'web_reject') {
-      await updateCardStatus(code, 'rejected');
-      if (card.user_id) {
-        await sendMessage(card.user_id, [
-          `\u274C <b>${code}</b> uchun to\u2019lov rad etildi.`,
-          'Sababini bilish uchun admin bilan bog\u2019laning: ' + ADMIN_CONTACT,
-        ].join('\n')).catch(() => {});
-      }
-      
-      // Admin ga rad etish xabari
-      await sendMessage(
-        ADMIN_CHAT_ID,
-        [
-          `\u274C <b>RAD ETILDI</b>`,
-          '',
-          `Kod: <code>${code}</code> \u2014 <b>rad etildi</b>`,
-          `Ism: ${card.name}`,
-          `Narx: ${fmt(card.price)} so'm`,
-          `Sayt User ID: <code>${card.user_id || 'nom\'lum'}</code>`,
-          `Vaqt: ${new Date().toLocaleString('uz-UZ')}`,
-        ].join('\n'),
-        { parse_mode: 'HTML' }
-      ).catch(() => {});
-      
-      await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Rad etildi' });
-      return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
-    }
-    return;
+  if (action === 'rej') {
+    await setBotOrderStatus(orderId, 'rejected');
+    await sendMessage(order.tgUserId, [
+      `\u274C <b>#${orderId}</b> buyurtma rad etildi.`,
+      'Sababini bilish uchun admin bilan bog\u2019laning: ' + ADMIN_CONTACT,
+    ].join('\n'));
+    await call('answerCallbackQuery', { callback_query_id: cb.id, text: 'Rad etildi' });
+    return call('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id });
   }
 }
 
@@ -509,51 +307,12 @@ export async function notifyOrderPaidAuto(order) {
   } catch {}
 }
 
-// Saytda yangi "Band qilish" buyurtmasi yaratilganda admin (sizga) xabar yuborish
-export async function notifyAdminNewWebOrder({ code, price, name, siteUserId }) {
-  if (!ADMIN_CHAT_ID) return;
-  try {
-    await sendMessage(
-      ADMIN_CHAT_ID,
-      [
-        '\u{1F4E6} <b>Yangi sayt buyurtmasi (Band qilish)</b>',
-        '',
-        `Kod: <code>${code}</code>`,
-        `Ism: ${name}`,
-        `Narx: <b>${fmt(price)} so'm</b>`,
-        `Sayt User ID: <code>${siteUserId}</code>`,
-        '',
-        'Mijoz to\'lov qilgach, screenshotni @nfcsalebot ga yuboradi.',
-        'Pastdagi tugmalar orqali tasdiqlash/rad etish mumkin.',
-      ].join('\n'),
-      {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '\u2705 Tasdiqlash', callback_data: `web_approve:${code}` },
-            { text: '\u274C Rad etish', callback_data: `web_reject:${code}` },
-          ]],
-        }
-      }
-    );
-  } catch (err) {
-    console.error('[bot] Admin new web order xabar yuborilmadi:', err.message);
-  }
-}
-
 async function handleMessage(msg) {
   const chatId = msg.chat.id;
   const from = msg.from || {};
   const text = String(msg.text || '').trim();
-  const caption = String(msg.caption || '').trim();
 
-  // Rasm yuborilgan bo'lsa: bot buyurtmasi yoki sayt buyurtmasi?
-  if (msg.photo) {
-    // Captionda kod bo'lsa -> sayt buyurtmasi
-    const codeMatch = caption.toUpperCase().match(/([A-Z]{3}[0-9]{3}|[A-Z]{3,12})/);
-    if (codeMatch) return handleWebScreenshot(msg);
-    // Aks holda -> bot buyurtmasi (eng so'nggi pending buyurtma)
-    return handleScreenshot(msg);
-  }
+  if (msg.photo && !text.startsWith('/')) return handleScreenshot(msg);
 
   const lower = text.toLowerCase();
   if (lower.startsWith('/start')) {

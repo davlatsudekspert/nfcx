@@ -11,13 +11,13 @@ import {
   IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink,
 } from '../components/Icons.jsx';
 
-const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
+export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
 const DARK_THEMES = ['classic', 'midnight', 'sunset'];
 
 // Profil mavzulari — .vz dagi CSS o'zgaruvchilari endi JSX orqali
 // beriladi (id'lar backend whitelist bilan mos: classic, midnight,
 // emerald, royal, sunset — barchasi oq-qora / kumush palitrada).
-const VZ_THEMES = {
+export const VZ_THEMES = {
   classic: { '--vz-bg-a': '#0c0c0d', '--vz-bg-b': '#1a1a1c', '--vz-card': '#131315', '--vz-ink': '#f5f5f6', '--vz-ink-dim': '#a3a3a6', '--vz-ink-faint': '#6d6d70', '--vz-line': '#2a2a2d', '--vz-accent': '#ffffff', '--vz-pill': '#232326' },
   midnight: { '--vz-bg-a': '#0c0c0d', '--vz-bg-b': '#1a1a1c', '--vz-card': '#131315', '--vz-ink': '#f5f5f6', '--vz-ink-dim': '#a3a3a6', '--vz-ink-faint': '#6d6d70', '--vz-line': '#2a2a2d', '--vz-accent': '#ffffff', '--vz-pill': '#232326' },
   emerald: { '--vz-bg-a': '#e9eaeb', '--vz-bg-b': '#d3d5d7', '--vz-card': '#f4f4f5', '--vz-ink': '#161718', '--vz-ink-dim': '#5c5e60', '--vz-ink-faint': '#8b8d8f', '--vz-line': '#dcdddf', '--vz-accent': '#101112', '--vz-pill': '#1a1b1c' },
@@ -25,12 +25,22 @@ const VZ_THEMES = {
   sunset: { '--vz-bg-a': '#141416', '--vz-bg-b': '#232326', '--vz-card': '#0f0f11', '--vz-ink': '#f7f7f8', '--vz-ink-dim': '#aeaeb1', '--vz-ink-faint': '#727275', '--vz-line': '#2c2c2f', '--vz-accent': '#e8e8ea', '--vz-pill': '#2a2a2d' },
 };
 
-function vzStyle(theme) {
+export function vzStyle(theme, record) {
+  const base = VZ_THEMES[theme] || VZ_THEMES.classic;
+  const pattern = record && record.bgPattern === false ? '' :
+    'repeating-linear-gradient(115deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 68px), ';
+  if (record && record.bgUrl) {
+    // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — shuni ko'rsatamiz
+    // (naqsh ustiga yarim shaffof qatlam sifatida qo'shiladi, o'qilishi uchun).
+    return {
+      ...base,
+      background:
+        pattern + `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}") center/cover no-repeat`,
+    };
+  }
   return {
-    ...(VZ_THEMES[theme] || VZ_THEMES.classic),
-    background:
-      'repeating-linear-gradient(115deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 68px),' +
-      ' linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
+    ...base,
+    background: pattern + 'linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
   };
 }
 
@@ -165,43 +175,7 @@ export default function ProfilePage({ code, catalog }) {
     );
   }
 
-  // Agar karta 'pending' yoki 'rejected' bo'lsa — faqat egasi ko'ra oladi
-  // (tizimga kirgan va user_id mos kelgan bo'lsa). Boshqalarga "Kutilmoqda" ko'rsatamiz.
   const isOwner = !!(user && myCards.some((c) => c.code === record.code));
-  const isPendingOrRejected = record.status === 'pending' || record.status === 'rejected';
-  
-  if (isPendingOrRejected && !isOwner) {
-    return (
-      <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle(record.theme || 'classic')}>
-        <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
-          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">nfcstore.uz/{code.toLowerCase()}</h2>
-          {record.status === 'pending' ? (
-            <>
-              <div className="mb-4 p-4 rounded-xl bg-warning/10 border border-warning/30 text-warning-content">
-                <div className="font-semibold mb-1">🕒 To'lov tasdiqlanishi kutilmoqda</div>
-                <div className="text-sm">Bu vizitka band qilindi, lekin admin to'lovni hali tasdiqlamagan.</div>
-              </div>
-              <p className="text-[13px] text-[color:var(--vz-ink-dim)]">Tasdiqlangach profil ochiq bo'ladi.</p>
-              {user && (
-                <p className="mt-3 text-xs text-[color:var(--vz-ink-faint)]">
-                  Siz tizimga kirdingiz, lekin bu vizitka hali sizga biriktirilmagan (kutilmoqda).
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="mb-4 p-4 rounded-xl bg-error/10 border border-error/30 text-error-content">
-                <div className="font-semibold mb-1">❌ To'lov rad etilgan</div>
-                <div className="text-sm">Bu vizitka uchun to'lov tasdiqlanmadi.</div>
-              </div>
-              <p className="text-[13px] text-[color:var(--vz-ink-dim)]">Batafsil ma'lumot uchun admin bilan bog'laning.</p>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   const tgUrl = socialUrl('tg', record.tg);
   const igUrl = socialUrl('ig', record.instagram);
   const fbUrl = socialUrl('fb', record.facebook);
@@ -226,7 +200,7 @@ export default function ProfilePage({ code, catalog }) {
   const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide';
 
   return (
-    <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={vzStyle(record.theme || 'classic')}>
+    <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={vzStyle(record.theme || 'classic', record)}>
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
         <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
           <IconArrowLeft /> Bosh sahifaga
@@ -270,7 +244,7 @@ export default function ProfilePage({ code, catalog }) {
         </div>
       )}
 
-      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: record.backgroundImage ? `url(${record.backgroundImage}) center/cover no-repeat` : 'var(--vz-card)' }}>
+      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}

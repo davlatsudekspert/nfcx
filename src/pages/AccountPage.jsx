@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
 import { dbUploadImage, dbSetSale } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
-import { fmt, timeAgo } from '../lib/format.js';
-import NfcCard from '../components/NfcCard.jsx';
-
-const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
+import { fmt, timeAgo, initials } from '../lib/format.js';
+import { vzStyle } from './ProfilePage.jsx';
+import {
+  IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
+  IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown,
+} from '../components/Icons.jsx';
 
 const THEMES = [
   { id: 'classic', label: 'Classic', css: 'linear-gradient(160deg,#eef1f3,#dfe4e8)', accent: '#101112' },
@@ -14,6 +16,87 @@ const THEMES = [
   { id: 'royal', label: 'Platinum', css: 'linear-gradient(160deg,#f6f6f7,#dcdde0)', accent: '#3a3c40' },
   { id: 'sunset', label: 'Ink', css: 'linear-gradient(160deg,#141416,#28282b)', accent: '#f5f5f6' },
 ];
+
+// Yig'iladigan/ochiladigan bo'lim — uzun formani mantiqiy blokларга ажратади.
+function Section({ title, subtitle, defaultOpen, children }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 first:mt-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+      >
+        <div>
+          <div className="text-sm font-bold">{title}</div>
+          {subtitle && <div className="mt-0.5 text-xs text-base-content/45">{subtitle}</div>}
+        </div>
+        <span className={`shrink-0 text-base-content/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          <IconChevronDown />
+        </span>
+      </button>
+      {open && <div className="border-t border-white/10 px-4 pb-5 pt-4">{children}</div>}
+    </div>
+  );
+}
+
+// Tahrirlash paytida o'ng tomonda ko'rinadigan jonli telefon preview —
+// ProfilePage'dagi haqiqiy fon/tema mantig'ini (vzStyle) qayta ishlatadi,
+// shunda "qanday ko'rinadi" bilan haqiqiy profil bir xil bo'ladi.
+function PhonePreview({ form, code }) {
+  const record = form;
+  const socials = [
+    form.tg && { Icon: IconTelegram, label: 'Telegram' },
+    form.instagram && { Icon: IconInstagram, label: 'Instagram' },
+    form.facebook && { Icon: IconFacebook, label: 'Facebook' },
+    form.twitter && { Icon: IconX, label: 'X' },
+    form.website && { Icon: IconGlobe, label: 'Veb-sayt' },
+    form.linkedin && { Icon: IconLinkedIn, label: 'LinkedIn' },
+    form.cardNumber && { Icon: IconTag, label: 'Karta' },
+    form.phone && { Icon: IconPhone, label: 'Tel' },
+  ].filter(Boolean);
+
+  return (
+    <div className="sticky top-6">
+      <div className="mx-auto w-[260px] rounded-[34px] border-[6px] border-[#1c1c1f] bg-[#1c1c1f] shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+        <div className="relative h-[520px] overflow-hidden rounded-[28px]" style={vzStyle(form.theme || 'classic', record)}>
+          <div className="pointer-events-none absolute left-1/2 top-2 h-4 w-20 -translate-x-1/2 rounded-full bg-black/70"></div>
+          <div className="h-full overflow-y-auto px-4 pb-6 pt-9 text-center text-[color:var(--vz-ink)]">
+            <div className="mx-auto inline-flex items-center gap-1 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-2.5 py-0.5 font-mono text-[9px] font-bold text-[color:var(--vz-ink)]">
+              # {code}
+            </div>
+            <div className="mx-auto mt-3 flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[18px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
+              {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
+            </div>
+            <div className="mt-2.5 text-[14px] font-bold leading-tight">{form.name || 'Ismingiz'}</div>
+            {form.role && <div className="mt-0.5 text-[10.5px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
+            {form.about && <p className="mx-auto mt-1.5 max-w-[190px] text-[9.5px] leading-snug text-[color:var(--vz-ink-dim)]">{form.about}</p>}
+
+            {form.hashtags && (
+              <div className="mt-2.5 flex flex-wrap justify-center gap-x-2 gap-y-0.5 text-[8.5px] font-semibold text-[color:var(--vz-accent)]">
+                {form.hashtags.split(',').map((h) => h.trim()).filter(Boolean).map((h) => <span key={h}>#{h}</span>)}
+              </div>
+            )}
+
+            <div className="mx-auto mt-4 flex max-w-[210px] flex-col gap-1.5">
+              {socials.length === 0 && (
+                <div className="rounded-lg border border-dashed border-[color:var(--vz-line)] px-3 py-3 text-[9px] text-[color:var(--vz-ink-faint)]">
+                  Aloqa maydonlarini to'ldirsangiz, tugmalar shu yerda ko'rinadi
+                </div>
+              )}
+              {socials.map(({ Icon, label }) => (
+                <div key={label} className="flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--vz-pill)] px-3 py-2 text-[10px] font-bold text-white">
+                  <Icon width={11} height={11} /> {label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-center text-[11px] text-base-content/40">Jonli oldindan ko'rish — real vaqtda yangilanadi</p>
+    </div>
+  );
+}
 
 // Rasmini klientda siqish: max 512px, JPEG ~85% (yuklash tez bo'lishi uchun).
 function fileToCompressedDataUrl(file) {
@@ -38,45 +121,13 @@ function fileToCompressedDataUrl(file) {
   });
 }
 
-// Orqa fon rasmi uchun: horizontal 4K (3840x2160) — kichik/vertical ham bo'lsa to'g'rilab beradi
-function fileToBackgroundDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Rasm formati noto\u2019g\u2019ri.'));
-      img.onload = () => {
-        const TARGET_W = 3840;
-        const TARGET_H = 2160;
-        const scale = Math.max(TARGET_W / img.width, TARGET_H / img.height);
-        const srcW = Math.min(img.width, TARGET_W / scale);
-        const srcH = Math.min(img.height, TARGET_H / scale);
-        const srcX = (img.width - srcW) / 2;
-        const srcY = (img.height - srcH) / 2;
-        const canvas = document.createElement('canvas');
-        canvas.width = TARGET_W;
-        canvas.height = TARGET_H;
-        const ctx = canvas.getContext('2d');
-        // Fill with dark theme color first
-        ctx.fillStyle = '#0c0c0d';
-        ctx.fillRect(0, 0, TARGET_W, TARGET_H);
-        // Draw image centered, covering
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, TARGET_W, TARGET_H);
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 function EditCardForm({ card, onSaved }) {
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
     avatarUrl: card.avatarUrl || '',
-    backgroundImage: card.backgroundImage || '',
+    bgUrl: card.bgUrl || '',
+    bgPattern: card.bgPattern !== false,
     tg: card.tg || '',
     phone: card.phone || '',
     email: card.email || '',
@@ -95,6 +146,7 @@ function EditCardForm({ card, onSaved }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
   const [saleBusy, setSaleBusy] = useState(false);
   const [saleMsg, setSaleMsg] = useState(null);
   const fileRef = useRef(null);
@@ -134,20 +186,20 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
-  const onPickBackground = async (e) => {
+  const onPickBgFile = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    setUploading(true);
+    setUploadingBg(true);
     setMsg(null);
     try {
-      const dataUrl = await fileToBackgroundDataUrl(file);
+      const dataUrl = await fileToCompressedDataUrl(file);
       const url = await dbUploadImage(dataUrl);
-      setForm((f) => ({ ...f, backgroundImage: url }));
-      setMsg({ type: 'ok', text: 'Orqa fon rasmi yuklandi (4K horizontal). Saqlash tugmasini bosing.' });
+      setForm((f) => ({ ...f, bgUrl: url }));
+      setMsg({ type: 'ok', text: 'Fon rasmi yuklandi. Saqlash tugmasini bosing.' });
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
-      setUploading(false);
+      setUploadingBg(false);
       if (bgFileRef.current) bgFileRef.current.value = '';
     }
   };
@@ -180,6 +232,8 @@ function EditCardForm({ card, onSaved }) {
         name: form.name.trim(),
         role: form.role.trim(),
         avatarUrl: form.avatarUrl.trim(),
+        bgUrl: form.bgUrl.trim(),
+        bgPattern: form.bgPattern,
         tg: form.tg.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -213,7 +267,6 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
-  const preview = THEMES.find((t) => t.id === form.theme) || THEMES[0];
   const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
 
   return (
@@ -235,125 +288,144 @@ function EditCardForm({ card, onSaved }) {
       </div>
       {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{saleMsg.text}</span></div>}
 
-      <div className="flex justify-center py-6">
-        <NfcCard code={card.code} name={form.name} since={card.ts} finish={THEME_FINISH[form.theme] || 'black'} size="sm" />
-      </div>
-
-      {/* Profil ko'rinishi */}
-      <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Profil ko'rinishi</div>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {THEMES.map((t) => (
-          <button key={t.id} type="button"
-            className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === t.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
-            style={{ background: t.css }}
-            onClick={() => setForm((f) => ({ ...f, theme: t.id }))}>
-            <span style={{ color: t.accent }}>{t.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Avatar */}
-<div className="mt-6 flex items-start gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
-          {form.avatarUrl
-            ? <img src={form.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
-            : <span>{(form.name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>}
-        </div>
-        <div className="min-w-0 flex-1">
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
-            {uploading ? <span className="loading loading-spinner loading-xs"></span> : 'Rasm tanlash'}
-          </button>
-          <p className="mt-2 text-xs text-base-content/45">JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.</p>
-          <input className={`${inp} font-mono text-xs`} value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="https://... yoki /uploads/..." />
-        </div>
-      </div>
-
-      {/* Orqa fon rasmi (4K horizontal) */}
-      <div className="mt-6 flex items-start gap-4">
-        <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-base-100 relative">
-          {form.backgroundImage ? (
-            <img src={form.backgroundImage} alt="background" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-xs text-base-content/45">Fon yo'q</span>
-          )}
-          <div className="absolute bottom-0 right-0 bg-primary/90 text-primary-content px-1.5 py-0.5 text-[9px] font-mono">4K</div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBackground} />
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current && bgFileRef.current.click()} disabled={uploading}>
-            {uploading ? <span className="loading loading-spinner loading-xs"></span> : 'Orqa fon tanlash (4K)'}
-          </button>
-          <p className="mt-2 text-xs text-base-content/45">Har qanday rasm (hatto kichik/vertical) → avtomatik 3840x2160 horizontal ga o'giriladi.</p>
-          <input className={`${inp} font-mono text-xs`} value={form.backgroundImage} onChange={set('backgroundImage')} placeholder="https://... yoki /uploads/..." />
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Ism *</span><input value={form.name} onChange={set('name')} className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Kasb / sarlavha</span><input value={form.role} onChange={set('role')} className={inp} /></label>
-      </div>
-      <label className="form-control mt-3 block">
-        <span className="text-xs font-semibold text-base-content/70">O'zingiz haqingizda (bio)</span>
-        <textarea rows={3} value={form.about} onChange={set('about')} placeholder="Qisqacha o'zingiz haqingizda..." className="textarea textarea-bordered mt-1 w-full bg-base-100" />
-      </label>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telegram</span><input value={form.tg} onChange={set('tg')} placeholder="@username" className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder="@username" className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder="username yoki havola" className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">X (Twitter)</span><input value={form.twitter} onChange={set('twitter')} placeholder="@username" className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Veb-sayt</span><input value={form.website} onChange={set('website')} placeholder="https://sayt.uz" className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">LinkedIn</span><input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telefon</span><input value={form.phone} onChange={set('phone')} className={inp} /></label>
-        <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Email</span><input value={form.email} onChange={set('email')} className={inp} /></label>
-      </div>
-      <label className="form-control mt-3 block">
-        <span className="text-xs font-semibold text-base-content/70">To'lov karta raqami (asosiy, profilda ko'rinadi)</span>
-        <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" className={`${inp} font-mono`} />
-      </label>
-
-      <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Qo'shimcha karta raqamlari</div>
-        <div className="mt-3 space-y-2">
-          {form.cardNumbers.map((c, i) => (
-            <div className="flex gap-2" key={i}>
-              <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder="Nomi (masalan: Humo)" className={`${inp} !mt-0`} />
-              <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" className={`${inp} !mt-0 font-mono`} />
-              <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeCardNum(i)}>&times;</button>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
+        <div className="min-w-0">
+          <Section title="Asosiy ma'lumot" subtitle="Ism, kasb, bio va rasm" defaultOpen>
+            <div className="flex items-start gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
+                {form.avatarUrl
+                  ? <img src={form.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+                  : <span>{initials(form.name)}</span>}
+              </div>
+              <div className="min-w-0 flex-1">
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
+                  {uploading ? <span className="loading loading-spinner loading-xs"></span> : 'Rasm tanlash'}
+                </button>
+                <p className="mt-2 text-xs text-base-content/45">JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.</p>
+                <input className={`${inp} font-mono text-xs`} value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="https://... yoki /uploads/..." />
+              </div>
             </div>
-          ))}
-        </div>
-        <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addCardNum}>+ Karta qo'shish</button>
-      </div>
-
-      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Qo'shimcha havolalar (istalgancha)</div>
-        <div className="mt-3 space-y-2">
-          {form.extraLinks.map((l, i) => (
-            <div className="flex gap-2" key={i}>
-              <input value={l.label} onChange={updateLink(i, 'label')} placeholder="Nomi (masalan: Portfolio)" className={`${inp} !mt-0`} />
-              <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." className={`${inp} !mt-0 font-mono`} />
-              <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeLink(i)}>&times;</button>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Ism *</span><input value={form.name} onChange={set('name')} className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Kasb / sarlavha</span><input value={form.role} onChange={set('role')} className={inp} /></label>
             </div>
-          ))}
+            <label className="form-control mt-3 block">
+              <span className="text-xs font-semibold text-base-content/70">O'zingiz haqingizda (bio)</span>
+              <textarea rows={3} value={form.about} onChange={set('about')} placeholder="Qisqacha o'zingiz haqingizda..." className="textarea textarea-bordered mt-1 w-full bg-base-100" />
+            </label>
+          </Section>
+
+          <Section title="Dizayn va fon" subtitle="Tema, fon rasmi, naqsh">
+            <div className="font-mono text-[11px] uppercase tracking-widest text-base-content/45">Tema</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {THEMES.map((t) => (
+                <button key={t.id} type="button"
+                  className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === t.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
+                  style={{ background: t.css }}
+                  onClick={() => setForm((f) => ({ ...f, theme: t.id }))}>
+                  <span style={{ color: t.accent }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 font-mono text-[11px] uppercase tracking-widest text-base-content/45">Fon rasmi</div>
+            <div className="mt-2 flex items-start gap-4">
+              <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-white/15 bg-base-100">
+                {form.bgUrl
+                  ? <img src={form.bgUrl} alt="fon" className="h-full w-full object-cover" />
+                  : <div className="flex h-full w-full items-center justify-center text-[10px] text-base-content/40">Standart</div>}
+              </div>
+              <div className="min-w-0 flex-1">
+                <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBgFile} />
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current && bgFileRef.current.click()} disabled={uploadingBg}>
+                    {uploadingBg ? <span className="loading loading-spinner loading-xs"></span> : 'Fon rasmi tanlash'}
+                  </button>
+                  {form.bgUrl && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm((f) => ({ ...f, bgUrl: '' }))}>
+                      Standart fonga qaytarish
+                    </button>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-base-content/45">O'z rasmingizni qo'ysangiz, u tema fonining o'rniga ishlatiladi.</p>
+                <input className={`${inp} font-mono text-xs`} value={form.bgUrl} onChange={set('bgUrl')} placeholder="https://... yoki /uploads/..." />
+              </div>
+            </div>
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm">
+              <input type="checkbox" className="checkbox checkbox-sm" checked={form.bgPattern} onChange={(e) => setForm((f) => ({ ...f, bgPattern: e.target.checked }))} />
+              <span>Diagonal naqshli fon (yoqilgan bo'lsa, fon ustida yengil chiziqlar ko'rinadi)</span>
+            </label>
+          </Section>
+
+          <Section title="Aloqa va ijtimoiy tarmoqlar" subtitle="Telegram, Instagram, telefon va h.k.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telegram</span><input value={form.tg} onChange={set('tg')} placeholder="@username" className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder="@username" className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder="username yoki havola" className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">X (Twitter)</span><input value={form.twitter} onChange={set('twitter')} placeholder="@username" className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Veb-sayt</span><input value={form.website} onChange={set('website')} placeholder="https://sayt.uz" className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">LinkedIn</span><input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telefon</span><input value={form.phone} onChange={set('phone')} className={inp} /></label>
+              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Email</span><input value={form.email} onChange={set('email')} className={inp} /></label>
+            </div>
+          </Section>
+
+          <Section title="To'lov kartalari" subtitle="Profilda ko'rinadigan karta raqamlari">
+            <label className="form-control block">
+              <span className="text-xs font-semibold text-base-content/70">Asosiy karta raqami</span>
+              <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" className={`${inp} font-mono`} />
+            </label>
+            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Qo'shimcha karta raqamlari</div>
+              <div className="mt-3 space-y-2">
+                {form.cardNumbers.map((c, i) => (
+                  <div className="flex gap-2" key={i}>
+                    <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder="Nomi (masalan: Humo)" className={`${inp} !mt-0`} />
+                    <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" className={`${inp} !mt-0 font-mono`} />
+                    <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeCardNum(i)}>&times;</button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addCardNum}>+ Karta qo'shish</button>
+            </div>
+          </Section>
+
+          <Section title="Qo'shimcha havolalar va hashtaglar" subtitle="Portfolio, boshqa saytlar, teglar">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Qo'shimcha havolalar (istalgancha)</div>
+              <div className="mt-3 space-y-2">
+                {form.extraLinks.map((l, i) => (
+                  <div className="flex gap-2" key={i}>
+                    <input value={l.label} onChange={updateLink(i, 'label')} placeholder="Nomi (masalan: Portfolio)" className={`${inp} !mt-0`} />
+                    <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." className={`${inp} !mt-0 font-mono`} />
+                    <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeLink(i)}>&times;</button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addLink}>+ Havola qo'shish</button>
+            </div>
+            <label className="form-control mt-4 block">
+              <span className="text-xs font-semibold text-base-content/70">Hashtaglar (vergul bilan)</span>
+              <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
+            </label>
+          </Section>
+
+          <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
+            {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Profilni saqlash'}
+          </button>
+          {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
         </div>
-        <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addLink}>+ Havola qo'shish</button>
+
+        <div className="hidden lg:block">
+          <PhonePreview form={form} code={card.code} />
+        </div>
       </div>
 
-      <label className="form-control mt-4 block">
-        <span className="text-xs font-semibold text-base-content/70">Hashtaglar (vergul bilan)</span>
-        <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
-      </label>
-
-      <button className="btn btn-primary mt-5" onClick={submit} disabled={busy}>
-        {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Profilni saqlash'}
-      </button>
-      {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
-
-      <p className="mt-4 text-xs text-base-content/45">
-        Tanlangan mavzu: <b style={{ color: preview.accent }}>{preview.label}</b>. «Ko'rish» orqali profilingizni tekshirib ko'ring.
-      </p>
+      {/* Mobil uchun preview forma tagida ko'rinadi */}
+      <div className="mt-8 lg:hidden">
+        <PhonePreview form={form} code={card.code} />
+      </div>
     </div>
   );
 }
