@@ -269,15 +269,29 @@ async function handleWebScreenshot(msg) {
   ].join('\n'));
 
   // Adminga yuborish (sizga - 892463694)
-  const who = msg.from.username ? '@' + msg.from.username : (msg.from.first_name || '');
+  // Telegram user info (kim yuborgan)
+  const tgUser = msg.from;
+  const tgUsername = tgUser.username ? '@' + tgUser.username : 'yo\'q';
+  const tgName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || 'nom\'lum';
+  const tgId = tgUser.id;
+  
+  // Sayt user_id (agar bog'langan bo'lsa)
+  const siteUserId = card.user_id || 'bog\'lanmagan';
+
   await sendPhoto(
     ADMIN_CHAT_ID,
     best.file_id,
     [
-      '\u{1F514} <b>Yangi tolov screenshoti (Sayt)</b>',
+      '\u{1F514} <b>Yangi tolov screenshoti (Sayt buyurtmasi)</b>',
       `Kod: <code>${code}</code> - ${fmt(card.price)} so'm`,
-      `Mijoz: ${who} (<code>${msg.from.id}</code>)`,
-      `User ID (sayt): ${card.user_id || 'nom\'lum'}`,
+      '',
+      '<b>Telegram mijoz (kim to\'lov qildi):</b>',
+      `ID: <code>${tgId}</code>`,
+      `Username: ${tgUsername}`,
+      `Ism: ${tgName}`,
+      '',
+      '<b>Sayt akkaunti (band qilgan):</b>',
+      `User ID: <code>${siteUserId}</code>`,
     ].join('\n'),
     {
       reply_markup: {
@@ -427,6 +441,29 @@ export async function notifyOrderPaidAuto(order) {
       );
     }
   } catch {}
+}
+
+// Saytda yangi "Band qilish" buyurtmasi yaratilganda admin (sizga) xabar yuborish
+export async function notifyAdminNewWebOrder({ code, price, name, siteUserId }) {
+  if (!ADMIN_CHAT_ID) return;
+  try {
+    await sendMessage(
+      ADMIN_CHAT_ID,
+      [
+        '\u{1F4E6} <b>Yangi sayt buyurtmasi (Band qilish)</b>',
+        '',
+        `Kod: <code>${code}</code>`,
+        `Ism: ${name}`,
+        `Narx: <b>${fmt(price)} so'm</b>`,
+        `Sayt User ID: <code>${siteUserId}</code>`,
+        '',
+        'Mijoz to\'lov qilgach, screenshotni @nfcsalebot ga yuboradi.',
+        'Sizga avtomatik keladi \u2014 tasdiqlashingiz kerak bo\'ladi.',
+      ].join('\n')
+    );
+  } catch (err) {
+    console.error('[bot] Admin new web order xabar yuborilmadi:', err.message);
+  }
 }
 
 async function handleMessage(msg) {

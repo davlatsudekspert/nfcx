@@ -165,7 +165,43 @@ export default function ProfilePage({ code, catalog }) {
     );
   }
 
+  // Agar karta 'pending' yoki 'rejected' bo'lsa — faqat egasi ko'ra oladi
+  // (tizimga kirgan va user_id mos kelgan bo'lsa). Boshqalarga "Kutilmoqda" ko'rsatamiz.
   const isOwner = !!(user && myCards.some((c) => c.code === record.code));
+  const isPendingOrRejected = record.status === 'pending' || record.status === 'rejected';
+  
+  if (isPendingOrRejected && !isOwner) {
+    return (
+      <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle(record.theme || 'classic')}>
+        <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
+          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">nfcstore.uz/{code.toLowerCase()}</h2>
+          {record.status === 'pending' ? (
+            <>
+              <div className="mb-4 p-4 rounded-xl bg-warning/10 border border-warning/30 text-warning-content">
+                <div className="font-semibold mb-1">🕒 To'lov tasdiqlanishi kutilmoqda</div>
+                <div className="text-sm">Bu vizitka band qilindi, lekin admin to'lovni hali tasdiqlamagan.</div>
+              </div>
+              <p className="text-[13px] text-[color:var(--vz-ink-dim)]">Tasdiqlangach profil ochiq bo'ladi.</p>
+              {user && (
+                <p className="mt-3 text-xs text-[color:var(--vz-ink-faint)]">
+                  Siz tizimga kirdingiz, lekin bu vizitka hali sizga biriktirilmagan (kutilmoqda).
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="mb-4 p-4 rounded-xl bg-error/10 border border-error/30 text-error-content">
+                <div className="font-semibold mb-1">❌ To'lov rad etilgan</div>
+                <div className="text-sm">Bu vizitka uchun to'lov tasdiqlanmadi.</div>
+              </div>
+              <p className="text-[13px] text-[color:var(--vz-ink-dim)]">Batafsil ma'lumot uchun admin bilan bog'laning.</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const tgUrl = socialUrl('tg', record.tg);
   const igUrl = socialUrl('ig', record.instagram);
   const fbUrl = socialUrl('fb', record.facebook);

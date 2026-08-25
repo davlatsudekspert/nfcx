@@ -17,7 +17,7 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { startBot, notifyOrderPaidAuto } from './bot.js';
+import { startBot, notifyOrderPaidAuto, notifyAdminNewWebOrder } from './bot.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -366,6 +366,23 @@ app.get('/api/records/:code', async (req, res) => {
   try {
     const rec = await getRecord(code);
     if (!rec) return res.status(404).json({ error: 'not_found' });
+    
+    // Agar karta pending/rejected bo'lsa — faqat egasi ko'ra oladi
+    const user = await currentUser(req);
+    const isOwner = user && rec.user_id === user.id;
+    if ((rec.status === 'pending' || rec.status === 'rejected') && !isOwner) {
+      // Egasi emas, lekin kod mavjud — minimal ma'lumot qaytaramiz
+      return res.json({ 
+        code: rec.code, 
+        name: rec.name, 
+        status: rec.status, 
+        pending: rec.status === 'pending',
+        message: rec.status === 'pending' 
+          ? 'Karta band qilindi, to\'lov tasdiqlanishi kutilmoqda' 
+          : 'To\'lov rad etilgan, admin bilan bog\'laning'
+      });
+    }
+    
     res.json(rec);
   } catch (err) {
     console.error('[api] getRecord:', err.message);
@@ -406,6 +423,9 @@ app.post('/api/records/:code', async (req, res) => {
     const created = await createRecord({ ...record, code, price, status: 'pending' });
     if (!created) return res.status(409).json({ error: 'already_taken' });
     await attachCardToUser(code, user.id);
+
+    // Admin (bot) ga xabar yuborish: yangi sayt buyurtmasi
+    notifyAdminNewWebOrder({ code, price, name: created.name, siteUserId: user.id }).catch(() => {});
 
     console.log(`[api] Band qilindi (kutilmoqda): ${code} — ${created.name} (${price} so'm)`);
     res.status(201).json({ ...created, pending: true, message: 'Karta yaratildi, to\'lov tasdiqlanishi kutilmoqda. Chek rasmini @nfcsalebot ga yuboring.' });
