@@ -38,6 +38,8 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
 
   const submit = async () => {
     if (!name.trim()) { setMsg({ type: 'err', text: 'Ismingizni kiriting.' }); return; }
+    if (!tg.trim()) { setMsg({ type: 'err', text: 'Telegram username kiriting (masalan: @username).' }); return; }
+    if (!phone.trim()) { setMsg({ type: 'err', text: 'Telefon raqamini kiriting.' }); return; }
     if (needsAccount) {
       if (!acctEmail.trim()) { setMsg({ type: 'err', text: 'Vizitkangizni boshqarish uchun email kiriting.' }); return; }
       if (acctPassword.length < 6) { setMsg({ type: 'err', text: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' }); return; }
@@ -128,26 +130,28 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <div className="mt-5 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
               <label className={field}>
                 <span className="text-xs font-semibold text-base-content/70">Ismingiz *</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Azizbek Turgunov" className={inp} />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Azizbek Turgunov" className={inp} required />
               </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className={field}>
+                  <span className="text-xs font-semibold text-base-content/70">Telegram *</span>
+                  <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username" className={inp} required />
+                </label>
+                <label className={field}>
+                  <span className="text-xs font-semibold text-base-content/70">Telefon *</span>
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 XX XXX XX XX" className={inp} required />
+                </label>
+              </div>
+              <div className="divider my-2"></div>
+              <p className="text-xs text-base-content/50">Quyidagilar ixtiyoriy — keyin /account dan o'zgartirib bo'ladi</p>
               <label className={field}>
                 <span className="text-xs font-semibold text-base-content/70">Kasb / sarlavha</span>
                 <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Mobile App Developer & Community Builder" className={inp} />
               </label>
               <label className={field}>
-                <span className="text-xs font-semibold text-base-content/70">Avatar rasm havolasi (ixtiyoriy)</span>
+                <span className="text-xs font-semibold text-base-content/70">Avatar rasm havolasi</span>
                 <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." className={inp} />
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className={field}>
-                  <span className="text-xs font-semibold text-base-content/70">Telegram</span>
-                  <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username" className={inp} />
-                </label>
-                <label className={field}>
-                  <span className="text-xs font-semibold text-base-content/70">Telefon</span>
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 XX XXX XX XX" className={inp} />
-                </label>
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className={field}>
                   <span className="text-xs font-semibold text-base-content/70">Email</span>
