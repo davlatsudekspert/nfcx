@@ -182,15 +182,15 @@ export default function HomePage({ catalog, refreshCatalog }) {
             {/* Stats */}
             <Reveal delay="[transition-delay:320ms]">
               <div className="mt-7 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
                   <div className="text-lg font-bold"><CountUp value={catalog.length} /></div>
                   <div className="text-xs text-base-content/50">Band qilingan</div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
                   <div className="text-lg font-bold"><CountUp value={currentBase(catalog.length)} suffix=" so'm" /></div>
                   <div className="text-xs text-base-content/50">Hozirgi minimal narx</div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
                   <div className="text-lg font-bold"><CountUp value={nextBase(catalog.length)} suffix=" so'm" /></div>
                   <div className="text-xs text-base-content/50">Keyingi savdodan boshlab</div>
                 </div>
@@ -200,7 +200,10 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
           {/* ===== Neon orbit kompozitsiyasi ===== */}
           <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center lg:block">
-            <div className="relative h-[480px] w-[480px]" aria-hidden="true">
+            <div className="relative h-[520px] w-[520px]" aria-hidden="true">
+              {/* Yumshoq porlash — kartaning orqasidagi chuqurlik */}
+              <div className="absolute inset-[6%] rounded-full bg-[radial-gradient(circle,rgba(212,175,90,0.16),transparent_68%)] blur-[6px]"></div>
+
               <div className="absolute inset-[5%] rounded-full border border-[rgba(201,162,39,0.30)] shadow-[0_0_70px_rgba(180,140,30,0.22),inset_0_0_55px_rgba(201,162,39,0.10)]"></div>
               <div className="absolute -inset-[calc(5%-10px)] rounded-full border border-dashed border-[rgba(212,175,90,0.15)]"></div>
               <div className="absolute inset-[5%] animate-[spinSlow_16s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0_76%,rgba(232,193,101,0.9)_94%,transparent_100%)] [-webkit-mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),#000_calc(100%_-_3px))] [filter:drop-shadow(0_0_8px_rgba(201,162,39,0.55))]"></div>
@@ -211,7 +214,13 @@ export default function HomePage({ catalog, refreshCatalog }) {
                 <span className="absolute -top-1 left-1/2 ml-[-4px] h-[7px] w-[7px] rounded-full bg-[#f0cf7a] opacity-75 shadow-[0_0_14px_3px_rgba(212,175,90,0.55)]"></span>
               </div>
 
-              <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-54%] animate-[floatY_5s_ease-in-out_infinite]">
+              {/* Yorug' zarrachalar — chuqurlik his qildiradi */}
+              <span className="absolute left-[18%] top-[12%] h-[5px] w-[5px] rounded-full bg-[rgba(232,193,101,0.85)] shadow-[0_0_10px_2px_rgba(212,175,90,0.5)] [animation:floatY_6s_ease-in-out_infinite] [animation-delay:.2s]"></span>
+              <span className="absolute left-[10%] top-[64%] h-[3px] w-[3px] rounded-full bg-[rgba(232,193,101,0.85)] shadow-[0_0_8px_2px_rgba(212,175,90,0.45)] [animation:floatY_6s_ease-in-out_infinite] [animation-delay:1.4s]"></span>
+              <span className="absolute left-[84%] top-[22%] h-[4px] w-[4px] rounded-full bg-[rgba(232,193,101,0.85)] shadow-[0_0_9px_2px_rgba(212,175,90,0.48)] [animation:floatY_6s_ease-in-out_infinite] [animation-delay:.9s]"></span>
+              <span className="absolute left-[80%] top-[76%] h-[3px] w-[3px] rounded-full bg-[rgba(232,193,101,0.85)] shadow-[0_0_8px_2px_rgba(212,175,90,0.45)] [animation:floatY_6s_ease-in-out_infinite] [animation-delay:2.1s]"></span>
+
+              <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-55%] animate-[floatY_5.5s_ease-in-out_infinite]">
                 <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" rim />
               </div>
 

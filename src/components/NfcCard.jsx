@@ -14,7 +14,7 @@ const FINISHES = {
 };
 
 const CARD_SIZES = {
-  lg: 'h-[214px] w-[340px]',
+  lg: 'h-[240px] w-[380px]',
   md: 'h-[176px] w-[280px]',
   sm: 'h-[138px] w-[220px]',
 };
