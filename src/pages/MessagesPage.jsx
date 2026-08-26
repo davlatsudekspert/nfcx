@@ -62,7 +62,7 @@ function Thread({ conversationId, myUserId }) {
   }, [conversationId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages.length]);
 
   const send = async () => {
