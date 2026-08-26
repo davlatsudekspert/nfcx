@@ -1661,15 +1661,17 @@ export async function getOwnerByCode(code) {
 }
 
 // Oddiy (pullik bo'lmagan) obuna — bepul, darhol yoziladi.
+// Obuna — endi HAMMASI bepul (premium yoki oddiy profil farqi yo'q,
+// obuna to'lovi butunlay bekor qilindi). Premium status faqat vizual
+// belgi/tarif sifatida qoladi (rang, king emoji va h.k.).
 export async function followUserFree(followerId, followeeId) {
   if (followerId === followeeId) return { error: 'CANNOT_FOLLOW_SELF' };
   const { rows: exists } = await pool.query(
     `SELECT id FROM follows WHERE follower_id = $1 AND followee_id = $2`, [followerId, followeeId]
   );
   if (exists[0]) return { error: 'ALREADY_FOLLOWING' };
-  const { rows: feRows } = await pool.query(`SELECT is_premium AS "isPremium" FROM users WHERE id = $1`, [followeeId]);
+  const { rows: feRows } = await pool.query(`SELECT id FROM users WHERE id = $1`, [followeeId]);
   if (!feRows[0]) return { error: 'NOT_FOUND' };
-  if (feRows[0].isPremium) return { error: 'PAYMENT_REQUIRED' };
   await pool.query(`INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES ($1,$2,FALSE,0)`, [followerId, followeeId]);
   return { ok: true, paid: false };
 }

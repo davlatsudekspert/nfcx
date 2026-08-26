@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetPayment } from '../lib/db.js';
+import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierFromPatterns, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
@@ -169,18 +169,23 @@ function MusicPlayer({ url, accentColor }) {
   if (!url) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-30">
+    <div className="fixed bottom-5 right-5 z-30 flex items-center gap-2">
       <audio ref={audioRef} src={url} loop preload="none" onEnded={() => setPlaying(false)} />
+      {!playing && (
+        <span className="hidden rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:inline-block">
+          {'\u{1F3B5}'} Musiqa
+        </span>
+      )}
       <button
         onClick={toggle}
-        className={`flex h-12 w-12 items-center justify-center rounded-full text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : ''}`}
+        className={`relative flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
         style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
         aria-label={playing ? 'Musiqani to\u2018xtatish' : 'Musiqani yoqish'}
       >
         {playing ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
         ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
         )}
       </button>
     </div>
@@ -196,31 +201,24 @@ export default function ProfilePage({ code, catalog }) {
   const [followStats, setFollowStats] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
   const [followMsg, setFollowMsg] = useState(null);
-  const [followOrder, setFollowOrder] = useState(null); // { orderId, payLink, amount } — to'lov kutilayotgan obuna
   const { user, myCards } = useAuth();
 
   useEffect(() => {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
   }, [code, user]);
 
+  // Obuna endi har doim bepul va darhol amalga oshadi.
   const toggleFollow = async () => {
     setFollowBusy(true);
     setFollowMsg(null);
     try {
       if (followStats?.isFollowing) {
         await dbUnfollow(code);
-        const stats = await dbFollowStats(code);
-        setFollowStats(stats);
       } else {
-        const result = await dbFollow(code);
-        if (result.pending) {
-          // Premium profil — real to'lov kerak, checkout'ga yo'naltiramiz.
-          setFollowOrder(result);
-        } else {
-          const stats = await dbFollowStats(code);
-          setFollowStats(stats);
-        }
+        await dbFollow(code);
       }
+      const stats = await dbFollowStats(code);
+      setFollowStats(stats);
     } catch (err) {
       if (err.code === 'unauthorized') { navigate('/login'); return; }
       setFollowMsg(err.message);
@@ -228,28 +226,6 @@ export default function ProfilePage({ code, catalog }) {
       setFollowBusy(false);
     }
   };
-
-  // To'lov kutilayotgan obuna holatini kuzatib turamiz.
-  useEffect(() => {
-    if (!followOrder) return;
-    const t = setInterval(async () => {
-      try {
-        const st = await dbGetPayment(followOrder.orderId);
-        if (st.status === 'paid') {
-          clearInterval(t);
-          setFollowOrder(null);
-          const stats = await dbFollowStats(code);
-          setFollowStats(stats);
-          setFollowMsg(null);
-        } else if (st.status === 'cancelled') {
-          clearInterval(t);
-          setFollowOrder(null);
-          setFollowMsg("To'lov bekor qilindi.");
-        }
-      } catch { /* keyingi urinishda qayta tekshiramiz */ }
-    }, 3000);
-    return () => clearInterval(t);
-  }, [followOrder, code]);
 
   const startChat = async () => {
     if (!user) { navigate('/login'); return; }
@@ -452,7 +428,7 @@ export default function ProfilePage({ code, catalog }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
-            {!isOwner && !followOrder && (
+            {!isOwner && (
               <>
                 <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} Xabar yozish</button>
                 <button
@@ -460,13 +436,7 @@ export default function ProfilePage({ code, catalog }) {
                   onClick={toggleFollow}
                   disabled={followBusy}
                 >
-                  {followBusy
-                    ? '...'
-                    : followStats?.isFollowing
-                      ? 'Obunani bekor qilish'
-                      : record.isPremium
-                        ? `Obuna bo'lish \u2014 ${fmt(500)} so'm`
-                        : "Obuna bo'lish"}
+                  {followBusy ? '...' : followStats?.isFollowing ? 'Obunani bekor qilish' : "Obuna bo'lish"}
                 </button>
               </>
             )}
@@ -476,17 +446,6 @@ export default function ProfilePage({ code, catalog }) {
           <div className="mt-2 flex gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
             <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> obunachi</span>
             <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> obuna</span>
-          </div>
-        )}
-        {followOrder && (
-          <div className="mt-3 rounded-xl border border-[color:var(--vz-line)] p-3.5">
-            <p className="text-[13px] text-[color:var(--vz-ink-dim)]">Obuna bo'lish uchun {fmt(followOrder.amount)} so'm to'lang — tasdiqlangach avtomatik faollashadi.</p>
-            <a href={followOrder.payLink} target="_blank" rel="noopener noreferrer" className={`${pillBtn} mt-2 inline-block`}>
-              To'lovga o'tish
-            </a>
-            <div className="mt-2 flex items-center gap-2 text-[11px] text-[color:var(--vz-ink-faint)]">
-              <span className="loading loading-spinner loading-xs"></span> To'lov kutilmoqda...
-            </div>
           </div>
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}

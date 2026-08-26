@@ -167,7 +167,7 @@ function PremiumPanel({ user, onBecamePremium }) {
     return (
       <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
         <div className="flex items-center gap-2 text-sm font-bold text-accent">{'\u2B50'} Siz premium foydalanuvchisiz</div>
-        <p className="mt-1 text-xs text-base-content/50">Boshqalar profilingizga obuna bo'lish uchun 500 so'm to'laydi — bu mablag' (komissiyadan keyin) sizga to'lanadi.</p>
+        <p className="mt-1 text-xs text-base-content/50">Profilingiz oltin/kumush belgi va {'\u{1F451}'} qirol emoji bilan ajralib turadi — sizga obuna bo'lish endi bepul.</p>
       </div>
     );
   }
@@ -189,7 +189,7 @@ function PremiumPanel({ user, onBecamePremium }) {
     <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
       <div className="text-sm font-bold">Premium profilga o'ting</div>
       <p className="mt-1 text-xs text-base-content/50">
-        Premium profil bo'lsangiz, boshqa foydalanuvchilar sizga obuna bo'lish uchun <b>500 so'm</b> to'laydi. O'tish narxi: <b>{fmt(PREMIUM_FEE)} so'm</b> (bir martalik, real to'lov).
+        Premium profil — bu maxsus maqom belgisi: profilingiz oltin rangda, yonida {'\u{1F451}'} qirol emoji bilan chiqadi va boshqalarga ko'zga yaqqol tashlanadi. O'tish narxi: <b>{fmt(PREMIUM_FEE)} so'm</b> (bir martalik, real to'lov).
       </p>
       {!order ? (
         <button className="btn btn-accent btn-sm mt-3" onClick={submit} disabled={busy}>
@@ -349,7 +349,7 @@ function EditCardForm({ card, onSaved }) {
     const startPrice = Math.round(Number(auctionForm.startPrice));
     const buyNowPrice = auctionForm.buyNowPrice ? Math.round(Number(auctionForm.buyNowPrice)) : null;
     const hours = Math.min(72, Math.max(1, Math.round(Number(auctionForm.hours) || 24)));
-    if (!startPrice || startPrice < 1000) { setAuctionMsg({ type: 'err', text: "Boshlang'ich narx kamida 1 000 so'm bo'lishi kerak." }); return; }
+    if (!startPrice || startPrice < 10_000) { setAuctionMsg({ type: 'err', text: "Boshlang'ich narx kamida 10 000 so'm bo'lishi kerak." }); return; }
     if (!auctionForm.sellerPaymeNumber.trim()) { setAuctionMsg({ type: 'err', text: "G'alaba pulini olish uchun Payme yoki karta raqamingizni kiriting." }); return; }
     setAuctionBusy(true);
     setAuctionMsg(null);

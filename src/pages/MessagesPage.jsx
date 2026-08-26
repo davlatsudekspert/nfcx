@@ -83,14 +83,33 @@ function Thread({ conversationId, myUserId }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-2 overflow-y-auto p-4">
-        {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.senderId === myUserId ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${m.senderId === myUserId ? 'bg-accent text-accent-content' : 'bg-base-300'}`}>
-              {m.body}
-              <div className="mt-0.5 text-right text-[10px] opacity-60">{timeAgo(new Date(m.createdAt).getTime())}</div>
+        {messages.map((m) => {
+          const mine = m.senderId === myUserId;
+          return (
+            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-content' : 'bg-base-300'}`}>
+                {m.body}
+                <div className="mt-0.5 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                  {timeAgo(new Date(m.createdAt).getTime())}
+                  {mine && (
+                    m.isRead ? (
+                      // O'qilgan — ikkita qalin ptichka (WhatsApp uslubida).
+                      <svg width="15" height="11" viewBox="0 0 16 11" fill="none" aria-label="O'qilgan">
+                        <path d="M1 5.5L4.5 9L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    ) : (
+                      // Yuborildi, lekin hali o'qilmagan — bitta ptichka, xiraroq.
+                      <svg width="12" height="11" viewBox="0 0 13 11" fill="none" className="opacity-60" aria-label="Yuborildi">
+                        <path d="M1 5.5L4.5 9L11.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={bottomRef}></div>
       </div>
       <div className="flex gap-2 border-t border-white/10 p-3">

@@ -17,8 +17,8 @@ import {
   setAuctionSellerPayme, markAuctionPayoutPaid,
   isPhoneBotVerified,
   createPhysicalCard, resolvePhysicalCard,
-  requestPremium, getUserById, getOwnerByCode,
-  followUserFree, requestPaidFollow, unfollowUser, getFollowStats,
+  requestPremium, getOwnerByCode,
+  followUserFree, unfollowUser, getFollowStats,
   listUserPayments, getPendingPayout,
   getOrCreateConversation, listConversations, isConversationParticipant, listMessages,
   sendMessage, markConversationRead, totalUnreadCount,
@@ -36,10 +36,12 @@ import { adminRouter } from './admin.js';
 
 const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
 const AUCTION_MAX_HOURS = 72;
-const PHYSICAL_CARD_FEE = 200_000; // NFC Coin / so'm — qat'iy, o'zgarmas narx
+const PHYSICAL_CARD_FEE = 200_000;  // Jismoniy karta narxi
 const PREMIUM_UPGRADE_FEE = 5_000;  // Premium profil bo'lish narxi
-const PREMIUM_FOLLOW_FEE = 500;     // Premium profilga obuna bo'lish narxi
-const PREMIUM_FOLLOW_COMMISSION_PCT = Number(process.env.PREMIUM_FOLLOW_COMMISSION_PCT || 5);
+// Diqqat: obuna (follow) bepul — quyidagi ikkita o'zgaruvchi endi
+// ishlatilmaydi, lekin kelajakda kerak bo'lib qolsa deb saqlab qo'yildi.
+// const PREMIUM_FOLLOW_FEE = 500;
+// const PREMIUM_FOLLOW_COMMISSION_PCT = Number(process.env.PREMIUM_FOLLOW_COMMISSION_PCT || 5);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -187,9 +189,12 @@ function validateBody(body) {
     : '';
   // Fon qimirlab turadigan animatsiyami — standart holatda yoqilgan.
   const bgAnimated = body.bgAnimated === false ? false : true;
-  // Profil musiqasi — faqat havola (fayl yuklash emas, hajmi katta bo'lgani
-  // uchun), xavfsizlik uchun http(s) formatidagi havolalargagina ruxsat.
-  const musicUrl = safeUrl(body.musicUrl);
+  // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
+  // fayli (xuddi avatar/fon rasmi kabi).
+  let musicUrl = safeUrl(body.musicUrl);
+  if (!musicUrl && typeof body.musicUrl === 'string' && body.musicUrl.startsWith('/uploads/')) {
+    musicUrl = cleanStr(body.musicUrl, 300).replace(/[^\w\-./]/g, '');
+  }
   return {
     record: {
       name,
@@ -262,16 +267,8 @@ app.post('/api/follow/:code', async (req, res) => {
   try {
     const ownerId = await getOwnerByCode(code);
     if (!ownerId) return res.status(404).json({ error: 'NOT_FOUND' });
-    const owner = await getUserById(ownerId);
 
-    if (owner?.isPremium) {
-      if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
-      const result = await requestPaidFollow(user.id, ownerId, PREMIUM_FOLLOW_FEE);
-      if (result.error) return res.status(409).json(result);
-      const payLink = paymeCheckoutLink(result.orderId, PREMIUM_FOLLOW_FEE);
-      return res.status(202).json({ pending: true, orderId: result.orderId, amount: PREMIUM_FOLLOW_FEE, payLink });
-    }
-
+    // Obuna endi har doim bepul — premium yoki oddiy profil farqsiz.
     const result = await followUserFree(user.id, ownerId);
     if (result.error) return res.status(409).json(result);
     res.json(result);
@@ -531,7 +528,7 @@ app.post('/api/auctions', async (req, res) => {
   // e-wallet yo'q, shuning uchun admin qo'lda shu raqamga o'tkazadi.
   const sellerPaymeNumber = cleanStr(req.body?.sellerPaymeNumber, 30);
 
-  if (!code || !startPrice || startPrice < 1000) return res.status(422).json({ error: 'bad_input' });
+  if (!code || !startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
   if (buyNowPrice && buyNowPrice <= startPrice) return res.status(422).json({ error: 'buy_now_too_low' });
   if (!sellerPaymeNumber) return res.status(422).json({ error: 'seller_payme_required' });
 

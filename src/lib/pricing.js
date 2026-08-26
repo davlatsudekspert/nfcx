@@ -2,11 +2,11 @@ export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
 // Dinamik narxlash: boshlang'ich narx har bir band qilingan vizitka bilan
 // oshib boradi (talab ortishi bilan qimmatlashadi).
-export const BASE_PRICE = 200000;      // start narxi
+export const BASE_PRICE = 40000;       // start narxi (avvalgi 200 000 / 5)
 export const PRICE_GROWTH = 0.01;      // har band qilingan vizitka: +1%
 export const MAX_PRICE_MULT = 4;       // shift: maksimal 4 barobar (800 000)
 
-const ROUND_TO = 5000;
+const ROUND_TO = 1000; // avvalgi 5000 / 5 — narx granulasi ham mos ravishda kichraydi
 
 function roundPrice(n) {
   return Math.round(n / ROUND_TO) * ROUND_TO;
@@ -127,7 +127,7 @@ export function priceFor(letters, digits, sold = 0) {
 // Qo'lda belgilangan qat'iy narxlar (so'mda) — eksklyuziv kodlar uchun.
 // Naqsh ko'paytmalaridan qat'i nazar, narx hech qachon bundan past bo'lmaydi.
 export const FIXED_PRICES = {
-  VIP777: 6000000,
+  VIP777: 1200000, // avvalgi 6 000 000 / 5
 };
 
 // Kod bo'yicha yakuniy narx: qat'iy narx mavjud bo'lsa u qo'llanadi,
