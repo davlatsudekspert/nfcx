@@ -12,8 +12,7 @@ import {
 } from '../components/Icons.jsx';
 
 export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
-const DARK_THEMES = ['classic', 'midnight', 'sunset'];
-
+const DARK_THEMES = ['classic', 'midnight', 'sunset', 'emerald', 'gold'];
 // Profil mavzulari — .vz dagi CSS o'zgaruvchilari endi JSX orqali
 // beriladi (id'lar backend whitelist bilan mos: classic, midnight,
 // emerald, royal, sunset — barchasi oq-qora / kumush palitrada).
