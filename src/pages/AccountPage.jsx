@@ -500,7 +500,7 @@ function EditCardForm({ card, onSaved }) {
                 <button key={t.id} type="button"
                   className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === t.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
                   style={{ background: t.css }}
-                  onClick={() => setForm((f) => ({ ...f, theme: t.id }))}>
+                  onClick={() => setForm((f) => ({ ...f, theme: t.id, bgColor: '', bgUrl: '' }))}>
                   <span style={{ color: t.accent }}>{t.label}</span>
                 </button>
               ))}
@@ -561,7 +561,7 @@ function EditCardForm({ card, onSaved }) {
               />
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold text-base-content/70">Profil fon rangi</div>
-                <p className="mt-0.5 text-xs text-base-content/45">Aksent rangdan mustaqil — butun profil foni shu rangda (sekin qimirlab turadigan gradient bilan) chiqadi.</p>
+                <p className="mt-0.5 text-xs text-base-content/45">Aksent rangdan mustaqil — butun profil foni shu rangda (sekin qimirlab turadigan gradient bilan) chiqadi. <b>Diqqat:</b> bu tanlangan temaning o'z fonidan ustun turadi — yuqoridagi temalardan birini qayta bossangiz, bu rang avtomatik tozalanadi.</p>
               </div>
               {form.bgColor && (
                 <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, bgColor: '' }))}>
