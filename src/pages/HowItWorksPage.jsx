@@ -18,7 +18,7 @@ export default function HowItWorksPage() {
           Qanday ishlaydi
         </span>
         <h1 className="mx-auto mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          Bir kod. <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">Bir profil.</span> Bir siz.
+          “Barcha ma’lumotlaringiz — bitta raqamli profilda.”
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
           NFCSTORE orqali shaxsiy raqamli vizitka olish besh qadamdan iborat — bandlashdan tortib
