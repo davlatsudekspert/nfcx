@@ -701,7 +701,7 @@ export default function AccountPage({ refreshCatalog }) {
 
   if (user === undefined || user === null) {
     return (
-      <main className="mx-auto max-w-4xl px-5 pt-16 pb-16"><p className="text-base-content/60">Yuklanmoqda...</p></main>
+      <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 pb-16"><p className="text-base-content/60">Yuklanmoqda...</p></main>
     );
   }
 
@@ -718,7 +718,7 @@ export default function AccountPage({ refreshCatalog }) {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-5 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <section className="pt-14">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

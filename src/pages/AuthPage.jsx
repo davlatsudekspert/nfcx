@@ -60,7 +60,7 @@ export default function AuthPage({ mode }) {
   };
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <section className="flex justify-center pt-16">
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200/70 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
           <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">NFCSTORE</div>

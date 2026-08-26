@@ -40,7 +40,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   ];
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <section className="pt-14">
         <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>

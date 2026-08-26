@@ -276,11 +276,11 @@ export default function MessagesPage({ id }) {
   }, [user]);
 
   if (user === undefined || user === null) {
-    return <main className="mx-auto max-w-6xl px-5 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
+    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <h1 className="pt-10 text-2xl font-bold">Xabarlar</h1>
       <div className="mt-6 grid overflow-hidden rounded-2xl border border-white/10 bg-black/30 shadow-[0_30px_70px_rgba(0,0,0,0.45)] backdrop-blur-md sm:grid-cols-[280px_1fr]" style={{ height: '65vh' }}>
         <div className="min-h-0 overflow-y-auto border-r border-white/10 bg-white/[0.015] backdrop-blur-md">

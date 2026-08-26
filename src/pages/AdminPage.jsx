@@ -433,7 +433,7 @@ function Dashboard({ onLogout }) {
   const logout = async () => { await adminApi('/logout', { method: 'POST' }); onLogout(); };
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <div className="flex items-center justify-between pt-10">
         <h1 className="text-2xl font-bold">Admin panel</h1>
         <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
