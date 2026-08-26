@@ -5,7 +5,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
-const BOT_USERNAME = 'NFCStoreBot';
+const BOT_USERNAME = 'nfcsalebot';
 const BOT_LINK = `https://t.me/${BOT_USERNAME}`;
 
 const PHYSICAL_CARD_FEE = 200_000;
