@@ -81,8 +81,8 @@ function Thread({ conversationId, myUserId }) {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-2 overflow-y-auto p-4">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
         {messages.map((m) => {
           const mine = m.senderId === myUserId;
           return (
@@ -152,12 +152,12 @@ export default function MessagesPage({ id }) {
     <main className="mx-auto max-w-6xl px-5 pb-16">
       <h1 className="pt-10 text-2xl font-bold">Xabarlar</h1>
       <div className="mt-6 grid overflow-hidden rounded-2xl border border-white/10 sm:grid-cols-[280px_1fr]" style={{ height: '65vh' }}>
-        <div className="overflow-y-auto border-r border-white/10">
+        <div className="min-h-0 overflow-y-auto border-r border-white/10">
           {conversations === null
             ? <div className="p-6 text-center text-sm text-base-content/45">Yuklanmoqda...</div>
             : <ConversationList conversations={conversations} activeId={activeId} onSelect={(cid) => navigate('/xabarlar/' + cid)} />}
         </div>
-        <div className="hidden sm:block">
+        <div className="hidden min-h-0 sm:block">
           {activeId
             ? <Thread key={activeId} conversationId={activeId} myUserId={user.id} />
             : <div className="flex h-full items-center justify-center text-sm text-base-content/40">Suhbat tanlang</div>}
