@@ -126,11 +126,11 @@ export default function MessagesPage({ id }) {
   }, [user]);
 
   if (user === undefined || user === null) {
-    return <main className="mx-auto max-w-4xl px-5 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
+    return <main className="mx-auto max-w-6xl px-5 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-5 pb-16">
+    <main className="mx-auto max-w-6xl px-5 pb-16">
       <h1 className="pt-10 text-2xl font-bold">Xabarlar</h1>
       <div className="mt-6 grid overflow-hidden rounded-2xl border border-white/10 sm:grid-cols-[280px_1fr]" style={{ height: '65vh' }}>
         <div className="overflow-y-auto border-r border-white/10">

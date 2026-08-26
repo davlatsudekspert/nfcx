@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbUnreadCount } from '../lib/db.js';
+import logo from '../assets/logo-128.png';
 
 const NAV = [
   ['Narxlar', '/narxlar'],
@@ -30,8 +31,8 @@ export default function Header() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-base-100/80 backdrop-blur-md">
       <div className="navbar mx-auto max-w-6xl px-5">
         <div className="flex-1">
-          <button onClick={() => go('/')} className="flex cursor-pointer items-center gap-2 text-[15px] font-extrabold tracking-wide">
-            <span className="badge badge-primary badge-sm font-mono">N00</span>
+          <button onClick={() => go('/')} className="flex cursor-pointer items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
+            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)]" />
             NFCSTORE
           </button>
         </div>

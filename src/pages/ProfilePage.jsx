@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetPayment } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierFromPatterns, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
@@ -25,6 +25,17 @@ export const VZ_THEMES = {
   sunset: { '--vz-bg-a': '#141416', '--vz-bg-b': '#232326', '--vz-card': '#0f0f11', '--vz-ink': '#f7f7f8', '--vz-ink-dim': '#aeaeb1', '--vz-ink-faint': '#727275', '--vz-line': '#2c2c2f', '--vz-accent': '#e8e8ea', '--vz-pill': '#2a2a2d' },
 };
 
+// Rangni ochroq/to'qroq qilish (gradient uchun ikkinchi ton hosil qilamiz).
+function shadeColor(hex, percent) {
+  try {
+    const m = hex.match(/\w\w/g).map((x) => parseInt(x, 16));
+    const [r, g, b] = m.map((v) => Math.min(255, Math.max(0, Math.round(v + (percent / 100) * 255))));
+    return `rgb(${r},${g},${b})`;
+  } catch {
+    return hex;
+  }
+}
+
 export function vzStyle(theme, record) {
   const base = VZ_THEMES[theme] || VZ_THEMES.classic;
   // Foydalanuvchi istalgan aksent rangni tanlagan bo'lsa — tugmalar,
@@ -41,6 +52,20 @@ export function vzStyle(theme, record) {
       ...accented,
       background:
         pattern + `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}") center/cover no-repeat`,
+    };
+  }
+  if (record && record.bgColor) {
+    // Foydalanuvchi tanlagan fon rangi — sekin "qimirlab" turadigan
+    // (animatsiyali) gradient sifatida ko'rsatiladi.
+    const c1 = record.bgColor;
+    const c2 = shadeColor(record.bgColor, -22);
+    const c3 = shadeColor(record.bgColor, 14);
+    const animated = record.bgAnimated !== false;
+    return {
+      ...accented,
+      background: pattern + `linear-gradient(120deg, ${c1}, ${c2}, ${c3}, ${c1})`,
+      backgroundSize: animated ? (record.bgPattern === false ? '300% 300%' : 'auto, 300% 300%') : undefined,
+      animation: animated ? 'bgShift 16s ease-in-out infinite' : undefined,
     };
   }
   return {
@@ -104,6 +129,45 @@ function tierOf(code) {
   const lp = letterPattern(code.slice(0, 3));
   const dp = digitPattern(code.slice(3, 6));
   return tierFromPatterns(lp, dp);
+}
+
+// Profil musiqasi — brauzerlar ovozli avtomatik ijroni bloklaydi, shuning
+// uchun kichik suzuvchi tugma sifatida ko'rsatamiz; birinchi bosishda
+// ijro boshlanadi va aylanayotgan belgi bilan holat ko'rsatiladi.
+function MusicPlayer({ url, accentColor }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      setPlaying(false);
+    } else {
+      el.play().then(() => setPlaying(true)).catch(() => {});
+    }
+  };
+
+  if (!url) return null;
+
+  return (
+    <div className="fixed bottom-5 right-5 z-30">
+      <audio ref={audioRef} src={url} loop preload="none" onEnded={() => setPlaying(false)} />
+      <button
+        onClick={toggle}
+        className={`flex h-12 w-12 items-center justify-center rounded-full text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : ''}`}
+        style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
+        aria-label={playing ? 'Musiqani to\u2018xtatish' : 'Musiqani yoqish'}
+      >
+        {playing ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+        )}
+      </button>
+    </div>
+  );
 }
 
 export default function ProfilePage({ code, catalog }) {
@@ -319,6 +383,7 @@ export default function ProfilePage({ code, catalog }) {
 
   return (
     <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={vzStyle(record.theme || 'classic', record)}>
+      <MusicPlayer url={record.musicUrl} accentColor={record.accentColor} />
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
         <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
           <IconArrowLeft /> Bosh sahifaga

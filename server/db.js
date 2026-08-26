@@ -158,6 +158,9 @@ export async function initDb() {
     bg_url: `ALTER TABLE cards ADD COLUMN bg_url TEXT`,
     bg_pattern: `ALTER TABLE cards ADD COLUMN bg_pattern BOOLEAN NOT NULL DEFAULT TRUE`,
     accent_color: `ALTER TABLE cards ADD COLUMN accent_color TEXT`,
+    bg_color: `ALTER TABLE cards ADD COLUMN bg_color TEXT`,
+    bg_animated: `ALTER TABLE cards ADD COLUMN bg_animated BOOLEAN NOT NULL DEFAULT TRUE`,
+    music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -173,7 +176,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -555,7 +558,7 @@ export function isDbReady() {
 
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
-  accent_color AS "accentColor",
+  accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
@@ -572,6 +575,9 @@ function rowToRecord(row) {
     bgUrl: row.bgUrl || '',
     bgPattern: row.bgPattern !== false,
     accentColor: row.accentColor || '',
+    bgColor: row.bgColor || '',
+    bgAnimated: row.bgAnimated !== false,
+    musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
     email: row.email || '',
@@ -609,7 +615,7 @@ export async function countRecords() {
 export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
-            c.accent_color AS "accentColor",
+            c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.theme, c.for_sale AS "forSale", c.sale_price AS "salePrice", c.hashtags, c.price, c.ts, c.views,
@@ -625,9 +631,10 @@ export async function getRecord(code) {
 export async function createRecord(record) {
   const { rows } = await pool.query(
     `INSERT INTO cards
-       (code, name, role, avatar_url, bg_url, bg_pattern, accent_color, tg, phone, email, linkedin, instagram,
+       (code, name, role, avatar_url, bg_url, bg_pattern, accent_color, bg_color, bg_animated, music_url,
+        tg, phone, email, linkedin, instagram,
         about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb,$19::jsonb,$20,$21::jsonb,$22,$23)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21::jsonb,$22::jsonb,$23,$24::jsonb,$25,$26)
      ON CONFLICT (code) DO NOTHING
      RETURNING ${SELECT_FIELDS}`,
     [
@@ -638,6 +645,9 @@ export async function createRecord(record) {
       record.bgUrl || '',
       record.bgPattern === false ? false : true,
       record.accentColor || null,
+      record.bgColor || null,
+      record.bgAnimated === false ? false : true,
+      record.musicUrl || null,
       record.tg,
       record.phone,
       record.email,
@@ -756,6 +766,9 @@ export async function updateRecord(code, fields) {
     bgUrl: 'bg_url',
     bgPattern: 'bg_pattern',
     accentColor: 'accent_color',
+    bgColor: 'bg_color',
+    bgAnimated: 'bg_animated',
+    musicUrl: 'music_url',
     tg: 'tg',
     phone: 'phone',
     email: 'email',

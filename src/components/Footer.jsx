@@ -1,4 +1,5 @@
 import { navigate } from '../lib/router.js';
+import logo from '../assets/logo-128.png';
 
 const COLS = [
   { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog']] },
@@ -12,8 +13,8 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-5 py-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[15px] font-extrabold tracking-wide">
-              <span className="badge badge-primary badge-sm font-mono">N00</span>
+            <div className="mb-2 flex items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
+              <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" />
               NFCSTORE
             </div>
             <p className="text-sm text-base-content/50">Raqamli shaxsiy vizitka xizmati</p>

@@ -64,7 +64,7 @@ export default function AuctionPage({ id }) {
   }, [payOrder]);
 
   if (data === null) {
-    return <main className="mx-auto max-w-3xl px-5 pt-16 pb-16 text-center text-base-content/45">Yuklanmoqda yoki auksion topilmadi...</main>;
+    return <main className="mx-auto max-w-6xl px-5 pt-16 pb-16 text-center text-base-content/45">Yuklanmoqda yoki auksion topilmadi...</main>;
   }
 
   const { auction, bids } = data;
@@ -115,7 +115,7 @@ export default function AuctionPage({ id }) {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-5 pb-16">
+    <main className="mx-auto max-w-6xl px-5 pb-16">
       <section className="pt-14">
         <button className="text-xs text-base-content/50 hover:text-base-content" onClick={() => navigate('/auksion')}>&larr; Auksionlarga qaytish</button>
         <div className="mt-4 flex flex-wrap items-center gap-3">

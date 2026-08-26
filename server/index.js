@@ -176,6 +176,15 @@ function validateBody(body) {
   const accentColor = /^#[0-9a-fA-F]{6}$/.test(String(body.accentColor || '').trim())
     ? String(body.accentColor).trim()
     : '';
+  // Fon rangi — profil foni uchun alohida (aksent rangdan mustaqil).
+  const bgColor = /^#[0-9a-fA-F]{6}$/.test(String(body.bgColor || '').trim())
+    ? String(body.bgColor).trim()
+    : '';
+  // Fon qimirlab turadigan animatsiyami — standart holatda yoqilgan.
+  const bgAnimated = body.bgAnimated === false ? false : true;
+  // Profil musiqasi — faqat havola (fayl yuklash emas, hajmi katta bo'lgani
+  // uchun), xavfsizlik uchun http(s) formatidagi havolalargagina ruxsat.
+  const musicUrl = safeUrl(body.musicUrl);
   return {
     record: {
       name,
@@ -184,6 +193,9 @@ function validateBody(body) {
       bgUrl,
       bgPattern,
       accentColor,
+      bgColor,
+      bgAnimated,
+      musicUrl,
       tg: cleanStr(body.tg, 40).replace(/^@/, ''),
       phone: cleanStr(body.phone, 24),
       email: cleanStr(body.email, 120),

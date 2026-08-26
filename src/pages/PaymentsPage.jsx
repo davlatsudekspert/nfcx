@@ -32,11 +32,11 @@ export default function PaymentsPage() {
   }, [user]);
 
   if (user === undefined || user === null) {
-    return <main className="mx-auto max-w-3xl px-5 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
+    return <main className="mx-auto max-w-6xl px-5 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-5 pb-16">
+    <main className="mx-auto max-w-6xl px-5 pb-16">
       <h1 className="pt-10 text-2xl font-bold">To'lovlar tarixi</h1>
       <p className="mt-2 text-sm text-base-content/55">Barcha real to'lovlaringiz — vizitka, auksion, premium va obunalar.</p>
 

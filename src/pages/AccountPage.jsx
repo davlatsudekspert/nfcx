@@ -206,6 +206,9 @@ function EditCardForm({ card, onSaved }) {
     bgUrl: card.bgUrl || '',
     bgPattern: card.bgPattern !== false,
     accentColor: card.accentColor || '',
+    bgColor: card.bgColor || '',
+    bgAnimated: card.bgAnimated !== false,
+    musicUrl: card.musicUrl || '',
     tg: card.tg || '',
     phone: card.phone || '',
     email: card.email || '',
@@ -336,6 +339,9 @@ function EditCardForm({ card, onSaved }) {
         bgUrl: form.bgUrl.trim(),
         bgPattern: form.bgPattern,
         accentColor: form.accentColor,
+        bgColor: form.bgColor,
+        bgAnimated: form.bgAnimated,
+        musicUrl: form.musicUrl.trim(),
         tg: form.tg.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -508,6 +514,36 @@ function EditCardForm({ card, onSaved }) {
                 </button>
               )}
             </div>
+
+            <div className="mt-5 flex items-center gap-3">
+              <input
+                type="color"
+                value={form.bgColor || '#1a1a1c'}
+                onChange={(e) => setForm((f) => ({ ...f, bgColor: e.target.value }))}
+                className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-base-content/70">Profil fon rangi</div>
+                <p className="mt-0.5 text-xs text-base-content/45">Aksent rangdan mustaqil — butun profil foni shu rangda (sekin qimirlab turadigan gradient bilan) chiqadi.</p>
+              </div>
+              {form.bgColor && (
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, bgColor: '' }))}>
+                  Andozaga qaytarish
+                </button>
+              )}
+            </div>
+            {form.bgColor && (
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" className="checkbox checkbox-sm" checked={form.bgAnimated} onChange={(e) => setForm((f) => ({ ...f, bgAnimated: e.target.checked }))} />
+                <span>Fon sekin qimirlab (animatsiyali) tursin</span>
+              </label>
+            )}
+
+            <label className="form-control mt-5 block">
+              <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} Profil musiqasi (havola)</span>
+              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder="https://.../musiqa.mp3" />
+              <p className="mt-1.5 text-xs text-base-content/45">To'g'ridan-to'g'ri .mp3 havolasi. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chira oladi (brauzerlar avtomatik ovozli ijroni bloklaydi).</p>
+            </label>
           </Section>
 
           <Section title="Aloqa va ijtimoiy tarmoqlar" subtitle="Telegram, Instagram, telefon va h.k.">
