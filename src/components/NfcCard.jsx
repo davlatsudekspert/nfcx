@@ -10,6 +10,7 @@ const FINISHES = {
   black: { bg: 'linear-gradient(135deg, #201a10 0%, #0a0908 55%, #201a10 100%)', fg: '#f6f2ea', sub: 'rgba(232,193,101,0.75)', code: '#e8c165' },
   silver: { bg: 'linear-gradient(135deg, #f4f4f5 0%, #d6d7d9 45%, #f4f4f5 100%)', fg: '#101112', sub: 'rgba(16,17,18,0.55)', code: '#101112' },
   graphite: { bg: 'linear-gradient(135deg, #3a3730 0%, #201f1a 55%, #3a3730 100%)', fg: '#f6f2ea', sub: 'rgba(232,193,101,0.6)', code: '#e8c165' },
+  gold: { bg: 'linear-gradient(135deg, #d4af5a 0%, #8a6a20 45%, #d4af5a 100%)', fg: '#1a1206', sub: 'rgba(26,18,6,0.6)', code: '#1a1206' },
 };
 
 const CARD_SIZES = {

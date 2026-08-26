@@ -58,13 +58,18 @@ function isLetterCode(code) {
   return LETTER_CODE_RE.test(code);
 }
 
-const THEME_WHITELIST = ['classic', 'midnight', 'emerald', 'royal', 'sunset'];
+const THEME_WHITELIST = ['classic', 'midnight', 'emerald', 'royal', 'sunset', 'gold'];
 
 const app = express();
 app.disable('x-powered-by');
 // Railway reverse-proxy orqali: haqiqiy IP/protokolni olamiz.
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '100kb' }));
+// Diqqat: bu global limit BARCHA so'rovlarga tegishli va marshrut ichidagi
+// alohida express.json({limit}) chaqiruvlaridan OLDIN ishlaydi — shuning
+// uchun eng katta ehtiyoj (musiqa fayli, ~8MB) ga mos qilib shu yerda
+// belgilanishi kerak, aks holda pastdagi marshrutlarning o'z limiti
+// hech qachon qo'llanilmaydi (so'rov bundan oldinroq rad etiladi).
+app.use(express.json({ limit: '12mb' }));
 app.use('/api/admin', adminRouter);
 
 // Oddiy xavfsizlik headerlari.
@@ -972,7 +977,7 @@ app.get('/api/sales', async (req, res) => {
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const IMAGE_RE = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,(.+)$/;
 
-app.post('/api/upload', express.json({ limit: '1mb' }), async (req, res) => {
+app.post('/api/upload', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
 
@@ -996,6 +1001,35 @@ app.post('/api/upload', express.json({ limit: '1mb' }), async (req, res) => {
 });
 
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+// ---------- Musiqa yuklash ----------
+
+const AUDIO_RE = /^data:(audio\/(mpeg|mp3|mp4|ogg|wav|webm|x-m4a|m4a));base64,(.+)$/;
+
+app.post('/api/upload-audio', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+
+  const raw = String((req.body || {}).dataUrl || '');
+  const m = AUDIO_RE.exec(raw);
+  if (!m) return res.status(422).json({ error: 'bad_audio' });
+  const buf = Buffer.from(m[3], 'base64');
+  if (!buf.length) return res.status(422).json({ error: 'bad_audio' });
+  // ~8 MB — profil musiqasi uchun yetarli (o'rtacha 3-4 daqiqalik mp3).
+  if (buf.length > 8 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+
+  try {
+    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    const extMap = { mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' };
+    const ext = extMap[m[2]] || 'mp3';
+    const name = `${crypto.randomBytes(10).toString('hex')}.${ext}`;
+    await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+    res.json({ url: `/uploads/${name}` });
+  } catch (err) {
+    console.error('[api] upload-audio:', err.message);
+    res.status(500).json({ error: 'upload_failed' });
+  }
+});
 
 app.use((err, req, res, next) => {
   if (err && err.type === 'entity.parse.failed') {

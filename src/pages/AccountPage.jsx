@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbSetSale, dbCreateAuction, dbRequestPremium, dbGetPayment } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetSale, dbCreateAuction, dbRequestPremium, dbGetPayment } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -10,11 +10,12 @@ import {
 } from '../components/Icons.jsx';
 
 const THEMES = [
-  { id: 'classic', label: 'Classic', css: 'linear-gradient(160deg,#eef1f3,#dfe4e8)', accent: '#101112' },
-  { id: 'midnight', label: 'Onyx', css: 'linear-gradient(160deg,#0c0c0d,#1c1c1f)', accent: '#ffffff' },
-  { id: 'emerald', label: 'Graphite', css: 'linear-gradient(160deg,#e9eaeb,#c9cbcd)', accent: '#101112' },
-  { id: 'royal', label: 'Platinum', css: 'linear-gradient(160deg,#f6f6f7,#dcdde0)', accent: '#3a3c40' },
-  { id: 'sunset', label: 'Ink', css: 'linear-gradient(160deg,#141416,#28282b)', accent: '#f5f5f6' },
+  { id: 'classic', label: 'Classic', css: 'linear-gradient(160deg,#241e17,#15120f)', accent: '#d4af5a' },
+  { id: 'midnight', label: 'Onyx', css: 'linear-gradient(160deg,#0e0e10,#000000)', accent: '#ffffff' },
+  { id: 'emerald', label: 'Graphite', css: 'linear-gradient(160deg,#3c4044,#2b2e31)', accent: '#9fb3bd' },
+  { id: 'royal', label: 'Platinum', css: 'linear-gradient(160deg,#f3f5f8,#dfe3e9)', accent: '#5b6b85' },
+  { id: 'sunset', label: 'Ink', css: 'linear-gradient(160deg,#161c3a,#0a0d1c)', accent: '#8ea2ff' },
+  { id: 'gold', label: 'Gold', css: 'linear-gradient(160deg,#3a2a0c,#1a1206)', accent: '#f0c04a' },
 ];
 
 // Yig'iladigan/ochiladigan bo'lim — uzun formani mantiqiy blokларга ажратади.
@@ -117,6 +118,17 @@ function fileToCompressedDataUrl(file) {
       };
       img.src = reader.result;
     };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Audio fayllar siqilmaydi (rasm kabi canvas orqali qayta ishlab bo'lmaydi) —
+// shunchaki base64 data URL sifatida o'qiladi, hajm serverda tekshiriladi.
+function audioFileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
+    reader.onload = () => resolve(reader.result);
     reader.readAsDataURL(file);
   });
 }
@@ -228,6 +240,7 @@ function EditCardForm({ card, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingMusic, setUploadingMusic] = useState(false);
   const [saleBusy, setSaleBusy] = useState(false);
   const [saleMsg, setSaleMsg] = useState(null);
   const [auctionOpen, setAuctionOpen] = useState(false);
@@ -236,6 +249,7 @@ function EditCardForm({ card, onSaved }) {
   const [auctionForm, setAuctionForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24', sellerPaymeNumber: '' });
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
+  const musicFileRef = useRef(null);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -286,6 +300,29 @@ function EditCardForm({ card, onSaved }) {
     } finally {
       setUploadingBg(false);
       if (bgFileRef.current) bgFileRef.current.value = '';
+    }
+  };
+
+  const onPickMusicFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      setMsg({ type: 'err', text: "Musiqa fayli juda katta (maksimal ~8 MB)." });
+      if (musicFileRef.current) musicFileRef.current.value = '';
+      return;
+    }
+    setUploadingMusic(true);
+    setMsg(null);
+    try {
+      const dataUrl = await audioFileToDataUrl(file);
+      const url = await dbUploadAudio(dataUrl);
+      setForm((f) => ({ ...f, musicUrl: url }));
+      setMsg({ type: 'ok', text: 'Musiqa yuklandi. Saqlash tugmasini bosing.' });
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setUploadingMusic(false);
+      if (musicFileRef.current) musicFileRef.current.value = '';
     }
   };
 
@@ -458,7 +495,7 @@ function EditCardForm({ card, onSaved }) {
 
           <Section title="Dizayn va fon" subtitle="Tema, fon rasmi, naqsh">
             <div className="font-mono text-[11px] uppercase tracking-widest text-base-content/45">Tema</div>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
               {THEMES.map((t) => (
                 <button key={t.id} type="button"
                   className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === t.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
@@ -540,9 +577,23 @@ function EditCardForm({ card, onSaved }) {
             )}
 
             <label className="form-control mt-5 block">
-              <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} Profil musiqasi (havola)</span>
-              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder="https://.../musiqa.mp3" />
-              <p className="mt-1.5 text-xs text-base-content/45">To'g'ridan-to'g'ri .mp3 havolasi. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chira oladi (brauzerlar avtomatik ovozli ijroni bloklaydi).</p>
+              <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} Profil musiqasi</span>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => musicFileRef.current && musicFileRef.current.click()} disabled={uploadingMusic}>
+                  {uploadingMusic ? <span className="loading loading-spinner loading-xs"></span> : 'Fayl yuklash (mp3, maks. 8 MB)'}
+                </button>
+                {form.musicUrl && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm((f) => ({ ...f, musicUrl: '' }))}>
+                    Olib tashlash
+                  </button>
+                )}
+              </div>
+              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder="yoki havola: https://.../musiqa.mp3" />
+              {form.musicUrl && (
+                <audio controls src={form.musicUrl} className="mt-2 h-9 w-full" />
+              )}
+              <p className="mt-1.5 text-xs text-base-content/45">Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chira oladi (brauzerlar avtomatik ovozli ijroni bloklaydi).</p>
             </label>
           </Section>
 

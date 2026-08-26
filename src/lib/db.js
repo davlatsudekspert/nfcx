@@ -169,6 +169,24 @@ export async function dbUploadImage(dataUrl) {
   return data.url;
 }
 
+export async function dbUploadAudio(dataUrl) {
+  const res = await fetch('/api/upload-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ dataUrl }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'too_large') throw new Error("Musiqa fayli juda katta (maksimal ~8 MB).");
+    if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    if (key === 'bad_audio') throw new Error("Fayl formati qo'llab-quvvatlanmaydi (mp3, m4a, ogg, wav bo'lishi kerak).");
+    throw new Error('Musiqani yuklab bo\u2019lmadi.');
+  }
+  return data.url;
+}
+
 // ---------- Auksion ----------
 
 export async function dbListAuctions() {

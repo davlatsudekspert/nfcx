@@ -11,18 +11,28 @@ import {
   IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink,
 } from '../components/Icons.jsx';
 
-export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black' };
+export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
 const DARK_THEMES = ['classic', 'midnight', 'sunset'];
 
 // Profil mavzulari — .vz dagi CSS o'zgaruvchilari endi JSX orqali
 // beriladi (id'lar backend whitelist bilan mos: classic, midnight,
 // emerald, royal, sunset — barchasi oq-qora / kumush palitrada).
+// Profil mavzulari — har biri o'zига xos, bir-biridan aniq farq
+// qiladigan palitrada (rang, yorug'lik va ohang bo'yicha).
 export const VZ_THEMES = {
-  classic: { '--vz-bg-a': '#0c0c0d', '--vz-bg-b': '#1a1a1c', '--vz-card': '#131315', '--vz-ink': '#f5f5f6', '--vz-ink-dim': '#a3a3a6', '--vz-ink-faint': '#6d6d70', '--vz-line': '#2a2a2d', '--vz-accent': '#ffffff', '--vz-pill': '#232326' },
-  midnight: { '--vz-bg-a': '#0c0c0d', '--vz-bg-b': '#1a1a1c', '--vz-card': '#131315', '--vz-ink': '#f5f5f6', '--vz-ink-dim': '#a3a3a6', '--vz-ink-faint': '#6d6d70', '--vz-line': '#2a2a2d', '--vz-accent': '#ffffff', '--vz-pill': '#232326' },
-  emerald: { '--vz-bg-a': '#e9eaeb', '--vz-bg-b': '#d3d5d7', '--vz-card': '#f4f4f5', '--vz-ink': '#161718', '--vz-ink-dim': '#5c5e60', '--vz-ink-faint': '#8b8d8f', '--vz-line': '#dcdddf', '--vz-accent': '#101112', '--vz-pill': '#1a1b1c' },
-  royal: { '--vz-bg-a': '#f6f6f7', '--vz-bg-b': '#e4e5e7', '--vz-card': '#fbfbfc', '--vz-ink': '#101112', '--vz-ink-dim': '#65676a', '--vz-ink-faint': '#9a9c9f', '--vz-line': '#e7e8ea', '--vz-accent': '#3a3c40', '--vz-pill': '#101112' },
-  sunset: { '--vz-bg-a': '#141416', '--vz-bg-b': '#232326', '--vz-card': '#0f0f11', '--vz-ink': '#f7f7f8', '--vz-ink-dim': '#aeaeb1', '--vz-ink-faint': '#727275', '--vz-line': '#2c2c2f', '--vz-accent': '#e8e8ea', '--vz-pill': '#2a2a2d' },
+  // Classic — issiq (warm) grafit-qora, oltin urg'u bilan.
+  classic: { '--vz-bg-a': '#15120f', '--vz-bg-b': '#241e17', '--vz-card': '#1c1712', '--vz-ink': '#f7f2e8', '--vz-ink-dim': '#c9bfa9', '--vz-ink-faint': '#8f8570', '--vz-line': '#3a3226', '--vz-accent': '#d4af5a', '--vz-pill': '#2e2619' },
+  // Onyx — sof, sovuq qora-oq, yuqori kontrast.
+  midnight: { '--vz-bg-a': '#000000', '--vz-bg-b': '#0e0e10', '--vz-card': '#000000', '--vz-ink': '#ffffff', '--vz-ink-dim': '#a8a8ac', '--vz-ink-faint': '#5c5c60', '--vz-line': '#232326', '--vz-accent': '#ffffff', '--vz-pill': '#1c1c1f' },
+  // Graphite — o'rta tusli sovuq kulrang (na oq, na qora).
+  emerald: { '--vz-bg-a': '#2b2e31', '--vz-bg-b': '#3c4044', '--vz-card': '#34383b', '--vz-ink': '#f1f3f4', '--vz-ink-dim': '#b7bcc0', '--vz-ink-faint': '#83898e', '--vz-line': '#4a4f54', '--vz-accent': '#9fb3bd', '--vz-pill': '#484d52' },
+  // Platinum — yorug', kumushrang, sovuq havo rang tafti bilan (yagona OCH mavzu).
+  royal: { '--vz-bg-a': '#f3f5f8', '--vz-bg-b': '#dfe3e9', '--vz-card': '#ffffff', '--vz-ink': '#12151c', '--vz-ink-dim': '#5a6270', '--vz-ink-faint': '#8b93a0', '--vz-line': '#e1e5ea', '--vz-accent': '#5b6b85', '--vz-pill': '#12151c' },
+  // Ink — chuqur indigo-havo rang, boshqa qora mavzulardan aniq farqli.
+  sunset: { '--vz-bg-a': '#0a0d1c', '--vz-bg-b': '#161c3a', '--vz-card': '#0d1226', '--vz-ink': '#eef0fb', '--vz-ink-dim': '#a6acd6', '--vz-ink-faint': '#6a70a0', '--vz-line': '#262d54', '--vz-accent': '#8ea2ff', '--vz-pill': '#232a52' },
+  // Gold — boy, to'yingan tilla-bronza, Classic'dagi xira oltin urg'udan
+  // farqli o'laroq fonning o'zi ham issiq oltin tusda porlaydi.
+  gold: { '--vz-bg-a': '#1a1206', '--vz-bg-b': '#3a2a0c', '--vz-card': '#241a08', '--vz-ink': '#fdf6e3', '--vz-ink-dim': '#e0c98a', '--vz-ink-faint': '#a68a4a', '--vz-line': '#5c481c', '--vz-accent': '#f0c04a', '--vz-pill': '#5c4415' },
 };
 
 // Rangni ochroq/to'qroq qilish (gradient uchun ikkinchi ton hosil qilamiz).
@@ -50,27 +60,34 @@ export function vzStyle(theme, record) {
     // (naqsh ustiga yarim shaffof qatlam sifatida qo'shiladi, o'qilishi uchun).
     return {
       ...accented,
-      background:
-        pattern + `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}") center/cover no-repeat`,
+      backgroundImage:
+        pattern + `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
+      backgroundSize: 'auto, auto, cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'repeat, no-repeat, no-repeat',
     };
   }
   if (record && record.bgColor) {
     // Foydalanuvchi tanlagan fon rangi — sekin "qimirlab" turadigan
-    // (animatsiyali) gradient sifatida ko'rsatiladi.
+    // (animatsiyali) gradient sifatida ko'rsatiladi. MUHIM: `background`
+    // qisqartmasi o'rniga alohida backgroundImage/backgroundSize
+    // ishlatiladi — aks holda ba'zi brauzerlarda shorthand backgroundSize'ni
+    // "auto"ga qaytarib, animatsiya/rang butunlay ko'rinmay qolishi mumkin.
     const c1 = record.bgColor;
     const c2 = shadeColor(record.bgColor, -22);
     const c3 = shadeColor(record.bgColor, 14);
     const animated = record.bgAnimated !== false;
     return {
       ...accented,
-      background: pattern + `linear-gradient(120deg, ${c1}, ${c2}, ${c3}, ${c1})`,
-      backgroundSize: animated ? (record.bgPattern === false ? '300% 300%' : 'auto, 300% 300%') : undefined,
+      backgroundImage: pattern + `linear-gradient(120deg, ${c1}, ${c2}, ${c3}, ${c1})`,
+      backgroundSize: animated ? (pattern ? 'auto, 300% 300%' : '300% 300%') : (pattern ? 'auto, 100% 100%' : '100% 100%'),
+      backgroundRepeat: pattern ? 'repeat, no-repeat' : 'no-repeat',
       animation: animated ? 'bgShift 16s ease-in-out infinite' : undefined,
     };
   }
   return {
     ...accented,
-    background: pattern + 'linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
+    backgroundImage: pattern + 'linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
   };
 }
 
