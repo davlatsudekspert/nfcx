@@ -10,7 +10,7 @@ const COLS = [
 export default function Footer() {
   return (
     <footer className="border-t border-white/10 bg-base-100">
-      <div className="mx-auto max-w-6xl px-5 py-10">
+      <div className="mx-auto w-full max-w-[1800px] px-6 py-10 sm:px-10 lg:px-14">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div>
             <div className="mb-2 flex items-center gap-2.5 text-[15px] font-extrabold tracking-wide">

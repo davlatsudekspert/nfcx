@@ -110,7 +110,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <section className="relative overflow-hidden bg-black">
         <div className="pointer-events-none absolute -inset-x-[18%] -inset-y-[12%] bg-[radial-gradient(640px_460px_at_74%_38%,rgba(201,162,39,0.16),transparent_65%),radial-gradient(420px_320px_at_16%_86%,rgba(180,140,50,0.09),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto grid max-w-6xl items-center gap-11 px-5 pb-8 pt-14 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="relative z-[1] mx-auto grid w-full max-w-[1800px] items-center gap-11 px-6 pb-8 pt-14 sm:px-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-14">
           <div>
             <Reveal>
               <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
@@ -264,7 +264,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
         )}
       </section>
 
-      <div className="mx-auto max-w-6xl px-5 pb-16">
+      <div className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
         <RevealSection id="sahifalar">
           <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Batafsil</div>
           <h2 className="mt-2 text-2xl font-bold">Sayt bo'ylab</h2>

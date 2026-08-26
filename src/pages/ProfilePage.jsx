@@ -391,7 +391,7 @@ export default function ProfilePage({ code, catalog }) {
           {otherCodes.length > 0 && otherCodes.slice(0, 3).map((c) => (
             <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
           ))}
-          <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] font-bold text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
+          <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-6 py-1.5 font-mono text-[22px] font-bold text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
           {record.forSale && <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 font-mono text-xs font-bold text-[#101112]"><IconTag /> SOTUVDA</span>}
           {!record.forSale && <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{fmt(record.price)} so'm</span>}
         </div>
