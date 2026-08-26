@@ -77,12 +77,51 @@ export function digitPattern(d) {
   return { mult: 1, label: 'Oddiy ×1', hot: false };
 }
 
+// ---------- Daraja (tier) tizimi ----------
+// Premium/Gold/Silver/Bronze — naqshga qarab pullik, oddiy (naqshsiz)
+// kodlar esa TEKIN. Naqsh kuchi allaqachon letterPattern/digitPattern
+// orqali hisoblangan (mult qiymati) — shu asosda darajaga ajratamiz,
+// hisoblash mantig'ini ikki marta yozmaymiz.
+export function tierFromPatterns(lp, dp) {
+  // Premium: uchala harf bir xil VA (raqam 000 yoki uchalasi bir xil).
+  if (lp.mult === 6 && (dp.mult === 4 || dp.mult === 3)) return 'premium';
+  // Gold: uchala harf bir xil, YOKI raqam 000.
+  if (lp.mult === 6 || dp.mult === 4) return 'gold';
+  // Silver: ikkita harf bir xil, YOKI uchala raqam bir xil.
+  if (lp.mult === 2.5 || dp.mult === 3) return 'silver';
+  // Bronze: ketma-ket harflar (ABC) yoki ketma-ket raqamlar (123).
+  if (lp.mult === 2 || dp.mult === 1.5) return 'bronze';
+  return 'free';
+}
+
+export const TIER_LABEL = { premium: 'Premium', gold: 'Gold', silver: 'Silver', bronze: 'Bronze', free: 'Oddiy' };
+// Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
+export const TIER_COLOR = {
+  premium: '#c084fc', // binafsha — eng nodir
+  gold: '#f5c518',
+  silver: '#c7ccd6',
+  bronze: '#cd7f32',
+  free: '#9aa0a6',
+};
+// Premium va Gold — king emoji; Silver/Bronze — o'z darajasiga mos emoji.
+export const TIER_EMOJI = { premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', bronze: '\u{1F949}', free: '' };
+
+export function tierForCode(code) {
+  const c = String(code || '').toUpperCase();
+  if (c.length !== 6) return 'free';
+  const lp = letterPattern(c.slice(0, 3));
+  const dp = digitPattern(c.slice(3, 6));
+  return tierFromPatterns(lp, dp);
+}
+
 export function priceFor(letters, digits, sold = 0) {
   const lp = letterPattern(letters);
   const dp = digitPattern(digits);
+  const tier = tierFromPatterns(lp, dp);
   const base = currentBase(sold);
-  const total = Math.max(base, roundPrice(base * lp.mult * dp.mult));
-  return { total, lp, dp, base };
+  // Oddiy (naqshsiz) kodlar — TEKIN. Qolganlari naqsh kuchiga qarab.
+  const total = tier === 'free' ? 0 : Math.max(base, roundPrice(base * lp.mult * dp.mult));
+  return { total, lp, dp, base, tier };
 }
 
 // Qo'lda belgilangan qat'iy narxlar (so'mda) — eksklyuziv kodlar uchun.

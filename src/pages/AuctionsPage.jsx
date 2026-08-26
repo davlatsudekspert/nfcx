@@ -37,7 +37,7 @@ export default function AuctionsPage() {
           Noyob kodlar uchun <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">ochiq savdo</span>
         </h1>
         <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
-          Egalari o'z vizitka kodlarini auksionga qo'yishadi. Narx taklif qilish uchun NFC Pay hamyoningizda NFC Coin bo'lishi kerak (1 NFC Coin = 1 so'm) — taklif summasi g'olib bo'lgunicha bandlanadi (yechilmaydi).
+          Egalari o'z vizitka kodlarini auksionga qo'yishadi. Taklif berish bepul — g'olib chiqsangiz, 24 soat ichida real so'mda to'laysiz.
         </p>
       </section>
 
@@ -54,12 +54,12 @@ export default function AuctionsPage() {
               <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{a.code.toLowerCase()}</div>
               <div className="mt-3 flex items-baseline justify-between">
                 <span className="text-xs text-base-content/50">Joriy narx</span>
-                <b className="text-lg">{fmt(a.currentPrice)} NFC Coin</b>
+                <b className="text-lg">{fmt(a.currentPrice)} so'm</b>
               </div>
               {a.buyNowPrice && (
                 <div className="mt-1 flex items-baseline justify-between text-xs text-base-content/50">
                   <span>Darhol sotib olish</span>
-                  <span>{fmt(a.buyNowPrice)} NFC Coin</span>
+                  <span>{fmt(a.buyNowPrice)} so'm</span>
                 </div>
               )}
               <div className="mt-3 text-xs font-semibold text-accent">{timeLeft(a.endsAt)}</div>

@@ -169,21 +169,6 @@ export async function dbUploadImage(dataUrl) {
   return data.url;
 }
 
-// ---------- Hamyon ----------
-
-export async function dbGetWallet() {
-  try {
-    return await api('/wallet');
-  } catch {
-    return null;
-  }
-}
-
-// { orderId, amount, payLink }
-export async function dbWalletTopup(amount) {
-  return api('/wallet/topup', { method: 'POST', body: JSON.stringify({ amount }) });
-}
-
 // ---------- Auksion ----------
 
 export async function dbListAuctions() {
@@ -201,21 +186,36 @@ const AUCTION_ERRORS = {
   bad_input: "Kiritilgan ma'lumotlar noto'g'ri.",
   BAD_INPUT: "Kiritilgan ma'lumotlar noto'g'ri.",
   buy_now_too_low: "\u2018Darhol sotib olish\u2019 narxi boshlang'ich narxdan yuqori bo'lishi kerak.",
+  seller_payme_required: "To'lovni qabul qilish uchun Payme/karta raqamingizni kiriting.",
   unauthorized: 'Avval tizimga kiring.',
   AUCTION_NOT_FOUND: 'Auksion topilmadi.',
   AUCTION_ALREADY_CLOSED: 'Auksion allaqachon yakunlangan.',
+  AUCTION_NOT_AWAITING_PAYMENT: "Bu auksion hozir to'lov kutish holatida emas.",
+  NOT_WINNER: "Faqat auksion g'olibi to'lov qila oladi.",
+  PAYMENT_DEADLINE_PASSED: "To'lov muddati (24 soat) o'tib ketgan.",
+  payme_disabled: "To'lov tizimi hozircha yoqilmagan.",
   OWN_AUCTION: "O'z auksioningizga taklif qila olmaysiz.",
   BID_TOO_LOW: "Taklifingiz joriy narxdan yuqori bo'lishi kerak.",
-  INSUFFICIENT_NFC_COINS: "NFC Pay hamyoningizda yetarli NFC Coin yo'q.",
   SYSTEM: 'Tizim xatoligi yuz berdi, birozdan keyin qayta urinib ko\u2019ring.',
 };
 
-export async function dbCreateAuction({ code, startPrice, buyNowPrice, hours }) {
+export async function dbCreateAuction({ code, startPrice, buyNowPrice, hours, sellerPaymeNumber }) {
   const res = await fetch('/api/auctions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ code, startPrice, buyNowPrice, hours }),
+    body: JSON.stringify({ code, startPrice, buyNowPrice, hours, sellerPaymeNumber }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  return data;
+}
+
+// G'olib real to'lovni boshlaydi.
+export async function dbPayAuctionWinner(auctionId) {
+  const res = await fetch(`/api/auctions/${encodeURIComponent(auctionId)}/pay`, {
+    method: 'POST',
+    credentials: 'same-origin',
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
@@ -244,11 +244,12 @@ export async function dbPlaceBid(auctionId, amount, idempotencyKey) {
 const PREMIUM_FOLLOW_ERRORS = {
   unauthorized: 'Avval tizimga kiring.',
   ALREADY_PREMIUM: 'Siz allaqachon premium foydalanuvchisiz.',
-  ALREADY_PENDING: "So'rovingiz allaqachon ko'rib chiqilmoqda.",
-  INSUFFICIENT_NFC_COINS: "NFC Pay hamyoningizda yetarli NFC Coin yo'q.",
+  ALREADY_PENDING: "So'rovingiz allaqachon to'lov kutmoqda.",
   ALREADY_FOLLOWING: 'Siz allaqachon obuna bo\u2019lgansiz.',
   CANNOT_FOLLOW_SELF: "O'zingizga obuna bo'la olmaysiz.",
   NOT_FOUND: 'Topilmadi.',
+  NOT_PREMIUM: 'Bu profil premium emas.',
+  payme_disabled: "To'lov tizimi hozircha yoqilmagan.",
 };
 
 async function dbApi(path, options) {
@@ -277,3 +278,8 @@ export const dbUnreadCount = () => dbApi('/conversations/unread-count');
 export const dbStartConversation = (code) => dbApi(`/conversations/with/${encodeURIComponent(code)}`, { method: 'POST' });
 export const dbListMessages = (id, before) => dbApi(`/conversations/${id}/messages${before ? '?before=' + encodeURIComponent(before) : ''}`);
 export const dbSendMessage = (id, body) => dbApi(`/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
+
+// ---------- To'lovlar ----------
+
+export const dbGetPayment = (orderId) => dbApi(`/payments/${encodeURIComponent(orderId)}`);
+export const dbListPayments = () => dbApi('/payments');

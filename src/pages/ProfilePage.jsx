@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
+import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetPayment } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode, letterPattern, digitPattern } from '../lib/pricing.js';
+import { parseAnyCode, letterPattern, digitPattern, tierFromPatterns, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -27,19 +27,24 @@ export const VZ_THEMES = {
 
 export function vzStyle(theme, record) {
   const base = VZ_THEMES[theme] || VZ_THEMES.classic;
+  // Foydalanuvchi istalgan aksent rangni tanlagan bo'lsa — tugmalar,
+  // belgi va urg'u ranglarini shu bilan almashtiramiz (tema rangidan ustun).
+  const accented = record && record.accentColor
+    ? { ...base, '--vz-accent': record.accentColor, '--vz-pill': record.accentColor }
+    : base;
   const pattern = record && record.bgPattern === false ? '' :
     'repeating-linear-gradient(115deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 68px), ';
   if (record && record.bgUrl) {
     // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — shuni ko'rsatamiz
     // (naqsh ustiga yarim shaffof qatlam sifatida qo'shiladi, o'qilishi uchun).
     return {
-      ...base,
+      ...accented,
       background:
         pattern + `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}") center/cover no-repeat`,
     };
   }
   return {
-    ...base,
+    ...accented,
     background: pattern + 'linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
   };
 }
@@ -94,6 +99,13 @@ function rarity(code) {
   return label;
 }
 
+function tierOf(code) {
+  if (!code || code.length !== 6) return 'free';
+  const lp = letterPattern(code.slice(0, 3));
+  const dp = digitPattern(code.slice(3, 6));
+  return tierFromPatterns(lp, dp);
+}
+
 export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
   const [toast, setToast] = useState('');
@@ -103,6 +115,7 @@ export default function ProfilePage({ code, catalog }) {
   const [followStats, setFollowStats] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
   const [followMsg, setFollowMsg] = useState(null);
+  const [followOrder, setFollowOrder] = useState(null); // { orderId, payLink, amount } — to'lov kutilayotgan obuna
   const { user, myCards } = useAuth();
 
   useEffect(() => {
@@ -115,18 +128,47 @@ export default function ProfilePage({ code, catalog }) {
     try {
       if (followStats?.isFollowing) {
         await dbUnfollow(code);
+        const stats = await dbFollowStats(code);
+        setFollowStats(stats);
       } else {
-        await dbFollow(code);
+        const result = await dbFollow(code);
+        if (result.pending) {
+          // Premium profil — real to'lov kerak, checkout'ga yo'naltiramiz.
+          setFollowOrder(result);
+        } else {
+          const stats = await dbFollowStats(code);
+          setFollowStats(stats);
+        }
       }
-      const stats = await dbFollowStats(code);
-      setFollowStats(stats);
     } catch (err) {
       if (err.code === 'unauthorized') { navigate('/login'); return; }
-      setFollowMsg(err.message + (err.available != null ? ` (mavjud: ${fmt(err.available)} NFC Coin)` : ''));
+      setFollowMsg(err.message);
     } finally {
       setFollowBusy(false);
     }
   };
+
+  // To'lov kutilayotgan obuna holatini kuzatib turamiz.
+  useEffect(() => {
+    if (!followOrder) return;
+    const t = setInterval(async () => {
+      try {
+        const st = await dbGetPayment(followOrder.orderId);
+        if (st.status === 'paid') {
+          clearInterval(t);
+          setFollowOrder(null);
+          const stats = await dbFollowStats(code);
+          setFollowStats(stats);
+          setFollowMsg(null);
+        } else if (st.status === 'cancelled') {
+          clearInterval(t);
+          setFollowOrder(null);
+          setFollowMsg("To'lov bekor qilindi.");
+        }
+      } catch { /* keyingi urinishda qayta tekshiramiz */ }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [followOrder, code]);
 
   const startChat = async () => {
     if (!user) { navigate('/login'); return; }
@@ -257,6 +299,9 @@ export default function ProfilePage({ code, catalog }) {
   const wsUrl = record.website || '';
   const hasSocials = tgUrl || igUrl || fbUrl || xUrl || liUrl;
   const rarityLabel = rarity(record.code);
+  const tier = tierOf(record.code);
+  const tierColor = TIER_COLOR[tier];
+  const tierEmoji = TIER_EMOJI[tier];
   const dark = DARK_THEMES.includes(record.theme || 'classic');
 
   let topRank = null;
@@ -325,7 +370,7 @@ export default function ProfilePage({ code, catalog }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
-            {!isOwner && (
+            {!isOwner && !followOrder && (
               <>
                 <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} Xabar yozish</button>
                 <button
@@ -338,7 +383,7 @@ export default function ProfilePage({ code, catalog }) {
                     : followStats?.isFollowing
                       ? 'Obunani bekor qilish'
                       : record.isPremium
-                        ? `Obuna bo'lish \u2014 500 NFC Coin`
+                        ? `Obuna bo'lish \u2014 ${fmt(500)} so'm`
                         : "Obuna bo'lish"}
                 </button>
               </>
@@ -349,6 +394,17 @@ export default function ProfilePage({ code, catalog }) {
           <div className="mt-2 flex gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
             <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> obunachi</span>
             <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> obuna</span>
+          </div>
+        )}
+        {followOrder && (
+          <div className="mt-3 rounded-xl border border-[color:var(--vz-line)] p-3.5">
+            <p className="text-[13px] text-[color:var(--vz-ink-dim)]">Obuna bo'lish uchun {fmt(followOrder.amount)} so'm to'lang — tasdiqlangach avtomatik faollashadi.</p>
+            <a href={followOrder.payLink} target="_blank" rel="noopener noreferrer" className={`${pillBtn} mt-2 inline-block`}>
+              To'lovga o'tish
+            </a>
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-[color:var(--vz-ink-faint)]">
+              <span className="loading loading-spinner loading-xs"></span> To'lov kutilmoqda...
+            </div>
           </div>
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}
@@ -367,14 +423,37 @@ export default function ProfilePage({ code, catalog }) {
             <span className="pointer-events-none absolute left-[82%] top-[4%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[88%] top-[78%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[10%] top-[86%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
-            <div className="font-display z-10 flex h-[104px] w-[104px] items-center justify-center overflow-hidden rounded-full border-[3px] border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[32px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_24px_rgba(20,25,30,0.12)]">
+
+            {/* Chap va o'ng tomondagi NFC signal to'lqinlari (tegish animatsiyasi) */}
+            <div className="pointer-events-none absolute right-full top-1/2 mr-1 -translate-y-1/2">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="absolute right-0 top-1/2 -translate-y-1/2 animate-[nfcPulse_2.2s_ease-out_infinite] rounded-full border-2"
+                  style={{ width: 10 + i * 10, height: 10 + i * 10, marginRight: -(5 + i * 5), borderColor: tierColor, animationDelay: `${i * 0.35}s` }} />
+              ))}
+            </div>
+            <div className="pointer-events-none absolute left-full top-1/2 ml-1 -translate-y-1/2">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="absolute left-0 top-1/2 -translate-y-1/2 animate-[nfcPulse_2.2s_ease-out_infinite] rounded-full border-2"
+                  style={{ width: 10 + i * 10, height: 10 + i * 10, marginLeft: -(5 + i * 5), borderColor: tierColor, animationDelay: `${i * 0.35}s` }} />
+              ))}
+            </div>
+
+            <div className="font-display z-10 flex h-[104px] w-[104px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[32px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_24px_rgba(20,25,30,0.12)]"
+              style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
               {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
             </div>
           </div>
           <div className="font-display mt-4 flex items-center justify-center gap-1.5 text-[23px] font-bold">{record.name}</div>
-          <div className="mb-1 mt-0.5 flex items-center gap-1 text-[13px] text-[color:var(--vz-ink-dim)]">
-            nfcstore.uz/{record.code.toLowerCase()} <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
+          <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[13.5px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
+            {tierEmoji && <span>{tierEmoji}</span>}
+            nfcstore.uz/{record.code.toLowerCase()}
+            <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
           </div>
+          {tier !== 'free' && (
+            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
+              {TIER_LABEL[tier]} tarif
+            </div>
+          )}
           <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">Faol bo'lgan: {timeAgo(record.ts)}</div>
           {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
           {record.about && <p className="mx-auto mt-2 max-w-[460px] text-center text-sm leading-relaxed text-[color:var(--vz-ink-dim)]">{record.about}</p>}

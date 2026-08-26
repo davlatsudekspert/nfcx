@@ -98,7 +98,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         return;
       }
       if (result.pending) {
-        // Paynet yoqilgan: karta hali yaratilmadi, avval to'lov kerak.
+        // Payme yoqilgan: karta hali yaratilmadi, avval to'lov kerak.
         setOrder(result);
         setBusy(false);
         return;
@@ -120,7 +120,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   };
 
   // To'lov bosqichida buyurtma holatini avtomatik tekshirib turamiz
-  // (Paynet webhook orqali "paid" bo'lgach karta avtomatik yaratiladi).
+  // (Payme webhook orqali "paid" bo'lgach karta avtomatik yaratiladi).
   useEffect(() => {
     if (!order) return;
     pollRef.current = setInterval(async () => {
@@ -261,7 +261,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 p-3">
               <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
               <span className="text-xs leading-relaxed text-base-content/75">
-                <b>Jismoniy NFC karta ham buyurtma qilish</b> — kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha <b>{fmt(PHYSICAL_CARD_FEE)} NFC Coin</b>.
+                <b>Jismoniy NFC karta ham buyurtma qilish</b> — kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha <b>{fmt(PHYSICAL_CARD_FEE)} so'm</b>.
               </span>
             </label>
             {wantPhysicalCard && (

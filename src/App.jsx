@@ -20,6 +20,7 @@ import AuctionsPage from './pages/AuctionsPage.jsx';
 import AuctionPage from './pages/AuctionPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import MessagesPage from './pages/MessagesPage.jsx';
+import PaymentsPage from './pages/PaymentsPage.jsx';
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -36,6 +37,7 @@ const STATIC_ROUTES = {
   auksion: AuctionsPage,
   admin: AdminPage,
   xabarlar: MessagesPage,
+  tolovlar: PaymentsPage,
 };
 const RESERVED = new Set(Object.keys(STATIC_ROUTES).filter(Boolean));
 
@@ -75,6 +77,7 @@ export default function App() {
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
     else if (cleanRoute === 'auksion') page = <AuctionsPage />;
+    else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
     else if (isAuctionDetail) page = <AuctionPage key={cleanRoute} id={cleanRoute.slice('auksion/'.length)} />;
     else if (cleanRoute === 'xabarlar') page = <MessagesPage />;

@@ -51,6 +51,9 @@ export default function Header() {
               {unread > 0 && <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{unread}</span>}
             </button>
           )}
+          {user && (
+            <button className="btn btn-ghost btn-sm" onClick={() => go('/tolovlar')}>To'lovlar</button>
+          )}
           {user ? (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/account')}>Mening profilim</button>
           ) : (

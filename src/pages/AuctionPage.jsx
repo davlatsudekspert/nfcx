@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGetAuction, dbPlaceBid, dbGetWallet } from '../lib/db.js';
-import { fmt, timeAgo } from '../lib/format.js';
+import { dbGetAuction, dbPlaceBid, dbPayAuctionWinner, dbGetPayment } from '../lib/db.js';
+import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 
@@ -17,17 +17,20 @@ function timeLeft(endsAt) {
 
 const STATUS_LABEL = {
   active: { text: 'Faol', cls: 'badge-success' },
+  awaiting_payment: { text: "To'lov kutilmoqda", cls: 'badge-warning' },
   sold: { text: 'Sotildi', cls: 'badge-accent' },
   expired: { text: "Taklifsiz tugadi", cls: 'badge-ghost' },
+  payment_expired: { text: "To'lov muddati o'tdi", cls: 'badge-error' },
+  cancelled: { text: 'Bekor qilindi', cls: 'badge-ghost' },
 };
 
 export default function AuctionPage({ id }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);
-  const [wallet, setWallet] = useState(null);
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [payOrder, setPayOrder] = useState(null);
   const [, tick] = useState(0);
   const idemRef = useRef(null);
 
@@ -41,8 +44,24 @@ export default function AuctionPage({ id }) {
   }, [id]);
 
   useEffect(() => {
-    if (user) dbGetWallet().then(setWallet);
-  }, [user]);
+    if (!payOrder) return;
+    const t = setInterval(async () => {
+      try {
+        const st = await dbGetPayment(payOrder.orderId);
+        if (st.status === 'paid') {
+          clearInterval(t);
+          setPayOrder(null);
+          setMsg({ type: 'ok', text: "To'lov tasdiqlandi — tabriklaymiz, vizitka endi sizniki!" });
+          await load();
+        } else if (st.status === 'cancelled') {
+          clearInterval(t);
+          setPayOrder(null);
+          setMsg({ type: 'err', text: "To'lov bekor qilindi." });
+        }
+      } catch { /* keyingi urinishda qayta tekshiramiz */ }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [payOrder]);
 
   if (data === null) {
     return <main className="mx-auto max-w-3xl px-5 pt-16 pb-16 text-center text-base-content/45">Yuklanmoqda yoki auksion topilmadi...</main>;
@@ -57,24 +76,39 @@ export default function AuctionPage({ id }) {
   const bid = async () => {
     if (!user) { navigate('/login'); return; }
     const val = Math.round(Number(amount));
-    if (!val || val < minNext) { setMsg({ type: 'err', text: `Taklif kamida ${fmt(minNext)} NFC Coin bo'lishi kerak.` }); return; }
-    // Har bir yangi urinish uchun bitta idempotency key — tarmoq uzilib
-    // qayta so'rov ketsa ham, bir xil taklif ikki marta yozilmaydi/yechilmaydi.
+    if (!val || val < minNext) { setMsg({ type: 'err', text: `Taklif kamida ${fmt(minNext)} so'm bo'lishi kerak.` }); return; }
     if (!idemRef.current) idemRef.current = crypto.randomUUID();
     setBusy(true);
     setMsg(null);
     try {
       const res = await dbPlaceBid(auction.id, val, idemRef.current);
-      idemRef.current = null; // muvaffaqiyatli — keyingi taklif uchun yangi kalit kerak
-      setMsg({ type: 'ok', text: res.buyNow ? "Tabriklaymiz! Siz 'darhol sotib olish' narxiga yetdingiz — auksion yakunlandi." : "Taklifingiz qabul qilindi!" });
+      idemRef.current = null;
+      setMsg({
+        type: 'ok',
+        text: res.buyNow
+          ? "Siz 'darhol sotib olish' narxiga yetdingiz — endi 24 soat ichida to'lashingiz kerak."
+          : res.antiSnipe
+            ? "Taklifingiz qabul qilindi! Tugash vaqti oxirgi daqiqada bo'lgani uchun +5 daqiqaga uzaytirildi."
+            : "Taklifingiz qabul qilindi!",
+      });
       setAmount('');
       await load();
-      dbGetWallet().then(setWallet);
     } catch (err) {
-      // SYSTEM xatosida kalitni saqlab qolamiz — qayta bossa xuddi shu
-      // urinish deb hisoblanadi (ikki marta yechilib qolmaydi).
       if (err.code && err.code !== 'SYSTEM') idemRef.current = null;
-      setMsg({ type: 'err', text: err.message + (err.available != null ? ` (mavjud: ${fmt(err.available)} NFC Coin)` : '') });
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const payNow = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const order = await dbPayAuctionWinner(auction.id);
+      setPayOrder(order);
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
     } finally {
       setBusy(false);
     }
@@ -93,15 +127,19 @@ export default function AuctionPage({ id }) {
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
           <div className="text-xs text-base-content/50">Joriy narx</div>
-          <div className="mt-1 text-2xl font-extrabold">{fmt(auction.currentPrice)} <span className="text-sm font-normal text-base-content/50">NFC Coin</span></div>
+          <div className="mt-1 text-2xl font-extrabold">{fmt(auction.currentPrice)} <span className="text-sm font-normal text-base-content/50">so'm</span></div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
-          <div className="text-xs text-base-content/50">{auction.status === 'active' ? 'Qolgan vaqt' : 'Yakunlangan'}</div>
-          <div className="mt-1 text-2xl font-extrabold">{auction.status === 'active' ? timeLeft(auction.endsAt) : '—'}</div>
+          <div className="text-xs text-base-content/50">{auction.status === 'active' ? 'Qolgan vaqt' : auction.status === 'awaiting_payment' ? "To'lov muddati" : 'Yakunlangan'}</div>
+          <div className="mt-1 text-2xl font-extrabold">
+            {auction.status === 'active' ? timeLeft(auction.endsAt)
+              : auction.status === 'awaiting_payment' ? timeLeft(auction.paymentDeadline)
+              : '—'}
+          </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
           <div className="text-xs text-base-content/50">Darhol sotib olish</div>
-          <div className="mt-1 text-2xl font-extrabold">{auction.buyNowPrice ? fmt(auction.buyNowPrice) + " NFC Coin" : '—'}</div>
+          <div className="mt-1 text-2xl font-extrabold">{auction.buyNowPrice ? fmt(auction.buyNowPrice) + " so'm" : '—'}</div>
         </div>
       </section>
 
@@ -112,16 +150,34 @@ export default function AuctionPage({ id }) {
         <div className="alert mt-6 py-2 text-sm"><span>Bu — sizning auksioningiz. O'zingiz taklif qila olmaysiz.</span></div>
       )}
 
+      {isHighest && auction.status === 'awaiting_payment' && !payOrder && (
+        <section className="mt-6 rounded-2xl border border-warning/40 bg-warning/10 p-5">
+          <div className="text-sm font-bold">{'\u{1F389}'} Tabriklaymiz — siz g'olib bo'ldingiz!</div>
+          <p className="mt-1 text-sm text-base-content/60">
+            {fmt(auction.currentPrice)} so'mni <b>{dateTime(new Date(auction.paymentDeadline).getTime())}</b> gacha (24 soat ichida) to'lashingiz kerak, aks holda auksion bekor bo'ladi.
+          </p>
+          <button className="btn btn-primary btn-sm mt-3" onClick={payNow} disabled={busy}>
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : `To'lash \u2014 ${fmt(auction.currentPrice)} so'm`}
+          </button>
+        </section>
+      )}
+      {payOrder && (
+        <section className="mt-6 rounded-2xl border border-white/10 p-5">
+          <a href={payOrder.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
+            To'lovga o'tish &rarr;
+          </a>
+          <p className="mt-2 flex items-center gap-2 text-xs text-base-content/45">
+            <span className="loading loading-spinner loading-xs"></span> To'lov kutilmoqda...
+          </p>
+        </section>
+      )}
+
       {auction.status === 'active' && !isOwner && (
         <section className="mt-6 rounded-2xl border border-white/10 p-5">
           <div className="text-sm font-bold">Narx taklif qilish</div>
-          {user && wallet && (
-            <p className="mt-1 text-xs text-base-content/50">
-              NFC Pay balansingiz: <b>{fmt(wallet.available)} NFC Coin</b> ishlatish mumkin
-              {wallet.heldBalance > 0 && ` (${fmt(wallet.heldBalance)} NFC Coin boshqa takliflarda bandlangan)`}.
-              {' '}<button className="underline underline-offset-2" onClick={() => navigate('/account')}>NFC Pay'ni to'ldirish &rarr;</button>
-            </p>
-          )}
+          <p className="mt-1 text-xs text-base-content/50">
+            Taklif berish bepul — real to'lovni faqat g'olib bo'lsangiz, 24 soat ichida qilasiz.
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <input
               type="number"
@@ -139,9 +195,9 @@ export default function AuctionPage({ id }) {
               </button>
             )}
           </div>
-          {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
         </section>
       )}
+      {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
 
       <section className="mt-8">
         <div className="text-sm font-bold">Takliflar tarixi ({bids.length})</div>
@@ -150,7 +206,7 @@ export default function AuctionPage({ id }) {
           {bids.map((b) => (
             <div key={b.id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-2.5 text-sm">
               <span className="text-base-content/60">{b.userId === auction.highestBidderId ? '\uD83D\uDC51 ' : ''}Foydalanuvchi #{b.userId}</span>
-              <span className="font-semibold">{fmt(b.amount)} NFC Coin</span>
+              <span className="font-semibold">{fmt(b.amount)} so'm</span>
               <span className="text-xs text-base-content/40">{timeAgo(new Date(b.createdAt).getTime())}</span>
             </div>
           ))}

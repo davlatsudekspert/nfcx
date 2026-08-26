@@ -5,7 +5,7 @@ import { navigate } from '../lib/router.js';
 
 export default function CatalogPage({ catalog }) {
   const [sales, setSales] = useState([]);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
 
   useEffect(() => { dbListSales().then(setSales); }, []);
 
@@ -15,7 +15,11 @@ export default function CatalogPage({ catalog }) {
   const query = q.trim().toUpperCase();
   const filtered = [...catalog]
     .sort((a, b) => b.ts - a.ts)
-    .filter((it) => !query || it.code.includes(query) || (it.name || '').toUpperCase().includes(query));
+    .filter((it) => !query
+      || it.code.includes(query)
+      || (it.name || '').toUpperCase().includes(query)
+      || (it.role || '').toUpperCase().includes(query)
+      || (it.hashtags || []).some((h) => String(h).toUpperCase().includes(query)));
 
   const cardCls = 'cursor-pointer rounded-2xl border border-white/10 bg-base-200/60 p-5 transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200';
 

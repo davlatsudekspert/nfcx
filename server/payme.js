@@ -1,4 +1,5 @@
-// Payme Merchant API integratsiyasi — hamyonni to'ldirish uchun.
+// Payme Merchant API integratsiyasi — barcha real to'lovlar shu orqali:
+// vizitka xaridi, jismoniy karta, auksion, Premium profil, Premium obuna.
 //
 // Kerakli env'lar (Railway Variables):
 //   PAYME_MERCHANT_ID  - Payme Business kabinetidan (Cassa ID)
@@ -12,8 +13,8 @@
 // Hujjat: https://developer.help.paycom.uz/
 
 import {
-  getWalletTopup, getWalletTopupByPaymeId, setWalletTopupPaymeId,
-  markWalletTopupPaid, cancelWalletTopup,
+  getWebOrder, getWebOrderByPaymeId, setWebOrderPaymeId,
+  finalizePaidWebOrder, cancelPendingWebOrder,
 } from './db.js';
 import crypto from 'crypto';
 
@@ -88,20 +89,20 @@ export async function handlePaymeRequest(body) {
     switch (method) {
       case 'CheckPerformTransaction': {
         if (!orderId) return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
-        const order = await getWalletTopup(orderId);
+        const order = await getWebOrder(orderId);
         if (!order || order.status !== 'pending') return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi yoki allaqachon yopilgan");
-        const expected = Math.round(Number(order.amount) * 100);
+        const expected = Math.round(Number(order.price) * 100);
         if (Number(params.amount) !== expected) return rpcError(id, ERR.INVALID_AMOUNT, "Summa mos emas");
         return rpcResult(id, { allow: true });
       }
 
       case 'CreateTransaction': {
         if (!orderId) return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
-        const order = await getWalletTopup(orderId);
+        const order = await getWebOrder(orderId);
         if (!order) return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
 
         // Idempotentlik: bu Payme tranzaksiyasi bilan avval yaratilgan bo'lsa — o'sha javobni qaytaramiz.
-        const existing = await getWalletTopupByPaymeId(params.id);
+        const existing = await getWebOrderByPaymeId(params.id);
         if (existing) {
           return rpcResult(id, {
             create_time: new Date(existing.createdAt).getTime(),
@@ -110,10 +111,10 @@ export async function handlePaymeRequest(body) {
           });
         }
         if (order.status !== 'pending') return rpcError(id, ERR.CANT_DO_OPERATION, "Buyurtma band emas");
-        const expected = Math.round(Number(order.amount) * 100);
+        const expected = Math.round(Number(order.price) * 100);
         if (Number(params.amount) !== expected) return rpcError(id, ERR.INVALID_AMOUNT, "Summa mos emas");
 
-        await setWalletTopupPaymeId(order.id, params.id);
+        await setWebOrderPaymeId(order.id, params.id);
         return rpcResult(id, {
           create_time: Date.now(),
           transaction: String(order.id),
@@ -122,29 +123,33 @@ export async function handlePaymeRequest(body) {
       }
 
       case 'PerformTransaction': {
-        const order = await getWalletTopupByPaymeId(params.id);
+        const order = await getWebOrderByPaymeId(params.id);
         if (!order) return rpcError(id, ERR.TRANSACTION_NOT_FOUND, "Tranzaksiya topilmadi");
         if (order.status === 'paid') {
           return rpcResult(id, { transaction: String(order.id), perform_time: Date.now(), state: 2 });
         }
         if (order.status !== 'pending') return rpcError(id, ERR.CANT_DO_OPERATION, "Amalni bajarib bo'lmaydi");
-        const paid = await markWalletTopupPaid(order.id);
+        // Buyurtma turiga (kind) qarab to'g'ri mantiq bajariladi: karta
+        // yaratish, auksionni yakunlash, Premium faollashtirish yoki
+        // obuna to'lovini hisoblash — hammasi shu bitta joyda.
+        await finalizePaidWebOrder(order.id);
         return rpcResult(id, {
-          transaction: String((paid || order).id),
+          transaction: String(order.id),
           perform_time: Date.now(),
           state: 2,
         });
       }
 
       case 'CancelTransaction': {
-        const order = await getWalletTopupByPaymeId(params.id);
+        const order = await getWebOrderByPaymeId(params.id);
         if (!order) return rpcError(id, ERR.TRANSACTION_NOT_FOUND, "Tranzaksiya topilmadi");
         const wasPaid = order.status === 'paid';
-        const updated = await cancelWalletTopup(order.id);
-        // Agar pul allaqachon sarflangan bo'lsa ('cancel_needs_review'),
-        // Payme oldida baribir "bekor qilindi" deb javob beramiz (protokol
-        // shuni talab qiladi) — lekin real qaytarish admin panel orqali
-        // qo'lda amalga oshiriladi (log allaqachon transactions'ga yozildi).
+        if (!wasPaid) await cancelPendingWebOrder(order.id);
+        // Agar allaqachon 'paid' bo'lgan bo'lsa (masalan karta yaratilgan,
+        // auksion yakunlangan) — bu yerda avtomatik "orqaga qaytarish"
+        // qilinmaydi, chunki bog'liq holatlar (karta egasi, auksion
+        // natijasi) allaqachon boshqa foydalanuvchilarga ta'sir qilgan
+        // bo'lishi mumkin. Bunday holatni admin qo'lda ko'rib chiqadi.
         return rpcResult(id, {
           transaction: String(order.id),
           cancel_time: Date.now(),
@@ -153,7 +158,7 @@ export async function handlePaymeRequest(body) {
       }
 
       case 'CheckTransaction': {
-        const order = await getWalletTopupByPaymeId(params.id);
+        const order = await getWebOrderByPaymeId(params.id);
         if (!order) return rpcError(id, ERR.TRANSACTION_NOT_FOUND, "Tranzaksiya topilmadi");
         return rpcResult(id, {
           create_time: new Date(order.createdAt).getTime(),

@@ -14,9 +14,9 @@ import { hashPassword, verifyPassword } from './auth.js';
 import {
   isDbReady, adminListUsers, adminAdjustBalance, adminListOrders, adminListWalletTopups,
   adminListAuctions, adminCancelAuction, adminListPhysicalCards, adminSetPhysicalCardStatus,
-  adminStats, settleAuction, listPremiumRequests, approvePremiumRequest, rejectPremiumRequest,
+  adminStats, closeAuctionBidding,
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
-  adminCardsTimeSeries,
+  adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -159,13 +159,24 @@ adminRouter.post('/auctions/:id/cancel', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Muddatidan oldin majburan yakunlash (masalan sotuvchi so'ragan holatda).
+// Muddatidan oldin majburan bidlashni yopish (masalan sotuvchi so'ragan
+// holatda) — g'olib bo'lsa 24 soatlik to'lov muddati boshlanadi, pul
+// harakatlanmaydi (e-wallet yo'q).
 adminRouter.post('/auctions/:id/force-settle', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const id = Number(req.params.id);
-  const result = await settleAuction(id, AUCTION_COMMISSION_PCT);
+  const result = await closeAuctionBidding(id);
   if (!result) return res.status(409).json({ error: 'cannot_settle' });
   res.json(result);
+});
+
+// Sotuvchiga auksion daromadini (95%) qo'lda to'lagach shu bosiladi.
+adminRouter.post('/auctions/:id/mark-payout-paid', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  const result = await markAuctionPayoutPaid(id);
+  if (!result) return res.status(409).json({ error: 'cannot_mark_paid' });
+  res.json({ ok: true });
 });
 
 adminRouter.get('/physical-cards', async (req, res) => {
@@ -185,26 +196,27 @@ adminRouter.post('/physical-cards/:id/status', async (req, res) => {
   res.json(updated);
 });
 
-// --- Premium profil so'rovlari ---
+// --- To'lanishi kerak bo'lgan pullar (auksion sotuvchilari, premium egalari) ---
+// Endi "premium so'rovi tasdiqlash" kerak emas — Premium status to'lov
+// webhook orqali AVTOMATIK faollashadi (real Payme to'lovi tasdiqlangach).
+// Admin faqat pending_payout'larni (odamlarga to'lash kerak bo'lgan real
+// pulni) ko'radi va qo'lda to'laganidan keyin shu yerda "tozalaydi".
 
-adminRouter.get('/premium-requests', async (req, res) => {
-  if (!isDbReady()) return res.json({ requests: [] });
-  res.json({ requests: await listPremiumRequests('pending') });
+adminRouter.get('/pending-payouts', async (req, res) => {
+  if (!isDbReady()) return res.json({ payouts: [] });
+  res.json({ payouts: await adminListPendingPayouts() });
 });
 
-adminRouter.post('/premium-requests/:id/approve', async (req, res) => {
+adminRouter.post('/pending-payouts/:userId/clear', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const result = await approvePremiumRequest(Number(req.params.id));
-  if (!result) return res.status(404).json({ error: 'not_found' });
-  res.json({ ok: true });
+  const amount = Math.round(Number(req.body?.amount));
+  if (!amount || amount <= 0) return res.status(422).json({ error: 'bad_amount' });
+  const result = await adminClearPendingPayout(Number(req.params.userId), amount);
+  if (!result) return res.status(409).json({ error: 'amount_exceeds_pending' });
+  res.json(result);
 });
 
-adminRouter.post('/premium-requests/:id/reject', async (req, res) => {
-  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const result = await rejectPremiumRequest(Number(req.params.id));
-  if (!result) return res.status(404).json({ error: 'not_found' });
-  res.json({ ok: true });
-});
+// --- Auksion sotuvchi to'lovlari (alohida, chunki har bir auksionga bog'liq) ---
 
 // --- Platforma hamyoni va statistika (diagrammalar) ---
 

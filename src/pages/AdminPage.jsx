@@ -68,7 +68,7 @@ function AdminLogin({ onLoggedIn }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "Hamyon to'ldirish", 'Auksionlar', 'Jismoniy kartalar', 'Premium so\'rovlari'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', 'Jismoniy kartalar'];
 
 function StatCard({ label, value }) {
   return (
@@ -90,21 +90,15 @@ function StatsTab() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <div className="col-span-full rounded-xl border border-accent/40 bg-accent/10 p-4">
-        <div className="text-xs text-base-content/50">{'\u{1F4B0}'} Platforma (admin) hamyoni</div>
-        <div className="mt-1 text-2xl font-extrabold text-accent">{wallet === null ? '\u2014' : fmt(wallet)} NFC Coin</div>
-        <p className="mt-1 text-xs text-base-content/45">Auksion va premium obuna komissiyalaridan yig'ilgan mablag'.</p>
+        <div className="text-xs text-base-content/50">{'\u{1F4B0}'} Platforma daromadi (komissiyalar)</div>
+        <div className="mt-1 text-2xl font-extrabold text-accent">{wallet === null ? '\u2014' : fmt(wallet)} so'm</div>
+        <p className="mt-1 text-xs text-base-content/45">Auksion va premium obuna komissiyalaridan yig'ilgan real pul.</p>
       </div>
       <StatCard label="Foydalanuvchilar" value={fmt(stats.userCount)} />
-      <StatCard label="NFC Pay'dagi jami mablag'" value={fmt(stats.totalWalletBalance) + ' NFC Coin'} />
       <StatCard label="Band qilingan vizitkalar" value={fmt(stats.cardCount)} />
       <StatCard label="Jami vizitka savdosi" value={fmt(stats.totalCardSalesValue) + " so'm"} />
       <StatCard label="Faol auksionlar" value={fmt(stats.activeAuctions)} />
       <StatCard label="Kutilayotgan buyurtmalar" value={fmt(stats.pendingWebOrders)} />
-      {stats.topupsNeedReview > 0 && (
-        <div className="col-span-full rounded-xl border border-error/40 bg-error/10 p-4 text-sm">
-          {'\u26A0\uFE0F'} <b>{stats.topupsNeedReview}</b> ta hamyon to'ldirish bekor qilingan, lekin pul allaqachon sarflanganligi sababli qo'lda ko'rib chiqish kerak — "Hamyon to'ldirish" bo'limiga qarang.
-        </div>
-      )}
     </div>
   );
 }
@@ -140,7 +134,7 @@ function AnalyticsTab() {
               <XAxis dataKey="day" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} />
-              <Line type="monotone" dataKey="total" name="Komissiya (NFC Coin)" stroke="#f5a524" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="total" name="Komissiya (so'm)" stroke="#f5a524" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -187,7 +181,7 @@ function AnalyticsTab() {
                 <Pie data={breakdown} dataKey="total" nameKey="label" cx="50%" cy="50%" outerRadius={90} label={(e) => e.label}>
                   {breakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} formatter={(v) => fmt(v) + ' NFC Coin'} />
+                <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} formatter={(v) => fmt(v) + " so'm"} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -199,7 +193,7 @@ function AnalyticsTab() {
                   <tr key={b.kind}>
                     <td>{b.label}</td>
                     <td>{fmt(b.count)}</td>
-                    <td className="font-semibold">{fmt(b.total)} NFC Coin</td>
+                    <td className="font-semibold">{fmt(b.total)} so'm</td>
                   </tr>
                 ))}
               </tbody>
@@ -306,25 +300,39 @@ function OrdersTab() {
   );
 }
 
-function TopupsTab() {
-  const [topups, setTopups] = useState(null);
-  useEffect(() => { adminApi('/topups').then((d) => setTopups(d.topups)); }, []);
-  if (!topups) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+// Foydalanuvchilarga to'lanishi kerak bo'lgan real pullar — premium
+// obunachi to'lovlaridan tegishli ulush. Admin qo'lda (Payme/karta orqali)
+// to'laydi va shu yerda "tozalaydi" (e-wallet yo'q, avtomatik o'tkazib
+// bo'lmaydi).
+function PendingPayoutsTab() {
+  const [payouts, setPayouts] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const load = () => adminApi('/pending-payouts').then((d) => setPayouts(d.payouts));
+  useEffect(() => { load(); }, []);
+
+  const clear = async (userId, amount) => {
+    if (!confirm(`${fmt(amount)} so'mni qo'lda to'laganingizni tasdiqlaysizmi?`)) return;
+    setBusy(userId);
+    try { await adminApi(`/pending-payouts/${userId}/clear`, { method: 'POST', body: JSON.stringify({ amount }) }); await load(); } finally { setBusy(null); }
+  };
+
+  if (!payouts) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+  if (payouts.length === 0) return <div className="text-base-content/45">Hozircha hech kimga to'lanishi kerak bo'lgan pul yo'q.</div>;
   return (
     <div className="overflow-x-auto">
       <table className="table table-sm">
-        <thead><tr><th>Email</th><th>Summa</th><th>Holat</th><th>Vaqt</th></tr></thead>
+        <thead><tr><th>Email</th><th>Telefon</th><th>To'lanishi kerak</th><th></th></tr></thead>
         <tbody>
-          {topups.map((t) => (
-            <tr key={t.id} className={t.status === 'cancel_needs_review' ? 'bg-error/10' : ''}>
-              <td>{t.email}</td>
-              <td>{fmt(t.amount)} NFC Coin</td>
+          {payouts.map((p) => (
+            <tr key={p.id}>
+              <td>{p.email}</td>
+              <td className="font-mono text-xs">{p.phone || '—'}</td>
+              <td className="font-semibold">{fmt(p.pendingPayout)} so'm</td>
               <td>
-                <span className={`badge badge-sm ${t.status === 'paid' ? 'badge-success' : t.status === 'cancel_needs_review' ? 'badge-error' : 'badge-ghost'}`}>
-                  {t.status === 'cancel_needs_review' ? "DIQQAT: qo'lda ko'rib chiqish kerak" : t.status}
-                </span>
+                <button className="btn btn-success btn-xs" disabled={busy === p.id} onClick={() => clear(p.id, p.pendingPayout)}>
+                  To'landi deb belgilash
+                </button>
               </td>
-              <td className="text-xs text-base-content/50">{timeAgo(new Date(t.createdAt).getTime())}</td>
             </tr>
           ))}
         </tbody>
@@ -420,48 +428,6 @@ function PhysicalCardsTab() {
   );
 }
 
-function PremiumRequestsTab() {
-  const [requests, setRequests] = useState(null);
-  const [busy, setBusy] = useState(null);
-  const load = () => adminApi('/premium-requests').then((d) => setRequests(d.requests));
-  useEffect(() => { load(); }, []);
-
-  const approve = async (id) => {
-    setBusy(id);
-    try { await adminApi(`/premium-requests/${id}/approve`, { method: 'POST' }); await load(); } finally { setBusy(null); }
-  };
-  const reject = async (id) => {
-    if (!confirm("Rad etilsa, foydalanuvchiga to'lov avtomatik qaytariladi. Tasdiqlaysizmi?")) return;
-    setBusy(id);
-    try { await adminApi(`/premium-requests/${id}/reject`, { method: 'POST' }); await load(); } finally { setBusy(null); }
-  };
-
-  if (!requests) return <div className="text-base-content/45">Yuklanmoqda...</div>;
-  if (requests.length === 0) return <div className="text-base-content/45">Hozircha kutilayotgan premium so'rov yo'q.</div>;
-  return (
-    <div className="overflow-x-auto">
-      <table className="table table-sm">
-        <thead><tr><th>Email</th><th>Summa</th><th>Vaqt</th><th></th></tr></thead>
-        <tbody>
-          {requests.map((r) => (
-            <tr key={r.id}>
-              <td>{r.email}</td>
-              <td className="font-semibold">{fmt(r.amount)} NFC Coin</td>
-              <td className="text-xs text-base-content/50">{timeAgo(new Date(r.createdAt).getTime())}</td>
-              <td>
-                <div className="flex gap-1">
-                  <button className="btn btn-success btn-xs" disabled={busy === r.id} onClick={() => approve(r.id)}>Tasdiqlash</button>
-                  <button className="btn btn-ghost btn-xs text-error" disabled={busy === r.id} onClick={() => reject(r.id)}>Rad etish</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function Dashboard({ onLogout }) {
   const [tab, setTab] = useState(0);
   const logout = async () => { await adminApi('/logout', { method: 'POST' }); onLogout(); };
@@ -485,10 +451,9 @@ function Dashboard({ onLogout }) {
         {tab === 1 && <AnalyticsTab />}
         {tab === 2 && <UsersTab />}
         {tab === 3 && <OrdersTab />}
-        {tab === 4 && <TopupsTab />}
+        {tab === 4 && <PendingPayoutsTab />}
         {tab === 5 && <AuctionsTab />}
         {tab === 6 && <PhysicalCardsTab />}
-        {tab === 7 && <PremiumRequestsTab />}
       </div>
     </main>
   );

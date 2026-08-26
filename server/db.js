@@ -98,6 +98,13 @@ export async function initDb() {
       await pool.query(`ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT FALSE`);
       console.log('[db] users.is_premium ustuni qo\u2019shildi.');
     }
+    // E-wallet YO'Q — bu faqat "platforma sizga qarzdor" hisob-kitobi
+    // (masalan premium obunachi to'lovlaridan tegishli ulush). Admin
+    // buni qo'lda (Payme/karta orqali) to'laydi va shu yerda ayiradi.
+    if (!uc.has('pending_payout')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN pending_payout BIGINT NOT NULL DEFAULT 0`);
+      console.log('[db] users.pending_payout ustuni qo\u2019shildi.');
+    }
   }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -150,6 +157,7 @@ export async function initDb() {
     card_numbers: `ALTER TABLE cards ADD COLUMN card_numbers JSONB NOT NULL DEFAULT '[]'::jsonb`,
     bg_url: `ALTER TABLE cards ADD COLUMN bg_url TEXT`,
     bg_pattern: `ALTER TABLE cards ADD COLUMN bg_pattern BOOLEAN NOT NULL DEFAULT TRUE`,
+    accent_color: `ALTER TABLE cards ADD COLUMN accent_color TEXT`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -165,7 +173,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -194,13 +202,35 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS web_orders (
       id         SERIAL PRIMARY KEY,
       user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      code       VARCHAR(16) NOT NULL,
+      code       VARCHAR(40) NOT NULL,
+      kind       VARCHAR(24) NOT NULL DEFAULT 'card_purchase', -- card_purchase | auction_payment | premium_upgrade | premium_follow
       price      INTEGER NOT NULL,
       payload    JSONB NOT NULL,
       status     VARCHAR(20) NOT NULL DEFAULT 'pending',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  {
+    const { rows } = await pool.query(
+      `SELECT column_name, character_maximum_length FROM information_schema.columns WHERE table_name = 'web_orders'`
+    );
+    const wc = new Set(rows.map((r) => r.column_name));
+    const codeLen = rows.find((r) => r.column_name === 'code');
+    if (!wc.has('kind')) {
+      await pool.query(`ALTER TABLE web_orders ADD COLUMN kind VARCHAR(24) NOT NULL DEFAULT 'card_purchase'`);
+      console.log('[db] web_orders.kind ustuni qo\u2019shildi.');
+    }
+    if (codeLen && codeLen.character_maximum_length && codeLen.character_maximum_length < 40) {
+      await pool.query(`ALTER TABLE web_orders ALTER COLUMN code TYPE VARCHAR(40)`);
+      console.log('[db] web_orders.code ustuni VARCHAR(40)ga kengaytirildi.');
+    }
+    // Payme protokoli har bir tranzaksiyaga o'zining ID'sini beradi —
+    // buyurtmani shu orqali topib, idempotent qayta ishlash uchun kerak.
+    if (!wc.has('payme_transaction_id')) {
+      await pool.query(`ALTER TABLE web_orders ADD COLUMN payme_transaction_id TEXT UNIQUE`);
+      console.log('[db] web_orders.payme_transaction_id ustuni qo\u2019shildi.');
+    }
+  }
   await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_user_idx ON web_orders (user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_code_idx ON web_orders (code)`);
 
@@ -220,18 +250,41 @@ export async function initDb() {
   // Auksionlar va takliflar.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS auctions (
-      id                SERIAL PRIMARY KEY,
-      code              VARCHAR(16) NOT NULL REFERENCES cards(code) ON DELETE CASCADE,
-      seller_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      start_price       BIGINT NOT NULL,
-      buy_now_price     BIGINT,
-      current_price     BIGINT NOT NULL,
-      highest_bidder_id INTEGER REFERENCES users(id),
-      ends_at           TIMESTAMPTZ NOT NULL,
-      status            VARCHAR(20) NOT NULL DEFAULT 'active',
-      created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+      id                  SERIAL PRIMARY KEY,
+      code                VARCHAR(16) NOT NULL REFERENCES cards(code) ON DELETE CASCADE,
+      seller_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      start_price         BIGINT NOT NULL,
+      buy_now_price       BIGINT,
+      current_price       BIGINT NOT NULL,
+      highest_bidder_id   INTEGER REFERENCES users(id),
+      ends_at             TIMESTAMPTZ NOT NULL,
+      -- status: active -> awaiting_payment -> sold | payment_expired | expired | cancelled
+      status              VARCHAR(20) NOT NULL DEFAULT 'active',
+      payment_deadline    TIMESTAMPTZ,      -- g'olib uchun 24 soatlik muddat
+      seller_payout_amount BIGINT,          -- sotuvchiga tegishli 95% (real so'mda)
+      seller_payout_status VARCHAR(20) NOT NULL DEFAULT 'none', -- none | pending | paid
+      seller_payme_number TEXT,             -- sotuvchining to'lov olish uchun raqami
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  {
+    const { rows } = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'auctions'`
+    );
+    const ac = new Set(rows.map((r) => r.column_name));
+    const auctionCols = {
+      payment_deadline: `ALTER TABLE auctions ADD COLUMN payment_deadline TIMESTAMPTZ`,
+      seller_payout_amount: `ALTER TABLE auctions ADD COLUMN seller_payout_amount BIGINT`,
+      seller_payout_status: `ALTER TABLE auctions ADD COLUMN seller_payout_status VARCHAR(20) NOT NULL DEFAULT 'none'`,
+      seller_payme_number: `ALTER TABLE auctions ADD COLUMN seller_payme_number TEXT`,
+    };
+    for (const key of Object.keys(auctionCols)) {
+      if (!ac.has(key)) {
+        await pool.query(auctionCols[key]);
+        console.log(`[db] auctions.${key} ustuni qo'shildi.`);
+      }
+    }
+  }
   await pool.query(`CREATE INDEX IF NOT EXISTS auctions_status_idx ON auctions (status, ends_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS auctions_code_idx ON auctions (code)`);
 
@@ -411,13 +464,11 @@ export async function initDb() {
     SECURITY DEFINER
     AS $$
     DECLARE
-      v_auction   RECORD;
-      v_balance   BIGINT;
-      v_held      BIGINT;
-      v_available BIGINT;
-      v_prev      BIGINT;
-      v_buy_now   BOOLEAN := FALSE;
-      v_bid_id    INTEGER;
+      v_auction     RECORD;
+      v_buy_now     BOOLEAN := FALSE;
+      v_bid_id      INTEGER;
+      v_new_ends_at TIMESTAMPTZ;
+      v_snipe       BOOLEAN := FALSE;
     BEGIN
       IF p_amount IS NULL OR p_amount <= 0 THEN
         RETURN jsonb_build_object('ok', false, 'error', 'BID_TOO_LOW');
@@ -425,14 +476,16 @@ export async function initDb() {
 
       -- Idempotentlik: shu kalit bilan taklif avval qayta ishlangan bo'lsa,
       -- qaytadan yozmasdan o'sha natijani qaytaramiz (tarmoq uzilib qayta
-      -- so'rov yuborilgan holatlarda ikki marta yechilib qolmasligi uchun).
+      -- so'rov yuborilgan holatlarda ikki marta yozilib qolmasligi uchun).
       SELECT id INTO v_bid_id FROM bids WHERE idempotency_key = p_idempotency_key;
       IF FOUND THEN
         RETURN jsonb_build_object('ok', true, 'idempotent', true, 'bidId', v_bid_id);
       END IF;
 
       -- Auksionni qulflaymiz — parallel takliflar navbat bilan ishlanadi,
-      -- dirty read va poyga holati (race condition) bo'lmaydi.
+      -- dirty read va poyga holati (race condition) bo'lmaydi. E-wallet
+      -- yo'qligi sababli bu yerda balans bilan ishlanmaydi — taklif
+      -- BEPUL, real to'lov faqat g'olib chiqqanda amalga oshadi.
       SELECT id, seller_id, current_price, buy_now_price, highest_bidder_id, status, ends_at
         INTO v_auction FROM auctions WHERE id = p_auction_id FOR UPDATE;
 
@@ -449,43 +502,41 @@ export async function initDb() {
         RETURN jsonb_build_object('ok', false, 'error', 'BID_TOO_LOW');
       END IF;
 
-      -- Foydalanuvchi hamyonini (NFC Pay) qulflaymiz — 1 NFC Coin = 1 so'm.
-      SELECT balance, held_balance INTO v_balance, v_held
-        FROM users WHERE id = p_user_id FOR UPDATE;
-      v_available := v_balance - v_held;
-      IF v_available < p_amount THEN
-        RETURN jsonb_build_object('ok', false, 'error', 'INSUFFICIENT_NFC_COINS', 'available', v_available);
-      END IF;
-
-      -- Avvalgi g'olibning bandlangan NFC Coin'lari bo'shatiladi.
-      IF v_auction.highest_bidder_id IS NOT NULL THEN
-        SELECT COALESCE(MAX(amount), 0) INTO v_prev FROM bids
-          WHERE auction_id = p_auction_id AND user_id = v_auction.highest_bidder_id;
-        UPDATE users SET held_balance = held_balance - v_prev WHERE id = v_auction.highest_bidder_id;
-        INSERT INTO transactions (user_id, amount, kind, ref_table, ref_id, note)
-          VALUES (v_auction.highest_bidder_id, 0, 'bid_release', 'auctions', p_auction_id,
-                  'Yangi yuqori taklif keldi \u2014 oldingi ' || v_prev || ' NFC Coin bandlovdan bo\u2019shatildi');
-      END IF;
-
       INSERT INTO bids (auction_id, user_id, amount, idempotency_key)
         VALUES (p_auction_id, p_user_id, p_amount, p_idempotency_key)
         RETURNING id INTO v_bid_id;
 
-      UPDATE users SET held_balance = held_balance + p_amount WHERE id = p_user_id;
-      INSERT INTO transactions (user_id, amount, kind, ref_table, ref_id, note)
-        VALUES (p_user_id, 0, 'bid_hold', 'auctions', p_auction_id,
-                p_amount || ' NFC Coin taklif uchun bandlandi');
-
       v_buy_now := v_auction.buy_now_price IS NOT NULL AND p_amount >= v_auction.buy_now_price;
 
-      UPDATE auctions SET
-          current_price = p_amount,
-          highest_bidder_id = p_user_id,
-          status = CASE WHEN v_buy_now THEN 'sold' ELSE status END,
-          ends_at = CASE WHEN v_buy_now THEN now() ELSE ends_at END
-        WHERE id = p_auction_id;
+      -- ANTI-SNIPE: tugashiga 5 daqiqadan kam qolganda valid taklif kelsa,
+      -- muddat joriy tugash vaqtidan +5 daqiqaga suriladi (kumulyativ).
+      IF NOT v_buy_now AND (v_auction.ends_at - now()) <= interval '5 minutes' THEN
+        v_new_ends_at := v_auction.ends_at + interval '5 minutes';
+        v_snipe := TRUE;
+      ELSE
+        v_new_ends_at := v_auction.ends_at;
+      END IF;
 
-      RETURN jsonb_build_object('ok', true, 'buyNow', v_buy_now, 'bidId', v_bid_id);
+      IF v_buy_now THEN
+        -- "Darhol sotib olish" narxiga yetdi: auksion so'rov qabul
+        -- qilishni to'xtatadi, g'olibga 24 soatlik REAL to'lov muddati
+        -- beriladi (pul hali harakatlanmagan!).
+        UPDATE auctions SET
+            current_price = p_amount,
+            highest_bidder_id = p_user_id,
+            status = 'awaiting_payment',
+            ends_at = now(),
+            payment_deadline = now() + interval '24 hours'
+          WHERE id = p_auction_id;
+      ELSE
+        UPDATE auctions SET
+            current_price = p_amount,
+            highest_bidder_id = p_user_id,
+            ends_at = v_new_ends_at
+          WHERE id = p_auction_id;
+      END IF;
+
+      RETURN jsonb_build_object('ok', true, 'buyNow', v_buy_now, 'bidId', v_bid_id, 'antiSnipe', v_snipe, 'newEndsAt', v_new_ends_at);
     EXCEPTION WHEN unique_violation THEN
       -- Bir xil idempotency_key bilan bir vaqtda ikkita so'rov kirib kelsa.
       RETURN jsonb_build_object('ok', true, 'idempotent', true);
@@ -504,6 +555,7 @@ export function isDbReady() {
 
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
+  accent_color AS "accentColor",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
@@ -519,6 +571,7 @@ function rowToRecord(row) {
     avatarUrl: row.avatarUrl || '',
     bgUrl: row.bgUrl || '',
     bgPattern: row.bgPattern !== false,
+    accentColor: row.accentColor || '',
     tg: row.tg || '',
     phone: row.phone || '',
     email: row.email || '',
@@ -556,6 +609,7 @@ export async function countRecords() {
 export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
+            c.accent_color AS "accentColor",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.theme, c.for_sale AS "forSale", c.sale_price AS "salePrice", c.hashtags, c.price, c.ts, c.views,
@@ -571,9 +625,9 @@ export async function getRecord(code) {
 export async function createRecord(record) {
   const { rows } = await pool.query(
     `INSERT INTO cards
-       (code, name, role, avatar_url, bg_url, bg_pattern, tg, phone, email, linkedin, instagram,
+       (code, name, role, avatar_url, bg_url, bg_pattern, accent_color, tg, phone, email, linkedin, instagram,
         about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18::jsonb,$19,$20::jsonb,$21,$22)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb,$19::jsonb,$20,$21::jsonb,$22,$23)
      ON CONFLICT (code) DO NOTHING
      RETURNING ${SELECT_FIELDS}`,
     [
@@ -583,6 +637,7 @@ export async function createRecord(record) {
       record.avatarUrl,
       record.bgUrl || '',
       record.bgPattern === false ? false : true,
+      record.accentColor || null,
       record.tg,
       record.phone,
       record.email,
@@ -700,6 +755,7 @@ export async function updateRecord(code, fields) {
     avatarUrl: 'avatar_url',
     bgUrl: 'bg_url',
     bgPattern: 'bg_pattern',
+    accentColor: 'accent_color',
     tg: 'tg',
     phone: 'phone',
     email: 'email',
@@ -866,14 +922,14 @@ export async function listActiveBotOrderCodes() {
 // ---------- Sayt buyurtmalari (to'lov tasdiqlangach karta yaratiladi) ----------
 
 const WEB_ORDER_FIELDS = `
-  id, user_id AS "userId", code, price, payload, status, created_at AS "createdAt"
+  id, user_id AS "userId", code, kind, price, payload, status, created_at AS "createdAt"
 `;
 
-export async function createWebOrder({ userId, code, price, payload }) {
+export async function createWebOrder({ userId, code, price, payload, kind = 'card_purchase' }) {
   const { rows } = await pool.query(
-    `INSERT INTO web_orders (user_id, code, price, payload)
-     VALUES ($1,$2,$3,$4::jsonb) RETURNING ${WEB_ORDER_FIELDS}`,
-    [userId, code, price, JSON.stringify(payload || {})]
+    `INSERT INTO web_orders (user_id, code, kind, price, payload)
+     VALUES ($1,$2,$3,$4,$5::jsonb) RETURNING ${WEB_ORDER_FIELDS}`,
+    [userId, code, kind, price, JSON.stringify(payload || {})]
   );
   return rows[0] || null;
 }
@@ -892,6 +948,77 @@ export async function setWebOrderStatus(id, status) {
     [id, status]
   );
   return rows[0] || null;
+}
+
+// ---------- Payme integratsiyasi uchun ----------
+
+export async function getWebOrderByPaymeId(paymeTransactionId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS}, payme_transaction_id AS "paymeTransactionId"
+     FROM web_orders WHERE payme_transaction_id = $1`,
+    [paymeTransactionId]
+  );
+  return rows[0] || null;
+}
+
+export async function setWebOrderPaymeId(id, paymeTransactionId) {
+  await pool.query(`UPDATE web_orders SET payme_transaction_id = $2 WHERE id = $1`, [id, paymeTransactionId]);
+}
+
+// Buyurtma turi (kind)ga qarab to'g'ri "finalize" mantig'ini bajaradi —
+// Payme va Paynet webhook'lari ikkalasi ham SHU BITTA funksiyani
+// chaqiradi, shunda ikki marta kod yozilmaydi va ikkalasi bir xil
+// ishlaydi. Idempotent: agar buyurtma allaqachon 'pending' bo'lmasa,
+// hech narsa qilmay qaytadi.
+export async function finalizePaidWebOrder(orderId) {
+  const order = await getWebOrder(orderId);
+  if (!order || order.status !== 'pending') return { alreadyProcessed: true };
+
+  if (order.kind === 'auction_payment') {
+    const auctionId = Number(order.payload?.auctionId);
+    const result = await finalizeAuctionPayment(auctionId, Number(process.env.AUCTION_COMMISSION_PCT || 5));
+    await setWebOrderStatus(order.id, result ? 'paid' : 'failed_code_taken');
+    return { ok: !!result, result };
+  }
+
+  if (order.kind === 'premium_upgrade') {
+    await finalizePremiumUpgrade(order.userId);
+    await setWebOrderStatus(order.id, 'paid');
+    return { ok: true };
+  }
+
+  if (order.kind === 'premium_follow') {
+    const followeeId = Number(order.payload?.followeeId);
+    await finalizeFollowPayment(order.userId, followeeId, order.price, Number(process.env.PREMIUM_FOLLOW_COMMISSION_PCT || 5));
+    await setWebOrderStatus(order.id, 'paid');
+    return { ok: true };
+  }
+
+  // 'card_purchase' — oddiy vizitka xaridi (jismoniy karta bilan yoki bo'lmasa).
+  const existing = await getRecord(order.code);
+  if (existing) {
+    await setWebOrderStatus(order.id, 'failed_code_taken');
+    return { ok: false, reason: 'code_taken' };
+  }
+  const created = await createRecord({ ...order.payload, code: order.code, price: order.price });
+  if (created) {
+    await attachCardToUser(order.code, order.userId);
+    if (order.payload?.physicalCard) {
+      await createPhysicalCard({
+        linkedCode: order.code,
+        ownerUserId: order.userId,
+        shippingName: order.payload.shippingName,
+        shippingPhone: order.payload.shippingPhone,
+        shippingAddress: order.payload.shippingAddress,
+      });
+    }
+  }
+  await setWebOrderStatus(order.id, 'paid');
+  return { ok: true, created };
+}
+
+export async function cancelPendingWebOrder(orderId) {
+  await setWebOrderStatus(orderId, 'cancelled');
 }
 
 // Kod bo'yicha faol (to'lanmagan) sayt buyurtmasi bormi? — shu kodni
@@ -1065,7 +1192,10 @@ const AUCTION_FIELDS = `
   a.id, a.code, a.seller_id AS "sellerId", a.start_price AS "startPrice",
   a.buy_now_price AS "buyNowPrice", a.current_price AS "currentPrice",
   a.highest_bidder_id AS "highestBidderId", a.ends_at AS "endsAt",
-  a.status, a.created_at AS "createdAt"
+  a.status, a.payment_deadline AS "paymentDeadline",
+  a.seller_payout_amount AS "sellerPayoutAmount", a.seller_payout_status AS "sellerPayoutStatus",
+  a.seller_payme_number AS "sellerPaymeNumber",
+  a.created_at AS "createdAt"
 `;
 
 export async function createAuction({ code, sellerId, startPrice, buyNowPrice, hours }) {
@@ -1099,6 +1229,20 @@ export async function listActiveAuctions() {
     `SELECT ${AUCTION_FIELDS} FROM auctions a WHERE a.status = 'active' ORDER BY a.ends_at ASC LIMIT 200`
   );
   return rows;
+}
+
+export async function setAuctionSellerPayme(auctionId, paymeNumber) {
+  await pool.query(`UPDATE auctions SET seller_payme_number = $2 WHERE id = $1`, [auctionId, paymeNumber]);
+}
+
+// Admin sotuvchiga qo'lda to'lov qilgach shu chaqiriladi.
+export async function markAuctionPayoutPaid(auctionId) {
+  const { rows } = await pool.query(
+    `UPDATE auctions SET seller_payout_status = 'paid' WHERE id = $1 AND seller_payout_status = 'pending'
+     RETURNING id`,
+    [auctionId]
+  );
+  return rows[0] || null;
 }
 
 export async function listExpiredActiveAuctions() {
@@ -1136,7 +1280,51 @@ export async function placeBid({ auctionId, userId, amount, idempotencyKey }) {
 // Muddati tugagan auksionni yakunlaydi: g'olib bo'lsa — kartani o'tkazadi,
 // sotuvchiga komissiyadan keyingi summani yozadi, boshqa hamma taklif
 // qiluvchilarning holdini bo'shatadi. G'olib bo'lmasa — auksion "expired".
-export async function settleAuction(auctionId, commissionPct) {
+// Auksion bidlash muddati tugaganda chaqiriladi. E-wallet yo'qligi
+// sababli bu funksiya endi pul harakatlantirmaydi — faqat holatni
+// o'zgartiradi: g'olib bo'lsa 'awaiting_payment' (24 soat real to'lov
+// muddati bilan), bo'lmasa 'expired'. Haqiqiy pul harakati va egalik
+// o'tkazish faqat `finalizeAuctionPayment()` orqali, to'lov Payme/Paynet
+// webhook'i bilan TASDIQLANGANDA sodir bo'ladi.
+export async function closeAuctionBidding(auctionId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: aRows } = await client.query(
+      `SELECT id, highest_bidder_id AS "highestBidderId", status
+       FROM auctions WHERE id = $1 FOR UPDATE`,
+      [auctionId]
+    );
+    const auction = aRows[0];
+    if (!auction || auction.status !== 'active') { await client.query('ROLLBACK'); return null; }
+
+    if (auction.highestBidderId) {
+      await client.query(
+        `UPDATE auctions SET status = 'awaiting_payment', payment_deadline = now() + interval '24 hours'
+         WHERE id = $1`,
+        [auctionId]
+      );
+      await client.query('COMMIT');
+      return { awaitingPayment: true };
+    } else {
+      await client.query(`UPDATE auctions SET status = 'expired' WHERE id = $1`, [auctionId]);
+      await client.query('COMMIT');
+      return { expired: true };
+    }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// G'olib real to'lovni (Payme/Paynet) muvaffaqiyatli amalga oshirganda
+// webhook orqali chaqiriladi: karta egasi almashadi, sotuvchiga tegishli
+// 95% "to'lanishi kerak" deb belgilanadi (admin panelda qo'lda to'lanadi —
+// e-wallet yo'qligi sababli avtomatik o'tkazib bo'lmaydi), platforma
+// komissiyasi hisobga yoziladi (haqiqiy pul, real Payme orqali kelgan).
+export async function finalizeAuctionPayment(auctionId, commissionPct) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1147,73 +1335,53 @@ export async function settleAuction(auctionId, commissionPct) {
       [auctionId]
     );
     const auction = aRows[0];
-    if (!auction || auction.status !== 'active') { await client.query('ROLLBACK'); return null; }
+    if (!auction || auction.status !== 'awaiting_payment' || !auction.highestBidderId) {
+      await client.query('ROLLBACK'); return null;
+    }
 
-    const { rows: bidRows } = await client.query(
-      `SELECT user_id AS "userId", MAX(amount) AS amount FROM bids WHERE auction_id = $1 GROUP BY user_id`,
-      [auctionId]
+    const winAmount = Number(auction.currentPrice);
+    const commission = Math.round(winAmount * (commissionPct / 100));
+    const sellerGets = winAmount - commission;
+
+    // Karta yangi egasiga o'tadi.
+    await client.query(
+      `UPDATE cards SET user_id = $2, for_sale = FALSE, sale_price = NULL WHERE code = $1`,
+      [auction.code, auction.highestBidderId]
+    );
+    // Sotuvchining eski jismoniy kartasi (agar bo'lsa) deaktivatsiya qilinadi.
+    await client.query(
+      `UPDATE physical_cards SET linked_code = NULL, active = FALSE WHERE linked_code = $1`,
+      [auction.code]
+    );
+    // Komissiya platforma hisobiga yoziladi (real Payme puli).
+    await creditPlatformWallet(client, commission, 'platform_commission', 'auctions', auctionId,
+      `Auksion komissiyasi (${commissionPct}%) \u2014 ${auction.code}`);
+
+    await client.query(
+      `UPDATE auctions SET status = 'sold', seller_payout_amount = $2, seller_payout_status = 'pending'
+       WHERE id = $1`,
+      [auctionId, sellerGets]
     );
 
-    if (auction.highestBidderId) {
-      const winAmount = Number(auction.currentPrice);
-      const commission = Math.round(winAmount * (commissionPct / 100));
-      const sellerGets = winAmount - commission;
-
-      // G'olibning holdi -> real yechiladi (balance va held ikkalasidan).
-      await client.query(
-        `UPDATE users SET balance = balance - $2, held_balance = held_balance - $2 WHERE id = $1`,
-        [auction.highestBidderId, winAmount]
-      );
-      await client.query(
-        `INSERT INTO transactions (user_id, amount, kind, ref_table, ref_id, note)
-         VALUES ($1,$2,'auction_win','auctions',$3,'Auksionda g\u2019olib chiqdingiz \u2014 ' || $2 || ' NFC Coin yechildi')`,
-        [auction.highestBidderId, -winAmount, auctionId]
-      );
-      // Sotuvchiga (komissiyadan keyin) tushadi.
-      await client.query(`UPDATE users SET balance = balance + $2 WHERE id = $1`, [auction.sellerId, sellerGets]);
-      await client.query(
-        `INSERT INTO transactions (user_id, amount, kind, ref_table, ref_id, note)
-         VALUES ($1,$2,'auction_sale','auctions',$3,'Auksionda sotildi \u2014 komissiya (' || $4 || '%) ' || $5 || ' NFC Coin ushlab qolindi')`,
-        [auction.sellerId, sellerGets, auctionId, commissionPct, commission]
-      );
-      // Komissiya platforma (admin) hamyoniga tushadi.
-      await creditPlatformWallet(client, commission, 'platform_commission', 'auctions', auctionId,
-        `Auksion komissiyasi (${commissionPct}%) \u2014 ${auction.code}`);
-      // Karta yangi egasiga o'tadi.
-      await client.query(
-        `UPDATE cards SET user_id = $2, for_sale = FALSE, sale_price = NULL WHERE code = $1`,
-        [auction.code, auction.highestBidderId]
-      );
-      // Sotuvchining eski jismoniy kartasi (agar bo'lsa) deaktivatsiya qilinadi.
-      await client.query(
-        `UPDATE physical_cards SET linked_code = NULL, active = FALSE WHERE linked_code = $1`,
-        [auction.code]
-      );
-      // Yutqazganlarning holdi bo'shatiladi.
-      for (const b of bidRows) {
-        if (b.userId !== auction.highestBidderId) {
-          await client.query(`UPDATE users SET held_balance = held_balance - $2 WHERE id = $1`, [b.userId, Number(b.amount)]);
-          await client.query(
-            `INSERT INTO transactions (user_id, amount, kind, ref_table, ref_id, note)
-             VALUES ($1,0,'bid_release','auctions',$2,'Auksionda yutqazdingiz \u2014 bandlangan mablag\u2019 bo\u2019shatildi')`,
-            [b.userId, auctionId]
-          );
-        }
-      }
-      await client.query(`UPDATE auctions SET status = 'sold' WHERE id = $1`, [auctionId]);
-      await client.query('COMMIT');
-      return { code: auction.code, sellerId: auction.sellerId, winnerId: auction.highestBidderId, winAmount, commission, sellerGets };
-    } else {
-      await client.query(`UPDATE auctions SET status = 'expired' WHERE id = $1`, [auctionId]);
-      await client.query('COMMIT');
-      return { code: auction.code, expired: true };
-    }
+    await client.query('COMMIT');
+    return { code: auction.code, sellerId: auction.sellerId, winnerId: auction.highestBidderId, winAmount, commission, sellerGets };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+}
+
+// To'lov muddati (24 soat) o'tib ketgan, lekin g'olib to'lamagan
+// auksionlarni "payment_expired" deb belgilaydi.
+export async function expireUnpaidAuctions() {
+  const { rows } = await pool.query(
+    `UPDATE auctions SET status = 'payment_expired'
+     WHERE status = 'awaiting_payment' AND payment_deadline < now()
+     RETURNING id, code`
+  );
+  return rows;
 }
 
 // ---------- Admin panel uchun so'rovlar ----------
@@ -1286,14 +1454,19 @@ export async function adminListAuctions(limit = 100) {
     `SELECT a.id, a.code, a.seller_id AS "sellerId", su.email AS "sellerEmail",
             a.start_price AS "startPrice", a.buy_now_price AS "buyNowPrice",
             a.current_price AS "currentPrice", a.highest_bidder_id AS "highestBidderId",
-            hu.email AS "highestBidderEmail", a.ends_at AS "endsAt", a.status, a.created_at AS "createdAt"
+            hu.email AS "highestBidderEmail", a.ends_at AS "endsAt", a.status, a.created_at AS "createdAt",
+            a.payment_deadline AS "paymentDeadline", a.seller_payout_amount AS "sellerPayoutAmount",
+            a.seller_payout_status AS "sellerPayoutStatus", a.seller_payme_number AS "sellerPaymeNumber"
      FROM auctions a
      JOIN users su ON su.id = a.seller_id
      LEFT JOIN users hu ON hu.id = a.highest_bidder_id
      ORDER BY a.created_at DESC LIMIT $1`,
     [limit]
   );
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    sellerPayoutAmount: r.sellerPayoutAmount != null ? Number(r.sellerPayoutAmount) : null,
+  }));
 }
 
 // Admin auksionni majburan bekor qiladi (masalan qoidabuzarlik sababli) —
@@ -1433,102 +1606,30 @@ export async function resolvePhysicalCard(chipToken) {
 
 // ---------- Premium profil so'rovlari ----------
 
+// Premium profilga o'tish uchun real Payme to'lovini boshlaydi (5000 so'm).
+// E-wallet yo'q — pul darhol yechilmaydi, foydalanuvchi Payme checkout'iga
+// yo'naltiriladi, is_premium faqat to'lov webhook orqali TASDIQLANGANDA
+// TRUE bo'ladi (finalizePremiumUpgrade() orqali).
 export async function requestPremium(userId, amount) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows: uRows } = await client.query(
-      `SELECT balance, held_balance AS "heldBalance", is_premium AS "isPremium" FROM users WHERE id = $1 FOR UPDATE`,
-      [userId]
-    );
-    const u = uRows[0];
-    if (!u) { await client.query('ROLLBACK'); return { error: 'NOT_FOUND' }; }
-    if (u.isPremium) { await client.query('ROLLBACK'); return { error: 'ALREADY_PREMIUM' }; }
-    const available = Number(u.balance) - Number(u.heldBalance);
-    if (available < amount) { await client.query('ROLLBACK'); return { error: 'INSUFFICIENT_NFC_COINS', available }; }
-
-    const { rows: existing } = await client.query(
-      `SELECT id FROM premium_requests WHERE user_id = $1 AND status = 'pending'`, [userId]
-    );
-    if (existing[0]) { await client.query('ROLLBACK'); return { error: 'ALREADY_PENDING' }; }
-
-    // Summani darhol ushlab qolamiz (balansdan yechamiz) — admin rad etsa
-    // avtomatik qaytariladi (pastroqqa qarang).
-    await client.query(`UPDATE users SET balance = balance - $2 WHERE id = $1`, [userId, amount]);
-    await client.query(
-      `INSERT INTO transactions (user_id, amount, kind, note) VALUES ($1,$2,'admin_adjust',$3)`,
-      [userId, -amount, 'Premium profil uchun to\u2019lov (admin tasdig\u2019ini kutmoqda)']
-    );
-    const { rows } = await client.query(
-      `INSERT INTO premium_requests (user_id, amount) VALUES ($1,$2) RETURNING id`,
-      [userId, amount]
-    );
-    await client.query('COMMIT');
-    return { ok: true, requestId: rows[0].id };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-export async function listPremiumRequests(status = 'pending') {
-  const { rows } = await pool.query(
-    `SELECT pr.id, pr.user_id AS "userId", u.email, pr.amount, pr.status, pr.created_at AS "createdAt"
-     FROM premium_requests pr JOIN users u ON u.id = pr.user_id
-     WHERE pr.status = $1 ORDER BY pr.created_at DESC`,
-    [status]
+  const { rows: uRows } = await pool.query(
+    `SELECT is_premium AS "isPremium" FROM users WHERE id = $1`, [userId]
   );
-  return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+  if (!uRows[0]) return { error: 'NOT_FOUND' };
+  if (uRows[0].isPremium) return { error: 'ALREADY_PREMIUM' };
+
+  const { rows: pending } = await pool.query(
+    `SELECT id FROM web_orders WHERE user_id = $1 AND kind = 'premium_upgrade' AND status = 'pending'`,
+    [userId]
+  );
+  if (pending[0]) return { error: 'ALREADY_PENDING' };
+
+  const order = await createWebOrder({ userId, code: 'PREMIUM', kind: 'premium_upgrade', price: amount, payload: {} });
+  return { ok: true, orderId: order.id };
 }
 
-export async function approvePremiumRequest(id) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query(
-      `UPDATE premium_requests SET status = 'approved', decided_at = now()
-       WHERE id = $1 AND status = 'pending' RETURNING user_id AS "userId"`,
-      [id]
-    );
-    if (!rows[0]) { await client.query('ROLLBACK'); return null; }
-    await client.query(`UPDATE users SET is_premium = TRUE WHERE id = $1`, [rows[0].userId]);
-    await client.query('COMMIT');
-    return rows[0];
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-export async function rejectPremiumRequest(id) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query(
-      `UPDATE premium_requests SET status = 'rejected', decided_at = now()
-       WHERE id = $1 AND status = 'pending' RETURNING user_id AS "userId", amount`,
-      [id]
-    );
-    const req = rows[0];
-    if (!req) { await client.query('ROLLBACK'); return null; }
-    // To'lov avtomatik qaytariladi.
-    await client.query(`UPDATE users SET balance = balance + $2 WHERE id = $1`, [req.userId, req.amount]);
-    await client.query(
-      `INSERT INTO transactions (user_id, amount, kind, note) VALUES ($1,$2,'refund',$3)`,
-      [req.userId, Number(req.amount), 'Premium so\u2019rovi rad etildi \u2014 to\u2019lov qaytarildi']
-    );
-    await client.query('COMMIT');
-    return req;
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+// To'lov tasdiqlangach webhook shu funksiyani chaqiradi.
+export async function finalizePremiumUpgrade(userId) {
+  await pool.query(`UPDATE users SET is_premium = TRUE WHERE id = $1`, [userId]);
 }
 
 // ---------- Obuna (follow) ----------
@@ -1546,54 +1647,66 @@ export async function getOwnerByCode(code) {
   return rows[0]?.userId || null;
 }
 
-export async function followUser(followerId, followeeId, feeAmount, commissionPct) {
+// Oddiy (pullik bo'lmagan) obuna — bepul, darhol yoziladi.
+export async function followUserFree(followerId, followeeId) {
   if (followerId === followeeId) return { error: 'CANNOT_FOLLOW_SELF' };
+  const { rows: exists } = await pool.query(
+    `SELECT id FROM follows WHERE follower_id = $1 AND followee_id = $2`, [followerId, followeeId]
+  );
+  if (exists[0]) return { error: 'ALREADY_FOLLOWING' };
+  const { rows: feRows } = await pool.query(`SELECT is_premium AS "isPremium" FROM users WHERE id = $1`, [followeeId]);
+  if (!feRows[0]) return { error: 'NOT_FOUND' };
+  if (feRows[0].isPremium) return { error: 'PAYMENT_REQUIRED' };
+  await pool.query(`INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES ($1,$2,FALSE,0)`, [followerId, followeeId]);
+  return { ok: true, paid: false };
+}
+
+// Premium profilga (pullik) obuna bo'lish uchun real Payme to'lovini
+// boshlaydi. E-wallet yo'q — follow yozuvi faqat to'lov TASDIQLANGANDA
+// (finalizeFollowPayment orqali) yaratiladi.
+export async function requestPaidFollow(followerId, followeeId, feeAmount) {
+  if (followerId === followeeId) return { error: 'CANNOT_FOLLOW_SELF' };
+  const { rows: exists } = await pool.query(
+    `SELECT id FROM follows WHERE follower_id = $1 AND followee_id = $2`, [followerId, followeeId]
+  );
+  if (exists[0]) return { error: 'ALREADY_FOLLOWING' };
+  const { rows: feRows } = await pool.query(`SELECT is_premium AS "isPremium" FROM users WHERE id = $1`, [followeeId]);
+  if (!feRows[0]) return { error: 'NOT_FOUND' };
+  if (!feRows[0].isPremium) return { error: 'NOT_PREMIUM' };
+
+  const { rows: pending } = await pool.query(
+    `SELECT id FROM web_orders WHERE user_id = $1 AND kind = 'premium_follow'
+     AND status = 'pending' AND payload->>'followeeId' = $2`,
+    [followerId, String(followeeId)]
+  );
+  if (pending[0]) return { error: 'ALREADY_PENDING' };
+
+  const order = await createWebOrder({
+    userId: followerId, code: 'FOLLOW', kind: 'premium_follow', price: feeAmount,
+    payload: { followeeId },
+  });
+  return { ok: true, orderId: order.id };
+}
+
+// To'lov tasdiqlangach webhook shu funksiyani chaqiradi: follow yoziladi,
+// premium profil egasiga "to'lanishi kerak" summasi qo'shiladi (pending_payout),
+// komissiya platforma hisobiga tushadi.
+export async function finalizeFollowPayment(followerId, followeeId, amount, commissionPct) {
+  const commission = Math.round(amount * (commissionPct / 100));
+  const ownerGets = amount - commission;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows: exists } = await client.query(
-      `SELECT id FROM follows WHERE follower_id = $1 AND followee_id = $2`, [followerId, followeeId]
-    );
-    if (exists[0]) { await client.query('ROLLBACK'); return { error: 'ALREADY_FOLLOWING' }; }
-
-    const { rows: feRows } = await client.query(
-      `SELECT is_premium AS "isPremium" FROM users WHERE id = $1 FOR UPDATE`, [followeeId]
-    );
-    if (!feRows[0]) { await client.query('ROLLBACK'); return { error: 'NOT_FOUND' }; }
-    const isPremium = feRows[0].isPremium;
-    const amount = isPremium ? feeAmount : 0;
-    const commission = isPremium ? Math.round(amount * (commissionPct / 100)) : 0;
-    const ownerGets = amount - commission;
-
-    if (isPremium) {
-      const { rows: frRows } = await client.query(
-        `SELECT balance, held_balance AS "heldBalance" FROM users WHERE id = $1 FOR UPDATE`, [followerId]
-      );
-      const fr = frRows[0];
-      const available = Number(fr.balance) - Number(fr.heldBalance);
-      if (available < amount) { await client.query('ROLLBACK'); return { error: 'INSUFFICIENT_NFC_COINS', available }; }
-
-      await client.query(`UPDATE users SET balance = balance - $2 WHERE id = $1`, [followerId, amount]);
-      await client.query(`UPDATE users SET balance = balance + $2 WHERE id = $1`, [followeeId, ownerGets]);
-      await client.query(
-        `INSERT INTO transactions (user_id, amount, kind, note) VALUES ($1,$2,'card_purchase',$3)`,
-        [followerId, -amount, 'Premium profilga obuna to\u2019lovi']
-      );
-      await client.query(
-        `INSERT INTO transactions (user_id, amount, kind, note) VALUES ($1,$2,'card_purchase',$3)`,
-        [followeeId, ownerGets, `Yangi premium obunachi to\u2019lovi (komissiya ${commissionPct}% ushlab qolindi)`]
-      );
-      // Komissiya platforma hamyoniga tushadi.
-      await creditPlatformWallet(client, commission, 'platform_commission', 'follows', followeeId,
-        `Premium obuna komissiyasi (${commissionPct}%)`);
-    }
-
     await client.query(
-      `INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES ($1,$2,$3,$4)`,
-      [followerId, followeeId, isPremium, amount]
+      `INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES ($1,$2,TRUE,$3)
+       ON CONFLICT (follower_id, followee_id) DO NOTHING`,
+      [followerId, followeeId, amount]
     );
+    await client.query(`UPDATE users SET pending_payout = pending_payout + $2 WHERE id = $1`, [followeeId, ownerGets]);
+    await creditPlatformWallet(client, commission, 'platform_commission', 'follows', followeeId,
+      `Premium obuna komissiyasi (${commissionPct}%)`);
     await client.query('COMMIT');
-    return { ok: true, paid: isPremium, amount };
+    return { ok: true, ownerGets, commission };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -1776,4 +1889,54 @@ export async function adminCardsTimeSeries(days = 30) {
     [days]
   );
   return rows.map((r) => ({ day: r.day, count: r.count }));
+}
+
+// ---------- To'lovlar tarixi ----------
+
+export async function listUserPayments(userId, limit = 50) {
+  const { rows } = await pool.query(
+    `SELECT id, kind, code, price, status, created_at AS "createdAt"
+     FROM web_orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`,
+    [userId, limit]
+  );
+  return rows;
+}
+
+export async function getPendingPayout(userId) {
+  const { rows } = await pool.query(`SELECT pending_payout AS "pendingPayout" FROM users WHERE id = $1`, [userId]);
+  return rows[0] ? Number(rows[0].pendingPayout) : 0;
+}
+
+// Admin: barcha "to'lanishi kerak" (pending_payout > 0) foydalanuvchilar.
+export async function adminListPendingPayouts() {
+  const { rows } = await pool.query(
+    `SELECT id, email, phone, pending_payout AS "pendingPayout" FROM users WHERE pending_payout > 0 ORDER BY pending_payout DESC`
+  );
+  return rows.map((r) => ({ ...r, pendingPayout: Number(r.pendingPayout) }));
+}
+
+// Admin sotuvchiga/premium egasiga qo'lda to'lagach shu chaqiriladi.
+export async function adminClearPendingPayout(userId, amount) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `UPDATE users SET pending_payout = pending_payout - $2
+       WHERE id = $1 AND pending_payout >= $2
+       RETURNING pending_payout AS "pendingPayout"`,
+      [userId, amount]
+    );
+    if (!rows[0]) { await client.query('ROLLBACK'); return null; }
+    await client.query(
+      `INSERT INTO transactions (user_id, amount, kind, note) VALUES ($1,0,'admin_adjust',$2)`,
+      [userId, `Admin qo\u2019lda ${amount} so\u2019m to\u2019lab berdi (pending_payout kamaytirildi)`]
+    );
+    await client.query('COMMIT');
+    return rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }

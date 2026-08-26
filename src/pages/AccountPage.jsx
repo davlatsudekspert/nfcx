@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbSetSale, dbCreateAuction, dbGetWallet, dbWalletTopup, dbRequestPremium } from '../lib/db.js';
+import { dbUploadImage, dbSetSale, dbCreateAuction, dbRequestPremium, dbGetPayment } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -121,97 +121,41 @@ function fileToCompressedDataUrl(file) {
   });
 }
 
-// NFC Pay paneli: NFC Coin balansi (1 NFC Coin = 1 so'm), bandlangan summa, to'ldirish (Payme).
-function WalletPanel() {
-  const [wallet, setWallet] = useState(null);
-  const [amount, setAmount] = useState('50000');
-  const [order, setOrder] = useState(null);
+const PREMIUM_FEE = 5000;
+
+// Premium profilga o'tish — real Payme to'lovi (5000 so'm). E-wallet yo'q:
+// to'lov tasdiqlangach status avtomatik "Premium"ga o'zgaradi (admin
+// tasdig'i shart emas, chunki Payme to'lovning o'zi tasdiq beradi).
+function PremiumPanel({ user, onBecamePremium }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
-  const pollRef = useRef(null);
-
-  const load = () => dbGetWallet().then(setWallet);
-  useEffect(() => { load(); }, []);
-
-  const topup = async () => {
-    const val = Math.round(Number(amount));
-    if (!val || val < 1000) { setMsg({ type: 'err', text: "Minimal summa 1 000 NFC Coin." }); return; }
-    setBusy(true);
-    setMsg(null);
-    try {
-      const res = await dbWalletTopup(val);
-      setOrder(res);
-    } catch (err) {
-      setMsg({ type: 'err', text: err.message === 'payme_disabled' ? "To'lov tizimi hozircha yoqilmagan." : "Xatolik yuz berdi." });
-    } finally {
-      setBusy(false);
-    }
-  };
+  const [order, setOrder] = useState(null);
 
   useEffect(() => {
     if (!order) return;
-    pollRef.current = setInterval(() => { load(); }, 4000);
-    return () => clearInterval(pollRef.current);
+    const t = setInterval(async () => {
+      try {
+        const st = await dbGetPayment(order.orderId);
+        if (st.status === 'paid') {
+          clearInterval(t);
+          setOrder(null);
+          setMsg({ type: 'ok', text: "To'lov tasdiqlandi — siz endi Premium foydalanuvchisiz!" });
+          onBecamePremium?.();
+        } else if (st.status === 'cancelled') {
+          clearInterval(t);
+          setOrder(null);
+          setMsg({ type: 'err', text: "To'lov bekor qilindi." });
+        }
+      } catch { /* keyingi urinishda qayta tekshiramiz */ }
+    }, 3000);
+    return () => clearInterval(t);
   }, [order]);
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xs text-base-content/50">NFC Pay balansi</div>
-          <div className="mt-1 text-2xl font-extrabold">
-            {wallet ? fmt(wallet.available) : '—'} <span className="text-sm font-normal text-base-content/50">NFC Coin</span>
-          </div>
-          {wallet && wallet.heldBalance > 0 && (
-            <div className="mt-0.5 text-xs text-base-content/45">+ {fmt(wallet.heldBalance)} NFC Coin auksionlarda bandlangan</div>
-          )}
-        </div>
-        {!order ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="input input-bordered input-sm w-32 bg-base-100"
-            />
-            <button className="btn btn-primary btn-sm" onClick={topup} disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : "To'ldirish"}
-            </button>
-          </div>
-        ) : (
-          <div className="text-right">
-            <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-sm">
-              {fmt(order.amount)} NFC Coin to'lash &rarr;
-            </a>
-            <button className="ml-2 text-xs text-base-content/45 underline" onClick={() => { setOrder(null); load(); }}>bekor qilish</button>
-          </div>
-        )}
-      </div>
-      {order && (
-        <p className="mt-3 flex items-center gap-2 text-xs text-base-content/45">
-          <span className="loading loading-spinner loading-xs"></span>
-          To'lovni amalga oshiring — balans avtomatik yangilanadi.
-        </p>
-      )}
-      {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
-    </div>
-  );
-}
-
-const PREMIUM_FEE = 5000;
-
-// Premium profilga o'tish so'rovi — pul darhol ushlab qolinadi, admin
-// panelda tasdiqlanguncha "kutilmoqda" holatida turadi.
-function PremiumPanel({ user }) {
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [requested, setRequested] = useState(false);
 
   if (user?.isPremium) {
     return (
       <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
         <div className="flex items-center gap-2 text-sm font-bold text-accent">{'\u2B50'} Siz premium foydalanuvchisiz</div>
-        <p className="mt-1 text-xs text-base-content/50">Boshqalar profilingizga obuna bo'lish uchun 500 NFC Coin to'laydi — bu mablag' to'g'ridan-to'g'ri hamyoningizga tushadi.</p>
+        <p className="mt-1 text-xs text-base-content/50">Boshqalar profilingizga obuna bo'lish uchun 500 so'm to'laydi — bu mablag' (komissiyadan keyin) sizga to'lanadi.</p>
       </div>
     );
   }
@@ -220,9 +164,8 @@ function PremiumPanel({ user }) {
     setBusy(true);
     setMsg(null);
     try {
-      await dbRequestPremium();
-      setRequested(true);
-      setMsg({ type: 'ok', text: "So'rovingiz yuborildi. Admin tasdiqlagach, profilingiz premium bo'ladi." });
+      const res = await dbRequestPremium();
+      setOrder(res);
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
@@ -234,11 +177,22 @@ function PremiumPanel({ user }) {
     <div className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
       <div className="text-sm font-bold">Premium profilga o'ting</div>
       <p className="mt-1 text-xs text-base-content/50">
-        Premium profil bo'lsangiz, boshqa foydalanuvchilar sizga obuna bo'lish uchun <b>500 NFC Coin</b> to'laydi — bu pul to'g'ridan-to'g'ri sizning NFC Pay hamyoningizga tushadi. O'tish narxi: <b>{fmt(PREMIUM_FEE)} NFC Coin</b> (bir martalik).
+        Premium profil bo'lsangiz, boshqa foydalanuvchilar sizga obuna bo'lish uchun <b>500 so'm</b> to'laydi. O'tish narxi: <b>{fmt(PREMIUM_FEE)} so'm</b> (bir martalik, real to'lov).
       </p>
-      <button className="btn btn-accent btn-sm mt-3" onClick={submit} disabled={busy || requested}>
-        {busy ? <span className="loading loading-spinner loading-xs"></span> : requested ? 'Yuborildi \u2014 kutilmoqda' : `So'rov yuborish \u2014 ${fmt(PREMIUM_FEE)} NFC Coin`}
-      </button>
+      {!order ? (
+        <button className="btn btn-accent btn-sm mt-3" onClick={submit} disabled={busy}>
+          {busy ? <span className="loading loading-spinner loading-xs"></span> : `To'lov qilish \u2014 ${fmt(PREMIUM_FEE)} so'm`}
+        </button>
+      ) : (
+        <div className="mt-3">
+          <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-sm">
+            To'lovga o'tish &rarr;
+          </a>
+          <p className="mt-2 flex items-center gap-2 text-xs text-base-content/45">
+            <span className="loading loading-spinner loading-xs"></span> To'lov kutilmoqda...
+          </p>
+        </div>
+      )}
       {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
     </div>
   );
@@ -251,6 +205,7 @@ function EditCardForm({ card, onSaved }) {
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
     bgPattern: card.bgPattern !== false,
+    accentColor: card.accentColor || '',
     tg: card.tg || '',
     phone: card.phone || '',
     email: card.email || '',
@@ -275,7 +230,7 @@ function EditCardForm({ card, onSaved }) {
   const [auctionOpen, setAuctionOpen] = useState(false);
   const [auctionBusy, setAuctionBusy] = useState(false);
   const [auctionMsg, setAuctionMsg] = useState(null);
-  const [auctionForm, setAuctionForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24' });
+  const [auctionForm, setAuctionForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24', sellerPaymeNumber: '' });
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
 
@@ -354,11 +309,12 @@ function EditCardForm({ card, onSaved }) {
     const startPrice = Math.round(Number(auctionForm.startPrice));
     const buyNowPrice = auctionForm.buyNowPrice ? Math.round(Number(auctionForm.buyNowPrice)) : null;
     const hours = Math.min(72, Math.max(1, Math.round(Number(auctionForm.hours) || 24)));
-    if (!startPrice || startPrice < 1000) { setAuctionMsg({ type: 'err', text: "Boshlang'ich narx kamida 1 000 NFC Coin bo'lishi kerak." }); return; }
+    if (!startPrice || startPrice < 1000) { setAuctionMsg({ type: 'err', text: "Boshlang'ich narx kamida 1 000 so'm bo'lishi kerak." }); return; }
+    if (!auctionForm.sellerPaymeNumber.trim()) { setAuctionMsg({ type: 'err', text: "G'alaba pulini olish uchun Payme yoki karta raqamingizni kiriting." }); return; }
     setAuctionBusy(true);
     setAuctionMsg(null);
     try {
-      const auction = await dbCreateAuction({ code: card.code, startPrice, buyNowPrice, hours });
+      const auction = await dbCreateAuction({ code: card.code, startPrice, buyNowPrice, hours, sellerPaymeNumber: auctionForm.sellerPaymeNumber.trim() });
       setAuctionMsg({ type: 'ok', text: "Auksion yaratildi!" });
       setTimeout(() => navigate('/auksion/' + auction.id), 800);
     } catch (err) {
@@ -379,6 +335,7 @@ function EditCardForm({ card, onSaved }) {
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
         bgPattern: form.bgPattern,
+        accentColor: form.accentColor,
         tg: form.tg.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -441,11 +398,11 @@ function EditCardForm({ card, onSaved }) {
           <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Auksion sharoitlari</div>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <label className="form-control">
-              <span className="text-xs font-semibold text-base-content/70">Boshlang'ich narx (NFC Coin) *</span>
+              <span className="text-xs font-semibold text-base-content/70">Boshlang'ich narx, so'm *</span>
               <input type="number" value={auctionForm.startPrice} onChange={(e) => setAuctionForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder="masalan 500000" className={inp} />
             </label>
             <label className="form-control">
-              <span className="text-xs font-semibold text-base-content/70">Darhol sotib olish, NFC Coin (ixtiyoriy)</span>
+              <span className="text-xs font-semibold text-base-content/70">Darhol sotib olish, so'm (ixtiyoriy)</span>
               <input type="number" value={auctionForm.buyNowPrice} onChange={(e) => setAuctionForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder="masalan 2000000" className={inp} />
             </label>
             <label className="form-control">
@@ -453,6 +410,11 @@ function EditCardForm({ card, onSaved }) {
               <input type="number" max={72} value={auctionForm.hours} onChange={(e) => setAuctionForm((f) => ({ ...f, hours: e.target.value }))} className={inp} />
             </label>
           </div>
+          <label className="form-control mt-3 block">
+            <span className="text-xs font-semibold text-base-content/70">Payme/karta raqamingiz (g'alaba pulini shu yerga olasiz) *</span>
+            <input value={auctionForm.sellerPaymeNumber} onChange={(e) => setAuctionForm((f) => ({ ...f, sellerPaymeNumber: e.target.value }))} placeholder="+998901234567 yoki karta raqami" className={inp} />
+          </label>
+          <p className="mt-1.5 text-xs text-base-content/45">Auksion tugab, g'olib to'laganidan so'ng, sotuvdan tushgan summa (komissiyadan keyin) admin tomonidan shu raqamga qo'lda o'tkaziladi.</p>
           <button className="btn btn-primary btn-sm mt-3" onClick={submitAuction} disabled={auctionBusy}>
             {auctionBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Auksionni boshlash'}
           </button>
@@ -528,6 +490,24 @@ function EditCardForm({ card, onSaved }) {
               <input type="checkbox" className="checkbox checkbox-sm" checked={form.bgPattern} onChange={(e) => setForm((f) => ({ ...f, bgPattern: e.target.checked }))} />
               <span>Diagonal naqshli fon (yoqilgan bo'lsa, fon ustida yengil chiziqlar ko'rinadi)</span>
             </label>
+
+            <div className="mt-5 flex items-center gap-3">
+              <input
+                type="color"
+                value={form.accentColor || '#f5a524'}
+                onChange={(e) => setForm((f) => ({ ...f, accentColor: e.target.value }))}
+                className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-base-content/70">Istalgan aksent rang</div>
+                <p className="mt-0.5 text-xs text-base-content/45">Tugmalar va urg'u rangi shu bilan almashadi — tema tanlovidan mustaqil.</p>
+              </div>
+              {form.accentColor && (
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, accentColor: '' }))}>
+                  Andozaga qaytarish
+                </button>
+              )}
+            </div>
           </Section>
 
           <Section title="Aloqa va ijtimoiy tarmoqlar" subtitle="Telegram, Instagram, telefon va h.k.">
@@ -669,11 +649,7 @@ export default function AccountPage({ refreshCatalog }) {
       </section>
 
       <section className="pt-8">
-        <WalletPanel />
-      </section>
-
-      <section className="pt-8">
-        <PremiumPanel user={user} />
+        <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
 
       {orders.filter((o) => o.status !== 'paid').length > 0 && (
