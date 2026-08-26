@@ -3,6 +3,8 @@ import { dbGet } from '../lib/db.js';
 import { BASE_PRICE, parseAnyCode, priceForCode, currentBase, nextBase, PRICE_GROWTH, MAX_PRICE_MULT } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import ReserveModal from '../components/ReserveModal.jsx';
+import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 function useMaskedCode() {
   const [value, setValue] = useState('');
@@ -105,7 +107,15 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               </div>
             </div>
 
-            <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-black/30 p-6 text-center">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/30 p-6 text-center">
+              <Interactive3DCard className="mb-5">
+                <NfcCard
+                  code={calcParsed ? calcParsed.code : 'ABZ007'}
+                  name="SIZNING ISMINGIZ"
+                  finish={calcTaken ? 'graphite' : 'black'}
+                  size="sm"
+                />
+              </Interactive3DCard>
               <div className="text-3xl font-extrabold tracking-tight">
                 {calcInfo ? fmt(calcInfo.total) : fmt(BASE_PRICE)} <span className="text-base font-medium text-base-content/60">so'm</span>
               </div>

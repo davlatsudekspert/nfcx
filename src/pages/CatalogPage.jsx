@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { dbListSales } from '../lib/db.js';
 import { fmt, timeAgo } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
+import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 export default function CatalogPage({ catalog }) {
   const [sales, setSales] = useState([]);
@@ -25,24 +27,36 @@ export default function CatalogPage({ catalog }) {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
-        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-          Katalog
-        </span>
-        <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          Barcha band qilingan <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">vizitkalar</span>
-        </h1>
-        <p className="mt-3 text-[15px] text-base-content/60">Jami {fmt(catalog.length)} ta vizitka band qilingan. Kod yoki ism bo'yicha qidiring.</p>
-        <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-base-content/40">
-          <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">qidirish</span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="ABZ007 yoki ism..."
-            autoComplete="off"
-            className="w-full bg-transparent px-2 py-3 text-sm outline-none"
-          />
+      <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
+        <div>
+          <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+            Katalog
+          </span>
+          <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
+            Barcha band qilingan <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">vizitkalar</span>
+          </h1>
+          <p className="mt-3 text-[15px] text-base-content/60">Jami {fmt(catalog.length)} ta vizitka band qilingan. Kod yoki ism bo'yicha qidiring.</p>
+          <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-base-content/40">
+            <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">qidirish</span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="ABZ007 yoki ism..."
+              autoComplete="off"
+              className="w-full bg-transparent px-2 py-3 text-sm outline-none"
+            />
+          </div>
+        </div>
+        <div className="hidden justify-self-center lg:flex">
+          <Interactive3DCard>
+            <NfcCard
+              code={filtered[0]?.code || 'AAA000'}
+              name={filtered[0]?.name?.toUpperCase() || 'SIZNING ISMINGIZ'}
+              finish="graphite"
+              size="lg"
+            />
+          </Interactive3DCard>
         </div>
       </section>
 

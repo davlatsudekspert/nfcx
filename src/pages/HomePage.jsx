@@ -5,6 +5,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
 import { IconWave, IconSearch } from '../components/Icons.jsx';
 
 function useMaskedCode() {
@@ -110,7 +111,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <section className="relative overflow-hidden bg-black">
         <div className="pointer-events-none absolute -inset-x-[18%] -inset-y-[12%] bg-[radial-gradient(640px_460px_at_74%_38%,rgba(201,162,39,0.16),transparent_65%),radial-gradient(420px_320px_at_16%_86%,rgba(180,140,50,0.09),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto grid w-full max-w-[1800px] items-center gap-11 px-6 pb-8 pt-14 sm:px-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-14">
+        <div className="relative z-[1] mx-auto grid w-full max-w-[1800px] items-center gap-11 px-6 pb-8 pt-14 sm:px-10 lg:grid-cols-[minmax(0,1fr)_460px] xl:grid-cols-[minmax(0,1fr)_560px] lg:px-14">
           <div>
             <Reveal>
               <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
@@ -199,8 +200,8 @@ export default function HomePage({ catalog, refreshCatalog }) {
           </div>
 
           {/* ===== Neon orbit kompozitsiyasi ===== */}
-          <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center lg:block">
-            <div className="relative h-[520px] w-[520px]" aria-hidden="true">
+          <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center overflow-visible lg:block">
+            <div className="relative h-[400px] w-[400px] xl:h-[500px] xl:w-[500px]" aria-hidden="false">
               {/* Yumshoq porlash — kartaning orqasidagi chuqurlik */}
               <div className="absolute inset-[6%] rounded-full bg-[radial-gradient(circle,rgba(212,175,90,0.16),transparent_68%)] blur-[6px]"></div>
 
@@ -221,7 +222,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
               <span className="absolute left-[80%] top-[76%] h-[3px] w-[3px] rounded-full bg-[rgba(232,193,101,0.85)] shadow-[0_0_8px_2px_rgba(212,175,90,0.45)] [animation:floatY_6s_ease-in-out_infinite] [animation-delay:2.1s]"></span>
 
               <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-55%] animate-[floatY_5.5s_ease-in-out_infinite]">
-                <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" rim />
+                <Interactive3DCard>
+                  <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" rim />
+                </Interactive3DCard>
               </div>
 
               <div className="absolute right-[4%] top-[2%] z-[2] flex h-[88px] w-[88px] animate-[floatY_5s_ease-in-out_infinite] flex-col items-center justify-center gap-1.5 rounded-3xl border border-[rgba(201,162,39,0.22)] bg-gradient-to-br from-[#1c1611] to-[#07070a] text-[#e8c165] shadow-[0_18px_40px_rgba(0,0,0,0.55),0_0_22px_rgba(180,140,30,0.14)] [animation-delay:0.6s]">

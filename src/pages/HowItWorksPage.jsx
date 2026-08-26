@@ -6,7 +6,8 @@ const STEPS = [
   { n: '02', title: "Ro'yxatdan o'ting va bandlang", text: 'Hisob yaratasiz, narxni ko\'rasiz va bir bosishda vizitkani o\'zingizga biriktirasiz.' },
   { n: '03', title: 'Profilingizni sozlang', text: "Kabinetdan ism, kasb, rasm, bio, ijtimoiy tarmoqlar (Telegram, Instagram, Facebook, X), to'lov kartasi va dizayn mavzusini qo'shasiz." },
   { n: '04', title: 'Ulashing', text: "Profilingiz nfcstore.uz/kodingiz manzilida yashaydi — havolani ulashing yoki jismoniy NFC kartangizga yozdiring." },
-  { n: '05', title: 'Xohlasangiz — soting', text: "Vizitka endi kerak bo'lmasa, uni kabinetdan sotuvga qo'yasiz. Boshqa foydalanuvchi sotib olsa, egalik unga o'tadi." },
+  { n: '05', title: 'Auksionda qatnashing', text: "Noyob kodlar vaqti-vaqti bilan auksionga qo'yiladi — taklif bering, g'olib chiqsangiz 24 soat ichida to'lab olasiz." },
+  { n: '06', title: 'Xohlasangiz — soting', text: "Vizitka endi kerak bo'lmasa, uni kabinetdan sotuvga qo'yasiz. Boshqa foydalanuvchi sotib olsa, egalik unga o'tadi." },
 ];
 
 export default function HowItWorksPage() {
@@ -17,12 +18,12 @@ export default function HowItWorksPage() {
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
           Qanday ishlaydi
         </span>
-        <h1 className="mx-auto mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
+        <h1 className="mx-auto mt-4 max-w-2xl whitespace-nowrap text-4xl font-extrabold leading-tight tracking-tight">
           “Barcha ma’lumotlaringiz — bitta raqamli profilda.”
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
-          NFCSTORE orqali shaxsiy raqamli vizitka olish besh qadamdan iborat — bandlashdan tortib
-          uni qayta sotishgacha.
+          NFCSTORE orqali shaxsiy raqamli vizitka olish olti qadamdan iborat — bandlashdan tortib
+          uni qayta sotish yoki auksionda qatnashishgacha.
         </p>
         <div className="mt-8 flex justify-center">
           <div className="animate-[floatY_5s_ease-in-out_infinite]">

@@ -2,7 +2,7 @@ import { navigate } from '../lib/router.js';
 import logo from '../assets/logo-128.png';
 
 const COLS = [
-  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Karta dizayni', '/karta-dizayni']] },
+  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog']] },
   { title: 'Kompaniya', links: [['Savollar', '/savollar'], ['Aloqa', '/aloqa']] },
   { title: 'Huquqiy', links: [['Foydalanish shartlari', '/shartlar'], ['Maxfiylik siyosati', '/maxfiylik']] },
 ];

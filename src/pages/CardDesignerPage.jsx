@@ -341,7 +341,7 @@ function FieldGroup({ title, children }) {
   );
 }
 
-export default function CardDesignerPage() {
+export default function CardDesignerPage({ embedded = false } = {}) {
   const canvasRef = useRef(null);
   const bgFileRef = useRef(null);
   const logoFileRef = useRef(null);
@@ -419,22 +419,10 @@ export default function CardDesignerPage() {
 
   const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
 
-  return (
-    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
-        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-          Karta dizayni
-        </span>
-        <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          NFC karta <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">dizaynini yarating</span>
-        </h1>
-        <p className="mt-3 max-w-xl text-sm text-base-content/60">
-          Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda yarating va tayyor rasmni PNG holida yuklab oling.
-        </p>
-      </section>
-
-      <div className="mt-10 grid gap-8 lg:grid-cols-[380px_1fr]">
+  // Ichki (profil/bandlash oqimiga joylashtirilgan) holatda sahifa
+  // sarlavhasi va tashqi <main> qobig'i kerak emas — faqat vosita o'zi.
+  const toolBody = (
+    <div className="mt-10 grid gap-8 lg:grid-cols-[380px_1fr]">
         <div className="max-h-[calc(100vh-140px)] overflow-y-auto rounded-2xl border border-white/10 bg-base-200/40 p-5 lg:sticky lg:top-6 lg:self-start">
           <FieldGroup title="Tomon">
             <ToggleGroup
@@ -559,6 +547,25 @@ export default function CardDesignerPage() {
           </p>
         </div>
       </div>
+  );
+
+  if (embedded) return toolBody;
+
+  return (
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
+      <section className="pt-14">
+        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+          Karta dizayni
+        </span>
+        <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
+          NFC karta <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">dizaynini yarating</span>
+        </h1>
+        <p className="mt-3 max-w-xl text-sm text-base-content/60">
+          Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda yarating va tayyor rasmni PNG holida yuklab oling.
+        </p>
+      </section>
+      {toolBody}
     </main>
   );
 }

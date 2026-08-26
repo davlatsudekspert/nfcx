@@ -3,6 +3,7 @@ import { dbCreate, dbGetOrder } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
+import CardDesignerPage from '../pages/CardDesignerPage.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
 const BOT_USERNAME = 'nfcsalebot';
@@ -27,6 +28,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [acctBotAck, setAcctBotAck] = useState(false);
   const [acctTosAccepted, setAcctTosAccepted] = useState(false);
   const [wantPhysicalCard, setWantPhysicalCard] = useState(false);
+  const [showDesigner, setShowDesigner] = useState(false);
   const [shippingName, setShippingName] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
@@ -147,7 +149,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="relative my-8 w-full max-w-lg rounded-2xl border border-white/10 bg-base-200 shadow-2xl">
+      <div className={`relative my-8 w-full rounded-2xl border border-white/10 bg-base-200 shadow-2xl transition-all ${showDesigner ? 'max-w-3xl' : 'max-w-lg'}`}>
         <button className="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" onClick={onClose}>&times;</button>
         {order ? (
           <div className="p-6">
@@ -277,6 +279,15 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 <input value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder="Qabul qiluvchi ism-familya *" className={`${inp} !mt-0`} />
                 <input value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="Telefon (yetkazib berish uchun) *" className={`${inp} !mt-0`} />
                 <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="To'liq manzil (shahar, tuman, ko'cha, uy) *" rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
+
+                <button type="button" className="btn btn-ghost btn-xs w-full" onClick={() => setShowDesigner((v) => !v)}>
+                  {showDesigner ? 'Dizaynerni yopish' : "\u{1F3A8} Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)"}
+                </button>
+                {showDesigner && (
+                  <div className="-mx-3 mt-1 max-h-[60vh] overflow-y-auto border-t border-white/10 px-3 pt-3">
+                    <CardDesignerPage embedded />
+                  </div>
+                )}
               </div>
             )}
           </div>

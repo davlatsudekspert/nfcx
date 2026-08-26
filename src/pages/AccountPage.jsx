@@ -4,6 +4,7 @@ import { dbUploadImage, dbUploadAudio, dbSetSale, dbRequestPremium, dbGetPayment
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
+import CardDesignerPage from './CardDesignerPage.jsx';
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown,
@@ -22,7 +23,7 @@ const THEMES = [
 function Section({ title, subtitle, defaultOpen, children }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 first:mt-0">
+    <div className={`mt-4 overflow-hidden rounded-2xl border bg-base-200/30 backdrop-blur-sm transition-all duration-200 first:mt-0 ${open ? 'border-accent/25 shadow-[0_10px_35px_rgba(0,0,0,0.35)]' : 'border-white/10 hover:border-white/20'}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -32,7 +33,7 @@ function Section({ title, subtitle, defaultOpen, children }) {
           <div className="text-sm font-bold">{title}</div>
           {subtitle && <div className="mt-0.5 text-xs text-base-content/45">{subtitle}</div>}
         </div>
-        <span className={`shrink-0 text-base-content/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+        <span className={`shrink-0 text-base-content/50 transition-transform duration-200 ${open ? 'rotate-180 text-accent' : ''}`}>
           <IconChevronDown />
         </span>
       </button>
@@ -392,7 +393,7 @@ function EditCardForm({ card, onSaved }) {
   const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
 
   return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6">
+    <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{card.code.toLowerCase()}</div>
@@ -589,6 +590,10 @@ function EditCardForm({ card, onSaved }) {
               <span className="text-xs font-semibold text-base-content/70">Hashtaglar (vergul bilan)</span>
               <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
             </label>
+          </Section>
+
+          <Section title="Jismoniy karta bosma dizayni" subtitle="Old/orqa tomon, rang, logotip — PNG holida yuklab olasiz">
+            <CardDesignerPage embedded />
           </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
