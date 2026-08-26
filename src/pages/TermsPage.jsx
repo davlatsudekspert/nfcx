@@ -1,11 +1,10 @@
 export default function TermsPage() {
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
-      {/* Matn o'zi max-w-3xl'da qoladi — sof matn 1800px'gacha cho'zilsa
-         qatorlar haddan tashqari uzun bo'lib, o'qish qiyinlashardi. */}
-      <h1 className="pt-14 text-3xl font-extrabold tracking-tight">Foydalanish shartlari</h1>
-      <div className="mt-2 font-mono text-xs uppercase tracking-wider text-base-content/40">Oxirgi yangilanish: 2026</div>
-      <div className="mt-6 max-w-3xl space-y-6 text-[15px] leading-relaxed text-base-content/70">
+      <div className="mx-auto max-w-3xl">
+        <h1 className="pt-14 text-3xl font-extrabold tracking-tight">Foydalanish shartlari</h1>
+        <div className="mt-2 font-mono text-xs uppercase tracking-wider text-base-content/40">Oxirgi yangilanish: 2026</div>
+        <div className="mt-6 space-y-6 text-[15px] leading-relaxed text-base-content/70">
         <p>Ushbu shartlar NFCSTORE xizmatidan (nfcstore.uz) foydalanish tartibini belgilaydi. Xizmatdan foydalanish orqali siz quyidagi shartlarga rozilik bildirasiz.</p>
         <div>
           <h2 className="text-lg font-bold text-base-content">1. Vizitka egaligi</h2>
@@ -27,6 +26,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold text-base-content">5. Xizmatni to'xtatish</h2>
           <p className="mt-1.5">Shartlarni buzgan hisoblar ogohlantirishsiz bloklanishi yoki vizitkalari olib qo'yilishi mumkin.</p>
         </div>
+      </div>
       </div>
     </main>
   );

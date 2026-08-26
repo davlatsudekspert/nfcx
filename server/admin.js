@@ -14,7 +14,7 @@ import { hashPassword, verifyPassword } from './auth.js';
 import {
   isDbReady, adminListUsers, adminAdjustBalance, adminListOrders, adminListWalletTopups,
   adminListAuctions, adminCancelAuction, adminListPhysicalCards, adminSetPhysicalCardStatus,
-  adminStats, closeAuctionBidding,
+  adminStats, closeAuctionBidding, createAuction, getActiveAuctionByCode, getRecord,
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
 } from './db.js';
@@ -149,6 +149,31 @@ adminRouter.get('/topups', async (req, res) => {
 adminRouter.get('/auctions', async (req, res) => {
   if (!isDbReady()) return res.json({ auctions: [] });
   res.json({ auctions: await adminListAuctions() });
+});
+
+// Auksion yaratishning YAGONA yo'li — faqat admin, faqat hali hech kimga
+// tegishli bo'lmagan (band qilinmagan) YANGI kodlar uchun.
+const ADMIN_AUCTION_MAX_HOURS = 72;
+adminRouter.post('/auctions', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.body?.code || '').toUpperCase().trim();
+  const startPrice = Math.round(Number(req.body?.startPrice));
+  const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
+  const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
+
+  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  if (!startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
+  if (buyNowPrice && buyNowPrice <= startPrice) return res.status(422).json({ error: 'buy_now_too_low' });
+
+  try {
+    if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
+    if (await getActiveAuctionByCode(code)) return res.status(409).json({ error: 'already_in_auction' });
+    const auction = await createAuction({ code, startPrice, buyNowPrice, hours });
+    res.status(201).json(auction);
+  } catch (err) {
+    console.error('[admin] createAuction:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
 });
 
 adminRouter.post('/auctions/:id/cancel', async (req, res) => {

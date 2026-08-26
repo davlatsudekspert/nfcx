@@ -514,42 +514,17 @@ app.get('/api/auctions/:id', async (req, res) => {
   res.json({ auction, bids });
 });
 
-// Kartani auksionga qo'yish (faqat egasi qo'ya oladi).
-app.post('/api/auctions', async (req, res) => {
-  const user = await currentUser(req);
-  if (!user) return res.status(401).json({ error: 'unauthorized' });
-  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+// MUHIM: kartani auksionga qo'yish endi FAQAT admin panel orqali
+// (server/admin.js: POST /api/admin/auctions) — oddiy foydalanuvchi
+// auksion ocha olmaydi, faqat admin YANGI (hali hech kimga tegishli
+// bo'lmagan) kodlar uchun auksion ochadi.
 
-  const code = String(req.body?.code || '').toUpperCase();
-  const startPrice = Math.round(Number(req.body?.startPrice));
-  const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
-  const hours = Math.min(AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
-  // Sotuvchi g'alaba puliini shu raqamga (Payme/karta) olishni xohlaydi —
-  // e-wallet yo'q, shuning uchun admin qo'lda shu raqamga o'tkazadi.
-  const sellerPaymeNumber = cleanStr(req.body?.sellerPaymeNumber, 30);
-
-  if (!code || !startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
-  if (buyNowPrice && buyNowPrice <= startPrice) return res.status(422).json({ error: 'buy_now_too_low' });
-  if (!sellerPaymeNumber) return res.status(422).json({ error: 'seller_payme_required' });
-
-  try {
-    const ownerId = await getRecordOwner(code);
-    if (ownerId !== user.id) return res.status(403).json({ error: 'not_owner' });
-    if (await getActiveAuctionByCode(code)) return res.status(409).json({ error: 'already_in_auction' });
-
-    const auction = await createAuction({ code, sellerId: user.id, startPrice, buyNowPrice, hours });
-    await setAuctionSellerPayme(auction.id, sellerPaymeNumber);
-    res.status(201).json(auction);
-  } catch (err) {
-    console.error('[api] createAuction:', err.message);
-    res.status(503).json({ error: 'db_unavailable' });
-  }
-});
 
 // Narx taklif qilish.
 app.post('/api/auctions/:id/bid', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (user.bannedUntil) return res.status(403).json({ error: 'BANNED', bannedUntil: user.bannedUntil });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
 
   const id = Number(req.params.id);
@@ -572,6 +547,7 @@ app.post('/api/auctions/:id/bid', async (req, res) => {
 app.post('/api/auctions/:id/pay', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (user.bannedUntil) return res.status(403).json({ error: 'BANNED', bannedUntil: user.bannedUntil });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
 
@@ -582,11 +558,25 @@ app.post('/api/auctions/:id/pay', async (req, res) => {
   if (auction.highestBidderId !== user.id) return res.status(403).json({ error: 'NOT_WINNER' });
   if (new Date(auction.paymentDeadline) <= new Date()) return res.status(409).json({ error: 'PAYMENT_DEADLINE_PASSED' });
 
+  // Yangi kod uchun karta hali mavjud emas — g'olib to'lov bilan birga
+  // profilining asosiy ma'lumotini (kamida ism) yuborishi shart, aks
+  // holda to'lov tasdiqlanganda karta nima nom bilan yaratilishini
+  // bilmaymiz.
+  const name = cleanStr(req.body?.name, 60);
+  if (!name) return res.status(422).json({ error: 'name_required' });
+  const profile = {
+    name,
+    role: cleanStr(req.body?.role, 100),
+    tg: cleanStr(req.body?.tg, 40).replace(/^@/, ''),
+    phone: cleanStr(req.body?.phone, 30),
+    email: cleanStr(req.body?.email, 100),
+  };
+
   // Auksion to'lovi ham web_orders orqali o'tadi — kind='auction_payment'
   // orqali webhook buni ajratib oladi (endi code'ga hiyla yozilmaydi).
   const order = await createWebOrder({
     userId: user.id, code: auction.code, kind: 'auction_payment', price: Number(auction.currentPrice),
-    payload: { auctionId: auction.id },
+    payload: { auctionId: auction.id, ...profile },
   });
   const payLink = paymeCheckoutLink(order.id, Number(auction.currentPrice));
   res.status(202).json({ orderId: order.id, amount: Number(auction.currentPrice), payLink });
@@ -623,9 +613,11 @@ const PHONE_RE = /^\+?\d{9,15}$/;
 function validateRegisterExtra(body) {
   const phone = cleanStr(body.phone, 20).replace(/[\s\-()]/g, '');
   const botAck = body.botAck === true;
+  const tosAccepted = body.tosAccepted === true;
   if (!PHONE_RE.test(phone)) return { error: 'Telefon raqamini to\u2019g\u2019ri kiriting (masalan +998901234567).' };
   if (!botAck) return { error: 'Avval Telegram botimizga yozib, tasdiqlash katagini belgilang.' };
-  return { phone, botAck };
+  if (!tosAccepted) return { error: 'Davom etish uchun ommaviy oferta shartlariga rozilik bering.' };
+  return { phone, botAck, tosAccepted };
 }
 
 // Admin akkauntni avtomatik yaratish/sinxronlash (Railway Variables:
@@ -672,7 +664,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
     const existing = await getUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'email_taken' });
-    const user = await createUser(email, hashPassword(password), { phone: extra.phone, botAck: extra.botAck });
+    const user = await createUser(email, hashPassword(password), { phone: extra.phone, botAck: extra.botAck, tosAccepted: extra.tosAccepted });
     if (!user) return res.status(409).json({ error: 'email_taken' });
     const token = newSessionToken();
     await createSession(token, user.id, SESSION_TTL_MS);

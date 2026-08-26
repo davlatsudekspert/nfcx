@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetSale, dbCreateAuction, dbRequestPremium, dbGetPayment } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetSale, dbRequestPremium, dbGetPayment } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -216,7 +216,7 @@ function EditCardForm({ card, onSaved }) {
     role: card.role || '',
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
-    bgPattern: card.bgPattern !== false,
+    
     accentColor: card.accentColor || '',
     bgColor: card.bgColor || '',
     bgAnimated: card.bgAnimated !== false,
@@ -243,10 +243,6 @@ function EditCardForm({ card, onSaved }) {
   const [uploadingMusic, setUploadingMusic] = useState(false);
   const [saleBusy, setSaleBusy] = useState(false);
   const [saleMsg, setSaleMsg] = useState(null);
-  const [auctionOpen, setAuctionOpen] = useState(false);
-  const [auctionBusy, setAuctionBusy] = useState(false);
-  const [auctionMsg, setAuctionMsg] = useState(null);
-  const [auctionForm, setAuctionForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24', sellerPaymeNumber: '' });
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
   const musicFileRef = useRef(null);
@@ -345,25 +341,6 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
-  const submitAuction = async () => {
-    const startPrice = Math.round(Number(auctionForm.startPrice));
-    const buyNowPrice = auctionForm.buyNowPrice ? Math.round(Number(auctionForm.buyNowPrice)) : null;
-    const hours = Math.min(72, Math.max(1, Math.round(Number(auctionForm.hours) || 24)));
-    if (!startPrice || startPrice < 10_000) { setAuctionMsg({ type: 'err', text: "Boshlang'ich narx kamida 10 000 so'm bo'lishi kerak." }); return; }
-    if (!auctionForm.sellerPaymeNumber.trim()) { setAuctionMsg({ type: 'err', text: "G'alaba pulini olish uchun Payme yoki karta raqamingizni kiriting." }); return; }
-    setAuctionBusy(true);
-    setAuctionMsg(null);
-    try {
-      const auction = await dbCreateAuction({ code: card.code, startPrice, buyNowPrice, hours, sellerPaymeNumber: auctionForm.sellerPaymeNumber.trim() });
-      setAuctionMsg({ type: 'ok', text: "Auksion yaratildi!" });
-      setTimeout(() => navigate('/auksion/' + auction.id), 800);
-    } catch (err) {
-      setAuctionMsg({ type: 'err', text: err.message });
-    } finally {
-      setAuctionBusy(false);
-    }
-  };
-
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: "Ism bo'sh bo'lmasligi kerak." }); return; }
     setBusy(true);
@@ -374,7 +351,7 @@ function EditCardForm({ card, onSaved }) {
         role: form.role.trim(),
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
-        bgPattern: form.bgPattern,
+        
         accentColor: form.accentColor,
         bgColor: form.bgColor,
         bgAnimated: form.bgAnimated,
@@ -429,41 +406,9 @@ function EditCardForm({ card, onSaved }) {
           <button className={'btn btn-sm ' + (card.forSale ? 'btn-ghost' : 'btn-primary')} onClick={toggleSale} disabled={saleBusy}>
             {saleBusy ? <span className="loading loading-spinner loading-xs"></span> : card.forSale ? "Sotuvdan olish" : 'Sotuvga qo\u2019yish'}
           </button>
-          <button className="btn btn-outline btn-sm" onClick={() => setAuctionOpen((o) => !o)}>
-            Auksionga qo'yish
-          </button>
         </div>
       </div>
       {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{saleMsg.text}</span></div>}
-
-      {auctionOpen && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Auksion sharoitlari</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <label className="form-control">
-              <span className="text-xs font-semibold text-base-content/70">Boshlang'ich narx, so'm *</span>
-              <input type="number" value={auctionForm.startPrice} onChange={(e) => setAuctionForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder="masalan 500000" className={inp} />
-            </label>
-            <label className="form-control">
-              <span className="text-xs font-semibold text-base-content/70">Darhol sotib olish, so'm (ixtiyoriy)</span>
-              <input type="number" value={auctionForm.buyNowPrice} onChange={(e) => setAuctionForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder="masalan 2000000" className={inp} />
-            </label>
-            <label className="form-control">
-              <span className="text-xs font-semibold text-base-content/70">Davomiyligi (soat, maks. 72)</span>
-              <input type="number" max={72} value={auctionForm.hours} onChange={(e) => setAuctionForm((f) => ({ ...f, hours: e.target.value }))} className={inp} />
-            </label>
-          </div>
-          <label className="form-control mt-3 block">
-            <span className="text-xs font-semibold text-base-content/70">Payme/karta raqamingiz (g'alaba pulini shu yerga olasiz) *</span>
-            <input value={auctionForm.sellerPaymeNumber} onChange={(e) => setAuctionForm((f) => ({ ...f, sellerPaymeNumber: e.target.value }))} placeholder="+998901234567 yoki karta raqami" className={inp} />
-          </label>
-          <p className="mt-1.5 text-xs text-base-content/45">Auksion tugab, g'olib to'laganidan so'ng, sotuvdan tushgan summa (komissiyadan keyin) admin tomonidan shu raqamga qo'lda o'tkaziladi.</p>
-          <button className="btn btn-primary btn-sm mt-3" onClick={submitAuction} disabled={auctionBusy}>
-            {auctionBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Auksionni boshlash'}
-          </button>
-          {auctionMsg && <div className={`alert mt-3 py-2 text-sm ${auctionMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{auctionMsg.text}</span></div>}
-        </div>
-      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="min-w-0">
@@ -529,10 +474,6 @@ function EditCardForm({ card, onSaved }) {
                 <input className={`${inp} font-mono text-xs`} value={form.bgUrl} onChange={set('bgUrl')} placeholder="https://... yoki /uploads/..." />
               </div>
             </div>
-            <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" className="checkbox checkbox-sm" checked={form.bgPattern} onChange={(e) => setForm((f) => ({ ...f, bgPattern: e.target.checked }))} />
-              <span>Diagonal naqshli fon (yoqilgan bo'lsa, fon ustida yengil chiziqlar ko'rinadi)</span>
-            </label>
 
             <div className="mt-5 flex items-center gap-3">
               <input
@@ -702,6 +643,27 @@ export default function AccountPage({ refreshCatalog }) {
   if (user === undefined || user === null) {
     return (
       <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 pb-16"><p className="text-base-content/60">Yuklanmoqda...</p></main>
+    );
+  }
+
+  // Auksionda g'olib chiqib, 24 soatda to'lamagan foydalanuvchi — 72 soat
+  // akkauntga kirish taqiqlangan.
+  if (user.bannedUntil) {
+    const until = new Date(user.bannedUntil);
+    return (
+      <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 pb-16">
+        <div className="mx-auto max-w-lg rounded-2xl border border-error/40 bg-error/10 p-7 text-center">
+          <div className="text-3xl">{'\u26D4'}</div>
+          <h1 className="mt-3 text-xl font-bold">Akkauntingiz vaqtincha bloklangan</h1>
+          <p className="mt-2 text-sm text-base-content/60">
+            Siz auksionda g'olib chiqib, 24 soat ichida to'lamadingiz. Shu sababli akkauntingiz{' '}
+            <b>{until.toLocaleString('uz-UZ')}</b> gacha bloklangan.
+          </p>
+          <p className="mt-3 text-sm text-error">
+            Diqqat: bu takrorlansa, akkauntingiz doimiy bloklanishi yoki vizitkalaringiz olib qo'yilishi mumkin.
+          </p>
+        </div>
+      </main>
     );
   }
 

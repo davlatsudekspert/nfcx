@@ -64,7 +64,7 @@ export default function AuctionPage({ id }) {
   }, [payOrder]);
 
   if (data === null) {
-    return <main className="mx-auto max-w-6xl px-5 pt-16 pb-16 text-center text-base-content/45">Yuklanmoqda yoki auksion topilmadi...</main>;
+    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 pb-16 text-center text-base-content/45">Yuklanmoqda yoki auksion topilmadi...</main>;
   }
 
   const { auction, bids } = data;
@@ -101,11 +101,13 @@ export default function AuctionPage({ id }) {
     }
   };
 
+  const [winnerName, setWinnerName] = useState('');
   const payNow = async () => {
+    if (!winnerName.trim()) { setMsg({ type: 'err', text: 'Profilingiz uchun ismingizni kiriting.' }); return; }
     setBusy(true);
     setMsg(null);
     try {
-      const order = await dbPayAuctionWinner(auction.id);
+      const order = await dbPayAuctionWinner(auction.id, { name: winnerName.trim() });
       setPayOrder(order);
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
@@ -115,7 +117,7 @@ export default function AuctionPage({ id }) {
   };
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <section className="pt-14">
         <button className="text-xs text-base-content/50 hover:text-base-content" onClick={() => navigate('/auksion')}>&larr; Auksionlarga qaytish</button>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -154,11 +156,19 @@ export default function AuctionPage({ id }) {
         <section className="mt-6 rounded-2xl border border-warning/40 bg-warning/10 p-5">
           <div className="text-sm font-bold">{'\u{1F389}'} Tabriklaymiz — siz g'olib bo'ldingiz!</div>
           <p className="mt-1 text-sm text-base-content/60">
-            {fmt(auction.currentPrice)} so'mni <b>{dateTime(new Date(auction.paymentDeadline).getTime())}</b> gacha (24 soat ichida) to'lashingiz kerak, aks holda auksion bekor bo'ladi.
+            {fmt(auction.currentPrice)} so'mni <b>{dateTime(new Date(auction.paymentDeadline).getTime())}</b> gacha (24 soat ichida) to'lashingiz kerak, aks holda auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.
           </p>
-          <button className="btn btn-primary btn-sm mt-3" onClick={payNow} disabled={busy}>
-            {busy ? <span className="loading loading-spinner loading-xs"></span> : `To'lash \u2014 ${fmt(auction.currentPrice)} so'm`}
-          </button>
+          <input
+            value={winnerName}
+            onChange={(e) => setWinnerName(e.target.value)}
+            placeholder="Profilingizdagi ismingiz"
+            className="input input-bordered input-sm mt-3 w-full max-w-xs bg-base-100"
+          />
+          <div>
+            <button className="btn btn-primary btn-sm mt-3" onClick={payNow} disabled={busy}>
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : `To'lash \u2014 ${fmt(auction.currentPrice)} so'm`}
+            </button>
+          </div>
         </section>
       )}
       {payOrder && (

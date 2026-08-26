@@ -1,11 +1,10 @@
 export default function PrivacyPage() {
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
-      {/* Matn o'zi max-w-3xl'da qoladi — sof matn 1800px'gacha cho'zilsa
-         qatorlar haddan tashqari uzun bo'lib, o'qish qiyinlashardi. */}
-      <h1 className="pt-14 text-3xl font-extrabold tracking-tight">Maxfiylik siyosati</h1>
-      <div className="mt-2 font-mono text-xs uppercase tracking-wider text-base-content/40">Oxirgi yangilanish: 2026</div>
-      <div className="mt-6 max-w-3xl space-y-6 text-[15px] leading-relaxed text-base-content/70">
+      <div className="mx-auto max-w-3xl">
+        <h1 className="pt-14 text-3xl font-extrabold tracking-tight">Maxfiylik siyosati</h1>
+        <div className="mt-2 font-mono text-xs uppercase tracking-wider text-base-content/40">Oxirgi yangilanish: 2026</div>
+        <div className="mt-6 space-y-6 text-[15px] leading-relaxed text-base-content/70">
         <p>Ushbu sahifa NFCSTORE qanday ma'lumot yig'ishi va ulardan qanday foydalanishini tushuntiradi.</p>
         <div>
           <h2 className="text-lg font-bold text-base-content">1. Qanday ma'lumot yig'amiz</h2>
@@ -31,6 +30,7 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-bold text-base-content">5. Ma'lumotni o'chirish</h2>
           <p className="mt-1.5">Hisobingizni va unga bog'liq ma'lumotlarni o'chirishni so'rash uchun qo'llab-quvvatlash xizmatiga murojaat qiling.</p>
         </div>
+      </div>
       </div>
     </main>
   );

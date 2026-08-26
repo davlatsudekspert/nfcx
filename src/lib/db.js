@@ -214,26 +214,23 @@ const AUCTION_ERRORS = {
   payme_disabled: "To'lov tizimi hozircha yoqilmagan.",
   OWN_AUCTION: "O'z auksioningizga taklif qila olmaysiz.",
   BID_TOO_LOW: "Taklifingiz joriy narxdan yuqori bo'lishi kerak.",
+  BANNED: "Akkauntingiz vaqtincha bloklangan (to'lanmagan auksion sababli).",
+  name_required: 'Ismingizni kiriting.',
   SYSTEM: 'Tizim xatoligi yuz berdi, birozdan keyin qayta urinib ko\u2019ring.',
 };
 
-export async function dbCreateAuction({ code, startPrice, buyNowPrice, hours, sellerPaymeNumber }) {
-  const res = await fetch('/api/auctions', {
+// MUHIM: kartani/kodni auksionga qo'yish endi faqat admin panel orqali
+// (adminApi('/auctions', ...) — src/pages/AdminPage.jsx). Bu funksiya
+// endi ishlatilmaydi, xavfsizlik uchun olib tashlandi.
+
+// G'olib real to'lovni boshlaydi — profil ma'lumoti (ism) bilan birga,
+// chunki bu kod uchun karta hali mavjud emas.
+export async function dbPayAuctionWinner(auctionId, profile) {
+  const res = await fetch(`/api/auctions/${encodeURIComponent(auctionId)}/pay`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ code, startPrice, buyNowPrice, hours, sellerPaymeNumber }),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
-  return data;
-}
-
-// G'olib real to'lovni boshlaydi.
-export async function dbPayAuctionWinner(auctionId) {
-  const res = await fetch(`/api/auctions/${encodeURIComponent(auctionId)}/pay`, {
-    method: 'POST',
-    credentials: 'same-origin',
+    body: JSON.stringify(profile || {}),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');

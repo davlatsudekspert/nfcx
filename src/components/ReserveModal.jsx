@@ -25,6 +25,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [acctPassword, setAcctPassword] = useState('');
   const [acctPhone, setAcctPhone] = useState('');
   const [acctBotAck, setAcctBotAck] = useState(false);
+  const [acctTosAccepted, setAcctTosAccepted] = useState(false);
   const [wantPhysicalCard, setWantPhysicalCard] = useState(false);
   const [shippingName, setShippingName] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
@@ -44,7 +45,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const ensureAccount = async () => {
     if (user) return;
     try {
-      await authRegister(acctEmail.trim(), acctPassword, { phone: acctPhone.trim(), botAck: acctBotAck });
+      await authRegister(acctEmail.trim(), acctPassword, { phone: acctPhone.trim(), botAck: acctBotAck, tosAccepted: acctTosAccepted });
     } catch (err) {
       if (String(err.message).startsWith('email_taken')) {
         // Bu email bilan akkaunt mavjud — parol to'g'ri bo'lsa kiradi.
@@ -63,6 +64,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       if (acctPassword.length < 6) { setMsg({ type: 'err', text: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' }); return; }
       if (!acctPhone.trim()) { setMsg({ type: 'err', text: 'Telefon raqamingizni kiriting.' }); return; }
       if (!acctBotAck) { setMsg({ type: 'err', text: "Avval botga yozganingizni tasdiqlovchi katakchani belgilang." }); return; }
+      if (!acctTosAccepted) { setMsg({ type: 'err', text: "Ommaviy oferta shartlariga rozilik bering." }); return; }
     }
     if (wantPhysicalCard) {
       if (!shippingName.trim() || !shippingPhone.trim() || !shippingAddress.trim()) {
@@ -244,6 +246,12 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                     </span>
                   </label>
                 </div>
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input type="checkbox" checked={acctTosAccepted} onChange={(e) => setAcctTosAccepted(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
+                  <span className="text-xs leading-relaxed text-base-content/75">
+                    Men <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">ommaviy oferta shartlari</a>ni o'qib chiqdim va roziman.
+                  </span>
+                </label>
                 <p className="text-xs leading-relaxed text-base-content/45">
                   Akkauntsiz band qilish endi mumkin emas — aks holda vizitkangiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.
                 </p>

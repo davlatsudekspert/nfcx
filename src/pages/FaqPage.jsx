@@ -14,9 +14,8 @@ export default function FaqPage({ catalog }) {
   ];
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
-      {/* Savol-javoblar o'zi max-w-3xl'da qoladi — matn 1800px'gacha
-         cho'zilsa o'qish qiyinlashardi. */}
-      <section className="max-w-3xl pt-14">
+      <div className="mx-auto max-w-3xl">
+      <section className="pt-14">
         <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
           Savollar
@@ -26,7 +25,7 @@ export default function FaqPage({ catalog }) {
         </h1>
       </section>
 
-      <section className="mt-10 max-w-3xl space-y-3">
+      <section className="mt-10 space-y-3">
         {items.map((f, i) => (
           <div key={i} className={`collapse collapse-arrow rounded-2xl border border-white/10 bg-base-200/60 ${openFaq === i ? 'collapse-open' : ''}`}>
             <button
@@ -41,6 +40,7 @@ export default function FaqPage({ catalog }) {
           </div>
         ))}
       </section>
+      </div>
     </main>
   );
 }

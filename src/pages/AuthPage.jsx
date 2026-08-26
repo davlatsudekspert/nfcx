@@ -33,6 +33,7 @@ export default function AuthPage({ mode }) {
   const [password2, setPassword2] = useState('');
   const [phone, setPhone] = useState('');
   const [botAck, setBotAck] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(false);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,9 +48,13 @@ export default function AuthPage({ mode }) {
       setMsg({ type: 'err', text: "Avval botga yozganingizni tasdiqlovchi katakchani belgilang." });
       return;
     }
+    if (isRegister && !tosAccepted) {
+      setMsg({ type: 'err', text: "Davom etish uchun ommaviy oferta shartlariga rozilik bering." });
+      return;
+    }
     setBusy(true);
     try {
-      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck });
+      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck, tosAccepted });
       else await authLogin(email.trim(), password);
       await refresh();
       navigate('/account');
@@ -114,6 +119,15 @@ export default function AuthPage({ mode }) {
                   </span>
                 </label>
               </div>
+            )}
+            {isRegister && (
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input type="checkbox" checked={tosAccepted} onChange={(e) => setTosAccepted(e.target.checked)}
+                  className="checkbox checkbox-sm mt-0.5" required />
+                <span className="text-xs leading-relaxed text-base-content/75">
+                  Men <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">ommaviy oferta shartlari</a>ni o'qib chiqdim va roziman.
+                </span>
+              </label>
             )}
             <button className="btn btn-primary w-full" disabled={busy}>
               {busy ? <span className="loading loading-spinner loading-sm"></span> : isRegister ? 'Akkaunt yaratish' : 'Kirish'}

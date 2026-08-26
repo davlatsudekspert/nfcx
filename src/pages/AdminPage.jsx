@@ -341,6 +341,52 @@ function PendingPayoutsTab() {
   );
 }
 
+// Auksion yaratishning YAGONA yo'li — faqat admin, faqat hali hech
+// kimga tegishli bo'lmagan (band qilinmagan) YANGI kodlar uchun.
+function CreateAuctionForm({ onCreated }) {
+  const [form, setForm] = useState({ code: '', startPrice: '', buyNowPrice: '', hours: '24' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const submit = async () => {
+    const code = form.code.trim().toUpperCase();
+    const startPrice = Math.round(Number(form.startPrice));
+    const buyNowPrice = form.buyNowPrice ? Math.round(Number(form.buyNowPrice)) : null;
+    const hours = Math.min(72, Math.max(1, Math.round(Number(form.hours) || 24)));
+    if (!code) { setMsg({ type: 'err', text: 'Kodni kiriting (masalan VIP001).' }); return; }
+    if (!startPrice || startPrice < 10_000) { setMsg({ type: 'err', text: "Boshlang'ich narx kamida 10 000 so'm bo'lishi kerak." }); return; }
+    setBusy(true);
+    setMsg(null);
+    try {
+      await adminApi('/auctions', { method: 'POST', body: JSON.stringify({ code, startPrice, buyNowPrice, hours }) });
+      setMsg({ type: 'ok', text: `${code} uchun auksion ochildi!` });
+      setForm({ code: '', startPrice: '', buyNowPrice: '', hours: '24' });
+      onCreated?.();
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message === 'code_taken' ? 'Bu kod allaqachon band.' : err.message === 'already_in_auction' ? 'Bu kod allaqachon auksionda.' : 'Xatolik yuz berdi.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">Yangi auksion ochish</div>
+      <p className="mt-1 text-xs text-base-content/45">Faqat hali hech kimga tegishli bo'lmagan (bo'sh) kodlar uchun.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-4">
+        <input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="Kod (VIP001)" className="input input-bordered input-sm bg-base-100 font-mono" />
+        <input type="number" value={form.startPrice} onChange={(e) => setForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder="Boshlang'ich narx" className="input input-bordered input-sm bg-base-100" />
+        <input type="number" value={form.buyNowPrice} onChange={(e) => setForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder="Darhol sotib olish (ixt.)" className="input input-bordered input-sm bg-base-100" />
+        <input type="number" max={72} value={form.hours} onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))} placeholder="Soat (maks. 72)" className="input input-bordered input-sm bg-base-100" />
+      </div>
+      <button className="btn btn-primary btn-sm mt-3" onClick={submit} disabled={busy}>
+        {busy ? <span className="loading loading-spinner loading-xs"></span> : 'Auksion ochish'}
+      </button>
+      {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+    </div>
+  );
+}
+
 function AuctionsTab() {
   const [auctions, setAuctions] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -361,14 +407,15 @@ function AuctionsTab() {
 
   if (!auctions) return <div className="text-base-content/45">Yuklanmoqda...</div>;
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <CreateAuctionForm onCreated={load} />
+      <div className="overflow-x-auto">
       <table className="table table-sm">
-        <thead><tr><th>Kod</th><th>Sotuvchi</th><th>Joriy narx</th><th>Yetakchi</th><th>Holat</th><th>Tugash</th><th></th></tr></thead>
+        <thead><tr><th>Kod</th><th>Joriy narx</th><th>Yetakchi</th><th>Holat</th><th>Tugash</th><th></th></tr></thead>
         <tbody>
           {auctions.map((a) => (
             <tr key={a.id}>
               <td className="font-mono">{a.code}</td>
-              <td className="text-xs">{a.sellerEmail}</td>
               <td>{fmt(a.currentPrice)}</td>
               <td className="text-xs">{a.highestBidderEmail || '—'}</td>
               <td><span className={`badge badge-sm ${a.status === 'active' ? 'badge-success' : a.status === 'sold' ? 'badge-accent' : 'badge-ghost'}`}>{a.status}</span></td>
@@ -385,6 +432,7 @@ function AuctionsTab() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

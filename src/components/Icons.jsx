@@ -157,26 +157,3 @@ export function IconChevronDown(props) {
     </svg>
   );
 }
-export function IconSend(props) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M2.5 12 21 3l-5.2 18.5-6-6.4L2.5 12Zm7.9 3.6 3.4 3.6 3.2-11.3-6.6 7.7Z" />
-    </svg>
-  );
-}
-export function IconPaperclip(props) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M18.8 8.7 10 17.5a3.8 3.8 0 0 1-5.4-5.4l9-9a2.5 2.5 0 1 1 3.6 3.6l-8.8 8.8a1.3 1.3 0 1 1-1.8-1.8l7.9-7.9" />
-    </svg>
-  );
-}
-export function IconEmoji(props) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M8.5 14.5c1 1.2 2.1 1.8 3.5 1.8s2.5-.6 3.5-1.8" strokeLinecap="round" />
-      <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}

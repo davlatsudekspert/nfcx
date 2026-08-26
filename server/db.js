@@ -105,6 +105,23 @@ export async function initDb() {
       await pool.query(`ALTER TABLE users ADD COLUMN pending_payout BIGINT NOT NULL DEFAULT 0`);
       console.log('[db] users.pending_payout ustuni qo\u2019shildi.');
     }
+    // Auksionda yutib, 24 soatda to'lamagan foydalanuvchilar uchun jazo:
+    // 1-marta — 72 soat akkauntga kirish taqiqlanadi (banned_until).
+    // 2-marta va undan ko'p — strike_count oshadi, admin panelda ko'rinadi
+    // (doimiy taqiq/akkauntni olib qo'yishni admin qo'lda hal qiladi).
+    if (!uc.has('banned_until')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN banned_until TIMESTAMPTZ`);
+      console.log('[db] users.banned_until ustuni qo\u2019shildi.');
+    }
+    if (!uc.has('strike_count')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN strike_count INTEGER NOT NULL DEFAULT 0`);
+      console.log('[db] users.strike_count ustuni qo\u2019shildi.');
+    }
+    // Ro'yxatdan o'tishda ommaviy oferta/shartlarga rozilik belgisi.
+    if (!uc.has('tos_accepted')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN tos_accepted BOOLEAN NOT NULL DEFAULT FALSE`);
+      console.log('[db] users.tos_accepted ustuni qo\u2019shildi.');
+    }
   }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -254,8 +271,9 @@ export async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS auctions (
       id                  SERIAL PRIMARY KEY,
-      code                VARCHAR(16) NOT NULL REFERENCES cards(code) ON DELETE CASCADE,
-      seller_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code                VARCHAR(16) NOT NULL, -- MUHIM: endi cards(code)ga FK YO'Q — auksion ko'pincha
+                                                  -- hali hech kimga tegishli bo'lmagan YANGI kod uchun ochiladi.
+      seller_id           INTEGER REFERENCES users(id) ON DELETE SET NULL, -- endi har doim NULL (admin ochadi, sotuvchi yo'q)
       start_price         BIGINT NOT NULL,
       buy_now_price       BIGINT,
       current_price       BIGINT NOT NULL,
@@ -264,9 +282,10 @@ export async function initDb() {
       -- status: active -> awaiting_payment -> sold | payment_expired | expired | cancelled
       status              VARCHAR(20) NOT NULL DEFAULT 'active',
       payment_deadline    TIMESTAMPTZ,      -- g'olib uchun 24 soatlik muddat
-      seller_payout_amount BIGINT,          -- sotuvchiga tegishli 95% (real so'mda)
-      seller_payout_status VARCHAR(20) NOT NULL DEFAULT 'none', -- none | pending | paid
-      seller_payme_number TEXT,             -- sotuvchining to'lov olish uchun raqami
+      seller_payout_amount BIGINT,          -- eski (foydalanuvchi auksionlari) uchun qoldirilgan, endi ishlatilmaydi
+      seller_payout_status VARCHAR(20) NOT NULL DEFAULT 'none',
+      seller_payme_number TEXT,
+      created_by_admin    BOOLEAN NOT NULL DEFAULT TRUE, -- endi doim TRUE
       created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -280,6 +299,7 @@ export async function initDb() {
       seller_payout_amount: `ALTER TABLE auctions ADD COLUMN seller_payout_amount BIGINT`,
       seller_payout_status: `ALTER TABLE auctions ADD COLUMN seller_payout_status VARCHAR(20) NOT NULL DEFAULT 'none'`,
       seller_payme_number: `ALTER TABLE auctions ADD COLUMN seller_payme_number TEXT`,
+      created_by_admin: `ALTER TABLE auctions ADD COLUMN created_by_admin BOOLEAN NOT NULL DEFAULT TRUE`,
     };
     for (const key of Object.keys(auctionCols)) {
       if (!ac.has(key)) {
@@ -287,6 +307,21 @@ export async function initDb() {
         console.log(`[db] auctions.${key} ustuni qo'shildi.`);
       }
     }
+    // Eski deploy'larda auctions.code -> cards(code) va seller_id NOT NULL
+    // bo'lishi mumkin edi — endi auksion hali card yaratilmagan YANGI
+    // kod uchun ham ochilishi kerak, shuning uchun bu cheklovlarni
+    // (agar mavjud bo'lsa) olib tashlaymiz.
+    const { rows: cons } = await pool.query(`
+      SELECT con.conname FROM pg_constraint con
+      JOIN pg_class rel ON rel.oid = con.conrelid
+      WHERE rel.relname = 'auctions' AND con.contype = 'f'
+    `);
+    for (const { conname } of cons) {
+      await pool.query(`ALTER TABLE auctions DROP CONSTRAINT IF EXISTS ${conname}`);
+    }
+    await pool.query(`ALTER TABLE auctions ALTER COLUMN seller_id DROP NOT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE auctions ADD CONSTRAINT auctions_seller_fk
+      FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE SET NULL`).catch(() => {});
   }
   await pool.query(`CREATE INDEX IF NOT EXISTS auctions_status_idx ON auctions (status, ends_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS auctions_code_idx ON auctions (code)`);
@@ -679,12 +714,12 @@ export async function incrementViews(code) {
 
 // ---------- Auth ----------
 
-export async function createUser(email, passwordHash, { phone, botAck } = {}) {
+export async function createUser(email, passwordHash, { phone, botAck, tosAccepted } = {}) {
   const { rows } = await pool.query(
-    `INSERT INTO users (email, password_hash, phone, bot_ack) VALUES ($1, $2, $3, $4)
+    `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted) VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (email) DO NOTHING
      RETURNING id, email, phone, bot_ack AS "botAck"`,
-    [email.toLowerCase(), passwordHash, phone || null, !!botAck]
+    [email.toLowerCase(), passwordHash, phone || null, !!botAck, !!tosAccepted]
   );
   return rows[0] || null;
 }
@@ -721,12 +756,21 @@ export async function getSessionUser(token) {
   await pool.query(`DELETE FROM sessions WHERE expires_at < now()`);
   if (!token) return null;
   const { rows } = await pool.query(
-    `SELECT u.id, u.email, u.is_premium AS "isPremium" FROM sessions s
+    `SELECT u.id, u.email, u.is_premium AS "isPremium",
+            u.banned_until AS "bannedUntil", u.strike_count AS "strikeCount"
+     FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token = $1 AND s.expires_at > now()`,
     [token]
   );
-  return rows[0] ? { id: rows[0].id, email: rows[0].email, isPremium: !!rows[0].isPremium } : null;
+  if (!rows[0]) return null;
+  const r = rows[0];
+  const isBanned = r.bannedUntil && new Date(r.bannedUntil) > new Date();
+  return {
+    id: r.id, email: r.email, isPremium: !!r.isPremium,
+    bannedUntil: isBanned ? r.bannedUntil : null,
+    strikeCount: r.strikeCount || 0,
+  };
 }
 
 export async function deleteSession(token) {
@@ -989,7 +1033,7 @@ export async function finalizePaidWebOrder(orderId) {
 
   if (order.kind === 'auction_payment') {
     const auctionId = Number(order.payload?.auctionId);
-    const result = await finalizeAuctionPayment(auctionId, Number(process.env.AUCTION_COMMISSION_PCT || 5));
+    const result = await finalizeAuctionPayment(auctionId, order.userId, order.payload || {});
     await setWebOrderStatus(order.id, result ? 'paid' : 'failed_code_taken');
     return { ok: !!result, result };
   }
@@ -1211,12 +1255,15 @@ const AUCTION_FIELDS = `
   a.created_at AS "createdAt"
 `;
 
-export async function createAuction({ code, sellerId, startPrice, buyNowPrice, hours }) {
+// Admin tomonidan yangi (hali hech kimga tegishli bo'lmagan) kod uchun
+// auksion ochish — sellerId endi har doim NULL (sotuvchi yo'q, platforma
+// o'zi taklif qiladi).
+export async function createAuction({ code, startPrice, buyNowPrice, hours }) {
   const { rows } = await pool.query(
-    `INSERT INTO auctions (code, seller_id, start_price, buy_now_price, current_price, ends_at)
-     VALUES ($1,$2,$3,$4,$3, now() + ($5 || ' hours')::interval)
+    `INSERT INTO auctions (code, seller_id, start_price, buy_now_price, current_price, ends_at, created_by_admin)
+     VALUES ($1,NULL,$2,$3,$2, now() + ($4 || ' hours')::interval, TRUE)
      RETURNING ${AUCTION_FIELDS.replace(/a\./g, '')}`,
-    [code, sellerId, startPrice, buyNowPrice || null, hours]
+    [code, startPrice, buyNowPrice || null, hours]
   );
   return rows[0] || null;
 }
@@ -1337,47 +1384,60 @@ export async function closeAuctionBidding(auctionId) {
 // 95% "to'lanishi kerak" deb belgilanadi (admin panelda qo'lda to'lanadi —
 // e-wallet yo'qligi sababli avtomatik o'tkazib bo'lmaydi), platforma
 // komissiyasi hisobga yoziladi (haqiqiy pul, real Payme orqali kelgan).
-export async function finalizeAuctionPayment(auctionId, commissionPct) {
+// G'olib to'lagach chaqiriladi: ENDI mavjud kartani ko'chirish emas —
+// bu kod hali hech kimga tegishli bo'lmagan, shuning uchun YANGI karta
+// yaratiladi (g'olib bergan profil ma'lumotlari bilan). Sotuvchi yo'q —
+// butun summa platforma daromadiga tushadi.
+export async function finalizeAuctionPayment(auctionId, winnerId, profile) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows: aRows } = await client.query(
-      `SELECT id, code, seller_id AS "sellerId", current_price AS "currentPrice",
-              highest_bidder_id AS "highestBidderId", status
+      `SELECT id, code, current_price AS "currentPrice", highest_bidder_id AS "highestBidderId", status
        FROM auctions WHERE id = $1 FOR UPDATE`,
       [auctionId]
     );
     const auction = aRows[0];
-    if (!auction || auction.status !== 'awaiting_payment' || !auction.highestBidderId) {
+    if (!auction || auction.status !== 'awaiting_payment' || auction.highestBidderId !== winnerId) {
       await client.query('ROLLBACK'); return null;
     }
+    // Kimdir shu kodni boshqa yo'l bilan (masalan to'g'ridan-to'g'ri
+    // band qilib) ulgurmaganini tekshiramiz — juda kam holat, lekin
+    // xavfsizlik uchun shart.
+    const { rows: exists } = await client.query(`SELECT 1 FROM cards WHERE code = $1`, [auction.code]);
+    if (exists[0]) { await client.query('ROLLBACK'); return null; }
 
     const winAmount = Number(auction.currentPrice);
-    const commission = Math.round(winAmount * (commissionPct / 100));
-    const sellerGets = winAmount - commission;
-
-    // Karta yangi egasiga o'tadi.
-    await client.query(
-      `UPDATE cards SET user_id = $2, for_sale = FALSE, sale_price = NULL WHERE code = $1`,
-      [auction.code, auction.highestBidderId]
-    );
-    // Sotuvchining eski jismoniy kartasi (agar bo'lsa) deaktivatsiya qilinadi.
-    await client.query(
-      `UPDATE physical_cards SET linked_code = NULL, active = FALSE WHERE linked_code = $1`,
-      [auction.code]
-    );
-    // Komissiya platforma hisobiga yoziladi (real Payme puli).
-    await creditPlatformWallet(client, commission, 'platform_commission', 'auctions', auctionId,
-      `Auksion komissiyasi (${commissionPct}%) \u2014 ${auction.code}`);
 
     await client.query(
-      `UPDATE auctions SET status = 'sold', seller_payout_amount = $2, seller_payout_status = 'pending'
-       WHERE id = $1`,
-      [auctionId, sellerGets]
+      `INSERT INTO cards (code, name, role, avatar_url, tg, phone, email, linkedin, instagram, theme, hashtags, price, ts, user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14)`,
+      [
+        auction.code,
+        profile.name || 'Yangi egasi',
+        profile.role || '',
+        profile.avatarUrl || '',
+        profile.tg || '',
+        profile.phone || '',
+        profile.email || '',
+        profile.linkedin || '',
+        profile.instagram || '',
+        'classic',
+        JSON.stringify([]),
+        winAmount,
+        Date.now(),
+        winnerId,
+      ]
     );
+
+    // Butun summa (sotuvchi yo'qligi sababli) platforma daromadiga tushadi.
+    await creditPlatformWallet(client, winAmount, 'platform_commission', 'auctions', auctionId,
+      `Auksion daromadi (100%) \u2014 ${auction.code}`);
+
+    await client.query(`UPDATE auctions SET status = 'sold' WHERE id = $1`, [auctionId]);
 
     await client.query('COMMIT');
-    return { code: auction.code, sellerId: auction.sellerId, winnerId: auction.highestBidderId, winAmount, commission, sellerGets };
+    return { code: auction.code, winnerId, winAmount };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -1388,13 +1448,43 @@ export async function finalizeAuctionPayment(auctionId, commissionPct) {
 
 // To'lov muddati (24 soat) o'tib ketgan, lekin g'olib to'lamagan
 // auksionlarni "payment_expired" deb belgilaydi.
+// To'lov muddati (24 soat) o'tib ketgan, lekin g'olib to'lamagan
+// auksionlarni "payment_expired" deb belgilaydi VA g'olibga jazo qo'llaydi:
+// 1-marta — 72 soat akkauntga kirish taqiqlanadi; 2-marta va undan ko'p —
+// strike_count oshib boradi (doimiy taqiq/o'chirishni admin panelda
+// qo'lda hal qiladi — avtomatik akkaunt o'chirilmaydi, bu og'ir qaror).
 export async function expireUnpaidAuctions() {
-  const { rows } = await pool.query(
-    `UPDATE auctions SET status = 'payment_expired'
-     WHERE status = 'awaiting_payment' AND payment_deadline < now()
-     RETURNING id, code`
-  );
-  return rows;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: expired } = await client.query(
+      `UPDATE auctions SET status = 'payment_expired'
+       WHERE status = 'awaiting_payment' AND payment_deadline < now()
+       RETURNING id, code, highest_bidder_id AS "highestBidderId"`
+    );
+    for (const a of expired) {
+      if (!a.highestBidderId) continue;
+      const { rows } = await client.query(
+        `UPDATE users SET strike_count = strike_count + 1 WHERE id = $1 RETURNING strike_count AS "strikeCount"`,
+        [a.highestBidderId]
+      );
+      const strikeCount = rows[0]?.strikeCount || 1;
+      if (strikeCount === 1) {
+        await client.query(`UPDATE users SET banned_until = now() + interval '72 hours' WHERE id = $1`, [a.highestBidderId]);
+      }
+      // 2-marta va undan ko'p bo'lsa — banned_until yangilanmaydi (admin
+      // panelda strike_count >= 2 ko'ringan foydalanuvchini admin qo'lda
+      // ko'rib chiqadi, kerak bo'lsa doimiy bloklaydi yoki vizitkasini oladi).
+      console.log(`[auction] #${a.id} (${a.code}) g'olib #${a.highestBidderId} to'lamadi \u2014 strike ${strikeCount}.`);
+    }
+    await client.query('COMMIT');
+    return expired;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // ---------- Admin panel uchun so'rovlar ----------
@@ -1471,7 +1561,7 @@ export async function adminListAuctions(limit = 100) {
             a.payment_deadline AS "paymentDeadline", a.seller_payout_amount AS "sellerPayoutAmount",
             a.seller_payout_status AS "sellerPayoutStatus", a.seller_payme_number AS "sellerPaymeNumber"
      FROM auctions a
-     JOIN users su ON su.id = a.seller_id
+     LEFT JOIN users su ON su.id = a.seller_id
      LEFT JOIN users hu ON hu.id = a.highest_bidder_id
      ORDER BY a.created_at DESC LIMIT $1`,
     [limit]

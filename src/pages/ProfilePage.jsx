@@ -52,18 +52,15 @@ export function vzStyle(theme, record) {
   const accented = record && record.accentColor
     ? { ...base, '--vz-accent': record.accentColor, '--vz-pill': record.accentColor }
     : base;
-  const pattern = record && record.bgPattern === false ? '' :
-    'repeating-linear-gradient(115deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 68px), ';
   if (record && record.bgUrl) {
     // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — shuni ko'rsatamiz
-    // (naqsh ustiga yarim shaffof qatlam sifatida qo'shiladi, o'qilishi uchun).
+    // (o'qilishi uchun ustiga yarim shaffof qora qatlam qo'shiladi).
     return {
       ...accented,
-      backgroundImage:
-        pattern + `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
-      backgroundSize: 'auto, auto, cover',
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
+      backgroundSize: 'auto, cover',
       backgroundPosition: 'center',
-      backgroundRepeat: 'repeat, no-repeat, no-repeat',
+      backgroundRepeat: 'no-repeat',
     };
   }
   if (record && record.bgColor) {
@@ -78,15 +75,15 @@ export function vzStyle(theme, record) {
     const animated = record.bgAnimated !== false;
     return {
       ...accented,
-      backgroundImage: pattern + `linear-gradient(120deg, ${c1}, ${c2}, ${c3}, ${c1})`,
-      backgroundSize: animated ? (pattern ? 'auto, 300% 300%' : '300% 300%') : (pattern ? 'auto, 100% 100%' : '100% 100%'),
-      backgroundRepeat: pattern ? 'repeat, no-repeat' : 'no-repeat',
+      backgroundImage: `linear-gradient(120deg, ${c1}, ${c2}, ${c3}, ${c1})`,
+      backgroundSize: animated ? '300% 300%' : '100% 100%',
+      backgroundRepeat: 'no-repeat',
       animation: animated ? 'bgShift 16s ease-in-out infinite' : undefined,
     };
   }
   return {
     ...accented,
-    backgroundImage: pattern + 'linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
+    backgroundImage: 'linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))',
   };
 }
 
