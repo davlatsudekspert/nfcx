@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
+import { parseAnyCode, tierForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -125,16 +125,6 @@ function socialUrl(kind, handle) {
     case 'li': return /^https?:/.test(h) ? h : `https://${h}`;
     default: return '';
   }
-}
-
-// Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "000" va h.k.)
-function rarity(code) {
-  if (!code || code.length !== 6) return null;
-  const lp = letterPattern(code.slice(0, 3));
-  const dp = digitPattern(code.slice(3, 6));
-  if (!lp.hot && !dp.hot) return null;
-  const label = [lp.hot ? lp.label : null, dp.hot ? dp.label : null].filter(Boolean).join(' · ');
-  return label;
 }
 
 function tierOf(code) {
@@ -348,9 +338,9 @@ export default function ProfilePage({ code, catalog }) {
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
   const wsUrl = record.website || '';
   const hasSocials = tgUrl || igUrl || fbUrl || xUrl || liUrl;
-  const rarityLabel = rarity(record.code);
   const tier = tierOf(record.code);
   const tierColor = TIER_COLOR[tier];
+  const tierBg = TIER_GRADIENT[tier];
   const tierEmoji = TIER_EMOJI[tier];
   const dark = DARK_THEMES.includes(record.theme || 'classic');
 
@@ -414,10 +404,21 @@ export default function ProfilePage({ code, catalog }) {
       )}
 
       <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
+        {(tierEmoji || tier !== 'free') && (
+          <div className="flex justify-center pt-6">
+            <span
+              className="inline-flex items-center gap-2.5 rounded-full border-2 px-8 py-2.5 font-mono text-[26px] font-extrabold shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+              style={{ borderColor: tierColor, color: tier === 'exclusive' || tier === 'premium' ? '#fdf3d0' : tierColor, background: tierBg || `${tierColor}14` }}
+            >
+              {tierEmoji && <span className="text-[22px]">{tierEmoji}</span>}
+              # {record.code}
+            </span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-4">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}
-            {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
@@ -442,18 +443,6 @@ export default function ProfilePage({ code, catalog }) {
           </div>
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}
-
-        {(tierEmoji || tier !== 'free') && (
-          <div className="mt-4 flex justify-center">
-            <span
-              className="inline-flex items-center gap-2 rounded-full border px-6 py-1.5 font-mono text-[18px] font-bold"
-              style={{ borderColor: tierColor, color: tierColor, background: `${tierColor}14` }}
-            >
-              {tierEmoji && <span className="text-[16px]">{tierEmoji}</span>}
-              # {record.code}
-            </span>
-          </div>
-        )}
 
         <div className="mt-0.5 flex flex-col items-center">
           <div className="relative flex h-[120px] w-[120px] items-center justify-center">
@@ -489,7 +478,14 @@ export default function ProfilePage({ code, catalog }) {
             <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
           </div>
           {tier !== 'free' && (
-            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
+            <div
+              className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider"
+              style={{
+                color: tierBg ? '#fdf3d0' : tierColor,
+                border: `1px solid ${tierColor}55`,
+                background: tierBg || `${tierColor}15`,
+              }}
+            >
               {TIER_LABEL[tier]} tarif
             </div>
           )}
@@ -550,34 +546,21 @@ export default function ProfilePage({ code, catalog }) {
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> KARTA (to'lov)</span>}
+              {record.cardNumber && (
+                <button
+                  type="button"
+                  className={`${linkBtn} cursor-pointer`}
+                  onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), "Karta raqami nusxalandi: " + record.cardNumber)}
+                >
+                  <IconTag /> KARTA (to'lov)
+                </button>
+              )}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
               ))}
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
-
-            {(record.cardNumber || (record.cardNumbers && record.cardNumbers.length > 0)) && (
-              <>
-                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">TO'LOV UCHUN KARTALAR</div>
-                <div className="flex flex-col gap-2.5">
-                  {record.cardNumber && (
-                    <div className="flex items-center justify-between gap-2.5 rounded-xl bg-black/[0.04] px-4 py-3 dark:bg-white/[0.06]" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
-                      <span className="font-mono text-[15px] tracking-[0.08em]">{record.cardNumber}</span>
-                      <button onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), 'Karta raqami nusxalandi!')} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)] dark:bg-white/10"><IconCopy /></button>
-                    </div>
-                  )}
-                  {(record.cardNumbers || []).map((c, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2.5 rounded-xl px-4 py-3" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
-                      <span>{c.label && <b className="mb-0.5 block text-[11px] font-bold text-[color:var(--vz-ink-faint)]">{c.label}</b>}<span className="font-mono text-[15px] tracking-[0.08em]">{c.number}</span></span>
-                      <button onClick={() => copyText(c.number.replace(/\s/g, ''), 'Karta raqami nusxalandi!')} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
 
             {hasSocials && (
               <>
