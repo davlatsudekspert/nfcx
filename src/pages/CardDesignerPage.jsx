@@ -14,13 +14,8 @@ const FONT_OPTIONS = [
   { value: "'Trebuchet MS'", label: 'Yengil (Trebuchet)' },
 ];
 
-const LOGO_POS_OPTIONS = [
-  { value: 'bottom-center', label: 'Pastda markazda' },
-  { value: 'bottom-left', label: 'Pastda chapda' },
-  { value: 'bottom-right', label: 'Pastda o\'ngda' },
-  { value: 'top-left', label: 'Yuqorida chapda' },
-  { value: 'top-right', label: 'Yuqorida o\'ngda' },
-];
+// Eslatma: logotip/QR pozitsiyasi endi oldindan belgilangan variantlar
+// emas — sichqoncha bilan sudrab, canvas ichida istalgan joyga qo'yiladi.
 
 // Yozuv rangi palitralari — gradient uch nuqtali (top/mid/bot) yoki
 // "mixed" uchun ko'p bosqichli chiziqli gradient.
@@ -196,23 +191,21 @@ function drawNfcIcon(ctx, cx, cy, scale, colorSet) {
   ctx.restore();
 }
 
-function drawLogo(ctx, w, h, logoImage, logoPos) {
-  if (!logoImage) return;
-  const targetH = 70;
-  const targetW = targetH * (logoImage.width / logoImage.height);
-  const margin = 40;
-  let x, y;
-  switch (logoPos) {
-    case 'bottom-left': x = margin; y = h - margin - targetH; break;
-    case 'bottom-right': x = w - margin - targetW; y = h - margin - targetH; break;
-    case 'top-left': x = margin; y = margin; break;
-    case 'top-right': x = w - margin - targetW; y = margin; break;
-    default: x = (w - targetW) / 2; y = h - margin - targetH;
-  }
+// Logotip yoki QR-kodni berilgan NISBIY (0..1) koordinatada chizadi —
+// bu koordinata endi oldindan belgilangan pozitsiyalar (pastda-markazda
+// va h.k.) o'rniga TO'G'RIDAN-TO'G'RI sichqoncha bilan sudrab
+// o'zgartiriladi (pastga qarang: onCanvasPointerDown/Move/Up).
+function drawPositionedImage(ctx, w, h, image, xy, targetH) {
+  if (!image || !xy) return null;
+  const targetW = targetH * (image.width / image.height);
+  const x = xy.x * w - targetW / 2;
+  const y = xy.y * h - targetH / 2;
   ctx.save();
   ctx.globalAlpha = 0.95;
-  ctx.drawImage(logoImage, x, y, targetW, targetH);
+  ctx.drawImage(image, x, y, targetW, targetH);
   ctx.restore();
+  // Keyinchalik "bosilganmi" tekshirish (drag) uchun hitbox qaytaramiz.
+  return { x, y, w: targetW, h: targetH };
 }
 
 // To'liq render — bitta tomonni (state.side) canvas'ga chizadi.
@@ -275,7 +268,13 @@ function renderCard(ctx, w, h, state) {
     drawNfcIcon(ctx, w / 2, h / 2 + 150, 1.8, colorSet);
   }
 
-  drawLogo(ctx, w, h, state.logoImage, state.logoPos);
+  // Hitbox'lar — drag qilish uchun (qaysi elementga sichqoncha bosilgani).
+  const hitboxes = {};
+  hitboxes.logo = drawPositionedImage(ctx, w, h, state.logoImage, state.logoXY, 70);
+  if (state.showQr) {
+    hitboxes.qr = drawPositionedImage(ctx, w, h, state.qrImage, state.qrXY, 120);
+  }
+  return hitboxes;
 }
 
 function loadImageFromFile(file, onLoaded) {
@@ -341,13 +340,15 @@ function FieldGroup({ title, children }) {
   );
 }
 
-export default function CardDesignerPage({ embedded = false } = {}) {
+export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const canvasRef = useRef(null);
   const bgFileRef = useRef(null);
   const logoFileRef = useRef(null);
+  const hitboxesRef = useRef({});
+  const dragRef = useRef(null); // 'logo' | 'qr' | null — hozir qaysi element sudralyapti
 
   const [side, setSide] = useState('front');
-  const [frontText, setFrontText] = useState('VIP001');
+  const [frontText, setFrontText] = useState(code || 'VIP001');
   const [frontSubText, setFrontSubText] = useState('');
   const [backText, setBackText] = useState('NFCSTORE.UZ');
   const [backSubText, setBackSubText] = useState('');
@@ -360,20 +361,70 @@ export default function CardDesignerPage({ embedded = false } = {}) {
   const [font, setFont] = useState('Arial');
   const [fontSize, setFontSize] = useState(92);
   const [logoImage, setLogoImage] = useState(null);
-  const [logoPos, setLogoPos] = useState('bottom-center');
+  // Endi pozitsiyalar oldindan belgilangan variantlar emas — sichqoncha
+  // bilan sudrab, canvas ichida istalgan joyga qo'yiladi (nisbiy 0..1).
+  const [logoXY, setLogoXY] = useState({ x: 0.5, y: 0.86 });
+  const [showQr, setShowQr] = useState(true);
+  const [qrImage, setQrImage] = useState(null);
+  const [qrXY, setQrXY] = useState({ x: 0.86, y: 0.16 });
+
+  // QR-kod — profilga (nfcstore.uz/<KOD>) havola qiladi. Old tomondagi
+  // matn (odatda kod) yoki tashqaridan uzatilgan `code` propidan olinadi.
+  useEffect(() => {
+    const qrCode = (code || frontText || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!showQr || !qrCode) { setQrImage(null); return; }
+    let cancelled = false;
+    import('qrcode').then((QRCode) => {
+      const canvas = document.createElement('canvas');
+      QRCode.toCanvas(canvas, `https://nfcstore.uz/${qrCode}`, { margin: 1, width: 240, color: { dark: '#111111', light: '#ffffffff' } }, (err) => {
+        if (!cancelled && !err) setQrImage(canvas);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [showQr, code, frontText]);
 
   const buildState = useCallback((overrides) => ({
     side, frontText, frontSubText, backText, backSubText, showNfc,
     textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
-    logoImage, logoPos, ...overrides,
+    logoImage, logoXY, showQr, qrImage, qrXY, ...overrides,
   }), [side, frontText, frontSubText, backText, backSubText, showNfc,
-    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoPos]);
+    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    renderCard(canvas.getContext('2d'), canvas.width, canvas.height, buildState());
+    hitboxesRef.current = renderCard(canvas.getContext('2d'), canvas.width, canvas.height, buildState()) || {};
   }, [buildState]);
+
+  // Ko'rsatilgan (CSS) o'lcham bilan haqiqiy canvas piksellari (1280x800)
+  // orasidagi nisbatni hisoblab, sichqoncha koordinatasini canvas
+  // koordinatasiga aylantiradi.
+  const pointerToCanvasXY = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+  };
+  const hitTest = (px, py, box) => box && px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h;
+
+  const onCanvasPointerDown = (e) => {
+    const { x, y } = pointerToCanvasXY(e);
+    const hb = hitboxesRef.current;
+    if (hitTest(x, y, hb.qr)) dragRef.current = 'qr';
+    else if (hitTest(x, y, hb.logo)) dragRef.current = 'logo';
+    else dragRef.current = null;
+  };
+  const onCanvasPointerMove = (e) => {
+    if (!dragRef.current) return;
+    const canvas = canvasRef.current;
+    const { x, y } = pointerToCanvasXY(e);
+    const nx = Math.min(1, Math.max(0, x / canvas.width));
+    const ny = Math.min(1, Math.max(0, y / canvas.height));
+    if (dragRef.current === 'logo') setLogoXY({ x: nx, y: ny });
+    else if (dragRef.current === 'qr') setQrXY({ x: nx, y: ny });
+  };
+  const onCanvasPointerUp = () => { dragRef.current = null; };
 
   const onPickBgImage = (e) => {
     const file = e.target.files[0];
@@ -512,17 +563,24 @@ export default function CardDesignerPage({ embedded = false } = {}) {
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => logoFileRef.current && logoFileRef.current.click()}>
               Rasm tanlash
             </button>
-            <div className="mt-3">
-              <Label>Logotip joyi</Label>
-              <select className="select select-bordered select-sm mt-1 w-full bg-base-100" value={logoPos} onChange={(e) => setLogoPos(e.target.value)}>
-                {LOGO_POS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
+            <p className="mt-2 text-xs text-base-content/45">Joyini o'zgartirish uchun kartadagi logotipni sichqoncha bilan ushlab, istalgan joyga suring.</p>
             {logoImage && (
               <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={() => { setLogoImage(null); if (logoFileRef.current) logoFileRef.current.value = ''; }}>
                 Logotipni olib tashlash
               </button>
             )}
+          </FieldGroup>
+
+          <FieldGroup title="QR-kod">
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input type="checkbox" className="checkbox checkbox-sm" checked={showQr} onChange={(e) => setShowQr(e.target.checked)} />
+              <span className="text-sm">Profilga havola qiluvchi QR-kod qo'shish</span>
+            </label>
+            <p className="mt-2 text-xs text-base-content/45">
+              {code || frontText
+                ? <>Havola: <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span> — joyini sichqoncha bilan suring.</>
+                : "Old tomon matni (kod) kiritilgach QR avtomatik hosil bo'ladi."}
+            </p>
           </FieldGroup>
 
           <FieldGroup title="Yuklab olish">
@@ -540,10 +598,14 @@ export default function CardDesignerPage({ embedded = false } = {}) {
             ref={canvasRef}
             width={1280}
             height={800}
-            className="w-full max-w-[520px] rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+            onPointerDown={onCanvasPointerDown}
+            onPointerMove={onCanvasPointerMove}
+            onPointerUp={onCanvasPointerUp}
+            onPointerLeave={onCanvasPointerUp}
+            className="w-full max-w-[520px] touch-none rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
           />
           <p className="max-w-[420px] text-center text-xs text-base-content/50">
-            Chop etish uchun 1280×800px, yuqori sifat. Har qanday o'zgarish darhol ko'rinadi.
+            Chop etish uchun 1280×800px, yuqori sifat. Logotip va QR-kodni sichqoncha bilan sudrab, joyini o'zgartiring.
           </p>
         </div>
       </div>

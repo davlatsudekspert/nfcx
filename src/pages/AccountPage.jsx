@@ -728,7 +728,7 @@ function EditCardForm({ card, onSaved }) {
           </Section>
 
           <Section title="Jismoniy karta bosma dizayni" subtitle="Old/orqa tomon, rang, logotip — PNG holida yuklab olasiz">
-            <CardDesignerPage embedded />
+            <CardDesignerPage embedded code={card.code} />
           </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>

@@ -287,7 +287,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 </button>
                 {showDesigner && (
                   <div className="-mx-3 mt-1 max-h-[60vh] overflow-y-auto border-t border-white/10 px-3 pt-3">
-                    <CardDesignerPage embedded />
+                    <CardDesignerPage embedded code={code} />
                   </div>
                 )}
               </div>
