@@ -126,7 +126,7 @@ function AnalyticsTab() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="text-sm font-bold">Platforma komissiyasi \u2014 kunlar bo'yicha (30 kun)</div>
+        <div className="text-sm font-bold">Platforma komissiyasi {'\u2014'} kunlar bo'yicha (30 kun)</div>
         <div className="mt-3 h-64 rounded-xl border border-white/10 bg-base-200/40 p-3">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data.commissionSeries}>
@@ -201,6 +201,44 @@ function AnalyticsTab() {
           </div>
         </div>
       </div>
+
+      <ManualAdjustmentsSection />
+    </div>
+  );
+}
+
+// Qo'lda kiritilgan balans tuzatishlari — DIQQAT: bular yuqoridagi
+// "Daromad turlari bo'yicha taqsimot" grafigiga ATAYLAB kirmaydi, chunki
+// bu real platforma daromadi emas. Faqat audit uchun, alohida ko'rsatiladi.
+function ManualAdjustmentsSection() {
+  const [list, setList] = useState(null);
+  useEffect(() => { adminApi('/manual-adjustments').then((d) => setList(d.adjustments)).catch(() => {}); }, []);
+  if (!list || list.length === 0) return null;
+  const total = list.reduce((s, a) => s + a.amount, 0);
+  return (
+    <div>
+      <div className="flex items-center gap-2 text-sm font-bold">
+        {'\u26A0\uFE0F'} Qo'lda kiritilgan balans tuzatishlari
+        <span className="badge badge-ghost badge-sm">Daromadga kirmaydi</span>
+      </div>
+      <p className="mt-1 text-xs text-base-content/45">
+        Bu yozuvlar xodim tomonidan qo'lda kiritilgan (masalan sinov maqsadida) — real savdo/komissiya emas, shuning uchun yuqoridagi daromad grafigiga qo'shilmaydi. Jami: <b className={total >= 0 ? 'text-success' : 'text-error'}>{fmt(total)} so'm</b>.
+      </p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>Foydalanuvchi</th><th>Summa</th><th>Izoh</th><th>Vaqt</th></tr></thead>
+          <tbody>
+            {list.map((a) => (
+              <tr key={a.id}>
+                <td className="text-xs">{a.email || `#${a.userId}`}</td>
+                <td className={`font-semibold ${a.amount >= 0 ? 'text-success' : 'text-error'}`}>{a.amount >= 0 ? '+' : ''}{fmt(a.amount)} so'm</td>
+                <td className="max-w-xs truncate text-xs text-base-content/60">{a.note}</td>
+                <td className="text-xs text-base-content/50">{timeAgo(new Date(a.createdAt).getTime())}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -211,9 +249,16 @@ function UsersTab() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [toggleBusy, setToggleBusy] = useState(null);
 
   const load = () => adminApi('/users').then((d) => setUsers(d.users));
   useEffect(() => { load(); }, []);
+
+  const toggleTest = async (u) => {
+    setToggleBusy(u.id);
+    try { await adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }); await load(); }
+    finally { setToggleBusy(null); }
+  };
 
   const submitAdjust = async () => {
     const val = Math.round(Number(amount));
@@ -237,16 +282,19 @@ function UsersTab() {
         </thead>
         <tbody>
           {users.map((u) => (
-            <tr key={u.id}>
-              <td>{u.email}</td>
+            <tr key={u.id} className={u.isTest ? 'opacity-50' : ''}>
+              <td>{u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">SINOV</span>}</td>
               <td className="font-mono text-xs">{u.phone || '—'}</td>
               <td>{u.botAck ? '\u2705' : '\u274C'}</td>
               <td className="font-semibold">{fmt(u.balance)}</td>
               <td className="text-base-content/50">{fmt(u.heldBalance)}</td>
               <td>{u.cardCount}</td>
               <td className="text-xs text-base-content/50">{timeAgo(new Date(u.createdAt).getTime())}</td>
-              <td>
+              <td className="flex gap-1">
                 <button className="btn btn-ghost btn-xs" onClick={() => setAdjustFor(u.id)}>Balansni tuzatish</button>
+                <button className="btn btn-ghost btn-xs" disabled={toggleBusy === u.id} onClick={() => toggleTest(u)}>
+                  {u.isTest ? 'Sinovdan chiqarish' : "Sinov deb belgilash"}
+                </button>
               </td>
             </tr>
           ))}
@@ -274,6 +322,14 @@ function UsersTab() {
     </div>
   );
 }
+
+const ORDER_STATUS_LABEL = {
+  paid: { text: "To'landi", cls: 'badge-success' },
+  pending: { text: 'Kutilmoqda', cls: 'badge-warning' },
+  cancelled: { text: 'Bekor qilindi', cls: 'badge-ghost' },
+  rejected: { text: 'Rad etildi', cls: 'badge-ghost' },
+  failed_code_taken: { text: 'Xato: kod band qilingan', cls: 'badge-error' },
+};
 
 function OrdersTab() {
   const [orders, setOrders] = useState(null);
@@ -305,7 +361,7 @@ function OrdersTab() {
               <td className="font-mono">{o.code}</td>
               <td className="text-xs">{o.source === 'bot' ? (o.tgUsername ? '@' + o.tgUsername : o.tgName) : ('#' + o.userId)}</td>
               <td>{fmt(o.amount)}</td>
-              <td><span className={`badge badge-sm ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' ? 'badge-warning' : 'badge-ghost'}`}>{o.status}</span></td>
+              <td>{(() => { const st = ORDER_STATUS_LABEL[o.status] || { text: `Noma'lum holat (${o.status})`, cls: 'badge-ghost' }; return <span className={`badge badge-sm ${st.cls}`}>{st.text}</span>; })()}</td>
               <td className="text-xs text-base-content/50">{timeAgo(new Date(o.createdAt).getTime())}</td>
               <td>
                 {o.status === 'pending' && (
@@ -372,7 +428,7 @@ function AuctionRequestsTab() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="font-mono text-sm font-bold">{r.code}</div>
-              <div className="text-xs text-base-content/50">{r.userEmail} \u2014 {timeAgo(new Date(r.createdAt).getTime())}</div>
+              <div className="text-xs text-base-content/50">{r.userEmail} {'\u2014'} {timeAgo(new Date(r.createdAt).getTime())}</div>
               {r.note && <p className="mt-1 text-xs text-base-content/60">{'\u201C'}{r.note}{'\u201D'}</p>}
             </div>
             <div className="flex gap-1">

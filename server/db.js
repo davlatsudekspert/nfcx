@@ -122,6 +122,13 @@ export async function initDb() {
       await pool.query(`ALTER TABLE users ADD COLUMN tos_accepted BOOLEAN NOT NULL DEFAULT FALSE`);
       console.log('[db] users.tos_accepted ustuni qo\u2019shildi.');
     }
+    // Admin/sinov akkauntlarini asosiy ko'rsatkichlardan (Foydalanuvchilar
+    // soni, Jami savdo va h.k.) chiqarib tashlash uchun. Admin akkaunt
+    // (ADMIN_EMAIL) avtomatik shu belgi bilan yaratiladi (pastga qarang).
+    if (!uc.has('is_test')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN is_test BOOLEAN NOT NULL DEFAULT FALSE`);
+      console.log('[db] users.is_test ustuni qo\u2019shildi.');
+    }
   }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -748,14 +755,21 @@ export async function incrementViews(code) {
 
 // ---------- Auth ----------
 
-export async function createUser(email, passwordHash, { phone, botAck, tosAccepted } = {}) {
+export async function createUser(email, passwordHash, { phone, botAck, tosAccepted, isTest } = {}) {
   const { rows } = await pool.query(
-    `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted) VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, is_test) VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (email) DO NOTHING
      RETURNING id, email, phone, bot_ack AS "botAck"`,
-    [email.toLowerCase(), passwordHash, phone || null, !!botAck, !!tosAccepted]
+    [email.toLowerCase(), passwordHash, phone || null, !!botAck, !!tosAccepted, !!isTest]
   );
   return rows[0] || null;
+}
+
+// Admin panelda "Sinov/admin akkaunt" deb belgilash-belgilamaslik — bunday
+// akkauntlar "Foydalanuvchilar", "Jami savdo" kabi asosiy ko'rsatkichlarga
+// KIRMAYDI (lekin jadvalda ko'rinishda davom etadi).
+export async function setUserTestFlag(userId, isTest) {
+  await pool.query(`UPDATE users SET is_test = $2 WHERE id = $1`, [userId, !!isTest]);
 }
 
 export async function getUserByEmail(email) {
@@ -1726,7 +1740,7 @@ export async function expireUnpaidAuctions() {
 export async function adminListUsers(limit = 200) {
   const { rows } = await pool.query(
     `SELECT id, email, phone, bot_ack AS "botAck", balance, held_balance AS "heldBalance",
-            created_at AS "createdAt",
+            created_at AS "createdAt", is_test AS "isTest",
             (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS "cardCount"
      FROM users ORDER BY created_at DESC LIMIT $1`,
     [limit]
@@ -1865,8 +1879,12 @@ export async function adminSetPhysicalCardStatus(id, status) {
 
 export async function adminStats() {
   const [{ rows: u }, { rows: c }, { rows: a }, { rows: p }, { rows: t }] = await Promise.all([
-    pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(balance),0)::bigint AS total_balance FROM users`),
-    pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(price),0)::bigint AS total_price FROM cards`),
+    // MUHIM: is_test = TRUE bo'lgan (admin/sinov) akkauntlar asosiy
+    // ko'rsatkichlardan chiqarib tashlanadi — real mijozlar sonini
+    // buzmasligi uchun.
+    pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(balance),0)::bigint AS total_balance FROM users WHERE is_test = FALSE`),
+    pool.query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(price),0)::bigint AS total_price FROM cards c
+                WHERE c.user_id IS NULL OR c.user_id NOT IN (SELECT id FROM users WHERE is_test = TRUE)`),
     pool.query(`SELECT COUNT(*)::int AS n FROM auctions WHERE status = 'active'`),
     pool.query(`SELECT COUNT(*)::int AS n FROM web_orders WHERE status = 'pending'`),
     pool.query(`SELECT COUNT(*)::int AS n FROM wallet_topups WHERE status = 'cancel_needs_review'`),
@@ -2179,16 +2197,36 @@ export async function getPlatformWallet() {
 }
 
 // Admin uchun: daromad turlari bo'yicha yig'indi (diagramma uchun).
+// Daromad turlari bo'yicha taqsimot — DIQQAT: 'admin_adjust' turi bu yerga
+// ATAYLAB kiritilmaydi, chunki bu real platforma daromadi emas, balki
+// xodim tomonidan qo'lda kiritilgan balans tuzatishi (masalan sinov
+// maqsadida). Aks holda bitta katta qo'lda tuzatish butun grafikni
+// buzib, real daromadni ko'rsatib bo'lmay qoladi. Qo'lda tuzatishlar
+// alohida, aniq nomlangan holda adminListManualAdjustments() orqali
+// ko'rsatiladi (pastga qarang).
 export async function adminRevenueBreakdown() {
   const { rows } = await pool.query(
     `SELECT kind,
             COUNT(*)::int AS count,
             COALESCE(SUM(amount),0)::bigint AS total
      FROM transactions
-     WHERE amount > 0
+     WHERE amount > 0 AND kind <> 'admin_adjust'
      GROUP BY kind ORDER BY total DESC`
   );
   return rows.map((r) => ({ kind: r.kind, count: r.count, total: Number(r.total) }));
+}
+
+// Qo'lda kiritilgan balans tuzatishlari — auditga foydali, lekin daromad
+// hisobotidan ATAYLAB ajratilgan (yuqoridagi izohga qarang).
+export async function adminListManualAdjustments(limit = 50) {
+  const { rows } = await pool.query(
+    `SELECT t.id, t.user_id AS "userId", u.email, t.amount, t.note, t.created_at AS "createdAt"
+     FROM transactions t LEFT JOIN users u ON u.id = t.user_id
+     WHERE t.kind = 'admin_adjust'
+     ORDER BY t.created_at DESC LIMIT $1`,
+    [limit]
+  );
+  return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
 }
 
 // Platforma komissiyasi kunlar bo'yicha (chiziqli grafik uchun).

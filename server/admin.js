@@ -18,6 +18,7 @@ import {
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
   listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder, finalizePaidBotOrder,
+  adminListManualAdjustments, setUserTestFlag,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -124,6 +125,15 @@ adminRouter.get('/stats', async (req, res) => {
 adminRouter.get('/users', async (req, res) => {
   if (!isDbReady()) return res.json({ users: [] });
   res.json({ users: await adminListUsers() });
+});
+
+// Bu akkaunt admin/sinov ekanini belgilash-belgilamaslik — belgilangan
+// akkauntlar "Foydalanuvchilar", "Jami savdo" kabi asosiy statistikaga
+// kirmaydi (lekin jadvalda ko'rinishda davom etadi).
+adminRouter.post('/users/:id/set-test', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await setUserTestFlag(Number(req.params.id), req.body?.isTest !== false);
+  res.json({ ok: true });
 });
 
 adminRouter.post('/users/:id/adjust-balance', async (req, res) => {
@@ -320,3 +330,11 @@ adminRouter.get('/analytics', async (req, res) => {
   ]);
   res.json({ breakdown, commissionSeries, signupsSeries, cardsSeries });
 });
+
+// Qo'lda kiritilgan balans tuzatishlari — daromad grafigidan ATAYLAB
+// ajratilgan, faqat audit uchun.
+adminRouter.get('/manual-adjustments', async (req, res) => {
+  if (!isDbReady()) return res.json({ adjustments: [] });
+  res.json({ adjustments: await adminListManualAdjustments() });
+});
+

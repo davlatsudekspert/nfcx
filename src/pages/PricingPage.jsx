@@ -67,14 +67,28 @@ export default function PricingPage({ catalog, refreshCatalog }) {
           </p>
           <div className="mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
             {['exclusive', 'premium', 'gold', 'silver', 'free'].map((t) => (
-              <div key={t} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="flex items-center gap-2 text-lg font-bold" style={{ color: TIER_COLOR[t] }}>
-                  {TIER_LABEL[t]}
+              <div
+                key={t}
+                className="flex items-center gap-3.5 rounded-xl border-l-4 bg-white/[0.03] p-4"
+                style={{ borderLeftColor: TIER_COLOR[t], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <span
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: `${TIER_COLOR[t]}22`, color: TIER_COLOR[t] }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3h12l4 6-10 12L2 9z" /><path d="M2 9h20" /><path d="M12 3l-3 6 3 12 3-12z" />
+                  </svg>
+                </span>
+                <div className="min-w-0">
+                  <div className="text-lg font-bold" style={{ color: TIER_COLOR[t] }}>
+                    {TIER_LABEL[t]}
+                  </div>
+                  <div className="mt-0.5 text-sm font-semibold text-base-content/80">
+                    {t === 'exclusive' ? 'Auksionda' : (t === 'premium' ? '199 000' : t === 'gold' ? '149 000' : t === 'silver' ? '99 000' : '0') + " so'm"}
+                  </div>
+                  <div className="mt-1 text-xs leading-snug text-base-content/45">{TIER_HINT[t]}</div>
                 </div>
-                <div className="mt-0.5 text-sm font-semibold text-base-content/80">
-                  {t === 'exclusive' ? 'Auksionda' : (t === 'premium' ? '199 000' : t === 'gold' ? '149 000' : t === 'silver' ? '99 000' : '0') + " so'm"}
-                </div>
-                <div className="mt-1 text-xs text-base-content/45">{TIER_HINT[t]}</div>
               </div>
             ))}
           </div>

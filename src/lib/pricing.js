@@ -114,8 +114,8 @@ export const TIER_COLOR = {
   exclusive: '#ff5c8a', // eng nodir — alohida ajralib turadigan pushti-qizil
   premium: '#c084fc',
   gold: '#f5c518',
-  silver: '#c7ccd6',
-  free: '#9aa0a6',
+  silver: '#7dd3fc',
+  free: '#4ade80',
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };

@@ -6,7 +6,7 @@ import { priceForCode } from '../src/lib/pricing.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
-  createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
+  createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
   listForSale, setForSale, transferCard,
@@ -665,11 +665,16 @@ async function ensureAdminUser() {
     const existing = await getUserByEmail(email);
     const hash = hashPassword(password);
     if (!existing) {
-      await createUser(email, hash);
+      await createUser(email, hash, { isTest: true });
       console.log(`[auth] Admin akkaunt avtomatik yaratildi: ${email}`);
-    } else if (!verifyPassword(password, existing.passwordHash)) {
-      await updateUserPassword(existing.id, hash);
-      console.log(`[auth] Admin paroli env bilan sinxronlandi: ${email}`);
+    } else {
+      // Eski akkaunt bo'lsa ham (is_test hali FALSE bo'lishi mumkin edi),
+      // admin har doim statistikadan chiqarilishi kerak.
+      await setUserTestFlag(existing.id, true);
+      if (!verifyPassword(password, existing.passwordHash)) {
+        await updateUserPassword(existing.id, hash);
+        console.log(`[auth] Admin paroli env bilan sinxronlandi: ${email}`);
+      }
     }
   } catch (err) {
     console.error('[auth] ensureAdminUser:', err.message);
