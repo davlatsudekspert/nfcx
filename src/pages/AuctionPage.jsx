@@ -224,7 +224,10 @@ export default function AuctionPage({ id }) {
           {bids.length === 0 && <div className="text-sm text-base-content/45">Hali taklif yo'q — birinchi bo'ling.</div>}
           {bids.map((b) => (
             <div key={b.id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-2.5 text-sm">
-              <span className="text-base-content/60">{b.userId === auction.highestBidderId ? '\uD83D\uDC51 ' : ''}Foydalanuvchi #{b.userId}</span>
+              <span className="text-base-content/60">
+                {b.userId === auction.highestBidderId ? '\uD83D\uDC51 ' : ''}
+                {b.bidderCode ? `NFC ID: ${b.bidderCode}` : `Foydalanuvchi #${b.userId}`}
+              </span>
               <span className="font-semibold">{fmt(b.amount)} so'm</span>
               <span className="text-xs text-base-content/40">{timeAgo(new Date(b.createdAt).getTime())}</span>
             </div>

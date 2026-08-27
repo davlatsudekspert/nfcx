@@ -115,8 +115,9 @@ async function catalogText() {
   for (const group of PREMIUM_GROUPS) {
     lines.push(`<b>${group.label}</b>`);
     for (const code of group.codes) {
-      const price = priceForCode(code, records.length).total;
-      lines.push(`${taken.has(code) ? '\u274C' : '\u2705'} <code>${code}</code> \u2014 ${fmt(price)} so\u2019m`);
+      const info = priceForCode(code);
+      const priceText = info.tier === 'exclusive' ? "Faqat auksion" : `${fmt(info.total)} so\u2019m`;
+      lines.push(`${taken.has(code) ? '\u274C' : '\u2705'} <code>${code}</code> \u2014 ${priceText}`);
     }
     lines.push('');
   }
@@ -138,8 +139,11 @@ async function startPurchase(chatId, from, rawCode) {
   if (await activeBotOrderByCode(code)) {
     return sendMessage(chatId, `\u23F3 <code>${code}</code> bo\u2019yicha to\u2019lov kutilmoqda. Keyinroq urinib ko\u2019ring.`);
   }
+  if (priceForCode(code).tier === 'exclusive') {
+    return sendMessage(chatId, `\u{1F48E} <code>${code}</code> \u2014 EKSLYUZIV kod, faqat saytdagi auksion orqali sotiladi. nfcstore.uz saytida "Auksion" bo\u2019limiga o\u2019ting.`);
+  }
 
-  const price = priceForCode(code, await countRecords()).total;
+  const price = priceForCode(code).total;
   const order = await createBotOrder({
     tgUserId: from.id,
     tgUsername: from.username || null,

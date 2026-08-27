@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { parseAnyCode, priceForCode, currentBase, nextBase } from '../lib/pricing.js';
+import { parseAnyCode, priceForCode } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
@@ -170,7 +170,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
                         <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-base-content">sahifasini ko'rish</button>
                       </span>
                     </>}
-                    {!checkResult.bad && !checkResult.taken && <>
+                    {!checkResult.bad && !checkResult.taken && checkInfo?.tier === 'exclusive' && <>
+                      <span className="badge" style={{ background: '#ff5c8a22', color: '#ff5c8a', border: '1px solid #ff5c8a55' }}>{'\u{1F48E}'} Ekslyuziv</span>
+                      <span className="text-base-content/60">nfcstore.uz/{checkResult.code.toLowerCase()} — faqat auksion orqali sotiladi</span>
+                      <button className="btn btn-accent btn-xs ml-1" onClick={() => navigate('/auksion')}>Auksion bo'limi</button>
+                    </>}
+                    {!checkResult.bad && !checkResult.taken && checkInfo?.tier !== 'exclusive' && <>
                       <span className="badge badge-success">Bo'sh</span>
                       <span className="text-base-content/60">nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm</span>
                       <button className="btn btn-primary btn-xs ml-1" onClick={() => setModalCode(checkResult.code)}>Bandlash</button>
@@ -188,12 +193,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   <div className="text-xs text-base-content/50">Band qilingan</div>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold"><CountUp value={currentBase(catalog.length)} suffix=" so'm" /></div>
-                  <div className="text-xs text-base-content/50">Hozirgi minimal narx</div>
+                  <div className="text-lg font-bold">0 so'mdan</div>
+                  <div className="text-xs text-base-content/50">Tekin darajadagi ID'lar</div>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold"><CountUp value={nextBase(catalog.length)} suffix=" so'm" /></div>
-                  <div className="text-xs text-base-content/50">Keyingi savdodan boshlab</div>
+                  <div className="text-lg font-bold">99 000 so'm</div>
+                  <div className="text-xs text-base-content/50">Silver darajadan boshlab</div>
                 </div>
               </div>
             </Reveal>

@@ -22,8 +22,8 @@ export default function HowItWorksPage() {
           “Barcha ma’lumotlaringiz — bitta raqamli profilda.”
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
-          NFCSTORE orqali shaxsiy raqamli raqamli tashrif qog'ozi olish olti qadamdan iborat — bandlashdan tortib
-          uni qayta sotish yoki auksionda qatnashishgacha.
+          NFCSTORE orqali shaxsiy raqamli tashrif qog'ozi olish olti qadamdan iborat — bandlashdan tortib
+          uni sovg'a qilish yoki auksionda qatnashishgacha.
         </p>
         <div className="mt-8 flex justify-center">
           <div className="animate-[floatY_5s_ease-in-out_infinite]">

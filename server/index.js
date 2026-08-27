@@ -2,12 +2,13 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { priceFor, priceForCode } from '../src/lib/pricing.js';
+import { priceForCode } from '../src/lib/pricing.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
+  createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
   listForSale, setForSale, transferCard,
   getBotOrder, setBotOrderStatus,
   createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser, getPendingAuctionPaymentOrder,
@@ -812,13 +813,13 @@ app.post('/api/records/:code', async (req, res) => {
   }
 
   try {
-    // Narxni server o'zi hisoblaydi (client narxiga ishonmaymiz):
-    // joriy bazaviy narx = f(band qilingan vizitkalar soni).
-    // Faqat harflardan iborat premium vizitka — oddiy vizitkadan 3 barobar qimmat.
-    const sold = await countRecords();
+    // Narxni server o'zi hisoblaydi (client narxiga ishonmaymiz) — endi
+    // kodning naqshiga qarab qat'iy daraja narxi (dinamik o'sish yo'q).
     const basePrice = isLetterCode(code)
-      ? priceFor('AAA', '000', sold).base * 3
-      : priceForCode(code, sold).total;
+      ? 99_000 * 3 // faqat harflardan iborat kod — Silver darajadan 3 barobar
+      : (priceForCode(code).total ?? 0); // ekslyuziv (null) bo'lsa ham bu yerga yetib kelmaydi — pastda tekshiriladi
+    const tierNow = isLetterCode(code) ? 'gold' : priceForCode(code).tier;
+    if (tierNow === 'exclusive') return res.status(409).json({ error: 'exclusive_auction_only' });
     const price = basePrice + (wantsPhysicalCard ? PHYSICAL_CARD_FEE : 0);
 
     if (await getRecord(code)) return res.status(409).json({ error: 'already_taken' });
@@ -937,6 +938,54 @@ app.post('/api/records/:code/set-primary', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Sovg'a qilish (pulsiz egalik o'tkazish) ----------
+
+app.post('/api/records/:code/gift', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const toCode = String(req.body?.toCode || '').toUpperCase().trim();
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!toCode) return res.status(422).json({ error: 'to_code_required' });
+  const result = await createGiftOffer(code, user.id, toCode);
+  if (result.error) return res.status(409).json(result);
+  res.status(201).json(result);
+});
+
+app.get('/api/gift-offers', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.json({ incoming: [], outgoing: [] });
+  if (!isDbReady()) return res.json({ incoming: [], outgoing: [] });
+  res.json(await listGiftOffers(user.id));
+});
+
+app.post('/api/gift-offers/:id/accept', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const result = await acceptGiftOffer(Number(req.params.id), user.id);
+  if (!result) return res.status(409).json({ error: 'not_found_or_taken' });
+  res.json(result);
+});
+
+app.post('/api/gift-offers/:id/reject', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const ok = await rejectGiftOffer(Number(req.params.id), user.id);
+  if (!ok) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
+app.post('/api/gift-offers/:id/cancel', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const ok = await cancelGiftOffer(Number(req.params.id), user.id);
+  if (!ok) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
 app.post('/api/records/:code/sale', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
@@ -953,8 +1002,9 @@ app.post('/api/records/:code/sale', async (req, res) => {
     const list = !!(req.body && req.body.list);
     let salePrice = null;
     if (list) {
-      const sold = await countRecords();
-      salePrice = priceFor('AAA', '000', sold).base * 3;
+      // "Oddiy" bazaviy narx sifatida eng past (Silver) darajani olamiz —
+      // eski dinamik (sold-ga bog'liq) narxlash olib tashlangan.
+      salePrice = 99_000 * 3;
     }
     const updated = await setForSale(code, list, salePrice);
     console.log(`[api] Sotuv ${list ? 'ochildi' : 'yopildi'}: ${code}${list ? ` — ${salePrice} so'm` : ''}`);

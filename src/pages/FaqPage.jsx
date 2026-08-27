@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { fmt } from '../lib/format.js';
-import { currentBase, PRICE_GROWTH } from '../lib/pricing.js';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
@@ -8,8 +7,8 @@ export default function FaqPage({ catalog }) {
   const [openFaq, setOpenFaq] = useState(0);
   const items = [
     { q: "Raqamli tashrif qog'ozini sotib olgach o'zgartirsa bo'ladimi?", a: "Ha! Akkaunt yaratsangiz, raqamli tashrif qog'ozingiz profilingizga biriktiriladi va uni /account sahifasidan istalgan vaqt tahrirlaysiz: ism, kasb, rasm, ijtimoiy tarmoqlar, profil mavzusi va boshqalar." },
-    { q: 'Narx qanday hisoblanadi?', a: `Joriy minimal narx ${fmt(currentBase(catalog.length))} so'm va har savdoda +${Math.round(PRICE_GROWTH * 100)}%ga oshadi. Kamyob harf/raqam kombinatsiyalari (masalan bir xil harflar yoki "00") qimmatroq bo'ladi.` },
-    { q: "Raqamli tashrif qog'ozimni qayta sotishim mumkinmi?", a: "Ha. Kabinetda «Sotuvga qo'yish» tugmasini bosasiz — narx avtomatik joriy narxdan qimmat qilib belgilanadi. Xohlagan foydalanuvchi uni sotib olgach, raqamli tashrif qog'ozi uning profiliga o'tadi." },
+    { q: 'Narx qanday hisoblanadi?', a: "NFC ID'ning narxi bandlangan soniga emas, faqat undagi harf/raqam naqshiga bog'liq: Tekin (naqshsiz), Silver (99 000 so'm), Gold (149 000 so'm), Premium (199 000 so'm) va Ekslyuziv (faqat auksion orqali) — narx doim qat'iy, o'zgarmaydi." },
+    { q: "Raqamli tashrif qog'ozimni boshqa odamga bera olamanmi?", a: "Ha — endi «Sovg'a qilish» funksiyasi orqali, hech qanday to'lovsiz, qabul qiluvchining roziligi bilan egalikni o'tkazishingiz mumkin." },
     { q: "Profilim qanday ko'rinadi?", a: "Har bir raqamli tashrif qog'ozining o'z shaxsiy sahifasi bor: rasmingiz, kasbingiz, bio, kontaktlar, ijtimoiy tarmoqlar (Telegram, Instagram, Facebook, X), to'lov karta raqamingiz va tanlagan dizayn mavzuingiz bilan." },
     { q: "Bir nechta raqamli tashrif qog'oziga ega bo'lsam bo'ladimi?", a: "Ha, bitta hisobga istalgancha raqamli tashrif qog'ozi biriktirishingiz mumkin. Profilingizda boshqa raqamli tashrif qog'ozilaringiz ro'yxati ham ko'rinadi." },
     { q: "Jismoniy NFC karta ham beriladimi?", a: "Profilingiz tayyor bo'lgach, uni jismoniy NFC kartaga yozdirib, telefon bilan bir tegishda ulashishingiz mumkin." },

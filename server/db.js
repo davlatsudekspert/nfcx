@@ -342,6 +342,22 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS auction_requests_status_idx ON auction_requests (status)`);
 
+  // Sovg'a qilish — pulsiz egalik o'tkazish. Qabul qiluvchi O'Z NFC ID'si
+  // (mavjud kodi) orqali aniqlanadi. Egalik faqat qabul qiluvchi
+  // TASDIQLAGANDA o'tadi (ikki tomonlama rozilik).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS gift_offers (
+      id           SERIAL PRIMARY KEY,
+      code         VARCHAR(16) NOT NULL,
+      from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      to_user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status       VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | accepted | rejected | cancelled
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      decided_at   TIMESTAMPTZ
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS gift_offers_to_idx ON gift_offers (to_user_id, status)`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bids (
       id                SERIAL PRIMARY KEY,
@@ -808,6 +824,90 @@ export async function listRecordsByUser(userId) {
     [userId]
   );
   return rows.map(rowToRecord);
+}
+
+// Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
+// "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
+// tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).
+// ---------- Sovg'a qilish (pulsiz egalik o'tkazish) ----------
+
+// Sovg'a taklifi yaratadi — qabul qiluvchi o'zining NFC ID'sini (mavjud
+// kodini) aytadi, tizim shu orqali uning akkauntini topadi.
+export async function createGiftOffer(code, fromUserId, toCode) {
+  const owner = await getRecordOwner(code);
+  if (owner !== fromUserId) return { error: 'NOT_OWNER' };
+
+  const toUserId = await getRecordOwner(toCode);
+  if (!toUserId) return { error: 'RECIPIENT_NOT_FOUND' };
+  if (toUserId === fromUserId) return { error: 'CANNOT_GIFT_SELF' };
+
+  const { rows: pending } = await pool.query(
+    `SELECT id FROM gift_offers WHERE code = $1 AND status = 'pending'`, [code]
+  );
+  if (pending[0]) return { error: 'ALREADY_PENDING' };
+
+  const { rows } = await pool.query(
+    `INSERT INTO gift_offers (code, from_user_id, to_user_id) VALUES ($1,$2,$3) RETURNING id`,
+    [code, fromUserId, toUserId]
+  );
+  return { ok: true, id: rows[0].id };
+}
+
+export async function listGiftOffers(userId) {
+  const { rows: incoming } = await pool.query(
+    `SELECT g.id, g.code, g.created_at AS "createdAt", u.email AS "fromEmail"
+     FROM gift_offers g JOIN users u ON u.id = g.from_user_id
+     WHERE g.to_user_id = $1 AND g.status = 'pending' ORDER BY g.created_at DESC`,
+    [userId]
+  );
+  const { rows: outgoing } = await pool.query(
+    `SELECT g.id, g.code, g.created_at AS "createdAt", u.email AS "toEmail"
+     FROM gift_offers g JOIN users u ON u.id = g.to_user_id
+     WHERE g.from_user_id = $1 AND g.status = 'pending' ORDER BY g.created_at DESC`,
+    [userId]
+  );
+  return { incoming, outgoing };
+}
+
+// Qabul qiluvchi tasdiqlaydi — egalik shu yerda, atomik tarzda o'tadi.
+export async function acceptGiftOffer(id, userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT id, code, to_user_id AS "toUserId" FROM gift_offers WHERE id = $1 AND status = 'pending' FOR UPDATE`,
+      [id]
+    );
+    const offer = rows[0];
+    if (!offer || offer.toUserId !== userId) { await client.query('ROLLBACK'); return null; }
+    await client.query(`UPDATE cards SET user_id = $2, is_primary = FALSE WHERE code = $1`, [offer.code, userId]);
+    await client.query(`UPDATE gift_offers SET status = 'accepted', decided_at = now() WHERE id = $1`, [id]);
+    await client.query('COMMIT');
+    return { ok: true, code: offer.code };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function rejectGiftOffer(id, userId) {
+  const { rows } = await pool.query(
+    `UPDATE gift_offers SET status = 'rejected', decided_at = now()
+     WHERE id = $1 AND to_user_id = $2 AND status = 'pending' RETURNING id`,
+    [id, userId]
+  );
+  return !!rows[0];
+}
+
+export async function cancelGiftOffer(id, userId) {
+  const { rows } = await pool.query(
+    `UPDATE gift_offers SET status = 'cancelled', decided_at = now()
+     WHERE id = $1 AND from_user_id = $2 AND status = 'pending' RETURNING id`,
+    [id, userId]
+  );
+  return !!rows[0];
 }
 
 // Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
@@ -1427,10 +1527,16 @@ export async function listExpiredActiveAuctions() {
   return rows;
 }
 
+// Har bir taklif yonida bidderning O'Z asosiy (yoki birinchi) NFC ID'si
+// ko'rsatiladi (agar bo'lsa) — "Foydalanuvchi #N" o'rniga tanish, brendga
+// mos identifikatsiya.
 export async function listBidsByAuction(auctionId) {
   const { rows } = await pool.query(
-    `SELECT id, auction_id AS "auctionId", user_id AS "userId", amount, released, created_at AS "createdAt"
-     FROM bids WHERE auction_id = $1 ORDER BY amount DESC, created_at ASC`,
+    `SELECT b.id, b.auction_id AS "auctionId", b.user_id AS "userId", b.amount, b.released,
+            b.created_at AS "createdAt",
+            (SELECT c.code FROM cards c WHERE c.user_id = b.user_id
+               ORDER BY c.is_primary DESC, c.ts ASC LIMIT 1) AS "bidderCode"
+     FROM bids b WHERE b.auction_id = $1 ORDER BY b.amount DESC, b.created_at ASC`,
     [auctionId]
   );
   return rows;

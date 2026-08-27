@@ -1,26 +1,5 @@
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
-// Dinamik narxlash: boshlang'ich narx har bir band qilingan raqamli tashrif qog'ozi bilan
-// oshib boradi (talab ortishi bilan qimmatlashadi).
-export const BASE_PRICE = 40000;       // start narxi (avvalgi 200 000 / 5)
-export const PRICE_GROWTH = 0.01;      // har band qilingan vizitka: +1%
-export const MAX_PRICE_MULT = 4;       // shift: maksimal 4 barobar (800 000)
-
-const ROUND_TO = 1000; // avvalgi 5000 / 5 — narx granulasi ham mos ravishda kichraydi
-
-function roundPrice(n) {
-  return Math.round(n / ROUND_TO) * ROUND_TO;
-}
-
-export function currentBase(sold) {
-  const mult = Math.min(1 + (sold || 0) * PRICE_GROWTH, MAX_PRICE_MULT);
-  return roundPrice(BASE_PRICE * mult);
-}
-
-export function nextBase(sold) {
-  return currentBase((sold || 0) + 1);
-}
-
 export function parseCode(raw) {
   const c = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (c.length !== 6) return null;
@@ -52,88 +31,119 @@ export function parseAnyCode(raw) {
   return parseLetterCode(clean);
 }
 
-// Harfli raqamli tashrif qog'ozlar oddiy raqamli tashrif qog'ozilardan 3 barobar qimmat.
+// Harfli raqamli tashrif qog'ozlar oddiy kodlardan 3 barobar qimmat.
 export const LETTER_MULT = 3;
 
-export function letterPrice(sold = 0) {
-  return currentBase(sold) * LETTER_MULT;
+// ================= Daraja (tier) tizimi — 2026 yangilanishi =================
+// Narxlar endi bandlangan soniga BOG'LIQ EMAS (dinamik o'sish olib
+// tashlandi) — daraja faqat kodning o'zidagi naqshga qarab, avtomatik va
+// har doim bir xil tarzda aniqlanadi. Har darajaning narxi qat'iy (fiks).
+
+// Maxsus so'zlar — harf qismi aynan shu bo'lsa, "maxsus so'z" hisoblanadi.
+const SPECIAL_WORDS = ['VIP', 'UZB', 'BEK', 'CEO'];
+
+function allSame3(s) {
+  return s[0] === s[1] && s[1] === s[2];
+}
+// Ikki BELGI YONMA-YON (ketma-ket pozitsiyada) bir xil bo'lishi — masalan
+// "AAB" (0-1 pozitsiya bir xil) yoki "ABB" (1-2 pozitsiya bir xil).
+// "ABA" kabi qatorning boshi-oxiri bir xil bo'lgani YONMA-YONLIK hisoblanmaydi.
+function hasAdjacentPair(s) {
+  return s[0] === s[1] || s[1] === s[2];
+}
+// "Super" raqam: 001 / 007 / 077 yoki uchtasi bir xil (111, 777, 888 ...).
+// "000" bu yerga kirmaydi — u alohida, mustaqil PREMIUM qoidasiga ega.
+function isSuperDigit(d) {
+  if (d === '001' || d === '007' || d === '077') return true;
+  if (allSame3(d) && d !== '000') return true;
+  return false;
 }
 
-export function letterPattern(l) {
-  if (l[0] === l[1] && l[1] === l[2]) return { mult: 6, label: 'Uchala bir xil ×6', hot: true };
-  if (l[0] === l[1] || l[1] === l[2] || l[0] === l[2]) return { mult: 2.5, label: 'Ikkitasi bir xil ×2.5', hot: true };
-  const codes = l.split('').map((c) => c.charCodeAt(0));
-  if (codes[1] - codes[0] === 1 && codes[2] - codes[1] === 1) return { mult: 2, label: 'Ketma-ket (ABC) ×2', hot: true };
-  return { mult: 1, label: 'Oddiy ×1', hot: false };
-}
+// Kod darajasini aniqlaydi: 'exclusive' | 'premium' | 'gold' | 'silver' | 'free'
+export function tierFromCode(letters, digits) {
+  const lettersAllSame = allSame3(letters);
+  const digitsAllSame = allSame3(digits);
+  const special = SPECIAL_WORDS.includes(letters);
+  const superDigit = isSuperDigit(digits);
 
-export function digitPattern(d) {
-  if (d === '000') return { mult: 4, label: "000 — maxsus ×4", hot: true };
-  const a = +d[0], b = +d[1], c = +d[2];
-  if (a === b && b === c) return { mult: 3, label: 'Uchalasi bir xil ×3', hot: true };
-  const asc = b - a === 1 && c - b === 1;
-  const desc = a - b === 1 && b - c === 1;
-  if (asc || desc) return { mult: 1.5, label: 'Ketma-ket (123) ×1.5', hot: false };
-  return { mult: 1, label: 'Oddiy ×1', hot: false };
-}
+  // 1) EKSKLYUZIV — faqat auksion orqali (admin ochadi, boshlang'ich
+  //    narxni admin belgilaydi). "Qaymoqning qaymog'i":
+  //    - Uchala harf VA uchala raqam bir xil (AAA777, QQQ000)
+  //    - Maxsus so'z + o'ta nodir raqam (VIP001, UZB077, CEO888)
+  if (lettersAllSame && digitsAllSame) return 'exclusive';
+  if (special && superDigit) return 'exclusive';
 
-// ---------- Daraja (tier) tizimi ----------
-// Premium/Gold/Silver/Bronze — naqshga qarab pullik, oddiy (naqshsiz)
-// kodlar esa TEKIN. Naqsh kuchi allaqachon letterPattern/digitPattern
-// orqali hisoblangan (mult qiymati) — shu asosda darajaga ajratamiz,
-// hisoblash mantig'ini ikki marta yozmaymiz.
-export function tierFromPatterns(lp, dp) {
-  // Premium: uchala harf bir xil VA (raqam 000 yoki uchalasi bir xil).
-  if (lp.mult === 6 && (dp.mult === 4 || dp.mult === 3)) return 'premium';
-  // Gold: uchala harf bir xil, YOKI raqam 000.
-  if (lp.mult === 6 || dp.mult === 4) return 'gold';
-  // Silver: ikkita harf bir xil, YOKI uchala raqam bir xil.
-  if (lp.mult === 2.5 || dp.mult === 3) return 'silver';
-  // Bronze: ketma-ket harflar (ABC) yoki ketma-ket raqamlar (123).
-  if (lp.mult === 2 || dp.mult === 1.5) return 'bronze';
+  // 2) PREMIUM — 199 000 so'm
+  //    - Oxirgi 3 raqami "000" (KLM000, XYZ000)
+  //    - Maxsus so'z, lekin raqami "super" emas (VIP088, BEK415)
+  if (digits === '000') return 'premium';
+  if (special) return 'premium';
+
+  // 3) GOLD — 149 000 so'm
+  //    - Faqat uchala harf YOKI faqat uchala raqam bir xil (ikkalasi
+  //      birga bo'lsa yuqorida EKSKLYUZIV bo'lib ketgan bo'lardi)
+  if (lettersAllSame || digitsAllSame) return 'gold';
+
+  // 4) SILVER — 99 000 so'm
+  //    - HAM harflarda, HAM raqamlarda yonma-yon juftlik bo'lishi shart
+  //      (ABB770, AAB114, XXY995)
+  if (hasAdjacentPair(letters) && hasAdjacentPair(digits)) return 'silver';
+
+  // 5) TEKIN — 0 so'm
+  //    - Yuqoridagilarning birortasiga ham to'g'ri kelmasa. Bunga endi
+  //      FAQAT bir tomonda (yoki harfda, yoki raqamda) yonma-yon juftligi
+  //      borlar ham kiradi (AAB197, MXK114) — bu ataylab qilingan
+  //      marketing yechimi: ko'proq "chiroyli" kod tekin bo'lib, sayt
+  //      trafigini oshiradi.
   return 'free';
 }
-
-export const TIER_LABEL = { premium: 'Premium', gold: 'Gold', silver: 'Silver', bronze: 'Bronze', free: 'Oddiy' };
-// Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
-export const TIER_COLOR = {
-  premium: '#c084fc', // binafsha — eng nodir
-  gold: '#f5c518',
-  silver: '#c7ccd6',
-  bronze: '#cd7f32',
-  free: '#9aa0a6',
-};
-// Premium va Gold — king emoji; Silver/Bronze — o'z darajasiga mos emoji.
-export const TIER_EMOJI = { premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', bronze: '\u{1F949}', free: '' };
 
 export function tierForCode(code) {
   const c = String(code || '').toUpperCase();
   if (c.length !== 6) return 'free';
-  const lp = letterPattern(c.slice(0, 3));
-  const dp = digitPattern(c.slice(3, 6));
-  return tierFromPatterns(lp, dp);
+  return tierFromCode(c.slice(0, 3), c.slice(3, 6));
 }
 
-export function priceFor(letters, digits, sold = 0) {
-  const lp = letterPattern(letters);
-  const dp = digitPattern(digits);
-  const tier = tierFromPatterns(lp, dp);
-  const base = currentBase(sold);
-  // Oddiy (naqshsiz) kodlar — TEKIN. Qolganlari naqsh kuchiga qarab.
-  const total = tier === 'free' ? 0 : Math.max(base, roundPrice(base * lp.mult * dp.mult));
-  return { total, lp, dp, base, tier };
-}
-
-// Qo'lda belgilangan qat'iy narxlar (so'mda) — eksklyuziv kodlar uchun.
-// Naqsh ko'paytmalaridan qat'i nazar, narx hech qachon bundan past bo'lmaydi.
-export const FIXED_PRICES = {
-  VIP777: 1200000, // avvalgi 6 000 000 / 5
+// Har bir daraja uchun qat'iy narx. EKSKLYUZIV uchun narx yo'q (null) —
+// bu kod to'g'ridan-to'g'ri sotib olinmaydi, faqat admin ochgan auksion
+// orqali egasini topadi.
+export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 0 };
+export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
+// Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
+export const TIER_COLOR = {
+  exclusive: '#ff5c8a', // eng nodir — alohida ajralib turadigan pushti-qizil
+  premium: '#c084fc',
+  gold: '#f5c518',
+  silver: '#c7ccd6',
+  free: '#9aa0a6',
 };
+// Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
+export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };
 
-// Kod bo'yicha yakuniy narx: qat'iy narx mavjud bo'lsa u qo'llanadi,
-// aks holda standart naqsh hisobi.
-export function priceForCode(code, sold = 0) {
-  const info = priceFor(String(code || '').slice(0, 3), String(code || '').slice(3, 6), sold);
-  const fixed = FIXED_PRICES[code];
-  return fixed ? { ...info, total: Math.max(fixed, roundPrice(info.total)), fixed } : info;
+// Faqat TUSHUNTIRISH matni uchun — "nega bu narxda" degan savolga javob.
+// Narxning o'zini ular emas, tierFromCode() hisoblaydi.
+export function letterPattern(l) {
+  if (allSame3(l)) return { hot: true, label: 'Uchala harf bir xil' };
+  if (hasAdjacentPair(l)) return { hot: true, label: 'Ikkita harf yonma-yon bir xil' };
+  return { hot: false, label: '' };
+}
+export function digitPattern(d) {
+  if (d === '000') return { hot: true, label: "\"000\" — maxsus" };
+  if (allSame3(d)) return { hot: true, label: 'Uchala raqam bir xil' };
+  if (hasAdjacentPair(d)) return { hot: true, label: 'Ikkita raqam yonma-yon bir xil' };
+  return { hot: false, label: '' };
+}
+
+// `sold` parametri endi ishlatilmaydi (dinamik o'sish olib tashlandi),
+// lekin chaqiruvchi kod (server, sahifalar) hali ham shu argumentni
+// yuborishi mumkin — orqaga moslik uchun qoldirilgan, e'tiborsiz qoldiriladi.
+export function priceFor(letters, digits, _sold) {
+  const tier = tierFromCode(letters, digits);
+  const total = TIER_PRICE[tier] ?? 0;
+  return { total, tier, base: total };
+}
+
+export function priceForCode(code, _sold) {
+  const c = String(code || '').toUpperCase();
+  return priceFor(c.slice(0, 3), c.slice(3, 6));
 }

@@ -113,11 +113,13 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       const code2 = err && err.code;
       const text = code2 === 'reserved_pending_payment'
         ? "Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring."
-        : String(err.message).startsWith('bad_credentials')
-          ? 'Bu email boshqa akkauntga tegishli va parol mos kelmadi.'
-          : String(err.message) === 'phone_not_verified'
-            ? `Bu telefon raqami botda tasdiqlanmagan. Avval ${BOT_LINK} ga o'ting, "Kontaktni ulashish" tugmasini bosing, so'ng shu raqamni qayta kiriting.`
-            : 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato");
+        : code2 === 'exclusive_auction_only'
+          ? "\u{1F48E} Bu NFC ID EKSLYUZIV daraja — to'g'ridan-to'g'ri sotib olib bo'lmaydi, faqat saytdagi Auksion bo'limi orqali qo'lga kiritiladi."
+          : String(err.message).startsWith('bad_credentials')
+            ? 'Bu email boshqa akkauntga tegishli va parol mos kelmadi.'
+            : String(err.message) === 'phone_not_verified'
+              ? `Bu telefon raqami botda tasdiqlanmagan. Avval ${BOT_LINK} ga o'ting, "Kontaktni ulashish" tugmasini bosing, so'ng shu raqamni qayta kiriting.`
+              : 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato");
       setMsg({ type: 'err', text });
       setBusy(false);
     }

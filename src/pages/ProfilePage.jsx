@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode, letterPattern, digitPattern, tierFromPatterns, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
+import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -138,10 +138,7 @@ function rarity(code) {
 }
 
 function tierOf(code) {
-  if (!code || code.length !== 6) return 'free';
-  const lp = letterPattern(code.slice(0, 3));
-  const dp = digitPattern(code.slice(3, 6));
-  return tierFromPatterns(lp, dp);
+  return tierForCode(code);
 }
 
 // Profil musiqasi — brauzerlar ovozli avtomatik ijroni bloklaydi, shuning
@@ -507,6 +504,36 @@ export default function ProfilePage({ code, catalog }) {
 
         {(
           <>
+            {/* Tezkor amallar — icon + yozuv shaklidagi katakchalar (qo'ng'iroq, xabar, email, sayt) */}
+            {(record.phone || !isOwner || record.email || wsUrl) && (
+              <div className="mt-[22px] grid grid-cols-4 gap-2.5 text-center">
+                {record.phone && (
+                  <a href={`tel:${record.phone}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconPhone /></span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Qo'ng'iroq</span>
+                  </a>
+                )}
+                {!isOwner && (
+                  <button onClick={startChat} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}>{'\u{1F4AC}'}</span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Xabar</span>
+                  </button>
+                )}
+                {record.email && (
+                  <a href={`mailto:${record.email}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconMail /></span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Email</span>
+                  </a>
+                )}
+                {wsUrl && (
+                  <a href={wsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconGlobe /></span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Sayt</span>
+                  </a>
+                )}
+              </div>
+            )}
+
             {record.hashtags && record.hashtags.length > 0 && (
               <div className="mt-5 flex flex-wrap justify-center gap-4 text-[13px] font-semibold text-[color:var(--vz-accent)]">
                 {record.hashtags.map((h) => <span key={h}>#{h}</span>)}
@@ -518,10 +545,7 @@ export default function ProfilePage({ code, catalog }) {
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {wsUrl && <a className={linkBtn} href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /> Veb-sayt</a>}
-              {liUrl && <a className={linkBtn} href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /> LinkedIn</a>}
               {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> KARTA (to'lov)</span>}
-              {record.phone && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq qilish</a>}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
               ))}
@@ -577,7 +601,12 @@ export default function ProfilePage({ code, catalog }) {
             )}
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-            <button onClick={() => downloadVcf(record)} className="flex w-full cursor-pointer items-center justify-center gap-2 bg-transparent p-1 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> Kontaktni saqlash (.vcf)</button>
+            <div className="flex gap-2.5">
+              <button onClick={() => downloadVcf(record)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> Saqlash</button>
+              {!isOwner && (
+                <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} Xabar yozish</button>
+              )}
+            </div>
           </>
         )}
       </div>

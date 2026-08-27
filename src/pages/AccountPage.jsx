@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetSale, dbSetPrimary, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetSale, dbSetPrimary, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -142,6 +142,60 @@ const PREMIUM_FEE = 5000;
 // Foydalanuvchi auksionda yutgan, hali to'lamagan kodlari — aniq
 // ogohlantirish bilan: 24 soatda to'lamasa auksion bekor bo'ladi VA
 // akkaunt 72 soatga bloklanadi.
+// Kelgan va yuborilgan sovg'a takliflari — qabul qilish/rad etish/bekor
+// qilish shu yerdan boshqariladi.
+function GiftOffersPanel({ onChanged }) {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState(null);
+
+  const load = () => dbListGiftOffers().then(setData).catch(() => setData({ incoming: [], outgoing: [] }));
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 8000);
+    return () => clearInterval(t);
+  }, []);
+
+  const accept = async (id) => {
+    setBusy(id);
+    try { await dbAcceptGift(id); await load(); onChanged?.(); }
+    catch { alert("Qabul qilib bo'lmadi — taklif allaqachon ishlangan bo'lishi mumkin."); }
+    finally { setBusy(null); }
+  };
+  const reject = async (id) => {
+    setBusy(id);
+    try { await dbRejectGift(id); await load(); } finally { setBusy(null); }
+  };
+  const cancel = async (id) => {
+    setBusy(id);
+    try { await dbCancelGift(id); await load(); } finally { setBusy(null); }
+  };
+
+  if (!data || (data.incoming.length === 0 && data.outgoing.length === 0)) return null;
+
+  return (
+    <section className="pt-8">
+      <h2 className="text-xl font-bold">{'\u{1F381}'} Sovg'a takliflari</h2>
+      <div className="mt-3 space-y-2">
+        {data.incoming.map((g) => (
+          <div key={'in' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+            <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.fromEmail}</span> sizga sovg'a qilmoqchi</span>
+            <div className="flex gap-1.5">
+              <button className="btn btn-success btn-xs" disabled={busy === g.id} onClick={() => accept(g.id)}>Qabul qilish</button>
+              <button className="btn btn-ghost btn-xs" disabled={busy === g.id} onClick={() => reject(g.id)}>Rad etish</button>
+            </div>
+          </div>
+        ))}
+        {data.outgoing.map((g) => (
+          <div key={'out' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">
+            <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.toEmail}</span>ga yuborilgan, javob kutilmoqda</span>
+            <button className="btn btn-ghost btn-xs" disabled={busy === g.id} onClick={() => cancel(g.id)}>Bekor qilish</button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function WonAuctionsPanel() {
   const [list, setList] = useState(null);
   const [, tick] = useState(0);
@@ -287,7 +341,6 @@ function EditCardForm({ card, onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
-  const [saleBusy, setSaleBusy] = useState(false);
   const [saleMsg, setSaleMsg] = useState(null);
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
@@ -368,22 +421,23 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
-  const toggleSale = async () => {
-    setSaleBusy(true);
-    setSaleMsg(null);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [giftToCode, setGiftToCode] = useState('');
+  const [giftBusy, setGiftBusy] = useState(false);
+  const [giftMsg, setGiftMsg] = useState(null);
+  const sendGift = async () => {
+    if (!giftToCode.trim()) { setGiftMsg({ type: 'err', text: "Qabul qiluvchining NFC ID'sini kiriting." }); return; }
+    setGiftBusy(true);
+    setGiftMsg(null);
     try {
-      const updated = await dbSetSale(card.code, !card.forSale);
-      setSaleMsg({
-        type: 'ok',
-        text: !card.forSale
-          ? `Sotuvga qo'yildi — narx ${fmt(updated.salePrice)} so'm.`
-          : 'Sotuvdan olindi.',
-      });
-      onSaved(updated);
+      await dbGiftCard(card.code, giftToCode.trim().toUpperCase());
+      setGiftMsg({ type: 'ok', text: "Sovg'a taklifi yuborildi — qabul qiluvchi tasdiqlagach, egalik o'tadi." });
+      setGiftToCode('');
+      onSaved(card);
     } catch (err) {
-      setSaleMsg({ type: 'err', text: err.message });
+      setGiftMsg({ type: 'err', text: err.message });
     } finally {
-      setSaleBusy(false);
+      setGiftBusy(false);
     }
   };
 
@@ -461,7 +515,6 @@ function EditCardForm({ card, onSaved }) {
           </div>
           <div className="mt-1 text-xs text-base-content/50">
             {fmt(card.price)} so'm · {timeAgo(card.ts)} · {fmt(card.views || 0)} ko'rish
-            {card.forSale && <span className="badge badge-accent badge-outline badge-xs ml-2 align-middle"> SOTUVDA</span>}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -471,11 +524,26 @@ function EditCardForm({ card, onSaved }) {
               {primaryBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Asosiy qilish'}
             </button>
           )}
-          <button className={'btn btn-sm ' + (card.forSale ? 'btn-ghost' : 'btn-primary')} onClick={toggleSale} disabled={saleBusy}>
-            {saleBusy ? <span className="loading loading-spinner loading-xs"></span> : card.forSale ? "Sotuvdan olish" : 'Sotuvga qo\u2019yish'}
+          <button className="btn btn-outline btn-sm" onClick={() => setGiftOpen((o) => !o)}>
+            {'\u{1F381}'} Sovg'a qilish
           </button>
         </div>
       </div>
+      {giftOpen && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
+          <input
+            value={giftToCode}
+            onChange={(e) => setGiftToCode(e.target.value)}
+            placeholder="Qabul qiluvchining NFC ID'si (masalan ABZ007)"
+            className="input input-bordered input-sm flex-1 bg-base-100 font-mono"
+          />
+          <button className="btn btn-accent btn-sm" onClick={sendGift} disabled={giftBusy}>
+            {giftBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Taklif yuborish'}
+          </button>
+          <p className="w-full text-xs text-base-content/45">Pulsiz — qabul qiluvchi o'zi tasdiqlaguncha egalik o'tmaydi. U albatta o'z NFC ID'siga (mavjud profiliga) ega bo'lishi kerak.</p>
+        </div>
+      )}
+      {giftMsg && <div className={`alert mt-3 py-2 text-sm ${giftMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{giftMsg.text}</span></div>}
       {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{saleMsg.text}</span></div>}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
@@ -772,6 +840,8 @@ export default function AccountPage({ refreshCatalog }) {
       <section className="pt-8">
         <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
+
+      <GiftOffersPanel onChanged={refresh} />
 
       <WonAuctionsPanel />
 

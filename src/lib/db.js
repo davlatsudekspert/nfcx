@@ -83,7 +83,7 @@ export async function dbCreate(code, data) {
     });
   } catch (err) {
     if (err && err.message === 'api_error_409') return null;
-    if (err && (err.code === 'unauthorized' || err.code === 'reserved_pending_payment')) throw err;
+    if (err && (err.code === 'unauthorized' || err.code === 'reserved_pending_payment' || err.code === 'exclusive_auction_only')) throw err;
     return lsGet(code) ? null : lsSet(code, { ...data, code });
   }
 }
@@ -160,6 +160,53 @@ export async function dbSetPrimary(code) {
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error('Xatolik yuz berdi.');
   return data;
+}
+
+// ---------- Sovg'a qilish ----------
+
+const GIFT_ERRORS = {
+  NOT_OWNER: 'Bu kod sizga tegishli emas.',
+  RECIPIENT_NOT_FOUND: "Bunday NFC ID topilmadi — qabul qiluvchi avval o'z profilini yaratgan bo'lishi kerak.",
+  CANNOT_GIFT_SELF: "O'zingizga sovg'a qila olmaysiz.",
+  ALREADY_PENDING: "Bu kod uchun sovg'a taklifi allaqachon kutilmoqda.",
+  to_code_required: "Qabul qiluvchining NFC ID'sini kiriting.",
+  unauthorized: 'Avval tizimga kiring.',
+};
+
+export async function dbGiftCard(code, toCode) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/gift`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ toCode }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(GIFT_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  return data;
+}
+
+export async function dbListGiftOffers() {
+  const res = await fetch('/api/gift-offers', { credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  return data || { incoming: [], outgoing: [] };
+}
+
+export async function dbAcceptGift(id) {
+  const res = await fetch(`/api/gift-offers/${id}/accept`, { method: 'POST', credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  return res.json();
+}
+
+export async function dbRejectGift(id) {
+  const res = await fetch(`/api/gift-offers/${id}/reject`, { method: 'POST', credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  return res.json();
+}
+
+export async function dbCancelGift(id) {
+  const res = await fetch(`/api/gift-offers/${id}/cancel`, { method: 'POST', credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  return res.json();
 }
 
 // Rasm yuklash: dataUrl (base64) -> /uploads/... manzil.
