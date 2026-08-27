@@ -157,3 +157,12 @@ export function IconChevronDown(props) {
     </svg>
   );
 }
+export function IconSupport(props) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 2.09.633 4.03 1.72 5.646L2 22l4.354-1.72A9.958 9.958 0 0012 22z" />
+      <path d="M8.5 10a3.5 3.5 0 117 0c0 2-3.5 2-3.5 4" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}

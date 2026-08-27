@@ -1234,6 +1234,22 @@ export async function finalizePaidWebOrder(orderId) {
     return { ok: true };
   }
 
+  // Mavjud (allaqachon egasi bor) kod uchun KEYINCHALIK jismoniy karta
+  // buyurtma qilish — dastlabki bandlash paytidagi jismoniy karta
+  // tanlovidan farqli, alohida oqim.
+  if (order.kind === 'physical_card_order') {
+    const p = order.payload || {};
+    await createPhysicalCard({
+      linkedCode: order.code,
+      ownerUserId: order.userId,
+      shippingName: p.shippingName || '',
+      shippingPhone: p.shippingPhone || '',
+      shippingAddress: p.shippingAddress || '',
+    });
+    await setWebOrderStatus(order.id, 'paid');
+    return { ok: true };
+  }
+
   // 'card_purchase' — oddiy vizitka xaridi (jismoniy karta bilan yoki bo'lmasa).
   const existing = await getRecord(order.code);
   if (existing) {

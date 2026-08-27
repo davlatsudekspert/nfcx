@@ -96,7 +96,7 @@ export default function AuctionsPage() {
         </div>
         <div className="hidden justify-self-center lg:flex">
           <Interactive3DCard>
-            <NfcCard code={auctions?.[0]?.code || 'VIP001'} name="G'OLIB SIZ BO'LING" finish="gold" size="lg" rim />
+            <NfcCard code={auctions?.[0]?.code || 'VIP001'} name="G'OLIB SIZ BO'LING" finish="showcase" size="lg" rim />
           </Interactive3DCard>
         </div>
       </section>

@@ -34,21 +34,31 @@
   --font-display: "Space Grotesk", ui-sans-serif, sans-serif;
 }
 
-/* Saytdagi barcha oddiy chegaralarni (border) qalinroq va aniqroq
-   qilamiz, hamda soya (shadow) qo'shamiz — butun sayt bo'ylab yanada
-   "premium" va hajmli ko'rinish uchun.
+/* Saytdagi barcha oddiy chegaralarni (border) biroz qalinroq va aniqroq
+   qilamiz — Word'dagi ~1.5-2pt chiziqqa yaqin, "premium" ko'rinish uchun.
    Diqqat: bu faqat "border" (rang qo'shimcha "border-white/10" kabi
    klass bilan beriladi) uchun — "border-2"/"border-4" kabi aniq
    ko'rsatilgan qalinliklarga tegmaydi. */
 .border {
-  border-width: 2.5px;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.22);
+  border-width: 1.5px;
 }
 
 /* Keyframes referenced by animate-[...] utilities in components */
 @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes shimmerSweep { 0% { transform: translateX(-140%) translateY(-140%) rotate(25deg); } 100% { transform: translateX(140%) translateY(140%) rotate(25deg); } }
 @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Pьedestal + karta uchun doimiy, juda sekin, tekis 3D aylanish —
+   shoshilinch/o'yin uslubidagi emas, cinematic va premium. */
+@keyframes pedestalRotateY { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+.pedestal-continuous-spin {
+  animation: pedestalRotateY 26s linear infinite;
+}
+/* Oltin rimda "shimmer" — yorug'lik aylanish davomida sirpanib turgandek. */
+@keyframes rimShimmerSlide { from { transform: translateX(0); } to { transform: translateX(-66.666%); } }
+.pedestal-rim-shimmer > div {
+  animation: rimShimmerSlide 6s linear infinite;
+}
 @keyframes nfcPulse { 0% { opacity: 0.9; transform: translateY(-50%) scale(0.6); } 70% { opacity: 0; } 100% { opacity: 0; transform: translateY(-50%) scale(1.15); } }
 @keyframes bgShift { 0%,100% { background-position: 0% 50%, 0% 50%; } 50% { background-position: 0% 50%, 100% 50%; } }
 @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.25); } 100% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } }

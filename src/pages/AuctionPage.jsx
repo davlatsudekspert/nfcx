@@ -34,6 +34,7 @@ export default function AuctionPage({ id }) {
   const [msg, setMsg] = useState(null);
   const [payOrder, setPayOrder] = useState(null);
   const [winnerName, setWinnerName] = useState('');
+  const [winnerPhone, setWinnerPhone] = useState('');
   const [, tick] = useState(0);
   const idemRef = useRef(null);
 
@@ -106,10 +107,11 @@ export default function AuctionPage({ id }) {
 
   const payNow = async () => {
     if (!winnerName.trim()) { setMsg({ type: 'err', text: 'Profilingiz uchun ismingizni kiriting.' }); return; }
+    if (!winnerPhone.trim()) { setMsg({ type: 'err', text: 'Telefon raqamingizni kiriting.' }); return; }
     setBusy(true);
     setMsg(null);
     try {
-      const order = await dbPayAuctionWinner(auction.id, { name: winnerName.trim() });
+      const order = await dbPayAuctionWinner(auction.id, { name: winnerName.trim(), phone: winnerPhone.trim() });
       setPayOrder(order);
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
@@ -130,7 +132,7 @@ export default function AuctionPage({ id }) {
         </div>
         <div className="mt-6 hidden shrink-0 lg:mt-0 lg:block">
           <Interactive3DCard>
-            <NfcCard code={auction.code} name="G'OLIB SIZ BO'LING" finish={auction.status === 'sold' ? 'graphite' : 'gold'} size="sm" />
+            <NfcCard code={auction.code} name="G'OLIB SIZ BO'LING" finish={auction.status === 'sold' ? 'graphite' : 'showcase'} size="sm" />
           </Interactive3DCard>
         </div>
       </section>
@@ -172,6 +174,12 @@ export default function AuctionPage({ id }) {
             onChange={(e) => setWinnerName(e.target.value)}
             placeholder="Profilingizdagi ismingiz"
             className="input input-bordered input-sm mt-3 w-full max-w-xs bg-base-100"
+          />
+          <input
+            value={winnerPhone}
+            onChange={(e) => setWinnerPhone(e.target.value)}
+            placeholder="Telefon raqamingiz (+998...)"
+            className="input input-bordered input-sm mt-2 w-full max-w-xs bg-base-100"
           />
           <div>
             <button className="btn btn-primary btn-sm mt-3" onClick={payNow} disabled={busy}>

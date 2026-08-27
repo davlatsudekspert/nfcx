@@ -162,6 +162,24 @@ export async function dbSetPrimary(code) {
   return data;
 }
 
+export async function dbOrderPhysicalCard(code, shipping) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/order-physical-card`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(shipping),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'shipping_required') throw new Error("Ism, telefon va manzilni to'liq kiriting.");
+    if (key === 'payme_disabled') throw new Error("To'lov tizimi hozircha yoqilmagan.");
+    if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    throw new Error('Xatolik yuz berdi.');
+  }
+  return data;
+}
+
 // ---------- Sovg'a qilish ----------
 
 const GIFT_ERRORS = {
@@ -274,6 +292,7 @@ const AUCTION_ERRORS = {
   BID_TOO_LOW: "Taklifingiz joriy narxdan yuqori bo'lishi kerak.",
   BANNED: "Akkauntingiz vaqtincha bloklangan (to'lanmagan auksion sababli).",
   name_required: 'Ismingizni kiriting.',
+  phone_required: 'Telefon raqamingizni kiriting.',
   SYSTEM: 'Tizim xatoligi yuz berdi, birozdan keyin qayta urinib ko\u2019ring.',
 };
 

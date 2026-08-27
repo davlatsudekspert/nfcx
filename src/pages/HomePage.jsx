@@ -80,7 +80,7 @@ function RevealSection({ id, children }) {
 const TEASERS = [
   { href: '/narxlar', title: 'Narxlar', desc: "Kalkulyator bilan aniq narxni hisoblang va naqshlar qanday ta'sir qilishini ko'ring.", go: "Narxlarni ko'rish →" },
   { href: '/qanday-ishlaydi', title: 'Qanday ishlaydi', desc: "Bandlashdan profilni sozlash va qayta sotishgacha — besh qadam.", go: "Qadamlarni ko'rish →" },
-  { href: '/katalog', title: 'Katalog', desc: "Barcha band qilingan raqamli tashrif qog'ozlar va sotuvdagi profillar ro'yxati.", go: "Katalogni ochish →" },
+  { href: '/katalog', title: 'Katalog', desc: "Barcha band qilingan raqamli tashrif qog'ozlar ro'yxati.", go: "Katalogni ochish →" },
   { href: '/savollar', title: 'Savollar', desc: "Narx, egalik, qayta sotish va profil haqida ko'p so'raladigan savollar.", go: 'FAQ →' },
 ];
 

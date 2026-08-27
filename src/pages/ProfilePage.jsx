@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbBuy, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
+import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode, tierForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT, TIER_EMOJI } from '../lib/pricing.js';
+import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink,
+  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
 } from '../components/Icons.jsx';
 
 export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
@@ -127,6 +127,16 @@ function socialUrl(kind, handle) {
   }
 }
 
+// Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "000" va h.k.)
+function rarity(code) {
+  if (!code || code.length !== 6) return null;
+  const lp = letterPattern(code.slice(0, 3));
+  const dp = digitPattern(code.slice(3, 6));
+  if (!lp.hot && !dp.hot) return null;
+  const label = [lp.hot ? lp.label : null, dp.hot ? dp.label : null].filter(Boolean).join(' · ');
+  return label;
+}
+
 function tierOf(code) {
   return tierForCode(code);
 }
@@ -179,7 +189,6 @@ export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
   const [toast, setToast] = useState('');
   const [tab, setTab] = useState('vizitka');
-  const [buying, setBuying] = useState(false);
   const [tapInactive, setTapInactive] = useState(false);
   const [followStats, setFollowStats] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
@@ -281,20 +290,6 @@ export default function ProfilePage({ code, catalog }) {
     catch (e) { flashToast(text); }
   };
 
-  const buyCard = async () => {
-    if (!user) { flashToast('Avval tizimga kiring...'); setTimeout(() => navigate('/login'), 800); return; }
-    setBuying(true);
-    try {
-      const bought = await dbBuy(code);
-      setRecord(bought);
-      flashToast("Tabriklaymiz — raqamli tashrif qog'ozi endi sizniki!");
-    } catch (err) {
-      flashToast(err.message || 'Xatolik yuz berdi.');
-    } finally {
-      setBuying(false);
-    }
-  };
-
   if (record === undefined) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
@@ -338,9 +333,9 @@ export default function ProfilePage({ code, catalog }) {
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
   const wsUrl = record.website || '';
   const hasSocials = tgUrl || igUrl || fbUrl || xUrl || liUrl;
+  const rarityLabel = rarity(record.code);
   const tier = tierOf(record.code);
   const tierColor = TIER_COLOR[tier];
-  const tierBg = TIER_GRADIENT[tier];
   const tierEmoji = TIER_EMOJI[tier];
   const dark = DARK_THEMES.includes(record.theme || 'classic');
 
@@ -376,8 +371,7 @@ export default function ProfilePage({ code, catalog }) {
             <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
           ))}
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-6 py-1.5 font-mono text-[22px] font-bold text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
-          {record.forSale && <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 font-mono text-xs font-bold text-[#101112]"><IconTag /> SOTUVDA</span>}
-          {!record.forSale && <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{fmt(record.price)} so'm</span>}
+          <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{fmt(record.price)} so'm</span>
         </div>
         <div className="flex gap-1">
           <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
@@ -391,34 +385,11 @@ export default function ProfilePage({ code, catalog }) {
         </div>
       </div>
 
-      {record.forSale && (
-        <div className={`mx-auto mt-3.5 flex max-w-[640px] flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color:var(--vz-line)] px-5 py-4 ${dark ? 'animate-[glowBarPulse_2.6s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
-          <div>
-            <b className="font-display block text-[15px]">Egasi buni sotuvga qo'ydi</b>
-            <span className="text-[13px] font-semibold text-[color:var(--vz-ink-dim)]">Narx: {fmt(record.salePrice || record.price)} so'm</span>
-          </div>
-          <button onClick={buyCard} disabled={buying} className="cursor-pointer rounded-[10px] bg-gradient-to-br from-[#ffffff] to-[#d8d8db] px-[22px] py-2.5 font-extrabold text-[14px] text-[#101112] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50">
-            {buying ? 'Yuklanmoqda...' : 'Sotib olish'}
-          </button>
-        </div>
-      )}
-
       <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
-        {(tierEmoji || tier !== 'free') && (
-          <div className="flex justify-center pt-6">
-            <span
-              className="inline-flex items-center gap-2.5 rounded-full border-2 px-8 py-2.5 font-mono text-[26px] font-extrabold shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-              style={{ borderColor: tierColor, color: tier === 'exclusive' || tier === 'premium' ? '#fdf3d0' : tierColor, background: tierBg || `${tierColor}14` }}
-            >
-              {tierEmoji && <span className="text-[22px]">{tierEmoji}</span>}
-              # {record.code}
-            </span>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}
+            {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
@@ -443,6 +414,18 @@ export default function ProfilePage({ code, catalog }) {
           </div>
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}
+
+        {(tierEmoji || tier !== 'free') && (
+          <div className="mt-4 flex justify-center">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-1 font-mono text-[12px] font-bold"
+              style={{ borderColor: tierColor, color: tierColor, background: `${tierColor}14` }}
+            >
+              {tierEmoji && <span className="text-[12px]">{tierEmoji}</span>}
+              # {record.code}
+            </span>
+          </div>
+        )}
 
         <div className="mt-0.5 flex flex-col items-center">
           <div className="relative flex h-[120px] w-[120px] items-center justify-center">
@@ -478,14 +461,7 @@ export default function ProfilePage({ code, catalog }) {
             <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
           </div>
           {tier !== 'free' && (
-            <div
-              className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider"
-              style={{
-                color: tierBg ? '#fdf3d0' : tierColor,
-                border: `1px solid ${tierColor}55`,
-                background: tierBg || `${tierColor}15`,
-              }}
-            >
+            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
               {TIER_LABEL[tier]} tarif
             </div>
           )}
@@ -512,29 +488,50 @@ export default function ProfilePage({ code, catalog }) {
             )}
 
             <div className="mt-[22px] flex flex-col gap-2.5">
-              {record.phone && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq</a>}
-              {!isOwner && <button type="button" className={`${linkBtn} cursor-pointer`} onClick={startChat}>{'\u{1F4AC}'} Xabar</button>}
-              {record.email && <a className={linkBtn} href={`mailto:${record.email}`}><IconMail /> Email</a>}
-              {wsUrl && <a className={linkBtn} href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /> Sayt</a>}
+              {record.phone && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq qilish</a>}
+              {record.email && <a className={linkBtn} href={`mailto:${record.email}`}><IconMail /> {record.email}</a>}
               {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {record.cardNumber && (
-                <button
-                  type="button"
-                  className={`${linkBtn} cursor-pointer`}
-                  onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), "Karta raqami nusxalandi: " + record.cardNumber)}
-                >
-                  <IconTag /> KARTA (to'lov)
-                </button>
-              )}
+              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> KARTA (to'lov)</span>}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
               ))}
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
+
+            {(() => {
+              // Eski (yagona) va yangi (massiv) karta raqami maydonlarini
+              // BITTA ro'yxatga birlashtiramiz — bir xil raqam ikki marta
+              // chiqib qolmasligi uchun (avval shu joyda bug bor edi).
+              const seen = new Set();
+              const cards = [
+                ...(record.cardNumber ? [{ label: '', number: record.cardNumber }] : []),
+                ...(record.cardNumbers || []),
+              ].filter((c) => {
+                const norm = String(c.number || '').replace(/\s/g, '');
+                if (!norm || seen.has(norm)) return false;
+                seen.add(norm);
+                return true;
+              });
+              if (cards.length === 0) return null;
+              return (
+                <>
+                  <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
+                  <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">TO'LOV UCHUN KARTALAR</div>
+                  <div className="flex flex-col gap-2.5">
+                    {cards.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2.5 rounded-xl px-4 py-3" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
+                        <span>{c.label && <b className="mb-0.5 block text-[11px] font-bold text-[color:var(--vz-ink-faint)]">{c.label}</b>}<span className="font-mono text-[15px] tracking-[0.08em]">{c.number}</span></span>
+                        <button onClick={() => copyText(c.number.replace(/\s/g, ''), 'Karta raqami nusxalandi!')} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
 
             {hasSocials && (
               <>
@@ -549,6 +546,14 @@ export default function ProfilePage({ code, catalog }) {
                 </div>
               </>
             )}
+
+            {/* NFCSTORE'ning o'z rasmiy kanallari — har doim, har bir profilda bir xil. */}
+            <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
+            <div className="flex justify-center gap-3.5">
+              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstoreuz" target="_blank" rel="noreferrer" title="NFCSTORE Telegram"><IconTelegram /></a>
+              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://www.instagram.com/nfcstore.uz" target="_blank" rel="noreferrer" title="NFCSTORE Instagram"><IconInstagram /></a>
+              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title="Qo'llab-quvvatlash"><IconSupport /></a>
+            </div>
 
             {otherCodes.length > 0 && (
               <>

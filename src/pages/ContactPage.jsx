@@ -4,8 +4,8 @@ const CHANNELS = [
   {
     icon: <IconTelegram width="26" height="26" />,
     title: 'Telegram',
-    value: '@nfcstore_support',
-    href: 'https://t.me/nfcstore_support',
+    value: '@nfcstore_admin',
+    href: 'https://t.me/nfcstore_admin',
   },
   {
     icon: <IconMail width="26" height="26" />,
@@ -16,8 +16,8 @@ const CHANNELS = [
   {
     icon: <IconPhone width="26" height="26" />,
     title: 'Telefon',
-    value: '+998 90 000 00 00',
-    href: 'tel:+998900000000',
+    value: '+998 50 090 82 77',
+    href: 'tel:+998500908277',
   },
 ];
 

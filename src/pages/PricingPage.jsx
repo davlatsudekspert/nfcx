@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT } from '../lib/pricing.js';
+import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
+import PedestalShowcase3D from '../components/PedestalShowcase3D.jsx';
 
 function useMaskedCode() {
   const [value, setValue] = useState('');
@@ -75,7 +76,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: TIER_GRADIENT[t] || `${TIER_COLOR[t]}22`, color: TIER_GRADIENT[t] ? '#fdf3d0' : TIER_COLOR[t] }}
+                  style={{ background: `${TIER_COLOR[t]}22`, color: TIER_COLOR[t] }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 3h12l4 6-10 12L2 9z" /><path d="M2 9h20" /><path d="M12 3l-3 6 3 12 3-12z" />
@@ -93,27 +94,11 @@ export default function PricingPage({ catalog, refreshCatalog }) {
           </div>
         </div>
 
-        {/* ===== Suzuvchi 3D karta — pastida sahna/pьedestal bilan ===== */}
-        <div className="relative hidden flex-col items-center lg:flex">
-          <div className="relative z-[2] animate-[floatY_6s_ease-in-out_infinite]">
-            <Interactive3DCard>
-              <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name="SIZNING ISMINGIZ" finish="gold" size="lg" rim />
-            </Interactive3DCard>
-          </div>
-          {/* Pьedestal — dumaloq, tilla chetli, nurlanuvchi sahna */}
-          <div className="relative z-[1] -mt-3 h-[52px] w-[340px] sm:w-[420px]">
-            <div
-              className="absolute inset-0 rounded-[50%]"
-              style={{
-                background: 'radial-gradient(ellipse at center, #2a220f 0%, #171208 55%, transparent 75%)',
-                boxShadow: '0 0 60px 10px rgba(212,175,90,0.25), 0 0 120px 30px rgba(212,175,90,0.08)',
-              }}
-            />
-            <div
-              className="absolute inset-x-0 top-0 h-[10px] rounded-[50%]"
-              style={{ background: 'linear-gradient(90deg, #7a5c1c, #f0cf7a, #d4af5a, #7a5c1c)' }}
-            />
-          </div>
+        {/* ===== Professional 3D karta+pьedestal showcase (faqat shu qism) ===== */}
+        <div className="hidden lg:flex">
+          <PedestalShowcase3D>
+            <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name="SIZNING ISMINGIZ" finish="showcase" size="lg" rim />
+          </PedestalShowcase3D>
         </div>
       </section>
 
@@ -160,7 +145,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 <NfcCard
                   code={calcParsed ? calcParsed.code : 'ABZ007'}
                   name="SIZNING ISMINGIZ"
-                  finish={calcTaken ? 'graphite' : (calcInfo?.tier === 'exclusive' ? 'gold' : 'black')}
+                  finish={calcTaken ? 'graphite' : 'showcase'}
                   size="sm"
                 />
               </Interactive3DCard>

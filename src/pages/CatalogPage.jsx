@@ -1,18 +1,11 @@
-import { useEffect, useState } from 'react';
-import { dbListSales } from '../lib/db.js';
+import { useState } from 'react';
 import { fmt, timeAgo } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 export default function CatalogPage({ catalog }) {
-  const [sales, setSales] = useState([]);
   const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
-
-  useEffect(() => { dbListSales().then(setSales); }, []);
-
-  const saleMap = {};
-  sales.forEach((r) => { saleMap[r.code] = r; });
 
   const query = q.trim().toUpperCase();
   const filtered = [...catalog]
@@ -53,31 +46,12 @@ export default function CatalogPage({ catalog }) {
             <NfcCard
               code={filtered[0]?.code || 'AAA000'}
               name={filtered[0]?.name?.toUpperCase() || 'SIZNING ISMINGIZ'}
-              finish="graphite"
+              finish="showcase"
               size="lg"
             />
           </Interactive3DCard>
         </div>
       </section>
-
-      {sales.length > 0 && (
-        <section id="sotuv" className="mt-16">
-          <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Bozor</div>
-          <h2 className="mt-2 text-2xl font-bold">Sotuvdagi raqamli tashrif qog'ozlar</h2>
-          <p className="mt-2 text-sm text-base-content/55">Egalari qayta sotuvga qo'ygan raqamli tashrif qog'ozlar. Sotib olingach profilingizga o'tadi.</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sales.map((s) => (
-              <button key={s.code} className={`${cardCls} text-left`} onClick={() => navigate('/' + s.code)}>
-                <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{s.code.toLowerCase()}</div>
-                <div className="mt-1 truncate text-[13px] text-base-content/55">{s.name}{s.role ? ' · ' + s.role : ''}</div>
-                <div className="mt-3 flex items-center gap-2 text-sm font-semibold">
-                  <span className="badge badge-accent badge-outline badge-xs">SOTUVDA</span> {fmt(s.salePrice || s.price)} so'm
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="mt-16">
         <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Live</div>
@@ -89,7 +63,6 @@ export default function CatalogPage({ catalog }) {
               <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
               <div className="mt-1 truncate text-[13px] text-base-content/55">{it.name}{it.tg ? ' · ' + it.tg : ''}</div>
               <div className="mt-3 flex items-center gap-2 text-sm text-base-content/75">
-                {saleMap[it.code] && <span className="badge badge-accent badge-outline badge-xs">SOTUVDA</span>}
                 {fmt(it.price)} so'm · {timeAgo(it.ts)}
               </div>
             </button>

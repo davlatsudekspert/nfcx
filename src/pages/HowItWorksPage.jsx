@@ -7,7 +7,7 @@ const STEPS = [
   { n: '03', title: 'Profilingizni sozlang', text: "Kabinetdan ism, kasb, rasm, bio, ijtimoiy tarmoqlar (Telegram, Instagram, Facebook, X), to'lov kartasi va dizayn mavzusini qo'shasiz." },
   { n: '04', title: 'Ulashing', text: "Profilingiz nfcstore.uz/kodingiz manzilida yashaydi — havolani ulashing yoki jismoniy NFC kartangizga yozdiring." },
   { n: '05', title: 'Auksionda qatnashing', text: "Noyob kodlar vaqti-vaqti bilan auksionga qo'yiladi — taklif bering, g'olib chiqsangiz 24 soat ichida to'lab olasiz." },
-  { n: '06', title: 'Xohlasangiz — soting', text: "Raqamli tashrif qog'ozi endi kerak bo'lmasa, uni kabinetdan sotuvga qo'yasiz. Boshqa foydalanuvchi sotib olsa, egalik unga o'tadi." },
+  { n: '06', title: "Sovg'a qiling", text: "Raqamli tashrif qog'ozi endi kerak bo'lmasa, kabinetdan boshqa foydalanuvchiga (uning NFC ID'si orqali) sovg'a qilasiz — pulsiz, ikki tomonlama rozilik bilan." },
 ];
 
 export default function HowItWorksPage() {
@@ -27,7 +27,7 @@ export default function HowItWorksPage() {
         </p>
         <div className="mt-8 flex justify-center">
           <div className="animate-[floatY_5s_ease-in-out_infinite]">
-            <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="black" size="md" />
+            <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="showcase" size="md" />
           </div>
         </div>
       </section>

@@ -46,10 +46,10 @@ export default function FaqPage({ catalog }) {
 
       {/* O'ng tarafdagi bo'sh joyni to'ldiruvchi jonli NFC vizual */}
       <div className="relative hidden pt-14 lg:block">
-        <div className="sticky top-24 flex flex-col items-center gap-8">
+        <div className="sticky top-40 -translate-x-8 flex flex-col items-center gap-8">
           <div className="animate-[floatY_5.5s_ease-in-out_infinite]">
             <Interactive3DCard>
-              <NfcCard code="SAV777" name="SIZNING ISMINGIZ" finish="gold" size="md" />
+              <NfcCard code="SAV777" name="SIZNING ISMINGIZ" finish="showcase" size="lg" />
             </Interactive3DCard>
           </div>
           <div className="relative h-40 w-40">

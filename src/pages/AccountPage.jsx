@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetSale, dbSetPrimary, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -20,10 +20,11 @@ const THEMES = [
 ];
 
 // Yig'iladigan/ochiladigan bo'lim — uzun formani mantiqiy blokларга ажратади.
-function Section({ title, subtitle, defaultOpen, children }) {
+function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
   const [open, setOpen] = useState(!!defaultOpen);
+  useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
   return (
-    <div className={`mt-4 overflow-hidden rounded-2xl border bg-base-200/30 backdrop-blur-sm transition-all duration-200 first:mt-0 ${open ? 'border-accent/25 shadow-[0_10px_35px_rgba(0,0,0,0.35)]' : 'border-white/10 hover:border-white/20'}`}>
+    <div id={id} className={`mt-4 overflow-hidden rounded-2xl border bg-base-200/30 backdrop-blur-sm transition-all duration-200 first:mt-0 ${open ? 'border-accent/25 shadow-[0_10px_35px_rgba(0,0,0,0.35)]' : 'border-white/10 hover:border-white/20'}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -442,6 +443,28 @@ function EditCardForm({ card, onSaved }) {
   };
 
   const [primaryBusy, setPrimaryBusy] = useState(false);
+  const [designerOpenSignal, setDesignerOpenSignal] = useState(0);
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [orderMsg, setOrderMsg] = useState(null);
+  const [orderPayLink, setOrderPayLink] = useState(null);
+  const [shipping, setShipping] = useState({ shippingName: '', shippingPhone: '', shippingAddress: '' });
+  const orderPhysicalCard = async (code) => {
+    if (!shipping.shippingName.trim() || !shipping.shippingPhone.trim() || !shipping.shippingAddress.trim()) {
+      setOrderMsg({ type: 'err', text: "Ism, telefon va manzilni to'liq kiriting (pastdagi maydonlarga)." });
+      return;
+    }
+    setOrderBusy(true);
+    setOrderMsg(null);
+    try {
+      const order = await dbOrderPhysicalCard(code, shipping);
+      setOrderPayLink(order.payLink);
+      setOrderMsg({ type: 'ok', text: "Buyurtma yaratildi — to'lovni yakunlang." });
+    } catch (err) {
+      setOrderMsg({ type: 'err', text: err.message });
+    } finally {
+      setOrderBusy(false);
+    }
+  };
   const makePrimary = async () => {
     setPrimaryBusy(true);
     setSaleMsg(null);
@@ -526,6 +549,15 @@ function EditCardForm({ card, onSaved }) {
           )}
           <button className="btn btn-outline btn-sm" onClick={() => setGiftOpen((o) => !o)}>
             {'\u{1F381}'} Sovg'a qilish
+          </button>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => {
+              setDesignerOpenSignal((s) => s + 1);
+              setTimeout(() => document.getElementById('card-designer-section-' + card.code)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+            }}
+          >
+            {'\u{1F4B3}'} NFC ID buyurtma berish
           </button>
         </div>
       </div>
@@ -727,7 +759,33 @@ function EditCardForm({ card, onSaved }) {
             </label>
           </Section>
 
-          <Section title="Jismoniy karta bosma dizayni" subtitle="Old/orqa tomon, rang, logotip — PNG holida yuklab olasiz">
+          <Section title="Jismoniy karta bosma dizayni" subtitle="Old/orqa tomon, rang, logotip — PNG holida yuklab olasiz" id={'card-designer-section-' + card.code} openSignal={designerOpenSignal}>
+            <div className="mb-5 rounded-xl border border-accent/30 bg-accent/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold">{'\u{1F4E6}'} Jismoniy NFC karta buyurtma berish</div>
+                  <p className="mt-1 text-xs text-base-content/50">Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-extrabold text-accent">200 000 so'm</div>
+                  <div className="text-[10px] uppercase tracking-wide text-base-content/40">Payme orqali to'lov</div>
+                </div>
+              </div>
+              {!orderPayLink && (
+                <div className="mt-3 space-y-2">
+                  <input value={shipping.shippingName} onChange={(e) => setShipping((s) => ({ ...s, shippingName: e.target.value }))} placeholder="Qabul qiluvchi ism-familya" className="input input-bordered input-sm w-full bg-base-100" />
+                  <input value={shipping.shippingPhone} onChange={(e) => setShipping((s) => ({ ...s, shippingPhone: e.target.value }))} placeholder="Telefon (+998...)" className="input input-bordered input-sm w-full bg-base-100" />
+                  <textarea value={shipping.shippingAddress} onChange={(e) => setShipping((s) => ({ ...s, shippingAddress: e.target.value }))} placeholder="To'liq manzil" rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
+                </div>
+              )}
+              <button className="btn btn-accent btn-sm mt-3 w-full" onClick={() => orderPhysicalCard(card.code)} disabled={orderBusy}>
+                {orderBusy ? <span className="loading loading-spinner loading-xs"></span> : "Buyurtma berish — 200 000 so'm"}
+              </button>
+              {orderMsg && <div className={`alert mt-3 py-2 text-sm ${orderMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{orderMsg.text}</span></div>}
+              {orderPayLink && (
+                <a href={orderPayLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm mt-2 w-full">To'lovga o'tish &rarr;</a>
+              )}
+            </div>
             <CardDesignerPage embedded code={card.code} />
           </Section>
 
@@ -759,6 +817,13 @@ const ORDER_STATUS_LABEL = {
 
 export default function AccountPage({ refreshCatalog }) {
   const { user, myCards, refresh } = useAuth();
+  const [selectedCode, setSelectedCode] = useState(null);
+  useEffect(() => {
+    if (myCards.length && !myCards.some((c) => c.code === selectedCode)) {
+      setSelectedCode(myCards[0].code);
+    }
+  }, [myCards, selectedCode]);
+  const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
@@ -873,9 +938,23 @@ export default function AccountPage({ refreshCatalog }) {
             </button>
           </div>
         ) : (
-          myCards.map((card) => (
-            <EditCardForm key={card.code} card={card} onSaved={onSaved} />
-          ))
+          <>
+            {myCards.length > 1 && (
+              <label className="form-control mt-4 block max-w-xs">
+                <span className="text-xs font-semibold text-base-content/60">Tahrirlash uchun ID tanlang ({myCards.length} ta)</span>
+                <select
+                  value={selectedCode || ''}
+                  onChange={(e) => setSelectedCode(e.target.value)}
+                  className="select select-bordered select-sm mt-1 w-full bg-base-100 font-mono"
+                >
+                  {myCards.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code}{c.isPrimary ? '  ★ Asosiy' : ''}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {selectedCard && <EditCardForm key={selectedCard.code} card={selectedCard} onSaved={onSaved} />}
+          </>
         )}
       </section>
     </main>

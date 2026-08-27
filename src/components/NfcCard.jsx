@@ -11,6 +11,10 @@ const FINISHES = {
   silver: { bg: 'linear-gradient(135deg, #f4f4f5 0%, #d6d7d9 45%, #f4f4f5 100%)', fg: '#101112', sub: 'rgba(16,17,18,0.55)', code: '#101112' },
   graphite: { bg: 'linear-gradient(135deg, #3a3730 0%, #201f1a 55%, #3a3730 100%)', fg: '#f6f2ea', sub: 'rgba(232,193,101,0.6)', code: '#e8c165' },
   gold: { bg: 'linear-gradient(135deg, #d4af5a 0%, #8a6a20 45%, #d4af5a 100%)', fg: '#1a1206', sub: 'rgba(26,18,6,0.6)', code: '#1a1206' },
+  // "Showcase" — sayt bo'ylab (Narxlar, Savollar, Auksion, Ro'yxatdan
+  // o'tish) NAMUNA sifatida ko'rsatiladigan kartalar uchun: to'q kulrang
+  // fon, oltin chegara, barcha matn oltin rangda.
+  showcase: { bg: 'linear-gradient(135deg, #262422 0%, #171614 55%, #262422 100%)', fg: '#d4af5a', sub: 'rgba(212,175,90,0.62)', code: '#e8c165', border: '1.5px solid #d4af5a' },
 };
 
 const CARD_SIZES = {
@@ -72,6 +76,7 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
         style={{
           background: f.bg,
           color: f.fg,
+          border: f.border || 'none',
           transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
           boxShadow: rim ? SHADOW_RIM : SHADOW_DEFAULT,
         }}

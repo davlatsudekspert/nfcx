@@ -8,7 +8,7 @@ export default function TermsPage() {
         <p>Ushbu shartlar NFCSTORE xizmatidan (nfcstore.uz) foydalanish tartibini belgilaydi. Xizmatdan foydalanish orqali siz quyidagi shartlarga rozilik bildirasiz.</p>
         <div>
           <h2 className="text-lg font-bold text-base-content">1. Raqamli tashrif qog'ozi egaligi</h2>
-          <p className="mt-1.5">Band qilingan raqamli tashrif qog'ozi (kod) faqat uni band qilgan hisobga tegishli bo'ladi. Egalik faqat platforma orqali sotish/xarid qilish yo'li bilan boshqa foydalanuvchiga o'tkazilishi mumkin.</p>
+          <p className="mt-1.5">Band qilingan raqamli tashrif qog'ozi (kod) faqat uni band qilgan hisobga tegishli bo'ladi. Egalik boshqa foydalanuvchiga faqat sovg'a qilish (pulsiz, ikki tomonlama rozilik bilan) yoki auksionda g'olib chiqish yo'li bilan o'tkazilishi mumkin.</p>
         </div>
         <div>
           <h2 className="text-lg font-bold text-base-content">2. Kontent</h2>
@@ -16,11 +16,11 @@ export default function TermsPage() {
         </div>
         <div>
           <h2 className="text-lg font-bold text-base-content">3. Narxlar</h2>
-          <p className="mt-1.5">Narxlar dinamik bo'lib, band qilingan raqamli tashrif qog'ozlar soniga qarab o'zgarib turadi. Ko'rsatilgan narx bandlash vaqtidagi narx hisoblanadi.</p>
+          <p className="mt-1.5">Narx bandlangan raqamli tashrif qog'ozlar soniga bog'liq emas — faqat kodning o'zidagi harf/raqam naqshiga qarab belgilanadi va har bir daraja uchun qat'iy (o'zgarmas).</p>
         </div>
         <div>
-          <h2 className="text-lg font-bold text-base-content">4. Qayta sotish</h2>
-          <p className="mt-1.5">Foydalanuvchi o'z raqamli tashrif qog'ozisini kabinet orqali sotuvga qo'yishi va boshqa foydalanuvchi uni sotib olishi mumkin. Bitim yakunlangach, egalik avtomatik o'tkaziladi va qaytarilmaydi.</p>
+          <h2 className="text-lg font-bold text-base-content">4. Auksion</h2>
+          <p className="mt-1.5">Ekslyuziv darajadagi noyob kodlar faqat admin ochgan auksion orqali sotiladi. G'olib 24 soat ichida to'lashi shart — aks holda auksion bekor bo'ladi va akkaunt vaqtincha bloklanishi mumkin. To'lov tasdiqlangach, egalik avtomatik o'tkaziladi va qaytarilmaydi.</p>
         </div>
         <div>
           <h2 className="text-lg font-bold text-base-content">5. Xizmatni to'xtatish</h2>

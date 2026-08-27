@@ -73,10 +73,10 @@ export default function AuthPage({ mode }) {
           <div className="flex flex-col items-center gap-6">
             <div className="animate-[floatY_5.5s_ease-in-out_infinite]">
               <Interactive3DCard>
-                <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="gold" size="lg" rim />
+                <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="showcase" size="lg" rim />
               </Interactive3DCard>
             </div>
-            <p className="max-w-[280px] text-center text-sm text-base-content/45">Bir tegish — profilingiz ochiladi. Kartani bosib, orqa tomonini ham ko'ring.</p>
+            <p className="max-w-[280px] text-center text-sm text-base-content/45">Raqamli profilingiz. Shaxsiy ma'lumotlaringiz. Bitta joyda.</p>
           </div>
         </div>
         <div className="flex justify-center lg:justify-start">

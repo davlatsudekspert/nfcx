@@ -376,6 +376,10 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const [qrImage, setQrImage] = useState(null);
   const [qrXY, setQrXY] = useState({ x: 0.86, y: 0.16 });
   const [qrSize, setQrSize] = useState(150);
+  // QR manbasi: 'auto' — profil kodidan avtomatik, 'manual' — o'zi kiritgan havola.
+  const [qrMode, setQrMode] = useState('auto');
+  const [qrManualLink, setQrManualLink] = useState('');
+  const [qrColor, setQrColor] = useState('#111111');
   // Matn joyi HAR TOMON UCHUN alohida (old/orqa matnlari butunlay boshqa
   // uzunlikda bo'lishi mumkin, shuning uchun umumiy pozitsiya noqulay).
   const [frontTextXY, setFrontTextXY] = useState({ x: 0.5, y: 0.5 });
@@ -383,20 +387,29 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const textXY = side === 'front' ? frontTextXY : backTextXY;
   const setTextXY = side === 'front' ? setFrontTextXY : setBackTextXY;
 
-  // QR-kod — profilga (nfcstore.uz/<KOD>) havola qiladi. Old tomondagi
-  // matn (odatda kod) yoki tashqaridan uzatilgan `code` propidan olinadi.
+  // QR-kod — profilga (nfcstore.uz/<KOD>) avtomatik havola qiladi, YOKI
+  // foydalanuvchi o'zi kiritgan (qo'lda) havolaga ishora qiladi.
   useEffect(() => {
-    const qrCode = (code || frontText || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!showQr || !qrCode) { setQrImage(null); return; }
+    if (!showQr) { setQrImage(null); return; }
+    let link;
+    if (qrMode === 'manual') {
+      link = qrManualLink.trim();
+      if (!link) { setQrImage(null); return; }
+      if (!/^https?:\/\//i.test(link)) link = 'https://' + link;
+    } else {
+      const qrCode = (code || frontText || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!qrCode) { setQrImage(null); return; }
+      link = `https://nfcstore.uz/${qrCode}`;
+    }
     let cancelled = false;
     import('qrcode').then((QRCode) => {
       const canvas = document.createElement('canvas');
-      QRCode.toCanvas(canvas, `https://nfcstore.uz/${qrCode}`, { margin: 1, width: 240, color: { dark: '#111111', light: '#ffffffff' } }, (err) => {
+      QRCode.toCanvas(canvas, link, { margin: 1, width: 240, color: { dark: qrColor, light: '#ffffffff' } }, (err) => {
         if (!cancelled && !err) setQrImage(canvas);
       });
     });
     return () => { cancelled = true; };
-  }, [showQr, code, frontText]);
+  }, [showQr, code, frontText, qrMode, qrManualLink, qrColor]);
 
   const buildState = useCallback((overrides) => ({
     side, frontText, frontSubText, backText, backSubText, showNfc,
@@ -593,16 +606,57 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
               <input type="checkbox" className="checkbox checkbox-sm" checked={showQr} onChange={(e) => setShowQr(e.target.checked)} />
               <span className="text-sm">Profilga havola qiluvchi QR-kod qo'shish</span>
             </label>
-            <p className="mt-2 text-xs text-base-content/45">
-              {code || frontText
-                ? <>Havola: <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span> — faqat ORQA tomonda chiqadi, joyini sichqoncha bilan suring.</>
-                : "Old tomon matni (kod) kiritilgach QR avtomatik hosil bo'ladi."}
-            </p>
+            <p className="mt-2 text-xs text-base-content/45">Faqat ORQA tomonda chiqadi, joyini sichqoncha bilan suring.</p>
+
             {showQr && (
-              <div className="mt-3">
-                <Label>QR-kod o'lchami ({qrSize}px)</Label>
-                <input type="range" min={60} max={280} step={10} value={qrSize} onChange={(e) => setQrSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
-              </div>
+              <>
+                <div className="mt-3 flex gap-1.5">
+                  <button
+                    type="button"
+                    className={`btn btn-xs flex-1 ${qrMode === 'auto' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setQrMode('auto')}
+                  >
+                    Avtomatik (kod)
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-xs flex-1 ${qrMode === 'manual' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setQrMode('manual')}
+                  >
+                    Qo'lda havola
+                  </button>
+                </div>
+
+                {qrMode === 'auto' ? (
+                  <p className="mt-2 text-xs text-base-content/45">
+                    {code || frontText
+                      ? <>Havola: <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span></>
+                      : "Old tomon matni (kod) kiritilgach QR avtomatik hosil bo'ladi."}
+                  </p>
+                ) : (
+                  <input
+                    value={qrManualLink}
+                    onChange={(e) => setQrManualLink(e.target.value)}
+                    placeholder="https://... yoki t.me/..."
+                    className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono text-xs"
+                  />
+                )}
+
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={qrColor}
+                    onChange={(e) => setQrColor(e.target.value)}
+                    className="h-8 w-8 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+                  />
+                  <span className="text-xs text-base-content/60">QR-kod rangi</span>
+                </div>
+
+                <div className="mt-3">
+                  <Label>QR-kod o'lchami ({qrSize}px)</Label>
+                  <input type="range" min={60} max={280} step={10} value={qrSize} onChange={(e) => setQrSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+                </div>
+              </>
             )}
           </FieldGroup>
 

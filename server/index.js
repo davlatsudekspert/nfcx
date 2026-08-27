@@ -9,7 +9,8 @@ import {
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
-  listForSale, setForSale, transferCard,
+  // setForSale, transferCard, listForSale — endi ishlatilmaydi (Sotish
+  // funksiyasi olib tashlandi), lekin server/db.js'da xavfsizlik uchun qoldirilgan.
   getBotOrder, setBotOrderStatus, finalizePaidBotOrder,
   createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser, getPendingAuctionPaymentOrder,
   finalizePaidWebOrder, cancelPendingWebOrder,
@@ -584,12 +585,14 @@ app.post('/api/auctions/:id/pay', async (req, res) => {
   // holda to'lov tasdiqlanganda karta nima nom bilan yaratilishini
   // bilmaymiz.
   const name = cleanStr(req.body?.name, 60);
+  const phone = cleanStr(req.body?.phone, 30).replace(/[\s\-()]/g, '');
   if (!name) return res.status(422).json({ error: 'name_required' });
+  if (!phone) return res.status(422).json({ error: 'phone_required' });
   const profile = {
     name,
     role: cleanStr(req.body?.role, 100),
     tg: cleanStr(req.body?.tg, 40).replace(/^@/, ''),
-    phone: cleanStr(req.body?.phone, 30),
+    phone,
     email: cleanStr(req.body?.email, 100),
   };
 
@@ -941,6 +944,33 @@ app.post('/api/records/:code/set-primary', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Mavjud (allaqachon egasi bor) kod uchun jismoniy karta buyurtma qilish
+// — 200 000 so'm, Payme orqali.
+app.post('/api/records/:code/order-physical-card', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+
+  const owner = await getRecordOwner(code);
+  if (owner !== user.id) return res.status(403).json({ error: 'forbidden' });
+
+  const shippingName = cleanStr(req.body?.shippingName, 100);
+  const shippingPhone = cleanStr(req.body?.shippingPhone, 30);
+  const shippingAddress = cleanStr(req.body?.shippingAddress, 300);
+  if (!shippingName || !shippingPhone || !shippingAddress) {
+    return res.status(422).json({ error: 'shipping_required' });
+  }
+
+  const order = await createWebOrder({
+    userId: user.id, code, kind: 'physical_card_order', price: PHYSICAL_CARD_FEE,
+    payload: { shippingName, shippingPhone, shippingAddress },
+  });
+  const payLink = paymeCheckoutLink(order.id, PHYSICAL_CARD_FEE);
+  res.status(202).json({ orderId: order.id, amount: PHYSICAL_CARD_FEE, payLink });
+});
+
 // ---------- Sovg'a qilish (pulsiz egalik o'tkazish) ----------
 
 app.post('/api/records/:code/gift', async (req, res) => {
@@ -989,57 +1019,13 @@ app.post('/api/gift-offers/:id/cancel', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/records/:code/sale', async (req, res) => {
-  const code = String(req.params.code || '').toUpperCase();
-  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
-  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-
-  const user = await currentUser(req);
-  if (!user) return res.status(401).json({ error: 'unauthorized' });
-
-  try {
-    const owner = await getRecordOwner(code);
-    if (!owner) return res.status(404).json({ error: 'not_found' });
-    if (owner !== user.id) return res.status(403).json({ error: 'forbidden' });
-
-    const list = !!(req.body && req.body.list);
-    let salePrice = null;
-    if (list) {
-      // "Oddiy" bazaviy narx sifatida eng past (Silver) darajani olamiz —
-      // eski dinamik (sold-ga bog'liq) narxlash olib tashlangan.
-      salePrice = 99_000 * 3;
-    }
-    const updated = await setForSale(code, list, salePrice);
-    console.log(`[api] Sotuv ${list ? 'ochildi' : 'yopildi'}: ${code}${list ? ` — ${salePrice} so'm` : ''}`);
-    res.json(updated);
-  } catch (err) {
-    console.error('[api] sale:', err.message);
-    res.status(503).json({ error: 'db_unavailable' });
-  }
-});
-
-// Sotib olish: vizitka egasi almashtiriladi (real to'lov tizimi alohida).
-app.post('/api/records/:code/buy', async (req, res) => {
-  const code = String(req.params.code || '').toUpperCase();
-  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
-  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-
-  const buyer = await currentUser(req);
-  if (!buyer) return res.status(401).json({ error: 'unauthorized' });
-
-  try {
-    const owner = await getRecordOwner(code);
-    if (!owner) return res.status(404).json({ error: 'not_found' });
-    if (owner === buyer.id) return res.status(400).json({ error: 'own_card' });
-    const bought = await transferCard(code, owner, buyer.id);
-    if (!bought) return res.status(409).json({ error: 'not_for_sale' });
-    console.log(`[api] Sotib olindi: ${code} — ${buyer.email} (${bought.salePrice ?? bought.price} so'mlik listing)`);
-    res.json(bought);
-  } catch (err) {
-    console.error('[api] buy:', err.message);
-    res.status(503).json({ error: 'db_unavailable' });
-  }
-});
+// ---------- Sotish/sotuv funksiyasi butunlay OLIB TASHLANDI ----------
+// Endi egalikni o'zgartirishning ikkita yo'li bor: "Sovg'a qilish"
+// (pulsiz, ikki tomonlama rozilik) va Auksion (admin ochadi, g'olib
+// real to'lov qiladi). Quyidagi uchta endpoint (sale/buy/sales) shu
+// sababli olib tashlandi — server/db.js'dagi setForSale/transferCard/
+// listForSale funksiyalari xavfsizlik uchun saqlab qo'yilgan (endi
+// hech qayerdan chaqirilmaydi).
 
 app.post('/api/records/:code/view', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
@@ -1051,17 +1037,6 @@ app.post('/api/records/:code/view', async (req, res) => {
     res.json({ views });
   } catch (err) {
     console.error('[api] incrementViews:', err.message);
-    res.status(503).json({ error: 'db_unavailable' });
-  }
-});
-
-// Sotuvdagi vizitkalar ro'yxati.
-app.get('/api/sales', async (req, res) => {
-  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  try {
-    res.json(await listForSale());
-  } catch (err) {
-    console.error('[api] sales:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
