@@ -3,6 +3,8 @@ import { dbGetAuction, dbPlaceBid, dbPayAuctionWinner, dbGetPayment } from '../l
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
+import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 function timeLeft(endsAt) {
   const ms = new Date(endsAt).getTime() - Date.now();
@@ -31,6 +33,7 @@ export default function AuctionPage({ id }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [payOrder, setPayOrder] = useState(null);
+  const [winnerName, setWinnerName] = useState('');
   const [, tick] = useState(0);
   const idemRef = useRef(null);
 
@@ -51,7 +54,7 @@ export default function AuctionPage({ id }) {
         if (st.status === 'paid') {
           clearInterval(t);
           setPayOrder(null);
-          setMsg({ type: 'ok', text: "To'lov tasdiqlandi — tabriklaymiz, vizitka endi sizniki!" });
+          setMsg({ type: 'ok', text: "To'lov tasdiqlandi — tabriklaymiz, raqamli tashrif qog'ozi endi sizniki!" });
           await load();
         } else if (st.status === 'cancelled') {
           clearInterval(t);
@@ -101,7 +104,6 @@ export default function AuctionPage({ id }) {
     }
   };
 
-  const [winnerName, setWinnerName] = useState('');
   const payNow = async () => {
     if (!winnerName.trim()) { setMsg({ type: 'err', text: 'Profilingiz uchun ismingizni kiriting.' }); return; }
     setBusy(true);
@@ -118,11 +120,18 @@ export default function AuctionPage({ id }) {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
-        <button className="text-xs text-base-content/50 hover:text-base-content" onClick={() => navigate('/auksion')}>&larr; Auksionlarga qaytish</button>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <h1 className="font-mono text-2xl font-bold tracking-wide">nfcstore.uz/{auction.code.toLowerCase()}</h1>
-          <span className={`badge ${st.cls}`}>{st.text}</span>
+      <section className="pt-14 lg:flex lg:items-center lg:justify-between lg:gap-8">
+        <div>
+          <button className="text-xs text-base-content/50 hover:text-base-content" onClick={() => navigate('/auksion')}>&larr; Auksionlarga qaytish</button>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <h1 className="font-mono text-2xl font-bold tracking-wide">nfcstore.uz/{auction.code.toLowerCase()}</h1>
+            <span className={`badge ${st.cls}`}>{st.text}</span>
+          </div>
+        </div>
+        <div className="mt-6 hidden shrink-0 lg:mt-0 lg:block">
+          <Interactive3DCard>
+            <NfcCard code={auction.code} name="G'OLIB SIZ BO'LING" finish={auction.status === 'sold' ? 'graphite' : 'gold'} size="sm" />
+          </Interactive3DCard>
         </div>
       </section>
 

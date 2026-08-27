@@ -95,8 +95,8 @@ function StatsTab() {
         <p className="mt-1 text-xs text-base-content/45">Auksion va premium obuna komissiyalaridan yig'ilgan real pul.</p>
       </div>
       <StatCard label="Foydalanuvchilar" value={fmt(stats.userCount)} />
-      <StatCard label="Band qilingan vizitkalar" value={fmt(stats.cardCount)} />
-      <StatCard label="Jami vizitka savdosi" value={fmt(stats.totalCardSalesValue) + " so'm"} />
+      <StatCard label="Band qilingan raqamli tashrif qog'ozlar" value={fmt(stats.cardCount)} />
+      <StatCard label="Jami raqamli tashrif qog'ozi savdosi" value={fmt(stats.totalCardSalesValue) + " so'm"} />
       <StatCard label="Faol auksionlar" value={fmt(stats.activeAuctions)} />
       <StatCard label="Kutilayotgan buyurtmalar" value={fmt(stats.pendingWebOrders)} />
     </div>
@@ -157,7 +157,7 @@ function AnalyticsTab() {
         </div>
 
         <div>
-          <div className="text-sm font-bold">Band qilingan vizitkalar (30 kun)</div>
+          <div className="text-sm font-bold">Band qilingan raqamli tashrif qog'ozlar (30 kun)</div>
           <div className="mt-3 h-64 rounded-xl border border-white/10 bg-base-200/40 p-3">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.cardsSeries}>

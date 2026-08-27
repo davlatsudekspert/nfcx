@@ -60,7 +60,7 @@ export default function Header() {
           ) : (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>Kirish</button>
           )}
-          <button className="btn btn-primary btn-sm" onClick={() => go('/')}>Vizitka olish</button>
+          <button className="btn btn-primary btn-sm" onClick={() => go('/')}>Raqamli tashrif qog'ozi olish</button>
         </div>
 
         <div className="flex-none md:hidden">
@@ -93,7 +93,7 @@ export default function Header() {
               )}
             </li>
           </ul>
-          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/')}>Vizitka olish</button>
+          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/')}>Raqamli tashrif qog'ozi olish</button>
         </div>
       )}
     </header>

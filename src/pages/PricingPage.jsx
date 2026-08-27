@@ -52,7 +52,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
           Narx qanday <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">hisoblanadi</span>?
         </h1>
         <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-base-content/60">
-          Minimal narx {fmt(BASE_PRICE)} so'mdan boshlanadi va har bandlangan vizitka bilan +{Math.round(PRICE_GROWTH * 100)}%ga
+          Minimal narx {fmt(BASE_PRICE)} so'mdan boshlanadi va har bandlangan raqamli tashrif qog'ozi bilan +{Math.round(PRICE_GROWTH * 100)}%ga
           oshib boradi (maksimal {MAX_PRICE_MULT}× gacha). Kamyob harf/raqam naqshlari — bir xil harflar,
           ketma-ketlik, "000" — narxni yanada oshiradi.
         </p>
@@ -74,7 +74,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
       <section id="kalkulyator" className="mt-16">
         <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Kalkulyator</div>
-        <h2 className="mt-2 text-2xl font-bold">O'z vizitkangiz narxini hisoblang</h2>
+        <h2 className="mt-2 text-2xl font-bold">O'z raqamli tashrif qog'ozingiz narxini hisoblang</h2>
         <p className="mt-2 text-sm text-base-content/55">Kod kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.</p>
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
@@ -130,7 +130,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 disabled={!calcParsed || calcTaken}
                 onClick={() => setModalCode(calcParsed.code)}
               >
-                {!calcParsed ? 'Avval vizitka kiriting' : calcTaken ? 'Bu vizitka band' : ('Bandlash — ' + fmt(calcInfo.total) + " so'm")}
+                {!calcParsed ? "Avval raqamli tashrif qog'ozi kiriting" : calcTaken ? "Bu raqamli tashrif qog'ozi band" : ("Bandlash — " + fmt(calcInfo.total) + " so'm")}
               </button>
             </div>
           </div>

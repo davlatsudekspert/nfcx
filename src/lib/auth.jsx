@@ -50,6 +50,6 @@ export const authRegister = (email, password, extra = {}) =>
 
 export const authLogout = () => api('/auth/logout', { method: 'POST' });
 
-// Vizitkani egasi sifatida tahrirlash.
+// Raqamli tashrif qog'ozini egasi sifatida tahrirlash.
 export const authUpdateCard = (code, record) =>
   api(`/records/${encodeURIComponent(code)}`, { method: 'PUT', body: JSON.stringify(record) });

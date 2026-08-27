@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetSale, dbRequestPremium, dbGetPayment } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetSale, dbSetPrimary, dbRequestPremium, dbGetPayment } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -342,6 +342,21 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
+  const [primaryBusy, setPrimaryBusy] = useState(false);
+  const makePrimary = async () => {
+    setPrimaryBusy(true);
+    setSaleMsg(null);
+    try {
+      await dbSetPrimary(card.code);
+      onSaved({ ...card, isPrimary: true });
+      setSaleMsg({ type: 'ok', text: "Asosiy profil sifatida belgilandi." });
+    } catch (err) {
+      setSaleMsg({ type: 'err', text: err.message });
+    } finally {
+      setPrimaryBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: "Ism bo'sh bo'lmasligi kerak." }); return; }
     setBusy(true);
@@ -352,7 +367,6 @@ function EditCardForm({ card, onSaved }) {
         role: form.role.trim(),
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
-        
         accentColor: form.accentColor,
         bgColor: form.bgColor,
         bgAnimated: form.bgAnimated,
@@ -382,7 +396,7 @@ function EditCardForm({ card, onSaved }) {
       const text = err.message === 'unauthorized'
         ? 'Avval tizimga kiring.'
         : err.message === 'forbidden'
-          ? 'Bu vizitka sizga tegishli emas.'
+          ? "Bu raqamli tashrif qog'ozi sizga tegishli emas."
           : "Saqlashda xatolik yuz berdi.";
       setMsg({ type: 'err', text });
     } finally {
@@ -396,7 +410,10 @@ function EditCardForm({ card, onSaved }) {
     <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{card.code.toLowerCase()}</div>
+          <div className="flex items-center gap-2 font-mono text-sm font-bold tracking-wide">
+            nfcstore.uz/{card.code.toLowerCase()}
+            {card.isPrimary && <span className="badge badge-accent badge-xs">ASOSIY</span>}
+          </div>
           <div className="mt-1 text-xs text-base-content/50">
             {fmt(card.price)} so'm · {timeAgo(card.ts)} · {fmt(card.views || 0)} ko'rish
             {card.forSale && <span className="badge badge-accent badge-outline badge-xs ml-2 align-middle"> SOTUVDA</span>}
@@ -404,6 +421,11 @@ function EditCardForm({ card, onSaved }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/' + card.code)}>Ko'rish</button>
+          {!card.isPrimary && (
+            <button className="btn btn-ghost btn-sm" onClick={makePrimary} disabled={primaryBusy}>
+              {primaryBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Asosiy qilish'}
+            </button>
+          )}
           <button className={'btn btn-sm ' + (card.forSale ? 'btn-ghost' : 'btn-primary')} onClick={toggleSale} disabled={saleBusy}>
             {saleBusy ? <span className="loading loading-spinner loading-xs"></span> : card.forSale ? "Sotuvdan olish" : 'Sotuvga qo\u2019yish'}
           </button>
@@ -665,7 +687,7 @@ export default function AccountPage({ refreshCatalog }) {
             <b>{until.toLocaleString('uz-UZ')}</b> gacha bloklangan.
           </p>
           <p className="mt-3 text-sm text-error">
-            Diqqat: bu takrorlansa, akkauntingiz doimiy bloklanishi yoki vizitkalaringiz olib qo'yilishi mumkin.
+            Diqqat: bu takrorlansa, akkauntingiz doimiy bloklanishi yoki raqamli tashrif qog'ozilaringiz olib qo'yilishi mumkin.
           </p>
         </div>
       </main>
@@ -725,10 +747,10 @@ export default function AccountPage({ refreshCatalog }) {
       )}
 
       <section className="pt-8">
-        <h2 className="text-xl font-bold">Mening vizitkalarim</h2>
+        <h2 className="text-xl font-bold">Mening raqamli tashrif qog'ozilarim</h2>
         {myCards.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
-            Hozircha vizitkangiz yo'q.{' '}
+            Hozircha raqamli tashrif qog'ozingiz yo'q.{' '}
             <button className="cursor-pointer underline underline-offset-2 hover:text-base-content" onClick={() => navigate('/')}>
               Bosh sahifada band qilish &rarr;
             </button>

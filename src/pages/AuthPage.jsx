@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { authLogin, authRegister, useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
+import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
 const BOT_USERNAME = 'NFCStoreBot';
@@ -66,14 +68,25 @@ export default function AuthPage({ mode }) {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="flex justify-center pt-16">
+      <section className="grid items-center gap-14 pt-16 lg:grid-cols-2">
+        <div className="hidden justify-self-center lg:flex">
+          <div className="flex flex-col items-center gap-6">
+            <div className="animate-[floatY_5.5s_ease-in-out_infinite]">
+              <Interactive3DCard>
+                <NfcCard code="ABZ007" name="SIZNING ISMINGIZ" finish="gold" size="lg" rim />
+              </Interactive3DCard>
+            </div>
+            <p className="max-w-[280px] text-center text-sm text-base-content/45">Bir tegish — profilingiz ochiladi. Kartani bosib, orqa tomonini ham ko'ring.</p>
+          </div>
+        </div>
+        <div className="flex justify-center lg:justify-start">
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200/70 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
           <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">NFCSTORE</div>
           <h2 className="mt-2 text-2xl font-bold">{isRegister ? 'Ro\u2019yxatdan o\u2019tish' : 'Kirish'}</h2>
           <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">
             {isRegister
-              ? 'Akkaunt yarating — sotib olgan vizitkangiz profilingiz bilan birga shu yerda bo\u2019ladi.'
-              : 'Vizitkalaringizni boshqarish uchun akkauntingizga kiring.'}
+              ? "Akkaunt yarating — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi."
+              : "Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring."}
           </p>
 
           <form onSubmit={submit} className="mt-6 space-y-3">
@@ -147,6 +160,7 @@ export default function AuthPage({ mode }) {
               </>
             )}
           </div>
+        </div>
         </div>
       </section>
     </main>

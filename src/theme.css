@@ -34,6 +34,15 @@
   --font-display: "Space Grotesk", ui-sans-serif, sans-serif;
 }
 
+/* Saytdagi barcha oddiy chegaralarni (border) biroz qalinroq va aniqroq
+   qilamiz — Word'dagi ~1.5-2pt chiziqqa yaqin, "premium" ko'rinish uchun.
+   Diqqat: bu faqat "border" (rang qo'shimcha "border-white/10" kabi
+   klass bilan beriladi) uchun — "border-2"/"border-4" kabi aniq
+   ko'rsatilgan qalinliklarga tegmaydi. */
+.border {
+  border-width: 1.5px;
+}
+
 /* Keyframes referenced by animate-[...] utilities in components */
 @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes shimmerSweep { 0% { transform: translateX(-140%) translateY(-140%) rotate(25deg); } 100% { transform: translateX(140%) translateY(140%) rotate(25deg); } }

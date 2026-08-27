@@ -110,7 +110,7 @@ export async function dbAddView(code) {
 
 // ---------- Sotuv ----------
 
-// Sotuvdagi vizitkalar ro'yxati.
+// Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.
 export async function dbListSales() {
   try {
     const list = await api('/sales');
@@ -122,9 +122,9 @@ export async function dbListSales() {
 
 const SALE_ERRORS = {
   unauthorized: "Sotib olish uchun avval tizimga kiring.",
-  own_card: "Bu vizitka allaqachon sizniki.",
-  not_for_sale: "Bu vizitka hozir sotuvda emas.",
-  not_found: "Vizitka topilmadi.",
+  own_card: "Bu raqamli tashrif qog'ozi allaqachon sizniki.",
+  not_for_sale: "Bu raqamli tashrif qog'ozi hozir sotuvda emas.",
+  not_found: "Raqamli tashrif qog'ozi topilmadi.",
 };
 
 export async function dbBuy(code) {
@@ -148,6 +148,17 @@ export async function dbSetSale(code, list) {
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new Error(SALE_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  return data;
+}
+
+// Bir nechta raqamli tashrif qog'ozi (vizitka)dan birini "Asosiy" deb belgilash.
+export async function dbSetPrimary(code) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/set-primary`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error('Xatolik yuz berdi.');
   return data;
 }
 
@@ -199,8 +210,8 @@ export async function dbGetAuction(id) {
 }
 
 const AUCTION_ERRORS = {
-  not_owner: 'Bu vizitka sizga tegishli emas.',
-  already_in_auction: 'Bu vizitka allaqachon auksionda.',
+  not_owner: "Bu raqamli tashrif qog'ozi sizga tegishli emas.",
+  already_in_auction: "Bu raqamli tashrif qog'ozi allaqachon auksionda.",
   bad_input: "Kiritilgan ma'lumotlar noto'g'ri.",
   BAD_INPUT: "Kiritilgan ma'lumotlar noto'g'ri.",
   buy_now_too_low: "\u2018Darhol sotib olish\u2019 narxi boshlang'ich narxdan yuqori bo'lishi kerak.",

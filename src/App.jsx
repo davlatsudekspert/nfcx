@@ -55,7 +55,7 @@ export default function App() {
 
   useEffect(() => { refreshCatalog(); }, [refreshCatalog]);
 
-  // Har bir band qilingan vizitka o'zining alohida sahifasiga ega:
+  // Har bir band qilingan raqamli tashrif qog'ozi o'zining alohida sahifasiga ega:
   // nfcstore.uz/aaa00 (harf katta-kichikligi farq qilmaydi).
   let page;
   let bare = false;

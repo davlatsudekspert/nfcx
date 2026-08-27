@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { IconChip, IconWave } from './Icons.jsx';
 
 // A premium physical-card mockup — chip, contactless waves, embossed
-// vizitka code and name — with a real-time mouse-tilt (3D perspective)
+// raqamli tashrif qog'ozi code and name — with a real-time mouse-tilt (3D perspective)
 // and a looping holographic sheen sweep. Purely our own generic design
 // (no third-party card-network branding), in black / silver / white
 // finishes to match the monochrome theme.
@@ -22,7 +22,7 @@ const CARD_SIZES = {
 const SHADOW_DEFAULT = '0 20px 45px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)';
 const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.28), 0 28px 70px rgba(0,0,0,0.65)';
 
-export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', rim = false }) {
+export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', rim = false, back = false }) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
   const f = FINISHES[finish] || FINISHES.black;
@@ -39,6 +39,28 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
   const onLeave = () => setTilt({ rx: 0, ry: 0, mx: 50, my: 50 });
 
   const spacedCode = String(code).split('').join(' ');
+
+  // Kartaning ORQA tomoni — QR-kod uslubidagi belgi, logotip va havola.
+  if (back) {
+    return (
+      <div className="flex justify-center" style={{ perspective: 1000 }}>
+        <div
+          className={`relative flex ${CARD_SIZES[size]} select-none flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl px-5 py-[18px]`}
+          style={{ background: f.bg, color: f.fg, boxShadow: rim ? SHADOW_RIM : SHADOW_DEFAULT }}
+        >
+          <div className="pointer-events-none absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+          <div className="relative z-[1] grid grid-cols-5 gap-[3px] rounded-md p-2" style={{ background: 'rgba(0,0,0,0.12)' }}>
+            {Array.from({ length: 25 }).map((_, i) => (
+              <span key={i} className="h-[5px] w-[5px] rounded-[1px]" style={{ background: (i * 7 + code.length) % 3 === 0 ? 'transparent' : f.code, opacity: 0.9 }} />
+            ))}
+          </div>
+          <div className="relative z-[1] text-center font-mono text-[10px] tracking-[0.1em]" style={{ color: f.sub }}>nfcstore.uz/{String(code).toLowerCase()}</div>
+          <div className="relative z-[1] text-center font-display text-[10px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
+          <div className="relative z-[1] text-center font-mono text-[8px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE {year}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center" style={{ perspective: 1000 }}>

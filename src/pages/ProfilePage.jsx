@@ -300,7 +300,7 @@ export default function ProfilePage({ code, catalog }) {
     try {
       const bought = await dbBuy(code);
       setRecord(bought);
-      flashToast("Tabriklaymiz — vizitka endi sizniki!");
+      flashToast("Tabriklaymiz — raqamli tashrif qog'ozi endi sizniki!");
     } catch (err) {
       flashToast(err.message || 'Xatolik yuz berdi.');
     } finally {
@@ -334,7 +334,7 @@ export default function ProfilePage({ code, catalog }) {
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
         <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
           <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">nfcstore.uz/{code.toLowerCase()} hali bo'sh</h2>
-          <p>Bu vizitka hech kimga tegishli emas. Uni birinchi bo'lib siz oling.</p>
+          <p>Bu raqamli tashrif qog'ozi hech kimga tegishli emas. Uni birinchi bo'lib siz oling.</p>
           {parsed
             ? <button onClick={() => navigate('/')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">Bosh sahifada band qilish</button>
             : <p className="text-[13px]">Format noto'g'ri: ABZ007 yoki faqat harflardan iborat so'z bo'lishi kerak.</p>}
@@ -448,7 +448,7 @@ export default function ProfilePage({ code, catalog }) {
 
         {rarityLabel && (
           <div className="mt-4 rounded-2xl border border-[color:var(--vz-line)] p-4" style={{ background: dark ? 'linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))' : 'linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.15))' }}>
-            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-extrabold tracking-[0.08em] [&_svg]:text-[#ffd76a]"><IconStar /> NODIR VIZITKA</div>
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-extrabold tracking-[0.08em] [&_svg]:text-[#ffd76a]"><IconStar /> {record.code}</div>
             <p className="m-0 text-[12.5px] leading-normal text-[color:var(--vz-ink-dim)]">Bu kombinatsiya o'zining naqshi ({rarityLabel}) tufayli boshqalardan qimmatroq va kamyob hisoblanadi.</p>
           </div>
         )}
@@ -502,15 +502,10 @@ export default function ProfilePage({ code, catalog }) {
         </div>
 
         <div className="mt-6 flex justify-center gap-[26px] border-b border-[color:var(--vz-line)]">
-          <button onClick={() => setTab('vizitka')} className={`-mb-px cursor-pointer border-b-2 border-transparent bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'text-[color:var(--vz-ink-faint)]'}`}>Vizitka</button>
-          <button onClick={() => setTab('postlar')} className={`-mb-px cursor-pointer border-b-2 border-transparent bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'text-[color:var(--vz-ink-faint)]'}`}>
-            Postlar <span className="ml-1 inline-block h-1.5 w-1.5 animate-[pulseRing_2s_ease-out_infinite] rounded-full bg-[color:var(--vz-ink)] align-middle"></span>
-          </button>
+          <button className="-mb-px cursor-default border-b-2 border-current bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold text-[color:var(--vz-ink)]">Raqamli tashrif qog'ozi</button>
         </div>
 
-        {tab === 'postlar' ? (
-          <p className="mt-5 text-center text-[13.5px] text-[color:var(--vz-ink-faint)]">Hozircha postlar yo'q.</p>
-        ) : (
+        {(
           <>
             {record.hashtags && record.hashtags.length > 0 && (
               <div className="mt-5 flex flex-wrap justify-center gap-4 text-[13px] font-semibold text-[color:var(--vz-accent)]">
@@ -555,21 +550,6 @@ export default function ProfilePage({ code, catalog }) {
               </>
             )}
 
-            {(record.email || record.phone) && (
-              <>
-                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">ALOQA</div>
-                <div className="flex flex-col gap-3 rounded-2xl border border-[color:var(--vz-line)] px-[18px] py-4">
-                  {record.email && (
-                    <div className="flex items-center gap-2.5 text-[13.5px] [&_svg]:shrink-0 [&_svg]:text-[color:var(--vz-ink-dim)]"><IconMail /> <a href={`mailto:${record.email}`} className="no-underline hover:underline">{record.email}</a></div>
-                  )}
-                  {record.phone && (
-                    <div className="flex items-center gap-2.5 text-[13.5px] [&_svg]:shrink-0 [&_svg]:text-[color:var(--vz-ink-dim)]"><IconPhone /> <a href={`tel:${record.phone}`} className="no-underline hover:underline">{record.phone}</a></div>
-                  )}
-                </div>
-              </>
-            )}
-
             {hasSocials && (
               <>
                 <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
@@ -587,7 +567,7 @@ export default function ProfilePage({ code, catalog }) {
             {otherCodes.length > 0 && (
               <>
                 <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-3 text-center text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">SIZNING BOSHQA VIZITKALARINGIZ</div>
+                <div className="mb-3 text-center text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">SIZNING BOSHQA RAQAMLI TASHRIF QOG'OZILARINGIZ</div>
                 <div className="flex flex-wrap justify-center gap-2">
                   {otherCodes.map((c) => (
                     <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]">nfcstore.uz/{c.code.toLowerCase()}</span>

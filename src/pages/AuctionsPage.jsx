@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { dbListAuctions } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
+import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 function timeLeft(endsAt) {
   const ms = new Date(endsAt).getTime() - Date.now();
@@ -28,17 +30,24 @@ export default function AuctionsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
-        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-          Auksion
-        </span>
-        <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          Noyob kodlar uchun <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">ochiq savdo</span>
-        </h1>
-        <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
-          Egalari o'z vizitka kodlarini auksionga qo'yishadi. Taklif berish bepul — g'olib chiqsangiz, 24 soat ichida real so'mda to'laysiz.
-        </p>
+      <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
+        <div>
+          <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+            Auksion
+          </span>
+          <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
+            Noyob kodlar uchun <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">ochiq savdo</span>
+          </h1>
+          <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
+            Egalari o'z raqamli tashrif qog'ozi kodlarini auksionga qo'yishadi. Taklif berish bepul — g'olib chiqsangiz, 24 soat ichida real so'mda to'laysiz.
+          </p>
+        </div>
+        <div className="hidden justify-self-center lg:flex">
+          <Interactive3DCard>
+            <NfcCard code={auctions?.[0]?.code || 'VIP001'} name="G'OLIB SIZ BO'LING" finish="gold" size="lg" rim />
+          </Interactive3DCard>
+        </div>
       </section>
 
       <section className="mt-10">

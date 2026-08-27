@@ -34,9 +34,9 @@ export default function CatalogPage({ catalog }) {
             Katalog
           </span>
           <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-            Barcha band qilingan <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">vizitkalar</span>
+            Barcha band qilingan <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">raqamli tashrif qog'ozlar</span>
           </h1>
-          <p className="mt-3 text-[15px] text-base-content/60">Jami {fmt(catalog.length)} ta vizitka band qilingan. Kod yoki ism bo'yicha qidiring.</p>
+          <p className="mt-3 text-[15px] text-base-content/60">Jami {fmt(catalog.length)} ta raqamli tashrif qog'ozi band qilingan. Kod yoki ism bo'yicha qidiring.</p>
           <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-base-content/40">
             <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">qidirish</span>
             <input
@@ -63,8 +63,8 @@ export default function CatalogPage({ catalog }) {
       {sales.length > 0 && (
         <section id="sotuv" className="mt-16">
           <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Bozor</div>
-          <h2 className="mt-2 text-2xl font-bold">Sotuvdagi vizitkalar</h2>
-          <p className="mt-2 text-sm text-base-content/55">Egalari qayta sotuvga qo'ygan vizitkalar. Sotib olingach profilingizga o'tadi.</p>
+          <h2 className="mt-2 text-2xl font-bold">Sotuvdagi raqamli tashrif qog'ozlar</h2>
+          <p className="mt-2 text-sm text-base-content/55">Egalari qayta sotuvga qo'ygan raqamli tashrif qog'ozlar. Sotib olingach profilingizga o'tadi.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sales.map((s) => (
               <button key={s.code} className={`${cardCls} text-left`} onClick={() => navigate('/' + s.code)}>
@@ -81,7 +81,7 @@ export default function CatalogPage({ catalog }) {
 
       <section className="mt-16">
         <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Live</div>
-        <h2 className="mt-2 text-2xl font-bold">Barcha vizitkalar</h2>
+        <h2 className="mt-2 text-2xl font-bold">Barcha raqamli tashrif qog'ozlar</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.length === 0 && <div className="col-span-full py-10 text-center text-base-content/45">Hech narsa topilmadi.</div>}
           {filtered.map((it) => (

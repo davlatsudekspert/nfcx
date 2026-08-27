@@ -1,6 +1,6 @@
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
-// Dinamik narxlash: boshlang'ich narx har bir band qilingan vizitka bilan
+// Dinamik narxlash: boshlang'ich narx har bir band qilingan raqamli tashrif qog'ozi bilan
 // oshib boradi (talab ortishi bilan qimmatlashadi).
 export const BASE_PRICE = 40000;       // start narxi (avvalgi 200 000 / 5)
 export const PRICE_GROWTH = 0.01;      // har band qilingan vizitka: +1%
@@ -30,7 +30,7 @@ export function parseCode(raw) {
   return { code: c, letters, digits };
 }
 
-// Faqat harflardan iborat premium vizitka: ALI, UZBEKISTAN ...
+// Faqat harflardan iborat premium raqamli tashrif qog'ozi: ALI, UZBEKISTAN ...
 // HOZIRCHA O'CHIRILGAN — checker/kalkulyator/bandlash bu formatni taklif
 // qilmaydi. Backend hali ham qabul qiladi, shuning uchun bu yerda funksiya
 // qoldirilgan (kerak bo'lsa LETTER_CODES_ENABLED ni true qilib qaytarish
@@ -52,7 +52,7 @@ export function parseAnyCode(raw) {
   return parseLetterCode(clean);
 }
 
-// Harfli vizitkalar oddiy vizitkalardan 3 barobar qimmat.
+// Harfli raqamli tashrif qog'ozlar oddiy raqamli tashrif qog'ozilardan 3 barobar qimmat.
 export const LETTER_MULT = 3;
 
 export function letterPrice(sold = 0) {

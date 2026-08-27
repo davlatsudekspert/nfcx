@@ -2,12 +2,12 @@ import { navigate } from '../lib/router.js';
 import NfcCard from '../components/NfcCard.jsx';
 
 const STEPS = [
-  { n: '01', title: 'Kodni tanlang va tekshiring', text: "3 harf + 3 raqamdan iborat vizitkangizni kiriting (masalan ABZ007) — bo'sh yoki bandligini shu zahoti ko'rasiz." },
-  { n: '02', title: "Ro'yxatdan o'ting va bandlang", text: 'Hisob yaratasiz, narxni ko\'rasiz va bir bosishda vizitkani o\'zingizga biriktirasiz.' },
+  { n: '01', title: 'Kodni tanlang va tekshiring', text: "3 harf + 3 raqamdan iborat raqamli tashrif qog'ozingizni kiriting (masalan ABZ007) — bo'sh yoki bandligini shu zahoti ko'rasiz." },
+  { n: "02", title: "Ro'yxatdan o'ting va bandlang", text: "Hisob yaratasiz, narxni ko'rasiz va bir bosishda raqamli tashrif qog'ozini o'zingizga biriktirasiz." },
   { n: '03', title: 'Profilingizni sozlang', text: "Kabinetdan ism, kasb, rasm, bio, ijtimoiy tarmoqlar (Telegram, Instagram, Facebook, X), to'lov kartasi va dizayn mavzusini qo'shasiz." },
   { n: '04', title: 'Ulashing', text: "Profilingiz nfcstore.uz/kodingiz manzilida yashaydi — havolani ulashing yoki jismoniy NFC kartangizga yozdiring." },
   { n: '05', title: 'Auksionda qatnashing', text: "Noyob kodlar vaqti-vaqti bilan auksionga qo'yiladi — taklif bering, g'olib chiqsangiz 24 soat ichida to'lab olasiz." },
-  { n: '06', title: 'Xohlasangiz — soting', text: "Vizitka endi kerak bo'lmasa, uni kabinetdan sotuvga qo'yasiz. Boshqa foydalanuvchi sotib olsa, egalik unga o'tadi." },
+  { n: '06', title: 'Xohlasangiz — soting', text: "Raqamli tashrif qog'ozi endi kerak bo'lmasa, uni kabinetdan sotuvga qo'yasiz. Boshqa foydalanuvchi sotib olsa, egalik unga o'tadi." },
 ];
 
 export default function HowItWorksPage() {
@@ -22,7 +22,7 @@ export default function HowItWorksPage() {
           “Barcha ma’lumotlaringiz — bitta raqamli profilda.”
         </h1>
         <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
-          NFCSTORE orqali shaxsiy raqamli vizitka olish olti qadamdan iborat — bandlashdan tortib
+          NFCSTORE orqali shaxsiy raqamli raqamli tashrif qog'ozi olish olti qadamdan iborat — bandlashdan tortib
           uni qayta sotish yoki auksionda qatnashishgacha.
         </p>
         <div className="mt-8 flex justify-center">

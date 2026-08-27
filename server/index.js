@@ -7,7 +7,7 @@ import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession,
-  attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner,
+  attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   listForSale, setForSale, transferCard,
   getBotOrder, setBotOrderStatus,
   createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser,
@@ -885,6 +885,18 @@ app.put('/api/records/:code', async (req, res) => {
 
 // Sotuvga qo'yish / sotuvdan olish. Narx avtomatik: oddiy vizitkaning
 // joriy narxidan 3 barobar qimmat.
+// Foydalanuvchining bir nechta raqamli tashrif qog'ozi (vizitka) bo'lsa,
+// ulardan bittasini "Asosiy" deb belgilash.
+app.post('/api/records/:code/set-primary', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  const ok = await setPrimaryCard(code, user.id);
+  if (!ok) return res.status(403).json({ error: 'forbidden' });
+  res.json({ ok: true });
+});
+
 app.post('/api/records/:code/sale', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });

@@ -177,6 +177,7 @@ export async function initDb() {
     accent_color: `ALTER TABLE cards ADD COLUMN accent_color TEXT`,
     bg_color: `ALTER TABLE cards ADD COLUMN bg_color TEXT`,
     bg_animated: `ALTER TABLE cards ADD COLUMN bg_animated BOOLEAN NOT NULL DEFAULT TRUE`,
+    is_primary: `ALTER TABLE cards ADD COLUMN is_primary BOOLEAN NOT NULL DEFAULT FALSE`,
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
   };
   const existing = await pool.query(
@@ -193,7 +194,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -594,6 +595,7 @@ export function isDbReady() {
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
+  is_primary AS "isPrimary",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
@@ -612,6 +614,7 @@ function rowToRecord(row) {
     accentColor: row.accentColor || '',
     bgColor: row.bgColor || '',
     bgAnimated: row.bgAnimated !== false,
+    isPrimary: !!row.isPrimary,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
@@ -786,10 +789,34 @@ export async function attachCardToUser(code, userId) {
 
 export async function listRecordsByUser(userId) {
   const { rows } = await pool.query(
-    `SELECT ${SELECT_FIELDS} FROM cards WHERE user_id = $1 ORDER BY ts DESC`,
+    `SELECT ${SELECT_FIELDS} FROM cards WHERE user_id = $1 ORDER BY is_primary DESC, ts DESC`,
     [userId]
   );
   return rows.map(rowToRecord);
+}
+
+// Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
+// "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
+// tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).
+export async function setPrimaryCard(code, userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: owns } = await client.query(
+      `SELECT 1 FROM cards WHERE code = $1 AND user_id = $2 FOR UPDATE`,
+      [code, userId]
+    );
+    if (!owns[0]) { await client.query('ROLLBACK'); return null; }
+    await client.query(`UPDATE cards SET is_primary = FALSE WHERE user_id = $1`, [userId]);
+    await client.query(`UPDATE cards SET is_primary = TRUE WHERE code = $1`, [code]);
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getRecordOwner(code) {

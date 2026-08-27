@@ -5,7 +5,7 @@ import { navigate } from '../lib/router.js';
 import { fmt, dateTime } from '../lib/format.js';
 
 const KIND_LABEL = {
-  card_purchase: 'Vizitka xaridi',
+  card_purchase: "Raqamli tashrif qog'ozi xaridi",
   auction_payment: "Auksion to'lovi",
   premium_upgrade: "Premium profilga o'tish",
   premium_follow: 'Premium obuna',
@@ -38,7 +38,7 @@ export default function PaymentsPage() {
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <h1 className="pt-10 text-2xl font-bold">To'lovlar tarixi</h1>
-      <p className="mt-2 text-sm text-base-content/55">Barcha real to'lovlaringiz — vizitka, auksion, premium va obunalar.</p>
+      <p className="mt-2 text-sm text-base-content/55">Barcha real to'lovlaringiz — raqamli tashrif qog'ozi, auksion, premium va obunalar.</p>
 
       {data && data.pendingPayout > 0 && (
         <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-5">

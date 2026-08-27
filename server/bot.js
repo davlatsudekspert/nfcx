@@ -91,7 +91,7 @@ async function welcomeText() {
   return [
     `\u{1F44B} <b>NFCSTORE</b> botiga xush kelibsiz!`,
     '',
-    'Bu yerda nfcstore.uz vizitka kodlarini sotib olasiz.',
+    "Bu yerda nfcstore.uz raqamli tashrif qog'ozi kodlarini sotib olasiz.",
     `\u{1F4CA} Ochiq statistika: <b>${sold}</b> ta muvaffaqiyatli savdo qilingan.`,
     '',
     '<b>Saytda ro\u2019yxatdan o\u2019tishdan oldin:</b>',

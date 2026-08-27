@@ -40,7 +40,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const totalPrice = price + (wantPhysicalCard ? PHYSICAL_CARD_FEE : 0);
 
   // MUHIM: akkaunt endi tanlov emas, majburiy. Tizimga kirmagan bo'lsa,
-  // email+parol kiritish shart — aks holda vizitka hech kimning
+  // email+parol kiritish shart — aks holda raqamli tashrif qog'ozi hech kimning
   // profiliga bog'lanmay, "egasiz" qolib ketardi (ilgari yuz bergan bug').
   const needsAccount = !user;
 
@@ -62,7 +62,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const submit = async () => {
     if (!name.trim()) { setMsg({ type: 'err', text: 'Ismingizni kiriting.' }); return; }
     if (needsAccount) {
-      if (!acctEmail.trim()) { setMsg({ type: 'err', text: 'Vizitkangizni boshqarish uchun email kiriting.' }); return; }
+      if (!acctEmail.trim()) { setMsg({ type: 'err', text: "Raqamli tashrif qog'ozingizni boshqarish uchun email kiriting." }); return; }
       if (acctPassword.length < 6) { setMsg({ type: 'err', text: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' }); return; }
       if (!acctPhone.trim()) { setMsg({ type: 'err', text: 'Telefon raqamingizni kiriting.' }); return; }
       if (!acctBotAck) { setMsg({ type: 'err', text: "Avval botga yozganingizni tasdiqlovchi katakchani belgilang." }); return; }
@@ -97,7 +97,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       };
       const result = await dbCreate(code, data);
       if (!result) {
-        setMsg({ type: 'err', text: 'Afsuski, bu vizitka allaqachon band qilingan yoki saqlashda xatolik yuz berdi.' });
+        setMsg({ type: 'err', text: "Afsuski, bu raqamli tashrif qog'ozi allaqachon band qilingan yoki saqlashda xatolik yuz berdi." });
         setBusy(false);
         return;
       }
@@ -112,7 +112,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
     } catch (err) {
       const code2 = err && err.code;
       const text = code2 === 'reserved_pending_payment'
-        ? 'Bu vizitka hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring.'
+        ? "Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring."
         : String(err.message).startsWith('bad_credentials')
           ? 'Bu email boshqa akkauntga tegishli va parol mos kelmadi.'
           : String(err.message) === 'phone_not_verified'
@@ -156,7 +156,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <h3 className="text-lg font-bold">To'lovni yakunlang</h3>
             <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
             <p className="mt-4 text-sm leading-relaxed text-base-content/70">
-              Vizitka <b>{fmt(order.price)} so'm</b>lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.
+              Raqamli tashrif qog'ozi <b>{fmt(order.price)} so'm</b>lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.
             </p>
             <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-5 w-full">
               To'lovga o'tish — {fmt(order.price)} so'm
@@ -173,7 +173,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           </div>
         ) : (
         <div className="p-6">
-          <h3 className="text-lg font-bold">Vizitkani band qilish</h3>
+          <h3 className="text-lg font-bold">Raqamli tashrif qog'ozini band qilish</h3>
           <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
 
           <div className="mt-5 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
@@ -221,7 +221,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             {!user ? (
               <>
                 <div className="divider my-2"></div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/60">Akkaunt — vizitkangizni boshqarish uchun shart *</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/60">Akkaunt — raqamli tashrif qog'ozingizni boshqarish uchun shart *</div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className={field}>
                     <span className="text-xs font-semibold text-base-content/70">Email (login) *</span>
@@ -255,14 +255,14 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                   </span>
                 </label>
                 <p className="text-xs leading-relaxed text-base-content/45">
-                  Akkauntsiz band qilish endi mumkin emas — aks holda vizitkangiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.
+                  Akkauntsiz band qilish endi mumkin emas — aks holda raqamli tashrif qog'ozingiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.
                 </p>
               </>
             ) : (
               <>
                 <div className="divider my-2"></div>
                 <p className="text-xs leading-relaxed text-base-content/45">
-                  Vizitka profilingizga biriktiriladi: <b>{user.email}</b>. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.
+                  Raqamli tashrif qog'ozi profilingizga biriktiriladi: <b>{user.email}</b>. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.
                 </p>
               </>
             )}
