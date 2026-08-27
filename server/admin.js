@@ -17,7 +17,7 @@ import {
   adminStats, closeAuctionBidding, createAuction, getActiveAuctionByCode, getRecord,
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
-  listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder,
+  listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder, finalizePaidBotOrder,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -149,6 +149,16 @@ adminRouter.get('/orders', async (req, res) => {
 adminRouter.post('/orders/:id/confirm-payment', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const result = await finalizePaidWebOrder(Number(req.params.id));
+  if (result.alreadyProcessed) return res.status(409).json({ error: 'already_processed' });
+  res.json(result);
+});
+
+// Xuddi shu, lekin Telegram BOT orqali kelgan buyurtmalar uchun (masalan
+// foydalanuvchi chekni skrinshot qilib yuborgan, admin ko'zi bilan
+// tekshirib "to'landi" deb belgilaydi).
+adminRouter.post('/bot-orders/:id/confirm-payment', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const result = await finalizePaidBotOrder(Number(req.params.id));
   if (result.alreadyProcessed) return res.status(409).json({ error: 'already_processed' });
   res.json(result);
 });

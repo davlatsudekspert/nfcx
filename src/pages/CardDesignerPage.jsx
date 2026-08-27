@@ -145,6 +145,7 @@ function drawEmbossText(ctx, text, cx, cy, size, colorSet, font) {
   ctx.strokeText(text, cx, cy - 1);
 
   ctx.restore();
+  return textWidth;
 }
 
 function drawSubText(ctx, text, cx, cy, colorSet, font) {
@@ -257,11 +258,15 @@ function renderCard(ctx, w, h, state) {
   let fontSize = state.fontSize;
   if (text.length > 10) fontSize = Math.min(fontSize, fontSize * (10 / text.length) * 1.3);
 
-  const mainY = subText ? h / 2 - 24 : h / 2;
-  drawEmbossText(ctx, (text || ' ').toUpperCase(), w / 2, mainY, fontSize, colorSet, state.font);
+  // Matn markazi endi qattiq belgilangan emas — sichqoncha bilan
+  // sudraladigan state.textXY (nisbiy 0..1) orqali boshqariladi.
+  const textXY = state.textXY || { x: 0.5, y: 0.5 };
+  const cx = textXY.x * w;
+  const mainY = subText ? textXY.y * h - 24 : textXY.y * h;
+  const mainWidth = drawEmbossText(ctx, (text || ' ').toUpperCase(), cx, mainY, fontSize, colorSet, state.font);
 
   if (subText) {
-    drawSubText(ctx, subText, w / 2, mainY + fontSize / 2 + 30, colorSet, state.font);
+    drawSubText(ctx, subText, cx, mainY + fontSize / 2 + 30, colorSet, state.font);
   }
 
   if (state.side === 'back' && state.showNfc) {
@@ -270,10 +275,13 @@ function renderCard(ctx, w, h, state) {
 
   // Hitbox'lar — drag qilish uchun (qaysi elementga sichqoncha bosilgani).
   const hitboxes = {};
-  hitboxes.logo = drawPositionedImage(ctx, w, h, state.logoImage, state.logoXY, 70);
-  if (state.showQr) {
-    hitboxes.qr = drawPositionedImage(ctx, w, h, state.qrImage, state.qrXY, 120);
+  hitboxes.logo = drawPositionedImage(ctx, w, h, state.logoImage, state.logoXY, state.logoSize || 70);
+  // MUHIM: QR-kod faqat ORQA tomonda ko'rsatiladi (old tomonda hech qachon).
+  if (state.showQr && state.side === 'back') {
+    hitboxes.qr = drawPositionedImage(ctx, w, h, state.qrImage, state.qrXY, state.qrSize || 150);
   }
+  // Matn uchun taxminiy hitbox (o'lchangan kenglik asosida).
+  hitboxes.text = { x: cx - mainWidth / 2 - 14, y: mainY - fontSize / 2 - 14, w: mainWidth + 28, h: fontSize + 28 };
   return hitboxes;
 }
 
@@ -367,6 +375,13 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const [showQr, setShowQr] = useState(true);
   const [qrImage, setQrImage] = useState(null);
   const [qrXY, setQrXY] = useState({ x: 0.86, y: 0.16 });
+  const [qrSize, setQrSize] = useState(150);
+  // Matn joyi HAR TOMON UCHUN alohida (old/orqa matnlari butunlay boshqa
+  // uzunlikda bo'lishi mumkin, shuning uchun umumiy pozitsiya noqulay).
+  const [frontTextXY, setFrontTextXY] = useState({ x: 0.5, y: 0.5 });
+  const [backTextXY, setBackTextXY] = useState({ x: 0.5, y: 0.5 });
+  const textXY = side === 'front' ? frontTextXY : backTextXY;
+  const setTextXY = side === 'front' ? setFrontTextXY : setBackTextXY;
 
   // QR-kod — profilga (nfcstore.uz/<KOD>) havola qiladi. Old tomondagi
   // matn (odatda kod) yoki tashqaridan uzatilgan `code` propidan olinadi.
@@ -386,9 +401,9 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const buildState = useCallback((overrides) => ({
     side, frontText, frontSubText, backText, backSubText, showNfc,
     textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
-    logoImage, logoXY, showQr, qrImage, qrXY, ...overrides,
+    logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY, ...overrides,
   }), [side, frontText, frontSubText, backText, backSubText, showNfc,
-    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY]);
+    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -413,6 +428,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
     const hb = hitboxesRef.current;
     if (hitTest(x, y, hb.qr)) dragRef.current = 'qr';
     else if (hitTest(x, y, hb.logo)) dragRef.current = 'logo';
+    else if (hitTest(x, y, hb.text)) dragRef.current = 'text';
     else dragRef.current = null;
   };
   const onCanvasPointerMove = (e) => {
@@ -423,6 +439,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
     const ny = Math.min(1, Math.max(0, y / canvas.height));
     if (dragRef.current === 'logo') setLogoXY({ x: nx, y: ny });
     else if (dragRef.current === 'qr') setQrXY({ x: nx, y: ny });
+    else if (dragRef.current === 'text') setTextXY({ x: nx, y: ny });
   };
   const onCanvasPointerUp = () => { dragRef.current = null; };
 
@@ -578,9 +595,22 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
             </label>
             <p className="mt-2 text-xs text-base-content/45">
               {code || frontText
-                ? <>Havola: <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span> — joyini sichqoncha bilan suring.</>
+                ? <>Havola: <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span> — faqat ORQA tomonda chiqadi, joyini sichqoncha bilan suring.</>
                 : "Old tomon matni (kod) kiritilgach QR avtomatik hosil bo'ladi."}
             </p>
+            {showQr && (
+              <div className="mt-3">
+                <Label>QR-kod o'lchami ({qrSize}px)</Label>
+                <input type="range" min={60} max={280} step={10} value={qrSize} onChange={(e) => setQrSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+              </div>
+            )}
+          </FieldGroup>
+
+          <FieldGroup title="Matn joyi">
+            <p className="text-xs text-base-content/45">Asosiy matnni ({side === 'front' ? 'old' : 'orqa'} tomon) kartaning o'zida sichqoncha bilan ushlab, istalgan joyga suring.</p>
+            <button type="button" className="btn btn-ghost btn-xs mt-2" onClick={() => setTextXY({ x: 0.5, y: 0.5 })}>
+              Markazga qaytarish
+            </button>
           </FieldGroup>
 
           <FieldGroup title="Yuklab olish">

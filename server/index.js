@@ -10,7 +10,7 @@ import {
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
   listForSale, setForSale, transferCard,
-  getBotOrder, setBotOrderStatus,
+  getBotOrder, setBotOrderStatus, finalizePaidBotOrder,
   createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser, getPendingAuctionPaymentOrder,
   finalizePaidWebOrder, cancelPendingWebOrder,
   createAuction, getActiveAuctionByCode, getAuction, listActiveAuctions, listExpiredActiveAuctions,
@@ -437,13 +437,11 @@ app.post('/api/pay/paynet/webhook', async (req, res) => {
     }
 
     if (cb.status === 'paid') {
-      await setBotOrderStatus(order.id, 'paid');
-      // Sayt bilan sinxron: kodni band qilamiz ("Band" holati).
-      if (!(await getRecord(order.code))) {
-        await createRecord({ code: order.code, name: 'TELEGRAM MIJOZ', price: order.price });
+      const result = await finalizePaidBotOrder(order.id);
+      if (result.ok) {
+        notifyOrderPaidAuto(order).catch(() => {});
+        console.log(`[paynet] #${order.id} (${order.code}) avtomatik band qilindi.`);
       }
-      notifyOrderPaidAuto(order).catch(() => {});
-      console.log(`[paynet] #${order.id} (${order.code}) avtomatik band qilindi.`);
     } else if (cb.status === 'cancelled') {
       await setBotOrderStatus(order.id, 'cancelled');
       console.log(`[paynet] #${order.id} bekor qilindi.`);

@@ -281,10 +281,14 @@ function OrdersTab() {
   const load = () => adminApi('/orders').then((d) => setOrders(d.orders));
   useEffect(() => { load(); }, []);
 
-  const confirmPayment = async (id) => {
-    if (!confirm("To'lovni qo'lda tasdiqlaysizmi? Bu haqiqiy Payme to'lovi kelganini o'zingiz tekshirganingizni bildiradi.")) return;
-    setBusy(id);
-    try { await adminApi(`/orders/${id}/confirm-payment`, { method: 'POST' }); await load(); }
+  const confirmPayment = async (o) => {
+    if (!confirm("To'lovni qo'lda tasdiqlaysizmi? Bu haqiqiy to'lov kelganini o'zingiz tekshirganingizni bildiradi.")) return;
+    setBusy(o.id);
+    try {
+      const path = o.source === 'bot' ? `/bot-orders/${o.id}/confirm-payment` : `/orders/${o.id}/confirm-payment`;
+      await adminApi(path, { method: 'POST' });
+      await load();
+    }
     catch { alert("Tasdiqlab bo'lmadi — buyurtma allaqachon ishlangan yoki topilmadi."); }
     finally { setBusy(null); }
   };
@@ -304,8 +308,8 @@ function OrdersTab() {
               <td><span className={`badge badge-sm ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' ? 'badge-warning' : 'badge-ghost'}`}>{o.status}</span></td>
               <td className="text-xs text-base-content/50">{timeAgo(new Date(o.createdAt).getTime())}</td>
               <td>
-                {o.source === 'web' && o.status === 'pending' && (
-                  <button className="btn btn-ghost btn-xs" disabled={busy === o.id} onClick={() => confirmPayment(o.id)}>
+                {o.status === 'pending' && (
+                  <button className="btn btn-ghost btn-xs" disabled={busy === o.id} onClick={() => confirmPayment(o)}>
                     {busy === o.id ? <span className="loading loading-spinner loading-xs"></span> : "Qo'lda tasdiqlash"}
                   </button>
                 )}

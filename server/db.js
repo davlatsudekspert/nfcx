@@ -1068,6 +1068,19 @@ export async function setBotOrderStatus(id, status, screenshotFileId) {
   return rows[0] ? rowToBotOrder(rows[0]) : null;
 }
 
+// Bot orderni "to'landi" deb belgilaydi va kodni band qiladi — Payme/Paynet
+// webhook'i kelganda ham, admin QO'LDA tasdiqlaganda ham SHU BITTA
+// funksiya ishlatiladi (ikki marta yozilmasin).
+export async function finalizePaidBotOrder(orderId) {
+  const order = await getBotOrder(orderId);
+  if (!order || order.status !== 'pending') return { alreadyProcessed: true };
+  await setBotOrderStatus(order.id, 'paid');
+  if (!(await getRecord(order.code))) {
+    await createRecord({ code: order.code, name: 'TELEGRAM MIJOZ', price: order.price });
+  }
+  return { ok: true, order };
+}
+
 export async function listBotOrdersByUser(tgUserId) {
   const { rows } = await pool.query(
     `SELECT ${BOT_ORDER_FIELDS} FROM bot_orders
