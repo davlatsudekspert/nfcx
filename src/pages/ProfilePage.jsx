@@ -443,10 +443,15 @@ export default function ProfilePage({ code, catalog }) {
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}
 
-        {rarityLabel && (
-          <div className="mt-4 rounded-2xl border border-[color:var(--vz-line)] p-4" style={{ background: dark ? 'linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))' : 'linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.15))' }}>
-            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-extrabold tracking-[0.08em] [&_svg]:text-[#ffd76a]"><IconStar /> {record.code}</div>
-            <p className="m-0 text-[12.5px] leading-normal text-[color:var(--vz-ink-dim)]">Bu kombinatsiya o'zining naqshi ({rarityLabel}) tufayli boshqalardan qimmatroq va kamyob hisoblanadi.</p>
+        {(tierEmoji || tier !== 'free') && (
+          <div className="mt-4 flex justify-center">
+            <span
+              className="inline-flex items-center gap-2 rounded-full border px-6 py-1.5 font-mono text-[18px] font-bold"
+              style={{ borderColor: tierColor, color: tierColor, background: `${tierColor}14` }}
+            >
+              {tierEmoji && <span className="text-[16px]">{tierEmoji}</span>}
+              # {record.code}
+            </span>
           </div>
         )}
 
