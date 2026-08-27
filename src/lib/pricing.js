@@ -111,11 +111,21 @@ export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silv
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
 export const TIER_COLOR = {
-  exclusive: '#ff5c8a', // eng nodir — alohida ajralib turadigan pushti-qizil
-  premium: '#c084fc',
+  exclusive: '#e8c15a', // eng nodir — oltin (gold), qora bilan aralashgan (pastda TIER_GRADIENT'da)
+  premium: '#d9b45a', // gold, ko'k bilan aralashgan (pastda TIER_GRADIENT'da)
   gold: '#f5c518',
   silver: '#7dd3fc',
   free: '#4ade80',
+};
+// Ekslyuziv va Premium darajalar uchun — oddiy bir rang emas, ikki rangning
+// "aralashmasi" (gradient) sifatida ko'rsatiladi: Ekslyuziv — oltin + qora,
+// Premium — oltin + ko'k. Boshqa darajalarda gradient yo'q (null).
+export const TIER_GRADIENT = {
+  exclusive: 'linear-gradient(135deg, #f6dd8e 0%, #caa227 45%, #120d02 100%)',
+  premium: 'linear-gradient(135deg, #f6dd8e 0%, #d4af37 40%, #123a5e 100%)',
+  gold: null,
+  silver: null,
+  free: null,
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };
