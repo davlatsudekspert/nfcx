@@ -530,6 +530,36 @@ export default function ProfilePage({ code, catalog }) {
               ))}
             </div>
 
+            {/* Tezkor amallar — link tugmalari (Telegram/Instagram/Karta) ostida */}
+            {(record.phone || !isOwner || record.email || wsUrl) && (
+              <div className="mt-2.5 grid grid-cols-4 gap-2.5 text-center">
+                {record.phone && (
+                  <a href={`tel:${record.phone}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconPhone /></span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Qo'ng'iroq</span>
+                  </a>
+                )}
+                {!isOwner && (
+                  <button onClick={startChat} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}>{'\u{1F4AC}'}</span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Xabar</span>
+                  </button>
+                )}
+                {record.email && (
+                  <a href={`mailto:${record.email}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconMail /></span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Email</span>
+                  </a>
+                )}
+                {wsUrl && (
+                  <a href={wsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconGlobe /></span>
+                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Sayt</span>
+                  </a>
+                )}
+              </div>
+            )}
+
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
             {hasSocials && (
@@ -554,39 +584,6 @@ export default function ProfilePage({ code, catalog }) {
                   {otherCodes.map((c) => (
                     <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]">nfcstore.uz/{c.code.toLowerCase()}</span>
                   ))}
-                </div>
-              </>
-            )}
-
-            {/* Tezkor amallar — icon + yozuv shaklidagi katakchalar (qo'ng'iroq, xabar, email, sayt) — pastga ko'chirildi */}
-            {(record.phone || !isOwner || record.email || wsUrl) && (
-              <>
-                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="grid grid-cols-4 gap-2.5 text-center">
-                  {record.phone && (
-                    <a href={`tel:${record.phone}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconPhone /></span>
-                      <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Qo'ng'iroq</span>
-                    </a>
-                  )}
-                  {!isOwner && (
-                    <button onClick={startChat} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 transition hover:border-[color:var(--vz-accent)]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}>{'\u{1F4AC}'}</span>
-                      <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Xabar</span>
-                    </button>
-                  )}
-                  {record.email && (
-                    <a href={`mailto:${record.email}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconMail /></span>
-                      <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Email</span>
-                    </a>
-                  )}
-                  {wsUrl && (
-                    <a href={wsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconGlobe /></span>
-                      <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Sayt</span>
-                    </a>
-                  )}
                 </div>
               </>
             )}
