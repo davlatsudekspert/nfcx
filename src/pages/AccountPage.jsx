@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetSale, dbSetPrimary, dbRequestPremium, dbGetPayment } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetSale, dbSetPrimary, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -139,6 +139,51 @@ const PREMIUM_FEE = 5000;
 // Premium profilga o'tish — real Payme to'lovi (5000 so'm). E-wallet yo'q:
 // to'lov tasdiqlangach status avtomatik "Premium"ga o'zgaradi (admin
 // tasdig'i shart emas, chunki Payme to'lovning o'zi tasdiq beradi).
+// Foydalanuvchi auksionda yutgan, hali to'lamagan kodlari — aniq
+// ogohlantirish bilan: 24 soatda to'lamasa auksion bekor bo'ladi VA
+// akkaunt 72 soatga bloklanadi.
+function WonAuctionsPanel() {
+  const [list, setList] = useState(null);
+  const [, tick] = useState(0);
+
+  useEffect(() => {
+    const load = () => dbListWonPendingAuctions().then(setList).catch(() => setList([]));
+    load();
+    const t = setInterval(load, 10000);
+    const ticker = setInterval(() => tick((n) => n + 1), 1000);
+    return () => { clearInterval(t); clearInterval(ticker); };
+  }, []);
+
+  if (!list || list.length === 0) return null;
+
+  return (
+    <section className="pt-8">
+      <h2 className="text-xl font-bold">{'\u{1F3C6}'} Yutgan auksionlaringiz</h2>
+      <div className="mt-3 space-y-3">
+        {list.map((a) => {
+          const msLeft = new Date(a.paymentDeadline).getTime() - Date.now();
+          const h = Math.max(0, Math.floor(msLeft / 3600000));
+          const m = Math.max(0, Math.floor((msLeft % 3600000) / 60000));
+          return (
+            <div key={a.id} className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="font-mono text-sm font-bold">nfcstore.uz/{a.code.toLowerCase()}</div>
+                  <div className="text-xs text-base-content/60">Siz g'olib bo'ldingiz — {fmt(a.currentPrice)} so'm</div>
+                </div>
+                <button className="btn btn-warning btn-sm" onClick={() => navigate('/auksion/' + a.id)}>To'lov qiling</button>
+              </div>
+              <p className="mt-2 text-xs font-semibold text-warning">
+                {'\u26A0\uFE0F'} Diqqat: {h} soat {m} daqiqa ichida to'lov qilmasangiz, auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function PremiumPanel({ user, onBecamePremium }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -728,11 +773,13 @@ export default function AccountPage({ refreshCatalog }) {
         <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
 
-      {orders.filter((o) => o.status !== 'paid').length > 0 && (
+      <WonAuctionsPanel />
+
+      {orders.filter((o) => o.status !== 'paid' && o.kind !== 'auction_payment').length > 0 && (
         <section className="pt-8">
           <h2 className="text-xl font-bold">Buyurtmalarim</h2>
           <div className="mt-3 space-y-2">
-            {orders.filter((o) => o.status !== 'paid').map((o) => {
+            {orders.filter((o) => o.status !== 'paid' && o.kind !== 'auction_payment').map((o) => {
               const st = ORDER_STATUS_LABEL[o.status] || { text: o.status, cls: 'badge-ghost' };
               return (
                 <div key={o.id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-3 text-sm">

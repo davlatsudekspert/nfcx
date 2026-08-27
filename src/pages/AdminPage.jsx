@@ -68,7 +68,7 @@ function AdminLogin({ onLoggedIn }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', 'Jismoniy kartalar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar'];
 
 function StatCard({ label, value }) {
   return (
@@ -277,12 +277,23 @@ function UsersTab() {
 
 function OrdersTab() {
   const [orders, setOrders] = useState(null);
-  useEffect(() => { adminApi('/orders').then((d) => setOrders(d.orders)); }, []);
+  const [busy, setBusy] = useState(null);
+  const load = () => adminApi('/orders').then((d) => setOrders(d.orders));
+  useEffect(() => { load(); }, []);
+
+  const confirmPayment = async (id) => {
+    if (!confirm("To'lovni qo'lda tasdiqlaysizmi? Bu haqiqiy Payme to'lovi kelganini o'zingiz tekshirganingizni bildiradi.")) return;
+    setBusy(id);
+    try { await adminApi(`/orders/${id}/confirm-payment`, { method: 'POST' }); await load(); }
+    catch { alert("Tasdiqlab bo'lmadi — buyurtma allaqachon ishlangan yoki topilmadi."); }
+    finally { setBusy(null); }
+  };
+
   if (!orders) return <div className="text-base-content/45">Yuklanmoqda...</div>;
   return (
     <div className="overflow-x-auto">
       <table className="table table-sm">
-        <thead><tr><th>Manba</th><th>Kod</th><th>Foydalanuvchi</th><th>Narx</th><th>Holat</th><th>Vaqt</th></tr></thead>
+        <thead><tr><th>Manba</th><th>Kod</th><th>Foydalanuvchi</th><th>Narx</th><th>Holat</th><th>Vaqt</th><th></th></tr></thead>
         <tbody>
           {orders.map((o) => (
             <tr key={o.source + o.id}>
@@ -292,10 +303,92 @@ function OrdersTab() {
               <td>{fmt(o.amount)}</td>
               <td><span className={`badge badge-sm ${o.status === 'paid' ? 'badge-success' : o.status === 'pending' ? 'badge-warning' : 'badge-ghost'}`}>{o.status}</span></td>
               <td className="text-xs text-base-content/50">{timeAgo(new Date(o.createdAt).getTime())}</td>
+              <td>
+                {o.source === 'web' && o.status === 'pending' && (
+                  <button className="btn btn-ghost btn-xs" disabled={busy === o.id} onClick={() => confirmPayment(o.id)}>
+                    {busy === o.id ? <span className="loading loading-spinner loading-xs"></span> : "Qo'lda tasdiqlash"}
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Foydalanuvchilardan "noyob nomni auksionga qo'ying" so'rovlari.
+function AuctionRequestsTab() {
+  const [requests, setRequests] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const [form, setForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24' });
+  const [busy, setBusy] = useState(null);
+  const [msg, setMsg] = useState(null);
+
+  const load = () => adminApi('/auction-requests').then((d) => setRequests(d.requests));
+  useEffect(() => { load(); }, []);
+
+  const reject = async (id) => {
+    if (!confirm("Bu so'rovni rad etasizmi?")) return;
+    setBusy(id);
+    try { await adminApi(`/auction-requests/${id}/reject`, { method: 'POST' }); await load(); } finally { setBusy(null); }
+  };
+
+  const approve = async (id) => {
+    const startPrice = Math.round(Number(form.startPrice));
+    if (!startPrice || startPrice < 10_000) { setMsg({ type: 'err', text: "Boshlang'ich narx kamida 10 000 so'm bo'lishi kerak." }); return; }
+    setBusy(id);
+    setMsg(null);
+    try {
+      await adminApi(`/auction-requests/${id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({
+          startPrice,
+          buyNowPrice: form.buyNowPrice ? Math.round(Number(form.buyNowPrice)) : null,
+          hours: Math.round(Number(form.hours) || 24),
+        }),
+      });
+      setOpenId(null);
+      setForm({ startPrice: '', buyNowPrice: '', hours: '24' });
+      await load();
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message === 'code_taken' ? 'Bu kod allaqachon band bo\u2019lib qolgan.' : 'Xatolik yuz berdi.' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!requests) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+  if (requests.length === 0) return <div className="text-base-content/45">Hozircha so'rov yo'q.</div>;
+  return (
+    <div className="space-y-3">
+      {requests.map((r) => (
+        <div key={r.id} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="font-mono text-sm font-bold">{r.code}</div>
+              <div className="text-xs text-base-content/50">{r.userEmail} \u2014 {timeAgo(new Date(r.createdAt).getTime())}</div>
+              {r.note && <p className="mt-1 text-xs text-base-content/60">{'\u201C'}{r.note}{'\u201D'}</p>}
+            </div>
+            <div className="flex gap-1">
+              <button className="btn btn-success btn-xs" onClick={() => setOpenId(openId === r.id ? null : r.id)}>Tasdiqlash</button>
+              <button className="btn btn-ghost btn-xs text-error" disabled={busy === r.id} onClick={() => reject(r.id)}>Rad etish</button>
+            </div>
+          </div>
+          {openId === r.id && (
+            <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 sm:grid-cols-3">
+              <input type="number" value={form.startPrice} onChange={(e) => setForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder="Boshlang'ich narx" className="input input-bordered input-sm bg-base-100" />
+              <input type="number" value={form.buyNowPrice} onChange={(e) => setForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder="Darhol sotib olish (ixt.)" className="input input-bordered input-sm bg-base-100" />
+              <input type="number" max={72} value={form.hours} onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))} placeholder="Soat" className="input input-bordered input-sm bg-base-100" />
+              <button className="btn btn-primary btn-sm sm:col-span-3" disabled={busy === r.id} onClick={() => approve(r.id)}>
+                {busy === r.id ? <span className="loading loading-spinner loading-xs"></span> : 'Auksionni ochish'}
+              </button>
+              {msg && <div className={`alert py-2 text-sm sm:col-span-3 ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -501,7 +594,8 @@ function Dashboard({ onLogout }) {
         {tab === 3 && <OrdersTab />}
         {tab === 4 && <PendingPayoutsTab />}
         {tab === 5 && <AuctionsTab />}
-        {tab === 6 && <PhysicalCardsTab />}
+        {tab === 6 && <AuctionRequestsTab />}
+        {tab === 7 && <PhysicalCardsTab />}
       </div>
     </main>
   );

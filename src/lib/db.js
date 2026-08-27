@@ -234,6 +234,34 @@ const AUCTION_ERRORS = {
 // (adminApi('/auctions', ...) — src/pages/AdminPage.jsx). Bu funksiya
 // endi ishlatilmaydi, xavfsizlik uchun olib tashlandi.
 
+// Foydalanuvchi adminga "shu noyob nomni auksionga qo'ying" deb so'rov
+// yuboradi (real auksion emas — faqat taklif).
+export async function dbRequestAuction(code, note) {
+  const res = await fetch('/api/auction-requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ code, note }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    if (key === 'code_taken') throw new Error('Bu kod allaqachon band.');
+    if (key === 'ALREADY_PENDING') throw new Error("Bu kod uchun so'rovingiz allaqachon ko'rib chiqilmoqda.");
+    if (key === 'bad_code') throw new Error("Kod formati noto'g'ri (3-16 ta harf/raqam).");
+    throw new Error('Xatolik yuz berdi.');
+  }
+  return data;
+}
+
+// Foydalanuvchi yutib, hali to'lamagan auksionlari.
+export async function dbListWonPendingAuctions() {
+  const res = await fetch('/api/auctions/won/pending', { credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  return (data && data.auctions) || [];
+}
+
 // G'olib real to'lovni boshlaydi — profil ma'lumoti (ism) bilan birga,
 // chunki bu kod uchun karta hali mavjud emas.
 export async function dbPayAuctionWinner(auctionId, profile) {

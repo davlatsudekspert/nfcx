@@ -327,6 +327,21 @@ export async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS auctions_status_idx ON auctions (status, ends_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS auctions_code_idx ON auctions (code)`);
 
+  // Foydalanuvchi adminga "shu noyob nomni auksionga qo'ying" deb
+  // so'rov yuboradi — admin ko'rib chiqib, tasdiqlasa auksion o'zi
+  // yaratiladi (narx/muddatni admin belgilaydi).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS auction_requests (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code        VARCHAR(16) NOT NULL,
+      note        TEXT,
+      status      VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | approved | rejected
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS auction_requests_status_idx ON auction_requests (status)`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bids (
       id                SERIAL PRIMARY KEY,
@@ -1018,6 +1033,20 @@ export async function createWebOrder({ userId, code, price, payload, kind = 'car
   return rows[0] || null;
 }
 
+// Bir xil auksion uchun ikkinchi marta "To'lash" bosilsa, YANGI (dublikat)
+// to'lov buyurtmasi yaratilmasin — mavjud kutilayotganini qaytaramiz.
+// Aks holda foydalanuvchi ehtimol ikki marta to'lab qo'yishi mumkin edi.
+export async function getPendingAuctionPaymentOrder(auctionId, userId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders
+     WHERE user_id = $1 AND kind = 'auction_payment' AND status = 'pending'
+       AND (payload->>'auctionId')::int = $2
+     ORDER BY created_at DESC LIMIT 1`,
+    [userId, auctionId]
+  );
+  return rows[0] || null;
+}
+
 export async function getWebOrder(id) {
   const { rows } = await pool.query(
     `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE id = $1`,
@@ -1281,6 +1310,65 @@ const AUCTION_FIELDS = `
   a.seller_payme_number AS "sellerPaymeNumber",
   a.created_at AS "createdAt"
 `;
+
+// Admin tomonidan yangi (hali hech kimga tegishli bo'lmagan) kod uchun
+// auksion ochish — sellerId endi har doim NULL (sotuvchi yo'q, platforma
+// o'zi taklif qiladi).
+// ---------- Auksion so'rovlari (foydalanuvchidan) ----------
+
+export async function createAuctionRequest(userId, code, note) {
+  // Foydalanuvchi bir kod uchun bir vaqtda faqat bitta kutilayotgan
+  // so'rov yubora oladi (spam'ning oldini olish uchun).
+  const { rows: existing } = await pool.query(
+    `SELECT id FROM auction_requests WHERE user_id = $1 AND code = $2 AND status = 'pending'`,
+    [userId, code]
+  );
+  if (existing[0]) return { error: 'ALREADY_PENDING' };
+  const { rows } = await pool.query(
+    `INSERT INTO auction_requests (user_id, code, note) VALUES ($1,$2,$3) RETURNING id`,
+    [userId, code, note || null]
+  );
+  return { ok: true, id: rows[0].id };
+}
+
+export async function listAuctionRequests(status = 'pending') {
+  const { rows } = await pool.query(
+    `SELECT ar.id, ar.code, ar.note, ar.status, ar.created_at AS "createdAt",
+            u.id AS "userId", u.email AS "userEmail"
+     FROM auction_requests ar JOIN users u ON u.id = ar.user_id
+     WHERE ar.status = $1 ORDER BY ar.created_at DESC`,
+    [status]
+  );
+  return rows;
+}
+
+export async function rejectAuctionRequest(id) {
+  const { rows } = await pool.query(
+    `UPDATE auction_requests SET status = 'rejected' WHERE id = $1 AND status = 'pending' RETURNING id`,
+    [id]
+  );
+  return !!rows[0];
+}
+
+export async function approveAuctionRequest(id) {
+  const { rows } = await pool.query(
+    `UPDATE auction_requests SET status = 'approved' WHERE id = $1 AND status = 'pending' RETURNING id, code`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+// ---------- Foydalanuvchi yutgan, hali to'lanmagan auksionlar ----------
+
+export async function listWonAuctionsAwaitingPayment(userId) {
+  const { rows } = await pool.query(
+    `SELECT id, code, current_price AS "currentPrice", payment_deadline AS "paymentDeadline"
+     FROM auctions WHERE highest_bidder_id = $1 AND status = 'awaiting_payment'
+     ORDER BY payment_deadline ASC`,
+    [userId]
+  );
+  return rows.map((r) => ({ ...r, currentPrice: Number(r.currentPrice) }));
+}
 
 // Admin tomonidan yangi (hali hech kimga tegishli bo'lmagan) kod uchun
 // auksion ochish — sellerId endi har doim NULL (sotuvchi yo'q, platforma

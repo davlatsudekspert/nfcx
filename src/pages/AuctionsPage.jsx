@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { dbListAuctions } from '../lib/db.js';
+import { dbListAuctions, dbRequestAuction } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
+import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
@@ -13,6 +14,56 @@ function timeLeft(endsAt) {
   if (h >= 24) return `${Math.floor(h / 24)} kun ${h % 24} soat qoldi`;
   if (h > 0) return `${h} soat ${m} daqiqa qoldi`;
   return `${m} daqiqa qoldi`;
+}
+
+// Foydalanuvchi "shu noyob nomni auksionga qo'ying" deb adminga
+// murojaat qiladi — real auksion emas, faqat taklif.
+function RequestAuctionForm() {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const submit = async () => {
+    if (!user) { navigate('/login'); return; }
+    if (!code.trim()) { setMsg({ type: 'err', text: 'Kodni kiriting.' }); return; }
+    setBusy(true);
+    setMsg(null);
+    try {
+      await dbRequestAuction(code.trim().toUpperCase(), note.trim());
+      setMsg({ type: 'ok', text: "So'rovingiz adminga yuborildi. Ko'rib chiqilgach, auksion ochiladi." });
+      setCode('');
+      setNote('');
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-10 rounded-2xl border border-accent/25 bg-accent/5 p-5">
+      <button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setOpen((o) => !o)}>
+        <div>
+          <div className="text-sm font-bold">{'\u{1F451}'} Noyob nomni auksionga qo'yishni so'rang</div>
+          <p className="mt-0.5 text-xs text-base-content/50">Sizga yoqqan bo'sh kod bormi? Adminga taklif qiling — u ko'rib chiqib, auksion ochadi.</p>
+        </div>
+        <span className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>&#9662;</span>
+      </button>
+      {open && (
+        <div className="mt-4 space-y-2">
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Kod (masalan VIP007)" className="input input-bordered input-sm w-full bg-base-100 font-mono" />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nega bu kod noyob deb hisoblaysiz? (ixtiyoriy)" rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
+          <button className="btn btn-accent btn-sm" onClick={submit} disabled={busy}>
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : "So'rov yuborish"}
+          </button>
+          {msg && <div className={`alert py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AuctionsPage() {
@@ -76,6 +127,8 @@ export default function AuctionsPage() {
           ))}
         </div>
       </section>
+
+      <RequestAuctionForm />
     </main>
   );
 }

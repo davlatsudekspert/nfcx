@@ -17,6 +17,7 @@ import {
   adminStats, closeAuctionBidding, createAuction, getActiveAuctionByCode, getRecord,
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
+  listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -141,6 +142,17 @@ adminRouter.get('/orders', async (req, res) => {
   res.json({ orders: await adminListOrders() });
 });
 
+// To'lov qandaydir sababga ko'ra (masalan Payme webhook kelmay qolsa)
+// avtomatik tasdiqlanmagan bo'lsa, admin qo'lda tasdiqlaydi — bu web_orders
+// yozuvini "to'landi" deb belgilaydi va tegishli natijani (karta yaratish,
+// auksionni yakunlash va h.k.) ishga tushiradi.
+adminRouter.post('/orders/:id/confirm-payment', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const result = await finalizePaidWebOrder(Number(req.params.id));
+  if (result.alreadyProcessed) return res.status(409).json({ error: 'already_processed' });
+  res.json(result);
+});
+
 adminRouter.get('/topups', async (req, res) => {
   if (!isDbReady()) return res.json({ topups: [] });
   res.json({ topups: await adminListWalletTopups() });
@@ -172,6 +184,42 @@ adminRouter.post('/auctions', async (req, res) => {
     res.status(201).json(auction);
   } catch (err) {
     console.error('[admin] createAuction:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// --- Foydalanuvchilardan kelgan "noyob nomni auksionga qo'ying" so'rovlari ---
+
+adminRouter.get('/auction-requests', async (req, res) => {
+  if (!isDbReady()) return res.json({ requests: [] });
+  res.json({ requests: await listAuctionRequests('pending') });
+});
+
+adminRouter.post('/auction-requests/:id/reject', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const ok = await rejectAuctionRequest(Number(req.params.id));
+  if (!ok) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
+// Tasdiqlash — bir vaqtning o'zida haqiqiy auksionni ham yaratadi
+// (admin narx/muddatni shu yerda belgilaydi).
+adminRouter.post('/auction-requests/:id/approve', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const startPrice = Math.round(Number(req.body?.startPrice));
+  const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
+  const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
+  if (!startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
+
+  try {
+    const approved = await approveAuctionRequest(Number(req.params.id));
+    if (!approved) return res.status(404).json({ error: 'not_found' });
+    if (await getRecord(approved.code)) return res.status(409).json({ error: 'code_taken' });
+    if (await getActiveAuctionByCode(approved.code)) return res.status(409).json({ error: 'already_in_auction' });
+    const auction = await createAuction({ code: approved.code, startPrice, buyNowPrice, hours });
+    res.status(201).json(auction);
+  } catch (err) {
+    console.error('[admin] approveAuctionRequest:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

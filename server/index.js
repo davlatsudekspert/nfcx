@@ -10,11 +10,13 @@ import {
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   listForSale, setForSale, transferCard,
   getBotOrder, setBotOrderStatus,
-  createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser,
+  createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser, getPendingAuctionPaymentOrder,
   finalizePaidWebOrder, cancelPendingWebOrder,
   createAuction, getActiveAuctionByCode, getAuction, listActiveAuctions, listExpiredActiveAuctions,
   listBidsByAuction, placeBid, closeAuctionBidding, expireUnpaidAuctions,
   setAuctionSellerPayme, markAuctionPayoutPaid,
+  createAuctionRequest, listAuctionRequests, approveAuctionRequest, rejectAuctionRequest,
+  listWonAuctionsAwaitingPayment,
   isPhoneBotVerified,
   createPhysicalCard, resolvePhysicalCard,
   requestPremium, getOwnerByCode,
@@ -521,6 +523,26 @@ app.get('/api/auctions/:id', async (req, res) => {
 
 
 // Narx taklif qilish.
+// Foydalanuvchi adminga "shu noyob nomni auksionga qo'ying" deb so'rov
+// yuboradi (real auksion emas — faqat taklif, admin ko'rib chiqadi).
+app.post('/api/auction-requests', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.body?.code || '').toUpperCase().trim();
+  const note = cleanStr(req.body?.note, 300);
+  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  try {
+    if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
+    const result = await createAuctionRequest(user.id, code, note);
+    if (result.error) return res.status(409).json(result);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('[api] createAuctionRequest:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
 app.post('/api/auctions/:id/bid', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
@@ -574,6 +596,15 @@ app.post('/api/auctions/:id/pay', async (req, res) => {
 
   // Auksion to'lovi ham web_orders orqali o'tadi — kind='auction_payment'
   // orqali webhook buni ajratib oladi (endi code'ga hiyla yozilmaydi).
+  // Avval bir xil auksion uchun kutilayotgan buyurtma bor-yo'qligini
+  // tekshiramiz — bo'lsa, o'shani qaytaramiz (ikki marta to'lov xavfi
+  // bo'lmasligi uchun).
+  const existing = await getPendingAuctionPaymentOrder(auction.id, user.id);
+  if (existing) {
+    const payLink = paymeCheckoutLink(existing.id, Number(existing.price));
+    return res.status(202).json({ orderId: existing.id, amount: Number(existing.price), payLink });
+  }
+
   const order = await createWebOrder({
     userId: user.id, code: auction.code, kind: 'auction_payment', price: Number(auction.currentPrice),
     payload: { auctionId: auction.id, ...profile },
@@ -717,6 +748,15 @@ app.get('/api/auth/me', async (req, res) => {
     console.error('[auth] me:', err.message);
     res.json({ user: null, cards: [] });
   }
+});
+
+// Foydalanuvchi yutib, hali to'lamagan auksionlari — profilida
+// "Buyurtmalarim" bo'limida ko'rsatish uchun.
+app.get('/api/auctions/won/pending', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.json({ auctions: [] });
+  if (!isDbReady()) return res.json({ auctions: [] });
+  res.json({ auctions: await listWonAuctionsAwaitingPayment(user.id) });
 });
 
 app.get('/api/records', async (req, res) => {
