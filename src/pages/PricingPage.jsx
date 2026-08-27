@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
+import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -75,7 +75,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: `${TIER_COLOR[t]}22`, color: TIER_COLOR[t] }}
+                  style={{ background: TIER_GRADIENT[t] || `${TIER_COLOR[t]}22`, color: TIER_GRADIENT[t] ? '#fdf3d0' : TIER_COLOR[t] }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 3h12l4 6-10 12L2 9z" /><path d="M2 9h20" /><path d="M12 3l-3 6 3 12 3-12z" />

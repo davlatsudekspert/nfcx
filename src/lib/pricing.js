@@ -111,8 +111,8 @@ export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silv
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
 export const TIER_COLOR = {
-  exclusive: '#e8c15a', // eng nodir — oltin (gold), qora bilan aralashgan (pastda TIER_GRADIENT'da)
-  premium: '#d9b45a', // gold, ko'k bilan aralashgan (pastda TIER_GRADIENT'da)
+  exclusive: '#d4af37', // eng nodir — oltin (gold), qora bilan aralashgan (pastda TIER_GRADIENT'da)
+  premium: '#5b9bd8', // ko'k-oltin (gold+blue) aralashmasining ko'k tomoni — Gold darajadan aniq farqli
   gold: '#f5c518',
   silver: '#7dd3fc',
   free: '#4ade80',

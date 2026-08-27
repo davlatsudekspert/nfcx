@@ -512,6 +512,10 @@ export default function ProfilePage({ code, catalog }) {
             )}
 
             <div className="mt-[22px] flex flex-col gap-2.5">
+              {record.phone && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq</a>}
+              {!isOwner && <button type="button" className={`${linkBtn} cursor-pointer`} onClick={startChat}>{'\u{1F4AC}'} Xabar</button>}
+              {record.email && <a className={linkBtn} href={`mailto:${record.email}`}><IconMail /> Email</a>}
+              {wsUrl && <a className={linkBtn} href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /> Sayt</a>}
               {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
@@ -529,36 +533,6 @@ export default function ProfilePage({ code, catalog }) {
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
               ))}
             </div>
-
-            {/* Tezkor amallar — link tugmalari (Telegram/Instagram/Karta) ostida */}
-            {(record.phone || !isOwner || record.email || wsUrl) && (
-              <div className="mt-2.5 grid grid-cols-4 gap-2.5 text-center">
-                {record.phone && (
-                  <a href={`tel:${record.phone}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconPhone /></span>
-                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Qo'ng'iroq</span>
-                  </a>
-                )}
-                {!isOwner && (
-                  <button onClick={startChat} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 transition hover:border-[color:var(--vz-accent)]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}>{'\u{1F4AC}'}</span>
-                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Xabar</span>
-                  </button>
-                )}
-                {record.email && (
-                  <a href={`mailto:${record.email}`} className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconMail /></span>
-                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Email</span>
-                  </a>
-                )}
-                {wsUrl && (
-                  <a href={wsUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1.5 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] py-3 no-underline transition hover:border-[color:var(--vz-accent)]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--vz-accent)]" style={{ background: 'color-mix(in srgb, var(--vz-accent) 15%, transparent)' }}><IconGlobe /></span>
-                    <span className="text-[10.5px] font-semibold text-[color:var(--vz-ink-dim)]">Sayt</span>
-                  </a>
-                )}
-              </div>
-            )}
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
