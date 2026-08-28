@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
+import { parseAnyCode, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
   IconArrowLeft, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
+  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconStar, IconLink, IconSupport,
 } from '../components/Icons.jsx';
 
 export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
@@ -126,16 +126,6 @@ function socialUrl(kind, handle) {
     case 'li': return /^https?:/.test(h) ? h : `https://${h}`;
     default: return '';
   }
-}
-
-// Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "000" va h.k.)
-function rarity(code) {
-  if (!code || code.length !== 6) return null;
-  const lp = letterPattern(code.slice(0, 3));
-  const dp = digitPattern(code.slice(3, 6));
-  if (!lp.hot && !dp.hot) return null;
-  const label = [lp.hot ? lp.label : null, dp.hot ? dp.label : null].filter(Boolean).join(' · ');
-  return label;
 }
 
 function tierOf(code) {
@@ -345,7 +335,8 @@ export default function ProfilePage({ code, catalog }) {
   const wsUrl = record.website || '';
   // hasSocials endi ishlatilmaydi — shaxsiy ijtimoiy tarmoq havolalari
   // faqat yuqoridagi to'liq nomli tugmalarda ko'rsatiladi (takrorlanmaydi).
-  const rarityLabel = rarity(record.code);
+  // "Ikkita raqam yonma-yon bir xil" kabi rarity belgisi foydalanuvchi
+  // so'rovi bilan olib tashlandi (rarityLabel endi hisoblanmaydi/ko'rsatilmaydi).
   const tier = tierOf(record.code);
   const tierColor = TIER_COLOR[tier];
   const tierEmoji = TIER_EMOJI[tier];
@@ -379,9 +370,10 @@ export default function ProfilePage({ code, catalog }) {
 
       <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
         <div className="flex flex-wrap items-center gap-2.5">
-          {otherCodes.length > 0 && otherCodes.slice(0, 3).map((c) => (
-            <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
-          ))}
+          {/* Diqqat: boshqa kodlaringizni kichik chip sifatida shu yerda
+              (kartaning tepasida) yana bir marta ko'rsatish olib tashlandi —
+              ular pastda "Sizning boshqa raqamli tashrif qog'ozilaringiz"
+              bo'limida to'liq ko'rinadi, shu yerda takrorlanishi shart emas. */}
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-6 py-1.5 font-mono text-[22px] font-bold text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
           <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{fmt(record.price)} so'm</span>
         </div>
@@ -403,7 +395,6 @@ export default function ProfilePage({ code, catalog }) {
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}
-            {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
@@ -515,7 +506,6 @@ export default function ProfilePage({ code, catalog }) {
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> KARTA (to'lov)</span>}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
               ))}
@@ -523,36 +513,9 @@ export default function ProfilePage({ code, catalog }) {
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
-            {(() => {
-              // Eski (yagona) va yangi (massiv) karta raqami maydonlarini
-              // BITTA ro'yxatga birlashtiramiz — bir xil raqam ikki marta
-              // chiqib qolmasligi uchun (avval shu joyda bug bor edi).
-              const seen = new Set();
-              const cards = [
-                ...(record.cardNumber ? [{ label: '', number: record.cardNumber }] : []),
-                ...(record.cardNumbers || []),
-              ].filter((c) => {
-                const norm = String(c.number || '').replace(/\s/g, '');
-                if (!norm || seen.has(norm)) return false;
-                seen.add(norm);
-                return true;
-              });
-              if (cards.length === 0) return null;
-              return (
-                <>
-                  <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                  <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">TO'LOV UCHUN KARTALAR</div>
-                  <div className="flex flex-col gap-2.5">
-                    {cards.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2.5 rounded-xl px-4 py-3" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
-                        <span>{c.label && <b className="mb-0.5 block text-[11px] font-bold text-[color:var(--vz-ink-faint)]">{c.label}</b>}<span className="font-mono text-[15px] tracking-[0.08em]">{c.number}</span></span>
-                        <button onClick={() => copyText(c.number.replace(/\s/g, ''), 'Karta raqami nusxalandi!')} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+            {/* "TO'LOV UCHUN KARTALAR" bo'limi ochiq profilda olib tashlandi
+                (foydalanuvchi so'rovi bilan). Karta raqami ma'lumoti
+                bazada saqlanib qoladi, faqat ochiq profilda ko'rsatilmaydi. */}
 
             {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
                 Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida
