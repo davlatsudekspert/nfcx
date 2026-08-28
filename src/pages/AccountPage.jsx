@@ -480,11 +480,32 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
+  // Bir xil karta raqami "Asosiy karta" maydoniga HAM, "Qo'shimcha karta
+  // raqamlari" ro'yxatiga HAM kiritilib qo'yilsa — yoki ro'yxat ichida
+  // tasodifan ikki marta qo'shilsa — profilda (TO'LOV UCHUN KARTALAR)
+  // bitta raqam ikki karta bo'lib ko'rinardi. Endi saqlash paytida
+  // avtomatik tozalanadi: raqam allaqachon Asosiy maydonda yoki ro'yxatda
+  // bor bo'lsa, keyingi takroriy yozuv olib tashlanadi (bo'shliqlarsiz
+  // solishtiriladi, birinchi uchragani saqlanadi).
+  const normalizeCardNum = (s) => String(s || '').replace(/\s+/g, '');
+
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: "Ism bo'sh bo'lmasligi kerak." }); return; }
     setBusy(true);
     setMsg(null);
     try {
+      const primaryNumber = form.cardNumber.trim();
+      const seenCardNumbers = new Set(primaryNumber ? [normalizeCardNum(primaryNumber)] : []);
+      const dedupedCardNumbers = form.cardNumbers
+        .map((c) => ({ label: c.label.trim(), number: c.number.trim() }))
+        .filter((c) => c.number)
+        .filter((c) => {
+          const norm = normalizeCardNum(c.number);
+          if (seenCardNumbers.has(norm)) return false;
+          seenCardNumbers.add(norm);
+          return true;
+        });
+
       const updated = await authUpdateCard(card.code, {
         name: form.name.trim(),
         role: form.role.trim(),
@@ -504,16 +525,17 @@ function EditCardForm({ card, onSaved }) {
         twitter: form.twitter.trim(),
         website: form.website.trim(),
         about: form.about,
-        cardNumber: form.cardNumber.trim(),
+        cardNumber: primaryNumber,
         extraLinks: form.extraLinks
           .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
           .filter((l) => l.url),
-        cardNumbers: form.cardNumbers
-          .map((c) => ({ label: c.label.trim(), number: c.number.trim() }))
-          .filter((c) => c.number),
+        cardNumbers: dedupedCardNumbers,
         theme: form.theme,
         hashtags: form.hashtags.split(',').map((h) => h.trim()).filter(Boolean),
       });
+      if (dedupedCardNumbers.length !== form.cardNumbers.filter((c) => c.number.trim()).length) {
+        setForm((f) => ({ ...f, cardNumbers: dedupedCardNumbers }));
+      }
       setMsg({ type: 'ok', text: 'Saqlandi! Profilingiz yangilandi.' });
       onSaved(updated);
     } catch (err) {
