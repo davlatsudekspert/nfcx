@@ -129,6 +129,22 @@ export async function initDb() {
       await pool.query(`ALTER TABLE users ADD COLUMN is_test BOOLEAN NOT NULL DEFAULT FALSE`);
       console.log('[db] users.is_test ustuni qo\u2019shildi.');
     }
+    // Admin moderatsiyasi: auksion jarima tizimidan (banned_until)
+    // ATAYLAB alohida — bu adminning o'zi qo'lda qo'llagan bloklash.
+    if (!uc.has('suspended_until')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN suspended_until TIMESTAMPTZ`);
+      console.log('[db] users.suspended_until ustuni qo\u2019shildi.');
+    }
+    if (!uc.has('suspend_reason')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN suspend_reason TEXT`);
+      console.log('[db] users.suspend_reason ustuni qo\u2019shildi.');
+    }
+    // Butunlay o'chirish — "soft delete": login qila olmaydi, lekin
+    // ma'lumotlari (tergov/tekshiruv kerak bo'lsa) bazada saqlanib qoladi.
+    if (!uc.has('deleted_at')) {
+      await pool.query(`ALTER TABLE users ADD COLUMN deleted_at TIMESTAMPTZ`);
+      console.log('[db] users.deleted_at ustuni qo\u2019shildi.');
+    }
   }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -186,6 +202,7 @@ export async function initDb() {
     bg_animated: `ALTER TABLE cards ADD COLUMN bg_animated BOOLEAN NOT NULL DEFAULT TRUE`,
     is_primary: `ALTER TABLE cards ADD COLUMN is_primary BOOLEAN NOT NULL DEFAULT FALSE`,
     giftable: `ALTER TABLE cards ADD COLUMN giftable BOOLEAN NOT NULL DEFAULT TRUE`,
+    hide_phone: `ALTER TABLE cards ADD COLUMN hide_phone BOOLEAN NOT NULL DEFAULT FALSE`,
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
   };
   const existing = await pool.query(
@@ -202,7 +219,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -392,6 +409,26 @@ export async function initDb() {
       expires_at  TIMESTAMPTZ NOT NULL,
       used        BOOLEAN NOT NULL DEFAULT FALSE,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Xavfsizlik: foydalanuvchini bloklash va shikoyat qilish — xabar
+  // yozish tizimidagi suiiste'moldan himoya.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS blocked_users (
+      blocker_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      blocked_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (blocker_id, blocked_id)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_reports (
+      id            SERIAL PRIMARY KEY,
+      reporter_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reported_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reason        TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
 
@@ -701,7 +738,7 @@ export function isDbReady() {
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
-  is_primary AS "isPrimary", giftable,
+  is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
@@ -721,6 +758,7 @@ function rowToRecord(row) {
     bgColor: row.bgColor || '',
     bgAnimated: row.bgAnimated !== false,
     isPrimary: !!row.isPrimary,
+    hidePhone: !!row.hidePhone,
     giftable: row.giftable !== false,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
@@ -859,17 +897,32 @@ export async function createUser(email, passwordHash, { phone, botAck, tosAccept
 // Admin panelda "Sinov/admin akkaunt" deb belgilash-belgilamaslik — bunday
 // akkauntlar "Foydalanuvchilar", "Jami savdo" kabi asosiy ko'rsatkichlarga
 // KIRMAYDI (lekin jadvalda ko'rinishda davom etadi).
-export async function setUserTestFlag(userId, isTest) {
-  await pool.query(`UPDATE users SET is_test = $2 WHERE id = $1`, [userId, !!isTest]);
+// Admin/sinov akkaunt belgisi ustidan qo'lda bloklash/o'chirish —
+// SUSPEND_REASONS ro'yxati bilan (statistik hisobot uchun ham foydali).
+export async function adminSuspendUser(userId, days, reason) {
+  await pool.query(
+    `UPDATE users SET suspended_until = now() + ($2 || ' days')::interval, suspend_reason = $3 WHERE id = $1`,
+    [userId, days, reason]
+  );
+}
+export async function adminUnsuspendUser(userId) {
+  await pool.query(`UPDATE users SET suspended_until = NULL, suspend_reason = NULL WHERE id = $1`, [userId]);
+}
+export async function adminDeleteUser(userId) {
+  await pool.query(`UPDATE users SET deleted_at = now() WHERE id = $1`, [userId]);
 }
 
 export async function getUserByEmail(email) {
   const { rows } = await pool.query(
-    `SELECT id, email, password_hash, phone, bot_ack AS "botAck" FROM users WHERE email = $1`,
+    `SELECT id, email, password_hash, phone, bot_ack AS "botAck", suspended_until AS "suspendedUntil", suspend_reason AS "suspendReason", deleted_at AS "deletedAt"
+     FROM users WHERE email = $1`,
     [String(email || '').toLowerCase()]
   );
   return rows[0]
-    ? { id: rows[0].id, email: rows[0].email, passwordHash: rows[0].password_hash, phone: rows[0].phone, botAck: rows[0].botAck }
+    ? {
+        id: rows[0].id, email: rows[0].email, passwordHash: rows[0].password_hash, phone: rows[0].phone, botAck: rows[0].botAck,
+        suspendedUntil: rows[0].suspendedUntil, suspendReason: rows[0].suspendReason, deletedAt: rows[0].deletedAt,
+      }
     : null;
 }
 
@@ -897,7 +950,8 @@ export async function getSessionUser(token) {
   const { rows } = await pool.query(
     `SELECT u.id, u.email, u.is_premium AS "isPremium",
             u.banned_until AS "bannedUntil", u.strike_count AS "strikeCount",
-            u.promo_code AS "promoCode", u.pending_discount_pct AS "pendingDiscountPct"
+            u.promo_code AS "promoCode", u.pending_discount_pct AS "pendingDiscountPct",
+            u.suspended_until AS "suspendedUntil", u.deleted_at AS "deletedAt"
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token = $1 AND s.expires_at > now()`,
@@ -905,6 +959,10 @@ export async function getSessionUser(token) {
   );
   if (!rows[0]) return null;
   const r = rows[0];
+  // Admin tomonidan bloklangan yoki o'chirilgan akkaunt — hatto mavjud
+  // sessiya bo'lsa ham darhol "tizimga kirmagan" deb hisoblanadi.
+  if (r.deletedAt) return null;
+  if (r.suspendedUntil && new Date(r.suspendedUntil) > new Date()) return null;
   const isBanned = r.bannedUntil && new Date(r.bannedUntil) > new Date();
   return {
     id: r.id, email: r.email, isPremium: !!r.isPremium,
@@ -1046,7 +1104,8 @@ export async function listMySupportMessages(userId) {
 export async function adminListSupportMessages(status) {
   const { rows } = await pool.query(
     `SELECT sm.id, sm.message, sm.reply, sm.status, sm.created_at AS "createdAt",
-            u.id AS "userId", u.email AS "userEmail"
+            u.id AS "userId", u.email AS "userEmail",
+            (SELECT c.code FROM cards c WHERE c.user_id = u.id ORDER BY c.is_primary DESC, c.ts ASC LIMIT 1) AS "userCode"
      FROM support_messages sm JOIN users u ON u.id = sm.user_id
      WHERE ($1::text IS NULL OR sm.status = $1)
      ORDER BY sm.created_at DESC LIMIT 100`,
@@ -1227,6 +1286,7 @@ export async function updateRecord(code, fields) {
     website: 'website',
     cardNumber: 'card_number',
     theme: 'theme',
+    hidePhone: 'hide_phone',
   };
   for (const [key, col] of Object.entries(map)) {
     if (key in fields) {
@@ -1724,7 +1784,8 @@ export async function createAuctionRequest(userId, code, note) {
 export async function listAuctionRequests(status = 'pending') {
   const { rows } = await pool.query(
     `SELECT ar.id, ar.code, ar.note, ar.status, ar.created_at AS "createdAt",
-            u.id AS "userId", u.email AS "userEmail"
+            u.id AS "userId", u.email AS "userEmail",
+            (SELECT c.code FROM cards c WHERE c.user_id = u.id ORDER BY c.is_primary DESC, c.ts ASC LIMIT 1) AS "userCode"
      FROM auction_requests ar JOIN users u ON u.id = ar.user_id
      WHERE ar.status = $1 ORDER BY ar.created_at DESC`,
     [status]
@@ -2007,11 +2068,13 @@ export async function adminListUsers(limit = 200) {
   const { rows } = await pool.query(
     `SELECT id, email, phone, bot_ack AS "botAck", balance, held_balance AS "heldBalance",
             created_at AS "createdAt", is_test AS "isTest",
-            (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS "cardCount"
+            suspended_until AS "suspendedUntil", suspend_reason AS "suspendReason", deleted_at AS "deletedAt",
+            (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS "cardCount",
+            (SELECT array_agg(code) FROM cards WHERE user_id = users.id) AS "codes"
      FROM users ORDER BY created_at DESC LIMIT $1`,
     [limit]
   );
-  return rows.map((r) => ({ ...r, balance: Number(r.balance), heldBalance: Number(r.heldBalance), cardCount: Number(r.cardCount) }));
+  return rows.map((r) => ({ ...r, balance: Number(r.balance), heldBalance: Number(r.heldBalance), cardCount: Number(r.cardCount), codes: r.codes || [] }));
 }
 
 // Admin tomonidan qo'lda balans tuzatish (masalan Payme ishlamay qolganda
@@ -2412,6 +2475,45 @@ export async function isConversationParticipant(conversationId, userId) {
     [conversationId, userId]
   );
   return rows.length > 0;
+}
+
+export async function getOtherParticipant(conversationId, userId) {
+  const { rows } = await pool.query(
+    `SELECT CASE WHEN user_a_id = $2 THEN user_b_id ELSE user_a_id END AS other
+     FROM conversations WHERE id = $1 AND (user_a_id = $2 OR user_b_id = $2)`,
+    [conversationId, userId]
+  );
+  return rows[0]?.other || null;
+}
+
+// ---------- Bloklash / shikoyat ----------
+
+export async function blockUser(blockerId, blockedId) {
+  await pool.query(
+    `INSERT INTO blocked_users (blocker_id, blocked_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+    [blockerId, blockedId]
+  );
+}
+
+export async function unblockUser(blockerId, blockedId) {
+  await pool.query(`DELETE FROM blocked_users WHERE blocker_id = $1 AND blocked_id = $2`, [blockerId, blockedId]);
+}
+
+// MUHIM: ikkala yo'nalishda ham tekshiramiz — A B'ni bloklagan bo'lsa,
+// B ham A'ga xabar yubora olmasligi kerak (aks holda bloklash yarim-yorti bo'lardi).
+export async function isBlocked(userId, otherUserId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM blocked_users WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)`,
+    [userId, otherUserId]
+  );
+  return rows.length > 0;
+}
+
+export async function reportUser(reporterId, reportedId, reason) {
+  await pool.query(
+    `INSERT INTO user_reports (reporter_id, reported_id, reason) VALUES ($1,$2,$3)`,
+    [reporterId, reportedId, reason]
+  );
 }
 
 export async function listMessages(conversationId, { before, limit = 50 } = {}) {

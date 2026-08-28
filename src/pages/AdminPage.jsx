@@ -24,17 +24,45 @@ function AdminLogin({ onLoggedIn }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
-  const submit = async (e) => {
+  // 2FA: birinchi bosqichda telefon+parol tekshiriladi, Telegram'ga kod
+  // yuboriladi; ikkinchi bosqichda shu kod so'raladi.
+  const [step, setStep] = useState('credentials'); // credentials | code
+  const [tempToken, setTempToken] = useState(null);
+  const [code, setCode] = useState('');
+
+  const submitCredentials = async (e) => {
     e.preventDefault();
     setBusy(true);
     setErr(null);
     try {
-      await adminApi('/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
-      onLoggedIn();
+      const result = await adminApi('/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+      if (result.twoFactor) {
+        setTempToken(result.tempToken);
+        setStep('code');
+      } else {
+        onLoggedIn();
+      }
     } catch (e2) {
       setErr(e2.message === 'admin_not_configured'
         ? "Admin panel hali sozlanmagan (ADMIN_PANEL_PHONE / ADMIN_PANEL_PASSWORD env o'zgaruvchilarini qo'shing)."
-        : 'Login yoki parol xato.');
+        : e2.message === 'tg_send_failed'
+          ? "Telegram'ga kod yuborib bo'lmadi. ADMIN_CHAT_ID va bot sozlamalarini tekshiring."
+          : 'Login yoki parol xato.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCode = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await adminApi('/verify-2fa', { method: 'POST', body: JSON.stringify({ tempToken, code: code.trim() }) });
+      onLoggedIn();
+    } catch (e2) {
+      setErr(e2.message === 'expired' ? "Kod muddati o'tgan — qaytadan kiring." : "Kod noto'g'ri.");
+      if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
     } finally {
       setBusy(false);
     }
@@ -45,21 +73,35 @@ function AdminLogin({ onLoggedIn }) {
       <div className="w-full rounded-2xl border border-white/10 bg-base-200/70 p-7">
         <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">NFCSTORE</div>
         <h1 className="mt-2 text-2xl font-bold">Admin panel</h1>
-        <form onSubmit={submit} className="mt-6 space-y-3">
-          <label className="form-control">
-            <span className="text-xs font-semibold text-base-content/70">Telefon</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567"
-              className="input input-bordered mt-1 w-full bg-base-100" />
-          </label>
-          <label className="form-control">
-            <span className="text-xs font-semibold text-base-content/70">Parol</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              className="input input-bordered mt-1 w-full bg-base-100" />
-          </label>
-          <button className="btn btn-primary w-full" disabled={busy}>
-            {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Kirish'}
-          </button>
-        </form>
+
+        {step === 'credentials' ? (
+          <form onSubmit={submitCredentials} className="mt-6 space-y-3">
+            <label className="form-control">
+              <span className="text-xs font-semibold text-base-content/70">Telefon</span>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567"
+                className="input input-bordered mt-1 w-full bg-base-100" />
+            </label>
+            <label className="form-control">
+              <span className="text-xs font-semibold text-base-content/70">Parol</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                className="input input-bordered mt-1 w-full bg-base-100" />
+            </label>
+            <button className="btn btn-primary w-full" disabled={busy}>
+              {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Kirish'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={submitCode} className="mt-6 space-y-3">
+            <p className="text-sm text-base-content/60">Telegram botga 6 xonali kod yuborildi. Kodni kiriting:</p>
+            <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000" maxLength={6}
+              className="input input-bordered w-full bg-base-100 text-center font-mono text-lg tracking-widest" autoFocus />
+            <button className="btn btn-primary w-full" disabled={busy || code.length !== 6}>
+              {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Tasdiqlash'}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm w-full" onClick={() => { setStep('credentials'); setCode(''); setErr(null); }}>Orqaga</button>
+          </form>
+        )}
         {err && <div className="alert alert-error mt-4 py-2 text-sm"><span>{err}</span></div>}
       </div>
     </main>
@@ -68,7 +110,7 @@ function AdminLogin({ onLoggedIn }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika'];
 
 function StatCard({ label, value }) {
   return (
@@ -245,7 +287,12 @@ function ManualAdjustmentsSection() {
 
 function UsersTab() {
   const [users, setUsers] = useState(null);
+  const [q, setQ] = useState('');
   const [adjustFor, setAdjustFor] = useState(null);
+  const [suspendFor, setSuspendFor] = useState(null);
+  const [suspendDays, setSuspendDays] = useState('7');
+  const [suspendReason, setSuspendReason] = useState('Spam');
+  const [modBusy, setModBusy] = useState(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -258,6 +305,26 @@ function UsersTab() {
     setToggleBusy(u.id);
     try { await adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }); await load(); }
     finally { setToggleBusy(null); }
+  };
+
+  const submitSuspend = async (userId) => {
+    setModBusy(userId);
+    try {
+      await adminApi(`/users/${userId}/suspend`, { method: 'POST', body: JSON.stringify({ days: Number(suspendDays), reason: suspendReason }) });
+      setSuspendFor(null);
+      await load();
+    } finally {
+      setModBusy(null);
+    }
+  };
+  const unsuspend = async (u) => {
+    setModBusy(u.id);
+    try { await adminApi(`/users/${u.id}/unsuspend`, { method: 'POST' }); await load(); } finally { setModBusy(null); }
+  };
+  const deleteUser = async (u) => {
+    if (!confirm(`${u.email} akkauntini BUTUNLAY o'chirasizmi? Ma'lumotlari saqlanadi, lekin kira olmaydi.`)) return;
+    setModBusy(u.id);
+    try { await adminApi(`/users/${u.id}/delete`, { method: 'POST' }); await load(); } finally { setModBusy(null); }
   };
 
   const submitAdjust = async () => {
@@ -274,27 +341,73 @@ function UsersTab() {
   };
 
   if (!users) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+  const query = q.trim().toLowerCase();
+  const filtered = !query ? users : users.filter((u) =>
+    (u.email || '').toLowerCase().includes(query) ||
+    (u.codes || []).some((c) => c.toLowerCase().includes(query))
+  );
   return (
+    <div>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Email yoki NFC ID bo'yicha qidirish..."
+        className="input input-bordered input-sm mb-3 w-full max-w-sm bg-base-100"
+      />
     <div className="overflow-x-auto">
       <table className="table table-sm">
         <thead>
           <tr><th>Email</th><th>Telefon</th><th>Bot</th><th>Balans</th><th>Bandlangan</th><th>Kartalar</th><th>Ro'yxatdan o'tgan</th><th></th></tr>
         </thead>
         <tbody>
-          {users.map((u) => (
+          {filtered.length === 0 && (
+            <tr><td colSpan={8} className="py-6 text-center text-base-content/45">Hech narsa topilmadi.</td></tr>
+          )}
+          {filtered.map((u) => (
             <tr key={u.id} className={u.isTest ? 'opacity-50' : ''}>
-              <td>{u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">SINOV</span>}</td>
+              <td>
+                {u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">SINOV</span>}
+                {u.deletedAt && <span className="badge badge-error badge-xs ml-1">O'CHIRILGAN</span>}
+                {!u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date() && (
+                  <div className="mt-0.5 text-[10px] text-error">Bloklangan: {u.suspendReason} ({timeAgo(new Date(u.suspendedUntil).getTime())} gacha)</div>
+                )}
+              </td>
               <td className="font-mono text-xs">{u.phone || '—'}</td>
               <td>{u.botAck ? '\u2705' : '\u274C'}</td>
               <td className="font-semibold">{fmt(u.balance)}</td>
               <td className="text-base-content/50">{fmt(u.heldBalance)}</td>
               <td>{u.cardCount}</td>
               <td className="text-xs text-base-content/50">{timeAgo(new Date(u.createdAt).getTime())}</td>
-              <td className="flex gap-1">
+              <td className="flex flex-wrap gap-1">
                 <button className="btn btn-ghost btn-xs" onClick={() => setAdjustFor(u.id)}>Balansni tuzatish</button>
                 <button className="btn btn-ghost btn-xs" disabled={toggleBusy === u.id} onClick={() => toggleTest(u)}>
                   {u.isTest ? 'Sinovdan chiqarish' : "Sinov deb belgilash"}
                 </button>
+                {!u.deletedAt && (
+                  u.suspendedUntil && new Date(u.suspendedUntil) > new Date() ? (
+                    <button className="btn btn-success btn-xs" disabled={modBusy === u.id} onClick={() => unsuspend(u)}>Blokdan chiqarish</button>
+                  ) : (
+                    <button className="btn btn-warning btn-xs" onClick={() => setSuspendFor(suspendFor === u.id ? null : u.id)}>Bloklash</button>
+                  )
+                )}
+                {!u.deletedAt && (
+                  <button className="btn btn-error btn-xs" disabled={modBusy === u.id} onClick={() => deleteUser(u)}>O'chirish</button>
+                )}
+                {suspendFor === u.id && (
+                  <div className="mt-2 flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-white/10 bg-black/20 p-2">
+                    <select value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)} className="select select-bordered select-xs bg-base-100">
+                      <option>Diniy-ekstremistik kontent</option>
+                      <option>Litsenziyasiz diniy material tarqatish</option>
+                      <option>Uyatsiz/odobsiz kontent</option>
+                      <option>Ruxsatsiz shaxsiy rasm tarqatish</option>
+                      <option>Spam</option>
+                      <option>Boshqa foydalanuvchiga tahdid</option>
+                      <option>Boshqa qoidabuzarlik</option>
+                    </select>
+                    <input type="number" value={suspendDays} onChange={(e) => setSuspendDays(e.target.value)} placeholder="Kun" className="input input-bordered input-xs w-16 bg-base-100" />
+                    <button className="btn btn-warning btn-xs" disabled={modBusy === u.id} onClick={() => submitSuspend(u.id)}>Tasdiqlash</button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}
@@ -319,6 +432,7 @@ function UsersTab() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
@@ -428,7 +542,12 @@ function AuctionRequestsTab() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="font-mono text-sm font-bold">{r.code}</div>
-              <div className="text-xs text-base-content/50">{r.userEmail} {'\u2014'} {timeAgo(new Date(r.createdAt).getTime())}</div>
+              <div className="text-xs text-base-content/50">
+                {r.userCode ? (
+                  <a href={'/' + r.userCode} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{r.userEmail}</a>
+                ) : r.userEmail}
+                {' \u2014 '}{timeAgo(new Date(r.createdAt).getTime())}
+              </div>
               {r.note && <p className="mt-1 text-xs text-base-content/60">{'\u201C'}{r.note}{'\u201D'}</p>}
             </div>
             <div className="flex gap-1">
@@ -595,6 +714,47 @@ const CARD_STATUS_LABEL = { pending: 'Kutilmoqda', printing: 'Bosilmoqda', shipp
 
 // Foydalanuvchilardan kelgan "Adminga murojaat" xabarlari — javob
 // yozish shu yerdan.
+// Tashqi analitika xizmatlariga tezkor havolalar — GA/Yandex hisobingizni
+// UTM (utm_source=telegram/instagram/google) bilan sozlab, shu yerdan
+// ochib tekshirasiz.
+function ExternalAnalyticsTab() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <a
+        href="https://analytics.google.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 rounded-2xl border border-white/10 bg-base-200/50 p-5 transition hover:border-white/25 hover:bg-base-200"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/5">
+          <svg width="28" height="28" viewBox="0 0 24 24"><path fill="#F9AB00" d="M22 21h-4V3h4v18zM14 21h-4v-9h4v9zM6 21H2v-5h4v5z"/></svg>
+        </div>
+        <div>
+          <div className="font-bold">Google Analytics</div>
+          <p className="mt-0.5 text-xs text-base-content/50">Tashrif, manba (Telegram/Instagram/Google), sotuv voronkasi va tushum</p>
+        </div>
+      </a>
+      <a
+        href="https://metrika.yandex.ru/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-4 rounded-2xl border border-white/10 bg-base-200/50 p-5 transition hover:border-white/25 hover:bg-base-200"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/5">
+          <svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#FF3333"/><text x="12" y="17" fontSize="14" fontWeight="bold" fill="#fff" textAnchor="middle">Y</text></svg>
+        </div>
+        <div>
+          <div className="font-bold">Yandex Metrika / Webvisor</div>
+          <p className="mt-0.5 text-xs text-base-content/50">Foydalanuvchi harakati, bosilgan tugmalar, UX tahlili</p>
+        </div>
+      </a>
+      <div className="sm:col-span-2 rounded-xl border border-dashed border-white/15 p-4 text-xs text-base-content/50">
+        <b className="text-base-content/70">UTM manbalarni kuzatish:</b> reklama havolalariga <code className="rounded bg-black/30 px-1">?utm_source=telegram</code>, <code className="rounded bg-black/30 px-1">?utm_source=instagram</code> yoki <code className="rounded bg-black/30 px-1">?utm_source=google</code> qo'shing — shunda GA/Yandex'da har bir manbadan kelgan tashrif → ro'yxatdan o'tish → buyurtma → to'lov zanjirini alohida solishtirasiz.
+      </div>
+    </div>
+  );
+}
+
 function NotificationsTab() {
   const [messages, setMessages] = useState(null);
   const [replyFor, setReplyFor] = useState(null);
@@ -624,7 +784,12 @@ function NotificationsTab() {
       {messages.map((m) => (
         <div key={m.id} className={`rounded-2xl border p-4 ${m.status === 'pending' ? 'border-warning/40 bg-warning/5' : 'border-white/10 bg-base-200/50'}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-xs text-base-content/50">{m.userEmail} — {timeAgo(new Date(m.createdAt).getTime())}</div>
+            <div className="text-xs text-base-content/50">
+              {m.userCode ? (
+                <a href={'/' + m.userCode} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{m.userEmail}</a>
+              ) : m.userEmail}
+              {' \u2014 '}{timeAgo(new Date(m.createdAt).getTime())}
+            </div>
             {m.status === 'pending' && <span className="badge badge-warning badge-sm">Kutilmoqda</span>}
           </div>
           <p className="mt-2 text-sm">{m.message}</p>
@@ -731,6 +896,7 @@ function Dashboard({ onLogout }) {
         {tab === 6 && <AuctionRequestsTab />}
         {tab === 7 && <PhysicalCardsTab />}
         {tab === 8 && <NotificationsTab />}
+        {tab === 9 && <ExternalAnalyticsTab />}
       </div>
     </main>
   );

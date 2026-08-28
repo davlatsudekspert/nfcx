@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbUnreadCount } from '../lib/db.js';
+import { MESSAGING_ENABLED } from '../lib/features.js';
 import logo from '../assets/logo-128.png';
 
 const NAV = [
@@ -47,7 +48,7 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          {user && (
+          {user && MESSAGING_ENABLED && (
             <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
               {'\u{1F4AC}'} Xabarlar
               {unread > 0 && <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{unread}</span>}
@@ -87,7 +88,7 @@ export default function Header() {
               </li>
             ))}
             <li className="mt-2 border-t border-white/10 pt-2">
-              {user && (
+              {user && MESSAGING_ENABLED && (
                 <button onClick={() => go('/xabarlar')} className="cursor-pointer">
                   {'\u{1F4AC}'} Xabarlar {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
                 </button>

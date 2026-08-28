@@ -112,17 +112,18 @@ export function tierForCode(code) {
 export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 0 };
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
+// Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Emerald.
 export const TIER_COLOR = {
-  exclusive: '#b8963f', // GOLD+BLACK mix — to'q, boy antik-oltin (qora bilan qorishgan)
-  premium: '#8fa4d4',   // GOLD+BLUE mix — moviy-oltin (havorang bilan qorishgan)
-  gold: '#f5c518',
-  silver: '#7dd3fc',
-  free: '#4ade80',
+  exclusive: '#d4af37', // Titanium Gold — eng yuqori status
+  premium: '#c9ccd6',   // Platinum — sovuq oq-kumush
+  gold: '#f0c419',      // Pure Gold — klassik toza tilla
+  silver: '#9aa3ad',    // Chrome Silver — bosiq metall
+  free: '#3fae6a',      // Emerald — bosiq zumrad yashil
 };
-// Ikki rangli aralashma (gradient) — matn/badge fonida ishlatish uchun.
+// Titanium Gold / Platinum uchun ikki rangli metall gradient (matn/badge fonida).
 export const TIER_GRADIENT = {
-  exclusive: 'linear-gradient(120deg, #f0cf7a 0%, #d4af5a 35%, #2a2210 75%, #0c0a05 100%)',
-  premium: 'linear-gradient(120deg, #f0cf7a 0%, #d4af5a 35%, #4a6fd4 75%, #1a2a5c 100%)',
+  exclusive: 'linear-gradient(135deg, #d4af37 0%, #ffffff 25%, #8a8275 50%, #d4af37 100%)',
+  premium: 'linear-gradient(135deg, #e8e8ec 0%, #ffffff 30%, #b8bcc4 60%, #e8e8ec 100%)',
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };

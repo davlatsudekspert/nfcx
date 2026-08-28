@@ -324,6 +324,7 @@ function EditCardForm({ card, onSaved }) {
     musicUrl: card.musicUrl || '',
     tg: card.tg || '',
     phone: card.phone || '',
+    hidePhone: !!card.hidePhone,
     email: card.email || '',
     linkedin: card.linkedin || '',
     instagram: card.instagram || '',
@@ -495,6 +496,7 @@ function EditCardForm({ card, onSaved }) {
         musicUrl: form.musicUrl.trim(),
         tg: form.tg.trim(),
         phone: form.phone.trim(),
+        hidePhone: form.hidePhone,
         email: form.email.trim(),
         linkedin: form.linkedin.trim(),
         instagram: form.instagram.trim(),
@@ -719,6 +721,12 @@ function EditCardForm({ card, onSaved }) {
               <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telefon</span><input value={form.phone} onChange={set('phone')} className={inp} /></label>
               <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Email</span><input value={form.email} onChange={set('email')} className={inp} /></label>
             </div>
+            {form.phone && (
+              <label className="mt-3 flex cursor-pointer items-center gap-2.5">
+                <input type="checkbox" className="checkbox checkbox-sm" checked={form.hidePhone} onChange={(e) => setForm((f) => ({ ...f, hidePhone: e.target.checked }))} />
+                <span className="text-xs text-base-content/60">Telefon raqamini profilda hammadan yashirish (faqat menga ko'rinsin)</span>
+              </label>
+            )}
           </Section>
 
           <Section title="To'lov kartalari" subtitle="Profilda ko'rinadigan karta raqamlari">

@@ -15,6 +15,14 @@ const FINISHES = {
   // o'tish) NAMUNA sifatida ko'rsatiladigan kartalar uchun: to'q kulrang
   // fon, oltin chegara, barcha matn oltin rangda.
   showcase: { bg: 'linear-gradient(135deg, #262422 0%, #171614 55%, #262422 100%)', fg: '#d4af5a', sub: 'rgba(212,175,90,0.62)', code: '#e8c165', border: '1.5px solid #d4af5a' },
+  // ===== Daraja-asosli finish'lar — profildagi haqiqiy karta shu tarifga
+  // qarab avtomatik shu ko'rinishni oladi (Titanium Gold/Platinum/Gold/
+  // Silver/Emerald vizual tizimi). =====
+  'tier-exclusive': { bg: 'linear-gradient(145deg, #2b2926 0%, #3a3834 50%, #1f1e1c 100%)', fg: '#f2ead0', sub: 'rgba(212,175,55,0.7)', code: '#d4af37', border: '1px solid rgba(212,175,55,0.5)' },
+  'tier-premium': { bg: 'linear-gradient(145deg, #d9dade 0%, #eef0f2 45%, #b9bcc4 100%)', fg: '#1a1c22', sub: 'rgba(26,28,34,0.55)', code: '#3a3d45', border: '1px solid rgba(200,205,214,0.7)' },
+  'tier-gold': { bg: 'linear-gradient(135deg, #f0c419 0%, #a9840f 45%, #f0c419 100%)', fg: '#1a1206', sub: 'rgba(26,18,6,0.6)', code: '#1a1206' },
+  'tier-silver': { bg: 'linear-gradient(135deg, #c4cad2 0%, #8f97a3 45%, #c4cad2 100%)', fg: '#15181c', sub: 'rgba(21,24,28,0.55)', code: '#15181c' },
+  'tier-free': { bg: 'linear-gradient(135deg, #22352a 0%, #14201a 55%, #22352a 100%)', fg: '#eafff2', sub: 'rgba(63,174,106,0.65)', code: '#3fae6a', border: '1px solid rgba(63,174,106,0.4)' },
 };
 
 const CARD_SIZES = {

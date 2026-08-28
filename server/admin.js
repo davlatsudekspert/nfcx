@@ -11,6 +11,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { hashPassword, verifyPassword } from './auth.js';
+import { sendTelegramOtp } from './bot.js';
 import {
   isDbReady, adminListUsers, adminAdjustBalance, adminListOrders, adminListWalletTopups,
   adminListAuctions, adminCancelAuction, adminListPhysicalCards, adminSetPhysicalCardStatus, adminSetPhysicalCardActive,
@@ -19,6 +20,7 @@ import {
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
   listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder, finalizePaidBotOrder,
   adminListManualAdjustments, setUserTestFlag,
+  adminSuspendUser, adminUnsuspendUser, adminDeleteUser,
   adminListSupportMessages, adminReplySupportMessage,
 } from './db.js';
 
@@ -84,9 +86,20 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ---------- 2FA (ikki bosqichli tasdiqlash) ----------
+// 1-bosqich: telefon+parol to'g'ri bo'lsa, Telegram'ga (ADMIN_CHAT_ID)
+// bir martalik kod yuboriladi va VAQTINCHA token qaytariladi.
+// 2-bosqich: shu token + kod bilan haqiqiy admin sessiyasi ochiladi.
+const pending2fa = new Map(); // tempToken -> { code, expiresAt }
+const PENDING_2FA_TTL_MS = 5 * 60_000;
+
+function newTempToken() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
 export const adminRouter = express.Router();
 
-adminRouter.post('/login', adminLoginLimiter, (req, res) => {
+adminRouter.post('/login', adminLoginLimiter, async (req, res) => {
   if (!ADMIN_PHONE || !ADMIN_PASSWORD_HASH) {
     return res.status(503).json({ error: 'admin_not_configured' });
   }
@@ -95,6 +108,41 @@ adminRouter.post('/login', adminLoginLimiter, (req, res) => {
   const phoneOk = phone.length > 0 && phone === ADMIN_PHONE;
   const passOk = password.length > 0 && verifyPassword(password, ADMIN_PASSWORD_HASH);
   if (!phoneOk || !passOk) return res.status(401).json({ error: 'bad_credentials' });
+
+  const adminChatId = process.env.ADMIN_CHAT_ID || '';
+  if (!adminChatId) {
+    // ADMIN_CHAT_ID sozlanmagan bo'lsa, 2FA'ni majburlab qo'ya olmaymiz —
+    // eski xatti-harakatga (to'g'ridan-to'g'ri kirish) qaytamiz, lekin
+    // buni loglarga yozib qo'yamiz, chunki bu xavfsizlik kamchiligi.
+    console.warn('[admin] DIQQAT: ADMIN_CHAT_ID sozlanmagan — 2FA ishlamayapti!');
+    const token = newAdminToken();
+    adminSessions.set(token, Date.now() + ADMIN_TTL_MS);
+    setAdminCookie(res, token, req.headers['x-forwarded-proto'] === 'https' || req.secure);
+    return res.json({ ok: true, twoFactor: false });
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const tempToken = newTempToken();
+  pending2fa.set(tempToken, { code, expiresAt: Date.now() + PENDING_2FA_TTL_MS });
+  try {
+    await sendTelegramOtp(adminChatId, code);
+  } catch (err) {
+    console.error('[admin] 2FA kod yuborilmadi:', err.message);
+    return res.status(503).json({ error: 'tg_send_failed' });
+  }
+  res.json({ ok: true, twoFactor: true, tempToken });
+});
+
+adminRouter.post('/verify-2fa', adminLoginLimiter, (req, res) => {
+  const tempToken = String(req.body?.tempToken || '');
+  const code = String(req.body?.code || '').trim();
+  const entry = pending2fa.get(tempToken);
+  if (!entry || entry.expiresAt < Date.now()) {
+    pending2fa.delete(tempToken);
+    return res.status(401).json({ error: 'expired' });
+  }
+  if (entry.code !== code) return res.status(401).json({ error: 'bad_code' });
+  pending2fa.delete(tempToken);
 
   const token = newAdminToken();
   adminSessions.set(token, Date.now() + ADMIN_TTL_MS);
@@ -134,6 +182,29 @@ adminRouter.get('/users', async (req, res) => {
 adminRouter.post('/users/:id/set-test', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   await setUserTestFlag(Number(req.params.id), req.body?.isTest !== false);
+  res.json({ ok: true });
+});
+
+// --- Foydalanuvchini moderatsiya qilish: vaqtincha bloklash, blokdan
+// chiqarish, butunlay o'chirish (soft-delete — ma'lumot saqlanadi). ---
+adminRouter.post('/users/:id/suspend', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const days = Math.max(1, Math.min(3650, Math.round(Number(req.body?.days) || 7)));
+  const reason = String(req.body?.reason || '').slice(0, 200).trim();
+  if (!reason) return res.status(422).json({ error: 'reason_required' });
+  await adminSuspendUser(Number(req.params.id), days, reason);
+  res.json({ ok: true });
+});
+
+adminRouter.post('/users/:id/unsuspend', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await adminUnsuspendUser(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+adminRouter.post('/users/:id/delete', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await adminDeleteUser(Number(req.params.id));
   res.json({ ok: true });
 });
 

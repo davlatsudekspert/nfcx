@@ -23,6 +23,7 @@ import AuctionsPage from './pages/AuctionsPage.jsx';
 import AuctionPage from './pages/AuctionPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import MessagesPage from './pages/MessagesPage.jsx';
+import { MESSAGING_ENABLED } from './lib/features.js';
 import PaymentsPage from './pages/PaymentsPage.jsx';
 import CardDesignerPage from './pages/CardDesignerPage.jsx';
 
@@ -89,8 +90,8 @@ export default function App() {
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
     else if (isAuctionDetail) page = <AuctionPage key={cleanRoute} id={cleanRoute.slice('auksion/'.length)} />;
-    else if (cleanRoute === 'xabarlar') page = <MessagesPage />;
-    else if (isMessagesDetail) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;
+    else if (cleanRoute === 'xabarlar' && MESSAGING_ENABLED) page = <MessagesPage />;
+    else if (isMessagesDetail && MESSAGING_ENABLED) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
   }
 

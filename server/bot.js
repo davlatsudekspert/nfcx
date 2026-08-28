@@ -296,6 +296,18 @@ async function handleCallback(cb) {
   }
 }
 
+// Foydalanuvchidan adminga murojaat yoki auksion so'rovi kelganda,
+// admin saytda o'tirmasa ham darhol bilishi uchun Telegram'ga yuboriladi.
+export async function notifyAdminSupportMessage(userEmail, message) {
+  if (!ADMIN_CHAT_ID) return;
+  await sendMessage(ADMIN_CHAT_ID, `\u2709\uFE0F <b>Yangi murojaat</b>\n${userEmail}\n\n${message}`);
+}
+
+export async function notifyAdminAuctionRequest(userEmail, code, note) {
+  if (!ADMIN_CHAT_ID) return;
+  await sendMessage(ADMIN_CHAT_ID, `\u{1F528} <b>Auksion so'rovi</b>\n${userEmail} — <code>${code}</code>${note ? `\n${note}` : ''}`);
+}
+
 // Paynet webhook'i to'lovni tasdiqlaganda mijozga va adminga xabar.
 // index.js tomonidan chaqiriladi (fire-and-forget).
 export async function notifyOrderPaidAuto(order) {

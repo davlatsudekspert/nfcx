@@ -27,7 +27,8 @@ import {
   requestPremium, getOwnerByCode,
   followUserFree, unfollowUser, getFollowStats,
   listUserPayments, getPendingPayout,
-  getOrCreateConversation, listConversations, isConversationParticipant, listMessages,
+  getOrCreateConversation, listConversations, isConversationParticipant, listMessages, getOtherParticipant,
+  blockUser, unblockUser, isBlocked, reportUser,
   sendMessage, markConversationRead, totalUnreadCount,
 } from './db.js';
 import {
@@ -36,7 +37,7 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { startBot, notifyOrderPaidAuto, sendTelegramOtp } from './bot.js';
+import { startBot, notifyOrderPaidAuto, sendTelegramOtp, notifyAdminSupportMessage, notifyAdminAuctionRequest } from './bot.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
 import { adminRouter } from './admin.js';
@@ -87,6 +88,18 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (isSecureReq(req)) {
+    // HSTS — brauzerga "keyingi safar ham albatta HTTPS orqali kir" deydi.
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// Production'da HTTP so'rovlarni HTTPS'ga majburiy yo'naltirish.
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && !isSecureReq(req) && req.method === 'GET') {
+    return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+  }
   next();
 });
 
@@ -123,9 +136,16 @@ function rateLimit({ windowMs, max, keyFn }) {
 const authLimiter = rateLimit({ windowMs: 60_000, max: 20 });
 const loginLimiter = rateLimit({
   windowMs: 15 * 60_000,
-  max: 10,
+  max: 5, // xavfsizlik talabi: 5 marta xato urinishdan keyin vaqtincha bloklash
   keyFn: (req) => `${req.ip}:${String((req.body || {}).email || '').toLowerCase()}`,
 });
+// Xabarlashishda spamning oldini olish — daqiqada ko'pi bilan 15 xabar.
+const messageLimiter = rateLimit({ windowMs: 60_000, max: 15 });
+// Spam/suiiste'moldan himoya — sovg'a taklifi, adminga murojaat va
+// auksion so'rovi yuborishga chegara.
+const giftLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+const supportLimiter = rateLimit({ windowMs: 60_000, max: 5 });
+const auctionRequestLimiter = rateLimit({ windowMs: 60_000, max: 10 });
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
@@ -143,9 +163,25 @@ function safeUrl(v) {
   }
 }
 
+// Oddiy kontent moderatsiyasi — profil bio/ismida taqiqlangan so'zlar
+// (haqorat, nafrat nutqi) bo'lsa rad etiladi. To'liq AI-moderatsiya emas,
+// lekin eng oddiy va aniq holatlarni ushlab qoladi.
+const BANNED_WORDS = [
+  'проститутка', 'porno', 'porn', 'sex shop', 'xxx',
+  // O'zbekcha haqoratli so'zlar shu yerga qo'shiladi (ataylab bo'sh
+  // qoldirilgan — to'liq ro'yxatni admin o'zi to'ldiradi).
+];
+function containsBannedContent(text) {
+  const lower = String(text || '').toLowerCase();
+  return BANNED_WORDS.some((w) => lower.includes(w));
+}
+
 function validateBody(body) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
+  if (containsBannedContent(name) || containsBannedContent(body.about)) {
+    return { error: "Profilingizda taqiqlangan kontent aniqlandi. Iltimos, matnni tahrirlang." };
+  }
   let hashtags = [];
   if (Array.isArray(body.hashtags)) {
     hashtags = body.hashtags
@@ -228,6 +264,7 @@ function validateBody(body) {
       cardNumbers,
       theme,
       hashtags,
+      hidePhone: body.hidePhone === true,
     },
   };
 }
@@ -364,6 +401,7 @@ app.post('/api/conversations/with/:code', async (req, res) => {
   const ownerId = await getOwnerByCode(code);
   if (!ownerId) return res.status(404).json({ error: 'NOT_FOUND' });
   if (ownerId === user.id) return res.status(400).json({ error: 'CANNOT_MESSAGE_SELF' });
+  if (await isBlocked(user.id, ownerId)) return res.status(403).json({ error: 'blocked' });
   const conversationId = await getOrCreateConversation(user.id, ownerId);
   res.json({ conversationId });
 });
@@ -385,7 +423,7 @@ app.get('/api/conversations/:id/messages', async (req, res) => {
   res.json({ messages });
 });
 
-app.post('/api/conversations/:id/messages', async (req, res) => {
+app.post('/api/conversations/:id/messages', messageLimiter, async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
@@ -393,10 +431,46 @@ app.post('/api/conversations/:id/messages', async (req, res) => {
   if (!(await isConversationParticipant(id, user.id))) {
     return res.status(403).json({ error: 'forbidden' });
   }
+  // Blok qilingan bo'lsa, xabar yuborilmasin.
+  const otherId = await getOtherParticipant(id, user.id);
+  if (otherId && await isBlocked(otherId, user.id)) {
+    return res.status(403).json({ error: 'blocked' });
+  }
   const body = cleanStr(req.body?.body, 2000);
   if (!body) return res.status(422).json({ error: 'empty_message' });
   const message = await sendMessage(id, user.id, body);
   res.status(201).json(message);
+});
+
+// ---------- Foydalanuvchini bloklash / shikoyat qilish ----------
+
+app.post('/api/users/:id/block', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const targetId = Number(req.params.id);
+  if (targetId === user.id) return res.status(400).json({ error: 'cannot_block_self' });
+  await blockUser(user.id, targetId);
+  res.json({ ok: true });
+});
+
+app.post('/api/users/:id/unblock', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await unblockUser(user.id, Number(req.params.id));
+  res.json({ ok: true });
+});
+
+app.post('/api/users/:id/report', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const targetId = Number(req.params.id);
+  const reason = cleanStr(req.body?.reason, 500);
+  if (!reason) return res.status(422).json({ error: 'reason_required' });
+  await reportUser(user.id, targetId, reason);
+  res.json({ ok: true });
 });
 
 // ---------- Paynet webhook (avtomatik to'lov tasdiqlash) ----------
@@ -529,7 +603,7 @@ app.get('/api/auctions/:id', async (req, res) => {
 // Narx taklif qilish.
 // Foydalanuvchi adminga "shu noyob nomni auksionga qo'ying" deb so'rov
 // yuboradi (real auksion emas — faqat taklif, admin ko'rib chiqadi).
-app.post('/api/auction-requests', async (req, res) => {
+app.post('/api/auction-requests', auctionRequestLimiter, async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
@@ -540,6 +614,7 @@ app.post('/api/auction-requests', async (req, res) => {
     if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
     const result = await createAuctionRequest(user.id, code, note);
     if (result.error) return res.status(409).json(result);
+    notifyAdminAuctionRequest(user.email, code, note).catch(() => {});
     res.status(201).json(result);
   } catch (err) {
     console.error('[api] createAuctionRequest:', err.message);
@@ -742,6 +817,12 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     if (!user || !verifyPassword(password, user.passwordHash)) {
       return res.status(401).json({ error: 'bad_credentials' });
     }
+    if (user.deletedAt) {
+      return res.status(403).json({ error: 'account_deleted' });
+    }
+    if (user.suspendedUntil && new Date(user.suspendedUntil) > new Date()) {
+      return res.status(403).json({ error: 'account_suspended', suspendedUntil: user.suspendedUntil, reason: user.suspendReason });
+    }
     const token = newSessionToken();
     await createSession(token, user.id, SESSION_TTL_MS);
     res.setHeader('Set-Cookie', sessionCookie(token, isSecureReq(req)));
@@ -800,6 +881,16 @@ app.get('/api/records/:code', async (req, res) => {
   try {
     const rec = await getRecord(code);
     if (!rec) return res.status(404).json({ error: 'not_found' });
+    // MUHIM: hidePhone yoqilgan bo'lsa, telefon raqami faqat egasiga
+    // qaytariladi — frontendda yashirish YETARLI EMAS, chunki tarmoq
+    // so'rovini ko'rgan har kim raqamni ko'rib qolishi mumkin edi.
+    if (rec.hidePhone) {
+      const user = await currentUser(req);
+      const owner = await getRecordOwner(code);
+      if (!user || owner !== user.id) {
+        rec.phone = '';
+      }
+    }
     res.json(rec);
   } catch (err) {
     console.error('[api] getRecord:', err.message);
@@ -969,13 +1060,14 @@ app.put('/api/records/:code', async (req, res) => {
 // ulardan bittasini "Asosiy" deb belgilash.
 // ---------- Adminga murojaat ----------
 
-app.post('/api/support', async (req, res) => {
+app.post('/api/support', supportLimiter, async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const message = cleanStr(req.body?.message, 1000);
   if (!message) return res.status(422).json({ error: 'message_required' });
   const result = await createSupportMessage(user.id, message);
+  notifyAdminSupportMessage(user.email, message).catch(() => {});
   res.status(201).json(result);
 });
 
@@ -1071,7 +1163,7 @@ app.post('/api/records/:code/order-physical-card', async (req, res) => {
 
 // ---------- Sovg'a qilish (pulsiz egalik o'tkazish) ----------
 
-app.post('/api/records/:code/gift', async (req, res) => {
+app.post('/api/records/:code/gift', giftLimiter, async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   const toCode = String(req.body?.toCode || '').toUpperCase().trim();
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
