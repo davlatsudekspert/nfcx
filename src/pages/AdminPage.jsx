@@ -123,7 +123,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID'];
 
 function StatCard({ label, value }) {
   return (
@@ -1239,6 +1239,93 @@ function PhysicalCardsTab() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// "GIFT NFC ID" — YANGI, IZOLYATSIYALANGAN admin bo'limi. Boshqa
+// tab'larga (Foydalanuvchilar, Auksion, Premium/Oltin/Eksklyuziv va h.k.)
+// hech qanday ta'sir qilmaydi.
+// ═══════════════════════════════════════════════════════════════════
+function GiftNfcIdTab() {
+  const [gifts, setGifts] = useState(null);
+  const [code, setCode] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [lastCreated, setLastCreated] = useState(null);
+
+  const load = () => adminApi('/nfc-gifts').then((d) => setGifts(d.gifts));
+  useEffect(() => { load(); }, []);
+
+  const create = async () => {
+    if (!/^[A-Z0-9]{3,16}$/i.test(code.trim())) { setMsg({ type: 'err', text: "NFC ID formati noto'g'ri." }); return; }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const gift = await adminApi('/nfc-gifts', { method: 'POST', body: JSON.stringify({ code: code.trim(), recipientName: recipientName.trim(), note: note.trim() }) });
+      setLastCreated(gift);
+      setCode(''); setRecipientName(''); setNote('');
+      await load();
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message === 'CODE_TAKEN' ? 'Bu NFC ID allaqachon band.' : e.message === 'ALREADY_RESERVED' ? 'Bu ID uchun sovg\u2019a allaqachon yaratilgan.' : 'Xatolik yuz berdi.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const STATUS_LABEL = { reserved: { text: 'GIFT / RESERVED', cls: 'badge-warning' }, activated: { text: 'ACTIVATED', cls: 'badge-success' } };
+
+  return (
+    <div>
+      <div className="max-w-lg rounded-2xl border border-accent/25 bg-accent/5 p-5">
+        <div className="text-sm font-bold">{'\u{1F381}'} Yangi "Gift NFC ID" yaratish</div>
+        <p className="mt-1 text-xs text-base-content/50">Bo'sh (hech kimga tegishli bo'lmagan) NFC ID'ni tanlang — kod hech qanday profilga ulanmaydi, faqat konvert uchun aktivatsiya kodi generatsiya qilinadi.</p>
+        <div className="mt-3 space-y-2">
+          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="NFC ID (masalan DDD333)" className="input input-bordered input-sm w-full bg-base-100 font-mono uppercase" />
+          <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Recipient (ixtiyoriy — kimga mo'ljallangani)" className="input input-bordered input-sm w-full bg-base-100" />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Izoh (ixtiyoriy)" className="input input-bordered input-sm w-full bg-base-100" />
+          <button className="btn btn-accent btn-sm w-full" disabled={busy} onClick={create}>
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : 'Sovg\u2019a yaratish'}
+          </button>
+        </div>
+        {msg && <div className={`alert mt-3 py-2 text-xs ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+
+        {lastCreated && (
+          <div className="mt-4 rounded-xl border border-white/15 bg-black/30 p-4">
+            <div className="text-xs font-bold text-base-content/60">{'\u{1F4E7}'} Konvert uchun ma'lumot:</div>
+            <div className="mt-2 font-mono text-lg font-bold">NFC ID: #{lastCreated.code}</div>
+            <div className="mt-1 font-mono text-lg font-bold text-accent">Activation Code: {lastCreated.activationCode}</div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="table table-sm">
+          <thead><tr><th>NFC ID</th><th>Recipient</th><th>Activation Code</th><th>Status</th><th>Yaratilgan</th><th>Aktivlashtirilgan</th></tr></thead>
+          <tbody>
+            {!gifts && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">Yuklanmoqda...</td></tr>}
+            {gifts?.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">Hozircha sovg'a yaratilmagan.</td></tr>}
+            {gifts?.map((g) => {
+              const st = STATUS_LABEL[g.status] || { text: g.status, cls: 'badge-ghost' };
+              return (
+                <tr key={g.id}>
+                  <td className="font-mono font-bold">{g.code}</td>
+                  <td className="text-xs">{g.recipientName || '—'}</td>
+                  <td className="font-mono text-xs">{g.activationCode}</td>
+                  <td><span className={`badge badge-sm ${st.cls}`}>{st.text}</span></td>
+                  <td className="text-xs text-base-content/50">{timeAgo(new Date(g.createdAt).getTime())}</td>
+                  <td className="text-xs text-base-content/50">
+                    {g.activatedAt ? `${timeAgo(new Date(g.activatedAt).getTime())} — ${g.activatedByEmail || ''}` : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, role }) {
   const [tab, setTab] = useState(0);
   const logout = async () => { await adminApi('/logout', { method: 'POST' }); onLogout(); };
@@ -1274,6 +1361,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 9 && <ExternalAnalyticsTab />}
         {tab === 10 && isSuperAdmin && <SecurityTab />}
         {tab === 11 && isSuperAdmin && <AdminsTab />}
+        {tab === 12 && <GiftNfcIdTab />}
       </div>
     </main>
   );

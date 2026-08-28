@@ -465,3 +465,45 @@ export const dbSendMessage = (id, body) => dbApi(`/conversations/${id}/messages`
 
 export const dbGetPayment = (orderId) => dbApi(`/payments/${encodeURIComponent(orderId)}`);
 export const dbListPayments = () => dbApi('/payments');
+
+// ---------- "Gift NFC ID" — yangi, izolyatsiyalangan ----------
+
+export async function dbGetPendingGift(code) {
+  const data = await dbApi(`/nfc-gifts/${encodeURIComponent(code)}`);
+  return data?.gift || null;
+}
+
+export async function dbVerifyGiftCode(code, activationCode) {
+  const res = await fetch(`/api/nfc-gifts/${encodeURIComponent(code)}/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ activationCode }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.error === 'bad_code' ? "Aktivatsiya kodi noto'g'ri." : 'Xatolik yuz berdi.');
+  return data;
+}
+
+export async function dbActivateGift(code, payload) {
+  const res = await fetch(`/api/nfc-gifts/${encodeURIComponent(code)}/activate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data?.error;
+    const map = {
+      bad_code: "Aktivatsiya kodi noto'g'ri.",
+      email_taken: 'Bu email allaqachon ro\u2019yxatdan o\u2019tgan.',
+      weak_password: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.',
+      bad_email: "Email noto'g'ri.",
+      name_required: 'Ismingizni kiriting.',
+      code_taken: 'Bu NFC ID allaqachon band bo\u2019lib qolgan.',
+    };
+    throw new Error(map[key] || 'Xatolik yuz berdi.');
+  }
+  return data;
+}

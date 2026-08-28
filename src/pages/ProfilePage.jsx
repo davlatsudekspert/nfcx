@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike } from '../lib/db.js';
+import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
@@ -188,6 +188,7 @@ function MusicPlayer({ url, accentColor }) {
 
 export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
+  const [pendingGift, setPendingGift] = useState(undefined); // "Gift NFC ID" — yangi, izolyatsiyalangan
   const [toast, setToast] = useState('');
   const [tab, setTab] = useState('vizitka');
   const [tapInactive, setTapInactive] = useState(false);
@@ -286,6 +287,14 @@ export default function ProfilePage({ code, catalog }) {
         }
       } else {
         setRecord(null);
+        // "Gift NFC ID" — kod bo'sh bo'lsa, kutilayotgan sovg'a bor-yo'qligini
+        // tekshiramiz (yangi, izolyatsiyalangan tekshiruv).
+        try {
+          const gift = await dbGetPendingGift(code);
+          if (!cancelled) setPendingGift(gift);
+        } catch {
+          if (!cancelled) setPendingGift(null);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -322,6 +331,16 @@ export default function ProfilePage({ code, catalog }) {
   }
 
   if (record === null) {
+    // "Gift NFC ID" — agar shu kod uchun kutilayotgan sovg'a bo'lsa,
+    // oddiy "bo'sh kod" ekrani o'rniga aktivatsiya ekrani ko'rsatiladi.
+    // Tekshiruv tugamaguncha (pendingGift === undefined) kutamiz —
+    // aks holda bir lahzalik noto'g'ri ekran ko'rinib ketishi mumkin.
+    if (pendingGift === undefined) {
+      return <div className="min-h-screen" style={vzStyle('classic')}></div>;
+    }
+    if (pendingGift) {
+      return <GiftActivationScreen code={code} recipientName={pendingGift.recipientName} />;
+    }
     const parsed = parseAnyCode(code);
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
@@ -599,6 +618,124 @@ export default function ProfilePage({ code, catalog }) {
 
       <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{fmt(record.views || 1)} ko'rishlar</div>
       {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] text-white shadow-xl">{toast}</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// "GIFT NFC ID" — YANGI, TO'LIQ IZOLYATSIYALANGAN komponent.
+// Mavjud ProfilePage/AuthPage render mantig'iga tegmaydi — faqat
+// yuqorida "record === null && pendingGift" holatida chaqiriladi.
+// ═══════════════════════════════════════════════════════════════════
+function GiftActivationScreen({ code, recipientName }) {
+  const [step, setStep] = useState('intro'); // intro | code | form | done
+  const [activationCode, setActivationCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const [form, setForm] = useState({
+    email: '', password: '', name: recipientName || '', username: '', phone: '',
+    avatarUrl: '', bio: '', instagram: '', telegram: '', youtube: '', tiktok: '',
+  });
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const verifyCode = async () => {
+    if (!activationCode.trim()) { setErr('Aktivatsiya kodini kiriting.'); return; }
+    setBusy(true);
+    setErr(null);
+    try {
+      await dbVerifyGiftCode(code, activationCode.trim());
+      setStep('form');
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!form.email.trim() || !form.password || !form.name.trim()) {
+      setErr('Email, parol va ismni to\u2019ldiring.');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      await dbActivateGift(code, { ...form, activationCode: activationCode.trim() });
+      setStep('done');
+      setTimeout(() => { window.location.href = '/' + code.toLowerCase(); }, 1400);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
+      <div className="mx-auto max-w-[480px] px-5 py-16">
+        {step === 'intro' && (
+          <div className="text-center">
+            <div className="text-5xl">{'\u{1F381}'}</div>
+            <h2 className="font-display mt-3 mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">Sizga maxsus NFC ID sovg'a qilingan</h2>
+            <div className="mb-4 font-mono text-3xl font-extrabold text-[color:var(--vz-ink)]">#{code}</div>
+            <p className="text-[14px]">Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni yarating.</p>
+            <button onClick={() => setStep('code')} className="mt-6 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-7 py-3 text-[14px] font-bold text-white transition hover:brightness-125">
+              Sovg'ani faollashtirish
+            </button>
+          </div>
+        )}
+
+        {step === 'code' && (
+          <div>
+            <h2 className="font-display mb-2 text-xl font-bold text-[color:var(--vz-ink)]">Aktivatsiya kodi</h2>
+            <p className="mb-4 text-[13.5px]">Konvertdagi kartochkada yozilgan kodni kiriting (masalan: NFC-X7K9-P2LM).</p>
+            <input
+              value={activationCode}
+              onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+              placeholder="NFC-XXXX-XXXX"
+              className="w-full rounded-xl border border-[color:var(--vz-line)] bg-transparent px-4 py-3 text-center font-mono text-lg tracking-wider text-[color:var(--vz-ink)] outline-none"
+            />
+            {err && <p className="mt-2 text-center text-[13px] text-red-400">{err}</p>}
+            <button onClick={verifyCode} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[14px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
+              {busy ? '...' : 'Tasdiqlash'}
+            </button>
+          </div>
+        )}
+
+        {step === 'form' && (
+          <div>
+            <div className="mb-4 rounded-xl bg-green-500/10 px-4 py-3 text-center text-[13.5px] text-green-400">
+              NFC ID #{code} muvaffaqiyatli tasdiqlandi! Endi profilingizni yarating.
+            </div>
+            <div className="space-y-2.5">
+              <input value={form.name} onChange={set('name')} placeholder="Ism Familiya *" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.username} onChange={set('username')} placeholder="Username / Nickname" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.email} onChange={set('email')} type="email" placeholder="Email *" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.password} onChange={set('password')} type="password" placeholder="Parol (kamida 6 belgi) *" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.phone} onChange={set('phone')} placeholder="Telefon" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="Profil rasmi (URL)" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <textarea value={form.bio} onChange={set('bio')} placeholder="Bio" rows={2} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.instagram} onChange={set('instagram')} placeholder="Instagram" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.telegram} onChange={set('telegram')} placeholder="Telegram" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.youtube} onChange={set('youtube')} placeholder="YouTube (havola)" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.tiktok} onChange={set('tiktok')} placeholder="TikTok (havola)" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+            </div>
+            {err && <p className="mt-2 text-center text-[13px] text-red-400">{err}</p>}
+            <button onClick={submit} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[14px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
+              {busy ? '...' : 'Profil yaratish'}
+            </button>
+          </div>
+        )}
+
+        {step === 'done' && (
+          <div className="text-center">
+            <div className="text-5xl">{'\u2705'}</div>
+            <h2 className="font-display mt-3 text-xl font-bold text-[color:var(--vz-ink)]">Tayyor! Profilingiz yaratildi.</h2>
+            <p className="mt-2 text-[13.5px]">Hozir yo'naltirilasiz...</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

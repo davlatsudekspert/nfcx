@@ -490,6 +490,26 @@ export async function initDb() {
     }
   }
 
+  // ===================== "GIFT NFC ID" — YANGI, IZOLYATSIYALANGAN =====================
+  // Mavjud "sovg'a qilish" (gift_offers — egasi bor kodni boshqa foydalanuvchiga
+  // o'tkazish) funksiyasidan BUTUNLAY FARQLI: bu yerda admin HALI HECH KIMGA
+  // TEGISHLI BO'LMAGAN kodni oldindan ajratib, tashqarida (konvert bilan)
+  // kimgadir beradi. Kod HECH QANDAY profilga ULANMAYDI, faqat qabul qiluvchi
+  // o'zi bir martalik aktivatsiya kodi bilan tasdiqlagandan keyingina ulanadi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS nfc_gifts (
+      id                  SERIAL PRIMARY KEY,
+      code                VARCHAR(16) UNIQUE NOT NULL,
+      recipient_name      TEXT,
+      note                TEXT,
+      activation_code     VARCHAR(20) UNIQUE NOT NULL,
+      status              VARCHAR(20) NOT NULL DEFAULT 'reserved', -- reserved | activated
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+      activated_at        TIMESTAMPTZ,
+      activated_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
   // Xavfsizlik: foydalanuvchini bloklash va shikoyat qilish — xabar
   // yozish tizimidagi suiiste'moldan himoya.
   await pool.query(`
@@ -2967,6 +2987,103 @@ export async function adminClearPendingPayout(userId, amount) {
     );
     await client.query('COMMIT');
     return rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ===================== "GIFT NFC ID" — funksiya funksiyalari =====================
+// Bu bo'lim butunlay YANGI va IZOLYATSIYALANGAN — mavjud hech qanday
+// funksiyaga (auksion, oddiy sovg'a, oddiy ro'yxatdan o'tish) tegmaydi.
+
+function generateActivationCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `NFC-${seg()}-${seg()}`;
+}
+
+// Admin — bo'sh (hech kimga tegishli bo'lmagan) kodni sovg'a sifatida
+// ajratib qo'yadi. Kod HALI HECH QANDAY profilga ulanmaydi.
+export async function createNfcGift(code, recipientName, note) {
+  const { rows: taken } = await pool.query(`SELECT 1 FROM cards WHERE code = $1`, [code]);
+  if (taken[0]) return { error: 'CODE_TAKEN' };
+  const { rows: already } = await pool.query(`SELECT 1 FROM nfc_gifts WHERE code = $1 AND status = 'reserved'`, [code]);
+  if (already[0]) return { error: 'ALREADY_RESERVED' };
+
+  for (let i = 0; i < 8; i++) {
+    const activationCode = generateActivationCode();
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO nfc_gifts (code, recipient_name, note, activation_code) VALUES ($1,$2,$3,$4)
+         RETURNING id, code, activation_code AS "activationCode"`,
+        [code, recipientName || null, note || null, activationCode]
+      );
+      return { ok: true, gift: rows[0] };
+    } catch (err) {
+      if (err.code !== '23505') throw err; // activation_code to'qnashuvi — juda kam, qayta uramiz
+    }
+  }
+  return { error: 'GENERATION_FAILED' };
+}
+
+export async function listNfcGifts() {
+  const { rows } = await pool.query(
+    `SELECT ng.id, ng.code, ng.recipient_name AS "recipientName", ng.note,
+            ng.activation_code AS "activationCode", ng.status,
+            ng.created_at AS "createdAt", ng.activated_at AS "activatedAt",
+            u.email AS "activatedByEmail"
+     FROM nfc_gifts ng LEFT JOIN users u ON u.id = ng.activated_by_user_id
+     ORDER BY ng.created_at DESC`
+  );
+  return rows;
+}
+
+// Profil sahifasi ochilganda — shu kod uchun kutilayotgan sovg'a bor-yo'qligini
+// tekshiradi (faqat status='reserved' bo'lsa qaytaradi, activation_code'ni
+// XAVFSIZLIK uchun QAYTARMAYDI — u faqat konvertda, admin biladi).
+export async function getPendingGiftByCode(code) {
+  const { rows } = await pool.query(
+    `SELECT id, code, recipient_name AS "recipientName" FROM nfc_gifts WHERE code = $1 AND status = 'reserved'`,
+    [code]
+  );
+  return rows[0] || null;
+}
+
+// Aktivatsiya kodini tekshiradi (bir martalik, urinishlar orasida hech
+// narsa oshkor qilinmaydi — noto'g'ri/to'g'ri, boshqa hech narsa).
+export async function verifyGiftActivationCode(code, activationCode) {
+  const { rows } = await pool.query(
+    `SELECT id FROM nfc_gifts WHERE code = $1 AND activation_code = $2 AND status = 'reserved'`,
+    [code, activationCode.trim().toUpperCase()]
+  );
+  return !!rows[0];
+}
+
+// Aktivatsiya + profil yaratish — BITTA atomik tranzaksiyada: yangi
+// foydalanuvchi yaratiladi, kod shu foydalanuvchiga (asosiy profil
+// sifatida) biriktiriladi, sovg'a "activated" deb belgilanadi.
+export async function activateNfcGift(code, activationCode, userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: giftRows } = await client.query(
+      `SELECT id FROM nfc_gifts WHERE code = $1 AND activation_code = $2 AND status = 'reserved' FOR UPDATE`,
+      [code, activationCode.trim().toUpperCase()]
+    );
+    if (!giftRows[0]) { await client.query('ROLLBACK'); return { error: 'BAD_CODE' }; }
+
+    const { rows: takenRows } = await client.query(`SELECT 1 FROM cards WHERE code = $1`, [code]);
+    if (takenRows[0]) { await client.query('ROLLBACK'); return { error: 'CODE_TAKEN' }; }
+
+    await client.query(
+      `UPDATE nfc_gifts SET status = 'activated', activated_at = now(), activated_by_user_id = $2 WHERE id = $1`,
+      [giftRows[0].id, userId]
+    );
+    await client.query('COMMIT');
+    return { ok: true };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

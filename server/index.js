@@ -10,6 +10,7 @@ import {
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
   createSupportMessage, listMySupportMessages,
+  getPendingGiftByCode, verifyGiftActivationCode, activateNfcGift, logAdminActivity,
   assignPromoCode, getUserByPromoCode, applyReferral, getPendingDiscountPct, consumeDiscount, listMyReferrals,
   getUserPhoneAndTgId, createPasswordResetCode, verifyAndConsumePasswordResetCode,
   // setForSale, transferCard, listForSale — endi ishlatilmaydi (Sotish
@@ -1315,6 +1316,102 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: 'bad_json' });
   }
   next(err);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// "GIFT NFC ID" — YANGI, TO'LIQ IZOLYATSIYALANGAN FUNKSIYA.
+// Mavjud auth/register, NFC ID, Auksion, oddiy "sovg'a qilish" (gift_offers)
+// tizimlariga HECH QANDAY TA'SIR QILMAYDI — faqat qo'shimcha sifatida.
+// ═══════════════════════════════════════════════════════════════════
+const giftActivateLimiter = rateLimit({ windowMs: 15 * 60_000, max: 10 });
+
+// Profil sahifasi (kod bo'sh bo'lganda) shu orqali "kutilayotgan sovg'a"
+// bor-yo'qligini tekshiradi. Activation kodni QAYTARMAYDI (xavfsizlik).
+app.get('/api/nfc-gifts/:code', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!isDbReady()) return res.json({ gift: null });
+  const gift = await getPendingGiftByCode(code);
+  res.json({ gift: gift ? { code: gift.code, recipientName: gift.recipientName } : null });
+});
+
+// 1-bosqich: aktivatsiya kodini oldindan tekshirish (hali iste'mol qilinmaydi).
+app.post('/api/nfc-gifts/:code/verify', giftActivateLimiter, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const activationCode = String(req.body?.activationCode || '');
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  if (!activationCode.trim()) return res.status(422).json({ error: 'code_required' });
+  const ok = await verifyGiftActivationCode(code, activationCode);
+  if (!ok) return res.status(401).json({ error: 'bad_code' });
+  res.json({ ok: true });
+});
+
+// 2-bosqich: to'liq profil yaratish + aktivatsiya — bitta so'rovda.
+app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const activationCode = String(req.body?.activationCode || '');
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+  const name = cleanStr(req.body?.name, 80);
+  const username = cleanStr(req.body?.username, 40);
+  const phone = cleanStr(req.body?.phone, 30);
+  const avatarUrl = safeUrl(req.body?.avatarUrl) || (String(req.body?.avatarUrl || '').startsWith('/uploads/') ? cleanStr(req.body.avatarUrl, 300) : '');
+  const bio = cleanStr(req.body?.bio, 500);
+  const instagram = cleanStr(req.body?.instagram, 60).replace(/^@/, '');
+  const telegram = cleanStr(req.body?.telegram, 60).replace(/^@/, '');
+  const youtube = safeUrl(req.body?.youtube);
+  const tiktok = safeUrl(req.body?.tiktok);
+
+  if (!activationCode.trim()) return res.status(422).json({ error: 'code_required' });
+  if (!email || !email.includes('@')) return res.status(422).json({ error: 'bad_email' });
+  if (password.length < 6) return res.status(422).json({ error: 'weak_password' });
+  if (!name) return res.status(422).json({ error: 'name_required' });
+
+  try {
+    if (await getUserByEmail(email)) return res.status(409).json({ error: 'email_taken' });
+
+    const user = await createUser(email, hashPassword(password), {});
+    if (!user) return res.status(409).json({ error: 'email_taken' });
+    await assignPromoCode(user.id);
+
+    // YouTube/TikTok uchun YANGI ustun QO'SHILMADI — mavjud "qo'shimcha
+    // havolalar" (extraLinks) mexanizmi ishlatildi (database strukturasi
+    // o'zgarmadi).
+    const extraLinks = [];
+    if (youtube) extraLinks.push({ label: 'YouTube', url: youtube });
+    if (tiktok) extraLinks.push({ label: 'TikTok', url: tiktok });
+
+    const created = await createRecord({
+      code,
+      name: username ? `${name} (@${username})` : name,
+      role: '',
+      avatarUrl,
+      about: bio,
+      instagram,
+      tg: telegram,
+      phone,
+      extraLinks,
+      hashtags: [],
+      price: 0,
+    });
+    if (!created) return res.status(409).json({ error: 'code_taken' });
+    await attachCardToUser(code, user.id);
+    await setPrimaryCard(code, user.id);
+
+    const result = await activateNfcGift(code, activationCode, user.id);
+    if (result.error) return res.status(409).json(result);
+
+    // Mavjud login tizimi bilan bir xil — darhol tizimga kirgan holatda.
+    const token = newSessionToken();
+    await createSession(user.id, token);
+    res.setHeader('Set-Cookie', sessionCookie(token, isSecureReq(req)));
+    logAdminActivity({ action: 'nfc_gift_activated', details: `${code} — ${email}`, ip: req.ip }).catch(() => {});
+    res.status(201).json({ ok: true, code });
+  } catch (err) {
+    console.error('[api] nfc-gift activate:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
 });
 
 const distDir = path.join(__dirname, '..', 'dist');

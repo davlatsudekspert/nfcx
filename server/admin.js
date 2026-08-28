@@ -29,6 +29,7 @@ import {
   adminListSupportMessages, adminReplySupportMessage,
   getAdminByPhone, getAdminById, listAdmins, createAdmin, removeAdmin,
   setAdminTotpSecret, enableAdminTotp, disableAdminTotp, getAdminTotpSecret,
+  createNfcGift, listNfcGifts,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -671,3 +672,24 @@ adminRouter.get('/manual-adjustments', async (req, res) => {
   res.json({ adjustments: await adminListManualAdjustments() });
 });
 
+
+// ═══════════════════════════════════════════════════════════════════
+// "GIFT NFC ID" — YANGI, IZOLYATSIYALANGAN admin bo'limi.
+// ═══════════════════════════════════════════════════════════════════
+adminRouter.get('/nfc-gifts', requireAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ gifts: [] });
+  res.json({ gifts: await listNfcGifts() });
+});
+
+adminRouter.post('/nfc-gifts', requireAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  const recipientName = String(req.body?.recipientName || '').slice(0, 100).trim();
+  const note = String(req.body?.note || '').slice(0, 300).trim();
+  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+
+  const result = await createNfcGift(code, recipientName, note);
+  if (result.error) return res.status(409).json(result);
+  logAdminActivity({ action: 'nfc_gift_created', details: `${code} \u2192 ${recipientName || 'nomsiz'}`, newValue: result.gift.activationCode, ip: req.ip }).catch(() => {});
+  res.status(201).json(result.gift);
+});
