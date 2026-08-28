@@ -22,10 +22,12 @@ export function parseLetterCode(raw) {
   return LETTER_CODE_RE.test(c) ? { code: c } : null;
 }
 
-// Faqat standart AAA000 formatini qabul qiladi (harfli premium hozircha o'chiq).
+// Har bir standart formatga (AAA000) qo'shimcha, ro'yxatdan o'tishda
+// avtomatik beriladigan 8 xonali raqamli ID ham qabul qilinadi.
 export function parseAnyCode(raw) {
   const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!clean) return null;
+  if (/^[0-9]{8}$/.test(clean)) return { code: clean };
   if (!LETTER_CODES_ENABLED) return parseCode(clean);
   if (/[0-9]/.test(clean)) return parseCode(clean);
   return parseLetterCode(clean);
@@ -111,11 +113,16 @@ export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silv
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
 export const TIER_COLOR = {
-  exclusive: '#ff5c8a', // eng nodir — alohida ajralib turadigan pushti-qizil
-  premium: '#c084fc',
+  exclusive: '#b8963f', // GOLD+BLACK mix — to'q, boy antik-oltin (qora bilan qorishgan)
+  premium: '#8fa4d4',   // GOLD+BLUE mix — moviy-oltin (havorang bilan qorishgan)
   gold: '#f5c518',
   silver: '#7dd3fc',
   free: '#4ade80',
+};
+// Ikki rangli aralashma (gradient) — matn/badge fonida ishlatish uchun.
+export const TIER_GRADIENT = {
+  exclusive: 'linear-gradient(120deg, #f0cf7a 0%, #d4af5a 35%, #2a2210 75%, #0c0a05 100%)',
+  premium: 'linear-gradient(120deg, #f0cf7a 0%, #d4af5a 35%, #4a6fd4 75%, #1a2a5c 100%)',
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };

@@ -9,6 +9,7 @@ import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import AccountPage from './pages/AccountPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 import PricingPage from './pages/PricingPage.jsx';
 import HowItWorksPage from './pages/HowItWorksPage.jsx';
 import CatalogPage from './pages/CatalogPage.jsx';
@@ -71,6 +72,7 @@ export default function App() {
   if (!page) {
     if (cleanRoute === 'login' || cleanRoute === 'register') page = <AuthPage mode={cleanRoute} />;
     else if (cleanRoute === 'account') page = <AccountPage refreshCatalog={refreshCatalog} />;
+    else if (cleanRoute === 'sozlamalar') page = <SettingsPage />;
     else if (cleanRoute === 'narxlar') page = <PricingPage catalog={catalog} refreshCatalog={refreshCatalog} />;
     else if (cleanRoute === 'qanday-ishlaydi') page = <HowItWorksPage />;
     else if (cleanRoute === 'katalog') page = <CatalogPage catalog={catalog} />;

@@ -3,11 +3,16 @@ import { dbListConversations, dbListMessages, dbSendMessage, dbUploadImage } fro
 import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { timeAgo } from '../lib/format.js';
-import { IconSearch, IconPhone } from '../components/Icons.jsx';
+import { IconSearch, IconPhone, IconArrowLeft } from '../components/Icons.jsx';
 
 // DIQQAT: loyiha Supabase emas (Railway PostgreSQL + Express), shuning
 // uchun "Supabase Realtime" ishlatilmaydi. Bu yerda 3 soniyalik POLLING
 // orqali "real-time"ga yaqin tajriba beriladi.
+//
+// MOBIL UX: Instagram DM uslubida — mobil ekranda BIR VAQTNING O'ZIDA
+// faqat bittasi ko'rinadi: yo suhbatlar ro'yxati, yo ochiq suhbat (orqaga
+// tugmasi bilan). Ikkalasi hech qachon bir-birining ustiga cho'zilib,
+// scroll qilishga majburlamaydi. Desktopda (sm+) klassik ikki ustunli.
 
 const IMAGE_URL_RE = /\/uploads\/[\w-]+\.(png|jpe?g|webp|gif)$/i;
 
@@ -35,7 +40,7 @@ function ConversationList({ conversations, activeId, q, onSelect }) {
     !query || (c.otherEmail || '').toLowerCase().includes(query) || (c.lastMessage || '').toLowerCase().includes(query));
 
   if (filtered.length === 0) {
-    return <div className="p-6 text-center text-sm text-base-content/45">Hozircha suhbat topilmadi.</div>;
+    return <div className="flex h-full items-center justify-center p-6 text-center text-sm text-base-content/45">Hozircha suhbat topilmadi.</div>;
   }
   return (
     <div className="divide-y divide-white/5">
@@ -43,7 +48,7 @@ function ConversationList({ conversations, activeId, q, onSelect }) {
         <button
           key={c.id}
           onClick={() => onSelect(c.id)}
-          className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-accent/[0.06] ${activeId === c.id ? 'bg-accent/10' : ''}`}
+          className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-accent/[0.06] active:bg-accent/[0.1] ${activeId === c.id ? 'bg-accent/10' : ''}`}
         >
           <Avatar label={c.otherEmail} active={isRecentlyActive(c.lastAt)} />
           <div className="min-w-0 flex-1">
@@ -66,7 +71,7 @@ function MessageBubble({ m, mine }) {
   const isImage = IMAGE_URL_RE.test(m.body.trim());
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm ${mine ? 'bg-gradient-to-br from-accent to-[#b3860f] text-black' : 'bg-base-300'}`}>
+      <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] ${mine ? 'bg-gradient-to-br from-accent to-[#b3860f] text-black' : 'bg-base-300'}`}>
         {isImage ? (
           <a href={m.body} target="_blank" rel="noopener noreferrer">
             <img src={m.body} alt="rasm" className="max-h-56 rounded-lg object-cover" />
@@ -94,7 +99,7 @@ function MessageBubble({ m, mine }) {
   );
 }
 
-function Thread({ conversation, myUserId }) {
+function Thread({ conversation, myUserId, onBack }) {
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -160,17 +165,22 @@ function Thread({ conversation, myUserId }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-white/10 px-5 py-3.5">
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-3 sm:gap-3 sm:px-5">
+        {onBack && (
+          <button className="btn btn-ghost btn-circle btn-sm shrink-0 sm:hidden" onClick={onBack} aria-label="Orqaga">
+            <IconArrowLeft width={18} height={18} />
+          </button>
+        )}
         <Avatar label={conversation.otherEmail} active={isRecentlyActive(conversation.lastAt)} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{conversation.otherEmail}</div>
-          <div className="text-[11px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? 'Onlayn' : 'Oxirgi faollik: ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '—')}</div>
+          <div className="text-[11px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? 'Onlayn' : 'Oxirgi faollik: ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '\u2014')}</div>
         </div>
-        <button className="btn btn-ghost btn-circle btn-sm text-base-content/50"><IconSearch width={16} height={16} /></button>
+        <button className="btn btn-ghost btn-circle btn-sm hidden text-base-content/50 sm:inline-flex"><IconSearch width={16} height={16} /></button>
         <button className="btn btn-ghost btn-circle btn-sm text-base-content/50"><IconPhone width={16} height={16} /></button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:p-4">
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-sm text-base-content/40">Xabar yo'q — birinchi bo'lib yozing.</div>
         )}
@@ -178,7 +188,7 @@ function Thread({ conversation, myUserId }) {
         <div ref={bottomRef}></div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-white/10 p-3">
+      <div className="flex shrink-0 items-center gap-2 border-t border-white/10 p-2.5 sm:p-3" style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
         <button className="btn btn-ghost btn-circle btn-sm shrink-0 text-base-content/50" onClick={() => fileRef.current?.click()} disabled={uploading}>
           {uploading ? <span className="loading loading-spinner loading-xs"></span> : (
@@ -232,15 +242,22 @@ export default function MessagesPage({ id }) {
   }
 
   const active = conversations?.find((c) => c.id === activeId) || null;
+  // Mobilda: suhbat tanlanganida FAQAT thread ko'rinadi (ro'yxat butunlay
+  // yashiriladi) — Instagram DM'dagidek, "orqaga" tugmasi bilan qaytiladi.
+  const showThreadOnMobile = !!active;
 
   return (
-    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <div className="mt-6 grid overflow-hidden rounded-2xl border border-white/10 bg-base-200/40 shadow-[0_20px_60px_rgba(0,0,0,0.4)] sm:grid-cols-[300px_1fr]" style={{ height: '72vh' }}>
-        <div className="flex min-h-0 flex-col border-r border-white/10">
-          <div className="flex items-center justify-between gap-2 border-b border-white/10 p-4">
+    <main className="mx-auto w-full max-w-[1800px] px-0 pb-16 sm:px-10 lg:px-14">
+      <div
+        className="mt-0 overflow-hidden border-white/10 bg-base-200/40 sm:mt-6 sm:grid sm:grid-cols-[300px_1fr] sm:rounded-2xl sm:border sm:shadow-[0_20px_60px_rgba(0,0,0,0.4)]"
+        style={{ height: 'calc(100dvh - 64px)' }}
+      >
+        {/* Suhbatlar ro'yxati — mobilda thread ochiq bo'lsa yashiriladi */}
+        <div className={`flex min-h-0 flex-col border-white/10 sm:border-r ${showThreadOnMobile ? 'hidden sm:flex' : 'flex'}`} style={{ height: 'calc(100dvh - 64px)' }}>
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 p-4">
             <h1 className="text-lg font-bold">Xabarlar</h1>
           </div>
-          <div className="border-b border-white/10 p-3">
+          <div className="shrink-0 border-b border-white/10 p-3">
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
               <IconSearch width={14} height={14} className="shrink-0 text-base-content/40" />
               <input
@@ -257,27 +274,26 @@ export default function MessagesPage({ id }) {
               : <ConversationList conversations={conversations} activeId={activeId} q={q} onSelect={(cid) => navigate('/xabarlar/' + cid)} />}
           </div>
         </div>
-        <div className="hidden min-h-0 sm:block">
+
+        {/* Ochiq suhbat — mobilda faqat shu ko'rinadi (butun ekranni egallaydi) */}
+        <div className={`min-h-0 ${showThreadOnMobile ? 'block' : 'hidden sm:block'}`} style={{ height: 'calc(100dvh - 64px)' }}>
           {active
-            ? <Thread key={active.id} conversation={active} myUserId={user.id} />
+            ? <Thread key={active.id} conversation={active} myUserId={user.id} onBack={() => navigate('/xabarlar')} />
             : <div className="flex h-full items-center justify-center text-sm text-base-content/40">Suhbat tanlang</div>}
         </div>
       </div>
-      {active && (
-        <div className="mt-4 sm:hidden" style={{ height: '60vh' }}>
-          <Thread key={active.id} conversation={active} myUserId={user.id} />
-        </div>
-      )}
 
-      <section className="mt-10 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {FEATURES.map((f) => (
-          <div key={f.title} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
-            <div className="text-xl">{f.icon}</div>
-            <div className="mt-2 text-sm font-semibold">{f.title}</div>
-            <p className="mt-1 text-xs leading-relaxed text-base-content/50">{f.text}</p>
-          </div>
-        ))}
-      </section>
+      {!showThreadOnMobile && (
+        <section className="mt-10 hidden gap-3 px-6 sm:grid sm:grid-cols-3 sm:px-0 lg:grid-cols-5">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
+              <div className="text-xl">{f.icon}</div>
+              <div className="mt-2 text-sm font-semibold">{f.title}</div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/50">{f.text}</p>
+            </div>
+          ))}
+        </section>
+      )}
     </main>
   );
 }

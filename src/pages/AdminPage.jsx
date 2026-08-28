@@ -68,7 +68,7 @@ function AdminLogin({ onLoggedIn }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar'];
 
 function StatCard({ label, value }) {
   return (
@@ -593,8 +593,62 @@ function AuctionsTab() {
 const CARD_STATUS = ['pending', 'printing', 'shipped', 'delivered'];
 const CARD_STATUS_LABEL = { pending: 'Kutilmoqda', printing: 'Bosilmoqda', shipped: "Jo'natildi", delivered: 'Yetkazildi' };
 
+// Foydalanuvchilardan kelgan "Adminga murojaat" xabarlari — javob
+// yozish shu yerdan.
+function NotificationsTab() {
+  const [messages, setMessages] = useState(null);
+  const [replyFor, setReplyFor] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = () => adminApi('/support-messages').then((d) => setMessages(d.messages));
+  useEffect(() => { load(); }, []);
+
+  const sendReply = async (id) => {
+    if (!replyText.trim()) return;
+    setBusy(true);
+    try {
+      await adminApi(`/support-messages/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply: replyText.trim() }) });
+      setReplyFor(null);
+      setReplyText('');
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!messages) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+  if (messages.length === 0) return <div className="text-base-content/45">Hozircha murojaat yo'q.</div>;
+  return (
+    <div className="space-y-3">
+      {messages.map((m) => (
+        <div key={m.id} className={`rounded-2xl border p-4 ${m.status === 'pending' ? 'border-warning/40 bg-warning/5' : 'border-white/10 bg-base-200/50'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-base-content/50">{m.userEmail} — {timeAgo(new Date(m.createdAt).getTime())}</div>
+            {m.status === 'pending' && <span className="badge badge-warning badge-sm">Kutilmoqda</span>}
+          </div>
+          <p className="mt-2 text-sm">{m.message}</p>
+          {m.reply && <p className="mt-2 rounded-lg bg-accent/10 p-2 text-sm text-accent"><b>Javobingiz:</b> {m.reply}</p>}
+          {m.status === 'pending' && (
+            replyFor === m.id ? (
+              <div className="mt-3 flex gap-2">
+                <input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Javob yozing..." className="input input-bordered input-sm flex-1 bg-base-100" />
+                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => sendReply(m.id)}>Yuborish</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setReplyFor(null)}>Bekor</button>
+              </div>
+            ) : (
+              <button className="btn btn-ghost btn-xs mt-2" onClick={() => { setReplyFor(m.id); setReplyText(''); }}>Javob berish</button>
+            )
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PhysicalCardsTab() {
   const [cards, setCards] = useState(null);
+  const [busy, setBusy] = useState(null);
   const load = () => adminApi('/physical-cards').then((d) => setCards(d.cards));
   useEffect(() => { load(); }, []);
 
@@ -603,23 +657,43 @@ function PhysicalCardsTab() {
     await load();
   };
 
+  const toggleActive = async (c) => {
+    if (c.active && !confirm(`${c.linkedCode} kartasini bloklaysizmi? Ko'rinmas havola (chip_token) endi profilni ochmaydi.`)) return;
+    setBusy(c.id);
+    try {
+      await adminApi(`/physical-cards/${c.id}/active`, { method: 'POST', body: JSON.stringify({ active: !c.active }) });
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (!cards) return <div className="text-base-content/45">Yuklanmoqda...</div>;
   if (cards.length === 0) return <div className="text-base-content/45">Hozircha jismoniy karta buyurtmasi yo'q.</div>;
   return (
     <div className="overflow-x-auto">
       <table className="table table-sm">
-        <thead><tr><th>Profil</th><th>Egasi</th><th>Manzil</th><th>Faolmi</th><th>Holat</th></tr></thead>
+        <thead><tr><th>Profil</th><th>Egasi</th><th>Manzil</th><th>Faolmi</th><th>Holat</th><th></th></tr></thead>
         <tbody>
           {cards.map((c) => (
             <tr key={c.id}>
               <td className="font-mono">{c.linkedCode || '—'}</td>
               <td className="text-xs">{c.ownerEmail}<br />{c.shippingPhone}</td>
               <td className="max-w-xs truncate text-xs">{c.shippingAddress}</td>
-              <td>{c.active ? '\u2705' : '\u274C deaktiv'}</td>
+              <td>{c.active ? '\u2705' : '\u274C bloklangan'}</td>
               <td>
                 <select className="select select-bordered select-xs" value={c.status} onChange={(e) => setStatus(c.id, e.target.value)}>
                   {CARD_STATUS.map((s) => <option key={s} value={s}>{CARD_STATUS_LABEL[s]}</option>)}
                 </select>
+              </td>
+              <td>
+                <button
+                  className={`btn btn-xs ${c.active ? 'btn-error' : 'btn-success'}`}
+                  disabled={busy === c.id || !c.linkedCode}
+                  onClick={() => toggleActive(c)}
+                >
+                  {busy === c.id ? <span className="loading loading-spinner loading-xs"></span> : (c.active ? 'Bloklash' : 'Blokdan chiqarish')}
+                </button>
               </td>
             </tr>
           ))}
@@ -656,6 +730,7 @@ function Dashboard({ onLogout }) {
         {tab === 5 && <AuctionsTab />}
         {tab === 6 && <AuctionRequestsTab />}
         {tab === 7 && <PhysicalCardsTab />}
+        {tab === 8 && <NotificationsTab />}
       </div>
     </main>
   );

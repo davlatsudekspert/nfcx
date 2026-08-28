@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { fmt, timeAgo } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
+import { tierForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
@@ -17,6 +18,8 @@ export default function CatalogPage({ catalog }) {
       || (it.hashtags || []).some((h) => String(h).toUpperCase().includes(query)));
 
   const cardCls = 'cursor-pointer rounded-2xl border border-white/10 bg-base-200/60 p-5 transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200';
+
+  const topByViews = [...catalog].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10);
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
@@ -50,6 +53,35 @@ export default function CatalogPage({ catalog }) {
               size="lg"
             />
           </Interactive3DCard>
+        </div>
+      </section>
+
+      <section className="mt-16">
+        <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Reyting</div>
+        <h2 className="mt-2 text-2xl font-bold">Eng ko'p ko'rilgan profillar</h2>
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="table table-sm">
+            <thead>
+              <tr><th>O'rni</th><th>Ismi</th><th>ID</th><th>Ko'rishlar</th><th>Tarifi</th></tr>
+            </thead>
+            <tbody>
+              {topByViews.length === 0 && (
+                <tr><td colSpan={5} className="py-8 text-center text-base-content/45">Hozircha ma'lumot yo'q.</td></tr>
+              )}
+              {topByViews.map((it, i) => {
+                const tier = tierForCode(it.code);
+                return (
+                  <tr key={it.code} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => navigate('/' + it.code)}>
+                    <td className="font-mono text-base-content/50">{i + 1}</td>
+                    <td className="max-w-[160px] truncate">{it.name}</td>
+                    <td className="font-mono">{it.code}</td>
+                    <td className="font-semibold">{fmt(it.views || 0)}</td>
+                    <td><span className="font-semibold" style={{ color: TIER_COLOR[tier] }}>{TIER_LABEL[tier]}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
 

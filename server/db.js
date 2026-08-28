@@ -185,6 +185,7 @@ export async function initDb() {
     bg_color: `ALTER TABLE cards ADD COLUMN bg_color TEXT`,
     bg_animated: `ALTER TABLE cards ADD COLUMN bg_animated BOOLEAN NOT NULL DEFAULT TRUE`,
     is_primary: `ALTER TABLE cards ADD COLUMN is_primary BOOLEAN NOT NULL DEFAULT FALSE`,
+    giftable: `ALTER TABLE cards ADD COLUMN giftable BOOLEAN NOT NULL DEFAULT TRUE`,
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
   };
   const existing = await pool.query(
@@ -201,7 +202,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -364,6 +365,61 @@ export async function initDb() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS gift_offers_to_idx ON gift_offers (to_user_id, status)`);
+
+  // Foydalanuvchidan adminga murojaat — profildagi "Chiqish" tugmasi
+  // yonida. Admin javob bersa, foydalanuvchiga bildirishnoma (email/UI)
+  // ko'rinadi; admin panelda esa alohida "Bildirishnomalar" bo'limida
+  // barcha murojaatlar ko'rinadi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message     TEXT NOT NULL,
+      reply       TEXT,
+      status      VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | replied
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      replied_at  TIMESTAMPTZ
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS support_messages_status_idx ON support_messages (status)`);
+
+  // Parolni Telegram orqali kelgan bir martalik kod bilan o'zgartirish.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_codes (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code        VARCHAR(6) NOT NULL,
+      expires_at  TIMESTAMPTZ NOT NULL,
+      used        BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Do'st taklif qilish (referral) — har bir foydalanuvchi ro'yxatdan
+  // o'tganda avtomatik o'ziga xos promokod oladi (users.promo_code).
+  // Boshqa odam ro'yxatdan o'tganda shu promokodni kiritsa, promokod
+  // egasiga 15% chegirma "krediti" yoziladi — bu keyingi bandlashda
+  // avtomatik qo'llaniladi.
+  const { rows: ucRows2 } = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`
+  );
+  const uc2 = new Set(ucRows2.map((r) => r.column_name));
+  if (!uc2.has('promo_code')) {
+    await pool.query(`ALTER TABLE users ADD COLUMN promo_code VARCHAR(12) UNIQUE`);
+    console.log('[db] users.promo_code ustuni qo\u2019shildi.');
+  }
+  if (!uc2.has('pending_discount_pct')) {
+    await pool.query(`ALTER TABLE users ADD COLUMN pending_discount_pct INTEGER NOT NULL DEFAULT 0`);
+    console.log('[db] users.pending_discount_pct ustuni qo\u2019shildi.');
+  }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS referral_uses (
+      id            SERIAL PRIMARY KEY,
+      referrer_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bids (
@@ -633,7 +689,7 @@ export function isDbReady() {
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
-  is_primary AS "isPrimary",
+  is_primary AS "isPrimary", giftable,
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
@@ -653,6 +709,7 @@ function rowToRecord(row) {
     bgColor: row.bgColor || '',
     bgAnimated: row.bgAnimated !== false,
     isPrimary: !!row.isPrimary,
+    giftable: row.giftable !== false,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
@@ -755,6 +812,28 @@ export async function incrementViews(code) {
 
 // ---------- Auth ----------
 
+// Ro'yxatdan o'tgan har bir foydalanuvchiga avtomatik, bepul, 8 xonali
+// raqamli ID beriladi (masalan nfcstore.uz/12345678). Bu ID sovg'a qilib
+// bo'lmaydi (giftable=FALSE) — faqat foydalanuvchining o'zi ega bo'ladi.
+export async function createFreeAutoId(userId, name) {
+  for (let i = 0; i < 8; i++) {
+    const code = String(Math.floor(10_000_000 + Math.random() * 89_999_999));
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO cards (code, name, theme, hashtags, price, ts, user_id, is_primary, giftable)
+         VALUES ($1,$2,'classic','[]'::jsonb,0,$3,$4,TRUE,FALSE)
+         ON CONFLICT (code) DO NOTHING
+         RETURNING code`,
+        [code, name || 'Yangi foydalanuvchi', Date.now(), userId]
+      );
+      if (rows[0]) return rows[0].code;
+    } catch (err) {
+      if (err.code !== '23505') throw err; // band bo'lib qolgan bo'lsa qayta uramiz
+    }
+  }
+  return null;
+}
+
 export async function createUser(email, passwordHash, { phone, botAck, tosAccepted, isTest } = {}) {
   const { rows } = await pool.query(
     `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, is_test) VALUES ($1, $2, $3, $4, $5, $6)
@@ -805,7 +884,8 @@ export async function getSessionUser(token) {
   if (!token) return null;
   const { rows } = await pool.query(
     `SELECT u.id, u.email, u.is_premium AS "isPremium",
-            u.banned_until AS "bannedUntil", u.strike_count AS "strikeCount"
+            u.banned_until AS "bannedUntil", u.strike_count AS "strikeCount",
+            u.promo_code AS "promoCode", u.pending_discount_pct AS "pendingDiscountPct"
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token = $1 AND s.expires_at > now()`,
@@ -818,6 +898,8 @@ export async function getSessionUser(token) {
     id: r.id, email: r.email, isPremium: !!r.isPremium,
     bannedUntil: isBanned ? r.bannedUntil : null,
     strikeCount: r.strikeCount || 0,
+    promoCode: r.promoCode || null,
+    pendingDiscountPct: r.pendingDiscountPct || 0,
   };
 }
 
@@ -850,6 +932,9 @@ export async function listRecordsByUser(userId) {
 export async function createGiftOffer(code, fromUserId, toCode) {
   const owner = await getRecordOwner(code);
   if (owner !== fromUserId) return { error: 'NOT_OWNER' };
+
+  const { rows: giftableRows } = await pool.query(`SELECT giftable FROM cards WHERE code = $1`, [code]);
+  if (giftableRows[0] && giftableRows[0].giftable === false) return { error: 'NOT_GIFTABLE' };
 
   const toUserId = await getRecordOwner(toCode);
   if (!toUserId) return { error: 'RECIPIENT_NOT_FOUND' };
@@ -920,6 +1005,156 @@ export async function cancelGiftOffer(id, userId) {
     `UPDATE gift_offers SET status = 'cancelled', decided_at = now()
      WHERE id = $1 AND from_user_id = $2 AND status = 'pending' RETURNING id`,
     [id, userId]
+  );
+  return !!rows[0];
+}
+
+// Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
+// "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
+// tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).
+// ---------- Adminga murojaat (support) ----------
+
+export async function createSupportMessage(userId, message) {
+  const { rows } = await pool.query(
+    `INSERT INTO support_messages (user_id, message) VALUES ($1,$2) RETURNING id, created_at AS "createdAt"`,
+    [userId, message]
+  );
+  return rows[0];
+}
+
+export async function listMySupportMessages(userId) {
+  const { rows } = await pool.query(
+    `SELECT id, message, reply, status, created_at AS "createdAt", replied_at AS "repliedAt"
+     FROM support_messages WHERE user_id = $1 ORDER BY created_at DESC LIMIT 30`,
+    [userId]
+  );
+  return rows;
+}
+
+export async function adminListSupportMessages(status) {
+  const { rows } = await pool.query(
+    `SELECT sm.id, sm.message, sm.reply, sm.status, sm.created_at AS "createdAt",
+            u.id AS "userId", u.email AS "userEmail"
+     FROM support_messages sm JOIN users u ON u.id = sm.user_id
+     WHERE ($1::text IS NULL OR sm.status = $1)
+     ORDER BY sm.created_at DESC LIMIT 100`,
+    [status || null]
+  );
+  return rows;
+}
+
+export async function adminReplySupportMessage(id, reply) {
+  const { rows } = await pool.query(
+    `UPDATE support_messages SET reply = $2, status = 'replied', replied_at = now()
+     WHERE id = $1 RETURNING id`,
+    [id, reply]
+  );
+  return rows[0] || null;
+}
+
+export async function countPendingSupportMessages() {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM support_messages WHERE status = 'pending'`);
+  return rows[0]?.n || 0;
+}
+
+// Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
+// "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
+// tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).
+// ---------- Do'st taklif qilish (referral / promokod) ----------
+
+function generatePromoCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+// Har bir yangi foydalanuvchiga o'ziga xos promokod beriladi.
+export async function assignPromoCode(userId) {
+  for (let i = 0; i < 8; i++) {
+    const code = generatePromoCode();
+    try {
+      const { rows } = await pool.query(
+        `UPDATE users SET promo_code = $2 WHERE id = $1 AND promo_code IS NULL RETURNING promo_code`,
+        [userId, code]
+      );
+      if (rows[0]) return rows[0].promo_code;
+    } catch (err) {
+      if (err.code !== '23505') throw err;
+    }
+  }
+  return null;
+}
+
+export async function getUserByPromoCode(promoCode) {
+  const { rows } = await pool.query(`SELECT id FROM users WHERE promo_code = $1`, [promoCode]);
+  return rows[0]?.id || null;
+}
+
+// Ro'yxatdan o'tishda promokod kiritilgan bo'lsa: taklif qiluvchiga 15%
+// chegirma krediti yoziladi (keyingi bandlashda avtomatik qo'llanadi).
+export async function applyReferral(referrerId, referredId) {
+  if (referrerId === referredId) return false;
+  await pool.query(`INSERT INTO referral_uses (referrer_id, referred_id) VALUES ($1,$2)`, [referrerId, referredId]);
+  await pool.query(`UPDATE users SET pending_discount_pct = LEAST(pending_discount_pct + 15, 100) WHERE id = $1`, [referrerId]);
+  return true;
+}
+
+export async function getPendingDiscountPct(userId) {
+  const { rows } = await pool.query(`SELECT pending_discount_pct AS pct FROM users WHERE id = $1`, [userId]);
+  return rows[0]?.pct || 0;
+}
+
+// Chegirma bandlash paytida ISHLATILGANDA, kreditni 0'ga qaytaradi
+// (bir martalik foydalanish).
+export async function consumeDiscount(userId) {
+  await pool.query(`UPDATE users SET pending_discount_pct = 0 WHERE id = $1`, [userId]);
+}
+
+export async function listMyReferrals(userId) {
+  const { rows } = await pool.query(
+    `SELECT r.id, r.created_at AS "createdAt", u.email AS "referredEmail"
+     FROM referral_uses r JOIN users u ON u.id = r.referred_id
+     WHERE r.referrer_id = $1 ORDER BY r.created_at DESC`,
+    [userId]
+  );
+  return rows;
+}
+
+// Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
+// "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
+// tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).
+// ---------- Parolni Telegram OTP orqali o'zgartirish ----------
+
+export async function getUserPhoneAndTgId(userId) {
+  const { rows } = await pool.query(
+    `SELECT u.phone, bv.tg_user_id AS "tgUserId"
+     FROM users u LEFT JOIN bot_verifications bv ON bv.phone = u.phone
+     WHERE u.id = $1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+export async function createPasswordResetCode(userId) {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await pool.query(
+    `INSERT INTO password_reset_codes (user_id, code, expires_at) VALUES ($1,$2, now() + interval '10 minutes')`,
+    [userId, code]
+  );
+  return code;
+}
+
+export async function verifyAndConsumePasswordResetCode(userId, code) {
+  const { rows } = await pool.query(
+    `UPDATE password_reset_codes SET used = TRUE
+     WHERE id = (
+       SELECT id FROM password_reset_codes
+       WHERE user_id = $1 AND code = $2 AND used = FALSE AND expires_at > now()
+       ORDER BY created_at DESC LIMIT 1
+     )
+     RETURNING id`,
+    [userId, code]
   );
   return !!rows[0];
 }
@@ -1674,8 +1909,8 @@ export async function finalizeAuctionPayment(auctionId, winnerId, profile) {
     const winAmount = Number(auction.currentPrice);
 
     await client.query(
-      `INSERT INTO cards (code, name, role, avatar_url, tg, phone, email, linkedin, instagram, theme, hashtags, price, ts, user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14)`,
+      `INSERT INTO cards (code, name, role, avatar_url, tg, phone, email, linkedin, instagram, theme, hashtags, price, ts, user_id, is_primary)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14,TRUE)`,
       [
         auction.code,
         profile.name || 'Yangi egasi',
@@ -1693,6 +1928,9 @@ export async function finalizeAuctionPayment(auctionId, winnerId, profile) {
         winnerId,
       ]
     );
+    // Auksionda yutib olingan ID avtomatik "Asosiy profil" bo'ladi —
+    // g'olibning boshqa (eski) kodlaridagi "Asosiy" belgisi olib tashlanadi.
+    await client.query(`UPDATE cards SET is_primary = FALSE WHERE user_id = $1 AND code <> $2`, [winnerId, auction.code]);
 
     // Butun summa (sotuvchi yo'qligi sababli) platforma daromadiga tushadi.
     await creditPlatformWallet(client, winAmount, 'platform_commission', 'auctions', auctionId,
@@ -1889,6 +2127,17 @@ export async function adminSetPhysicalCardStatus(id, status) {
   const { rows } = await pool.query(
     `UPDATE physical_cards SET status = $2 WHERE id = $1 RETURNING id, status`,
     [id, status]
+  );
+  return rows[0] || null;
+}
+
+// NFC kartani bloklash/blokdan chiqarish — chip_token orqali ishlaydi:
+// karta "active=false" bo'lsa, /api/tap/:chipToken (ko'rinmas havola,
+// masalan nfcstore.uz/vip001?t=xxxxx) endi profilni ochmaydi.
+export async function adminSetPhysicalCardActive(id, active) {
+  const { rows } = await pool.query(
+    `UPDATE physical_cards SET active = $2 WHERE id = $1 RETURNING id, active, linked_code AS "linkedCode"`,
+    [id, active]
   );
   return rows[0] || null;
 }

@@ -60,6 +60,12 @@ async function call(method, payload, timeoutMs = 35000) {
 const sendMessage = (chatId, text, extra = {}) =>
   call('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
 
+// Parol tiklash OTP kodini yuborish uchun tashqi (server/index.js)dan
+// chaqiriladigan eksport.
+export async function sendTelegramOtp(tgUserId, code) {
+  return sendMessage(tgUserId, `\uD83D\uDD10 Parolni o'zgartirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`);
+}
+
 async function sendPhoto(chatId, fileId, caption, extra = {}) {
   return call('sendPhoto', { chat_id: chatId, photo: fileId, caption, parse_mode: 'HTML', ...extra });
 }

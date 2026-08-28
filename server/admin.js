@@ -13,12 +13,13 @@ import crypto from 'crypto';
 import { hashPassword, verifyPassword } from './auth.js';
 import {
   isDbReady, adminListUsers, adminAdjustBalance, adminListOrders, adminListWalletTopups,
-  adminListAuctions, adminCancelAuction, adminListPhysicalCards, adminSetPhysicalCardStatus,
+  adminListAuctions, adminCancelAuction, adminListPhysicalCards, adminSetPhysicalCardStatus, adminSetPhysicalCardActive,
   adminStats, closeAuctionBidding, createAuction, getActiveAuctionByCode, getRecord,
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
   listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder, finalizePaidBotOrder,
   adminListManualAdjustments, setUserTestFlag,
+  adminListSupportMessages, adminReplySupportMessage,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -210,6 +211,22 @@ adminRouter.post('/auctions', async (req, res) => {
 
 // --- Foydalanuvchilardan kelgan "noyob nomni auksionga qo'ying" so'rovlari ---
 
+// --- Foydalanuvchilardan kelgan adminga murojaatlar ---
+
+adminRouter.get('/support-messages', async (req, res) => {
+  if (!isDbReady()) return res.json({ messages: [] });
+  res.json({ messages: await adminListSupportMessages(req.query.status || null) });
+});
+
+adminRouter.post('/support-messages/:id/reply', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const reply = String(req.body?.reply || '').slice(0, 1000).trim();
+  if (!reply) return res.status(422).json({ error: 'reply_required' });
+  const updated = await adminReplySupportMessage(Number(req.params.id), reply);
+  if (!updated) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
 adminRouter.get('/auction-requests', async (req, res) => {
   if (!isDbReady()) return res.json({ requests: [] });
   res.json({ requests: await listAuctionRequests('pending') });
@@ -285,6 +302,17 @@ adminRouter.post('/physical-cards/:id/status', async (req, res) => {
     return res.status(422).json({ error: 'bad_status' });
   }
   const updated = await adminSetPhysicalCardStatus(id, status);
+  if (!updated) return res.status(404).json({ error: 'not_found' });
+  res.json(updated);
+});
+
+// NFC kartani bloklash — chip_token (ko'rinmas havola: nfcstore.uz/vip001?t=...)
+// endi profilni ochmay qo'yadi.
+adminRouter.post('/physical-cards/:id/active', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  const active = req.body?.active !== false;
+  const updated = await adminSetPhysicalCardActive(id, active);
   if (!updated) return res.status(404).json({ error: 'not_found' });
   res.json(updated);
 });

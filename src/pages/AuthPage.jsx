@@ -36,6 +36,7 @@ export default function AuthPage({ mode }) {
   const [phone, setPhone] = useState('');
   const [botAck, setBotAck] = useState(false);
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [promoCode, setPromoCode] = useState(() => new URLSearchParams(window.location.search).get('promo') || '');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -56,7 +57,7 @@ export default function AuthPage({ mode }) {
     }
     setBusy(true);
     try {
-      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck, tosAccepted });
+      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck, tosAccepted, promoCode: promoCode.trim() });
       else await authLogin(email.trim(), password);
       await refresh();
       navigate('/account');
@@ -132,6 +133,14 @@ export default function AuthPage({ mode }) {
                   </span>
                 </label>
               </div>
+            )}
+            {isRegister && (
+              <label className="form-control">
+                <span className="text-xs font-semibold text-base-content/70">Do'stingiz promokodi (ixtiyoriy)</span>
+                <input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Masalan: AB3X9K" maxLength={12}
+                  className="input input-bordered mt-1 w-full bg-base-100 font-mono uppercase" />
+              </label>
             )}
             {isRegister && (
               <label className="flex cursor-pointer items-start gap-2.5">

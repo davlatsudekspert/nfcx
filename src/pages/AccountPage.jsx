@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { vzStyle } from './ProfilePage.jsx';
@@ -547,9 +547,11 @@ function EditCardForm({ card, onSaved }) {
               {primaryBusy ? <span className="loading loading-spinner loading-xs"></span> : 'Asosiy qilish'}
             </button>
           )}
-          <button className="btn btn-outline btn-sm" onClick={() => setGiftOpen((o) => !o)}>
-            {'\u{1F381}'} Sovg'a qilish
-          </button>
+          {card.giftable !== false && (
+            <button className="btn btn-outline btn-sm" onClick={() => setGiftOpen((o) => !o)}>
+              {'\u{1F381}'} Sovg'a qilish
+            </button>
+          )}
           <button
             className="btn btn-outline btn-sm"
             onClick={() => {
@@ -815,6 +817,116 @@ const ORDER_STATUS_LABEL = {
   failed_code_taken: { text: "Kod band bo'lib qoldi — pul qaytariladi", cls: 'badge-error' },
 };
 
+// Profildagi "Adminga murojaat" — foydalanuvchi xabar yozadi, admin
+// javob bersa shu yerda (o'tgan murojaatlar tarixida) ko'rinadi.
+function SupportModal({ onClose }) {
+  const [history, setHistory] = useState(null);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const load = () => dbListMySupportMessages().then(setHistory).catch(() => setHistory([]));
+  useEffect(() => { load(); }, []);
+
+  const send = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await dbSendSupportMessage(text.trim());
+      setText('');
+      setMsg({ type: 'ok', text: 'Yuborildi — admin tez orada javob beradi.' });
+      await load();
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">{'\u2709\uFE0F'} Adminga murojaat</h3>
+          <button className="btn btn-ghost btn-xs" onClick={onClose}>&times;</button>
+        </div>
+
+        <div className="mt-4 max-h-64 space-y-2 overflow-y-auto">
+          {history === null && <div className="text-sm text-base-content/40">Yuklanmoqda...</div>}
+          {history?.length === 0 && <div className="text-sm text-base-content/40">Hozircha murojaatingiz yo'q.</div>}
+          {history?.map((m) => (
+            <div key={m.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+              <p className="text-base-content/80">{m.message}</p>
+              {m.reply ? (
+                <p className="mt-2 rounded-lg bg-accent/10 p-2 text-accent"><b>Admin:</b> {m.reply}</p>
+              ) : (
+                <p className="mt-1 text-xs text-warning">Kutilmoqda...</p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Xabaringizni yozing..."
+          rows={3}
+          className="textarea textarea-bordered mt-4 w-full bg-base-100"
+        />
+        <button className="btn btn-primary btn-sm mt-2 w-full" onClick={send} disabled={busy || !text.trim()}>
+          {busy ? <span className="loading loading-spinner loading-xs"></span> : 'Yuborish'}
+        </button>
+        {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+      </div>
+    </div>
+  );
+}
+
+// Do'st taklif qilish — o'z promokodini ko'rsatadi, ulashadi, taklif
+// qilingan do'stlar ro'yxatini va kutilayotgan chegirmani ko'rsatadi.
+function ReferralPanel({ user }) {
+  const [referrals, setReferrals] = useState([]);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { dbListReferrals().then(setReferrals).catch(() => {}); }, []);
+
+  if (!user.promoCode) return null;
+  const link = `${window.location.origin}/register?promo=${user.promoCode}`;
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* jim tur */ }
+  };
+
+  return (
+    <section className="pt-8">
+      <h2 className="text-xl font-bold">{'\u{1F91D}'} Do'st taklif qiling</h2>
+      <div className="mt-3 rounded-2xl border border-accent/25 bg-accent/5 p-5">
+        <p className="text-sm text-base-content/70">
+          Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik <b className="text-accent">15% chegirma</b> olasiz.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <code className="rounded-lg bg-black/30 px-3 py-2 text-sm font-mono">{link}</code>
+          <button className="btn btn-accent btn-sm" onClick={copy}>{copied ? "Nusxalandi!" : 'Nusxalash'}</button>
+        </div>
+        {user.pendingDiscountPct > 0 && (
+          <div className="mt-3 text-sm font-semibold text-success">
+            {'\u2728'} Sizda {user.pendingDiscountPct}% chegirma kutilmoqda — keyingi bandlashda avtomatik qo'llanadi!
+          </div>
+        )}
+        {referrals.length > 0 && (
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <div className="text-xs font-semibold text-base-content/50">Taklif qilgan do'stlaringiz ({referrals.length}):</div>
+            <ul className="mt-1.5 space-y-1 text-xs text-base-content/60">
+              {referrals.map((r) => <li key={r.id}>{r.referredEmail} — {timeAgo(new Date(r.createdAt).getTime())}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function AccountPage({ refreshCatalog }) {
   const { user, myCards, refresh } = useAuth();
   const [selectedCode, setSelectedCode] = useState(null);
@@ -825,6 +937,7 @@ export default function AccountPage({ refreshCatalog }) {
   }, [myCards, selectedCode]);
   const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
   const [orders, setOrders] = useState([]);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
@@ -898,15 +1011,23 @@ export default function AccountPage({ refreshCatalog }) {
                 : '—'}
             </p>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
+          <div className="flex gap-2">
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/sozlamalar')}>{'\u2699\uFE0F'} Sozlamalar</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setSupportOpen(true)}>{'\u2709\uFE0F'} Adminga murojaat</button>
+            <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
+          </div>
         </div>
       </section>
+
+      {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
 
       <section className="pt-8">
         <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
 
       <GiftOffersPanel onChanged={refresh} />
+
+      <ReferralPanel user={user} />
 
       <WonAuctionsPanel />
 

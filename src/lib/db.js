@@ -152,6 +152,60 @@ export async function dbSetSale(code, list) {
 }
 
 // Bir nechta raqamli tashrif qog'ozi (vizitka)dan birini "Asosiy" deb belgilash.
+export async function dbSendSupportMessage(message) {
+  const res = await fetch('/api/support', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ message }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  return data;
+}
+
+export async function dbListMySupportMessages() {
+  const res = await fetch('/api/support', { credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  return (data && data.messages) || [];
+}
+
+export async function dbListReferrals() {
+  const res = await fetch('/api/referrals', { credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  return (data && data.referrals) || [];
+}
+
+export async function dbRequestPasswordCode() {
+  const res = await fetch('/api/settings/request-password-code', { method: 'POST', credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'no_phone') throw new Error("Akkauntingizda telefon raqami yo'q.");
+    if (key === 'tg_not_linked') throw new Error("Telefon raqamingiz botda tasdiqlanmagan. Avval botda ro'yxatdan o'ting.");
+    if (key === 'tg_send_failed') throw new Error("Telegram'ga xabar yuborib bo'lmadi. Botni ishga tushirganingizni tekshiring.");
+    throw new Error('Xatolik yuz berdi.');
+  }
+  return data;
+}
+
+export async function dbChangePassword(code, newPassword) {
+  const res = await fetch('/api/settings/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ code, newPassword }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'bad_code') throw new Error("Kod noto'g'ri yoki muddati o'tgan.");
+    if (key === 'weak_password') throw new Error('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.');
+    throw new Error('Xatolik yuz berdi.');
+  }
+  return data;
+}
+
 export async function dbSetPrimary(code) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/set-primary`, {
     method: 'POST',
@@ -184,6 +238,7 @@ export async function dbOrderPhysicalCard(code, shipping) {
 
 const GIFT_ERRORS = {
   NOT_OWNER: 'Bu kod sizga tegishli emas.',
+  NOT_GIFTABLE: "Bu avtomatik berilgan bepul ID sovg'a qilinmaydi.",
   RECIPIENT_NOT_FOUND: "Bunday NFC ID topilmadi — qabul qiluvchi avval o'z profilini yaratgan bo'lishi kerak.",
   CANNOT_GIFT_SELF: "O'zingizga sovg'a qila olmaysiz.",
   ALREADY_PENDING: "Bu kod uchun sovg'a taklifi allaqachon kutilmoqda.",

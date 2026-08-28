@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
+import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -83,7 +83,16 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   </svg>
                 </span>
                 <div className="min-w-0">
-                  <div className="text-lg font-bold" style={{ color: TIER_COLOR[t] }}>{TIER_LABEL[t]}</div>
+                  <div
+                    className="text-lg font-bold"
+                    style={
+                      TIER_GRADIENT[t]
+                        ? { backgroundImage: TIER_GRADIENT[t], WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
+                        : { color: TIER_COLOR[t] }
+                    }
+                  >
+                    {TIER_LABEL[t]}
+                  </div>
                   <div className="mt-0.5 text-sm font-semibold text-base-content/80">
                     {TIER_PRICE_TEXT[t]}{t !== 'exclusive' ? " so'm" : ''}
                   </div>

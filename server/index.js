@@ -6,9 +6,12 @@ import { priceForCode } from '../src/lib/pricing.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
-  createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag,
+  createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
+  createSupportMessage, listMySupportMessages,
+  assignPromoCode, getUserByPromoCode, applyReferral, getPendingDiscountPct, consumeDiscount, listMyReferrals,
+  getUserPhoneAndTgId, createPasswordResetCode, verifyAndConsumePasswordResetCode,
   // setForSale, transferCard, listForSale — endi ishlatilmaydi (Sotish
   // funksiyasi olib tashlandi), lekin server/db.js'da xavfsizlik uchun qoldirilgan.
   getBotOrder, setBotOrderStatus, finalizePaidBotOrder,
@@ -33,7 +36,7 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { startBot, notifyOrderPaidAuto } from './bot.js';
+import { startBot, notifyOrderPaidAuto, sendTelegramOtp } from './bot.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
 import { adminRouter } from './admin.js';
@@ -51,12 +54,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
 const STD_CODE_RE = /^[A-Z]{3}[0-9]{3}$/;      // standart: AAA000
 const LETTER_CODE_RE = /^[A-Z]{3,12}$/;         // premium: faqat harflar — ALI, UZBEKISTAN
+const FREE_ID_RE = /^[0-9]{8}$/;                // ro'yxatdan o'tishda avtomatik beriladigan bepul ID
 const RESERVED_CODES = new Set([
   'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
 ]);
 
 function validCode(code) {
-  return STD_CODE_RE.test(code) || LETTER_CODE_RE.test(code);
+  return STD_CODE_RE.test(code) || LETTER_CODE_RE.test(code) || FREE_ID_RE.test(code);
 }
 
 // Faqat harflardan iborat premium vizitka (nfcstore.uz/ali)?
@@ -704,6 +708,19 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     if (existing) return res.status(409).json({ error: 'email_taken' });
     const user = await createUser(email, hashPassword(password), { phone: extra.phone, botAck: extra.botAck, tosAccepted: extra.tosAccepted });
     if (!user) return res.status(409).json({ error: 'email_taken' });
+    // Har bir yangi foydalanuvchiga avtomatik, bepul, 8 xonali ID
+    // beriladi — sovg'a qilib bo'lmaydi (u faqat shaxsiy asosiy profil).
+    const freeCode = await createFreeAutoId(user.id, email.split('@')[0]);
+    if (freeCode) console.log(`[auth] #${user.id}ga avtomatik ID berildi: ${freeCode}`);
+    // O'ziga xos promokod beramiz.
+    await assignPromoCode(user.id);
+    // Agar do'stining promokodi kiritilgan bo'lsa — o'sha do'stiga 15%
+    // chegirma krediti yoziladi.
+    const promoInput = cleanStr(req.body?.promoCode, 12).toUpperCase();
+    if (promoInput) {
+      const referrerId = await getUserByPromoCode(promoInput);
+      if (referrerId) await applyReferral(referrerId, user.id);
+    }
     const token = newSessionToken();
     await createSession(token, user.id, SESSION_TTL_MS);
     console.log(`[auth] Yangi akkaunt: ${email} (${extra.phone})`);
@@ -826,7 +843,18 @@ app.post('/api/records/:code', async (req, res) => {
       : (priceForCode(code).total ?? 0); // ekslyuziv (null) bo'lsa ham bu yerga yetib kelmaydi — pastda tekshiriladi
     const tierNow = isLetterCode(code) ? 'gold' : priceForCode(code).tier;
     if (tierNow === 'exclusive') return res.status(409).json({ error: 'exclusive_auction_only' });
-    const price = basePrice + (wantsPhysicalCard ? PHYSICAL_CARD_FEE : 0);
+    let price = basePrice + (wantsPhysicalCard ? PHYSICAL_CARD_FEE : 0);
+
+    // Do'st taklif qilish orqali olingan 15% chegirma — bandlash narxi
+    // 0 dan katta bo'lsagina qo'llanadi va bir martalik ishlatiladi.
+    let discountApplied = 0;
+    if (price > 0) {
+      const pct = await getPendingDiscountPct(user.id);
+      if (pct > 0) {
+        discountApplied = Math.round(price * (pct / 100));
+        price = Math.max(0, price - discountApplied);
+      }
+    }
 
     if (await getRecord(code)) return res.status(409).json({ error: 'already_taken' });
 
@@ -850,6 +878,7 @@ app.post('/api/records/:code', async (req, res) => {
       if (wantsPhysicalCard) {
         await createPhysicalCard({ linkedCode: code, ownerUserId: user.id, ...shipping });
       }
+      if (discountApplied > 0) await consumeDiscount(user.id);
       console.log(`[api] (payme o'chiq — dev rejim) Band qilindi: ${code} — ${created.name} (${price} so'm)`);
       return res.status(201).json(created);
     }
@@ -864,9 +893,13 @@ app.post('/api/records/:code', async (req, res) => {
       userId: user.id, code, price,
       payload: { ...record, physicalCard: wantsPhysicalCard, ...shipping },
     });
+    // Chegirma ishlatilgan bo'lsa, buyurtma yaratilishi bilanoq
+    // "sarflangan" deb belgilanadi (to'lov bekor qilinsa ham qayta
+    // tiklanmaydi — soddalik uchun shunday).
+    if (discountApplied > 0) await consumeDiscount(user.id);
     const payLink = paymeCheckoutLink(order.id, price);
-    console.log(`[api] To'lov kutilmoqda: ${code} — buyurtma #${order.id} (${price} so'm${wantsPhysicalCard ? ', jismoniy karta bilan' : ''})`);
-    res.status(202).json({ pending: true, orderId: order.id, code, price, payLink });
+    console.log(`[api] To'lov kutilmoqda: ${code} — buyurtma #${order.id} (${price} so'm${wantsPhysicalCard ? ', jismoniy karta bilan' : ''}${discountApplied > 0 ? `, ${discountApplied} so'm chegirma qo'llandi` : ''})`);
+    res.status(202).json({ pending: true, orderId: order.id, code, price, payLink, discountApplied });
   } catch (err) {
     console.error('[api] createRecord:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
@@ -934,6 +967,71 @@ app.put('/api/records/:code', async (req, res) => {
 // joriy narxidan 3 barobar qimmat.
 // Foydalanuvchining bir nechta raqamli tashrif qog'ozi (vizitka) bo'lsa,
 // ulardan bittasini "Asosiy" deb belgilash.
+// ---------- Adminga murojaat ----------
+
+app.post('/api/support', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const message = cleanStr(req.body?.message, 1000);
+  if (!message) return res.status(422).json({ error: 'message_required' });
+  const result = await createSupportMessage(user.id, message);
+  res.status(201).json(result);
+});
+
+app.get('/api/support', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.json({ messages: [] });
+  if (!isDbReady()) return res.json({ messages: [] });
+  res.json({ messages: await listMySupportMessages(user.id) });
+});
+
+// Do'stlarim ro'yxati — kimlar mening promokodim orqali ro'yxatdan o'tgan.
+app.get('/api/referrals', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.json({ referrals: [] });
+  if (!isDbReady()) return res.json({ referrals: [] });
+  res.json({ referrals: await listMyReferrals(user.id) });
+});
+
+// ---------- Sozlamalar: Telegram OTP orqali parol o'zgartirish ----------
+
+app.post('/api/settings/request-password-code', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const info = await getUserPhoneAndTgId(user.id);
+  if (!info || !info.phone) return res.status(422).json({ error: 'no_phone' });
+  if (!info.tgUserId) return res.status(422).json({ error: 'tg_not_linked' });
+
+  const code = await createPasswordResetCode(user.id);
+  try {
+    await sendTelegramOtp(info.tgUserId, code);
+  } catch (err) {
+    console.error('[api] sendTelegramOtp:', err.message);
+    return res.status(503).json({ error: 'tg_send_failed' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/settings/change-password', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const code = cleanStr(req.body?.code, 6);
+  const newPassword = String(req.body?.newPassword || '');
+  if (!code) return res.status(422).json({ error: 'code_required' });
+  if (newPassword.length < 6) return res.status(422).json({ error: 'weak_password' });
+
+  const ok = await verifyAndConsumePasswordResetCode(user.id, code);
+  if (!ok) return res.status(422).json({ error: 'bad_code' });
+
+  await updateUserPassword(user.id, hashPassword(newPassword));
+  res.json({ ok: true });
+});
+
 app.post('/api/records/:code/set-primary', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
