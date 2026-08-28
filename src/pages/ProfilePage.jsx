@@ -466,7 +466,17 @@ export default function ProfilePage({ code, catalog }) {
               {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
             </div>
           </div>
-          <div className="font-display mt-4 flex items-center justify-center gap-1.5 text-[23px] font-bold">{record.name}</div>
+          <div className="font-display mt-4 flex items-center justify-center gap-1.5 text-[23px] font-bold">
+            {record.name}
+            {record.isPremium && (
+              <span
+                className="animate-pulse text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.7)]"
+                title="Premium foydalanuvchi"
+              >
+                {'\u{1F451}'}
+              </span>
+            )}
+          </div>
           <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[13.5px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
             {tierEmoji && <span>{tierEmoji}</span>}
             nfcstore.uz/{record.code.toLowerCase()}

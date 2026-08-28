@@ -239,6 +239,40 @@ function WonAuctionsPanel() {
   );
 }
 
+// Premium foydalanuvchi kabinetga kirishi bilan DARHOL ko'zga tashlanadigan
+// katta "hero" banner — sahifaning eng tepasida (Kabinet sarlavhasidan ham
+// oldin) chiqadi. Oltin gradient chegara, xira oltin porlash (glow) va
+// katta, qalin shrift bilan "VIP mijoz" hissini beradi.
+function PremiumHeroBanner({ user }) {
+  if (!user?.isPremium) return null;
+  return (
+    <div className="relative mt-8 overflow-hidden rounded-3xl border-2 border-amber-400/60 bg-gradient-to-br from-[#241a06] via-[#2e2107] to-[#1a1204] p-6 shadow-[0_0_60px_-10px_rgba(251,191,36,0.35)] sm:p-8">
+      {/* Fon porlash effektlari — faqat Tailwind arbitrary-value util'lari, qo'shimcha CSS shart emas */}
+      <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-amber-400/20 blur-3xl"></div>
+      <div className="pointer-events-none absolute -bottom-14 -right-10 h-56 w-56 rounded-full bg-yellow-300/15 blur-3xl"></div>
+      <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-amber-400/0 via-amber-300/5 to-amber-400/0"></div>
+
+      <div className="relative flex flex-wrap items-center gap-5">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-600 text-4xl shadow-[0_0_30px_-4px_rgba(251,191,36,0.7)]">
+          {'\u{1F451}'}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-2xl font-extrabold tracking-tight text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.5)] sm:text-3xl">
+            Siz premium foydalanuvchisiz
+            <span className="animate-pulse text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">{'\u{1F451}'}</span>
+          </div>
+          <p className="mt-2 max-w-xl text-sm text-amber-100/70">
+            Profilingiz oltin belgi va {'\u{1F451}'} qirol emoji bilan ajralib turadi, boshqalarga darhol ko'zga tashlanadi — sizga obuna bo'lish endi bepul.
+          </p>
+        </div>
+        <span className="ml-auto shrink-0 rounded-full border border-amber-400/50 bg-amber-400/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-amber-300">
+          VIP
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function PremiumPanel({ user, onBecamePremium }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -264,14 +298,10 @@ function PremiumPanel({ user, onBecamePremium }) {
     return () => clearInterval(t);
   }, [order]);
 
-  if (user?.isPremium) {
-    return (
-      <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
-        <div className="flex items-center gap-2 text-sm font-bold text-accent">{'\u2B50'} Siz premium foydalanuvchisiz</div>
-        <p className="mt-1 text-xs text-base-content/50">Profilingiz oltin/kumush belgi va {'\u{1F451}'} qirol emoji bilan ajralib turadi — sizga obuna bo'lish endi bepul.</p>
-      </div>
-    );
-  }
+  // Premium bo'lgan foydalanuvchi uchun bu yerda endi hech narsa
+  // ko'rsatilmaydi — uning o'rniga kabinetning eng tepasida, birinchi
+  // ko'zga tashlanadigan joyda <PremiumHeroBanner /> chiqadi (pastda).
+  if (user?.isPremium) return null;
 
   const submit = async () => {
     setBusy(true);
@@ -1029,11 +1059,25 @@ export default function AccountPage({ refreshCatalog }) {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
+      {/* Premium bo'lsa — foydalanuvchi kabinetga kirishi bilan eng
+          birinchi shu bannerni ko'radi, "Kabinet" sarlavhasidan ham oldin. */}
+      <PremiumHeroBanner user={user} />
+
       <section className="pt-14">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Kabinet</div>
-            <h1 className="mt-1 text-2xl font-bold">{user.email}</h1>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
+              {user.email}
+              {user.isPremium && (
+                <span
+                  className="animate-pulse text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.7)]"
+                  title="Premium foydalanuvchi"
+                >
+                  {'\u{1F451}'}
+                </span>
+              )}
+            </h1>
             <p className="mt-1 text-sm text-base-content/55">
               Sizning profilingiz:{' '}
               {myCards.length
