@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLanguage } from '../lib/i18n.jsx';
 
 // Jismoniy NFC karta uchun bosma dizayn generatori — matn, rang, fon
 // (teri rangi yoki o'z rasmi) va logotipni tanlab, old/orqa tomonni
@@ -296,6 +297,7 @@ function loadImageFromFile(file, onLoaded) {
 }
 
 function ToggleGroup({ options, value, onChange }) {
+  const { t } = useLanguage();
   return (
     <div className="flex gap-2">
       {options.map((opt) => (
@@ -309,7 +311,7 @@ function ToggleGroup({ options, value, onChange }) {
               : 'border-white/10 bg-base-100 text-base-content/50 hover:text-base-content/80'
           }`}
         >
-          {opt.label}
+          {t(opt.label)}
         </button>
       ))}
     </div>
@@ -317,13 +319,14 @@ function ToggleGroup({ options, value, onChange }) {
 }
 
 function SwatchRow({ items, value, onChange }) {
+  const { t } = useLanguage();
   return (
     <div className="mt-2 flex flex-wrap gap-2.5">
       {items.map((s) => (
         <button
           key={s.id}
           type="button"
-          title={s.label}
+          title={t(s.label)}
           onClick={() => onChange(s.id)}
           className={`h-7 w-7 shrink-0 rounded-full transition-shadow ${
             value === s.id ? 'ring-2 ring-white ring-offset-2 ring-offset-base-200' : ''
@@ -349,6 +352,7 @@ function FieldGroup({ title, children }) {
 }
 
 export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
+  const { t } = useLanguage();
   const canvasRef = useRef(null);
   const bgFileRef = useRef(null);
   const logoFileRef = useRef(null);
@@ -505,44 +509,44 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const toolBody = (
     <div className="mt-10 grid gap-8 lg:grid-cols-[380px_1fr]">
         <div className="max-h-[calc(100vh-140px)] overflow-y-auto rounded-2xl border border-white/10 bg-base-200/40 p-5 lg:sticky lg:top-6 lg:self-start">
-          <FieldGroup title="Tomon">
+          <FieldGroup title={t("Tomon")}>
             <ToggleGroup
               options={[{ value: 'front', label: 'OLD TOMON' }, { value: 'back', label: 'ORQA TOMON' }]}
               value={side}
               onChange={setSide}
             />
             <div className="mt-4">
-              <Label>Old tomon asosiy matni</Label>
+              <Label>{t('Old tomon asosiy matni')}</Label>
               <input className={inp} maxLength={18} value={frontText} onChange={(e) => setFrontText(e.target.value)} />
             </div>
             <div className="mt-3">
-              <Label>Old tomon qo'shimcha matni (ixtiyoriy)</Label>
-              <input className={inp} maxLength={28} placeholder="masalan: Aziz Karimov" value={frontSubText} onChange={(e) => setFrontSubText(e.target.value)} />
+              <Label>{t("Old tomon qo'shimcha matni (ixtiyoriy)")}</Label>
+              <input className={inp} maxLength={28} placeholder={t("masalan: Aziz Karimov")} value={frontSubText} onChange={(e) => setFrontSubText(e.target.value)} />
             </div>
             <div className="mt-3">
-              <Label>Orqa tomon asosiy matni</Label>
+              <Label>{t('Orqa tomon asosiy matni')}</Label>
               <input className={inp} maxLength={18} value={backText} onChange={(e) => setBackText(e.target.value)} />
             </div>
             <div className="mt-3">
-              <Label>Orqa tomon qo'shimcha matni (ixtiyoriy)</Label>
-              <input className={inp} maxLength={28} placeholder="masalan: +998 90 000 00 00" value={backSubText} onChange={(e) => setBackSubText(e.target.value)} />
+              <Label>{t("Orqa tomon qo'shimcha matni (ixtiyoriy)")}</Label>
+              <input className={inp} maxLength={28} placeholder={t("masalan: +998 90 000 00 00")} value={backSubText} onChange={(e) => setBackSubText(e.target.value)} />
             </div>
 
             <div className="mt-4">
-              <Label>Shrift</Label>
+              <Label>{t('Shrift')}</Label>
               <select className="select select-bordered select-sm mt-1 w-full bg-base-100" value={font} onChange={(e) => setFont(e.target.value)}>
-                {FONT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {FONT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
               </select>
             </div>
 
             <div className="mt-3">
-              <Label>Asosiy matn o'lchami: {fontSize}px</Label>
+              <Label>{t('Asosiy matn o\'lchami:')} {fontSize}px</Label>
               <input type="range" min={40} max={140} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
-              <p className="mt-1 text-[11px] text-base-content/40">Katta harf kerak bo'lsa — slayderni o'ngga suring</p>
+              <p className="mt-1 text-[11px] text-base-content/40">{t("Katta harf kerak bo'lsa — slayderni o'ngga suring")}</p>
             </div>
 
             <div className="mt-4">
-              <Label>Orqa tomonda NFC belgisi</Label>
+              <Label>{t('Orqa tomonda NFC belgisi')}</Label>
               <ToggleGroup
                 options={[{ value: true, label: 'Ha' }, { value: false, label: "Yo'q" }]}
                 value={showNfc}
@@ -551,11 +555,11 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
             </div>
           </FieldGroup>
 
-          <FieldGroup title="Yozuv rangi">
+          <FieldGroup title={t("Yozuv rangi")}>
             <SwatchRow items={TEXT_SWATCHES} value={textColor} onChange={setTextColor} />
           </FieldGroup>
 
-          <FieldGroup title="Fon turi">
+          <FieldGroup title={t("Fon turi")}>
             <ToggleGroup
               options={[{ value: 'color', label: 'Teri rang' }, { value: 'image', label: 'Rasm yuklash' }]}
               value={bgMode}
@@ -563,50 +567,50 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
             />
             {bgMode === 'color' ? (
               <div className="mt-4">
-                <Label>Teri foni rangi</Label>
+                <Label>{t('Teri foni rangi')}</Label>
                 <SwatchRow items={BG_SWATCHES} value={bgColor} onChange={setBgColor} />
               </div>
             ) : (
               <div className="mt-4">
-                <Label>O'z rasmingizni fon qiling</Label>
+                <Label>{t("O'z rasmingizni fon qiling")}</Label>
                 <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBgImage} />
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current && bgFileRef.current.click()}>
-                  Rasm tanlash
+                  {t('Rasm tanlash')}
                 </button>
-                <p className="mt-2 text-[11px] text-base-content/40">Rasm avtomatik karta o'lchamiga moslanadi (crop qilinadi)</p>
+                <p className="mt-2 text-[11px] text-base-content/40">{t("Rasm avtomatik karta o'lchamiga moslanadi (crop qilinadi)")}</p>
                 <div className="mt-3">
-                  <Label>Rasm qorong'uligi (matn o'qilishi uchun)</Label>
+                  <Label>{t("Rasm qorong'uligi (matn o'qilishi uchun)")}</Label>
                   <input type="range" min={0} max={80} value={darken} onChange={(e) => setDarken(Number(e.target.value))} className="range range-xs range-primary mt-1" />
                 </div>
                 {bgImage && (
                   <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={() => { setBgImage(null); if (bgFileRef.current) bgFileRef.current.value = ''; }}>
-                    Rasmni olib tashlash
+                    {t('Rasmni olib tashlash')}
                   </button>
                 )}
               </div>
             )}
           </FieldGroup>
 
-          <FieldGroup title="Logotip (ixtiyoriy)">
-            <Label>Logotip rasm yuklash</Label>
+          <FieldGroup title={t("Logotip (ixtiyoriy)")}>
+            <Label>{t('Logotip rasm yuklash')}</Label>
             <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickLogo} />
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => logoFileRef.current && logoFileRef.current.click()}>
-              Rasm tanlash
+              {t('Rasm tanlash')}
             </button>
-            <p className="mt-2 text-xs text-base-content/45">Joyini o'zgartirish uchun kartadagi logotipni sichqoncha bilan ushlab, istalgan joyga suring.</p>
+            <p className="mt-2 text-xs text-base-content/45">{t("Joyini o'zgartirish uchun kartadagi logotipni sichqoncha bilan ushlab, istalgan joyga suring.")}</p>
             {logoImage && (
               <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={() => { setLogoImage(null); if (logoFileRef.current) logoFileRef.current.value = ''; }}>
-                Logotipni olib tashlash
+                {t('Logotipni olib tashlash')}
               </button>
             )}
           </FieldGroup>
 
-          <FieldGroup title="QR-kod">
+          <FieldGroup title={t("QR-kod")}>
             <label className="flex cursor-pointer items-center gap-2.5">
               <input type="checkbox" className="checkbox checkbox-sm" checked={showQr} onChange={(e) => setShowQr(e.target.checked)} />
-              <span className="text-sm">Profilga havola qiluvchi QR-kod qo'shish</span>
+              <span className="text-sm">{t("Profilga havola qiluvchi QR-kod qo'shish")}</span>
             </label>
-            <p className="mt-2 text-xs text-base-content/45">Faqat ORQA tomonda chiqadi, joyini sichqoncha bilan suring.</p>
+            <p className="mt-2 text-xs text-base-content/45">{t("Faqat ORQA tomonda chiqadi, joyini sichqoncha bilan suring.")}</p>
 
             {showQr && (
               <>
@@ -616,28 +620,28 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
                     className={`btn btn-xs flex-1 ${qrMode === 'auto' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setQrMode('auto')}
                   >
-                    Avtomatik (kod)
+                    {t('Avtomatik (kod)')}
                   </button>
                   <button
                     type="button"
                     className={`btn btn-xs flex-1 ${qrMode === 'manual' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => setQrMode('manual')}
                   >
-                    Qo'lda havola
+                    {t("Qo'lda havola")}
                   </button>
                 </div>
 
                 {qrMode === 'auto' ? (
                   <p className="mt-2 text-xs text-base-content/45">
                     {code || frontText
-                      ? <>Havola: <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span></>
-                      : "Old tomon matni (kod) kiritilgach QR avtomatik hosil bo'ladi."}
+                      ? <>{t('Havola:')} <span className="font-mono">nfcstore.uz/{(code || frontText).toUpperCase()}</span></>
+                      : t("Old tomon matni (kod) kiritilgach QR avtomatik hosil bo'ladi.")}
                   </p>
                 ) : (
                   <input
                     value={qrManualLink}
                     onChange={(e) => setQrManualLink(e.target.value)}
-                    placeholder="https://... yoki t.me/..."
+                    placeholder={t("https://... yoki t.me/...")}
                     className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono text-xs"
                   />
                 )}
@@ -649,30 +653,30 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
                     onChange={(e) => setQrColor(e.target.value)}
                     className="h-8 w-8 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
                   />
-                  <span className="text-xs text-base-content/60">QR-kod rangi</span>
+                  <span className="text-xs text-base-content/60">{t('QR-kod rangi')}</span>
                 </div>
 
                 <div className="mt-3">
-                  <Label>QR-kod o'lchami ({qrSize}px)</Label>
+                  <Label>{t('QR-kod o\'lchami')} ({qrSize}px)</Label>
                   <input type="range" min={60} max={280} step={10} value={qrSize} onChange={(e) => setQrSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
                 </div>
               </>
             )}
           </FieldGroup>
 
-          <FieldGroup title="Matn joyi">
-            <p className="text-xs text-base-content/45">Asosiy matnni ({side === 'front' ? 'old' : 'orqa'} tomon) kartaning o'zida sichqoncha bilan ushlab, istalgan joyga suring.</p>
+          <FieldGroup title={t("Matn joyi")}>
+            <p className="text-xs text-base-content/45">{t('Asosiy matnni ({s} tomon) kartaning o\'zida sichqoncha bilan ushlab, istalgan joyga suring.', { s: side === 'front' ? t('old') : t('orqa') })}</p>
             <button type="button" className="btn btn-ghost btn-xs mt-2" onClick={() => setTextXY({ x: 0.5, y: 0.5 })}>
-              Markazga qaytarish
+              {t('Markazga qaytarish')}
             </button>
           </FieldGroup>
 
-          <FieldGroup title="Yuklab olish">
+          <FieldGroup title={t("Yuklab olish")}>
             <button type="button" className="btn btn-block bg-gradient-to-br from-[#f8e8b0] to-[#c9a24b] text-[#1a1408] hover:brightness-105 border-none" onClick={downloadCurrent}>
-              PNG yuklab olish (joriy tomon)
+              {t('PNG yuklab olish (joriy tomon)')}
             </button>
             <button type="button" className="btn btn-block btn-ghost mt-2.5 border border-white/10" onClick={downloadBoth}>
-              Ikkala tomonni yuklash
+              {t('Ikkala tomonni yuklash')}
             </button>
           </FieldGroup>
         </div>
@@ -689,7 +693,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
             className="w-full max-w-[520px] touch-none rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
           />
           <p className="max-w-[420px] text-center text-xs text-base-content/50">
-            Chop etish uchun 1280×800px, yuqori sifat. Logotip va QR-kodni sichqoncha bilan sudrab, joyini o'zgartiring.
+            {t("Chop etish uchun 1280×800px, yuqori sifat. Logotip va QR-kodni sichqoncha bilan sudrab, joyini o'zgartiring.")}
           </p>
         </div>
       </div>
@@ -702,13 +706,13 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
       <section className="pt-14">
         <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-          Karta dizayni
+          {t('Karta dizayni')}
         </span>
         <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          NFC karta <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">dizaynini yarating</span>
+          {t('NFC karta')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('dizaynini yarating')}</span>
         </h1>
         <p className="mt-3 max-w-xl text-sm text-base-content/60">
-          Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda yarating va tayyor rasmni PNG holida yuklab oling.
+          {t('Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda yarating va tayyor rasmni PNG holida yuklab oling.')}
         </p>
       </section>
       {toolBody}

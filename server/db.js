@@ -2894,55 +2894,96 @@ export async function adminCardsTimeSeries(days = 30) {
   return rows.map((r) => ({ day: r.day, count: r.count }));
 }
 
-// Excelga eksport uchun — kun bo'yicha birlashtirilgan statistika.
+// Excelga eksport uchun — kun bo'yicha birlashtirilgan statistika + jamlama.
+// `opts.fromIso` / `opts.toIso` berilsa — aynan shu oraliq (custom sana), aks
+// holda oxirgi `days` kun.
 // DIQQAT: trafik manbasi (Telegram/Instagram/Google) hisobga OLINMAGAN,
 // chunki tizimda UTM/referrer kuzatuvi hali yo'q — yolg'on nol ustunlar
 // ko'rsatishdan ko'ra, umuman qo'shmaslik ma'qul.
-export async function adminExportStats(days = 30) {
-  const { rows: signups } = await pool.query(
+export async function adminExportStats(days = 30, opts = {}) {
+  const to = opts.toIso ? new Date(opts.toIso) : new Date();
+  const from = opts.fromIso ? new Date(opts.fromIso) : new Date(Date.now() - days * 86400000);
+  const fromIso = from.toISOString();
+  const toIso = to.toISOString();
+  const fromMs = from.getTime();
+  const toMs = to.getTime();
+
+  const q = (sql) => pool.query(sql, [fromIso, toIso]);
+  const qCards = (sql) => pool.query(sql, [fromMs, toMs]);
+
+  const { rows: signups } = await q(
     `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
-     FROM users WHERE created_at >= now() - ($1 || ' days')::interval AND is_test = FALSE GROUP BY 1`,
-    [days]
+     FROM users WHERE created_at >= $1 AND created_at < $2 AND is_test = FALSE GROUP BY 1`
   );
-  const { rows: cards } = await pool.query(
+  const { rows: cards } = await qCards(
     `SELECT to_char(date_trunc('day', to_timestamp(ts / 1000.0)), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
-     FROM cards WHERE ts >= (extract(epoch FROM now() - ($1 || ' days')::interval) * 1000) AND price > 0 GROUP BY 1`,
-    [days]
+     FROM cards WHERE ts >= $1 AND ts < $2 AND price > 0 GROUP BY 1`
   );
-  const { rows: premiums } = await pool.query(
+  const { rows: premiums } = await q(
     `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
-     FROM transactions WHERE kind = 'premium_upgrade' AND created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
-    [days]
+     FROM transactions WHERE kind = 'premium_upgrade' AND created_at >= $1 AND created_at < $2 GROUP BY 1`
   );
-  const { rows: orders } = await pool.query(
+  const { rows: orders } = await q(
     `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
-     FROM web_orders WHERE status = 'paid' AND created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
-    [days]
+     FROM web_orders WHERE created_at >= $1 AND created_at < $2 GROUP BY 1`
   );
-  const { rows: revenue } = await pool.query(
+  const { rows: payments } = await q(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM web_orders WHERE status = 'paid' AND created_at >= $1 AND created_at < $2 GROUP BY 1`
+  );
+  const { rows: revenue } = await q(
     `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COALESCE(SUM(amount),0)::bigint AS n
-     FROM transactions WHERE kind = 'platform_commission' AND created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
-    [days]
+     FROM transactions WHERE kind = 'platform_commission' AND created_at >= $1 AND created_at < $2 GROUP BY 1`
   );
-  const { rows: auctions } = await pool.query(
+  const { rows: auctionsCreated } = await q(
     `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
-     FROM auctions WHERE created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
-    [days]
+     FROM auctions WHERE created_at >= $1 AND created_at < $2 GROUP BY 1`
+  );
+  const { rows: auctionsSold } = await q(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM auctions WHERE status = 'sold' AND created_at >= $1 AND created_at < $2 GROUP BY 1`
   );
 
   const byDay = {};
   const put = (arr, key) => arr.forEach((r) => {
-    byDay[r.day] = byDay[r.day] || { date: r.day, newUsers: 0, newCards: 0, newPremium: 0, orders: 0, revenue: 0, auctions: 0 };
+    byDay[r.day] = byDay[r.day] || { date: r.day, newUsers: 0, newCards: 0, newPremium: 0, orders: 0, payments: 0, revenue: 0, auctionsCreated: 0, auctionsSold: 0 };
     byDay[r.day][key] = Number(r.n);
   });
   put(signups, 'newUsers');
   put(cards, 'newCards');
   put(premiums, 'newPremium');
   put(orders, 'orders');
+  put(payments, 'payments');
   put(revenue, 'revenue');
-  put(auctions, 'auctions');
+  put(auctionsCreated, 'auctionsCreated');
+  put(auctionsSold, 'auctionsSold');
 
-  return Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
+  const rows = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
+  const sum = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+
+  const [{ rows: tu }, { rows: tp }, { rows: ta }] = await Promise.all([
+    pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE is_test = FALSE AND created_at < $1`, [toIso]),
+    pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE is_test = FALSE AND is_premium = TRUE`),
+    pool.query(`SELECT COUNT(*)::int AS n FROM auctions WHERE status = 'active'`),
+  ]);
+
+  const summary = {
+    from: fromIso.slice(0, 10),
+    to: toIso.slice(0, 10),
+    totalUsers: tu[0].n,
+    totalPremium: tp[0].n,
+    activeAuctions: ta[0].n,
+    auctionsCreated: sum('auctionsCreated'),
+    auctionsSold: sum('auctionsSold'),
+    revenue: sum('revenue'),
+    payments: sum('payments'),
+    orders: sum('orders'),
+    newUsers: sum('newUsers'),
+    newCards: sum('newCards'),
+    newPremium: sum('newPremium'),
+  };
+
+  return { rows, summary };
 }
 
 // ---------- To'lovlar tarixi ----------

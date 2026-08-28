@@ -19,7 +19,7 @@ export default function Footer() {
               <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" />
               NFCSTORE
             </div>
-            <p className="text-sm text-base-content/50">Raqamli shaxsiy raqamli tashrif qog'ozi xizmati</p>
+            <p className="text-sm text-base-content/50">{t("Raqamli shaxsiy raqamli tashrif qog'ozi xizmati")}</p>
           </div>
           {COLS.map((col) => (
             <div key={col.title}>

@@ -80,7 +80,7 @@ function RevealSection({ id, children }) {
 
 const TEASERS = [
   { href: '/narxlar', title: 'Narxlar', desc: "Kalkulyator bilan aniq narxni hisoblang va naqshlar qanday ta'sir qilishini ko'ring.", go: "Narxlarni ko'rish →" },
-  { href: '/qanday-ishlaydi', title: 'Qanday ishlaydi', desc: "Bandlashdan profilni sozlash va qayta sotishgacha — besh qadam.", go: "Qadamlarni ko'rish →" },
+  { href: '/qanday-ishlaydi', title: 'Qanday ishlaydi', desc: "Bandlashdan profilni sozlash va qayta sotishgacha — olti qadam.", go: "Qadamlarni ko'rish →" },
   { href: '/katalog', title: 'Katalog', desc: "Barcha band qilingan raqamli tashrif qog'ozlar ro'yxati.", go: "Katalogni ochish →" },
   { href: '/savollar', title: 'Savollar', desc: "Narx, egalik, qayta sotish va profil haqida ko'p so'raladigan savollar.", go: 'FAQ →' },
 ];
@@ -118,7 +118,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
             <Reveal>
               <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
                 <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-                O'z profilingiz — nfcstore.uz/ismingiz
+                {t("O'z profilingiz — nfcstore.uz/ismingiz")}
               </span>
             </Reveal>
 
@@ -132,8 +132,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
             <Reveal delay="[transition-delay:160ms]">
               <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
-                Format: <b className="font-mono">AAA000</b> — 3 lotin harfi + 3 raqam. Sizniki bo'lgach — akkauntingizdan
-                tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi. Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.
+                {t('Format:')} <b className="font-mono">AAA000</b> {t("— 3 lotin harfi + 3 raqam. Sizniki bo'lgach — akkauntingizdan tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi. Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.")}
               </p>
             </Reveal>
 
@@ -155,7 +154,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   </div>
                   <button
                     onClick={doCheck}
-                    aria-label="Tekshirish"
+                    aria-label={t('Tekshirish')}
                     className="btn btn-circle shrink-0 border-none bg-gradient-to-br from-[#e8c165] to-[#b3860f] text-[#17130a] shadow-[0_8px_24px_rgba(180,140,20,0.45)] hover:brightness-110"
                   >
                     <IconSearch />
@@ -164,25 +163,25 @@ export default function HomePage({ catalog, refreshCatalog }) {
                 {checkResult && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1 text-[13.5px]">
                     {checkResult.bad && <>
-                      <span className="badge badge-error badge-outline">Noto'g'ri format</span>
-                      <span className="text-base-content/60">3 harf + 3 raqam kiriting, masalan ABZ007</span>
+                      <span className="badge badge-error badge-outline">{t("Noto'g'ri format")}</span>
+                      <span className="text-base-content/60">{t('3 harf + 3 raqam kiriting, masalan ABZ007')}</span>
                     </>}
                     {!checkResult.bad && checkResult.taken && <>
-                      <span className="badge badge-error">Band</span>
+                      <span className="badge badge-error">{t('Band')}</span>
                       <span className="text-base-content/60">
-                        nfcstore.uz/{checkResult.code.toLowerCase()} allaqachon olingan —{' '}
-                        <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-base-content">sahifasini ko'rish</button>
+                        {t('nfcstore.uz/{code} allaqachon olingan —', { code: checkResult.code.toLowerCase() })}{' '}
+                        <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-base-content">{t("sahifasini ko'rish")}</button>
                       </span>
                     </>}
                     {!checkResult.bad && !checkResult.taken && checkInfo?.tier === 'exclusive' && <>
-                      <span className="badge" style={{ background: '#ff5c8a22', color: '#ff5c8a', border: '1px solid #ff5c8a55' }}>{'\u{1F48E}'} Ekslyuziv</span>
-                      <span className="text-base-content/60">nfcstore.uz/{checkResult.code.toLowerCase()} — faqat auksion orqali sotiladi</span>
-                      <button className="btn btn-accent btn-xs ml-1" onClick={() => navigate('/auksion')}>Auksion bo'limi</button>
+                      <span className="badge" style={{ background: '#ff5c8a22', color: '#ff5c8a', border: '1px solid #ff5c8a55' }}>{'\u{1F48E}'} {t('Ekslyuziv')}</span>
+                      <span className="text-base-content/60">{t('nfcstore.uz/{code} — faqat auksion orqali sotiladi', { code: checkResult.code.toLowerCase() })}</span>
+                      <button className="btn btn-accent btn-xs ml-1" onClick={() => navigate('/auksion')}>{t("Auksion bo'limi")}</button>
                     </>}
                     {!checkResult.bad && !checkResult.taken && checkInfo?.tier !== 'exclusive' && <>
-                      <span className="badge badge-success">Bo'sh</span>
-                      <span className="text-base-content/60">nfcstore.uz/{checkResult.code.toLowerCase()} hozircha bo'sh — {fmt(checkInfo.total)} so'm</span>
-                      <button className="btn btn-primary btn-xs ml-1" onClick={() => setModalCode(checkResult.code)}>Bandlash</button>
+                      <span className="badge badge-success">{t("Bo'sh")}</span>
+                      <span className="text-base-content/60">{t('nfcstore.uz/{code} hozircha bo‘sh — {price} so‘m', { code: checkResult.code.toLowerCase(), price: fmt(checkInfo.total) })}</span>
+                      <button className="btn btn-primary btn-xs ml-1" onClick={() => setModalCode(checkResult.code)}>{t('Bandlash')}</button>
                     </>}
                   </div>
                 )}
@@ -194,15 +193,15 @@ export default function HomePage({ catalog, refreshCatalog }) {
               <div className="mt-7 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
                   <div className="text-lg font-bold"><CountUp value={catalog.length} /></div>
-                  <div className="text-xs text-base-content/50">Band qilingan</div>
+                  <div className="text-xs text-base-content/50">{t('Band qilingan')}</div>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold">0 so'mdan</div>
-                  <div className="text-xs text-base-content/50">Tekin darajadagi ID'lar</div>
+                  <div className="text-lg font-bold">{t("0 so'mdan")}</div>
+                  <div className="text-xs text-base-content/50">{t("Tekin darajadagi ID'lar")}</div>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold">99 000 so'm</div>
-                  <div className="text-xs text-base-content/50">Silver darajadan boshlab</div>
+                  <div className="text-lg font-bold">{t("99 000 so'm")}</div>
+                  <div className="text-xs text-base-content/50">{t('Silver darajadan boshlab')}</div>
                 </div>
               </div>
             </Reveal>
@@ -232,7 +231,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
               <div className="absolute left-1/2 top-1/2 z-[3] -translate-x-1/2 translate-y-[-55%] animate-[floatY_5.5s_ease-in-out_infinite]">
                 <Interactive3DCard>
-                  <NfcCard code="AAA000" name="SIZNING ISMINGIZ" finish="black" size="lg" rim />
+                  <NfcCard code="AAA000" name={t('SIZNING ISMINGIZ')} finish="black" size="lg" rim />
                 </Interactive3DCard>
               </div>
 
@@ -278,18 +277,18 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
       <div className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
         <RevealSection id="sahifalar">
-          <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Batafsil</div>
-          <h2 className="mt-2 text-2xl font-bold">Sayt bo'ylab</h2>
+          <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('Batafsil')}</div>
+          <h2 className="mt-2 text-2xl font-bold">{t("Sayt bo'ylab")}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {TEASERS.map((t) => (
+            {TEASERS.map((item) => (
               <button
-                key={t.href}
-                onClick={() => navigate(t.href)}
+                key={item.href}
+                onClick={() => navigate(item.href)}
                 className="group cursor-pointer rounded-2xl border border-white/10 bg-base-200/70 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200"
               >
-                <h3 className="font-semibold">{t.title}</h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">{t.desc}</p>
-                <span className="mt-4 inline-block text-sm text-base-content/80 transition-transform group-hover:translate-x-1">{t.go}</span>
+                <h3 className="font-semibold">{t(item.title)}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">{t(item.desc)}</p>
+                <span className="mt-4 inline-block text-sm text-base-content/80 transition-transform group-hover:translate-x-1">{t(item.go)}</span>
               </button>
             ))}
           </div>

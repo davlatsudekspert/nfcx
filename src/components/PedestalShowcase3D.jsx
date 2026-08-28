@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { useLanguage } from '../lib/i18n.jsx';
 
 // Professional 3D product showcase: karta + pьedestal BITTA composition
 // sifatida bog'langan holda sekin, doimiy 360° aylanadi. Bosilganda
@@ -7,6 +8,7 @@ import { useRef, useState, useEffect } from 'react';
 // uslubida) qo'shadi. Faqat CSS 3D transform (preserve-3d/perspective) —
 // og'ir WebGL yo'q, GPU-friendly.
 export default function PedestalShowcase3D({ children }) {
+  const { t } = useLanguage();
   const wrapRef = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
   const [clickSpin, setClickSpin] = useState(0);
@@ -41,7 +43,7 @@ export default function PedestalShowcase3D({ children }) {
       onClick={onActivate}
       className="relative flex cursor-pointer select-none flex-col items-center py-6"
       style={{ perspective: '1600px' }}
-      title="Aylantirish uchun bosing"
+      title={t('Aylantirish uchun bosing')}
     >
       {/* Orqa fondagi yumshoq oltin ambient nur */}
       <div

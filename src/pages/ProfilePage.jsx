@@ -5,6 +5,8 @@ import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
+import { useLanguage } from '../lib/i18n.jsx';
+import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
@@ -148,6 +150,7 @@ function tierOf(code) {
 function MusicPlayer({ url, accentColor }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
+  const { t } = useLanguage();
 
   const toggle = () => {
     const el = audioRef.current;
@@ -167,14 +170,14 @@ function MusicPlayer({ url, accentColor }) {
       <audio ref={audioRef} src={url} loop preload="none" onEnded={() => setPlaying(false)} />
       {!playing && (
         <span className="hidden rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:inline-block">
-          {'\u{1F3B5}'} Musiqa
+          {'\u{1F3B5}'} {t('Musiqa')}
         </span>
       )}
       <button
         onClick={toggle}
         className={`relative flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
         style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
-        aria-label={playing ? 'Musiqani to\u2018xtatish' : 'Musiqani yoqish'}
+        aria-label={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
       >
         {playing ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
@@ -197,6 +200,7 @@ export default function ProfilePage({ code, catalog }) {
   const [followBusy, setFollowBusy] = useState(false);
   const [followMsg, setFollowMsg] = useState(null);
   const { user, myCards } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
@@ -204,7 +208,7 @@ export default function ProfilePage({ code, catalog }) {
   }, [code, user]);
 
   const toggleLike = async () => {
-    if (!user) { flashToast('Avval tizimga kiring...'); setTimeout(() => navigate('/login'), 800); return; }
+    if (!user) { flashToast(t('Avval tizimga kiring...')); setTimeout(() => navigate('/login'), 800); return; }
     try {
       const res = await dbToggleLike(code);
       setLikeInfo((prev) => ({ liked: res.liked, count: (prev?.count || 0) + (res.liked ? 1 : -1) }));
@@ -313,7 +317,7 @@ export default function ProfilePage({ code, catalog }) {
   if (record === undefined) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
-        <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center text-sm">Yuklanmoqda...</div>
+        <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center text-sm">{t('Yuklanmoqda...')}</div>
       </div>
     );
   }
@@ -322,9 +326,9 @@ export default function ProfilePage({ code, catalog }) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('midnight')}>
         <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
-          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">Bu karta endi faol emas</h2>
-          <p>Ushbu jismoniy karta boshqa profilga o'tkazilgan yoki bekor qilingan. Agar bu xato deb hisoblasangiz, biz bilan bog'laning.</p>
-          <button onClick={() => navigate('/aloqa')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">Aloqa</button>
+          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t('Bu karta endi faol emas')}</h2>
+          <p>{t("Ushbu jismoniy karta boshqa profilga o'tkazilgan yoki bekor qilingan. Agar bu xato deb hisoblasangiz, biz bilan bog'laning.")}</p>
+          <button onClick={() => navigate('/aloqa')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">{t('Aloqa')}</button>
         </div>
       </div>
     );
@@ -345,11 +349,11 @@ export default function ProfilePage({ code, catalog }) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
         <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
-          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">nfcstore.uz/{code.toLowerCase()} hali bo'sh</h2>
-          <p>Bu raqamli tashrif qog'ozi hech kimga tegishli emas. Uni birinchi bo'lib siz oling.</p>
+          <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t('nfcstore.uz/{code} hali bo‘sh', { code: code.toLowerCase() })}</h2>
+          <p>{t("Bu raqamli tashrif qog'ozi hech kimga tegishli emas. Uni birinchi bo'lib siz oling.")}</p>
           {parsed
-            ? <button onClick={() => navigate('/')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">Bosh sahifada band qilish</button>
-            : <p className="text-[13px]">Format noto'g'ri: ABZ007 yoki faqat harflardan iborat so'z bo'lishi kerak.</p>}
+            ? <button onClick={() => navigate('/')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">{t('Bosh sahifada band qilish')}</button>
+            : <p className="text-[13px]">{t("Format noto'g'ri: ABZ007 yoki faqat harflardan iborat so'z bo'lishi kerak.")}</p>}
         </div>
       </div>
     );
@@ -388,11 +392,14 @@ export default function ProfilePage({ code, catalog }) {
       <MusicPlayer url={record.musicUrl} accentColor={record.accentColor} />
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
         <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
-          <IconArrowLeft /> Bosh sahifaga
+          <IconArrowLeft /> {t('Bosh sahifaga')}
         </button>
         <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5">
           <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[13.5px] text-[color:var(--vz-ink)] outline-none" />
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
+          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
+        </div>
+        <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
+          <LanguageSwitcher />
         </div>
       </div>
 
@@ -402,11 +409,11 @@ export default function ProfilePage({ code, catalog }) {
             <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
           ))}
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
-          <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{fmt(record.price)} so'm</span>
+          <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
+          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
+          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
         </div>
       </div>
 
@@ -427,20 +434,20 @@ export default function ProfilePage({ code, catalog }) {
       <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
-            {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> TOP #{topRank} bu hafta</span>}
-            {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel}</span>}
+            {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
+            {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel.split(' · ').map((p) => t(p)).join(' · ')}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>Tahrirlash</button>}
+            {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
             {!isOwner && (
               <>
-                {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} Xabar yozish</button>}
+                {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>}
                 <button
                   className={`${pillBtn} ${followStats?.isFollowing ? '!bg-transparent !text-[color:var(--vz-ink)] border border-[color:var(--vz-line)]' : ''}`}
                   onClick={toggleFollow}
                   disabled={followBusy}
                 >
-                  {followBusy ? '...' : followStats?.isFollowing ? 'Obunani bekor qilish' : "Obuna bo'lish"}
+                  {followBusy ? '...' : followStats?.isFollowing ? t('Obunani bekor qilish') : t("Obuna bo'lish")}
                 </button>
               </>
             )}
@@ -448,8 +455,8 @@ export default function ProfilePage({ code, catalog }) {
         </div>
         {followStats && (
           <div className="mt-2 flex items-center gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
-            <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> obunachi</span>
-            <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> obuna</span>
+            <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}</span>
+            <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}</span>
             <button
               onClick={toggleLike}
               className={`ml-auto flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
@@ -459,7 +466,7 @@ export default function ProfilePage({ code, catalog }) {
             </button>
           </div>
         )}
-        {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}
+        {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{t(followMsg)}</div>}
 
         {(tierEmoji || tier !== 'free') && (
           <div className="mt-4 flex justify-center">
@@ -508,21 +515,21 @@ export default function ProfilePage({ code, catalog }) {
           </div>
           {tier !== 'free' && (
             <div className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
-              {TIER_LABEL[tier]} tarif
+              {t('{tier} tarif', { tier: t(TIER_LABEL[tier]) })}
             </div>
           )}
-          <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">Faol bo'lgan: {timeAgo(record.ts)}</div>
+          <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">{t('Faol bo‘lgan: {when}', { when: timeAgo(record.ts) })}</div>
           {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
           {record.about && <p className="mx-auto mt-2 max-w-[460px] text-center text-sm leading-relaxed text-[color:var(--vz-ink-dim)]">{record.about}</p>}
         </div>
 
         <div className="mt-[22px] flex justify-center gap-11">
-          <div className="text-center"><b className="font-display block text-[19px] font-bold">{fmt(record.views || 0)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">Ko'rishlar</span></div>
-          <div className="text-center"><b className="font-display block text-[19px] font-bold">{dateTime(record.ts)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">Band qilingan</span></div>
+          <div className="text-center"><b className="font-display block text-[19px] font-bold">{fmt(record.views || 0)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t("Ko'rishlar")}</span></div>
+          <div className="text-center"><b className="font-display block text-[19px] font-bold">{dateTime(record.ts)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t('Band qilingan')}</span></div>
         </div>
 
         <div className="mt-6 flex justify-center gap-[26px] border-b border-[color:var(--vz-line)]">
-          <button className="-mb-px cursor-default border-b-2 border-current bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold text-[color:var(--vz-ink)]">Raqamli tashrif qog'ozi</button>
+          <button className="-mb-px cursor-default border-b-2 border-current bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold text-[color:var(--vz-ink)]">{t("Raqamli tashrif qog'ozi")}</button>
         </div>
 
         {(
@@ -534,15 +541,15 @@ export default function ProfilePage({ code, catalog }) {
             )}
 
             <div className="mt-[22px] flex flex-col gap-2.5">
-              {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> Qo'ng'iroq qilish{record.hidePhone && isOwner ? ' (yashiringan)' : ''}</a>}
+              {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
               {record.email && <a className={linkBtn} href={`mailto:${record.email}`}><IconMail /> {record.email}</a>}
               {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> KARTA (to'lov)</span>}
+              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> {t("KARTA (to'lov)")}</span>}
               {(record.extraLinks || []).map((l, i) => (
-                <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
+                <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || t('Havola')}</a>
               ))}
             </div>
 
@@ -566,12 +573,12 @@ export default function ProfilePage({ code, catalog }) {
               return (
                 <>
                   <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                  <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">TO'LOV UCHUN KARTALAR</div>
+                  <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t("TO'LOV UCHUN KARTALAR")}</div>
                   <div className="flex flex-col gap-2.5">
                     {cards.map((c, i) => (
                       <div key={i} className="flex items-center justify-between gap-2.5 rounded-xl px-4 py-3" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
                         <span>{c.label && <b className="mb-0.5 block text-[11px] font-bold text-[color:var(--vz-ink-faint)]">{c.label}</b>}<span className="font-mono text-[15px] tracking-[0.08em]">{c.number}</span></span>
-                        <button onClick={() => copyText(c.number.replace(/\s/g, ''), 'Karta raqami nusxalandi!')} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
+                        <button onClick={() => copyText(c.number.replace(/\s/g, ''), t('Karta raqami nusxalandi!'))} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
                       </div>
                     ))}
                   </div>
@@ -590,13 +597,13 @@ export default function ProfilePage({ code, catalog }) {
             <div className="flex justify-center gap-3.5">
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstoreuz" target="_blank" rel="noreferrer" title="NFCSTORE Telegram"><IconTelegram /></a>
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://www.instagram.com/nfcstore.uz" target="_blank" rel="noreferrer" title="NFCSTORE Instagram"><IconInstagram /></a>
-              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title="Qo'llab-quvvatlash"><IconSupport /></a>
+              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
             </div>
 
             {otherCodes.length > 0 && (
               <>
                 <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-3 text-center text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">SIZNING BOSHQA RAQAMLI TASHRIF QOG'OZILARINGIZ</div>
+                <div className="mb-3 text-center text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t("SIZNING BOSHQA RAQAMLI TASHRIF QOG'OZILARINGIZ")}</div>
                 <div className="flex flex-wrap justify-center gap-2">
                   {otherCodes.map((c) => (
                     <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]">nfcstore.uz/{c.code.toLowerCase()}</span>
@@ -607,16 +614,16 @@ export default function ProfilePage({ code, catalog }) {
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
             <div className="flex gap-2.5">
-              <button onClick={() => downloadVcf(record)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> Saqlash</button>
+              <button onClick={() => downloadVcf(record)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
               {!isOwner && MESSAGING_ENABLED && (
-                <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} Xabar yozish</button>
+                <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
               )}
             </div>
           </>
         )}
       </div>
 
-      <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{fmt(record.views || 1)} ko'rishlar</div>
+      <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{t("{n} ko'rishlar", { n: fmt(record.views || 1) })}</div>
       {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] text-white shadow-xl">{toast}</div>}
     </div>
   );
@@ -628,6 +635,7 @@ export default function ProfilePage({ code, catalog }) {
 // yuqorida "record === null && pendingGift" holatida chaqiriladi.
 // ═══════════════════════════════════════════════════════════════════
 function GiftActivationScreen({ code, recipientName }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState('intro'); // intro | code | form | done
   const [activationCode, setActivationCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -640,7 +648,7 @@ function GiftActivationScreen({ code, recipientName }) {
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const verifyCode = async () => {
-    if (!activationCode.trim()) { setErr('Aktivatsiya kodini kiriting.'); return; }
+    if (!activationCode.trim()) { setErr(t('Aktivatsiya kodini kiriting.')); return; }
     setBusy(true);
     setErr(null);
     try {
@@ -655,7 +663,7 @@ function GiftActivationScreen({ code, recipientName }) {
 
   const submit = async () => {
     if (!form.email.trim() || !form.password || !form.name.trim()) {
-      setErr('Email, parol va ismni to\u2019ldiring.');
+      setErr(t('Email, parol va ismni to\u2019ldiring.'));
       return;
     }
     setBusy(true);
@@ -677,28 +685,28 @@ function GiftActivationScreen({ code, recipientName }) {
         {step === 'intro' && (
           <div className="text-center">
             <div className="text-5xl">{'\u{1F381}'}</div>
-            <h2 className="font-display mt-3 mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">Sizga maxsus NFC ID sovg'a qilingan</h2>
+            <h2 className="font-display mt-3 mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t("Sizga maxsus NFC ID sovg'a qilingan")}</h2>
             <div className="mb-4 font-mono text-3xl font-extrabold text-[color:var(--vz-ink)]">#{code}</div>
-            <p className="text-[14px]">Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni yarating.</p>
+            <p className="text-[14px]">{t("Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni yarating.")}</p>
             <button onClick={() => setStep('code')} className="mt-6 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-7 py-3 text-[14px] font-bold text-white transition hover:brightness-125">
-              Sovg'ani faollashtirish
+              {t("Sovg'ani faollashtirish")}
             </button>
           </div>
         )}
 
         {step === 'code' && (
           <div>
-            <h2 className="font-display mb-2 text-xl font-bold text-[color:var(--vz-ink)]">Aktivatsiya kodi</h2>
-            <p className="mb-4 text-[13.5px]">Konvertdagi kartochkada yozilgan kodni kiriting (masalan: NFC-X7K9-P2LM).</p>
+            <h2 className="font-display mb-2 text-xl font-bold text-[color:var(--vz-ink)]">{t('Aktivatsiya kodi')}</h2>
+            <p className="mb-4 text-[13.5px]">{t('Konvertdagi kartochkada yozilgan kodni kiriting (masalan: NFC-X7K9-P2LM).')}</p>
             <input
               value={activationCode}
               onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
               placeholder="NFC-XXXX-XXXX"
               className="w-full rounded-xl border border-[color:var(--vz-line)] bg-transparent px-4 py-3 text-center font-mono text-lg tracking-wider text-[color:var(--vz-ink)] outline-none"
             />
-            {err && <p className="mt-2 text-center text-[13px] text-red-400">{err}</p>}
+            {err && <p className="mt-2 text-center text-[13px] text-red-400">{t(err)}</p>}
             <button onClick={verifyCode} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[14px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
-              {busy ? '...' : 'Tasdiqlash'}
+              {busy ? '...' : t('Tasdiqlash')}
             </button>
           </div>
         )}
@@ -706,24 +714,24 @@ function GiftActivationScreen({ code, recipientName }) {
         {step === 'form' && (
           <div>
             <div className="mb-4 rounded-xl bg-green-500/10 px-4 py-3 text-center text-[13.5px] text-green-400">
-              NFC ID #{code} muvaffaqiyatli tasdiqlandi! Endi profilingizni yarating.
+              {t('NFC ID #{code} muvaffaqiyatli tasdiqlandi! Endi profilingizni yarating.', { code })}
             </div>
             <div className="space-y-2.5">
-              <input value={form.name} onChange={set('name')} placeholder="Ism Familiya *" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.username} onChange={set('username')} placeholder="Username / Nickname" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.email} onChange={set('email')} type="email" placeholder="Email *" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.password} onChange={set('password')} type="password" placeholder="Parol (kamida 6 belgi) *" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.phone} onChange={set('phone')} placeholder="Telefon" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.avatarUrl} onChange={set('avatarUrl')} placeholder="Profil rasmi (URL)" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <textarea value={form.bio} onChange={set('bio')} placeholder="Bio" rows={2} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.name} onChange={set('name')} placeholder={t('Ism Familiya *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.username} onChange={set('username')} placeholder={t('Username / Nickname')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.email} onChange={set('email')} type="email" placeholder={t('Email *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.password} onChange={set('password')} type="password" placeholder={t('Parol (kamida 6 belgi) *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.phone} onChange={set('phone')} placeholder={t('Telefon')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.avatarUrl} onChange={set('avatarUrl')} placeholder={t('Profil rasmi (URL)')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <textarea value={form.bio} onChange={set('bio')} placeholder={t('Bio')} rows={2} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.instagram} onChange={set('instagram')} placeholder="Instagram" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.telegram} onChange={set('telegram')} placeholder="Telegram" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.youtube} onChange={set('youtube')} placeholder="YouTube (havola)" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.tiktok} onChange={set('tiktok')} placeholder="TikTok (havola)" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.youtube} onChange={set('youtube')} placeholder={t('YouTube (havola)')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <input value={form.tiktok} onChange={set('tiktok')} placeholder={t('TikTok (havola)')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
             </div>
-            {err && <p className="mt-2 text-center text-[13px] text-red-400">{err}</p>}
+            {err && <p className="mt-2 text-center text-[13px] text-red-400">{t(err)}</p>}
             <button onClick={submit} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[14px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
-              {busy ? '...' : 'Profil yaratish'}
+              {busy ? '...' : t('Profil yaratish')}
             </button>
           </div>
         )}
@@ -731,8 +739,8 @@ function GiftActivationScreen({ code, recipientName }) {
         {step === 'done' && (
           <div className="text-center">
             <div className="text-5xl">{'\u2705'}</div>
-            <h2 className="font-display mt-3 text-xl font-bold text-[color:var(--vz-ink)]">Tayyor! Profilingiz yaratildi.</h2>
-            <p className="mt-2 text-[13.5px]">Hozir yo'naltirilasiz...</p>
+            <h2 className="font-display mt-3 text-xl font-bold text-[color:var(--vz-ink)]">{t('Tayyor! Profilingiz yaratildi.')}</h2>
+            <p className="mt-2 text-[13.5px]">{t("Hozir yo'naltirilasiz...")}</p>
           </div>
         )}
       </div>

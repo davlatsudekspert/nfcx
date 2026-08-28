@@ -1,10 +1,12 @@
 import { cloneElement, useState } from 'react';
+import { useLanguage } from '../lib/i18n.jsx';
 
 // Bosilganda kartaning old tomoni yo'qolib, ORQA TOMONI ko'rinadigan
 // haqiqiy 3D flip (rotateY 180deg). `children` — bitta <NfcCard .../>
 // elementi bo'lishi kerak; orqa tomon avtomatik hosil qilinadi
 // (bir xil elementning `back` propi TRUE qilingan nusxasi).
 export default function Interactive3DCard({ children, className = '' }) {
+  const { t } = useLanguage();
   const [flipped, setFlipped] = useState(false);
   const backChild = cloneElement(children, { back: true });
 
@@ -13,7 +15,7 @@ export default function Interactive3DCard({ children, className = '' }) {
       onClick={() => setFlipped((f) => !f)}
       className={`cursor-pointer select-none ${className}`}
       style={{ perspective: '1400px' }}
-      title="Orqa tomonini ko'rish uchun bosing"
+      title={t("Orqa tomonini ko'rish uchun bosing")}
     >
       <div
         style={{

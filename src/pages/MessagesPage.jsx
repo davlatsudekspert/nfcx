@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { timeAgo } from '../lib/format.js';
 import { IconSearch, IconPhone, IconArrowLeft } from '../components/Icons.jsx';
+import { useLanguage } from '../lib/i18n.jsx';
 
 // DIQQAT: loyiha Supabase emas (Railway PostgreSQL + Express), shuning
 // uchun "Supabase Realtime" ishlatilmaydi. Bu yerda 3 soniyalik POLLING
@@ -35,12 +36,13 @@ function Avatar({ label, active, size = 'h-11 w-11 text-sm' }) {
 }
 
 function ConversationList({ conversations, activeId, q, onSelect }) {
+  const { t } = useLanguage();
   const query = q.trim().toLowerCase();
   const filtered = conversations.filter((c) =>
     !query || (c.otherEmail || '').toLowerCase().includes(query) || (c.lastMessage || '').toLowerCase().includes(query));
 
   if (filtered.length === 0) {
-    return <div className="flex h-full items-center justify-center p-6 text-center text-sm text-base-content/45">Hozircha suhbat topilmadi.</div>;
+    return <div className="flex h-full items-center justify-center p-6 text-center text-sm text-base-content/45">{t("Hozircha suhbat topilmadi.")}</div>;
   }
   return (
     <div className="divide-y divide-white/5">
@@ -56,7 +58,7 @@ function ConversationList({ conversations, activeId, q, onSelect }) {
               <span className="truncate text-sm font-semibold">{c.otherEmail}</span>
               {c.lastAt && <span className="shrink-0 text-[11px] text-base-content/40">{timeAgo(new Date(c.lastAt).getTime())}</span>}
             </div>
-            <div className="truncate text-xs text-base-content/50">{c.lastMessage || 'Xabar yo\u2019q'}</div>
+            <div className="truncate text-xs text-base-content/50">{c.lastMessage || t('Xabar yo\u2019q')}</div>
           </div>
           {c.unreadCount > 0 && (
             <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-black">{c.unreadCount}</span>
@@ -100,6 +102,7 @@ function MessageBubble({ m, mine }) {
 }
 
 function Thread({ conversation, myUserId, onBack }) {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -167,14 +170,14 @@ function Thread({ conversation, myUserId, onBack }) {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-3 sm:gap-3 sm:px-5">
         {onBack && (
-          <button className="btn btn-ghost btn-circle btn-sm shrink-0 sm:hidden" onClick={onBack} aria-label="Orqaga">
+          <button className="btn btn-ghost btn-circle btn-sm shrink-0 sm:hidden" onClick={onBack} aria-label={t("Orqaga")}>
             <IconArrowLeft width={18} height={18} />
           </button>
         )}
         <Avatar label={conversation.otherEmail} active={isRecentlyActive(conversation.lastAt)} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{conversation.otherEmail}</div>
-          <div className="text-[11px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? 'Onlayn' : 'Oxirgi faollik: ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '\u2014')}</div>
+          <div className="text-[11px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? t('Onlayn') : t('Oxirgi faollik:') + ' ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '\u2014')}</div>
         </div>
         <button className="btn btn-ghost btn-circle btn-sm hidden text-base-content/50 sm:inline-flex"><IconSearch width={16} height={16} /></button>
         <button className="btn btn-ghost btn-circle btn-sm text-base-content/50"><IconPhone width={16} height={16} /></button>
@@ -182,7 +185,7 @@ function Thread({ conversation, myUserId, onBack }) {
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:p-4">
         {messages.length === 0 && (
-          <div className="flex h-full items-center justify-center text-sm text-base-content/40">Xabar yo'q — birinchi bo'lib yozing.</div>
+          <div className="flex h-full items-center justify-center text-sm text-base-content/40">{t("Xabar yo'q — birinchi bo'lib yozing.")}</div>
         )}
         {messages.map((m) => <MessageBubble key={m.id} m={m} mine={m.senderId === myUserId} />)}
         <div ref={bottomRef}></div>
@@ -199,7 +202,7 @@ function Thread({ conversation, myUserId, onBack }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-          placeholder="Xabar yozing..."
+          placeholder={t("Xabar yozing...")}
           className="input input-bordered input-sm flex-1 bg-base-100"
         />
         <button className="btn btn-circle btn-sm shrink-0 border-none bg-gradient-to-br from-accent to-[#b3860f] text-black" onClick={send} disabled={sending || !body.trim()}>
@@ -220,6 +223,7 @@ const FEATURES = [
 
 export default function MessagesPage({ id }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [conversations, setConversations] = useState(null);
   const [q, setQ] = useState('');
   const activeId = id ? Number(id) : null;
@@ -233,12 +237,12 @@ export default function MessagesPage({ id }) {
   useEffect(() => {
     if (!user) return;
     loadConversations();
-    const t = setInterval(loadConversations, 5000);
-    return () => clearInterval(t);
+    const timer = setInterval(loadConversations, 5000);
+    return () => clearInterval(timer);
   }, [user]);
 
   if (user === undefined || user === null) {
-    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
+    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 text-center text-base-content/45">{t("Yuklanmoqda...")}</main>;
   }
 
   const active = conversations?.find((c) => c.id === activeId) || null;
@@ -255,7 +259,7 @@ export default function MessagesPage({ id }) {
         {/* Suhbatlar ro'yxati — mobilda thread ochiq bo'lsa yashiriladi */}
         <div className={`flex min-h-0 flex-col border-white/10 sm:border-r ${showThreadOnMobile ? 'hidden sm:flex' : 'flex'}`} style={{ height: 'calc(100dvh - 64px)' }}>
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 p-4">
-            <h1 className="text-lg font-bold">Xabarlar</h1>
+            <h1 className="text-lg font-bold">{t("Xabarlar")}</h1>
           </div>
           <div className="shrink-0 border-b border-white/10 p-3">
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
@@ -263,14 +267,14 @@ export default function MessagesPage({ id }) {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Suhbat yoki foydalanuvchi qidirish..."
+                placeholder={t("Suhbat yoki foydalanuvchi qidirish...")}
                 className="w-full bg-transparent text-xs outline-none placeholder:text-base-content/35"
               />
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {conversations === null
-              ? <div className="p-6 text-center text-sm text-base-content/45">Yuklanmoqda...</div>
+              ? <div className="p-6 text-center text-sm text-base-content/45">{t("Yuklanmoqda...")}</div>
               : <ConversationList conversations={conversations} activeId={activeId} q={q} onSelect={(cid) => navigate('/xabarlar/' + cid)} />}
           </div>
         </div>
@@ -279,7 +283,7 @@ export default function MessagesPage({ id }) {
         <div className={`min-h-0 ${showThreadOnMobile ? 'block' : 'hidden sm:block'}`} style={{ height: 'calc(100dvh - 64px)' }}>
           {active
             ? <Thread key={active.id} conversation={active} myUserId={user.id} onBack={() => navigate('/xabarlar')} />
-            : <div className="flex h-full items-center justify-center text-sm text-base-content/40">Suhbat tanlang</div>}
+            : <div className="flex h-full items-center justify-center text-sm text-base-content/40">{t("Suhbat tanlang")}</div>}
         </div>
       </div>
 
@@ -288,8 +292,8 @@ export default function MessagesPage({ id }) {
           {FEATURES.map((f) => (
             <div key={f.title} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
               <div className="text-xl">{f.icon}</div>
-              <div className="mt-2 text-sm font-semibold">{f.title}</div>
-              <p className="mt-1 text-xs leading-relaxed text-base-content/50">{f.text}</p>
+              <div className="mt-2 text-sm font-semibold">{t(f.title)}</div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/50">{t(f.text)}</p>
             </div>
           ))}
         </section>

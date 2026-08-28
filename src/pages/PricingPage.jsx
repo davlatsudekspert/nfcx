@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
+import { useLanguage } from '../lib/i18n.jsx';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
@@ -22,18 +23,68 @@ function useMaskedCode() {
 }
 
 const TIER_HINT = {
-  exclusive: 'Faqat auksion orqali sotiladi',
-  premium: 'Maxsus so\u2019z yoki "000" bilan tugaydi',
-  gold: 'Uchala harf yoki uchala raqam bir xil',
-  silver: 'Ham harfda, ham raqamda yonma-yon juftlik bor',
-  free: 'Naqshsiz — bepul',
+  uz: {
+    exclusive: 'Faqat auksion orqali sotiladi',
+    premium: 'Maxsus so’z yoki "000" bilan tugaydi',
+    gold: 'Uchala harf yoki uchala raqam bir xil',
+    silver: 'Ham harfda, ham raqamda yonma-yon juftlik bor',
+    free: 'Naqshsiz — bepul',
+  },
+  ru: {
+    exclusive: 'Продаётся только через аукцион',
+    premium: 'Особое слово или заканчивается на "000"',
+    gold: 'Все три буквы или все три цифры одинаковы',
+    silver: 'Есть соседняя пара и в буквах, и в цифрах',
+    free: 'Без узора — бесплатно',
+  },
+  en: {
+    exclusive: 'Sold only via auction',
+    premium: 'A special word or ends with "000"',
+    gold: 'All three letters or all three digits identical',
+    silver: 'An adjacent pair in both letters and digits',
+    free: 'No pattern — free',
+  },
 };
-const TIER_PRICE_TEXT = { exclusive: 'Auksionda', premium: '199 000', gold: '149 000', silver: '99 000', free: '0' };
+const TIER_PRICE_TEXT = {
+  uz: { exclusive: 'Auksionda', premium: '199 000', gold: '149 000', silver: '99 000', free: '0' },
+  ru: { exclusive: 'На аукционе', premium: '199 000', gold: '149 000', silver: '99 000', free: '0' },
+  en: { exclusive: 'At auction', premium: '199,000', gold: '149,000', silver: '99,000', free: '0' },
+};
+const EXAMPLES = {
+  uz: [
+    { code: 'MXK413', note: 'Naqshsiz — TEKIN' },
+    { code: 'AAB197', note: 'Faqat harfda juftlik — TEKIN' },
+    { code: 'ABB770', note: 'Ham harfda, ham raqamda juftlik — Silver' },
+    { code: 'MXK888', note: 'Uchala raqam bir xil — Gold' },
+    { code: 'KLM000', note: '"000" bilan tugaydi — Premium' },
+    { code: 'VIP001', note: 'Maxsus so’z + nodir raqam — Ekslyuziv' },
+  ],
+  ru: [
+    { code: 'MXK413', note: 'Без узора — БЕСПЛАТНО' },
+    { code: 'AAB197', note: 'Пара только в буквах — БЕСПЛАТНО' },
+    { code: 'ABB770', note: 'Пара и в буквах, и в цифрах — Silver' },
+    { code: 'MXK888', note: 'Все три цифры одинаковы — Gold' },
+    { code: 'KLM000', note: 'Заканчивается на "000" — Premium' },
+    { code: 'VIP001', note: 'Особое слово + редкая цифра — Эксклюзив' },
+  ],
+  en: [
+    { code: 'MXK413', note: 'No pattern — FREE' },
+    { code: 'AAB197', note: 'Pair in letters only — FREE' },
+    { code: 'ABB770', note: 'Pair in both letters and digits — Silver' },
+    { code: 'MXK888', note: 'All three digits identical — Gold' },
+    { code: 'KLM000', note: 'Ends with "000" — Premium' },
+    { code: 'VIP001', note: 'Special word + rare digit — Exclusive' },
+  ],
+};
 const TIERS = ['exclusive', 'premium', 'gold', 'silver', 'free'];
 
 export default function PricingPage({ catalog, refreshCatalog }) {
+  const { t, lang } = useLanguage();
   const [calcVal, onCalcChange] = useMaskedCode();
   const [modalCode, setModalCode] = useState(null);
+  const hint = TIER_HINT[lang] || TIER_HINT.uz;
+  const priceText = TIER_PRICE_TEXT[lang] || TIER_PRICE_TEXT.uz;
+  const examples = EXAMPLES[lang] || EXAMPLES.uz;
 
   const takenMap = {};
   catalog.forEach((r) => { takenMap[r.code] = r; });
@@ -42,41 +93,32 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   const calcInfo = calcParsed ? priceForCode(calcParsed.code) : null;
   const calcTaken = calcParsed ? !!takenMap[calcParsed.code] : false;
 
-  const examples = [
-    { code: 'MXK413', note: "Naqshsiz — TEKIN" },
-    { code: 'AAB197', note: "Faqat harfda juftlik — TEKIN" },
-    { code: 'ABB770', note: 'Ham harfda, ham raqamda juftlik — Silver' },
-    { code: 'MXK888', note: 'Uchala raqam bir xil — Gold' },
-    { code: 'KLM000', note: '"000" bilan tugaydi — Premium' },
-    { code: 'VIP001', note: 'Maxsus so\u2019z + nodir raqam — Ekslyuziv' },
-  ];
-
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-24 bg-black">
       <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
           <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-white/60">
             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-            Narxlar
+            {t('Narxlar')}
           </span>
           <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-            Narx qanday <span className="bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent">hisoblanadi</span>?
+            {t('Narx qanday')} <span className="bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent">{t('hisoblanadi')}</span>?
           </h1>
           <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-white/50">
-            Narx kod bandlangan soniga emas — faqat kodning o'zidagi naqshga bog'liq. Har daraja uchun narx qat'iy (o'zgarmas):
+            {t("Narx kod bandlangan soniga emas — faqat kodning o'zidagi naqshga bog'liq. Har daraja uchun narx qat'iy (o'zgarmas):")}
           </p>
 
           {/* ===== 5 daraja — qutichalarda, gem-ikonka va rangli chegara bilan ===== */}
           <div className="mt-6 grid max-w-xl gap-3.5 sm:grid-cols-2">
-            {TIERS.map((t) => (
+            {TIERS.map((tier) => (
               <div
-                key={t}
+                key={tier}
                 className="flex items-center gap-3.5 rounded-xl border-l-4 bg-white/[0.03] p-4"
-                style={{ borderLeftColor: TIER_COLOR[t], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ borderLeftColor: TIER_COLOR[tier], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: `${TIER_COLOR[t]}22`, color: TIER_COLOR[t] }}
+                  style={{ background: `${TIER_COLOR[tier]}22`, color: TIER_COLOR[tier] }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 3h12l4 6-10 12L2 9z" /><path d="M2 9h20" /><path d="M12 3l-3 6 3 12 3-12z" />
@@ -86,17 +128,17 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   <div
                     className="text-lg font-bold"
                     style={
-                      TIER_GRADIENT[t]
-                        ? { backgroundImage: TIER_GRADIENT[t], WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
-                        : { color: TIER_COLOR[t] }
+                      TIER_GRADIENT[tier]
+                        ? { backgroundImage: TIER_GRADIENT[tier], WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
+                        : { color: TIER_COLOR[tier] }
                     }
                   >
-                    {TIER_LABEL[t]}
+                    {t(TIER_LABEL[tier])}
                   </div>
                   <div className="mt-0.5 text-sm font-semibold text-base-content/80">
-                    {TIER_PRICE_TEXT[t]}{t !== 'exclusive' ? " so'm" : ''}
+                    {priceText[tier]}{tier !== 'exclusive' ? ' ' + t("so'm") : ''}
                   </div>
-                  <div className="mt-1 text-xs leading-snug text-base-content/45">{TIER_HINT[t]}</div>
+                  <div className="mt-1 text-xs leading-snug text-base-content/45">{hint[tier]}</div>
                 </div>
               </div>
             ))}
@@ -106,16 +148,16 @@ export default function PricingPage({ catalog, refreshCatalog }) {
         {/* ===== Professional 3D karta+pьedestal showcase (faqat shu qism) ===== */}
         <div className="hidden lg:flex">
           <PedestalShowcase3D>
-            <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name="SIZNING ISMINGIZ" finish="showcase" size="lg" rim />
+            <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} finish="showcase" size="lg" rim />
           </PedestalShowcase3D>
         </div>
       </section>
 
       {/* ===== Kalkulyator — qutili, ikki ustunli ===== */}
       <section id="kalkulyator" className="mx-auto mt-24 max-w-4xl">
-        <span className="font-mono text-xs tracking-[0.25em] text-accent/70">KALKULYATOR</span>
-        <h2 className="mt-3 text-2xl font-bold">O'z NFC ID narxingizni hisoblang</h2>
-        <p className="mt-2 text-sm text-white/45">NFC ID kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.</p>
+        <span className="font-mono text-xs tracking-[0.25em] text-accent/70">{t('KALKULYATOR')}</span>
+        <h2 className="mt-3 text-2xl font-bold">{t("O'z NFC ID narxingizni hisoblang")}</h2>
+        <p className="mt-2 text-sm text-white/45">{t("NFC ID kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.")}</p>
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
@@ -133,18 +175,18 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               </div>
               <div className="mt-5 space-y-2.5 text-sm">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/55">Daraja</span>
+                  <span className="text-white/55">{t('Daraja')}</span>
                   <span className="font-semibold" style={{ color: calcInfo ? TIER_COLOR[calcInfo.tier] : undefined }}>
-                    {calcInfo ? TIER_LABEL[calcInfo.tier] : '—'}
+                    {calcInfo ? t(TIER_LABEL[calcInfo.tier]) : '—'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <span className="text-white/55">Sabab</span>
-                  <span className="font-medium">{calcInfo ? TIER_HINT[calcInfo.tier] : '—'}</span>
+                  <span className="text-white/55">{t('Sabab')}</span>
+                  <span className="font-medium">{calcInfo ? hint[calcInfo.tier] : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-white/55">Holati</span>
-                  <span>{calcParsed ? (calcTaken ? <span className="badge badge-error badge-sm">Band</span> : <span className="badge badge-success badge-sm">Bo'sh</span>) : '—'}</span>
+                  <span className="text-white/55">{t('Holati')}</span>
+                  <span>{calcParsed ? (calcTaken ? <span className="badge badge-error badge-sm">{t('Band')}</span> : <span className="badge badge-success badge-sm">{t("Bo'sh")}</span>) : '—'}</span>
                 </div>
               </div>
             </div>
@@ -153,20 +195,20 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               <Interactive3DCard className="mb-5">
                 <NfcCard
                   code={calcParsed ? calcParsed.code : 'ABZ007'}
-                  name="SIZNING ISMINGIZ"
+                  name={t('SIZNING ISMINGIZ')}
                   finish={calcTaken ? 'graphite' : 'showcase'}
                   size="sm"
                 />
               </Interactive3DCard>
               <div className="text-3xl font-extrabold tracking-tight">
-                {calcInfo?.tier === 'exclusive' ? "Auksionda" : (calcInfo ? fmt(calcInfo.total) : '—')}
-                {calcInfo && calcInfo.tier !== 'exclusive' && <span className="text-base font-medium text-white/60"> so'm</span>}
+                {calcInfo?.tier === 'exclusive' ? t('Auksionda') : (calcInfo ? fmt(calcInfo.total) : '—')}
+                {calcInfo && calcInfo.tier !== 'exclusive' && <span className="text-base font-medium text-white/60"> {t("so'm")}</span>}
               </div>
-              <div className="mt-1 text-xs uppercase tracking-widest text-white/45">Jami narx</div>
+              <div className="mt-1 text-xs uppercase tracking-widest text-white/45">{t('Jami narx')}</div>
 
               {calcInfo?.tier === 'exclusive' ? (
                 <button className="btn btn-accent mt-5 w-full" onClick={() => { window.location.href = '/auksion'; }}>
-                  {'\u{1F48E}'} Auksion bo'limiga o'tish
+                  {'\u{1F48E}'} {t("Auksion bo'limiga o'tish")}
                 </button>
               ) : (
                 <button
@@ -174,7 +216,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   disabled={!calcParsed || calcTaken}
                   onClick={() => setModalCode(calcParsed.code)}
                 >
-                  {!calcParsed ? "Avval NFC ID kiriting" : calcTaken ? "Bu NFC ID band" : ("Bandlash — " + fmt(calcInfo.total) + " so'm")}
+                  {!calcParsed ? t('Avval NFC ID kiriting') : calcTaken ? t('Bu NFC ID band') : t("Bandlash — {n} so'm", { n: fmt(calcInfo.total) })}
                 </button>
               )}
             </div>
@@ -184,9 +226,9 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
       {/* ===== Misollar — qutili kartochkalar ===== */}
       <section className="mx-auto mt-16 max-w-4xl">
-        <span className="font-mono text-xs tracking-[0.25em] text-accent/70">MISOLLAR</span>
-        <h2 className="mt-3 text-2xl font-bold">Naqshlar narxga qanday ta'sir qiladi</h2>
-        <p className="mt-2 text-sm text-white/45">Har bir NFC ID naqshiga qarab aniq bitta darajaga tushadi — bandlangan soniga bog'liq emas.</p>
+        <span className="font-mono text-xs tracking-[0.25em] text-accent/70">{t('MISOLLAR')}</span>
+        <h2 className="mt-3 text-2xl font-bold">{t("Naqshlar narxga qanday ta'sir qiladi")}</h2>
+        <p className="mt-2 text-sm text-white/45">{t("Har bir NFC ID naqshiga qarab aniq bitta darajaga tushadi — bandlangan soniga bog'liq emas.")}</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {examples.map((ex) => {
             const info = priceForCode(ex.code);
@@ -195,7 +237,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 <div className="font-mono text-lg font-bold tracking-widest">{ex.code}</div>
                 <div className="mt-1 text-[13px] text-white/55">{ex.note}</div>
                 <div className="mt-3 text-sm font-semibold" style={{ color: TIER_COLOR[info.tier] }}>
-                  {info.tier === 'exclusive' ? "Faqat auksion" : `${fmt(info.total)} so'm`}
+                  {info.tier === 'exclusive' ? t('Faqat auksion') : t("{n} so'm", { n: fmt(info.total) })}
                 </div>
               </div>
             );

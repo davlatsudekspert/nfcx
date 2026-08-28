@@ -638,23 +638,42 @@ adminRouter.get('/analytics', async (req, res) => {
 adminRouter.get('/export-stats', requireAdmin, async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   let days = 30;
+  const opts = {};
   const range = String(req.query.range || '30d');
-  if (range === 'today') days = 1;
+  const now = new Date();
+  if (range === 'today') { opts.fromIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(); days = 1; }
   else if (range === '7d') days = 7;
   else if (range === '30d') days = 30;
-  else if (range === 'month') days = new Date().getDate();
-  else if (range === 'custom') days = Math.max(1, Math.min(730, Number(req.query.days) || 30));
+  else if (range === 'month') { opts.fromIso = new Date(now.getFullYear(), now.getMonth(), 1).toISOString(); days = now.getDate(); }
+  else if (range === 'custom') {
+    const from = String(req.query.from || '');
+    const to = String(req.query.to || '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) opts.fromIso = new Date(from + 'T00:00:00').toISOString();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(to)) opts.toIso = new Date(to + 'T23:59:59.999').toISOString();
+    if (!opts.fromIso) days = Math.max(1, Math.min(730, Number(req.query.days) || 30));
+  }
 
-  const rows = await adminExportStats(days);
+  const { rows, summary } = await adminExportStats(days, opts);
   const XLSX = await import('xlsx');
-  const header = ['Sana', 'Yangi ro\u2019yxatdan o\u2019tganlar', 'Yangi NFC ID (sotilgan)', 'Yangi Premium', 'Buyurtmalar', 'Tushum (so\u2019m)', 'Auksionlar'];
-  const data = [header, ...rows.map((r) => [r.date, r.newUsers, r.newCards, r.newPremium, r.orders, r.revenue, r.auctions])];
-  const totalRow = ['JAMI', rows.reduce((s, r) => s + r.newUsers, 0), rows.reduce((s, r) => s + r.newCards, 0), rows.reduce((s, r) => s + r.newPremium, 0), rows.reduce((s, r) => s + r.orders, 0), rows.reduce((s, r) => s + r.revenue, 0), rows.reduce((s, r) => s + r.auctions, 0)];
+  const header = ['Sana', 'Yangi ro\u2019yxatdan o\u2019tganlar', 'Yangi NFC ID (sotilgan)', 'Yangi Premium', 'Buyurtmalar', 'To\u2019lovlar', 'Tushum (so\u2019m)', 'Auksion (yaratilgan)', 'Auksion (sotilgan)'];
+  const data = [header, ...rows.map((r) => [r.date, r.newUsers, r.newCards, r.newPremium, r.orders, r.payments, r.revenue, r.auctionsCreated, r.auctionsSold])];
   data.push([]);
-  data.push(totalRow);
+  data.push(['JAMI', summary.newUsers, summary.newCards, summary.newPremium, summary.orders, summary.payments, summary.revenue, summary.auctionsCreated, summary.auctionsSold]);
+  data.push([]);
+  data.push(['\u2014 JAMLAMA \u2014']);
+  data.push(['Oraliq', `${summary.from} \u2026 ${summary.to}`]);
+  data.push(['Jami foydalanuvchilar (davr oxiriga)', summary.totalUsers]);
+  data.push(['Jami Premium foydalanuvchilar', summary.totalPremium]);
+  data.push(['Auksionlar \u2014 yaratilgan (davr)', summary.auctionsCreated]);
+  data.push(['Auksionlar \u2014 sotilgan (davr)', summary.auctionsSold]);
+  data.push(['Auksionlar \u2014 hozir faol', summary.activeAuctions]);
+  data.push(['Jami to\u2019lovlar (davr)', summary.payments]);
+  data.push(['Jami tushum (davr, so\u2019m)', summary.revenue]);
+  data.push([]);
+  data.push(['Trafik manbasi (Telegram / Instagram / Google)', 'kuzatuv tizimi hali ulanmagan']);
 
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = header.map(() => ({ wch: 22 }));
+  ws['!cols'] = [{ wch: 34 }, ...header.slice(1).map(() => ({ wch: 20 }))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Statistika');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });

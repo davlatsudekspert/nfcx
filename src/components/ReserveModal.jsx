@@ -3,6 +3,7 @@ import { dbCreate, dbGetOrder } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
+import { useLanguage } from '../lib/i18n.jsx';
 import CardDesignerPage from '../pages/CardDesignerPage.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
@@ -13,6 +14,7 @@ const PHYSICAL_CARD_FEE = 200_000;
 
 export default function ReserveModal({ code, price, onClose, onDone }) {
   const { user, refresh: refreshAuth } = useAuth();
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -60,17 +62,17 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   };
 
   const submit = async () => {
-    if (!name.trim()) { setMsg({ type: 'err', text: 'Ismingizni kiriting.' }); return; }
+    if (!name.trim()) { setMsg({ type: 'err', text: t('Ismingizni kiriting.') }); return; }
     if (needsAccount) {
-      if (!acctEmail.trim()) { setMsg({ type: 'err', text: "Raqamli tashrif qog'ozingizni boshqarish uchun email kiriting." }); return; }
-      if (acctPassword.length < 6) { setMsg({ type: 'err', text: 'Parol kamida 6 belgidan iborat bo\u2019lishi kerak.' }); return; }
-      if (!acctPhone.trim()) { setMsg({ type: 'err', text: 'Telefon raqamingizni kiriting.' }); return; }
-      if (!acctBotAck) { setMsg({ type: 'err', text: "Avval botga yozganingizni tasdiqlovchi katakchani belgilang." }); return; }
-      if (!acctTosAccepted) { setMsg({ type: 'err', text: "Ommaviy oferta shartlariga rozilik bering." }); return; }
+      if (!acctEmail.trim()) { setMsg({ type: 'err', text: t("Raqamli tashrif qog'ozingizni boshqarish uchun email kiriting.") }); return; }
+      if (acctPassword.length < 6) { setMsg({ type: 'err', text: t('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.') }); return; }
+      if (!acctPhone.trim()) { setMsg({ type: 'err', text: t('Telefon raqamingizni kiriting.') }); return; }
+      if (!acctBotAck) { setMsg({ type: 'err', text: t('Avval botga yozganingizni tasdiqlovchi katakchani belgilang.') }); return; }
+      if (!acctTosAccepted) { setMsg({ type: 'err', text: t('Ommaviy oferta shartlariga rozilik bering.') }); return; }
     }
     if (wantPhysicalCard) {
       if (!shippingName.trim() || !shippingPhone.trim() || !shippingAddress.trim()) {
-        setMsg({ type: 'err', text: "Jismoniy karta uchun ism, telefon va manzilni to'liq kiriting." });
+        setMsg({ type: 'err', text: t("Jismoniy karta uchun ism, telefon va manzilni to'liq kiriting.") });
         return;
       }
     }
@@ -97,7 +99,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       };
       const result = await dbCreate(code, data);
       if (!result) {
-        setMsg({ type: 'err', text: "Afsuski, bu raqamli tashrif qog'ozi allaqachon band qilingan yoki saqlashda xatolik yuz berdi." });
+        setMsg({ type: 'err', text: t("Afsuski, bu raqamli tashrif qog'ozi allaqachon band qilingan yoki saqlashda xatolik yuz berdi.") });
         setBusy(false);
         return;
       }
@@ -107,19 +109,19 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         setBusy(false);
         return;
       }
-      setMsg({ type: 'ok', text: 'nfcstore.uz/' + code.toLowerCase() + " sizniki bo'ldi! Profilingizga o'tkazilyapti..." });
+      setMsg({ type: 'ok', text: t('nfcstore.uz/{code} sizniki bo‘ldi! Profilingizga o‘tkazilyapti...', { code: code.toLowerCase() }) });
       setTimeout(() => { onDone(); navigate('/' + code.toLowerCase()); }, 900);
     } catch (err) {
       const code2 = err && err.code;
       const text = code2 === 'reserved_pending_payment'
-        ? "Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring."
+        ? t("Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring.")
         : code2 === 'exclusive_auction_only'
-          ? "\u{1F48E} Bu NFC ID EKSLYUZIV daraja — to'g'ridan-to'g'ri sotib olib bo'lmaydi, faqat saytdagi Auksion bo'limi orqali qo'lga kiritiladi."
+          ? t("\u{1F48E} Bu NFC ID EKSLYUZIV daraja — to'g'ridan-to'g'ri sotib olib bo'lmaydi, faqat saytdagi Auksion bo'limi orqali qo'lga kiritiladi.")
           : String(err.message).startsWith('bad_credentials')
-            ? 'Bu email boshqa akkauntga tegishli va parol mos kelmadi.'
+            ? t('Bu email boshqa akkauntga tegishli va parol mos kelmadi.')
             : String(err.message) === 'phone_not_verified'
-              ? `Bu telefon raqami botda tasdiqlanmagan. Avval ${BOT_LINK} ga o'ting, "Kontaktni ulashish" tugmasini bosing, so'ng shu raqamni qayta kiriting.`
-              : 'Xatolik: ' + (err && err.message ? err.message : "noma'lum xato");
+              ? t('Bu telefon raqami botda tasdiqlanmagan. Avval {link} ga o’ting, "Kontaktni ulashish" tugmasini bosing, so’ng shu raqamni qayta kiriting.', { link: BOT_LINK })
+              : t('Xatolik: {msg}', { msg: (err && err.message ? err.message : "noma'lum xato") });
       setMsg({ type: 'err', text });
       setBusy(false);
     }
@@ -134,12 +136,12 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         const st = await dbGetOrder(order.orderId);
         if (st && st.status === 'paid') {
           clearInterval(pollRef.current);
-          setMsg({ type: 'ok', text: "To'lov tasdiqlandi! Profilingizga o'tkazilyapti..." });
+          setMsg({ type: 'ok', text: t("To'lov tasdiqlandi! Profilingizga o'tkazilyapti...") });
           await refreshAuth();
           setTimeout(() => { onDone(); navigate('/' + code.toLowerCase()); }, 800);
         } else if (st && (st.status === 'cancelled' || st.status === 'failed_code_taken')) {
           clearInterval(pollRef.current);
-          setMsg({ type: 'err', text: st.status === 'cancelled' ? "To'lov bekor qilindi." : "Kechirasiz, siz to'lagan payt bu kod band bo'lib qoldi — pulingiz qaytariladi, biz bilan bog'laning." });
+          setMsg({ type: 'err', text: st.status === 'cancelled' ? t("To'lov bekor qilindi.") : t("Kechirasiz, siz to'lagan payt bu kod band bo'lib qoldi — pulingiz qaytariladi, biz bilan bog'laning.") });
         }
       } catch { /* keyingi urinishda qayta tekshiramiz */ }
     }, 3000);
@@ -155,40 +157,40 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         <button className="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" onClick={onClose}>&times;</button>
         {order ? (
           <div className="p-6">
-            <h3 className="text-lg font-bold">To'lovni yakunlang</h3>
+            <h3 className="text-lg font-bold">{t("To'lovni yakunlang")}</h3>
             <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
             <p className="mt-4 text-sm leading-relaxed text-base-content/70">
-              Raqamli tashrif qog'ozi <b>{fmt(order.price)} so'm</b>lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.
+              {t("Raqamli tashrif qog'ozi {price} lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.", { price: fmt(order.price) + " so'm" })}
             </p>
             <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-5 w-full">
-              To'lovga o'tish — {fmt(order.price)} so'm
+              {t("To'lash — {n} so'm", { n: fmt(order.price) })}
             </a>
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
               <span className="loading loading-spinner loading-xs"></span>
-              To'lov tasdiqlanishini kutmoqdamiz...
+              {t("To'lov tasdiqlanishini kutmoqdamiz...")}
             </div>
             {msg && (
               <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
-                <span>{msg.text}</span>
+                <span>{t(msg.text)}</span>
               </div>
             )}
           </div>
         ) : (
         <div className="p-6">
-          <h3 className="text-lg font-bold">Raqamli tashrif qog'ozini band qilish</h3>
+          <h3 className="text-lg font-bold">{t("Raqamli tashrif qog'ozini band qilish")}</h3>
           <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
 
           <div className="mt-5 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
             <label className={field}>
-              <span className="text-xs font-semibold text-base-content/70">Ismingiz *</span>
+              <span className="text-xs font-semibold text-base-content/70">{t('Ismingiz *')}</span>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Azizbek Turgunov" className={inp} />
             </label>
             <label className={field}>
-              <span className="text-xs font-semibold text-base-content/70">Kasb / sarlavha</span>
+              <span className="text-xs font-semibold text-base-content/70">{t('Kasb / sarlavha')}</span>
               <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Mobile App Developer & Community Builder" className={inp} />
             </label>
             <label className={field}>
-              <span className="text-xs font-semibold text-base-content/70">Avatar rasm havolasi (ixtiyoriy)</span>
+              <span className="text-xs font-semibold text-base-content/70">{t('Avatar rasm havolasi (ixtiyoriy)')}</span>
               <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." className={inp} />
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -197,7 +199,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username" className={inp} />
               </label>
               <label className={field}>
-                <span className="text-xs font-semibold text-base-content/70">Telefon</span>
+                <span className="text-xs font-semibold text-base-content/70">{t('Telefon')}</span>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 XX XXX XX XX" className={inp} />
               </label>
             </div>
@@ -216,25 +218,25 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
               <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@username" className={inp} />
             </label>
             <label className={field}>
-              <span className="text-xs font-semibold text-base-content/70">Hashtaglar (vergul bilan)</span>
+              <span className="text-xs font-semibold text-base-content/70">{t('Hashtaglar (vergul bilan)')}</span>
               <input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="IT_specialist, community_builder" className={inp} />
             </label>
 
             {!user ? (
               <>
                 <div className="divider my-2"></div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/60">Akkaunt — raqamli tashrif qog'ozingizni boshqarish uchun shart *</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/60">{t("Akkaunt — raqamli tashrif qog'ozingizni boshqarish uchun shart *")}</div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className={field}>
-                    <span className="text-xs font-semibold text-base-content/70">Email (login) *</span>
+                    <span className="text-xs font-semibold text-base-content/70">{t('Email (login) *')}</span>
                     <input type="email" value={acctEmail} onChange={(e) => setAcctEmail(e.target.value)} placeholder="ism@gmail.com" autoComplete="email" className={inp} />
                   </label>
                   <label className={field}>
-                    <span className="text-xs font-semibold text-base-content/70">Parol (min. 6 belgi) *</span>
+                    <span className="text-xs font-semibold text-base-content/70">{t('Parol (min. 6 belgi) *')}</span>
                     <input type="password" value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" className={inp} />
                   </label>
                   <label className={field}>
-                    <span className="text-xs font-semibold text-base-content/70">Telefon raqamingiz *</span>
+                    <span className="text-xs font-semibold text-base-content/70">{t('Telefon raqamingiz *')}</span>
                     <input type="tel" value={acctPhone} onChange={(e) => setAcctPhone(e.target.value)} placeholder="+998901234567" autoComplete="tel" className={inp} />
                   </label>
                 </div>
@@ -242,29 +244,29 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                   <label className="flex cursor-pointer items-start gap-2.5">
                     <input type="checkbox" checked={acctBotAck} onChange={(e) => setAcctBotAck(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
                     <span className="text-xs leading-relaxed text-base-content/75">
-                      <b>Ro'yxatdan o'tishdan oldin</b>, {' '}
+                      <b>{t("Ro'yxatdan o'tishdan oldin")}</b>, {' '}
                       <a href={BOT_LINK} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">
-                        shu Telegram botimizga
+                        {t('shu Telegram botimizga')}
                       </a>{' '}
-                      o'ting va ism-familyangiz hamda telefon raqamingizni yozib qoldiring — bu jismoniy NFC kartangizni to'g'ri yetkazib berish uchun kerak. Bajargan bo'lsangiz, shu katakchani belgilang.
+                      {t("o'ting va ism-familyangiz hamda telefon raqamingizni yozib qoldiring — bu jismoniy NFC kartangizni to'g'ri yetkazib berish uchun kerak. Bajargan bo'lsangiz, shu katakchani belgilang.")}
                     </span>
                   </label>
                 </div>
                 <label className="flex cursor-pointer items-start gap-2.5">
                   <input type="checkbox" checked={acctTosAccepted} onChange={(e) => setAcctTosAccepted(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
                   <span className="text-xs leading-relaxed text-base-content/75">
-                    Men <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">ommaviy oferta shartlari</a>ni o'qib chiqdim va roziman.
+                    {t('Men')} <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{t('ommaviy oferta shartlari')}</a>{t("ni o'qib chiqdim va roziman.")}
                   </span>
                 </label>
                 <p className="text-xs leading-relaxed text-base-content/45">
-                  Akkauntsiz band qilish endi mumkin emas — aks holda raqamli tashrif qog'ozingiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.
+                  {t("Akkauntsiz band qilish endi mumkin emas — aks holda raqamli tashrif qog'ozingiz hech kimning profiliga bog'lanmay qolib ketishi mumkin. Akkaunt bilan uni keyin /account sahifasidan tahrirlaysiz.")}
                 </p>
               </>
             ) : (
               <>
                 <div className="divider my-2"></div>
                 <p className="text-xs leading-relaxed text-base-content/45">
-                  Raqamli tashrif qog'ozi profilingizga biriktiriladi: <b>{user.email}</b>. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.
+                  {t("Raqamli tashrif qog'ozi profilingizga biriktiriladi: {email}. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.", { email: user.email })}
                 </p>
               </>
             )}
@@ -273,17 +275,17 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 p-3">
               <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
               <span className="text-xs leading-relaxed text-base-content/75">
-                <b>Jismoniy NFC karta ham buyurtma qilish</b> — kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha <b>{fmt(PHYSICAL_CARD_FEE)} so'm</b>.
+                <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t("— kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha {fee}.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
               </span>
             </label>
             {wantPhysicalCard && (
               <div className="mt-2 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
-                <input value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder="Qabul qiluvchi ism-familya *" className={`${inp} !mt-0`} />
-                <input value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder="Telefon (yetkazib berish uchun) *" className={`${inp} !mt-0`} />
-                <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="To'liq manzil (shahar, tuman, ko'cha, uy) *" rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
+                <input value={shippingName} onChange={(e) => setShippingName(e.target.value)} placeholder={t('Qabul qiluvchi ism-familya *')} className={`${inp} !mt-0`} />
+                <input value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} placeholder={t('Telefon (yetkazib berish uchun) *')} className={`${inp} !mt-0`} />
+                <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder={t("To'liq manzil (shahar, tuman, ko'cha, uy) *")} rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
 
                 <button type="button" className="btn btn-ghost btn-xs w-full" onClick={() => setShowDesigner((v) => !v)}>
-                  {showDesigner ? 'Dizaynerni yopish' : "\u{1F3A8} Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)"}
+                  {showDesigner ? t('Dizaynerni yopish') : t("\u{1F3A8} Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)")}
                 </button>
                 {showDesigner && (
                   <div className="-mx-3 mt-1 max-h-[60vh] overflow-y-auto border-t border-white/10 px-3 pt-3">
@@ -295,15 +297,15 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           </div>
 
           <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
-            <span className="text-sm text-base-content/60">Jami</span>
-            <b className="text-lg">{fmt(totalPrice)} so'm</b>
+            <span className="text-sm text-base-content/60">{t('Jami')}</span>
+            <b className="text-lg">{t("{n} so'm", { n: fmt(totalPrice) })}</b>
           </div>
           <button className="btn btn-primary mt-3 w-full" onClick={submit} disabled={busy}>
-            {busy ? <span className="loading loading-spinner loading-sm"></span> : 'Band qilish'}
+            {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Band qilish')}
           </button>
           {msg && (
             <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
-              <span>{msg.text}</span>
+              <span>{t(msg.text)}</span>
             </div>
           )}
         </div>
