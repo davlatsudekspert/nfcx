@@ -7,7 +7,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
-  IconArrowLeft, IconShare, IconCheck, IconSearch,
+  IconArrowLeft, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
 } from '../components/Icons.jsx';
@@ -386,8 +386,10 @@ export default function ProfilePage({ code, catalog }) {
           <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{fmt(record.price)} so'm</span>
         </div>
         <div className="flex gap-1">
+          {/* Diqqat: bu yerda avval ikkita tugma bor edi (Copy va Share ikonkalari),
+              lekin ikkalasi ham AYNAN bir xil ishni qilardi — havolani
+              nusxalash. Endi faqat bittasi qoldirildi. */}
           <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, 'Havola nusxalandi!')} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
         </div>
       </div>
 
