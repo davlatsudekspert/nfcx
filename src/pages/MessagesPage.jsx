@@ -210,14 +210,6 @@ function Thread({ conversation, myUserId, onBack }) {
   );
 }
 
-const FEATURES = [
-  { icon: '\u{1F4AC}', title: 'Premium dizayn', text: "Qora fon va oltin rang uyg'unligi brendga mos premium ko'rinish." },
-  { icon: '\u2705', title: "O'qildi belgisi", text: '\u2713 yuborildi, \u2713\u2713 o\u2019qildi belgilar xabar holatini ko\u2019rsatadi.' },
-  { icon: '\u{1F4CE}', title: 'Fayl biriktirish', text: "Rasm yuklab, suhbatdoshingizga to'g'ridan-to'g'ri yuborishingiz mumkin." },
-  { icon: '\u{1F464}', title: 'Faollik holati', text: "So'nggi 5 daqiqada yozgan foydalanuvchi yashil nuqta bilan ko'rinadi." },
-  { icon: '\u{1F514}', title: 'Bildirishnomalar', text: "Yangi xabarlar soni yuqoridagi Xabarlar bo'limida ko'rsatiladi." },
-];
-
 export default function MessagesPage({ id }) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState(null);
@@ -283,17 +275,6 @@ export default function MessagesPage({ id }) {
         </div>
       </div>
 
-      {!showThreadOnMobile && (
-        <section className="mt-10 hidden gap-3 px-6 sm:grid sm:grid-cols-3 sm:px-0 lg:grid-cols-5">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
-              <div className="text-xl">{f.icon}</div>
-              <div className="mt-2 text-sm font-semibold">{f.title}</div>
-              <p className="mt-1 text-xs leading-relaxed text-base-content/50">{f.text}</p>
-            </div>
-          ))}
-        </section>
-      )}
     </main>
   );
 }
