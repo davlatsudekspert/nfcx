@@ -491,44 +491,21 @@ export default function ProfilePage({ code, catalog }) {
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> KARTA (to'lov)</span>}
+              {record.cardNumber && (
+                <button
+                  type="button"
+                  className={`${linkBtn} cursor-pointer`}
+                  onClick={() => copyText(record.cardNumber.replace(/\s/g, ''), "Karta raqami nusxalandi: " + record.cardNumber)}
+                >
+                  <IconTag /> KARTA (to'lov)
+                </button>
+              )}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || 'Havola'}</a>
               ))}
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
-
-            {(() => {
-              // Eski (yagona) va yangi (massiv) karta raqami maydonlarini
-              // BITTA ro'yxatga birlashtiramiz — bir xil raqam ikki marta
-              // chiqib qolmasligi uchun (avval shu joyda bug bor edi).
-              const seen = new Set();
-              const cards = [
-                ...(record.cardNumber ? [{ label: '', number: record.cardNumber }] : []),
-                ...(record.cardNumbers || []),
-              ].filter((c) => {
-                const norm = String(c.number || '').replace(/\s/g, '');
-                if (!norm || seen.has(norm)) return false;
-                seen.add(norm);
-                return true;
-              });
-              if (cards.length === 0) return null;
-              return (
-                <>
-                  <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                  <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">TO'LOV UCHUN KARTALAR</div>
-                  <div className="flex flex-col gap-2.5">
-                    {cards.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2.5 rounded-xl px-4 py-3" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
-                        <span>{c.label && <b className="mb-0.5 block text-[11px] font-bold text-[color:var(--vz-ink-faint)]">{c.label}</b>}<span className="font-mono text-[15px] tracking-[0.08em]">{c.number}</span></span>
-                        <button onClick={() => copyText(c.number.replace(/\s/g, ''), 'Karta raqami nusxalandi!')} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
 
             {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
                 Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida
