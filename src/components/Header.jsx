@@ -8,6 +8,7 @@ const NAV = [
   ['Narxlar', '/narxlar'],
   ['Qanday ishlaydi', '/qanday-ishlaydi'],
   ['Katalog', '/katalog'],
+  ['Reyting', '/reyting'],
   ['Auksion', '/auksion'],
   ['Savollar', '/savollar'],
 ];
@@ -50,6 +51,11 @@ export default function Header() {
             <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
               {'\u{1F4AC}'} Xabarlar
               {unread > 0 && <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{unread}</span>}
+            </button>
+          )}
+          {user && (
+            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title="Bildirishnomalar">
+              {'\u{1F514}'}
             </button>
           )}
           {user && (

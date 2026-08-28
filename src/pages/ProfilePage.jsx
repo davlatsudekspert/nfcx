@@ -332,7 +332,8 @@ export default function ProfilePage({ code, catalog }) {
   const xUrl = socialUrl('x', record.twitter);
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
   const wsUrl = record.website || '';
-  const hasSocials = tgUrl || igUrl || fbUrl || xUrl || liUrl;
+  // hasSocials endi ishlatilmaydi — shaxsiy ijtimoiy tarmoq havolalari
+  // faqat yuqoridagi to'liq nomli tugmalarda ko'rsatiladi (takrorlanmaydi).
   const rarityLabel = rarity(record.code);
   const tier = tierOf(record.code);
   const tierColor = TIER_COLOR[tier];
@@ -533,19 +534,11 @@ export default function ProfilePage({ code, catalog }) {
               );
             })()}
 
-            {hasSocials && (
-              <>
-                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="flex justify-center gap-3.5">
-                  {tgUrl && <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /></a>}
-                  {igUrl && <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /></a>}
-                  {fbUrl && <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /></a>}
-                  {xUrl && <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href={xUrl} target="_blank" rel="noreferrer"><IconX /></a>}
-                  {liUrl && <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /></a>}
-                  {wsUrl && <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /></a>}
-                </div>
-              </>
-            )}
+            {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
+                Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida
+                TAKRORLANMAYDI — ular allaqachon yuqorida to'liq nomli
+                tugmalar sifatida ko'rsatilgan. Pastda faqat NFCSTORE'ning
+                rasmiy kanali qoladi. */}
 
             {/* NFCSTORE'ning o'z rasmiy kanallari — har doim, har bir profilda bir xil. */}
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>

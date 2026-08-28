@@ -5,32 +5,28 @@ export default function PrivacyPage() {
         <h1 className="pt-14 text-3xl font-extrabold tracking-tight">Maxfiylik siyosati</h1>
         <div className="mt-2 font-mono text-xs uppercase tracking-wider text-base-content/40">Oxirgi yangilanish: 2026</div>
         <div className="mt-6 space-y-6 text-[15px] leading-relaxed text-base-content/70">
-        <p>Ushbu sahifa NFCSTORE qanday ma'lumot yig'ishi va ulardan qanday foydalanishini tushuntiradi.</p>
-        <div>
-          <h2 className="text-lg font-bold text-base-content">1. Qanday ma'lumot yig'amiz</h2>
-          <ul className="mt-1.5 list-disc space-y-1 pl-5">
-            <li>Ro'yxatdan o'tishda: login/email va parol (xeshlangan holda saqlanadi)</li>
-            <li>Profil uchun siz kiritgan ma'lumotlar: ism, rasm, bio, kontaktlar, ijtimoiy tarmoqlar</li>
-            <li>Sahifa ko'rishlar soni kabi anonim statistik ma'lumotlar</li>
-          </ul>
+          <p>Ushbu sahifa NFCSTORE xizmati ma'lumotlarni qanday yig'ishi, saqlashi va xavfsizligini ta'minlashini tushuntiradi.</p>
+
+          <div>
+            <h2 className="text-lg font-bold text-base-content">Qanday ma'lumot yig'amiz</h2>
+            <p className="mt-1.5">Ro'yxatdan o'tishda kiritilgan elektron pochta, login va parollar tizimda qat'iy xeshlangan holatda saqlanadi. Xavfsizlikni ta'minlash maqsadida qurilmalarning IP-manzillari hamda tizimdagi harakatlar tarixi (loglar) qayd etib boriladi. Profilni to'ldirish uchun kiritgan ism, rasm, bio va kontaktlaringiz ham saqlanadi.</p>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-base-content">Ma'lumotdan foydalanish va Ommaviylik</h2>
+            <p className="mt-1.5">Kiritilgan ma'lumotlar faqat sizning shaxsiy profilingizni shakllantirish va xizmatni uzluksiz ishlashi uchun ishlatiladi. Siz profilga qo'shgan ma'lumotlar ochiq sahifangizda ko'rinadi — faqat o'zingiz oshkor qilishni istagan ma'lumotlarni kiriting. Ushbu ma'lumotlar uchinchi shaxslarga tijorat maqsadida sotilmaydi.</p>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-base-content">Xavfsizlik choralari</h2>
+            <p className="mt-1.5">Platformada foydalanuvchilarni identifikatsiya, autentifikatsiya va avtorizatsiya qilish tizimlari joriy etilgan bo'lib, ruxsatsiz kirishning oldini olish choralari to'liq ko'rilgan. Tizimda konfidensial ma'lumotlar bilan ishlash huquqi xodimlarning lavozim majburiyatlaridan kelib chiqib qat'iy cheklangan. Shuningdek, mijozlarning tizimdagi amaliyotlari va harakatlariga oid ma'lumotlar elektron arxivlarda kamida besh yil davomida xavfsiz saqlanishi ta'minlanadi.</p>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-base-content">Ma'lumotni o'chirish</h2>
+            <p className="mt-1.5">Hisobingizni va barcha bog'langan ma'lumotlarni butunlay o'chirishni xohlasangiz, qo'llab-quvvatlash xizmatiga onlayn murojaat qilishingiz mumkin.</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-bold text-base-content">2. Ma'lumotdan foydalanish</h2>
-          <p className="mt-1.5">Ma'lumotlar faqat sizning shaxsiy profilingizni ko'rsatish va xizmatni ishlatish uchun ishlatiladi. Uchinchi tomonlarga sotilmaydi.</p>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-base-content">3. Profil ma'lumotlari ommaviy</h2>
-          <p className="mt-1.5">Siz profilingizga qo'shgan ma'lumot (ism, kontaktlar, ijtimoiy tarmoqlar) sizning ochiq profil sahifangizda hamma uchun ko'rinadi — faqat o'zingiz oshkor qilmoqchi bo'lgan ma'lumotni kiriting.</p>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-base-content">4. Xavfsizlik</h2>
-          <p className="mt-1.5">Parollar xesh holida saqlanadi. Sessiya cookie orqali boshqariladi.</p>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-base-content">5. Ma'lumotni o'chirish</h2>
-          <p className="mt-1.5">Hisobingizni va unga bog'liq ma'lumotlarni o'chirishni so'rash uchun qo'llab-quvvatlash xizmatiga murojaat qiling.</p>
-        </div>
-      </div>
       </div>
     </main>
   );

@@ -421,6 +421,18 @@ export async function initDb() {
     )
   `);
 
+  // Oldin (promo_code tizimi qo'shilishidan avval) ro'yxatdan o'tgan
+  // foydalanuvchilarga ham 6 xonali promokod avtomatik beriladi —
+  // bu tekshiruv har safar server ishga tushganda ishlaydi, lekin
+  // faqat promo_code hali NULL bo'lganlarga tegadi (xavfsiz, bir marta).
+  {
+    const { rows: noPromo } = await pool.query(`SELECT id FROM users WHERE promo_code IS NULL`);
+    for (const u of noPromo) {
+      await assignPromoCode(u.id);
+    }
+    if (noPromo.length > 0) console.log(`[db] ${noPromo.length} ta eski foydalanuvchiga promokod berildi.`);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bids (
       id                SERIAL PRIMARY KEY,
