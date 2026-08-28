@@ -96,8 +96,13 @@ app.use((req, res, next) => {
 });
 
 // Production'da HTTP so'rovlarni HTTPS'ga majburiy yo'naltirish.
+// MUHIM: /api/health BUNDAN ISTISNO — Railway'ning ichki health-check
+// so'rovlari doim oddiy HTTP orqali keladi (ularning tarmog'i ichida),
+// va agar biz uni 301 bilan HTTPS'ga yo'naltirsak, Railway buni "ishlamay
+// qoldi" deb hisoblab, deploy'ni "Crashed/Failed" qilib belgilaydi —
+// garchi server o'zi butunlay sog'lom ishlab tursa ham.
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV === 'production' && !isSecureReq(req) && req.method === 'GET') {
+  if (process.env.NODE_ENV === 'production' && !isSecureReq(req) && req.method === 'GET' && req.path !== '/api/health') {
     return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
   }
   next();

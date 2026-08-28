@@ -3,6 +3,7 @@ import { usePathRoute } from './lib/router.js';
 import { parseAnyCode } from './lib/pricing.js';
 import { dbList } from './lib/db.js';
 import { AuthProvider } from './lib/auth.jsx';
+import { LanguageProvider } from './lib/i18n.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
@@ -98,14 +99,16 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      {bare ? page : (
-        <>
-          <Header />
-          {page}
-          <Footer />
-        </>
-      )}
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        {bare ? page : (
+          <>
+            <Header />
+            {page}
+            <Footer />
+          </>
+        )}
+      </AuthProvider>
+    </LanguageProvider>
   );
 }

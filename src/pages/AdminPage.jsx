@@ -137,13 +137,46 @@ function StatCard({ label, value }) {
 function StatsTab() {
   const [stats, setStats] = useState(null);
   const [wallet, setWallet] = useState(null);
+  const [range, setRange] = useState('30d');
+  const [exporting, setExporting] = useState(false);
   useEffect(() => {
     adminApi('/stats').then(setStats).catch(() => {});
     adminApi('/platform-wallet').then((d) => setWallet(d.balance)).catch(() => {});
   }, []);
+
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/admin/export-stats?range=${range}`, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('export_failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nfcstore_statistika_${range}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Excel faylni yuklab bo\u2019lmadi.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!stats) return <div className="text-base-content/45">Yuklanmoqda...</div>;
   return (
     <div className="grid gap-3 sm:grid-cols-3">
+      <div className="col-span-full flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-base-200/50 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-base-content/50">Davr:</span>
+          {[['today', 'Bugun'], ['7d', '7 kun'], ['30d', '30 kun'], ['month', 'Shu oy']].map(([v, l]) => (
+            <button key={v} className={`btn btn-xs ${range === v ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setRange(v)}>{l}</button>
+          ))}
+        </div>
+        <button className="btn btn-accent btn-sm" disabled={exporting} onClick={exportExcel}>
+          {exporting ? <span className="loading loading-spinner loading-xs"></span> : "\u{1F4E5} Excelga yuklab olish"}
+        </button>
+      </div>
       <div className="col-span-full rounded-xl border border-accent/40 bg-accent/10 p-4">
         <div className="text-xs text-base-content/50">{'\u{1F4B0}'} Platforma daromadi (komissiyalar)</div>
         <div className="mt-1 text-2xl font-extrabold text-accent">{wallet === null ? '\u2014' : fmt(wallet)} so'm</div>
@@ -844,7 +877,6 @@ function SecurityTab() {
         <button className={`btn btn-sm ${subTab === 'login' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('login')}>Login History</button>
         <button className={`btn btn-sm ${subTab === 'activity' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('activity')}>Activity Log</button>
         <button className={`btn btn-sm ${subTab === 'ip' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('ip')}>IP Whitelist</button>
-        <button className={`btn btn-sm ${subTab === 'totp' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('totp')}>2FA (Authenticator)</button>
       </div>
 
       {subTab === 'login' ? (
@@ -927,8 +959,6 @@ function SecurityTab() {
           </div>
         )
       )}
-
-      {subTab === 'totp' && <TotpSetup />}
 
       <div className="mt-6 rounded-xl border border-dashed border-white/15 p-4 text-xs text-base-content/45">
         Rejalashtirilgan (hali qo'shilmagan): Avtomatik backup.

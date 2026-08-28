@@ -3,6 +3,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbUnreadCount } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
+import { useLanguage, LANGUAGES } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
 const NAV = [
@@ -15,8 +16,39 @@ const NAV = [
   ['Savollar', '/savollar'],
 ];
 
+// Til tanlash tugmasi — 🇺🇿/🇷🇺/🇬🇧, tanlov brauzerda saqlanadi.
+function LanguageSwitcher() {
+  const { lang, setLang } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const current = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
+  return (
+    <div className="relative">
+      <button className="btn btn-ghost btn-sm px-2" onClick={() => setOpen((o) => !o)}>
+        <span className="text-base leading-none">{current.flag}</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}></div>
+          <div className="absolute right-0 z-50 mt-1 w-36 overflow-hidden rounded-xl border border-white/10 bg-base-200 shadow-xl">
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                onClick={() => { setLang(l.code); setOpen(false); }}
+                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 ${lang === l.code ? 'text-accent' : ''}`}
+              >
+                <span>{l.flag}</span> {l.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Header() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
@@ -24,8 +56,8 @@ export default function Header() {
     if (!user) { setUnread(0); return; }
     const load = () => dbUnreadCount().then((d) => setUnread(d.count)).catch(() => {});
     load();
-    const t = setInterval(load, 8000);
-    return () => clearInterval(t);
+    const t2 = setInterval(load, 8000);
+    return () => clearInterval(t2);
   }, [user]);
 
   const go = (href) => { setOpen(false); navigate(href); };
@@ -43,7 +75,7 @@ export default function Header() {
         <nav className="hidden items-center gap-7 text-sm text-base-content/60 md:flex">
           {NAV.map(([label, href]) => (
             <button key={href} onClick={() => go(href)} className="cursor-pointer transition-colors hover:text-base-content">
-              {label}
+              {t(label)}
             </button>
           ))}
         </nav>
@@ -51,27 +83,29 @@ export default function Header() {
         <div className="hidden items-center gap-2 md:flex">
           {user && MESSAGING_ENABLED && (
             <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
-              {'\u{1F4AC}'} Xabarlar
+              {'\u{1F4AC}'} {t('Xabarlar')}
               {unread > 0 && <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{unread}</span>}
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title="Bildirishnomalar">
+            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')}>
               {'\u{1F514}'}
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-sm" onClick={() => go('/tolovlar')}>To'lovlar</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
           )}
           {user ? (
-            <button className="btn btn-ghost btn-sm" onClick={() => go('/account')}>Mening profilim</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => go('/account')}>{t('Mening profilim')}</button>
           ) : (
-            <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>Kirish</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>{t('Kirish')}</button>
           )}
-          <button className="btn btn-primary btn-sm" onClick={() => go('/')}>Raqamli tashrif qog'ozi olish</button>
+          <button className="btn btn-primary btn-sm" onClick={() => go('/')}>{t("Raqamli tashrif qog'ozi olish")}</button>
+          <LanguageSwitcher />
         </div>
 
-        <div className="flex-none md:hidden">
+        <div className="flex items-center gap-1 md:hidden">
+          <LanguageSwitcher />
           <button aria-label="Menyu" className="btn btn-ghost btn-sm btn-square" onClick={() => setOpen(!open)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={open ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
@@ -85,23 +119,23 @@ export default function Header() {
           <ul className="menu w-full gap-1 bg-transparent p-0">
             {NAV.map(([label, href]) => (
               <li key={href}>
-                <button onClick={() => go(href)} className="cursor-pointer">{label}</button>
+                <button onClick={() => go(href)} className="cursor-pointer">{t(label)}</button>
               </li>
             ))}
             <li className="mt-2 border-t border-white/10 pt-2">
               {user && MESSAGING_ENABLED && (
                 <button onClick={() => go('/xabarlar')} className="cursor-pointer">
-                  {'\u{1F4AC}'} Xabarlar {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
+                  {'\u{1F4AC}'} {t('Xabarlar')} {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
                 </button>
               )}
               {user ? (
-                <button onClick={() => go('/account')} className="cursor-pointer">Mening profilim</button>
+                <button onClick={() => go('/account')} className="cursor-pointer">{t('Mening profilim')}</button>
               ) : (
-                <button onClick={() => go('/login')} className="cursor-pointer">Kirish</button>
+                <button onClick={() => go('/login')} className="cursor-pointer">{t('Kirish')}</button>
               )}
             </li>
           </ul>
-          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/')}>Raqamli tashrif qog'ozi olish</button>
+          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/')}>{t("Raqamli tashrif qog'ozi olish")}</button>
         </div>
       )}
     </header>

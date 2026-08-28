@@ -1,4 +1,5 @@
 import { navigate } from '../lib/router.js';
+import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
 const COLS = [
@@ -8,6 +9,7 @@ const COLS = [
 ];
 
 export default function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="border-t border-white/10 bg-base-100">
       <div className="mx-auto w-full max-w-[1800px] px-6 py-10 sm:px-10 lg:px-14">
@@ -21,7 +23,7 @@ export default function Footer() {
           </div>
           {COLS.map((col) => (
             <div key={col.title}>
-              <div className="mb-3 text-xs font-bold uppercase tracking-widest text-base-content/60">{col.title}</div>
+              <div className="mb-3 text-xs font-bold uppercase tracking-widest text-base-content/60">{t(col.title)}</div>
               <ul className="flex flex-col gap-2">
                 {col.links.map(([label, href]) => (
                   <li key={href}>
@@ -29,7 +31,7 @@ export default function Footer() {
                       onClick={() => navigate(href)}
                       className="cursor-pointer text-left text-[13px] text-base-content/40 transition-colors hover:text-base-content"
                     >
-                      {label}
+                      {t(label)}
                     </button>
                   </li>
                 ))}

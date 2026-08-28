@@ -2874,6 +2874,57 @@ export async function adminCardsTimeSeries(days = 30) {
   return rows.map((r) => ({ day: r.day, count: r.count }));
 }
 
+// Excelga eksport uchun — kun bo'yicha birlashtirilgan statistika.
+// DIQQAT: trafik manbasi (Telegram/Instagram/Google) hisobga OLINMAGAN,
+// chunki tizimda UTM/referrer kuzatuvi hali yo'q — yolg'on nol ustunlar
+// ko'rsatishdan ko'ra, umuman qo'shmaslik ma'qul.
+export async function adminExportStats(days = 30) {
+  const { rows: signups } = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM users WHERE created_at >= now() - ($1 || ' days')::interval AND is_test = FALSE GROUP BY 1`,
+    [days]
+  );
+  const { rows: cards } = await pool.query(
+    `SELECT to_char(date_trunc('day', to_timestamp(ts / 1000.0)), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM cards WHERE ts >= (extract(epoch FROM now() - ($1 || ' days')::interval) * 1000) AND price > 0 GROUP BY 1`,
+    [days]
+  );
+  const { rows: premiums } = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM transactions WHERE kind = 'premium_upgrade' AND created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
+    [days]
+  );
+  const { rows: orders } = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM web_orders WHERE status = 'paid' AND created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
+    [days]
+  );
+  const { rows: revenue } = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COALESCE(SUM(amount),0)::bigint AS n
+     FROM transactions WHERE kind = 'platform_commission' AND created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
+    [days]
+  );
+  const { rows: auctions } = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+     FROM auctions WHERE created_at >= now() - ($1 || ' days')::interval GROUP BY 1`,
+    [days]
+  );
+
+  const byDay = {};
+  const put = (arr, key) => arr.forEach((r) => {
+    byDay[r.day] = byDay[r.day] || { date: r.day, newUsers: 0, newCards: 0, newPremium: 0, orders: 0, revenue: 0, auctions: 0 };
+    byDay[r.day][key] = Number(r.n);
+  });
+  put(signups, 'newUsers');
+  put(cards, 'newCards');
+  put(premiums, 'newPremium');
+  put(orders, 'orders');
+  put(revenue, 'revenue');
+  put(auctions, 'auctions');
+
+  return Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // ---------- To'lovlar tarixi ----------
 
 export async function listUserPayments(userId, limit = 50) {

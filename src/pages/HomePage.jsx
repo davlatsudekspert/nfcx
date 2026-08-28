@@ -7,6 +7,7 @@ import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 import { IconWave, IconSearch } from '../components/Icons.jsx';
+import { useLanguage } from '../lib/i18n.jsx';
 
 function useMaskedCode() {
   const [value, setValue] = useState('');
@@ -85,6 +86,7 @@ const TEASERS = [
 ];
 
 export default function HomePage({ catalog, refreshCatalog }) {
+  const { t, lang } = useLanguage();
   const [checkVal, onCheckChange] = useMaskedCode();
   const [checkResult, setCheckResult] = useState(null);
   const [modalCode, setModalCode] = useState(null);
@@ -122,7 +124,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
             <Reveal delay="[transition-delay:80ms]">
               <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
-                Shaxsiy raqamli profilingiz — <span className="bg-gradient-to-br from-[#f0cf7a] to-[#b3860f] bg-clip-text text-transparent">har doim yoningizda</span>.
+                {lang === 'uz' ? (
+                  <>Shaxsiy raqamli profilingiz — <span className="bg-gradient-to-br from-[#f0cf7a] to-[#b3860f] bg-clip-text text-transparent">har doim yoningizda</span>.</>
+                ) : t('Shaxsiy raqamli profilingiz — har doim yoningizda.')}
               </h1>
             </Reveal>
 

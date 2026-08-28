@@ -19,6 +19,7 @@ import {
   adminStats, closeAuctionBidding, createAuction, getActiveAuctionByCode, getRecord,
   getPlatformWallet, adminRevenueBreakdown, adminCommissionTimeSeries, adminSignupsTimeSeries,
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
+  adminExportStats,
   listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder, finalizePaidBotOrder,
   adminListManualAdjustments, setUserTestFlag,
   adminSuspendUser, adminUnsuspendUser, adminDeleteUser,
@@ -629,6 +630,38 @@ adminRouter.get('/analytics', async (req, res) => {
     adminCardsTimeSeries(30),
   ]);
   res.json({ breakdown, commissionSeries, signupsSeries, cardsSeries });
+});
+
+// Statistikani .xlsx (Excel) qilib yuklab olish — Bugun/7 kun/30 kun/
+// Shu oy/Custom oralig'iga mos.
+adminRouter.get('/export-stats', requireAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  let days = 30;
+  const range = String(req.query.range || '30d');
+  if (range === 'today') days = 1;
+  else if (range === '7d') days = 7;
+  else if (range === '30d') days = 30;
+  else if (range === 'month') days = new Date().getDate();
+  else if (range === 'custom') days = Math.max(1, Math.min(730, Number(req.query.days) || 30));
+
+  const rows = await adminExportStats(days);
+  const XLSX = await import('xlsx');
+  const header = ['Sana', 'Yangi ro\u2019yxatdan o\u2019tganlar', 'Yangi NFC ID (sotilgan)', 'Yangi Premium', 'Buyurtmalar', 'Tushum (so\u2019m)', 'Auksionlar'];
+  const data = [header, ...rows.map((r) => [r.date, r.newUsers, r.newCards, r.newPremium, r.orders, r.revenue, r.auctions])];
+  const totalRow = ['JAMI', rows.reduce((s, r) => s + r.newUsers, 0), rows.reduce((s, r) => s + r.newCards, 0), rows.reduce((s, r) => s + r.newPremium, 0), rows.reduce((s, r) => s + r.orders, 0), rows.reduce((s, r) => s + r.revenue, 0), rows.reduce((s, r) => s + r.auctions, 0)];
+  data.push([]);
+  data.push(totalRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = header.map(() => ({ wch: 22 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Statistika');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+  logAdminActivity({ action: 'stats_exported', details: `Oraliq: ${range}`, ip: req.ip }).catch(() => {});
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="nfcstore_statistika_${range}.xlsx"`);
+  res.send(buf);
 });
 
 // Qo'lda kiritilgan balans tuzatishlari — daromad grafigidan ATAYLAB
