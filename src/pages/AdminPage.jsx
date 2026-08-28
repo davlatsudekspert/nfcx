@@ -12,13 +12,18 @@ async function adminApi(path, options) {
     ...options,
   });
   const data = await res.json().catch(() => null);
+  if (res.status === 401) {
+    // Sessiya tugagan (idle timeout yoki umuman tugagan) — global hodisa
+    // orqali AdminPage'ni darhol login ekraniga qaytaramiz.
+    window.dispatchEvent(new CustomEvent('admin-session-expired', { detail: data?.error }));
+  }
   if (!res.ok) throw new Error((data && data.error) || 'api_error_' + res.status);
   return data;
 }
 
 // ---------- Login ----------
 
-function AdminLogin({ onLoggedIn }) {
+function AdminLogin({ onLoggedIn, expiredMsg }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,6 +35,8 @@ function AdminLogin({ onLoggedIn }) {
   const [tempToken, setTempToken] = useState(null);
   const [code, setCode] = useState('');
 
+  const [twoFaMethod, setTwoFaMethod] = useState('telegram');
+
   const submitCredentials = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -38,6 +45,7 @@ function AdminLogin({ onLoggedIn }) {
       const result = await adminApi('/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
       if (result.twoFactor) {
         setTempToken(result.tempToken);
+        setTwoFaMethod(result.method || 'telegram');
         setStep('code');
       } else {
         onLoggedIn();
@@ -73,6 +81,7 @@ function AdminLogin({ onLoggedIn }) {
       <div className="w-full rounded-2xl border border-white/10 bg-base-200/70 p-7">
         <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">NFCSTORE</div>
         <h1 className="mt-2 text-2xl font-bold">Admin panel</h1>
+        {expiredMsg && <div className="alert alert-warning mt-3 py-2 text-xs"><span>{expiredMsg}</span></div>}
 
         {step === 'credentials' ? (
           <form onSubmit={submitCredentials} className="mt-6 space-y-3">
@@ -92,7 +101,11 @@ function AdminLogin({ onLoggedIn }) {
           </form>
         ) : (
           <form onSubmit={submitCode} className="mt-6 space-y-3">
-            <p className="text-sm text-base-content/60">Telegram botga 6 xonali kod yuborildi. Kodni kiriting:</p>
+            <p className="text-sm text-base-content/60">
+              {twoFaMethod === 'totp'
+                ? "Authenticator ilovangizdagi 6 xonali kodni kiriting:"
+                : "Telegram botga 6 xonali kod yuborildi. Kodni kiriting:"}
+            </p>
             <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000" maxLength={6}
               className="input input-bordered w-full bg-base-100 text-center font-mono text-lg tracking-widest" autoFocus />
@@ -110,7 +123,7 @@ function AdminLogin({ onLoggedIn }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar'];
 
 function StatCard({ label, value }) {
   return (
@@ -755,6 +768,334 @@ function ExternalAnalyticsTab() {
   );
 }
 
+// Security → Login History (2FA, IP whitelist, Activity Log kabi
+// qolgan bo'limlar hozircha rejalashtirilgan — bu birinchi qismi).
+function SecurityTab() {
+  const [subTab, setSubTab] = useState('login'); // login | activity | ip | totp
+  const [history, setHistory] = useState(null);
+  const [activity, setActivity] = useState(null);
+  const [ipData, setIpData] = useState(null);
+  const [newIp, setNewIp] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [ipBusy, setIpBusy] = useState(false);
+  const [ipMsg, setIpMsg] = useState(null);
+
+  const loadIp = () => adminApi('/ip-whitelist').then(setIpData);
+
+  useEffect(() => {
+    if (subTab === 'login' && !history) adminApi('/login-history').then((d) => setHistory(d.history));
+    if (subTab === 'activity' && !activity) adminApi('/activity-log').then((d) => setActivity(d.log));
+    if (subTab === 'ip' && !ipData) loadIp();
+  }, [subTab]);
+
+  const addIp = async () => {
+    if (!newIp.trim()) return;
+    setIpBusy(true);
+    setIpMsg(null);
+    try {
+      await adminApi('/ip-whitelist/add', { method: 'POST', body: JSON.stringify({ ip: newIp.trim(), label: newLabel.trim() }) });
+      setNewIp('');
+      setNewLabel('');
+      await loadIp();
+    } catch (e) {
+      setIpMsg(e.message === 'MAX_2' ? "Faqat 2 ta IP qo'shish mumkin." : e.message === 'ALREADY_EXISTS' ? 'Bu IP allaqachon ro\u2019yxatda.' : 'Xatolik yuz berdi.');
+    } finally {
+      setIpBusy(false);
+    }
+  };
+  const removeIp = async (id) => {
+    setIpBusy(true);
+    try { await adminApi(`/ip-whitelist/${id}/remove`, { method: 'POST' }); await loadIp(); } finally { setIpBusy(false); }
+  };
+  const toggleEnabled = async () => {
+    setIpBusy(true);
+    setIpMsg(null);
+    try {
+      await adminApi('/ip-whitelist/toggle', { method: 'POST', body: JSON.stringify({ enabled: !ipData.enabled }) });
+      await loadIp();
+    } catch (e) {
+      setIpMsg(e.message === 'no_ips' ? "Avval kamida 1 ta IP qo'shing." : 'Xatolik yuz berdi.');
+    } finally {
+      setIpBusy(false);
+    }
+  };
+
+  const EVENT_LABEL = {
+    login_ok: { text: 'Muvaffaqiyatli kirish', cls: 'badge-success' },
+    bad_password: { text: "Noto'g'ri parol", cls: 'badge-error' },
+    bad_2fa: { text: '2FA xatosi', cls: 'badge-error' },
+    rate_limited: { text: 'Bloklangan urinish', cls: 'badge-error' },
+    logout: { text: 'Chiqish', cls: 'badge-ghost' },
+    idle_timeout: { text: 'Sessiya tugadi (faoliyatsizlik)', cls: 'badge-warning' },
+  };
+  const ACTION_LABEL = {
+    user_suspended: 'Foydalanuvchi bloklandi',
+    user_unsuspended: 'Blokdan chiqarildi',
+    user_deleted: "Foydalanuvchi o'chirildi",
+    balance_adjusted: 'Balans tuzatildi',
+    auction_created: 'Auksion yaratildi',
+    nfc_card_blocked: 'NFC karta bloklandi',
+    nfc_card_unblocked: 'NFC karta blokdan chiqarildi',
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex gap-2">
+        <button className={`btn btn-sm ${subTab === 'login' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('login')}>Login History</button>
+        <button className={`btn btn-sm ${subTab === 'activity' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('activity')}>Activity Log</button>
+        <button className={`btn btn-sm ${subTab === 'ip' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('ip')}>IP Whitelist</button>
+        <button className={`btn btn-sm ${subTab === 'totp' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('totp')}>2FA (Authenticator)</button>
+      </div>
+
+      {subTab === 'login' ? (
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="table table-sm">
+            <thead><tr><th>Hodisa</th><th>IP</th><th>Qurilma</th><th>Vaqt</th></tr></thead>
+            <tbody>
+              {!history && <tr><td colSpan={4} className="py-6 text-center text-base-content/45">Yuklanmoqda...</td></tr>}
+              {history?.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-base-content/45">Hozircha yozuv yo'q.</td></tr>}
+              {history?.map((h) => {
+                const ev = EVENT_LABEL[h.event] || { text: h.event, cls: 'badge-ghost' };
+                return (
+                  <tr key={h.id}>
+                    <td><span className={`badge badge-sm ${ev.cls}`}>{ev.text}</span></td>
+                    <td className="font-mono text-xs">{h.ip || '—'}</td>
+                    <td className="max-w-[220px] truncate text-xs text-base-content/50">{h.userAgent || '—'}</td>
+                    <td className="text-xs text-base-content/50">{timeAgo(new Date(h.createdAt).getTime())}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="table table-sm">
+            <thead><tr><th>Amal</th><th>Tafsilot</th><th>Qiymat</th><th>Vaqt</th></tr></thead>
+            <tbody>
+              {!activity && <tr><td colSpan={4} className="py-6 text-center text-base-content/45">Yuklanmoqda...</td></tr>}
+              {activity?.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-base-content/45">Hozircha yozuv yo'q.</td></tr>}
+              {activity?.map((a) => (
+                <tr key={a.id}>
+                  <td className="font-semibold">{ACTION_LABEL[a.action] || a.action}</td>
+                  <td className="text-xs text-base-content/60">{a.details || '—'}</td>
+                  <td className="text-xs text-base-content/50">{a.newValue || '—'}</td>
+                  <td className="text-xs text-base-content/50">{timeAgo(new Date(a.createdAt).getTime())}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="p-3 text-[11px] text-base-content/35">Bu jurnal oddiy admin tomonidan o'chirilmaydi.</p>
+        </div>
+      )}
+
+      {subTab === 'ip' && (
+        !ipData ? <div className="text-base-content/45">Yuklanmoqda...</div> : (
+          <div className="rounded-2xl border border-white/10 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold">IP Whitelist: {ipData.enabled ? <span className="text-success">YOQILGAN</span> : <span className="text-base-content/50">O'CHIRILGAN</span>}</div>
+                <p className="mt-1 text-xs text-base-content/50">Sizning hozirgi IP: <code className="rounded bg-black/30 px-1">{ipData.yourIp}</code></p>
+              </div>
+              <button className={`btn btn-sm ${ipData.enabled ? 'btn-error' : 'btn-success'}`} disabled={ipBusy} onClick={toggleEnabled}>
+                {ipData.enabled ? "O'chirish" : 'Yoqish'}
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {ipData.ips.length === 0 && <p className="text-xs text-base-content/40">Hali IP qo'shilmagan.</p>}
+              {ipData.ips.map((r) => (
+                <div key={r.id} className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2 text-sm">
+                  <span><code className="font-mono">{r.ip}</code> {r.label && <span className="text-xs text-base-content/45">— {r.label}</span>}</span>
+                  <button className="btn btn-ghost btn-xs text-error" disabled={ipBusy} onClick={() => removeIp(r.id)}>O'chirish</button>
+                </div>
+              ))}
+            </div>
+
+            {ipData.ips.length < 2 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <input value={newIp} onChange={(e) => setNewIp(e.target.value)} placeholder="IP manzil (masalan 91.212.4.10)" className="input input-bordered input-sm flex-1 bg-base-100 font-mono" />
+                <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Nom (ixtiyoriy, masalan: Ofis)" className="input input-bordered input-sm flex-1 bg-base-100" />
+                <button className="btn btn-primary btn-sm" disabled={ipBusy} onClick={addIp}>Qo'shish</button>
+              </div>
+            )}
+            {ipMsg && <div className="alert alert-error mt-3 py-2 text-xs"><span>{ipMsg}</span></div>}
+
+            <div className="mt-5 rounded-lg border border-dashed border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+              {'\u26A0\uFE0F'} <b>Xavfsiz tiklash:</b> agar o'zingiz (dinamik IP tufayli) bloklanib qolsangiz, Railway loyihangizda <code className="rounded bg-black/30 px-1">ADMIN_IP_WHITELIST_BYPASS=true</code> muhit o'zgaruvchisini qo'shing — bu whitelist'ni vaqtincha chetlab o'tadi. Kirib, IP'ni yangilagach, bu o'zgaruvchini albatta o'chirib qo'ying.
+            </div>
+          </div>
+        )
+      )}
+
+      {subTab === 'totp' && <TotpSetup />}
+
+      <div className="mt-6 rounded-xl border border-dashed border-white/15 p-4 text-xs text-base-content/45">
+        Rejalashtirilgan (hali qo'shilmagan): Avtomatik backup.
+      </div>
+    </div>
+  );
+}
+
+// Authenticator (Google Authenticator/Authy) ilova orqali TOTP 2FA
+// sozlash — QR-kodni skanerlab, tasdiqlash kodini kiritish orqali yoqiladi.
+function TotpSetup() {
+  const [me, setMe] = useState(null);
+  const [setupData, setSetupData] = useState(null); // { secret, otpauth, qrImage }
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const loadMe = () => adminApi('/me-full').then((d) => setMe(d.admin));
+  useEffect(() => { loadMe(); }, []);
+
+  const startSetup = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const data = await adminApi('/2fa/totp/setup', { method: 'POST' });
+      const QRCode = await import('qrcode');
+      const qrImage = await QRCode.toDataURL(data.otpauth, { margin: 1, width: 200 });
+      setSetupData({ ...data, qrImage });
+    } catch {
+      setMsg({ type: 'err', text: 'Xatolik yuz berdi.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmSetup = async () => {
+    if (code.length !== 6) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await adminApi('/2fa/totp/confirm', { method: 'POST', body: JSON.stringify({ code }) });
+      setSetupData(null);
+      setCode('');
+      setMsg({ type: 'ok', text: "TOTP 2FA yoqildi! Endi kirishda Authenticator kodi so'raladi." });
+      await loadMe();
+    } catch {
+      setMsg({ type: 'err', text: "Kod noto'g'ri." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disable = async () => {
+    if (!confirm("TOTP 2FA'ni o'chirasizmi? Kirishda qayta Telegram OTP ishlatiladi.")) return;
+    setBusy(true);
+    try { await adminApi('/2fa/totp/disable', { method: 'POST' }); await loadMe(); } finally { setBusy(false); }
+  };
+
+  if (!me) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+
+  return (
+    <div className="max-w-md rounded-2xl border border-white/10 p-5">
+      <div className="text-sm font-bold">Authenticator (TOTP) 2FA</div>
+      <p className="mt-1 text-xs text-base-content/50">Google Authenticator, Authy yoki shunga o'xshash ilova orqali, internetsiz ham ishlaydigan eng ishonchli 2 bosqichli tasdiqlash.</p>
+
+      {me.totpEnabled ? (
+        <div className="mt-4">
+          <div className="badge badge-success">Yoqilgan</div>
+          <button className="btn btn-error btn-sm mt-3 block" disabled={busy} onClick={disable}>O'chirish</button>
+        </div>
+      ) : setupData ? (
+        <div className="mt-4">
+          <img src={setupData.qrImage} alt="TOTP QR" className="rounded-xl border border-white/10" />
+          <p className="mt-2 text-xs text-base-content/50">QR-kodni Authenticator ilovangiz bilan skanerlang, so'ng ilovada ko'rsatilgan 6 xonali kodni kiriting:</p>
+          <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6}
+            className="input input-bordered input-sm mt-2 w-full bg-base-100 text-center font-mono tracking-widest" />
+          <button className="btn btn-primary btn-sm mt-3 w-full" disabled={busy || code.length !== 6} onClick={confirmSetup}>Tasdiqlash va yoqish</button>
+        </div>
+      ) : (
+        <button className="btn btn-primary btn-sm mt-4" disabled={busy} onClick={startSetup}>Sozlashni boshlash</button>
+      )}
+      {msg && <div className={`alert mt-3 py-2 text-xs ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+    </div>
+  );
+}
+
+// Adminlar boshqaruvi (faqat Super Admin) — yangi admin qo'shish, rol
+// belgilash, o'chirish.
+function AdminsTab() {
+  const [admins, setAdmins] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('manager');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const load = () => adminApi('/admins').then((d) => setAdmins(d.admins));
+  useEffect(() => { load(); }, []);
+
+  const ROLE_LABEL = { super_admin: 'Super Admin', manager: 'Manager', content_manager: 'Content Manager' };
+
+  const add = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await adminApi('/admins', { method: 'POST', body: JSON.stringify({ phone, password, name, role }) });
+      setOpen(false);
+      setPhone(''); setPassword(''); setName(''); setRole('manager');
+      await load();
+    } catch (e) {
+      setMsg(e.message === 'phone_taken' ? 'Bu telefon raqami allaqachon mavjud.' : 'Xatolik yuz berdi.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (id) => {
+    if (!confirm("Bu adminni o'chirasizmi?")) return;
+    setBusy(true);
+    try { await adminApi(`/admins/${id}/remove`, { method: 'POST' }); await load(); } finally { setBusy(false); }
+  };
+
+  if (!admins) return <div className="text-base-content/45">Yuklanmoqda...</div>;
+
+  return (
+    <div>
+      <button className="btn btn-primary btn-sm" onClick={() => setOpen((o) => !o)}>{'\u2795'} Yangi admin qo'shish</button>
+      {open && (
+        <div className="mt-3 flex max-w-lg flex-wrap gap-2 rounded-xl border border-white/10 bg-base-200/50 p-3">
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567" className="input input-bordered input-sm flex-1 bg-base-100" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ism" className="input input-bordered input-sm flex-1 bg-base-100" />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Parol (kamida 6 belgi)" className="input input-bordered input-sm flex-1 bg-base-100" />
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="select select-bordered select-sm bg-base-100">
+            <option value="manager">Manager</option>
+            <option value="content_manager">Content Manager</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <button className="btn btn-primary btn-sm w-full" disabled={busy} onClick={add}>Qo'shish</button>
+          {msg && <div className="alert alert-error w-full py-2 text-xs"><span>{msg}</span></div>}
+        </div>
+      )}
+
+      <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="table table-sm">
+          <thead><tr><th>Telefon</th><th>Ism</th><th>Rol</th><th>2FA</th><th></th></tr></thead>
+          <tbody>
+            {admins.map((a) => (
+              <tr key={a.id}>
+                <td className="font-mono text-xs">{a.phone}</td>
+                <td>{a.name || '—'}</td>
+                <td><span className="badge badge-ghost badge-sm">{ROLE_LABEL[a.role] || a.role}</span></td>
+                <td>{a.totpEnabled ? '\u2705' : '\u274C'}</td>
+                <td><button className="btn btn-ghost btn-xs text-error" onClick={() => remove(a.id)}>O'chirish</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-4 text-xs text-base-content/45">
+        <b>Manager:</b> Buyurtmalar, Foydalanuvchilar, NFC ID, Support — Security va Adminlar bo'limlariga kira olmaydi.<br />
+        <b>Content Manager:</b> Bannerlar, sayt matnlari, Support, Xabarlashuv.
+      </div>
+    </div>
+  );
+}
+
 function NotificationsTab() {
   const [messages, setMessages] = useState(null);
   const [replyFor, setReplyFor] = useState(null);
@@ -868,20 +1209,24 @@ function PhysicalCardsTab() {
   );
 }
 
-function Dashboard({ onLogout }) {
+function Dashboard({ onLogout, role }) {
   const [tab, setTab] = useState(0);
   const logout = async () => { await adminApi('/logout', { method: 'POST' }); onLogout(); };
+  const isSuperAdmin = role === 'super_admin';
+  const visibleTabs = isSuperAdmin ? TABS : TABS.filter((t) => t !== 'Security' && t !== 'Adminlar');
+  // Ko'rsatiladigan indeks bilan haqiqiy TABS indeksi orasidagi moslik.
+  const tabIndex = (label) => TABS.indexOf(label);
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <div className="flex items-center justify-between pt-10">
-        <h1 className="text-2xl font-bold">Admin panel</h1>
+        <h1 className="text-2xl font-bold">Admin panel {!isSuperAdmin && <span className="badge badge-ghost badge-sm align-middle">{role}</span>}</h1>
         <button className="btn btn-ghost btn-sm" onClick={logout}>Chiqish</button>
       </div>
       <div className="mt-6 flex gap-1 overflow-x-auto border-b border-white/10">
-        {TABS.map((t, i) => (
-          <button key={t} onClick={() => setTab(i)}
-            className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${tab === i ? 'border-accent text-base-content' : 'border-transparent text-base-content/50 hover:text-base-content'}`}>
+        {visibleTabs.map((t) => (
+          <button key={t} onClick={() => setTab(tabIndex(t))}
+            className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${tab === tabIndex(t) ? 'border-accent text-base-content' : 'border-transparent text-base-content/50 hover:text-base-content'}`}>
             {t}
           </button>
         ))}
@@ -897,6 +1242,8 @@ function Dashboard({ onLogout }) {
         {tab === 7 && <PhysicalCardsTab />}
         {tab === 8 && <NotificationsTab />}
         {tab === 9 && <ExternalAnalyticsTab />}
+        {tab === 10 && isSuperAdmin && <SecurityTab />}
+        {tab === 11 && isSuperAdmin && <AdminsTab />}
       </div>
     </main>
   );
@@ -904,12 +1251,23 @@ function Dashboard({ onLogout }) {
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(undefined);
+  const [role, setRole] = useState(null);
+  const [expiredMsg, setExpiredMsg] = useState(null);
 
   useEffect(() => {
-    adminApi('/me').then((d) => setAuthed(d.authenticated)).catch(() => setAuthed(false));
+    adminApi('/me').then((d) => { setAuthed(d.authenticated); setRole(d.role); }).catch(() => setAuthed(false));
+  }, []);
+
+  useEffect(() => {
+    const onExpired = (e) => {
+      setExpiredMsg(e.detail === 'idle_timeout' ? "Faoliyatsizlik tufayli sessiya tugadi (12 daqiqa). Qayta kiring." : "Sessiya tugadi. Qayta kiring.");
+      setAuthed(false);
+    };
+    window.addEventListener('admin-session-expired', onExpired);
+    return () => window.removeEventListener('admin-session-expired', onExpired);
   }, []);
 
   if (authed === undefined) return <main className="px-5 pt-16 text-center text-base-content/45">Yuklanmoqda...</main>;
-  if (!authed) return <AdminLogin onLoggedIn={() => setAuthed(true)} />;
-  return <Dashboard onLogout={() => setAuthed(false)} />;
+  if (!authed) return <AdminLogin onLoggedIn={() => { adminApi('/me').then((d) => { setAuthed(d.authenticated); setRole(d.role); }); setExpiredMsg(null); }} expiredMsg={expiredMsg} />;
+  return <Dashboard onLogout={() => setAuthed(false)} role={role} />;
 }

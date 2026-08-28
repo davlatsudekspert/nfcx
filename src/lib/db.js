@@ -448,6 +448,13 @@ export const dbFollow = (code) => dbApi(`/follow/${encodeURIComponent(code)}`, {
 export const dbUnfollow = (code) => dbApi(`/unfollow/${encodeURIComponent(code)}`, { method: 'POST' });
 export const dbFollowStats = (code) => dbApi(`/follow-stats/${encodeURIComponent(code)}`);
 
+export const dbGetLike = (code) => dbApi(`/records/${encodeURIComponent(code)}/like`);
+export async function dbToggleLike(code) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/like`, { method: 'POST', credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  return res.json();
+}
+
 export const dbListConversations = () => dbApi('/conversations');
 export const dbUnreadCount = () => dbApi('/conversations/unread-count');
 export const dbStartConversation = (code) => dbApi(`/conversations/with/${encodeURIComponent(code)}`, { method: 'POST' });

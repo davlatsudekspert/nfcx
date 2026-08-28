@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation } from '../lib/db.js';
+import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
@@ -192,13 +192,23 @@ export default function ProfilePage({ code, catalog }) {
   const [tab, setTab] = useState('vizitka');
   const [tapInactive, setTapInactive] = useState(false);
   const [followStats, setFollowStats] = useState(null);
+  const [likeInfo, setLikeInfo] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
   const [followMsg, setFollowMsg] = useState(null);
   const { user, myCards } = useAuth();
 
   useEffect(() => {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
+    dbGetLike(code).then(setLikeInfo).catch(() => {});
   }, [code, user]);
+
+  const toggleLike = async () => {
+    if (!user) { flashToast('Avval tizimga kiring...'); setTimeout(() => navigate('/login'), 800); return; }
+    try {
+      const res = await dbToggleLike(code);
+      setLikeInfo((prev) => ({ liked: res.liked, count: (prev?.count || 0) + (res.liked ? 1 : -1) }));
+    } catch { /* jim tur */ }
+  };
 
   // Obuna endi har doim bepul va darhol amalga oshadi.
   const toggleFollow = async () => {
@@ -410,9 +420,16 @@ export default function ProfilePage({ code, catalog }) {
           </div>
         </div>
         {followStats && (
-          <div className="mt-2 flex gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
+          <div className="mt-2 flex items-center gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
             <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> obunachi</span>
             <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> obuna</span>
+            <button
+              onClick={toggleLike}
+              className={`ml-auto flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
+            >
+              <span>{likeInfo?.liked ? '\u2764\uFE0F' : '\u{1F90D}'}</span>
+              <b>{likeInfo?.count ?? 0}</b>
+            </button>
           </div>
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{followMsg}</div>}

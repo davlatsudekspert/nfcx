@@ -10,6 +10,7 @@ const NAV = [
   ['Qanday ishlaydi', '/qanday-ishlaydi'],
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],
+  ['Kompaniyalar', '/kompaniyalar'],
   ['Auksion', '/auksion'],
   ['Savollar', '/savollar'],
 ];

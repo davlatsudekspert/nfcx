@@ -14,6 +14,7 @@ import PricingPage from './pages/PricingPage.jsx';
 import HowItWorksPage from './pages/HowItWorksPage.jsx';
 import CatalogPage from './pages/CatalogPage.jsx';
 import RankingPage from './pages/RankingPage.jsx';
+import CompaniesPage from './pages/CompaniesPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import FaqPage from './pages/FaqPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
@@ -80,6 +81,7 @@ export default function App() {
     else if (cleanRoute === 'qanday-ishlaydi') page = <HowItWorksPage />;
     else if (cleanRoute === 'katalog') page = <CatalogPage catalog={catalog} />;
     else if (cleanRoute === 'reyting') page = <RankingPage catalog={catalog} />;
+    else if (cleanRoute === 'kompaniyalar') page = <CompaniesPage />;
     else if (cleanRoute === 'bildirishnomalar') page = <NotificationsPage />;
     else if (cleanRoute === 'savollar') page = <FaqPage catalog={catalog} />;
     else if (cleanRoute === 'aloqa') page = <ContactPage />;

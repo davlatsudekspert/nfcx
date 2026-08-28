@@ -1,5 +1,6 @@
 import pg from 'pg';
 import crypto from 'crypto';
+import { hashPassword } from './auth.js';
 
 const { Pool } = pg;
 
@@ -412,6 +413,83 @@ export async function initDb() {
     )
   `);
 
+  // Admin panelga kirish tarixi — muvaffaqiyatli/noto'g'ri parol/2FA
+  // xatosi/bloklangan IP/logout/sessiya tugashi — hammasi shu yerga.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_login_history (
+      id          SERIAL PRIMARY KEY,
+      event       VARCHAR(30) NOT NULL, -- login_ok | bad_password | bad_2fa | rate_limited | logout | idle_timeout
+      ip          TEXT,
+      user_agent  TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // Admin Activity Log — adminning har bir muhim harakati (kim, nima,
+  // qachon, oldingi/yangi qiymat). Oddiy admin buni o'chira olmaydi
+  // (frontend/backendda DELETE endpoint umuman yo'q).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_activity_log (
+      id          SERIAL PRIMARY KEY,
+      action      VARCHAR(60) NOT NULL,   -- masalan: "auction_created", "user_suspended"
+      details     TEXT,                    -- inson o'qiy oladigan qisqa tavsif
+      old_value   TEXT,
+      new_value   TEXT,
+      ip          TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // IP Whitelist — admin panelga faqat shu ro'yxatdagi IP'lardan kirish
+  // mumkin (yoqilgan bo'lsa). MAX 2 ta yozuv (talab shunday).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_ip_whitelist (
+      id          SERIAL PRIMARY KEY,
+      ip          TEXT NOT NULL UNIQUE,
+      label       TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  // Yoqish/o'chirish holati — oddiy kalit-qiymat jadval, kelajakdagi
+  // boshqa sozlamalar uchun ham qayta ishlatiladi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_settings (
+      key    TEXT PRIMARY KEY,
+      value  TEXT
+    )
+  `);
+
+  // Ko'p adminli tizim + rollar (Super Admin / Manager / Content Manager)
+  // + TOTP (Authenticator app) 2FA. Avval bitta ENV-asosli admin bo'lgan —
+  // birinchi ishga tushirishda shu yerga avtomatik ko'chiriladi (pastroqda).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admins (
+      id            SERIAL PRIMARY KEY,
+      phone         TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      name          TEXT,
+      role          VARCHAR(20) NOT NULL DEFAULT 'manager', -- super_admin | manager | content_manager
+      totp_secret   TEXT,
+      totp_enabled  BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  // Birinchi ishga tushirishda: agar admins jadvali bo'sh bo'lsa va
+  // eski ENV-asosli login (ADMIN_PANEL_PHONE/PASSWORD) sozlangan bo'lsa,
+  // shu ma'lumotdan avtomatik SUPER ADMIN yaratamiz — eski login
+  // buzilib qolmasligi uchun.
+  {
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM admins`);
+    if (rows[0].n === 0 && process.env.ADMIN_PANEL_PHONE && process.env.ADMIN_PANEL_PASSWORD) {
+      const hash = hashPassword(process.env.ADMIN_PANEL_PASSWORD);
+      await pool.query(
+        `INSERT INTO admins (phone, password_hash, name, role) VALUES ($1,$2,'Super Admin','super_admin')`,
+        [process.env.ADMIN_PANEL_PHONE.trim(), hash]
+      );
+      console.log('[db] ENV asosida birinchi Super Admin yaratildi.');
+    }
+  }
+
   // Xavfsizlik: foydalanuvchini bloklash va shikoyat qilish — xabar
   // yozish tizimidagi suiiste'moldan himoya.
   await pool.query(`
@@ -585,6 +663,19 @@ export async function initDb() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS follows_follower_idx ON follows (follower_id)`);
+
+  // Layk — profillar (kartalar) orasida, kod (nfc card) ustiga bosiladi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_likes (
+      id          SERIAL PRIMARY KEY,
+      code        VARCHAR(16) NOT NULL,
+      user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (code, user_id)
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_likes_code_idx ON card_likes (code)`);
+
   await pool.query(`CREATE INDEX IF NOT EXISTS follows_followee_idx ON follows (followee_id)`);
 
   // Suhbatlar va xabarlar (Direct Messages). Har bir juftlik uchun bitta
@@ -912,6 +1003,68 @@ export async function adminDeleteUser(userId) {
   await pool.query(`UPDATE users SET deleted_at = now() WHERE id = $1`, [userId]);
 }
 
+// ---------- Admin login tarixi ----------
+export async function logAdminLoginEvent(event, ip, userAgent) {
+  await pool.query(
+    `INSERT INTO admin_login_history (event, ip, user_agent) VALUES ($1,$2,$3)`,
+    [event, ip || null, userAgent || null]
+  );
+}
+export async function listAdminLoginHistory(limit = 100) {
+  const { rows } = await pool.query(
+    `SELECT id, event, ip, user_agent AS "userAgent", created_at AS "createdAt"
+     FROM admin_login_history ORDER BY created_at DESC LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+// ---------- Admin Activity Log ----------
+export async function logAdminActivity({ action, details, oldValue, newValue, ip }) {
+  await pool.query(
+    `INSERT INTO admin_activity_log (action, details, old_value, new_value, ip) VALUES ($1,$2,$3,$4,$5)`,
+    [action, details || null, oldValue != null ? String(oldValue) : null, newValue != null ? String(newValue) : null, ip || null]
+  );
+}
+export async function listAdminActivityLog(limit = 200) {
+  const { rows } = await pool.query(
+    `SELECT id, action, details, old_value AS "oldValue", new_value AS "newValue", ip, created_at AS "createdAt"
+     FROM admin_activity_log ORDER BY created_at DESC LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+// ---------- IP Whitelist ----------
+export async function getAdminSetting(key) {
+  const { rows } = await pool.query(`SELECT value FROM admin_settings WHERE key = $1`, [key]);
+  return rows[0]?.value ?? null;
+}
+export async function setAdminSetting(key, value) {
+  await pool.query(
+    `INSERT INTO admin_settings (key, value) VALUES ($1,$2)
+     ON CONFLICT (key) DO UPDATE SET value = $2`,
+    [key, value]
+  );
+}
+export async function listAdminIpWhitelist() {
+  const { rows } = await pool.query(`SELECT id, ip, label, created_at AS "createdAt" FROM admin_ip_whitelist ORDER BY id ASC`);
+  return rows;
+}
+export async function addAdminIpWhitelist(ip, label) {
+  const { rows: existing } = await pool.query(`SELECT COUNT(*)::int AS n FROM admin_ip_whitelist`);
+  if (existing[0].n >= 2) return { error: 'MAX_2' };
+  const { rows } = await pool.query(
+    `INSERT INTO admin_ip_whitelist (ip, label) VALUES ($1,$2) ON CONFLICT (ip) DO NOTHING RETURNING id`,
+    [ip, label || null]
+  );
+  if (!rows[0]) return { error: 'ALREADY_EXISTS' };
+  return { ok: true };
+}
+export async function removeAdminIpWhitelist(id) {
+  await pool.query(`DELETE FROM admin_ip_whitelist WHERE id = $1`, [id]);
+}
+
 export async function getUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, phone, bot_ack AS "botAck", suspended_until AS "suspendedUntil", suspend_reason AS "suspendReason", deleted_at AS "deletedAt"
@@ -1196,6 +1349,53 @@ export async function listMyReferrals(userId) {
 // "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
 // tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).
 // ---------- Parolni Telegram OTP orqali o'zgartirish ----------
+
+// ---------- Admins (ko'p adminli tizim + rollar + TOTP) ----------
+export async function getAdminByPhone(phone) {
+  const { rows } = await pool.query(
+    `SELECT id, phone, password_hash AS "passwordHash", name, role, totp_secret AS "totpSecret", totp_enabled AS "totpEnabled"
+     FROM admins WHERE phone = $1`,
+    [phone]
+  );
+  return rows[0] || null;
+}
+export async function getAdminById(id) {
+  const { rows } = await pool.query(
+    `SELECT id, phone, name, role, totp_enabled AS "totpEnabled" FROM admins WHERE id = $1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+export async function listAdmins() {
+  const { rows } = await pool.query(
+    `SELECT id, phone, name, role, totp_enabled AS "totpEnabled", created_at AS "createdAt" FROM admins ORDER BY id ASC`
+  );
+  return rows;
+}
+export async function createAdmin({ phone, passwordHash, name, role }) {
+  const { rows } = await pool.query(
+    `INSERT INTO admins (phone, password_hash, name, role) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (phone) DO NOTHING RETURNING id`,
+    [phone, passwordHash, name || null, role]
+  );
+  return rows[0] || null;
+}
+export async function removeAdmin(id) {
+  await pool.query(`DELETE FROM admins WHERE id = $1`, [id]);
+}
+export async function setAdminTotpSecret(id, secret) {
+  await pool.query(`UPDATE admins SET totp_secret = $2, totp_enabled = FALSE WHERE id = $1`, [id, secret]);
+}
+export async function enableAdminTotp(id) {
+  await pool.query(`UPDATE admins SET totp_enabled = TRUE WHERE id = $1`, [id]);
+}
+export async function disableAdminTotp(id) {
+  await pool.query(`UPDATE admins SET totp_enabled = FALSE, totp_secret = NULL WHERE id = $1`, [id]);
+}
+export async function getAdminTotpSecret(id) {
+  const { rows } = await pool.query(`SELECT totp_secret AS "totpSecret" FROM admins WHERE id = $1`, [id]);
+  return rows[0]?.totpSecret || null;
+}
 
 export async function getUserPhoneAndTgId(userId) {
   const { rows } = await pool.query(
@@ -2346,6 +2546,26 @@ export async function getOwnerByCode(code) {
 // Obuna — endi HAMMASI bepul (premium yoki oddiy profil farqi yo'q,
 // obuna to'lovi butunlay bekor qilindi). Premium status faqat vizual
 // belgi/tarif sifatida qoladi (rang, king emoji va h.k.).
+// ---------- Layk (profillar orasida) ----------
+export async function toggleLike(code, userId) {
+  const { rows: existing } = await pool.query(`SELECT id FROM card_likes WHERE code = $1 AND user_id = $2`, [code, userId]);
+  if (existing[0]) {
+    await pool.query(`DELETE FROM card_likes WHERE id = $1`, [existing[0].id]);
+    return { liked: false };
+  }
+  await pool.query(`INSERT INTO card_likes (code, user_id) VALUES ($1,$2)`, [code, userId]);
+  return { liked: true };
+}
+export async function getLikeInfo(code, userId) {
+  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS n FROM card_likes WHERE code = $1`, [code]);
+  let liked = false;
+  if (userId) {
+    const { rows } = await pool.query(`SELECT 1 FROM card_likes WHERE code = $1 AND user_id = $2`, [code, userId]);
+    liked = rows.length > 0;
+  }
+  return { count: countRows[0].n, liked };
+}
+
 export async function followUserFree(followerId, followeeId) {
   if (followerId === followeeId) return { error: 'CANNOT_FOLLOW_SELF' };
   const { rows: exists } = await pool.query(
@@ -2606,6 +2826,13 @@ export async function adminListManualAdjustments(limit = 50) {
     [limit]
   );
   return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+}
+
+// Admin panelda "Sinov/admin akkaunt" deb belgilash-belgilamaslik — bunday
+// akkauntlar "Foydalanuvchilar", "Jami savdo" kabi asosiy ko'rsatkichlarga
+// KIRMAYDI (lekin jadvalda ko'rinishda davom etadi).
+export async function setUserTestFlag(userId, isTest) {
+  await pool.query(`UPDATE users SET is_test = $2 WHERE id = $1`, [userId, !!isTest]);
 }
 
 // Platforma komissiyasi kunlar bo'yicha (chiziqli grafik uchun).

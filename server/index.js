@@ -25,7 +25,7 @@ import {
   isPhoneBotVerified,
   createPhysicalCard, resolvePhysicalCard,
   requestPremium, getOwnerByCode,
-  followUserFree, unfollowUser, getFollowStats,
+  followUserFree, unfollowUser, getFollowStats, toggleLike, getLikeInfo,
   listUserPayments, getPendingPayout,
   getOrCreateConversation, listConversations, isConversationParticipant, listMessages, getOtherParticipant,
   blockUser, unblockUser, isBlocked, reportUser,
@@ -135,8 +135,8 @@ function rateLimit({ windowMs, max, keyFn }) {
 
 const authLimiter = rateLimit({ windowMs: 60_000, max: 20 });
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60_000,
-  max: 5, // xavfsizlik talabi: 5 marta xato urinishdan keyin vaqtincha bloklash
+  windowMs: 30 * 60_000,
+  max: 3, // xavfsizlik talabi: 3 marta xato urinishdan keyin 30 daqiqaga bloklash
   keyFn: (req) => `${req.ip}:${String((req.body || {}).email || '').toLowerCase()}`,
 });
 // Xabarlashishda spamning oldini olish — daqiqada ko'pi bilan 15 xabar.
@@ -343,6 +343,21 @@ app.get('/api/follow-stats/:code', async (req, res) => {
   if (!ownerId) return res.json({ followers: 0, following: 0, isFollowing: false });
   const user = await currentUser(req);
   res.json(await getFollowStats(ownerId, user?.id));
+});
+
+// ---------- Layk ----------
+app.get('/api/records/:code/like', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!isDbReady()) return res.json({ count: 0, liked: false });
+  const user = await currentUser(req);
+  res.json(await getLikeInfo(code, user?.id));
+});
+app.post('/api/records/:code/like', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json(await toggleLike(code, user.id));
 });
 
 // To'lov holatini tekshirish uchun umumiy endpoint (premium, follow,
