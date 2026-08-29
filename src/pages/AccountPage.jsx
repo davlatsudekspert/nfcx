@@ -479,6 +479,7 @@ const CARD_FINISHES = [
 ];
 
 const DEFAULT_NAME_POS = { x: 0.3, y: 0.83 };
+const DEFAULT_CODE_POS = { x: 0.5, y: 0.5 };
 
 // "Karta dizayni" modali — 2 tab: profil kartasi (rang/matn/fon) va bosma karta.
 function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
@@ -492,6 +493,10 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
     Number.isFinite(d.nameX) && Number.isFinite(d.nameY) ? { x: d.nameX, y: d.nameY } : DEFAULT_NAME_POS
   );
   const [nameScale, setNameScale] = useState(Number.isFinite(d.nameScale) ? d.nameScale : 1);
+  const [codePos, setCodePos] = useState(
+    Number.isFinite(d.codeX) && Number.isFinite(d.codeY) ? { x: d.codeX, y: d.codeY } : DEFAULT_CODE_POS
+  );
+  const [codeScale, setCodeScale] = useState(Number.isFinite(d.codeScale) ? d.codeScale : 1);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -515,9 +520,15 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const save = async () => {
     setBusy(true); setMsg(null);
     try {
-      const cardDesign = (finish !== 'auto' || name.trim() || bgUrl || nameScale !== 1
-        || namePos.x !== DEFAULT_NAME_POS.x || namePos.y !== DEFAULT_NAME_POS.y)
-        ? { finish, name: name.trim(), bgUrl, nameX: namePos.x, nameY: namePos.y, nameScale }
+      const touched = finish !== 'auto' || name.trim() || bgUrl
+        || nameScale !== 1 || namePos.x !== DEFAULT_NAME_POS.x || namePos.y !== DEFAULT_NAME_POS.y
+        || codeScale !== 1 || codePos.x !== DEFAULT_CODE_POS.x || codePos.y !== DEFAULT_CODE_POS.y;
+      const cardDesign = touched
+        ? {
+            finish, name: name.trim(), bgUrl,
+            nameX: namePos.x, nameY: namePos.y, nameScale,
+            codeX: codePos.x, codeY: codePos.y, codeScale,
+          }
         : null;
       // Server validatsiyasi to'liq profil obyektini kutadi (ism majburiy) —
       // shuning uchun mavjud maydonlarni ham yuboramiz, faqat cardDesign yangi.
@@ -580,11 +591,18 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 
             <div className="mt-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-base-content/70">{t('Yozuv o‘lchami')}: {Math.round(nameScale * 100)}%</span>
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => { setNamePos(DEFAULT_NAME_POS); setNameScale(1); }}>{t('Andozaga qaytarish')}</button>
+                <span className="text-xs font-semibold text-base-content/70">{t('Ism o‘lchami')}: {Math.round(nameScale * 100)}%</span>
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => {
+                  setNamePos(DEFAULT_NAME_POS); setNameScale(1);
+                  setCodePos(DEFAULT_CODE_POS); setCodeScale(1);
+                }}>{t('Andozaga qaytarish')}</button>
               </div>
               <input type="range" min={0.6} max={2.4} step={0.05} value={nameScale} onChange={(e) => setNameScale(Number(e.target.value))} className="range range-xs range-primary mt-1" />
-              <p className="mt-1.5 text-xs text-base-content/45">{t('Kartadagi ismni sichqoncha bilan ushlab, istalgan joyga suring.')}</p>
+
+              <div className="mt-3 text-xs font-semibold text-base-content/70">{t('NFC ID o‘lchami')}: {Math.round(codeScale * 100)}%</div>
+              <input type="range" min={0.5} max={2.2} step={0.05} value={codeScale} onChange={(e) => setCodeScale(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+
+              <p className="mt-1.5 text-xs text-base-content/45">{t('Kartadagi ism va NFC ID ni sichqoncha bilan ushlab, istalgan joyga suring.')}</p>
             </div>
 
             <button className="btn btn-primary btn-sm mt-5" onClick={save} disabled={busy || uploading}>
@@ -605,6 +623,9 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               namePos={namePos}
               nameScale={nameScale}
               onNameChange={setNamePos}
+              codePos={codePos}
+              codeScale={codeScale}
+              onCodeChange={setCodePos}
             />
           </div>
         </div>

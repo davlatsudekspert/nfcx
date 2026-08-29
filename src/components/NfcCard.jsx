@@ -38,16 +38,20 @@ const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.
 
 export default function NfcCard({
   code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md',
-  rim = false, back = false, bgImage = '', namePos = null, nameScale = 1, onNameChange = null,
+  rim = false, back = false, bgImage = '',
+  namePos = null, nameScale = 1, onNameChange = null,
+  codePos = null, codeScale = 1, onCodeChange = null,
 }) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
-  const [dragging, setDragging] = useState(false);
+  const [dragTarget, setDragTarget] = useState(null); // 'name' | 'code' | null
   const f = FINISHES[finish] || FINISHES.black;
   const year = since ? new Date(since).getFullYear() : new Date().getFullYear();
-  const editable = typeof onNameChange === 'function';
-  const positioned = namePos && Number.isFinite(namePos.x) && Number.isFinite(namePos.y);
+  const editable = typeof onNameChange === 'function' || typeof onCodeChange === 'function';
+  const namePositioned = namePos && Number.isFinite(namePos.x) && Number.isFinite(namePos.y);
+  const codePositioned = codePos && Number.isFinite(codePos.x) && Number.isFinite(codePos.y);
   const nameFontPx = 12 * (Number.isFinite(nameScale) ? nameScale : 1);
+  const codeFontPx = 19 * (Number.isFinite(codeScale) ? codeScale : 1);
 
   const onMove = (e) => {
     const el = ref.current;
@@ -55,15 +59,17 @@ export default function NfcCard({
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width;
     const py = (e.clientY - rect.top) / rect.height;
-    if (dragging && editable) {
-      onNameChange({ x: Math.min(0.97, Math.max(0.03, px)), y: Math.min(0.95, Math.max(0.05, py)) });
+    if (dragTarget) {
+      const clamped = { x: Math.min(0.97, Math.max(0.03, px)), y: Math.min(0.95, Math.max(0.05, py)) };
+      if (dragTarget === 'name' && onNameChange) onNameChange(clamped);
+      else if (dragTarget === 'code' && onCodeChange) onCodeChange(clamped);
       return;
     }
     if (editable) return; // tahrirlash rejimida 3D egilish yo'q — barqaror sirt
     setTilt({ rx: (0.5 - py) * 16, ry: (px - 0.5) * 20, mx: px * 100, my: py * 100 });
   };
-  const onLeave = () => { setDragging(false); setTilt({ rx: 0, ry: 0, mx: 50, my: 50 }); };
-  const startNameDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragging(true); };
+  const onLeave = () => { setDragTarget(null); setTilt({ rx: 0, ry: 0, mx: 50, my: 50 }); };
+  const startDrag = (which) => (e) => { e.preventDefault(); e.stopPropagation(); setDragTarget(which); };
 
   const spacedCode = String(code).split('').join(' ');
 
@@ -95,7 +101,7 @@ export default function NfcCard({
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
-        onMouseUp={() => setDragging(false)}
+        onMouseUp={() => setDragTarget(null)}
         className={`relative flex ${CARD_SIZES[size]} ${editable ? 'cursor-default' : 'cursor-pointer'} select-none flex-col justify-between overflow-hidden rounded-2xl px-5 py-[18px] transition-transform duration-[250ms] ease-[cubic-bezier(.2,.8,.2,1)] [transform-style:preserve-3d]`}
         style={{
           background: f.bg,
@@ -121,18 +127,28 @@ export default function NfcCard({
           <IconWave style={{ color: f.sub }} />
         </div>
         <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
-        <div className="relative z-[1] text-center font-mono text-[19px] font-bold tracking-[0.14em] [text-shadow:0_1px_1px_rgba(0,0,0,0.15)]" style={{ color: f.code }}>{spacedCode}</div>
+        {codePositioned
+          ? <span />
+          : (
+            <div
+              className={`relative z-[1] text-center font-mono font-bold tracking-[0.14em] [text-shadow:0_1px_1px_rgba(0,0,0,0.15)] ${editable && onCodeChange ? 'cursor-move' : ''}`}
+              style={{ color: f.code, fontSize: `${codeFontPx}px` }}
+              onMouseDown={editable && onCodeChange ? startDrag('code') : undefined}
+            >
+              {spacedCode}
+            </div>
+          )}
         <div className="relative z-[1] flex items-center justify-between">
-          {positioned
+          {namePositioned
             ? <span />
             : <div className="font-display font-bold tracking-[0.04em] uppercase" style={{ fontSize: `${nameFontPx}px` }}>{name || 'ISM FAMILIYA'}</div>}
           <div className="text-right font-mono text-[8.5px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE<br />{year}</div>
         </div>
 
-        {positioned && (
+        {namePositioned && (
           <div
-            onMouseDown={editable ? startNameDrag : undefined}
-            className={`absolute z-[3] font-display font-bold uppercase leading-none tracking-[0.04em] ${editable ? 'cursor-move rounded px-1 outline-dashed outline-1 outline-white/50' : ''}`}
+            onMouseDown={editable && onNameChange ? startDrag('name') : undefined}
+            className={`absolute z-[3] font-display font-bold uppercase leading-none tracking-[0.04em] ${editable && onNameChange ? 'cursor-move rounded px-1 outline-dashed outline-1 outline-white/50' : ''}`}
             style={{
               left: `${namePos.x * 100}%`,
               top: `${namePos.y * 100}%`,
@@ -143,6 +159,23 @@ export default function NfcCard({
             }}
           >
             {name || 'ISM FAMILIYA'}
+          </div>
+        )}
+
+        {codePositioned && (
+          <div
+            onMouseDown={editable && onCodeChange ? startDrag('code') : undefined}
+            className={`absolute z-[3] font-mono font-bold leading-none tracking-[0.14em] [text-shadow:0_1px_1px_rgba(0,0,0,0.15)] ${editable && onCodeChange ? 'cursor-move rounded px-1 outline-dashed outline-1 outline-white/50' : ''}`}
+            style={{
+              left: `${codePos.x * 100}%`,
+              top: `${codePos.y * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              fontSize: `${codeFontPx}px`,
+              whiteSpace: 'nowrap',
+              color: f.code,
+            }}
+          >
+            {spacedCode}
           </div>
         )}
       </div>

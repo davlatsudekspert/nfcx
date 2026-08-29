@@ -535,6 +535,8 @@ export default function ProfilePage({ code, catalog }) {
             bgImage={design.bgUrl || ''}
             namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
             nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
+            codePos={Number.isFinite(design.codeX) && Number.isFinite(design.codeY) ? { x: design.codeX, y: design.codeY } : null}
+            codeScale={Number.isFinite(design.codeScale) ? design.codeScale : 1}
             size="md"
           />
         </div>
