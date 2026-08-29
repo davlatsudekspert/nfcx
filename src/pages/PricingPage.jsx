@@ -94,6 +94,13 @@ const TIER_CARD_MIX = {
     iconColor: '#f0cf7a',
     nameColor: '#f2e2b0',
   },
+  premium: {
+    background: 'linear-gradient(120deg, #000 0%, #0c0f13 40%, #333a44 70%, #8b95a6 100%)',
+    border: '1px solid rgba(160,175,200,0.42)',
+    iconBg: 'rgba(190,205,225,0.18)',
+    iconColor: '#dbe3f0',
+    nameColor: '#e2e8f2',
+  },
   free: {
     background: 'linear-gradient(120deg, #000 0%, #070c16 40%, #122340 70%, #26456e 100%)',
     border: '1px solid rgba(90,150,230,0.4)',
