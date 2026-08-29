@@ -84,6 +84,25 @@ const EXAMPLES = {
 };
 const TIERS = ['exclusive', 'premium', 'gold', 'silver', 'free'];
 
+// Ekslyuziv (qora → gold) va Tekin (qora → ko'k) — aralash diagonal
+// gradient. Qolgan darajalar oddiy to'q fon + rangli chap chiziqda qoladi.
+const TIER_CARD_MIX = {
+  exclusive: {
+    background: 'linear-gradient(120deg, #000 0%, #0f0c06 40%, #2a2109 70%, #6b5518 100%)',
+    border: '1px solid rgba(212,175,55,0.4)',
+    iconBg: 'rgba(212,175,55,0.2)',
+    iconColor: '#f0cf7a',
+    nameColor: '#f2e2b0',
+  },
+  free: {
+    background: 'linear-gradient(120deg, #000 0%, #070c16 40%, #122340 70%, #26456e 100%)',
+    border: '1px solid rgba(90,150,230,0.4)',
+    iconBg: 'rgba(90,150,230,0.2)',
+    iconColor: '#8ec0f5',
+    nameColor: '#b9d6f5',
+  },
+};
+
 export default function PricingPage({ catalog, refreshCatalog }) {
   const { t, lang } = useLanguage();
   const [calcVal, onCalcChange] = useMaskedCode();
@@ -116,15 +135,19 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
           {/* ===== 5 daraja — qutichalarda, gem-ikonka va rangli chegara bilan ===== */}
           <div className="mt-6 grid max-w-xl gap-3.5 sm:grid-cols-2">
-            {TIERS.map((tier) => (
+            {TIERS.map((tier) => {
+              const mix = TIER_CARD_MIX[tier];
+              return (
               <div
                 key={tier}
-                className="flex items-center gap-3.5 rounded-xl border-l-4 bg-white/[0.03] p-4"
-                style={{ borderLeftColor: TIER_COLOR[tier], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+                className={`flex items-center gap-3.5 rounded-xl p-4 ${mix ? '' : 'border-l-4'}`}
+                style={mix
+                  ? { background: mix.background, border: mix.border }
+                  : { background: 'rgba(255,255,255,0.03)', borderLeftColor: TIER_COLOR[tier], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: `${TIER_COLOR[tier]}22`, color: TIER_COLOR[tier] }}
+                  style={{ background: mix ? mix.iconBg : `${TIER_COLOR[tier]}22`, color: mix ? mix.iconColor : TIER_COLOR[tier] }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 3h12l4 6-10 12L2 9z" /><path d="M2 9h20" /><path d="M12 3l-3 6 3 12 3-12z" />
@@ -134,9 +157,11 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   <div
                     className="text-lg font-bold"
                     style={
-                      TIER_GRADIENT[tier]
-                        ? { backgroundImage: TIER_GRADIENT[tier], WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
-                        : { color: TIER_COLOR[tier] }
+                      mix
+                        ? { color: mix.nameColor }
+                        : TIER_GRADIENT[tier]
+                          ? { backgroundImage: TIER_GRADIENT[tier], WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
+                          : { color: TIER_COLOR[tier] }
                     }
                   >
                     {t(TIER_LABEL[tier])}
@@ -147,7 +172,8 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   <div className="mt-1 text-xs leading-snug text-base-content/45">{hint[tier]}</div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
