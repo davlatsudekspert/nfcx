@@ -94,7 +94,7 @@ export default function AuctionsPage() {
             {t('Noyob kodlar uchun')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('ochiq savdo')}</span>
           </h1>
           <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
-            {t("Egalari o'z raqamli tashrif qog'ozi kodlarini auksionga qo'yishadi. Taklif berish bepul — g'olib chiqsangiz, 24 soat ichida real so'mda to'laysiz.")}
+            {t("Ba'zi kodlarni to'g'ridan-to'g'ri sotib bo'lmaydi — ular auksion orqali sotiladi. Kim ko'proq taklif qilsa, kod o'shaniki.")}
           </p>
         </div>
         <div className="hidden justify-self-center lg:flex">

@@ -326,8 +326,8 @@ export const DICT = {
   // ─────────────────────────── Auksion ro'yxati ───────────────────────────
   'Noyob kodlar uchun': { ru: 'Открытые торги за', en: 'Open bidding for' },
   'ochiq savdo': { ru: 'уникальные коды', en: 'rare codes' },
-  "Egalari o'z raqamli tashrif qog'ozi kodlarini auksionga qo'yishadi. Taklif berish bepul — g'olib chiqsangiz, 24 soat ichida real so'mda to'laysiz.":
-    { ru: 'Владельцы выставляют коды своих цифровых визиток на аукцион. Ставки бесплатны — при победе вы платите реальными сумами в течение 24 часов.', en: 'Owners put their digital card codes up for auction. Bidding is free — if you win, you pay in real UZS within 24 hours.' },
+  "Ba'zi kodlarni to'g'ridan-to'g'ri sotib bo'lmaydi — ular auksion orqali sotiladi. Kim ko'proq taklif qilsa, kod o'shaniki.":
+    { ru: 'Некоторые коды нельзя купить напрямую — они продаются через аукцион. Кто предложит больше, тому и достанется код.', en: 'Some codes cannot be bought directly — they are sold via auction. Whoever bids the most gets the code.' },
   "G'OLIB SIZ BO'LING": { ru: 'СТАНЬТЕ ПОБЕДИТЕЛЕМ', en: 'BE THE WINNER' },
   "Hozircha faol auksion yo'q.": { ru: 'Пока нет активных аукционов.', en: 'No active auctions yet.' },
   'Joriy narx': { ru: 'Текущая цена', en: 'Current price' },
