@@ -84,8 +84,7 @@ const EXAMPLES = {
 };
 const TIERS = ['exclusive', 'premium', 'gold', 'silver', 'free'];
 
-// Ekslyuziv (qora → gold) va Tekin (qora → ko'k) — aralash diagonal
-// gradient. Qolgan darajalar oddiy to'q fon + rangli chap chiziqda qoladi.
+// Har bir daraja — qoradan o'z rangiga aralashuvchi diagonal gradient fon.
 const TIER_CARD_MIX = {
   exclusive: {
     background: 'linear-gradient(120deg, #000 0%, #0f0c06 40%, #2a2109 70%, #6b5518 100%)',
@@ -100,6 +99,20 @@ const TIER_CARD_MIX = {
     iconBg: 'rgba(190,205,225,0.18)',
     iconColor: '#dbe3f0',
     nameColor: '#e2e8f2',
+  },
+  gold: {
+    background: 'linear-gradient(120deg, #000 0%, #15100a 40%, #3d2f08 70%, #a37e0d 100%)',
+    border: '1px solid rgba(240,196,25,0.4)',
+    iconBg: 'rgba(240,196,25,0.2)',
+    iconColor: '#f0c419',
+    nameColor: '#f5d84e',
+  },
+  silver: {
+    background: 'linear-gradient(120deg, #000 0%, #0d0f11 40%, #2b3036 70%, #626b76 100%)',
+    border: '1px solid rgba(154,163,173,0.4)',
+    iconBg: 'rgba(154,163,173,0.18)',
+    iconColor: '#b6bdc7',
+    nameColor: '#c6cdd6',
   },
   free: {
     background: 'linear-gradient(120deg, #000 0%, #070c16 40%, #122340 70%, #26456e 100%)',
