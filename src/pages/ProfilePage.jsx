@@ -57,13 +57,19 @@ export function vzStyle(theme, record) {
     ? { ...base, '--vz-accent': record.accentColor, '--vz-pill': record.accentColor }
     : base;
   if (record && record.bgUrl) {
-    // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — shuni ko'rsatamiz
-    // (o'qilishi uchun ustiga yarim shaffof qora qatlam qo'shiladi).
+    // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — shuni butun sahifa
+    // bo'ylab ko'rsatamiz (asosiy kontent bloki shaffof bo'ladi). O'qilishi
+    // uchun ustiga qora qatlam qo'shiladi va matn ranglari oqqa o'tkaziladi
+    // (tanlangan temaning yorug'/qorong'iligidan qat'i nazar).
     return {
       ...accented,
-      backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
+      '--vz-ink': '#ffffff',
+      '--vz-ink-dim': 'rgba(255,255,255,0.82)',
+      '--vz-ink-faint': 'rgba(255,255,255,0.58)',
+      '--vz-card': 'rgba(20,22,26,0.55)',
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("${record.bgUrl}")`,
       backgroundSize: 'auto, cover',
-      backgroundPosition: 'center',
+      backgroundPosition: 'center top',
       backgroundRepeat: 'no-repeat',
     };
   }
@@ -444,6 +450,11 @@ export default function ProfilePage({ code, catalog }) {
   const tierColor = TIER_COLOR[tier];
   const tierEmoji = TIER_EMOJI[tier];
   const dark = DARK_THEMES.includes(record.theme || 'classic');
+  // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — asosiy kontent bloki
+  // shaffof bo'ladi, shunda rasm butun sahifa bo'ylab ko'rinadi (aks holda
+  // rasm faqat tepada — karta ortida — ko'rinib qolardi). O'qilishi uchun
+  // vzStyle allaqachon rasm ustiga qora qatlam qo'shadi.
+  const hasBg = !!record.bgUrl;
 
   let topRank = null;
   if (Array.isArray(catalog) && catalog.length > 3) {
@@ -480,7 +491,13 @@ export default function ProfilePage({ code, catalog }) {
             <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
           ))}
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
-          <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
+          {record.isGift ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
+              {'\u{1F381}'} {t("Sovg'a")}
+            </span>
+          ) : (
+            <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
+          )}
         </div>
         <div className="flex gap-1">
           <button title={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
@@ -502,7 +519,7 @@ export default function ProfilePage({ code, catalog }) {
         </div>
       </div>
 
-      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`} style={{ background: 'var(--vz-card)' }}>
+      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] ${hasBg ? '' : `shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`}`} style={{ background: hasBg ? 'transparent' : 'var(--vz-card)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}

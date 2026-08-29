@@ -256,6 +256,7 @@ export const DICT = {
   'Havola tugmalarini shaffof qilish (shisha effekti)': { ru: 'Сделать кнопки-ссылки прозрачными (эффект стекла)', en: 'Make link buttons transparent (glass effect)' },
   "Tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinib turadi. Ustidan yorug'lik yugurish animatsiyasi har doim ishlaydi.":
     { ru: 'Кнопки станут полупрозрачными, фон будет виден сквозь них. Анимация бегущего блика работает всегда.', en: 'Buttons become semi-transparent so the background shows through. The running-shine animation is always on.' },
+  "Sovg'a": { ru: 'Подарок', en: 'Gift' },
 
   "Auksion to'lovi": { ru: 'Оплата аукциона', en: 'Auction payment' },
   "Premium profilga o'tish": { ru: 'Переход на премиум-профиль', en: 'Upgrade to premium profile' },

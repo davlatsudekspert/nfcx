@@ -956,13 +956,14 @@ export async function getRecord(code) {
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride",
             c.theme, c.for_sale AS "forSale", c.sale_price AS "salePrice", c.hashtags, c.price, c.ts, c.views,
-            u.is_premium AS "ownerIsPremium"
+            u.is_premium AS "ownerIsPremium",
+            EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS "isGift"
      FROM cards c LEFT JOIN users u ON u.id = c.user_id
      WHERE c.code = $1`,
     [code]
   );
   if (!rows[0]) return null;
-  return { ...rowToRecord(rows[0]), isPremium: !!rows[0].ownerIsPremium };
+  return { ...rowToRecord(rows[0]), isPremium: !!rows[0].ownerIsPremium, isGift: !!rows[0].isGift };
 }
 
 export async function createRecord(record) {

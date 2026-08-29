@@ -102,6 +102,10 @@ export function tierFromCode(letters, digits) {
 
 export function tierForCode(code) {
   const c = String(code || '').toUpperCase();
+  // Faqat harflardan iborat NFC ID (kompaniya nomi yoki shaxs ismi —
+  // nfcstore.uz/kompaniya, nfcstore.uz/mashrabboy) har doim EKSLYUZIV
+  // darajada ko'rsatiladi (bu kodlar faqat admin tomonidan beriladi).
+  if (/^[A-Z]{3,12}$/.test(c)) return 'exclusive';
   if (c.length !== 6) return 'free';
   return tierFromCode(c.slice(0, 3), c.slice(3, 6));
 }
