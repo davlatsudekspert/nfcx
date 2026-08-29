@@ -277,6 +277,8 @@ export const DICT = {
   'Grafit': { ru: 'Графит', en: 'Graphite' },
   'Platina': { ru: 'Платина', en: 'Platinum' },
   'Zumrad': { ru: 'Изумруд', en: 'Emerald' },
+  'Yozuv o‘lchami': { ru: 'Размер надписи', en: 'Text size' },
+  'Kartadagi ismni sichqoncha bilan ushlab, istalgan joyga suring.': { ru: 'Перетащите имя на карте мышью в нужное место.', en: 'Drag the name on the card with the mouse to place it.' },
   "Buyurtma berish — {n} so'm": { ru: 'Заказать — {n} сум', en: 'Order — {n} UZS' },
 
   "Auksion to'lovi": { ru: 'Оплата аукциона', en: 'Auction payment' },
@@ -679,6 +681,17 @@ export const DICT = {
   'Jismoniy kartalar': { ru: 'Физические карты', en: 'Physical cards' },
   'Tashqi analitika': { ru: 'Внешняя аналитика', en: 'External analytics' },
   'Adminlar': { ru: 'Администраторы', en: 'Admins' },
+  // Promokodlar tab
+  'Promokodlar': { ru: 'Промокоды', en: 'Promo codes' },
+  'Hozircha promokod orqali hech kim qo‘shilmagan.': { ru: 'Пока никто не зарегистрировался по промокоду.', en: 'No one has signed up with a promo code yet.' },
+  'Promokod egalari bo‘yicha': { ru: 'По владельцам промокодов', en: 'By promo-code owner' },
+  'Kimning promosi': { ru: 'Чей промокод', en: 'Whose promo' },
+  'Promokod': { ru: 'Промокод', en: 'Promo code' },
+  'Qo‘shilganlar soni': { ru: 'Кол-во приглашённых', en: 'Sign-ups count' },
+  'To‘liq tarix': { ru: 'Полная история', en: 'Full history' },
+  'Davr': { ru: 'Дата', en: 'Date' },
+  'Kimning promosidan': { ru: 'По чьему промокоду', en: 'From whose promo' },
+  'Kim kirgan': { ru: 'Кто зарегистрировался', en: 'Who signed up' },
   // Stats
   'Davr:': { ru: 'Период:', en: 'Period:' },
   'Bugun': { ru: 'Сегодня', en: 'Today' },

@@ -527,6 +527,8 @@ export default function ProfilePage({ code, catalog }) {
             since={record.ts}
             finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)}
             bgImage={design.bgUrl || ''}
+            namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
+            nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
             size="md"
           />
         </div>

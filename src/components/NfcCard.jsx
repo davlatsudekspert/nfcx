@@ -23,6 +23,8 @@ const FINISHES = {
   'tier-gold': { bg: 'linear-gradient(135deg, #f0c419 0%, #a9840f 45%, #f0c419 100%)', fg: '#1a1206', sub: 'rgba(26,18,6,0.6)', code: '#1a1206' },
   'tier-silver': { bg: 'linear-gradient(135deg, #c4cad2 0%, #8f97a3 45%, #c4cad2 100%)', fg: '#15181c', sub: 'rgba(21,24,28,0.55)', code: '#15181c' },
   'tier-free': { bg: 'linear-gradient(135deg, #22352a 0%, #14201a 55%, #22352a 100%)', fg: '#eafff2', sub: 'rgba(63,174,106,0.65)', code: '#3fae6a', border: '1px solid rgba(63,174,106,0.4)' },
+  // Ink — chuqur indigo-havo rang (sayt "Ink" temasiga mos).
+  ink: { bg: 'linear-gradient(145deg, #10163a 0%, #0a0d1c 55%, #1b2456 100%)', fg: '#eef0fb', sub: 'rgba(142,162,255,0.7)', code: '#8ea2ff', border: '1px solid rgba(142,162,255,0.35)' },
 };
 
 const CARD_SIZES = {
@@ -34,11 +36,18 @@ const CARD_SIZES = {
 const SHADOW_DEFAULT = '0 20px 45px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)';
 const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.28), 0 28px 70px rgba(0,0,0,0.65)';
 
-export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', rim = false, back = false, bgImage = '' }) {
+export default function NfcCard({
+  code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md',
+  rim = false, back = false, bgImage = '', namePos = null, nameScale = 1, onNameChange = null,
+}) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
+  const [dragging, setDragging] = useState(false);
   const f = FINISHES[finish] || FINISHES.black;
   const year = since ? new Date(since).getFullYear() : new Date().getFullYear();
+  const editable = typeof onNameChange === 'function';
+  const positioned = namePos && Number.isFinite(namePos.x) && Number.isFinite(namePos.y);
+  const nameFontPx = 12 * (Number.isFinite(nameScale) ? nameScale : 1);
 
   const onMove = (e) => {
     const el = ref.current;
@@ -46,9 +55,15 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width;
     const py = (e.clientY - rect.top) / rect.height;
+    if (dragging && editable) {
+      onNameChange({ x: Math.min(0.97, Math.max(0.03, px)), y: Math.min(0.95, Math.max(0.05, py)) });
+      return;
+    }
+    if (editable) return; // tahrirlash rejimida 3D egilish yo'q — barqaror sirt
     setTilt({ rx: (0.5 - py) * 16, ry: (px - 0.5) * 20, mx: px * 100, my: py * 100 });
   };
-  const onLeave = () => setTilt({ rx: 0, ry: 0, mx: 50, my: 50 });
+  const onLeave = () => { setDragging(false); setTilt({ rx: 0, ry: 0, mx: 50, my: 50 }); };
+  const startNameDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragging(true); };
 
   const spacedCode = String(code).split('').join(' ');
 
@@ -80,7 +95,8 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={onLeave}
-        className={`relative flex ${CARD_SIZES[size]} cursor-pointer select-none flex-col justify-between overflow-hidden rounded-2xl px-5 py-[18px] transition-transform duration-[250ms] ease-[cubic-bezier(.2,.8,.2,1)] [transform-style:preserve-3d]`}
+        onMouseUp={() => setDragging(false)}
+        className={`relative flex ${CARD_SIZES[size]} ${editable ? 'cursor-default' : 'cursor-pointer'} select-none flex-col justify-between overflow-hidden rounded-2xl px-5 py-[18px] transition-transform duration-[250ms] ease-[cubic-bezier(.2,.8,.2,1)] [transform-style:preserve-3d]`}
         style={{
           background: f.bg,
           color: f.fg,
@@ -107,9 +123,28 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
         <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
         <div className="relative z-[1] text-center font-mono text-[19px] font-bold tracking-[0.14em] [text-shadow:0_1px_1px_rgba(0,0,0,0.15)]" style={{ color: f.code }}>{spacedCode}</div>
         <div className="relative z-[1] flex items-center justify-between">
-          <div className="font-display text-xs font-bold tracking-[0.04em] uppercase">{name || 'ISM FAMILIYA'}</div>
+          {positioned
+            ? <span />
+            : <div className="font-display font-bold tracking-[0.04em] uppercase" style={{ fontSize: `${nameFontPx}px` }}>{name || 'ISM FAMILIYA'}</div>}
           <div className="text-right font-mono text-[8.5px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE<br />{year}</div>
         </div>
+
+        {positioned && (
+          <div
+            onMouseDown={editable ? startNameDrag : undefined}
+            className={`absolute z-[3] font-display font-bold uppercase leading-none tracking-[0.04em] ${editable ? 'cursor-move rounded px-1 outline-dashed outline-1 outline-white/50' : ''}`}
+            style={{
+              left: `${namePos.x * 100}%`,
+              top: `${namePos.y * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              fontSize: `${nameFontPx}px`,
+              whiteSpace: 'nowrap',
+              color: f.fg,
+            }}
+          >
+            {name || 'ISM FAMILIYA'}
+          </div>
+        )}
       </div>
     </div>
   );

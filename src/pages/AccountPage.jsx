@@ -475,7 +475,10 @@ const CARD_FINISHES = [
   { id: 'graphite', label: 'Grafit', css: 'linear-gradient(135deg,#3a3730,#201f1a)' },
   { id: 'tier-premium', label: 'Platina', css: 'linear-gradient(145deg,#eef0f2,#b9bcc4)' },
   { id: 'tier-free', label: 'Zumrad', css: 'linear-gradient(135deg,#22352a,#14201a)' },
+  { id: 'ink', label: 'Ink', css: 'linear-gradient(145deg,#10163a,#0a0d1c,#1b2456)' },
 ];
+
+const DEFAULT_NAME_POS = { x: 0.3, y: 0.83 };
 
 // "Karta dizayni" modali — 2 tab: profil kartasi (rang/matn/fon) va bosma karta.
 function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
@@ -485,6 +488,10 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const [finish, setFinish] = useState(d.finish || 'auto');
   const [name, setName] = useState(d.name || '');
   const [bgUrl, setBgUrl] = useState(d.bgUrl || '');
+  const [namePos, setNamePos] = useState(
+    Number.isFinite(d.nameX) && Number.isFinite(d.nameY) ? { x: d.nameX, y: d.nameY } : DEFAULT_NAME_POS
+  );
+  const [nameScale, setNameScale] = useState(Number.isFinite(d.nameScale) ? d.nameScale : 1);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -508,8 +515,9 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const save = async () => {
     setBusy(true); setMsg(null);
     try {
-      const cardDesign = (finish !== 'auto' || name.trim() || bgUrl)
-        ? { finish, name: name.trim(), bgUrl }
+      const cardDesign = (finish !== 'auto' || name.trim() || bgUrl || nameScale !== 1
+        || namePos.x !== DEFAULT_NAME_POS.x || namePos.y !== DEFAULT_NAME_POS.y)
+        ? { finish, name: name.trim(), bgUrl, nameX: namePos.x, nameY: namePos.y, nameScale }
         : null;
       // Server validatsiyasi to'liq profil obyektini kutadi (ism majburiy) —
       // shuning uchun mavjud maydonlarni ham yuboramiz, faqat cardDesign yangi.
@@ -570,6 +578,15 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Rasm yuklanmoqda...')}</p>}
             </div>
 
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-base-content/70">{t('Yozuv o‘lchami')}: {Math.round(nameScale * 100)}%</span>
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => { setNamePos(DEFAULT_NAME_POS); setNameScale(1); }}>{t('Andozaga qaytarish')}</button>
+              </div>
+              <input type="range" min={0.6} max={2.4} step={0.05} value={nameScale} onChange={(e) => setNameScale(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+              <p className="mt-1.5 text-xs text-base-content/45">{t('Kartadagi ismni sichqoncha bilan ushlab, istalgan joyga suring.')}</p>
+            </div>
+
             <button className="btn btn-primary btn-sm mt-5" onClick={save} disabled={busy || uploading}>
               {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Saqlash')}
             </button>
@@ -578,7 +595,17 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 
           <div className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-4">
             <div className="text-[11px] uppercase tracking-wider text-base-content/40">{t('Oldindan ko‘rish')}</div>
-            <NfcCard code={card.code} name={name || card.name} finish={previewFinish} bgImage={bgUrl || ''} size="sm" since={card.ts} />
+            <NfcCard
+              code={card.code}
+              name={name || card.name}
+              finish={previewFinish}
+              bgImage={bgUrl || ''}
+              size="sm"
+              since={card.ts}
+              namePos={namePos}
+              nameScale={nameScale}
+              onNameChange={setNamePos}
+            />
           </div>
         </div>
       )}

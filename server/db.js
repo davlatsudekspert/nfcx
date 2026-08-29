@@ -1440,6 +1440,26 @@ export async function listMyReferrals(userId) {
   return rows;
 }
 
+// Admin: BARCHA promokod (referral) foydalanishlari — kimning promokodi
+// bilan kim ro'yxatdan o'tgani, sana bilan. Ism sifatida foydalanuvchining
+// asosiy kartasidagi nom ko'rsatiladi (bo'lmasa email).
+export async function adminListReferrals(limit = 2000) {
+  const { rows } = await pool.query(
+    `SELECT r.id, r.created_at AS "createdAt",
+            ru.email AS "referrerEmail", ru.promo_code AS "referrerPromo", cru.name AS "referrerName",
+            rd.email AS "referredEmail", crd.name AS "referredName"
+     FROM referral_uses r
+     JOIN users ru ON ru.id = r.referrer_id
+     JOIN users rd ON rd.id = r.referred_id
+     LEFT JOIN cards cru ON cru.user_id = ru.id AND cru.is_primary = TRUE
+     LEFT JOIN cards crd ON crd.user_id = rd.id AND crd.is_primary = TRUE
+     ORDER BY r.created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
 // Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini
 // "Asosiy" deb belgilaydi — qolganlarining belgisi avtomatik olib
 // tashlanadi (bir vaqtda faqat bitta asosiy bo'lishi mumkin).

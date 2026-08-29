@@ -73,7 +73,7 @@ function isLetterCode(code) {
 }
 
 const THEME_WHITELIST = ['classic', 'midnight', 'emerald', 'royal', 'sunset', 'gold', 'glass'];
-const CARD_FINISH_WHITELIST = ['auto', 'black', 'silver', 'graphite', 'gold', 'tier-exclusive', 'tier-premium', 'tier-gold', 'tier-silver', 'tier-free'];
+const CARD_FINISH_WHITELIST = ['auto', 'black', 'silver', 'graphite', 'gold', 'ink', 'tier-exclusive', 'tier-premium', 'tier-gold', 'tier-silver', 'tier-free'];
 
 const app = express();
 app.disable('x-powered-by');
@@ -248,13 +248,22 @@ function validateBody(body) {
   // dizayni — ixtiyoriy: rang/finish, ustidagi ism matni, fon rasmi.
   let cardDesign = null;
   if (body.cardDesign && typeof body.cardDesign === 'object') {
-    const finish = CARD_FINISH_WHITELIST.includes(body.cardDesign.finish) ? body.cardDesign.finish : 'auto';
-    const cdName = cleanStr(body.cardDesign.name, 40);
+    const cd = body.cardDesign;
+    const finish = CARD_FINISH_WHITELIST.includes(cd.finish) ? cd.finish : 'auto';
+    const cdName = cleanStr(cd.name, 40);
     let cdBg = '';
-    if (typeof body.cardDesign.bgUrl === 'string' && body.cardDesign.bgUrl.startsWith('/uploads/')) {
-      cdBg = cleanStr(body.cardDesign.bgUrl, 300).replace(/[^\w\-./]/g, '');
+    if (typeof cd.bgUrl === 'string' && cd.bgUrl.startsWith('/uploads/')) {
+      cdBg = cleanStr(cd.bgUrl, 300).replace(/[^\w\-./]/g, '');
     }
-    if (finish !== 'auto' || cdName || cdBg) cardDesign = { finish, name: cdName, bgUrl: cdBg };
+    const clampNum = (v, lo, hi) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : null);
+    const nameX = clampNum(cd.nameX, 0.03, 0.97);
+    const nameY = clampNum(cd.nameY, 0.05, 0.95);
+    const nameScale = clampNum(cd.nameScale, 0.5, 3);
+    if (finish !== 'auto' || cdName || cdBg || (nameX != null && nameY != null) || nameScale != null) {
+      cardDesign = { finish, name: cdName, bgUrl: cdBg };
+      if (nameX != null && nameY != null) { cardDesign.nameX = nameX; cardDesign.nameY = nameY; }
+      if (nameScale != null) cardDesign.nameScale = nameScale;
+    }
   }
   // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
   // fayli (xuddi avatar/fon rasmi kabi).

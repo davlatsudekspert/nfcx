@@ -31,6 +31,7 @@ import {
   getAdminByPhone, getAdminById, listAdmins, createAdmin, removeAdmin,
   setAdminTotpSecret, enableAdminTotp, disableAdminTotp, getAdminTotpSecret,
   createNfcGift, listNfcGifts,
+  adminListReferrals,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -706,6 +707,12 @@ adminRouter.get('/export-stats', requireAdmin, async (req, res) => {
 adminRouter.get('/manual-adjustments', async (req, res) => {
   if (!isDbReady()) return res.json({ adjustments: [] });
   res.json({ adjustments: await adminListManualAdjustments() });
+});
+
+// Promokodlar — har bir promokod bilan kim kirgani (referral tarixi).
+adminRouter.get('/referrals', async (req, res) => {
+  if (!isDbReady()) return res.json({ referrals: [] });
+  res.json({ referrals: await adminListReferrals() });
 });
 
 

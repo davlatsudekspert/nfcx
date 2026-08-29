@@ -124,7 +124,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar'];
 
 function StatCard({ label, value }) {
   return (
@@ -1300,6 +1300,67 @@ function GiftNfcIdTab() {
   );
 }
 
+// Promokodlar — har bir promokod bilan qo'shilgan odamlar ro'yxati va hisobi.
+function PromoCodesTab() {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(null);
+
+  useEffect(() => { adminApi('/referrals').then((d) => setRows(d.referrals || [])).catch(() => setRows([])); }, []);
+
+  if (!rows) return <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (rows.length === 0) return <div className="text-base-content/45">{t('Hozircha promokod orqali hech kim qo‘shilmagan.')}</div>;
+
+  // Har bir promokod egasi bo'yicha nechta odam qo'shilganini hisoblaymiz.
+  const byReferrer = {};
+  for (const r of rows) {
+    const key = r.referrerEmail;
+    if (!byReferrer[key]) byReferrer[key] = { name: r.referrerName, email: r.referrerEmail, promo: r.referrerPromo, n: 0 };
+    byReferrer[key].n += 1;
+  }
+  const summary = Object.values(byReferrer).sort((a, b) => b.n - a.n);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="mb-2 text-sm font-bold">{t('Promokod egalari bo‘yicha')}</div>
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="table table-sm">
+            <thead><tr><th>{t('Kimning promosi')}</th><th>{t('Promokod')}</th><th>{t('Qo‘shilganlar soni')}</th></tr></thead>
+            <tbody>
+              {summary.map((s) => (
+                <tr key={s.email}>
+                  <td>{s.name || s.email}<div className="text-[11px] text-base-content/40">{s.email}</div></td>
+                  <td className="font-mono text-xs">{s.promo || '—'}</td>
+                  <td className="font-bold">{s.n}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 text-sm font-bold">{t('To‘liq tarix')} ({rows.length})</div>
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="table table-sm">
+            <thead><tr><th>{t('Davr')}</th><th>{t('Kimning promosidan')}</th><th>{t('Promokod')}</th><th>{t('Kim kirgan')}</th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="whitespace-nowrap text-xs text-base-content/60">{dateTime(new Date(r.createdAt).getTime())}</td>
+                  <td>{r.referrerName || r.referrerEmail}<div className="text-[11px] text-base-content/40">{r.referrerEmail}</div></td>
+                  <td className="font-mono text-xs">{r.referrerPromo || '—'}</td>
+                  <td>{r.referredName || r.referredEmail}<div className="text-[11px] text-base-content/40">{r.referredEmail}</div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, role }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState(0);
@@ -1340,6 +1401,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 10 && isSuperAdmin && <SecurityTab />}
         {tab === 11 && isSuperAdmin && <AdminsTab />}
         {tab === 12 && <GiftNfcIdTab />}
+        {tab === 13 && <PromoCodesTab />}
       </div>
     </main>
   );
