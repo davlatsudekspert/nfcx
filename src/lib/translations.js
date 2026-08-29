@@ -247,9 +247,10 @@ export const DICT = {
   'Kutilmoqda': { ru: 'Ожидается', en: 'Pending' },
   'Jismoniy NFC karta': { ru: 'Физическая NFC-карта', en: 'Physical NFC card' },
   'Tez orada': { ru: 'Скоро', en: 'Coming soon' },
-  'Payme orqali to‘lov tez orada ishga tushadi.': { ru: 'Оплата через Payme скоро заработает.', en: 'Payment via Payme is coming soon.' },
-  'Payme orqali to‘lov tez orada ishga tushadi. Hozircha pullik xizmatlar vaqtincha to‘xtatilgan — mavjud profillaringiz va tekin imkoniyatlar odatdagidek ishlaydi.':
-    { ru: 'Оплата через Payme скоро заработает. Пока платные услуги временно приостановлены — ваши существующие профили и бесплатные возможности работают как обычно.', en: 'Payment via Payme is coming soon. Paid services are temporarily paused for now — your existing profiles and free features work as usual.' },
+  'To‘lov tizimi tayyorlanmoqda': { ru: 'Платёжная система готовится', en: 'The payment system is being prepared' },
+  'Payme orqali to‘lov imkoniyati tez orada ishga tushadi.': { ru: 'Возможность оплаты через Payme скоро заработает.', en: 'Payment via Payme will be available soon.' },
+  'Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.':
+    { ru: 'Платформа в стадии развития. Некоторые возможности заработают в ближайшее время.', en: 'The platform is under active development. Some features will go live soon.' },
   "Auksionda g'olib bo'lsangiz, 24 soat ichida to'lov qilish talab etiladi. To'lov tizimi vaqtincha to'xtatilgani uchun hozircha taklif berish yopiq.":
     { ru: 'Если вы выиграете аукцион, оплата требуется в течение 24 часов. Поскольку платёжная система временно приостановлена, ставки сейчас закрыты.', en: 'If you win an auction, payment is required within 24 hours. Since the payment system is temporarily paused, bidding is currently closed.' },
   'Havola tugmalarini shaffof qilish (shisha effekti)': { ru: 'Сделать кнопки-ссылки прозрачными (эффект стекла)', en: 'Make link buttons transparent (glass effect)' },

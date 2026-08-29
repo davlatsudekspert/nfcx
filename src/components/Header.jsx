@@ -35,6 +35,16 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-base-100/80 backdrop-blur-md">
+      {/* BETA e'lon lentasi — doimiy aylanuvchi marquee */}
+      <div className="overflow-hidden border-b border-white/10 bg-accent/10">
+        <div className="flex w-max animate-[marqueeScroll_30s_linear_infinite] whitespace-nowrap py-1 will-change-transform">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span key={i} className="px-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+              {'✨'} NFCSTORE BETA — {t('Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.')}
+            </span>
+          ))}
+        </div>
+      </div>
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14">
         <div className="flex-1">
           <button onClick={() => go('/')} className="flex cursor-pointer items-center gap-2.5 text-[15px] font-extrabold tracking-wide">

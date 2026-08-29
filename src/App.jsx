@@ -47,7 +47,20 @@ const STATIC_ROUTES = {
   tolovlar: PaymentsPage,
   'karta-dizayni': CardDesignerPage,
 };
-const RESERVED = new Set(Object.keys(STATIC_ROUTES).filter(Boolean));
+// STATIC_ROUTES'dan tashqari, if-zanjirida ishlov beriladigan sahifalar ham
+// "band" hisoblanadi — aks holda /reyting kabi manzillar profil kodi deb
+// noto'g'ri talqin qilinishi mumkin.
+const RESERVED = new Set([
+  ...Object.keys(STATIC_ROUTES).filter(Boolean),
+  'reyting', 'kompaniyalar', 'bildirishnomalar', 'sozlamalar',
+]);
+
+// Profil sifatida hal qilinadigan manzil: standart AAA000, ro'yxatdan o'tishda
+// beriladigan 8 xonali ID, YOKI faqat-harfli so'z (3–16 belgi — kompaniya /
+// maxsus profil nomi, masalan nfcstore.uz/kompaniya). Harfli kodlar bandlash
+// oqimida o'chirilgan (parseAnyCode ularni qaytarmaydi), lekin admin bergan
+// bunday profillar shu URL orqali ochilishi SHART.
+const ROUTE_PROFILE_RE = /^(?:[A-Za-z]{3}[0-9]{3}|[0-9]{8}|[A-Za-z]{3,12})$/;
 
 export default function App() {
   const route = usePathRoute();
@@ -67,10 +80,11 @@ export default function App() {
   let bare = false;
   const isAuctionDetail = cleanRoute.startsWith('auksion/');
   const isMessagesDetail = cleanRoute.startsWith('xabarlar/');
-  if (!RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail) {
-    const parsedRoute = cleanRoute ? parseAnyCode(cleanRoute) : null;
-    if (parsedRoute) {
-      page = <ProfilePage key={parsedRoute.code} code={parsedRoute.code} catalog={catalog} />;
+  if (!RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
+    const parsedRoute = parseAnyCode(cleanRoute);
+    const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(cleanRoute) ? cleanRoute.toUpperCase() : null);
+    if (code) {
+      page = <ProfilePage key={code} code={code} catalog={catalog} />;
       bare = true;
     }
   }

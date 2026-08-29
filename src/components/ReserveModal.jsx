@@ -321,7 +321,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             onClick={submit}
             disabled={busy || paymentBlocked}
             aria-disabled={paymentBlocked}
-            title={paymentBlocked ? t('Payme orqali to‘lov tez orada ishga tushadi.') : undefined}
+            title={paymentBlocked ? t('Payme orqali to‘lov imkoniyati tez orada ishga tushadi.') : undefined}
           >
             {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Band qilish')}
           </button>
