@@ -765,7 +765,7 @@ adminRouter.post('/upload', async (req, res) => {
   if (!m) return res.status(422).json({ error: 'bad_image' });
   const buf = Buffer.from(m[3], 'base64');
   if (!buf.length) return res.status(422).json({ error: 'bad_image' });
-  if (buf.length > 2 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+  if (buf.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
   try {
     await fs.mkdir(UPLOAD_DIR, { recursive: true });
     const ext = m[2] === 'jpeg' || m[2] === 'jpg' ? 'jpg' : m[2];

@@ -88,10 +88,10 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 // Diqqat: bu global limit BARCHA so'rovlarga tegishli va marshrut ichidagi
 // alohida express.json({limit}) chaqiruvlaridan OLDIN ishlaydi — shuning
-// uchun eng katta ehtiyoj (musiqa fayli, ~8MB) ga mos qilib shu yerda
-// belgilanishi kerak, aks holda pastdagi marshrutlarning o'z limiti
-// hech qachon qo'llanilmaydi (so'rov bundan oldinroq rad etiladi).
-app.use(express.json({ limit: '12mb' }));
+// uchun eng katta ehtiyoj (yangilik rasmi 10MB → base64 ~13.5MB, musiqa
+// fayli ~8MB) ga mos qilib shu yerda belgilanishi kerak, aks holda
+// pastdagi marshrutlarning o'z limiti hech qachon qo'llanilmaydi.
+app.use(express.json({ limit: '20mb' }));
 
 // Oddiy xavfsizlik headerlari.
 app.use((req, res, next) => {

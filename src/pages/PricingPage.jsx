@@ -142,15 +142,18 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
           {/* ===== 5 daraja — qutichalarda, gem-ikonka va rangli chegara bilan ===== */}
           <div className="mt-6 grid max-w-xl gap-3.5 sm:grid-cols-2">
-            {TIERS.map((tier) => {
+            {TIERS.map((tier, i) => {
               const mix = TIER_CARD_MIX[tier];
               return (
               <div
                 key={tier}
-                className={`flex items-center gap-3.5 rounded-xl p-4 ${mix ? '' : 'border-l-4'}`}
-                style={mix
-                  ? { background: mix.background, border: mix.border }
-                  : { background: 'rgba(255,255,255,0.03)', borderLeftColor: TIER_COLOR[tier], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+                className={`tier-shine flex items-center gap-3.5 rounded-xl p-4 ${mix ? '' : 'border-l-4'}`}
+                style={{
+                  '--shine-delay': `${i * 0.55}s`,
+                  ...(mix
+                    ? { background: mix.background, border: mix.border }
+                    : { background: 'rgba(255,255,255,0.03)', borderLeftColor: TIER_COLOR[tier], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }),
+                }}
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"

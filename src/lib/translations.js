@@ -31,7 +31,7 @@ export const DICT = {
   'Matn (tarjima)': { ru: 'Текст (перевод)', en: 'Text (translation)' },
   "Bo'sh qoldirsangiz, bu tilda o'zbekcha matn ko'rsatiladi.": { ru: 'Если оставить пустым, на этом языке покажется узбекский текст.', en: 'If left empty, the Uzbek text is shown for this language.' },
   'Fayldan yuklash': { ru: 'Загрузить файл', en: 'Upload file' },
-  'Rasm hajmi juda katta (maks. 2 MB).': { ru: 'Изображение слишком большое (макс. 2 МБ).', en: 'Image is too large (max 2 MB).' },
+  'Rasm hajmi juda katta (maks. 10 MB).': { ru: 'Изображение слишком большое (макс. 10 МБ).', en: 'Image is too large (max 10 MB).' },
   'Rasmni yuklab bo‘lmadi.': { ru: 'Не удалось загрузить изображение.', en: 'Could not upload the image.' },
   'Katalog': { ru: 'Каталог', en: 'Catalog' },
   'Reyting': { ru: 'Рейтинг', en: 'Ranking' },

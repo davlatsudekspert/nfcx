@@ -1413,7 +1413,7 @@ function NewsTab() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { setErr(t('Rasm hajmi juda katta (maks. 2 MB).')); return; }
+    if (file.size > 10 * 1024 * 1024) { setErr(t('Rasm hajmi juda katta (maks. 10 MB).')); return; }
     setUploading(true); setErr(null);
     const reader = new FileReader();
     reader.onload = async () => {
