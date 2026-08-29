@@ -277,6 +277,9 @@ export const DICT = {
   'Grafit': { ru: 'Графит', en: 'Graphite' },
   'Platina': { ru: 'Платина', en: 'Platinum' },
   'Zumrad': { ru: 'Изумруд', en: 'Emerald' },
+  'Ism o‘lchami': { ru: 'Размер имени', en: 'Name size' },
+  'NFC ID o‘lchami': { ru: 'Размер NFC ID', en: 'NFC ID size' },
+  'Kartadagi ism va NFC ID ni sichqoncha bilan ushlab, istalgan joyga suring.': { ru: 'Перетащите имя и NFC ID на карте мышью в нужное место.', en: 'Drag the name and NFC ID on the card with the mouse to place them.' },
   "Buyurtma berish — {n} so'm": { ru: 'Заказать — {n} сум', en: 'Order — {n} UZS' },
 
   "Auksion to'lovi": { ru: 'Оплата аукциона', en: 'Auction payment' },

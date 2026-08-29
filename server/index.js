@@ -263,8 +263,20 @@ function validateBody(body) {
     if (typeof cd.bgUrl === 'string' && cd.bgUrl.startsWith('/uploads/')) {
       cdBg = cleanStr(cd.bgUrl, 300).replace(/[^\w\-./]/g, '');
     }
-    if (finish !== 'auto' || cdName || cdBg) {
+    const clampNum = (v, lo, hi) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : null);
+    const nameX = clampNum(cd.nameX, 0.03, 0.97);
+    const nameY = clampNum(cd.nameY, 0.05, 0.95);
+    const nameScale = clampNum(cd.nameScale, 0.5, 3);
+    const codeX = clampNum(cd.codeX, 0.03, 0.97);
+    const codeY = clampNum(cd.codeY, 0.05, 0.95);
+    const codeScale = clampNum(cd.codeScale, 0.4, 3);
+    if (finish !== 'auto' || cdName || cdBg || (nameX != null && nameY != null) || nameScale != null
+        || (codeX != null && codeY != null) || codeScale != null) {
       cardDesign = { finish, name: cdName, bgUrl: cdBg };
+      if (nameX != null && nameY != null) { cardDesign.nameX = nameX; cardDesign.nameY = nameY; }
+      if (nameScale != null) cardDesign.nameScale = nameScale;
+      if (codeX != null && codeY != null) { cardDesign.codeX = codeX; cardDesign.codeY = codeY; }
+      if (codeScale != null) cardDesign.codeScale = codeScale;
     }
   }
   // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
