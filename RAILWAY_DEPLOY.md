@@ -37,6 +37,20 @@ Qo‘shimcha xavfsiz production qiymatlari:
 
 Admin, Telegram va to‘lov provayderi maxfiy qiymatlarini repositoryga commit qilmang. Ularni faqat Railway Variables bo‘limida saqlang.
 
-## Upload fayllari
+## Upload fayllari (avatar, musiqa, yangilik rasmlari)
 
-Railway container fayl tizimi doimiy emas. Foydalanuvchi yuklagan fayllarni saqlash kerak bo‘lsa, Volume qo‘shib `/app/server/uploads` manziliga ulang yoki tashqi object storage’dan foydalaning.
+Railway container fayl tizimi doimiy emas — har deploy’da `server/uploads/`
+tozalanadi. Fayllar doimiy saqlanishi uchun **Railway Volume** qo‘shing:
+
+1. Railway’da servisni oching → **Settings → Volumes → New Volume**.
+2. Mount path: istalgan yo‘l — masalan `/data` (aynan `/app/server/uploads`
+   bo‘lishi shart emas).
+3. Saqlang va servisni qayta deploy qiling.
+
+Volume ulanganda Railway `RAILWAY_VOLUME_MOUNT_PATH` env’ini avtomatik
+beradi; kod (`server/paths.js`) yuklamalarni o‘sha doimiy diskdagi
+`<mount>/uploads` papkasiga yozadi. Server ishga tushganda logда
+`Yuklamalar papkasi: … (DOIMIY | VAQTINCHALIK)` ko‘rinadi.
+
+Volume’gacha yuklangan rasmlar tiklanmaydi — ularni qayta yuklash kerak.
+Bepul/Trial plan: 0.5 GB, Hobby: 5 GB gacha.

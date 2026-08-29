@@ -45,6 +45,7 @@ import { startBot, notifyOrderPaidAuto, sendTelegramOtp, notifyAdminSupportMessa
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
 import { adminRouter } from './admin.js';
+import { UPLOAD_DIR, UPLOADS_PERSISTENT } from './paths.js';
 
 const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
 const AUCTION_MAX_HOURS = 72;
@@ -1390,7 +1391,6 @@ app.post('/api/records/:code/view', async (req, res) => {
 
 // ---------- Rasm yuklash ----------
 
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const IMAGE_RE = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,(.+)$/;
 
 app.post('/api/upload', async (req, res) => {
@@ -1594,6 +1594,7 @@ initDb()
   .finally(() => {
     app.listen(PORT, () => {
       console.log(`[server] NFCSTORE server ${PORT}-portda ishga tushdi. DB: ${isDbReady() ? 'ulangan' : 'ulanmagan (fallback rejim)'}`);
+      console.log(`[server] Yuklamalar papkasi: ${UPLOAD_DIR} (${UPLOADS_PERSISTENT ? 'DOIMIY — Railway Volume' : 'VAQTINCHALIK — deploy’da yo’qoladi'})`);
       startBot();
     });
   });

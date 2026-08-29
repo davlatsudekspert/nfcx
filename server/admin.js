@@ -12,8 +12,8 @@ import express from 'express';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { generateSecret as totpGenerateSecret, generateURI as totpGenerateURI, verify as totpVerify } from 'otplib';
+import { UPLOAD_DIR } from './paths.js';
 import { hashPassword, verifyPassword } from './auth.js';
 import { sendTelegramOtp } from './bot.js';
 import {
@@ -59,8 +59,8 @@ function adminLoginLimiter(req, res, next) {
 
 const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
 
-// Rasm yuklash (yangiliklar uchun) — index.js bilan bir xil papka.
-const UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'uploads');
+// Rasm yuklash (yangiliklar uchun) — UPLOAD_DIR paths.js'dan (index.js
+// ham xuddi shu papkani ishlatadi).
 const IMAGE_DATA_RE = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,(.+)$/;
 
 // Xotiradagi sessiya jadvali — admin biror marta bittasi, doim shu process
