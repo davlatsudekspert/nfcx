@@ -150,7 +150,7 @@ export const DICT = {
     { ru: 'Изготовим брендированные NFC-карты для сотрудников, менеджеров, торговых представителей и партнёров вашей организации.', en: 'We produce branded NFC cards for your organization’s employees, managers, sales reps and partners.' },
   'Kompaniya logotipi va dizayni': { ru: 'Логотип и дизайн компании', en: 'Company logo and design' },
   'Har bir xodim uchun alohida NFC ID': { ru: 'Отдельный NFC ID для каждого сотрудника', en: 'A separate NFC ID for each employee' },
-  'Telefon orqali bir tegishda kontakt va ma’lumotlarni ochish': { ru: 'Открытие контактов и данных одним касанием телефона', en: 'Open contacts and details with a single phone tap' },
+  'Kontaktlar va muhim ma’lumotlarni tez ulashish': { ru: 'Быстрый обмен контактами и важной информацией', en: 'Quickly share contacts and key information' },
   'Xodimlar uchun yagona korporativ profil': { ru: 'Единый корпоративный профиль для сотрудников', en: 'A single corporate profile for employees' },
   'Katta miqdordagi buyurtmalar': { ru: 'Крупные заказы', en: 'Large-volume orders' },
   'Individual dizayn va maxsus yechimlar': { ru: 'Индивидуальный дизайн и специальные решения', en: 'Custom design and bespoke solutions' },
@@ -383,8 +383,8 @@ export const DICT = {
   "Raqamli tashrif qog'ozi profilingizga biriktiriladi: {email}. Keyinchalik /account sahifasidan tahrirlashingiz mumkin.":
     { ru: 'Визитка будет привязана к вашему профилю: {email}. Позже вы сможете отредактировать её на странице /account.', en: 'The card will be linked to your profile: {email}. You can edit it later on the /account page.' },
   'Jismoniy NFC karta ham buyurtma qilish': { ru: 'Заказать также физическую NFC-карту', en: 'Also order a physical NFC card' },
-  "— kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha {fee}.":
-    { ru: '— держите карту в руке и открывайте касанием к телефону. Дополнительно {fee}.', en: '— hold the card in your hand and open it by tapping a phone. Extra {fee}.' },
+  '— profilingizni jismoniy karta orqali ulashasiz. Qo‘shimcha {fee}.':
+    { ru: '— делитесь профилем с помощью физической карты. Дополнительно {fee}.', en: '— share your profile with a physical card. Extra {fee}.' },
   'Qabul qiluvchi ism-familya *': { ru: 'Имя и фамилия получателя *', en: 'Recipient full name *' },
   'Telefon (yetkazib berish uchun) *': { ru: 'Телефон (для доставки) *', en: 'Phone (for delivery) *' },
   "To'liq manzil (shahar, tuman, ko'cha, uy) *": { ru: 'Полный адрес (город, район, улица, дом) *', en: 'Full address (city, district, street, house) *' },
@@ -441,6 +441,20 @@ export const DICT = {
   "Xatolik yuz berdi. Ma'lumotlarni tekshirib qayta urinib ko'ring.": { ru: 'Произошла ошибка. Проверьте данные и попробуйте снова.', en: 'Something went wrong. Check your details and try again.' },
 
   // ─────────────────────────── Bosh sahifa (HomePage) ───────────────────────────
+  'Sizning raqamli profilingiz. Har doim yoningizda.': { ru: 'Ваш цифровой профиль. Всегда с вами.', en: 'Your digital profile. Always with you.' },
+  'Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va boshqa muhim ma’lumotlaringizni bitta profilda jamlang. Uni NFC karta yoki havola orqali qulay ulashing.':
+    { ru: 'Соберите номер телефона, социальные сети, сайт и другую важную информацию в одном профиле. Удобно делитесь им через NFC-карту или ссылку.', en: 'Bring your phone number, social profiles, website and other important details into one profile. Share it easily with an NFC card or link.' },
+  'Tez ulashish': { ru: 'Быстрый обмен', en: 'Quick sharing' },
+  'NFC yoki havola orqali': { ru: 'Через NFC или ссылку', en: 'Via NFC or link' },
+  'Ulashish shunchalik oson.': { ru: 'Делиться так просто.', en: 'Sharing is this simple.' },
+  'NFCSTORE — tanishuv va aloqa almashishning zamonaviy usuli.': { ru: 'NFCSTORE — современный способ знакомиться и обмениваться контактами.', en: 'NFCSTORE is a modern way to connect and exchange contact details.' },
+  'Kartani yaqinlashtiring': { ru: 'Поднесите карту', en: 'Hold the card near the phone' },
+  'NFC kartani telefonning orqa qismiga tuting.': { ru: 'Поднесите NFC-карту к задней части телефона.', en: 'Hold the NFC card near the back of the phone.' },
+  'Profil ochiladi': { ru: 'Профиль откроется', en: 'The profile opens' },
+  'Hech qanday ilova kerak emas — raqamli profil brauzerda ochiladi.': { ru: 'Приложение не требуется — цифровой профиль откроется в браузере.', en: 'No app is required — the digital profile opens in the browser.' },
+  'Kontaktni saqlang': { ru: 'Сохраните контакт', en: 'Save the contact' },
+  'Ism, telefon va boshqa ma’lumotlar bir tugma orqali kontaktlarga qo‘shiladi.': { ru: 'Имя, телефон и другие данные добавляются в контакты одной кнопкой.', en: 'A single button adds the name, phone number and other details to contacts.' },
+  'Profil yarating, kontaktlaringizni kiriting va ularni NFC karta yoki havola orqali ulashing.': { ru: 'Создайте профиль, добавьте контакты и делитесь ими через NFC-карту или ссылку.', en: 'Create a profile, add your contact details and share them with an NFC card or link.' },
   "O'z profilingiz — nfcstore.uz/ismingiz": { ru: 'Ваш профиль — nfcstore.uz/имя', en: 'Your profile — nfcstore.uz/yourname' },
   'Shaxsiy raqamli profilingiz — har doim yoningizda.': { ru: 'Ваш личный цифровой профиль — всегда с вами.', en: 'Your personal digital profile — always with you.' },
   'Format:': { ru: 'Формат:', en: 'Format:' },

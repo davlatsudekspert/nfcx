@@ -939,7 +939,8 @@ function rowToRecord(row) {
 
 export async function listRecords() {
   const { rows } = await pool.query(
-    `SELECT ${SELECT_FIELDS} FROM cards ORDER BY ts DESC LIMIT 500`
+    `SELECT code, name, role, avatar_url AS "avatarUrl", tg, hashtags, theme, price, ts, views
+     FROM cards ORDER BY ts DESC LIMIT 500`
   );
   return rows.map(rowToRecord);
 }
@@ -953,7 +954,7 @@ export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
-            c.links_transparent AS "linksTransparent",
+            c.links_transparent AS "linksTransparent", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride", c.card_design AS "cardDesign",

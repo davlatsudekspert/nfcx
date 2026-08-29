@@ -49,6 +49,12 @@ const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
 const AUCTION_MAX_HOURS = 72;
 const PHYSICAL_CARD_FEE = 200_000;  // Jismoniy karta narxi
 const PREMIUM_UPGRADE_FEE = 5_000;  // Premium profil bo'lish narxi
+// To'lovlar production uchun alohida feature flag bilan yoqiladi. Faqat Payme
+// credentiallari mavjudligi to'lov oqimini tasodifan faollashtirmasligi kerak.
+const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
+function paymentsEnabled() {
+  return PAYMENTS_ENABLED && paymeEnabled();
+}
 // Diqqat: obuna (follow) bepul — quyidagi ikkita o'zgaruvchi endi
 // ishlatilmaydi, lekin kelajakda kerak bo'lib qolsa deb saqlab qo'yildi.
 // const PREMIUM_FOLLOW_FEE = 500;
@@ -85,7 +91,6 @@ app.set('trust proxy', 1);
 // belgilanishi kerak, aks holda pastdagi marshrutlarning o'z limiti
 // hech qachon qo'llanilmaydi (so'rov bundan oldinroq rad etiladi).
 app.use(express.json({ limit: '12mb' }));
-app.use('/api/admin', adminRouter);
 
 // Oddiy xavfsizlik headerlari.
 app.use((req, res, next) => {
@@ -98,6 +103,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Admin API ham yuqoridagi umumiy xavfsizlik headerlarini olishi kerak.
+app.use('/api/admin', adminRouter);
 
 // Production'da HTTP so'rovlarni HTTPS'ga majburiy yo'naltirish.
 // MUHIM: /api/health BUNDAN ISTISNO — Railway'ning ichki health-check
@@ -317,7 +325,7 @@ app.post('/api/premium/request', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
+  if (!paymentsEnabled()) return res.status(503).json({ error: 'payments_disabled' });
   try {
     const result = await requestPremium(user.id, PREMIUM_UPGRADE_FEE);
     if (result.error) return res.status(409).json(result);
@@ -628,7 +636,7 @@ app.post('/api/pay/paynet/webhook', async (req, res) => {
 // ---------- Payme webhook (hamyonni to'ldirish) ----------
 // Kabinetda Callback URL: https://<domen>/api/pay/payme
 app.post('/api/pay/payme', async (req, res) => {
-  if (!paymeEnabled()) {
+  if (!paymentsEnabled()) {
     return res.json({ jsonrpc: '2.0', id: req.body?.id ?? null, error: { code: -32601, message: 'payme disabled' } });
   }
   if (!verifyPaymeAuth(req)) {
@@ -649,7 +657,7 @@ app.post('/api/pay/payme', async (req, res) => {
 // (alohida cron server bo'lmagani uchun — har so'rovda "dangasa" tekshirish).
 // E-wallet yo'q: bu yerda pul harakatlanmaydi, faqat holat o'zgaradi.
 async function settleExpiredAuctions() {
-  if (!isDbReady()) return;
+  if (!isDbReady() || !paymentsEnabled()) return;
   try {
     const expired = await listExpiredActiveAuctions();
     for (const a of expired) {
@@ -716,6 +724,7 @@ app.post('/api/auction-requests', auctionRequestLimiter, async (req, res) => {
 
 app.post('/api/auctions/:id/bid', async (req, res) => {
   const user = await currentUser(req);
+  if (!paymentsEnabled()) return res.status(503).json({ error: 'payments_disabled' });
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (user.bannedUntil) return res.status(403).json({ error: 'BANNED', bannedUntil: user.bannedUntil });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
@@ -742,7 +751,7 @@ app.post('/api/auctions/:id/pay', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (user.bannedUntil) return res.status(403).json({ error: 'BANNED', bannedUntil: user.bannedUntil });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
+  if (!paymentsEnabled()) return res.status(503).json({ error: 'payments_disabled' });
 
   const id = Number(req.params.id);
   const auction = await getAuction(id);
@@ -973,7 +982,22 @@ app.get('/api/auctions/won/pending', async (req, res) => {
 app.get('/api/records', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    res.json(await listRecords());
+    const records = await listRecords();
+    // Katalogga faqat ko'rsatish/qidirish uchun zarur maydonlar chiqadi.
+    // Telefon, email, to'lov karta raqamlari va boshqa profil tafsilotlari
+    // hech qachon ommaviy ro'yxat payloadiga qo'shilmaydi.
+    res.json(records.map((record) => ({
+      code: record.code,
+      name: record.name,
+      role: record.role,
+      avatarUrl: record.avatarUrl,
+      tg: record.tg,
+      hashtags: record.hashtags,
+      theme: record.theme,
+      price: record.price,
+      ts: record.ts,
+      views: record.views,
+    })));
   } catch (err) {
     console.error('[api] listRecords:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
@@ -987,16 +1011,18 @@ app.get('/api/records/:code', async (req, res) => {
   try {
     const rec = await getRecord(code);
     if (!rec) return res.status(404).json({ error: 'not_found' });
-    // MUHIM: hidePhone yoqilgan bo'lsa, telefon raqami faqat egasiga
-    // qaytariladi — frontendda yashirish YETARLI EMAS, chunki tarmoq
-    // so'rovini ko'rgan har kim raqamni ko'rib qolishi mumkin edi.
-    if (rec.hidePhone) {
-      const user = await currentUser(req);
-      const owner = await getRecordOwner(code);
-      if (!user || owner !== user.id) {
-        rec.phone = '';
-      }
+    // Maxfiy maydonlar faqat egasiga tegishli /api/auth/me javobida bor.
+    // Public profil API to'lov karta raqamlarini hech qachon qaytarmaydi.
+    const user = await currentUser(req);
+    const owner = await getRecordOwner(code);
+    const isOwner = !!user && owner === user.id;
+    if (rec.hidePhone && !isOwner) {
+      rec.phone = '';
     }
+    // Bu endpoint owner ochganida ham public kontrakt bo'lib qoladi.
+    // Tahrirlash uchun to'liq ma'lumot /api/auth/me orqali olinadi.
+    rec.cardNumber = '';
+    rec.cardNumbers = [];
     res.json(rec);
   } catch (err) {
     console.error('[api] getRecord:', err.message);
@@ -1066,24 +1092,10 @@ app.post('/api/records/:code', async (req, res) => {
       return res.status(201).json(created);
     }
 
-    // Payme ulanmagan bo'lsa: pullik kod BEPUL berilmaydi (aks holda prod'da
-    // barcha pullik kodlar tekinga ketardi). Faqat ALLOW_FREE_CHECKOUT=1
-    // env qo'yilgan lokal test muhitida to'lovsiz band qilishga ruxsat.
-    // MUHIM: bu yerda soxta to'lov, soxta tranzaksiya YO'Q — shunchaki
-    // pullik oqim to'sib qo'yiladi.
-    if (!paymeEnabled()) {
-      if (process.env.ALLOW_FREE_CHECKOUT !== '1') {
-        return res.status(503).json({ error: 'payme_disabled' });
-      }
-      const created = await createRecord({ ...record, code, price });
-      if (!created) return res.status(409).json({ error: 'already_taken' });
-      await attachCardToUser(code, user.id);
-      if (wantsPhysicalCard) {
-        await createPhysicalCard({ linkedCode: code, ownerUserId: user.id, ...shipping });
-      }
-      if (discountApplied > 0) await consumeDiscount(user.id);
-      console.log(`[api] (payme o'chiq — dev rejim) Band qilindi: ${code} — ${created.name} (${price} so'm)`);
-      return res.status(201).json(created);
+    // Pullik ID/jismoniy karta to'lovsiz yaratilmaydi. To'lov tizimi tayyor
+    // bo'lmaguncha oqim xavfsiz holatda yopiq turadi.
+    if (!paymentsEnabled()) {
+      return res.status(503).json({ error: 'payments_disabled' });
     }
 
     // Real rejim: karta darhol YARATILMAYDI. Avval to'lov kutilayotgan
@@ -1251,7 +1263,7 @@ app.post('/api/records/:code/set-primary', async (req, res) => {
 app.post('/api/records/:code/order-physical-card', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  if (!paymeEnabled()) return res.status(503).json({ error: 'payme_disabled' });
+  if (!paymentsEnabled()) return res.status(503).json({ error: 'payments_disabled' });
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
 
@@ -1526,7 +1538,7 @@ app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) 
 
     // Mavjud login tizimi bilan bir xil — darhol tizimga kirgan holatda.
     const token = newSessionToken();
-    await createSession(user.id, token);
+    await createSession(token, user.id, SESSION_TTL_MS);
     res.setHeader('Set-Cookie', sessionCookie(token, isSecureReq(req)));
     logAdminActivity({ action: 'nfc_gift_activated', details: `${code} — ${email}`, ip: req.ip }).catch(() => {});
     res.status(201).json({ ok: true, code });

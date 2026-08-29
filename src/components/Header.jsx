@@ -82,6 +82,13 @@ const NAV = [
   ['Savollar', '/savollar'],
 ];
 
+const DESKTOP_NAV = [
+  ['Qanday ishlaydi', '/qanday-ishlaydi'],
+  ['Narxlar', '/narxlar'],
+  ['Kompaniyalar', '/kompaniyalar'],
+  ['Savollar', '/savollar'],
+];
+
 export default function Header() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -118,15 +125,15 @@ export default function Header() {
           </button>
         </div>
 
-        <nav className="hidden items-center gap-7 text-sm text-base-content/60 md:flex">
-          {NAV.map(([label, href]) => (
+        <nav className="hidden items-center gap-6 text-sm text-base-content/60 xl:flex">
+          {DESKTOP_NAV.map(([label, href]) => (
             <button key={href} onClick={() => go(href)} className="cursor-pointer transition-colors hover:text-base-content">
               {t(label)}
             </button>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden items-center gap-2 xl:flex">
           <HeaderSearch />
           {user && MESSAGING_ENABLED && (
             <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
@@ -147,11 +154,11 @@ export default function Header() {
           ) : (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>{t('Kirish')}</button>
           )}
-          <button className="btn btn-primary btn-sm" onClick={() => go('/')}>{t("Raqamli tashrif qog'ozi olish")}</button>
+          <button className="btn btn-primary btn-sm" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
           <LanguageSwitcher />
         </div>
 
-        <div className="flex items-center gap-1 md:hidden">
+        <div className="flex items-center gap-1 xl:hidden">
           <LanguageSwitcher />
           <button aria-label="Menyu" className="btn btn-ghost btn-sm btn-square" onClick={() => setOpen(!open)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -162,7 +169,7 @@ export default function Header() {
       </div>
 
       {open && (
-        <div className="border-t border-white/10 px-5 pb-4 md:hidden">
+        <div className="border-t border-white/10 px-5 pb-4 xl:hidden">
           <div className="py-3">
             <HeaderSearch onNavigate={go} />
           </div>
@@ -185,7 +192,7 @@ export default function Header() {
               )}
             </li>
           </ul>
-          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/')}>{t("Raqamli tashrif qog'ozi olish")}</button>
+          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
         </div>
       )}
     </header>

@@ -80,9 +80,9 @@ function RevealSection({ id, children }) {
 
 const TEASERS = [
   { href: '/narxlar', title: 'Narxlar', desc: "Kalkulyator bilan aniq narxni hisoblang va naqshlar qanday ta'sir qilishini ko'ring.", go: "Narxlarni ko'rish →" },
-  { href: '/qanday-ishlaydi', title: 'Qanday ishlaydi', desc: "Bandlashdan profilni sozlash va qayta sotishgacha — olti qadam.", go: "Qadamlarni ko'rish →" },
+  { href: '/qanday-ishlaydi', title: 'Qanday ishlaydi', desc: "Profil yarating, kontaktlaringizni kiriting va ularni NFC karta yoki havola orqali ulashing.", go: "Qadamlarni ko'rish →" },
   { href: '/katalog', title: 'Katalog', desc: "Barcha band qilingan raqamli tashrif qog'ozlar ro'yxati.", go: "Katalogni ochish →" },
-  { href: '/savollar', title: 'Savollar', desc: "Narx, egalik, qayta sotish va profil haqida ko'p so'raladigan savollar.", go: 'FAQ →' },
+  { href: '/savollar', title: 'Savollar', desc: "Profil, NFC karta, kontakt saqlash va xavfsizlik bo'yicha javoblar.", go: 'FAQ →' },
 ];
 
 export default function HomePage({ catalog, refreshCatalog }) {
@@ -118,27 +118,40 @@ export default function HomePage({ catalog, refreshCatalog }) {
             <Reveal>
               <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
                 <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-                {t("O'z profilingiz — nfcstore.uz/ismingiz")}
+                {t("NFC karta + shaxsiy raqamli profil")}
               </span>
             </Reveal>
 
             <Reveal delay="[transition-delay:80ms]">
               <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
                 {lang === 'uz' ? (
-                  <>Shaxsiy raqamli profilingiz — <span className="bg-gradient-to-br from-[#f0cf7a] to-[#b3860f] bg-clip-text text-transparent">har doim yoningizda</span>.</>
-                ) : t('Shaxsiy raqamli profilingiz — har doim yoningizda.')}
+                  <>Sizning <span className="text-[#e8c165]">raqamli profilingiz</span>. Har doim yoningizda.</>
+                ) : t('Sizning raqamli profilingiz. Har doim yoningizda.')}
               </h1>
             </Reveal>
 
             <Reveal delay="[transition-delay:160ms]">
               <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
-                {t('Format:')} <b className="font-mono">AAA000</b> {t("— 3 lotin harfi + 3 raqam. Sizniki bo'lgach — akkauntingizdan tahrirlaysiz: rasm, kontaktlar, ijtimoiy tarmoqlar, dizayn mavzusi. Xohlasangiz, keyinroq qayta ham sotishingiz mumkin.")}
+                {t("Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va boshqa muhim ma’lumotlaringizni bitta profilda jamlang. Uni NFC karta yoki havola orqali qulay ulashing.")}
               </p>
             </Reveal>
 
-            {/* Glassmorphism search */}
+            <Reveal delay="[transition-delay:220ms]">
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+                <button onClick={() => navigate('/register')} className="btn btn-primary min-h-12 px-6">{t('Bepul profil yaratish')}</button>
+                <button onClick={() => navigate('/qanday-ishlaydi')} className="btn btn-ghost min-h-12 px-6">{t('Qanday ishlaydi')}</button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-base-content/50">
+                <span>✓ {t('Bepul boshlash')}</span>
+                <span>✓ {t('Telefon ilovasi shart emas')}</span>
+                <span>✓ {t('Kontaktni .VCF formatida saqlash')}</span>
+              </div>
+            </Reveal>
+
+            {/* Ixtiyoriy maxsus NFC ID qidiruvi */}
             <Reveal delay="[transition-delay:240ms]">
-              <div className="mt-6 max-w-xl rounded-[20px] border border-[rgba(201,162,39,0.25)] bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-3 pl-[18px] shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+              <div className="mt-7 max-w-xl rounded-[18px] border border-white/10 bg-white/[0.035] p-3 pl-[18px]">
+                <div className="mb-2 text-xs font-semibold text-base-content/55">{t('Maxsus NFC ID tekshirish (ixtiyoriy)')}</div>
                 <div className="flex items-center gap-2.5">
                   <div className="flex min-w-0 flex-1 items-center rounded-lg border border-[rgba(201,162,39,0.20)] bg-black/45 focus-within:border-[rgba(212,175,90,0.6)] focus-within:shadow-[0_0_0_3px_rgba(201,162,39,0.18)]">
                     <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">nfcstore.uz/</span>
@@ -196,12 +209,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   <div className="text-xs text-base-content/50">{t('Band qilingan')}</div>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold">{t("0 so'mdan")}</div>
-                  <div className="text-xs text-base-content/50">{t("Tekin darajadagi ID'lar")}</div>
+                  <div className="text-lg font-bold">{t('Bitta havola')}</div>
+                  <div className="text-xs text-base-content/50">{t('Barcha kontaktlaringiz')}</div>
                 </div>
                 <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold">{t("99 000 so'm")}</div>
-                  <div className="text-xs text-base-content/50">{t('Silver darajadan boshlab')}</div>
+                  <div className="text-lg font-bold">{t('Tez ulashish')}</div>
+                  <div className="text-xs text-base-content/50">{t('NFC yoki havola orqali')}</div>
                 </div>
               </div>
             </Reveal>
@@ -276,6 +289,27 @@ export default function HomePage({ catalog, refreshCatalog }) {
       </section>
 
       <div className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
+        <RevealSection id="qanday-ishlaydi-qisqa">
+          <div className="max-w-2xl">
+            <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('3 oddiy qadam')}</div>
+            <h2 className="mt-2 text-3xl font-bold">{t('Ulashish shunchalik oson.')}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-base-content/55">{t('NFCSTORE — tanishuv va aloqa almashishning zamonaviy usuli.')}</p>
+          </div>
+          <div className="mt-7 grid gap-4 md:grid-cols-3">
+            {[
+              ['01', 'Kartani yaqinlashtiring', 'NFC kartani telefonning orqa qismiga tuting.'],
+              ['02', 'Profil ochiladi', 'Hech qanday ilova kerak emas — raqamli profil brauzerda ochiladi.'],
+              ['03', 'Kontaktni saqlang', 'Ism, telefon va boshqa ma’lumotlar bir tugma orqali kontaktlarga qo‘shiladi.'],
+            ].map(([n, title, desc]) => (
+              <article key={n} className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
+                <div className="font-mono text-xs text-accent">{n}</div>
+                <h3 className="mt-3 text-lg font-bold">{t(title)}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-base-content/55">{t(desc)}</p>
+              </article>
+            ))}
+          </div>
+        </RevealSection>
+
         <RevealSection id="sahifalar">
           <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('Batafsil')}</div>
           <h2 className="mt-2 text-2xl font-bold">{t("Sayt bo'ylab")}</h2>
