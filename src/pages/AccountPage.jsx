@@ -625,7 +625,9 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
             </button>
             <div className="mt-3"><PaymentUnavailableNotice /></div>
           </div>
-          <CardDesignerPage embedded code={card.code} />
+          <Suspense fallback={<div className="py-10 text-center text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>}>
+            <CardDesignerPage embedded code={card.code} />
+          </Suspense>
         </div>
       )}
     </Modal>
