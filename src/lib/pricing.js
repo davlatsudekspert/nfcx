@@ -41,8 +41,41 @@ export const LETTER_MULT = 3;
 // tashlandi) — daraja faqat kodning o'zidagi naqshga qarab, avtomatik va
 // har doim bir xil tarzda aniqlanadi. Har darajaning narxi qat'iy (fiks).
 
-// Maxsus so'zlar — harf qismi aynan shu bo'lsa, "maxsus so'z" hisoblanadi.
-const SPECIAL_WORDS = ['VIP', 'UZB', 'BEK', 'CEO'];
+// ── Chiroyli 3-harfli so'zlar ────────────────────────────────────────────
+// EKSKLYUZIV so'zlar — eng yuqori status. Bu so'z bilan boshlangan HAR
+// QANDAY kod (raqamidan qat'i nazar) Ekslyuziv darajaga tushadi (auksion).
+const EXCLUSIVE_WORDS = [
+  'VIP', 'CEO', 'KNG', 'GOD', 'LEG', 'ROY', 'ACE', 'WIN', 'UZB', 'LUX',
+];
+
+// PREMIUM so'zlar — taniqli brendlar, ismlar, shaharlar. Bu so'z + "super"
+// raqam → Premium; bu so'z + oddiy raqam → Gold.
+const PREMIUM_WORDS = [
+  // Avtomobil / brend
+  'BMW', 'AMG', 'GTR', 'AUD', 'GTI', 'GTS', 'EVO', 'RSQ', 'SUV', 'CAR',
+  'KIA', 'BYD', 'RRS', 'LMB', 'TSL', 'PRS', 'MRX',
+  // Status / biznes
+  'BOS', 'TOP', 'PRO', 'MAX', 'BIG', 'ONE', 'MBA', 'DEV', 'DOC', 'LAW',
+  'ART', 'FIT', 'GYM', 'BIZ', 'DJX', 'BND',
+  // O'zbekiston shaharlari / viloyatlari
+  'TAS', 'SAM', 'BUX', 'AND', 'NAV', 'FER', 'XIV', 'NUK', 'JIZ', 'QAR',
+  'TER', 'URG', 'NMG',
+  // O'g'il bolalar ismlari
+  'ALI', 'AZI', 'JAS', 'BOB', 'SAR', 'SHO', 'TIM', 'UMR', 'DAV', 'MIR',
+  'SHX', 'BEK', 'ABR', 'ODI', 'RUS', 'ISL', 'KAM', 'NOD', 'OYB', 'SUX',
+  'FUR', 'ELY', 'DIY', 'HAS', 'HUS', 'ZAF', 'AKM', 'BAX', 'JAV', 'SHR',
+  'AZM', 'FAR', 'TOX', 'ULU', 'XON', 'OTA', 'IBR', 'SUL', 'NUR',
+  // Qizlar ismlari
+  'DIL', 'NIL', 'ZAR', 'NOZ', 'MAL', 'LAY', 'MAD', 'GUL', 'SEV', 'MOX',
+  'LOB', 'IRO', 'MUX', 'SHA', 'ZUL', 'FOT', 'OYS', 'NAF', 'RAY', 'MEH',
+  'KOM', 'NIG', 'MAR', 'MAH', 'XUR',
+  // Universal
+  'SKY', 'SUN', 'FLY', 'JET', 'ICE', 'RED', 'FOX', 'GEM', 'ZEN', 'NEO',
+  'PAY', 'STA',
+];
+
+// Orqaga moslik — eski kod hali ham SPECIAL_WORDS'ga murojaat qilishi mumkin.
+const SPECIAL_WORDS = [...EXCLUSIVE_WORDS, ...PREMIUM_WORDS];
 
 function allSame3(s) {
   return s[0] === s[1] && s[1] === s[2];
@@ -53,11 +86,15 @@ function allSame3(s) {
 function hasAdjacentPair(s) {
   return s[0] === s[1] || s[1] === s[2];
 }
-// "Super" raqam: 001 / 007 / 077 yoki uchtasi bir xil (111, 777, 888 ...).
+// "Super" raqam:
+//   - 001 / 007 / 077
+//   - uchtasi bir xil (111, 777, 888 ...)
+//   - "X0X" — o'rtasi 0, chetlari bir xil, lekin 000 emas (101, 202, 707, 909)
 // "000" bu yerga kirmaydi — u alohida, mustaqil PREMIUM qoidasiga ega.
 function isSuperDigit(d) {
   if (d === '001' || d === '007' || d === '077') return true;
   if (allSame3(d) && d !== '000') return true;
+  if (d[1] === '0' && d[0] === d[2] && d[0] !== '0') return true;
   return false;
 }
 
@@ -65,25 +102,28 @@ function isSuperDigit(d) {
 export function tierFromCode(letters, digits) {
   const lettersAllSame = allSame3(letters);
   const digitsAllSame = allSame3(digits);
-  const special = SPECIAL_WORDS.includes(letters);
+  const exclusiveWord = EXCLUSIVE_WORDS.includes(letters);
+  const premiumWord = PREMIUM_WORDS.includes(letters);
   const superDigit = isSuperDigit(digits);
 
   // 1) EKSKLYUZIV — faqat auksion orqali (admin ochadi, boshlang'ich
   //    narxni admin belgilaydi). "Qaymoqning qaymog'i":
   //    - Uchala harf VA uchala raqam bir xil (AAA777, QQQ000)
-  //    - Maxsus so'z + o'ta nodir raqam (VIP001, UZB077, CEO888)
+  //    - EKSKLYUZIV so'z (VIP, CEO, LUX, GOD ...) — raqamidan qat'i nazar
   if (lettersAllSame && digitsAllSame) return 'exclusive';
-  if (special && superDigit) return 'exclusive';
+  if (exclusiveWord) return 'exclusive';
 
   // 2) PREMIUM — 199 000 so'm
   //    - Oxirgi 3 raqami "000" (KLM000, XYZ000)
-  //    - Maxsus so'z, lekin raqami "super" emas (VIP088, BEK415)
+  //    - PREMIUM so'z (BMW, ALI, TAS ...) + "super" raqam (BMW007, ALI777, TAS101)
   if (digits === '000') return 'premium';
-  if (special) return 'premium';
+  if (premiumWord && superDigit) return 'premium';
 
   // 3) GOLD — 149 000 so'm
+  //    - PREMIUM so'z, lekin raqami oddiy (BMW412, ALI063)
   //    - Faqat uchala harf YOKI faqat uchala raqam bir xil (ikkalasi
   //      birga bo'lsa yuqorida EKSKLYUZIV bo'lib ketgan bo'lardi)
+  if (premiumWord) return 'gold';
   if (lettersAllSame || digitsAllSame) return 'gold';
 
   // 4) SILVER — 99 000 so'm
@@ -136,12 +176,15 @@ export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: 
 // Narxning o'zini ular emas, tierFromCode() hisoblaydi.
 export function letterPattern(l) {
   if (allSame3(l)) return { hot: true, label: 'Uchala harf bir xil' };
+  if (EXCLUSIVE_WORDS.includes(l)) return { hot: true, label: 'Ekslyuziv so‘z' };
+  if (PREMIUM_WORDS.includes(l)) return { hot: true, label: 'Taniqli so‘z (brend/ism/shahar)' };
   if (hasAdjacentPair(l)) return { hot: true, label: 'Ikkita harf yonma-yon bir xil' };
   return { hot: false, label: '' };
 }
 export function digitPattern(d) {
   if (d === '000') return { hot: true, label: "\"000\" — maxsus" };
   if (allSame3(d)) return { hot: true, label: 'Uchala raqam bir xil' };
+  if (isSuperDigit(d)) return { hot: true, label: 'O‘ta nodir raqam' };
   if (hasAdjacentPair(d)) return { hot: true, label: 'Ikkita raqam yonma-yon bir xil' };
   return { hot: false, label: '' };
 }
