@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { dbCreate, dbGetOrder } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
@@ -6,7 +6,7 @@ import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
-import CardDesignerPage from '../pages/CardDesignerPage.jsx';
+const CardDesignerPage = lazy(() => import('../pages/CardDesignerPage.jsx'));
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
 const BOT_USERNAME = 'nfcsalebot';
@@ -289,9 +289,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
 
             <div className="divider my-2"></div>
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 p-3">
-              <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" />
+              <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" disabled={!PAYMENTS_ENABLED} />
               <span className="text-xs leading-relaxed text-base-content/75">
-                <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t("— kartani qo'lingizga ushlab, telefonga tegizib ochasiz. Qo'shimcha {fee}.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
+              <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t(PAYMENTS_ENABLED ? "— profilingizni jismoniy karta orqali ulashasiz. Qo‘shimcha {fee}." : "— Payme orqali buyurtma tez orada ishga tushadi.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
               </span>
             </label>
             {wantPhysicalCard && (
@@ -305,7 +305,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 </button>
                 {showDesigner && (
                   <div className="-mx-3 mt-1 max-h-[60vh] overflow-y-auto border-t border-white/10 px-3 pt-3">
-                    <CardDesignerPage embedded code={code} />
+                    <Suspense fallback={<div className="py-6 text-center text-sm text-base-content/50">{t('Yuklanmoqda...')}</div>}>
+                      <CardDesignerPage embedded code={code} />
+                    </Suspense>
                   </div>
                 )}
               </div>

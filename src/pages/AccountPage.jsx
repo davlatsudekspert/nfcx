@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
 import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { isYoutubeMusic } from '../lib/music.js';
-import { PAYMENTS_ENABLED } from '../lib/features.js';
+import { MESSAGING_ENABLED, PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import { vzStyle } from './ProfilePage.jsx';
-import CardDesignerPage from './CardDesignerPage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode } from '../lib/pricing.js';
+const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown,
@@ -1245,6 +1245,7 @@ export default function AccountPage({ refreshCatalog }) {
     }
   }, [myCards, selectedCode]);
   const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
+  const primaryCard = myCards.find((c) => c.isPrimary) || myCards[0];
   const [orders, setOrders] = useState([]);
   const [supportOpen, setSupportOpen] = useState(false);
 
@@ -1327,6 +1328,17 @@ export default function AccountPage({ refreshCatalog }) {
           </div>
         </div>
       </section>
+
+      <nav className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-base-200/55 p-2" aria-label={t('Kabinet bo‘limlari')}>
+        <div className="flex min-w-max gap-1">
+          <button className="btn btn-primary btn-sm min-h-11">{t('Hisob')}</button>
+          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())} disabled={!primaryCard}>{t('Profil')}</button>
+          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/bildirishnomalar')}>{t('Bildirishnomalar')}</button>
+          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => MESSAGING_ENABLED && navigate('/xabarlar')} disabled={!MESSAGING_ENABLED}>{t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada')}</button>
+          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/tolovlar')}>{t("To'lovlar")}</button>
+          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/sozlamalar')}>{t('Sozlamalar')}</button>
+        </div>
+      </nav>
 
       {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
 

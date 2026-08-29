@@ -176,11 +176,9 @@ adminRouter.post('/login', checkIpWhitelist, adminLoginLimiter, async (req, res)
   // Hali TOTP sozlanmagan bo'lsa — zaxira sifatida Telegram OTP.
   const adminChatId = process.env.ADMIN_CHAT_ID || '';
   if (!adminChatId) {
-    console.warn('[admin] DIQQAT: TOTP sozlanmagan VA ADMIN_CHAT_ID yo\u2019q — 2FA ishlamayapti!');
-    const token = newAdminToken();
-    adminSessions.set(token, { absExp: Date.now() + ADMIN_TTL_MS, lastActivity: Date.now(), adminId: admin.id, role: admin.role });
-    setAdminCookie(res, token, req.headers['x-forwarded-proto'] === 'https' || req.secure);
-    return res.json({ ok: true, twoFactor: false });
+    console.error('[admin] TOTP sozlanmagan va ADMIN_CHAT_ID yo\u2019q — kirish xavfsiz tarzda bloklandi.');
+    logAdminLoginEvent('two_factor_unavailable', req.ip, req.headers['user-agent']).catch(() => {});
+    return res.status(503).json({ error: 'two_factor_unavailable' });
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));

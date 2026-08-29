@@ -4,12 +4,10 @@ import NfcCard from '../components/NfcCard.jsx';
 
 const STEPS = {
   uz: [
-    { n: '01', title: 'Kodni tanlang va tekshiring', text: "3 harf + 3 raqamdan iborat raqamli tashrif qog'ozingizni kiriting (masalan ABZ007) — bo'sh yoki bandligini shu zahoti ko'rasiz." },
-    { n: '02', title: "Ro'yxatdan o'ting va bandlang", text: "Hisob yaratasiz, narxni ko'rasiz va bir bosishda raqamli tashrif qog'ozini o'zingizga biriktirasiz." },
-    { n: '03', title: 'Profilingizni sozlang', text: "Kabinetdan ism, kasb, rasm, bio, ijtimoiy tarmoqlar (Telegram, Instagram, Facebook, X), to'lov kartasi va dizayn mavzusini qo'shasiz." },
-    { n: '04', title: 'Ulashing', text: "Profilingiz nfcstore.uz/kodingiz manzilida yashaydi — havolani ulashing yoki jismoniy NFC kartangizga yozdiring." },
-    { n: '05', title: 'Auksionda qatnashing', text: "Noyob kodlar vaqti-vaqti bilan auksionga qo'yiladi — taklif bering, g'olib chiqsangiz 24 soat ichida to'lab olasiz." },
-    { n: '06', title: 'Narxlar oshishidan oldin ulguring', text: "Loyihamiz kengayishi bilan premium va qisqa ID'lar narxi oshib boradi. Boshqalar eng chiroyli raqamli kombinatsiyalar va noyob NFC ID'larni band qilib qo'ymasidan oldin, ularni o'zingizniki qiling. Hozirgi narxlar — xarid uchun eng qulay vaqt." },
+    { n: '01', title: 'Profil yarating', text: 'Ism, kasb, telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni kiriting.' },
+    { n: '02', title: 'Kartani yaqinlashtiring', text: 'NFC kartani telefonning orqa qismiga tuting. Hech qanday ilova o‘rnatish shart emas.' },
+    { n: '03', title: 'Profil ochiladi', text: 'Raqamli profilingiz telefon brauzerida avtomatik ochiladi.' },
+    { n: '04', title: 'Kontaktni saqlang', text: 'Suhbatdoshingiz aloqa ma’lumotlaringizni bir tugma orqali telefoniga saqlaydi.' },
   ],
   ru: [
     { n: '01', title: 'Выберите и проверьте код', text: 'Введите свою визитку из 3 букв + 3 цифр (например ABZ007) — сразу увидите, свободна она или занята.' },
@@ -32,24 +30,24 @@ const STEPS = {
 const HEADER = {
   uz: {
     kicker: 'Qanday ishlaydi',
-    title: '“Barcha ma’lumotlaringiz — bitta raqamli profilda.”',
-    sub: "NFCSTORE orqali shaxsiy raqamli tashrif qog'ozi olish olti qadamdan iborat — bandlashdan tortib profilni sozlash va auksionda qatnashishgacha.",
+    title: 'Barcha kontaktlaringiz — bitta profilda.',
+    sub: 'Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni jamlang. NFC karta orqali ulashish esa bir necha soniya vaqt oladi.',
     demoName: 'SIZNING ISMINGIZ',
-    cta: "Narxlarni ko'rish",
+    cta: 'Bepul profil yaratish',
   },
   ru: {
     kicker: 'Как это работает',
     title: '«Все ваши данные — в одном цифровом профиле.»',
     sub: 'Получить личную цифровую визитку через NFCSTORE — это шесть шагов: от бронирования до настройки профиля и участия в аукционе.',
     demoName: 'ВАШЕ ИМЯ',
-    cta: 'Посмотреть цены',
+    cta: 'Создать бесплатный профиль',
   },
   en: {
     kicker: 'How it works',
     title: '“All your details — in one digital profile.”',
     sub: 'Getting a personal digital card through NFCSTORE takes six steps — from reserving it to setting up your profile and taking part in an auction.',
     demoName: 'YOUR NAME',
-    cta: 'See pricing',
+    cta: 'Create a free profile',
   },
 };
 
@@ -88,7 +86,7 @@ export default function HowItWorksPage() {
           ))}
         </div>
         <div className="mt-10 text-center">
-          <button className="btn btn-primary" onClick={() => navigate('/narxlar')}>{h.cta}</button>
+          <button className="btn btn-primary" onClick={() => navigate('/register')}>{h.cta}</button>
         </div>
       </section>
     </main>

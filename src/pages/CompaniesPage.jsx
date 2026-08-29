@@ -6,7 +6,7 @@ import Interactive3DCard from '../components/Interactive3DCard.jsx';
 const FEATURES = [
   'Kompaniya logotipi va dizayni',
   "Har bir xodim uchun alohida NFC ID",
-  'Telefon orqali bir tegishda kontakt va ma\u2019lumotlarni ochish',
+  'Kontaktlar va muhim ma’lumotlarni tez ulashish',
   'Xodimlar uchun yagona korporativ profil',
   "Katta miqdordagi buyurtmalar",
   'Individual dizayn va maxsus yechimlar',

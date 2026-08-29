@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { usePathRoute } from './lib/router.js';
 import { parseAnyCode } from './lib/pricing.js';
 import { dbList } from './lib/db.js';
@@ -8,26 +8,27 @@ import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
-import AuthPage from './pages/AuthPage.jsx';
-import AccountPage from './pages/AccountPage.jsx';
-import SettingsPage from './pages/SettingsPage.jsx';
-import PricingPage from './pages/PricingPage.jsx';
-import HowItWorksPage from './pages/HowItWorksPage.jsx';
-import CatalogPage from './pages/CatalogPage.jsx';
-import RankingPage from './pages/RankingPage.jsx';
-import CompaniesPage from './pages/CompaniesPage.jsx';
-import NotificationsPage from './pages/NotificationsPage.jsx';
-import FaqPage from './pages/FaqPage.jsx';
-import ContactPage from './pages/ContactPage.jsx';
-import TermsPage from './pages/TermsPage.jsx';
-import PrivacyPage from './pages/PrivacyPage.jsx';
-import AuctionsPage from './pages/AuctionsPage.jsx';
-import AuctionPage from './pages/AuctionPage.jsx';
-import AdminPage from './pages/AdminPage.jsx';
-import MessagesPage from './pages/MessagesPage.jsx';
 import { MESSAGING_ENABLED } from './lib/features.js';
-import PaymentsPage from './pages/PaymentsPage.jsx';
-import CardDesignerPage from './pages/CardDesignerPage.jsx';
+
+const AuthPage = lazy(() => import('./pages/AuthPage.jsx'));
+const AccountPage = lazy(() => import('./pages/AccountPage.jsx'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'));
+const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
+const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage.jsx'));
+const CatalogPage = lazy(() => import('./pages/CatalogPage.jsx'));
+const RankingPage = lazy(() => import('./pages/RankingPage.jsx'));
+const CompaniesPage = lazy(() => import('./pages/CompaniesPage.jsx'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
+const FaqPage = lazy(() => import('./pages/FaqPage.jsx'));
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
+const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
+const AuctionsPage = lazy(() => import('./pages/AuctionsPage.jsx'));
+const AuctionPage = lazy(() => import('./pages/AuctionPage.jsx'));
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx'));
+const PaymentsPage = lazy(() => import('./pages/PaymentsPage.jsx'));
+const CardDesignerPage = lazy(() => import('./pages/CardDesignerPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -112,13 +113,19 @@ export default function App() {
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
   }
 
+  const renderedPage = (
+    <Suspense fallback={<main className="mx-auto min-h-[55vh] w-full max-w-[1800px] px-6 py-16 text-sm text-base-content/50">Yuklanmoqda...</main>}>
+      {page}
+    </Suspense>
+  );
+
   return (
     <LanguageProvider>
       <AuthProvider>
-        {bare ? page : (
+        {bare ? renderedPage : (
           <>
             <Header />
-            {page}
+            {renderedPage}
             <Footer />
           </>
         )}
