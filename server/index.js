@@ -1369,11 +1369,25 @@ app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) 
   if (!name) return res.status(422).json({ error: 'name_required' });
 
   try {
-    if (await getUserByEmail(email)) return res.status(409).json({ error: 'email_taken' });
+    // 0) Aktivatsiya kodini AVVAL tekshiramiz — noto'g'ri bo'lsa hech narsa
+    //    yaratmaymiz (ilgari zombie akkaunt/karta qolib ketardi).
+    if (!(await verifyGiftActivationCode(code, activationCode))) {
+      return res.status(401).json({ error: 'bad_code' });
+    }
 
-    const user = await createUser(email, hashPassword(password), {});
-    if (!user) return res.status(409).json({ error: 'email_taken' });
-    await assignPromoCode(user.id);
+    // 1) Foydalanuvchi: agar shu email bilan akkaunt bo'lsa (masalan oldingi
+    //    yarim tugagan urinishdan), parol to'g'ri bo'lsa — o'shani qayta
+    //    ishlatamiz, aks holda 409. Aks holda yangi akkaunt.
+    let user = await getUserByEmail(email);
+    if (user) {
+      if (!verifyPassword(password, user.passwordHash)) {
+        return res.status(409).json({ error: 'email_taken' });
+      }
+    } else {
+      user = await createUser(email, hashPassword(password), {});
+      if (!user) return res.status(409).json({ error: 'email_taken' });
+      await assignPromoCode(user.id);
+    }
 
     // YouTube/TikTok uchun YANGI ustun QO'SHILMADI — mavjud "qo'shimcha
     // havolalar" (extraLinks) mexanizmi ishlatildi (database strukturasi
@@ -1395,12 +1409,20 @@ app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) 
       hashtags: [],
       price: 0,
     });
-    if (!created) return res.status(409).json({ error: 'code_taken' });
+    if (!created) {
+      // Karta allaqachon mavjud: agar u BOSHQA odamniki bo'lsa — 409.
+      // Bizniki (yarim tugagan urinish) bo'lsa — davom etamiz.
+      const owner = await getRecordOwner(code);
+      if (owner && owner !== user.id) return res.status(409).json({ error: 'code_taken' });
+    }
     await attachCardToUser(code, user.id);
     await setPrimaryCard(code, user.id);
 
     const result = await activateNfcGift(code, activationCode, user.id);
-    if (result.error) return res.status(409).json(result);
+    if (result.error) {
+      const key = result.error === 'CODE_TAKEN' ? 'code_taken' : result.error === 'BAD_CODE' ? 'bad_code' : result.error;
+      return res.status(409).json({ error: key });
+    }
 
     // Mavjud login tizimi bilan bir xil — darhol tizimga kirgan holatda.
     const token = newSessionToken();

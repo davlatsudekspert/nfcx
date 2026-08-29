@@ -272,8 +272,7 @@ function PremiumPanel({ user, onBecamePremium }) {
   if (user?.isPremium) {
     return (
       <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5">
-        <div className="flex items-center gap-2 text-sm font-bold text-accent">{'\u2B50'} {t("Siz premium foydalanuvchisiz")}</div>
-        <p className="mt-1 text-xs text-base-content/50">{t("Profilingiz oltin/kumush belgi va")} {'\u{1F451}'} {t("qirol emoji bilan ajralib turadi — sizga obuna bo'lish endi bepul.")}</p>
+        <div className="flex items-center gap-2 text-lg font-extrabold text-accent">{'\u2B50'} {t("Siz premium foydalanuvchisiz")}</div>
       </div>
     );
   }

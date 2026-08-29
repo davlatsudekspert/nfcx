@@ -368,7 +368,6 @@ export default function ProfilePage({ code, catalog }) {
   const wsUrl = record.website || '';
   // hasSocials endi ishlatilmaydi — shaxsiy ijtimoiy tarmoq havolalari
   // faqat yuqoridagi to'liq nomli tugmalarda ko'rsatiladi (takrorlanmaydi).
-  const rarityLabel = rarity(record.code);
   const tier = tierOf(record.code);
   const tierColor = TIER_COLOR[tier];
   const tierEmoji = TIER_EMOJI[tier];
@@ -435,7 +434,6 @@ export default function ProfilePage({ code, catalog }) {
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
-            {rarityLabel && <span className={`${badge} border border-[color:var(--vz-ink)] text-[color:var(--vz-ink)]`}>{rarityLabel.split(' · ').map((p) => t(p)).join(' · ')}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
@@ -471,10 +469,10 @@ export default function ProfilePage({ code, catalog }) {
         {(tierEmoji || tier !== 'free') && (
           <div className="mt-4 flex justify-center">
             <span
-              className="inline-flex items-center gap-1.5 rounded-full border px-4 py-1 font-mono text-[12px] font-bold"
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 px-5 py-2 font-mono text-[19px] font-extrabold tracking-wide sm:text-[22px]"
               style={{ borderColor: tierColor, color: tierColor, background: `${tierColor}14` }}
             >
-              {tierEmoji && <span className="text-[12px]">{tierEmoji}</span>}
+              {tierEmoji && <span className="text-[18px] sm:text-[20px]">{tierEmoji}</span>}
               # {record.code}
             </span>
           </div>
@@ -554,37 +552,6 @@ export default function ProfilePage({ code, catalog }) {
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
-
-            {(() => {
-              // Eski (yagona) va yangi (massiv) karta raqami maydonlarini
-              // BITTA ro'yxatga birlashtiramiz — bir xil raqam ikki marta
-              // chiqib qolmasligi uchun (avval shu joyda bug bor edi).
-              const seen = new Set();
-              const cards = [
-                ...(record.cardNumber ? [{ label: '', number: record.cardNumber }] : []),
-                ...(record.cardNumbers || []),
-              ].filter((c) => {
-                const norm = String(c.number || '').replace(/\s/g, '');
-                if (!norm || seen.has(norm)) return false;
-                seen.add(norm);
-                return true;
-              });
-              if (cards.length === 0) return null;
-              return (
-                <>
-                  <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                  <div className="mb-3 text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t("TO'LOV UCHUN KARTALAR")}</div>
-                  <div className="flex flex-col gap-2.5">
-                    {cards.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2.5 rounded-xl px-4 py-3" style={{ background: dark ? 'rgba(255,255,255,0.05)' : '#f7f8f9' }}>
-                        <span>{c.label && <b className="mb-0.5 block text-[11px] font-bold text-[color:var(--vz-ink-faint)]">{c.label}</b>}<span className="font-mono text-[15px] tracking-[0.08em]">{c.number}</span></span>
-                        <button onClick={() => copyText(c.number.replace(/\s/g, ''), t('Karta raqami nusxalandi!'))} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-black/[0.06] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
 
             {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
                 Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida

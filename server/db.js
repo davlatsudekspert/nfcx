@@ -3116,8 +3116,11 @@ export async function activateNfcGift(code, activationCode, userId) {
     );
     if (!giftRows[0]) { await client.query('ROLLBACK'); return { error: 'BAD_CODE' }; }
 
-    const { rows: takenRows } = await client.query(`SELECT 1 FROM cards WHERE code = $1`, [code]);
-    if (takenRows[0]) { await client.query('ROLLBACK'); return { error: 'CODE_TAKEN' }; }
+    // Kod band bo'lib qolganmi tekshiramiz — LEKIN aynan shu aktivatsiya
+    // oqimi kartani hozirgina yaratib, shu foydalanuvchiga biriktirgan
+    // bo'lsa, bu "band" hisoblanmaydi (aks holda har doim CODE_TAKEN chiqardi).
+    const { rows: takenRows } = await client.query(`SELECT user_id AS "userId" FROM cards WHERE code = $1`, [code]);
+    if (takenRows[0] && takenRows[0].userId !== userId) { await client.query('ROLLBACK'); return { error: 'CODE_TAKEN' }; }
 
     await client.query(
       `UPDATE nfc_gifts SET status = 'activated', activated_at = now(), activated_by_user_id = $2 WHERE id = $1`,
