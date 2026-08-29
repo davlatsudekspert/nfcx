@@ -386,7 +386,7 @@ function UsersTab() {
     try { await adminApi(`/users/${u.id}/unsuspend`, { method: 'POST' }); await load(); } finally { setModBusy(null); }
   };
   const deleteUser = async (u) => {
-    if (!confirm(t('{email} akkauntini BUTUNLAY o\'chirasizmi? Ma\'lumotlari saqlanadi, lekin kira olmaydi.', { email: u.email }))) return;
+    if (!confirm(t('{email} akkauntini BUTUNLAY va qaytarib bo\'lmaydigan tarzda o\'chirasizmi? Barcha ma\'lumoti (NFC ID profillari, tranzaksiyalar, xabarlar) o\'chiriladi. Shu email keyin qayta ro\'yxatdan o\'tish uchun bo\'shaydi.', { email: u.email }))) return;
     setModBusy(u.id);
     try { await adminApi(`/users/${u.id}/delete`, { method: 'POST' }); await load(); } finally { setModBusy(null); }
   };

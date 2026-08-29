@@ -264,7 +264,8 @@ adminRouter.post('/users/:id/set-test', async (req, res) => {
 });
 
 // --- Foydalanuvchini moderatsiya qilish: vaqtincha bloklash, blokdan
-// chiqarish, butunlay o'chirish (soft-delete — ma'lumot saqlanadi). ---
+// chiqarish, BUTUNLAY o'chirish (hard-delete — qator va barcha bog'liq
+// ma'lumot bazadan o'chiriladi, email qayta ishlatish uchun bo'shaydi). ---
 adminRouter.post('/users/:id/suspend', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const days = Math.max(1, Math.min(3650, Math.round(Number(req.body?.days) || 7)));
@@ -288,7 +289,7 @@ adminRouter.post('/users/:id/delete', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const id = Number(req.params.id);
   await adminDeleteUser(id);
-  logAdminActivity({ action: 'user_deleted', details: `Foydalanuvchi #${id} o'chirildi (soft-delete)`, ip: req.ip }).catch(() => {});
+  logAdminActivity({ action: 'user_deleted', details: `Foydalanuvchi #${id} BUTUNLAY o'chirildi (hard-delete — email bo'shatildi)`, ip: req.ip }).catch(() => {});
   res.json({ ok: true });
 });
 

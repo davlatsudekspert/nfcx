@@ -1019,8 +1019,37 @@ export async function adminSuspendUser(userId, days, reason) {
 export async function adminUnsuspendUser(userId) {
   await pool.query(`UPDATE users SET suspended_until = NULL, suspend_reason = NULL WHERE id = $1`, [userId]);
 }
+// Foydalanuvchini BUTUNLAY (hard-delete) o'chiradi — qatorning o'zi
+// bazadan olib tashlanadi, shuning uchun uning emaili bo'shab qoladi va
+// o'sha email bilan qaytadan ro'yxatdan o'tish mumkin bo'ladi.
+// users(id) ga CASCADE bilan bog'langan jadvallar (sessions, web_orders,
+// wallet_topups, transactions, bids, follows, card_likes, gift_offers,
+// support_messages, conversations, messages, ...) avtomatik tozalanadi.
+// CASCADE'siz FK'lar (cards.user_id, physical_cards.owner_user_id) qo'lda
+// tozalanadi.
 export async function adminDeleteUser(userId) {
-  await pool.query(`UPDATE users SET deleted_at = now() WHERE id = $1`, [userId]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // 1) Jismoniy karta buyurtmalari (owner_user_id da CASCADE yo'q).
+    //    physical_cards.linked_code -> cards(code) ON DELETE SET NULL, shuning
+    //    uchun avval physical_cards, keyin cards o'chiriladi.
+    await client.query(`DELETE FROM physical_cards WHERE owner_user_id = $1`, [userId]);
+    // 2) Foydalanuvchining NFC ID profillari (cards.user_id da CASCADE yo'q).
+    await client.query(`DELETE FROM cards WHERE user_id = $1`, [userId]);
+    // 3) Auksionlardagi eskirgan yetakchi havolasini tozalash (FK bo'lmasligi
+    //    mumkin — himoya uchun qo'lda).
+    await client.query(`UPDATE auctions SET highest_bidder_id = NULL WHERE highest_bidder_id = $1`, [userId]);
+    // 4) Foydalanuvchining o'zi — qolgan bog'liq qatorlar CASCADE bilan ketadi.
+    await client.query(`DELETE FROM users WHERE id = $1`, [userId]);
+    await client.query('COMMIT');
+    return { ok: true };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // ---------- Admin login tarixi ----------

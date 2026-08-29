@@ -662,8 +662,11 @@ export const DICT = {
   'Blokdan chiqarish': { ru: 'Разблокировать', en: 'Unblock' },
   'Bloklash': { ru: 'Заблокировать', en: 'Block' },
   "O'chirish": { ru: 'Удалить', en: 'Delete' },
-  "{email} akkauntini BUTUNLAY o'chirasizmi? Ma'lumotlari saqlanadi, lekin kira olmaydi.":
-    { ru: 'Полностью удалить аккаунт {email}? Данные сохранятся, но войти он не сможет.', en: 'Delete the account {email} completely? Data is kept, but they cannot log in.' },
+  "{email} akkauntini BUTUNLAY va qaytarib bo'lmaydigan tarzda o'chirasizmi? Barcha ma'lumoti (NFC ID profillari, tranzaksiyalar, xabarlar) o'chiriladi. Shu email keyin qayta ro'yxatdan o'tish uchun bo'shaydi.":
+    {
+      ru: 'Удалить аккаунт {email} ПОЛНОСТЬЮ и безвозвратно? Все его данные (профили NFC ID, транзакции, сообщения) будут удалены. Этот email затем освободится для повторной регистрации.',
+      en: 'Delete the account {email} COMPLETELY and irreversibly? All its data (NFC ID profiles, transactions, messages) will be removed. This email then becomes free for re-registration.',
+    },
   'Diniy-ekstremistik kontent': { ru: 'Религиозно-экстремистский контент', en: 'Religious-extremist content' },
   'Litsenziyasiz diniy material tarqatish': { ru: 'Распространение религиозных материалов без лицензии', en: 'Distributing religious material without a license' },
   'Uyatsiz/odobsiz kontent': { ru: 'Непристойный контент', en: 'Indecent content' },
