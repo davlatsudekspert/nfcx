@@ -25,23 +25,23 @@ function useMaskedCode() {
 const TIER_HINT = {
   uz: {
     exclusive: 'Ekslyuziv so’z (VIP, CEO, LUX…) yoki hammasi bir xil — faqat auksion',
-    premium: '"000" bilan tugaydi, yoki taniqli so’z + o’ta nodir raqam',
-    gold: 'Taniqli so’z (brend/ism/shahar), yoki uchala harf/raqam bir xil',
-    silver: 'Ham harfda, ham raqamda yonma-yon juftlik bor',
+    premium: '"000", yoki davlat so’zi + maxsus raqam, yoki taniqli so’z + nodir raqam',
+    gold: 'Taniqli/davlat so’zi, yoki uchala harf/raqam bir xil, yoki 001/007/077',
+    silver: 'Zerkalniy (ko’zgu) raqam, yoki harfda ham raqamda ham yonma-yon juftlik',
     free: 'Naqshsiz — bepul',
   },
   ru: {
     exclusive: 'Эксклюзивное слово (VIP, CEO, LUX…) или всё одинаково — только аукцион',
-    premium: 'Заканчивается на "000", или известное слово + особо редкая цифра',
-    gold: 'Известное слово (бренд/имя/город), или все три буквы/цифры одинаковы',
-    silver: 'Есть соседняя пара и в буквах, и в цифрах',
+    premium: '"000", или гос-слово + особая цифра, или известное слово + редкая цифра',
+    gold: 'Известное/гос-слово, или три одинаковые буквы/цифры, или 001/007/077',
+    silver: 'Зеркальная цифра, или соседняя пара и в буквах, и в цифрах',
     free: 'Без узора — бесплатно',
   },
   en: {
     exclusive: 'An exclusive word (VIP, CEO, LUX…) or all identical — auction only',
-    premium: 'Ends with "000", or a known word + an ultra-rare number',
-    gold: 'A known word (brand/name/city), or all three letters/digits identical',
-    silver: 'An adjacent pair in both letters and digits',
+    premium: '"000", or a gov word + special number, or a known word + rare number',
+    gold: 'A known/gov word, or three identical letters/digits, or 001/007/077',
+    silver: 'A mirror number, or an adjacent pair in both letters and digits',
     free: 'No pattern — free',
   },
 };
@@ -53,28 +53,31 @@ const TIER_PRICE_TEXT = {
 const EXAMPLES = {
   uz: [
     { code: 'MXK413', note: 'Naqshsiz — TEKIN' },
-    { code: 'AAB197', note: 'Faqat harfda juftlik — TEKIN' },
+    { code: 'LOL101', note: 'Zerkalniy (ko’zgu) raqam — Silver' },
     { code: 'ABB770', note: 'Ham harfda, ham raqamda juftlik — Silver' },
-    { code: 'BMW412', note: 'Taniqli so’z, oddiy raqam — Gold' },
-    { code: 'KLM000', note: '"000" bilan tugaydi — Premium' },
+    { code: 'XYZ007', note: 'Kuchli nol raqam (007) — Gold' },
+    { code: 'IIB412', note: 'Davlat xizmati so’zi — Gold' },
+    { code: 'DAV010', note: 'Davlat so’zi + maxsus raqam — Premium' },
     { code: 'BMW007', note: 'Taniqli so’z + nodir raqam — Premium' },
     { code: 'VIP001', note: 'Ekslyuziv so’z — Ekslyuziv' },
   ],
   ru: [
     { code: 'MXK413', note: 'Без узора — БЕСПЛАТНО' },
-    { code: 'AAB197', note: 'Пара только в буквах — БЕСПЛАТНО' },
+    { code: 'LOL101', note: 'Зеркальная цифра — Silver' },
     { code: 'ABB770', note: 'Пара и в буквах, и в цифрах — Silver' },
-    { code: 'BMW412', note: 'Известное слово, обычная цифра — Gold' },
-    { code: 'KLM000', note: 'Заканчивается на "000" — Premium' },
+    { code: 'XYZ007', note: 'Сильный ноль (007) — Gold' },
+    { code: 'IIB412', note: 'Госслово — Gold' },
+    { code: 'DAV010', note: 'Госслово + особая цифра — Premium' },
     { code: 'BMW007', note: 'Известное слово + редкая цифра — Premium' },
     { code: 'VIP001', note: 'Эксклюзивное слово — Эксклюзив' },
   ],
   en: [
     { code: 'MXK413', note: 'No pattern — FREE' },
-    { code: 'AAB197', note: 'Pair in letters only — FREE' },
+    { code: 'LOL101', note: 'Mirror number — Silver' },
     { code: 'ABB770', note: 'Pair in both letters and digits — Silver' },
-    { code: 'BMW412', note: 'Known word, plain number — Gold' },
-    { code: 'KLM000', note: 'Ends with "000" — Premium' },
+    { code: 'XYZ007', note: 'Strong zero (007) — Gold' },
+    { code: 'IIB412', note: 'Government word — Gold' },
+    { code: 'DAV010', note: 'Gov word + special number — Premium' },
     { code: 'BMW007', note: 'Known word + rare number — Premium' },
     { code: 'VIP001', note: 'Exclusive word — Exclusive' },
   ],
@@ -148,8 +151,8 @@ export default function PricingPage({ catalog, refreshCatalog }) {
           </div>
         </div>
 
-        {/* ===== Professional 3D karta+pьedestal showcase (faqat shu qism) ===== */}
-        <div className="hidden lg:flex">
+        {/* ===== Premium mahsulot vitrinasi — faqat karta PRESENTATIONI ===== */}
+        <div className="hidden items-center justify-center lg:flex">
           <PedestalShowcase3D>
             <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} finish="showcase" size="lg" rim />
           </PedestalShowcase3D>

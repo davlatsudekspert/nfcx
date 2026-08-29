@@ -75,6 +75,22 @@ export default function App() {
 
   useEffect(() => { refreshCatalog(); }, [refreshCatalog]);
 
+  // Tahrirlash maydonidan tashqarida "Backspace" bosilishi ba'zi
+  // brauzerlarda "orqaga" navigatsiyani chaqiradi (yoki sahifani bo'sh
+  // holatga tashlaydi) — masalan hamma matn belgilanib (Ctrl+A) keyin
+  // Backspace bosilganda. Bunday hollarda uni bloklaymiz.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'Backspace') return;
+      const el = e.target;
+      const tag = el && el.tagName;
+      const editable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable);
+      if (!editable) e.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   // Har bir band qilingan raqamli tashrif qog'ozi o'zining alohida sahifasiga ega:
   // nfcstore.uz/aaa00 (harf katta-kichikligi farq qilmaydi).
   let page;

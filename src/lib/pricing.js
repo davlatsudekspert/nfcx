@@ -61,7 +61,7 @@ const PREMIUM_WORDS = [
   'TAS', 'SAM', 'BUX', 'AND', 'NAV', 'FER', 'XIV', 'NUK', 'JIZ', 'QAR',
   'TER', 'URG', 'NMG',
   // O'g'il bolalar ismlari
-  'ALI', 'AZI', 'JAS', 'BOB', 'SAR', 'SHO', 'TIM', 'UMR', 'DAV', 'MIR',
+  'ALI', 'AZI', 'JAS', 'BOB', 'SAR', 'SHO', 'TIM', 'UMR', 'MIR',
   'SHX', 'BEK', 'ABR', 'ODI', 'RUS', 'ISL', 'KAM', 'NOD', 'OYB', 'SUX',
   'FUR', 'ELY', 'DIY', 'HAS', 'HUS', 'ZAF', 'AKM', 'BAX', 'JAV', 'SHR',
   'AZM', 'FAR', 'TOX', 'ULU', 'XON', 'OTA', 'IBR', 'SUL', 'NUR',
@@ -74,8 +74,15 @@ const PREMIUM_WORDS = [
   'PAY', 'STA',
 ];
 
+// DAVLAT XIZMATLARI qisqartmalari — bu so'z + oddiy raqam → Gold; bu so'z +
+// maxsus "davlat raqami" (001/007/077/707/010) → Premium.
+const GOV_WORDS = [
+  'IIB', 'DXX', 'MXX', 'DAV', 'YHX', 'YPX', 'GAI', 'FVV', 'DBX', 'DSX',
+  'DSI', 'ADL', 'SUD', 'PRK', 'TIV', 'MUD', 'HKM', 'VZR', 'BOJ', 'GUV',
+];
+
 // Orqaga moslik — eski kod hali ham SPECIAL_WORDS'ga murojaat qilishi mumkin.
-const SPECIAL_WORDS = [...EXCLUSIVE_WORDS, ...PREMIUM_WORDS];
+const SPECIAL_WORDS = [...EXCLUSIVE_WORDS, ...PREMIUM_WORDS, ...GOV_WORDS];
 
 function allSame3(s) {
   return s[0] === s[1] && s[1] === s[2];
@@ -86,15 +93,31 @@ function allSame3(s) {
 function hasAdjacentPair(s) {
   return s[0] === s[1] || s[1] === s[2];
 }
-// "Super" raqam:
+// "Kuchli nol" raqamlar — alohida turib ham qiymatli (001, 007, 077).
+function isZeroSuperDigit(d) {
+  return d === '001' || d === '007' || d === '077';
+}
+// "Zerkalniy" (ko'zgu) raqam — birinchi va oxirgi raqam bir xil:
+// 010, 101, 121, 202, 292, 909 ... (000 bundan mustasno — u alohida PREMIUM).
+function isMirrorDigit(d) {
+  return d[0] === d[2] && d !== '000';
+}
+// "X0X" — o'rtasi 0, chetlari bir xil, lekin 000 emas (101, 202, 707, 909).
+function isX0X(d) {
+  return d[1] === '0' && d[0] === d[2] && d[0] !== '0';
+}
+// DAVLAT so'zi bilan birga kelganda PREMIUM qiladigan maxsus raqamlar.
+function isGovPremiumDigit(d) {
+  return d === '001' || d === '007' || d === '077' || d === '707' || d === '010';
+}
+// PREMIUM so'z bilan birga kelganda darajani PREMIUM'ga ko'taradigan raqam:
 //   - 001 / 007 / 077
-//   - uchtasi bir xil (111, 777, 888 ...)
-//   - "X0X" — o'rtasi 0, chetlari bir xil, lekin 000 emas (101, 202, 707, 909)
-// "000" bu yerga kirmaydi — u alohida, mustaqil PREMIUM qoidasiga ega.
+//   - uchtasi bir xil (111, 777 ...)
+//   - "X0X" (101, 202, 707 ...)
 function isSuperDigit(d) {
-  if (d === '001' || d === '007' || d === '077') return true;
+  if (isZeroSuperDigit(d)) return true;
   if (allSame3(d) && d !== '000') return true;
-  if (d[1] === '0' && d[0] === d[2] && d[0] !== '0') return true;
+  if (isX0X(d)) return true;
   return false;
 }
 
@@ -104,7 +127,7 @@ export function tierFromCode(letters, digits) {
   const digitsAllSame = allSame3(digits);
   const exclusiveWord = EXCLUSIVE_WORDS.includes(letters);
   const premiumWord = PREMIUM_WORDS.includes(letters);
-  const superDigit = isSuperDigit(digits);
+  const govWord = GOV_WORDS.includes(letters);
 
   // 1) EKSKLYUZIV — faqat auksion orqali (admin ochadi, boshlang'ich
   //    narxni admin belgilaydi). "Qaymoqning qaymog'i":
@@ -115,20 +138,26 @@ export function tierFromCode(letters, digits) {
 
   // 2) PREMIUM — 199 000 so'm
   //    - Oxirgi 3 raqami "000" (KLM000, XYZ000)
-  //    - PREMIUM so'z (BMW, ALI, TAS ...) + "super" raqam (BMW007, ALI777, TAS101)
+  //    - DAVLAT so'zi + maxsus davlat raqami (IIB001, DXX707, DAV010)
+  //    - PREMIUM so'z (BMW, ALI ...) + "super" raqam (BMW007, ALI777, TAS101)
   if (digits === '000') return 'premium';
-  if (premiumWord && superDigit) return 'premium';
+  if (govWord && isGovPremiumDigit(digits)) return 'premium';
+  if (premiumWord && isSuperDigit(digits)) return 'premium';
 
   // 3) GOLD — 149 000 so'm
   //    - PREMIUM so'z, lekin raqami oddiy (BMW412, ALI063)
-  //    - Faqat uchala harf YOKI faqat uchala raqam bir xil (ikkalasi
-  //      birga bo'lsa yuqorida EKSKLYUZIV bo'lib ketgan bo'lardi)
+  //    - DAVLAT so'zi, oddiy raqam (IIB412, DAV555)
+  //    - Faqat uchala harf YOKI faqat uchala raqam bir xil (MXK888)
+  //    - "Kuchli nol" raqam — 001 / 007 / 077 — istalgan harf bilan (XYZ001)
   if (premiumWord) return 'gold';
+  if (govWord) return 'gold';
   if (lettersAllSame || digitsAllSame) return 'gold';
+  if (isZeroSuperDigit(digits)) return 'gold';
 
   // 4) SILVER — 99 000 so'm
-  //    - HAM harflarda, HAM raqamlarda yonma-yon juftlik bo'lishi shart
-  //      (ABB770, AAB114, XXY995)
+  //    - "Zerkalniy" (ko'zgu) raqam — 010, 101, 121, 202 ... (LOL101, ABC292)
+  //    - HAM harflarda, HAM raqamlarda yonma-yon juftlik (ABB770, AAB114)
+  if (isMirrorDigit(digits)) return 'silver';
   if (hasAdjacentPair(letters) && hasAdjacentPair(digits)) return 'silver';
 
   // 5) TEKIN — 0 so'm
@@ -178,13 +207,16 @@ export function letterPattern(l) {
   if (allSame3(l)) return { hot: true, label: 'Uchala harf bir xil' };
   if (EXCLUSIVE_WORDS.includes(l)) return { hot: true, label: 'Ekslyuziv so‘z' };
   if (PREMIUM_WORDS.includes(l)) return { hot: true, label: 'Taniqli so‘z (brend/ism/shahar)' };
+  if (GOV_WORDS.includes(l)) return { hot: true, label: 'Davlat xizmati qisqartmasi' };
   if (hasAdjacentPair(l)) return { hot: true, label: 'Ikkita harf yonma-yon bir xil' };
   return { hot: false, label: '' };
 }
 export function digitPattern(d) {
   if (d === '000') return { hot: true, label: "\"000\" — maxsus" };
   if (allSame3(d)) return { hot: true, label: 'Uchala raqam bir xil' };
-  if (isSuperDigit(d)) return { hot: true, label: 'O‘ta nodir raqam' };
+  if (isZeroSuperDigit(d)) return { hot: true, label: 'Kuchli nol raqam (001/007/077)' };
+  if (isX0X(d)) return { hot: true, label: 'O‘ta nodir raqam (X0X)' };
+  if (isMirrorDigit(d)) return { hot: true, label: 'Zerkalniy (ko‘zgu) raqam' };
   if (hasAdjacentPair(d)) return { hot: true, label: 'Ikkita raqam yonma-yon bir xil' };
   return { hot: false, label: '' };
 }

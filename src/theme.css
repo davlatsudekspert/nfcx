@@ -48,16 +48,102 @@
 @keyframes shimmerSweep { 0% { transform: translateX(-140%) translateY(-140%) rotate(25deg); } 100% { transform: translateX(140%) translateY(140%) rotate(25deg); } }
 @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* Pьedestal + karta uchun doimiy, juda sekin, tekis 3D aylanish —
-   shoshilinch/o'yin uslubidagi emas, cinematic va premium. */
-@keyframes pedestalRotateY { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
-.pedestal-continuous-spin {
-  animation: pedestalRotateY 26s linear infinite;
+/* ===== Narxlar sahifasi — premium mahsulot vitrinasi ==========================
+   FAQAT karta aylanadi (Y o'qi, ~12s, tekis, doimiy). Pьedestal STATIK —
+   faqat uning yuzasida oltin yorug'lik juda sekin sirpanadi (shimmer). */
+@keyframes psCardSpin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+@keyframes psFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes psShimmerSweep { 0% { left: -45%; } 55%, 100% { left: 115%; } }
+
+.ps-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-block: 1.5rem;
+  perspective: 1500px;
+  pointer-events: none;          /* sof vitrina — hover/tilt yo'q */
+  transform: scale(1.04);
+  transform-origin: center center;
 }
-/* Oltin rimda "shimmer" — yorug'lik aylanish davomida sirpanib turgandek. */
-@keyframes rimShimmerSlide { from { transform: translateX(0); } to { transform: translateX(-66.666%); } }
-.pedestal-rim-shimmer > div {
-  animation: rimShimmerSlide 6s linear infinite;
+@media (min-width: 1280px) { .ps-stage { transform: scale(1.14); } }
+@media (min-width: 1536px) { .ps-stage { transform: scale(1.22); } }
+
+/* Orqa fondagi juda yengil oltin radial nur — kartani sahnadan ajratadi. */
+.ps-bg-glow {
+  position: absolute; left: 50%; top: 40%;
+  width: 330px; height: 330px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(212, 175, 90, 0.20), transparent 68%);
+  z-index: 0;
+}
+
+.ps-card-float {
+  position: relative; z-index: 3;
+  transform-style: preserve-3d;
+  animation: psFloat 5.5s ease-in-out infinite;
+}
+.ps-card-spin {
+  position: relative;
+  transform-style: preserve-3d;
+  animation: psCardSpin 12s linear infinite;
+}
+.ps-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.ps-face--back { position: absolute; inset: 0; transform: rotateY(180deg); }
+
+/* Kartani pьedestalga bog'lovchi yumshoq oltin nur (orada bo'shliq bor). */
+.ps-underglow {
+  position: absolute; left: 50%; bottom: 44px; z-index: 2;
+  width: 240px; height: 40px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(226, 190, 110, 0.42), transparent 72%);
+  filter: blur(7px);
+}
+
+/* PYEDESTAL — statik qora granit disk + nozik metall oltin halqa. */
+.ps-pedestal {
+  position: relative; z-index: 1;
+  margin-top: 28px;
+  width: 440px; max-width: 88vw; height: 62px;
+  overflow: hidden;
+  border-radius: 50%;
+}
+.ps-pedestal-disk {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 30%, #2c2c2e 0%, #171718 46%, #0a0a0b 82%);
+  box-shadow: inset 0 3px 9px rgba(0, 0, 0, 0.7), inset 0 -4px 10px rgba(0, 0, 0, 0.5);
+}
+/* Chetidagi nozik oltin metall halqa (arzon sariq border emas). */
+.ps-pedestal-rim {
+  position: absolute; inset: 0; border-radius: 50%;
+  padding: 1.5px;
+  background: linear-gradient(115deg, #5a4114 0%, #caa863 32%, #f6e7bc 50%, #caa863 68%, #5a4114 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+  opacity: 0.85;
+}
+/* Yumshoq oltin reflection — pьedestal yuzasida chapdan o'ngga sekin o'tadi. */
+.ps-pedestal-shimmer {
+  position: absolute; top: 0; bottom: 0; left: -45%;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(240, 214, 150, 0.28), transparent);
+  filter: blur(6px);
+  animation: psShimmerSweep 7s ease-in-out infinite;
+}
+/* Kartadan pьedestal yuzasiga tushadigan yumshoq, tarqoq soya. */
+.ps-card-shadow {
+  position: absolute; left: 50%; top: 6px;
+  width: 60%; height: 20px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.6), transparent 70%);
+  filter: blur(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-card-spin, .ps-card-float, .ps-pedestal-shimmer { animation: none !important; }
 }
 @keyframes nfcPulse { 0% { opacity: 0.9; transform: translateY(-50%) scale(0.6); } 70% { opacity: 0; } 100% { opacity: 0; transform: translateY(-50%) scale(1.15); } }
 @keyframes bgShift { 0%,100% { background-position: 0% 50%, 0% 50%; } 50% { background-position: 0% 50%, 100% 50%; } }
@@ -86,6 +172,12 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
 }
+
+/* Matn belgilanganda (Ctrl+A ham) — nafis, mavzuga mos oltin fon.
+   Aks holda brauzerning standart tanlash rangi qorong'i saytda
+   "jigarrang" dog' bo'lib ko'rinadi. */
+::selection { background: rgba(212, 175, 90, 0.32); color: #f6f2ea; }
+::-moz-selection { background: rgba(212, 175, 90, 0.32); color: #f6f2ea; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
