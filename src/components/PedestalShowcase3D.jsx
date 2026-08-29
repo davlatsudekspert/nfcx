@@ -1,42 +1,40 @@
-import { cloneElement } from 'react';
-
-// Narxlar sahifasidagi "premium mahsulot vitrinasi".
+// Narxlar sahifasi — "luxury studio product showcase".
 //
-// MAVJUD <NfcCard/> (rang, yozuv, chip yo'q, border, tipografiya — hammasi
-// o'zgarishsiz) sahna markazida, qora granit pьedestal ustida "suzib"
-// turadi va Y o'qi bo'ylab juda sekin, doimiy, tekis 360° aylanadi
-// (taxminan 12 soniyada bir marta). FAQAT karta aylanadi — pьedestal
-// STATIK. Aylanish paytida orqa tomonda "mirror text" ko'rinmasligi uchun
-// haqiqiy ikki yuzli (front/back) 3D struktura + backface-visibility.
+// MAVJUD <NfcCard/> (yozuv, ID, ism, "MEMBER SINCE", NFC belgisi, tipografiya
+// — hammasi o'zgarishsiz) qalin, dumaloq qora granit podium ustida, old
+// tomondan ko'rinib turadi. Karta hech qachon orqa tomonini ko'rsatmaydi —
+// faqat juda sekin, nafis "showroom" tebranishi (±12° Y) + yengil suzish.
+// Shu sabab "mirror text" umuman yuzaga kelmaydi va orqa yuz kerak emas.
 //
-// Faqat CSS transform/opacity (GPU-friendly) — og'ir 3D kutubxona yo'q.
-// prefers-reduced-motion'da aylanish va shimmer to'xtaydi (theme.css).
+// Orqada iliq oltin spotlight, kartadan podiumga tushadigan soya, podiumning
+// o'z soyasi va chetidagi nozik oltin aks — 1-rasmdagi kompozitsiyaga
+// iloji boricha yaqin. Faqat CSS transform/opacity (GPU-friendly).
+// prefers-reduced-motion'da barcha harakat to'xtaydi (karta tik, old tomonda).
 export default function PedestalShowcase3D({ children }) {
-  // Orqa yuz — bir xil NfcCard'ning `back` propi bilan (o'zi qora/oltin
-  // NFCSTORE dizayn tilida: belgi, havola, "MEMBER SINCE").
-  const backChild = cloneElement(children, { back: true });
-
   return (
     <div className="ps-stage">
-      <div className="ps-bg-glow" aria-hidden />
+      <div className="ps-spotlight" aria-hidden />
 
-      {/* Karta — suzuvchi (yumshoq translateY) + aylanuvchi (rotateY) */}
-      <div className="ps-card-float">
-        <div className="ps-card-spin">
-          <div className="ps-face">{children}</div>
-          <div className="ps-face ps-face--back">{backChild}</div>
+      <div className="ps-scene">
+        {/* KARTA — suzish (tashqi) + tebranish (ichki), old tomonga qaragan */}
+        <div className="ps-card">
+          <div className="ps-card-rot">{children}</div>
         </div>
-      </div>
 
-      {/* Karta bilan pьedestalni bog'lovchi yumshoq oltin nur */}
-      <div className="ps-underglow" aria-hidden />
+        {/* Karta bilan podiumni bog'lovchi yumshoq oltin nur (orada bo'shliq) */}
+        <div className="ps-underglow" aria-hidden />
 
-      {/* PYEDESTAL — statik, qora granit, nozik oltin halqa, sekin shimmer */}
-      <div className="ps-pedestal" aria-hidden>
-        <div className="ps-pedestal-disk" />
-        <div className="ps-pedestal-rim" />
-        <div className="ps-card-shadow" />
-        <div className="ps-pedestal-shimmer" />
+        {/* PODIUM — statik, qalin CSS silindr: yon devor + tekis elliptik yuza */}
+        <div className="ps-podium" aria-hidden>
+          <div className="ps-podium-body" />
+          <div className="ps-podium-top" />
+          <div className="ps-podium-sheen" />
+          {/* Kartadan podium yuzasiga tushadigan yumshoq soya */}
+          <div className="ps-card-drop" />
+        </div>
+
+        {/* Podiumning yerga tushadigan soyasi */}
+        <div className="ps-ground-shadow" aria-hidden />
       </div>
     </div>
   );

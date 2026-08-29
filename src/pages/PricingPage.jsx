@@ -151,10 +151,10 @@ export default function PricingPage({ catalog, refreshCatalog }) {
           </div>
         </div>
 
-        {/* ===== Premium mahsulot vitrinasi — faqat karta PRESENTATIONI ===== */}
-        <div className="hidden items-center justify-center lg:flex">
+        {/* ===== Luxury studio product showcase — faqat karta PRESENTATIONI ===== */}
+        <div className="flex min-w-0 items-center justify-center overflow-hidden">
           <PedestalShowcase3D>
-            <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} finish="showcase" size="lg" rim />
+            <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} finish="gold" size="lg" rim />
           </PedestalShowcase3D>
         </div>
       </section>

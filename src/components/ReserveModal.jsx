@@ -6,6 +6,7 @@ import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
+import TelegramChannelCTA from './TelegramChannelCTA.jsx';
 const CardDesignerPage = lazy(() => import('../pages/CardDesignerPage.jsx'));
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
@@ -183,6 +184,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                   {t("To'lash — {n} so'm", { n: fmt(order.price) })}
                 </button>
                 <div className="mt-4"><PaymentUnavailableNotice /></div>
+                <TelegramChannelCTA />
               </>
             )}
             {msg && (
@@ -328,6 +330,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Band qilish')}
           </button>
           {paymentBlocked && <div className="mt-3"><PaymentUnavailableNotice /></div>}
+          {paymentBlocked && <TelegramChannelCTA />}
           {msg && (
             <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
               <span>{t(msg.text)}</span>

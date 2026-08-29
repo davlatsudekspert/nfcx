@@ -249,6 +249,10 @@ export const DICT = {
   'Tez orada': { ru: 'Скоро', en: 'Coming soon' },
   'To‘lov tizimi tayyorlanmoqda': { ru: 'Платёжная система готовится', en: 'The payment system is being prepared' },
   'Payme orqali to‘lov imkoniyati tez orada ishga tushadi.': { ru: 'Возможность оплаты через Payme скоро заработает.', en: 'Payment via Payme will be available soon.' },
+  'Band qilish tez orada ishga tushadi': { ru: 'Бронирование скоро заработает', en: 'Reservations open soon' },
+  "To'lov tizimi ishga tushishi bilan ID'larni band qilish mumkin bo'ladi. Birinchi bo'lib xabardor bo'lish uchun Telegram kanalimizga qo'shiling.": { ru: 'Как только заработает оплата, ID можно будет бронировать. Чтобы узнать первым — подпишитесь на наш Telegram-канал.', en: 'Once payments go live you’ll be able to reserve IDs. To be the first to know, join our Telegram channel.' },
+  'Telegram kanalga qo‘shilish': { ru: 'Подписаться на Telegram-канал', en: 'Join the Telegram channel' },
+  "Ishga tushirish sanasi, yangi ID'lar va NFCSTORE yangiliklari kanalda e'lon qilinadi.": { ru: 'Дата запуска, новые ID и новости NFCSTORE публикуются в канале.', en: 'The launch date, new IDs and NFCSTORE news are announced in the channel.' },
   'Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.':
     { ru: 'Платформа в стадии развития. Некоторые возможности заработают в ближайшее время.', en: 'The platform is under active development. Some features will go live soon.' },
   "Auksionda g'olib bo'lsangiz, 24 soat ichida to'lov qilish talab etiladi. To'lov tizimi vaqtincha to'xtatilgani uchun hozircha taklif berish yopiq.":
