@@ -86,9 +86,13 @@ const TEASERS = [
 
 export default function HomePage({ catalog, refreshCatalog }) {
   const { t, lang } = useLanguage();
-  const [checkVal, onCheckChange] = useMaskedCode();
+  const [checkVal, rawOnCheckChange] = useMaskedCode();
   const [checkResult, setCheckResult] = useState(null);
   const [modalCode, setModalCode] = useState(null);
+  // Kiritma o'zgarganda eski natijani tozalaymiz — aks holda kod
+  // belgilanib o'chirilganda eski natija qoladi va (checkInfo endi null
+  // bo'lgani uchun) sahifa qulab tushardi.
+  const onCheckChange = (e) => { rawOnCheckChange(e); setCheckResult(null); };
 
   const takenMap = {};
   catalog.forEach((r) => { takenMap[r.code] = r; });
@@ -185,12 +189,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
                         <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-base-content">{t("sahifasini ko'rish")}</button>
                       </span>
                     </>}
-                    {!checkResult.bad && !checkResult.taken && checkInfo?.tier === 'exclusive' && <>
+                    {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier === 'exclusive' && <>
                       <span className="badge" style={{ background: '#ff5c8a22', color: '#ff5c8a', border: '1px solid #ff5c8a55' }}>{'\u{1F48E}'} {t('Ekslyuziv')}</span>
                       <span className="text-base-content/60">{t('nfcstore.uz/{code} — faqat auksion orqali sotiladi', { code: checkResult.code.toLowerCase() })}</span>
                       <button className="btn btn-accent btn-xs ml-1" onClick={() => navigate('/auksion')}>{t("Auksion bo'limi")}</button>
                     </>}
-                    {!checkResult.bad && !checkResult.taken && checkInfo?.tier !== 'exclusive' && <>
+                    {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier !== 'exclusive' && <>
                       <span className="badge badge-success">{t("Bo'sh")}</span>
                       <span className="text-base-content/60">{t('nfcstore.uz/{code} hozircha bo‘sh — {price} so‘m', { code: checkResult.code.toLowerCase(), price: fmt(checkInfo.total) })}</span>
                       <button className="btn btn-primary btn-xs ml-1" onClick={() => setModalCode(checkResult.code)}>{t('Bandlash')}</button>
