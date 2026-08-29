@@ -6,6 +6,7 @@ import { fmt, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
+import BackToCabinet from '../components/BackToCabinet.jsx';
 
 const KIND_LABEL = {
   card_purchase: "Raqamli tashrif qog'ozi xaridi",
@@ -54,7 +55,8 @@ export default function PaymentsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[900px] px-6 sm:px-10 lg:px-14 pb-16">
-      <h1 className="pt-10 text-2xl font-bold">{t("To'lov")}</h1>
+      <BackToCabinet />
+      <h1 className="pt-4 text-2xl font-bold">{t("To'lov")}</h1>
       <p className="mt-2 text-sm text-base-content/55">{t("To'lov usuli, kutilayotgan to'lovlar va barcha tranzaksiyalar tarixi.")}</p>
 
       {/* ── To'lov usuli ── */}

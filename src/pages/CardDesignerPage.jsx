@@ -281,6 +281,23 @@ function renderCard(ctx, w, h, state) {
   if (state.showQr && state.side === 'back') {
     hitboxes.qr = drawPositionedImage(ctx, w, h, state.qrImage, state.qrXY, state.qrSize || 150);
   }
+
+  // ORQA tomondagi o'zgarmas "nfcstore.uz" yozuvi.
+  if (state.side === 'back') {
+    const wm = state.wmXY || { x: 0.5, y: 0.9 };
+    const wmSize = state.wmSize || 26;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${wmSize}px ${state.font}, sans-serif`;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillText('nfcstore.uz', wm.x * w - 1, wm.y * h + 2);
+    ctx.fillStyle = state.wmColor || '#ffffff';
+    ctx.fillText('nfcstore.uz', wm.x * w, wm.y * h);
+    const wmW = ctx.measureText('nfcstore.uz').width;
+    ctx.restore();
+    hitboxes.wm = { x: wm.x * w - wmW / 2 - 14, y: wm.y * h - wmSize / 2 - 12, w: wmW + 28, h: wmSize + 24 };
+  }
   // Matn uchun taxminiy hitbox (o'lchangan kenglik asosida).
   hitboxes.text = { x: cx - mainWidth / 2 - 14, y: mainY - fontSize / 2 - 14, w: mainWidth + 28, h: fontSize + 28 };
   return hitboxes;
@@ -390,6 +407,11 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const [backTextXY, setBackTextXY] = useState({ x: 0.5, y: 0.5 });
   const textXY = side === 'front' ? frontTextXY : backTextXY;
   const setTextXY = side === 'front' ? setFrontTextXY : setBackTextXY;
+  // ORQA tomondagi o'zgarmas "nfcstore.uz" yozuvi — matni qat'iy, lekin
+  // joyi/o'lchami/rangi sozlanadi (sichqoncha bilan suriladi).
+  const [wmXY, setWmXY] = useState({ x: 0.5, y: 0.9 });
+  const [wmSize, setWmSize] = useState(26);
+  const [wmColor, setWmColor] = useState('#ffffff');
 
   // QR-kod — profilga (nfcstore.uz/<KOD>) avtomatik havola qiladi, YOKI
   // foydalanuvchi o'zi kiritgan (qo'lda) havolaga ishora qiladi.
@@ -408,7 +430,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
     let cancelled = false;
     import('qrcode').then((QRCode) => {
       const canvas = document.createElement('canvas');
-      QRCode.toCanvas(canvas, link, { margin: 1, width: 240, color: { dark: qrColor, light: '#ffffffff' } }, (err) => {
+      QRCode.toCanvas(canvas, link, { margin: 1, width: 240, color: { dark: qrColor, light: '#00000000' } }, (err) => {
         if (!cancelled && !err) setQrImage(canvas);
       });
     });
@@ -418,9 +440,11 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   const buildState = useCallback((overrides) => ({
     side, frontText, frontSubText, backText, backSubText, showNfc,
     textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
-    logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY, ...overrides,
+    logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY,
+    wmXY, wmSize, wmColor, ...overrides,
   }), [side, frontText, frontSubText, backText, backSubText, showNfc,
-    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY]);
+    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY,
+    wmXY, wmSize, wmColor]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -444,6 +468,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
     const { x, y } = pointerToCanvasXY(e);
     const hb = hitboxesRef.current;
     if (hitTest(x, y, hb.qr)) dragRef.current = 'qr';
+    else if (hitTest(x, y, hb.wm)) dragRef.current = 'wm';
     else if (hitTest(x, y, hb.logo)) dragRef.current = 'logo';
     else if (hitTest(x, y, hb.text)) dragRef.current = 'text';
     else dragRef.current = null;
@@ -456,6 +481,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
     const ny = Math.min(1, Math.max(0, y / canvas.height));
     if (dragRef.current === 'logo') setLogoXY({ x: nx, y: ny });
     else if (dragRef.current === 'qr') setQrXY({ x: nx, y: ny });
+    else if (dragRef.current === 'wm') setWmXY({ x: nx, y: ny });
     else if (dragRef.current === 'text') setTextXY({ x: nx, y: ny });
   };
   const onCanvasPointerUp = () => { dragRef.current = null; };
@@ -670,6 +696,24 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
               {t('Markazga qaytarish')}
             </button>
           </FieldGroup>
+
+          {side === 'back' && (
+            <FieldGroup title={t('"nfcstore.uz" yozuvi (o\'zgarmas)')}>
+              <p className="text-xs text-base-content/45">{t('Matni o\'zgarmaydi, lekin joyi/o\'lchami/rangi sozlanadi. Kartada sichqoncha bilan ushlab suring.')}</p>
+              <div className="mt-2">
+                <Label>{t('O\'lcham')} ({wmSize}px)</Label>
+                <input type="range" min={12} max={60} value={wmSize} onChange={(e) => setWmSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <input type="color" value={wmColor} onChange={(e) => setWmColor(e.target.value)}
+                  className="h-8 w-8 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0" />
+                <span className="text-xs text-base-content/60">{t('Rangi')}</span>
+              </div>
+              <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={() => { setWmXY({ x: 0.5, y: 0.9 }); setWmSize(26); setWmColor('#ffffff'); }}>
+                {t('Andozaga qaytarish')}
+              </button>
+            </FieldGroup>
+          )}
 
           <FieldGroup title={t("Yuklab olish")}>
             <button type="button" className="btn btn-block bg-gradient-to-br from-[#f8e8b0] to-[#c9a24b] text-[#1a1408] hover:brightness-105 border-none" onClick={downloadCurrent}>

@@ -3,6 +3,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { dbRequestPasswordCode, dbChangePassword } from '../lib/db.js';
+import BackToCabinet from '../components/BackToCabinet.jsx';
 
 // Profildagi Sozlamalar sahifasi — o'z ma'lumotlarini ko'rish va
 // Telegram orqali kelgan bir martalik kod bilan parolni o'zgartirish.
@@ -61,7 +62,8 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
+      <BackToCabinet />
+      <section className="pt-6">
         <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
           {t('Sozlamalar')}

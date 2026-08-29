@@ -39,19 +39,26 @@ const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.
 export default function NfcCard({
   code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md',
   rim = false, back = false, bgImage = '',
-  namePos = null, nameScale = 1, onNameChange = null,
+  namePos = null, nameScale = 1, nameColor = '', onNameChange = null,
   codePos = null, codeScale = 1, onCodeChange = null,
+  brandPos = null, brandScale = 1, brandColor = '', onBrandChange = null,
 }) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
-  const [dragTarget, setDragTarget] = useState(null); // 'name' | 'code' | null
+  const [dragTarget, setDragTarget] = useState(null); // 'name' | 'code' | 'brand' | null
   const f = FINISHES[finish] || FINISHES.black;
   const year = since ? new Date(since).getFullYear() : new Date().getFullYear();
-  const editable = typeof onNameChange === 'function' || typeof onCodeChange === 'function';
+  const editable = typeof onNameChange === 'function' || typeof onCodeChange === 'function' || typeof onBrandChange === 'function';
   const namePositioned = namePos && Number.isFinite(namePos.x) && Number.isFinite(namePos.y);
   const codePositioned = codePos && Number.isFinite(codePos.x) && Number.isFinite(codePos.y);
+  // "NFCSTORE" yozuvi: sozlangan (brandPos) yoki tahrirlash rejimida — suzuvchi.
+  const brandPositioned = (brandPos && Number.isFinite(brandPos.x) && Number.isFinite(brandPos.y)) || (editable && typeof onBrandChange === 'function');
+  const brandXY = brandPos && Number.isFinite(brandPos.x) ? brandPos : { x: 0.5, y: 0.32 };
   const nameFontPx = 12 * (Number.isFinite(nameScale) ? nameScale : 1);
   const codeFontPx = 19 * (Number.isFinite(codeScale) ? codeScale : 1);
+  const brandFontPx = 11 * (Number.isFinite(brandScale) ? brandScale : 1);
+  const nameClr = nameColor || f.fg;
+  const brandClr = brandColor || f.sub;
 
   const onMove = (e) => {
     const el = ref.current;
@@ -63,6 +70,7 @@ export default function NfcCard({
       const clamped = { x: Math.min(0.97, Math.max(0.03, px)), y: Math.min(0.95, Math.max(0.05, py)) };
       if (dragTarget === 'name' && onNameChange) onNameChange(clamped);
       else if (dragTarget === 'code' && onCodeChange) onCodeChange(clamped);
+      else if (dragTarget === 'brand' && onBrandChange) onBrandChange(clamped);
       return;
     }
     if (editable) return; // tahrirlash rejimida 3D egilish yo'q — barqaror sirt
@@ -126,7 +134,9 @@ export default function NfcCard({
           <IconChip />
           <IconWave style={{ color: f.sub }} />
         </div>
-        <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
+        {brandPositioned
+          ? <span />
+          : <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: brandClr }}>NFCSTORE</div>}
         {codePositioned
           ? <span />
           : (
@@ -141,8 +151,10 @@ export default function NfcCard({
         <div className="relative z-[1] flex items-center justify-between">
           {namePositioned
             ? <span />
-            : <div className="font-display font-bold tracking-[0.04em] uppercase" style={{ fontSize: `${nameFontPx}px` }}>{name || 'ISM FAMILIYA'}</div>}
-          <div className="text-right font-mono text-[8.5px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE<br />{year}</div>
+            : <div className="font-display font-bold tracking-[0.04em] uppercase" style={{ fontSize: `${nameFontPx}px`, color: nameClr }}>{name || 'ISM FAMILIYA'}</div>}
+          {!brandPositioned && (
+            <div className="text-right font-mono text-[8.5px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE<br />{year}</div>
+          )}
         </div>
 
         {namePositioned && (
@@ -155,10 +167,27 @@ export default function NfcCard({
               transform: 'translate(-50%, -50%)',
               fontSize: `${nameFontPx}px`,
               whiteSpace: 'nowrap',
-              color: f.fg,
+              color: nameClr,
             }}
           >
             {name || 'ISM FAMILIYA'}
+          </div>
+        )}
+
+        {brandPositioned && (
+          <div
+            onMouseDown={editable && onBrandChange ? startDrag('brand') : undefined}
+            className={`absolute z-[3] font-display font-bold uppercase leading-none tracking-[0.22em] ${editable && onBrandChange ? 'cursor-move rounded px-1 outline-dashed outline-1 outline-white/50' : ''}`}
+            style={{
+              left: `${brandXY.x * 100}%`,
+              top: `${brandXY.y * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              fontSize: `${brandFontPx}px`,
+              whiteSpace: 'nowrap',
+              color: brandClr,
+            }}
+          >
+            NFCSTORE
           </div>
         )}
 

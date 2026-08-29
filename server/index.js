@@ -264,19 +264,31 @@ function validateBody(body) {
       cdBg = cleanStr(cd.bgUrl, 300).replace(/[^\w\-./]/g, '');
     }
     const clampNum = (v, lo, hi) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : null);
+    const hexColor = (v) => (/^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v) : '');
     const nameX = clampNum(cd.nameX, 0.03, 0.97);
     const nameY = clampNum(cd.nameY, 0.05, 0.95);
     const nameScale = clampNum(cd.nameScale, 0.5, 3);
+    const nameColor = hexColor(cd.nameColor);
     const codeX = clampNum(cd.codeX, 0.03, 0.97);
     const codeY = clampNum(cd.codeY, 0.05, 0.95);
     const codeScale = clampNum(cd.codeScale, 0.4, 3);
-    if (finish !== 'auto' || cdName || cdBg || (nameX != null && nameY != null) || nameScale != null
-        || (codeX != null && codeY != null) || codeScale != null) {
+    const brandX = clampNum(cd.brandX, 0.03, 0.97);
+    const brandY = clampNum(cd.brandY, 0.05, 0.95);
+    const brandScale = clampNum(cd.brandScale, 0.4, 3);
+    const brandColor = hexColor(cd.brandColor);
+    if (finish !== 'auto' || cdName || cdBg || nameColor || brandColor
+        || (nameX != null && nameY != null) || nameScale != null
+        || (codeX != null && codeY != null) || codeScale != null
+        || (brandX != null && brandY != null) || brandScale != null) {
       cardDesign = { finish, name: cdName, bgUrl: cdBg };
       if (nameX != null && nameY != null) { cardDesign.nameX = nameX; cardDesign.nameY = nameY; }
       if (nameScale != null) cardDesign.nameScale = nameScale;
+      if (nameColor) cardDesign.nameColor = nameColor;
       if (codeX != null && codeY != null) { cardDesign.codeX = codeX; cardDesign.codeY = codeY; }
       if (codeScale != null) cardDesign.codeScale = codeScale;
+      if (brandX != null && brandY != null) { cardDesign.brandX = brandX; cardDesign.brandY = brandY; }
+      if (brandScale != null) cardDesign.brandScale = brandScale;
+      if (brandColor) cardDesign.brandColor = brandColor;
     }
   }
   // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
@@ -1096,21 +1108,20 @@ app.post('/api/records/:code', async (req, res) => {
 
     if (await getRecord(code)) return res.status(409).json({ error: 'already_taken' });
 
+    // Band qilish oqimi to'lov tizimi tayyor bo'lmaguncha butunlay yopiq —
+    // tekin (0 so'm) nomlar ham band qilinmaydi.
+    if (!paymentsEnabled()) {
+      return res.status(503).json({ error: 'payments_disabled' });
+    }
+
     // Narx 0 bo'lsa (Oddiy/Free daraja, jismoniy karta ham tanlanmagan) —
-    // to'lov umuman kerak emas, darhol band qilamiz. Paynet yoqilgan yoki
-    // yo'qligidan qat'i nazar shu yo'l ishlaydi.
+    // to'lov umuman kerak emas, darhol band qilamiz.
     if (price === 0) {
       const created = await createRecord({ ...record, code, price: 0 });
       if (!created) return res.status(409).json({ error: 'already_taken' });
       await attachCardToUser(code, user.id);
       console.log(`[api] Tekin band qilindi (Oddiy daraja): ${code} — ${created.name}`);
       return res.status(201).json(created);
-    }
-
-    // Pullik ID/jismoniy karta to'lovsiz yaratilmaydi. To'lov tizimi tayyor
-    // bo'lmaguncha oqim xavfsiz holatda yopiq turadi.
-    if (!paymentsEnabled()) {
-      return res.status(503).json({ error: 'payments_disabled' });
     }
 
     // Real rejim: karta darhol YARATILMAYDI. Avval to'lov kutilayotgan

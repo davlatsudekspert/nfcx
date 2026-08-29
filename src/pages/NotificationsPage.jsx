@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { timeAgo } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { dbListGiftOffers, dbListMySupportMessages, dbListWonPendingAuctions } from '../lib/db.js';
+import BackToCabinet from '../components/BackToCabinet.jsx';
 
 // Foydalanuvchi uchun umumiy Bildirishnomalar — sovg'a takliflari, admin
 // javoblari va yutgan (to'lanmagan) auksionlar bitta joyda jamlanadi.
@@ -35,7 +36,8 @@ export default function NotificationsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
+      <BackToCabinet />
+      <section className="pt-6">
         <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
           {t('Bildirishnomalar')}

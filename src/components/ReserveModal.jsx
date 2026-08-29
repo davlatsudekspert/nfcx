@@ -42,9 +42,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [order, setOrder] = useState(null); // { orderId, payLink, code, price }
   const pollRef = useRef(null);
   const totalPrice = price + (wantPhysicalCard ? PHYSICAL_CARD_FEE : 0);
-  // Pullik band qilish faqat Payme ishga tushgach mumkin. Tekin (0 so'm)
-  // kodlar bunga bog'liq emas — ular oldingidek darhol band qilinadi.
-  const paymentBlocked = !PAYMENTS_ENABLED && totalPrice > 0;
+  // Band qilish to'lov tizimi tayyor bo'lmaguncha butunlay yopiq —
+  // tekin (0 so'm) nomlar ham band qilinmaydi.
+  const paymentBlocked = !PAYMENTS_ENABLED;
 
   // MUHIM: akkaunt endi tanlov emas, majburiy. Tizimga kirmagan bo'lsa,
   // email+parol kiritish shart — aks holda raqamli tashrif qog'ozi hech kimning

@@ -83,7 +83,7 @@ export async function dbCreate(code, data) {
     });
   } catch (err) {
     if (err && err.message === 'api_error_409') return null;
-    if (err && (err.code === 'unauthorized' || err.code === 'reserved_pending_payment' || err.code === 'exclusive_auction_only')) throw err;
+    if (err && (err.code === 'unauthorized' || err.code === 'reserved_pending_payment' || err.code === 'exclusive_auction_only' || err.code === 'payments_disabled' || err.code === 'payme_disabled')) throw err;
     return lsGet(code) ? null : lsSet(code, { ...data, code });
   }
 }

@@ -529,8 +529,12 @@ export default function ProfilePage({ code, catalog }) {
             bgImage={design.bgUrl || ''}
             namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
             nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
+            nameColor={design.nameColor || ''}
             codePos={Number.isFinite(design.codeX) && Number.isFinite(design.codeY) ? { x: design.codeX, y: design.codeY } : null}
             codeScale={Number.isFinite(design.codeScale) ? design.codeScale : 1}
+            brandPos={Number.isFinite(design.brandX) && Number.isFinite(design.brandY) ? { x: design.brandX, y: design.brandY } : null}
+            brandScale={Number.isFinite(design.brandScale) ? design.brandScale : 1}
+            brandColor={design.brandColor || ''}
             size="md"
           />
         </div>
