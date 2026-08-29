@@ -931,7 +931,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     if (freeCode) console.log(`[auth] #${user.id}ga avtomatik ID berildi: ${freeCode}`);
     // O'ziga xos promokod beramiz.
     await assignPromoCode(user.id);
-    // Agar do'stining promokodi kiritilgan bo'lsa — o'sha do'stiga 15%
+    // Agar do'stining promokodi kiritilgan bo'lsa — o'sha do'stiga 10%
     // chegirma krediti yoziladi.
     const promoInput = cleanStr(req.body?.promoCode, 12).toUpperCase();
     if (promoInput) {
@@ -1095,7 +1095,7 @@ app.post('/api/records/:code', async (req, res) => {
     if (tierNow === 'exclusive') return res.status(409).json({ error: 'exclusive_auction_only' });
     let price = basePrice + (wantsPhysicalCard ? PHYSICAL_CARD_FEE : 0);
 
-    // Do'st taklif qilish orqali olingan 15% chegirma — bandlash narxi
+    // Do'st taklif qilish orqali olingan 10% chegirma — bandlash narxi
     // 0 dan katta bo'lsagina qo'llanadi va bir martalik ishlatiladi.
     let discountApplied = 0;
     if (price > 0) {

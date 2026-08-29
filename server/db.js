@@ -535,7 +535,7 @@ export async function initDb() {
   // Do'st taklif qilish (referral) — har bir foydalanuvchi ro'yxatdan
   // o'tganda avtomatik o'ziga xos promokod oladi (users.promo_code).
   // Boshqa odam ro'yxatdan o'tganda shu promokodni kiritsa, promokod
-  // egasiga 15% chegirma "krediti" yoziladi — bu keyingi bandlashda
+  // egasiga 10% chegirma "krediti" yoziladi — bu keyingi bandlashda
   // avtomatik qo'llaniladi.
   const { rows: ucRows2 } = await pool.query(
     `SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`
@@ -1411,12 +1411,12 @@ export async function getUserByPromoCode(promoCode) {
   return rows[0]?.id || null;
 }
 
-// Ro'yxatdan o'tishda promokod kiritilgan bo'lsa: taklif qiluvchiga 15%
+// Ro'yxatdan o'tishda promokod kiritilgan bo'lsa: taklif qiluvchiga 10%
 // chegirma krediti yoziladi (keyingi bandlashda avtomatik qo'llanadi).
 export async function applyReferral(referrerId, referredId) {
   if (referrerId === referredId) return false;
   await pool.query(`INSERT INTO referral_uses (referrer_id, referred_id) VALUES ($1,$2)`, [referrerId, referredId]);
-  await pool.query(`UPDATE users SET pending_discount_pct = LEAST(pending_discount_pct + 15, 100) WHERE id = $1`, [referrerId]);
+  await pool.query(`UPDATE users SET pending_discount_pct = LEAST(pending_discount_pct + 10, 100) WHERE id = $1`, [referrerId]);
   return true;
 }
 

@@ -85,7 +85,10 @@ const NAV = [
 const DESKTOP_NAV = [
   ['Qanday ishlaydi', '/qanday-ishlaydi'],
   ['Narxlar', '/narxlar'],
+  ['Katalog', '/katalog'],
+  ['Reyting', '/reyting'],
   ['Kompaniyalar', '/kompaniyalar'],
+  ['Auksion', '/auksion'],
   ['Savollar', '/savollar'],
 ];
 

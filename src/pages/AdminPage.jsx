@@ -421,14 +421,15 @@ function UsersTab() {
     <div className="overflow-x-auto">
       <table className="table table-sm">
         <thead>
-          <tr><th>Email</th><th>{t('Telefon')}</th><th>{t('Bot')}</th><th>{t('Balans')}</th><th>{t('Bandlangan')}</th><th>{t('Kartalar')}</th><th>{t("Ro'yxatdan o'tgan")}</th><th></th></tr>
+          <tr><th className="w-8 text-base-content/40">#</th><th>Email</th><th>{t('Telefon')}</th><th>{t('Bot')}</th><th>{t('Balans')}</th><th>{t('Bandlangan')}</th><th>{t('Kartalar')}</th><th>{t("Ro'yxatdan o'tgan")}</th><th></th></tr>
         </thead>
         <tbody>
           {filtered.length === 0 && (
-            <tr><td colSpan={8} className="py-6 text-center text-base-content/45">{t("Hech narsa topilmadi.")}</td></tr>
+            <tr><td colSpan={9} className="py-6 text-center text-base-content/45">{t("Hech narsa topilmadi.")}</td></tr>
           )}
-          {filtered.map((u) => (
+          {filtered.map((u, i) => (
             <tr key={u.id} className={u.isTest ? 'opacity-50' : ''}>
+              <td className="text-xs tabular-nums text-base-content/40">{i + 1}</td>
               <td>
                 {u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">{t("SINOV")}</span>}
                 {u.deletedAt && <span className="badge badge-error badge-xs ml-1">{t("O'CHIRILGAN")}</span>}

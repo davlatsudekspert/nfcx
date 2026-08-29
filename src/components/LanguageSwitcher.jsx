@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLanguage, LANGUAGES } from '../lib/i18n.jsx';
+import FlagIcon from './FlagIcon.jsx';
 
 // Til tanlash tugmasi — 🇺🇿/🇷🇺/🇬🇧, tanlov brauzerda saqlanadi.
 // Header'da ham, header'siz "bare" sahifalarda (public profil, admin) ham
@@ -11,7 +12,7 @@ export default function LanguageSwitcher({ className = '', menuClassName = '' })
   return (
     <div className={`relative ${className}`}>
       <button className="btn btn-ghost btn-sm px-2" onClick={() => setOpen((o) => !o)} aria-label={current.label}>
-        <span className="text-base leading-none">{current.flag}</span>
+        <FlagIcon code={current.code} className="text-base" />
       </button>
       {open && (
         <>
@@ -23,7 +24,7 @@ export default function LanguageSwitcher({ className = '', menuClassName = '' })
                 onClick={() => { setLang(l.code); setOpen(false); }}
                 className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 ${lang === l.code ? 'text-accent' : ''}`}
               >
-                <span>{l.flag}</span> {l.label}
+                <FlagIcon code={l.code} /> {l.label}
               </button>
             ))}
           </div>

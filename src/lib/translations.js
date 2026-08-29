@@ -662,7 +662,7 @@ export const DICT = {
   'Yuborildi — admin tez orada javob beradi.': { ru: 'Отправлено — администратор скоро ответит.', en: 'Sent — the admin will reply soon.' },
   "Do'st taklif qiling": { ru: 'Пригласите друга', en: 'Invite a friend' },
   "Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ": { ru: 'Если ваш друг зарегистрируется по этой ссылке, вы автоматически получите ', en: 'If your friend signs up via this link, you automatically get ' },
-  '15% chegirma': { ru: 'скидку 15%', en: 'a 15% discount' },
+  '10% chegirma': { ru: 'скидку 10%', en: 'a 10% discount' },
   ' olasiz.': { ru: ' на следующее бронирование.', en: ' on your next reservation.' },
   'Nusxalash': { ru: 'Копировать', en: 'Copy' },
   'Nusxalandi!': { ru: 'Скопировано!', en: 'Copied!' },

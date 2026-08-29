@@ -1263,7 +1263,7 @@ function ReferralPanel({ user }) {
       <h2 className="text-xl font-bold">{'\u{1F91D}'} {t("Do'st taklif qiling")}</h2>
       <div className="mt-3 rounded-2xl border border-accent/25 bg-accent/5 p-5">
         <p className="text-sm text-base-content/70">
-          {t("Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ")}<b className="text-accent">{t('15% chegirma')}</b>{t(' olasiz.')}
+          {t("Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ")}<b className="text-accent">{t('10% chegirma')}</b>{t(' olasiz.')}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <code className="rounded-lg bg-black/30 px-3 py-2 text-sm font-mono">{link}</code>

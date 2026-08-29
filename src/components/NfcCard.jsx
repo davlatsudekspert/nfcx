@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
-import { IconChip, IconWave } from './Icons.jsx';
+import { IconWave } from './Icons.jsx';
 
-// A premium physical-card mockup — chip, contactless waves, embossed
+// A premium physical-card mockup — contactless waves, embossed
 // raqamli tashrif qog'ozi code and name — with a real-time mouse-tilt (3D perspective)
 // and a looping holographic sheen sweep. Purely our own generic design
 // (no third-party card-network branding), in black / silver / white
@@ -130,8 +130,7 @@ export default function NfcCard({
           style={{ background: `radial-gradient(360px circle at ${tilt.mx}% ${tilt.my}%, rgba(255,255,255,0.55), transparent 45%)` }}
         />
         <div className="pointer-events-none absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
-        <div className="relative z-[1] flex items-center justify-between">
-          <IconChip />
+        <div className="relative z-[1] flex items-center justify-end">
           <IconWave style={{ color: f.sub }} />
         </div>
         {brandPositioned
