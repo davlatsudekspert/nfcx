@@ -258,6 +258,7 @@ export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
   const [pendingGift, setPendingGift] = useState(undefined); // "Gift NFC ID" — yangi, izolyatsiyalangan
   const [toast, setToast] = useState('');
+  const [tab, setTab] = useState('vizitka'); // 'vizitka' | 'postlar' — profil ichidagi tab-panel
   const [tapInactive, setTapInactive] = useState(false);
   const [followStats, setFollowStats] = useState(null);
   const [likeInfo, setLikeInfo] = useState(null);
