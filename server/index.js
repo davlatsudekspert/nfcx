@@ -7,6 +7,7 @@ import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
+  adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
   createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
   createSupportMessage, listMySupportMessages,
@@ -801,7 +802,21 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     }
 
     const existing = await getUserByEmail(email);
-    if (existing) return res.status(409).json({ error: 'email_taken' });
+    if (existing) {
+      if (existing.deletedAt) {
+        // Bu email ilgari admin tomonidan o'chirilgan akkauntga tegishli
+        // edi — eski qatorni butunlay tozalab, emailni bo'shatamiz, so'ng
+        // yangi akkaunt yaratamiz. Admin ko'rishi uchun jurnalga yoziladi.
+        await adminDeleteUser(existing.id);
+        logAdminActivity({
+          action: 'user_deleted',
+          details: `O'chirilgan email qayta ro'yxatdan o'tdi: ${email} (eski #${existing.id} tozalandi)`,
+          ip: req.ip,
+        }).catch(() => {});
+      } else {
+        return res.status(409).json({ error: 'email_taken' });
+      }
+    }
     const user = await createUser(email, hashPassword(password), { phone: extra.phone, botAck: extra.botAck, tosAccepted: extra.tosAccepted });
     if (!user) return res.status(409).json({ error: 'email_taken' });
     // Har bir yangi foydalanuvchiga avtomatik, bepul, 8 xonali ID
@@ -1379,6 +1394,11 @@ app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) 
     //    yarim tugagan urinishdan), parol to'g'ri bo'lsa — o'shani qayta
     //    ishlatamiz, aks holda 409. Aks holda yangi akkaunt.
     let user = await getUserByEmail(email);
+    if (user && user.deletedAt) {
+      // Ilgari o'chirilgan email — eski qatorni tozalab, yangisini yaratamiz.
+      await adminDeleteUser(user.id);
+      user = null;
+    }
     if (user) {
       if (!verifyPassword(password, user.passwordHash)) {
         return res.status(409).json({ error: 'email_taken' });
