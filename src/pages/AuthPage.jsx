@@ -6,7 +6,7 @@ import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
-const BOT_USERNAME = 'NFCStoreBot';
+const BOT_USERNAME = 'nfcsalebot';
 const BOT_LINK = `https://t.me/${BOT_USERNAME}`;
 
 function errText(err, t) {
