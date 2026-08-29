@@ -3,10 +3,16 @@ import { dbListNews } from '../lib/db.js';
 import { dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 
+// Tanlangan tildagi matnni oladi — tarjima bo'sh bo'lsa o'zbekchaga qaytadi.
+function pick(item, base, lang) {
+  const suffix = lang === 'ru' ? 'Ru' : lang === 'en' ? 'En' : '';
+  if (!suffix) return item[base] || '';
+  return (item[base + suffix] || '').trim() || item[base] || '';
+}
+
 // NFCSTORE yangiliklari — faqat admin joylaydi (Admin panel → Yangiliklar).
-// Bu sahifa ularni ochiq ko'rsatadi.
 export default function NewsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [news, setNews] = useState(null);
 
   useEffect(() => {
@@ -44,9 +50,9 @@ export default function NewsPage() {
             )}
             <div className="p-5 sm:p-6">
               <div className="font-mono text-xs text-base-content/40">{dateTime(new Date(item.createdAt).getTime())}</div>
-              <h2 className="mt-1.5 text-xl font-bold">{item.title}</h2>
-              {item.body && (
-                <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-base-content/70">{item.body}</p>
+              <h2 className="mt-1.5 text-xl font-bold">{pick(item, 'title', lang)}</h2>
+              {pick(item, 'body', lang) && (
+                <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-base-content/70">{pick(item, 'body', lang)}</p>
               )}
             </div>
           </article>

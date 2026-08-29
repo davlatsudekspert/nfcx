@@ -4,8 +4,7 @@ import { parseAnyCode, priceForCode } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
-import NfcCard from '../components/NfcCard.jsx';
-import PedestalShowcase3D from '../components/PedestalShowcase3D.jsx';
+import NeonOrbitCard from '../components/NeonOrbitCard.jsx';
 import { IconSearch } from '../components/Icons.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 
@@ -220,11 +219,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
             </Reveal>
           </div>
 
-          {/* ===== Premium mahsulot vitrinasi (Narxlar sahifasi bilan bir xil) ===== */}
-          <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center lg:block">
-            <PedestalShowcase3D>
-              <NfcCard code="ABZ007" name={t('SIZNING ISMINGIZ')} finish="gold" size="lg" rim />
-            </PedestalShowcase3D>
+          {/* ===== Neon orbit kompozitsiyasi ===== */}
+          <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center overflow-visible lg:block">
+            <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} />
           </Reveal>
         </div>
 

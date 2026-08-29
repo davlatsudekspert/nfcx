@@ -875,7 +875,9 @@ export async function initDb() {
     $$;
   `);
 
-  // Yangiliklar — faqat admin joylaydi, hamma o'qiydi.
+  // Yangiliklar — faqat admin joylaydi, hamma o'qiydi. title/body — o'zbekcha
+  // (asosiy); title_ru/en, body_ru/en — tarjimalar (bo'sh bo'lsa o'zbekchaga
+  // qaytiladi).
   await pool.query(`
     CREATE TABLE IF NOT EXISTS news (
       id         SERIAL PRIMARY KEY,
@@ -887,6 +889,18 @@ export async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  {
+    const { rows } = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'news'`
+    );
+    const have = new Set(rows.map((r) => r.column_name));
+    for (const col of ['title_ru', 'title_en', 'body_ru', 'body_en']) {
+      if (!have.has(col)) {
+        await pool.query(`ALTER TABLE news ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
+        console.log(`[db] news.${col} ustuni qo’shildi.`);
+      }
+    }
+  }
 
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
@@ -894,45 +908,53 @@ export async function initDb() {
 }
 
 // ---------- Yangiliklar ----------
+const NEWS_COLS = `
+  id, title, body,
+  title_ru AS "titleRu", title_en AS "titleEn",
+  body_ru AS "bodyRu", body_en AS "bodyEn",
+  image_url AS "imageUrl", published,
+  created_at AS "createdAt", updated_at AS "updatedAt"`;
+
 export async function listNews({ includeUnpublished = false } = {}) {
   if (!dbReady) return [];
   const where = includeUnpublished ? '' : 'WHERE published = TRUE';
   const { rows } = await pool.query(
-    `SELECT id, title, body, image_url AS "imageUrl", published,
-            created_at AS "createdAt", updated_at AS "updatedAt"
-       FROM news ${where}
-      ORDER BY created_at DESC
-      LIMIT 100`
+    `SELECT ${NEWS_COLS} FROM news ${where} ORDER BY created_at DESC LIMIT 100`
   );
   return rows;
 }
-export async function adminCreateNews({ title, body, imageUrl, published }) {
+export async function adminCreateNews(f) {
   const { rows } = await pool.query(
-    `INSERT INTO news (title, body, image_url, published)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, title, body, image_url AS "imageUrl", published,
-               created_at AS "createdAt", updated_at AS "updatedAt"`,
-    [title, body || '', imageUrl || '', published !== false]
+    `INSERT INTO news (title, body, title_ru, title_en, body_ru, body_en, image_url, published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     RETURNING ${NEWS_COLS}`,
+    [
+      f.title, f.body || '',
+      f.titleRu || '', f.titleEn || '', f.bodyRu || '', f.bodyEn || '',
+      f.imageUrl || '', f.published !== false,
+    ]
   );
   return rows[0];
 }
-export async function adminUpdateNews(id, fields) {
+export async function adminUpdateNews(id, f) {
   const { rows } = await pool.query(
     `UPDATE news SET
         title = COALESCE($2, title),
         body = COALESCE($3, body),
-        image_url = COALESCE($4, image_url),
-        published = COALESCE($5, published),
+        title_ru = COALESCE($4, title_ru),
+        title_en = COALESCE($5, title_en),
+        body_ru = COALESCE($6, body_ru),
+        body_en = COALESCE($7, body_en),
+        image_url = COALESCE($8, image_url),
+        published = COALESCE($9, published),
         updated_at = now()
       WHERE id = $1
-      RETURNING id, title, body, image_url AS "imageUrl", published,
-                created_at AS "createdAt", updated_at AS "updatedAt"`,
+      RETURNING ${NEWS_COLS}`,
     [
       id,
-      fields.title ?? null,
-      fields.body ?? null,
-      fields.imageUrl ?? null,
-      fields.published ?? null,
+      f.title ?? null, f.body ?? null,
+      f.titleRu ?? null, f.titleEn ?? null, f.bodyRu ?? null, f.bodyEn ?? null,
+      f.imageUrl ?? null, f.published ?? null,
     ]
   );
   return rows[0] || null;

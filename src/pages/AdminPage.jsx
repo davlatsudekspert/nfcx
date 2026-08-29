@@ -1362,31 +1362,36 @@ function PromoCodesTab() {
   );
 }
 
-// Yangiliklar — faqat admin joylaydi/tahrirlaydi/o'chiradi.
+// Yangiliklar — faqat admin joylaydi/tahrirlaydi/o'chiradi. 3 tilda
+// (o'zbekcha majburiy; ru/en bo'sh bo'lsa saytda o'zbekchaga qaytadi).
+const NEWS_LANGS = [['uz', 'UZ'], ['ru', 'RU'], ['en', 'EN']];
+const NEWS_EMPTY = { title: '', body: '', titleRu: '', bodyRu: '', titleEn: '', bodyEn: '' };
+
 function NewsTab() {
   const { t } = useLanguage();
   const [rows, setRows] = useState(null);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [form, setForm] = useState(NEWS_EMPTY);
   const [imageUrl, setImageUrl] = useState('');
+  const [langTab, setLangTab] = useState('uz');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState(null);
   const [editId, setEditId] = useState(null);
 
   const load = () => adminApi('/news').then((d) => setRows(d.news || [])).catch(() => setRows([]));
   useEffect(() => { load(); }, []);
 
-  const reset = () => { setEditId(null); setTitle(''); setBody(''); setImageUrl(''); setErr(null); };
+  const reset = () => { setEditId(null); setForm(NEWS_EMPTY); setImageUrl(''); setLangTab('uz'); setErr(null); };
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const key = (base) => (langTab === 'uz' ? base : base + (langTab === 'ru' ? 'Ru' : 'En'));
 
   const save = async () => {
-    if (!title.trim()) { setErr(t('Sarlavhani kiriting.')); return; }
+    if (!form.title.trim()) { setErr(t('Sarlavhani kiriting.')); return; }
     setBusy(true); setErr(null);
+    const payload = { ...form, imageUrl };
     try {
-      if (editId) {
-        await adminApi(`/news/${editId}`, { method: 'PUT', body: JSON.stringify({ title, body, imageUrl }) });
-      } else {
-        await adminApi('/news', { method: 'POST', body: JSON.stringify({ title, body, imageUrl }) });
-      }
+      if (editId) await adminApi(`/news/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      else await adminApi('/news', { method: 'POST', body: JSON.stringify(payload) });
       reset();
       await load();
     } catch (e) {
@@ -1396,7 +1401,34 @@ function NewsTab() {
     }
   };
 
-  const startEdit = (n) => { setEditId(n.id); setTitle(n.title); setBody(n.body || ''); setImageUrl(n.imageUrl || ''); setErr(null); };
+  const startEdit = (n) => {
+    setEditId(n.id);
+    setForm({ title: n.title || '', body: n.body || '', titleRu: n.titleRu || '', bodyRu: n.bodyRu || '', titleEn: n.titleEn || '', bodyEn: n.bodyEn || '' });
+    setImageUrl(n.imageUrl || '');
+    setLangTab('uz');
+    setErr(null);
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setErr(t('Rasm hajmi juda katta (maks. 2 MB).')); return; }
+    setUploading(true); setErr(null);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const d = await adminApi('/upload', { method: 'POST', body: JSON.stringify({ dataUrl: reader.result }) });
+        setImageUrl(d.url);
+      } catch {
+        setErr(t('Rasmni yuklab bo‘lmadi.'));
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.onerror = () => { setUploading(false); setErr(t('Rasmni yuklab bo‘lmadi.')); };
+    reader.readAsDataURL(file);
+  };
 
   const togglePublish = async (n) => {
     setBusy(true);
@@ -1415,15 +1447,40 @@ function NewsTab() {
     <div className="space-y-6">
       <div className="rounded-2xl border border-white/10 bg-base-200/50 p-5">
         <div className="text-sm font-bold">{editId ? t('Yangilikni tahrirlash') : t('Yangi yangilik')}</div>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('Sarlavha')}
-          className="input input-bordered input-sm mt-3 w-full bg-base-100" />
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('Matn')} rows={4}
+
+        <div className="mt-3 flex gap-1">
+          {NEWS_LANGS.map(([code, label]) => (
+            <button key={code} onClick={() => setLangTab(code)}
+              className={`rounded-md px-3 py-1 text-xs font-semibold ${langTab === code ? 'bg-accent text-accent-content' : 'bg-white/5 text-base-content/60'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <input value={form[key('title')]} onChange={set(key('title'))}
+          placeholder={langTab === 'uz' ? t('Sarlavha') : t('Sarlavha (tarjima)')}
+          className="input input-bordered input-sm mt-2 w-full bg-base-100" />
+        <textarea value={form[key('body')]} onChange={set(key('body'))}
+          placeholder={langTab === 'uz' ? t('Matn') : t('Matn (tarjima)')} rows={4}
           className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
-        <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder={t('Rasm havolasi (ixtiyoriy) — https://...')}
-          className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono text-xs" />
+        {langTab !== 'uz' && (
+          <div className="mt-1 text-[11px] text-base-content/40">{t("Bo'sh qoldirsangiz, bu tilda o'zbekcha matn ko'rsatiladi.")}</div>
+        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder={t('Rasm havolasi (ixtiyoriy) — https://...')}
+            className="input input-bordered input-sm min-w-0 flex-1 bg-base-100 font-mono text-xs" />
+          <label className="btn btn-ghost btn-sm">
+            {uploading ? <span className="loading loading-spinner loading-xs"></span> : t('Fayldan yuklash')}
+            <input type="file" accept="image/*" className="hidden" onChange={onFile} disabled={uploading} />
+          </label>
+          {imageUrl && <button className="btn btn-ghost btn-xs" onClick={() => setImageUrl('')}>{t("O'chirish")}</button>}
+        </div>
+        {imageUrl && <img src={imageUrl} alt="" className="mt-2 max-h-40 rounded-lg border border-white/10 object-cover" />}
+
         {err && <div className="mt-2 text-xs text-error">{err}</div>}
         <div className="mt-3 flex gap-2">
-          <button className="btn btn-primary btn-sm" onClick={save} disabled={busy}>
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={busy || uploading}>
             {busy ? <span className="loading loading-spinner loading-xs"></span> : (editId ? t('Saqlash') : t('Joylash'))}
           </button>
           {editId && <button className="btn btn-ghost btn-sm" onClick={reset}>{t('Bekor')}</button>}
@@ -1437,9 +1494,11 @@ function NewsTab() {
           <div key={n.id} className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold">{n.title}</span>
                   {!n.published && <span className="badge badge-ghost badge-xs">{t('Yashirin')}</span>}
+                  {n.titleRu && <span className="badge badge-outline badge-xs">RU</span>}
+                  {n.titleEn && <span className="badge badge-outline badge-xs">EN</span>}
                 </div>
                 <div className="mt-0.5 text-[11px] text-base-content/40">{dateTime(new Date(n.createdAt).getTime())}</div>
                 {n.body && <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-base-content/60">{n.body}</p>}

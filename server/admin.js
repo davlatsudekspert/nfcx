@@ -10,6 +10,9 @@
 
 import express from 'express';
 import crypto from 'crypto';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { generateSecret as totpGenerateSecret, generateURI as totpGenerateURI, verify as totpVerify } from 'otplib';
 import { hashPassword, verifyPassword } from './auth.js';
 import { sendTelegramOtp } from './bot.js';
@@ -55,6 +58,10 @@ function adminLoginLimiter(req, res, next) {
 }
 
 const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
+
+// Rasm yuklash (yangiliklar uchun) — index.js bilan bir xil papka.
+const UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'uploads');
+const IMAGE_DATA_RE = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,(.+)$/;
 
 // Xotiradagi sessiya jadvali — admin biror marta bittasi, doim shu process
 // ichida ishlaydi; Railway qayta ishga tushsa qayta kirish kifoya.
@@ -752,31 +759,55 @@ adminRouter.get('/news', async (req, res) => {
   res.json({ news: await listNews({ includeUnpublished: true }) });
 });
 
+// Yangilik rasmi — fayldan yuklash (base64 dataURL -> /uploads/...).
+adminRouter.post('/upload', async (req, res) => {
+  const m = IMAGE_DATA_RE.exec(String(req.body?.dataUrl || ''));
+  if (!m) return res.status(422).json({ error: 'bad_image' });
+  const buf = Buffer.from(m[3], 'base64');
+  if (!buf.length) return res.status(422).json({ error: 'bad_image' });
+  if (buf.length > 2 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+  try {
+    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    const ext = m[2] === 'jpeg' || m[2] === 'jpg' ? 'jpg' : m[2];
+    const name = `news_${crypto.randomBytes(10).toString('hex')}.${ext}`;
+    await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+    res.json({ url: `/uploads/${name}` });
+  } catch (err) {
+    console.error('[admin] upload:', err.message);
+    res.status(500).json({ error: 'upload_failed' });
+  }
+});
+
+function newsFieldsFromBody(body, { partial } = {}) {
+  const str = (v, max) => String(v ?? '').slice(0, max);
+  const f = {};
+  const set = (key, val) => { if (!partial || body[key] != null) f[key] = val; };
+  set('title', str(body.title, 200).trim());
+  set('body', str(body.body, 8000));
+  set('titleRu', str(body.titleRu, 200).trim());
+  set('titleEn', str(body.titleEn, 200).trim());
+  set('bodyRu', str(body.bodyRu, 8000));
+  set('bodyEn', str(body.bodyEn, 8000));
+  if (!partial || body.imageUrl != null) f.imageUrl = cleanNewsImage(body.imageUrl);
+  if (!partial || body.published != null) f.published = body.published !== false;
+  return f;
+}
+
 adminRouter.post('/news', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const title = String(req.body?.title || '').slice(0, 200).trim();
-  if (!title) return res.status(422).json({ error: 'title_required' });
-  const row = await adminCreateNews({
-    title,
-    body: String(req.body?.body || '').slice(0, 8000),
-    imageUrl: cleanNewsImage(req.body?.imageUrl),
-    published: req.body?.published !== false,
-  });
-  logAdminActivity({ action: 'news_created', details: title, ip: req.ip }).catch(() => {});
+  const f = newsFieldsFromBody(req.body || {});
+  if (!f.title) return res.status(422).json({ error: 'title_required' });
+  const row = await adminCreateNews(f);
+  logAdminActivity({ action: 'news_created', details: f.title, ip: req.ip }).catch(() => {});
   res.status(201).json(row);
 });
 
 adminRouter.put('/news/:id', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const id = Number(req.params.id);
-  const fields = {};
-  if (req.body?.title != null) fields.title = String(req.body.title).slice(0, 200).trim();
-  if (req.body?.body != null) fields.body = String(req.body.body).slice(0, 8000);
-  if (req.body?.imageUrl != null) fields.imageUrl = cleanNewsImage(req.body.imageUrl);
-  if (req.body?.published != null) fields.published = !!req.body.published;
-  const row = await adminUpdateNews(id, fields);
+  const f = newsFieldsFromBody(req.body || {}, { partial: true });
+  const row = await adminUpdateNews(Number(req.params.id), f);
   if (!row) return res.status(404).json({ error: 'not_found' });
-  logAdminActivity({ action: 'news_updated', details: `#${id}`, ip: req.ip }).catch(() => {});
+  logAdminActivity({ action: 'news_updated', details: `#${req.params.id}`, ip: req.ip }).catch(() => {});
   res.json(row);
 });
 

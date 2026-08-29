@@ -6,7 +6,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
-import PedestalShowcase3D from '../components/PedestalShowcase3D.jsx';
+import NeonOrbitCard from '../components/NeonOrbitCard.jsx';
 
 function useMaskedCode() {
   const [value, setValue] = useState('');
@@ -151,11 +151,9 @@ export default function PricingPage({ catalog, refreshCatalog }) {
           </div>
         </div>
 
-        {/* ===== Luxury studio product showcase — faqat karta PRESENTATIONI ===== */}
-        <div className="flex min-w-0 items-center justify-center overflow-hidden">
-          <PedestalShowcase3D>
-            <NfcCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} finish="gold" size="lg" rim />
-          </PedestalShowcase3D>
+        {/* ===== Neon orbit kompozitsiyasi (bosh sahifadagi vizual karta) ===== */}
+        <div className="hidden justify-self-center overflow-visible lg:block">
+          <NeonOrbitCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} />
         </div>
       </section>
 
