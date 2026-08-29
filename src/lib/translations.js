@@ -230,6 +230,32 @@ export const DICT = {
   'Vaqt': { ru: 'Время', en: 'Time' },
   "Hozircha to'lovlar yo'q.": { ru: 'Пока нет платежей.', en: 'No payments yet.' },
   "Raqamli tashrif qog'ozi xaridi": { ru: 'Покупка цифровой визитки', en: 'Digital card purchase' },
+
+  // To'lov bo'limi (PaymentsPage redesign) + "Payme tez orada"
+  "To'lov": { ru: 'Оплата', en: 'Payment' },
+  "To'lov usuli, kutilayotgan to'lovlar va barcha tranzaksiyalar tarixi.":
+    { ru: 'Способ оплаты, ожидающие платежи и вся история транзакций.', en: 'Payment method, pending payments and full transaction history.' },
+  "To'lov usuli": { ru: 'Способ оплаты', en: 'Payment method' },
+  "To'lovlar Payme orqali xavfsiz amalga oshiriladi.": { ru: 'Платежи безопасно проходят через Payme.', en: 'Payments are processed securely via Payme.' },
+  "Jami to'langan": { ru: 'Всего оплачено', en: 'Total paid' },
+  'Kutilayotgan': { ru: 'Ожидают', en: 'Pending' },
+  "Sizga to'lanadi": { ru: 'Вам причитается', en: 'Owed to you' },
+  "Kutilayotgan to'lovlar": { ru: 'Ожидающие платежи', en: 'Pending payments' },
+  'Tranzaksiya tarixi': { ru: 'История транзакций', en: 'Transaction history' },
+  'Sana': { ru: 'Дата', en: 'Date' },
+  "To'lash": { ru: 'Оплатить', en: 'Pay' },
+  'Kutilmoqda': { ru: 'Ожидается', en: 'Pending' },
+  'Jismoniy NFC karta': { ru: 'Физическая NFC-карта', en: 'Physical NFC card' },
+  'Tez orada': { ru: 'Скоро', en: 'Coming soon' },
+  'Payme orqali to‘lov tez orada ishga tushadi.': { ru: 'Оплата через Payme скоро заработает.', en: 'Payment via Payme is coming soon.' },
+  'Payme orqali to‘lov tez orada ishga tushadi. Hozircha pullik xizmatlar vaqtincha to‘xtatilgan — mavjud profillaringiz va tekin imkoniyatlar odatdagidek ishlaydi.':
+    { ru: 'Оплата через Payme скоро заработает. Пока платные услуги временно приостановлены — ваши существующие профили и бесплатные возможности работают как обычно.', en: 'Payment via Payme is coming soon. Paid services are temporarily paused for now — your existing profiles and free features work as usual.' },
+  "Auksionda g'olib bo'lsangiz, 24 soat ichida to'lov qilish talab etiladi. To'lov tizimi vaqtincha to'xtatilgani uchun hozircha taklif berish yopiq.":
+    { ru: 'Если вы выиграете аукцион, оплата требуется в течение 24 часов. Поскольку платёжная система временно приостановлена, ставки сейчас закрыты.', en: 'If you win an auction, payment is required within 24 hours. Since the payment system is temporarily paused, bidding is currently closed.' },
+  'Havola tugmalarini shaffof qilish (shisha effekti)': { ru: 'Сделать кнопки-ссылки прозрачными (эффект стекла)', en: 'Make link buttons transparent (glass effect)' },
+  "Tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinib turadi. Ustidan yorug'lik yugurish animatsiyasi har doim ishlaydi.":
+    { ru: 'Кнопки станут полупрозрачными, фон будет виден сквозь них. Анимация бегущего блика работает всегда.', en: 'Buttons become semi-transparent so the background shows through. The running-shine animation is always on.' },
+
   "Auksion to'lovi": { ru: 'Оплата аукциона', en: 'Auction payment' },
   "Premium profilga o'tish": { ru: 'Переход на премиум-профиль', en: 'Upgrade to premium profile' },
   'Premium obuna': { ru: 'Премиум-подписка', en: 'Premium subscription' },

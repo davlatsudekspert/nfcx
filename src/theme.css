@@ -65,3 +65,22 @@
 @keyframes marqueeScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes glowBarPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.18), 0 14px 30px rgba(0,0,0,0.12); } 50% { box-shadow: 0 0 0 6px rgba(255,255,255,0.05), 0 14px 30px rgba(0,0,0,0.12); } }
 @keyframes cardBreath { 0%,100% { box-shadow: 0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 0 0 rgba(255,255,255,0); } 50% { box-shadow: 0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 30px 2px rgba(255,255,255,0.06); } }
+
+/* Profil havola tugmalari — doimiy "yorug'lik yugurishi" (shimmer). */
+@keyframes linkShine { 0% { left: -60%; } 60%, 100% { left: 120%; } }
+.vz-link { position: relative; overflow: hidden; isolation: isolate; }
+.vz-link::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.30), transparent);
+  transform: skewX(-18deg); animation: linkShine 4s ease-in-out infinite;
+  pointer-events: none; z-index: 1;
+}
+/* Shaffof (shisha) variant — profil sozlamalaridagi toggle orqali yoqiladi. */
+.vz-link--glass {
+  background-color: color-mix(in srgb, var(--vz-pill) 30%, transparent) !important;
+  -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  border-color: var(--vz-line) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vz-link::after { animation: none; display: none; }
+}

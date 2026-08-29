@@ -241,6 +241,8 @@ function validateBody(body) {
     : '';
   // Fon qimirlab turadigan animatsiyami — standart holatda yoqilgan.
   const bgAnimated = body.bgAnimated === false ? false : true;
+  // Profil havola tugmalarini shaffof (shisha effekti) qilish — standart o'chiq.
+  const linksTransparent = body.linksTransparent === true;
   // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
   // fayli (xuddi avatar/fon rasmi kabi).
   let musicUrl = safeUrl(body.musicUrl);
@@ -257,6 +259,7 @@ function validateBody(body) {
       accentColor,
       bgColor,
       bgAnimated,
+      linksTransparent,
       musicUrl,
       tg: cleanStr(body.tg, 40).replace(/^@/, ''),
       phone: cleanStr(body.phone, 24),
@@ -1047,9 +1050,15 @@ app.post('/api/records/:code', async (req, res) => {
       return res.status(201).json(created);
     }
 
-    // Payme ulanmagan bo'lsa (masalan lokal dev muhitida) — eskicha,
-    // to'lovsiz, darhol band qilamiz, aks holda test qilib bo'lmaydi.
+    // Payme ulanmagan bo'lsa: pullik kod BEPUL berilmaydi (aks holda prod'da
+    // barcha pullik kodlar tekinga ketardi). Faqat ALLOW_FREE_CHECKOUT=1
+    // env qo'yilgan lokal test muhitida to'lovsiz band qilishga ruxsat.
+    // MUHIM: bu yerda soxta to'lov, soxta tranzaksiya YO'Q — shunchaki
+    // pullik oqim to'sib qo'yiladi.
     if (!paymeEnabled()) {
+      if (process.env.ALLOW_FREE_CHECKOUT !== '1') {
+        return res.status(503).json({ error: 'payme_disabled' });
+      }
       const created = await createRecord({ ...record, code, price });
       if (!created) return res.status(409).json({ error: 'already_taken' });
       await attachCardToUser(code, user.id);

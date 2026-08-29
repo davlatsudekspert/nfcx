@@ -5,6 +5,8 @@ import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { isYoutubeMusic } from '../lib/music.js';
+import { PAYMENTS_ENABLED } from '../lib/features.js';
+import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import { vzStyle } from './ProfilePage.jsx';
 import CardDesignerPage from './CardDesignerPage.jsx';
 import {
@@ -231,11 +233,17 @@ function WonAuctionsPanel() {
                   <div className="font-mono text-sm font-bold">nfcstore.uz/{a.code.toLowerCase()}</div>
                   <div className="text-xs text-base-content/60">{t("Siz g'olib bo'ldingiz — {n} so'm", { n: fmt(a.currentPrice) })}</div>
                 </div>
-                <button className="btn btn-warning btn-sm" onClick={() => navigate('/auksion/' + a.id)}>{t("To'lov qiling")}</button>
+                {PAYMENTS_ENABLED
+                  ? <button className="btn btn-warning btn-sm" onClick={() => navigate('/auksion/' + a.id)}>{t("To'lov qiling")}</button>
+                  : <button className="btn btn-sm btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">{t("To'lov qiling")}</button>}
               </div>
-              <p className="mt-2 text-xs font-semibold text-warning">
-                {'\u26A0\uFE0F'} {t("Diqqat: {h} soat {m} daqiqa ichida to'lov qilmasangiz, auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.", { h, m })}
-              </p>
+              {PAYMENTS_ENABLED ? (
+                <p className="mt-2 text-xs font-semibold text-warning">
+                  {'\u26A0\uFE0F'} {t("Diqqat: {h} soat {m} daqiqa ichida to'lov qilmasangiz, auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.", { h, m })}
+                </p>
+              ) : (
+                <div className="mt-2"><PaymentUnavailableNotice compact /></div>
+              )}
             </div>
           );
         })}
@@ -297,7 +305,14 @@ function PremiumPanel({ user, onBecamePremium }) {
       <p className="mt-1 text-xs text-base-content/50">
         {t("Premium profil — bu maxsus maqom belgisi: profilingiz oltin rangda, yonida ")}{'\u{1F451}'}{t(" qirol emoji bilan chiqadi va boshqalarga ko'zga yaqqol tashlanadi. O'tish narxi: ")}<b>{fmt(PREMIUM_FEE)} so'm</b>{t(" (bir martalik, real to'lov).")}
       </p>
-      {!order ? (
+      {!PAYMENTS_ENABLED ? (
+        <>
+          <button className="btn btn-accent btn-sm mt-3 btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
+            {t("To'lash \u2014 {n} so'm", { n: fmt(PREMIUM_FEE) })}
+          </button>
+          <div className="mt-3"><PaymentUnavailableNotice /></div>
+        </>
+      ) : !order ? (
         <button className="btn btn-accent btn-sm mt-3" onClick={submit} disabled={busy}>
           {busy ? <span className="loading loading-spinner loading-xs"></span> : t("To'lash \u2014 {n} so'm", { n: fmt(PREMIUM_FEE) })}
         </button>
@@ -435,6 +450,7 @@ function EditCardForm({ card, onSaved }) {
     accentColor: card.accentColor || '',
     bgColor: card.bgColor || '',
     bgAnimated: card.bgAnimated !== false,
+    linksTransparent: !!card.linksTransparent,
     musicUrl: card.musicUrl || '',
     tg: card.tg || '',
     phone: card.phone || '',
@@ -607,6 +623,7 @@ function EditCardForm({ card, onSaved }) {
         accentColor: form.accentColor,
         bgColor: form.bgColor,
         bgAnimated: form.bgAnimated,
+        linksTransparent: form.linksTransparent,
         musicUrl: form.musicUrl.trim(),
         tg: form.tg.trim(),
         phone: form.phone.trim(),
@@ -803,6 +820,14 @@ function EditCardForm({ card, onSaved }) {
               </label>
             )}
 
+            <label className="mt-4 flex cursor-pointer items-start gap-2.5">
+              <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.linksTransparent} onChange={(e) => setForm((f) => ({ ...f, linksTransparent: e.target.checked }))} />
+              <span className="text-sm">
+                {t("Havola tugmalarini shaffof qilish (shisha effekti)")}
+                <span className="mt-0.5 block text-xs text-base-content/45">{t("Tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinib turadi. Ustidan yorug'lik yugurish animatsiyasi har doim ishlaydi.")}</span>
+              </span>
+            </label>
+
             <label className="form-control mt-5 block">
               <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} {t('Profil musiqasi')}</span>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -901,19 +926,30 @@ function EditCardForm({ card, onSaved }) {
                   <div className="text-[10px] uppercase tracking-wide text-base-content/40">{t("Payme orqali to'lov")}</div>
                 </div>
               </div>
-              {!orderPayLink && (
-                <div className="mt-3 space-y-2">
-                  <input value={shipping.shippingName} onChange={(e) => setShipping((s) => ({ ...s, shippingName: e.target.value }))} placeholder={t("Qabul qiluvchi ism-familya")} className="input input-bordered input-sm w-full bg-base-100" />
-                  <input value={shipping.shippingPhone} onChange={(e) => setShipping((s) => ({ ...s, shippingPhone: e.target.value }))} placeholder={t("Telefon (+998...)")} className="input input-bordered input-sm w-full bg-base-100" />
-                  <textarea value={shipping.shippingAddress} onChange={(e) => setShipping((s) => ({ ...s, shippingAddress: e.target.value }))} placeholder={t("To'liq manzil")} rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
-                </div>
-              )}
-              <button className="btn btn-accent btn-sm mt-3 w-full" onClick={() => orderPhysicalCard(card.code)} disabled={orderBusy}>
-                {orderBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Buyurtma berish — 200 000 so'm")}
-              </button>
-              {orderMsg && <div className={`alert mt-3 py-2 text-sm ${orderMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(orderMsg.text)}</span></div>}
-              {orderPayLink && (
-                <a href={orderPayLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm mt-2 w-full">{t("To'lovga o'tish")} &rarr;</a>
+              {!PAYMENTS_ENABLED ? (
+                <>
+                  <button className="btn btn-accent btn-sm mt-3 w-full btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
+                    {t("Buyurtma berish — 200 000 so'm")}
+                  </button>
+                  <div className="mt-3"><PaymentUnavailableNotice /></div>
+                </>
+              ) : (
+                <>
+                  {!orderPayLink && (
+                    <div className="mt-3 space-y-2">
+                      <input value={shipping.shippingName} onChange={(e) => setShipping((s) => ({ ...s, shippingName: e.target.value }))} placeholder={t("Qabul qiluvchi ism-familya")} className="input input-bordered input-sm w-full bg-base-100" />
+                      <input value={shipping.shippingPhone} onChange={(e) => setShipping((s) => ({ ...s, shippingPhone: e.target.value }))} placeholder={t("Telefon (+998...)")} className="input input-bordered input-sm w-full bg-base-100" />
+                      <textarea value={shipping.shippingAddress} onChange={(e) => setShipping((s) => ({ ...s, shippingAddress: e.target.value }))} placeholder={t("To'liq manzil")} rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
+                    </div>
+                  )}
+                  <button className="btn btn-accent btn-sm mt-3 w-full" onClick={() => orderPhysicalCard(card.code)} disabled={orderBusy}>
+                    {orderBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Buyurtma berish — 200 000 so'm")}
+                  </button>
+                  {orderMsg && <div className={`alert mt-3 py-2 text-sm ${orderMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(orderMsg.text)}</span></div>}
+                  {orderPayLink && (
+                    <a href={orderPayLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm mt-2 w-full">{t("To'lovga o'tish")} &rarr;</a>
+                  )}
+                </>
               )}
             </div>
             <CardDesignerPage embedded code={card.code} />

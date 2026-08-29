@@ -4,6 +4,8 @@ import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { PAYMENTS_ENABLED } from '../lib/features.js';
+import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
@@ -171,26 +173,37 @@ export default function AuctionPage({ id }) {
           <p className="mt-1 text-sm text-base-content/60">
             {t("{n} so'mni {deadline} gacha (24 soat ichida) to'lashingiz kerak, aks holda auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.", { n: fmt(auction.currentPrice), deadline: dateTime(new Date(auction.paymentDeadline).getTime()) })}
           </p>
-          <input
-            value={winnerName}
-            onChange={(e) => setWinnerName(e.target.value)}
-            placeholder={t('Profilingizdagi ismingiz')}
-            className="input input-bordered input-sm mt-3 w-full max-w-xs bg-base-100"
-          />
-          <input
-            value={winnerPhone}
-            onChange={(e) => setWinnerPhone(e.target.value)}
-            placeholder={t('Telefon raqamingiz (+998...)')}
-            className="input input-bordered input-sm mt-2 w-full max-w-xs bg-base-100"
-          />
-          <div>
-            <button className="btn btn-primary btn-sm mt-3" onClick={payNow} disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : t("To'lash \u2014 {n} so'm", { n: fmt(auction.currentPrice) })}
-            </button>
-          </div>
+          {PAYMENTS_ENABLED ? (
+            <>
+              <input
+                value={winnerName}
+                onChange={(e) => setWinnerName(e.target.value)}
+                placeholder={t('Profilingizdagi ismingiz')}
+                className="input input-bordered input-sm mt-3 w-full max-w-xs bg-base-100"
+              />
+              <input
+                value={winnerPhone}
+                onChange={(e) => setWinnerPhone(e.target.value)}
+                placeholder={t('Telefon raqamingiz (+998...)')}
+                className="input input-bordered input-sm mt-2 w-full max-w-xs bg-base-100"
+              />
+              <div>
+                <button className="btn btn-primary btn-sm mt-3" onClick={payNow} disabled={busy}>
+                  {busy ? <span className="loading loading-spinner loading-xs"></span> : t("To'lash \u2014 {n} so'm", { n: fmt(auction.currentPrice) })}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-primary btn-sm mt-3 btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
+                {t("To'lash \u2014 {n} so'm", { n: fmt(auction.currentPrice) })}
+              </button>
+              <div className="mt-3"><PaymentUnavailableNotice /></div>
+            </>
+          )}
         </section>
       )}
-      {payOrder && (
+      {payOrder && PAYMENTS_ENABLED && (
         <section className="mt-6 rounded-2xl border border-white/10 p-5">
           <a href={payOrder.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
             {t("To'lovga o'tish")} &rarr;
@@ -201,7 +214,17 @@ export default function AuctionPage({ id }) {
         </section>
       )}
 
-      {auction.status === 'active' && !isOwner && (
+      {auction.status === 'active' && !isOwner && !PAYMENTS_ENABLED && (
+        <section className="mt-6 rounded-2xl border border-white/10 p-5">
+          <div className="text-sm font-bold">{t('Narx taklif qilish')}</div>
+          <p className="mt-1 text-xs text-base-content/50">
+            {t("Auksionda g'olib bo'lsangiz, 24 soat ichida to'lov qilish talab etiladi. To'lov tizimi vaqtincha to'xtatilgani uchun hozircha taklif berish yopiq.")}
+          </p>
+          <div className="mt-3"><PaymentUnavailableNotice /></div>
+        </section>
+      )}
+
+      {auction.status === 'active' && !isOwner && PAYMENTS_ENABLED && (
         <section className="mt-6 rounded-2xl border border-white/10 p-5">
           <div className="text-sm font-bold">{t('Narx taklif qilish')}</div>
           <p className="mt-1 text-xs text-base-content/50">

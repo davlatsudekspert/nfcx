@@ -205,6 +205,7 @@ export async function initDb() {
     giftable: `ALTER TABLE cards ADD COLUMN giftable BOOLEAN NOT NULL DEFAULT TRUE`,
     hide_phone: `ALTER TABLE cards ADD COLUMN hide_phone BOOLEAN NOT NULL DEFAULT FALSE`,
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
+    links_transparent: `ALTER TABLE cards ADD COLUMN links_transparent BOOLEAN NOT NULL DEFAULT FALSE`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -220,7 +221,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -885,6 +886,7 @@ export function isDbReady() {
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
+  links_transparent AS "linksTransparent",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
@@ -908,6 +910,7 @@ function rowToRecord(row) {
     isPrimary: !!row.isPrimary,
     hidePhone: !!row.hidePhone,
     giftable: row.giftable !== false,
+    linksTransparent: !!row.linksTransparent,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
@@ -948,6 +951,7 @@ export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
+            c.links_transparent AS "linksTransparent",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride",
@@ -1562,6 +1566,7 @@ export async function updateRecord(code, fields) {
     accentColor: 'accent_color',
     bgColor: 'bg_color',
     bgAnimated: 'bg_animated',
+    linksTransparent: 'links_transparent',
     musicUrl: 'music_url',
     tg: 'tg',
     phone: 'phone',

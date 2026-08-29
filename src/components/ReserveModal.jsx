@@ -4,6 +4,8 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { PAYMENTS_ENABLED } from '../lib/features.js';
+import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 import CardDesignerPage from '../pages/CardDesignerPage.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
@@ -40,6 +42,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [order, setOrder] = useState(null); // { orderId, payLink, code, price }
   const pollRef = useRef(null);
   const totalPrice = price + (wantPhysicalCard ? PHYSICAL_CARD_FEE : 0);
+  // Pullik band qilish faqat Payme ishga tushgach mumkin. Tekin (0 so'm)
+  // kodlar bunga bog'liq emas — ular oldingidek darhol band qilinadi.
+  const paymentBlocked = !PAYMENTS_ENABLED && totalPrice > 0;
 
   // MUHIM: akkaunt endi tanlov emas, majburiy. Tizimga kirmagan bo'lsa,
   // email+parol kiritish shart — aks holda raqamli tashrif qog'ozi hech kimning
@@ -162,13 +167,24 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <p className="mt-4 text-sm leading-relaxed text-base-content/70">
               {t("Raqamli tashrif qog'ozi {price} lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.", { price: fmt(order.price) + " so'm" })}
             </p>
-            <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-5 w-full">
-              {t("To'lash — {n} so'm", { n: fmt(order.price) })}
-            </a>
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
-              <span className="loading loading-spinner loading-xs"></span>
-              {t("To'lov tasdiqlanishini kutmoqdamiz...")}
-            </div>
+            {PAYMENTS_ENABLED ? (
+              <>
+                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-5 w-full">
+                  {t("To'lash — {n} so'm", { n: fmt(order.price) })}
+                </a>
+                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
+                  <span className="loading loading-spinner loading-xs"></span>
+                  {t("To'lov tasdiqlanishini kutmoqdamiz...")}
+                </div>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn btn-disabled mt-5 w-full !cursor-not-allowed opacity-60" disabled aria-disabled="true">
+                  {t("To'lash — {n} so'm", { n: fmt(order.price) })}
+                </button>
+                <div className="mt-4"><PaymentUnavailableNotice /></div>
+              </>
+            )}
             {msg && (
               <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
                 <span>{t(msg.text)}</span>
@@ -300,9 +316,16 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <span className="text-sm text-base-content/60">{t('Jami')}</span>
             <b className="text-lg">{t("{n} so'm", { n: fmt(totalPrice) })}</b>
           </div>
-          <button className="btn btn-primary mt-3 w-full" onClick={submit} disabled={busy}>
+          <button
+            className={`btn btn-primary mt-3 w-full ${paymentBlocked ? 'btn-disabled !cursor-not-allowed opacity-60' : ''}`}
+            onClick={submit}
+            disabled={busy || paymentBlocked}
+            aria-disabled={paymentBlocked}
+            title={paymentBlocked ? t('Payme orqali to‘lov tez orada ishga tushadi.') : undefined}
+          >
             {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Band qilish')}
           </button>
+          {paymentBlocked && <div className="mt-3"><PaymentUnavailableNotice /></div>}
           {msg && (
             <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
               <span>{t(msg.text)}</span>
