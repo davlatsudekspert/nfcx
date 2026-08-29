@@ -10,7 +10,7 @@ import { parseMusicSource } from '../lib/music.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
-  IconArrowLeft, IconShare, IconSearch,
+  IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
 } from '../components/Icons.jsx';
@@ -100,28 +100,21 @@ export function vzStyle(theme, record) {
   };
 }
 
-function vcfEscape(value) {
-  return String(value || '')
-    .replace(/\\/g, '\\\\')
-    .replace(/\r?\n/g, '\\n')
-    .replace(/([,;])/g, '\\$1');
-}
-
 function buildVcf(record) {
   const lines = [
     'BEGIN:VCARD',
     'VERSION:3.0',
-    `FN:${vcfEscape(record.name)}`,
-    record.role ? `TITLE:${vcfEscape(record.role)}` : '',
-    record.about ? `NOTE:${vcfEscape(record.about)}` : '',
+    `FN:${record.name}`,
+    record.role ? `TITLE:${record.role}` : '',
+    record.about ? `NOTE:${record.about.replace(/\n/g, ' ')}` : '',
     (record.phone && !record.hidePhone) ? `TEL;TYPE=CELL:${record.phone}` : '',
-    record.email ? `EMAIL:${vcfEscape(record.email)}` : '',
-    record.tg ? `URL;TYPE=TELEGRAM:https://t.me/${record.tg.replace('@', '')}` : '',
-    record.website ? `URL;TYPE=WORK:${record.website}` : '',
-    `URL;TYPE=PROFILE:https://nfcstore.uz/${record.code.toLowerCase()}`,
+    record.email ? `EMAIL:${record.email}` : '',
+    record.tg ? `URL:https://t.me/${record.tg.replace('@', '')}` : '',
+    record.website ? `URL:${record.website}` : '',
+    `NOTE2:nfcstore.uz/${record.code.toLowerCase()}`,
     'END:VCARD',
   ].filter(Boolean);
-  return lines.join('\r\n');
+  return lines.join('\n');
 }
 
 function downloadVcf(record) {
@@ -130,12 +123,8 @@ function downloadVcf(record) {
   const a = document.createElement('a');
   a.href = url;
   a.download = `${record.code}.vcf`;
-  document.body.appendChild(a);
   a.click();
-  a.remove();
-  // Ayrim mobil brauzerlar yuklashni event loopning keyingi qadamida
-  // boshlaydi; URL'ni darhol bekor qilish faylni yo'qotib qo'yishi mumkin.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  URL.revokeObjectURL(url);
 }
 
 function socialUrl(kind, handle) {
@@ -258,7 +247,7 @@ export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
   const [pendingGift, setPendingGift] = useState(undefined); // "Gift NFC ID" — yangi, izolyatsiyalangan
   const [toast, setToast] = useState('');
-  const [tab, setTab] = useState('vizitka'); // 'vizitka' | 'postlar' — profil ichidagi tab-panel
+  const [tab, setTab] = useState('vizitka');
   const [tapInactive, setTapInactive] = useState(false);
   const [followStats, setFollowStats] = useState(null);
   const [likeInfo, setLikeInfo] = useState(null);
@@ -394,17 +383,16 @@ export default function ProfilePage({ code, catalog }) {
     catch (e) { flashToast(text); }
   };
 
-  const shareProfile = async () => {
-    const url = `${window.location.origin}/${record.code.toLowerCase()}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: record.name, text: record.role || record.name, url });
-      } else {
-        await copyText(url, t('Havola nusxalandi!'));
-      }
-    } catch (error) {
-      if (error?.name !== 'AbortError') await copyText(url, t('Havola nusxalandi!'));
+  // "Ulashish" tugmasi — telefonlarda tizimning ulashish oynasini ochadi
+  // (Telegram, WhatsApp, ...). Web Share API bo'lmasa — havolani nusxalaydi.
+  const shareProfile = async (url) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: record ? record.name : 'NFCSTORE', text: t('Mening raqamli tashrif qog‘ozim'), url });
+        return;
+      } catch (e) { /* foydalanuvchi bekor qildi yoki qo'llab-quvvatlanmaydi */ }
     }
+    copyText(url, t('Havola nusxalandi!'));
   };
 
   if (record === undefined) {
@@ -491,29 +479,35 @@ export default function ProfilePage({ code, catalog }) {
     <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={vzStyle(record.theme || 'classic', record)}>
       <MusicPlayer url={record.musicUrl} accentColor={record.accentColor} />
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
-        <button aria-label={t('Bosh sahifaga')} onClick={() => navigate('/')} className={`${pillBtn} inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
-          <IconArrowLeft /> <span className="hidden sm:inline">{t('Bosh sahifaga')}</span>
+        <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
+          <IconArrowLeft /> {t('Bosh sahifaga')}
         </button>
-        <div className="hidden min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5 sm:flex">
+        <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5">
           <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[13.5px] text-[color:var(--vz-ink)] outline-none" />
-          <button aria-label={t('Havolani nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
+          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
         </div>
         <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
           <LanguageSwitcher />
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-[640px] items-center justify-between gap-3 px-[18px] pt-3.5">
-        <div className="min-w-0">
-          <div className="truncate font-mono text-sm font-bold">nfcstore.uz/{record.code.toLowerCase()}</div>
-          <div className="mt-0.5 flex items-center gap-2 text-xs text-[color:var(--vz-ink-faint)]">
-            <span>{t(TIER_LABEL[tier])}</span>
-            {record.price > 0 && <span>· {t("{n} so'm", { n: fmt(record.price) })}</span>}
-          </div>
+      <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {otherCodes.length > 0 && otherCodes.slice(0, 3).map((c) => (
+            <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
+          ))}
+          <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
+          {record.isGift ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
+              {'\u{1F381}'} {t("Sovg'a")}
+            </span>
+          ) : (
+            <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
+          )}
         </div>
-        <div className="flex shrink-0 gap-1">
-          <button aria-label={t('Havolani nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconCopy /></button>
-          <button aria-label={t('Ulashish')} onClick={shareProfile} className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconShare /></button>
+        <div className="flex gap-1">
+          <button title={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
+          <button title={t('Ulashish')} onClick={() => shareProfile(`${window.location.origin}/${record.code.toLowerCase()}`)} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
         </div>
       </div>
 
@@ -581,6 +575,7 @@ export default function ProfilePage({ code, catalog }) {
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{t(followMsg)}</div>}
 
+
         <div className="mt-0.5 flex flex-col items-center">
           <div className="relative flex h-[120px] w-[120px] items-center justify-center">
             <span className={`pointer-events-none absolute inset-[-4px] animate-[spinSlow_18s_linear_infinite] rounded-full border border-dashed border-[color:var(--vz-line)] ${glass ? 'opacity-40' : ''}`}></span>
@@ -589,7 +584,7 @@ export default function ProfilePage({ code, catalog }) {
             <span className="pointer-events-none absolute left-[88%] top-[78%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[10%] top-[86%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
 
-            {/* Chap va o'ng tomondagi NFC signal to'lqinlari */}
+            {/* Chap va o'ng tomondagi NFC signal to'lqinlari (tegish animatsiyasi) */}
             <div className="pointer-events-none absolute right-full top-1/2 mr-1 -translate-y-1/2">
               {[0, 1, 2].map((i) => (
                 <span key={i} className="absolute right-0 top-1/2 -translate-y-1/2 animate-[nfcPulse_2.2s_ease-out_infinite] rounded-full border-2"
@@ -608,13 +603,11 @@ export default function ProfilePage({ code, catalog }) {
               {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
             </div>
           </div>
-          <div className="font-display mt-4 flex flex-wrap items-center justify-center gap-2 text-[23px] font-bold">
-            <span>{record.name}</span>
-            {record.isPremium && <span className="rounded-full bg-[#d4af5a] px-2 py-0.5 font-mono text-[9px] font-extrabold tracking-wider text-[#1a1206]">{'\u{1F451}'} PREMIUM</span>}
-          </div>
+          <div className="font-display mt-4 flex items-center justify-center gap-1.5 text-[23px] font-bold">{record.name}</div>
           <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[13.5px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
             {tierEmoji && <span>{tierEmoji}</span>}
             nfcstore.uz/{record.code.toLowerCase()}
+            <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
           </div>
           {tier !== 'free' && (
             <div className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
@@ -624,52 +617,6 @@ export default function ProfilePage({ code, catalog }) {
           <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">{t('Faol bo‘lgan: {when}', { when: timeAgo(record.ts) })}</div>
           {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
           {record.about && <p className="mx-auto mt-2 max-w-[460px] text-center text-sm leading-relaxed text-[color:var(--vz-ink-dim)]">{record.about}</p>}
-          <div className="mt-5 grid w-full gap-2 sm:grid-cols-[1fr_auto]">
-            <button onClick={() => downloadVcf(record)} className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[color:var(--vz-accent)] px-5 py-3 text-[14px] font-extrabold text-white shadow-lg transition hover:brightness-110"><IconDownload /> {t('Kontaktga saqlash')}</button>
-            <button onClick={shareProfile} className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[color:var(--vz-line)] bg-transparent px-5 py-3 text-[14px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:text-[color:var(--vz-ink)]"><IconShare /> {t('Ulashish')}</button>
-          </div>
-          {(record.phone || record.email) && (
-            <div className="mt-3 grid w-full gap-2 sm:grid-cols-2">
-              {record.phone && (!record.hidePhone || isOwner) && <a href={`tel:${record.phone}`} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color:var(--vz-line)] px-3 text-sm text-[color:var(--vz-ink)] no-underline"><IconPhone /> {record.phone}</a>}
-              {record.email && <a href={`mailto:${record.email}`} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color:var(--vz-line)] px-3 text-sm text-[color:var(--vz-ink)] no-underline"><IconMail /> {record.email}</a>}
-            </div>
-          )}
-          <div className="mt-4 w-full">
-            <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
-              <div className="flex flex-wrap gap-2">
-                {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
-                {!isOwner && (
-                  <>
-                    {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>}
-                    <button
-                      className={`${pillBtn} ${followStats?.isFollowing ? '!bg-transparent !text-[color:var(--vz-ink)] border border-[color:var(--vz-line)]' : ''}`}
-                      onClick={toggleFollow}
-                      disabled={followBusy}
-                    >
-                      {followBusy ? '...' : followStats?.isFollowing ? t('Obunani bekor qilish') : t("Obuna bo'lish")}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            {followStats && (
-              <div className="mt-2 flex items-center gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
-                <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}</span>
-                <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}</span>
-                <button
-                  onClick={toggleLike}
-                  className={`ml-auto flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
-                >
-                  <span>{likeInfo?.liked ? '\u2764\uFE0F' : '\u{1F90D}'}</span>
-                  <b>{likeInfo?.count ?? 0}</b>
-                </button>
-              </div>
-            )}
-            {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{t(followMsg)}</div>}
-          </div>
         </div>
 
         <div className="mt-[22px] flex justify-center gap-11">
@@ -703,12 +650,22 @@ export default function ProfilePage({ code, catalog }) {
             )}
 
             <div className="mt-[22px] flex flex-col gap-2.5">
+              {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
+              {record.email && <a className={linkBtn} href={`mailto:${record.email}`}><IconMail /> {record.email}</a>}
               {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {liUrl && <a className={linkBtn} href={liUrl} target="_blank" rel="noreferrer"><IconLinkedIn /> LinkedIn</a>}
-              {wsUrl && <a className={linkBtn} href={wsUrl} target="_blank" rel="noreferrer"><IconGlobe /> {t('Veb-sayt')}</a>}
+              {record.cardNumber && (
+                <button type="button" onClick={() => copyText(record.cardNumber, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
+                  <IconTag /> {t('Karta raqam')}
+                </button>
+              )}
+              {(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => (
+                <button type="button" key={`cn${i}`} onClick={() => copyText(c.number, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
+                  <IconTag /> {c.label || t('Karta raqam')}
+                </button>
+              ))}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || t('Havola')}</a>
               ))}
@@ -742,9 +699,13 @@ export default function ProfilePage({ code, catalog }) {
               </>
             )}
 
-            {!isOwner && MESSAGING_ENABLED && (
-              <button onClick={startChat} className={`${pillBtn} mt-6 flex w-full min-h-11 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
-            )}
+            <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
+            <div className="flex gap-2.5">
+              <button onClick={() => downloadVcf(record)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
+              {!isOwner && MESSAGING_ENABLED && (
+                <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
+              )}
+            </div>
           </>
         )}
       </div>
