@@ -43,13 +43,12 @@ Railway container fayl tizimi doimiy emas — har deploy’da `server/uploads/`
 tozalanadi. Fayllar doimiy saqlanishi uchun **Railway Volume** qo‘shing:
 
 1. Railway’da servisni oching → **Settings → Volumes → New Volume**.
-2. Mount path: istalgan yo‘l — masalan `/data` (aynan `/app/server/uploads`
-   bo‘lishi shart emas).
+2. Mount path: `/app/server/uploads` (yoki istalgan yo‘l, masalan `/data`).
 3. Saqlang va servisni qayta deploy qiling.
 
 Volume ulanganda Railway `RAILWAY_VOLUME_MOUNT_PATH` env’ini avtomatik
-beradi; kod (`server/paths.js`) yuklamalarni o‘sha doimiy diskdagi
-`<mount>/uploads` papkasiga yozadi. Server ishga tushganda logда
+beradi; kod (`server/paths.js`) yuklamalarni o‘sha papkaning o‘ziga
+yozadi. Server ishga tushganda logда
 `Yuklamalar papkasi: … (DOIMIY | VAQTINCHALIK)` ko‘rinadi.
 
 Volume’gacha yuklangan rasmlar tiklanmaydi — ularni qayta yuklash kerak.
