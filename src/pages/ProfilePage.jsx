@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift } from '../lib/db.js';
+import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { parseMusicSource } from '../lib/music.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
@@ -140,19 +141,25 @@ function rarity(code) {
   return label;
 }
 
-function tierOf(code) {
-  return tierForCode(code);
-}
 
 // Profil musiqasi — brauzerlar ovozli avtomatik ijroni bloklaydi, shuning
 // uchun kichik suzuvchi tugma sifatida ko'rsatamiz; birinchi bosishda
 // ijro boshlanadi va aylanayotgan belgi bilan holat ko'rsatiladi.
+// YouTube havolasi ham qo'llab-quvvatlanadi (yashirin iframe orqali —
+// iOS'da fayl yuklamasdan ishlaydi).
 function MusicPlayer({ url, accentColor }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const { t } = useLanguage();
+  const source = parseMusicSource(url);
 
   const toggle = () => {
+    if (source && source.kind === 'youtube') {
+      // Foydalanuvchi bosishi (user gesture) — iframe shu payt mount qilinadi,
+      // shu sabab iOS Safari ovoz bilan ijroga ruxsat beradi.
+      setPlaying((p) => !p);
+      return;
+    }
     const el = audioRef.current;
     if (!el) return;
     if (playing) {
@@ -163,11 +170,20 @@ function MusicPlayer({ url, accentColor }) {
     }
   };
 
-  if (!url) return null;
+  if (!source) return null;
 
   return (
     <div className="fixed bottom-5 right-5 z-30 flex items-center gap-2">
-      <audio ref={audioRef} src={url} loop preload="none" onEnded={() => setPlaying(false)} />
+      {source.kind === 'youtube'
+        ? (playing && (
+            <iframe
+              title="profil-musiqasi"
+              src={`https://www.youtube-nocookie.com/embed/${source.id}?autoplay=1&loop=1&playlist=${source.id}&controls=0&modestbranding=1&playsinline=1&rel=0`}
+              allow="autoplay; encrypted-media"
+              className="pointer-events-none h-px w-px overflow-hidden opacity-0"
+            />
+          ))
+        : <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />}
       {!playing && (
         <span className="hidden rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:inline-block">
           {'\u{1F3B5}'} {t('Musiqa')}
@@ -189,6 +205,35 @@ function MusicPlayer({ url, accentColor }) {
   );
 }
 
+// Profil postlari lentasi — rasm + izoh + like. Tashrif buyuruvchi
+// (tizimga kirgan) like bosa oladi; egasi postlarni /account'da boshqaradi.
+function PostsFeed({ posts, onLike, t }) {
+  if (!posts || posts.length === 0) {
+    return <div className="mt-8 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Hali post yo‘q')}</div>;
+  }
+  return (
+    <div className="mt-6 flex flex-col gap-5">
+      {posts.map((p) => (
+        <div key={p.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
+          <img src={p.imageUrl} alt="" loading="lazy" className="block max-h-[520px] w-full object-cover" />
+          <div className="px-4 py-3">
+            {p.caption && <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[color:var(--vz-ink-dim)]">{p.caption}</p>}
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                onClick={() => onLike(p.id)}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] transition ${p.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
+              >
+                <span>{p.liked ? '❤️' : '\u{1F90D}'}</span><b>{p.likeCount}</b>
+              </button>
+              <span className="text-[11.5px] text-[color:var(--vz-ink-faint)]">{timeAgo(p.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProfilePage({ code, catalog }) {
   const [record, setRecord] = useState(undefined);
   const [pendingGift, setPendingGift] = useState(undefined); // "Gift NFC ID" — yangi, izolyatsiyalangan
@@ -199,13 +244,28 @@ export default function ProfilePage({ code, catalog }) {
   const [likeInfo, setLikeInfo] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
   const [followMsg, setFollowMsg] = useState(null);
+  const [posts, setPosts] = useState([]);
   const { user, myCards } = useAuth();
   const { t } = useLanguage();
 
   useEffect(() => {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
     dbGetLike(code).then(setLikeInfo).catch(() => {});
+    dbListPosts(code).then(setPosts).catch(() => setPosts([]));
   }, [code, user]);
+
+  const togglePostLike = async (postId) => {
+    if (!user) { flashToast(t('Avval tizimga kiring...')); setTimeout(() => navigate('/login'), 800); return; }
+    setPosts((list) => list.map((p) => (p.id === postId
+      ? { ...p, liked: !p.liked, likeCount: p.likeCount + (p.liked ? -1 : 1) }
+      : p)));
+    try {
+      const res = await dbTogglePostLike(postId);
+      setPosts((list) => list.map((p) => (p.id === postId ? { ...p, liked: res.liked, likeCount: res.count } : p)));
+    } catch {
+      dbListPosts(code).then(setPosts).catch(() => {});
+    }
+  };
 
   const toggleLike = async () => {
     if (!user) { flashToast(t('Avval tizimga kiring...')); setTimeout(() => navigate('/login'), 800); return; }
@@ -314,6 +374,18 @@ export default function ProfilePage({ code, catalog }) {
     catch (e) { flashToast(text); }
   };
 
+  // "Ulashish" tugmasi — telefonlarda tizimning ulashish oynasini ochadi
+  // (Telegram, WhatsApp, ...). Web Share API bo'lmasa — havolani nusxalaydi.
+  const shareProfile = async (url) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: record ? record.name : 'NFCSTORE', text: t('Mening raqamli tashrif qog‘ozim'), url });
+        return;
+      } catch (e) { /* foydalanuvchi bekor qildi yoki qo'llab-quvvatlanmaydi */ }
+    }
+    copyText(url, t('Havola nusxalandi!'));
+  };
+
   if (record === undefined) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
@@ -368,7 +440,7 @@ export default function ProfilePage({ code, catalog }) {
   const wsUrl = record.website || '';
   // hasSocials endi ishlatilmaydi — shaxsiy ijtimoiy tarmoq havolalari
   // faqat yuqoridagi to'liq nomli tugmalarda ko'rsatiladi (takrorlanmaydi).
-  const tier = tierOf(record.code);
+  const tier = record.tierOverride || tierForCode(record.code);
   const tierColor = TIER_COLOR[tier];
   const tierEmoji = TIER_EMOJI[tier];
   const dark = DARK_THEMES.includes(record.theme || 'classic');
@@ -411,8 +483,8 @@ export default function ProfilePage({ code, catalog }) {
           <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
+          <button title={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
+          <button title={t('Ulashish')} onClick={() => shareProfile(`${window.location.origin}/${record.code.toLowerCase()}`)} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
         </div>
       </div>
 
@@ -527,10 +599,23 @@ export default function ProfilePage({ code, catalog }) {
         </div>
 
         <div className="mt-6 flex justify-center gap-[26px] border-b border-[color:var(--vz-line)]">
-          <button className="-mb-px cursor-default border-b-2 border-current bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold text-[color:var(--vz-ink)]">{t("Raqamli tashrif qog'ozi")}</button>
+          <button
+            onClick={() => setTab('vizitka')}
+            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+          >
+            {t("Raqamli tashrif qog'ozi")}
+          </button>
+          <button
+            onClick={() => setTab('postlar')}
+            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+          >
+            {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
+          </button>
         </div>
 
-        {(
+        {tab === 'postlar' && <PostsFeed posts={posts} onLike={togglePostLike} t={t} />}
+
+        {tab === 'vizitka' && (
           <>
             {record.hashtags && record.hashtags.length > 0 && (
               <div className="mt-5 flex flex-wrap justify-center gap-4 text-[13px] font-semibold text-[color:var(--vz-accent)]">
@@ -545,7 +630,16 @@ export default function ProfilePage({ code, catalog }) {
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
-              {record.cardNumber && <span className={`${linkBtn} cursor-default opacity-85`}><IconTag /> {t("KARTA (to'lov)")}</span>}
+              {record.cardNumber && (
+                <button type="button" onClick={() => copyText(record.cardNumber, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
+                  <IconTag /> {t("KARTA (to'lov)")} · <span className="font-mono normal-case tracking-normal">{record.cardNumber}</span>
+                </button>
+              )}
+              {(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => (
+                <button type="button" key={`cn${i}`} onClick={() => copyText(c.number, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
+                  <IconTag /> {c.label || t("KARTA (to'lov)")} · <span className="font-mono normal-case tracking-normal">{c.number}</span>
+                </button>
+              ))}
               {(record.extraLinks || []).map((l, i) => (
                 <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || t('Havola')}</a>
               ))}
@@ -566,6 +660,19 @@ export default function ProfilePage({ code, catalog }) {
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://www.instagram.com/nfcstore.uz" target="_blank" rel="noreferrer" title="NFCSTORE Instagram"><IconInstagram /></a>
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
             </div>
+
+            {posts.length > 0 && (
+              <>
+                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t('POSTLAR')}</div>
+                  {posts.length > 3 && (
+                    <button onClick={() => setTab('postlar')} className="cursor-pointer text-[12px] font-semibold text-[color:var(--vz-accent)]">{t('Hammasi')}</button>
+                  )}
+                </div>
+                <PostsFeed posts={posts.slice(0, 3)} onLike={togglePostLike} t={t} />
+              </>
+            )}
 
             {otherCodes.length > 0 && (
               <>

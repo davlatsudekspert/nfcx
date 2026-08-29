@@ -696,6 +696,42 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS card_likes_code_idx ON card_likes (code)`);
 
+  // Tarif override — odatda daraja kod naqshidan hisoblanadi (pricing.js
+  // tierForCode), lekin admin SOVG'A qilgan NFC ID'lar har doim "Ekslyuziv"
+  // ko'rinishi kerak. Shu ustun NULL bo'lmasa — profilda o'sha daraja
+  // ko'rsatiladi (faqat vizual: rang/badge/emoji; narx mantig'iga tegmaydi).
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS tier_override VARCHAR(12)`);
+  // Retroaktiv: allaqachon faollashtirilgan sovg'a kartalari ham Ekslyuziv bo'lsin.
+  await pool.query(`
+    UPDATE cards SET tier_override = 'exclusive'
+    WHERE tier_override IS NULL
+      AND code IN (SELECT code FROM nfc_gifts WHERE status = 'activated')
+  `);
+
+  // Profil postlari — egasi profilga rasm + izoh joylaydi; tashrif
+  // buyuruvchilar like bosishi mumkin. Kartalar (card_likes) laykidan
+  // butunlay alohida.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS posts (
+      id         SERIAL PRIMARY KEY,
+      code       VARCHAR(16) NOT NULL,
+      user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      image_url  TEXT NOT NULL,
+      caption    TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS posts_code_idx ON posts (code, created_at DESC)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS post_likes (
+      id         SERIAL PRIMARY KEY,
+      post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (post_id, user_id)
+    )
+  `);
+
   await pool.query(`CREATE INDEX IF NOT EXISTS follows_followee_idx ON follows (followee_id)`);
 
   // Suhbatlar va xabarlar (Direct Messages). Har bir juftlik uchun bitta
@@ -853,6 +889,7 @@ const SELECT_FIELDS = `
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
+  tier_override AS "tierOverride",
   theme, for_sale AS "forSale",
   sale_price AS "salePrice", hashtags, price, ts, views
 `;
@@ -884,6 +921,7 @@ function rowToRecord(row) {
     cardNumber: row.cardNumber || '',
     extraLinks: Array.isArray(row.extraLinks) ? row.extraLinks : [],
     cardNumbers: Array.isArray(row.cardNumbers) ? row.cardNumbers : [],
+    tierOverride: row.tierOverride || '',
     theme: row.theme || 'classic',
     forSale: !!row.forSale,
     salePrice: row.salePrice != null ? Number(row.salePrice) : null,
@@ -912,6 +950,7 @@ export async function getRecord(code) {
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
+            c.tier_override AS "tierOverride",
             c.theme, c.for_sale AS "forSale", c.sale_price AS "salePrice", c.hashtags, c.price, c.ts, c.views,
             u.is_premium AS "ownerIsPremium"
      FROM cards c LEFT JOIN users u ON u.id = c.user_id
@@ -1726,6 +1765,20 @@ export async function getPendingAuctionPaymentOrder(auctionId, userId) {
        AND (payload->>'auctionId')::int = $2
      ORDER BY created_at DESC LIMIT 1`,
     [userId, auctionId]
+  );
+  return rows[0] || null;
+}
+
+// Admin uchun — auksionning KUTILAYOTGAN to'lov buyurtmasini (kim
+// bo'lishidan qat'i nazar) topadi. Admin "To'lovni tasdiqlash" bosganda
+// shu buyurtma finalize qilinadi.
+export async function findPendingAuctionPaymentOrderByAuction(auctionId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders
+     WHERE kind = 'auction_payment' AND status = 'pending'
+       AND (payload->>'auctionId')::int = $1
+     ORDER BY created_at DESC LIMIT 1`,
+    [auctionId]
   );
   return rows[0] || null;
 }
@@ -2613,6 +2666,66 @@ export async function getLikeInfo(code, userId) {
     liked = rows.length > 0;
   }
   return { count: countRows[0].n, liked };
+}
+
+// ---------- Tarif override (admin sovg'a qilgan NFC ID → Ekslyuziv) ----------
+export async function setCardTierOverride(code, tier) {
+  await pool.query(`UPDATE cards SET tier_override = $2 WHERE code = $1`, [code, tier || null]);
+}
+
+// ---------- Profil postlari ----------
+const MAX_POSTS_PER_PROFILE = 60;
+
+export async function listPostsByCode(code, viewerUserId) {
+  const { rows } = await pool.query(
+    `SELECT p.id, p.image_url AS "imageUrl", p.caption, p.created_at AS "createdAt",
+            (SELECT COUNT(*)::int FROM post_likes pl WHERE pl.post_id = p.id) AS "likeCount",
+            ${viewerUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2)` : `FALSE`} AS "liked"
+     FROM posts p
+     WHERE p.code = $1
+     ORDER BY p.created_at DESC`,
+    viewerUserId ? [code, viewerUserId] : [code]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    imageUrl: r.imageUrl,
+    caption: r.caption || '',
+    createdAt: new Date(r.createdAt).getTime(),
+    likeCount: r.likeCount,
+    liked: !!r.liked,
+  }));
+}
+
+export async function createPost(code, userId, { imageUrl, caption }) {
+  const owner = await getOwnerByCode(code);
+  if (!owner || owner !== userId) return { error: 'NOT_OWNER' };
+  const { rows: cnt } = await pool.query(`SELECT COUNT(*)::int AS n FROM posts WHERE code = $1`, [code]);
+  if (cnt[0].n >= MAX_POSTS_PER_PROFILE) return { error: 'LIMIT_REACHED' };
+  const { rows } = await pool.query(
+    `INSERT INTO posts (code, user_id, image_url, caption) VALUES ($1,$2,$3,$4)
+     RETURNING id, image_url AS "imageUrl", caption, created_at AS "createdAt"`,
+    [code, userId, imageUrl, caption || null]
+  );
+  const r = rows[0];
+  return { post: { id: r.id, imageUrl: r.imageUrl, caption: r.caption || '', createdAt: new Date(r.createdAt).getTime(), likeCount: 0, liked: false } };
+}
+
+export async function deletePost(id, userId) {
+  const { rowCount } = await pool.query(`DELETE FROM posts WHERE id = $1 AND user_id = $2`, [id, userId]);
+  return { ok: rowCount > 0 };
+}
+
+export async function togglePostLike(postId, userId) {
+  const { rows: post } = await pool.query(`SELECT id FROM posts WHERE id = $1`, [postId]);
+  if (!post[0]) return { error: 'NOT_FOUND' };
+  const { rows: existing } = await pool.query(`SELECT id FROM post_likes WHERE post_id = $1 AND user_id = $2`, [postId, userId]);
+  if (existing[0]) {
+    await pool.query(`DELETE FROM post_likes WHERE id = $1`, [existing[0].id]);
+  } else {
+    await pool.query(`INSERT INTO post_likes (post_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [postId, userId]);
+  }
+  const { rows: countRows } = await pool.query(`SELECT COUNT(*)::int AS n FROM post_likes WHERE post_id = $1`, [postId]);
+  return { liked: !existing[0], count: countRows[0].n };
 }
 
 export async function followUserFree(followerId, followeeId) {

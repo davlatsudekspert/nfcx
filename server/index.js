@@ -28,6 +28,7 @@ import {
   createPhysicalCard, resolvePhysicalCard,
   requestPremium, getOwnerByCode,
   followUserFree, unfollowUser, getFollowStats, toggleLike, getLikeInfo,
+  setCardTierOverride, listPostsByCode, createPost, deletePost, togglePostLike,
   listUserPayments, getPendingPayout,
   getOrCreateConversation, listConversations, isConversationParticipant, listMessages, getOtherParticipant,
   blockUser, unblockUser, isBlocked, reportUser,
@@ -365,6 +366,56 @@ app.post('/api/records/:code/like', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   res.json(await toggleLike(code, user.id));
+});
+
+// ---------- Profil postlari ----------
+app.get('/api/records/:code/posts', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!isDbReady()) return res.json({ posts: [] });
+  const user = await currentUser(req);
+  try {
+    res.json({ posts: await listPostsByCode(code, user?.id) });
+  } catch (err) {
+    console.error('[api] listPosts:', err.message);
+    res.json({ posts: [] });
+  }
+});
+
+app.post('/api/records/:code/posts', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const imageUrl = String(req.body?.imageUrl || '');
+  const caption = String(req.body?.caption || '').slice(0, 600);
+  if (!imageUrl.startsWith('/uploads/')) return res.status(422).json({ error: 'bad_image' });
+  try {
+    const result = await createPost(code, user.id, { imageUrl, caption });
+    if (result.error === 'NOT_OWNER') return res.status(403).json({ error: 'not_owner' });
+    if (result.error === 'LIMIT_REACHED') return res.status(409).json({ error: 'limit_reached' });
+    res.status(201).json(result.post);
+  } catch (err) {
+    console.error('[api] createPost:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/posts/:id', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const result = await deletePost(Number(req.params.id), user.id);
+  if (!result.ok) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
+});
+
+app.post('/api/posts/:id/like', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const result = await togglePostLike(Number(req.params.id), user.id);
+  if (result.error === 'NOT_FOUND') return res.status(404).json({ error: 'not_found' });
+  res.json(result);
 });
 
 // To'lov holatini tekshirish uchun umumiy endpoint (premium, follow,
@@ -1443,6 +1494,10 @@ app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) 
       const key = result.error === 'CODE_TAKEN' ? 'code_taken' : result.error === 'BAD_CODE' ? 'bad_code' : result.error;
       return res.status(409).json({ error: key });
     }
+
+    // Admin sovg'a qilgan NFC ID'lar har doim "Ekslyuziv" ko'rinishi kerak
+    // (kod naqshidan qat'i nazar — faqat vizual tarif).
+    await setCardTierOverride(code, 'exclusive').catch(() => {});
 
     // Mavjud login tizimi bilan bir xil — darhol tizimga kirgan holatda.
     const token = newSessionToken();

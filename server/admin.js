@@ -21,6 +21,7 @@ import {
   adminCardsTimeSeries, markAuctionPayoutPaid, adminListPendingPayouts, adminClearPendingPayout,
   adminExportStats,
   listAuctionRequests, approveAuctionRequest, rejectAuctionRequest, finalizePaidWebOrder, finalizePaidBotOrder,
+  findPendingAuctionPaymentOrderByAuction,
   adminListManualAdjustments, setUserTestFlag,
   adminSuspendUser, adminUnsuspendUser, adminDeleteUser,
   logAdminLoginEvent, listAdminLoginHistory,
@@ -552,6 +553,21 @@ adminRouter.post('/auctions/:id/force-settle', async (req, res) => {
   const result = await closeAuctionBidding(id);
   if (!result) return res.status(409).json({ error: 'cannot_settle' });
   res.json(result);
+});
+
+// G'olib "To'lash" bosgan, lekin to'lov webhook kelmagan (yoki qo'lda
+// Payme/karta orqali to'lagan) holatlar uchun — admin to'lovni QO'LDA
+// tasdiqlaydi: kutilayotgan auction_payment buyurtmasi finalize qilinadi
+// (auksion 'sold' bo'ladi, karta g'olibga o'tadi).
+adminRouter.post('/auctions/:id/confirm-payment', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  const order = await findPendingAuctionPaymentOrderByAuction(id);
+  if (!order) return res.status(409).json({ error: 'no_pending_payment' });
+  const result = await finalizePaidWebOrder(order.id);
+  if (!result || result.ok === false) return res.status(409).json({ error: 'confirm_failed' });
+  logAdminActivity({ action: 'auction_payment_confirmed', details: `Auksion #${id} to'lovi qo'lda tasdiqlandi (buyurtma #${order.id})`, ip: req.ip }).catch(() => {});
+  res.json({ ok: true });
 });
 
 // Sotuvchiga auksion daromadini (95%) qo'lda to'lagach shu bosiladi.

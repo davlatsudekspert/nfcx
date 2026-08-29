@@ -1,0 +1,1 @@
+{ "version": "0.0.1", "configurations": [ { "name": "nfc-c", "runtimeExecutable": "npm", "runtimeArgs": ["run","client"], "port": 5173 } ] }

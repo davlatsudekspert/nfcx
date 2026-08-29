@@ -727,6 +727,15 @@ function CreateAuctionForm({ onCreated }) {
   );
 }
 
+const AUCTION_STATUS_LABEL = {
+  active: 'Faol',
+  awaiting_payment: "To'lov kutilmoqda",
+  sold: 'Sotildi',
+  expired: 'Taklifsiz tugadi',
+  payment_expired: "To'lov muddati o'tdi",
+  cancelled: 'Bekor qilindi',
+};
+
 function AuctionsTab() {
   const { t } = useLanguage();
   const [auctions, setAuctions] = useState(null);
@@ -745,6 +754,13 @@ function AuctionsTab() {
     setBusy(id);
     try { await adminApi(`/auctions/${id}/force-settle`, { method: 'POST' }); await load(); } finally { setBusy(null); }
   };
+  const confirmPayment = async (id) => {
+    if (!confirm(t("G'olibning to'lovini QO'LDA tasdiqlaysizmi? Haqiqiy pul kelganini o'zingiz tekshirganingizni bildiradi — auksion yakunlanadi va NFC ID g'olibga o'tadi."))) return;
+    setBusy(id);
+    try { await adminApi(`/auctions/${id}/confirm-payment`, { method: 'POST' }); await load(); }
+    catch (e) { alert(e.message === 'api_error_409' ? t("Bu auksion uchun kutilayotgan to'lov buyurtmasi yo'q (g'olib hali \"To'lash\" bosmagan yoki allaqachon ishlangan).") : t('Xatolik yuz berdi.')); }
+    finally { setBusy(null); }
+  };
 
   if (!auctions) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
   return (
@@ -759,12 +775,20 @@ function AuctionsTab() {
               <td className="font-mono">{a.code}</td>
               <td>{fmt(a.currentPrice)}</td>
               <td className="text-xs">{a.highestBidderEmail || '—'}</td>
-              <td><span className={`badge badge-sm ${a.status === 'active' ? 'badge-success' : a.status === 'sold' ? 'badge-accent' : 'badge-ghost'}`}>{a.status}</span></td>
+              <td><span className={`badge badge-sm ${a.status === 'active' ? 'badge-success' : a.status === 'sold' ? 'badge-accent' : a.status === 'awaiting_payment' ? 'badge-warning' : 'badge-ghost'}`}>{t(AUCTION_STATUS_LABEL[a.status] || a.status)}</span></td>
               <td className="text-xs text-base-content/50">{dateTime(new Date(a.endsAt).getTime())}</td>
               <td>
                 {a.status === 'active' && (
                   <div className="flex gap-1">
                     <button className="btn btn-ghost btn-xs" disabled={busy === a.id} onClick={() => forceSettle(a.id)}>{t('Yakunlash')}</button>
+                    <button className="btn btn-ghost btn-xs text-error" disabled={busy === a.id} onClick={() => cancel(a.id)}>{t('Bekor qilish')}</button>
+                  </div>
+                )}
+                {a.status === 'awaiting_payment' && (
+                  <div className="flex gap-1">
+                    <button className="btn btn-success btn-xs" disabled={busy === a.id} onClick={() => confirmPayment(a.id)}>
+                      {busy === a.id ? <span className="loading loading-spinner loading-xs"></span> : t("To'lovni tasdiqlash")}
+                    </button>
                     <button className="btn btn-ghost btn-xs text-error" disabled={busy === a.id} onClick={() => cancel(a.id)}>{t('Bekor qilish')}</button>
                   </div>
                 )}

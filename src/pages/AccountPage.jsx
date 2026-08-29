@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { isYoutubeMusic } from '../lib/music.js';
 import { vzStyle } from './ProfilePage.jsx';
 import CardDesignerPage from './CardDesignerPage.jsx';
 import {
@@ -311,6 +312,114 @@ function PremiumPanel({ user, onBecamePremium }) {
         </div>
       )}
       {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+    </div>
+  );
+}
+
+// Profil postlarini boshqarish — rasm + izoh joylash, o'chirish.
+// Rasm yuklashdan oldin foydalanuvchi qonuniy ogohlantirishni tasdiqlashi shart.
+function PostsManager({ code }) {
+  const { t } = useLanguage();
+  const [posts, setPosts] = useState(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [caption, setCaption] = useState('');
+  const [agreed, setAgreed] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    dbListPosts(code).then(setPosts).catch(() => setPosts([]));
+  }, [code]);
+
+  const onPick = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!agreed) {
+      setMsg({ type: 'err', text: t('Avval quyidagi shartni belgilang.') });
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    setUploading(true);
+    setMsg(null);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      const url = await dbUploadImage(dataUrl);
+      setImageUrl(url);
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const publish = async () => {
+    if (!imageUrl) { setMsg({ type: 'err', text: t('Avval rasm yuklang.') }); return; }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const post = await dbCreatePost(code, { imageUrl, caption: caption.trim() });
+      setPosts((list) => [post, ...(list || [])]);
+      setImageUrl(''); setCaption(''); setAgreed(false);
+      setMsg({ type: 'ok', text: t('Post joylandi.') });
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id) => {
+    if (!confirm(t('Bu postni o‘chirasizmi?'))) return;
+    try {
+      await dbDeletePost(id);
+      setPosts((list) => (list || []).filter((p) => p.id !== id));
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    }
+  };
+
+  const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
+  return (
+    <div>
+      <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t('Yangi post')}</div>
+
+        <label className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-base-content/70">
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="checkbox checkbox-xs mt-0.5 shrink-0" />
+          <span>{t('Men joylayotgan rasm O‘zbekiston Respublikasi qonunchiligiga zid emasligini tasdiqlayman. Diniy targ‘ibot, pornografik va axloq normalariga zid tasvirlar, giyohvand moddalar, spirtli ichimliklar hamda tamaki mahsulotlari reklamasi, zo‘ravonlik, kamsitish va boshqa noqonuniy mazmundagi rasmlarni joylash qat’iyan taqiqlanadi. Qoidaga rioya qilinmasa, post o‘chiriladi va NFC ID bloklanishi mumkin.')}</span>
+        </label>
+
+        <div className="mt-3">
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPick} disabled={!agreed || uploading} className="file-input file-input-bordered file-input-sm w-full bg-base-100 disabled:opacity-50" />
+          {uploading && <p className="mt-1 flex items-center gap-2 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Rasm yuklanmoqda...')}</p>}
+          {imageUrl && <img src={imageUrl} alt="" className="mt-2 max-h-52 rounded-lg border border-white/10 object-cover" />}
+        </div>
+
+        <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 600))} placeholder={t('Izoh (ixtiyoriy)')} rows={2} className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
+
+        <button type="button" className="btn btn-accent btn-sm mt-3 w-full" onClick={publish} disabled={!agreed || !imageUrl || busy}>
+          {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Joylash')}
+        </button>
+        {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {posts === null && <p className="text-xs text-base-content/45">{t('Yuklanmoqda...')}</p>}
+        {posts !== null && posts.length === 0 && <p className="text-xs text-base-content/45">{t('Hali post yo‘q')}</p>}
+        {(posts || []).map((p) => (
+          <div key={p.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-2">
+            <img src={p.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs text-base-content/70">{p.caption || <span className="text-base-content/35">{t('(izohsiz)')}</span>}</div>
+              <div className="text-[10px] text-base-content/40">{timeAgo(p.createdAt)} · {'\u{1F90D}'} {p.likeCount}</div>
+            </div>
+            <button type="button" className="btn btn-ghost btn-xs shrink-0 text-error" onClick={() => remove(p.id)}>{t('O‘chirish')}</button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -707,11 +816,13 @@ function EditCardForm({ card, onSaved }) {
                   </button>
                 )}
               </div>
-              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder={t("yoki havola: https://.../musiqa.mp3")} />
+              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder={t("YouTube havolasi yoki https://.../musiqa.mp3")} />
               {form.musicUrl && (
-                <audio controls src={form.musicUrl} className="mt-2 h-9 w-full" />
+                isYoutubeMusic(form.musicUrl)
+                  ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400"><span>{'▶'}</span> {t('YouTube musiqasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
+                  : <audio controls src={form.musicUrl} className="mt-2 h-9 w-full" />
               )}
-              <p className="mt-1.5 text-xs text-base-content/45">{t("Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chira oladi (brauzerlar avtomatik ovozli ijroni bloklaydi).")}</p>
+              <p className="mt-1.5 text-xs text-base-content/45">{t("YouTube havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.")}</p>
             </label>
           </Section>
 
@@ -772,6 +883,10 @@ function EditCardForm({ card, onSaved }) {
               <span className="text-xs font-semibold text-base-content/70">{t("Hashtaglar (vergul bilan)")}</span>
               <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
             </label>
+          </Section>
+
+          <Section title={t("Postlar")} subtitle={t("Profilingizga rasm va izoh bilan post joylang")}>
+            <PostsManager code={card.code} />
           </Section>
 
           <Section title={t("Jismoniy karta bosma dizayni")} subtitle={t("Old/orqa tomon, rang, logotip — PNG holida yuklab olasiz")} id={'card-designer-section-' + card.code} openSignal={designerOpenSignal}>

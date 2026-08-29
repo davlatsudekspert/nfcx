@@ -455,6 +455,45 @@ export async function dbToggleLike(code) {
   return res.json();
 }
 
+// ---------- Profil postlari ----------
+export async function dbListPosts(code) {
+  const data = await api(`/records/${encodeURIComponent(code)}/posts`);
+  return (data && data.posts) || [];
+}
+export async function dbCreatePost(code, { imageUrl, caption }) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ imageUrl, caption }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const map = {
+      unauthorized: 'Avval tizimga kiring.',
+      bad_image: 'Avval rasm yuklang.',
+      not_owner: 'Bu profil sizga tegishli emas.',
+      limit_reached: 'Postlar soni chegarasiga yetdingiz.',
+    };
+    throw new Error(map[data?.error] || 'Postni joylab bo’lmadi.');
+  }
+  return data;
+}
+export async function dbDeletePost(id) {
+  const res = await fetch(`/api/posts/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+  if (!res.ok) throw new Error('Postni o’chirib bo’lmadi.');
+  return res.json();
+}
+export async function dbTogglePostLike(id) {
+  const res = await fetch(`/api/posts/${encodeURIComponent(id)}/like`, { method: 'POST', credentials: 'same-origin' });
+  if (!res.ok) {
+    const err = new Error('Xatolik yuz berdi.');
+    if (res.status === 401) err.code = 'unauthorized';
+    throw err;
+  }
+  return res.json();
+}
+
 export const dbListConversations = () => dbApi('/conversations');
 export const dbUnreadCount = () => dbApi('/conversations/unread-count');
 export const dbStartConversation = (code) => dbApi(`/conversations/with/${encodeURIComponent(code)}`, { method: 'POST' });

@@ -526,9 +526,36 @@ export const DICT = {
   'Fayl yuklash (mp3, maks. 8 MB)': { ru: 'Загрузить файл (mp3, макс. 8 МБ)', en: 'Upload a file (mp3, max 8 MB)' },
   'Olib tashlash': { ru: 'Убрать', en: 'Remove' },
   'yoki havola: https://.../musiqa.mp3': { ru: 'или ссылка: https://.../music.mp3', en: 'or a link: https://.../music.mp3' },
+  'YouTube havolasi yoki https://.../musiqa.mp3': { ru: 'Ссылка на YouTube или https://.../music.mp3', en: 'YouTube link or https://.../music.mp3' },
+  'YouTube musiqasi ulandi — iPhone/Android hammasida ishlaydi.': { ru: 'Музыка с YouTube подключена — работает на iPhone/Android.', en: 'YouTube music connected — works on iPhone/Android.' },
+  "YouTube havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.":
+    { ru: 'Если вставите ссылку на YouTube — без загрузки файла, работает и на iPhone. Либо прямая ссылка на .mp3 / файл. Посетитель профиля включает/выключает кнопкой внизу.', en: 'Paste a YouTube link — no file upload, works on iPhone too. Or a direct .mp3 link / file. A visitor toggles it with the button below.' },
   "Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chira oladi (brauzerlar avtomatik ovozli ijroni bloklaydi).":
     { ru: 'Посетитель вашего профиля может включать/выключать её кнопкой внизу (браузеры блокируют автовоспроизведение со звуком).', en: 'A visitor to your profile can toggle it with the button below (browsers block autoplay with sound).' },
   'username yoki havola': { ru: 'юзернейм или ссылка', en: 'username or link' },
+
+  // Postlar + ulashish + karta nusxalash
+  'Postlar': { ru: 'Посты', en: 'Posts' },
+  'POSTLAR': { ru: 'ПОСТЫ', en: 'POSTS' },
+  'Hammasi': { ru: 'Все', en: 'All' },
+  'Hali post yo‘q': { ru: 'Постов пока нет', en: 'No posts yet' },
+  'Profilingizga rasm va izoh bilan post joylang': { ru: 'Публикуйте посты с фото и подписью в своём профиле', en: 'Publish posts with a photo and caption on your profile' },
+  'Yangi post': { ru: 'Новый пост', en: 'New post' },
+  'Izoh (ixtiyoriy)': { ru: 'Подпись (необязательно)', en: 'Caption (optional)' },
+  'Joylash': { ru: 'Опубликовать', en: 'Publish' },
+  'Rasm yuklanmoqda...': { ru: 'Загрузка изображения...', en: 'Uploading image...' },
+  'Post joylandi.': { ru: 'Пост опубликован.', en: 'Post published.' },
+  'Avval rasm yuklang.': { ru: 'Сначала загрузите изображение.', en: 'Upload an image first.' },
+  'Avval quyidagi shartni belgilang.': { ru: 'Сначала отметьте условие ниже.', en: 'Check the condition below first.' },
+  'Bu postni o‘chirasizmi?': { ru: 'Удалить этот пост?', en: 'Delete this post?' },
+  'O‘chirish': { ru: 'Удалить', en: 'Delete' },
+  '(izohsiz)': { ru: '(без подписи)', en: '(no caption)' },
+  'Mening raqamli tashrif qog‘ozim': { ru: 'Моя цифровая визитка', en: 'My digital business card' },
+  'Nusxalash': { ru: 'Копировать', en: 'Copy' },
+  'Ulashish': { ru: 'Поделиться', en: 'Share' },
+  'Karta raqami nusxalandi!': { ru: 'Номер карты скопирован!', en: 'Card number copied!' },
+  'Men joylayotgan rasm O‘zbekiston Respublikasi qonunchiligiga zid emasligini tasdiqlayman. Diniy targ‘ibot, pornografik va axloq normalariga zid tasvirlar, giyohvand moddalar, spirtli ichimliklar hamda tamaki mahsulotlari reklamasi, zo‘ravonlik, kamsitish va boshqa noqonuniy mazmundagi rasmlarni joylash qat’iyan taqiqlanadi. Qoidaga rioya qilinmasa, post o‘chiriladi va NFC ID bloklanishi mumkin.':
+    { ru: 'Подтверждаю, что публикуемое изображение не противоречит законодательству Республики Узбекистан. Категорически запрещается размещать религиозную пропаганду, порнографические и противоречащие нормам морали изображения, рекламу наркотических средств, алкогольной и табачной продукции, а также изображения с насилием, дискриминацией и иным незаконным содержанием. При нарушении пост будет удалён, а NFC ID может быть заблокирован.', en: 'I confirm that the image I am posting does not violate the legislation of the Republic of Uzbekistan. Posting religious propaganda, pornographic or morally offensive images, advertising of narcotic substances, alcohol and tobacco products, as well as images containing violence, discrimination or other unlawful content is strictly prohibited. Violations will result in the post being removed and the NFC ID possibly being blocked.' },
   "Telefon raqamini profilda hammadan yashirish (faqat menga ko'rinsin)": { ru: 'Скрыть номер телефона в профиле от всех (виден только мне)', en: 'Hide the phone number on the profile from everyone (visible only to me)' },
   'Asosiy karta raqami': { ru: 'Основной номер карты', en: 'Main card number' },
   "Qo'shimcha karta raqamlari": { ru: 'Дополнительные номера карт', en: 'Additional card numbers' },
@@ -721,6 +748,11 @@ export const DICT = {
   // Auctions
   'Bu auksionni bekor qilishni tasdiqlaysizmi? Barcha bandlangan mablag’lar bo’shatiladi.': { ru: 'Подтвердить отмену этого аукциона? Все заблокированные средства будут разблокированы.', en: 'Confirm cancelling this auction? All held funds will be released.' },
   'Bu auksionni muddatidan oldin yakunlashni tasdiqlaysizmi?': { ru: 'Подтвердить досрочное завершение этого аукциона?', en: 'Confirm settling this auction early?' },
+  "To'lovni tasdiqlash": { ru: 'Подтвердить оплату', en: 'Confirm payment' },
+  "G'olibning to'lovini QO'LDA tasdiqlaysizmi? Haqiqiy pul kelganini o'zingiz tekshirganingizni bildiradi — auksion yakunlanadi va NFC ID g'olibga o'tadi.":
+    { ru: 'Подтвердить оплату победителя ВРУЧНУЮ? Означает, что вы сами проверили поступление денег — аукцион завершится, а NFC ID перейдёт победителю.', en: "Confirm the winner's payment MANUALLY? It means you have personally verified the money arrived — the auction settles and the NFC ID passes to the winner." },
+  "Bu auksion uchun kutilayotgan to'lov buyurtmasi yo'q (g'olib hali \"To'lash\" bosmagan yoki allaqachon ishlangan).":
+    { ru: 'Для этого аукциона нет ожидающего платёжного заказа (победитель ещё не нажал «Оплатить» или он уже обработан).', en: 'There is no pending payment order for this auction (the winner has not pressed "Pay" yet, or it is already processed).' },
   'Joriy narx': { ru: 'Текущая цена', en: 'Current price' },
   'Yetakchi': { ru: 'Лидер', en: 'Leader' },
   'Tugash': { ru: 'Окончание', en: 'Ends' },
