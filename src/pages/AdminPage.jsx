@@ -124,7 +124,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar'];
 
 function StatCard({ label, value }) {
   return (
@@ -1362,6 +1362,103 @@ function PromoCodesTab() {
   );
 }
 
+// Yangiliklar — faqat admin joylaydi/tahrirlaydi/o'chiradi.
+function NewsTab() {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [editId, setEditId] = useState(null);
+
+  const load = () => adminApi('/news').then((d) => setRows(d.news || [])).catch(() => setRows([]));
+  useEffect(() => { load(); }, []);
+
+  const reset = () => { setEditId(null); setTitle(''); setBody(''); setImageUrl(''); setErr(null); };
+
+  const save = async () => {
+    if (!title.trim()) { setErr(t('Sarlavhani kiriting.')); return; }
+    setBusy(true); setErr(null);
+    try {
+      if (editId) {
+        await adminApi(`/news/${editId}`, { method: 'PUT', body: JSON.stringify({ title, body, imageUrl }) });
+      } else {
+        await adminApi('/news', { method: 'POST', body: JSON.stringify({ title, body, imageUrl }) });
+      }
+      reset();
+      await load();
+    } catch (e) {
+      setErr(e.message === 'title_required' ? t('Sarlavhani kiriting.') : t('Xatolik yuz berdi.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startEdit = (n) => { setEditId(n.id); setTitle(n.title); setBody(n.body || ''); setImageUrl(n.imageUrl || ''); setErr(null); };
+
+  const togglePublish = async (n) => {
+    setBusy(true);
+    try { await adminApi(`/news/${n.id}`, { method: 'PUT', body: JSON.stringify({ published: !n.published }) }); await load(); }
+    finally { setBusy(false); }
+  };
+
+  const remove = async (n) => {
+    if (!confirm(t('Bu yangilikni o‘chirasizmi?'))) return;
+    setBusy(true);
+    try { await adminApi(`/news/${n.id}`, { method: 'DELETE' }); await load(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-base-200/50 p-5">
+        <div className="text-sm font-bold">{editId ? t('Yangilikni tahrirlash') : t('Yangi yangilik')}</div>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('Sarlavha')}
+          className="input input-bordered input-sm mt-3 w-full bg-base-100" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('Matn')} rows={4}
+          className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
+        <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder={t('Rasm havolasi (ixtiyoriy) — https://...')}
+          className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono text-xs" />
+        {err && <div className="mt-2 text-xs text-error">{err}</div>}
+        <div className="mt-3 flex gap-2">
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={busy}>
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : (editId ? t('Saqlash') : t('Joylash'))}
+          </button>
+          {editId && <button className="btn btn-ghost btn-sm" onClick={reset}>{t('Bekor')}</button>}
+        </div>
+      </div>
+
+      {!rows && <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>}
+      {rows && rows.length === 0 && <div className="text-base-content/45">{t('Hozircha yangiliklar yo‘q.')}</div>}
+      <div className="space-y-3">
+        {(rows || []).map((n) => (
+          <div key={n.id} className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{n.title}</span>
+                  {!n.published && <span className="badge badge-ghost badge-xs">{t('Yashirin')}</span>}
+                </div>
+                <div className="mt-0.5 text-[11px] text-base-content/40">{dateTime(new Date(n.createdAt).getTime())}</div>
+                {n.body && <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-base-content/60">{n.body}</p>}
+              </div>
+              <div className="flex shrink-0 flex-col gap-1">
+                <button className="btn btn-ghost btn-xs" onClick={() => startEdit(n)}>{t('Tahrirlash')}</button>
+                <button className="btn btn-ghost btn-xs" onClick={() => togglePublish(n)} disabled={busy}>
+                  {n.published ? t('Yashirish') : t('Chiqarish')}
+                </button>
+                <button className="btn btn-error btn-xs" onClick={() => remove(n)} disabled={busy}>{t("O'chirish")}</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, role }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState(0);
@@ -1403,6 +1500,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 11 && isSuperAdmin && <AdminsTab />}
         {tab === 12 && <GiftNfcIdTab />}
         {tab === 13 && <PromoCodesTab />}
+        {tab === 14 && <NewsTab />}
       </div>
     </main>
   );

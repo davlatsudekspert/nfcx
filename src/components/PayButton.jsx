@@ -3,7 +3,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 
 // Yagona "to'lov tugmasi" — PAYMENTS_ENABLED false bo'lsa professional
-// disabled holatga tushadi va tagida "Payme tez orada" izohi chiqadi.
+// disabled holatga tushadi va tagida "Payme tez kunlarda" izohi chiqadi.
 // Yoqilganda: payLink berilgan bo'lsa <a>, aks holda <button onClick>.
 //
 // props:
@@ -28,7 +28,7 @@ export default function PayButton({
           className={`${base} btn-disabled !cursor-not-allowed opacity-60`}
           disabled
           aria-disabled="true"
-          title={t('Payme orqali to‘lov imkoniyati tez orada ishga tushadi.')}
+          title={t('Payme orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
         >
           {label}
         </button>

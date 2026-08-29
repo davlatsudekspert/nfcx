@@ -227,7 +227,7 @@ export async function dbOrderPhysicalCard(code, shipping) {
   if (!res.ok) {
     const key = data && data.error;
     if (key === 'shipping_required') throw new Error("Ism, telefon va manzilni to'liq kiriting.");
-    if (key === 'payme_disabled') throw new Error("Payme orqali to'lov imkoniyati tez orada ishga tushadi.");
+    if (key === 'payme_disabled') throw new Error("Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.");
     if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
     throw new Error('Xatolik yuz berdi.');
   }
@@ -325,6 +325,16 @@ export async function dbListAuctions() {
   return (data && data.auctions) || [];
 }
 
+// ---------- Yangiliklar ----------
+export async function dbListNews() {
+  try {
+    const data = await api('/news');
+    return (data && data.news) || [];
+  } catch {
+    return [];
+  }
+}
+
 export async function dbGetAuction(id) {
   return api(`/auctions/${encodeURIComponent(id)}`);
 }
@@ -342,7 +352,7 @@ const AUCTION_ERRORS = {
   AUCTION_NOT_AWAITING_PAYMENT: "Bu auksion hozir to'lov kutish holatida emas.",
   NOT_WINNER: "Faqat auksion g'olibi to'lov qila oladi.",
   PAYMENT_DEADLINE_PASSED: "To'lov muddati (24 soat) o'tib ketgan.",
-  payme_disabled: "Payme orqali to'lov imkoniyati tez orada ishga tushadi.",
+  payme_disabled: "Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.",
   OWN_AUCTION: "O'z auksioningizga taklif qila olmaysiz.",
   BID_TOO_LOW: "Taklifingiz joriy narxdan yuqori bo'lishi kerak.",
   BANNED: "Akkauntingiz vaqtincha bloklangan (to'lanmagan auksion sababli).",
@@ -424,7 +434,7 @@ const PREMIUM_FOLLOW_ERRORS = {
   CANNOT_FOLLOW_SELF: "O'zingizga obuna bo'la olmaysiz.",
   NOT_FOUND: 'Topilmadi.',
   NOT_PREMIUM: 'Bu profil premium emas.',
-  payme_disabled: "Payme orqali to'lov imkoniyati tez orada ishga tushadi.",
+  payme_disabled: "Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.",
 };
 
 async function dbApi(path, options) {

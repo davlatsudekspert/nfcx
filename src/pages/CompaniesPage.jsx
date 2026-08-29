@@ -1,4 +1,3 @@
-import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
@@ -42,7 +41,6 @@ export default function CompaniesPage() {
             <a href="https://t.me/nfcstore_admin" target="_blank" rel="noopener noreferrer" className="btn btn-accent">
               {'\u{1F449}'} {t('Korporativ buyurtma berish')}
             </a>
-            <button onClick={() => navigate('/narxlar')} className="btn btn-outline">{t('Narxlar bilan tanishish')}</button>
           </div>
         </div>
 

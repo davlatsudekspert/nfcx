@@ -47,7 +47,7 @@ function HeaderSearch({ onNavigate }) {
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder={t('ID yoki ism bo‘yicha qidirish')}
-        className="input input-bordered input-sm w-full bg-base-100 md:w-56"
+        className="input input-bordered input-sm w-full bg-base-100"
       />
       {open && results.length > 0 && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-base-200 shadow-2xl">
@@ -74,7 +74,7 @@ function HeaderSearch({ onNavigate }) {
 
 const NAV = [
   ['Narxlar', '/narxlar'],
-  ['Qanday ishlaydi', '/qanday-ishlaydi'],
+  ['Yangiliklar', '/yangiliklar'],
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],
   ['Kompaniyalar', '/kompaniyalar'],
@@ -83,7 +83,7 @@ const NAV = [
 ];
 
 const DESKTOP_NAV = [
-  ['Qanday ishlaydi', '/qanday-ishlaydi'],
+  ['Yangiliklar', '/yangiliklar'],
   ['Narxlar', '/narxlar'],
   ['Katalog', '/katalog'],
   ['Reyting', '/reyting'],
@@ -121,23 +121,27 @@ export default function Header() {
         </div>
       </div>
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14">
-        <div className="flex-1">
-          <button onClick={() => go('/')} className="flex cursor-pointer items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button onClick={() => go('/')} className="flex shrink-0 cursor-pointer items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
             <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)]" />
             NFCSTORE
           </button>
+          <div className="hidden w-40 shrink-0 md:block lg:w-52">
+            <HeaderSearch />
+          </div>
         </div>
 
-        <nav className="hidden items-center gap-6 text-sm text-base-content/60 xl:flex">
+        <nav className="hidden flex-1 items-center justify-center gap-4 text-sm text-base-content/60 xl:flex 2xl:gap-6">
           {DESKTOP_NAV.map(([label, href]) => (
-            <button key={href} onClick={() => go(href)} className="cursor-pointer transition-colors hover:text-base-content">
+            <button key={href} onClick={() => go(href)} className="shrink-0 cursor-pointer transition-colors hover:text-base-content">
               {t(label)}
             </button>
           ))}
         </nav>
 
+        <div className="flex-1 xl:hidden" />
+
         <div className="hidden items-center gap-2 xl:flex">
-          <HeaderSearch />
           {user && MESSAGING_ENABLED && (
             <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
               {'\u{1F4AC}'} {t('Xabarlar')}

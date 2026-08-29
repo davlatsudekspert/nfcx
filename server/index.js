@@ -33,6 +33,7 @@ import {
   getOrCreateConversation, listConversations, isConversationParticipant, listMessages, getOtherParticipant,
   blockUser, unblockUser, isBlocked, reportUser,
   sendMessage, markConversationRead, totalUnreadCount,
+  listNews,
 } from './db.js';
 import {
   hashPassword, verifyPassword, newSessionToken,
@@ -709,6 +710,12 @@ app.get('/api/auctions', async (req, res) => {
   if (!isDbReady()) return res.json({ auctions: [] });
   await settleExpiredAuctions();
   res.json({ auctions: await listActiveAuctions() });
+});
+
+// Yangiliklar — ochiq (faqat "published" bo'lganlari).
+app.get('/api/news', async (req, res) => {
+  if (!isDbReady()) return res.json({ news: [] });
+  res.json({ news: await listNews() });
 });
 
 app.get('/api/auctions/:id', async (req, res) => {

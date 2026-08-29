@@ -13,7 +13,7 @@ export default function TelegramChannelCTA() {
   const { t } = useLanguage();
   return (
     <div className="mt-3 rounded-2xl border border-white/10 bg-base-200/40 p-5">
-      <div className="text-sm font-bold">{t('Band qilish tez orada ishga tushadi')}</div>
+      <div className="text-sm font-bold">{t('Band qilish tez kunlarda ishga tushadi')}</div>
       <p className="mt-1 text-sm leading-relaxed text-base-content/60">
         {t("To'lov tizimi ishga tushishi bilan ID'larni band qilish mumkin bo'ladi. Birinchi bo'lib xabardor bo'lish uchun Telegram kanalimizga qo'shiling.")}
       </p>

@@ -875,9 +875,70 @@ export async function initDb() {
     $$;
   `);
 
+  // Yangiliklar — faqat admin joylaydi, hamma o'qiydi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS news (
+      id         SERIAL PRIMARY KEY,
+      title      TEXT NOT NULL,
+      body       TEXT NOT NULL DEFAULT '',
+      image_url  TEXT NOT NULL DEFAULT '',
+      published  BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
+}
+
+// ---------- Yangiliklar ----------
+export async function listNews({ includeUnpublished = false } = {}) {
+  if (!dbReady) return [];
+  const where = includeUnpublished ? '' : 'WHERE published = TRUE';
+  const { rows } = await pool.query(
+    `SELECT id, title, body, image_url AS "imageUrl", published,
+            created_at AS "createdAt", updated_at AS "updatedAt"
+       FROM news ${where}
+      ORDER BY created_at DESC
+      LIMIT 100`
+  );
+  return rows;
+}
+export async function adminCreateNews({ title, body, imageUrl, published }) {
+  const { rows } = await pool.query(
+    `INSERT INTO news (title, body, image_url, published)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, title, body, image_url AS "imageUrl", published,
+               created_at AS "createdAt", updated_at AS "updatedAt"`,
+    [title, body || '', imageUrl || '', published !== false]
+  );
+  return rows[0];
+}
+export async function adminUpdateNews(id, fields) {
+  const { rows } = await pool.query(
+    `UPDATE news SET
+        title = COALESCE($2, title),
+        body = COALESCE($3, body),
+        image_url = COALESCE($4, image_url),
+        published = COALESCE($5, published),
+        updated_at = now()
+      WHERE id = $1
+      RETURNING id, title, body, image_url AS "imageUrl", published,
+                created_at AS "createdAt", updated_at AS "updatedAt"`,
+    [
+      id,
+      fields.title ?? null,
+      fields.body ?? null,
+      fields.imageUrl ?? null,
+      fields.published ?? null,
+    ]
+  );
+  return rows[0] || null;
+}
+export async function adminDeleteNews(id) {
+  await pool.query(`DELETE FROM news WHERE id = $1`, [id]);
 }
 
 export function isDbReady() {

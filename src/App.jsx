@@ -15,6 +15,7 @@ const AccountPage = lazy(() => import('./pages/AccountPage.jsx'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'));
 const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
 const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage.jsx'));
+const NewsPage = lazy(() => import('./pages/NewsPage.jsx'));
 const CatalogPage = lazy(() => import('./pages/CatalogPage.jsx'));
 const RankingPage = lazy(() => import('./pages/RankingPage.jsx'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage.jsx'));
@@ -37,6 +38,7 @@ const STATIC_ROUTES = {
   account: AccountPage,
   narxlar: PricingPage,
   'qanday-ishlaydi': HowItWorksPage,
+  yangiliklar: NewsPage,
   katalog: CatalogPage,
   savollar: FaqPage,
   aloqa: ContactPage,
@@ -111,6 +113,7 @@ export default function App() {
     else if (cleanRoute === 'sozlamalar') page = <SettingsPage />;
     else if (cleanRoute === 'narxlar') page = <PricingPage catalog={catalog} refreshCatalog={refreshCatalog} />;
     else if (cleanRoute === 'qanday-ishlaydi') page = <HowItWorksPage />;
+    else if (cleanRoute === 'yangiliklar') page = <NewsPage />;
     else if (cleanRoute === 'katalog') page = <CatalogPage catalog={catalog} />;
     else if (cleanRoute === 'reyting') page = <RankingPage catalog={catalog} />;
     else if (cleanRoute === 'kompaniyalar') page = <CompaniesPage />;

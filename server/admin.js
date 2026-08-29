@@ -32,6 +32,7 @@ import {
   setAdminTotpSecret, enableAdminTotp, disableAdminTotp, getAdminTotpSecret,
   createNfcGift, listNfcGifts,
   adminListReferrals,
+  listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -733,4 +734,55 @@ adminRouter.post('/nfc-gifts', requireAdmin, async (req, res) => {
   if (result.error) return res.status(409).json(result);
   logAdminActivity({ action: 'nfc_gift_created', details: `${code} \u2192 ${recipientName || 'nomsiz'}`, newValue: result.gift.activationCode, ip: req.ip }).catch(() => {});
   res.status(201).json(result.gift);
+});
+
+
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+// YANGILIKLAR \u2014 faqat admin joylaydi/tahrirlaydi/o'chiradi.
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+function cleanNewsImage(v) {
+  const u = String(v || '').slice(0, 500).trim();
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u) || u.startsWith('/uploads/')) return u;
+  return '';
+}
+
+adminRouter.get('/news', async (req, res) => {
+  if (!isDbReady()) return res.json({ news: [] });
+  res.json({ news: await listNews({ includeUnpublished: true }) });
+});
+
+adminRouter.post('/news', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const title = String(req.body?.title || '').slice(0, 200).trim();
+  if (!title) return res.status(422).json({ error: 'title_required' });
+  const row = await adminCreateNews({
+    title,
+    body: String(req.body?.body || '').slice(0, 8000),
+    imageUrl: cleanNewsImage(req.body?.imageUrl),
+    published: req.body?.published !== false,
+  });
+  logAdminActivity({ action: 'news_created', details: title, ip: req.ip }).catch(() => {});
+  res.status(201).json(row);
+});
+
+adminRouter.put('/news/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  const fields = {};
+  if (req.body?.title != null) fields.title = String(req.body.title).slice(0, 200).trim();
+  if (req.body?.body != null) fields.body = String(req.body.body).slice(0, 8000);
+  if (req.body?.imageUrl != null) fields.imageUrl = cleanNewsImage(req.body.imageUrl);
+  if (req.body?.published != null) fields.published = !!req.body.published;
+  const row = await adminUpdateNews(id, fields);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  logAdminActivity({ action: 'news_updated', details: `#${id}`, ip: req.ip }).catch(() => {});
+  res.json(row);
+});
+
+adminRouter.delete('/news/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await adminDeleteNews(Number(req.params.id));
+  logAdminActivity({ action: 'news_deleted', details: `#${req.params.id}`, ip: req.ip }).catch(() => {});
+  res.json({ ok: true });
 });

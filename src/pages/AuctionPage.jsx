@@ -239,7 +239,7 @@ export default function AuctionPage({ id }) {
               className="input input-bordered input-sm w-48 bg-base-100"
             />
             <button className="btn btn-primary btn-sm" onClick={bid} disabled={busy || !user || !PAYMENTS_ENABLED}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : (!PAYMENTS_ENABLED ? t('Tez orada') : user ? t('Taklif qilish') : t('Kirish kerak'))}
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : (!PAYMENTS_ENABLED ? t('Tez kunlarda') : user ? t('Taklif qilish') : t('Kirish kerak'))}
             </button>
             {auction.buyNowPrice && (
               <button className="btn btn-outline btn-sm" onClick={() => setAmount(String(auction.buyNowPrice))} disabled={busy}>

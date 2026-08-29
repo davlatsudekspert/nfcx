@@ -158,7 +158,8 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="flex min-h-full items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`relative my-8 w-full rounded-2xl border border-white/10 bg-base-200 shadow-2xl transition-all ${showDesigner ? 'max-w-3xl' : 'max-w-lg'}`}>
         <button className="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" onClick={onClose}>&times;</button>
         {order ? (
@@ -180,11 +181,11 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
               </>
             ) : (
               <>
-                <button type="button" className="btn btn-disabled mt-5 w-full !cursor-not-allowed opacity-60" disabled aria-disabled="true">
+                <TelegramChannelCTA />
+                <button type="button" className="btn btn-disabled mt-4 w-full !cursor-not-allowed opacity-60" disabled aria-disabled="true">
                   {t("To'lash — {n} so'm", { n: fmt(order.price) })}
                 </button>
                 <div className="mt-4"><PaymentUnavailableNotice /></div>
-                <TelegramChannelCTA />
               </>
             )}
             {msg && (
@@ -293,7 +294,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 p-3">
               <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" disabled={!PAYMENTS_ENABLED} />
               <span className="text-xs leading-relaxed text-base-content/75">
-              <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t(PAYMENTS_ENABLED ? "— profilingizni jismoniy karta orqali ulashasiz. Qo‘shimcha {fee}." : "— Payme orqali buyurtma tez orada ishga tushadi.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
+              <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t(PAYMENTS_ENABLED ? "— profilingizni jismoniy karta orqali ulashasiz. Qo‘shimcha {fee}." : "— Payme orqali buyurtma tez kunlarda ishga tushadi.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
               </span>
             </label>
             {wantPhysicalCard && (
@@ -320,17 +321,17 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <span className="text-sm text-base-content/60">{t('Jami')}</span>
             <b className="text-lg">{t("{n} so'm", { n: fmt(totalPrice) })}</b>
           </div>
+          {paymentBlocked && <TelegramChannelCTA />}
           <button
             className={`btn btn-primary mt-3 w-full ${paymentBlocked ? 'btn-disabled !cursor-not-allowed opacity-60' : ''}`}
             onClick={submit}
             disabled={busy || paymentBlocked}
             aria-disabled={paymentBlocked}
-            title={paymentBlocked ? t('Payme orqali to‘lov imkoniyati tez orada ishga tushadi.') : undefined}
+            title={paymentBlocked ? t('Payme orqali to‘lov imkoniyati tez kunlarda ishga tushadi.') : undefined}
           >
             {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Band qilish')}
           </button>
           {paymentBlocked && <div className="mt-3"><PaymentUnavailableNotice /></div>}
-          {paymentBlocked && <TelegramChannelCTA />}
           {msg && (
             <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
               <span>{t(msg.text)}</span>
@@ -338,6 +339,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           )}
         </div>
         )}
+      </div>
       </div>
     </div>
   );

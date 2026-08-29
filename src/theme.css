@@ -71,11 +71,11 @@
   max-width: 100%;
   min-height: 300px;
   padding-block: 1rem;
-  overflow: hidden;
+  overflow: hidden;             /* mobil: gorizontal scroll bo'lmasin */
   perspective: 1400px;
   pointer-events: none;          /* sof vitrina — hover/tilt yo'q */
 }
-@media (min-width: 1024px) { .ps-stage { min-height: 460px; } }
+@media (min-width: 1024px) { .ps-stage { min-height: 460px; overflow: visible; } }
 
 /* Iliq oltin spotlight — kartadan orqa-yuqoridan urib turgandek. */
 .ps-spotlight {
@@ -98,11 +98,11 @@
   transform-origin: center center;
   z-index: 1;
 }
-@media (min-width: 640px)  { .ps-scene { transform: scale(0.8); } }
-@media (min-width: 768px)  { .ps-scene { transform: scale(0.92); } }
-@media (min-width: 1024px) { .ps-scene { transform: scale(1.04); } }
-@media (min-width: 1280px) { .ps-scene { transform: scale(1.16); } }
-@media (min-width: 1536px) { .ps-scene { transform: scale(1.24); } }
+@media (min-width: 640px)  { .ps-scene { transform: scale(0.78); } }
+@media (min-width: 768px)  { .ps-scene { transform: scale(0.88); } }
+@media (min-width: 1024px) { .ps-scene { transform: scale(1); } }
+@media (min-width: 1280px) { .ps-scene { transform: scale(1.1); } }
+@media (min-width: 1536px) { .ps-scene { transform: scale(1.18); } }
 
 /* KARTA — suzish (tashqi) + tebranish (ichki). Orqa yuz yo'q. */
 .ps-card {

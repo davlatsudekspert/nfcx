@@ -96,7 +96,7 @@ export default function PaymentsPage() {
       {data && data.pendingPayout > 0 && (
         <div className="mt-4 rounded-2xl border border-accent/30 bg-accent/5 p-5">
           <div className="text-sm font-bold text-accent">{t('Sizga to‘lanishi kerak: {n} so‘m', { n: fmt(data.pendingPayout) })}</div>
-          <p className="mt-1 text-xs text-base-content/50">{t("Bu — premium obunachilaringizdan yig'ilgan mablag'. Admin tez orada Payme/karta raqamingizga qo'lda o'tkazadi.")}</p>
+          <p className="mt-1 text-xs text-base-content/50">{t("Bu — premium obunachilaringizdan yig'ilgan mablag'. Admin tez kunlarda Payme/karta raqamingizga qo'lda o'tkazadi.")}</p>
         </div>
       )}
 
