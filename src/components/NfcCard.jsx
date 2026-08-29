@@ -34,7 +34,7 @@ const CARD_SIZES = {
 const SHADOW_DEFAULT = '0 20px 45px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)';
 const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.28), 0 28px 70px rgba(0,0,0,0.65)';
 
-export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', rim = false, back = false }) {
+export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md', rim = false, back = false, bgImage = '' }) {
   const ref = useRef(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
   const f = FINISHES[finish] || FINISHES.black;
@@ -89,6 +89,12 @@ export default function NfcCard({ code = 'AAA000', name = 'ISM FAMILIYA', since,
           boxShadow: rim ? SHADOW_RIM : SHADOW_DEFAULT,
         }}
       >
+        {bgImage && (
+          <>
+            <img src={bgImage} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+            <div className="pointer-events-none absolute inset-0" style={{ background: 'rgba(0,0,0,0.42)' }} />
+          </>
+        )}
         <div
           className="pointer-events-none absolute inset-0 opacity-55 mix-blend-overlay"
           style={{ background: `radial-gradient(360px circle at ${tilt.mx}% ${tilt.my}%, rgba(255,255,255,0.55), transparent 45%)` }}

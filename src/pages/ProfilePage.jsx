@@ -16,7 +16,7 @@ import {
 } from '../components/Icons.jsx';
 
 export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
-const DARK_THEMES = ['classic', 'midnight', 'sunset', 'emerald', 'gold'];
+const DARK_THEMES = ['classic', 'midnight', 'sunset', 'emerald', 'gold', 'glass'];
 // Profil mavzulari — .vz dagi CSS o'zgaruvchilari endi JSX orqali
 // beriladi (id'lar backend whitelist bilan mos: classic, midnight,
 // emerald, royal, sunset — barchasi oq-qora / kumush palitrada).
@@ -36,6 +36,9 @@ export const VZ_THEMES = {
   // Gold — boy, to'yingan tilla-bronza, Classic'dagi xira oltin urg'udan
   // farqli o'laroq fonning o'zi ham issiq oltin tusda porlaydi.
   gold: { '--vz-bg-a': '#1a1206', '--vz-bg-b': '#3a2a0c', '--vz-card': '#241a08', '--vz-ink': '#fdf6e3', '--vz-ink-dim': '#e0c98a', '--vz-ink-faint': '#a68a4a', '--vz-line': '#5c481c', '--vz-accent': '#f0c04a', '--vz-pill': '#5c4415' },
+  // Shaffof — chuqur qora-kulrang fon, barcha panellar yarim shaffof
+  // (glassmorphism) + oq chegara. Fon rasmi bilan ayniqsa chiroyli.
+  glass: { '--vz-bg-a': '#0b0d10', '--vz-bg-b': '#181c22', '--vz-card': 'rgba(255,255,255,0.07)', '--vz-ink': '#ffffff', '--vz-ink-dim': 'rgba(255,255,255,0.78)', '--vz-ink-faint': 'rgba(255,255,255,0.52)', '--vz-line': 'rgba(255,255,255,0.16)', '--vz-accent': '#cbd5e1', '--vz-pill': 'rgba(255,255,255,0.12)' },
 };
 
 // Rangni ochroq/to'qroq qilish (gradient uchun ikkinchi ton hosil qilamiz).
@@ -446,15 +449,18 @@ export default function ProfilePage({ code, catalog }) {
   const wsUrl = record.website || '';
   // hasSocials endi ishlatilmaydi — shaxsiy ijtimoiy tarmoq havolalari
   // faqat yuqoridagi to'liq nomli tugmalarda ko'rsatiladi (takrorlanmaydi).
-  const tier = record.tierOverride || tierForCode(record.code);
+  // Admin sovg'a qilgan NFC ID — kod tekin daraja bo'lsa ham karta rangi
+  // (va tarif belgisi) EKSLYUZIV bo'ladi.
+  const tier = record.isGift ? 'exclusive' : (record.tierOverride || tierForCode(record.code));
   const tierColor = TIER_COLOR[tier];
   const tierEmoji = TIER_EMOJI[tier];
   const dark = DARK_THEMES.includes(record.theme || 'classic');
-  // Foydalanuvchi o'z fon rasmini qo'ygan bo'lsa — asosiy kontent bloki
-  // shaffof bo'ladi, shunda rasm butun sahifa bo'ylab ko'rinadi (aks holda
-  // rasm faqat tepada — karta ortida — ko'rinib qolardi). O'qilishi uchun
-  // vzStyle allaqachon rasm ustiga qora qatlam qo'shadi.
+  // "Shaffof" tema yoki foydalanuvchi o'z fon rasmini qo'ygan holat — asosiy
+  // kontent bloki yarim shaffof (glassmorphism) + chegara bilan ko'rsatiladi,
+  // shunda fon (rasm) butun sahifa bo'ylab ko'rinadi va panel toza ajralib turadi.
   const hasBg = !!record.bgUrl;
+  const glass = hasBg || (record.theme === 'glass');
+  const design = record.cardDesign || {};
 
   let topRank = null;
   if (Array.isArray(catalog) && catalog.length > 3) {
@@ -515,11 +521,25 @@ export default function ProfilePage({ code, catalog }) {
 
       <div className="pt-[18px]">
         <div className="flex animate-[floatY_5s_ease-in-out_infinite] justify-center">
-          <NfcCard code={record.code} name={record.name} since={record.ts} finish={'tier-' + tier} size="md" />
+          <NfcCard
+            code={record.code}
+            name={design.name || record.name}
+            since={record.ts}
+            finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)}
+            bgImage={design.bgUrl || ''}
+            size="md"
+          />
         </div>
       </div>
 
-      <div className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] ${hasBg ? '' : `shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`}`} style={{ background: hasBg ? 'transparent' : 'var(--vz-card)' }}>
+      <div
+        className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] ${
+          glass
+            ? 'border border-white/15 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.35)]'
+            : `shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`
+        }`}
+        style={{ background: glass ? 'rgba(16,18,22,0.55)' : 'var(--vz-card)' }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
@@ -555,22 +575,11 @@ export default function ProfilePage({ code, catalog }) {
         )}
         {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{t(followMsg)}</div>}
 
-        {(tierEmoji || tier !== 'free') && (
-          <div className="mt-4 flex justify-center">
-            <span
-              className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 px-5 py-2 font-mono text-[19px] font-extrabold tracking-wide sm:text-[22px]"
-              style={{ borderColor: tierColor, color: tierColor, background: `${tierColor}14` }}
-            >
-              {tierEmoji && <span className="text-[18px] sm:text-[20px]">{tierEmoji}</span>}
-              # {record.code}
-            </span>
-          </div>
-        )}
 
         <div className="mt-0.5 flex flex-col items-center">
           <div className="relative flex h-[120px] w-[120px] items-center justify-center">
-            <span className="pointer-events-none absolute inset-[-4px] animate-[spinSlow_18s_linear_infinite] rounded-full border border-dashed border-[color:var(--vz-line)]"></span>
-            <span className="pointer-events-none absolute inset-[-12px] animate-[spinSlow_30s_linear_infinite_reverse] rounded-full border opacity-50 border-[color:var(--vz-line)]"></span>
+            <span className={`pointer-events-none absolute inset-[-4px] animate-[spinSlow_18s_linear_infinite] rounded-full border border-dashed border-[color:var(--vz-line)] ${glass ? 'opacity-40' : ''}`}></span>
+            <span className={`pointer-events-none absolute inset-[-12px] animate-[spinSlow_30s_linear_infinite_reverse] rounded-full border border-[color:var(--vz-line)] ${glass ? 'opacity-20' : 'opacity-50'}`}></span>
             <span className="pointer-events-none absolute left-[82%] top-[4%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[88%] top-[78%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[10%] top-[86%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
@@ -649,12 +658,12 @@ export default function ProfilePage({ code, catalog }) {
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
               {record.cardNumber && (
                 <button type="button" onClick={() => copyText(record.cardNumber, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
-                  <IconTag /> {t("KARTA (to'lov)")} · <span className="font-mono normal-case tracking-normal">{record.cardNumber}</span>
+                  <IconTag /> {t('Karta raqam')}
                 </button>
               )}
               {(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => (
                 <button type="button" key={`cn${i}`} onClick={() => copyText(c.number, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
-                  <IconTag /> {c.label || t("KARTA (to'lov)")} · <span className="font-mono normal-case tracking-normal">{c.number}</span>
+                  <IconTag /> {c.label || t('Karta raqam')}
                 </button>
               ))}
               {(record.extraLinks || []).map((l, i) => (
@@ -677,19 +686,6 @@ export default function ProfilePage({ code, catalog }) {
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://www.instagram.com/nfcstore.uz" target="_blank" rel="noreferrer" title="NFCSTORE Instagram"><IconInstagram /></a>
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
             </div>
-
-            {posts.length > 0 && (
-              <>
-                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-1 flex items-center justify-between">
-                  <div className="text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t('POSTLAR')}</div>
-                  {posts.length > 3 && (
-                    <button onClick={() => setTab('postlar')} className="cursor-pointer text-[12px] font-semibold text-[color:var(--vz-accent)]">{t('Hammasi')}</button>
-                  )}
-                </div>
-                <PostsFeed posts={posts.slice(0, 3)} onLike={togglePostLike} t={t} />
-              </>
-            )}
 
             {otherCodes.length > 0 && (
               <>

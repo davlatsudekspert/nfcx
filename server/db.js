@@ -206,6 +206,7 @@ export async function initDb() {
     hide_phone: `ALTER TABLE cards ADD COLUMN hide_phone BOOLEAN NOT NULL DEFAULT FALSE`,
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
     links_transparent: `ALTER TABLE cards ADD COLUMN links_transparent BOOLEAN NOT NULL DEFAULT FALSE`,
+    card_design: `ALTER TABLE cards ADD COLUMN card_design JSONB`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -221,7 +222,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -891,7 +892,7 @@ const SELECT_FIELDS = `
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
-  tier_override AS "tierOverride",
+  tier_override AS "tierOverride", card_design AS "cardDesign",
   theme, for_sale AS "forSale",
   sale_price AS "salePrice", hashtags, price, ts, views
 `;
@@ -925,6 +926,7 @@ function rowToRecord(row) {
     extraLinks: Array.isArray(row.extraLinks) ? row.extraLinks : [],
     cardNumbers: Array.isArray(row.cardNumbers) ? row.cardNumbers : [],
     tierOverride: row.tierOverride || '',
+    cardDesign: row.cardDesign && typeof row.cardDesign === 'object' ? row.cardDesign : null,
     theme: row.theme || 'classic',
     forSale: !!row.forSale,
     salePrice: row.salePrice != null ? Number(row.salePrice) : null,
@@ -954,7 +956,7 @@ export async function getRecord(code) {
             c.links_transparent AS "linksTransparent",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
-            c.tier_override AS "tierOverride",
+            c.tier_override AS "tierOverride", c.card_design AS "cardDesign",
             c.theme, c.for_sale AS "forSale", c.sale_price AS "salePrice", c.hashtags, c.price, c.ts, c.views,
             u.is_premium AS "ownerIsPremium",
             EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS "isGift"
@@ -1599,6 +1601,10 @@ export async function updateRecord(code, fields) {
   if ('cardNumbers' in fields) {
     vals.push(JSON.stringify(fields.cardNumbers));
     sets.push(`card_numbers = $${vals.length}::jsonb`);
+  }
+  if ('cardDesign' in fields) {
+    vals.push(fields.cardDesign ? JSON.stringify(fields.cardDesign) : null);
+    sets.push(`card_design = $${vals.length}::jsonb`);
   }
   if (!sets.length) return getRecord(code);
   const { rows } = await pool.query(

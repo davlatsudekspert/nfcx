@@ -9,6 +9,8 @@ import { PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import { vzStyle } from './ProfilePage.jsx';
 import CardDesignerPage from './CardDesignerPage.jsx';
+import NfcCard from '../components/NfcCard.jsx';
+import { tierForCode } from '../lib/pricing.js';
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown,
@@ -21,6 +23,7 @@ const THEMES = [
   { id: 'royal', label: 'Platinum', css: 'linear-gradient(160deg,#f3f5f8,#dfe3e9)', accent: '#5b6b85' },
   { id: 'sunset', label: 'Ink', css: 'linear-gradient(160deg,#161c3a,#0a0d1c)', accent: '#8ea2ff' },
   { id: 'gold', label: 'Gold', css: 'linear-gradient(160deg,#3a2a0c,#1a1206)', accent: '#f0c04a' },
+  { id: 'glass', label: 'Shaffof', css: 'linear-gradient(160deg,#2a2f36,#0b0d10)', accent: '#cbd5e1' },
 ];
 
 // Yig'iladigan/ochiladigan bo'lim — uzun formani mantiqiy blokларга ажратади.
@@ -439,6 +442,169 @@ function PostsManager({ code }) {
   );
 }
 
+// Umumiy markazlashgan modal (SupportModal uslubi).
+function Modal({ title, onClose, children, wide }) {
+  const { t } = useLanguage();
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`my-6 w-full rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl ${wide ? 'max-w-4xl' : 'max-w-lg'}`}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">{title}</h3>
+          <button className="btn btn-ghost btn-xs" onClick={onClose}>&times;</button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+const PHYSICAL_CARD_FEE_UZS = 200_000;
+
+// Curated profil kartasi ranglari — NfcCard FINISHES kalitlari.
+const CARD_FINISHES = [
+  { id: 'auto', label: 'Avtomatik (tarif bo‘yicha)', css: 'linear-gradient(135deg,#3a3834,#1f1e1c)' },
+  { id: 'tier-exclusive', label: 'Ekslyuziv (tilla-qora)', css: 'linear-gradient(145deg,#3a3834,#1f1e1c)' },
+  { id: 'black', label: 'Qora', css: 'linear-gradient(135deg,#201a10,#0a0908)' },
+  { id: 'silver', label: 'Kumush', css: 'linear-gradient(135deg,#f4f4f5,#d6d7d9)' },
+  { id: 'tier-gold', label: 'Tilla', css: 'linear-gradient(135deg,#f0c419,#a9840f)' },
+  { id: 'graphite', label: 'Grafit', css: 'linear-gradient(135deg,#3a3730,#201f1a)' },
+  { id: 'tier-premium', label: 'Platina', css: 'linear-gradient(145deg,#eef0f2,#b9bcc4)' },
+  { id: 'tier-free', label: 'Zumrad', css: 'linear-gradient(135deg,#22352a,#14201a)' },
+];
+
+// "Karta dizayni" modali — 2 tab: profil kartasi (rang/matn/fon) va bosma karta.
+function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
+  const { t } = useLanguage();
+  const [tab, setTab] = useState(initialTab);
+  const d = card.cardDesign || {};
+  const [finish, setFinish] = useState(d.finish || 'auto');
+  const [name, setName] = useState(d.name || '');
+  const [bgUrl, setBgUrl] = useState(d.bgUrl || '');
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const fileRef = useRef(null);
+
+  const autoTier = tierForCode(card.code);
+  const previewFinish = finish && finish !== 'auto' ? finish : ('tier-' + autoTier);
+
+  const onPick = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setUploading(true); setMsg(null);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      const url = await dbUploadImage(dataUrl);
+      setBgUrl(url);
+    } catch (err) { setMsg({ type: 'err', text: err.message }); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+  };
+
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const cardDesign = (finish !== 'auto' || name.trim() || bgUrl)
+        ? { finish, name: name.trim(), bgUrl }
+        : null;
+      // Server validatsiyasi to'liq profil obyektini kutadi (ism majburiy) —
+      // shuning uchun mavjud maydonlarni ham yuboramiz, faqat cardDesign yangi.
+      await authUpdateCard(card.code, {
+        name: card.name, role: card.role || '', avatarUrl: card.avatarUrl || '',
+        bgUrl: card.bgUrl || '', accentColor: card.accentColor || '', bgColor: card.bgColor || '',
+        bgAnimated: card.bgAnimated !== false, linksTransparent: !!card.linksTransparent,
+        musicUrl: card.musicUrl || '', tg: card.tg || '', phone: card.phone || '', hidePhone: !!card.hidePhone,
+        email: card.email || '', linkedin: card.linkedin || '', instagram: card.instagram || '',
+        facebook: card.facebook || '', twitter: card.twitter || '', website: card.website || '',
+        about: card.about || '', cardNumber: card.cardNumber || '',
+        extraLinks: card.extraLinks || [], cardNumbers: card.cardNumbers || [],
+        theme: card.theme || 'classic', hashtags: card.hashtags || [],
+        cardDesign,
+      });
+      setMsg({ type: 'ok', text: t('Saqlandi.') });
+      onSaved?.();
+      setTimeout(onClose, 500);
+    } catch (err) { setMsg({ type: 'err', text: err.message || t('Saqlashda xatolik yuz berdi.') }); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Modal title={'\u{1F3A8} ' + t('Karta dizayni')} onClose={onClose} wide>
+      <div className="mb-4 flex gap-1 border-b border-white/10">
+        <button className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${tab === 'profile' ? 'border-accent text-accent' : 'border-transparent text-base-content/50'}`} onClick={() => setTab('profile')}>
+          {t('Profil kartasi')}
+        </button>
+        <button className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${tab === 'print' ? 'border-accent text-accent' : 'border-transparent text-base-content/50'}`} onClick={() => setTab('print')}>
+          {t('Bosma karta')}
+        </button>
+      </div>
+
+      {tab === 'profile' && (
+        <div className="grid gap-5 md:grid-cols-[1fr_280px]">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-base-content/45">{t('Karta rangi')}</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {CARD_FINISHES.map((f) => (
+                <button key={f.id} type="button" title={t(f.label)} onClick={() => setFinish(f.id)}
+                  className={`h-8 w-8 shrink-0 rounded-lg border transition ${finish === f.id ? 'ring-2 ring-white ring-offset-2 ring-offset-base-200' : 'border-white/15'}`}
+                  style={{ background: f.css }} />
+              ))}
+            </div>
+            <div className="mt-1.5 text-xs text-base-content/45">{t(CARD_FINISHES.find((f) => f.id === finish)?.label || '')}</div>
+
+            <label className="form-control mt-4 block">
+              <span className="text-xs font-semibold text-base-content/70">{t('Kartadagi ism (bo‘sh — profil ismi)')}</span>
+              <input value={name} onChange={(e) => setName(e.target.value.slice(0, 40))} placeholder={card.name} className="input input-bordered input-sm mt-1 w-full bg-base-100" />
+            </label>
+
+            <div className="mt-4">
+              <span className="text-xs font-semibold text-base-content/70">{t('Karta foni rasmi (ixtiyoriy)')}</span>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="file-input file-input-bordered file-input-sm bg-base-100" disabled={uploading} />
+                {bgUrl && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setBgUrl('')}>{t('Olib tashlash')}</button>}
+              </div>
+              {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Rasm yuklanmoqda...')}</p>}
+            </div>
+
+            <button className="btn btn-primary btn-sm mt-5" onClick={save} disabled={busy || uploading}>
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Saqlash')}
+            </button>
+            {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+          </div>
+
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-4">
+            <div className="text-[11px] uppercase tracking-wider text-base-content/40">{t('Oldindan ko‘rish')}</div>
+            <NfcCard code={card.code} name={name || card.name} finish={previewFinish} bgImage={bgUrl || ''} size="sm" since={card.ts} />
+          </div>
+        </div>
+      )}
+
+      {tab === 'print' && (
+        <div>
+          <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold">{'\u{1F4E6}'} {t('Jismoniy NFC karta buyurtma berish')}</div>
+                <p className="mt-1 text-xs text-base-content/50">{t('Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.')}</p>
+              </div>
+              <div className="text-right text-lg font-extrabold text-accent">{t("{n} so'm", { n: fmt(PHYSICAL_CARD_FEE_UZS) })}</div>
+            </div>
+            <button className="btn btn-accent btn-sm mt-3 w-full btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
+              {t("Buyurtma berish — {n} so'm", { n: fmt(PHYSICAL_CARD_FEE_UZS) })}
+            </button>
+            <div className="mt-3"><PaymentUnavailableNotice /></div>
+          </div>
+          <CardDesignerPage embedded code={card.code} />
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function EditCardForm({ card, onSaved }) {
   const { t } = useLanguage();
   const [form, setForm] = useState({
@@ -557,6 +723,8 @@ function EditCardForm({ card, onSaved }) {
   const [giftToCode, setGiftToCode] = useState('');
   const [giftBusy, setGiftBusy] = useState(false);
   const [giftMsg, setGiftMsg] = useState(null);
+  const [postModal, setPostModal] = useState(false);
+  const [designModal, setDesignModal] = useState(null); // null | 'profile' | 'print'
   const sendGift = async () => {
     if (!giftToCode.trim()) { setGiftMsg({ type: 'err', text: t("Qabul qiluvchining NFC ID'sini kiriting.") }); return; }
     setGiftBusy(true);
@@ -574,28 +742,6 @@ function EditCardForm({ card, onSaved }) {
   };
 
   const [primaryBusy, setPrimaryBusy] = useState(false);
-  const [designerOpenSignal, setDesignerOpenSignal] = useState(0);
-  const [orderBusy, setOrderBusy] = useState(false);
-  const [orderMsg, setOrderMsg] = useState(null);
-  const [orderPayLink, setOrderPayLink] = useState(null);
-  const [shipping, setShipping] = useState({ shippingName: '', shippingPhone: '', shippingAddress: '' });
-  const orderPhysicalCard = async (code) => {
-    if (!shipping.shippingName.trim() || !shipping.shippingPhone.trim() || !shipping.shippingAddress.trim()) {
-      setOrderMsg({ type: 'err', text: t("Ism, telefon va manzilni to'liq kiriting (pastdagi maydonlarga).") });
-      return;
-    }
-    setOrderBusy(true);
-    setOrderMsg(null);
-    try {
-      const order = await dbOrderPhysicalCard(code, shipping);
-      setOrderPayLink(order.payLink);
-      setOrderMsg({ type: 'ok', text: t("Buyurtma yaratildi — to'lovni yakunlang.") });
-    } catch (err) {
-      setOrderMsg({ type: 'err', text: err.message });
-    } finally {
-      setOrderBusy(false);
-    }
-  };
   const makePrimary = async () => {
     setPrimaryBusy(true);
     setSaleMsg(null);
@@ -685,17 +831,31 @@ function EditCardForm({ card, onSaved }) {
               {'\u{1F381}'} {t("Sovg'a qilish")}
             </button>
           )}
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => {
-              setDesignerOpenSignal((s) => s + 1);
-              setTimeout(() => document.getElementById('card-designer-section-' + card.code)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-            }}
-          >
+          <button className="btn btn-outline btn-sm" onClick={() => setPostModal(true)}>
+            {'\u{1F4DD}'} {t('Post')}
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={() => setDesignModal('profile')}>
+            {'\u{1F3A8}'} {t('Karta dizayni')}
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={() => setDesignModal('print')}>
             {'\u{1F4B3}'} {t('NFC ID buyurtma berish')}
           </button>
         </div>
       </div>
+
+      {postModal && (
+        <Modal title={'\u{1F4DD}' + ' ' + t('Postlar')} onClose={() => setPostModal(false)}>
+          <PostsManager code={card.code} />
+        </Modal>
+      )}
+      {designModal && (
+        <CardDesignModal
+          card={card}
+          initialTab={designModal}
+          onClose={() => setDesignModal(null)}
+          onSaved={onSaved}
+        />
+      )}
       {giftOpen && (
         <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
           <input
@@ -908,51 +1068,6 @@ function EditCardForm({ card, onSaved }) {
               <span className="text-xs font-semibold text-base-content/70">{t("Hashtaglar (vergul bilan)")}</span>
               <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
             </label>
-          </Section>
-
-          <Section title={t("Postlar")} subtitle={t("Profilingizga rasm va izoh bilan post joylang")}>
-            <PostsManager code={card.code} />
-          </Section>
-
-          <Section title={t("Jismoniy karta bosma dizayni")} subtitle={t("Old/orqa tomon, rang, logotip — PNG holida yuklab olasiz")} id={'card-designer-section-' + card.code} openSignal={designerOpenSignal}>
-            <div className="mb-5 rounded-xl border border-accent/30 bg-accent/5 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-bold">{'\u{1F4E6}'} {t('Jismoniy NFC karta buyurtma berish')}</div>
-                  <p className="mt-1 text-xs text-base-content/50">{t("Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.")}</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-extrabold text-accent">{t("200 000 so'm")}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-base-content/40">{t("Payme orqali to'lov")}</div>
-                </div>
-              </div>
-              {!PAYMENTS_ENABLED ? (
-                <>
-                  <button className="btn btn-accent btn-sm mt-3 w-full btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
-                    {t("Buyurtma berish — 200 000 so'm")}
-                  </button>
-                  <div className="mt-3"><PaymentUnavailableNotice /></div>
-                </>
-              ) : (
-                <>
-                  {!orderPayLink && (
-                    <div className="mt-3 space-y-2">
-                      <input value={shipping.shippingName} onChange={(e) => setShipping((s) => ({ ...s, shippingName: e.target.value }))} placeholder={t("Qabul qiluvchi ism-familya")} className="input input-bordered input-sm w-full bg-base-100" />
-                      <input value={shipping.shippingPhone} onChange={(e) => setShipping((s) => ({ ...s, shippingPhone: e.target.value }))} placeholder={t("Telefon (+998...)")} className="input input-bordered input-sm w-full bg-base-100" />
-                      <textarea value={shipping.shippingAddress} onChange={(e) => setShipping((s) => ({ ...s, shippingAddress: e.target.value }))} placeholder={t("To'liq manzil")} rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
-                    </div>
-                  )}
-                  <button className="btn btn-accent btn-sm mt-3 w-full" onClick={() => orderPhysicalCard(card.code)} disabled={orderBusy}>
-                    {orderBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Buyurtma berish — 200 000 so'm")}
-                  </button>
-                  {orderMsg && <div className={`alert mt-3 py-2 text-sm ${orderMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(orderMsg.text)}</span></div>}
-                  {orderPayLink && (
-                    <a href={orderPayLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm mt-2 w-full">{t("To'lovga o'tish")} &rarr;</a>
-                  )}
-                </>
-              )}
-            </div>
-            <CardDesignerPage embedded code={card.code} />
           </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>

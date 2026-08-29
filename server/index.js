@@ -72,7 +72,8 @@ function isLetterCode(code) {
   return LETTER_CODE_RE.test(code);
 }
 
-const THEME_WHITELIST = ['classic', 'midnight', 'emerald', 'royal', 'sunset', 'gold'];
+const THEME_WHITELIST = ['classic', 'midnight', 'emerald', 'royal', 'sunset', 'gold', 'glass'];
+const CARD_FINISH_WHITELIST = ['auto', 'black', 'silver', 'graphite', 'gold', 'tier-exclusive', 'tier-premium', 'tier-gold', 'tier-silver', 'tier-free'];
 
 const app = express();
 app.disable('x-powered-by');
@@ -243,14 +244,25 @@ function validateBody(body) {
   const bgAnimated = body.bgAnimated === false ? false : true;
   // Profil havola tugmalarini shaffof (shisha effekti) qilish — standart o'chiq.
   const linksTransparent = body.linksTransparent === true;
+  // Profil kartasi (nfcstore.uz/<kod> sahifasida ko'rinadigan NFC karta)
+  // dizayni — ixtiyoriy: rang/finish, ustidagi ism matni, fon rasmi.
+  let cardDesign = null;
+  if (body.cardDesign && typeof body.cardDesign === 'object') {
+    const finish = CARD_FINISH_WHITELIST.includes(body.cardDesign.finish) ? body.cardDesign.finish : 'auto';
+    const cdName = cleanStr(body.cardDesign.name, 40);
+    let cdBg = '';
+    if (typeof body.cardDesign.bgUrl === 'string' && body.cardDesign.bgUrl.startsWith('/uploads/')) {
+      cdBg = cleanStr(body.cardDesign.bgUrl, 300).replace(/[^\w\-./]/g, '');
+    }
+    if (finish !== 'auto' || cdName || cdBg) cardDesign = { finish, name: cdName, bgUrl: cdBg };
+  }
   // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
   // fayli (xuddi avatar/fon rasmi kabi).
   let musicUrl = safeUrl(body.musicUrl);
   if (!musicUrl && typeof body.musicUrl === 'string' && body.musicUrl.startsWith('/uploads/')) {
     musicUrl = cleanStr(body.musicUrl, 300).replace(/[^\w\-./]/g, '');
   }
-  return {
-    record: {
+  const record = {
       name,
       role: cleanStr(body.role, 100),
       avatarUrl,
@@ -276,8 +288,12 @@ function validateBody(body) {
       theme,
       hashtags,
       hidePhone: body.hidePhone === true,
-    },
   };
+  // MUHIM: cardDesign faqat mijoz uni ATAYLAB yuborgan bo'lsa qaytariladi —
+  // aks holda oddiy profil tahririda (u yuborilmaydigan) dizayn NULLga
+  // tushib, o'chib ketardi.
+  if ('cardDesign' in body) record.cardDesign = cardDesign;
+  return { record };
 }
 
 app.get('/api/health', (req, res) => {
