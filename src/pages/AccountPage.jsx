@@ -672,6 +672,75 @@ function VideoSection({ code, access, allowed, onLock }) {
   );
 }
 
+// Email imzosi (PHASE 5) — profil ma'lumotlaridan HTML email signature
+// yaratadi. Backend kerak emas.
+function buildSignatureHtml({ name, role, phone, email, code, accent }) {
+  const url = `https://nfcstore.uz/${(code || '').toLowerCase()}`;
+  const a = accent || '#c9a227';
+  const row = (label, value, href) => value
+    ? `<tr><td style="padding:1px 0;font:13px/1.5 Arial,sans-serif;color:#444;">${label}: ${
+        href ? `<a href="${href}" style="color:${a};text-decoration:none;">${value}</a>` : value
+      }</td></tr>`
+    : '';
+  return `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+<tr><td style="padding-bottom:4px;font:bold 15px/1.4 Arial,sans-serif;color:#111;">${name || ''}</td></tr>
+${role ? `<tr><td style="padding-bottom:6px;font:13px/1.4 Arial,sans-serif;color:#666;">${role}</td></tr>` : ''}
+${row('Tel', phone, `tel:${phone}`)}
+${row('Email', email, `mailto:${email}`)}
+<tr><td style="padding-top:4px;font:13px/1.5 Arial,sans-serif;">
+<a href="${url}" style="color:${a};text-decoration:none;font-weight:bold;">${url.replace('https://', '')}</a>
+</td></tr>
+<tr><td style="padding-top:6px;font:11px/1.4 Arial,sans-serif;color:#999;">NFCSTORE — raqamli tashrif qog'ozi</td></tr>
+</table>`.replace(/\n/g, '');
+}
+
+function EmailSignatureSection({ form, code }) {
+  const { t } = useLanguage();
+  const [copied, setCopied] = useState('');
+  const html = buildSignatureHtml({
+    name: form.name, role: form.role, phone: form.phone, email: form.email,
+    code, accent: form.accentColor,
+  });
+
+  const copyRich = async () => {
+    try {
+      if (window.ClipboardItem && navigator.clipboard.write) {
+        await navigator.clipboard.write([
+          new window.ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([html.replace(/<[^>]+>/g, '')], { type: 'text/plain' }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(html);
+      }
+      setCopied('rich'); setTimeout(() => setCopied(''), 2000);
+    } catch {
+      setCopied('err'); setTimeout(() => setCopied(''), 2000);
+    }
+  };
+  const copyCode = async () => {
+    try { await navigator.clipboard.writeText(html); setCopied('code'); setTimeout(() => setCopied(''), 2000); }
+    catch { setCopied('err'); setTimeout(() => setCopied(''), 2000); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-base-content/50">{t('Gmail, Outlook va boshqa pochta ilovalarining "Imzo" sozlamasiga qo‘ying.')}</p>
+      <div className="rounded-xl border border-white/10 bg-white p-4" dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn btn-primary btn-sm" onClick={copyRich}>
+          {copied === 'rich' ? t('Nusxalandi ✔') : t('Imzoni nusxalash')}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={copyCode}>
+          {copied === 'code' ? t('Nusxalandi ✔') : t('HTML kodini nusxalash')}
+        </button>
+      </div>
+      {copied === 'err' && <div className="text-xs text-error">{t('Nusxalab bo‘lmadi — HTML kodini qo‘lda tanlang.')}</div>}
+    </div>
+  );
+}
+
 // Tahrirlash paytida o'ng tomonda ko'rinadigan jonli telefon preview —
 // ProfilePage'dagi haqiqiy fon/tema mantig'ini (vzStyle) qayta ishlatadi,
 // shunda "qanday ko'rinadi" bilan haqiqiy profil bir xil bo'ladi.
@@ -2028,6 +2097,10 @@ function EditCardForm({ card, onSaved }) {
               allowed={allow('video')}
               onLock={() => setLocked(t('Video'))}
             />
+          </Section>
+
+          <Section title={t('Email imzosi')} subtitle={t('Pochta xatlaringiz uchun tayyor imzo')}>
+            <EmailSignatureSection form={form} code={card.code} />
           </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
