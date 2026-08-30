@@ -9,7 +9,7 @@
  *   - navigatsiya (HTML) → network-first, tarmoq yo'q bo'lsa keshdagi '/'
  *   - qolgan same-origin GET → stale-while-revalidate
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `nfcstore-shell-${VERSION}`;
 const RUNTIME_CACHE = `nfcstore-rt-${VERSION}`;
 const SHELL = ['/', '/logo-192.png', '/logo-512.png', '/favicon.png', '/manifest.webmanifest'];

@@ -1249,4 +1249,8 @@ export const DICT = {
   'Lavozim': { ru: 'Должность', en: 'Position' },
   'Profil kodi (ixtiyoriy)': { ru: 'Код профиля (необязательно)', en: 'Profile code (optional)' },
   'Yangi a’zo': { ru: 'Новый участник', en: 'New member' },
+  'Safari’da pastdagi "Ulashish" tugmasini bosing': { ru: 'Нажмите кнопку «Поделиться» внизу Safari', en: 'Tap the "Share" button at the bottom of Safari' },
+  '"Bosh ekranga qo‘shish" ni tanlang': { ru: 'Выберите «На экран Домой»', en: 'Choose "Add to Home Screen"' },
+  '"Qo‘shish" ni bosing': { ru: 'Нажмите «Добавить»', en: 'Tap "Add"' },
+  'Tushundim': { ru: 'Понятно', en: 'Got it' },
 };

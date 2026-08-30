@@ -5,13 +5,23 @@ export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   if (import.meta.env.DEV) return;
 
+  // Sahifa yuklanganда SW nazoratда bo'lganmi — shu holатда keyingi
+  // "controllerchange" YANGILANISH demak (dastlabki claim emas).
+  const hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !hadController) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
-      // Yangi versiya tayyor bo'lsa — darhol ishga tushiramiz.
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         if (!sw) return;
         sw.addEventListener('statechange', () => {
+          // Faqat MAVJUD SW ustidan yangi versiya kelganда darhol almashtiramiz.
           if (sw.state === 'installed' && navigator.serviceWorker.controller) {
             sw.postMessage('skip-waiting');
           }
@@ -21,19 +31,22 @@ export function registerServiceWorker() {
       // SW ro'yxatdan o'tmasa — sayt oddiy holatда ishlayveradi.
     });
   });
-
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
-  });
 }
 
-// "Bosh ekranga qo'shish" taklifini kuzatish — beforeinstallprompt hodisasi
-// (Chrome/Android). Komponent shu orqali "O'rnatish" tugmasini ko'rsatadi.
+// "Bosh ekranga qo'shish" — Chrome/Android'да beforeinstallprompt hodisasi;
+// iOS Safari'да esa bunday API YO'Q, foydalanuvchi qo'lda "Ulashish → Bosh
+// ekranga qo'shish" qiladi (bu holатда tugma qo'llanma ko'rsatadi).
 let deferredPrompt = null;
 const listeners = new Set();
+
+const isStandalone = () =>
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true);
+
+export const isIOS = () =>
+  typeof navigator !== 'undefined' &&
+  /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+  !/crios|fxios/i.test(navigator.userAgent); // faqat Safari
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -47,8 +60,11 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// Tugmani ko'rsatish kerakmi: Chrome taklifi bor, YOKI iOS Safari (qo'lda),
+// va ilova hali o'rnatilmagan bo'lsa.
 export function canInstall() {
-  return !!deferredPrompt;
+  if (isStandalone()) return false;
+  return !!deferredPrompt || isIOS();
 }
 
 export function onInstallableChange(fn) {
@@ -56,11 +72,16 @@ export function onInstallableChange(fn) {
   return () => listeners.delete(fn);
 }
 
+// Chrome — tizim taklifini ochadi. iOS — qo'llanma matnini qaytaradi
+// ('ios-instructions'), chunki dasturiy o'rnatish imkoni yo'q.
 export async function promptInstall() {
-  if (!deferredPrompt) return false;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  listeners.forEach((f) => f(false));
-  return outcome === 'accepted';
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    listeners.forEach((f) => f(false));
+    return outcome === 'accepted' ? 'installed' : 'dismissed';
+  }
+  if (isIOS()) return 'ios-instructions';
+  return 'unavailable';
 }

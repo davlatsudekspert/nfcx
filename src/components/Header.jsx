@@ -99,9 +99,17 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [installable, setInstallable] = useState(canInstall());
+  const [iosHint, setIosHint] = useState(false);
 
-  useEffect(() => onInstallableChange(setInstallable), []);
-  const install = async () => { setOpen(false); await promptInstall(); };
+  useEffect(() => {
+    setInstallable(canInstall());
+    return onInstallableChange(setInstallable);
+  }, []);
+  const install = async () => {
+    setOpen(false);
+    const r = await promptInstall();
+    if (r === 'ios-instructions') setIosHint(true);
+  };
 
   useEffect(() => {
     if (!user) { setUnread(0); return; }
@@ -211,6 +219,20 @@ export default function Header() {
             <button className="btn btn-ghost btn-block mt-2" onClick={install}>{'\u{1F4F2}'} {t('Ilovani o‘rnatish')}</button>
           )}
           <button className="btn btn-primary btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
+        </div>
+      )}
+
+      {iosHint && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setIosHint(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200 p-5 text-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-bold">{'\u{1F4F2}'} {t('Ilovani o‘rnatish')}</div>
+            <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-base-content/75">
+              <li>{t('Safari’da pastdagi "Ulashish" tugmasini bosing')} <span className="inline-block">{'\u{2191}'}</span></li>
+              <li>{t('"Bosh ekranga qo‘shish" ni tanlang')}</li>
+              <li>{t('"Qo‘shish" ni bosing')}</li>
+            </ol>
+            <button className="btn btn-primary btn-sm btn-block mt-4" onClick={() => setIosHint(false)}>{t('Tushundim')}</button>
+          </div>
         </div>
       )}
     </header>
