@@ -215,6 +215,43 @@ export async function dbListNfcDevices() {
 export const dbUpdateNfcDevice = (id, data) =>
   api(`/my/nfc-devices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
+// ---------- Video (PHASE 4) ----------
+
+export async function dbGetVideos(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/videos`);
+    return (j && j.videos) || [];
+  } catch {
+    return [];
+  }
+}
+
+// Video — raw MP4 body (base64 emas). title/thumb query paramда.
+export async function dbUploadVideo(code, blob, { title, thumbUrl } = {}) {
+  const qs = new URLSearchParams();
+  if (title) qs.set('title', title);
+  if (thumbUrl) qs.set('thumb', thumbUrl);
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/video?${qs.toString()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'video/mp4' },
+    credentials: 'same-origin',
+    body: blob,
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const e = new Error(j.error || 'error');
+    e.code = j.error || 'error';
+    e.limit = j.limit;
+    throw e;
+  }
+  return j;
+}
+
+export const dbUpdateVideo = (code, id, data) =>
+  api(`/records/${encodeURIComponent(code)}/videos/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteVideo = (code, id) =>
+  api(`/records/${encodeURIComponent(code)}/videos/${id}`, { method: 'DELETE' });
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

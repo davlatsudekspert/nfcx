@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, fileLimitFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, fileLimitFor, videoLimitsFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
@@ -13,6 +13,7 @@ import {
   createMenuCategory, updateMenuCategory, deleteMenuCategory,
   createMenuItem, updateMenuItem, deleteMenuItem,
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
+  listCardVideos, cardVideoCount, createCardVideo, updateCardVideo, deleteCardVideo,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -2014,9 +2015,124 @@ app.delete('/api/records/:code/files/:id', async (req, res) => {
   }
 });
 
+// ---------- Video (PHASE 4) ----------
+//
+// STORAGE AUDIT: video Railway Volume'ga (/app/server/uploads) yoziladi —
+// doimiy. Base64 EMAS: raw body (Content-Type: video/mp4) — 33% overhead yo'q.
+// Cap: exclusive 5×50MB = 250MB/profil (eng yomon holat). Bir vaqtda faqat
+// bitta raw yuklash uchun ~55MB RAM buferi — hozirgi hajmда xavfsiz.
+// Davomiylik/o'lcham (9:16, ≤sec) mijozда tekshiriladi (ffmpeg yo'q);
+// server hajm + MP4 sehrli baytlarini majburiy tekshiradi.
+
+const videoUploadLimiter = rateLimit({ windowMs: 60 * 60_000, max: 10 });
+
+app.post(
+  '/api/records/:code/video',
+  videoUploadLimiter,
+  express.raw({ type: ['video/mp4', 'application/octet-stream'], limit: '55mb' }),
+  async (req, res) => {
+    const code = String(req.params.code || '').toUpperCase();
+    if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+    if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'unauthorized' });
+    try {
+      if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+      const rec = await getRecord(code);
+      const access = await cardAccess(code, user, rec);
+      if (!featureAllowed('video', access)) {
+        return res.status(403).json({ error: 'feature_locked', feature: 'video' });
+      }
+      const lim = videoLimitsFor(access);
+      if ((await cardVideoCount(code)) >= lim.count) {
+        return res.status(429).json({ error: 'limit_reached', limit: lim.count });
+      }
+      const buf = Buffer.isBuffer(req.body) ? req.body : null;
+      if (!buf || !buf.length) return res.status(422).json({ error: 'bad_file' });
+      if (buf.length > lim.mb * 1024 * 1024) return res.status(413).json({ error: 'too_large', limit: lim.mb });
+      // MP4 tekshiruvi: dastlabki 40 baytда 'ftyp' box'i bo'lishi kerak.
+      if (!buf.slice(0, 40).toString('latin1').includes('ftyp')) {
+        return res.status(422).json({ error: 'bad_file' });
+      }
+      const thumbUrl = String(req.query.thumb || '').startsWith('/uploads/') ? String(req.query.thumb).slice(0, 300) : '';
+      const title = cleanStr(req.query.title, 80).trim();
+
+      await fs.mkdir(UPLOAD_DIR, { recursive: true });
+      const name = `video_${crypto.randomBytes(12).toString('hex')}.mp4`;
+      await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+      const row = await createCardVideo(code, { videoUrl: `/uploads/${name}`, thumbUrl, title, sizeBytes: buf.length });
+      res.status(201).json(row);
+    } catch (err) {
+      console.error('[api] video upload:', err.message);
+      res.status(503).json({ error: 'db_unavailable' });
+    }
+  }
+);
+
+app.get('/api/records/:code/videos', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ videos: await listCardVideos(code) });
+  } catch (err) {
+    console.error('[api] videos list:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/videos/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const b = req.body || {};
+    const f = {};
+    if ('title' in b) f.title = cleanStr(b.title, 80).trim();
+    if ('thumbUrl' in b) f.thumbUrl = String(b.thumbUrl || '').startsWith('/uploads/') ? String(b.thumbUrl).slice(0, 300) : '';
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    const row = await updateCardVideo(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] video update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/videos/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const row = await deleteCardVideo(code, Number(req.params.id));
+    // Faqat video faylini o'chiramiz (thumbnail kichik JPEG — boshqa joyda
+    // ham ishlatilishi mumkin, xavfsizlik uchun qoldiramiz).
+    if (row?.videoUrl && row.videoUrl.startsWith('/uploads/')) {
+      const fn = row.videoUrl.slice('/uploads/'.length);
+      if (/^video_[a-f0-9]+\.mp4$/.test(fn)) {
+        fs.unlink(path.join(UPLOAD_DIR, fn)).catch(() => {});
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] video delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
 app.use((err, req, res, next) => {
   if (err && err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'bad_json' });
+  }
+  if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+    return res.status(413).json({ error: 'too_large' });
   }
   next(err);
 });

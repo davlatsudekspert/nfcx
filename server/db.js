@@ -1034,6 +1034,21 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS card_files_code_idx ON card_files (code, sort)`);
 
+  // ── Video (PHASE 4) ──────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_videos (
+      id          BIGSERIAL PRIMARY KEY,
+      code        VARCHAR(16) NOT NULL,
+      video_url   TEXT NOT NULL,
+      thumb_url   TEXT,
+      title       TEXT,
+      size_bytes  BIGINT,
+      sort        INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_videos_code_idx ON card_videos (code, sort)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -1640,6 +1655,53 @@ export async function deleteCardFile(code, id) {
     [code, id]
   );
   return rows[0]?.fileUrl || null;
+}
+
+// ---------- Video (PHASE 4) ----------
+
+const videoRow = (r) => (r ? { ...r, sizeBytes: r.sizeBytes == null ? null : Number(r.sizeBytes) } : null);
+
+export async function listCardVideos(code) {
+  const { rows } = await pool.query(
+    `SELECT id, video_url AS "videoUrl", thumb_url AS "thumbUrl", title,
+            size_bytes AS "sizeBytes", sort, created_at AS "createdAt"
+       FROM card_videos WHERE code = $1 ORDER BY sort, id`,
+    [code]
+  );
+  return rows.map(videoRow);
+}
+
+export async function cardVideoCount(code) {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM card_videos WHERE code = $1`, [code]);
+  return rows[0]?.n || 0;
+}
+
+export async function createCardVideo(code, { videoUrl, thumbUrl, title, sizeBytes }) {
+  const { rows } = await pool.query(
+    `INSERT INTO card_videos (code, video_url, thumb_url, title, size_bytes)
+     VALUES ($1,$2,$3,$4,$5)
+     RETURNING id, video_url AS "videoUrl", thumb_url AS "thumbUrl", title, size_bytes AS "sizeBytes", sort, created_at AS "createdAt"`,
+    [code, videoUrl, thumbUrl || null, title || null, sizeBytes ?? null]
+  );
+  return videoRow(rows[0]);
+}
+
+export async function updateCardVideo(code, id, f) {
+  const { rows } = await pool.query(
+    `UPDATE card_videos SET title = COALESCE($3, title), thumb_url = COALESCE($4, thumb_url), sort = COALESCE($5, sort)
+      WHERE code = $1 AND id = $2
+      RETURNING id, video_url AS "videoUrl", thumb_url AS "thumbUrl", title, size_bytes AS "sizeBytes", sort, created_at AS "createdAt"`,
+    [code, id, f.title ?? null, f.thumbUrl ?? null, f.sort ?? null]
+  );
+  return videoRow(rows[0]) || null;
+}
+
+export async function deleteCardVideo(code, id) {
+  const { rows } = await pool.query(
+    `DELETE FROM card_videos WHERE code = $1 AND id = $2 RETURNING video_url AS "videoUrl", thumb_url AS "thumbUrl"`,
+    [code, id]
+  );
+  return rows[0] || null;
 }
 
 // ---------- Auth ----------

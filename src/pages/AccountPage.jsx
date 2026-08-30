@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile, dbListNfcDevices, dbUpdateNfcDevice } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile, dbListNfcDevices, dbUpdateNfcDevice, dbGetVideos, dbUploadVideo, dbUpdateVideo, dbDeleteVideo } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -11,7 +11,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, fileLimitFor } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, fileLimitFor, videoLimitsFor } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -517,6 +517,154 @@ function FilesSection({ code, access, allowed, onLock }) {
           <label className="btn btn-primary btn-sm">
             {busy ? <span className="loading loading-spinner loading-xs"></span> : t('PDF yuklash')}
             <input type="file" accept="application/pdf" className="hidden" onChange={onFile} disabled={busy} />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Video (PHASE 4) — egaga boshqaruv. Mijozда davomiylik/yo'nalish + thumbnail;
+// server hajm + MP4 sehrli baytini tekshiradi.
+function readVideoMeta(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.muted = true;
+    v.onloadedmetadata = () => {
+      resolve({ url, video: v, duration: v.duration, w: v.videoWidth, h: v.videoHeight });
+    };
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error('meta')); };
+    v.src = url;
+  });
+}
+
+function captureThumb(video) {
+  return new Promise((resolve) => {
+    const grab = () => {
+      try {
+        const c = document.createElement('canvas');
+        const scale = Math.min(1, 720 / Math.max(video.videoWidth, video.videoHeight));
+        c.width = Math.round(video.videoWidth * scale);
+        c.height = Math.round(video.videoHeight * scale);
+        c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', 0.7));
+      } catch { resolve(null); }
+    };
+    video.onseeked = grab;
+    try { video.currentTime = Math.min(0.2, (video.duration || 1) / 2); }
+    catch { grab(); }
+  });
+}
+
+function VideoSection({ code, access, allowed, onLock }) {
+  const { t } = useLanguage();
+  const [videos, setVideos] = useState(null);
+  const [err, setErr] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const lim = videoLimitsFor(access);
+
+  const load = () => dbGetVideos(code).then(setVideos).catch(() => setErr(true));
+  useEffect(() => { if (allowed) load(); }, [code, allowed]);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 4000); };
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.type !== 'video/mp4') { flash(t('Faqat MP4 video qabul qilinadi.')); return; }
+    if (file.size > lim.mb * 1024 * 1024) { flash(t('Video hajmi {n} MB dan oshmasligi kerak.', { n: lim.mb })); return; }
+    setBusy(true);
+    try {
+      const meta = await readVideoMeta(file).catch(() => null);
+      if (!meta) { flash(t('Videoni o‘qib bo‘lmadi.')); return; }
+      if (meta.duration && meta.duration > lim.sec + 1) {
+        URL.revokeObjectURL(meta.url);
+        flash(t('Video {n} soniyadan uzun bo‘lmasligi kerak.', { n: lim.sec }));
+        return;
+      }
+      if (meta.w && meta.h && meta.w > meta.h) {
+        URL.revokeObjectURL(meta.url);
+        flash(t('Video vertikal (9:16) bo‘lishi kerak.'));
+        return;
+      }
+      // Thumbnail — kadr olib, mavjud rasm yuklash yo'li orqali saqlaymiz.
+      let thumbUrl = '';
+      try {
+        const dataUrl = await captureThumb(meta.video);
+        if (dataUrl) thumbUrl = await dbUploadImage(dataUrl);
+      } catch { /* thumbnailsiz davom */ }
+      URL.revokeObjectURL(meta.url);
+
+      await dbUploadVideo(code, file, { title: title.trim() || undefined, thumbUrl: thumbUrl || undefined });
+      setTitle('');
+      await load();
+    } catch (er) {
+      const m = {
+        limit_reached: t('Video limiti tugadi ({n} ta).', { n: lim.count }),
+        too_large: t('Video hajmi {n} MB dan oshmasligi kerak.', { n: lim.mb }),
+        bad_file: t('Fayl MP4 video emas.'),
+        feature_locked: t('Video — Premium profil yoki Exclusive NFC ID’da ochiladi.'),
+        too_many_requests: t('Juda ko‘p urinish. Birozdan so‘ng qayta urining.'),
+      };
+      flash(m[er.code] || t('Yuklashda xatolik.'));
+    } finally { setBusy(false); }
+  };
+
+  const rename = async (v) => {
+    const val = prompt(t('Video nomi'), v.title || '');
+    if (val == null) return;
+    await dbUpdateVideo(code, v.id, { title: val.trim() });
+    await load();
+  };
+  const del = async (v) => {
+    if (!confirm(t('Bu videoni o‘chirasizmi?'))) return;
+    await dbDeleteVideo(code, v.id);
+    setVideos((vs) => (vs || []).filter((x) => x.id !== v.id));
+  };
+
+  if (!allowed) {
+    return (
+      <button type="button" onClick={onLock}
+        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+        {'\u{1F512}'} {t('Video — Premium profil yoki Exclusive NFC ID’da ochiladi.')}
+      </button>
+    );
+  }
+  if (err) return <div className="text-sm text-error">{t('Videolarni yuklab bo‘lmadi.')}</div>;
+  if (!videos) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-base-content/50">
+        {t('Video')}: {videos.length}/{lim.count} · {t('MP4, vertikal (9:16), ≤{s} s, ≤{m} MB', { s: lim.sec, m: lim.mb })}
+      </div>
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {videos.map((v) => (
+          <div key={v.id} className="overflow-hidden rounded-xl border border-white/10 bg-black">
+            <video src={v.videoUrl} poster={v.thumbUrl || undefined} controls muted playsInline preload="none"
+              className="block aspect-[9/16] w-full object-cover" />
+            <div className="flex items-center gap-1 px-1.5 py-1">
+              <span className="min-w-0 flex-1 truncate text-[11px] text-base-content/60">{v.title || '—'}</span>
+              <button className="btn btn-ghost btn-xs px-1" onClick={() => rename(v)}>{t('Nomi')}</button>
+              <button className="btn btn-ghost btn-xs px-1 text-error" onClick={() => del(v)}>✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {videos.length < lim.count && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Video nomi (ixtiyoriy)')}
+            value={title} onChange={(e) => setTitle(e.target.value)} />
+          <label className="btn btn-primary btn-sm">
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Video yuklash')}
+            <input type="file" accept="video/mp4" className="hidden" onChange={onFile} disabled={busy} />
           </label>
         </div>
       )}
@@ -1870,6 +2018,15 @@ function EditCardForm({ card, onSaved }) {
               access={access}
               allowed={allow('fileCatalog')}
               onLock={() => setLocked(t('Fayllar va hujjatlar'))}
+            />
+          </Section>
+
+          <Section title={t('Video')} subtitle={t('Vertikal (9:16) MP4 — Premium/Exclusive')}>
+            <VideoSection
+              code={card.code}
+              access={access}
+              allowed={allow('video')}
+              onLock={() => setLocked(t('Video'))}
             />
           </Section>
 

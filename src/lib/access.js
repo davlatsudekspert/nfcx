@@ -100,3 +100,17 @@ export const FILE_LIMIT = { free: 0, silver: 0, gold: 5, premium: 15, exclusive:
 export function fileLimitFor(currentAccess) {
   return FILE_LIMIT[currentAccess] ?? 0;
 }
+
+// ── Video limiti (Band 4.1 / PHASE 4) ─────────────────────────────────
+// Faqat Premium/Exclusive (spec §56). 9:16, MP4. count/mb/sec — spec dastlabki taklifi.
+export const VIDEO_LIMITS = {
+  free:      { count: 0, mb: 0,  sec: 0 },
+  silver:    { count: 0, mb: 0,  sec: 0 },
+  gold:      { count: 0, mb: 0,  sec: 0 },
+  premium:   { count: 1, mb: 30, sec: 30 },
+  exclusive: { count: 5, mb: 50, sec: 60 },
+};
+
+export function videoLimitsFor(currentAccess) {
+  return VIDEO_LIMITS[currentAccess] || VIDEO_LIMITS.free;
+}

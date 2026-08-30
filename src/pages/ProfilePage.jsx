@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetVideos } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -300,6 +300,34 @@ function PostsFeed({ posts, onLike, t }) {
   );
 }
 
+// Video (PHASE 4) — public ko'rinish. 9:16, muted autoplay, lazy.
+function ProfileVideos({ videos, t }) {
+  if (!videos || videos.length === 0) return null;
+  return (
+    <div className="mt-5">
+      <div className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Video')}</div>
+      <div className={`grid gap-2.5 ${videos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {videos.map((v) => (
+          <div key={v.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-black">
+            <video
+              src={v.videoUrl}
+              poster={v.thumbUrl || undefined}
+              muted
+              loop
+              playsInline
+              autoPlay
+              controls
+              preload="none"
+              className="block aspect-[9/16] w-full bg-black object-cover"
+            />
+            {v.title && <div className="px-3 py-2 text-[12.5px] font-semibold text-[color:var(--vz-ink)]">{v.title}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Restoran menyusi (Band 3.3) — public ko'rinish. Mobil-first.
 function MenuView({ menu, t }) {
   const money = (n) => `${fmt(n)} ${t("so'm")}`;
@@ -428,6 +456,7 @@ export default function ProfilePage({ code, catalog }) {
   const [posts, setPosts] = useState([]);
   const [menu, setMenu] = useState([]);
   const [files, setFiles] = useState([]);
+  const [videos, setVideos] = useState([]);
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -438,6 +467,7 @@ export default function ProfilePage({ code, catalog }) {
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
     dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
     dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
+    dbGetVideos(code).then(setVideos).catch(() => setVideos([]));
   }, [code, user]);
 
   // "Menyu" tabi ochilganda bir marta menu_view hodisasini yozamiz.
@@ -899,6 +929,8 @@ export default function ProfilePage({ code, catalog }) {
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
+
+            <ProfileVideos videos={videos} t={t} />
 
             {files.length > 0 && (
               <div className="mt-5">
