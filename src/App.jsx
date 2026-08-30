@@ -6,6 +6,7 @@ import { AuthProvider } from './lib/auth.jsx';
 import { LanguageProvider } from './lib/i18n.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
+import AiAssistant from './components/AiAssistant.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import { MESSAGING_ENABLED } from './lib/features.js';
@@ -146,6 +147,7 @@ export default function App() {
             <Header />
             {renderedPage}
             <Footer />
+            <AiAssistant />
           </>
         )}
       </AuthProvider>

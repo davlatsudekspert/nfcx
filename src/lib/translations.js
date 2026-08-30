@@ -1258,4 +1258,8 @@ export const DICT = {
   'Obunachilar': { ru: 'Подписчики', en: 'Followers' },
   'Obunalar': { ru: 'Подписки', en: 'Following' },
   'Ro‘yxat bo‘sh': { ru: 'Список пуст', en: 'The list is empty' },
+  'AI yordamchi': { ru: 'AI-помощник', en: 'AI assistant' },
+  'Savolingizni yozing...': { ru: 'Напишите ваш вопрос...', en: 'Type your question...' },
+  'Salom! Men NFCSTORE yordamchisiman. Profil yaratish, NFC karta, narxlar yoki sozlamalar bo‘yicha savol bering.': { ru: 'Привет! Я помощник NFCSTORE. Спросите о создании профиля, NFC-карте, ценах или настройках.', en: 'Hi! I’m the NFCSTORE assistant. Ask about creating a profile, NFC cards, pricing or settings.' },
+  'Kechirasiz, hozir javob bera olmayapman. Birozdan so‘ng urinib ko‘ring yoki @nfcstore_admin ga yozing.': { ru: 'Извините, сейчас не могу ответить. Попробуйте позже или напишите @nfcstore_admin.', en: 'Sorry, I can’t answer right now. Try again shortly or message @nfcstore_admin.' },
 };

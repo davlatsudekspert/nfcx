@@ -56,6 +56,7 @@ import { startBot, notifyOrderPaidAuto, sendTelegramOtp, notifyAdminSupportMessa
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
 import { adminRouter } from './admin.js';
+import { askAssistant, assistantEnabled } from './assistant.js';
 import { UPLOAD_DIR, UPLOADS_PERSISTENT } from './paths.js';
 
 const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
@@ -178,6 +179,9 @@ const supportLimiter = rateLimit({ windowMs: 60_000, max: 5 });
 const auctionRequestLimiter = rateLimit({ windowMs: 60_000, max: 10 });
 // Analytics — bir IP'dan daqiqada 40 hodisa (view + link bosishlar).
 const eventLimiter = rateLimit({ windowMs: 60_000, max: 40 });
+// AI yordamchi — bir IP: daqiqada 6, soatiga 40 (spam/xarajat nazorati).
+const assistantLimiterMin = rateLimit({ windowMs: 60_000, max: 6 });
+const assistantLimiterHour = rateLimit({ windowMs: 60 * 60_000, max: 40 });
 // Lead formasi — spam/suiiste'moldan himoya: bir IP'dan daqiqada 3, soatiga 10.
 const leadLimiterMin = rateLimit({ windowMs: 60_000, max: 3 });
 const leadLimiterHour = rateLimit({ windowMs: 60 * 60_000, max: 10 });
@@ -367,6 +371,20 @@ function validateBody(body) {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, db: isDbReady() });
+});
+
+// ---------- AI yordamchi (o'ng past burchakdagi chat vidjeti) ----------
+
+app.get('/api/assistant/status', (req, res) => {
+  res.json({ enabled: assistantEnabled() });
+});
+
+app.post('/api/assistant', assistantLimiterMin, assistantLimiterHour, async (req, res) => {
+  if (!assistantEnabled()) return res.status(503).json({ error: 'not_configured' });
+  const result = await askAssistant(req.body && req.body.messages);
+  if (result.error === 'bad_request') return res.status(422).json({ error: 'bad_request' });
+  if (result.error) return res.status(503).json({ error: result.error });
+  res.json(result);
 });
 
 // Jismoniy karta tap qilinganda: chip ichiga yozilgan token (?t=...) shu
