@@ -134,57 +134,8 @@ function isSuperDigit(d) {
   return false;
 }
 
-// ── SPECIAL TIER CLASSIFICATION (prefiks guruhlari) ─────────────────────────
-// Priority: EXACT (codeTiers.js) → TECH → SPORTS → PREMIUM WORD → BRAND →
-// COUNTRY → mavjud umumiy qoidalar (tierFromCode pastki qismi).
-// UFC/NBA/NFL/WWE — SPORTS'da (BRAND'dan ustun). VIP/CEO/PRO — TECH'da.
-const TECH_PREFIXES = [
-  'AIQ', 'DEV', 'WEB', 'APP', 'API', 'CEO', 'CTO', 'CFO', 'ITX', 'GPU',
-  'CPU', 'RAM', 'SSD', 'USB', 'LED', 'NFC', 'QRX', 'BOT', 'PRO', 'VIP',
-];
-const SPORTS_PREFIXES = [
-  'RMA', 'FCB', 'PSG', 'MCI', 'MUN', 'ARS', 'CHE', 'LIV', 'JUV', 'INT',
-  'ACM', 'BVB', 'BAY', 'NBA', 'NFL', 'UFC', 'WWE', 'FIA',
-];
-const PREMIUM_WORD_PREFIXES = [
-  'LUX', 'TOP', 'MAX', 'ONE', 'UNO', 'GEM', 'ACE', 'KNG', 'ROY', 'MRX', 'ELT',
-];
-// NASA (4 harf) standart formatga sig'maydi — chiqarib tashlandi.
-const BRAND_PREFIXES = [
-  'BMW', 'KFC', 'IBM', 'AMD', 'JBL', 'DHL', 'UPS', 'CNN', 'BBC', 'HBO',
-  'MTV', 'NHL', 'FBI', 'CIA',
-];
-const COUNTRY_PREFIXES = [
-  'USA', 'UAE', 'UZB', 'KAZ', 'TUR', 'RUS', 'CHN', 'JPN', 'KOR', 'IND',
-  'GBR', 'FRA', 'GER', 'ITA', 'ESP', 'BRA', 'CAN', 'AUS', 'QAT', 'KSA',
-];
-// "Maxsus raqam" — bu guruhlarda darajani ko'taradi.
-const SPECIAL_SUFFIX = ['007', '077', '010', '011', '707', '101'];
-// Kamida ikkita raqam bir xil (palindrom/zerkalo ham shunga kiradi).
-function hasRepeatDigit(d) {
-  return d[0] === d[1] || d[1] === d[2] || d[0] === d[2];
-}
-
-// Prefiks guruhi bo'yicha daraja. Guruhda emas / "boshqa suffiks" → null
-// (mavjud umumiy qoida ishlaydi).
-function groupTier(letters, digits) {
-  const special = SPECIAL_SUFFIX.includes(digits);
-  const soft = !special && digits !== '000' && hasRepeatDigit(digits);
-  if (!special && !soft) return null;
-  if (TECH_PREFIXES.includes(letters))         return special ? 'gold'    : 'silver';
-  if (SPORTS_PREFIXES.includes(letters))       return special ? 'gold'    : 'silver';
-  if (PREMIUM_WORD_PREFIXES.includes(letters)) return special ? 'premium' : 'gold';
-  if (BRAND_PREFIXES.includes(letters))        return special ? 'premium' : 'silver';
-  if (COUNTRY_PREFIXES.includes(letters))      return special ? 'premium' : 'silver';
-  return null;
-}
-
 // Kod darajasini aniqlaydi: 'exclusive' | 'premium' | 'gold' | 'silver' | 'free'
 export function tierFromCode(letters, digits) {
-  // SPECIAL TIER CLASSIFICATION — prefiks guruhlari (mavjud qoidalardan ustun).
-  const g = groupTier(letters, digits);
-  if (g) return g;
-
   const lettersAllSame = allSame3(letters);
   const digitsAllSame = allSame3(digits);
   const exclusiveWord = EXCLUSIVE_WORDS.includes(letters);

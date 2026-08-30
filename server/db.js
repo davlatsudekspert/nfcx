@@ -1141,24 +1141,14 @@ export async function initDb() {
     }
   }
 
-  // Tier klassifikatsiyasi yangilandi (SPECIAL TIER spec) — mavjud, egasi bor
-  // NFC ID'lar ESKI badge'da qoladi: bir martalik tier_override "muzlatish".
-  // Faqat yangi qoidada darajasi PASAYADIGAN kartalar. Bir marta ishlaydi.
+  // SPECIAL TIER klassifikatsiyasi bekor qilindi — grandfather "muzlatish"ni
+  // tozalaymiz (VIP001 endi naqsh bo'yicha o'zi exclusive). Bir marta ishlaydi.
   {
     const done = await pool.query(`SELECT 1 FROM admin_settings WHERE key = 'tier_grandfather_v1'`);
-    if (!done.rows.length) {
-      const GF = { VIP001: 'exclusive' };
-      for (const [code, tier] of Object.entries(GF)) {
-        const r = await pool.query(
-          `UPDATE cards SET tier_override = $2 WHERE code = $1 AND tier_override IS NULL`,
-          [code, tier]
-        ).catch(() => ({ rowCount: 0 }));
-        if (r.rowCount) console.log(`[db] ${code} eski tier (${tier}) muzlatildi.`);
-      }
-      await pool.query(
-        `INSERT INTO admin_settings (key, value) VALUES ('tier_grandfather_v1', $1) ON CONFLICT (key) DO NOTHING`,
-        [new Date().toISOString()]
-      );
+    if (done.rows.length) {
+      await pool.query(`UPDATE cards SET tier_override = NULL WHERE code = 'VIP001' AND tier_override = 'exclusive'`).catch(() => {});
+      await pool.query(`DELETE FROM admin_settings WHERE key = 'tier_grandfather_v1'`).catch(() => {});
+      console.log('[db] tier_grandfather_v1 bekor qilindi.');
     }
   }
 
@@ -3201,23 +3191,35 @@ export async function voteAuctionDemand(demandId, userId) {
     // Allaqachon ovoz bergan — joriy holatni qaytaramiz.
     return { ok: true, alreadyVoted: true, interestCount: Number(d.interest_count), status: d.status, code: d.code };
   }
+  // Ovoz sanog'ini oshiramiz — CHEKLOV YO'Q, 20 dan oshsa ham davom etadi.
   const { rows: uRows } = await pool.query(
-    `UPDATE auction_demand
-       SET interest_count = interest_count + 1,
-           status = CASE WHEN status = 'collecting' AND interest_count + 1 >= $2 THEN 'ready' ELSE status END,
-           notified_ready_at = CASE WHEN status = 'collecting' AND interest_count + 1 >= $2 AND notified_ready_at IS NULL THEN now() ELSE notified_ready_at END
-     WHERE id = $1
-     RETURNING code, status, interest_count`,
-    [demandId, AUCTION_DEMAND_THRESHOLD]
+    `UPDATE auction_demand SET interest_count = interest_count + 1
+     WHERE id = $1 RETURNING code, status, interest_count`,
+    [demandId]
   );
   const u = uRows[0];
+  let status = u.status;
+  let becameReady = false;
+  // Threshold birinchi marta yetganda — ATOMIK "claim": faqat 'collecting' →
+  // 'ready' qila olgan bitta so'rov signal yuboradi (parallel ovozlarda ham
+  // bir marta). 20 tadan keyingi ovozlar sanoqni oshiraveradi.
+  if (u.status === 'collecting' && Number(u.interest_count) >= AUCTION_DEMAND_THRESHOLD) {
+    const claim = await pool.query(
+      `UPDATE auction_demand
+         SET status = 'ready', notified_ready_at = COALESCE(notified_ready_at, now())
+       WHERE id = $1 AND status = 'collecting'
+       RETURNING id`,
+      [demandId]
+    );
+    if (claim.rows[0]) { status = 'ready'; becameReady = true; }
+  }
   return {
     ok: true,
     voted: true,
     code: u.code,
-    status: u.status,
+    status,
     interestCount: Number(u.interest_count),
-    becameReady: d.status === 'collecting' && u.status === 'ready',
+    becameReady,
   };
 }
 
