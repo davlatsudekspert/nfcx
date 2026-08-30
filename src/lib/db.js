@@ -725,23 +725,25 @@ export async function dbListPosts(code) {
   const data = await api(`/records/${encodeURIComponent(code)}/posts`);
   return (data && data.posts) || [];
 }
-export async function dbCreatePost(code, { imageUrl, caption }) {
+export async function dbCreatePost(code, { imageUrl, caption, videoUrl }) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/posts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ imageUrl, caption }),
+    body: JSON.stringify({ imageUrl, caption, videoUrl }),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const map = {
       unauthorized: 'Avval tizimga kiring.',
-      bad_image: 'Avval rasm yuklang.',
+      bad_image: 'Avval rasm yoki video yuklang.',
       not_owner: 'Bu profil sizga tegishli emas.',
       limit_reached: data?.limit
         ? `Bu tarifda ${data.limit} tagacha post joylash mumkin.`
         : 'Postlar soni chegarasiga yetdingiz.',
-      feature_locked: 'Post joylashtirish uchun Premium yoki yuqoriroq NFC ID kerak.',
+      feature_locked: data?.feature === 'video'
+        ? 'Video joylashtirish uchun Premium yoki yuqoriroq NFC ID kerak.'
+        : 'Post joylashtirish uchun Premium yoki yuqoriroq NFC ID kerak.',
     };
     const e = new Error(map[data?.error] || 'Postni joylab bo’lmadi.');
     if (data?.error === 'feature_locked') e.code = 'feature_locked';

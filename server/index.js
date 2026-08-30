@@ -552,14 +552,25 @@ app.post('/api/records/:code/posts', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const imageUrl = String(req.body?.imageUrl || '');
+  const videoUrl = String(req.body?.videoUrl || '');
   const caption = String(req.body?.caption || '').slice(0, 600);
-  if (!imageUrl.startsWith('/uploads/')) return res.status(422).json({ error: 'bad_image' });
+  const okImg = imageUrl.startsWith('/uploads/');
+  const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl);
+  if (!okImg && !okVid) return res.status(422).json({ error: 'bad_image' });
   try {
     const access = await cardAccess(code, user);
     if (!featureAllowed('post', access)) {
       return res.status(403).json({ error: 'feature_locked', feature: 'post' });
     }
-    const result = await createPost(code, user.id, { imageUrl, caption, limit: postLimitFor(access) });
+    if (okVid && !featureAllowed('video', access)) {
+      return res.status(403).json({ error: 'feature_locked', feature: 'video' });
+    }
+    const result = await createPost(code, user.id, {
+      imageUrl: okImg ? imageUrl : '',
+      videoUrl: okVid ? videoUrl : '',
+      caption,
+      limit: postLimitFor(access),
+    });
     if (result.error === 'NOT_OWNER') return res.status(403).json({ error: 'not_owner' });
     if (result.error === 'LIMIT_REACHED') return res.status(409).json({ error: 'limit_reached', limit: postLimitFor(access) });
     res.status(201).json(result.post);

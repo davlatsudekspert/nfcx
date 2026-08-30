@@ -703,12 +703,14 @@ function PostsManager({ code }) {
   const { t } = useLanguage();
   const [posts, setPosts] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [caption, setCaption] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const fileRef = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
@@ -727,7 +729,7 @@ function PostsManager({ code }) {
     try {
       const dataUrl = await fileToCompressedDataUrl(file);
       const url = await dbUploadImage(dataUrl);
-      setImageUrl(url);
+      setImageUrl(url); setVideoUrl('');
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
@@ -736,14 +738,35 @@ function PostsManager({ code }) {
     }
   };
 
+  const onPickVideo = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!agreed) {
+      setMsg({ type: 'err', text: t('Avval quyidagi shartni belgilang.') });
+      if (videoRef.current) videoRef.current.value = '';
+      return;
+    }
+    setUploading(true); setMsg(null);
+    try {
+      if (file.size > 10 * 1024 * 1024) throw new Error(t('Video 10 MB dan katta — kichraytiring.'));
+      const url = await dbUploadCardVideo(file);
+      setVideoUrl(url); setImageUrl('');
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setUploading(false);
+      if (videoRef.current) videoRef.current.value = '';
+    }
+  };
+
   const publish = async () => {
-    if (!imageUrl) { setMsg({ type: 'err', text: t('Avval rasm yuklang.') }); return; }
+    if (!imageUrl && !videoUrl) { setMsg({ type: 'err', text: t('Avval rasm yoki video yuklang.') }); return; }
     setBusy(true);
     setMsg(null);
     try {
-      const post = await dbCreatePost(code, { imageUrl, caption: caption.trim() });
+      const post = await dbCreatePost(code, { imageUrl, videoUrl, caption: caption.trim() });
       setPosts((list) => [post, ...(list || [])]);
-      setImageUrl(''); setCaption(''); setAgreed(false);
+      setImageUrl(''); setVideoUrl(''); setCaption(''); setAgreed(false);
       setMsg({ type: 'ok', text: t('Post joylandi.') });
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
@@ -773,15 +796,19 @@ function PostsManager({ code }) {
           <span>{t('Men joylayotgan rasm O‘zbekiston Respublikasi qonunchiligiga zid emasligini tasdiqlayman. Diniy targ‘ibot, pornografik va axloq normalariga zid tasvirlar, giyohvand moddalar, spirtli ichimliklar hamda tamaki mahsulotlari reklamasi, zo‘ravonlik, kamsitish va boshqa noqonuniy mazmundagi rasmlarni joylash qat’iyan taqiqlanadi. Qoidaga rioya qilinmasa, post o‘chiriladi va NFC ID bloklanishi mumkin.')}</span>
         </label>
 
-        <div className="mt-3">
-          <input ref={fileRef} type="file" accept="image/*" onChange={onPick} disabled={!agreed || uploading} className="file-input file-input-bordered file-input-sm w-full bg-base-100 disabled:opacity-50" />
-          {uploading && <p className="mt-1 flex items-center gap-2 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Rasm yuklanmoqda...')}</p>}
-          {imageUrl && <img src={imageUrl} alt="" className="mt-2 max-h-52 rounded-lg border border-white/10 object-cover" />}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPick} disabled={!agreed || uploading} className="file-input file-input-bordered file-input-sm flex-1 bg-base-100 disabled:opacity-50" />
+          <button type="button" className="btn btn-outline btn-sm" disabled={!agreed || uploading} onClick={() => videoRef.current && videoRef.current.click()}>{'\u{1F3AC}'} {t('Video')}</button>
+          <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
         </div>
+        <p className="mt-1 text-[11px] text-base-content/40">{t('Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.')}</p>
+        {uploading && <p className="mt-1 flex items-center gap-2 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
+        {imageUrl && <img src={imageUrl} alt="" className="mt-2 max-h-52 rounded-lg border border-white/10 object-cover" />}
+        {videoUrl && <video src={videoUrl} controls playsInline className="mt-2 max-h-52 rounded-lg border border-white/10" />}
 
         <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 600))} placeholder={t('Izoh (ixtiyoriy)')} rows={2} className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
 
-        <button type="button" className="btn btn-accent btn-sm mt-3 w-full" onClick={publish} disabled={!agreed || !imageUrl || busy}>
+        <button type="button" className="btn btn-accent btn-sm mt-3 w-full" onClick={publish} disabled={!agreed || (!imageUrl && !videoUrl) || busy}>
           {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Joylash')}
         </button>
         {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
@@ -792,7 +819,9 @@ function PostsManager({ code }) {
         {posts !== null && posts.length === 0 && <p className="text-xs text-base-content/45">{t('Hali post yo‘q')}</p>}
         {(posts || []).map((p) => (
           <div key={p.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-2">
-            <img src={p.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
+            {p.videoUrl
+              ? <video src={p.videoUrl} muted className="h-12 w-12 shrink-0 rounded bg-black object-cover" />
+              : <img src={p.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />}
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-base-content/70">{p.caption || <span className="text-base-content/35">{t('(izohsiz)')}</span>}</div>
               <div className="text-[10px] text-base-content/40">{timeAgo(p.createdAt)} · {'\u{1F90D}'} {p.likeCount}</div>

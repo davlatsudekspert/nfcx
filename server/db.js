@@ -745,6 +745,15 @@ export async function initDb() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS posts_code_idx ON posts (code, created_at DESC)`);
+  // Post'ga video biriktirish — video endi FAQAT post orqali qo'yiladi.
+  {
+    const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'video_url'`);
+    if (!rows.length) {
+      await pool.query(`ALTER TABLE posts ADD COLUMN video_url TEXT`);
+      await pool.query(`ALTER TABLE posts ALTER COLUMN image_url DROP NOT NULL`);
+      console.log('[db] posts.video_url ustuni qo’shildi.');
+    }
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS post_likes (
       id         SERIAL PRIMARY KEY,
@@ -3944,7 +3953,7 @@ const MAX_POSTS_PER_PROFILE = 60;
 
 export async function listPostsByCode(code, viewerUserId) {
   const { rows } = await pool.query(
-    `SELECT p.id, p.image_url AS "imageUrl", p.caption, p.created_at AS "createdAt",
+    `SELECT p.id, p.image_url AS "imageUrl", p.video_url AS "videoUrl", p.caption, p.created_at AS "createdAt",
             (SELECT COUNT(*)::int FROM post_likes pl WHERE pl.post_id = p.id) AS "likeCount",
             ${viewerUserId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2)` : `FALSE`} AS "liked"
      FROM posts p
@@ -3954,7 +3963,8 @@ export async function listPostsByCode(code, viewerUserId) {
   );
   return rows.map((r) => ({
     id: r.id,
-    imageUrl: r.imageUrl,
+    imageUrl: r.imageUrl || '',
+    videoUrl: r.videoUrl || '',
     caption: r.caption || '',
     createdAt: new Date(r.createdAt).getTime(),
     likeCount: r.likeCount,
@@ -3962,7 +3972,7 @@ export async function listPostsByCode(code, viewerUserId) {
   }));
 }
 
-export async function createPost(code, userId, { imageUrl, caption, limit }) {
+export async function createPost(code, userId, { imageUrl, caption, videoUrl, limit }) {
   const owner = await getOwnerByCode(code);
   if (!owner || owner !== userId) return { error: 'NOT_OWNER' };
   // Limit — chaqiruvchi (index.js) tarif bo'yicha uzatadi; kelmasa eski
@@ -3972,12 +3982,12 @@ export async function createPost(code, userId, { imageUrl, caption, limit }) {
   const { rows: cnt } = await pool.query(`SELECT COUNT(*)::int AS n FROM posts WHERE code = $1`, [code]);
   if (cnt[0].n >= cap) return { error: 'LIMIT_REACHED' };
   const { rows } = await pool.query(
-    `INSERT INTO posts (code, user_id, image_url, caption) VALUES ($1,$2,$3,$4)
-     RETURNING id, image_url AS "imageUrl", caption, created_at AS "createdAt"`,
-    [code, userId, imageUrl, caption || null]
+    `INSERT INTO posts (code, user_id, image_url, video_url, caption) VALUES ($1,$2,$3,$4,$5)
+     RETURNING id, image_url AS "imageUrl", video_url AS "videoUrl", caption, created_at AS "createdAt"`,
+    [code, userId, imageUrl || null, videoUrl || null, caption || null]
   );
   const r = rows[0];
-  return { post: { id: r.id, imageUrl: r.imageUrl, caption: r.caption || '', createdAt: new Date(r.createdAt).getTime(), likeCount: 0, liked: false } };
+  return { post: { id: r.id, imageUrl: r.imageUrl || '', videoUrl: r.videoUrl || '', caption: r.caption || '', createdAt: new Date(r.createdAt).getTime(), likeCount: 0, liked: false } };
 }
 
 export async function deletePost(id, userId) {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetVideos, dbGetTeam } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetTeam } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -275,14 +275,44 @@ function MusicPlayer({ url, accentColor }) {
 // Profil postlari lentasi — rasm + izoh + like. Tashrif buyuruvchi
 // (tizimga kirgan) like bosa oladi; egasi postlarni /account'da boshqaradi.
 function PostsFeed({ posts, onLike, t }) {
+  const [zoom, setZoom] = useState(null);
   if (!posts || posts.length === 0) {
     return <div className="mt-8 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Hali post yo‘q')}</div>;
   }
   return (
     <div className="mt-6 flex flex-col gap-5">
+      {zoom && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-3"
+          onClick={() => setZoom(null)}
+        >
+          <button
+            type="button"
+            aria-label="Yopish"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-lg text-white"
+            onClick={() => setZoom(null)}
+          >
+            ✕
+          </button>
+          {zoom.videoUrl
+            ? <video src={zoom.videoUrl} controls autoPlay playsInline className="max-h-[92vh] max-w-[96vw] rounded-lg" onClick={(e) => e.stopPropagation()} />
+            : <img src={zoom.imageUrl} alt="" className="max-h-[92vh] max-w-[96vw] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />}
+        </div>
+      )}
       {posts.map((p) => (
         <div key={p.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
-          <img src={p.imageUrl} alt="" loading="lazy" className="block max-h-[520px] w-full object-cover" />
+          {p.videoUrl ? (
+            <button type="button" onClick={() => setZoom(p)} className="group relative block w-full cursor-pointer bg-black">
+              <video src={p.videoUrl} muted playsInline preload="metadata" className="block max-h-[520px] w-full bg-black object-contain" />
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-2xl text-white transition group-hover:bg-black/70">▶</span>
+              </span>
+            </button>
+          ) : (
+            <button type="button" onClick={() => setZoom(p)} className="block w-full cursor-pointer">
+              <img src={p.imageUrl} alt="" loading="lazy" className="block max-h-[520px] w-full object-cover" />
+            </button>
+          )}
           <div className="px-4 py-3">
             {p.caption && <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[color:var(--vz-ink-dim)]">{p.caption}</p>}
             <div className="mt-2 flex items-center gap-3">
@@ -400,33 +430,6 @@ function ProfileTeam({ team, t }) {
   );
 }
 
-// Video (PHASE 4) — public ko'rinish. 9:16, muted autoplay, lazy.
-function ProfileVideos({ videos, t }) {
-  if (!videos || videos.length === 0) return null;
-  return (
-    <div className="mt-5">
-      <div className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Video')}</div>
-      <div className={`grid gap-2.5 ${videos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        {videos.map((v) => (
-          <div key={v.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-black">
-            <video
-              src={v.videoUrl}
-              poster={v.thumbUrl || undefined}
-              muted
-              loop
-              playsInline
-              autoPlay
-              controls
-              preload="none"
-              className="block aspect-[9/16] w-full bg-black object-cover"
-            />
-            {v.title && <div className="px-3 py-2 text-[12.5px] font-semibold text-[color:var(--vz-ink)]">{v.title}</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // Restoran menyusi (Band 3.3) — public ko'rinish. Mobil-first.
 function MenuView({ menu, t }) {
@@ -557,7 +560,6 @@ export default function ProfilePage({ code, catalog }) {
   const [posts, setPosts] = useState([]);
   const [menu, setMenu] = useState([]);
   const [files, setFiles] = useState([]);
-  const [videos, setVideos] = useState([]);
   const [team, setTeam] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
@@ -571,7 +573,6 @@ export default function ProfilePage({ code, catalog }) {
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
     dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
     dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
-    dbGetVideos(code).then(setVideos).catch(() => setVideos([]));
     dbGetTeam(code).then(setTeam).catch(() => setTeam([]));
   }, [code, user]);
 
@@ -1054,8 +1055,6 @@ export default function ProfilePage({ code, catalog }) {
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
             <ProfileTeam team={team} t={t} />
-
-            <ProfileVideos videos={videos} t={t} />
 
             {files.length > 0 && (
               <div className="mt-5">
