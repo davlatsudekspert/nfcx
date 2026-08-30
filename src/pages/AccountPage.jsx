@@ -453,6 +453,19 @@ function PhonePreview({ form, code }) {
 // Rasmini klientda siqish: max 512px, JPEG ~85% (yuklash tez bo'lishi uchun).
 function fileToCompressedDataUrl(file) {
   return new Promise((resolve, reject) => {
+    // GIF \u2014 canvas orqali siqib bo'lmaydi (animatsiya yo'qoladi). Xom holida
+    // yuboriladi; server 3 MB gacha qabul qiladi.
+    if (file && file.type === 'image/gif') {
+      if (file.size > 3 * 1024 * 1024) {
+        reject(new Error('GIF hajmi 3 MB dan oshmasligi kerak.'));
+        return;
+      }
+      const gr = new FileReader();
+      gr.onerror = () => reject(new Error('Fayl oqilmadi.'));
+      gr.onload = () => resolve(gr.result);
+      gr.readAsDataURL(file);
+      return;
+    }
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
     reader.onload = () => {

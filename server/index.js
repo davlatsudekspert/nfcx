@@ -2006,7 +2006,9 @@ app.post('/api/upload', async (req, res) => {
   if (!m) return res.status(422).json({ error: 'bad_image' });
   const buf = Buffer.from(m[3], 'base64');
   if (!buf.length) return res.status(422).json({ error: 'bad_image' });
-  if (buf.length > 700 * 1024) return res.status(413).json({ error: 'too_large' });
+  // GIF siqilmaydi (animatsiya) — kattaroq chegara; qolgani mijozda ~512px JPEG.
+  const maxBytes = m[2] === 'gif' ? 3 * 1024 * 1024 : 700 * 1024;
+  if (buf.length > maxBytes) return res.status(413).json({ error: 'too_large' });
 
   try {
     await fs.mkdir(UPLOAD_DIR, { recursive: true });

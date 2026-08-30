@@ -1141,6 +1141,20 @@ export async function initDb() {
     }
   }
 
+  // Sotilgan auksion narxlarini bir martalik to'g'rilash (egasi so'rovi) —
+  // faqat hozirgi (test) qiymatga teng bo'lsa yangilanadi (idempotent).
+  for (const [code, wrong, right] of [
+    ['OOO000', 200000, 8700000],
+    ['III777', 500000000, 7300000],
+    ['VVV444', 300000, 2900000],
+  ]) {
+    const r = await pool.query(
+      `UPDATE auctions SET current_price = $3 WHERE code = $1 AND status = 'sold' AND current_price = $2`,
+      [code, wrong, right]
+    ).catch(() => ({ rowCount: 0 }));
+    if (r.rowCount) console.log(`[db] ${code} sotilgan narxi ${right} ga to'g'rilandi.`);
+  }
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
