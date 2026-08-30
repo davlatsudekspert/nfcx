@@ -95,9 +95,25 @@ const DESKTOP_NAV = [
   ['Savollar', '/savollar'],
 ];
 
+// "Mening profilim" tugmasi yonidagi kichik avatar — asosiy profil rasmi
+// (yo'q bo'lsa ism/email bosh harfi).
+function MyProfileAvatar({ src, label, size = 'h-6 w-6' }) {
+  const letter = (label || '?').trim().charAt(0).toUpperCase() || '?';
+  return src ? (
+    <img src={src} alt="" className={`${size} shrink-0 rounded-full object-cover ring-1 ring-white/15`} />
+  ) : (
+    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent/20 text-[11px] font-bold text-accent ring-1 ring-white/15`}>
+      {letter}
+    </span>
+  );
+}
+
 export default function Header() {
-  const { user } = useAuth();
+  const { user, myCards } = useAuth();
   const { t } = useLanguage();
+  const primaryCard = Array.isArray(myCards) ? myCards[0] : null;
+  const myAvatar = primaryCard?.avatarUrl || '';
+  const myLabel = primaryCard?.name || user?.email || '';
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [installable, setInstallable] = useState(canInstall());
@@ -176,7 +192,10 @@ export default function Header() {
             <button className="btn btn-ghost btn-sm" onClick={install} title={t('Ilovani o‘rnatish')}>{'\u{1F4F2}'}</button>
           )}
           {user ? (
-            <button className="btn btn-ghost btn-sm" onClick={() => go('/account')}>{t('Mening profilim')}</button>
+            <button className="btn btn-ghost btn-sm gap-2 pl-1.5" onClick={() => go('/account')}>
+              <MyProfileAvatar src={myAvatar} label={myLabel} />
+              {t('Mening profilim')}
+            </button>
           ) : (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>{t('Kirish')}</button>
           )}
@@ -212,7 +231,10 @@ export default function Header() {
                 </button>
               )}
               {user ? (
-                <button onClick={() => go('/account')} className="cursor-pointer">{t('Mening profilim')}</button>
+                <button onClick={() => go('/account')} className="flex cursor-pointer items-center gap-2">
+                  <MyProfileAvatar src={myAvatar} label={myLabel} size="h-7 w-7" />
+                  {t('Mening profilim')}
+                </button>
               ) : (
                 <button onClick={() => go('/login')} className="cursor-pointer">{t('Kirish')}</button>
               )}
