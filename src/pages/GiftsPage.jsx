@@ -1,0 +1,103 @@
+import { useEffect, useState } from 'react';
+import { dbPublicGifts } from '../lib/db.js';
+import { navigate } from '../lib/router.js';
+import { useLanguage } from '../lib/i18n.jsx';
+
+function giftDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+// Public sovg'a kartasi — YUBORUVCHI ko'rsatilmaydi.
+export function GiftCard({ gift }) {
+  const { t } = useLanguage();
+  return (
+    <div className="auc-card flex flex-col rounded-2xl p-5">
+      <div className="text-lg" aria-hidden>{'\u{1F381}'}</div>
+      <button
+        type="button"
+        onClick={() => navigate('/' + gift.code)}
+        className="mt-1 cursor-pointer py-2 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[#f2d9a0] transition-colors hover:text-[#ffe9bf]"
+      >
+        {gift.code}
+      </button>
+      <div className="mt-2 text-center text-xs uppercase tracking-widest text-base-content/40">{t('Yangi egasi')}</div>
+      <div className="mt-0.5 text-center text-sm font-semibold">
+        {gift.recipientName
+          ? (gift.recipientCode
+            ? <button type="button" onClick={() => navigate('/' + gift.recipientCode)} className="cursor-pointer hover:underline">{gift.recipientName}</button>
+            : gift.recipientName)
+          : <span className="text-base-content/55">{t('Yangi egasiga topshirildi')}</span>}
+      </div>
+      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3 text-xs">
+        <span className="font-semibold text-success">{t('✓ Sovg‘a qilindi')}</span>
+        <span className="text-base-content/40">{giftDate(gift.date)}</span>
+      </div>
+    </div>
+  );
+}
+
+export default function GiftsPage() {
+  const { t } = useLanguage();
+  const [gifts, setGifts] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    dbPublicGifts(1).then(({ gifts, hasMore }) => { setGifts(gifts); setHasMore(hasMore); });
+  }, []);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    const next = page + 1;
+    const { gifts: more, hasMore: hm } = await dbPublicGifts(next);
+    setGifts((prev) => [...(prev || []), ...more]);
+    setHasMore(hm);
+    setPage(next);
+    setLoadingMore(false);
+  };
+
+  return (
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
+      <section className="pt-14">
+        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
+          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
+          {t('Sovg‘alar')}
+        </span>
+        <h1 className="mt-4 text-4xl font-extrabold tracking-tight">{'\u{1F381}'} {t('Sovg‘alar')}</h1>
+        <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
+          {t("NFCStore'da yangi egalariga topshirilgan noyob NFC ID'lar.")}
+        </p>
+      </section>
+
+      <section className="mt-10">
+        {gifts === null && <div className="py-10 text-center text-base-content/45">{t('Yuklanmoqda...')}</div>}
+
+        {gifts !== null && gifts.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
+            {t("Hozircha sovg'a qilingan NFC ID yo'q.")}
+          </div>
+        )}
+
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {(gifts || []).map((g, i) => <GiftCard key={g.code + i} gift={g} />)}
+        </div>
+
+        {hasMore && (
+          <div className="mt-8 text-center">
+            <button className="btn btn-outline btn-sm" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? <span className="loading loading-spinner loading-xs"></span> : t('Ko‘proq ko‘rsatish')}
+            </button>
+          </div>
+        )}
+      </section>
+
+      <p className="mt-14 max-w-3xl text-xs leading-relaxed text-base-content/40">
+        {t('NFCStore NFC ID egaligini texnik jihatdan o‘tkazish xizmatini taqdim etadi. Foydalanuvchilar o‘rtasidagi mustaqil kelishuvlar va hisob-kitoblarda NFCStore taraf, to‘lov agenti yoki vositachi sifatida ishtirok etmaydi.')}
+      </p>
+    </main>
+  );
+}

@@ -80,6 +80,7 @@ const NAV = [
   ['Reyting', '/reyting'],
   ['Kompaniyalar', '/kompaniyalar'],
   ['Auksion', '/auksion'],
+  ['Sovg‘alar', '/gifts'],
   ['Savollar', '/savollar'],
 ];
 
@@ -90,6 +91,7 @@ const DESKTOP_NAV = [
   ['Reyting', '/reyting'],
   ['Kompaniyalar', '/kompaniyalar'],
   ['Auksion', '/auksion'],
+  ['Sovg‘alar', '/gifts'],
   ['Savollar', '/savollar'],
 ];
 

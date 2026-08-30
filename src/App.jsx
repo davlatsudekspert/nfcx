@@ -21,6 +21,7 @@ const CatalogPage = lazy(() => import('./pages/CatalogPage.jsx'));
 const RankingPage = lazy(() => import('./pages/RankingPage.jsx'));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage.jsx'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
+const GiftsPage = lazy(() => import('./pages/GiftsPage.jsx'));
 const FaqPage = lazy(() => import('./pages/FaqPage.jsx'));
 const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
 const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
@@ -46,6 +47,7 @@ const STATIC_ROUTES = {
   shartlar: TermsPage,
   maxfiylik: PrivacyPage,
   auksion: AuctionsPage,
+  gifts: GiftsPage,
   admin: AdminPage,
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
@@ -124,6 +126,7 @@ export default function App() {
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
     else if (cleanRoute === 'auksion') page = <AuctionsPage />;
+    else if (cleanRoute === 'gifts') page = <GiftsPage />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
