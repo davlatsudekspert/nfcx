@@ -261,6 +261,35 @@
 .admin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
 .admin-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
 
+/* ── Admin panel — jadval / badge / input premium ko'rinishi (scoped) ── */
+.admin-panel table.table { border-collapse: separate; border-spacing: 0; }
+.admin-panel table.table > thead > tr > th {
+  background: transparent;
+  color: rgba(255,255,255,0.42);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255,255,255,0.09);
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+.admin-panel table.table > tbody > tr > td {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+}
+.admin-panel table.table > tbody > tr:last-child > td { border-bottom: 0; }
+.admin-panel table.table > tbody > tr:hover > td { background: rgba(255,255,255,0.025); }
+/* jadval o'raladigan konteyner — karta ko'rinishi */
+.admin-panel .overflow-x-auto:has(> table.table) {
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  background: #101013;
+  padding: 4px 8px;
+}
+.admin-panel .badge { border: 0; font-weight: 600; }
+.admin-panel .btn-xs { height: 1.65rem; min-height: 1.65rem; border-radius: 8px; }
+
 /* Matn belgilanganda (Ctrl+A ham) — nafis, mavzuga mos oltin fon.
    Aks holda brauzerning standart tanlash rangi qorong'i saytda
    "jigarrang" dog' bo'lib ko'rinadi. */

@@ -102,7 +102,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
             </button>
           </div>
         </header>
-        <main className="p-5 sm:p-8">{children}</main>
+        <main className="admin-panel p-5 sm:p-8">{children}</main>
       </div>
     </div>
   );
