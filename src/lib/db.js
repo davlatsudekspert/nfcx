@@ -456,6 +456,25 @@ export async function dbAcceptGift(id) {
   return data;
 }
 
+// Karta dizayni foni uchun video (max 10 MB) — /uploads/x.mp4 manzilini qaytaradi.
+export async function dbUploadCardVideo(file) {
+  const res = await fetch('/api/upload-card-video', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    credentials: 'same-origin',
+    body: file,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const k = data && data.error;
+    if (k === 'too_large') throw new Error('Video 10 MB dan katta — kichraytiring.');
+    if (k === 'bad_file') throw new Error('Faqat MP4 yoki WebM video.');
+    if (k === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    throw new Error('Videoni yuklab bo‘lmadi.');
+  }
+  return data.url;
+}
+
 // ---------- Public "Sovg'alar" ----------
 export async function dbPublicGifts(page = 1) {
   try {

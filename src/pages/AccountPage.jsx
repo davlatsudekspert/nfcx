@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -871,6 +871,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState(null);
   const fileRef = useRef(null);
+  const videoRef = useRef(null);
 
   const autoTier = tierForCode(card.code);
   const previewFinish = finish && finish !== 'auto' ? finish : ('tier-' + autoTier);
@@ -885,6 +886,18 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
       setBgUrl(url);
     } catch (err) { setMsg({ type: 'err', text: err.message }); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+  };
+
+  const onPickVideo = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setUploading(true); setMsg(null);
+    try {
+      if (file.size > 10 * 1024 * 1024) throw new Error(t('Video 10 MB dan katta — kichraytiring.'));
+      const url = await dbUploadCardVideo(file);
+      setBgUrl(url);
+    } catch (err) { setMsg({ type: 'err', text: err.message }); }
+    finally { setUploading(false); if (videoRef.current) videoRef.current.value = ''; }
   };
 
   const save = async () => {
@@ -960,13 +973,15 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
             </div>
 
             <div className="mt-4">
-              <span className="text-xs font-semibold text-base-content/70">{t('Karta foni rasmi yoki GIF (ixtiyoriy)')}</span>
+              <span className="text-xs font-semibold text-base-content/70">{t('Karta foni: rasm, GIF yoki video (ixtiyoriy)')}</span>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <input ref={fileRef} type="file" accept="image/*,image/gif" onChange={onPick} className="file-input file-input-bordered file-input-sm bg-base-100" disabled={uploading} />
+                <button type="button" className="btn btn-outline btn-sm" disabled={uploading} onClick={() => videoRef.current && videoRef.current.click()}>{'\u{1F3AC}'} {t('Video tanlash')}</button>
+                <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
                 {bgUrl && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setBgUrl('')}>{t('Olib tashlash')}</button>}
               </div>
-              <p className="mt-1 text-[11px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Maks. 3 MB.')}</p>
-              {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Rasm yuklanmoqda...')}</p>}
+              <p className="mt-1 text-[11px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm/GIF maks. 3 MB, video (MP4/WebM) maks. 10 MB.')}</p>
+              {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
             </div>
 
             <div className="mt-4">

@@ -321,6 +321,11 @@ export const DICT = {
   'Oldindan ko‘rish': { ru: 'Предпросмотр', en: 'Preview' },
   'Kartadagi ism (bo‘sh — profil ismi)': { ru: 'Имя на карте (пусто — имя профиля)', en: 'Name on the card (empty — profile name)' },
   'Karta foni rasmi (ixtiyoriy)': { ru: 'Фоновое изображение карты (необязательно)', en: 'Card background image (optional)' },
+  'Karta foni: rasm, GIF yoki video (ixtiyoriy)': { ru: 'Фон карты: изображение, GIF или видео (необязательно)', en: 'Card background: image, GIF or video (optional)' },
+  'Video tanlash': { ru: 'Выбрать видео', en: 'Choose a video' },
+  'GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm/GIF maks. 3 MB, video (MP4/WebM) maks. 10 MB.':
+    { ru: 'GIF: на iPhone выбирайте из «Файлов» (из галереи анимация теряется). Изображение/GIF макс. 3 МБ, видео (MP4/WebM) макс. 10 МБ.', en: 'GIF: on iPhone pick from “Files” (picking from the gallery drops the animation). Image/GIF max 3 MB, video (MP4/WebM) max 10 MB.' },
+  'Video 10 MB dan katta — kichraytiring.': { ru: 'Видео больше 10 МБ — уменьшите размер.', en: 'The video is over 10 MB — please shrink it.' },
   'Saqlandi.': { ru: 'Сохранено.', en: 'Saved.' },
   'Avtomatik (tarif bo‘yicha)': { ru: 'Автоматически (по тарифу)', en: 'Automatic (by tier)' },
   'Ekslyuziv (tilla-qora)': { ru: 'Эксклюзив (золото-чёрный)', en: 'Exclusive (gold-black)' },

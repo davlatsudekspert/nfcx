@@ -2022,6 +2022,34 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
+// Karta dizayni foni uchun video (max 10 MB) — raw body, Volume'ga yoziladi.
+// cardDesign.bgUrl shu /uploads/x.mp4 ni saqlaydi (yangi DB ustun kerak emas).
+const cardVideoLimiter = rateLimit({ windowMs: 60 * 60_000, max: 20 });
+app.post(
+  '/api/upload-card-video',
+  cardVideoLimiter,
+  express.raw({ type: ['video/mp4', 'video/webm', 'application/octet-stream'], limit: '12mb' }),
+  async (req, res) => {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'unauthorized' });
+    const buf = Buffer.isBuffer(req.body) ? req.body : null;
+    if (!buf || !buf.length) return res.status(422).json({ error: 'bad_file' });
+    if (buf.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+    const isMp4 = buf.slice(0, 40).toString('latin1').includes('ftyp');
+    const isWebm = buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3;
+    if (!isMp4 && !isWebm) return res.status(422).json({ error: 'bad_file' });
+    try {
+      await fs.mkdir(UPLOAD_DIR, { recursive: true });
+      const name = `cardvid_${crypto.randomBytes(12).toString('hex')}.${isWebm ? 'webm' : 'mp4'}`;
+      await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+      res.json({ url: `/uploads/${name}` });
+    } catch (err) {
+      console.error('[api] card video upload:', err.message);
+      res.status(500).json({ error: 'upload_failed' });
+    }
+  }
+);
+
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ---------- Musiqa yuklash ----------

@@ -127,7 +127,14 @@ export default function NfcCard({
       >
         {bgImage && (
           <>
-            <img src={bgImage} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+            {/\.(mp4|webm)(\?|$)/i.test(bgImage)
+              ? <video
+                  src={bgImage}
+                  autoPlay loop muted playsInline
+                  ref={(el) => { if (el) { el.muted = true; const p = el.play(); if (p) p.catch(() => {}); } }}
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                />
+              : <img src={bgImage} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />}
             <div className="pointer-events-none absolute inset-0" style={{ background: 'rgba(0,0,0,0.42)' }} />
           </>
         )}
