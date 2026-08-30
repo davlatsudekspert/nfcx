@@ -920,7 +920,20 @@ export async function initDb() {
         console.log(`[db] news.${col} ustuni qo’shildi.`);
       }
     }
+    if (!have.has('views')) {
+      await pool.query(`ALTER TABLE news ADD COLUMN views INTEGER NOT NULL DEFAULT 0`);
+      console.log('[db] news.views ustuni qo’shildi.');
+    }
   }
+  // Yangilik like'lari — anonim (visitor_hash bo'yicha bir marta).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS news_likes (
+      news_id      INTEGER NOT NULL REFERENCES news(id) ON DELETE CASCADE,
+      visitor_hash VARCHAR(64) NOT NULL,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (news_id, visitor_hash)
+    )
+  `);
 
   // ── Katalog kategoriyalari (soha → kichik soha) ─────────────────────
   // Dinamik: admin qo'shadi/tahrirlaydi/o'chiradi (Band 2.5). Seed faqat
@@ -1204,16 +1217,51 @@ const NEWS_COLS = `
   id, title, body,
   title_ru AS "titleRu", title_en AS "titleEn",
   body_ru AS "bodyRu", body_en AS "bodyEn",
-  image_url AS "imageUrl", published,
+  image_url AS "imageUrl", published, views,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 export async function listNews({ includeUnpublished = false } = {}) {
   if (!dbReady) return [];
-  const where = includeUnpublished ? '' : 'WHERE published = TRUE';
+  const where = includeUnpublished ? '' : 'WHERE n.published = TRUE';
   const { rows } = await pool.query(
-    `SELECT ${NEWS_COLS} FROM news ${where} ORDER BY created_at DESC LIMIT 100`
+    `SELECT n.id, n.title, n.body,
+            n.title_ru AS "titleRu", n.title_en AS "titleEn",
+            n.body_ru AS "bodyRu", n.body_en AS "bodyEn",
+            n.image_url AS "imageUrl", n.published, n.views,
+            n.created_at AS "createdAt", n.updated_at AS "updatedAt",
+            (SELECT COUNT(*)::int FROM news_likes l WHERE l.news_id = n.id) AS "likeCount"
+       FROM news n ${where} ORDER BY n.created_at DESC LIMIT 100`
   );
   return rows;
+}
+
+export async function incrementNewsViews(id) {
+  await pool.query(`UPDATE news SET views = views + 1 WHERE id = $1`, [id]);
+}
+
+// like toggle — visitor_hash bo'yicha. { liked, count } qaytaradi.
+export async function toggleNewsLike(id, visitorHash) {
+  const del = await pool.query(
+    `DELETE FROM news_likes WHERE news_id = $1 AND visitor_hash = $2`, [id, visitorHash]
+  );
+  if (del.rowCount === 0) {
+    await pool.query(
+      `INSERT INTO news_likes (news_id, visitor_hash) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`, [id, visitorHash]
+    );
+  }
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM news_likes WHERE news_id = $1`, [id]
+  );
+  return { liked: del.rowCount === 0, count: rows[0]?.n || 0 };
+}
+
+export async function newsLikedBy(visitorHash) {
+  if (!visitorHash) return [];
+  const { rows } = await pool.query(
+    `SELECT news_id AS "newsId" FROM news_likes WHERE visitor_hash = $1`, [visitorHash]
+  );
+  return rows.map((r) => r.newsId);
 }
 export async function adminCreateNews(f) {
   const { rows } = await pool.query(
@@ -1330,6 +1378,38 @@ export async function listRecords({ includeHidden = false } = {}) {
        FROM cards
       ${includeHidden ? '' : 'WHERE hidden_from_directory = FALSE'}
       ORDER BY ts DESC LIMIT 500`
+  );
+  return rows.map(rowToRecord);
+}
+
+// Katalog qidiruvi — SERVERда moslashtiradi: kod / ism / kasb / shahar /
+// telefon / email / telegram / hashtag. Telefon va email JAVOBDA
+// QAYTARILMAYDI (faqat topish uchun ishlatiladi) — maxfiylik.
+export async function searchRecords(q, { includeHidden = false, limit = 60 } = {}) {
+  const term = String(q || '').trim();
+  if (!term) return [];
+  const like = `%${term.toLowerCase()}%`;
+  const { rows } = await pool.query(
+    `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.tg, c.hashtags, c.theme,
+            c.price, c.ts, c.views, c.profile_type AS "profileType", c.city,
+            c.category_slug AS "categorySlug", c.verified,
+            c.hidden_from_directory AS "hiddenFromDirectory"
+       FROM cards c
+       LEFT JOIN users u ON u.id = c.user_id
+      WHERE ${includeHidden ? '' : 'c.hidden_from_directory = FALSE AND '}(
+            LOWER(c.code)  LIKE $1
+         OR LOWER(c.name)  LIKE $1
+         OR LOWER(COALESCE(c.role, ''))  LIKE $1
+         OR LOWER(COALESCE(c.city, ''))  LIKE $1
+         OR LOWER(COALESCE(c.email, '')) LIKE $1
+         OR LOWER(COALESCE(c.phone, '')) LIKE $1
+         OR LOWER(COALESCE(c.tg, ''))    LIKE $1
+         OR LOWER(c.hashtags::text)      LIKE $1
+         OR LOWER(COALESCE(u.email, '')) LIKE $1
+         OR LOWER(COALESCE(u.phone, '')) LIKE $1
+      )
+      ORDER BY c.ts DESC LIMIT $2`,
+    [like, Math.max(1, Math.min(200, limit))]
   );
   return rows.map(rowToRecord);
 }

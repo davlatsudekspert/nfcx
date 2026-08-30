@@ -1500,7 +1500,9 @@ function NewsTab() {
                   {n.titleRu && <span className="badge badge-outline badge-xs">RU</span>}
                   {n.titleEn && <span className="badge badge-outline badge-xs">EN</span>}
                 </div>
-                <div className="mt-0.5 text-[11px] text-base-content/40">{dateTime(new Date(n.createdAt).getTime())}</div>
+                <div className="mt-0.5 text-[11px] text-base-content/40">
+                  {dateTime(new Date(n.createdAt).getTime())} · 👁 {n.views || 0} · ❤️ {n.likeCount || 0}
+                </div>
                 {n.body && <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-base-content/60">{n.body}</p>}
               </div>
               <div className="flex shrink-0 flex-col gap-1">

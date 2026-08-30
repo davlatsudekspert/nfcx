@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fmt, timeAgo } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { dbSearchRecords } from '../lib/db.js';
 import { useCategories, catName, findCat, catPath } from '../lib/categories.js';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
@@ -21,22 +22,39 @@ export default function CatalogPage({ catalog }) {
   const [mainCat, setMainCat] = useState('');
   const [subCat, setSubCat] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [serverHits, setServerHits] = useState([]);
+
+  // Serverда qidiruv (email/telefon bo'yicha ham) — 2+ belgi, debounce.
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) { setServerHits([]); return; }
+    const id = setTimeout(() => { dbSearchRecords(term).then(setServerHits).catch(() => setServerHits([])); }, 300);
+    return () => clearTimeout(id);
+  }, [q]);
 
   const query = q.trim().toUpperCase();
   const activeCat = subCat || mainCat;
   const subs = cats.filter((c) => c.parentSlug === mainCat);
   const anyFilter = type !== 'all' || !!activeCat;
 
-  const filtered = [...catalog]
+  // Katalog + serverда topilganlar (kod bo'yicha dedupe).
+  const serverCodes = new Set(serverHits.map((r) => r.code));
+  const source = [...catalog];
+  for (const r of serverHits) if (!source.some((m) => m.code === r.code)) source.push(r);
+
+  const filtered = source
     .sort((a, b) => b.ts - a.ts)
     .filter((it) => {
-      if (query && !(
-        it.code.includes(query)
-        || (it.name || '').toUpperCase().includes(query)
-        || (it.role || '').toUpperCase().includes(query)
-        || (it.city || '').toUpperCase().includes(query)
-        || (it.hashtags || []).some((h) => String(h).toUpperCase().includes(query))
-      )) return false;
+      if (query) {
+        const clientMatch = it.code.includes(query)
+          || (it.name || '').toUpperCase().includes(query)
+          || (it.role || '').toUpperCase().includes(query)
+          || (it.city || '').toUpperCase().includes(query)
+          || (it.hashtags || []).some((h) => String(h).toUpperCase().includes(query));
+        // Serverда topilган (masalan email bo'yicha) — mijoz matni mos
+        // kelmasa ham ko'rsatamiz.
+        if (!clientMatch && !serverCodes.has(it.code)) return false;
+      }
       if (type !== 'all' && (it.profileType || 'personal') !== type) return false;
       if (subCat) {
         if (it.categorySlug !== subCat) return false;

@@ -69,6 +69,17 @@ export async function dbList() {
   }
 }
 
+// Katalog qidiruvi — serverда email/telefon bo'yicha ham topadi
+// (ular javobда qaytmaydi).
+export async function dbSearchRecords(q) {
+  try {
+    const j = await api(`/records/search?q=${encodeURIComponent(q)}`);
+    return (j && j.records) || [];
+  } catch {
+    return [];
+  }
+}
+
 // Reserve a code. Three possible outcomes now:
 //  - 201: paynet disabled (dev fallback) -> full record returned immediately
 //  - 202: paynet enabled -> { pending: true, orderId, payLink, code, price }
@@ -489,10 +500,21 @@ export async function dbListAuctions() {
 export async function dbListNews() {
   try {
     const data = await api('/news');
-    return (data && data.news) || [];
+    return { news: (data && data.news) || [], liked: (data && data.liked) || [] };
   } catch {
-    return [];
+    return { news: [], liked: [] };
   }
+}
+
+export function dbNewsView(id) {
+  try {
+    fetch(`/api/news/${id}/view`, { method: 'POST', keepalive: true }).catch(() => {});
+  } catch { /* jim */ }
+}
+
+export async function dbNewsLike(id) {
+  const res = await fetch(`/api/news/${id}/like`, { method: 'POST', credentials: 'same-origin' });
+  return res.json();
 }
 
 // ---------- Katalog kategoriyalari ----------

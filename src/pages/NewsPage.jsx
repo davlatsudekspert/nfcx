@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { dbListNews } from '../lib/db.js';
-import { dateTime } from '../lib/format.js';
+import { dbListNews, dbNewsView, dbNewsLike } from '../lib/db.js';
+import { dateTime, fmt } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 
 // Tanlangan tildagi matnni oladi — tarjima bo'sh bo'lsa o'zbekchaga qaytadi.
@@ -14,10 +14,38 @@ function pick(item, base, lang) {
 export default function NewsPage() {
   const { t, lang } = useLanguage();
   const [news, setNews] = useState(null);
+  const [liked, setLiked] = useState({}); // id -> bool
 
   useEffect(() => {
-    dbListNews().then((list) => setNews(Array.isArray(list) ? list : []));
+    dbListNews().then(({ news: list, liked: likedIds }) => {
+      setNews(Array.isArray(list) ? list : []);
+      setLiked(Object.fromEntries((likedIds || []).map((id) => [id, true])));
+      // Ko'rilган har bir yangilikni bir marta hisoblaymiz (sessiya bo'yicha).
+      try {
+        for (const item of list || []) {
+          const k = 'nfcx:news-seen:' + item.id;
+          if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); dbNewsView(item.id); }
+        }
+      } catch { /* sessionStorage bloklangan */ }
+    });
   }, []);
+
+  const toggleLike = async (item) => {
+    // optimistik
+    const wasLiked = !!liked[item.id];
+    setLiked((s) => ({ ...s, [item.id]: !wasLiked }));
+    setNews((list) => (list || []).map((n) => (n.id === item.id
+      ? { ...n, likeCount: Math.max(0, (n.likeCount || 0) + (wasLiked ? -1 : 1)) }
+      : n)));
+    try {
+      const r = await dbNewsLike(item.id);
+      setLiked((s) => ({ ...s, [item.id]: r.liked }));
+      setNews((list) => (list || []).map((n) => (n.id === item.id ? { ...n, likeCount: r.count } : n)));
+    } catch {
+      // xato bo'lsa qaytaramiz
+      setLiked((s) => ({ ...s, [item.id]: wasLiked }));
+    }
+  };
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 pb-20 sm:px-10">
@@ -54,6 +82,20 @@ export default function NewsPage() {
               {pick(item, 'body', lang) && (
                 <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-base-content/70">{pick(item, 'body', lang)}</p>
               )}
+              <div className="mt-4 flex items-center gap-4 text-[13px] text-base-content/55">
+                <button
+                  onClick={() => toggleLike(item)}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${
+                    liked[item.id] ? 'border-red-400/50 text-red-400' : 'border-white/12 hover:border-white/25'
+                  }`}
+                >
+                  <span>{liked[item.id] ? '❤️' : '🤍'}</span>
+                  <b>{fmt(item.likeCount || 0)}</b>
+                </button>
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden="true">👁</span> {t("{n} ko'rishlar", { n: fmt(item.views || 0) })}
+                </span>
+              </div>
             </div>
           </article>
         ))}

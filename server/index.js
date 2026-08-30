@@ -6,7 +6,7 @@ import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
 import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
-  listRecords, getRecord, createRecord, countRecords, incrementViews,
+  listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews,
   logCardEvent, cardEventStats, CARD_EVENT_TYPES,
   createLead, listLeadsByCode, leadCountToday, deleteLead,
   getMenu, menuCounts, menuCategoryBelongs,
@@ -43,7 +43,7 @@ import {
   getOrCreateConversation, listConversations, isConversationParticipant, listMessages, getOtherParticipant,
   blockUser, unblockUser, isBlocked, reportUser,
   sendMessage, markConversationRead, totalUnreadCount,
-  listNews,
+  listNews, incrementNewsViews, toggleNewsLike, newsLikedBy,
   listCategories,
 } from './db.js';
 import {
@@ -791,8 +791,34 @@ app.get('/api/auctions', async (req, res) => {
 
 // Yangiliklar — ochiq (faqat "published" bo'lganlari).
 app.get('/api/news', async (req, res) => {
-  if (!isDbReady()) return res.json({ news: [] });
-  res.json({ news: await listNews() });
+  if (!isDbReady()) return res.json({ news: [], liked: [] });
+  try {
+    const vh = visitorHash(req, 'news');
+    res.json({ news: await listNews(), liked: await newsLikedBy(vh) });
+  } catch (err) {
+    console.error('[api] news:', err.message);
+    res.json({ news: [], liked: [] });
+  }
+});
+
+// Yangilikni ochilganда — ko'rishlar hisoblagichi (sessiyada bir marta).
+app.post('/api/news/:id/view', eventLimiter, async (req, res) => {
+  if (!isDbReady()) return res.json({ ok: true });
+  const id = Number(req.params.id);
+  if (Number.isFinite(id)) incrementNewsViews(id).catch(() => {});
+  res.json({ ok: true });
+});
+
+app.post('/api/news/:id/like', eventLimiter, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'bad_id' });
+  try {
+    res.json(await toggleNewsLike(id, visitorHash(req, 'news')));
+  } catch (err) {
+    console.error('[api] news like:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
 });
 
 // Katalog kategoriyalari — ochiq (faqat yoqilganlari).
@@ -1108,31 +1134,45 @@ app.get('/api/auctions/won/pending', async (req, res) => {
   res.json({ auctions: await listWonAuctionsAwaitingPayment(user.id) });
 });
 
+// Katalog payloadi — telefon/email/to'lov karta raqamlari HECH QACHON
+// bu yerga qo'shilmaydi (faqat ko'rsatish uchun zarur maydonlar).
+const catalogCard = (record) => ({
+  code: record.code,
+  name: record.name,
+  role: record.role,
+  avatarUrl: record.avatarUrl,
+  tg: record.tg,
+  hashtags: record.hashtags,
+  theme: record.theme,
+  price: record.price,
+  ts: record.ts,
+  views: record.views,
+  profileType: record.profileType,
+  city: record.city,
+  categorySlug: record.categorySlug,
+  verified: record.verified,
+});
+
 app.get('/api/records', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    const records = await listRecords();
-    // Katalogga faqat ko'rsatish/qidirish uchun zarur maydonlar chiqadi.
-    // Telefon, email, to'lov karta raqamlari va boshqa profil tafsilotlari
-    // hech qachon ommaviy ro'yxat payloadiga qo'shilmaydi.
-    res.json(records.map((record) => ({
-      code: record.code,
-      name: record.name,
-      role: record.role,
-      avatarUrl: record.avatarUrl,
-      tg: record.tg,
-      hashtags: record.hashtags,
-      theme: record.theme,
-      price: record.price,
-      ts: record.ts,
-      views: record.views,
-      profileType: record.profileType,
-      city: record.city,
-      categorySlug: record.categorySlug,
-      verified: record.verified,
-    })));
+    res.json((await listRecords()).map(catalogCard));
   } catch (err) {
     console.error('[api] listRecords:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Katalog qidiruvi — email / telefon bo'yicha ham topadi, lekin ularni
+// javobda QAYTARMAYDI. Bo'sh so'rov → bo'sh natija.
+app.get('/api/records/search', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const q = String(req.query.q || '').trim().slice(0, 120);
+  if (q.length < 2) return res.json({ records: [] });
+  try {
+    res.json({ records: (await searchRecords(q)).map(catalogCard) });
+  } catch (err) {
+    console.error('[api] searchRecords:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
