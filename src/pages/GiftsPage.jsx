@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { dbPublicGifts } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import NfcCard from '../components/NfcCard.jsx';
 
 function giftDate(ts) {
   if (!ts) return '';
@@ -71,6 +72,32 @@ export default function GiftsPage() {
         <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
           {t("NFCStore'da yangi egalariga topshirilgan noyob NFC ID'lar.")}
         </p>
+      </section>
+
+      <section className="mt-8">
+        <div className="grid items-center gap-8 rounded-3xl border border-[#e6c165]/20 bg-gradient-to-br from-[#17130c] via-[#100d09] to-[#070605] p-6 sm:p-9 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
+              {t('NFC ID — nafaqat siz uchun')}
+            </h2>
+            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-base-content/65">
+              {t('O‘zingizga esda qoladigan NFC ID tanlang yoki uni yaqin insoningizga sovg‘a qiling. NFC ID egasi o‘z ID’sini boshqa NFCStore foydalanuvchisiga xavfsiz tarzda o‘tkazishi mumkin.')}
+            </p>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+              <button onClick={() => navigate('/narxlar')} className="btn btn-primary min-h-11 px-5">{t('NFC ID tanlash')}</button>
+              <button onClick={() => navigate('/account')} className="btn btn-ghost min-h-11 px-5">{'\u{1F381}'} {t('NFC ID sovg‘a qilish')}</button>
+            </div>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="text-sm font-bold">{'\u{1F381}'} {t('Noyob ID — unutilmas sovg‘a')}</div>
+              <p className="mt-1 text-[13px] leading-relaxed text-base-content/55">
+                {t('Ism, sana, brend yoki alohida ma’noga ega NFC ID’ni tanlang va yaqin insoningizga raqamli sovg‘a sifatida taqdim eting.')}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <NfcCard code="VIP007" name={t('Noyob ID — unutilmas sovg‘a')} finish="showcase" size="md" />
+          </div>
+        </div>
       </section>
 
       <section className="mt-10">

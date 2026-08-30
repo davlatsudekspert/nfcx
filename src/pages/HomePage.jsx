@@ -5,9 +5,6 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NeonOrbitCard from '../components/NeonOrbitCard.jsx';
-import NfcCard from '../components/NfcCard.jsx';
-import { GiftCard } from './GiftsPage.jsx';
-import { dbPublicGifts } from '../lib/db.js';
 import { IconSearch } from '../components/Icons.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 
@@ -112,9 +109,6 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
   const recent = [...catalog].sort((a, b) => b.ts - a.ts).slice(0, 10);
   const marqueeItems = recent.length ? [...recent, ...recent] : [];
-
-  const [giftPreview, setGiftPreview] = useState([]);
-  useEffect(() => { dbPublicGifts(1).then(({ gifts }) => setGiftPreview(gifts.slice(0, 4))); }, []);
 
   return (
     <main>
@@ -256,46 +250,6 @@ export default function HomePage({ catalog, refreshCatalog }) {
       </section>
 
       <div className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
-        <RevealSection id="sovga">
-          <div className="grid items-center gap-8 rounded-3xl border border-[#e6c165]/20 bg-gradient-to-br from-[#17130c] via-[#100d09] to-[#070605] p-6 sm:p-9 lg:grid-cols-[1.1fr_0.9fr]">
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-                {t('NFC ID — nafaqat siz uchun')}
-              </h2>
-              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-base-content/65">
-                {t('O‘zingizga esda qoladigan NFC ID tanlang yoki uni yaqin insoningizga sovg‘a qiling. NFC ID egasi o‘z ID’sini boshqa NFCStore foydalanuvchisiga xavfsiz tarzda o‘tkazishi mumkin.')}
-              </p>
-              <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-                <button onClick={() => navigate('/narxlar')} className="btn btn-primary min-h-11 px-5">{t('NFC ID tanlash')}</button>
-                <button onClick={() => navigate('/account')} className="btn btn-ghost min-h-11 px-5">{'\u{1F381}'} {t('NFC ID sovg‘a qilish')}</button>
-              </div>
-              <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-sm font-bold">{'\u{1F381}'} {t('Noyob ID — unutilmas sovg‘a')}</div>
-                <p className="mt-1 text-[13px] leading-relaxed text-base-content/55">
-                  {t('Ism, sana, brend yoki alohida ma’noga ega NFC ID’ni tanlang va yaqin insoningizga raqamli sovg‘a sifatida taqdim eting.')}
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <NfcCard code="VIP007" name={t('Noyob ID — unutilmas sovg‘a')} finish="showcase" size="md" />
-            </div>
-          </div>
-
-          {giftPreview.length > 0 && (
-            <div className="mt-8">
-              <div className="flex items-end justify-between">
-                <h3 className="text-lg font-bold">{'\u{1F381}'} {t('Sovg‘alar')}</h3>
-                <button onClick={() => navigate('/gifts')} className="text-sm text-base-content/70 transition-transform hover:translate-x-0.5 hover:text-base-content">
-                  {t('Barchasini ko‘rish')} →
-                </button>
-              </div>
-              <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                {giftPreview.map((g, i) => <GiftCard key={g.code + i} gift={g} />)}
-              </div>
-            </div>
-          )}
-        </RevealSection>
-
         <RevealSection id="qanday-ishlaydi-qisqa">
           <div className="max-w-2xl">
             <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('3 oddiy qadam')}</div>
