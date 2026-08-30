@@ -53,6 +53,7 @@ export const FEATURE_MIN = {
   animatedBackground:   'premium',
   premiumThemes:        'premium',
   glassContent:         'premium',
+  linkStyle:            'gold',       // transparent / glass havola tugmalari
   video:                'premium',
   physicalCardDesigner: 'silver',
   profileCardCustom:    'gold',      // profil kartasi rang/fon/pozitsiya

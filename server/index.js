@@ -253,8 +253,10 @@ function validateBody(body) {
     : '';
   // Fon qimirlab turadigan animatsiyami — standart holatda yoqilgan.
   const bgAnimated = body.bgAnimated === false ? false : true;
-  // Profil havola tugmalarini shaffof (shisha effekti) qilish — standart o'chiq.
-  const linksTransparent = body.linksTransparent === true;
+  // Profil havola tugmalari uslubi: standard | transparent | glass.
+  const linkStyle = ['standard', 'transparent', 'glass'].includes(body.linkStyle) ? body.linkStyle : 'standard';
+  // Orqaga moslik — eski mijoz hali linksTransparent yuborishi mumkin.
+  const linksTransparent = linkStyle === 'glass' || body.linksTransparent === true;
   // Profil kartasi (nfcstore.uz/<kod> sahifasida ko'rinadigan NFC karta)
   // dizayni — ixtiyoriy: rang/finish, ustidagi ism matni, fon rasmi.
   let cardDesign = null;
@@ -310,6 +312,7 @@ function validateBody(body) {
       bgColor,
       bgAnimated,
       linksTransparent,
+      linkStyle,
       musicUrl,
       tg: cleanStr(body.tg, 40).replace(/^@/, ''),
       phone: cleanStr(body.phone, 24),
@@ -1238,6 +1241,9 @@ app.put('/api/records/:code', async (req, res) => {
     guard('innerBackground', s(record.bgUrl) !== s(cur.bgUrl) || s(record.bgColor) !== s(cur.bgColor)
       || (record.bgAnimated !== false) !== (cur.bgAnimated !== false));
     guard('advancedColors', s(record.accentColor) !== s(cur.accentColor));
+    // 'standard' → hamma uchun; 'transparent'/'glass' → gold+.
+    guard('linkStyle', record.linkStyle !== 'standard'
+      && record.linkStyle !== (['standard', 'transparent', 'glass'].includes(cur.linkStyle) ? cur.linkStyle : 'standard'));
     if ('cardDesign' in (req.body || {})) {
       guard('profileCardCustom', JSON.stringify(record.cardDesign || null) !== JSON.stringify(cur.cardDesign || null));
     }

@@ -215,11 +215,15 @@
   transform: skewX(-18deg); animation: linkShine 4s ease-in-out infinite;
   pointer-events: none; z-index: 1;
 }
-/* Shaffof (shisha) variant — profil sozlamalaridagi toggle orqali yoqiladi. */
+/* Havola tugmalari uslublari — Kabinet: Standart / Shaffof / Glass. */
 .vz-link--glass {
   background-color: color-mix(in srgb, var(--vz-pill) 30%, transparent) !important;
   -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
   border-color: var(--vz-line) !important;
+}
+.vz-link--transparent {
+  background-color: transparent !important;
+  border-color: color-mix(in srgb, var(--vz-ink) 32%, transparent) !important;
 }
 
 :focus-visible {

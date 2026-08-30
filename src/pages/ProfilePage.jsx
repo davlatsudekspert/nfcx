@@ -528,7 +528,11 @@ export default function ProfilePage({ code, catalog }) {
   const otherCodes = isOwner ? myCards.filter((c) => c.code !== record.code) : [];
 
   const pillBtn = 'cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2 text-[13px] font-bold text-white transition hover:brightness-125';
-  const linkBtn = `vz-link${record.linksTransparent ? ' vz-link--glass' : ''} flex items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-[13.5px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
+  const linkStyleName = ['standard', 'transparent', 'glass'].includes(record.linkStyle)
+    ? record.linkStyle
+    : (record.linksTransparent ? 'glass' : 'standard');
+  const linkStyleCls = linkStyleName === 'glass' ? ' vz-link--glass' : linkStyleName === 'transparent' ? ' vz-link--transparent' : '';
+  const linkBtn = `vz-link${linkStyleCls} flex items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-[13.5px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
   const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide';
 
   return (

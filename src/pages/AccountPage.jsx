@@ -568,7 +568,8 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
       await authUpdateCard(card.code, {
         name: card.name, role: card.role || '', avatarUrl: card.avatarUrl || '',
         bgUrl: card.bgUrl || '', accentColor: card.accentColor || '', bgColor: card.bgColor || '',
-        bgAnimated: card.bgAnimated !== false, linksTransparent: !!card.linksTransparent,
+        bgAnimated: card.bgAnimated !== false,
+        linkStyle: ['standard', 'transparent', 'glass'].includes(card.linkStyle) ? card.linkStyle : (card.linksTransparent ? 'glass' : 'standard'),
         musicUrl: card.musicUrl || '', tg: card.tg || '', phone: card.phone || '', hidePhone: !!card.hidePhone,
         email: card.email || '', linkedin: card.linkedin || '', instagram: card.instagram || '',
         facebook: card.facebook || '', twitter: card.twitter || '', website: card.website || '',
@@ -724,7 +725,9 @@ function EditCardForm({ card, onSaved }) {
     accentColor: card.accentColor || '',
     bgColor: card.bgColor || '',
     bgAnimated: card.bgAnimated !== false,
-    linksTransparent: !!card.linksTransparent,
+    linkStyle: ['standard', 'transparent', 'glass'].includes(card.linkStyle)
+      ? card.linkStyle
+      : (card.linksTransparent ? 'glass' : 'standard'),
     musicUrl: card.musicUrl || '',
     tg: card.tg || '',
     phone: card.phone || '',
@@ -877,7 +880,7 @@ function EditCardForm({ card, onSaved }) {
         accentColor: form.accentColor,
         bgColor: form.bgColor,
         bgAnimated: form.bgAnimated,
-        linksTransparent: form.linksTransparent,
+        linkStyle: form.linkStyle,
         musicUrl: form.musicUrl.trim(),
         tg: form.tg.trim(),
         phone: form.phone.trim(),
@@ -908,6 +911,7 @@ function EditCardForm({ card, onSaved }) {
           innerBackground: t('Maxsus profil foni'),
           advancedColors: t('Maxsus ranglar'),
           profileCardCustom: t('Karta dizayni'),
+          linkStyle: t('Havola tugmalari uslubi'),
         };
         setLocked(labels[err.feature] || t('Bu sozlama'));
         setBusy(false);
@@ -1122,14 +1126,24 @@ function EditCardForm({ card, onSaved }) {
             </div>
             </Gate>
 
-            <Gate ok={allow('glassContent')} onLock={() => setLocked(t('Shaffof tugmalar'))}>
-            <label className="mt-4 flex cursor-pointer items-start gap-2.5">
-              <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.linksTransparent} onChange={(e) => setForm((f) => ({ ...f, linksTransparent: e.target.checked }))} />
-              <span className="text-sm">
-                {t("Havola tugmalarini shaffof qilish (shisha effekti)")}
-                <span className="mt-0.5 block text-xs text-base-content/45">{t("Tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinib turadi. Ustidan yorug'lik yugurish animatsiyasi har doim ishlaydi.")}</span>
-              </span>
-            </label>
+            <Gate ok={allow('linkStyle')} onLock={() => setLocked(t('Havola tugmalari uslubi'))}>
+            <div className="mt-4">
+              <div className="text-xs font-semibold text-base-content/70">{t('Havola tugmalari uslubi')}</div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {[
+                  ['standard', t('Standart')],
+                  ['transparent', t('Shaffof')],
+                  ['glass', t('Glass (shisha)')],
+                ].map(([id, label]) => (
+                  <button key={id} type="button"
+                    onClick={() => setForm((f) => ({ ...f, linkStyle: id }))}
+                    className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${form.linkStyle === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/10 text-base-content/60 hover:border-white/25'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-base-content/45">{t("Shaffof/Glass — tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinadi (maxsus fon bilan chiroyli).")}</p>
+            </div>
             </Gate>
 
             <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>

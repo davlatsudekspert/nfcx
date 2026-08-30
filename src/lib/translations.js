@@ -1069,4 +1069,9 @@ export const DICT = {
   'Bu sozlama': { ru: 'Эта настройка', en: 'This setting' },
   'Premiumda ochiladi — bosing': { ru: 'Откроется в премиуме — нажмите', en: 'Unlocks with premium — tap' },
   'Shaffof tugmalar': { ru: 'Прозрачные кнопки', en: 'Transparent buttons' },
+  'Havola tugmalari uslubi': { ru: 'Стиль кнопок-ссылок', en: 'Link button style' },
+  'Standart': { ru: 'Стандарт', en: 'Standard' },
+  'Shaffof': { ru: 'Прозрачный', en: 'Transparent' },
+  'Glass (shisha)': { ru: 'Стекло (glass)', en: 'Glass' },
+  "Shaffof/Glass — tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinadi (maxsus fon bilan chiroyli).": { ru: 'Прозрачный/Стекло — кнопки полупрозрачные, фон виден сквозь них (красиво со своим фоном).', en: 'Transparent/Glass — the buttons are semi-transparent so the background shows through (looks great with a custom background).' },
 };

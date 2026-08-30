@@ -207,6 +207,7 @@ export async function initDb() {
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
     links_transparent: `ALTER TABLE cards ADD COLUMN links_transparent BOOLEAN NOT NULL DEFAULT FALSE`,
     card_design: `ALTER TABLE cards ADD COLUMN card_design JSONB`,
+    link_style: `ALTER TABLE cards ADD COLUMN link_style VARCHAR(12) NOT NULL DEFAULT 'standard'`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -222,10 +223,14 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
+      // link_style yangi qo'shilganda — eski links_transparent=true ni 'glass'ga o'tkazamiz.
+      if (key === 'link_style') {
+        await pool.query(`UPDATE cards SET link_style = 'glass' WHERE links_transparent = TRUE`);
+      }
     }
   }
 
@@ -970,7 +975,7 @@ export function isDbReady() {
 const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
-  links_transparent AS "linksTransparent",
+  links_transparent AS "linksTransparent", link_style AS "linkStyle",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
@@ -995,6 +1000,7 @@ function rowToRecord(row) {
     hidePhone: !!row.hidePhone,
     giftable: row.giftable !== false,
     linksTransparent: !!row.linksTransparent,
+    linkStyle: ['standard', 'transparent', 'glass'].includes(row.linkStyle) ? row.linkStyle : 'standard',
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
@@ -1037,7 +1043,7 @@ export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
-            c.links_transparent AS "linksTransparent", c.hide_phone AS "hidePhone",
+            c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride", c.card_design AS "cardDesign",
@@ -1674,6 +1680,7 @@ export async function updateRecord(code, fields) {
     bgColor: 'bg_color',
     bgAnimated: 'bg_animated',
     linksTransparent: 'links_transparent',
+    linkStyle: 'link_style',
     musicUrl: 'music_url',
     tg: 'tg',
     phone: 'phone',
