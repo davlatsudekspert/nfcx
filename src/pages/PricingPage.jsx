@@ -96,11 +96,11 @@ const TIER_CARD_MIX = {
     nameColor: '#f1e6c6',
   },
   premium: {
-    background: 'linear-gradient(120deg, #000 0%, #0c0f13 40%, #333a44 70%, #8b95a6 100%)',
-    border: '1px solid rgba(160,175,200,0.42)',
-    iconBg: 'rgba(190,205,225,0.18)',
-    iconColor: '#dbe3f0',
-    nameColor: '#e2e8f2',
+    background: 'linear-gradient(120deg, #000 0%, #150d04 36%, #4a2f0c 66%, #c78e34 100%)',
+    border: '1px solid rgba(216,163,74,0.6)',
+    iconBg: 'rgba(216,163,74,0.22)',
+    iconColor: '#f0c98a',
+    nameColor: '#f4d29a',
   },
   gold: {
     background: 'linear-gradient(120deg, #000 0%, #171006 38%, #4a3908 68%, #e0b40e 100%)',
@@ -129,6 +129,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   const { t, lang } = useLanguage();
   const [calcVal, onCalcChange] = useMaskedCode();
   const [modalCode, setModalCode] = useState(null);
+  const [pickedTier, setPickedTier] = useState(null); // tarif kartasi bosilganda vizual karta rangi
   const hint = TIER_HINT[lang] || TIER_HINT.uz;
   const priceText = TIER_PRICE_TEXT[lang] || TIER_PRICE_TEXT.uz;
   const examples = EXAMPLES[lang] || EXAMPLES.uz;
@@ -161,9 +162,11 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               const mix = TIER_CARD_MIX[tier];
               const width = ['100%', '88%', '76%', '64%', '52%'][i];
               return (
-              <div
+              <button
                 key={tier}
-                className="tier-shine flex items-center gap-3.5 rounded-xl px-4 py-3.5"
+                type="button"
+                onClick={() => setPickedTier(tier === pickedTier ? null : tier)}
+                className={`tier-shine flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-left transition-transform hover:-translate-y-0.5 ${pickedTier === tier ? 'ring-2 ring-white/30' : ''}`}
                 style={{ '--shine-delay': `${i * 0.5}s`, width, minWidth: '15rem', background: mix.background, border: mix.border }}
               >
                 <span
@@ -186,7 +189,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   </div>
                   <div className="mt-0.5 truncate text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{hint[tier]}</div>
                 </div>
-              </div>
+              </button>
               );
             })}
           </div>
@@ -194,7 +197,11 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
         {/* ===== Neon orbit kompozitsiyasi (bosh sahifadagi vizual karta) ===== */}
         <div className="hidden justify-self-center overflow-visible lg:block">
-          <NeonOrbitCard code={calcParsed ? calcParsed.code : 'ABZ007'} name={t('SIZNING ISMINGIZ')} />
+          <NeonOrbitCard
+            code={calcParsed ? calcParsed.code : 'ABZ007'}
+            name={t('SIZNING ISMINGIZ')}
+            finish={pickedTier ? 'tier-' + pickedTier : (calcInfo ? 'tier-' + calcInfo.tier : 'showcase')}
+          />
         </div>
       </section>
 

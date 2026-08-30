@@ -210,7 +210,7 @@ export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'G
 // Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Emerald.
 export const TIER_COLOR = {
   exclusive: '#d4af37', // Titanium Gold — eng yuqori status
-  premium: '#c9ccd6',   // Platinum — sovuq oq-kumush
+  premium: '#d8a34a',   // Bronza-oltin — issiq metall
   gold: '#f0c419',      // Pure Gold — klassik toza tilla
   silver: '#9aa3ad',    // Chrome Silver — bosiq metall
   free: '#3fae6a',      // Emerald — bosiq zumrad yashil
@@ -218,7 +218,7 @@ export const TIER_COLOR = {
 // Titanium Gold / Platinum uchun ikki rangli metall gradient (matn/badge fonida).
 export const TIER_GRADIENT = {
   exclusive: 'linear-gradient(135deg, #d4af37 0%, #ffffff 25%, #8a8275 50%, #d4af37 100%)',
-  premium: 'linear-gradient(135deg, #e8e8ec 0%, #ffffff 30%, #b8bcc4 60%, #e8e8ec 100%)',
+  premium: 'linear-gradient(135deg, #e0b46a 0%, #fbe8c8 30%, #a06c1e 60%, #e0b46a 100%)',
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };
@@ -231,7 +231,7 @@ export const TIER_PAGE_GLOW = {
   free:      'radial-gradient(1200px 620px at 50% -12%, rgba(63,174,106,0.10), transparent 62%)',
   silver:    'radial-gradient(1200px 620px at 50% -12%, rgba(154,163,173,0.13), transparent 62%)',
   gold:      'radial-gradient(1200px 620px at 50% -12%, rgba(240,196,25,0.13), transparent 60%)',
-  premium:   'radial-gradient(1200px 620px at 50% -12%, rgba(201,204,214,0.14), transparent 60%)',
+  premium:   'radial-gradient(1200px 620px at 50% -12%, rgba(216,163,74,0.15), transparent 60%)',
   exclusive: 'radial-gradient(1200px 640px at 50% -12%, rgba(212,175,55,0.17), transparent 56%)',
 };
 
