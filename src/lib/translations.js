@@ -542,6 +542,8 @@ export const DICT = {
   'Sabab': { ru: 'Причина', en: 'Reason' },
   'Holati': { ru: 'Статус', en: 'Status' },
   'Jami narx': { ru: 'Итоговая цена', en: 'Total price' },
+  'Maxsus narx': { ru: 'Особая цена', en: 'Special price' },
+  'Bu kodga alohida narx belgilangan': { ru: 'Для этого кода установлена отдельная цена', en: 'A custom price is set for this code' },
   'Auksionda': { ru: 'На аукционе', en: 'At auction' },
   "Auksion bo'limiga o'tish": { ru: 'Перейти в раздел «Аукцион»', en: 'Go to the Auction section' },
   'Avval NFC ID kiriting': { ru: 'Сначала введите NFC ID', en: 'Enter an NFC ID first' },

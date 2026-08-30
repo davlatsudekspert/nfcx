@@ -1,3 +1,5 @@
+import { codePriceOverride } from './codePrices.js';
+
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
 export function parseCode(raw) {
@@ -250,5 +252,11 @@ export function priceFor(letters, digits, _sold) {
 
 export function priceForCode(code, _sold) {
   const c = String(code || '').toUpperCase();
+  // AVVAL — qo'lda belgilangan narx (per-code override). Bo'lmasa tarif mantig'i.
+  const override = codePriceOverride(c);
+  if (override != null) {
+    const tier = tierFromCode(c.slice(0, 3), c.slice(3, 6));
+    return { total: override, tier, base: override, override: true };
+  }
   return priceFor(c.slice(0, 3), c.slice(3, 6));
 }

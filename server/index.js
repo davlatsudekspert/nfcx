@@ -1268,11 +1268,13 @@ app.post('/api/records/:code', async (req, res) => {
   try {
     // Narxni server o'zi hisoblaydi (client narxiga ishonmaymiz) — endi
     // kodning naqshiga qarab qat'iy daraja narxi (dinamik o'sish yo'q).
+    const pinfo = priceForCode(code);
     const basePrice = isLetterCode(code)
       ? 99_000 * 3 // faqat harflardan iborat kod — Silver darajadan 3 barobar
-      : (priceForCode(code).total ?? 0); // ekslyuziv (null) bo'lsa ham bu yerga yetib kelmaydi — pastda tekshiriladi
-    const tierNow = isLetterCode(code) ? 'gold' : priceForCode(code).tier;
-    if (tierNow === 'exclusive') return res.status(409).json({ error: 'exclusive_auction_only' });
+      : (pinfo.total ?? 0); // ekslyuziv (null) bo'lsa ham bu yerga yetib kelmaydi — pastda tekshiriladi
+    const tierNow = isLetterCode(code) ? 'gold' : pinfo.tier;
+    // Qo'lda narx belgilangan (override) kod ekslyuziv naqshda bo'lsa ham sotiladi.
+    if (tierNow === 'exclusive' && !pinfo.override) return res.status(409).json({ error: 'exclusive_auction_only' });
     let price = basePrice + (wantsPhysicalCard ? PHYSICAL_CARD_FEE : 0);
 
     // Do'st taklif qilish orqali olingan 10% chegirma — bandlash narxi
