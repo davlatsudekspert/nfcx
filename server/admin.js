@@ -37,7 +37,7 @@ import {
   adminListReferrals,
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
-  adminSetCardVerified, adminListVerifiedCards,
+  adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -886,7 +886,7 @@ adminRouter.get('/records/:code', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const rec = await getRecord(String(req.params.code || '').toUpperCase());
   if (!rec) return res.status(404).json({ error: 'not_found' });
-  res.json({ code: rec.code, name: rec.name, role: rec.role, verified: !!rec.verified, profileType: rec.profileType });
+  res.json({ code: rec.code, name: rec.name, role: rec.role, verified: !!rec.verified, profileType: rec.profileType, views: rec.views });
 });
 
 adminRouter.post('/records/:code/verify', async (req, res) => {
@@ -896,5 +896,16 @@ adminRouter.post('/records/:code/verify', async (req, res) => {
   const row = await adminSetCardVerified(code, verified);
   if (!row) return res.status(404).json({ error: 'not_found' });
   logAdminActivity({ action: verified ? 'card_verified' : 'card_unverified', details: code, ip: req.ip }).catch(() => {});
+  res.json(row);
+});
+
+adminRouter.post('/records/:code/views', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const views = Number(req.body?.views);
+  if (!Number.isFinite(views) || views < 0) return res.status(422).json({ error: 'bad_views' });
+  const row = await adminSetCardViews(code, views);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  logAdminActivity({ action: 'card_views_set', details: `${code} → ${row.views}`, ip: req.ip }).catch(() => {});
   res.json(row);
 });

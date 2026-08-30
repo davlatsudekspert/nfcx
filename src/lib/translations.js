@@ -1260,6 +1260,7 @@ export const DICT = {
   'Statistika, lidlar, fayllar va video —': { ru: 'Статистика, лиды, файлы и видео —', en: 'Analytics, leads, files and video —' },
   'sahifasida.': { ru: 'на странице.', en: 'page.' },
   'Lidlarni yig‘ish — Gold NFC ID yoki Profile Premiumda ochiladi.': { ru: 'Сбор лидов — открывается с Gold NFC ID или Profile Premium.', en: 'Lead capture — unlocked with a Gold NFC ID or Profile Premium.' },
+  'Ko‘rishlar sonini o‘zgartirish': { ru: 'Изменить число просмотров', en: 'Change view count' },
   'Obunachilar': { ru: 'Подписчики', en: 'Followers' },
   'Obunalar': { ru: 'Подписки', en: 'Following' },
   'Ro‘yxat bo‘sh': { ru: 'Список пуст', en: 'The list is empty' },

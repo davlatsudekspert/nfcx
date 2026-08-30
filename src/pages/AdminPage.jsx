@@ -1686,6 +1686,18 @@ function VerificationTab() {
       await load();
     } finally { setBusy(false); }
   };
+  const [viewsInput, setViewsInput] = useState('');
+  const saveViews = async () => {
+    if (!found) return;
+    const v = Number(viewsInput);
+    if (!Number.isFinite(v) || v < 0) return;
+    setBusy(true);
+    try {
+      const row = await adminApi(`/records/${encodeURIComponent(found.code)}/views`, { method: 'POST', body: JSON.stringify({ views: v }) });
+      setFound({ ...found, views: row.views });
+      setViewsInput('');
+    } finally { setBusy(false); }
+  };
 
   return (
     <div className="space-y-6">
@@ -1698,15 +1710,25 @@ function VerificationTab() {
         </div>
         {err && <div className="mt-2 text-xs text-error">{err}</div>}
         {found && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
-            <div>
-              <div className="font-semibold">{found.name} <span className="font-mono text-xs text-base-content/40">{found.code}</span></div>
-              <div className="text-xs text-base-content/50">{found.role || '—'} · {found.verified ? t('Tasdiqlangan ✔') : t('Tasdiqlanmagan')}</div>
+          <div className="mt-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="font-semibold">{found.name} <span className="font-mono text-xs text-base-content/40">{found.code}</span></div>
+                <div className="text-xs text-base-content/50">
+                  {found.role || '—'} · {found.verified ? t('Tasdiqlangan ✔') : t('Tasdiqlanmagan')} · 👁 {found.views ?? 0}
+                </div>
+              </div>
+              <button className={`btn btn-sm ${found.verified ? 'btn-ghost border border-white/15' : 'btn-primary'}`}
+                disabled={busy} onClick={() => toggle(found.code, !found.verified)}>
+                {found.verified ? t('Tasdiqni olib tashlash') : t('Tasdiqlash')}
+              </button>
             </div>
-            <button className={`btn btn-sm ${found.verified ? 'btn-ghost border border-white/15' : 'btn-primary'}`}
-              disabled={busy} onClick={() => toggle(found.code, !found.verified)}>
-              {found.verified ? t('Tasdiqni olib tashlash') : t('Tasdiqlash')}
-            </button>
+            <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-2">
+              <span className="text-xs text-base-content/55">{t('Ko‘rishlar sonini o‘zgartirish')}:</span>
+              <input type="number" min="0" value={viewsInput} onChange={(e) => setViewsInput(e.target.value)}
+                placeholder={String(found.views ?? 0)} className="input input-bordered input-xs w-28 bg-base-100" />
+              <button className="btn btn-xs" disabled={busy || viewsInput === ''} onClick={saveViews}>{t('Saqlash')}</button>
+            </div>
           </div>
         )}
       </div>

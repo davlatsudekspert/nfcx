@@ -3613,6 +3613,16 @@ export async function adminSetCardVerified(code, verified) {
   return rows[0] || null;
 }
 
+// Ko'rishlar hisoblagichini qo'lда o'zgartirish (admin).
+export async function adminSetCardViews(code, views) {
+  const n = Math.max(0, Math.min(100_000_000, Math.round(Number(views) || 0)));
+  const { rows } = await pool.query(
+    `UPDATE cards SET views = $2 WHERE code = $1 RETURNING code, name, views`,
+    [code, n]
+  );
+  return rows[0] || null;
+}
+
 export async function adminListVerifiedCards() {
   const { rows } = await pool.query(
     `SELECT code, name, role, profile_type AS "profileType" FROM cards WHERE verified = TRUE ORDER BY name`
