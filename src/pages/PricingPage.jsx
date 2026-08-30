@@ -137,8 +137,6 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   const calcParsed = parseAnyCode(calcVal);
   const calcInfo = calcParsed ? priceForCode(calcParsed.code) : null;
   const calcTaken = calcParsed ? !!takenMap[calcParsed.code] : false;
-  // Qo'lda narx belgilangan kod ekslyuziv naqshda bo'lsa ham auksionsiz sotiladi.
-  const calcExclusive = !!calcInfo && calcInfo.tier === 'exclusive' && !calcInfo.override;
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-24 bg-black">
@@ -232,12 +230,12 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
                   <span className="text-white/55">{t('Daraja')}</span>
                   <span className="font-semibold" style={{ color: calcInfo ? TIER_COLOR[calcInfo.tier] : undefined }}>
-                    {calcInfo ? (calcInfo.override ? t('Maxsus narx') : t(TIER_LABEL[calcInfo.tier])) : '—'}
+                    {calcInfo ? t(TIER_LABEL[calcInfo.tier]) : '—'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
                   <span className="text-white/55">{t('Sabab')}</span>
-                  <span className="font-medium">{calcInfo ? (calcInfo.override ? t('Bu kodga alohida narx belgilangan') : hint[calcInfo.tier]) : '—'}</span>
+                  <span className="font-medium">{calcInfo ? hint[calcInfo.tier] : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-white/55">{t('Holati')}</span>
@@ -256,12 +254,12 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 />
               </Interactive3DCard>
               <div className="text-3xl font-extrabold tracking-tight">
-                {calcExclusive ? t('Auksionda') : (calcInfo ? fmt(calcInfo.total) : '—')}
-                {calcInfo && !calcExclusive && <span className="text-base font-medium text-white/60"> {t("so'm")}</span>}
+                {calcInfo?.tier === 'exclusive' ? t('Auksionda') : (calcInfo ? fmt(calcInfo.total) : '—')}
+                {calcInfo && calcInfo.tier !== 'exclusive' && <span className="text-base font-medium text-white/60"> {t("so'm")}</span>}
               </div>
               <div className="mt-1 text-xs uppercase tracking-widest text-white/45">{t('Jami narx')}</div>
 
-              {calcExclusive ? (
+              {calcInfo?.tier === 'exclusive' ? (
                 <button className="btn btn-accent mt-5 w-full" onClick={() => { window.location.href = '/auksion'; }}>
                   {'\u{1F48E}'} {t("Auksion bo'limiga o'tish")}
                 </button>
@@ -292,7 +290,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 <div className="font-mono text-lg font-bold tracking-widest">{ex.code}</div>
                 <div className="mt-1 text-[13px] text-white/55">{ex.note}</div>
                 <div className="mt-3 text-sm font-semibold" style={{ color: TIER_COLOR[info.tier] }}>
-                  {info.tier === 'exclusive' && !info.override ? t('Faqat auksion') : t("{n} so'm", { n: fmt(info.total) })}
+                  {info.tier === 'exclusive' ? t('Faqat auksion') : t("{n} so'm", { n: fmt(info.total) })}
                 </div>
               </div>
             );
