@@ -1,3 +1,5 @@
+import { codeTierOverride } from './codeTiers.js';
+
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
 export function parseCode(raw) {
@@ -171,6 +173,9 @@ export function tierFromCode(letters, digits) {
 
 export function tierForCode(code) {
   const c = String(code || '').toUpperCase();
+  // AVVAL — qo'lda belgilangan tarif (per-code override). Bo'lmasa naqsh mantig'i.
+  const ov = codeTierOverride(c);
+  if (ov) return ov;
   // Faqat harflardan iborat NFC ID (kompaniya nomi yoki shaxs ismi —
   // nfcstore.uz/kompaniya, nfcstore.uz/mashrabboy) har doim EKSLYUZIV
   // darajada ko'rsatiladi (bu kodlar faqat admin tomonidan beriladi).
@@ -250,5 +255,11 @@ export function priceFor(letters, digits, _sold) {
 
 export function priceForCode(code, _sold) {
   const c = String(code || '').toUpperCase();
+  // AVVAL — qo'lda belgilangan tarif (per-code override). Bo'lmasa naqsh mantig'i.
+  const ov = codeTierOverride(c);
+  if (ov) {
+    const total = TIER_PRICE[ov] ?? 0;
+    return { total, tier: ov, base: total, override: true };
+  }
   return priceFor(c.slice(0, 3), c.slice(3, 6));
 }
