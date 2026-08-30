@@ -383,7 +383,7 @@ app.post('/api/assistant', assistantLimiterMin, assistantLimiterHour, async (req
   if (!assistantEnabled()) return res.status(503).json({ error: 'not_configured' });
   const result = await askAssistant(req.body && req.body.messages);
   if (result.error === 'bad_request') return res.status(422).json({ error: 'bad_request' });
-  if (result.error) return res.status(503).json({ error: result.error });
+  if (result.error) return res.status(503).json({ error: result.error, detail: result.detail, status: result.status });
   res.json(result);
 });
 

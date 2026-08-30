@@ -67,8 +67,10 @@ export async function askAssistant(rawMessages) {
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      console.error('[assistant] Anthropic API:', res.status, data && data.error && data.error.message);
-      return { error: 'upstream' };
+      const detail = (data && data.error && (data.error.message || data.error.type)) || `HTTP ${res.status}`;
+      console.error('[assistant] Anthropic API:', res.status, detail);
+      // Anthropic xato TURI/matni maxfiy emas (kalit yo'q) — diagnostika uchun qaytaramiz.
+      return { error: 'upstream', status: res.status, detail: String(detail).slice(0, 300) };
     }
     if (data && data.stop_reason === 'refusal') {
       return { reply: 'Bu savolga javob bera olmayman. Iltimos, NFCSTORE bo‘yicha savol bering yoki @nfcstore_admin ga murojaat qiling.' };
