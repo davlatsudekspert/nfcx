@@ -1226,4 +1226,5 @@ export const DICT = {
   'Bu videoni o‘chirasizmi?': { ru: 'Удалить это видео?', en: 'Delete this video?' },
   'Video nomi (ixtiyoriy)': { ru: 'Название видео (необязательно)', en: 'Video title (optional)' },
   'Video yuklash': { ru: 'Загрузить видео', en: 'Upload video' },
+  'Ilovani o‘rnatish': { ru: 'Установить приложение', en: 'Install the app' },
 };

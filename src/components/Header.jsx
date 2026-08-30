@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { dbUnreadCount, dbList } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { canInstall, onInstallableChange, promptInstall } from '../lib/pwa.js';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import logo from '../assets/logo-128.png';
 
@@ -97,6 +98,10 @@ export default function Header() {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [installable, setInstallable] = useState(canInstall());
+
+  useEffect(() => onInstallableChange(setInstallable), []);
+  const install = async () => { setOpen(false); await promptInstall(); };
 
   useEffect(() => {
     if (!user) { setUnread(0); return; }
@@ -156,6 +161,9 @@ export default function Header() {
           {user && (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
           )}
+          {installable && (
+            <button className="btn btn-ghost btn-sm" onClick={install} title={t('Ilovani o‘rnatish')}>{'\u{1F4F2}'}</button>
+          )}
           {user ? (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/account')}>{t('Mening profilim')}</button>
           ) : (
@@ -199,6 +207,9 @@ export default function Header() {
               )}
             </li>
           </ul>
+          {installable && (
+            <button className="btn btn-ghost btn-block mt-2" onClick={install}>{'\u{1F4F2}'} {t('Ilovani o‘rnatish')}</button>
+          )}
           <button className="btn btn-primary btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
         </div>
       )}

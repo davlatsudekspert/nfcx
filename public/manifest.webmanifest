@@ -1,0 +1,19 @@
+{
+  "name": "NFCSTORE — raqamli profil va NFC karta",
+  "short_name": "NFCSTORE",
+  "description": "Barcha kontaktlaringiz — bitta raqamli profilda. NFC karta orqali ulashing.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0908",
+  "theme_color": "#0a0908",
+  "lang": "uz",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
