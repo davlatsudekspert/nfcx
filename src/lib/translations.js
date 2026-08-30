@@ -1051,4 +1051,16 @@ export const DICT = {
   'Faollik holati': { ru: 'Статус активности', en: 'Activity status' },
   "So'nggi 5 daqiqada yozgan foydalanuvchi yashil nuqta bilan ko'rinadi.": { ru: 'Пользователь, писавший за последние 5 минут, отмечается зелёной точкой.', en: 'A user who wrote in the last 5 minutes is shown with a green dot.' },
   "Yangi xabarlar soni yuqoridagi Xabarlar bo'limida ko'rsatiladi.": { ru: 'Число новых сообщений показывается в разделе «Сообщения» вверху.', en: 'The number of new messages is shown in the Messages section at the top.' },
+
+  // ── Yopiq (premium) funksiya oynasi ──
+  'Bu funksiya hozirgi profilingizda yopiq.': { ru: 'Эта функция недоступна в вашем текущем профиле.', en: 'This feature is locked on your current profile.' },
+  '«{f}» — hozirgi profilingizda yopiq': { ru: '«{f}» недоступно в вашем текущем профиле', en: '“{f}” is locked on your current profile' },
+  "Hozirgi NFC ID'ingiz o'zgarmaydi, lekin Premium imkoniyatlar ochiladi.": { ru: 'Ваш NFC ID не изменится, но откроются премиум-возможности.', en: 'Your NFC ID stays the same, but premium features unlock.' },
+  'Premium profil — {n} so‘m': { ru: 'Премиум-профиль — {n} сум', en: 'Premium profile — {n} UZS' },
+  "Premium'ga o'tish": { ru: 'Перейти на премиум', en: 'Go premium' },
+  'YOKI': { ru: 'ИЛИ', en: 'OR' },
+  'Yuqoriroq NFC ID — Silver, Gold, Premium yoki Exclusive — tanlang. Har biri o‘z darajasidagi imkoniyatlarni ochadi.': { ru: 'Выберите NFC ID выше уровнем — Silver, Gold, Premium или Exclusive. Каждый открывает возможности своего уровня.', en: 'Pick a higher NFC ID — Silver, Gold, Premium or Exclusive. Each unlocks the features of its level.' },
+  'NFC ID tanlash': { ru: 'Выбрать NFC ID', en: 'Choose an NFC ID' },
+  'Post joylashtirish': { ru: 'Публикация постов', en: 'Posting' },
+  'Jismoniy NFC karta dizayni': { ru: 'Дизайн физической NFC-карты', en: 'Physical NFC card design' },
 };

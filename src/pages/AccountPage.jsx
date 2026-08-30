@@ -7,9 +7,11 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { isYoutubeMusic } from '../lib/music.js';
 import { MESSAGING_ENABLED, PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
+import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { vzStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
+import { effectiveAccess, featureAllowed } from '../lib/access.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
@@ -687,6 +689,11 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 
 function EditCardForm({ card, onSaved }) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  // Bu kartaning effective access darajasi (NFC ID tarifi + Profile Premium).
+  const access = effectiveAccess(card, user);
+  const allow = (feature) => featureAllowed(feature, access);
+  const [locked, setLocked] = useState(null); // yopiq funksiya nomi (modal uchun)
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
@@ -911,17 +918,34 @@ function EditCardForm({ card, onSaved }) {
               {'\u{1F381}'} {t("Sovg'a qilish")}
             </button>
           )}
-          <button className="btn btn-outline btn-sm" onClick={() => setPostModal(true)}>
-            {'\u{1F4DD}'} {t('Post')}
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => (allow('post') ? setPostModal(true) : setLocked(t('Post joylashtirish')))}
+          >
+            {'\u{1F4DD}'} {t('Post')}{!allow('post') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
           </button>
-          <button className="btn btn-outline btn-sm" onClick={() => setDesignModal('profile')}>
-            {'\u{1F3A8}'} {t('Karta dizayni')}
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => (allow('profileCardCustom') ? setDesignModal('profile') : setLocked(t('Karta dizayni')))}
+          >
+            {'\u{1F3A8}'} {t('Karta dizayni')}{!allow('profileCardCustom') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
           </button>
-          <button className="btn btn-outline btn-sm" onClick={() => setDesignModal('print')}>
-            {'\u{1F4B3}'} {t('NFC ID buyurtma berish')}
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => (allow('physicalCardDesigner') ? setDesignModal('print') : setLocked(t('Jismoniy NFC karta dizayni')))}
+          >
+            {'\u{1F4B3}'} {t('NFC ID buyurtma berish')}{!allow('physicalCardDesigner') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
           </button>
         </div>
       </div>
+
+      {locked && (
+        <LockedFeatureModal
+          featureLabel={locked}
+          onClose={() => setLocked(null)}
+          onGoPremium={() => document.getElementById('premium-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+        />
+      )}
 
       {postModal && (
         <Modal title={'\u{1F4DD}' + ' ' + t('Postlar')} onClose={() => setPostModal(false)}>
@@ -1395,7 +1419,7 @@ export default function AccountPage({ refreshCatalog }) {
 
       {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
 
-      <section className="pt-8">
+      <section className="pt-8" id="premium-panel">
         <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
 
