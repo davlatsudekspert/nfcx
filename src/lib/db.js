@@ -201,6 +201,20 @@ export const dbUpdateFile = (code, id, data) =>
 export const dbDeleteFile = (code, id) =>
   api(`/records/${encodeURIComponent(code)}/files/${id}`, { method: 'DELETE' });
 
+// ---------- Mening NFC qurilmalarim (Band 3.5) ----------
+
+export async function dbListNfcDevices() {
+  try {
+    const j = await api('/my/nfc-devices');
+    return (j && j.devices) || [];
+  } catch {
+    return [];
+  }
+}
+
+export const dbUpdateNfcDevice = (id, data) =>
+  api(`/my/nfc-devices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

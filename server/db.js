@@ -661,6 +661,15 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS physical_cards_code_idx ON physical_cards (linked_code)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS physical_cards_owner_idx ON physical_cards (owner_user_id)`);
+  // blocked_by_owner — egasi qurilmani vaqtincha bloklaydi (admin `active`
+  // bilan aralashmasin — Band 3.5).
+  {
+    const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'physical_cards' AND column_name = 'blocked_by_owner'`);
+    if (!rows.length) {
+      await pool.query(`ALTER TABLE physical_cards ADD COLUMN blocked_by_owner BOOLEAN NOT NULL DEFAULT FALSE`);
+      console.log('[db] physical_cards.blocked_by_owner ustuni qo’shildi.');
+    }
+  }
 
   // Premium profilga o'tish so'rovlari — ESKI (dormant) oqim: NFC Coin +
   // admin tasdig'i. Hozirgi oqim to'g'ridan-to'g'ri Payme (requestPremium),
@@ -3248,9 +3257,62 @@ export async function createPhysicalCard({ linkedCode, ownerUserId, shippingName
 // eski egasi) — active=false qaytadi, frontend "karta faol emas" ko'rsatadi.
 export async function resolvePhysicalCard(chipToken) {
   const { rows } = await pool.query(
-    `SELECT chip_token AS "chipToken", linked_code AS "linkedCode", active
+    `SELECT chip_token AS "chipToken", linked_code AS "linkedCode", active,
+            blocked_by_owner AS "blockedByOwner"
      FROM physical_cards WHERE chip_token = $1`,
     [chipToken]
+  );
+  return rows[0] || null;
+}
+
+// ---------- Mening NFC qurilmalarim (Band 3.5) ----------
+
+export async function listPhysicalCardsByOwner(userId) {
+  const { rows } = await pool.query(
+    `SELECT pc.id, pc.chip_token AS "chipToken", pc.linked_code AS "linkedCode",
+            pc.active, pc.blocked_by_owner AS "blockedByOwner", pc.status,
+            pc.created_at AS "createdAt", c.name AS "linkedName"
+       FROM physical_cards pc
+       LEFT JOIN cards c ON c.code = pc.linked_code
+      WHERE pc.owner_user_id = $1
+      ORDER BY pc.created_at DESC`,
+    [userId]
+  );
+  // chip_token'ni to'liq oshkor qilmaymiz — faqat oxirgi 4 belgi.
+  return rows.map((r) => ({
+    id: r.id,
+    tokenTail: String(r.chipToken || '').slice(-4).toUpperCase(),
+    linkedCode: r.linkedCode,
+    linkedName: r.linkedName || '',
+    active: r.active,
+    blockedByOwner: r.blockedByOwner,
+    status: r.status,
+    createdAt: r.createdAt,
+  }));
+}
+
+// linked_code'ni O'ZGARTIRADI — faqat foydalanuvchi ega bo'lgan qurilma va
+// faqat foydalanuvchi ega bo'lgan kodga (IDOR himoyasi).
+export async function setPhysicalCardLink(id, ownerUserId, code) {
+  const { rows: own } = await pool.query(
+    `SELECT 1 FROM cards WHERE code = $1 AND user_id = $2`, [code, ownerUserId]
+  );
+  if (!own[0]) return { error: 'NOT_YOUR_CODE' };
+  const { rows } = await pool.query(
+    `UPDATE physical_cards SET linked_code = $3
+      WHERE id = $1 AND owner_user_id = $2
+      RETURNING id`,
+    [id, ownerUserId, code]
+  );
+  return rows[0] ? { ok: true } : { error: 'NOT_FOUND' };
+}
+
+export async function setPhysicalCardBlocked(id, ownerUserId, blocked) {
+  const { rows } = await pool.query(
+    `UPDATE physical_cards SET blocked_by_owner = $3
+      WHERE id = $1 AND owner_user_id = $2
+      RETURNING id, blocked_by_owner AS "blockedByOwner"`,
+    [id, ownerUserId, !!blocked]
   );
   return rows[0] || null;
 }

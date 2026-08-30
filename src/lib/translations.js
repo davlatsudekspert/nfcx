@@ -1202,4 +1202,12 @@ export const DICT = {
   'Fayl nomi (masalan: Narxnoma 2026)': { ru: 'Название файла (например: Прайс-лист 2026)', en: 'File name (e.g. Price list 2026)' },
   'PDF yuklash': { ru: 'Загрузить PDF', en: 'Upload PDF' },
   'Nomi': { ru: 'Название', en: 'Rename' },
+  'Mening NFC qurilmalarim': { ru: 'Мои NFC-устройства', en: 'My NFC devices' },
+  'Ulangan': { ru: 'Привязано к', en: 'Linked to' },
+  'Hech qaysi profilga ulanmagan': { ru: 'Не привязано ни к одному профилю', en: 'Not linked to any profile' },
+  'Admin tomonidan faolsizlantirilgan': { ru: 'Деактивировано администратором', en: 'Deactivated by admin' },
+  'Siz bloklagansiz': { ru: 'Вы заблокировали', en: 'Blocked by you' },
+  'Qayta faollashtirish': { ru: 'Активировать снова', en: 'Reactivate' },
+  'Vaqtincha bloklash': { ru: 'Временно заблокировать', en: 'Block temporarily' },
+  'Boshqa profilga ulash': { ru: 'Привязать к другому профилю', en: 'Link to another profile' },
 };

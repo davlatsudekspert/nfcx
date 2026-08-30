@@ -33,6 +33,7 @@ import {
   listWonAuctionsAwaitingPayment,
   isPhoneBotVerified,
   createPhysicalCard, resolvePhysicalCard,
+  listPhysicalCardsByOwner, setPhysicalCardLink, setPhysicalCardBlocked,
   requestPremium, getOwnerByCode,
   followUserFree, unfollowUser, getFollowStats, toggleLike, getLikeInfo,
   setCardTierOverride, listPostsByCode, createPost, deletePost, togglePostLike,
@@ -374,7 +375,47 @@ app.get('/api/tap/:chipToken', async (req, res) => {
   if (!isDbReady()) return res.json({ active: true }); // baza yo'q — bloklamaymiz
   const card = await resolvePhysicalCard(req.params.chipToken);
   if (!card) return res.json({ active: true }); // noma'lum token — jim o'tkazib yuboramiz
-  res.json({ active: card.active, linkedCode: card.linkedCode });
+  // Admin `active=false` (auksionda sotilgan) YOKI egasi vaqtincha bloklagan.
+  res.json({ active: card.active && !card.blockedByOwner, linkedCode: card.linkedCode });
+});
+
+// ---------- Mening NFC qurilmalarim (Band 3.5) ----------
+
+app.get('/api/my/nfc-devices', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.json({ devices: [] });
+  try {
+    res.json({ devices: await listPhysicalCardsByOwner(user.id) });
+  } catch (err) {
+    console.error('[api] nfc-devices:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/my/nfc-devices/:id', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  const b = req.body || {};
+  try {
+    if ('linkedCode' in b) {
+      const code = String(b.linkedCode || '').toUpperCase();
+      if (!validCode(code)) return res.status(422).json({ error: 'bad_code' });
+      const r = await setPhysicalCardLink(id, user.id, code);
+      if (r.error === 'NOT_YOUR_CODE') return res.status(403).json({ error: 'not_your_code' });
+      if (r.error) return res.status(404).json({ error: 'not_found' });
+    }
+    if ('blocked' in b) {
+      const r = await setPhysicalCardBlocked(id, user.id, b.blocked === true);
+      if (!r) return res.status(404).json({ error: 'not_found' });
+    }
+    res.json({ ok: true, devices: await listPhysicalCardsByOwner(user.id) });
+  } catch (err) {
+    console.error('[api] nfc-device update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
 });
 
 // ---------- Premium profil ----------
