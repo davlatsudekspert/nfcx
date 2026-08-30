@@ -3,11 +3,12 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   logCardEvent, cardEventStats, CARD_EVENT_TYPES,
+  createLead, listLeadsByCode, leadCountToday, deleteLead,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -170,6 +171,9 @@ const supportLimiter = rateLimit({ windowMs: 60_000, max: 5 });
 const auctionRequestLimiter = rateLimit({ windowMs: 60_000, max: 10 });
 // Analytics — bir IP'dan daqiqada 40 hodisa (view + link bosishlar).
 const eventLimiter = rateLimit({ windowMs: 60_000, max: 40 });
+// Lead formasi — spam/suiiste'moldan himoya: bir IP'dan daqiqada 3, soatiga 10.
+const leadLimiterMin = rateLimit({ windowMs: 60_000, max: 3 });
+const leadLimiterHour = rateLimit({ windowMs: 60 * 60_000, max: 10 });
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
@@ -266,6 +270,7 @@ function validateBody(body) {
   const city = cleanStr(body.city, 60);
   const categorySlug = String(body.categorySlug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
   const hiddenFromDirectory = body.hiddenFromDirectory === true;
+  const leadCapture = body.leadCapture === true;
   // Profil kartasi (nfcstore.uz/<kod> sahifasida ko'rinadigan NFC karta)
   // dizayni — ixtiyoriy: rang/finish, ustidagi ism matni, fon rasmi.
   let cardDesign = null;
@@ -349,6 +354,7 @@ function validateBody(body) {
   if ('city' in body) record.city = city;
   if ('categorySlug' in body) record.categorySlug = categorySlug;
   if ('hiddenFromDirectory' in body) record.hiddenFromDirectory = hiddenFromDirectory;
+  if ('leadCapture' in body) record.leadCapture = leadCapture;
   return { record };
 }
 
@@ -1271,6 +1277,10 @@ app.put('/api/records/:code', async (req, res) => {
     if ('cardDesign' in (req.body || {})) {
       guard('profileCardCustom', JSON.stringify(record.cardDesign || null) !== JSON.stringify(cur.cardDesign || null));
     }
+    // Lead formasini YOQISH — Gold+/Premium (o'chirish har doim mumkin).
+    if ('leadCapture' in (req.body || {})) {
+      guard('leadCapture', record.leadCapture === true && !cur.leadCapture);
+    }
 
     const updated = await updateRecord(code, record);
     if (!updated) return res.status(404).json({ error: 'not_found' });
@@ -1531,6 +1541,88 @@ app.get('/api/records/:code/analytics', async (req, res) => {
     res.json({ advanced: true, ...stats, legacyViews: rec ? rec.views : 0 });
   } catch (err) {
     console.error('[api] analytics:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Lead Capture (Band 3.2) ----------
+
+// Tashrifchi "Kontaktingizni qoldiring" formasi. Public — auth talab qilinmaydi.
+app.post('/api/records/:code/lead', leadLimiterMin, leadLimiterHour, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const b = req.body || {};
+  // Honeypot — botlar to'ldiradigan ko'rinmas maydon.
+  if (cleanStr(b.website_url, 200)) return res.json({ ok: true });
+  try {
+    const rec = await getRecord(code);
+    if (!rec) return res.status(404).json({ error: 'not_found' });
+    if (!rec.leadCapture) return res.status(403).json({ error: 'lead_disabled' });
+
+    // rec.isPremium — egasining Profile Premium holati (getRecord JOIN'dan).
+    const access = await cardAccess(code, null, rec);
+    // Gold+ / Premium — to'liq; Silver — kuniga 5; Free — yopiq.
+    let dailyCap = 0;
+    if (featureAllowed('leadCapture', access)) dailyCap = 100;
+    else if (hasAccess(access, 'silver')) dailyCap = 5;
+    if (dailyCap === 0) return res.status(403).json({ error: 'lead_disabled' });
+    if ((await leadCountToday(code)) >= dailyCap) {
+      return res.status(429).json({ error: 'lead_limit_reached' });
+    }
+
+    const name = cleanStr(b.name, 80).trim();
+    const lead = {
+      name,
+      phone: cleanStr(b.phone, 40).trim(),
+      telegram: cleanStr(b.telegram, 60).trim().replace(/^@/, ''),
+      whatsapp: cleanStr(b.whatsapp, 40).trim(),
+      email: cleanStr(b.email, 120).trim(),
+      company: cleanStr(b.company, 100).trim(),
+      note: cleanStr(b.note, 500).trim(),
+      visitorHash: visitorHash(req, code),
+    };
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if (!lead.phone && !lead.telegram && !lead.whatsapp && !lead.email) {
+      return res.status(422).json({ error: 'contact_required' });
+    }
+    await createLead(code, lead);
+    logCardEvent(code, 'lead', { visitorHash: lead.visitorHash }).catch(() => {});
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    console.error('[api] lead:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Egaga leadlar ro'yxati.
+app.get('/api/records/:code/leads', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    res.json({ leads: await listLeadsByCode(code) });
+  } catch (err) {
+    console.error('[api] leads list:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/leads/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    await deleteLead(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] lead delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

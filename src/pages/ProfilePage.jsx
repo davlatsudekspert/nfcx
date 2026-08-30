@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -296,6 +296,75 @@ function PostsFeed({ posts, onLike, t }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Lead Capture (Band 3.2) — tashrifchi kontaktini qoldiradi. Egasi
+// "Lidlarni yig'ish" ni yoqqan Gold+/Premium profillarda ko'rinadi.
+function LeadForm({ code, linkBtn }) {
+  const { t } = useLanguage();
+  const [f, setF] = useState({ name: '', phone: '', telegram: '', email: '', company: '', note: '', website_url: '' });
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+
+  const submit = async () => {
+    setErr('');
+    if (!f.name.trim()) { setErr(t('Ismingizni kiriting.')); return; }
+    if (!f.phone.trim() && !f.telegram.trim() && !f.email.trim()) {
+      setErr(t('Kamida bitta aloqa usulini qoldiring (telefon, Telegram yoki email).'));
+      return;
+    }
+    setBusy(true);
+    try {
+      await dbSubmitLead(code, f);
+      setDone(true);
+    } catch (e) {
+      const m = {
+        lead_limit_reached: t('Bugungi limit tugadi, ertaga urinib ko‘ring.'),
+        lead_disabled: t('Bu profil hozircha kontakt qabul qilmayapti.'),
+        contact_required: t('Kamida bitta aloqa usulini qoldiring (telefon, Telegram yoki email).'),
+        name_required: t('Ismingizni kiriting.'),
+        too_many_requests: t('Juda ko‘p urinish. Birozdan so‘ng qayta urining.'),
+      };
+      setErr(m[e.code] || t('Yuborishda xatolik. Qayta urining.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inCls = 'w-full rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-2.5 text-[13.5px] text-[color:var(--vz-ink)] outline-none placeholder:text-[color:var(--vz-ink-faint)] focus:border-[color:var(--vz-ink-dim)]';
+
+  if (done) {
+    return (
+      <div className="mt-6 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-5 text-center">
+        <div className="text-2xl">✅</div>
+        <div className="mt-1.5 text-[14px] font-bold text-[color:var(--vz-ink)]">{t('Rahmat! Kontaktingiz yuborildi.')}</div>
+        <div className="mt-1 text-[12.5px] text-[color:var(--vz-ink-faint)]">{t('Profil egasi tez orada bog‘lanadi.')}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-5">
+      <div className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--vz-ink)]">{t('Kontaktingizni qoldiring')}</div>
+      <div className="mt-1 text-[12px] text-[color:var(--vz-ink-faint)]">{t('Profil egasi siz bilan bog‘lanadi.')}</div>
+      <div className="mt-3 flex flex-col gap-2">
+        <input className={inCls} value={f.name} onChange={set('name')} placeholder={t('Ismingiz')} autoComplete="name" />
+        <input className={inCls} value={f.phone} onChange={set('phone')} placeholder={t('Telefon')} inputMode="tel" autoComplete="tel" />
+        <input className={inCls} value={f.telegram} onChange={set('telegram')} placeholder="Telegram (@username)" />
+        <input className={inCls} value={f.email} onChange={set('email')} placeholder="Email" inputMode="email" autoComplete="email" />
+        <input className={inCls} value={f.company} onChange={set('company')} placeholder={t('Kompaniya (ixtiyoriy)')} />
+        <textarea className={inCls} value={f.note} onChange={set('note')} rows={2} placeholder={t('Izoh (ixtiyoriy)')} />
+        {/* Honeypot — ekranда ko'rinmaydi, faqat botlar to'ldiradi */}
+        <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={f.website_url} onChange={set('website_url')} />
+      </div>
+      {err && <div className="mt-2 text-[12.5px] text-red-400">{err}</div>}
+      <button onClick={submit} disabled={busy} className={`${linkBtn} mt-3 w-full cursor-pointer disabled:opacity-60`}>
+        {busy ? t('Yuborilmoqda...') : t('Yuborish')}
+      </button>
     </div>
   );
 }
@@ -762,6 +831,8 @@ export default function ProfilePage({ code, catalog }) {
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
+
+            {record.leadCapture && !isOwner && <LeadForm code={record.code} linkBtn={linkBtn} />}
 
             {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
                 Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida

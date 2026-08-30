@@ -130,6 +130,33 @@ export async function dbGetAnalytics(code, days) {
   return api(`/records/${encodeURIComponent(code)}/analytics${qs}`);
 }
 
+// ---------- Lead Capture (Band 3.2) ----------
+
+// Tashrifchi kontakt qoldiradi. Xato bo'lsa Error tashlaydi (.code bilan).
+export async function dbSubmitLead(code, data) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/lead`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const e = new Error(j.error || 'error');
+    e.code = j.error || 'error';
+    throw e;
+  }
+  return j;
+}
+
+export async function dbListLeads(code) {
+  const j = await api(`/records/${encodeURIComponent(code)}/leads`);
+  return (j && j.leads) || [];
+}
+
+export async function dbDeleteLead(code, id) {
+  return api(`/records/${encodeURIComponent(code)}/leads/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

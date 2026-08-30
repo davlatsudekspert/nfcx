@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -185,6 +185,52 @@ function AnalyticsSection({ code, advancedAllowed, onLock }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Lead Capture (Band 3.2) — egaga kelgan kontaktlar ro'yxati.
+function LeadsSection({ code, enabled }) {
+  const { t } = useLanguage();
+  const [leads, setLeads] = useState(null);
+  const [err, setErr] = useState(false);
+
+  const load = () => dbListLeads(code).then(setLeads).catch(() => setErr(true));
+  useEffect(() => { if (enabled) load(); }, [code, enabled]);
+
+  const remove = async (id) => {
+    if (!confirm(t('Bu lidni o‘chirasizmi?'))) return;
+    try { await dbDeleteLead(code, id); setLeads((ls) => (ls || []).filter((l) => l.id !== id)); }
+    catch { /* jim */ }
+  };
+
+  if (!enabled) {
+    return <div className="text-sm text-base-content/50">{t('«Lidlarni yig‘ish» yoqilmagan — yoqsangiz, profilingizda kontakt formasi paydo bo‘ladi.')}</div>;
+  }
+  if (err) return <div className="text-sm text-error">{t('Lidlarni yuklab bo‘lmadi.')}</div>;
+  if (!leads) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (leads.length === 0) return <div className="text-sm text-base-content/45">{t('Hozircha lid yo‘q.')}</div>;
+
+  return (
+    <div className="space-y-2">
+      {leads.map((l) => (
+        <div key={l.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-semibold">{l.name}{l.company ? ` · ${l.company}` : ''}</div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-base-content/70">
+                {l.phone && <a className="link" href={`tel:${l.phone}`}>{l.phone}</a>}
+                {l.telegram && <a className="link" href={`https://t.me/${l.telegram}`} target="_blank" rel="noreferrer">@{l.telegram}</a>}
+                {l.whatsapp && <a className="link" href={`https://wa.me/${l.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>}
+                {l.email && <a className="link" href={`mailto:${l.email}`}>{l.email}</a>}
+              </div>
+              {l.note && <div className="mt-1 whitespace-pre-wrap text-[12.5px] text-base-content/55">{l.note}</div>}
+              <div className="mt-1 text-[11px] text-base-content/35">{timeAgo(new Date(l.createdAt).getTime())}</div>
+            </div>
+            <button className="btn btn-ghost btn-xs shrink-0" onClick={() => remove(l.id)}>{t("O'chirish")}</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -842,6 +888,7 @@ function EditCardForm({ card, onSaved }) {
     city: card.city || '',
     categorySlug: card.categorySlug || '',
     hiddenFromDirectory: !!card.hiddenFromDirectory,
+    leadCapture: !!card.leadCapture,
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
 
@@ -1002,6 +1049,7 @@ function EditCardForm({ card, onSaved }) {
         city: form.city.trim(),
         categorySlug: form.categorySlug,
         hiddenFromDirectory: form.hiddenFromDirectory,
+        leadCapture: form.leadCapture,
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
         accentColor: form.accentColor,
@@ -1039,6 +1087,7 @@ function EditCardForm({ card, onSaved }) {
           advancedColors: t('Maxsus ranglar'),
           profileCardCustom: t('Karta dizayni'),
           linkStyle: t('Havola tugmalari uslubi'),
+          leadCapture: t('Lidlarni yig‘ish'),
         };
         setLocked(labels[err.feature] || t('Bu sozlama'));
         setBusy(false);
@@ -1428,6 +1477,22 @@ function EditCardForm({ card, onSaved }) {
               advancedAllowed={allow('advancedAnalytics')}
               onLock={() => setLocked(t('Kengaytirilgan statistika'))}
             />
+          </Section>
+
+          <Section title={t('Lidlar')} subtitle={t('Tashrifchilar qoldirgan kontaktlar')}>
+            <Gate ok={allow('leadCapture')} onLock={() => setLocked(t('Lidlarni yig‘ish'))}>
+              <label className="flex items-start gap-2.5 text-sm">
+                <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.leadCapture}
+                  onChange={(e) => setForm((f) => ({ ...f, leadCapture: e.target.checked }))} />
+                <span>
+                  {t('Profilimda «Kontaktingizni qoldiring» formasini ko‘rsatish')}
+                  <span className="mt-0.5 block text-xs text-base-content/45">{t('Tashrifchi ism va aloqa ma’lumotini qoldiradi — siz bu yerda ko‘rasiz.')}</span>
+                </span>
+              </label>
+            </Gate>
+            <div className="mt-4">
+              <LeadsSection code={card.code} enabled={!!card.leadCapture} />
+            </div>
           </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>

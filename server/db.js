@@ -952,6 +952,34 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS card_events_code_time_idx ON card_events (code, created_at DESC)`);
 
+  // ── Lead Capture (Band 3.2) ────────────────────────────────────────
+  // Tashrifchi "Kontaktingizni qoldiring" formasi orqali qoldirgan
+  // kontaktlar. Mavjud vCard / xabarlashish tizimiga tegmaydi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_leads (
+      id           BIGSERIAL PRIMARY KEY,
+      code         VARCHAR(16) NOT NULL,
+      name         TEXT NOT NULL,
+      phone        TEXT,
+      telegram     TEXT,
+      whatsapp     TEXT,
+      email        TEXT,
+      company      TEXT,
+      note         TEXT,
+      visitor_hash VARCHAR(64),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_leads_code_time_idx ON card_leads (code, created_at DESC)`);
+  // cards.lead_capture — egasi lead formasini yoqadi (default o'chiq).
+  {
+    const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'cards' AND column_name = 'lead_capture'`);
+    if (!rows.length) {
+      await pool.query(`ALTER TABLE cards ADD COLUMN lead_capture BOOLEAN NOT NULL DEFAULT FALSE`);
+      console.log('[db] cards.lead_capture ustuni qo’shildi.');
+    }
+  }
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -1149,6 +1177,7 @@ const SELECT_FIELDS = `
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
   links_transparent AS "linksTransparent", link_style AS "linkStyle",
   profile_type AS "profileType", city, category_slug AS "categorySlug", hidden_from_directory AS "hiddenFromDirectory",
+  lead_capture AS "leadCapture",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
@@ -1178,6 +1207,7 @@ function rowToRecord(row) {
     city: row.city || '',
     categorySlug: row.categorySlug || '',
     hiddenFromDirectory: !!row.hiddenFromDirectory,
+    leadCapture: !!row.leadCapture,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
@@ -1227,7 +1257,7 @@ export async function getRecord(code) {
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
             c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle",
             c.profile_type AS "profileType", c.city, c.category_slug AS "categorySlug",
-            c.hidden_from_directory AS "hiddenFromDirectory", c.hide_phone AS "hidePhone",
+            c.hidden_from_directory AS "hiddenFromDirectory", c.lead_capture AS "leadCapture", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride", c.card_design AS "cardDesign",
@@ -1354,6 +1384,47 @@ export async function cardEventStats(code, days = 30) {
     byDay: byDay.rows,
     byRef: byRef.rows,
   };
+}
+
+// ---------- Lead Capture (Band 3.2) ----------
+
+export async function createLead(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO card_leads (code, name, phone, telegram, whatsapp, email, company, note, visitor_hash)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     RETURNING id, created_at AS "createdAt"`,
+    [code, f.name, f.phone || null, f.telegram || null, f.whatsapp || null,
+     f.email || null, f.company || null, f.note || null, f.visitorHash || null]
+  );
+  return rows[0];
+}
+
+export async function listLeadsByCode(code, limit = 200) {
+  const { rows } = await pool.query(
+    `SELECT id, name, phone, telegram, whatsapp, email, company, note,
+            created_at AS "createdAt"
+       FROM card_leads WHERE code = $1 ORDER BY created_at DESC LIMIT $2`,
+    [code, Math.max(1, Math.min(500, limit))]
+  );
+  return rows;
+}
+
+export async function leadCount(code) {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM card_leads WHERE code = $1`, [code]);
+  return rows[0]?.n || 0;
+}
+
+// Bir profilga oxirgi 24 soatda kelgan lead soni — tarif limitini tekshirish uchun.
+export async function leadCountToday(code) {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM card_leads WHERE code = $1 AND created_at >= now() - interval '24 hours'`,
+    [code]
+  );
+  return rows[0]?.n || 0;
+}
+
+export async function deleteLead(code, id) {
+  await pool.query(`DELETE FROM card_leads WHERE code = $1 AND id = $2`, [code, id]);
 }
 
 // ---------- Auth ----------
@@ -1934,6 +2005,7 @@ export async function updateRecord(code, fields) {
     city: 'city',
     categorySlug: 'category_slug',
     hiddenFromDirectory: 'hidden_from_directory',
+    leadCapture: 'lead_capture',
     musicUrl: 'music_url',
     tg: 'tg',
     phone: 'phone',
