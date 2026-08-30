@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { priceForCode } from '../src/lib/pricing.js';
+import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
@@ -50,7 +50,7 @@ import { UPLOAD_DIR, UPLOADS_PERSISTENT } from './paths.js';
 const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
 const AUCTION_MAX_HOURS = 72;
 const PHYSICAL_CARD_FEE = 200_000;  // Jismoniy karta narxi
-const PREMIUM_UPGRADE_FEE = 5_000;  // Premium profil bo'lish narxi
+const PREMIUM_UPGRADE_FEE = PROFILE_PREMIUM_FEE;  // Profile Premium narxi — src/lib/pricing.js
 // To'lovlar production uchun alohida feature flag bilan yoqiladi. Faqat Payme
 // credentiallari mavjudligi to'lov oqimini tasodifan faollashtirmasligi kerak.
 const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';

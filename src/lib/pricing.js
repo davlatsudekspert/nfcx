@@ -183,6 +183,12 @@ export function tierForCode(code) {
 // bu kod to'g'ridan-to'g'ri sotib olinmaydi, faqat admin ochgan auksion
 // orqali egasini topadi.
 export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 0 };
+
+// PROFILE PREMIUM narxi — NFC ID darajasidan ALOHIDA. Bir martalik to'lov;
+// profil funksiyalarini (post, musiqa, maxsus fon, analitika va h.k.) ochadi,
+// NFC ID kodini/tarifini o'zgartirmaydi. Frontend ham, backend ham SHU
+// yagona konstantani ishlatadi.
+export const PROFILE_PREMIUM_FEE = 20000;
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
 // Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Emerald.

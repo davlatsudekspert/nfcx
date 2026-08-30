@@ -654,9 +654,9 @@ export async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS physical_cards_code_idx ON physical_cards (linked_code)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS physical_cards_owner_idx ON physical_cards (owner_user_id)`);
 
-  // Premium profilga o'tish so'rovlari — foydalanuvchi 5000 NFC Coin to'laydi
-  // (darhol ushlab qolinadi), admin panelda ko'rib chiqib tasdiqlaydi
-  // (is_premium=true) yoki rad etadi (pul avtomatik qaytariladi).
+  // Premium profilga o'tish so'rovlari — ESKI (dormant) oqim: NFC Coin +
+  // admin tasdig'i. Hozirgi oqim to'g'ridan-to'g'ri Payme (requestPremium),
+  // admin tasdig'i shart emas. Jadval eski ma'lumot uchun saqlanadi.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS premium_requests (
       id          SERIAL PRIMARY KEY,
@@ -2719,7 +2719,8 @@ export async function resolvePhysicalCard(chipToken) {
 
 // ---------- Premium profil so'rovlari ----------
 
-// Premium profilga o'tish uchun real Payme to'lovini boshlaydi (5000 so'm).
+// Premium profilga o'tish uchun real Payme to'lovini boshlaydi (narx —
+// PROFILE_PREMIUM_FEE, src/lib/pricing.js; index.js summani shu yerga uzatadi).
 // E-wallet yo'q — pul darhol yechilmaydi, foydalanuvchi Payme checkout'iga
 // yo'naltiriladi, is_premium faqat to'lov webhook orqali TASDIQLANGANDA
 // TRUE bo'ladi (finalizePremiumUpgrade() orqali).

@@ -9,7 +9,7 @@ import { MESSAGING_ENABLED, PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import { vzStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
-import { tierForCode } from '../lib/pricing.js';
+import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
@@ -143,9 +143,10 @@ function audioFileToDataUrl(file) {
   });
 }
 
-const PREMIUM_FEE = 5000;
+const PREMIUM_FEE = PROFILE_PREMIUM_FEE;  // src/lib/pricing.js — yagona manba
 
-// Premium profilga o'tish — real Payme to'lovi (5000 so'm). E-wallet yo'q:
+// Premium profilga o'tish — real Payme to'lovi (narx: PROFILE_PREMIUM_FEE,
+// src/lib/pricing.js). E-wallet yo'q:
 // to'lov tasdiqlangach status avtomatik "Premium"ga o'zgaradi (admin
 // tasdig'i shart emas, chunki Payme to'lovning o'zi tasdiq beradi).
 // Foydalanuvchi auksionda yutgan, hali to'lamagan kodlari — aniq
