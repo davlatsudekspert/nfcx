@@ -92,3 +92,11 @@ export function postLimitFor(currentAccess) {
 export function menuLimitsFor(currentAccess) {
   return MENU_LIMITS[currentAccess] || MENU_LIMITS.free;
 }
+
+// ── Fayl / PDF / katalog limiti (Band 3.4) ─────────────────────────────
+// Gold+ — spec §58. Mavjud fayllar hech qachon o'chirilmaydi.
+export const FILE_LIMIT = { free: 0, silver: 0, gold: 5, premium: 15, exclusive: 999 };
+
+export function fileLimitFor(currentAccess) {
+  return FILE_LIMIT[currentAccess] ?? 0;
+}

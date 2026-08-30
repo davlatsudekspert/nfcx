@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, fileLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
@@ -12,6 +12,7 @@ import {
   getMenu, menuCounts, menuCategoryBelongs,
   createMenuCategory, updateMenuCategory, deleteMenuCategory,
   createMenuItem, updateMenuItem, deleteMenuItem,
+  listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -1871,6 +1872,104 @@ app.post('/api/upload-audio', async (req, res) => {
   } catch (err) {
     console.error('[api] upload-audio:', err.message);
     res.status(500).json({ error: 'upload_failed' });
+  }
+});
+
+// ---------- Fayl / PDF / katalog (Band 3.4) ----------
+
+const PDF_RE = /^data:(application\/pdf);base64,(.+)$/;
+const fileLimiter = rateLimit({ windowMs: 60 * 60_000, max: 20 });
+
+// PDF yuklash — faqat egaga tegishli kartaga, Gold+ tarif, hajm cheklangan.
+app.post('/api/records/:code/files', fileLimiter, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const rec = await getRecord(code);
+    const access = await cardAccess(code, user, rec);
+    if (!featureAllowed('fileCatalog', access)) {
+      return res.status(403).json({ error: 'feature_locked', feature: 'fileCatalog' });
+    }
+    const limit = fileLimitFor(access);
+    if ((await cardFileCount(code)) >= limit) {
+      return res.status(429).json({ error: 'limit_reached', limit });
+    }
+    const m = PDF_RE.exec(String(req.body?.dataUrl || ''));
+    if (!m) return res.status(422).json({ error: 'bad_file' });
+    const buf = Buffer.from(m[2], 'base64');
+    if (!buf.length) return res.status(422).json({ error: 'bad_file' });
+    if (buf.length > 8 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+    // Ikki bosqichli tekshiruv: PDF sehrli baytlari (%PDF-).
+    if (buf.slice(0, 5).toString('latin1') !== '%PDF-') return res.status(422).json({ error: 'bad_file' });
+
+    const title = cleanStr(req.body?.title, 80).trim() || 'Hujjat';
+    await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    const name = `file_${crypto.randomBytes(12).toString('hex')}.pdf`;
+    await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+    const row = await createCardFile(code, { title, fileUrl: `/uploads/${name}`, sizeBytes: buf.length });
+    res.status(201).json(row);
+  } catch (err) {
+    console.error('[api] file upload:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Public — profil sahifasidagi "Fayllar" bo'limi.
+app.get('/api/records/:code/files', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ files: await listCardFiles(code) });
+  } catch (err) {
+    console.error('[api] files list:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/files/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const f = {};
+    if ('title' in (req.body || {})) f.title = cleanStr(req.body.title, 80).trim();
+    if ('sort' in (req.body || {})) f.sort = Number(req.body.sort) || 0;
+    const row = await updateCardFile(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] file update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/files/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const fileUrl = await deleteCardFile(code, Number(req.params.id));
+    if (fileUrl && fileUrl.startsWith('/uploads/')) {
+      const fname = fileUrl.slice('/uploads/'.length);
+      if (/^file_[a-f0-9]+\.pdf$/.test(fname)) {
+        fs.unlink(path.join(UPLOAD_DIR, fname)).catch(() => {});
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] file delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
   }
 });
 

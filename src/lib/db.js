@@ -182,6 +182,25 @@ export const dbAddMenuItem = (code, data) => menuApi(code, '/items', { method: '
 export const dbUpdateMenuItem = (code, id, data) => menuApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const dbDeleteMenuItem = (code, id) => menuApi(code, `/items/${id}`, { method: 'DELETE' });
 
+// ---------- Fayl / PDF / katalog (Band 3.4) ----------
+
+export async function dbGetFiles(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/files`);
+    return (j && j.files) || [];
+  } catch {
+    return [];
+  }
+}
+
+// title + PDF dataURL. Xatoда Error tashlaydi (.message: bad_file | too_large | limit_reached | feature_locked).
+export const dbUploadFile = (code, title, dataUrl) =>
+  api(`/records/${encodeURIComponent(code)}/files`, { method: 'POST', body: JSON.stringify({ title, dataUrl }) });
+export const dbUpdateFile = (code, id, data) =>
+  api(`/records/${encodeURIComponent(code)}/files/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteFile = (code, id) =>
+  api(`/records/${encodeURIComponent(code)}/files/${id}`, { method: 'DELETE' });
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

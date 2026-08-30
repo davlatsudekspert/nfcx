@@ -1011,6 +1011,20 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_code_idx ON menu_items (code, category_id, sort)`);
 
+  // ── Fayl / PDF / katalog (Band 3.4) ───────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_files (
+      id          BIGSERIAL PRIMARY KEY,
+      code        VARCHAR(16) NOT NULL,
+      title       TEXT NOT NULL,
+      file_url    TEXT NOT NULL,
+      size_bytes  BIGINT,
+      sort        INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_files_code_idx ON card_files (code, sort)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -1571,6 +1585,52 @@ export async function updateMenuItem(code, id, f) {
 
 export async function deleteMenuItem(code, id) {
   await pool.query(`DELETE FROM menu_items WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// ---------- Fayl / PDF / katalog (Band 3.4) ----------
+
+const fileRow = (r) => (r ? { ...r, sizeBytes: r.sizeBytes == null ? null : Number(r.sizeBytes) } : null);
+
+export async function listCardFiles(code) {
+  const { rows } = await pool.query(
+    `SELECT id, title, file_url AS "fileUrl", size_bytes AS "sizeBytes", sort, created_at AS "createdAt"
+       FROM card_files WHERE code = $1 ORDER BY sort, id`,
+    [code]
+  );
+  return rows.map(fileRow);
+}
+
+export async function cardFileCount(code) {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM card_files WHERE code = $1`, [code]);
+  return rows[0]?.n || 0;
+}
+
+export async function createCardFile(code, { title, fileUrl, sizeBytes, sort }) {
+  const { rows } = await pool.query(
+    `INSERT INTO card_files (code, title, file_url, size_bytes, sort)
+     VALUES ($1,$2,$3,$4,$5)
+     RETURNING id, title, file_url AS "fileUrl", size_bytes AS "sizeBytes", sort, created_at AS "createdAt"`,
+    [code, title, fileUrl, sizeBytes ?? null, sort || 0]
+  );
+  return fileRow(rows[0]);
+}
+
+export async function updateCardFile(code, id, f) {
+  const { rows } = await pool.query(
+    `UPDATE card_files SET title = COALESCE($3, title), sort = COALESCE($4, sort)
+      WHERE code = $1 AND id = $2
+      RETURNING id, title, file_url AS "fileUrl", size_bytes AS "sizeBytes", sort, created_at AS "createdAt"`,
+    [code, id, f.title ?? null, f.sort ?? null]
+  );
+  return fileRow(rows[0]) || null;
+}
+
+export async function deleteCardFile(code, id) {
+  const { rows } = await pool.query(
+    `DELETE FROM card_files WHERE code = $1 AND id = $2 RETURNING file_url AS "fileUrl"`,
+    [code, id]
+  );
+  return rows[0]?.fileUrl || null;
 }
 
 // ---------- Auth ----------

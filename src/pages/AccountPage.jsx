@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -11,7 +11,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, fileLimitFor } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -422,6 +422,102 @@ function MenuManagerSection({ code, allowed, onLock }) {
           <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Ichimliklar)')}
             value={newCat} onChange={(e) => setNewCat(e.target.value)} />
           <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Fayl / PDF / katalog (Band 3.4) — egaga boshqaruv.
+function FilesSection({ code, access, allowed, onLock }) {
+  const { t } = useLanguage();
+  const [files, setFiles] = useState(null);
+  const [err, setErr] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const limit = fileLimitFor(access);
+
+  const load = () => dbGetFiles(code).then(setFiles).catch(() => setErr(true));
+  useEffect(() => { if (allowed) load(); }, [code, allowed]);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+
+  const onFile = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    if (file.type !== 'application/pdf') { flash(t('Faqat PDF fayl qabul qilinadi.')); return; }
+    if (file.size > 8 * 1024 * 1024) { flash(t('Fayl hajmi 8 MB dan oshmasligi kerak.')); return; }
+    setBusy(true);
+    try {
+      const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onerror = () => rej(new Error('read'));
+        r.onload = () => res(r.result);
+        r.readAsDataURL(file);
+      });
+      await dbUploadFile(code, title.trim() || file.name.replace(/\.pdf$/i, ''), dataUrl);
+      setTitle('');
+      await load();
+    } catch (er) {
+      const m = {
+        limit_reached: t('Fayl limiti tugadi ({n} ta).', { n: limit }),
+        too_large: t('Fayl hajmi 8 MB dan oshmasligi kerak.'),
+        bad_file: t('Faqat PDF fayl qabul qilinadi.'),
+        feature_locked: t('Fayllar — Gold NFC ID yoki Profile Premiumda ochiladi.'),
+      };
+      flash(m[er.message] || t('Yuklashda xatolik.'));
+    } finally { setBusy(false); }
+  };
+
+  const rename = async (f) => {
+    const v = prompt(t('Fayl nomi'), f.title);
+    if (v == null || !v.trim() || v.trim() === f.title) return;
+    await dbUpdateFile(code, f.id, { title: v.trim() });
+    await load();
+  };
+  const del = async (f) => {
+    if (!confirm(t('Bu faylni o‘chirasizmi?'))) return;
+    await dbDeleteFile(code, f.id);
+    setFiles((fs) => (fs || []).filter((x) => x.id !== f.id));
+  };
+
+  if (!allowed) {
+    return (
+      <button type="button" onClick={onLock}
+        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+        {'\u{1F512}'} {t('Fayllar — Gold NFC ID yoki Profile Premiumda ochiladi.')}
+      </button>
+    );
+  }
+  if (err) return <div className="text-sm text-error">{t('Fayllarni yuklab bo‘lmadi.')}</div>;
+  if (!files) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-base-content/50">{t('Fayllar')}: {files.length}/{limit} · {t('PDF, maks. 8 MB')}</div>
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      <div className="space-y-2">
+        {files.map((f) => (
+          <div key={f.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2.5">
+            <span className="text-accent">📄</span>
+            <a href={f.fileUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm font-semibold hover:underline">{f.title}</a>
+            {f.sizeBytes != null && <span className="shrink-0 text-[11px] text-base-content/40">{Math.round(f.sizeBytes / 1024)} KB</span>}
+            <button className="btn btn-ghost btn-xs" onClick={() => rename(f)}>{t('Nomi')}</button>
+            <button className="btn btn-ghost btn-xs text-error" onClick={() => del(f)}>{t("O'chirish")}</button>
+          </div>
+        ))}
+      </div>
+
+      {files.length < limit && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Fayl nomi (masalan: Narxnoma 2026)')}
+            value={title} onChange={(e) => setTitle(e.target.value)} />
+          <label className="btn btn-primary btn-sm">
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : t('PDF yuklash')}
+            <input type="file" accept="application/pdf" className="hidden" onChange={onFile} disabled={busy} />
+          </label>
         </div>
       )}
     </div>
@@ -1693,6 +1789,15 @@ function EditCardForm({ card, onSaved }) {
               code={card.code}
               allowed={allow('restaurantMenu')}
               onLock={() => setLocked(t('Restoran menyusi'))}
+            />
+          </Section>
+
+          <Section title={t('Fayllar va hujjatlar')} subtitle={t('PDF, narxnoma, katalog, CV')}>
+            <FilesSection
+              code={card.code}
+              access={access}
+              allowed={allow('fileCatalog')}
+              onLock={() => setLocked(t('Fayllar va hujjatlar'))}
             />
           </Section>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -427,6 +427,7 @@ export default function ProfilePage({ code, catalog }) {
   const [followMsg, setFollowMsg] = useState(null);
   const [posts, setPosts] = useState([]);
   const [menu, setMenu] = useState([]);
+  const [files, setFiles] = useState([]);
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -436,6 +437,7 @@ export default function ProfilePage({ code, catalog }) {
     dbGetLike(code).then(setLikeInfo).catch(() => {});
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
     dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
+    dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
   }, [code, user]);
 
   // "Menyu" tabi ochilganda bir marta menu_view hodisasini yozamiz.
@@ -897,6 +899,23 @@ export default function ProfilePage({ code, catalog }) {
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
+
+            {files.length > 0 && (
+              <div className="mt-5">
+                <div className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Fayllar')}</div>
+                <div className="flex flex-col gap-2">
+                  {files.map((f) => (
+                    <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" download
+                      onClick={() => track('link_click', 'file')}
+                      className="flex items-center gap-2.5 rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-3 text-[13.5px] font-semibold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-ink-dim)]">
+                      <span className="text-[color:var(--vz-accent)]">📄</span>
+                      <span className="min-w-0 flex-1 truncate">{f.title}</span>
+                      {f.sizeBytes != null && <span className="shrink-0 text-[11px] font-normal text-[color:var(--vz-ink-faint)]">{Math.round(f.sizeBytes / 1024)} KB</span>}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {record.leadCapture && !isOwner && <LeadForm code={record.code} linkBtn={linkBtn} />}
 
