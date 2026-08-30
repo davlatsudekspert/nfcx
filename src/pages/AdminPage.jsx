@@ -6,7 +6,7 @@ import {
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
-import { AdminShell } from '../components/admin/AdminUI.jsx';
+import { AdminShell, AdminCard, KpiCard, StatusBadge, EmptyState, chartGrid, chartAxis, chartTooltip } from '../components/admin/AdminUI.jsx';
 
 async function adminApi(path, options) {
   const res = await fetch('/api/admin' + path, {
@@ -127,19 +127,11 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab'];
 
-function StatCard({ label, value }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-base-200/60 p-4">
-      <div className="text-xs text-base-content/50">{label}</div>
-      <div className="mt-1 text-xl font-extrabold">{value}</div>
-    </div>
-  );
-}
-
 function StatsTab() {
   const { t } = useLanguage();
   const [stats, setStats] = useState(null);
   const [wallet, setWallet] = useState(null);
+  const [series, setSeries] = useState(null);
   const [range, setRange] = useState('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -147,6 +139,7 @@ function StatsTab() {
   useEffect(() => {
     adminApi('/stats').then(setStats).catch(() => {});
     adminApi('/platform-wallet').then((d) => setWallet(d.balance)).catch(() => {});
+    adminApi('/analytics').then((d) => setSeries(d.commissionSeries || [])).catch(() => {});
   }, []);
 
   const exportExcel = async () => {
@@ -174,35 +167,77 @@ function StatsTab() {
 
   if (!stats) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <div className="col-span-full flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-base-200/50 p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-base-content/50">{t("Davr:")}</span>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-xs text-base-content/45">{t("Davr:")}</span>
           {[['today', 'Bugun'], ['7d', '7 kun'], ['30d', '30 kun'], ['month', 'Shu oy'], ['custom', 'Custom']].map(([v, l]) => (
-            <button key={v} className={`btn btn-xs ${range === v ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setRange(v)}>{t(l)}</button>
+            <button
+              key={v}
+              onClick={() => setRange(v)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${range === v ? 'bg-accent text-accent-content' : 'border border-white/10 text-base-content/60 hover:text-base-content'}`}
+            >
+              {t(l)}
+            </button>
           ))}
           {range === 'custom' && (
             <span className="flex items-center gap-1">
               <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="input input-bordered input-xs bg-base-100" />
-              <span className="text-xs text-base-content/40">—</span>
+              <span className="text-xs text-base-content/40">{'\u2014'}</span>
               <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="input input-bordered input-xs bg-base-100" />
             </span>
           )}
         </div>
-        <button className="btn btn-accent btn-sm" disabled={exporting} onClick={exportExcel}>
-          {exporting ? <span className="loading loading-spinner loading-xs"></span> : t("\u{1F4E5} Excelga yuklab olish")}
+        <button className="btn btn-primary btn-sm gap-1.5" disabled={exporting} onClick={exportExcel}>
+          {exporting ? <span className="loading loading-spinner loading-xs"></span> : <>{'\u{1F4E5}'} {t("Hisobot yuklab olish")}</>}
         </button>
       </div>
-      <div className="col-span-full rounded-xl border border-accent/40 bg-accent/10 p-4">
-        <div className="text-xs text-base-content/50">{'\u{1F4B0}'} {t('Platforma daromadi (komissiyalar)')}</div>
-        <div className="mt-1 text-2xl font-extrabold text-accent">{wallet === null ? '\u2014' : fmt(wallet)} {t("so'm")}</div>
-        <p className="mt-1 text-xs text-base-content/45">{t("Auksion va premium obuna komissiyalaridan yig'ilgan real pul.")}</p>
+
+      <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1b1509] via-[#121013] to-[#0d0d10] p-6">
+        <div className="grid items-center gap-6 lg:grid-cols-[1fr_320px]">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-base-content/45">{t('Platforma daromadi (komissiyalar)')}</div>
+            <div className="mt-2 text-[38px] font-extrabold leading-none tracking-tight text-accent">
+              {wallet === null ? '\u2014' : fmt(wallet)} <span className="text-2xl">{t("so'm")}</span>
+            </div>
+            <p className="mt-2 max-w-md text-xs leading-relaxed text-base-content/45">{t("Auksion va premium obuna komissiyalaridan yig'ilgan real pul.")}</p>
+          </div>
+          <div className="hidden h-24 lg:block">
+            {series && series.length > 1 && (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={series} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
+                  <Line type="monotone" dataKey="total" stroke="#e8c165" strokeWidth={2} dot={false} />
+                  <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} labelFormatter={() => ''} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
       </div>
-      <StatCard label={t("Foydalanuvchilar")} value={fmt(stats.userCount)} />
-      <StatCard label={t("Band qilingan raqamli tashrif qog'ozlar")} value={fmt(stats.cardCount)} />
-      <StatCard label={t("Jami raqamli tashrif qog'ozi savdosi")} value={fmt(stats.totalCardSalesValue) + " " + t("so'm")} />
-      <StatCard label={t("Faol auksionlar")} value={fmt(stats.activeAuctions)} />
-      <StatCard label={t("Kutilayotgan buyurtmalar")} value={fmt(stats.pendingWebOrders)} />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <KpiCard icon="users" tone="info" label={t("Foydalanuvchilar")} value={fmt(stats.userCount)} />
+        <KpiCard icon="idcard" tone="success" label={t("Band qilingan NFC ID")} value={fmt(stats.cardCount)} />
+        <KpiCard icon="bag" tone="accent" label={t("Jami savdo (NFC ID)")} value={`${fmt(stats.totalCardSalesValue)} ${t("so'm")}`} />
+        <KpiCard icon="hammer" tone="pending" label={t("Faol auksionlar")} value={fmt(stats.activeAuctions)} />
+        <KpiCard icon="clipboard" tone="muted" label={t("Kutilayotgan buyurtmalar")} value={fmt(stats.pendingWebOrders)} />
+      </div>
+
+      {series && series.length > 1 && (
+        <AdminCard title={t("Platforma komissiyasi \u2014 kunlar bo'yicha (30 kun)")}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={series}>
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="day" {...chartAxis} />
+                <YAxis {...chartAxis} width={44} />
+                <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} />
+                <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="#e8c165" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </AdminCard>
+      )}
     </div>
   );
 }
@@ -229,83 +264,76 @@ function AnalyticsTab() {
   const breakdown = data.breakdown.map((b) => ({ ...b, label: t(KIND_LABEL[b.kind] || b.kind) }));
 
   return (
-    <div className="space-y-8">
-      <div>
-        <div className="text-sm font-bold">{t("Platforma komissiyasi \u2014 kunlar bo'yicha (30 kun)")}</div>
-        <div className="mt-3 h-64 rounded-xl border border-white/10 bg-base-200/40 p-3">
+    <div className="space-y-5">
+      <AdminCard title={t("Platforma komissiyasi \u2014 kunlar bo'yicha (30 kun)")}>
+        <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data.commissionSeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
-              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} />
-              <Line type="monotone" dataKey="total" name="Komissiya (so'm)" stroke="#f5a524" strokeWidth={2} dot={false} />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="day" {...chartAxis} />
+              <YAxis {...chartAxis} width={44} />
+              <Tooltip {...chartTooltip} formatter={(v) => [fmt(v) + " so'm", t('Komissiya')]} />
+              <Line type="monotone" dataKey="total" name={t('Komissiya')} stroke="#e8c165" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </AdminCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <div className="text-sm font-bold">{t("Yangi ro'yxatdan o'tishlar (30 kun)")}</div>
-          <div className="mt-3 h-64 rounded-xl border border-white/10 bg-base-200/40 p-3">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <AdminCard title={t("Yangi ro'yxatdan o'tishlar (30 kun)")}>
+          <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.signupsSeries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
-                <XAxis dataKey="day" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} />
-                <Bar dataKey="count" name="Ro'yxatdan o'tish" fill="#3abff8" radius={[4, 4, 0, 0]} />
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="day" {...chartAxis} />
+                <YAxis {...chartAxis} width={32} allowDecimals={false} />
+                <Tooltip {...chartTooltip} />
+                <Bar dataKey="count" name={t("Ro'yxatdan o'tish")} fill="#5aa9e0" radius={[4, 4, 0, 0]} maxBarSize={26} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </AdminCard>
 
-        <div>
-          <div className="text-sm font-bold">{t("Band qilingan raqamli tashrif qog'ozlar (30 kun)")}</div>
-          <div className="mt-3 h-64 rounded-xl border border-white/10 bg-base-200/40 p-3">
+        <AdminCard title={t("Band qilingan raqamli tashrif qog'ozlar (30 kun)")}>
+          <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.cardsSeries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
-                <XAxis dataKey="day" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} />
-                <Bar dataKey="count" name="Band qilingan" fill="#36d399" radius={[4, 4, 0, 0]} />
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="day" {...chartAxis} />
+                <YAxis {...chartAxis} width={32} allowDecimals={false} />
+                <Tooltip {...chartTooltip} />
+                <Bar dataKey="count" name={t("Band qilingan")} fill="#7fb28e" radius={[4, 4, 0, 0]} maxBarSize={26} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </AdminCard>
       </div>
 
-      <div>
-        <div className="text-sm font-bold">{t("Daromad turlari bo'yicha taqsimot")}</div>
-        <div className="mt-3 grid gap-4 lg:grid-cols-2">
-          <div className="h-72 rounded-xl border border-white/10 bg-base-200/40 p-3">
+      <AdminCard title={t("Daromad turlari bo'yicha taqsimot")}>
+        <div className="grid items-center gap-5 lg:grid-cols-2">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={breakdown} dataKey="total" nameKey="label" cx="50%" cy="50%" outerRadius={90} label={(e) => e.label}>
+                <Pie data={breakdown} dataKey="total" nameKey="label" cx="50%" cy="50%" innerRadius={52} outerRadius={88} paddingAngle={2} stroke="none">
                   {breakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: '#1a1a1c', border: '1px solid #ffffff20', fontSize: 12 }} formatter={(v) => fmt(v) + " so'm"} />
+                <Tooltip {...chartTooltip} formatter={(v) => fmt(v) + " so'm"} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="overflow-x-auto">
-            <table className="table table-sm">
-              <thead><tr><th>{t('Tur')}</th><th>{t('Soni')}</th><th>{t('Jami')}</th></tr></thead>
-              <tbody>
-                {breakdown.map((b) => (
-                  <tr key={b.kind}>
-                    <td>{b.label}</td>
-                    <td>{fmt(b.count)}</td>
-                    <td className="font-semibold">{fmt(b.total)} {t("so'm")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {breakdown.map((b, i) => (
+              <div key={b.kind} className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-2 text-sm last:border-0">
+                <span className="flex items-center gap-2 text-base-content/70">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  {b.label}
+                </span>
+                <span className="shrink-0 font-semibold">{fmt(b.total)} <span className="text-xs font-normal text-base-content/40">{t("so'm")}</span></span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </AdminCard>
 
       <ManualAdjustmentsSection />
     </div>

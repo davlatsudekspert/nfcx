@@ -806,6 +806,11 @@ export const DICT = {
   "Jami raqamli tashrif qog'ozi savdosi": { ru: 'Всего продаж цифровых визиток', en: 'Total digital card sales' },
   'Faol auksionlar': { ru: 'Активные аукционы', en: 'Active auctions' },
   'Kutilayotgan buyurtmalar': { ru: 'Ожидающие заказы', en: 'Pending orders' },
+  'Hisobot yuklab olish': { ru: 'Скачать отчёт', en: 'Download report' },
+  'Band qilingan NFC ID': { ru: 'Занятые NFC ID', en: 'Claimed NFC IDs' },
+  'Jami savdo (NFC ID)': { ru: 'Всего продаж (NFC ID)', en: 'Total sales (NFC ID)' },
+  'Komissiya': { ru: 'Комиссия', en: 'Commission' },
+  "Ro'yxatdan o'tish": { ru: 'Регистрация', en: 'Sign-up' },
   // Analytics
   "Platforma komissiyasi — kunlar bo'yicha (30 kun)": { ru: 'Комиссия платформы — по дням (30 дней)', en: 'Platform commission — by day (30 days)' },
   "Yangi ro'yxatdan o'tishlar (30 kun)": { ru: 'Новые регистрации (30 дней)', en: 'New sign-ups (30 days)' },

@@ -155,6 +155,15 @@ export function KpiCard({ icon = 'chart', label, value, sub, tone = 'accent' }) 
   );
 }
 
+// recharts uchun umumiy dark tema
+export const chartGrid = { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.07)', vertical: false };
+export const chartAxis = { tick: { fontSize: 10, fill: 'rgba(255,255,255,0.4)' }, axisLine: { stroke: 'rgba(255,255,255,0.1)' }, tickLine: false };
+export const chartTooltip = {
+  contentStyle: { background: '#16161a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, fontSize: 12, padding: '8px 12px' },
+  labelStyle: { color: 'rgba(255,255,255,0.55)', marginBottom: 4 },
+  cursor: { fill: 'rgba(255,255,255,0.04)' },
+};
+
 export function EmptyState({ icon = 'clipboard', title, hint, action }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-white/12 px-6 py-12 text-center">
