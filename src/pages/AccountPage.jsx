@@ -453,36 +453,44 @@ function PhonePreview({ form, code }) {
 // Rasmini klientda siqish: max 512px, JPEG ~85% (yuklash tez bo'lishi uchun).
 function fileToCompressedDataUrl(file) {
   return new Promise((resolve, reject) => {
-    // GIF \u2014 canvas orqali siqib bo'lmaydi (animatsiya yo'qoladi). Xom holida
-    // yuboriladi; server 3 MB gacha qabul qiladi.
-    if (file && file.type === 'image/gif') {
-      if (file.size > 3 * 1024 * 1024) {
-        reject(new Error('GIF hajmi 3 MB dan oshmasligi kerak.'));
+    // GIF ni MAGIC BAYTLAR bilan aniqlaymiz (iOS Safari file.type / fayl nomini
+    // ishonchsiz beradi). "GIF8" = 47 49 46 38. Aniqlansa \u2014 xom holida
+    // yuboriladi (canvas siqilsa animatsiya yo'qoladi), server 3 MB gacha.
+    const head = new FileReader();
+    head.onerror = () => reject(new Error('Fayl oqilmadi.'));
+    head.onload = () => {
+      const b = new Uint8Array(head.result || new ArrayBuffer(0));
+      const isGif = b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38;
+      if (isGif) {
+        if (file.size > 3 * 1024 * 1024) {
+          reject(new Error('GIF hajmi 3 MB dan oshmasligi kerak.'));
+          return;
+        }
+        const gr = new FileReader();
+        gr.onerror = () => reject(new Error('Fayl oqilmadi.'));
+        gr.onload = () => resolve(String(gr.result || '').replace(/^data:[^;]*;/, 'data:image/gif;'));
+        gr.readAsDataURL(file);
         return;
       }
-      const gr = new FileReader();
-      gr.onerror = () => reject(new Error('Fayl oqilmadi.'));
-      gr.onload = () => resolve(gr.result);
-      gr.readAsDataURL(file);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Rasm formati noto\u2019g\u2019ri.'));
-      img.onload = () => {
-        const max = 512;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Rasm formati noto\u2019g\u2019ri.'));
+        img.onload = () => {
+          const max = 512;
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = reader.result;
       };
-      img.src = reader.result;
+      reader.readAsDataURL(file);
     };
-    reader.readAsDataURL(file);
+    head.readAsArrayBuffer(file.slice(0, 4));
   });
 }
 
@@ -952,11 +960,12 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
             </div>
 
             <div className="mt-4">
-              <span className="text-xs font-semibold text-base-content/70">{t('Karta foni rasmi (ixtiyoriy)')}</span>
+              <span className="text-xs font-semibold text-base-content/70">{t('Karta foni rasmi yoki GIF (ixtiyoriy)')}</span>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="file-input file-input-bordered file-input-sm bg-base-100" disabled={uploading} />
+                <input ref={fileRef} type="file" accept="image/*,image/gif" onChange={onPick} className="file-input file-input-bordered file-input-sm bg-base-100" disabled={uploading} />
                 {bgUrl && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setBgUrl('')}>{t('Olib tashlash')}</button>}
               </div>
+              <p className="mt-1 text-[11px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Maks. 3 MB.')}</p>
               {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Rasm yuklanmoqda...')}</p>}
             </div>
 
