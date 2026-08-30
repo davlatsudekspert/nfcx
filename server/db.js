@@ -1127,6 +1127,20 @@ export async function initDb() {
     }
   }
 
+  // Public "Sovg'alar" sahifasi — faqat SHU vaqtdan keyin qabul qilingan
+  // sovg'alar ommaviy ko'rinadi. Eski sovg'a tarixi (foydalanuvchilar buni
+  // kutmagan) public'ga chiqmaydi. Birinchi deploy vaqti bir marta yoziladi.
+  {
+    const existing = await pool.query(`SELECT 1 FROM admin_settings WHERE key = 'public_gifts_cutoff'`);
+    if (!existing.rows.length) {
+      await pool.query(
+        `INSERT INTO admin_settings (key, value) VALUES ('public_gifts_cutoff', $1) ON CONFLICT (key) DO NOTHING`,
+        [new Date().toISOString()]
+      );
+      console.log('[db] public_gifts_cutoff belgilandi.');
+    }
+  }
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -2178,12 +2192,20 @@ export async function acceptGiftOffer(id, userId) {
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `SELECT id, code, to_user_id AS "toUserId" FROM gift_offers WHERE id = $1 AND status = 'pending' FOR UPDATE`,
+      `SELECT id, code, to_user_id AS "toUserId", from_user_id AS "fromUserId"
+       FROM gift_offers WHERE id = $1 AND status = 'pending' FOR UPDATE`,
       [id]
     );
     const offer = rows[0];
     if (!offer || offer.toUserId !== userId) { await client.query('ROLLBACK'); return null; }
-    await client.query(`UPDATE cards SET user_id = $2, is_primary = FALSE WHERE code = $1`, [offer.code, userId]);
+    // Egalik faqat taklif YUBORUVCHISI hali ham egasi bo'lsa o'tadi — taklif
+    // yaratilgach kod boshqa yo'l bilan (auksion, boshqa sovg'a) egasini
+    // o'zgartirgan bo'lsa, bu eski taklif egalikni buzmaydi.
+    const upd = await client.query(
+      `UPDATE cards SET user_id = $2, is_primary = FALSE WHERE code = $1 AND user_id = $3`,
+      [offer.code, userId, offer.fromUserId]
+    );
+    if (!upd.rowCount) { await client.query('ROLLBACK'); return { error: 'OWNERSHIP_CHANGED' }; }
     await client.query(`UPDATE gift_offers SET status = 'accepted', decided_at = now() WHERE id = $1`, [id]);
     await client.query('COMMIT');
     return { ok: true, code: offer.code };
@@ -2211,6 +2233,43 @@ export async function cancelGiftOffer(id, userId) {
     [id, userId]
   );
   return !!rows[0];
+}
+
+// ---------- Public "Sovg'alar" sahifasi ----------
+// MUHIM PRIVACY: from_user_id / yuboruvchi HECH QACHON SELECT qilinmaydi.
+// Faqat: sovg'a qilingan kod, qabul qiluvchining ommaviy nomi (agar profili
+// ommaviy bo'lsa), sana. Cutoff'dan oldingi sovg'alar chiqmaydi.
+export async function listPublicGifts({ page = 1, limit = 12 } = {}) {
+  const cutoff = (await getAdminSetting('public_gifts_cutoff')) || '2099-01-01';
+  const lim = Math.min(48, Math.max(1, Math.round(limit)));
+  const offset = Math.max(0, (Math.max(1, Math.round(page)) - 1)) * lim;
+  const { rows } = await pool.query(
+    `SELECT g.code, g.decided_at AS "date",
+            r.name AS "recipientName", r.code AS "recipientCode",
+            COALESCE(r.hidden_from_directory, TRUE) AS hidden
+     FROM gift_offers g
+     LEFT JOIN LATERAL (
+       SELECT name, code, hidden_from_directory
+       FROM cards WHERE user_id = g.to_user_id
+       ORDER BY is_primary DESC, ts ASC
+       LIMIT 1
+     ) r ON TRUE
+     WHERE g.status = 'accepted' AND g.decided_at >= $1
+     ORDER BY g.decided_at DESC
+     LIMIT $2 OFFSET $3`,
+    [cutoff, lim + 1, offset]
+  );
+  const hasMore = rows.length > lim;
+  const items = rows.slice(0, lim).map((r) => {
+    const publicRecipient = !r.hidden && r.recipientName;
+    return {
+      code: r.code,
+      recipientName: publicRecipient ? r.recipientName : null,
+      recipientCode: publicRecipient ? r.recipientCode : null,
+      date: r.date,
+    };
+  });
+  return { gifts: items, hasMore };
 }
 
 // Foydalanuvchining bir nechta vizitkasi bo'lsa, ulardan bittasini

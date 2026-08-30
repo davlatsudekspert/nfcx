@@ -18,7 +18,7 @@ import {
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
-  createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer,
+  createGiftOffer, listGiftOffers, acceptGiftOffer, rejectGiftOffer, cancelGiftOffer, listPublicGifts,
   createSupportMessage, listMySupportMessages,
   getPendingGiftByCode, verifyGiftActivationCode, activateNfcGift, logAdminActivity,
   assignPromoCode, getUserByPromoCode, applyReferral, getPendingDiscountPct, consumeDiscount, listMyReferrals,
@@ -1596,6 +1596,7 @@ app.post('/api/gift-offers/:id/accept', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const result = await acceptGiftOffer(Number(req.params.id), user.id);
   if (!result) return res.status(409).json({ error: 'not_found_or_taken' });
+  if (result.error) return res.status(409).json(result);
   res.json(result);
 });
 
@@ -1615,6 +1616,19 @@ app.post('/api/gift-offers/:id/cancel', async (req, res) => {
   const ok = await cancelGiftOffer(Number(req.params.id), user.id);
   if (!ok) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });
+});
+
+// Public "Sovg'alar" sahifasi — yuboruvchi HECH QACHON qaytarilmaydi.
+app.get('/api/gifts/public', async (req, res) => {
+  if (!isDbReady()) return res.json({ gifts: [], hasMore: false });
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(24, Math.max(1, Number(req.query.limit) || 12));
+    res.json(await listPublicGifts({ page, limit }));
+  } catch (err) {
+    console.error('[api] gifts/public:', err.message);
+    res.json({ gifts: [], hasMore: false });
+  }
 });
 
 // ---------- Sotish/sotuv funksiyasi butunlay OLIB TASHLANDI ----------

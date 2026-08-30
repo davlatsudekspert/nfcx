@@ -447,8 +447,23 @@ export async function dbListGiftOffers() {
 
 export async function dbAcceptGift(id) {
   const res = await fetch(`/api/gift-offers/${id}/accept`, { method: 'POST', credentials: 'same-origin' });
-  if (!res.ok) throw new Error('Xatolik yuz berdi.');
-  return res.json();
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error((data && data.error) === 'OWNERSHIP_CHANGED'
+      ? "Bu NFC ID endi yuboruvchiga tegishli emas — sovg'a bekor bo'ldi."
+      : 'Xatolik yuz berdi.');
+  }
+  return data;
+}
+
+// ---------- Public "Sovg'alar" ----------
+export async function dbPublicGifts(page = 1) {
+  try {
+    const data = await api(`/gifts/public?page=${page}`);
+    return { gifts: (data && data.gifts) || [], hasMore: !!(data && data.hasMore) };
+  } catch {
+    return { gifts: [], hasMore: false };
+  }
 }
 
 export async function dbRejectGift(id) {

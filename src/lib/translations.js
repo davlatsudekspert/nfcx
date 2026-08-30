@@ -37,7 +37,28 @@ export const DICT = {
   'Reyting': { ru: 'Рейтинг', en: 'Ranking' },
   'Kompaniyalar': { ru: 'Компаниям', en: 'Companies' },
   'Auksion': { ru: 'Аукцион', en: 'Auction' },
+  'Sovg‘alar': { ru: 'Подарки', en: 'Gifts' },
   'Savollar': { ru: 'Вопросы', en: 'FAQ' },
+  // ── Sovg'alar (public) sahifasi + homepage bloki ──
+  "NFCStore'da yangi egalariga topshirilgan noyob NFC ID'lar.":
+    { ru: 'Редкие NFC ID, переданные новым владельцам в NFCStore.', en: 'Rare NFC IDs handed to their new owners on NFCStore.' },
+  'Yangi egasi': { ru: 'Новый владелец', en: 'New owner' },
+  'Yangi egasiga topshirildi': { ru: 'Передан новому владельцу', en: 'Handed to its new owner' },
+  '✓ Sovg‘a qilindi': { ru: '✓ Подарен', en: '✓ Gifted' },
+  'Barchasini ko‘rish': { ru: 'Показать все', en: 'View all' },
+  'Ko‘proq ko‘rsatish': { ru: 'Показать ещё', en: 'Show more' },
+  "Hozircha sovg'a qilingan NFC ID yo'q.":
+    { ru: 'Пока нет подаренных NFC ID.', en: 'No gifted NFC IDs yet.' },
+  'NFC ID — nafaqat siz uchun': { ru: 'NFC ID — не только для вас', en: 'An NFC ID — not just for you' },
+  'O‘zingizga esda qoladigan NFC ID tanlang yoki uni yaqin insoningizga sovg‘a qiling. NFC ID egasi o‘z ID’sini boshqa NFCStore foydalanuvchisiga xavfsiz tarzda o‘tkazishi mumkin.':
+    { ru: 'Выберите запоминающийся NFC ID для себя или подарите его близкому человеку. Владелец NFC ID может безопасно передать свой ID другому пользователю NFCStore.', en: 'Choose a memorable NFC ID for yourself, or gift one to someone close. An NFC ID owner can securely transfer their ID to another NFCStore user.' },
+  'NFC ID tanlash': { ru: 'Выбрать NFC ID', en: 'Choose an NFC ID' },
+  'NFC ID sovg‘a qilish': { ru: 'Подарить NFC ID', en: 'Gift an NFC ID' },
+  'Noyob ID — unutilmas sovg‘a': { ru: 'Редкий ID — незабываемый подарок', en: 'A rare ID — an unforgettable gift' },
+  'Ism, sana, brend yoki alohida ma’noga ega NFC ID’ni tanlang va yaqin insoningizga raqamli sovg‘a sifatida taqdim eting.':
+    { ru: 'Выберите NFC ID с именем, датой, брендом или особым смыслом и преподнесите близкому человеку как цифровой подарок.', en: 'Pick an NFC ID with a name, date, brand or special meaning and present it to someone close as a digital gift.' },
+  'NFCStore NFC ID egaligini texnik jihatdan o‘tkazish xizmatini taqdim etadi. Foydalanuvchilar o‘rtasidagi mustaqil kelishuvlar va hisob-kitoblarda NFCStore taraf, to‘lov agenti yoki vositachi sifatida ishtirok etmaydi.':
+    { ru: 'NFCStore предоставляет техническую услугу передачи владения NFC ID. NFCStore не является стороной, платёжным агентом или посредником в самостоятельных договорённостях и расчётах между пользователями.', en: 'NFCStore provides the technical service of transferring NFC ID ownership. NFCStore is not a party, payment agent or intermediary in independent agreements or settlements between users.' },
   'Xabarlar': { ru: 'Сообщения', en: 'Messages' },
   "To'lovlar": { ru: 'Платежи', en: 'Payments' },
   'Bildirishnomalar': { ru: 'Уведомления', en: 'Notifications' },
