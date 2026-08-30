@@ -1093,4 +1093,7 @@ export const DICT = {
   '— tanlanmagan —': { ru: '— не выбрано —', en: '— not selected —' },
   'Umumiy': { ru: 'Общее', en: 'General' },
   'Soha ro‘yxatда yo‘qmi? "Kasb / sarlavha" maydoniga o‘zingiz yozing.': { ru: 'Нет вашей сферы в списке? Впишите её в поле «Профессия / заголовок».', en: 'Your field isn’t listed? Type it into the “Profession / title” field.' },
+  'Barcha sohalar': { ru: 'Все сферы', en: 'All industries' },
+  'Barcha kichik sohalar': { ru: 'Все подкатегории', en: 'All subcategories' },
+  'Filtrlarni tozalash': { ru: 'Сбросить фильтры', en: 'Clear filters' },
 };
