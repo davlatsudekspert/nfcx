@@ -1253,4 +1253,6 @@ export const DICT = {
   '"Bosh ekranga qo‘shish" ni tanlang': { ru: 'Выберите «На экран Домой»', en: 'Choose "Add to Home Screen"' },
   '"Qo‘shish" ni bosing': { ru: 'Нажмите «Добавить»', en: 'Tap "Add"' },
   'Tushundim': { ru: 'Понятно', en: 'Got it' },
+  'iPhone’da ilovani faqat Safari brauzeri orqali o‘rnatish mumkin. Bu sahifani Safari’da oching va yana urinib ko‘ring.': { ru: 'На iPhone приложение можно установить только через браузер Safari. Откройте эту страницу в Safari и попробуйте снова.', en: 'On iPhone the app can only be installed via Safari. Open this page in Safari and try again.' },
+  'Aylantirish uchun bosing': { ru: 'Нажмите, чтобы перевернуть', en: 'Tap to flip' },
 };

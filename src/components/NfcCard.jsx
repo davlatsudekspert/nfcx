@@ -27,11 +27,17 @@ const FINISHES = {
   ink: { bg: 'linear-gradient(145deg, #10163a 0%, #0a0d1c 55%, #1b2456 100%)', fg: '#eef0fb', sub: 'rgba(142,162,255,0.7)', code: '#8ea2ff', border: '1px solid rgba(142,162,255,0.35)' },
 };
 
-const CARD_SIZES = {
+export const CARD_SIZES = {
   lg: 'h-[240px] w-[380px]',
   md: 'h-[176px] w-[280px]',
   sm: 'h-[138px] w-[220px]',
 };
+
+// Tashqi komponentlar (masalan profildagi "aylanadigan karta") uchun —
+// tarif finish'ining fon/matn ranglari.
+export function cardFinish(finish) {
+  return FINISHES[finish] || FINISHES.black;
+}
 
 const SHADOW_DEFAULT = '0 20px 45px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)';
 const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.28), 0 28px 70px rgba(0,0,0,0.65)';

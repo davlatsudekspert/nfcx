@@ -11,7 +11,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, fileLimitFor, videoLimitsFor } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, fileLimitFor, videoLimitsFor, menuEligible } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -2128,17 +2128,21 @@ function EditCardForm({ card, onSaved }) {
             </div>
           </Section>
 
-          <Section title={t('Restoran menyusi')} subtitle={t('Kategoriyalar va taomlar')}>
-            <MenuManagerSection
-              code={card.code}
-              allowed={allow('restaurantMenu')}
-              onLock={() => setLocked(t('Restoran menyusi'))}
-            />
-          </Section>
+          {card.profileType === 'business' && menuEligible(card.categorySlug) && (
+            <Section title={t('Restoran menyusi')} subtitle={t('Kategoriyalar va taomlar')}>
+              <MenuManagerSection
+                code={card.code}
+                allowed={allow('restaurantMenu')}
+                onLock={() => setLocked(t('Restoran menyusi'))}
+              />
+            </Section>
+          )}
 
-          <Section title={t('Jamoa')} subtitle={t('Kompaniya a’zolari')}>
-            <TeamSection code={card.code} />
-          </Section>
+          {card.profileType === 'business' && (
+            <Section title={t('Jamoa')} subtitle={t('Kompaniya a’zolari')}>
+              <TeamSection code={card.code} />
+            </Section>
+          )}
 
           <Section title={t('Fayllar va hujjatlar')} subtitle={t('PDF, narxnoma, katalog, CV')}>
             <FilesSection

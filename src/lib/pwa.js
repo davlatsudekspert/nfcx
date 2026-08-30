@@ -43,10 +43,30 @@ const isStandalone = () =>
   typeof window !== 'undefined' &&
   (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true);
 
-export const isIOS = () =>
-  typeof navigator !== 'undefined' &&
-  /iphone|ipad|ipod/i.test(navigator.userAgent) &&
-  !/crios|fxios/i.test(navigator.userAgent); // faqat Safari
+// iOS qurilma (iPadOS 13+ Mac deb ko'rsatadi — touch bilan aniqlaymiz).
+function isIOSDevice() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  if (/iphone|ipad|ipod/i.test(ua)) return true;
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+}
+
+// iOS'да PWA o'rnatish FAQAT Safari'да ishlaydi (Apple cheklovi). Boshqa
+// brauzerlar (Chrome/CriOS, Firefox/FxiOS, Yandex/YaBrowser, Opera, Edge,
+// Google App) "Bosh ekranga qo'shish" ni umumaн qo'llab-quvvatlamaydi yoki
+// oddiy zakladka qiladi.
+function iosNonSafari() {
+  const ua = navigator.userAgent || '';
+  return /crios|fxios|edgios|yabrowser|opios|\bopt\/|mercury|gsa\/|duckduckgo|brave/i.test(ua);
+}
+
+// null | 'safari' | 'other'
+export function iosInstallMode() {
+  if (!isIOSDevice()) return null;
+  return iosNonSafari() ? 'other' : 'safari';
+}
+
+export const isIOS = () => isIOSDevice();
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -72,8 +92,8 @@ export function onInstallableChange(fn) {
   return () => listeners.delete(fn);
 }
 
-// Chrome — tizim taklifini ochadi. iOS — qo'llanma matnini qaytaradi
-// ('ios-instructions'), chunki dasturiy o'rnatish imkoni yo'q.
+// Chrome — tizim taklifini ochadi. iOS Safari — qo'llanma
+// ('ios-instructions'). iOS boshqa brauzer — 'ios-open-safari'.
 export async function promptInstall() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
@@ -82,6 +102,8 @@ export async function promptInstall() {
     listeners.forEach((f) => f(false));
     return outcome === 'accepted' ? 'installed' : 'dismissed';
   }
-  if (isIOS()) return 'ios-instructions';
+  const ios = iosInstallMode();
+  if (ios === 'safari') return 'ios-instructions';
+  if (ios === 'other') return 'ios-open-safari';
   return 'unavailable';
 }

@@ -99,7 +99,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [installable, setInstallable] = useState(canInstall());
-  const [iosHint, setIosHint] = useState(false);
+  const [iosHint, setIosHint] = useState(null); // null | 'safari' | 'open-safari'
 
   useEffect(() => {
     setInstallable(canInstall());
@@ -108,7 +108,8 @@ export default function Header() {
   const install = async () => {
     setOpen(false);
     const r = await promptInstall();
-    if (r === 'ios-instructions') setIosHint(true);
+    if (r === 'ios-instructions') setIosHint('safari');
+    else if (r === 'ios-open-safari') setIosHint('open-safari');
   };
 
   useEffect(() => {
@@ -223,15 +224,21 @@ export default function Header() {
       )}
 
       {iosHint && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setIosHint(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setIosHint(null)}>
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200 p-5 text-sm" onClick={(e) => e.stopPropagation()}>
             <div className="text-base font-bold">{'\u{1F4F2}'} {t('Ilovani o‘rnatish')}</div>
-            <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-base-content/75">
-              <li>{t('Safari’da pastdagi "Ulashish" tugmasini bosing')} <span className="inline-block">{'\u{2191}'}</span></li>
-              <li>{t('"Bosh ekranga qo‘shish" ni tanlang')}</li>
-              <li>{t('"Qo‘shish" ni bosing')}</li>
-            </ol>
-            <button className="btn btn-primary btn-sm btn-block mt-4" onClick={() => setIosHint(false)}>{t('Tushundim')}</button>
+            {iosHint === 'open-safari' ? (
+              <p className="mt-3 text-base-content/75">
+                {t('iPhone’da ilovani faqat Safari brauzeri orqali o‘rnatish mumkin. Bu sahifani Safari’da oching va yana urinib ko‘ring.')}
+              </p>
+            ) : (
+              <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-base-content/75">
+                <li>{t('Safari’da pastdagi "Ulashish" tugmasini bosing')} <span className="inline-block">{'\u{2191}'}</span></li>
+                <li>{t('"Bosh ekranga qo‘shish" ni tanlang')}</li>
+                <li>{t('"Qo‘shish" ni bosing')}</li>
+              </ol>
+            )}
+            <button className="btn btn-primary btn-sm btn-block mt-4" onClick={() => setIosHint(null)}>{t('Tushundim')}</button>
           </div>
         </div>
       )}

@@ -10,7 +10,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
-import NfcCard from '../components/NfcCard.jsx';
+import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
@@ -297,6 +297,30 @@ function PostsFeed({ posts, onLike, t }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Profildagi vizual karta — bosilsa aylanadi (orqa tomon: faqat "NFC STORE").
+function FlipNfcCard({ finish, t, children }) {
+  const [flipped, setFlipped] = useState(false);
+  const f = cardFinish(finish);
+  return (
+    <div className="[perspective:1200px]">
+      <div
+        onClick={() => setFlipped((v) => !v)}
+        title={t('Aylantirish uchun bosing')}
+        className="relative h-[176px] w-[280px] cursor-pointer transition-transform duration-[600ms] ease-[cubic-bezier(.2,.8,.2,1)] [transform-style:preserve-3d]"
+        style={{ transform: flipped ? 'rotateY(180deg)' : 'none' }}
+      >
+        <div className="absolute inset-0 [backface-visibility:hidden] [transform:translateZ(0.1px)]">{children}</div>
+        <div
+          className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl [backface-visibility:hidden] [transform:rotateY(180deg)]"
+          style={{ background: f.bg, border: f.border || 'none', boxShadow: '0 20px 45px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)' }}
+        >
+          <span className="font-display text-[19px] font-extrabold tracking-[0.34em]" style={{ color: f.sub }}>NFC&nbsp;STORE</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -787,6 +811,7 @@ export default function ProfilePage({ code, catalog }) {
 
       <div className="pt-[18px]">
         <div className="flex animate-[floatY_5s_ease-in-out_infinite] justify-center">
+          <FlipNfcCard finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)} t={t}>
           <NfcCard
             code={record.code}
             name={design.name || record.name}
@@ -803,6 +828,7 @@ export default function ProfilePage({ code, catalog }) {
             brandColor={design.brandColor || ''}
             size="md"
           />
+          </FlipNfcCard>
         </div>
       </div>
 
