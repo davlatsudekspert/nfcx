@@ -335,6 +335,16 @@ export async function dbListNews() {
   }
 }
 
+// ---------- Katalog kategoriyalari ----------
+export async function dbListCategories() {
+  try {
+    const data = await api('/categories');
+    return (data && data.categories) || [];
+  } catch {
+    return [];
+  }
+}
+
 export async function dbGetAuction(id) {
   return api(`/auctions/${encodeURIComponent(id)}`);
 }

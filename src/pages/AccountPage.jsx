@@ -12,6 +12,7 @@ import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed } from '../lib/access.js';
+import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
@@ -710,8 +711,9 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 }
 
 function EditCardForm({ card, onSaved }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
+  const cats = useCategories();
   // Bu kartaning effective access darajasi (NFC ID tarifi + Profile Premium).
   const access = effectiveAccess(card, user);
   const allow = (feature) => featureAllowed(feature, access);
@@ -721,6 +723,7 @@ function EditCardForm({ card, onSaved }) {
     role: card.role || '',
     profileType: ['personal', 'expert', 'business'].includes(card.profileType) ? card.profileType : 'personal',
     city: card.city || '',
+    categorySlug: card.categorySlug || '',
     hiddenFromDirectory: !!card.hiddenFromDirectory,
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
@@ -880,6 +883,7 @@ function EditCardForm({ card, onSaved }) {
         role: form.role.trim(),
         profileType: form.profileType,
         city: form.city.trim(),
+        categorySlug: form.categorySlug,
         hiddenFromDirectory: form.hiddenFromDirectory,
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
@@ -1036,10 +1040,48 @@ function EditCardForm({ card, onSaved }) {
                 </button>
               ))}
             </div>
+            {cats.length > 0 && (() => {
+              const sel = findCat(cats, form.categorySlug);
+              const mainSlug = sel ? (sel.parentSlug || sel.slug) : '';
+              const subs = cats.filter((c) => c.parentSlug === mainSlug);
+              return (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <label className="form-control block">
+                    <span className="text-xs font-semibold text-base-content/70">{t('Faoliyat sohasi')}</span>
+                    <select
+                      value={mainSlug}
+                      onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value }))}
+                      className="select select-bordered select-sm mt-1 w-full bg-base-100"
+                    >
+                      <option value="">{t('— tanlanmagan —')}</option>
+                      {cats.filter((c) => !c.parentSlug).map((c) => (
+                        <option key={c.slug} value={c.slug}>{catName(c, lang)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {subs.length > 0 && (
+                    <label className="form-control block">
+                      <span className="text-xs font-semibold text-base-content/70">{t('Kichik soha')}</span>
+                      <select
+                        value={form.categorySlug === mainSlug ? '' : form.categorySlug}
+                        onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value || mainSlug }))}
+                        className="select select-bordered select-sm mt-1 w-full bg-base-100"
+                      >
+                        <option value="">{t('Umumiy')}</option>
+                        {subs.map((c) => (
+                          <option key={c.slug} value={c.slug}>{catName(c, lang)}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+              );
+            })()}
             <label className="form-control mt-3 block">
               <span className="text-xs font-semibold text-base-content/70">{t('Shahar / viloyat (ixtiyoriy)')}</span>
               <input value={form.city} onChange={set('city')} placeholder={t('masalan Toshkent')} className={inp} />
             </label>
+            <p className="mt-1.5 text-xs text-base-content/40">{t('Soha ro‘yxatда yo‘qmi? "Kasb / sarlavha" maydoniga o‘zingiz yozing.')}</p>
             <label className="mt-3 flex cursor-pointer items-start gap-2.5">
               <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.hiddenFromDirectory} onChange={(e) => setForm((f) => ({ ...f, hiddenFromDirectory: e.target.checked }))} />
               <span className="text-xs text-base-content/60">

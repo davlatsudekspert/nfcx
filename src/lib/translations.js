@@ -1088,4 +1088,9 @@ export const DICT = {
   'masalan Toshkent': { ru: 'например Ташкент', en: 'e.g. Tashkent' },
   'Meni katalog va qidiruvda ko‘rsatmaslik': { ru: 'Не показывать меня в каталоге и поиске', en: 'Hide me from the catalog and search' },
   'Profilingiz havola/NFC orqali ochiladi, lekin ro‘yxatlarda chiqmaydi.': { ru: 'Профиль откроется по ссылке/NFC, но не появится в списках.', en: 'Your profile still opens via link/NFC, but won’t appear in listings.' },
+  'Faoliyat sohasi': { ru: 'Сфера деятельности', en: 'Industry' },
+  'Kichik soha': { ru: 'Подкатегория', en: 'Subcategory' },
+  '— tanlanmagan —': { ru: '— не выбрано —', en: '— not selected —' },
+  'Umumiy': { ru: 'Общее', en: 'General' },
+  'Soha ro‘yxatда yo‘qmi? "Kasb / sarlavha" maydoniga o‘zingiz yozing.': { ru: 'Нет вашей сферы в списке? Впишите её в поле «Профессия / заголовок».', en: 'Your field isn’t listed? Type it into the “Profession / title” field.' },
 };

@@ -910,9 +910,163 @@ export async function initDb() {
     }
   }
 
+  // ── Katalog kategoriyalari (soha → kichik soha) ─────────────────────
+  // Dinamik: admin qo'shadi/tahrirlaydi/o'chiradi (Band 2.5). Seed faqat
+  // bo'sh bo'lganda yoki slug topilmaganda qo'shiladi (idempotent).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id          SERIAL PRIMARY KEY,
+      slug        VARCHAR(60) UNIQUE NOT NULL,
+      parent_slug VARCHAR(60),
+      name_uz     TEXT NOT NULL,
+      name_ru     TEXT NOT NULL DEFAULT '',
+      name_en     TEXT NOT NULL DEFAULT '',
+      sort        INTEGER NOT NULL DEFAULT 0,
+      enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS categories_parent_idx ON categories (parent_slug)`);
+  // cards.category_slug — profil tanlagan kichik soha (yoki asosiy soha).
+  {
+    const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'cards' AND column_name = 'category_slug'`);
+    if (!rows.length) {
+      await pool.query(`ALTER TABLE cards ADD COLUMN category_slug VARCHAR(60)`);
+      console.log('[db] cards.category_slug ustuni qo’shildi.');
+    }
+  }
+  await seedCategories();
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
+}
+
+// Boshlang'ich kategoriyalar — slug bo'yicha idempotent (mavjudi o'zgarmaydi).
+const CATEGORY_SEED = [
+  ['it', null, 'IT va texnologiyalar', 'IT и технологии', 'IT & technology', 10],
+    ['it-web', 'it', 'Veb-dasturlash', 'Веб-разработка', 'Web development', 1],
+    ['it-mobile', 'it', 'Mobil dasturlash', 'Мобильная разработка', 'Mobile development', 2],
+    ['it-software', 'it', 'Dasturiy ta’minot', 'Программное обеспечение', 'Software', 3],
+    ['it-security', 'it', 'Kiberxavfsizlik', 'Кибербезопасность', 'Cybersecurity', 4],
+    ['it-services', 'it', 'IT xizmatlar / autsorsing', 'IT-услуги / аутсорсинг', 'IT services / outsourcing', 5],
+    ['it-telecom', 'it', 'Telekommunikatsiya', 'Телекоммуникации', 'Telecom', 6],
+  ['construction', null, 'Qurilish va ta’mirlash', 'Строительство и ремонт', 'Construction & renovation', 20],
+    ['con-architecture', 'construction', 'Arxitektura', 'Архитектура', 'Architecture', 1],
+    ['con-interior', 'construction', 'Interyer dizayni', 'Дизайн интерьера', 'Interior design', 2],
+    ['con-materials', 'construction', 'Qurilish materiallari', 'Стройматериалы', 'Building materials', 3],
+    ['con-contractor', 'construction', 'Pudratchi / usta', 'Подрядчик / мастер', 'Contractor', 4],
+  ['realestate', null, 'Ko’chmas mulk', 'Недвижимость', 'Real estate', 30],
+    ['re-agency', 'realestate', 'Agentlik', 'Агентство', 'Agency', 1],
+    ['re-rent', 'realestate', 'Ijara', 'Аренда', 'Rentals', 2],
+  ['food', null, 'Restoran va ovqatlanish', 'Рестораны и питание', 'Food & dining', 40],
+    ['food-restaurant', 'food', 'Restoran', 'Ресторан', 'Restaurant', 1],
+    ['food-cafe', 'food', 'Kafe', 'Кафе', 'Cafe', 2],
+    ['food-fastfood', 'food', 'Fast food', 'Фастфуд', 'Fast food', 3],
+    ['food-bakery', 'food', 'Nonvoyxona / qandolat', 'Пекарня / кондитерская', 'Bakery', 4],
+    ['food-catering', 'food', 'Ketering', 'Кейтеринг', 'Catering', 5],
+  ['hospitality', null, 'Mehmonxona va turizm', 'Отели и туризм', 'Hospitality & tourism', 50],
+    ['hos-hotel', 'hospitality', 'Mehmonxona', 'Отель', 'Hotel', 1],
+    ['hos-travel', 'hospitality', 'Turagentlik', 'Турагентство', 'Travel agency', 2],
+  ['retail', null, 'Savdo va do’konlar', 'Торговля и магазины', 'Retail & shops', 60],
+    ['retail-shop', 'retail', 'Do’kon', 'Магазин', 'Shop', 1],
+    ['retail-online', 'retail', 'Onlayn do’kon', 'Интернет-магазин', 'Online shop', 2],
+    ['retail-wholesale', 'retail', 'Ulgurji savdo', 'Оптовая торговля', 'Wholesale', 3],
+  ['transport', null, 'Transport va logistika', 'Транспорт и логистика', 'Transport & logistics', 70],
+    ['tr-logistics', 'transport', 'Logistika', 'Логистика', 'Logistics', 1],
+    ['tr-auto-dealer', 'transport', 'Avtosalon', 'Автосалон', 'Car dealership', 2],
+    ['tr-auto-service', 'transport', 'Avtoservis', 'Автосервис', 'Auto service', 3],
+    ['tr-taxi', 'transport', 'Taksi / yetkazib berish', 'Такси / доставка', 'Taxi / delivery', 4],
+  ['medicine', null, 'Tibbiyot va sog’liq', 'Медицина и здоровье', 'Medicine & health', 80],
+    ['med-clinic', 'medicine', 'Klinika', 'Клиника', 'Clinic', 1],
+    ['med-dental', 'medicine', 'Stomatologiya', 'Стоматология', 'Dentistry', 2],
+    ['med-pharmacy', 'medicine', 'Dorixona', 'Аптека', 'Pharmacy', 3],
+    ['med-lab', 'medicine', 'Laboratoriya', 'Лаборатория', 'Lab', 4],
+  ['beauty', null, 'Go’zallik va parvarish', 'Красота и уход', 'Beauty & care', 90],
+    ['beauty-salon', 'beauty', 'Go’zallik saloni', 'Салон красоты', 'Beauty salon', 1],
+    ['beauty-barber', 'beauty', 'Sartaroshxona', 'Барбершоп', 'Barbershop', 2],
+    ['beauty-cosmetology', 'beauty', 'Kosmetologiya', 'Косметология', 'Cosmetology', 3],
+    ['beauty-spa', 'beauty', 'SPA / massaj', 'SPA / массаж', 'Spa / massage', 4],
+  ['education', null, 'Ta’lim', 'Образование', 'Education', 100],
+    ['edu-center', 'education', 'O’quv markaz', 'Учебный центр', 'Training center', 1],
+    ['edu-school', 'education', 'Maktab', 'Школа', 'School', 2],
+    ['edu-university', 'education', 'Universitet', 'Университет', 'University', 3],
+    ['edu-tutor', 'education', 'Repetitor', 'Репетитор', 'Tutor', 4],
+  ['finance', null, 'Moliya', 'Финансы', 'Finance', 110],
+    ['fin-bank', 'finance', 'Bank', 'Банк', 'Bank', 1],
+    ['fin-accounting', 'finance', 'Buxgalteriya', 'Бухгалтерия', 'Accounting', 2],
+    ['fin-insurance', 'finance', 'Sug’urta', 'Страхование', 'Insurance', 3],
+  ['legal', null, 'Yuridik va konsalting', 'Юридические услуги и консалтинг', 'Legal & consulting', 120],
+    ['legal-law', 'legal', 'Advokat / yurist', 'Адвокат / юрист', 'Lawyer', 1],
+    ['legal-consulting', 'legal', 'Konsalting', 'Консалтинг', 'Consulting', 2],
+  ['marketing', null, 'Marketing va reklama', 'Маркетинг и реклама', 'Marketing & advertising', 130],
+    ['mkt-smm', 'marketing', 'SMM', 'SMM', 'SMM', 1],
+    ['mkt-ads', 'marketing', 'Reklama', 'Реклама', 'Advertising', 2],
+    ['mkt-branding', 'marketing', 'Brending', 'Брендинг', 'Branding', 3],
+  ['media', null, 'Media va ijod', 'Медиа и творчество', 'Media & creative', 140],
+    ['media-photo', 'media', 'Fotografiya', 'Фотография', 'Photography', 1],
+    ['media-video', 'media', 'Videografiya', 'Видеография', 'Videography', 2],
+    ['media-design', 'media', 'Grafik dizayn', 'Графический дизайн', 'Graphic design', 3],
+    ['media-print', 'media', 'Poligrafiya', 'Полиграфия', 'Printing', 4],
+  ['sport', null, 'Sport va fitnes', 'Спорт и фитнес', 'Sport & fitness', 150],
+    ['sport-gym', 'sport', 'Sport zali / fitnes', 'Спортзал / фитнес', 'Gym / fitness', 1],
+  ['events', null, 'Tadbirlar', 'Мероприятия', 'Events', 160],
+    ['events-agency', 'events', 'Tadbir agentligi', 'Event-агентство', 'Event agency', 1],
+    ['events-decor', 'events', 'Dekor / bezash', 'Декор / оформление', 'Decor', 2],
+  ['agriculture', null, 'Qishloq xo’jaligi', 'Сельское хозяйство', 'Agriculture', 170],
+  ['manufacturing', null, 'Ishlab chiqarish', 'Производство', 'Manufacturing', 180],
+  ['services', null, 'Xizmatlar', 'Услуги', 'Services', 190],
+  ['freelance', null, 'Frilanser', 'Фрилансер', 'Freelance', 200],
+  ['other', null, 'Boshqa', 'Другое', 'Other', 999],
+];
+
+async function seedCategories() {
+  for (const [slug, parent, uz, ru, en, sort] of CATEGORY_SEED) {
+    await pool.query(
+      `INSERT INTO categories (slug, parent_slug, name_uz, name_ru, name_en, sort)
+       VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (slug) DO NOTHING`,
+      [slug, parent, uz, ru, en, sort]
+    );
+  }
+}
+
+export async function listCategories({ includeDisabled = false } = {}) {
+  if (!dbReady) return [];
+  const { rows } = await pool.query(
+    `SELECT id, slug, parent_slug AS "parentSlug", name_uz AS "nameUz", name_ru AS "nameRu",
+            name_en AS "nameEn", sort, enabled
+       FROM categories ${includeDisabled ? '' : 'WHERE enabled = TRUE'}
+      ORDER BY sort, name_uz`
+  );
+  return rows;
+}
+export async function categorySlugValid(slug) {
+  if (!slug) return true; // bo'sh — ruxsat
+  const { rows } = await pool.query(`SELECT 1 FROM categories WHERE slug = $1 AND enabled = TRUE`, [slug]);
+  return !!rows[0];
+}
+export async function adminCreateCategory(f) {
+  const { rows } = await pool.query(
+    `INSERT INTO categories (slug, parent_slug, name_uz, name_ru, name_en, sort, enabled)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     RETURNING id, slug, parent_slug AS "parentSlug", name_uz AS "nameUz", name_ru AS "nameRu", name_en AS "nameEn", sort, enabled`,
+    [f.slug, f.parentSlug || null, f.nameUz, f.nameRu || '', f.nameEn || '', f.sort || 0, f.enabled !== false]
+  );
+  return rows[0];
+}
+export async function adminUpdateCategory(id, f) {
+  const { rows } = await pool.query(
+    `UPDATE categories SET
+        name_uz = COALESCE($2, name_uz), name_ru = COALESCE($3, name_ru), name_en = COALESCE($4, name_en),
+        sort = COALESCE($5, sort), enabled = COALESCE($6, enabled), parent_slug = COALESCE($7, parent_slug)
+      WHERE id = $1
+      RETURNING id, slug, parent_slug AS "parentSlug", name_uz AS "nameUz", name_ru AS "nameRu", name_en AS "nameEn", sort, enabled`,
+    [id, f.nameUz ?? null, f.nameRu ?? null, f.nameEn ?? null, f.sort ?? null, f.enabled ?? null, f.parentSlug ?? null]
+  );
+  return rows[0] || null;
+}
+export async function adminDeleteCategory(id) {
+  await pool.query(`DELETE FROM categories WHERE id = $1`, [id]);
 }
 
 // ---------- Yangiliklar ----------
@@ -979,7 +1133,7 @@ const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
   links_transparent AS "linksTransparent", link_style AS "linkStyle",
-  profile_type AS "profileType", city, hidden_from_directory AS "hiddenFromDirectory",
+  profile_type AS "profileType", city, category_slug AS "categorySlug", hidden_from_directory AS "hiddenFromDirectory",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
@@ -1007,6 +1161,7 @@ function rowToRecord(row) {
     linkStyle: ['standard', 'transparent', 'glass'].includes(row.linkStyle) ? row.linkStyle : 'standard',
     profileType: ['personal', 'expert', 'business'].includes(row.profileType) ? row.profileType : 'personal',
     city: row.city || '',
+    categorySlug: row.categorySlug || '',
     hiddenFromDirectory: !!row.hiddenFromDirectory,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
@@ -1037,7 +1192,8 @@ function rowToRecord(row) {
 export async function listRecords({ includeHidden = false } = {}) {
   const { rows } = await pool.query(
     `SELECT code, name, role, avatar_url AS "avatarUrl", tg, hashtags, theme, price, ts, views,
-            profile_type AS "profileType", city, hidden_from_directory AS "hiddenFromDirectory"
+            profile_type AS "profileType", city, category_slug AS "categorySlug",
+            hidden_from_directory AS "hiddenFromDirectory"
        FROM cards
       ${includeHidden ? '' : 'WHERE hidden_from_directory = FALSE'}
       ORDER BY ts DESC LIMIT 500`
@@ -1055,7 +1211,8 @@ export async function getRecord(code) {
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
             c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle",
-            c.profile_type AS "profileType", c.city, c.hidden_from_directory AS "hiddenFromDirectory", c.hide_phone AS "hidePhone",
+            c.profile_type AS "profileType", c.city, c.category_slug AS "categorySlug",
+            c.hidden_from_directory AS "hiddenFromDirectory", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride", c.card_design AS "cardDesign",
@@ -1695,6 +1852,7 @@ export async function updateRecord(code, fields) {
     linkStyle: 'link_style',
     profileType: 'profile_type',
     city: 'city',
+    categorySlug: 'category_slug',
     hiddenFromDirectory: 'hidden_from_directory',
     musicUrl: 'music_url',
     tg: 'tg',

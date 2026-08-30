@@ -7,6 +7,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource } from '../lib/music.js';
+import { useCategories, catPath } from '../lib/categories.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import {
@@ -311,7 +312,8 @@ export default function ProfilePage({ code, catalog }) {
   const [followMsg, setFollowMsg] = useState(null);
   const [posts, setPosts] = useState([]);
   const { user, myCards } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const cats = useCategories();
 
   useEffect(() => {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
@@ -686,6 +688,16 @@ export default function ProfilePage({ code, catalog }) {
           )}
           <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">{t('Faol bo‘lgan: {when}', { when: timeAgo(record.ts) })}</div>
           {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
+          {(catPath(cats, record.categorySlug, lang) || record.city) && (
+            <div className="mx-auto mt-1 flex max-w-[420px] flex-wrap justify-center gap-1.5 text-[11.5px] text-[color:var(--vz-ink-faint)]">
+              {catPath(cats, record.categorySlug, lang) && (
+                <span className="rounded-full border border-[color:var(--vz-line)] px-2.5 py-0.5">{catPath(cats, record.categorySlug, lang)}</span>
+              )}
+              {record.city && (
+                <span className="rounded-full border border-[color:var(--vz-line)] px-2.5 py-0.5">{'\u{1F4CD}'} {record.city}</span>
+              )}
+            </div>
+          )}
           {record.about && <p className="mx-auto mt-2 max-w-[460px] text-center text-sm leading-relaxed text-[color:var(--vz-ink-dim)]">{record.about}</p>}
         </div>
 

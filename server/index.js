@@ -35,6 +35,7 @@ import {
   blockUser, unblockUser, isBlocked, reportUser,
   sendMessage, markConversationRead, totalUnreadCount,
   listNews,
+  listCategories,
 } from './db.js';
 import {
   hashPassword, verifyPassword, newSessionToken,
@@ -260,6 +261,7 @@ function validateBody(body) {
   // Profil turi: shaxsiy | ekspert | biznes. Qidiruv/katalog uchun.
   const profileType = ['personal', 'expert', 'business'].includes(body.profileType) ? body.profileType : 'personal';
   const city = cleanStr(body.city, 60);
+  const categorySlug = String(body.categorySlug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
   const hiddenFromDirectory = body.hiddenFromDirectory === true;
   // Profil kartasi (nfcstore.uz/<kod> sahifasida ko'rinadigan NFC karta)
   // dizayni — ixtiyoriy: rang/finish, ustidagi ism matni, fon rasmi.
@@ -342,6 +344,7 @@ function validateBody(body) {
   // "Karta dizayni" kabi qisman saqlashlar ularni standartga qaytarardi).
   if ('profileType' in body) record.profileType = profileType;
   if ('city' in body) record.city = city;
+  if ('categorySlug' in body) record.categorySlug = categorySlug;
   if ('hiddenFromDirectory' in body) record.hiddenFromDirectory = hiddenFromDirectory;
   return { record };
 }
@@ -736,6 +739,12 @@ app.get('/api/news', async (req, res) => {
   res.json({ news: await listNews() });
 });
 
+// Katalog kategoriyalari — ochiq (faqat yoqilganlari).
+app.get('/api/categories', async (req, res) => {
+  if (!isDbReady()) return res.json({ categories: [] });
+  res.json({ categories: await listCategories() });
+});
+
 app.get('/api/auctions/:id', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   await settleExpiredAuctions();
@@ -1063,6 +1072,7 @@ app.get('/api/records', async (req, res) => {
       views: record.views,
       profileType: record.profileType,
       city: record.city,
+      categorySlug: record.categorySlug,
     })));
   } catch (err) {
     console.error('[api] listRecords:', err.message);
