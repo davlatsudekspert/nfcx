@@ -208,6 +208,9 @@ export async function initDb() {
     links_transparent: `ALTER TABLE cards ADD COLUMN links_transparent BOOLEAN NOT NULL DEFAULT FALSE`,
     card_design: `ALTER TABLE cards ADD COLUMN card_design JSONB`,
     link_style: `ALTER TABLE cards ADD COLUMN link_style VARCHAR(12) NOT NULL DEFAULT 'standard'`,
+    profile_type: `ALTER TABLE cards ADD COLUMN profile_type VARCHAR(12) NOT NULL DEFAULT 'personal'`,
+    city: `ALTER TABLE cards ADD COLUMN city TEXT`,
+    hidden_from_directory: `ALTER TABLE cards ADD COLUMN hidden_from_directory BOOLEAN NOT NULL DEFAULT FALSE`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -223,7 +226,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -976,6 +979,7 @@ const SELECT_FIELDS = `
   code, name, role, avatar_url AS "avatarUrl", bg_url AS "bgUrl", bg_pattern AS "bgPattern",
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
   links_transparent AS "linksTransparent", link_style AS "linkStyle",
+  profile_type AS "profileType", city, hidden_from_directory AS "hiddenFromDirectory",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
@@ -1001,6 +1005,9 @@ function rowToRecord(row) {
     giftable: row.giftable !== false,
     linksTransparent: !!row.linksTransparent,
     linkStyle: ['standard', 'transparent', 'glass'].includes(row.linkStyle) ? row.linkStyle : 'standard',
+    profileType: ['personal', 'expert', 'business'].includes(row.profileType) ? row.profileType : 'personal',
+    city: row.city || '',
+    hiddenFromDirectory: !!row.hiddenFromDirectory,
     musicUrl: row.musicUrl || '',
     tg: row.tg || '',
     phone: row.phone || '',
@@ -1026,10 +1033,14 @@ function rowToRecord(row) {
   };
 }
 
-export async function listRecords() {
+// Katalog / qidiruv uchun — YASHIRILGAN profillar chiqmaydi.
+export async function listRecords({ includeHidden = false } = {}) {
   const { rows } = await pool.query(
-    `SELECT code, name, role, avatar_url AS "avatarUrl", tg, hashtags, theme, price, ts, views
-     FROM cards ORDER BY ts DESC LIMIT 500`
+    `SELECT code, name, role, avatar_url AS "avatarUrl", tg, hashtags, theme, price, ts, views,
+            profile_type AS "profileType", city, hidden_from_directory AS "hiddenFromDirectory"
+       FROM cards
+      ${includeHidden ? '' : 'WHERE hidden_from_directory = FALSE'}
+      ORDER BY ts DESC LIMIT 500`
   );
   return rows.map(rowToRecord);
 }
@@ -1043,7 +1054,8 @@ export async function getRecord(code) {
   const { rows } = await pool.query(
     `SELECT c.code, c.name, c.role, c.avatar_url AS "avatarUrl", c.bg_url AS "bgUrl", c.bg_pattern AS "bgPattern",
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
-            c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle", c.hide_phone AS "hidePhone",
+            c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle",
+            c.profile_type AS "profileType", c.city, c.hidden_from_directory AS "hiddenFromDirectory", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
             c.tier_override AS "tierOverride", c.card_design AS "cardDesign",
@@ -1681,6 +1693,9 @@ export async function updateRecord(code, fields) {
     bgAnimated: 'bg_animated',
     linksTransparent: 'links_transparent',
     linkStyle: 'link_style',
+    profileType: 'profile_type',
+    city: 'city',
+    hiddenFromDirectory: 'hidden_from_directory',
     musicUrl: 'music_url',
     tg: 'tg',
     phone: 'phone',

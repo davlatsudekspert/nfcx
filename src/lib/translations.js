@@ -1074,4 +1074,18 @@ export const DICT = {
   'Shaffof': { ru: 'Прозрачный', en: 'Transparent' },
   'Glass (shisha)': { ru: 'Стекло (glass)', en: 'Glass' },
   "Shaffof/Glass — tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinadi (maxsus fon bilan chiroyli).": { ru: 'Прозрачный/Стекло — кнопки полупрозрачные, фон виден сквозь них (красиво со своим фоном).', en: 'Transparent/Glass — the buttons are semi-transparent so the background shows through (looks great with a custom background).' },
+
+  // ── Profil turi / katalog ──
+  'Profil turi': { ru: 'Тип профиля', en: 'Profile type' },
+  'Katalog va qidiruvda qanday ko‘rinasiz': { ru: 'Как вы отображаетесь в каталоге и поиске', en: 'How you appear in the catalog and search' },
+  'Shaxsiy': { ru: 'Личный', en: 'Personal' },
+  'Ekspert': { ru: 'Эксперт', en: 'Expert' },
+  'Biznes': { ru: 'Бизнес', en: 'Business' },
+  'Odam': { ru: 'Человек', en: 'A person' },
+  'Mutaxassis': { ru: 'Специалист', en: 'A specialist' },
+  'Kompaniya': { ru: 'Компания', en: 'A company' },
+  'Shahar / viloyat (ixtiyoriy)': { ru: 'Город / область (необязательно)', en: 'City / region (optional)' },
+  'masalan Toshkent': { ru: 'например Ташкент', en: 'e.g. Tashkent' },
+  'Meni katalog va qidiruvda ko‘rsatmaslik': { ru: 'Не показывать меня в каталоге и поиске', en: 'Hide me from the catalog and search' },
+  'Profilingiz havola/NFC orqali ochiladi, lekin ro‘yxatlarda chiqmaydi.': { ru: 'Профиль откроется по ссылке/NFC, но не появится в списках.', en: 'Your profile still opens via link/NFC, but won’t appear in listings.' },
 };

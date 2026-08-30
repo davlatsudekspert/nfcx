@@ -257,6 +257,10 @@ function validateBody(body) {
   const linkStyle = ['standard', 'transparent', 'glass'].includes(body.linkStyle) ? body.linkStyle : 'standard';
   // Orqaga moslik — eski mijoz hali linksTransparent yuborishi mumkin.
   const linksTransparent = linkStyle === 'glass' || body.linksTransparent === true;
+  // Profil turi: shaxsiy | ekspert | biznes. Qidiruv/katalog uchun.
+  const profileType = ['personal', 'expert', 'business'].includes(body.profileType) ? body.profileType : 'personal';
+  const city = cleanStr(body.city, 60);
+  const hiddenFromDirectory = body.hiddenFromDirectory === true;
   // Profil kartasi (nfcstore.uz/<kod> sahifasida ko'rinadigan NFC karta)
   // dizayni — ixtiyoriy: rang/finish, ustidagi ism matni, fon rasmi.
   let cardDesign = null;
@@ -334,6 +338,11 @@ function validateBody(body) {
   // aks holda oddiy profil tahririda (u yuborilmaydigan) dizayn NULLga
   // tushib, o'chib ketardi.
   if ('cardDesign' in body) record.cardDesign = cardDesign;
+  // profileType/city/hiddenFromDirectory ham — faqat yuborilsa (aks holda
+  // "Karta dizayni" kabi qisman saqlashlar ularni standartga qaytarardi).
+  if ('profileType' in body) record.profileType = profileType;
+  if ('city' in body) record.city = city;
+  if ('hiddenFromDirectory' in body) record.hiddenFromDirectory = hiddenFromDirectory;
   return { record };
 }
 
@@ -1052,6 +1061,8 @@ app.get('/api/records', async (req, res) => {
       price: record.price,
       ts: record.ts,
       views: record.views,
+      profileType: record.profileType,
+      city: record.city,
     })));
   } catch (err) {
     console.error('[api] listRecords:', err.message);

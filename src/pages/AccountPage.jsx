@@ -719,9 +719,12 @@ function EditCardForm({ card, onSaved }) {
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
+    profileType: ['personal', 'expert', 'business'].includes(card.profileType) ? card.profileType : 'personal',
+    city: card.city || '',
+    hiddenFromDirectory: !!card.hiddenFromDirectory,
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
-    
+
     accentColor: card.accentColor || '',
     bgColor: card.bgColor || '',
     bgAnimated: card.bgAnimated !== false,
@@ -875,6 +878,9 @@ function EditCardForm({ card, onSaved }) {
       const updated = await authUpdateCard(card.code, {
         name: form.name.trim(),
         role: form.role.trim(),
+        profileType: form.profileType,
+        city: form.city.trim(),
+        hiddenFromDirectory: form.hiddenFromDirectory,
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
         accentColor: form.accentColor,
@@ -1015,6 +1021,33 @@ function EditCardForm({ card, onSaved }) {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="min-w-0">
+          <Section title={t('Profil turi')} subtitle={t('Katalog va qidiruvda qanday ko‘rinasiz')} defaultOpen>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                ['personal', t('Shaxsiy'), t('Odam')],
+                ['expert', t('Ekspert'), t('Mutaxassis')],
+                ['business', t('Biznes'), t('Kompaniya')],
+              ].map(([id, label, sub]) => (
+                <button key={id} type="button"
+                  onClick={() => setForm((f) => ({ ...f, profileType: id }))}
+                  className={`rounded-xl border p-3 text-left transition ${form.profileType === id ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/25'}`}>
+                  <div className={`text-sm font-bold ${form.profileType === id ? 'text-accent' : ''}`}>{label}</div>
+                  <div className="mt-0.5 text-[11px] text-base-content/45">{sub}</div>
+                </button>
+              ))}
+            </div>
+            <label className="form-control mt-3 block">
+              <span className="text-xs font-semibold text-base-content/70">{t('Shahar / viloyat (ixtiyoriy)')}</span>
+              <input value={form.city} onChange={set('city')} placeholder={t('masalan Toshkent')} className={inp} />
+            </label>
+            <label className="mt-3 flex cursor-pointer items-start gap-2.5">
+              <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.hiddenFromDirectory} onChange={(e) => setForm((f) => ({ ...f, hiddenFromDirectory: e.target.checked }))} />
+              <span className="text-xs text-base-content/60">
+                {t('Meni katalog va qidiruvda ko‘rsatmaslik')}
+                <span className="mt-0.5 block text-base-content/40">{t('Profilingiz havola/NFC orqali ochiladi, lekin ro‘yxatlarda chiqmaydi.')}</span>
+              </span>
+            </label>
+          </Section>
           <Section title={t("Asosiy ma'lumot")} subtitle={t("Ism, kasb, bio va rasm")} defaultOpen>
             <div className="flex items-start gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
