@@ -126,17 +126,21 @@ export default function NfcCard({
         }}
       >
         {bgImage && (
-          <>
+          // Alohida qirqiluvchi qatlam: o'zining translateZ(0) + overflow-hidden +
+          // rounded-2xl'i bilan video/rasm kompozit qatlamini kartaning
+          // burchak radiusiga majburan qirqadi (iOS/Safari'da rounded ichida
+          // video "kvadrat" bo'lib chiqib ketmasligi uchun).
+          <div className="pointer-events-none absolute inset-0 overflow-hidden [border-radius:inherit] [transform:translateZ(0)]">
             {/\.(mp4|webm)(\?|$)/i.test(bgImage)
               ? <video
                   src={bgImage}
                   autoPlay loop muted playsInline
                   ref={(el) => { if (el) { el.muted = true; const p = el.play(); if (p) p.catch(() => {}); } }}
-                  className="pointer-events-none absolute inset-0 h-full w-full rounded-2xl object-cover [transform:translateZ(0)]"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
-              : <img src={bgImage} alt="" className="pointer-events-none absolute inset-0 h-full w-full rounded-2xl object-cover" />}
-            <div className="pointer-events-none absolute inset-0 rounded-2xl" style={{ background: 'rgba(0,0,0,0.42)' }} />
-          </>
+              : <img src={bgImage} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.42)' }} />
+          </div>
         )}
         <div
           className="pointer-events-none absolute inset-0 opacity-55 mix-blend-overlay"
