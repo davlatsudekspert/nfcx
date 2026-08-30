@@ -70,12 +70,15 @@ function RequestAuctionForm() {
 }
 
 // "Talab" board kartasi — foydalanuvchi qiziqish bildiradi.
-function DemandCard({ item, threshold, voteBusy, onVote }) {
+function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
   const { t } = useLanguage();
   const ready = item.status === 'ready';
   const pct = Math.min(100, Math.round((item.interestCount / threshold) * 100));
   return (
-    <div className={`auc-card flex flex-col rounded-2xl p-5 ${ready ? 'is-ready' : ''}`}>
+    <div
+      className={`auc-card tier-shine flex flex-col rounded-2xl p-5 ${ready ? 'is-ready' : ''}`}
+      style={{ '--shine-delay': `${(idx % 6) * 0.6}s` }}
+    >
       {ready && (
         <div className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-bold text-success">
           {t('AUKSIONNI BOSHLASH MUMKIN')}
@@ -113,11 +116,12 @@ function DemandCard({ item, threshold, voteBusy, onVote }) {
 }
 
 // Faol / sotilgan auksion kartasi.
-function AuctionMiniCard({ a, sold }) {
+function AuctionMiniCard({ a, sold, idx = 0 }) {
   const { t } = useLanguage();
   return (
     <button
-      className="auc-card flex flex-col rounded-2xl p-5 text-left"
+      className="auc-card tier-shine flex flex-col rounded-2xl p-5 text-left"
+      style={{ '--shine-delay': `${(idx % 6) * 0.6}s` }}
       onClick={() => navigate('/auksion/' + a.id)}
     >
       <div className="py-3 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[#f2d9a0]">
@@ -254,11 +258,11 @@ export default function AuctionsPage() {
         )}
 
         <div className="auc-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {(tab === 'collecting' || tab === 'ready') && gridItems.map((d) => (
-            <DemandCard key={d.id} item={d} threshold={threshold} voteBusy={voteBusy === d.id} onVote={vote} />
+          {(tab === 'collecting' || tab === 'ready') && gridItems.map((d, i) => (
+            <DemandCard key={d.id} idx={i} item={d} threshold={threshold} voteBusy={voteBusy === d.id} onVote={vote} />
           ))}
-          {tab === 'live' && gridItems.map((a) => <AuctionMiniCard key={a.id} a={a} />)}
-          {tab === 'sold' && gridItems.map((a) => <AuctionMiniCard key={a.id} a={a} sold />)}
+          {tab === 'live' && gridItems.map((a, i) => <AuctionMiniCard key={a.id} idx={i} a={a} />)}
+          {tab === 'sold' && gridItems.map((a, i) => <AuctionMiniCard key={a.id} idx={i} a={a} sold />)}
         </div>
 
         {topDemand.length > 1 && (

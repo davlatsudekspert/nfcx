@@ -199,6 +199,29 @@
 @media (prefers-reduced-motion: reduce) {
   .tier-shine::after { animation: none; display: none; }
 }
+
+/* ===== Auksion "Talab" board kartasi — exclusive qora/oltin + begushiy yaltiroq ===
+   .tier-shine bilan birga ishlatiladi (diagonal yorug'lik har kartadan navbat
+   bilan o'tadi — JSX'da --shine-delay indeks bo'yicha beriladi). */
+.auc-card {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(130% 150% at 12% 0%, rgba(230, 193, 101, 0.15), transparent 55%),
+    linear-gradient(150deg, #17130c 0%, #100d09 42%, #070605 100%);
+  border: 1.5px solid rgba(230, 193, 101, 0.30);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+.auc-card:hover { transform: translateY(-3px); border-color: rgba(240, 210, 140, 0.55); }
+.auc-card.is-ready {
+  border-color: rgba(127, 178, 142, 0.55);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(127, 178, 142, 0.30);
+}
+.auc-card > * { position: relative; z-index: 3; }
+/* Ko'p karta bo'lsa ham yengil qolsin (ekrandan tashqarisi render qilinmaydi). */
+.auc-grid > * { content-visibility: auto; contain-intrinsic-size: auto 240px; }
+
 @keyframes nfcPulse { 0% { opacity: 0.9; transform: translateY(-50%) scale(0.6); } 70% { opacity: 0; } 100% { opacity: 0; transform: translateY(-50%) scale(1.15); } }
 @keyframes bgShift { 0%,100% { background-position: 0% 50%, 0% 50%; } 50% { background-position: 0% 50%, 100% 50%; } }
 @keyframes pulseRing { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.25); } 100% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } }
