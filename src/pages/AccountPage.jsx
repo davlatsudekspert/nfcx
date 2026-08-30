@@ -29,6 +29,25 @@ const THEMES = [
 ];
 
 // Yig'iladigan/ochiladigan bo'lim — uzun formani mantiqiy blokларга ажратади.
+// Yopiq (tarif yetmagan) dizayn kontrolini xira qilib, ustiga "bosing"
+// qatlamini qo'yadi — bosilganda LockedFeatureModal ochiladi (onLock).
+function Gate({ ok, onLock, children }) {
+  const { t } = useLanguage();
+  if (ok) return children;
+  return (
+    <div className="relative my-2 overflow-hidden rounded-xl">
+      <div className="pointer-events-none select-none opacity-40 grayscale">{children}</div>
+      <button
+        type="button"
+        onClick={onLock}
+        className="absolute inset-0 flex items-center justify-center gap-1.5 bg-base-200/55 text-xs font-semibold text-base-content/75 transition hover:bg-base-200/70"
+      >
+        {'\u{1F512}'} {t('Premiumda ochiladi — bosing')}
+      </button>
+    </div>
+  );
+}
+
 function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
   const [open, setOpen] = useState(!!defaultOpen);
   useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
@@ -1029,6 +1048,8 @@ function EditCardForm({ card, onSaved }) {
               ))}
             </div>
 
+            <Gate ok={allow('innerBackground')} onLock={() => setLocked(t('Maxsus profil foni'))}>
+            <div>
             <div className="mt-5 font-mono text-[11px] uppercase tracking-widest text-base-content/45">{t("Fon rasmi")}</div>
             <div className="mt-2 flex items-start gap-4">
               <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-white/15 bg-base-100">
@@ -1056,24 +1077,6 @@ function EditCardForm({ card, onSaved }) {
             <div className="mt-5 flex items-center gap-3">
               <input
                 type="color"
-                value={form.accentColor || '#f5a524'}
-                onChange={(e) => setForm((f) => ({ ...f, accentColor: e.target.value }))}
-                className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-base-content/70">{t("Istalgan aksent rang")}</div>
-                <p className="mt-0.5 text-xs text-base-content/45">{t("Tugmalar va urg'u rangi shu bilan almashadi — tema tanlovidan mustaqil.")}</p>
-              </div>
-              {form.accentColor && (
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, accentColor: '' }))}>
-                  {t('Andozaga qaytarish')}
-                </button>
-              )}
-            </div>
-
-            <div className="mt-5 flex items-center gap-3">
-              <input
-                type="color"
                 value={form.bgColor || '#1a1a1c'}
                 onChange={(e) => setForm((f) => ({ ...f, bgColor: e.target.value }))}
                 className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
@@ -1094,7 +1097,30 @@ function EditCardForm({ card, onSaved }) {
                 <span>{t("Fon sekin qimirlab (animatsiyali) tursin")}</span>
               </label>
             )}
+            </div>
+            </Gate>
 
+            <Gate ok={allow('advancedColors')} onLock={() => setLocked(t('Maxsus ranglar'))}>
+            <div className="mt-5 flex items-center gap-3">
+              <input
+                type="color"
+                value={form.accentColor || '#f5a524'}
+                onChange={(e) => setForm((f) => ({ ...f, accentColor: e.target.value }))}
+                className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-base-content/70">{t("Istalgan aksent rang")}</div>
+                <p className="mt-0.5 text-xs text-base-content/45">{t("Tugmalar va urg'u rangi shu bilan almashadi — tema tanlovidan mustaqil.")}</p>
+              </div>
+              {form.accentColor && (
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, accentColor: '' }))}>
+                  {t('Andozaga qaytarish')}
+                </button>
+              )}
+            </div>
+            </Gate>
+
+            <Gate ok={allow('glassContent')} onLock={() => setLocked(t('Shaffof tugmalar'))}>
             <label className="mt-4 flex cursor-pointer items-start gap-2.5">
               <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.linksTransparent} onChange={(e) => setForm((f) => ({ ...f, linksTransparent: e.target.checked }))} />
               <span className="text-sm">
@@ -1102,7 +1128,9 @@ function EditCardForm({ card, onSaved }) {
                 <span className="mt-0.5 block text-xs text-base-content/45">{t("Tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinib turadi. Ustidan yorug'lik yugurish animatsiyasi har doim ishlaydi.")}</span>
               </span>
             </label>
+            </Gate>
 
+            <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
             <label className="form-control mt-5 block">
               <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} {t('Profil musiqasi')}</span>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -1124,6 +1152,7 @@ function EditCardForm({ card, onSaved }) {
               )}
               <p className="mt-1.5 text-xs text-base-content/45">{t("YouTube havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.")}</p>
             </label>
+            </Gate>
           </Section>
 
           <Section title={t("Aloqa va ijtimoiy tarmoqlar")} subtitle={t("Telegram, Instagram, telefon va h.k.")}>

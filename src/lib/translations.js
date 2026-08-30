@@ -1067,4 +1067,6 @@ export const DICT = {
   'Maxsus profil foni': { ru: 'Свой фон профиля', en: 'Custom profile background' },
   'Maxsus ranglar': { ru: 'Свои цвета', en: 'Custom colours' },
   'Bu sozlama': { ru: 'Эта настройка', en: 'This setting' },
+  'Premiumda ochiladi — bosing': { ru: 'Откроется в премиуме — нажмите', en: 'Unlocks with premium — tap' },
+  'Shaffof tugmalar': { ru: 'Прозрачные кнопки', en: 'Transparent buttons' },
 };
