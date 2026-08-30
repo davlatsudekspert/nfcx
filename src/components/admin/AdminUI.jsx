@@ -164,6 +164,16 @@ export const chartTooltip = {
   cursor: { fill: 'rgba(255,255,255,0.04)' },
 };
 
+export function AdminLoading({ label }) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex items-center justify-center gap-3 rounded-2xl border border-white/[0.06] bg-[#101013] px-6 py-14 text-sm text-base-content/45">
+      <span className="loading loading-spinner loading-sm text-accent"></span>
+      {label || t('Yuklanmoqda...')}
+    </div>
+  );
+}
+
 export function EmptyState({ icon = 'clipboard', title, hint, action }) {
   return (
     <div className="flex flex-col items-center rounded-2xl border border-dashed border-white/12 px-6 py-12 text-center">

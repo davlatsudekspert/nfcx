@@ -6,7 +6,7 @@ import {
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
-import { AdminShell, AdminCard, KpiCard, StatusBadge, EmptyState, chartGrid, chartAxis, chartTooltip } from '../components/admin/AdminUI.jsx';
+import { AdminShell, AdminCard, KpiCard, StatusBadge, EmptyState, AdminLoading, chartGrid, chartAxis, chartTooltip } from '../components/admin/AdminUI.jsx';
 
 async function adminApi(path, options) {
   const res = await fetch('/api/admin' + path, {
@@ -165,7 +165,7 @@ function StatsTab() {
     }
   };
 
-  if (!stats) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
+  if (!stats) return <AdminLoading />;
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -259,7 +259,7 @@ function AnalyticsTab() {
   const { t } = useLanguage();
   const [data, setData] = useState(null);
   useEffect(() => { adminApi('/analytics').then(setData).catch(() => {}); }, []);
-  if (!data) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
+  if (!data) return <AdminLoading />;
 
   const breakdown = data.breakdown.map((b) => ({ ...b, label: t(KIND_LABEL[b.kind] || b.kind) }));
 
@@ -433,7 +433,7 @@ function UsersTab() {
     }
   };
 
-  if (!users) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
+  if (!users) return <AdminLoading />;
   const query = q.trim().toLowerCase();
   const filtered = !query ? users : users.filter((u) =>
     (u.email || '').toLowerCase().includes(query) ||
@@ -558,7 +558,7 @@ function OrdersTab() {
     finally { setBusy(null); }
   };
 
-  if (!orders) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
+  if (!orders) return <AdminLoading />;
   return (
     <div className="overflow-x-auto">
       <table className="table table-sm">
@@ -617,8 +617,8 @@ function AuctionRequestsTab() {
     }
   };
 
-  if (!requests) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
-  if (requests.length === 0) return <div className="text-base-content/45">{t("Hozircha so'rov yo'q.")}</div>;
+  if (!requests) return <AdminLoading />;
+  if (requests.length === 0) return <EmptyState icon="clipboard" title={t("Hozircha so'rov yo'q.")} hint={t("Foydalanuvchilar yuborgan auksion so'rovlari shu yerda ko'rinadi.")} />;
   return (
     <div className="space-y-3">
       {msg && <div className={`alert py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
@@ -666,8 +666,8 @@ function PendingPayoutsTab() {
     try { await adminApi(`/pending-payouts/${userId}/clear`, { method: 'POST', body: JSON.stringify({ amount }) }); await load(); } finally { setBusy(null); }
   };
 
-  if (!payouts) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
-  if (payouts.length === 0) return <div className="text-base-content/45">{t("Hozircha hech kimga to'lanishi kerak bo'lgan pul yo'q.")}</div>;
+  if (!payouts) return <AdminLoading />;
+  if (payouts.length === 0) return <EmptyState icon="wallet" title={t("Hozircha hech kimga to'lanishi kerak bo'lgan pul yo'q.")} />;
   return (
     <div className="overflow-x-auto">
       <table className="table table-sm">
@@ -805,8 +805,8 @@ function AuctionDemandTab() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t('Board‘ga kod qo‘shish')}</div>
+      <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1a1509] via-[#121013] to-[#101013] p-5">
+        <div className="text-sm font-bold text-accent">{'\u{1F525}'} {t('Board‘ga kod qo‘shish')}</div>
         <p className="mt-1 text-xs text-base-content/45">
           {t("Tavsiya boshlang'ich narx: oddiy 250 000 · kuchli 500 000 · juda noyob 1 000 000+. Qadam: 25 000 / 50 000 / 100 000.")}
         </p>
@@ -821,8 +821,8 @@ function AuctionDemandTab() {
         {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
       </div>
 
-      {!rows ? <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>
-        : rows.length === 0 ? <div className="text-base-content/45">{t('Board bo‘sh. Yuqoridan kod qo‘shing.')}</div>
+      {!rows ? <AdminLoading />
+        : rows.length === 0 ? <EmptyState icon="flame" title={t('Board bo‘sh.')} hint={t('Yuqoridan kod qo‘shing.')} />
         : (
         <div className="space-y-2">
           {rows.map((r) => (
@@ -830,8 +830,10 @@ function AuctionDemandTab() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-mono text-sm font-bold">{r.code}</span>
-                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] ${r.status === 'ready' ? 'bg-success/15 text-success' : r.status === 'auction_live' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-base-content/60'}`}>
-                    {t(DEMAND_STATUS_LABEL[r.status] || r.status)}
+                  <span className="ml-2 inline-flex align-middle">
+                    <StatusBadge tone={r.status === 'ready' ? 'success' : r.status === 'auction_live' ? 'accent' : 'muted'}>
+                      {t(DEMAND_STATUS_LABEL[r.status] || r.status)}
+                    </StatusBadge>
                   </span>
                   <span className="ml-2 text-xs text-base-content/50">{'\u{1F525}'} {r.interestCount} / {r.threshold}</span>
                 </div>
@@ -901,7 +903,7 @@ function AuctionsTab() {
     finally { setBusy(null); }
   };
 
-  if (!auctions) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
+  if (!auctions) return <AdminLoading />;
   return (
     <div>
       <CreateAuctionForm onCreated={load} />
@@ -1110,7 +1112,7 @@ function SecurityTab() {
       )}
 
       {subTab === 'ip' && (
-        !ipData ? <div className="text-base-content/45">{t("Yuklanmoqda...")}</div> : (
+        !ipData ? <AdminLoading /> : (
           <div className="rounded-2xl border border-white/10 p-5">
             <div className="flex items-center justify-between">
               <div>
@@ -1193,7 +1195,7 @@ function AdminsTab() {
     try { await adminApi(`/admins/${id}/remove`, { method: 'POST' }); await load(); } finally { setBusy(false); }
   };
 
-  if (!admins) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
+  if (!admins) return <AdminLoading />;
 
   return (
     <div>
@@ -1259,8 +1261,8 @@ function NotificationsTab() {
     }
   };
 
-  if (!messages) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
-  if (messages.length === 0) return <div className="text-base-content/45">{t("Hozircha murojaat yo'q.")}</div>;
+  if (!messages) return <AdminLoading />;
+  if (messages.length === 0) return <EmptyState icon="bell" title={t("Hozircha murojaat yo'q.")} />;
   return (
     <div className="space-y-3">
       {messages.map((m) => (
@@ -1316,8 +1318,8 @@ function PhysicalCardsTab() {
     }
   };
 
-  if (!cards) return <div className="text-base-content/45">{t("Yuklanmoqda...")}</div>;
-  if (cards.length === 0) return <div className="text-base-content/45">{t("Hozircha jismoniy karta buyurtmasi yo'q.")}</div>;
+  if (!cards) return <AdminLoading />;
+  if (cards.length === 0) return <EmptyState icon="idcard" title={t("Hozircha jismoniy karta buyurtmasi yo'q.")} />;
   return (
     <div className="overflow-x-auto">
       <table className="table table-sm">
@@ -1446,8 +1448,8 @@ function PromoCodesTab() {
 
   useEffect(() => { adminApi('/referrals').then((d) => setRows(d.referrals || [])).catch(() => setRows([])); }, []);
 
-  if (!rows) return <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>;
-  if (rows.length === 0) return <div className="text-base-content/45">{t('Hozircha promokod orqali hech kim qo‘shilmagan.')}</div>;
+  if (!rows) return <AdminLoading />;
+  if (rows.length === 0) return <EmptyState icon="tag" title={t('Hozircha promokod orqali hech kim qo‘shilmagan.')} />;
 
   // Har bir promokod egasi bo'yicha nechta odam qo'shilganini hisoblaymiz.
   const byReferrer = {};
@@ -1625,8 +1627,8 @@ function NewsTab() {
         </div>
       </div>
 
-      {!rows && <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>}
-      {rows && rows.length === 0 && <div className="text-base-content/45">{t('Hozircha yangiliklar yo‘q.')}</div>}
+      {!rows && <AdminLoading />}
+      {rows && rows.length === 0 && <EmptyState icon="news" title={t('Hozircha yangiliklar yo‘q.')} />}
       <div className="space-y-3">
         {(rows || []).map((n) => (
           <div key={n.id} className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
@@ -1780,8 +1782,8 @@ function CategoriesTab() {
         </div>
       </div>
 
-      {!rows && <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>}
-      {rows && rows.length === 0 && <div className="text-base-content/45">{t('Hozircha kategoriya yo‘q.')}</div>}
+      {!rows && <AdminLoading />}
+      {rows && rows.length === 0 && <EmptyState icon="folder" title={t('Hozircha kategoriya yo‘q.')} />}
       <div className="space-y-2">
         {mains.map((m) => (
           <div key={m.slug} className="space-y-1.5">
@@ -1873,8 +1875,8 @@ function VerificationTab() {
 
       <div>
         <div className="text-sm font-bold">{t('Tasdiqlangan profillar')} {rows ? `(${rows.length})` : ''}</div>
-        {!rows && <div className="mt-2 text-base-content/45">{t('Yuklanmoqda...')}</div>}
-        {rows && rows.length === 0 && <div className="mt-2 text-base-content/45">{t('Hozircha tasdiqlangan profil yo‘q.')}</div>}
+        {!rows && <div className="mt-2"><AdminLoading /></div>}
+        {rows && rows.length === 0 && <div className="mt-2"><EmptyState icon="check" title={t('Hozircha tasdiqlangan profil yo‘q.')} /></div>}
         <div className="mt-2 space-y-2">
           {(rows || []).map((r) => (
             <div key={r.code} className="flex items-center justify-between rounded-xl border border-white/10 bg-base-200/40 px-3 py-2">
