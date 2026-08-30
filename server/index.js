@@ -37,7 +37,7 @@ import {
   createPhysicalCard, resolvePhysicalCard,
   listPhysicalCardsByOwner, setPhysicalCardLink, setPhysicalCardBlocked,
   requestPremium, getOwnerByCode,
-  followUserFree, unfollowUser, getFollowStats, toggleLike, getLikeInfo,
+  followUserFree, unfollowUser, getFollowStats, listFollowers, listFollowing, toggleLike, getLikeInfo,
   setCardTierOverride, listPostsByCode, createPost, deletePost, togglePostLike,
   listUserPayments, getPendingPayout,
   getOrCreateConversation, listConversations, isConversationParticipant, listMessages, getOtherParticipant,
@@ -479,6 +479,22 @@ app.get('/api/follow-stats/:code', async (req, res) => {
   if (!ownerId) return res.json({ followers: 0, following: 0, isFollowing: false });
   const user = await currentUser(req);
   res.json(await getFollowStats(ownerId, user?.id));
+});
+
+// Obunachilar / obunalar ro'yxati (profil linklari bilan).
+app.get('/api/follow-list/:code', async (req, res) => {
+  if (!isDbReady()) return res.json({ list: [] });
+  const code = String(req.params.code || '').toUpperCase();
+  const ownerId = await getOwnerByCode(code);
+  if (!ownerId) return res.json({ list: [] });
+  const dir = req.query.dir === 'following' ? 'following' : 'followers';
+  try {
+    const list = dir === 'following' ? await listFollowing(ownerId) : await listFollowers(ownerId);
+    res.json({ list });
+  } catch (err) {
+    console.error('[api] follow-list:', err.message);
+    res.json({ list: [] });
+  }
 });
 
 // ---------- Layk ----------

@@ -1255,4 +1255,7 @@ export const DICT = {
   'Tushundim': { ru: 'Понятно', en: 'Got it' },
   'iPhone’da ilovani faqat Safari brauzeri orqali o‘rnatish mumkin. Bu sahifani Safari’da oching va yana urinib ko‘ring.': { ru: 'На iPhone приложение можно установить только через браузер Safari. Откройте эту страницу в Safari и попробуйте снова.', en: 'On iPhone the app can only be installed via Safari. Open this page in Safari and try again.' },
   'Aylantirish uchun bosing': { ru: 'Нажмите, чтобы перевернуть', en: 'Tap to flip' },
+  'Obunachilar': { ru: 'Подписчики', en: 'Followers' },
+  'Obunalar': { ru: 'Подписки', en: 'Following' },
+  'Ro‘yxat bo‘sh': { ru: 'Список пуст', en: 'The list is empty' },
 };

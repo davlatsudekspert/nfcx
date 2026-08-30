@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetVideos, dbGetTeam } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetVideos, dbGetTeam } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -301,6 +301,48 @@ function PostsFeed({ posts, onLike, t }) {
   );
 }
 
+// Obunachilar / obunalar ro'yxati modali — har biri profilga link.
+function FollowListModal({ code, dir, onClose, t }) {
+  const [list, setList] = useState(null);
+  useEffect(() => {
+    dbFollowList(code, dir).then(setList).catch(() => setList([]));
+  }, [code, dir]);
+  return (
+    <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div className="flex max-h-[80vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+          <span className="text-sm font-bold text-[color:var(--vz-ink)]">{dir === 'following' ? t('Obunalar') : t('Obunachilar')}</span>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)]">✕</button>
+        </div>
+        <div className="overflow-y-auto p-2">
+          {list === null && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Yuklanmoqda...')}</div>}
+          {list && list.length === 0 && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Ro‘yxat bo‘sh')}</div>}
+          {(list || []).map((m) => (
+            <button
+              key={m.code}
+              onClick={() => { onClose(); navigate('/' + m.code); }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5"
+            >
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[color:var(--vz-pill)]">
+                {m.avatarUrl
+                  ? <img src={m.avatarUrl} alt="" className="h-full w-full object-cover" />
+                  : <span className="flex h-full w-full items-center justify-center text-[13px] font-bold text-[color:var(--vz-ink)]">{initials(m.name)}</span>}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 truncate text-[13.5px] font-semibold text-[color:var(--vz-ink)]">
+                  {m.name}
+                  {m.verified && <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
+                </div>
+                <div className="truncate font-mono text-[11px] text-[color:var(--vz-ink-faint)]">nfcstore.uz/{m.code.toLowerCase()}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Profildagi vizual karta — bosilsa aylanadi (orqa tomon: faqat "NFC STORE").
 function FlipNfcCard({ finish, t, children }) {
   const [flipped, setFlipped] = useState(false);
@@ -518,6 +560,7 @@ export default function ProfilePage({ code, catalog }) {
   const [videos, setVideos] = useState([]);
   const [team, setTeam] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
+  const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -864,8 +907,18 @@ export default function ProfilePage({ code, catalog }) {
         </div>
         {followStats && (
           <div className="mt-2 flex items-center gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
-            <span><b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}</span>
-            <span><b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}</span>
+            <button
+              onClick={() => followStats.followers > 0 && setFollowListDir('followers')}
+              className={`${followStats.followers > 0 ? 'cursor-pointer hover:text-[color:var(--vz-ink)]' : ''}`}
+            >
+              <b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}
+            </button>
+            <button
+              onClick={() => followStats.following > 0 && setFollowListDir('following')}
+              className={`${followStats.following > 0 ? 'cursor-pointer hover:text-[color:var(--vz-ink)]' : ''}`}
+            >
+              <b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}
+            </button>
             <button
               onClick={toggleLike}
               className={`ml-auto flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
@@ -1065,6 +1118,10 @@ export default function ProfilePage({ code, catalog }) {
 
       <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{t("{n} ko'rishlar", { n: fmt(record.views || 1) })}</div>
       {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] text-white shadow-xl">{toast}</div>}
+
+      {followListDir && record && (
+        <FollowListModal code={record.code} dir={followListDir} onClose={() => setFollowListDir(null)} t={t} />
+      )}
 
       {leadOpen && record && (
         <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setLeadOpen(false)}>

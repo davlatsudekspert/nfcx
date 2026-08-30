@@ -69,6 +69,16 @@ export async function dbList() {
   }
 }
 
+// Obunachilar / obunalar ro'yxati (profil linklari bilan).
+export async function dbFollowList(code, dir) {
+  try {
+    const j = await api(`/follow-list/${encodeURIComponent(code)}?dir=${dir === 'following' ? 'following' : 'followers'}`);
+    return (j && j.list) || [];
+  } catch {
+    return [];
+  }
+}
+
 // Katalog qidiruvi — serverда email/telefon bo'yicha ham topadi
 // (ular javobда qaytmaydi).
 export async function dbSearchRecords(q) {

@@ -3752,6 +3752,24 @@ export async function unfollowUser(followerId, followeeId) {
   return rowCount > 0;
 }
 
+// Obunachilar / obunalar ro'yxati — har foydalanuvchining ASOSIY (yoki eng
+// eski) profil kartasi bilan (link uchun). Yashirin profillar tushib qoladi.
+async function _followList(sql, userId) {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (u.id) c.code, c.name, c.avatar_url AS "avatarUrl", c.verified
+       FROM follows fw
+       JOIN users u ON u.id = ${sql}
+       JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = FALSE
+      WHERE ${sql === 'fw.follower_id' ? 'fw.followee_id' : 'fw.follower_id'} = $1
+      ORDER BY u.id, c.is_primary DESC, c.ts ASC
+      LIMIT 200`,
+    [userId]
+  );
+  return rows;
+}
+export const listFollowers = (userId) => _followList('fw.follower_id', userId);
+export const listFollowing = (userId) => _followList('fw.followee_id', userId);
+
 export async function getFollowStats(userId, viewerId) {
   const { rows } = await pool.query(
     `SELECT
