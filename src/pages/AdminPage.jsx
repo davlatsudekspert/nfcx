@@ -6,6 +6,7 @@ import {
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
+import { AdminShell } from '../components/admin/AdminUI.jsx';
 
 async function adminApi(path, options) {
   const res = await fetch('/api/admin' + path, {
@@ -1859,33 +1860,45 @@ function VerificationTab() {
   );
 }
 
+// Sidebar navigatsiyasi — index = haqiqiy TABS indeksi (content switch o'zgarmaydi).
+const ADMIN_NAV = [
+  { index: 0, label: 'Umumiy', icon: 'dashboard' },
+  { index: 1, label: 'Statistika', icon: 'chart' },
+  { index: 2, label: 'Foydalanuvchilar', icon: 'users' },
+  { index: 3, label: 'Buyurtmalar', icon: 'bag' },
+  { index: 4, label: "To'lanishi kerak pullar", icon: 'wallet' },
+  { index: 5, label: 'Auksionlar', icon: 'hammer' },
+  { index: 6, label: "Auksion so'rovlari", icon: 'clipboard' },
+  { index: 17, label: 'Talab', icon: 'flame' },
+  { index: 7, label: 'Jismoniy kartalar', icon: 'idcard' },
+  { index: 8, label: 'Bildirishnomalar', icon: 'bell' },
+  { index: 9, label: 'Tashqi analitika', icon: 'activity' },
+  { index: 12, label: 'Gift NFC ID', icon: 'gift' },
+  { index: 13, label: 'Promokodlar', icon: 'tag' },
+  { index: 14, label: 'Yangiliklar', icon: 'news' },
+  { index: 15, label: 'Kategoriyalar', icon: 'folder' },
+  { index: 16, label: 'Tasdiqlash', icon: 'check' },
+  { index: 10, label: 'Security', icon: 'shield', superOnly: true },
+  { index: 11, label: 'Adminlar', icon: 'usercheck', superOnly: true },
+];
+
 function Dashboard({ onLogout, role }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState(0);
   const logout = async () => { await adminApi('/logout', { method: 'POST' }); onLogout(); };
   const isSuperAdmin = role === 'super_admin';
-  const visibleTabs = isSuperAdmin ? TABS : TABS.filter((tb) => tb !== 'Security' && tb !== 'Adminlar');
-  // Ko'rsatiladigan indeks bilan haqiqiy TABS indeksi orasidagi moslik.
-  const tabIndex = (label) => TABS.indexOf(label);
+  const nav = ADMIN_NAV.filter((n) => !n.superOnly || isSuperAdmin);
 
   return (
-    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <div className="flex items-center justify-between pt-10">
-        <h1 className="text-2xl font-bold">{t("Admin panel")} {!isSuperAdmin && <span className="badge badge-ghost badge-sm align-middle">{role}</span>}</h1>
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-          <button className="btn btn-ghost btn-sm" onClick={logout}>{t("Chiqish")}</button>
-        </div>
-      </div>
-      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-white/10">
-        {visibleTabs.map((label) => (
-          <button key={label} onClick={() => setTab(tabIndex(label))}
-            className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${tab === tabIndex(label) ? 'border-accent text-base-content' : 'border-transparent text-base-content/50 hover:text-base-content'}`}>
-            {t(label)}
-          </button>
-        ))}
-      </div>
-      <div className="mt-6">
+    <AdminShell
+      nav={nav}
+      activeIndex={tab}
+      onSelect={setTab}
+      title={t(TABS[tab] || 'Umumiy')}
+      role={role}
+      onLogout={logout}
+    >
+      <div>
         {tab === 0 && <StatsTab />}
         {tab === 1 && <AnalyticsTab />}
         {tab === 2 && <UsersTab />}
@@ -1905,7 +1918,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 16 && <VerificationTab />}
         {tab === 17 && <AuctionDemandTab />}
       </div>
-    </main>
+    </AdminShell>
   );
 }
 

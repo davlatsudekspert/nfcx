@@ -254,6 +254,13 @@
   outline-offset: 3px;
 }
 
+/* ── Admin panel — nozik scrollbar (sidebar/jadvallar) ── */
+.admin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.admin-scroll::-webkit-scrollbar-track { background: transparent; }
+.admin-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 999px; }
+.admin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+.admin-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent; }
+
 /* Matn belgilanganda (Ctrl+A ham) — nafis, mavzuga mos oltin fon.
    Aks holda brauzerning standart tanlash rangi qorong'i saytda
    "jigarrang" dog' bo'lib ko'rinadi. */
