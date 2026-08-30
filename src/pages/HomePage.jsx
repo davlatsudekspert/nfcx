@@ -14,8 +14,10 @@ function useMaskedCode() {
     const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     let letters = '', digits = '';
     for (const ch of raw) {
-      if (letters.length < 3 && /[A-Z]/.test(ch)) letters += ch;
-      else if (/^[0-9]$/.test(ch) && digits.length < 3) digits += ch;
+      if (letters.length < 3 && /[A-Z]/.test(ch)) {
+        if (letters === 'GO' && ch === 'D') continue; // GOD prefiksi ishlatilmaydi
+        letters += ch;
+      } else if (/^[0-9]$/.test(ch) && digits.length < 3) digits += ch;
     }
     setValue(digits ? `${letters} ${digits}` : letters);
   };

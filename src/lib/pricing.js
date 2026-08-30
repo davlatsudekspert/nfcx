@@ -2,9 +2,19 @@ import { codeTierOverride } from './codeTiers.js';
 
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
+// ── Bloklangan prefiks — bu bilan boshlangan NFC ID umuman yaratilmaydi ──
+// (search / generator / bandlash / auksion so'rovi / sovg'a / admin create).
+// Backend'da ham majburiy (server/index.js validCode).
+export const BLOCKED_PREFIXES = ['GOD'];
+export function isBlockedCode(raw) {
+  const c = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return BLOCKED_PREFIXES.some((p) => c.startsWith(p));
+}
+
 export function parseCode(raw) {
   const c = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (c.length !== 6) return null;
+  if (isBlockedCode(c)) return null;
   const letters = c.slice(0, 3);
   const digits = c.slice(3, 6);
   if (!/^[A-Z]{3}$/.test(letters) || !/^[0-9]{3}$/.test(digits)) return null;
@@ -29,6 +39,7 @@ export function parseLetterCode(raw) {
 export function parseAnyCode(raw) {
   const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!clean) return null;
+  if (isBlockedCode(clean)) return null;
   if (/^[0-9]{8}$/.test(clean)) return { code: clean };
   if (!LETTER_CODES_ENABLED) return parseCode(clean);
   if (/[0-9]/.test(clean)) return parseCode(clean);
@@ -47,7 +58,7 @@ export const LETTER_MULT = 3;
 // EKSKLYUZIV so'zlar — eng yuqori status. Bu so'z bilan boshlangan HAR
 // QANDAY kod (raqamidan qat'i nazar) Ekslyuziv darajaga tushadi (auksion).
 const EXCLUSIVE_WORDS = [
-  'VIP', 'CEO', 'KNG', 'GOD', 'LEG', 'ROY', 'ACE', 'WIN', 'UZB', 'LUX',
+  'VIP', 'CEO', 'KNG', 'LEG', 'ROY', 'ACE', 'WIN', 'UZB', 'LUX',
 ];
 
 // PREMIUM so'zlar — taniqli brendlar, ismlar, shaharlar. Bu so'z + "super"
@@ -123,8 +134,57 @@ function isSuperDigit(d) {
   return false;
 }
 
+// ── SPECIAL TIER CLASSIFICATION (prefiks guruhlari) ─────────────────────────
+// Priority: EXACT (codeTiers.js) → TECH → SPORTS → PREMIUM WORD → BRAND →
+// COUNTRY → mavjud umumiy qoidalar (tierFromCode pastki qismi).
+// UFC/NBA/NFL/WWE — SPORTS'da (BRAND'dan ustun). VIP/CEO/PRO — TECH'da.
+const TECH_PREFIXES = [
+  'AIQ', 'DEV', 'WEB', 'APP', 'API', 'CEO', 'CTO', 'CFO', 'ITX', 'GPU',
+  'CPU', 'RAM', 'SSD', 'USB', 'LED', 'NFC', 'QRX', 'BOT', 'PRO', 'VIP',
+];
+const SPORTS_PREFIXES = [
+  'RMA', 'FCB', 'PSG', 'MCI', 'MUN', 'ARS', 'CHE', 'LIV', 'JUV', 'INT',
+  'ACM', 'BVB', 'BAY', 'NBA', 'NFL', 'UFC', 'WWE', 'FIA',
+];
+const PREMIUM_WORD_PREFIXES = [
+  'LUX', 'TOP', 'MAX', 'ONE', 'UNO', 'GEM', 'ACE', 'KNG', 'ROY', 'MRX', 'ELT',
+];
+// NASA (4 harf) standart formatga sig'maydi — chiqarib tashlandi.
+const BRAND_PREFIXES = [
+  'BMW', 'KFC', 'IBM', 'AMD', 'JBL', 'DHL', 'UPS', 'CNN', 'BBC', 'HBO',
+  'MTV', 'NHL', 'FBI', 'CIA',
+];
+const COUNTRY_PREFIXES = [
+  'USA', 'UAE', 'UZB', 'KAZ', 'TUR', 'RUS', 'CHN', 'JPN', 'KOR', 'IND',
+  'GBR', 'FRA', 'GER', 'ITA', 'ESP', 'BRA', 'CAN', 'AUS', 'QAT', 'KSA',
+];
+// "Maxsus raqam" — bu guruhlarda darajani ko'taradi.
+const SPECIAL_SUFFIX = ['007', '077', '010', '011', '707', '101'];
+// Kamida ikkita raqam bir xil (palindrom/zerkalo ham shunga kiradi).
+function hasRepeatDigit(d) {
+  return d[0] === d[1] || d[1] === d[2] || d[0] === d[2];
+}
+
+// Prefiks guruhi bo'yicha daraja. Guruhda emas / "boshqa suffiks" → null
+// (mavjud umumiy qoida ishlaydi).
+function groupTier(letters, digits) {
+  const special = SPECIAL_SUFFIX.includes(digits);
+  const soft = !special && digits !== '000' && hasRepeatDigit(digits);
+  if (!special && !soft) return null;
+  if (TECH_PREFIXES.includes(letters))         return special ? 'gold'    : 'silver';
+  if (SPORTS_PREFIXES.includes(letters))       return special ? 'gold'    : 'silver';
+  if (PREMIUM_WORD_PREFIXES.includes(letters)) return special ? 'premium' : 'gold';
+  if (BRAND_PREFIXES.includes(letters))        return special ? 'premium' : 'silver';
+  if (COUNTRY_PREFIXES.includes(letters))      return special ? 'premium' : 'silver';
+  return null;
+}
+
 // Kod darajasini aniqlaydi: 'exclusive' | 'premium' | 'gold' | 'silver' | 'free'
 export function tierFromCode(letters, digits) {
+  // SPECIAL TIER CLASSIFICATION — prefiks guruhlari (mavjud qoidalardan ustun).
+  const g = groupTier(letters, digits);
+  if (g) return g;
+
   const lettersAllSame = allSame3(letters);
   const digitsAllSame = allSame3(digits);
   const exclusiveWord = EXCLUSIVE_WORDS.includes(letters);

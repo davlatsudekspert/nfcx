@@ -30,9 +30,17 @@ const PREMIUM_CODES = [
   'GGG200', 'VVV700', 'NMX700', 'ZOO700', 'GRL700', 'BMW010',
 ];
 
+// EXACT PREMIUM — har doim PREMIUM (barcha prefiks/guruh qoidalaridan ustun).
+// Manba: "SPECIAL TIER CLASSIFICATION" spec, 2-bo'lim.
+const EXACT_PREMIUM_CODES = [
+  'KHB029', 'UFC229', 'UFC300', 'UFC205', 'UFC194', 'UFC100', 'UFC200', 'UFC254',
+  'MMA029', 'MMA300', 'KHB254', 'CON013', 'CON205', 'CON194',
+];
+
 export const CODE_TIERS = {};
 for (const c of AUCTION_CODES) CODE_TIERS[c] = 'exclusive';
 for (const c of PREMIUM_CODES) CODE_TIERS[c] = 'premium';
+for (const c of EXACT_PREMIUM_CODES) CODE_TIERS[c] = 'premium';
 
 // Kod uchun qo'lda belgilangan tarif (yo'q bo'lsa null).
 export function codeTierOverride(code) {

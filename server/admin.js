@@ -14,6 +14,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { generateSecret as totpGenerateSecret, generateURI as totpGenerateURI, verify as totpVerify } from 'otplib';
 import { UPLOAD_DIR } from './paths.js';
+import { isBlockedCode } from '../src/lib/pricing.js';
 import { hashPassword, verifyPassword } from './auth.js';
 import { sendTelegramOtp } from './bot.js';
 import {
@@ -363,7 +364,7 @@ adminRouter.post('/auctions', async (req, res) => {
   const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
   const minStep = req.body?.minStep ? Math.round(Number(req.body.minStep)) : 25000;
 
-  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return res.status(422).json({ error: 'bad_code' });
   if (!startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
   if (buyNowPrice && buyNowPrice <= startPrice) return res.status(422).json({ error: 'buy_now_too_low' });
   if (minStep < 1_000) return res.status(422).json({ error: 'bad_input' });
@@ -555,7 +556,7 @@ adminRouter.get('/auction-demand', async (req, res) => {
 adminRouter.post('/auction-demand', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const code = String(req.body?.code || '').toUpperCase().trim();
-  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return res.status(422).json({ error: 'bad_code' });
   try {
     if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
     const row = await adminAddAuctionDemand({
@@ -782,7 +783,7 @@ adminRouter.post('/nfc-gifts', requireAdmin, async (req, res) => {
   const code = String(req.body?.code || '').trim().toUpperCase();
   const recipientName = String(req.body?.recipientName || '').slice(0, 100).trim();
   const note = String(req.body?.note || '').slice(0, 300).trim();
-  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return res.status(422).json({ error: 'bad_code' });
 
   const result = await createNfcGift(code, recipientName, note);
   if (result.error) return res.status(409).json(result);

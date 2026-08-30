@@ -1141,6 +1141,27 @@ export async function initDb() {
     }
   }
 
+  // Tier klassifikatsiyasi yangilandi (SPECIAL TIER spec) — mavjud, egasi bor
+  // NFC ID'lar ESKI badge'da qoladi: bir martalik tier_override "muzlatish".
+  // Faqat yangi qoidada darajasi PASAYADIGAN kartalar. Bir marta ishlaydi.
+  {
+    const done = await pool.query(`SELECT 1 FROM admin_settings WHERE key = 'tier_grandfather_v1'`);
+    if (!done.rows.length) {
+      const GF = { VIP001: 'exclusive' };
+      for (const [code, tier] of Object.entries(GF)) {
+        const r = await pool.query(
+          `UPDATE cards SET tier_override = $2 WHERE code = $1 AND tier_override IS NULL`,
+          [code, tier]
+        ).catch(() => ({ rowCount: 0 }));
+        if (r.rowCount) console.log(`[db] ${code} eski tier (${tier}) muzlatildi.`);
+      }
+      await pool.query(
+        `INSERT INTO admin_settings (key, value) VALUES ('tier_grandfather_v1', $1) ON CONFLICT (key) DO NOTHING`,
+        [new Date().toISOString()]
+      );
+    }
+  }
+
   // Sotilgan auksion narxlarini bir martalik to'g'rilash (egasi so'rovi) —
   // faqat hozirgi (test) qiymatga teng bo'lsa yangilanadi (idempotent).
   for (const [code, wrong, right] of [

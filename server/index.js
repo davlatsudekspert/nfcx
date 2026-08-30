@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
+import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pricing.js';
 import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
@@ -86,6 +86,7 @@ const RESERVED_CODES = new Set([
 ]);
 
 function validCode(code) {
+  if (isBlockedCode(code)) return false;
   return STD_CODE_RE.test(code) || LETTER_CODE_RE.test(code) || FREE_ID_RE.test(code);
 }
 
@@ -926,7 +927,7 @@ app.post('/api/auction-requests', auctionRequestLimiter, async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const code = String(req.body?.code || '').toUpperCase().trim();
   const note = cleanStr(req.body?.note, 300);
-  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return res.status(422).json({ error: 'bad_code' });
   try {
     if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
     const result = await createAuctionRequest(user.id, code, note);
@@ -1225,6 +1226,7 @@ const catalogCard = (record) => ({
   city: record.city,
   categorySlug: record.categorySlug,
   verified: record.verified,
+  tierOverride: record.tierOverride || '',
 });
 
 app.get('/api/records', async (req, res) => {

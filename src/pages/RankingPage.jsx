@@ -14,7 +14,7 @@ const MEDAL = {
 function TopCard({ rank, item }) {
   const { t } = useLanguage();
   const m = MEDAL[rank];
-  const tier = tierForCode(item.code);
+  const tier = item.tierOverride || tierForCode(item.code);
   const big = rank === 1;
   return (
     <button
@@ -74,7 +74,7 @@ export default function RankingPage({ catalog }) {
                 </thead>
                 <tbody>
                   {rest.map((it, i) => {
-                    const tier = tierForCode(it.code);
+                    const tier = it.tierOverride || tierForCode(it.code);
                     return (
                       <tr key={it.code} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => navigate('/' + it.code)}>
                         <td className="font-mono text-base-content/50">{i + 4}</td>
