@@ -116,7 +116,7 @@ export default function App() {
     else if (cleanRoute === 'yangiliklar') page = <NewsPage />;
     else if (cleanRoute === 'katalog') page = <CatalogPage catalog={catalog} />;
     else if (cleanRoute === 'reyting') page = <RankingPage catalog={catalog} />;
-    else if (cleanRoute === 'kompaniyalar') page = <CompaniesPage />;
+    else if (cleanRoute === 'kompaniyalar') page = <CompaniesPage catalog={catalog} />;
     else if (cleanRoute === 'bildirishnomalar') page = <NotificationsPage />;
     else if (cleanRoute === 'savollar') page = <FaqPage catalog={catalog} />;
     else if (cleanRoute === 'aloqa') page = <ContactPage />;

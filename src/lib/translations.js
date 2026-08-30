@@ -1096,4 +1096,13 @@ export const DICT = {
   'Barcha sohalar': { ru: 'Все сферы', en: 'All industries' },
   'Barcha kichik sohalar': { ru: 'Все подкатегории', en: 'All subcategories' },
   'Filtrlarni tozalash': { ru: 'Сбросить фильтры', en: 'Clear filters' },
+  'Kompaniyalar va mutaxassislarni toping': { ru: 'Найдите компании и специалистов', en: 'Find companies and specialists' },
+  'Kerakli kompaniya, xizmat yoki mutaxassisni NFCStore orqali toping. Ularning faoliyat sohasi, xizmatlari va ochiq aloqa ma’lumotlarini bitta joyda ko‘ring.': { ru: 'Найдите нужную компанию, услугу или специалиста через NFCStore. Их сфера деятельности, услуги и открытые контакты — в одном месте.', en: 'Find the company, service or specialist you need through NFCStore. Their field, services and public contacts — all in one place.' },
+  'Kompaniya nomi, xizmat yoki shahar': { ru: 'Название компании, услуга или город', en: 'Company name, service or city' },
+  'Katalogdagi kompaniyalar': { ru: 'Компании в каталоге', en: 'Companies in the catalog' },
+  'Hozircha katalogda kompaniya profillari yo‘q. Birinchi bo‘lib qo‘shiling.': { ru: 'Пока в каталоге нет профилей компаний. Станьте первым.', en: 'No company profiles in the catalog yet. Be the first to join.' },
+  'Sizning biznesingiz ham NFCStore’da bo‘lsin': { ru: 'Пусть ваш бизнес тоже будет на NFCStore', en: 'Put your business on NFCStore too' },
+  'Kompaniyangiz uchun raqamli profil yarating. Mijozlar va kelajakdagi hamkorlar sizni NFCStore katalogi, qidiruvi va NFC ID orqali oson topsin.': { ru: 'Создайте цифровой профиль для вашей компании. Пусть клиенты и будущие партнёры легко находят вас через каталог, поиск и NFC ID NFCStore.', en: 'Create a digital profile for your company. Let clients and future partners find you easily through the NFCStore catalog, search and NFC ID.' },
+  'Kompaniya profilini yaratish': { ru: 'Создать профиль компании', en: 'Create a company profile' },
+  'Korporativ NFC kartalar': { ru: 'Корпоративные NFC карты', en: 'Corporate NFC cards' },
 };
