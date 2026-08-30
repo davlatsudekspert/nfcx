@@ -2556,6 +2556,53 @@ export async function getRecordOwner(code) {
   return rows[0] ? rows[0].user_id : null;
 }
 
+// Foydalanuvchi O'Z NFC ID'sini butunlay o'chiradi. Qaytarib bo'lmaydi.
+// 6-belgili (AAA000) kod o'chirilгач yana bo'sh bo'ladi (checker'да
+// bandlanмаган ko'rinadi). 8-raqamli avto-ID esa shunчаки yo'qoladi.
+// Foydalanuvchининг OXIRGI kartasini o'chirib bo'lmaydi.
+export async function deleteOwnCard(code, userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT code, is_primary AS "isPrimary" FROM cards WHERE code = $1 AND user_id = $2 FOR UPDATE`,
+      [code, userId]
+    );
+    if (!rows[0]) { await client.query('ROLLBACK'); return { error: 'NOT_FOUND' }; }
+    const { rows: mine } = await client.query(`SELECT COUNT(*)::int AS n FROM cards WHERE user_id = $1`, [userId]);
+    if (mine[0].n <= 1) { await client.query('ROLLBACK'); return { error: 'LAST_CARD' }; }
+
+    await client.query(`DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE code = $1)`, [code]);
+    await client.query(`DELETE FROM posts WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM menu_items WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM menu_categories WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_files WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_videos WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_team WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_leads WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_events WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_likes WHERE code = $1`, [code]);
+    await client.query(`UPDATE gift_offers SET status = 'cancelled', decided_at = now() WHERE code = $1 AND status = 'pending'`, [code]);
+    await client.query(`UPDATE physical_cards SET linked_code = NULL WHERE linked_code = $1`, [code]);
+    await client.query(`DELETE FROM cards WHERE code = $1`, [code]);
+
+    if (rows[0].isPrimary) {
+      await client.query(
+        `UPDATE cards SET is_primary = TRUE
+         WHERE code = (SELECT code FROM cards WHERE user_id = $1 ORDER BY ts ASC LIMIT 1)`,
+        [userId]
+      );
+    }
+    await client.query('COMMIT');
+    return { ok: true, freeId: /^[0-9]{8}$/.test(code) };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function updateRecord(code, fields) {
   const sets = [];
   const vals = [code];

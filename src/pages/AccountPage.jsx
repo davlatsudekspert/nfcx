@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -1256,6 +1256,23 @@ function EditCardForm({ card, onSaved }) {
     }
   };
 
+  const [delOpen, setDelOpen] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
+  const isFreeId = /^[0-9]{8}$/.test(card.code);
+  const doDelete = async () => {
+    setDelBusy(true);
+    try {
+      await dbDeleteOwnCard(card.code);
+      setDelOpen(false);
+      await onSaved();
+    } catch (err) {
+      setSaleMsg({ type: 'err', text: err.message });
+      setDelOpen(false);
+    } finally {
+      setDelBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: t("Ism bo'sh bo'lmasligi kerak.") }); return; }
     setBusy(true);
@@ -1366,8 +1383,33 @@ function EditCardForm({ card, onSaved }) {
           >
             {'\u{1F4B3}'} {t('NFC ID buyurtma berish')}{!allow('physicalCardDesigner') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
           </button>
+          <button className="btn btn-ghost btn-sm text-error" onClick={() => setDelOpen(true)}>
+            {'\u{1F5D1}'} {t("O'chirish")}
+          </button>
         </div>
       </div>
+
+      {delOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => !delBusy && setDelOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-error/30 bg-base-200 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-bold text-error">{'⚠️'} {t("NFC ID'ni o'chirish")}</div>
+            <p className="mt-2 text-sm leading-relaxed text-base-content/70">
+              <b className="font-mono">nfcstore.uz/{card.code.toLowerCase()}</b> {t("butunlay o'chiriladi. Bu amalni QAYTARIB BO'LMAYDI — barcha postlar, menyu, fayllar va sozlamalar yo'qoladi.")}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-base-content/70">
+              {isFreeId
+                ? t("Bu — ro'yxatdan o'tishda avtomatik berilgan bepul ID. O'chirilгач qayta sotuvga qo'yilmaydi.")
+                : t("Bu NFC ID o'chirilгач yana bo'sh bo'ladi va boshqa foydalanuvchi uni band qilishi mumkin.")}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button className="btn btn-ghost btn-sm" disabled={delBusy} onClick={() => setDelOpen(false)}>{t('Bekor')}</button>
+              <button className="btn btn-error btn-sm" disabled={delBusy} onClick={doDelete}>
+                {delBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Ha, butunlay o'chirish")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {locked && (
         <LockedFeatureModal

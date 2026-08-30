@@ -397,6 +397,24 @@ export async function dbSetPrimary(code) {
   return data;
 }
 
+// Foydalanuvchi o'z NFC ID'sini butunlay o'chiradi (qaytarib bo'lmaydi).
+export async function dbDeleteOwnCard(code) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const map = {
+      last_card: 'Oxirgi NFC ID’ni o’chirib bo’lmaydi — kamida bitta profil kerak.',
+      unauthorized: 'Avval tizimga kiring.',
+      not_found: 'Bu NFC ID topilmadi yoki sizga tegishli emas.',
+    };
+    throw new Error(map[data?.error] || 'O’chirib bo’lmadi.');
+  }
+  return data;
+}
+
 export async function dbOrderPhysicalCard(code, shipping) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/order-physical-card`, {
     method: 'POST',

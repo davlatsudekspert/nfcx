@@ -6,7 +6,7 @@ import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pri
 import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
-  listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews,
+  listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews, deleteOwnCard,
   logCardEvent, cardEventStats, CARD_EVENT_TYPES,
   createLead, listLeadsByCode, leadCountToday, deleteLead,
   getMenu, menuCounts, menuCategoryBelongs,
@@ -1286,6 +1286,24 @@ app.get('/api/records/:code', async (req, res) => {
     res.json(rec);
   } catch (err) {
     console.error('[api] getRecord:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Foydalanuvchi O'Z NFC ID'sini butunlay o'chiradi (qaytarib bo'lmaydi).
+app.delete('/api/records/:code', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    const result = await deleteOwnCard(code, user.id);
+    if (result.error === 'NOT_FOUND') return res.status(404).json({ error: 'not_found' });
+    if (result.error === 'LAST_CARD') return res.status(409).json({ error: 'last_card' });
+    res.json(result);
+  } catch (err) {
+    console.error('[api] deleteOwnCard:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
