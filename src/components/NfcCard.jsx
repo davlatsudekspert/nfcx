@@ -44,7 +44,7 @@ const SHADOW_RIM = '0 0 0 1px rgba(201,162,39,0.28), 0 0 40px rgba(180,140,30,0.
 
 export default function NfcCard({
   code = 'AAA000', name = 'ISM FAMILIYA', since, finish = 'black', size = 'md',
-  rim = false, back = false, bgImage = '',
+  rim = false, back = false, bgImage = '', hideBrand = false,
   namePos = null, nameScale = 1, nameColor = '', onNameChange = null,
   codePos = null, codeScale = 1, onCodeChange = null,
   brandPos = null, brandScale = 1, brandColor = '', onBrandChange = null,
@@ -139,7 +139,7 @@ export default function NfcCard({
         <div className="relative z-[1] flex items-center justify-end">
           <IconWave style={{ color: f.sub }} />
         </div>
-        {brandPositioned
+        {(brandPositioned || hideBrand)
           ? <span />
           : <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: brandClr }}>NFCSTORE</div>}
         {codePositioned
@@ -179,7 +179,7 @@ export default function NfcCard({
           </div>
         )}
 
-        {brandPositioned && (
+        {brandPositioned && !hideBrand && (
           <div
             onMouseDown={editable && onBrandChange ? startDrag('brand') : undefined}
             className={`absolute z-[3] font-display font-bold uppercase leading-none tracking-[0.22em] ${editable && onBrandChange ? 'cursor-move rounded px-1 outline-dashed outline-1 outline-white/50' : ''}`}

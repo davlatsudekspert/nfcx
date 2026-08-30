@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile, dbListNfcDevices, dbUpdateNfcDevice, dbGetVideos, dbUploadVideo, dbUpdateVideo, dbDeleteVideo, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbListNfcDevices, dbUpdateNfcDevice, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -11,7 +11,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, fileLimitFor, videoLimitsFor, menuEligible } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, menuEligible } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -68,169 +68,6 @@ function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
         </span>
       </button>
       {open && <div className="border-t border-white/10 px-4 pb-5 pt-4">{children}</div>}
-    </div>
-  );
-}
-
-// Analytics (Band 3.1) — karta bo'yicha statistika. Bazaviy sanoq barcha
-// tarifda; kunlik grafik + havola taqsimoti faqat Gold+ / Profile Premium.
-const EVENT_LABELS = {
-  profile_view: 'Profil ko‘rildi',
-  phone_click: 'Telefon bosildi',
-  telegram_click: 'Telegram bosildi',
-  whatsapp_click: 'WhatsApp bosildi',
-  instagram_click: 'Instagram bosildi',
-  website_click: 'Sayt bosildi',
-  email_click: 'Email bosildi',
-  link_click: 'Havola bosildi',
-  contact_save: 'Kontakt saqlandi',
-  lead: 'Yangi lead',
-  menu_view: 'Menyu ko‘rildi',
-};
-const RANGE_OPTS = [7, 30, 90];
-
-function AnalyticsSection({ code, advancedAllowed, onLock }) {
-  const { t } = useLanguage();
-  const [days, setDays] = useState(30);
-  const [data, setData] = useState(null);
-  const [err, setErr] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let off = false;
-    setLoading(true); setErr(false);
-    dbGetAnalytics(code, days)
-      .then((d) => { if (!off) setData(d); })
-      .catch(() => { if (!off) setErr(true); })
-      .finally(() => { if (!off) setLoading(false); });
-    return () => { off = true; };
-  }, [code, days]);
-
-  const maxDay = data?.byDay?.reduce((m, r) => Math.max(m, r.n), 0) || 1;
-
-  return (
-    <div>
-      {loading && <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>}
-      {err && <div className="text-sm text-error">{t('Statistikani yuklab bo‘lmadi.')}</div>}
-      {data && !loading && (
-        <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <div className="text-2xl font-extrabold">{fmt(data.totalViews)}</div>
-              <div className="text-[11px] text-base-content/50">{t('Ko‘rishlar')} · {t('{n} kun', { n: data.days })}</div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <div className="text-2xl font-extrabold">{fmt(data.uniqueVisitors)}</div>
-              <div className="text-[11px] text-base-content/50">{t('Alohida tashrifchi')}</div>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <div className="text-2xl font-extrabold">{fmt(data.legacyViews || 0)}</div>
-              <div className="text-[11px] text-base-content/50">{t('Jami (butun davr)')}</div>
-            </div>
-          </div>
-
-          {Object.keys(data.byType || {}).filter((k) => k !== 'profile_view').length > 0 && (
-            <div className="mt-4 space-y-1.5">
-              {Object.entries(data.byType).filter(([k]) => k !== 'profile_view').sort((a, b) => b[1] - a[1]).map(([k, n]) => (
-                <div key={k} className="flex items-center justify-between text-sm">
-                  <span className="text-base-content/70">{t(EVENT_LABELS[k] || k)}</span>
-                  <span className="font-semibold">{fmt(n)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {advancedAllowed ? (
-            <>
-              <div className="mt-5 flex gap-1.5">
-                {RANGE_OPTS.map((d) => (
-                  <button key={d} onClick={() => setDays(d)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-semibold ${days === d ? 'bg-accent text-accent-content' : 'bg-white/5 text-base-content/60'}`}>
-                    {t('{n} kun', { n: d })}
-                  </button>
-                ))}
-              </div>
-
-              {data.byDay && data.byDay.length > 0 ? (
-                <div className="mt-3 flex h-28 items-end gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-2">
-                  {data.byDay.map((r) => (
-                    <div key={r.day} className="flex min-w-[6px] flex-1 flex-col items-center justify-end" title={`${r.day}: ${r.n}`}>
-                      <div className="w-full rounded-t bg-accent/70" style={{ height: `${Math.max(3, (r.n / maxDay) * 100)}%` }}></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-3 text-sm text-base-content/45">{t('Bu davrda ko‘rish bo‘lmagan.')}</div>
-              )}
-
-              {data.byRef && data.byRef.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t('Eng ko‘p bosilgan havolalar')}</div>
-                  <div className="mt-2 space-y-1">
-                    {data.byRef.map((r) => (
-                      <div key={r.ref} className="flex items-center justify-between text-sm">
-                        <span className="truncate text-base-content/70">{r.ref}</span>
-                        <span className="ml-3 shrink-0 font-semibold">{fmt(r.n)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <button type="button" onClick={onLock}
-              className="mt-4 w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-              {'\u{1F512}'} {t('Kunlik grafik, havola taqsimoti va 90 kunlik tarix — Gold NFC ID yoki Profile Premiumda ochiladi.')}
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// Lead Capture (Band 3.2) — egaga kelgan kontaktlar ro'yxati.
-function LeadsSection({ code, enabled }) {
-  const { t } = useLanguage();
-  const [leads, setLeads] = useState(null);
-  const [err, setErr] = useState(false);
-
-  const load = () => dbListLeads(code).then(setLeads).catch(() => setErr(true));
-  useEffect(() => { if (enabled) load(); }, [code, enabled]);
-
-  const remove = async (id) => {
-    if (!confirm(t('Bu lidni o‘chirasizmi?'))) return;
-    try { await dbDeleteLead(code, id); setLeads((ls) => (ls || []).filter((l) => l.id !== id)); }
-    catch { /* jim */ }
-  };
-
-  if (!enabled) {
-    return <div className="text-sm text-base-content/50">{t('«Lidlarni yig‘ish» yoqilmagan — yoqsangiz, profilingizda kontakt formasi paydo bo‘ladi.')}</div>;
-  }
-  if (err) return <div className="text-sm text-error">{t('Lidlarni yuklab bo‘lmadi.')}</div>;
-  if (!leads) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
-  if (leads.length === 0) return <div className="text-sm text-base-content/45">{t('Hozircha lid yo‘q.')}</div>;
-
-  return (
-    <div className="space-y-2">
-      {leads.map((l) => (
-        <div key={l.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="font-semibold">{l.name}{l.company ? ` · ${l.company}` : ''}</div>
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-base-content/70">
-                {l.phone && <a className="link" href={`tel:${l.phone}`}>{l.phone}</a>}
-                {l.telegram && <a className="link" href={`https://t.me/${l.telegram}`} target="_blank" rel="noreferrer">@{l.telegram}</a>}
-                {l.whatsapp && <a className="link" href={`https://wa.me/${l.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-                {l.email && <a className="link" href={`mailto:${l.email}`}>{l.email}</a>}
-              </div>
-              {l.note && <div className="mt-1 whitespace-pre-wrap text-[12.5px] text-base-content/55">{l.note}</div>}
-              <div className="mt-1 text-[11px] text-base-content/35">{timeAgo(new Date(l.createdAt).getTime())}</div>
-            </div>
-            <button className="btn btn-ghost btn-xs shrink-0" onClick={() => remove(l.id)}>{t("O'chirish")}</button>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -445,250 +282,6 @@ function MenuManagerSection({ code, allowed, onLock }) {
           <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Ichimliklar)')}
             value={newCat} onChange={(e) => setNewCat(e.target.value)} />
           <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Fayl / PDF / katalog (Band 3.4) — egaga boshqaruv.
-function FilesSection({ code, access, allowed, onLock }) {
-  const { t } = useLanguage();
-  const [files, setFiles] = useState(null);
-  const [err, setErr] = useState(false);
-  const [title, setTitle] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const limit = fileLimitFor(access);
-
-  const load = () => dbGetFiles(code).then(setFiles).catch(() => setErr(true));
-  useEffect(() => { if (allowed) load(); }, [code, allowed]);
-
-  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
-
-  const onFile = async (e) => {
-    const file = e.target.files?.[0]; e.target.value = '';
-    if (!file) return;
-    if (file.type !== 'application/pdf') { flash(t('Faqat PDF fayl qabul qilinadi.')); return; }
-    if (file.size > 8 * 1024 * 1024) { flash(t('Fayl hajmi 8 MB dan oshmasligi kerak.')); return; }
-    setBusy(true);
-    try {
-      const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onerror = () => rej(new Error('read'));
-        r.onload = () => res(r.result);
-        r.readAsDataURL(file);
-      });
-      await dbUploadFile(code, title.trim() || file.name.replace(/\.pdf$/i, ''), dataUrl);
-      setTitle('');
-      await load();
-    } catch (er) {
-      const m = {
-        limit_reached: t('Fayl limiti tugadi ({n} ta).', { n: limit }),
-        too_large: t('Fayl hajmi 8 MB dan oshmasligi kerak.'),
-        bad_file: t('Faqat PDF fayl qabul qilinadi.'),
-        feature_locked: t('Fayllar — Gold NFC ID yoki Profile Premiumda ochiladi.'),
-      };
-      flash(m[er.message] || t('Yuklashda xatolik.'));
-    } finally { setBusy(false); }
-  };
-
-  const rename = async (f) => {
-    const v = prompt(t('Fayl nomi'), f.title);
-    if (v == null || !v.trim() || v.trim() === f.title) return;
-    await dbUpdateFile(code, f.id, { title: v.trim() });
-    await load();
-  };
-  const del = async (f) => {
-    if (!confirm(t('Bu faylni o‘chirasizmi?'))) return;
-    await dbDeleteFile(code, f.id);
-    setFiles((fs) => (fs || []).filter((x) => x.id !== f.id));
-  };
-
-  if (!allowed) {
-    return (
-      <button type="button" onClick={onLock}
-        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-        {'\u{1F512}'} {t('Fayllar — Gold NFC ID yoki Profile Premiumda ochiladi.')}
-      </button>
-    );
-  }
-  if (err) return <div className="text-sm text-error">{t('Fayllarni yuklab bo‘lmadi.')}</div>;
-  if (!files) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
-
-  return (
-    <div className="space-y-3">
-      <div className="text-xs text-base-content/50">{t('Fayllar')}: {files.length}/{limit} · {t('PDF, maks. 8 MB')}</div>
-      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
-
-      <div className="space-y-2">
-        {files.map((f) => (
-          <div key={f.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2.5">
-            <span className="text-accent">📄</span>
-            <a href={f.fileUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm font-semibold hover:underline">{f.title}</a>
-            {f.sizeBytes != null && <span className="shrink-0 text-[11px] text-base-content/40">{Math.round(f.sizeBytes / 1024)} KB</span>}
-            <button className="btn btn-ghost btn-xs" onClick={() => rename(f)}>{t('Nomi')}</button>
-            <button className="btn btn-ghost btn-xs text-error" onClick={() => del(f)}>{t("O'chirish")}</button>
-          </div>
-        ))}
-      </div>
-
-      {files.length < limit && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Fayl nomi (masalan: Narxnoma 2026)')}
-            value={title} onChange={(e) => setTitle(e.target.value)} />
-          <label className="btn btn-primary btn-sm">
-            {busy ? <span className="loading loading-spinner loading-xs"></span> : t('PDF yuklash')}
-            <input type="file" accept="application/pdf" className="hidden" onChange={onFile} disabled={busy} />
-          </label>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Video (PHASE 4) — egaga boshqaruv. Mijozда davomiylik/yo'nalish + thumbnail;
-// server hajm + MP4 sehrli baytini tekshiradi.
-function readVideoMeta(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const v = document.createElement('video');
-    v.preload = 'metadata';
-    v.muted = true;
-    v.onloadedmetadata = () => {
-      resolve({ url, video: v, duration: v.duration, w: v.videoWidth, h: v.videoHeight });
-    };
-    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error('meta')); };
-    v.src = url;
-  });
-}
-
-function captureThumb(video) {
-  return new Promise((resolve) => {
-    const grab = () => {
-      try {
-        const c = document.createElement('canvas');
-        const scale = Math.min(1, 720 / Math.max(video.videoWidth, video.videoHeight));
-        c.width = Math.round(video.videoWidth * scale);
-        c.height = Math.round(video.videoHeight * scale);
-        c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
-        resolve(c.toDataURL('image/jpeg', 0.7));
-      } catch { resolve(null); }
-    };
-    video.onseeked = grab;
-    try { video.currentTime = Math.min(0.2, (video.duration || 1) / 2); }
-    catch { grab(); }
-  });
-}
-
-function VideoSection({ code, access, allowed, onLock }) {
-  const { t } = useLanguage();
-  const [videos, setVideos] = useState(null);
-  const [err, setErr] = useState(false);
-  const [title, setTitle] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const lim = videoLimitsFor(access);
-
-  const load = () => dbGetVideos(code).then(setVideos).catch(() => setErr(true));
-  useEffect(() => { if (allowed) load(); }, [code, allowed]);
-
-  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 4000); };
-
-  const onFile = async (e) => {
-    const file = e.target.files?.[0]; e.target.value = '';
-    if (!file) return;
-    if (file.type !== 'video/mp4') { flash(t('Faqat MP4 video qabul qilinadi.')); return; }
-    if (file.size > lim.mb * 1024 * 1024) { flash(t('Video hajmi {n} MB dan oshmasligi kerak.', { n: lim.mb })); return; }
-    setBusy(true);
-    try {
-      const meta = await readVideoMeta(file).catch(() => null);
-      if (!meta) { flash(t('Videoni o‘qib bo‘lmadi.')); return; }
-      if (meta.duration && meta.duration > lim.sec + 1) {
-        URL.revokeObjectURL(meta.url);
-        flash(t('Video {n} soniyadan uzun bo‘lmasligi kerak.', { n: lim.sec }));
-        return;
-      }
-      if (meta.w && meta.h && meta.w > meta.h) {
-        URL.revokeObjectURL(meta.url);
-        flash(t('Video vertikal (9:16) bo‘lishi kerak.'));
-        return;
-      }
-      // Thumbnail — kadr olib, mavjud rasm yuklash yo'li orqali saqlaymiz.
-      let thumbUrl = '';
-      try {
-        const dataUrl = await captureThumb(meta.video);
-        if (dataUrl) thumbUrl = await dbUploadImage(dataUrl);
-      } catch { /* thumbnailsiz davom */ }
-      URL.revokeObjectURL(meta.url);
-
-      await dbUploadVideo(code, file, { title: title.trim() || undefined, thumbUrl: thumbUrl || undefined });
-      setTitle('');
-      await load();
-    } catch (er) {
-      const m = {
-        limit_reached: t('Video limiti tugadi ({n} ta).', { n: lim.count }),
-        too_large: t('Video hajmi {n} MB dan oshmasligi kerak.', { n: lim.mb }),
-        bad_file: t('Fayl MP4 video emas.'),
-        feature_locked: t('Video — Premium profil yoki Exclusive NFC ID’da ochiladi.'),
-        too_many_requests: t('Juda ko‘p urinish. Birozdan so‘ng qayta urining.'),
-      };
-      flash(m[er.code] || t('Yuklashda xatolik.'));
-    } finally { setBusy(false); }
-  };
-
-  const rename = async (v) => {
-    const val = prompt(t('Video nomi'), v.title || '');
-    if (val == null) return;
-    await dbUpdateVideo(code, v.id, { title: val.trim() });
-    await load();
-  };
-  const del = async (v) => {
-    if (!confirm(t('Bu videoni o‘chirasizmi?'))) return;
-    await dbDeleteVideo(code, v.id);
-    setVideos((vs) => (vs || []).filter((x) => x.id !== v.id));
-  };
-
-  if (!allowed) {
-    return (
-      <button type="button" onClick={onLock}
-        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-        {'\u{1F512}'} {t('Video — Premium profil yoki Exclusive NFC ID’da ochiladi.')}
-      </button>
-    );
-  }
-  if (err) return <div className="text-sm text-error">{t('Videolarni yuklab bo‘lmadi.')}</div>;
-  if (!videos) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
-
-  return (
-    <div className="space-y-3">
-      <div className="text-xs text-base-content/50">
-        {t('Video')}: {videos.length}/{lim.count} · {t('MP4, vertikal (9:16), ≤{s} s, ≤{m} MB', { s: lim.sec, m: lim.mb })}
-      </div>
-      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {videos.map((v) => (
-          <div key={v.id} className="overflow-hidden rounded-xl border border-white/10 bg-black">
-            <video src={v.videoUrl} poster={v.thumbUrl || undefined} controls muted playsInline preload="none"
-              className="block aspect-[9/16] w-full object-cover" />
-            <div className="flex items-center gap-1 px-1.5 py-1">
-              <span className="min-w-0 flex-1 truncate text-[11px] text-base-content/60">{v.title || '—'}</span>
-              <button className="btn btn-ghost btn-xs px-1" onClick={() => rename(v)}>{t('Nomi')}</button>
-              <button className="btn btn-ghost btn-xs px-1 text-error" onClick={() => del(v)}>✕</button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {videos.length < lim.count && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Video nomi (ixtiyoriy)')}
-            value={title} onChange={(e) => setTitle(e.target.value)} />
-          <label className="btn btn-primary btn-sm">
-            {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Video yuklash')}
-            <input type="file" accept="video/mp4" className="hidden" onChange={onFile} disabled={busy} />
-          </label>
         </div>
       )}
     </div>
@@ -1521,7 +1114,6 @@ function EditCardForm({ card, onSaved }) {
     city: card.city || '',
     categorySlug: card.categorySlug || '',
     hiddenFromDirectory: !!card.hiddenFromDirectory,
-    leadCapture: !!card.leadCapture,
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
 
@@ -1682,7 +1274,6 @@ function EditCardForm({ card, onSaved }) {
         city: form.city.trim(),
         categorySlug: form.categorySlug,
         hiddenFromDirectory: form.hiddenFromDirectory,
-        leadCapture: form.leadCapture,
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
         accentColor: form.accentColor,
@@ -2104,29 +1695,12 @@ function EditCardForm({ card, onSaved }) {
             </label>
           </Section>
 
-          <Section title={t('Statistika')} subtitle={t('Profil ko‘rishlari va havola bosishlari')}>
-            <AnalyticsSection
-              code={card.code}
-              advancedAllowed={allow('advancedAnalytics')}
-              onLock={() => setLocked(t('Kengaytirilgan statistika'))}
-            />
-          </Section>
-
-          <Section title={t('Lidlar')} subtitle={t('Tashrifchilar qoldirgan kontaktlar')}>
-            <Gate ok={allow('leadCapture')} onLock={() => setLocked(t('Lidlarni yig‘ish'))}>
-              <label className="flex items-start gap-2.5 text-sm">
-                <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.leadCapture}
-                  onChange={(e) => setForm((f) => ({ ...f, leadCapture: e.target.checked }))} />
-                <span>
-                  {t('Profilimda «Kontaktingizni qoldiring» formasini ko‘rsatish')}
-                  <span className="mt-0.5 block text-xs text-base-content/45">{t('Tashrifchi ism va aloqa ma’lumotini qoldiradi — siz bu yerda ko‘rasiz.')}</span>
-                </span>
-              </label>
-            </Gate>
-            <div className="mt-4">
-              <LeadsSection code={card.code} enabled={!!card.leadCapture} />
-            </div>
-          </Section>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-base-200/30 px-4 py-3.5 text-sm text-base-content/60">
+            {t('Statistika, lidlar, fayllar va video —')}{' '}
+            <button type="button" className="font-semibold text-accent underline underline-offset-2" onClick={() => navigate('/sozlamalar')}>
+              {t('Sozlamalar')}
+            </button>{' '}{t('sahifasida.')}
+          </div>
 
           {card.profileType === 'business' && menuEligible(card.categorySlug) && (
             <Section title={t('Restoran menyusi')} subtitle={t('Kategoriyalar va taomlar')}>
@@ -2143,24 +1717,6 @@ function EditCardForm({ card, onSaved }) {
               <TeamSection code={card.code} />
             </Section>
           )}
-
-          <Section title={t('Fayllar va hujjatlar')} subtitle={t('PDF, narxnoma, katalog, CV')}>
-            <FilesSection
-              code={card.code}
-              access={access}
-              allowed={allow('fileCatalog')}
-              onLock={() => setLocked(t('Fayllar va hujjatlar'))}
-            />
-          </Section>
-
-          <Section title={t('Video')} subtitle={t('Vertikal (9:16) MP4 — Premium/Exclusive')}>
-            <VideoSection
-              code={card.code}
-              access={access}
-              allowed={allow('video')}
-              onLock={() => setLocked(t('Video'))}
-            />
-          </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
             {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Profilni saqlash')}

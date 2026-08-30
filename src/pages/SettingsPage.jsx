@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { dbRequestPasswordCode, dbChangePassword } from '../lib/db.js';
 import BackToCabinet from '../components/BackToCabinet.jsx';
+import CardTools from '../components/CardTools.jsx';
 
 // Profildagi Sozlamalar sahifasi — o'z ma'lumotlarini ko'rish va
 // Telegram orqali kelgan bir martalik kod bilan parolni o'zgartirish.
@@ -12,6 +13,7 @@ export default function SettingsPage() {
   const { t } = useLanguage();
 
   const [step, setStep] = useState('idle'); // idle | code_sent
+  const [toolsCode, setToolsCode] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
@@ -89,6 +91,27 @@ export default function SettingsPage() {
         </div>
         <p className="mt-2 text-xs text-base-content/40">{t("Ism, manzil va boshqa profil ma'lumotlarini")} <a href="/account" className="underline underline-offset-2 hover:text-base-content">{t('Kabinetim')}</a> {t('sahifasida tahrirlaysiz.')}</p>
       </section>
+
+      {myCards.length > 0 && (
+        <section className="mt-10 max-w-xl">
+          <h2 className="text-lg font-bold">{t('Statistika, lidlar, fayllar va video')}</h2>
+          <p className="mt-1 text-sm text-base-content/50">{t('Profilingiz bo‘yicha hisobotlar va yuklangan kontent.')}</p>
+          {myCards.length > 1 && (
+            <select
+              value={toolsCode || myCards[0].code}
+              onChange={(e) => setToolsCode(e.target.value)}
+              className="select select-bordered select-sm mt-4 w-full max-w-xs bg-base-100 font-mono"
+            >
+              {myCards.map((c) => (
+                <option key={c.code} value={c.code}>{c.code}{c.isPrimary ? '  ★' : ''}</option>
+              ))}
+            </select>
+          )}
+          <div className="mt-4">
+            <CardTools card={myCards.find((c) => c.code === (toolsCode || myCards[0].code)) || myCards[0]} />
+          </div>
+        </section>
+      )}
 
       <section className="mt-10 max-w-lg">
         <h2 className="text-lg font-bold">{t("Parolni o'zgartirish")}</h2>

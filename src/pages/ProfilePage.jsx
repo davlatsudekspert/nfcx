@@ -360,7 +360,7 @@ function FlipNfcCard({ finish, t, children }) {
           className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl [backface-visibility:hidden] [transform:rotateY(180deg)]"
           style={{ background: f.bg, border: f.border || 'none', boxShadow: '0 20px 45px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)' }}
         >
-          <span className="font-display text-[19px] font-extrabold tracking-[0.34em]" style={{ color: f.sub }}>NFC&nbsp;STORE</span>
+          <span className="font-display text-[20px] font-extrabold tracking-[0.12em]" style={{ color: f.sub }}>NFCSTORE</span>
         </div>
       </div>
     </div>
@@ -856,6 +856,7 @@ export default function ProfilePage({ code, catalog }) {
         <div className="flex animate-[floatY_5s_ease-in-out_infinite] justify-center">
           <FlipNfcCard finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)} t={t}>
           <NfcCard
+            hideBrand
             code={record.code}
             name={design.name || record.name}
             since={record.ts}
