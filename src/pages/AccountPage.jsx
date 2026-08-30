@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbListNfcDevices, dbUpdateNfcDevice, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -605,78 +605,6 @@ function WonAuctionsPanel() {
             </div>
           );
         })}
-      </div>
-    </section>
-  );
-}
-
-// Mening NFC qurilmalarim (Band 3.5) — foydalanuvchi buyurtma qilgan
-// jismoniy NFC kartalari: qaysi profilга ulangani, vaqtincha blok / faollashtirish.
-function NfcDevicesPanel({ myCards }) {
-  const { t } = useLanguage();
-  const [devices, setDevices] = useState(null);
-  const [busyId, setBusyId] = useState(null);
-
-  const load = () => dbListNfcDevices().then(setDevices).catch(() => setDevices([]));
-  useEffect(() => { load(); }, []);
-
-  if (!devices || devices.length === 0) return null;
-
-  const act = async (id, patch) => {
-    setBusyId(id);
-    try {
-      const r = await dbUpdateNfcDevice(id, patch);
-      if (r && r.devices) setDevices(r.devices);
-      else await load();
-    } catch { /* jim */ } finally { setBusyId(null); }
-  };
-
-  return (
-    <section className="pt-8">
-      <h2 className="text-xl font-bold">{'\u{1F4F1}'} {t('Mening NFC qurilmalarim')}</h2>
-      <div className="mt-3 space-y-3">
-        {devices.map((d) => (
-          <div key={d.id} className={`rounded-2xl border border-white/10 bg-base-200/40 p-4 ${d.blockedByOwner || !d.active ? 'opacity-70' : ''}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="font-mono text-sm font-bold">NFC •••• {d.tokenTail}</div>
-                <div className="mt-0.5 text-xs text-base-content/55">
-                  {d.linkedCode
-                    ? <>{t('Ulangan')}: <span className="font-mono">nfcstore.uz/{d.linkedCode.toLowerCase()}</span>{d.linkedName ? ` · ${d.linkedName}` : ''}</>
-                    : t('Hech qaysi profilga ulanmagan')}
-                </div>
-                <div className="mt-0.5 text-[11px] text-base-content/35">
-                  {!d.active ? t('Admin tomonidan faolsizlantirilgan') : d.blockedByOwner ? t('Siz bloklagansiz') : t('Faol')}
-                </div>
-              </div>
-              {d.active && (
-                <button
-                  className={`btn btn-sm ${d.blockedByOwner ? 'btn-primary' : 'btn-ghost border border-white/15'}`}
-                  disabled={busyId === d.id}
-                  onClick={() => act(d.id, { blocked: !d.blockedByOwner })}
-                >
-                  {d.blockedByOwner ? t('Qayta faollashtirish') : t('Vaqtincha bloklash')}
-                </button>
-              )}
-            </div>
-            {d.active && myCards && myCards.length > 0 && (
-              <label className="mt-3 block">
-                <span className="text-[11px] font-semibold text-base-content/55">{t('Boshqa profilga ulash')}</span>
-                <select
-                  className="select select-bordered select-sm mt-1 w-full bg-base-100 font-mono"
-                  value={d.linkedCode || ''}
-                  disabled={busyId === d.id}
-                  onChange={(e) => e.target.value && e.target.value !== d.linkedCode && act(d.id, { linkedCode: e.target.value })}
-                >
-                  {!d.linkedCode && <option value="">{t('— tanlanmagan —')}</option>}
-                  {myCards.map((c) => (
-                    <option key={c.code} value={c.code}>{c.code}{c.isPrimary ? '  ★' : ''}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
-        ))}
       </div>
     </section>
   );
@@ -2034,7 +1962,6 @@ export default function AccountPage({ refreshCatalog }) {
         )}
       </section>
 
-      <NfcDevicesPanel myCards={myCards} />
     </main>
   );
 }
