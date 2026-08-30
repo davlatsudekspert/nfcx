@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { dbGet } from '../lib/db.js';
-import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR, TIER_GRADIENT } from '../lib/pricing.js';
+import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import ReserveModal from '../components/ReserveModal.jsx';
@@ -26,25 +26,25 @@ function useMaskedCode() {
 
 const TIER_HINT = {
   uz: {
-    exclusive: 'Ekslyuziv so’z (VIP, CEO, LUX…) yoki hammasi bir xil — faqat auksion',
-    premium: '"000", yoki davlat so’zi + maxsus raqam, yoki taniqli so’z + nodir raqam',
-    gold: 'Taniqli/davlat so’zi, yoki uchala harf/raqam bir xil, yoki 001/007/077',
-    silver: 'Zerkalniy (ko’zgu) raqam, yoki harfda ham raqamda ham yonma-yon juftlik',
-    free: 'Naqshsiz — bepul',
+    exclusive: 'Noyob ID’lar uchun auksion',
+    premium: 'Eng noyob va maxsus kombinatsiyalar',
+    gold: 'Chiroyli va tanilgan kombinatsiyalar',
+    silver: 'Esda qoladigan raqamlar',
+    free: 'Boshlash uchun yetarli',
   },
   ru: {
-    exclusive: 'Эксклюзивное слово (VIP, CEO, LUX…) или всё одинаково — только аукцион',
-    premium: '"000", или гос-слово + особая цифра, или известное слово + редкая цифра',
-    gold: 'Известное/гос-слово, или три одинаковые буквы/цифры, или 001/007/077',
-    silver: 'Зеркальная цифра, или соседняя пара и в буквах, и в цифрах',
-    free: 'Без узора — бесплатно',
+    exclusive: 'Аукцион для редких ID',
+    premium: 'Самые редкие и особые комбинации',
+    gold: 'Красивые и узнаваемые комбинации',
+    silver: 'Запоминающиеся номера',
+    free: 'Достаточно, чтобы начать',
   },
   en: {
-    exclusive: 'An exclusive word (VIP, CEO, LUX…) or all identical — auction only',
-    premium: '"000", or a gov word + special number, or a known word + rare number',
-    gold: 'A known/gov word, or three identical letters/digits, or 001/007/077',
-    silver: 'A mirror number, or an adjacent pair in both letters and digits',
-    free: 'No pattern — free',
+    exclusive: 'Auction for rare IDs',
+    premium: 'The rarest, most special combinations',
+    gold: 'Beautiful, recognizable combinations',
+    silver: 'Memorable numbers',
+    free: 'Enough to get started',
   },
 };
 const TIER_PRICE_TEXT = {
@@ -89,11 +89,11 @@ const TIERS = ['exclusive', 'premium', 'gold', 'silver', 'free'];
 // Har bir daraja — qoradan o'z rangiga aralashuvchi diagonal gradient fon.
 const TIER_CARD_MIX = {
   exclusive: {
-    background: 'linear-gradient(120deg, #000 0%, #0f0c06 40%, #2a2109 70%, #6b5518 100%)',
-    border: '1px solid rgba(212,175,55,0.4)',
-    iconBg: 'rgba(212,175,55,0.2)',
-    iconColor: '#f0cf7a',
-    nameColor: '#f2e2b0',
+    background: 'linear-gradient(120deg, #000 0%, #12100a 38%, #3a3122 68%, #cbba8d 100%)',
+    border: '1px solid rgba(230,210,170,0.52)',
+    iconBg: 'rgba(230,210,170,0.20)',
+    iconColor: '#efe0b8',
+    nameColor: '#f1e6c6',
   },
   premium: {
     background: 'linear-gradient(120deg, #000 0%, #0c0f13 40%, #333a44 70%, #8b95a6 100%)',
@@ -103,11 +103,11 @@ const TIER_CARD_MIX = {
     nameColor: '#e2e8f2',
   },
   gold: {
-    background: 'linear-gradient(120deg, #000 0%, #15100a 40%, #3d2f08 70%, #a37e0d 100%)',
-    border: '1px solid rgba(240,196,25,0.4)',
-    iconBg: 'rgba(240,196,25,0.2)',
-    iconColor: '#f0c419',
-    nameColor: '#f5d84e',
+    background: 'linear-gradient(120deg, #000 0%, #171006 38%, #4a3908 68%, #e0b40e 100%)',
+    border: '1px solid rgba(240,196,25,0.55)',
+    iconBg: 'rgba(240,196,25,0.22)',
+    iconColor: '#f5c815',
+    nameColor: '#f8dc4d',
   },
   silver: {
     background: 'linear-gradient(120deg, #000 0%, #0d0f11 40%, #2b3036 70%, #626b76 100%)',
@@ -117,11 +117,11 @@ const TIER_CARD_MIX = {
     nameColor: '#c6cdd6',
   },
   free: {
-    background: 'linear-gradient(120deg, #000 0%, #070c16 40%, #122340 70%, #26456e 100%)',
-    border: '1px solid rgba(90,150,230,0.4)',
-    iconBg: 'rgba(90,150,230,0.2)',
-    iconColor: '#8ec0f5',
-    nameColor: '#b9d6f5',
+    background: 'linear-gradient(120deg, #000 0%, #0a0f0c 38%, #16281c 68%, #2f5f3f 100%)',
+    border: '1px solid rgba(63,174,106,0.40)',
+    iconBg: 'rgba(63,174,106,0.18)',
+    iconColor: '#5fc98a',
+    nameColor: '#7fd6a2',
   },
 };
 
@@ -155,46 +155,36 @@ export default function PricingPage({ catalog, refreshCatalog }) {
             {t("Narx kod bandlangan soniga emas — faqat kodning o'zidagi naqshga bog'liq. Har daraja uchun narx qat'iy (o'zgarmas):")}
           </p>
 
-          {/* ===== 5 daraja — qutichalarda, gem-ikonka va rangli chegara bilan ===== */}
-          <div className="mt-6 grid max-w-xl gap-3.5 sm:grid-cols-2">
+          {/* ===== 5 daraja — kaltalanuvchi vertikal narvon (Adidas usuli) ===== */}
+          <div className="mt-6 flex max-w-xl flex-col items-start gap-3">
             {TIERS.map((tier, i) => {
               const mix = TIER_CARD_MIX[tier];
+              const width = ['100%', '88%', '76%', '64%', '52%'][i];
               return (
               <div
                 key={tier}
-                className={`tier-shine flex items-center gap-3.5 rounded-xl p-4 ${mix ? '' : 'border-l-4'}`}
-                style={{
-                  '--shine-delay': `${i * 0.55}s`,
-                  ...(mix
-                    ? { background: mix.background, border: mix.border }
-                    : { background: 'rgba(255,255,255,0.03)', borderLeftColor: TIER_COLOR[tier], borderTop: '1px solid rgba(255,255,255,0.08)', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }),
-                }}
+                className="tier-shine flex items-center gap-3.5 rounded-xl px-4 py-3.5"
+                style={{ '--shine-delay': `${i * 0.5}s`, width, minWidth: '15rem', background: mix.background, border: mix.border }}
               >
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: mix ? mix.iconBg : `${TIER_COLOR[tier]}22`, color: mix ? mix.iconColor : TIER_COLOR[tier] }}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: mix.iconBg, color: mix.iconColor }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 3h12l4 6-10 12L2 9z" /><path d="M2 9h20" /><path d="M12 3l-3 6 3 12 3-12z" />
                   </svg>
                 </span>
-                <div className="min-w-0">
-                  <div
-                    className="text-lg font-bold"
-                    style={
-                      mix
-                        ? { color: mix.nameColor }
-                        : TIER_GRADIENT[tier]
-                          ? { backgroundImage: TIER_GRADIENT[tier], WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }
-                          : { color: TIER_COLOR[tier] }
-                    }
-                  >
-                    {t(TIER_LABEL[tier])}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-base font-bold" style={{ color: mix.nameColor }}>{t(TIER_LABEL[tier])}</span>
+                    <span
+                      className="shrink-0 text-sm font-semibold"
+                      style={{ color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
+                    >
+                      {priceText[tier]}{tier !== 'exclusive' ? ' ' + t("so'm") : ''}
+                    </span>
                   </div>
-                  <div className="mt-0.5 text-sm font-semibold text-base-content/80">
-                    {priceText[tier]}{tier !== 'exclusive' ? ' ' + t("so'm") : ''}
-                  </div>
-                  <div className="mt-1 text-xs leading-snug text-base-content/45">{hint[tier]}</div>
+                  <div className="mt-0.5 truncate text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{hint[tier]}</div>
                 </div>
               </div>
               );
