@@ -37,6 +37,7 @@ import {
   adminListReferrals,
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
+  adminSetCardVerified, adminListVerifiedCards,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -872,4 +873,28 @@ adminRouter.delete('/categories/:id', async (req, res) => {
   await adminDeleteCategory(Number(req.params.id));
   logAdminActivity({ action: 'category_deleted', details: `#${req.params.id}`, ip: req.ip }).catch(() => {});
   res.json({ ok: true });
+});
+
+// ---------- Profil tasdiqlash (PHASE 5) ----------
+
+adminRouter.get('/verified-cards', async (req, res) => {
+  if (!isDbReady()) return res.json({ cards: [] });
+  res.json({ cards: await adminListVerifiedCards() });
+});
+
+adminRouter.get('/records/:code', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const rec = await getRecord(String(req.params.code || '').toUpperCase());
+  if (!rec) return res.status(404).json({ error: 'not_found' });
+  res.json({ code: rec.code, name: rec.name, role: rec.role, verified: !!rec.verified, profileType: rec.profileType });
+});
+
+adminRouter.post('/records/:code/verify', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const verified = req.body?.verified !== false;
+  const row = await adminSetCardVerified(code, verified);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  logAdminActivity({ action: verified ? 'card_verified' : 'card_unverified', details: code, ip: req.ip }).catch(() => {});
+  res.json(row);
 });

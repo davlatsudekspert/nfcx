@@ -720,6 +720,9 @@ export async function initDb() {
   // ko'rinishi kerak. Shu ustun NULL bo'lmasa — profilda o'sha daraja
   // ko'rsatiladi (faqat vizual: rang/badge/emoji; narx mantig'iga tegmaydi).
   await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS tier_override VARCHAR(12)`);
+  // Tasdiqlangan profil — admin qo'lда beradi (haqiqiy shaxs / rasmiy biznes).
+  // Faqat vizual "✔" belgisi; tarif/narx/access mantig'iga tegmaydi (PHASE 5).
+  await pool.query(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE`);
   // Retroaktiv: allaqachon faollashtirilgan sovg'a kartalari ham Ekslyuziv bo'lsin.
   await pool.query(`
     UPDATE cards SET tier_override = 'exclusive'
@@ -1251,7 +1254,7 @@ const SELECT_FIELDS = `
   tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website,
   card_number AS "cardNumber", extra_links AS "extraLinks", card_numbers AS "cardNumbers",
-  tier_override AS "tierOverride", card_design AS "cardDesign",
+  tier_override AS "tierOverride", card_design AS "cardDesign", verified,
   theme, for_sale AS "forSale",
   sale_price AS "salePrice", hashtags, price, ts, views
 `;
@@ -1291,6 +1294,7 @@ function rowToRecord(row) {
     extraLinks: Array.isArray(row.extraLinks) ? row.extraLinks : [],
     cardNumbers: Array.isArray(row.cardNumbers) ? row.cardNumbers : [],
     tierOverride: row.tierOverride || '',
+    verified: !!row.verified,
     cardDesign: row.cardDesign && typeof row.cardDesign === 'object' ? row.cardDesign : null,
     theme: row.theme || 'classic',
     forSale: !!row.forSale,
@@ -1306,7 +1310,7 @@ function rowToRecord(row) {
 export async function listRecords({ includeHidden = false } = {}) {
   const { rows } = await pool.query(
     `SELECT code, name, role, avatar_url AS "avatarUrl", tg, hashtags, theme, price, ts, views,
-            profile_type AS "profileType", city, category_slug AS "categorySlug",
+            profile_type AS "profileType", city, category_slug AS "categorySlug", verified,
             hidden_from_directory AS "hiddenFromDirectory"
        FROM cards
       ${includeHidden ? '' : 'WHERE hidden_from_directory = FALSE'}
@@ -1329,7 +1333,7 @@ export async function getRecord(code) {
             c.hidden_from_directory AS "hiddenFromDirectory", c.lead_capture AS "leadCapture", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
-            c.tier_override AS "tierOverride", c.card_design AS "cardDesign",
+            c.tier_override AS "tierOverride", c.card_design AS "cardDesign", c.verified,
             c.theme, c.for_sale AS "forSale", c.sale_price AS "salePrice", c.hashtags, c.price, c.ts, c.views,
             u.is_premium AS "ownerIsPremium",
             EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS "isGift"
@@ -3450,6 +3454,22 @@ export async function getLikeInfo(code, userId) {
 // ---------- Tarif override (admin sovg'a qilgan NFC ID → Ekslyuziv) ----------
 export async function setCardTierOverride(code, tier) {
   await pool.query(`UPDATE cards SET tier_override = $2 WHERE code = $1`, [code, tier || null]);
+}
+
+// ---------- Profil tasdiqlash (admin, PHASE 5) ----------
+export async function adminSetCardVerified(code, verified) {
+  const { rows } = await pool.query(
+    `UPDATE cards SET verified = $2 WHERE code = $1 RETURNING code, name, verified`,
+    [code, !!verified]
+  );
+  return rows[0] || null;
+}
+
+export async function adminListVerifiedCards() {
+  const { rows } = await pool.query(
+    `SELECT code, name, role, profile_type AS "profileType" FROM cards WHERE verified = TRUE ORDER BY name`
+  );
+  return rows;
 }
 
 // ---------- Profil postlari ----------

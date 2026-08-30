@@ -114,7 +114,10 @@ export default function CatalogPage({ catalog }) {
             return (
               <button key={it.code} className={`${cardCls} text-left`} onClick={() => navigate('/' + it.code)}>
                 <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
-                <div className="mt-1 truncate text-[13px] text-base-content/55">{it.name}{it.tg ? ' · ' + it.tg : ''}</div>
+                <div className="mt-1 flex items-center gap-1 truncate text-[13px] text-base-content/55">
+                  <span className="truncate">{it.name}{it.tg ? ' · ' + it.tg : ''}</span>
+                  {it.verified && <span title={t('Tasdiqlangan')} className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
+                </div>
                 {(cp || it.city) && (
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-base-content/45">
                     {cp && <span className="rounded-full border border-white/10 px-2 py-0.5">{cp}</span>}

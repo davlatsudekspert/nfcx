@@ -124,7 +124,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash'];
 
 function StatCard({ label, value }) {
   return (
@@ -1656,6 +1656,76 @@ function CategoriesTab() {
   );
 }
 
+// Profil tasdiqlash (PHASE 5) — admin kod bo'yicha profilga "✔" belgisini
+// beradi/oladi (haqiqiy shaxs / rasmiy biznes).
+function VerificationTab() {
+  const { t } = useLanguage();
+  const [code, setCode] = useState('');
+  const [found, setFound] = useState(null);
+  const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = () => adminApi('/verified-cards').then((d) => setRows(d.cards || [])).catch(() => setRows([]));
+  useEffect(() => { load(); }, []);
+
+  const lookup = async () => {
+    setErr(''); setFound(null);
+    const c = code.trim().toUpperCase();
+    if (!c) return;
+    try { setFound(await adminApi(`/records/${encodeURIComponent(c)}`)); }
+    catch { setErr(t('Bunday profil topilmadi.')); }
+  };
+  const toggle = async (c, verified) => {
+    setBusy(true);
+    try {
+      await adminApi(`/records/${encodeURIComponent(c)}/verify`, { method: 'POST', body: JSON.stringify({ verified }) });
+      if (found && found.code === c) setFound({ ...found, verified });
+      await load();
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-base-200/50 p-5">
+        <div className="text-sm font-bold">{t('Profilni tasdiqlash')}</div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('Profil kodi (masalan BMW007)')}
+            className="input input-bordered input-sm min-w-0 flex-1 bg-base-100 font-mono" />
+          <button className="btn btn-sm" onClick={lookup}>{t('Qidirish')}</button>
+        </div>
+        {err && <div className="mt-2 text-xs text-error">{err}</div>}
+        {found && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
+            <div>
+              <div className="font-semibold">{found.name} <span className="font-mono text-xs text-base-content/40">{found.code}</span></div>
+              <div className="text-xs text-base-content/50">{found.role || '—'} · {found.verified ? t('Tasdiqlangan ✔') : t('Tasdiqlanmagan')}</div>
+            </div>
+            <button className={`btn btn-sm ${found.verified ? 'btn-ghost border border-white/15' : 'btn-primary'}`}
+              disabled={busy} onClick={() => toggle(found.code, !found.verified)}>
+              {found.verified ? t('Tasdiqni olib tashlash') : t('Tasdiqlash')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="text-sm font-bold">{t('Tasdiqlangan profillar')} {rows ? `(${rows.length})` : ''}</div>
+        {!rows && <div className="mt-2 text-base-content/45">{t('Yuklanmoqda...')}</div>}
+        {rows && rows.length === 0 && <div className="mt-2 text-base-content/45">{t('Hozircha tasdiqlangan profil yo‘q.')}</div>}
+        <div className="mt-2 space-y-2">
+          {(rows || []).map((r) => (
+            <div key={r.code} className="flex items-center justify-between rounded-xl border border-white/10 bg-base-200/40 px-3 py-2">
+              <div className="text-sm">{r.name} <span className="font-mono text-xs text-base-content/40">{r.code}</span></div>
+              <button className="btn btn-ghost btn-xs" disabled={busy} onClick={() => toggle(r.code, false)}>{t('Tasdiqni olib tashlash')}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, role }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState(0);
@@ -1699,6 +1769,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 13 && <PromoCodesTab />}
         {tab === 14 && <NewsTab />}
         {tab === 15 && <CategoriesTab />}
+        {tab === 16 && <VerificationTab />}
       </div>
     </main>
   );

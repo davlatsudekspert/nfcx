@@ -1128,6 +1128,7 @@ app.get('/api/records', async (req, res) => {
       profileType: record.profileType,
       city: record.city,
       categorySlug: record.categorySlug,
+      verified: record.verified,
     })));
   } catch (err) {
     console.error('[api] listRecords:', err.message);
