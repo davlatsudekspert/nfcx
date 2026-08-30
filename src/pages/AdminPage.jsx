@@ -562,8 +562,6 @@ function OrdersTab() {
 function AuctionRequestsTab() {
   const { t } = useLanguage();
   const [requests, setRequests] = useState(null);
-  const [openId, setOpenId] = useState(null);
-  const [form, setForm] = useState({ startPrice: '', buyNowPrice: '', hours: '24' });
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -576,22 +574,12 @@ function AuctionRequestsTab() {
     try { await adminApi(`/auction-requests/${id}/reject`, { method: 'POST' }); await load(); } finally { setBusy(null); }
   };
 
+  // Tasdiqlash \u2192 so'rov "Talab" board'iga qo'shiladi (auksion YARATILMAYDI).
   const approve = async (id) => {
-    const startPrice = Math.round(Number(form.startPrice));
-    if (!startPrice || startPrice < 10_000) { setMsg({ type: 'err', text: t("Boshlang'ich narx kamida 10 000 so'm bo'lishi kerak.") }); return; }
     setBusy(id);
     setMsg(null);
     try {
-      await adminApi(`/auction-requests/${id}/approve`, {
-        method: 'POST',
-        body: JSON.stringify({
-          startPrice,
-          buyNowPrice: form.buyNowPrice ? Math.round(Number(form.buyNowPrice)) : null,
-          hours: Math.round(Number(form.hours) || 24),
-        }),
-      });
-      setOpenId(null);
-      setForm({ startPrice: '', buyNowPrice: '', hours: '24' });
+      await adminApi(`/auction-requests/${id}/approve`, { method: 'POST' });
       await load();
     } catch (err) {
       setMsg({ type: 'err', text: err.message === 'code_taken' ? t('Bu kod allaqachon band bo\u2019lib qolgan.') : t('Xatolik yuz berdi.') });
@@ -604,6 +592,8 @@ function AuctionRequestsTab() {
   if (requests.length === 0) return <div className="text-base-content/45">{t("Hozircha so'rov yo'q.")}</div>;
   return (
     <div className="space-y-3">
+      {msg && <div className={`alert py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
+      <p className="text-xs text-base-content/45">{t("Tasdiqlangan so'rov \u201CTalab\u201D bo'limiga tushadi. Auksion 20 kishi qiziqib, siz \u201CAuksionni boshlash\u201D bosganda ochiladi.")}</p>
       {requests.map((r) => (
         <div key={r.id} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -618,21 +608,12 @@ function AuctionRequestsTab() {
               {r.note && <p className="mt-1 text-xs text-base-content/60">{'\u201C'}{r.note}{'\u201D'}</p>}
             </div>
             <div className="flex gap-1">
-              <button className="btn btn-success btn-xs" onClick={() => setOpenId(openId === r.id ? null : r.id)}>{t('Tasdiqlash')}</button>
+              <button className="btn btn-success btn-xs" disabled={busy === r.id} onClick={() => approve(r.id)}>
+                {busy === r.id ? <span className="loading loading-spinner loading-xs"></span> : t("Tasdiqlab, Talab'ga qo'shish")}
+              </button>
               <button className="btn btn-ghost btn-xs text-error" disabled={busy === r.id} onClick={() => reject(r.id)}>{t('Rad etish')}</button>
             </div>
           </div>
-          {openId === r.id && (
-            <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 sm:grid-cols-3">
-              <input type="number" value={form.startPrice} onChange={(e) => setForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder={t("Boshlang'ich narx")} className="input input-bordered input-sm bg-base-100" />
-              <input type="number" value={form.buyNowPrice} onChange={(e) => setForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder={t("Darhol sotib olish (ixt.)")} className="input input-bordered input-sm bg-base-100" />
-              <input type="number" max={72} value={form.hours} onChange={(e) => setForm((f) => ({ ...f, hours: e.target.value }))} placeholder={t("Soat")} className="input input-bordered input-sm bg-base-100" />
-              <button className="btn btn-primary btn-sm sm:col-span-3" disabled={busy === r.id} onClick={() => approve(r.id)}>
-                {busy === r.id ? <span className="loading loading-spinner loading-xs"></span> : t('Auksionni ochish')}
-              </button>
-              {msg && <div className={`alert py-2 text-sm sm:col-span-3 ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
-            </div>
-          )}
         </div>
       ))}
     </div>

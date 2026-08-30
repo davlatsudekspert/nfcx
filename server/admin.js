@@ -38,7 +38,7 @@ import {
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
   adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
-  adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand,
+  adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand, getAuctionDemandByCode,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -526,23 +526,19 @@ adminRouter.post('/auction-requests/:id/reject', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Tasdiqlash — bir vaqtning o'zida haqiqiy auksionni ham yaratadi
-// (admin narx/muddatni shu yerda belgilaydi).
+// Tasdiqlash — so'rovni "Talab" board'iga qo'shadi (DEMAND_ACTIVE). Auksion
+// faqat 20 kishi qiziqib (AUCTION_READY), admin alohida "Auksionni boshlash"
+// bosganda ochiladi. Bu yerda AKTIV AUKSION YARATILMAYDI.
 adminRouter.post('/auction-requests/:id/approve', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const startPrice = Math.round(Number(req.body?.startPrice));
-  const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
-  const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
-  const minStep = req.body?.minStep ? Math.round(Number(req.body.minStep)) : 25000;
-  if (!startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
-
   try {
     const approved = await approveAuctionRequest(Number(req.params.id));
     if (!approved) return res.status(404).json({ error: 'not_found' });
     if (await getRecord(approved.code)) return res.status(409).json({ error: 'code_taken' });
-    if (await getActiveAuctionByCode(approved.code)) return res.status(409).json({ error: 'already_in_auction' });
-    const auction = await createAuction({ code: approved.code, startPrice, buyNowPrice, hours, minStep });
-    res.status(201).json(auction);
+    const row = (await adminAddAuctionDemand({ code: approved.code }))
+      || (await getAuctionDemandByCode(approved.code));
+    logAdminActivity({ action: 'auction_demand_added', details: approved.code, ip: req.ip }).catch(() => {});
+    res.status(201).json(row);
   } catch (err) {
     console.error('[admin] approveAuctionRequest:', err.message);
     res.status(503).json({ error: 'db_unavailable' });

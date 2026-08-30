@@ -38,6 +38,9 @@ export const DICT = {
   'Kompaniyalar': { ru: 'Компаниям', en: 'Companies' },
   'Auksion': { ru: 'Аукцион', en: 'Auction' },
   'Sovg‘alar': { ru: 'Подарки', en: 'Gifts' },
+  "Tasdiqlab, Talab'ga qo'shish": { ru: 'Одобрить и добавить в «Спрос»', en: 'Approve & add to Demand' },
+  "Tasdiqlangan so'rov “Talab” bo'limiga tushadi. Auksion 20 kishi qiziqib, siz “Auksionni boshlash” bosganda ochiladi.":
+    { ru: 'Одобренная заявка попадает в раздел «Спрос». Аукцион открывается, когда наберётся 20 желающих и вы нажмёте «Запустить аукцион».', en: 'An approved request goes to the Demand board. The auction opens once 20 people are interested and you press “Start auction”.' },
   'Savollar': { ru: 'Вопросы', en: 'FAQ' },
   // ── Sovg'alar (public) sahifasi + homepage bloki ──
   "NFCStore'da yangi egalariga topshirilgan noyob NFC ID'lar.":

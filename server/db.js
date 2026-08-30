@@ -3217,7 +3217,7 @@ export async function adminAddAuctionDemand({ code, startPrice, minStep }) {
     `INSERT INTO auction_demand (code, suggested_start_price, suggested_min_step)
      VALUES ($1, $2, $3)
      ON CONFLICT (code) DO NOTHING
-     RETURNING ${DEMAND_FIELDS}`,
+     RETURNING ${DEMAND_FIELDS.replace(/d\./g, '')}`,
     [code, Math.max(10000, Math.round(Number(startPrice) || 250000)), Math.max(1000, Math.round(Number(minStep) || 25000))]
   );
   return rows[0] ? demandRow(rows[0]) : null;
@@ -3237,7 +3237,7 @@ export async function adminUpdateAuctionDemand(id, fields) {
   }
   if (!sets.length) return null;
   const { rows } = await pool.query(
-    `UPDATE auction_demand SET ${sets.join(', ')} WHERE id = $1 RETURNING ${DEMAND_FIELDS}`,
+    `UPDATE auction_demand SET ${sets.join(', ')} WHERE id = $1 RETURNING ${DEMAND_FIELDS.replace(/d\./g, '')}`,
     vals
   );
   return rows[0] ? demandRow(rows[0]) : null;
