@@ -5,8 +5,9 @@
 //   ASSISTANT_MODEL (default: claude-opus-5)
 // Kalit yo'q bo'lsa endpoint 503 qaytaradi va vidjet o'zini yashiradi.
 
-const API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const MODEL = process.env.ASSISTANT_MODEL || 'claude-opus-5';
+// Railway/CI'да qiymatga tasodifan tirnoq yoki bo'sh joy qo'shilishi mumkin.
+const API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim().replace(/^["']|["']$/g, '');
+const MODEL = (process.env.ASSISTANT_MODEL || 'claude-opus-5').trim();
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 export const assistantEnabled = () => !!API_KEY;
