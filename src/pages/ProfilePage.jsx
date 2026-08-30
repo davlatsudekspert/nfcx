@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
-import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI } from '../lib/pricing.js';
+import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -50,6 +50,62 @@ function shadeColor(hex, percent) {
   } catch {
     return hex;
   }
+}
+
+// Tema (va foydalanuvchi aksent rangi) — faqat CSS o'zgaruvchilari, FON YO'Q.
+// Bu ROOT div'ga beriladi; fon esa alohida (outer = tarif, inner = user).
+export function vzVars(theme, record) {
+  const base = VZ_THEMES[theme] || VZ_THEMES.classic;
+  return record && record.accentColor
+    ? { ...base, '--vz-accent': record.accentColor, '--vz-pill': record.accentColor }
+    : base;
+}
+
+// ─── OUTER FON — NFC ID darajasining vizual identity'si ───────────────
+// Tema gradienti + tarif "halo"si. Foydalanuvchi O'ZGARTIRA OLMAYDI.
+export function outerPageStyle(theme, record, tier) {
+  const glow = TIER_PAGE_GLOW[tier] || TIER_PAGE_GLOW.free;
+  return {
+    ...vzVars(theme, record),
+    backgroundColor: 'var(--vz-bg-a)',
+    backgroundImage: `${glow}, linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))`,
+    backgroundAttachment: 'fixed',
+  };
+}
+
+// ─── INNER FON — profil kontent PANELI ichida (butun sahifada emas) ───
+// bgUrl → rasm + o'qish uchun qora qatlam; bgColor → sekin gradient;
+// aks holda tema kartasi rangi.
+export function innerPanelStyle(record) {
+  if (record && record.bgUrl) {
+    // Rasm + qora qatlam → panel ichidagi matn/karta ranglarini oqqa
+    // majburlab o'tkazamiz (tanlangan tema yorug' bo'lsa ham o'qiladi).
+    return {
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url("${record.bgUrl}")`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      '--vz-ink': '#ffffff',
+      '--vz-ink-dim': 'rgba(255,255,255,0.82)',
+      '--vz-ink-faint': 'rgba(255,255,255,0.58)',
+      '--vz-card': 'rgba(255,255,255,0.10)',
+      '--vz-line': 'rgba(255,255,255,0.20)',
+      '--vz-pill': 'rgba(255,255,255,0.14)',
+    };
+  }
+  if (record && record.bgColor) {
+    const c1 = record.bgColor;
+    const c2 = shadeColor(record.bgColor, -22);
+    const c3 = shadeColor(record.bgColor, 14);
+    const animated = record.bgAnimated !== false;
+    return {
+      backgroundImage: `linear-gradient(120deg, ${c1}, ${c2}, ${c3}, ${c1})`,
+      backgroundSize: animated ? '300% 300%' : '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      animation: animated ? 'bgShift 16s ease-in-out infinite' : undefined,
+    };
+  }
+  return { background: 'var(--vz-card)' };
 }
 
 export function vzStyle(theme, record) {
@@ -476,7 +532,7 @@ export default function ProfilePage({ code, catalog }) {
   const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide';
 
   return (
-    <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={vzStyle(record.theme || 'classic', record)}>
+    <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={outerPageStyle(record.theme || 'classic', record, tier)}>
       <MusicPlayer url={record.musicUrl} accentColor={record.accentColor} />
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
         <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
@@ -541,12 +597,14 @@ export default function ProfilePage({ code, catalog }) {
       </div>
 
       <div
-        className={`relative mx-auto mt-[22px] max-w-[640px] rounded-[22px] px-7 pb-[30px] ${
-          glass
+        className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] ${
+          (record.theme === 'glass' && !hasBg && !record.bgColor)
             ? 'border border-white/15 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.35)]'
-            : `shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`
+            : (hasBg || record.bgColor)
+              ? 'border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.4)]'
+              : `shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`
         }`}
-        style={{ background: glass ? 'rgba(16,18,22,0.55)' : 'var(--vz-card)' }}
+        style={innerPanelStyle(record)}
       >
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">

@@ -8,7 +8,7 @@ import { isYoutubeMusic } from '../lib/music.js';
 import { MESSAGING_ENABLED, PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
-import { vzStyle } from './ProfilePage.jsx';
+import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed } from '../lib/access.js';
@@ -91,13 +91,14 @@ function PhonePreview({ form, code }) {
   return (
     <div className="sticky top-6">
       <div className="mx-auto w-[260px] rounded-[34px] border-[6px] border-[#1c1c1f] bg-[#1c1c1f] shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
-        <div className="relative h-[520px] overflow-hidden rounded-[28px]" style={vzStyle(form.theme || 'classic', record)}>
+        <div className="relative h-[520px] overflow-hidden rounded-[28px]" style={outerPageStyle(form.theme || 'classic', record, tierForCode(code))}>
           <div className="pointer-events-none absolute left-1/2 top-2 h-4 w-20 -translate-x-1/2 rounded-full bg-black/70"></div>
-          <div className="h-full overflow-y-auto px-4 pb-6 pt-9 text-center text-[color:var(--vz-ink)]">
+          <div className="h-full overflow-y-auto px-3 pb-6 pt-9 text-center text-[color:var(--vz-ink)]">
             <div className="mx-auto inline-flex items-center gap-1 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-2.5 py-0.5 font-mono text-[9px] font-bold text-[color:var(--vz-ink)]">
               # {code}
             </div>
-            <div className="mx-auto mt-3 flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[18px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
+            <div className="mt-3 overflow-hidden rounded-2xl border border-white/12 px-3 pb-4 pt-3" style={innerPanelStyle(record)}>
+            <div className="mx-auto flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[18px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
               {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
             </div>
             <div className="mt-2.5 text-[14px] font-bold leading-tight">{form.name || t('Ismingiz')}</div>
@@ -121,6 +122,7 @@ function PhonePreview({ form, code }) {
                   <Icon width={11} height={11} /> {label}
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </div>

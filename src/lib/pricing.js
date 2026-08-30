@@ -207,6 +207,18 @@ export const TIER_GRADIENT = {
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };
 
+// TASHQI (outer) sahifa foni \u2014 NFC ID darajasining VIZUAL IDENTITY'si.
+// Foydalanuvchi buni O'ZGARTIRA OLMAYDI (Profile Premium ham ta'sir
+// qilmaydi \u2014 outer har doim ID tarifiga bog'liq). Tema fonining ustiga
+// nozik rangli "halo" sifatida qo'yiladi.
+export const TIER_PAGE_GLOW = {
+  free:      'radial-gradient(1200px 620px at 50% -12%, rgba(63,174,106,0.10), transparent 62%)',
+  silver:    'radial-gradient(1200px 620px at 50% -12%, rgba(154,163,173,0.13), transparent 62%)',
+  gold:      'radial-gradient(1200px 620px at 50% -12%, rgba(240,196,25,0.13), transparent 60%)',
+  premium:   'radial-gradient(1200px 620px at 50% -12%, rgba(201,204,214,0.14), transparent 60%)',
+  exclusive: 'radial-gradient(1200px 640px at 50% -12%, rgba(212,175,55,0.17), transparent 56%)',
+};
+
 // Faqat TUSHUNTIRISH matni uchun — "nega bu narxda" degan savolga javob.
 // Narxning o'zini ular emas, tierFromCode() hisoblaydi.
 export function letterPattern(l) {
