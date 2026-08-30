@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetVideos } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetFiles, dbGetVideos, dbGetTeam } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -301,6 +301,39 @@ function PostsFeed({ posts, onLike, t }) {
   );
 }
 
+// Jamoa / Team (PHASE 5) — biznes profil a'zolari. member_code bo'lsa —
+// o'sha a'zoning o'z profiliga o'tadi.
+function ProfileTeam({ team, t }) {
+  if (!team || team.length === 0) return null;
+  return (
+    <div className="mt-6">
+      <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Jamoa')}</div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {team.map((m) => {
+          const clickable = !!m.memberCode;
+          const Wrap = clickable ? 'button' : 'div';
+          return (
+            <Wrap
+              key={m.id}
+              onClick={clickable ? () => navigate('/' + m.memberCode) : undefined}
+              className={`flex flex-col items-center rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 text-center ${clickable ? 'cursor-pointer transition hover:border-[color:var(--vz-ink-dim)]' : ''}`}
+            >
+              <div className="h-14 w-14 overflow-hidden rounded-full bg-[color:var(--vz-pill)] text-[color:var(--vz-ink)]">
+                {m.photoUrl
+                  ? <img src={m.photoUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  : <span className="flex h-full w-full items-center justify-center text-[15px] font-bold">{initials(m.name)}</span>}
+              </div>
+              <div className="mt-1.5 text-[12.5px] font-bold text-[color:var(--vz-ink)]">{m.name}</div>
+              {m.position && <div className="text-[11px] text-[color:var(--vz-ink-dim)]">{m.position}</div>}
+              {clickable && <div className="mt-0.5 font-mono text-[10px] text-[color:var(--vz-ink-faint)]">/{m.memberCode.toLowerCase()}</div>}
+            </Wrap>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Video (PHASE 4) — public ko'rinish. 9:16, muted autoplay, lazy.
 function ProfileVideos({ videos, t }) {
   if (!videos || videos.length === 0) return null;
@@ -459,6 +492,7 @@ export default function ProfilePage({ code, catalog }) {
   const [menu, setMenu] = useState([]);
   const [files, setFiles] = useState([]);
   const [videos, setVideos] = useState([]);
+  const [team, setTeam] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
@@ -471,6 +505,7 @@ export default function ProfilePage({ code, catalog }) {
     dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
     dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
     dbGetVideos(code).then(setVideos).catch(() => setVideos([]));
+    dbGetTeam(code).then(setTeam).catch(() => setTeam([]));
   }, [code, user]);
 
   // "Menyu" tabi ochilganda bir marta menu_view hodisasini yozamiz.
@@ -937,6 +972,8 @@ export default function ProfilePage({ code, catalog }) {
             </div>
 
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
+
+            <ProfileTeam team={team} t={t} />
 
             <ProfileVideos videos={videos} t={t} />
 

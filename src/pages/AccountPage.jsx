@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile, dbListNfcDevices, dbUpdateNfcDevice, dbGetVideos, dbUploadVideo, dbUpdateVideo, dbDeleteVideo } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics, dbListLeads, dbDeleteLead, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile, dbListNfcDevices, dbUpdateNfcDevice, dbGetVideos, dbUploadVideo, dbUpdateVideo, dbDeleteVideo, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -678,6 +678,107 @@ function VideoSection({ code, access, allowed, onLock }) {
             {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Video yuklash')}
             <input type="file" accept="video/mp4" className="hidden" onChange={onFile} disabled={busy} />
           </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Jamoa / Team (PHASE 5) — egaga boshqaruv (faqat biznes profillar).
+const TEAM_EMPTY = { name: '', position: '', memberCode: '', photoUrl: '' };
+
+function TeamSection({ code }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+  const [form, setForm] = useState(TEAM_EMPTY);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const load = () => dbGetTeamManage(code).then(setData).catch(() => setErr(true));
+  useEffect(() => { load(); }, [code]);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3500); };
+  const set = (k) => (e) => setForm((s) => ({ ...s, [k]: e.target.value }));
+
+  if (err) return <div className="text-sm text-error">{t('Jamoani yuklab bo‘lmadi.')}</div>;
+  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  const { team, limit, count, eligible } = data;
+
+  const uploadPhoto = async (file, onUrl) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      const url = await dbUploadImage(dataUrl);
+      onUrl(url);
+    } catch { flash(t('Rasmni yuklab bo‘lmadi.')); }
+  };
+
+  const add = async () => {
+    if (!form.name.trim()) return;
+    setBusy(true);
+    try {
+      await dbAddTeamMember(code, { ...form, name: form.name.trim(), position: form.position.trim(), memberCode: form.memberCode.trim() });
+      setForm(TEAM_EMPTY); await load();
+    } catch (e) {
+      const m = {
+        limit_reached: t('Jamoa limiti tugadi ({n} ta).', { n: limit }),
+        not_business: t('Jamoa faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.'),
+        feature_locked: t('Xatolik yuz berdi.'),
+      };
+      flash(m[e.message] || t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+  const upd = async (id, patch) => { try { await dbUpdateTeamMember(code, id, patch); await load(); } catch { flash(t('Xatolik yuz berdi.')); } };
+  const del = async (id) => {
+    if (!confirm(t('Bu a’zoni o‘chirasizmi?'))) return;
+    try { await dbDeleteTeamMember(code, id); setData((d) => ({ ...d, team: d.team.filter((m) => m.id !== id), count: d.count - 1 })); }
+    catch { flash(t('Xatolik yuz berdi.')); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {!eligible && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
+          {t('Jamoa faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')}
+        </div>
+      )}
+      <div className="text-xs text-base-content/50">{t('A’zolar')}: {count}/{limit}</div>
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      <div className="space-y-2">
+        {team.map((m) => (
+          <div key={m.id} className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5">
+            <label className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-[10px] text-base-content/40">
+              {m.photoUrl ? <img src={m.photoUrl} alt="" className="h-full w-full object-cover" /> : t('rasm')}
+              <input type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; uploadPhoto(f, (url) => upd(m.id, { photoUrl: url })); }} />
+            </label>
+            <div className="min-w-0 flex-1">
+              <input className="input input-ghost input-xs w-full px-1 font-semibold" defaultValue={m.name}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== m.name && upd(m.id, { name: e.target.value.trim() })} />
+              <input className="input input-ghost input-xs w-full px-1 text-base-content/60" defaultValue={m.position || ''} placeholder={t('Lavozim')}
+                onBlur={(e) => e.target.value !== (m.position || '') && upd(m.id, { position: e.target.value.trim() })} />
+              <input className="input input-ghost input-xs w-full px-1 font-mono text-[11px] text-base-content/40" defaultValue={m.memberCode || ''} placeholder={t('Profil kodi (ixtiyoriy)')}
+                onBlur={(e) => e.target.value.toUpperCase() !== (m.memberCode || '') && upd(m.id, { memberCode: e.target.value.trim() })} />
+            </div>
+            <button className="btn btn-ghost btn-xs shrink-0 text-error" onClick={() => del(m.id)}>{t("O'chirish")}</button>
+          </div>
+        ))}
+      </div>
+
+      {eligible && count < limit && (
+        <div className="rounded-xl border border-white/10 bg-base-200/40 p-3 space-y-2">
+          <div className="text-xs font-semibold">{t('Yangi a’zo')}</div>
+          <div className="flex gap-2">
+            <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Ism')} value={form.name} onChange={set('name')} />
+            <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Lavozim')} value={form.position} onChange={set('position')} />
+          </div>
+          <div className="flex gap-2">
+            <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100 font-mono text-xs" placeholder={t('Profil kodi (ixtiyoriy)')} value={form.memberCode} onChange={set('memberCode')} />
+            <button className="btn btn-primary btn-sm" onClick={add} disabled={busy}>{t("Qo‘shish")}</button>
+          </div>
         </div>
       )}
     </div>
@@ -2022,6 +2123,10 @@ function EditCardForm({ card, onSaved }) {
               allowed={allow('restaurantMenu')}
               onLock={() => setLocked(t('Restoran menyusi'))}
             />
+          </Section>
+
+          <Section title={t('Jamoa')} subtitle={t('Kompaniya a’zolari')}>
+            <TeamSection code={card.code} />
           </Section>
 
           <Section title={t('Fayllar va hujjatlar')} subtitle={t('PDF, narxnoma, katalog, CV')}>

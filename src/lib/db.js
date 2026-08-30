@@ -252,6 +252,22 @@ export const dbUpdateVideo = (code, id, data) =>
 export const dbDeleteVideo = (code, id) =>
   api(`/records/${encodeURIComponent(code)}/videos/${id}`, { method: 'DELETE' });
 
+// ---------- Jamoa / Team (PHASE 5) ----------
+
+export async function dbGetTeam(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/team`);
+    return (j && j.team) || [];
+  } catch {
+    return [];
+  }
+}
+
+export const dbGetTeamManage = (code) => api(`/records/${encodeURIComponent(code)}/team/manage`);
+export const dbAddTeamMember = (code, data) => api(`/records/${encodeURIComponent(code)}/team`, { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateTeamMember = (code, id, data) => api(`/records/${encodeURIComponent(code)}/team/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteTeamMember = (code, id) => api(`/records/${encodeURIComponent(code)}/team/${id}`, { method: 'DELETE' });
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

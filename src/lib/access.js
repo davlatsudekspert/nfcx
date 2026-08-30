@@ -109,6 +109,13 @@ export function fileLimitFor(currentAccess) {
   return FILE_LIMIT[currentAccess] ?? 0;
 }
 
+// ── Jamoa (Team) limiti — biznes profillar uchun (PHASE 5) ─────────────
+export const TEAM_LIMIT = { free: 3, silver: 8, gold: 25, premium: 60, exclusive: 999 };
+
+export function teamLimitFor(currentAccess) {
+  return TEAM_LIMIT[currentAccess] ?? 0;
+}
+
 // ── Video limiti (Band 4.1 / PHASE 4) ─────────────────────────────────
 // Faqat Premium/Exclusive (spec §56). 9:16, MP4. count/mb/sec — spec dastlabki taklifi.
 export const VIDEO_LIMITS = {

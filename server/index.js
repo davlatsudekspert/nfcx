@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
@@ -14,6 +14,7 @@ import {
   createMenuItem, updateMenuItem, deleteMenuItem,
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
   listCardVideos, cardVideoCount, createCardVideo, updateCardVideo, deleteCardVideo,
+  listCardTeam, cardTeamCount, createTeamMember, updateTeamMember, deleteTeamMember,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -2128,6 +2129,118 @@ app.delete('/api/records/:code/videos/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[api] video delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Jamoa / Team (PHASE 5) — biznes profil a'zolari ----------
+
+async function teamOwner(req, res, code, { mutate = false } = {}) {
+  const user = await currentUser(req);
+  if (!user) { res.status(401).json({ error: 'unauthorized' }); return null; }
+  if ((await getRecordOwner(code)) !== user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
+  const rec = await getRecord(code);
+  const access = await cardAccess(code, user, rec);
+  const eligible = rec.profileType === 'business';
+  const limit = teamLimitFor(access);
+  if (mutate && !eligible) { res.status(403).json({ error: 'not_business' }); return null; }
+  if (mutate && limit <= 0) { res.status(403).json({ error: 'feature_locked', feature: 'team' }); return null; }
+  return { user, rec, access, eligible, limit };
+}
+
+const teamPhoto = (v) => {
+  const u = String(v || '').trim();
+  return u.startsWith('/uploads/') ? u.slice(0, 300) : '';
+};
+
+app.get('/api/records/:code/team', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ team: await listCardTeam(code) });
+  } catch (err) {
+    console.error('[api] team:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.get('/api/records/:code/team/manage', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await teamOwner(req, res, code);
+    if (!ctx) return;
+    res.json({ team: await listCardTeam(code), limit: ctx.limit, count: await cardTeamCount(code), eligible: ctx.eligible });
+  } catch (err) {
+    console.error('[api] team manage:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+function teamFields(b) {
+  const f = {};
+  if ('name' in b) f.name = cleanStr(b.name, 80).trim();
+  if ('position' in b) f.position = cleanStr(b.position, 80).trim();
+  if ('photoUrl' in b) f.photoUrl = teamPhoto(b.photoUrl);
+  if ('sort' in b) f.sort = Number(b.sort) || 0;
+  if ('memberCode' in b) {
+    const c = String(b.memberCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    f.memberCode = c && validCode(c) ? c : null;
+  }
+  return f;
+}
+
+app.post('/api/records/:code/team', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await teamOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const f = teamFields(req.body || {});
+    if (!f.name) return res.status(422).json({ error: 'name_required' });
+    if ((await cardTeamCount(code)) >= ctx.limit) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limit });
+    }
+    res.status(201).json(await createTeamMember(code, f));
+  } catch (err) {
+    console.error('[api] team create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/team/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await teamOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const f = teamFields(req.body || {});
+    if ('name' in f && !f.name) return res.status(422).json({ error: 'name_required' });
+    const row = await updateTeamMember(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] team update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/team/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    await deleteTeamMember(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] team delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

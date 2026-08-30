@@ -1052,6 +1052,21 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS card_videos_code_idx ON card_videos (code, sort)`);
 
+  // ── Jamoa / Team (PHASE 5) — biznes profil a'zolari ───────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_team (
+      id           BIGSERIAL PRIMARY KEY,
+      code         VARCHAR(16) NOT NULL,
+      name         TEXT NOT NULL,
+      position     TEXT,
+      photo_url    TEXT,
+      member_code  VARCHAR(16),
+      sort         INTEGER NOT NULL DEFAULT 0,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_team_code_idx ON card_team (code, sort)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -1706,6 +1721,59 @@ export async function deleteCardVideo(code, id) {
     [code, id]
   );
   return rows[0] || null;
+}
+
+// ---------- Jamoa / Team (PHASE 5) ----------
+
+export async function listCardTeam(code) {
+  const { rows } = await pool.query(
+    `SELECT t.id, t.name, t.position, t.photo_url AS "photoUrl", t.member_code AS "memberCode",
+            t.sort, c.name AS "memberName"
+       FROM card_team t
+       LEFT JOIN cards c ON c.code = t.member_code
+      WHERE t.code = $1 ORDER BY t.sort, t.id`,
+    [code]
+  );
+  return rows;
+}
+
+export async function cardTeamCount(code) {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM card_team WHERE code = $1`, [code]);
+  return rows[0]?.n || 0;
+}
+
+export async function createTeamMember(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO card_team (code, name, position, photo_url, member_code, sort)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     RETURNING id, name, position, photo_url AS "photoUrl", member_code AS "memberCode", sort`,
+    [code, f.name, f.position || null, f.photoUrl || null, f.memberCode || null, f.sort || 0]
+  );
+  return rows[0];
+}
+
+export async function updateTeamMember(code, id, f) {
+  const sets = [];
+  const vals = [code, id];
+  const col = { name: 'name', position: 'position', photoUrl: 'photo_url', memberCode: 'member_code', sort: 'sort' };
+  for (const [k, c] of Object.entries(col)) {
+    if (k in f) { vals.push(f[k]); sets.push(`${c} = $${vals.length}`); }
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE card_team SET ${sets.join(', ')} WHERE code = $1 AND id = $2
+     RETURNING id, name, position, photo_url AS "photoUrl", member_code AS "memberCode", sort`,
+    vals
+  );
+  return rows[0] || null;
+}
+
+export async function deleteTeamMember(code, id) {
+  const { rows } = await pool.query(
+    `DELETE FROM card_team WHERE code = $1 AND id = $2 RETURNING photo_url AS "photoUrl"`,
+    [code, id]
+  );
+  return rows[0]?.photoUrl || null;
 }
 
 // ---------- Auth ----------
