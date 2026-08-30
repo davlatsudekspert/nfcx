@@ -2271,9 +2271,99 @@ app.post('/api/nfc-gifts/:code/activate', giftActivateLimiter, async (req, res) 
 
 const distDir = path.join(__dirname, '..', 'dist');
 app.use(express.static(distDir));
-app.get('*', (req, res, next) => {
+
+// ---------- SEO — per-profil meta teglar, robots, sitemap (PHASE 5) ----------
+
+const SITE = process.env.PUBLIC_ORIGIN || 'https://nfcstore.uz';
+// Profil kodi deb TALQIN QILINMAYDIGAN manzillar (frontend RESERVED bilan mos).
+const RESERVED_PATHS = new Set([
+  'login', 'register', 'account', 'narxlar', 'qanday-ishlaydi', 'yangiliklar',
+  'katalog', 'savollar', 'aloqa', 'shartlar', 'maxfiylik', 'auksion', 'admin',
+  'xabarlar', 'tolovlar', 'karta-dizayni', 'reyting', 'kompaniyalar',
+  'bildirishnomalar', 'sozlamalar',
+]);
+
+let _indexHtml = null;
+async function getIndexHtml() {
+  if (_indexHtml == null) _indexHtml = await fs.readFile(path.join(distDir, 'index.html'), 'utf8');
+  return _indexHtml;
+}
+
+const htmlEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+function absAsset(u) {
+  const s = String(u || '');
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith('/uploads/')) return SITE + s;
+  return '';
+}
+function injectMeta(html, m) {
+  const title = htmlEsc(m.title);
+  const desc = htmlEsc(m.description);
+  const url = htmlEsc(m.url);
+  const img = htmlEsc(m.image);
+  return html
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+    .replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${desc}" />`)
+    .replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${url}" />`)
+    .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${title}" />`)
+    .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${desc}" />`)
+    .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`)
+    .replace(/<meta property="og:image"[^>]*>/, `<meta property="og:image" content="${img}" />`)
+    .replace(/<meta property="og:type"[^>]*>/, `<meta property="og:type" content="${htmlEsc(m.type || 'website')}" />`);
+}
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(
+    `User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /xabarlar\nDisallow: /tolovlar\nSitemap: ${SITE}/sitemap.xml\n`
+  );
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  const staticPaths = ['', 'narxlar', 'katalog', 'reyting', 'kompaniyalar', 'auksion', 'savollar', 'yangiliklar', 'qanday-ishlaydi'];
+  let profiles = [];
+  try {
+    if (isDbReady()) profiles = (await listRecords()).map((r) => r.code.toLowerCase());
+  } catch { /* jim — statik sahifalar baribir chiqadi */ }
+  const locs = [
+    ...staticPaths.map((p) => `${SITE}/${p}`),
+    ...profiles.map((c) => `${SITE}/${c}`),
+  ];
+  res.type('application/xml').send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    locs.map((u) => `  <url><loc>${htmlEsc(u)}</loc></url>`).join('\n') +
+    `\n</urlset>\n`
+  );
+});
+
+app.get('*', async (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(distDir, 'index.html'));
+  let html;
+  try { html = await getIndexHtml(); }
+  catch { return res.sendFile(path.join(distDir, 'index.html')); }
+
+  const seg = decodeURIComponent((req.path.replace(/^\/+/, '').split('/')[0] || '')).toLowerCase();
+  if (seg && !RESERVED_PATHS.has(seg) && isDbReady() && validCode(seg.toUpperCase())) {
+    try {
+      const rec = await getRecord(seg.toUpperCase());
+      if (rec) {
+        const name = rec.name || 'NFCSTORE';
+        const role = rec.role || '';
+        const about = String(rec.about || '').replace(/\s+/g, ' ').trim();
+        html = injectMeta(html, {
+          title: `${name}${role ? ' — ' + role : ''} · NFCSTORE`,
+          description: about
+            ? about.slice(0, 200)
+            : `${name}${role ? ', ' + role : ''} — raqamli tashrif qog'ozi. Barcha kontaktlar bitta profilda, NFC orqali ulashiladi.`,
+          url: `${SITE}/${rec.code.toLowerCase()}`,
+          image: absAsset(rec.avatarUrl) || `${SITE}/logo-512.png`,
+          type: 'profile',
+        });
+      }
+    } catch { /* standart meta bilan davom */ }
+  }
+  res.type('html').send(html);
 });
 
 initDb()
