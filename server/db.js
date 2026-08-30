@@ -980,6 +980,37 @@ export async function initDb() {
     }
   }
 
+  // ── Restoran menyusi (Band 3.3) ───────────────────────────────────
+  // Profil ICHIDA modul — alohida profil tizimi emas. Kategoriya → taom.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS menu_categories (
+      id         BIGSERIAL PRIMARY KEY,
+      code       VARCHAR(16) NOT NULL,
+      name       TEXT NOT NULL,
+      sort       INTEGER NOT NULL DEFAULT 0,
+      enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS menu_categories_code_idx ON menu_categories (code, sort)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS menu_items (
+      id             BIGSERIAL PRIMARY KEY,
+      code           VARCHAR(16) NOT NULL,
+      category_id    BIGINT NOT NULL REFERENCES menu_categories(id) ON DELETE CASCADE,
+      name           TEXT NOT NULL,
+      description    TEXT,
+      price          BIGINT,
+      discount_price BIGINT,
+      image_url      TEXT,
+      available      BOOLEAN NOT NULL DEFAULT TRUE,
+      featured       BOOLEAN NOT NULL DEFAULT FALSE,
+      sort           INTEGER NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_code_idx ON menu_items (code, category_id, sort)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -1425,6 +1456,121 @@ export async function leadCountToday(code) {
 
 export async function deleteLead(code, id) {
   await pool.query(`DELETE FROM card_leads WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// ---------- Restoran menyusi (Band 3.3) ----------
+
+// Public — profil sahifasi uchun to'liq menyu (yoqilgan kategoriyalar +
+// ularning taomlari). Egaga esa hammasi (yashirin kategoriyalar ham).
+export async function getMenu(code, { includeDisabled = false } = {}) {
+  const [cats, items] = await Promise.all([
+    pool.query(
+      `SELECT id, name, sort, enabled FROM menu_categories
+        WHERE code = $1 ${includeDisabled ? '' : 'AND enabled = TRUE'}
+        ORDER BY sort, id`,
+      [code]
+    ),
+    pool.query(
+      `SELECT id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+              image_url AS "imageUrl", available, featured, sort
+         FROM menu_items WHERE code = $1 ORDER BY sort, id`,
+      [code]
+    ),
+  ]);
+  const byCat = new Map();
+  for (const it of items.rows) {
+    if (!byCat.has(it.categoryId)) byCat.set(it.categoryId, []);
+    byCat.get(it.categoryId).push({
+      ...it,
+      price: it.price == null ? null : Number(it.price),
+      discountPrice: it.discountPrice == null ? null : Number(it.discountPrice),
+    });
+  }
+  return cats.rows.map((c) => ({ ...c, items: byCat.get(c.id) || [] }));
+}
+
+export async function menuCounts(code) {
+  const { rows } = await pool.query(
+    `SELECT (SELECT COUNT(*)::int FROM menu_categories WHERE code = $1) AS cats,
+            (SELECT COUNT(*)::int FROM menu_items WHERE code = $1) AS items`,
+    [code]
+  );
+  return { cats: rows[0].cats, items: rows[0].items };
+}
+
+export async function createMenuCategory(code, { name, sort }) {
+  const { rows } = await pool.query(
+    `INSERT INTO menu_categories (code, name, sort) VALUES ($1, $2, $3)
+     RETURNING id, name, sort, enabled`,
+    [code, name, sort || 0]
+  );
+  return rows[0];
+}
+
+export async function updateMenuCategory(code, id, f) {
+  const { rows } = await pool.query(
+    `UPDATE menu_categories SET
+        name = COALESCE($3, name), sort = COALESCE($4, sort), enabled = COALESCE($5, enabled)
+      WHERE code = $1 AND id = $2
+      RETURNING id, name, sort, enabled`,
+    [code, id, f.name ?? null, f.sort ?? null, f.enabled ?? null]
+  );
+  return rows[0] || null;
+}
+
+export async function deleteMenuCategory(code, id) {
+  await pool.query(`DELETE FROM menu_categories WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// category_id shu kartaga tegishli ekanini tekshiradi (IDOR himoyasi).
+export async function menuCategoryBelongs(code, categoryId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM menu_categories WHERE id = $1 AND code = $2`, [categoryId, code]
+  );
+  return !!rows[0];
+}
+
+const menuItemRow = (r) => (r ? {
+  ...r,
+  price: r.price == null ? null : Number(r.price),
+  discountPrice: r.discountPrice == null ? null : Number(r.discountPrice),
+} : null);
+
+export async function createMenuItem(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO menu_items (code, category_id, name, description, price, discount_price, image_url, available, featured, sort)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     RETURNING id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+               image_url AS "imageUrl", available, featured, sort`,
+    [code, f.categoryId, f.name, f.description || null, f.price ?? null, f.discountPrice ?? null,
+     f.imageUrl || null, f.available !== false, f.featured === true, f.sort || 0]
+  );
+  return menuItemRow(rows[0]);
+}
+
+export async function updateMenuItem(code, id, f) {
+  const sets = [];
+  const vals = [code, id];
+  const col = {
+    categoryId: 'category_id', name: 'name', description: 'description', price: 'price',
+    discountPrice: 'discount_price', imageUrl: 'image_url', available: 'available',
+    featured: 'featured', sort: 'sort',
+  };
+  for (const [k, c] of Object.entries(col)) {
+    if (k in f) { vals.push(f[k]); sets.push(`${c} = $${vals.length}`); }
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE menu_items SET ${sets.join(', ')} WHERE code = $1 AND id = $2
+     RETURNING id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+               image_url AS "imageUrl", available, featured, sort`,
+    vals
+  );
+  return menuItemRow(rows[0]) || null;
+}
+
+export async function deleteMenuItem(code, id) {
+  await pool.query(`DELETE FROM menu_items WHERE code = $1 AND id = $2`, [code, id]);
 }
 
 // ---------- Auth ----------

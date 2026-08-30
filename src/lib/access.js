@@ -68,6 +68,18 @@ export const FEATURE_MIN = {
 // limit faqat YANGI post qo'shishga ta'sir qiladi (grandfathering).
 export const POST_LIMIT = { free: 0, silver: 5, gold: 30, premium: 60, exclusive: 999 };
 
+// ── Restoran menyusi limiti (Band 3.3) ─────────────────────────────────
+// { cat: kategoriyalar soni, item: taomlar soni, images: rasm ruxsati }.
+// Free — menyu yopiq. Mavjud yozuvlar hech qachon o'chirilmaydi — limit
+// faqat YANGI qo'shishga ta'sir qiladi (grandfathering).
+export const MENU_LIMITS = {
+  free:      { cat: 0,   item: 0,    images: false },
+  silver:    { cat: 1,   item: 15,   images: false },
+  gold:      { cat: 8,   item: 100,  images: true },
+  premium:   { cat: 20,  item: 300,  images: true },
+  exclusive: { cat: 999, item: 9999, images: true },
+};
+
 export function featureAllowed(feature, currentAccess) {
   const min = FEATURE_MIN[feature];
   return min ? hasAccess(currentAccess, min) : true;
@@ -75,4 +87,8 @@ export function featureAllowed(feature, currentAccess) {
 
 export function postLimitFor(currentAccess) {
   return POST_LIMIT[currentAccess] ?? 0;
+}
+
+export function menuLimitsFor(currentAccess) {
+  return MENU_LIMITS[currentAccess] || MENU_LIMITS.free;
 }

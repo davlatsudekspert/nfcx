@@ -157,6 +157,31 @@ export async function dbDeleteLead(code, id) {
   return api(`/records/${encodeURIComponent(code)}/leads/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
+// ---------- Restoran menyusi (Band 3.3) ----------
+
+export async function dbGetMenu(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/menu`);
+    return (j && j.menu) || [];
+  } catch {
+    return [];
+  }
+}
+
+// Egaga — includeDisabled + limitlar + sanoq.
+export async function dbGetMenuManage(code) {
+  return api(`/records/${encodeURIComponent(code)}/menu/manage`);
+}
+
+const menuApi = (code, path, opts) => api(`/records/${encodeURIComponent(code)}/menu${path}`, opts);
+
+export const dbAddMenuCategory = (code, data) => menuApi(code, '/categories', { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateMenuCategory = (code, id, data) => menuApi(code, `/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteMenuCategory = (code, id) => menuApi(code, `/categories/${id}`, { method: 'DELETE' });
+export const dbAddMenuItem = (code, data) => menuApi(code, '/items', { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateMenuItem = (code, id, data) => menuApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteMenuItem = (code, id) => menuApi(code, `/items/${id}`, { method: 'DELETE' });
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

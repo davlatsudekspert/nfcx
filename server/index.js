@@ -3,12 +3,15 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
   logCardEvent, cardEventStats, CARD_EVENT_TYPES,
   createLead, listLeadsByCode, leadCountToday, deleteLead,
+  getMenu, menuCounts, menuCategoryBelongs,
+  createMenuCategory, updateMenuCategory, deleteMenuCategory,
+  createMenuItem, updateMenuItem, deleteMenuItem,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -1623,6 +1626,192 @@ app.delete('/api/records/:code/leads/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[api] lead delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Restoran menyusi (Band 3.3) ----------
+
+// Public — profil sahifasidagi "Menyu" tab uchun.
+app.get('/api/records/:code/menu', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ menu: await getMenu(code) });
+  } catch (err) {
+    console.error('[api] menu:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Egaga: kontekst (kirish darajasi, limitlar, joriy sanoq) + to'liq menyu.
+async function menuOwner(req, res, code) {
+  const user = await currentUser(req);
+  if (!user) { res.status(401).json({ error: 'unauthorized' }); return null; }
+  if ((await getRecordOwner(code)) !== user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
+  const rec = await getRecord(code);
+  const access = await cardAccess(code, user, rec);
+  if (!featureAllowed('restaurantMenu', access)) { res.status(403).json({ error: 'feature_locked', feature: 'restaurantMenu' }); return null; }
+  return { user, rec, access, limits: menuLimitsFor(access) };
+}
+
+const menuMoney = (v) => {
+  if (v == null || v === '') return null;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 && n <= 1_000_000_000 ? n : null;
+};
+const menuImage = (v) => {
+  const u = String(v || '').trim();
+  return u.startsWith('/uploads/') ? u.slice(0, 300) : '';
+};
+
+app.get('/api/records/:code/menu/manage', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    res.json({ menu: await getMenu(code, { includeDisabled: true }), limits: ctx.limits, counts: await menuCounts(code) });
+  } catch (err) {
+    console.error('[api] menu manage:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/menu/categories', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    const name = cleanStr(req.body?.name, 60).trim();
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if ((await menuCounts(code)).cats >= ctx.limits.cat) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limits.cat });
+    }
+    res.status(201).json(await createMenuCategory(code, { name, sort: Number(req.body?.sort) || 0 }));
+  } catch (err) {
+    console.error('[api] menu cat create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/menu/categories/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('name' in b) f.name = cleanStr(b.name, 60).trim();
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    if ('enabled' in b) f.enabled = b.enabled !== false;
+    const row = await updateMenuCategory(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] menu cat update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/menu/categories/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    await deleteMenuCategory(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] menu cat delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/menu/items', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    const b = req.body || {};
+    const categoryId = Number(b.categoryId);
+    if (!categoryId || !(await menuCategoryBelongs(code, categoryId))) {
+      return res.status(422).json({ error: 'bad_category' });
+    }
+    const name = cleanStr(b.name, 100).trim();
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if ((await menuCounts(code)).items >= ctx.limits.item) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limits.item });
+    }
+    const imageUrl = ctx.limits.images ? menuImage(b.imageUrl) : '';
+    res.status(201).json(await createMenuItem(code, {
+      categoryId,
+      name,
+      description: cleanStr(b.description, 500).trim(),
+      price: menuMoney(b.price),
+      discountPrice: menuMoney(b.discountPrice),
+      imageUrl,
+      available: b.available !== false,
+      featured: b.featured === true,
+      sort: Number(b.sort) || 0,
+    }));
+  } catch (err) {
+    console.error('[api] menu item create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/menu/items/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('categoryId' in b) {
+      const cid = Number(b.categoryId);
+      if (!cid || !(await menuCategoryBelongs(code, cid))) return res.status(422).json({ error: 'bad_category' });
+      f.categoryId = cid;
+    }
+    if ('name' in b) f.name = cleanStr(b.name, 100).trim();
+    if ('description' in b) f.description = cleanStr(b.description, 500).trim();
+    if ('price' in b) f.price = menuMoney(b.price);
+    if ('discountPrice' in b) f.discountPrice = menuMoney(b.discountPrice);
+    if ('imageUrl' in b) f.imageUrl = ctx.limits.images ? menuImage(b.imageUrl) : '';
+    if ('available' in b) f.available = b.available !== false;
+    if ('featured' in b) f.featured = b.featured === true;
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    const row = await updateMenuItem(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] menu item update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/menu/items/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await menuOwner(req, res, code);
+    if (!ctx) return;
+    await deleteMenuItem(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] menu item delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

@@ -41,6 +41,7 @@ async function api(path, options) {
   if (!res.ok) {
     const err = new Error((data && data.error) || 'api_error_' + res.status);
     if (data && data.feature) err.feature = data.feature;
+    if (data && data.limit != null) err.limit = data.limit;
     throw err;
   }
   return data;

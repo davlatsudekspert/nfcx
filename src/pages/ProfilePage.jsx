@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -300,6 +300,52 @@ function PostsFeed({ posts, onLike, t }) {
   );
 }
 
+// Restoran menyusi (Band 3.3) — public ko'rinish. Mobil-first.
+function MenuView({ menu, t }) {
+  const money = (n) => `${fmt(n)} ${t("so'm")}`;
+  const shown = (menu || []).filter((c) => c.items && c.items.length > 0);
+  if (shown.length === 0) {
+    return <div className="mt-8 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Menyu hozircha bo‘sh')}</div>;
+  }
+  return (
+    <div className="mt-6 flex flex-col gap-7">
+      {shown.map((cat) => (
+        <div key={cat.id}>
+          <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
+          <div className="flex flex-col gap-2.5">
+            {cat.items.map((it) => (
+              <div key={it.id} className={`flex gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 ${it.available ? '' : 'opacity-45'}`}>
+                {it.imageUrl && (
+                  <img src={it.imageUrl} alt="" loading="lazy" className="h-[74px] w-[74px] shrink-0 rounded-xl object-cover" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-[14px] font-bold text-[color:var(--vz-ink)]">
+                      {it.featured && <span className="mr-1">⭐</span>}{it.name}
+                    </div>
+                    {it.price != null && (
+                      <div className="shrink-0 text-right text-[13px] font-bold text-[color:var(--vz-ink)]">
+                        {it.discountPrice != null ? (
+                          <>
+                            <span className="mr-1.5 text-[color:var(--vz-ink-faint)] line-through">{money(it.price)}</span>
+                            <span className="text-[color:var(--vz-accent)]">{money(it.discountPrice)}</span>
+                          </>
+                        ) : money(it.price)}
+                      </div>
+                    )}
+                  </div>
+                  {it.description && <p className="mt-0.5 text-[12.5px] leading-snug text-[color:var(--vz-ink-dim)]">{it.description}</p>}
+                  {!it.available && <div className="mt-1 text-[11px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Lead Capture (Band 3.2) — tashrifchi kontaktini qoldiradi. Egasi
 // "Lidlarni yig'ish" ni yoqqan Gold+/Premium profillarda ko'rinadi.
 function LeadForm({ code, linkBtn }) {
@@ -380,6 +426,7 @@ export default function ProfilePage({ code, catalog }) {
   const [followBusy, setFollowBusy] = useState(false);
   const [followMsg, setFollowMsg] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [menu, setMenu] = useState([]);
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -388,7 +435,17 @@ export default function ProfilePage({ code, catalog }) {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
     dbGetLike(code).then(setLikeInfo).catch(() => {});
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
+    dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
   }, [code, user]);
+
+  // "Menyu" tabi ochilganda bir marta menu_view hodisasini yozamiz.
+  const menuViewLogged = useRef(false);
+  useEffect(() => {
+    if (tab === 'menyu' && !menuViewLogged.current && record && !isOwner) {
+      menuViewLogged.current = true;
+      dbLogEvent(code, 'menu_view');
+    }
+  }, [tab]);
 
   const togglePostLike = async (postId) => {
     if (!user) { flashToast(t('Avval tizimga kiring...')); setTimeout(() => navigate('/login'), 800); return; }
@@ -796,9 +853,18 @@ export default function ProfilePage({ code, catalog }) {
           >
             {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
           </button>
+          {menu.length > 0 && (
+            <button
+              onClick={() => setTab('menyu')}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+            >
+              {t('Menyu')}
+            </button>
+          )}
         </div>
 
         {tab === 'postlar' && <PostsFeed posts={posts} onLike={togglePostLike} t={t} />}
+        {tab === 'menyu' && <MenuView menu={menu} t={t} />}
 
         {tab === 'vizitka' && (
           <>
