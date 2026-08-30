@@ -1042,11 +1042,11 @@ export default function ProfilePage({ code, catalog }) {
 
       {leadOpen && record && (
         <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setLeadOpen(false)}>
-          <div className="w-full max-w-[420px] rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] p-1 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-end px-3 pt-2">
+          <div className="flex max-h-[90vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] p-1 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 justify-end px-3 pt-2">
               <button onClick={() => setLeadOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]">✕</button>
             </div>
-            <div className="px-4 pb-5">
+            <div className="overflow-y-auto px-4 pb-5">
               <LeadForm code={record.code} linkBtn={linkBtn} onDone={() => setTimeout(() => setLeadOpen(false), 1400)} />
             </div>
           </div>

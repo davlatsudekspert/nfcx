@@ -302,16 +302,25 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </label>
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 text-sm font-semibold">
-          {item.featured && <span>⭐</span>}{item.name}
-          {item.price != null && <span className="ml-auto shrink-0 text-xs text-base-content/60">{fmt(item.price)}{item.discountPrice != null ? ` → ${fmt(item.discountPrice)}` : ''}</span>}
+        <div className="flex items-start gap-1.5 text-sm font-semibold">
+          {item.featured && <span className="shrink-0">⭐</span>}
+          <span className="min-w-0 flex-1 truncate">{item.name}</span>
+          {item.price != null && (
+            <span className="shrink-0 text-xs text-base-content/60">
+              {fmt(item.price)}{item.discountPrice != null ? ` → ${fmt(item.discountPrice)}` : ''}
+            </span>
+          )}
         </div>
         {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
-        <div className="mt-1 flex flex-wrap gap-1">
-          <button className="btn btn-ghost btn-xs" onClick={() => setEdit(true)}>{t('Tahrirlash')}</button>
-          <button className="btn btn-ghost btn-xs" onClick={() => toggle('available')}>{item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')}</button>
-          <button className="btn btn-ghost btn-xs" onClick={() => toggle('featured')}>{item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')}</button>
-          <button className="btn btn-ghost btn-xs text-error" onClick={del}>{t("O'chirish")}</button>
+        <div className="mt-1.5 flex items-center gap-1">
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => setEdit(true)}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
+            {item.available ? '🟢' : '⚫'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
+            {item.featured ? '⭐' : '☆'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
         </div>
       </div>
     </div>
@@ -400,14 +409,14 @@ function MenuManagerSection({ code, allowed, onLock }) {
 
       {menu.map((cat) => (
         <div key={cat.id} className={`rounded-2xl border border-white/10 bg-base-200/40 p-3 ${cat.enabled ? '' : 'opacity-60'}`}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <input
               className="input input-ghost input-sm min-w-0 flex-1 px-1 font-semibold"
               defaultValue={cat.name}
               onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
             />
-            <button className="btn btn-ghost btn-xs" onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? t('Yashirish') : t('Chiqarish')}</button>
-            <button className="btn btn-ghost btn-xs text-error" onClick={() => delCat(cat.id)}>{t("O'chirish")}</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
           </div>
           <div className="mt-2 space-y-2">
             {cat.items.map((it) => (
@@ -418,12 +427,14 @@ function MenuManagerSection({ code, allowed, onLock }) {
             ))}
           </div>
           {eligible && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" placeholder={t('Yangi taom nomi')}
+            <div className="mt-2 space-y-1.5">
+              <input className="input input-bordered input-xs w-full bg-base-100" placeholder={t('Yangi taom nomi')}
                 value={(adding[cat.id] || MENU_ITEM_EMPTY).name} onChange={setAddF(cat.id, 'name')} />
-              <input className="input input-bordered input-xs w-20 bg-base-100" type="number" placeholder={t('Narx')}
-                value={(adding[cat.id] || MENU_ITEM_EMPTY).price} onChange={setAddF(cat.id, 'price')} />
-              <button className="btn btn-primary btn-xs" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
+              <div className="flex gap-1.5">
+                <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" type="number" placeholder={t('Narx')}
+                  value={(adding[cat.id] || MENU_ITEM_EMPTY).price} onChange={setAddF(cat.id, 'price')} />
+                <button className="btn btn-primary btn-xs shrink-0" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
+              </div>
             </div>
           )}
         </div>
@@ -763,7 +774,7 @@ function TeamSection({ code }) {
               <input className="input input-ghost input-xs w-full px-1 font-mono text-[11px] text-base-content/40" defaultValue={m.memberCode || ''} placeholder={t('Profil kodi (ixtiyoriy)')}
                 onBlur={(e) => e.target.value.toUpperCase() !== (m.memberCode || '') && upd(m.id, { memberCode: e.target.value.trim() })} />
             </div>
-            <button className="btn btn-ghost btn-xs shrink-0 text-error" onClick={() => del(m.id)}>{t("O'chirish")}</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => del(m.id)}>🗑</button>
           </div>
         ))}
       </div>
