@@ -1063,4 +1063,8 @@ export const DICT = {
   'NFC ID tanlash': { ru: 'Выбрать NFC ID', en: 'Choose an NFC ID' },
   'Post joylashtirish': { ru: 'Публикация постов', en: 'Posting' },
   'Jismoniy NFC karta dizayni': { ru: 'Дизайн физической NFC-карты', en: 'Physical NFC card design' },
+  'Profil musiqasi': { ru: 'Музыка профиля', en: 'Profile music' },
+  'Maxsus profil foni': { ru: 'Свой фон профиля', en: 'Custom profile background' },
+  'Maxsus ranglar': { ru: 'Свои цвета', en: 'Custom colours' },
+  'Bu sozlama': { ru: 'Эта настройка', en: 'This setting' },
 };

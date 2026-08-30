@@ -483,9 +483,14 @@ export async function dbCreatePost(code, { imageUrl, caption }) {
       unauthorized: 'Avval tizimga kiring.',
       bad_image: 'Avval rasm yuklang.',
       not_owner: 'Bu profil sizga tegishli emas.',
-      limit_reached: 'Postlar soni chegarasiga yetdingiz.',
+      limit_reached: data?.limit
+        ? `Bu tarifda ${data.limit} tagacha post joylash mumkin.`
+        : 'Postlar soni chegarasiga yetdingiz.',
+      feature_locked: 'Post joylashtirish uchun Premium yoki yuqoriroq NFC ID kerak.',
     };
-    throw new Error(map[data?.error] || 'Postni joylab bo’lmadi.');
+    const e = new Error(map[data?.error] || 'Postni joylab bo’lmadi.');
+    if (data?.error === 'feature_locked') e.code = 'feature_locked';
+    throw e;
   }
   return data;
 }

@@ -38,7 +38,11 @@ async function api(path, options) {
     ...options,
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error((data && data.error) || 'api_error_' + res.status);
+  if (!res.ok) {
+    const err = new Error((data && data.error) || 'api_error_' + res.status);
+    if (data && data.feature) err.feature = data.feature;
+    throw err;
+  }
   return data;
 }
 

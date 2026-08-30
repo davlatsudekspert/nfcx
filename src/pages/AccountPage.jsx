@@ -881,6 +881,17 @@ function EditCardForm({ card, onSaved }) {
       setMsg({ type: 'ok', text: t('Saqlandi! Profilingiz yangilandi.') });
       onSaved(updated);
     } catch (err) {
+      if (err.message === 'feature_locked') {
+        const labels = {
+          music: t('Profil musiqasi'),
+          innerBackground: t('Maxsus profil foni'),
+          advancedColors: t('Maxsus ranglar'),
+          profileCardCustom: t('Karta dizayni'),
+        };
+        setLocked(labels[err.feature] || t('Bu sozlama'));
+        setBusy(false);
+        return;
+      }
       const text = err.message === 'unauthorized'
         ? t('Avval tizimga kiring.')
         : err.message === 'forbidden'

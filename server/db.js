@@ -2813,11 +2813,15 @@ export async function listPostsByCode(code, viewerUserId) {
   }));
 }
 
-export async function createPost(code, userId, { imageUrl, caption }) {
+export async function createPost(code, userId, { imageUrl, caption, limit }) {
   const owner = await getOwnerByCode(code);
   if (!owner || owner !== userId) return { error: 'NOT_OWNER' };
+  // Limit — chaqiruvchi (index.js) tarif bo'yicha uzatadi; kelmasa eski
+  // umumiy chegara. MUHIM: mavjud postlar HECH QACHON o'chirilmaydi —
+  // limit faqat YANGI post qo'shishga ta'sir qiladi (grandfathering).
+  const cap = Number.isFinite(limit) ? limit : MAX_POSTS_PER_PROFILE;
   const { rows: cnt } = await pool.query(`SELECT COUNT(*)::int AS n FROM posts WHERE code = $1`, [code]);
-  if (cnt[0].n >= MAX_POSTS_PER_PROFILE) return { error: 'LIMIT_REACHED' };
+  if (cnt[0].n >= cap) return { error: 'LIMIT_REACHED' };
   const { rows } = await pool.query(
     `INSERT INTO posts (code, user_id, image_url, caption) VALUES ($1,$2,$3,$4)
      RETURNING id, image_url AS "imageUrl", caption, created_at AS "createdAt"`,

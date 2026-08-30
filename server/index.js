@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
+import { effectiveAccess, featureAllowed, postLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
@@ -446,9 +447,13 @@ app.post('/api/records/:code/posts', async (req, res) => {
   const caption = String(req.body?.caption || '').slice(0, 600);
   if (!imageUrl.startsWith('/uploads/')) return res.status(422).json({ error: 'bad_image' });
   try {
-    const result = await createPost(code, user.id, { imageUrl, caption });
+    const access = await cardAccess(code, user);
+    if (!featureAllowed('post', access)) {
+      return res.status(403).json({ error: 'feature_locked', feature: 'post' });
+    }
+    const result = await createPost(code, user.id, { imageUrl, caption, limit: postLimitFor(access) });
     if (result.error === 'NOT_OWNER') return res.status(403).json({ error: 'not_owner' });
-    if (result.error === 'LIMIT_REACHED') return res.status(409).json({ error: 'limit_reached' });
+    if (result.error === 'LIMIT_REACHED') return res.status(409).json({ error: 'limit_reached', limit: postLimitFor(access) });
     res.status(201).json(result.post);
   } catch (err) {
     console.error('[api] createPost:', err.message);
@@ -846,6 +851,18 @@ async function currentUser(req) {
   }
 }
 
+// Kartaning EFFECTIVE ACCESS darajasi (NFC ID tarifi + egasining Profile
+// Premium'i). `rec` — allaqachon yuklangan getRecord natijasi bo'lsa uzating,
+// aks holda kod bo'yicha yuklanadi.
+async function cardAccess(code, user, rec) {
+  const r = rec || await getRecord(code);
+  if (!r) return 'free';
+  return effectiveAccess(
+    { code, tierOverride: r.tierOverride, isGift: r.isGift },
+    { isPremium: !!(r.isPremium || (user && user.isPremium)) }
+  );
+}
+
 function validateAuthBody(body) {
   const email = cleanStr(body.email, 120).toLowerCase();
   const password = typeof body.password === 'string' ? body.password : '';
@@ -1199,12 +1216,39 @@ app.put('/api/records/:code', async (req, res) => {
     const owner = await getRecordOwner(code);
     if (!owner) return res.status(404).json({ error: 'not_found' });
     if (owner !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const cur = await getRecord(code);
+    if (!cur) return res.status(404).json({ error: 'not_found' });
 
     const { record } = validateBody(req.body || {});
+
+    // ── EFFECTIVE ACCESS enforcement ──────────────────────────────────
+    // Tarif/Premium yetmasa, YOPIQ maydonni O'ZGARTIRIB bo'lmaydi.
+    // Grandfathering: mavjud qiymat o'zgarmasa — ruxsat (eski kontent
+    // profilda ko'rinishда qoladi, faqat tahrir yopiq).
+    const access = await cardAccess(code, user, cur);
+    const s = (v) => (v == null ? '' : String(v));
+    const guard = (feature, changed) => {
+      if (changed && !featureAllowed(feature, access)) {
+        const e = new Error('feature_locked');
+        e.locked = feature;
+        throw e;
+      }
+    };
+    guard('music', s(record.musicUrl) !== s(cur.musicUrl));
+    guard('innerBackground', s(record.bgUrl) !== s(cur.bgUrl) || s(record.bgColor) !== s(cur.bgColor)
+      || (record.bgAnimated !== false) !== (cur.bgAnimated !== false));
+    guard('advancedColors', s(record.accentColor) !== s(cur.accentColor));
+    if ('cardDesign' in (req.body || {})) {
+      guard('profileCardCustom', JSON.stringify(record.cardDesign || null) !== JSON.stringify(cur.cardDesign || null));
+    }
+
     const updated = await updateRecord(code, record);
     if (!updated) return res.status(404).json({ error: 'not_found' });
     res.json(updated);
   } catch (err) {
+    if (err.message === 'feature_locked') {
+      return res.status(403).json({ error: 'feature_locked', feature: err.locked });
+    }
     console.error('[api] updateRecord:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
@@ -1303,6 +1347,10 @@ app.post('/api/records/:code/order-physical-card', async (req, res) => {
 
   const owner = await getRecordOwner(code);
   if (owner !== user.id) return res.status(403).json({ error: 'forbidden' });
+
+  if (!featureAllowed('physicalCardDesigner', await cardAccess(code, user))) {
+    return res.status(403).json({ error: 'feature_locked', feature: 'physicalCardDesigner' });
+  }
 
   const shippingName = cleanStr(req.body?.shippingName, 100);
   const shippingPhone = cleanStr(req.body?.shippingPhone, 30);
