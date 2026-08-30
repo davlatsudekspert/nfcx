@@ -1237,4 +1237,6 @@ export const DICT = {
   'Hozircha tasdiqlangan profil yo‘q.': { ru: 'Пока нет верифицированных профилей.', en: 'No verified profiles yet.' },
   'Tasdiqlangan profil': { ru: 'Верифицированный профиль', en: 'Verified profile' },
   'Tasdiqlangan': { ru: 'Верифицирован', en: 'Verified' },
+  'Kontakt qoldirish': { ru: 'Оставить контакт', en: 'Leave a contact' },
+  'Menyu faqat "Restoran va ovqatlanish" sohasidagi profillar uchun. "Profil turi" bo‘limida sohani tanlang.': { ru: 'Меню доступно только для профилей в сфере «Рестораны и питание». Выберите сферу в разделе «Тип профиля».', en: 'The menu is only for profiles in the “Food & dining” industry. Choose the industry in the “Profile type” section.' },
 };

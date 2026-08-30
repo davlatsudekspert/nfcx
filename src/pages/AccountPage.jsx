@@ -342,7 +342,8 @@ function MenuManagerSection({ code, allowed, onLock }) {
   if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
 
   const { menu, limits, counts } = data;
-  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
+  const eligible = data.eligible !== false;
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
   const addCat = async () => {
     const name = newCat.trim();
@@ -352,7 +353,9 @@ function MenuManagerSection({ code, allowed, onLock }) {
       await dbAddMenuCategory(code, { name });
       setNewCat(''); await load();
     } catch (e) {
-      flash(e.message === 'limit_reached' ? t('Kategoriya limiti tugadi ({n} ta).', { n: e.limit }) : t('Xatolik yuz berdi.'));
+      flash(e.message === 'limit_reached' ? t('Kategoriya limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_restaurant' ? t('Menyu faqat "Restoran va ovqatlanish" sohasidagi profillar uchun. "Profil turi" bo‘limida sohani tanlang.')
+        : t('Xatolik yuz berdi.'));
     } finally { setBusy(false); }
   };
   const updCat = async (id, patch) => { await dbUpdateMenuCategory(code, id, patch); await load(); };
@@ -374,7 +377,9 @@ function MenuManagerSection({ code, allowed, onLock }) {
       setAdding((s) => ({ ...s, [catId]: MENU_ITEM_EMPTY }));
       await load();
     } catch (e) {
-      flash(e.message === 'limit_reached' ? t('Taom limiti tugadi ({n} ta).', { n: e.limit }) : t('Xatolik yuz berdi.'));
+      flash(e.message === 'limit_reached' ? t('Taom limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_restaurant' ? t('Menyu faqat "Restoran va ovqatlanish" sohasidagi profillar uchun. "Profil turi" bo‘limida sohani tanlang.')
+        : t('Xatolik yuz berdi.'));
     } finally { setBusy(false); }
   };
 
@@ -382,6 +387,11 @@ function MenuManagerSection({ code, allowed, onLock }) {
 
   return (
     <div className="space-y-4">
+      {!eligible && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
+          {t('Menyu faqat "Restoran va ovqatlanish" sohasidagi profillar uchun. "Profil turi" bo‘limida sohani tanlang.')}
+        </div>
+      )}
       <div className="text-xs text-base-content/50">
         {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Taomlar')}: {counts.items}/{limits.item}
         {!limits.images && ` · ${t('rasm Gold+ dan')}`}
@@ -407,17 +417,19 @@ function MenuManagerSection({ code, allowed, onLock }) {
               />
             ))}
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" placeholder={t('Yangi taom nomi')}
-              value={(adding[cat.id] || MENU_ITEM_EMPTY).name} onChange={setAddF(cat.id, 'name')} />
-            <input className="input input-bordered input-xs w-20 bg-base-100" type="number" placeholder={t('Narx')}
-              value={(adding[cat.id] || MENU_ITEM_EMPTY).price} onChange={setAddF(cat.id, 'price')} />
-            <button className="btn btn-primary btn-xs" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
-          </div>
+          {eligible && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" placeholder={t('Yangi taom nomi')}
+                value={(adding[cat.id] || MENU_ITEM_EMPTY).name} onChange={setAddF(cat.id, 'name')} />
+              <input className="input input-bordered input-xs w-20 bg-base-100" type="number" placeholder={t('Narx')}
+                value={(adding[cat.id] || MENU_ITEM_EMPTY).price} onChange={setAddF(cat.id, 'price')} />
+              <button className="btn btn-primary btn-xs" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
+            </div>
+          )}
         </div>
       ))}
 
-      {counts.cats < limits.cat && (
+      {eligible && counts.cats < limits.cat && (
         <div className="flex gap-2">
           <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Ichimliklar)')}
             value={newCat} onChange={(e) => setNewCat(e.target.value)} />

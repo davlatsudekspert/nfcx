@@ -3,6 +3,7 @@ import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbSt
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
+import { menuEligible } from '../lib/access.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -376,7 +377,7 @@ function MenuView({ menu, t }) {
 
 // Lead Capture (Band 3.2) — tashrifchi kontaktini qoldiradi. Egasi
 // "Lidlarni yig'ish" ni yoqqan Gold+/Premium profillarda ko'rinadi.
-function LeadForm({ code, linkBtn }) {
+function LeadForm({ code, linkBtn, onDone }) {
   const { t } = useLanguage();
   const [f, setF] = useState({ name: '', phone: '', telegram: '', email: '', company: '', note: '', website_url: '' });
   const [busy, setBusy] = useState(false);
@@ -395,6 +396,7 @@ function LeadForm({ code, linkBtn }) {
     try {
       await dbSubmitLead(code, f);
       setDone(true);
+      if (onDone) onDone();
     } catch (e) {
       const m = {
         lead_limit_reached: t('Bugungi limit tugadi, ertaga urinib ko‘ring.'),
@@ -457,6 +459,7 @@ export default function ProfilePage({ code, catalog }) {
   const [menu, setMenu] = useState([]);
   const [files, setFiles] = useState([]);
   const [videos, setVideos] = useState([]);
+  const [leadOpen, setLeadOpen] = useState(false);
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -890,7 +893,7 @@ export default function ProfilePage({ code, catalog }) {
           >
             {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
           </button>
-          {menu.length > 0 && (
+          {menu.length > 0 && menuEligible(record.categorySlug) && (
             <button
               onClick={() => setTab('menyu')}
               className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
@@ -954,7 +957,11 @@ export default function ProfilePage({ code, catalog }) {
               </div>
             )}
 
-            {record.leadCapture && !isOwner && <LeadForm code={record.code} linkBtn={linkBtn} />}
+            {record.leadCapture && !isOwner && (
+              <button type="button" onClick={() => setLeadOpen(true)} className={`${linkBtn} mt-5 w-full cursor-pointer`}>
+                {'✉️'} {t('Kontakt qoldirish')}
+              </button>
+            )}
 
             {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
                 Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida
@@ -995,6 +1002,19 @@ export default function ProfilePage({ code, catalog }) {
 
       <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{t("{n} ko'rishlar", { n: fmt(record.views || 1) })}</div>
       {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] text-white shadow-xl">{toast}</div>}
+
+      {leadOpen && record && (
+        <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setLeadOpen(false)}>
+          <div className="w-full max-w-[420px] rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] p-1 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end px-3 pt-2">
+              <button onClick={() => setLeadOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]">✕</button>
+            </div>
+            <div className="px-4 pb-5">
+              <LeadForm code={record.code} linkBtn={linkBtn} onDone={() => setTimeout(() => setLeadOpen(false), 1400)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

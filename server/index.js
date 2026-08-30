@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, fileLimitFor, videoLimitsFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
@@ -1690,14 +1690,18 @@ app.get('/api/records/:code/menu', async (req, res) => {
 });
 
 // Egaga: kontekst (kirish darajasi, limitlar, joriy sanoq) + to'liq menyu.
-async function menuOwner(req, res, code) {
+async function menuOwner(req, res, code, { mutate = false } = {}) {
   const user = await currentUser(req);
   if (!user) { res.status(401).json({ error: 'unauthorized' }); return null; }
   if ((await getRecordOwner(code)) !== user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
   const rec = await getRecord(code);
   const access = await cardAccess(code, user, rec);
   if (!featureAllowed('restaurantMenu', access)) { res.status(403).json({ error: 'feature_locked', feature: 'restaurantMenu' }); return null; }
-  return { user, rec, access, limits: menuLimitsFor(access) };
+  const eligible = menuEligible(rec.categorySlug);
+  // Menyu qo'shish/tahrirlash faqat ovqatlanish sohasidagi profillar uchun
+  // (o'qish/o'chirish har doim — eski yozuvlarni tozalash mumkin bo'lsin).
+  if (mutate && !eligible) { res.status(403).json({ error: 'not_restaurant' }); return null; }
+  return { user, rec, access, eligible, limits: menuLimitsFor(access) };
 }
 
 const menuMoney = (v) => {
@@ -1717,7 +1721,7 @@ app.get('/api/records/:code/menu/manage', async (req, res) => {
   try {
     const ctx = await menuOwner(req, res, code);
     if (!ctx) return;
-    res.json({ menu: await getMenu(code, { includeDisabled: true }), limits: ctx.limits, counts: await menuCounts(code) });
+    res.json({ menu: await getMenu(code, { includeDisabled: true }), limits: ctx.limits, counts: await menuCounts(code), eligible: ctx.eligible });
   } catch (err) {
     console.error('[api] menu manage:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
@@ -1729,7 +1733,7 @@ app.post('/api/records/:code/menu/categories', async (req, res) => {
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    const ctx = await menuOwner(req, res, code);
+    const ctx = await menuOwner(req, res, code, { mutate: true });
     if (!ctx) return;
     const name = cleanStr(req.body?.name, 60).trim();
     if (!name) return res.status(422).json({ error: 'name_required' });
@@ -1748,7 +1752,7 @@ app.put('/api/records/:code/menu/categories/:id', async (req, res) => {
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    const ctx = await menuOwner(req, res, code);
+    const ctx = await menuOwner(req, res, code, { mutate: true });
     if (!ctx) return;
     const b = req.body || {};
     const f = {};
@@ -1784,7 +1788,7 @@ app.post('/api/records/:code/menu/items', async (req, res) => {
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    const ctx = await menuOwner(req, res, code);
+    const ctx = await menuOwner(req, res, code, { mutate: true });
     if (!ctx) return;
     const b = req.body || {};
     const categoryId = Number(b.categoryId);
@@ -1819,7 +1823,7 @@ app.put('/api/records/:code/menu/items/:id', async (req, res) => {
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    const ctx = await menuOwner(req, res, code);
+    const ctx = await menuOwner(req, res, code, { mutate: true });
     if (!ctx) return;
     const b = req.body || {};
     const f = {};

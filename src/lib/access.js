@@ -93,6 +93,14 @@ export function menuLimitsFor(currentAccess) {
   return MENU_LIMITS[currentAccess] || MENU_LIMITS.free;
 }
 
+// Menyu moduli faqat ovqatlanish sohasidagi profillar uchun ochiladi
+// (spec §51/§52: Restaurant / Cafe / Fast Food → MENU). `food` asosiy
+// soha yoki uning kichik sohalari (`food-*`).
+export function menuEligible(categorySlug) {
+  const s = String(categorySlug || '');
+  return s === 'food' || s.startsWith('food-');
+}
+
 // ── Fayl / PDF / katalog limiti (Band 3.4) ─────────────────────────────
 // Gold+ — spec §58. Mavjud fayllar hech qachon o'chirilmaydi.
 export const FILE_LIMIT = { free: 0, silver: 0, gold: 5, premium: 15, exclusive: 999 };
