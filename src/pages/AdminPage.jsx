@@ -721,10 +721,10 @@ function CreateAuctionForm({ onCreated }) {
   };
 
   return (
-    <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-4">
-      <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t('Yangi auksion ochish')}</div>
+    <div className="mb-6 rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1a1509] via-[#121013] to-[#101013] p-5">
+      <div className="text-sm font-bold text-accent">{'\u{1F528}'} {t('Yangi auksion ochish')}</div>
       <p className="mt-1 text-xs text-base-content/45">{t("Faqat hali hech kimga tegishli bo'lmagan (bo'sh) kodlar uchun.")}</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-4">
+      <div className="mt-3.5 grid gap-3 sm:grid-cols-4">
         <input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder={t("Kod (VIP001)")} className="input input-bordered input-sm bg-base-100 font-mono" />
         <input type="number" value={form.startPrice} onChange={(e) => setForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder={t("Boshlang'ich narx")} className="input input-bordered input-sm bg-base-100" />
         <input type="number" value={form.buyNowPrice} onChange={(e) => setForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder={t("Darhol sotib olish (ixt.)")} className="input input-bordered input-sm bg-base-100" />
