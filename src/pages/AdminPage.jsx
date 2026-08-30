@@ -124,7 +124,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar'];
 
 function StatCard({ label, value }) {
   return (
@@ -1518,6 +1518,144 @@ function NewsTab() {
   );
 }
 
+// Kategoriyalar — profil "Faoliyat sohasi" taksonomiyasi. Admin 3 tilda
+// qo'shadi/tahrirlaydi/o'chiradi, tartibini (sort) va ko'rinishini boshqaradi.
+// slug — texnik kalit, yaratilgandan keyin o'zgarmaydi.
+const CAT_EMPTY = { slug: '', nameUz: '', nameRu: '', nameEn: '', parentSlug: '', sort: 0 };
+
+function CategoriesTab() {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(null);
+  const [form, setForm] = useState(CAT_EMPTY);
+  const [editId, setEditId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const load = () => adminApi('/categories').then((d) => setRows(d.categories || [])).catch(() => setRows([]));
+  useEffect(() => { load(); }, []);
+
+  const reset = () => { setEditId(null); setForm(CAT_EMPTY); setErr(null); };
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const mains = (rows || []).filter((c) => !c.parentSlug);
+
+  const save = async () => {
+    setErr(null);
+    if (!editId && !form.slug.trim().replace(/[^a-z0-9-]/gi, '')) { setErr(t('Slug kiriting (lotincha, masalan: it-dasturlash).')); return; }
+    if (!form.nameUz.trim()) { setErr(t('O‘zbekcha nomni kiriting.')); return; }
+    setBusy(true);
+    const payload = { nameUz: form.nameUz, nameRu: form.nameRu, nameEn: form.nameEn, parentSlug: form.parentSlug || '', sort: Number(form.sort) || 0 };
+    try {
+      if (editId) await adminApi(`/categories/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      else await adminApi('/categories', { method: 'POST', body: JSON.stringify({ ...payload, slug: form.slug }) });
+      reset();
+      await load();
+    } catch (e) {
+      const m = { slug_exists: t('Bu slug band.'), slug_required: t('Slug kiriting (lotincha, masalan: it-dasturlash).'), name_required: t('O‘zbekcha nomni kiriting.') };
+      setErr(m[e.message] || t('Xatolik yuz berdi.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startEdit = (c) => {
+    setEditId(c.id);
+    setForm({ slug: c.slug, nameUz: c.nameUz || '', nameRu: c.nameRu || '', nameEn: c.nameEn || '', parentSlug: c.parentSlug || '', sort: c.sort || 0 });
+    setErr(null);
+  };
+
+  const toggle = async (c) => {
+    setBusy(true);
+    try { await adminApi(`/categories/${c.id}`, { method: 'PUT', body: JSON.stringify({ enabled: !c.enabled }) }); await load(); }
+    finally { setBusy(false); }
+  };
+
+  const bump = async (c, delta) => {
+    setBusy(true);
+    try { await adminApi(`/categories/${c.id}`, { method: 'PUT', body: JSON.stringify({ sort: Math.max(0, (c.sort || 0) + delta) }) }); await load(); }
+    finally { setBusy(false); }
+  };
+
+  const remove = async (c) => {
+    const kids = (rows || []).filter((x) => x.parentSlug === c.slug);
+    const msg = kids.length
+      ? t('Bu sohada {n} ta kichik soha bor. Ular ham o‘chadimi?', { n: kids.length })
+      : t('Bu kategoriyani o‘chirasizmi?');
+    if (!confirm(msg)) return;
+    setBusy(true);
+    try {
+      for (const k of kids) await adminApi(`/categories/${k.id}`, { method: 'DELETE' });
+      await adminApi(`/categories/${c.id}`, { method: 'DELETE' });
+      await load();
+    } finally { setBusy(false); }
+  };
+
+  const Row = ({ c, child }) => (
+    <div className={`flex items-center gap-2 rounded-xl border border-white/10 bg-base-200/40 px-3 py-2 ${child ? 'ml-6' : ''} ${c.enabled ? '' : 'opacity-50'}`}>
+      <div className="flex flex-col">
+        <button className="btn btn-ghost btn-xs px-1" onClick={() => bump(c, -1)} disabled={busy}>▲</button>
+        <button className="btn btn-ghost btn-xs px-1" onClick={() => bump(c, 1)} disabled={busy}>▼</button>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-semibold">{c.nameUz}</span>
+          <span className="font-mono text-[11px] text-base-content/35">{c.slug}</span>
+          {c.nameRu && <span className="badge badge-outline badge-xs">RU</span>}
+          {c.nameEn && <span className="badge badge-outline badge-xs">EN</span>}
+          {!c.enabled && <span className="badge badge-ghost badge-xs">{t('Yashirin')}</span>}
+          <span className="text-[11px] text-base-content/35">#{c.sort}</span>
+        </div>
+      </div>
+      <button className="btn btn-ghost btn-xs" onClick={() => startEdit(c)}>{t('Tahrirlash')}</button>
+      <button className="btn btn-ghost btn-xs" onClick={() => toggle(c)} disabled={busy}>{c.enabled ? t('Yashirish') : t('Chiqarish')}</button>
+      <button className="btn btn-error btn-xs" onClick={() => remove(c)} disabled={busy}>{t("O'chirish")}</button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-base-200/50 p-5">
+        <div className="text-sm font-bold">{editId ? t('Kategoriyani tahrirlash') : t('Yangi kategoriya')}</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <input value={form.slug} onChange={set('slug')} disabled={!!editId}
+            placeholder={t('slug (lotincha): it-dasturlash')}
+            className="input input-bordered input-sm w-full bg-base-100 font-mono text-xs disabled:opacity-60" />
+          <select value={form.parentSlug} onChange={set('parentSlug')} className="select select-bordered select-sm w-full bg-base-100">
+            <option value="">{t('— asosiy soha —')}</option>
+            {mains.filter((m) => m.slug !== form.slug).map((m) => (
+              <option key={m.slug} value={m.slug}>{m.nameUz}</option>
+            ))}
+          </select>
+          <input value={form.nameUz} onChange={set('nameUz')} placeholder={t('Nomi (UZ)')} className="input input-bordered input-sm w-full bg-base-100" />
+          <input value={form.sort} onChange={set('sort')} type="number" placeholder={t('Tartib')} className="input input-bordered input-sm w-full bg-base-100" />
+          <input value={form.nameRu} onChange={set('nameRu')} placeholder={t('Nomi (RU)')} className="input input-bordered input-sm w-full bg-base-100" />
+          <input value={form.nameEn} onChange={set('nameEn')} placeholder={t('Nomi (EN)')} className="input input-bordered input-sm w-full bg-base-100" />
+        </div>
+        {err && <div className="mt-2 text-xs text-error">{err}</div>}
+        <div className="mt-3 flex gap-2">
+          <button className="btn btn-primary btn-sm" onClick={save} disabled={busy}>
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : (editId ? t('Saqlash') : t('Qo‘shish'))}
+          </button>
+          {editId && <button className="btn btn-ghost btn-sm" onClick={reset}>{t('Bekor')}</button>}
+        </div>
+      </div>
+
+      {!rows && <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>}
+      {rows && rows.length === 0 && <div className="text-base-content/45">{t('Hozircha kategoriya yo‘q.')}</div>}
+      <div className="space-y-2">
+        {mains.map((m) => (
+          <div key={m.slug} className="space-y-1.5">
+            <Row c={m} />
+            {(rows || []).filter((c) => c.parentSlug === m.slug).map((c) => (
+              <Row key={c.slug} c={c} child />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ onLogout, role }) {
   const { t } = useLanguage();
   const [tab, setTab] = useState(0);
@@ -1560,6 +1698,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 12 && <GiftNfcIdTab />}
         {tab === 13 && <PromoCodesTab />}
         {tab === 14 && <NewsTab />}
+        {tab === 15 && <CategoriesTab />}
       </div>
     </main>
   );

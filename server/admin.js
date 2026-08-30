@@ -36,6 +36,7 @@ import {
   createNfcGift, listNfcGifts,
   adminListReferrals,
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
+  listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -815,5 +816,60 @@ adminRouter.delete('/news/:id', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   await adminDeleteNews(Number(req.params.id));
   logAdminActivity({ action: 'news_deleted', details: `#${req.params.id}`, ip: req.ip }).catch(() => {});
+  res.json({ ok: true });
+});
+
+// ---------- Kategoriyalar (faoliyat sohalari taksonomiyasi) ----------
+const cleanSlug = (v) => String(v || '').toLowerCase().trim().replace(/[^a-z0-9-]/g, '').slice(0, 60);
+
+function categoryFieldsFromBody(body, { partial } = {}) {
+  const str = (v, max) => String(v ?? '').slice(0, max).trim();
+  const f = {};
+  const set = (key, val) => { if (!partial || body[key] != null) f[key] = val; };
+  set('nameUz', str(body.nameUz, 120));
+  set('nameRu', str(body.nameRu, 120));
+  set('nameEn', str(body.nameEn, 120));
+  set('parentSlug', cleanSlug(body.parentSlug) || null);
+  if (!partial || body.sort != null) f.sort = Math.max(0, Math.min(9999, Math.round(Number(body.sort) || 0)));
+  if (!partial || body.enabled != null) f.enabled = body.enabled !== false;
+  return f;
+}
+
+adminRouter.get('/categories', async (req, res) => {
+  if (!isDbReady()) return res.json({ categories: [] });
+  res.json({ categories: await listCategories({ includeDisabled: true }) });
+});
+
+adminRouter.post('/categories', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const slug = cleanSlug(req.body?.slug);
+  const f = categoryFieldsFromBody(req.body || {});
+  if (!slug) return res.status(422).json({ error: 'slug_required' });
+  if (!f.nameUz) return res.status(422).json({ error: 'name_required' });
+  const existing = await listCategories({ includeDisabled: true });
+  if (existing.some((c) => c.slug === slug)) return res.status(409).json({ error: 'slug_exists' });
+  try {
+    const row = await adminCreateCategory({ ...f, slug });
+    logAdminActivity({ action: 'category_created', details: `${slug} — ${f.nameUz}`, ip: req.ip }).catch(() => {});
+    res.status(201).json(row);
+  } catch (err) {
+    console.error('[admin] category create:', err.message);
+    res.status(500).json({ error: 'create_failed' });
+  }
+});
+
+adminRouter.put('/categories/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const f = categoryFieldsFromBody(req.body || {}, { partial: true });
+  const row = await adminUpdateCategory(Number(req.params.id), f);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  logAdminActivity({ action: 'category_updated', details: `#${req.params.id}`, ip: req.ip }).catch(() => {});
+  res.json(row);
+});
+
+adminRouter.delete('/categories/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  await adminDeleteCategory(Number(req.params.id));
+  logAdminActivity({ action: 'category_deleted', details: `#${req.params.id}`, ip: req.ip }).catch(() => {});
   res.json({ ok: true });
 });
