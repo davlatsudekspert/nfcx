@@ -1175,6 +1175,72 @@ export async function initDb() {
     if (r.rowCount) console.log(`[db] ${code} sotilgan narxi ${right} ga to'g'rilandi.`);
   }
 
+  // ═══════════════ MOLIYA / BUXGALTERIYA MODULI ═══════════════
+  // FAQAT yangi jadvallar — mavjud to'lov/buyurtma sxemasiga (web_orders,
+  // transactions, bot_orders) TEGILMAYDI. Bu modul ulardan faqat O'QIYDI.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS finance_rates (
+      id             SERIAL PRIMARY KEY,
+      scope          VARCHAR(12) NOT NULL,               -- 'payme' | 'bank' | 'tax'
+      params         JSONB NOT NULL DEFAULT '{}'::jsonb,
+      effective_from DATE NOT NULL,
+      note           TEXT,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS finance_rates_scope_idx ON finance_rates (scope, effective_from DESC)`);
+  // Har scope uchun bitta bo'sh (nol) boshlang'ich qator — admin bank bilan
+  // kelishib real foizlarni keyin kiritadi. HARD-CODE YO'Q.
+  for (const scope of ['payme', 'bank', 'tax']) {
+    const { rows } = await pool.query(`SELECT 1 FROM finance_rates WHERE scope = $1 LIMIT 1`, [scope]);
+    if (!rows.length) {
+      const params = scope === 'payme' ? { pct: 0, fixed: 0, mode: 'settlement_deducted' }
+        : scope === 'bank' ? { cashPct: 0, transferPct: 0, monthlyFee: 0, extraFee: 0 }
+        : { turnoverPct: 0, socialMonthly: 0 };
+      await pool.query(
+        `INSERT INTO finance_rates (scope, params, effective_from, note)
+         VALUES ($1, $2::jsonb, CURRENT_DATE, 'Boshlang''ich — hali to''ldirilmagan')`,
+        [scope, JSON.stringify(params)]
+      );
+      console.log(`[db] finance_rates: '${scope}' boshlang'ich qator yaratildi.`);
+    }
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS finance_expenses (
+      id         SERIAL PRIMARY KEY,
+      title      TEXT NOT NULL,
+      category   VARCHAR(24) NOT NULL DEFAULT 'other',
+      amount     BIGINT NOT NULL,
+      spent_on   DATE NOT NULL,
+      note       TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS finance_expenses_date_idx ON finance_expenses (spent_on DESC)`);
+
+  // Bankka real tushgan pul — oy bo'yicha admin qo'lda kiritadi (Trastbank
+  // hisob varag'idan). Reconciliation shu bilan "expected"ni solishtiradi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS finance_bank_actuals (
+      period        VARCHAR(7) PRIMARY KEY,              -- 'YYYY-MM'
+      actual_amount BIGINT NOT NULL DEFAULT 0,
+      note          TEXT,
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS finance_docs (
+      id         SERIAL PRIMARY KEY,
+      name       TEXT NOT NULL,
+      doc_type   VARCHAR(16) NOT NULL DEFAULT 'other',   -- payme_report | bank_statement | tax | invoice | receipt | other
+      period     VARCHAR(16),
+      url        TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -4621,4 +4687,358 @@ export async function activateNfcGift(code, activationCode, userId) {
   } finally {
     client.release();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOLIYA / BUXGALTERIYA MODULI — hisoblash va CRUD.
+//
+// MUHIM: bu modul faqat YANGI finance_* jadvallarni yozadi. Gross savdo,
+// Payme tranzaksiya, buyurtma holati — hammasi web_orders / bot_orders'dan
+// FAQAT O'QILADI. Hech bir mavjud to'lov mantig'i o'zgarmaydi.
+// ═══════════════════════════════════════════════════════════════════
+
+export const FINANCE_EXPENSE_CATEGORIES = ['hosting', 'domain', 'ads', 'printing', 'delivery', 'office', 'salary', 'tax', 'bank', 'other'];
+export const FINANCE_DOC_TYPES = ['payme_report', 'bank_statement', 'tax', 'invoice', 'receipt', 'other'];
+
+function financeYmd(x) {
+  const d = x instanceof Date ? x : new Date(x);
+  return d.toISOString().slice(0, 10);
+}
+
+// Davrga tegishli oylar ro'yxati ('YYYY-MM').
+function financeMonthsInRange(fromIso, toIso) {
+  const out = [];
+  const a = new Date(fromIso);
+  const b = new Date(toIso);
+  const endKey = b.getUTCFullYear() * 12 + b.getUTCMonth();
+  let y = a.getUTCFullYear();
+  let m = a.getUTCMonth();
+  while (y * 12 + m <= endKey && out.length < 120) {
+    out.push(`${y}-${String(m + 1).padStart(2, '0')}`);
+    if (++m > 11) { m = 0; y++; }
+  }
+  return out;
+}
+
+// Berilgan sanaga (YYYY-MM-DD) amal qiladigan scope stavkasi.
+async function financeRateOn(scope, dateStr) {
+  const { rows } = await pool.query(
+    `SELECT params FROM finance_rates WHERE scope = $1 AND effective_from <= $2
+     ORDER BY effective_from DESC, id DESC LIMIT 1`,
+    [scope, dateStr]
+  );
+  if (rows[0]) return rows[0].params || {};
+  const { rows: fallback } = await pool.query(
+    `SELECT params FROM finance_rates WHERE scope = $1 ORDER BY effective_from ASC, id ASC LIMIT 1`,
+    [scope]
+  );
+  return fallback[0]?.params || {};
+}
+
+// Har scope uchun hozir amal qiladigan stavka + to'liq tarix.
+export async function financeGetRates() {
+  const { rows } = await pool.query(
+    `SELECT id, scope, params, to_char(effective_from, 'YYYY-MM-DD') AS "effectiveFrom",
+            note, created_at AS "createdAt"
+     FROM finance_rates ORDER BY scope, effective_from DESC, id DESC`
+  );
+  const today = financeYmd(new Date());
+  const current = {};
+  const history = { payme: [], bank: [], tax: [] };
+  for (const r of rows) {
+    (history[r.scope] || (history[r.scope] = [])).push(r);
+    if (!current[r.scope] && r.effectiveFrom <= today) current[r.scope] = r;
+  }
+  for (const s of ['payme', 'bank', 'tax']) {
+    if (!current[s] && history[s] && history[s].length) current[s] = history[s][history[s].length - 1];
+  }
+  return { current, history };
+}
+
+export async function financeSetRate({ scope, params, effectiveFrom, note }) {
+  if (!['payme', 'bank', 'tax'].includes(scope)) return { error: 'bad_scope' };
+  const eff = /^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom) ? effectiveFrom : financeYmd(new Date());
+  const clean = {};
+  for (const [k, v] of Object.entries(params || {})) {
+    if (k === 'mode') clean.mode = v === 'separate' ? 'separate' : 'settlement_deducted';
+    else clean[k] = Math.max(0, Number(v) || 0);
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO finance_rates (scope, params, effective_from, note)
+     VALUES ($1, $2::jsonb, $3, $4)
+     RETURNING id, scope, params, to_char(effective_from, 'YYYY-MM-DD') AS "effectiveFrom", note, created_at AS "createdAt"`,
+    [scope, JSON.stringify(clean), eff, (note || '').slice(0, 200) || null]
+  );
+  return { ok: true, rate: rows[0] };
+}
+
+// Davr uchun to'liq moliyaviy manzara. Har bir qiymat manbasi shaffof.
+export async function financeComputePeriod(fromIso, toIso) {
+  const { rows: paidWeb } = await pool.query(
+    `SELECT w.id, w.kind, w.price, w.status,
+            to_char(w.created_at, 'YYYY-MM-DD') AS day
+     FROM web_orders w
+     WHERE w.status = 'paid' AND w.created_at >= $1 AND w.created_at < $2`,
+    [fromIso, toIso]
+  );
+  let paidBot = [];
+  try {
+    const r = await pool.query(
+      `SELECT id, price, to_char(created_at, 'YYYY-MM-DD') AS day
+       FROM bot_orders WHERE status = 'paid' AND created_at >= $1 AND created_at < $2`,
+      [fromIso, toIso]
+    );
+    paidBot = r.rows;
+  } catch { paidBot = []; }
+
+  const orders = [
+    ...paidWeb.map((r) => ({ price: Number(r.price) || 0, kind: r.kind || 'card_purchase', day: r.day })),
+    ...paidBot.map((r) => ({ price: Number(r.price) || 0, kind: 'card_purchase', day: r.day })),
+  ];
+
+  let grossSales = 0;
+  let paymeFee = 0;
+  const byType = {};
+  const rateCache = {};
+  for (const o of orders) {
+    grossSales += o.price;
+    byType[o.kind] = (byType[o.kind] || 0) + o.price;
+    const p = rateCache[o.day] || (rateCache[o.day] = await financeRateOn('payme', o.day));
+    paymeFee += Math.round(o.price * (Number(p.pct) || 0) / 100) + (Number(p.fixed) || 0);
+  }
+
+  const months = financeMonthsInRange(fromIso, toIso);
+  const monthCount = Math.max(1, months.length);
+  const toDate = financeYmd(new Date(toIso));
+
+  const paymeParams = await financeRateOn('payme', toDate);
+  const bankParams = await financeRateOn('bank', toDate);
+  const taxParams = await financeRateOn('tax', toDate);
+  const paymeMode = paymeParams.mode === 'separate' ? 'separate' : 'settlement_deducted';
+
+  // Refund — hozircha tizimda ma'lumot yo'q (0). Kelajakda alohida jadval.
+  const refunds = 0;
+
+  const { rows: expRows } = await pool.query(
+    `SELECT COALESCE(SUM(amount), 0)::bigint AS total, COUNT(*)::int AS n
+     FROM finance_expenses WHERE spent_on >= $1 AND spent_on < $2`,
+    [financeYmd(new Date(fromIso)), financeYmd(new Date(toIso))]
+  );
+  const manualExpenses = Number(expRows[0].total);
+
+  let actualBankSettlement = null;
+  {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(SUM(actual_amount), 0)::bigint AS total, COUNT(*)::int AS n
+       FROM finance_bank_actuals WHERE period = ANY($1)`,
+      [months]
+    );
+    if (Number(rows[0].n) > 0) actualBankSettlement = Number(rows[0].total);
+  }
+
+  const expectedBankSettlement = paymeMode === 'settlement_deducted'
+    ? grossSales - refunds - paymeFee
+    : grossSales - refunds;
+  const reconciliationDifference = actualBankSettlement != null ? actualBankSettlement - expectedBankSettlement : null;
+
+  // §8: Payme komissiyasi soliq bazasidan AVTOMATIK chiqarilmaydi.
+  const taxBase = grossSales - refunds;
+  const turnoverPct = Number(taxParams.turnoverPct) || 0;
+  const turnoverTax = Math.round(taxBase * turnoverPct / 100);
+  const socialMonthly = Number(taxParams.socialMonthly) || 0;
+  const socialTax = socialMonthly * monthCount;
+  const bankFees = (Number(bankParams.monthlyFee) || 0) * monthCount + (Number(bankParams.extraFee) || 0);
+
+  const settlementForNet = actualBankSettlement != null ? actualBankSettlement : expectedBankSettlement;
+  const netCashFlow = settlementForNet - bankFees - turnoverTax - socialTax - manualExpenses;
+
+  return {
+    fromIso, toIso, months,
+    grossSales, refunds, paymeFee, paymeMode,
+    expectedBankSettlement, actualBankSettlement, reconciliationDifference,
+    taxBase, turnoverPct, turnoverTax, socialMonthly, socialTax,
+    bankFees, manualExpenses, netCashFlow,
+    orderCount: orders.length,
+    byType: Object.entries(byType).map(([kind, total]) => ({ kind, total })).sort((a, b) => b.total - a.total),
+    rates: { payme: paymeParams, bank: bankParams, tax: taxParams },
+    ratesConfigured: Boolean((Number(paymeParams.pct) || Number(paymeParams.fixed)) || Number(taxParams.turnoverPct) || Number(taxParams.socialMonthly) || Number(bankParams.monthlyFee)),
+  };
+}
+
+// Kunlik breakdown (web_orders'dan hisoblanadi).
+export async function financeDailyBreakdown(fromIso, toIso) {
+  const { rows } = await pool.query(
+    `SELECT to_char(created_at, 'YYYY-MM-DD') AS day,
+            COALESCE(SUM(price), 0)::bigint AS gross,
+            COUNT(*)::int AS orders
+     FROM web_orders
+     WHERE status = 'paid' AND created_at >= $1 AND created_at < $2
+     GROUP BY 1 ORDER BY 1`,
+    [fromIso, toIso]
+  );
+  const out = [];
+  const cache = {};
+  for (const r of rows) {
+    const p = cache[r.day] || (cache[r.day] = await financeRateOn('payme', r.day));
+    const gross = Number(r.gross);
+    const fee = Math.round(gross * (Number(p.pct) || 0) / 100) + (Number(p.fixed) || 0) * r.orders;
+    out.push({ day: r.day, gross, orders: r.orders, paymeFee: fee, expected: gross - fee });
+  }
+  return out;
+}
+
+// Oy bo'yicha reconciliation: expected (hisob) ↔ actual (admin kiritgan).
+export async function financeMonthlyReconciliation(year) {
+  const y = Number(year) || new Date().getFullYear();
+  const { rows: actuals } = await pool.query(
+    `SELECT period, actual_amount AS "actualAmount", note, updated_at AS "updatedAt"
+     FROM finance_bank_actuals WHERE period LIKE $1 ORDER BY period`,
+    [`${y}-%`]
+  );
+  const actualMap = Object.fromEntries(actuals.map((a) => [a.period, a]));
+  const out = [];
+  for (let mo = 1; mo <= 12; mo++) {
+    const period = `${y}-${String(mo).padStart(2, '0')}`;
+    const fromIso = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+    const toIso = new Date(Date.UTC(y, mo, 1)).toISOString();
+    const { rows: g } = await pool.query(
+      `SELECT COALESCE(SUM(price), 0)::bigint AS gross, COUNT(*)::int AS orders
+       FROM web_orders WHERE status = 'paid' AND created_at >= $1 AND created_at < $2`,
+      [fromIso, toIso]
+    );
+    const gross = Number(g[0].gross);
+    const orders = Number(g[0].orders);
+    const p = await financeRateOn('payme', `${period}-15`);
+    const paymeFee = Math.round(gross * (Number(p.pct) || 0) / 100) + (Number(p.fixed) || 0) * orders;
+    const mode = p.mode === 'separate' ? 'separate' : 'settlement_deducted';
+    const expected = mode === 'separate' ? gross : gross - paymeFee;
+    const a = actualMap[period];
+    const actual = a ? Number(a.actualAmount) : null;
+    const diff = actual != null ? actual - expected : null;
+    let status = 'pending';
+    if (actual != null) status = diff === 0 ? 'matched' : 'difference';
+    out.push({ period, gross, orders, paymeFee, expected, actual, diff, status, note: a?.note || '' });
+  }
+  return out;
+}
+
+export async function financeSetBankActual({ period, actualAmount, note }) {
+  if (!/^\d{4}-\d{2}$/.test(period)) return { error: 'bad_period' };
+  const amt = Math.max(0, Math.round(Number(actualAmount) || 0));
+  const { rows } = await pool.query(
+    `INSERT INTO finance_bank_actuals (period, actual_amount, note, updated_at)
+     VALUES ($1, $2, $3, now())
+     ON CONFLICT (period) DO UPDATE SET actual_amount = $2, note = $3, updated_at = now()
+     RETURNING period, actual_amount AS "actualAmount", note`,
+    [period, amt, (note || '').slice(0, 200) || null]
+  );
+  return { ok: true, row: rows[0] };
+}
+
+// Tranzaksiyalar ro'yxati (sayt + bot buyurtmalari birlashtirilgan).
+export async function financeListTransactions({ fromIso, toIso, type = '', status = '', q = '', page = 1, limit = 50 }) {
+  const lim = Math.min(200, Math.max(10, Number(limit) || 50));
+  const off = Math.max(0, (Math.max(1, Number(page) || 1) - 1) * lim);
+  const args = [fromIso, toIso];
+  const wWhere = [`w.status <> 'pending'`, `w.created_at >= $1`, `w.created_at < $2`];
+  if (type) { args.push(type); wWhere.push(`w.kind = $${args.length}`); }
+  if (status) { args.push(status); wWhere.push(`w.status = $${args.length}`); }
+  if (q) {
+    args.push(`%${q}%`);
+    wWhere.push(`(w.code ILIKE $${args.length} OR u.email ILIKE $${args.length} OR w.payme_transaction_id ILIKE $${args.length})`);
+  }
+  const { rows: web } = await pool.query(
+    `SELECT w.id, 'web' AS source, w.kind, w.code, w.price AS amount, w.status,
+            w.payme_transaction_id AS "paymeTxnId", u.email AS "userEmail",
+            w.created_at AS "createdAt"
+     FROM web_orders w LEFT JOIN users u ON u.id = w.user_id
+     WHERE ${wWhere.join(' AND ')}
+     ORDER BY w.created_at DESC LIMIT $${args.length + 1} OFFSET $${args.length + 2}`,
+    [...args, lim, off]
+  );
+  const { rows: cnt } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${wWhere.join(' AND ')}`,
+    args
+  );
+
+  let bot = [];
+  if (!type || type === 'card_purchase') {
+    try {
+      const bArgs = [fromIso, toIso];
+      const bWhere = [`status <> 'pending'`, `created_at >= $1`, `created_at < $2`];
+      if (status) { bArgs.push(status); bWhere.push(`status = $${bArgs.length}`); }
+      if (q) { bArgs.push(`%${q}%`); bWhere.push(`code ILIKE $${bArgs.length}`); }
+      const r = await pool.query(
+        `SELECT id, 'bot' AS source, 'card_purchase' AS kind, code, price AS amount, status,
+                NULL AS "paymeTxnId", tg_name AS "userEmail", created_at AS "createdAt"
+         FROM bot_orders WHERE ${bWhere.join(' AND ')} ORDER BY created_at DESC LIMIT 100`,
+        bArgs
+      );
+      bot = r.rows;
+    } catch { bot = []; }
+  }
+
+  const items = [...web, ...bot]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((r) => ({ ...r, amount: Number(r.amount) }));
+
+  return { items, total: Number(cnt[0].n) + bot.length, page: Math.max(1, Number(page) || 1), limit: lim };
+}
+
+export async function financeListExpenses(limit = 200) {
+  const { rows } = await pool.query(
+    `SELECT id, title, category, amount, to_char(spent_on, 'YYYY-MM-DD') AS "spentOn", note, created_at AS "createdAt"
+     FROM finance_expenses ORDER BY spent_on DESC, id DESC LIMIT $1`,
+    [Math.min(500, Number(limit) || 200)]
+  );
+  return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+}
+
+export async function financeAddExpense({ title, category, amount, spentOn, note }) {
+  const t = (title || '').trim().slice(0, 120);
+  if (!t) return { error: 'title_required' };
+  const amt = Math.round(Number(amount) || 0);
+  if (!amt || amt <= 0) return { error: 'bad_amount' };
+  const cat = FINANCE_EXPENSE_CATEGORIES.includes(category) ? category : 'other';
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(spentOn) ? spentOn : financeYmd(new Date());
+  const { rows } = await pool.query(
+    `INSERT INTO finance_expenses (title, category, amount, spent_on, note)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, title, category, amount, to_char(spent_on, 'YYYY-MM-DD') AS "spentOn", note`,
+    [t, cat, amt, day, (note || '').slice(0, 300) || null]
+  );
+  return { ok: true, expense: { ...rows[0], amount: Number(rows[0].amount) } };
+}
+
+export async function financeDeleteExpense(id) {
+  const { rowCount } = await pool.query(`DELETE FROM finance_expenses WHERE id = $1`, [Number(id)]);
+  return { ok: rowCount > 0 };
+}
+
+export async function financeListDocs(limit = 200) {
+  const { rows } = await pool.query(
+    `SELECT id, name, doc_type AS "docType", period, url, created_at AS "createdAt"
+     FROM finance_docs ORDER BY created_at DESC LIMIT $1`,
+    [Math.min(500, Number(limit) || 200)]
+  );
+  return rows;
+}
+
+export async function financeAddDoc({ name, docType, period, url }) {
+  const n = (name || '').trim().slice(0, 160);
+  const u = (url || '').trim().slice(0, 600);
+  if (!n || !u) return { error: 'name_url_required' };
+  const dt = FINANCE_DOC_TYPES.includes(docType) ? docType : 'other';
+  const { rows } = await pool.query(
+    `INSERT INTO finance_docs (name, doc_type, period, url)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, name, doc_type AS "docType", period, url, created_at AS "createdAt"`,
+    [n, dt, (period || '').slice(0, 16) || null, u]
+  );
+  return { ok: true, doc: rows[0] };
+}
+
+export async function financeDeleteDoc(id) {
+  const { rowCount } = await pool.query(`DELETE FROM finance_docs WHERE id = $1`, [Number(id)]);
+  return { ok: rowCount > 0 };
 }

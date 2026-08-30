@@ -40,6 +40,11 @@ import {
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
   adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
   adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand, getAuctionDemandByCode,
+  FINANCE_EXPENSE_CATEGORIES, FINANCE_DOC_TYPES,
+  financeGetRates, financeSetRate, financeComputePeriod, financeDailyBreakdown,
+  financeMonthlyReconciliation, financeSetBankActual, financeListTransactions,
+  financeListExpenses, financeAddExpense, financeDeleteExpense,
+  financeListDocs, financeAddDoc, financeDeleteDoc,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -954,4 +959,225 @@ adminRouter.post('/records/:code/views', async (req, res) => {
   if (!row) return res.status(404).json({ error: 'not_found' });
   logAdminActivity({ action: 'card_views_set', details: `${code} → ${row.views}`, ip: req.ip }).catch(() => {});
   res.json(row);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MOLIYA / BUXGALTERIYA — faqat Super Admin. Bu bo'lim mavjud to'lov
+// mantig'iga TEGMAYDI, faqat web_orders/bot_orders'dan O'QIYDI +
+// finance_* jadvallarni boshqaradi.
+// ═══════════════════════════════════════════════════════════════════
+
+// ?range=today|7d|30d|month|prev_month|custom&from=YYYY-MM-DD&to=YYYY-MM-DD
+function financeRange(req) {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const mo = now.getUTCMonth();
+  const range = String(req.query.range || '30d');
+  let fromIso;
+  let toIso = now.toISOString();
+  if (range === 'today') {
+    fromIso = new Date(Date.UTC(y, mo, now.getUTCDate())).toISOString();
+  } else if (range === '7d') {
+    fromIso = new Date(Date.now() - 7 * 864e5).toISOString();
+  } else if (range === 'month') {
+    fromIso = new Date(Date.UTC(y, mo, 1)).toISOString();
+  } else if (range === 'prev_month') {
+    fromIso = new Date(Date.UTC(y, mo - 1, 1)).toISOString();
+    toIso = new Date(Date.UTC(y, mo, 1)).toISOString();
+  } else if (range === 'custom') {
+    const f = String(req.query.from || '');
+    const t = String(req.query.to || '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(f)) fromIso = new Date(f + 'T00:00:00.000Z').toISOString();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) toIso = new Date(t + 'T23:59:59.999Z').toISOString();
+    if (!fromIso) fromIso = new Date(Date.now() - 30 * 864e5).toISOString();
+  } else {
+    fromIso = new Date(Date.now() - 30 * 864e5).toISOString();
+  }
+  return { fromIso, toIso, range };
+}
+
+adminRouter.get('/finance/overview', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ overview: null });
+  const { fromIso, toIso, range } = financeRange(req);
+  const [overview, daily] = await Promise.all([
+    financeComputePeriod(fromIso, toIso),
+    financeDailyBreakdown(fromIso, toIso),
+  ]);
+  res.json({ overview, daily, range });
+});
+
+adminRouter.get('/finance/transactions', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ items: [], total: 0 });
+  const { fromIso, toIso } = financeRange(req);
+  const data = await financeListTransactions({
+    fromIso, toIso,
+    type: String(req.query.type || ''),
+    status: String(req.query.status || ''),
+    q: String(req.query.q || '').trim().slice(0, 60),
+    page: Number(req.query.page) || 1,
+    limit: Number(req.query.limit) || 50,
+  });
+  res.json(data);
+});
+
+adminRouter.get('/finance/rates', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ current: {}, history: {} });
+  res.json(await financeGetRates());
+});
+
+adminRouter.post('/finance/rates', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const { scope, params, effectiveFrom, note } = req.body || {};
+  const before = await financeGetRates();
+  const result = await financeSetRate({ scope, params, effectiveFrom, note });
+  if (result.error) return res.status(422).json({ error: result.error });
+  logAdminActivity({
+    action: 'finance_rate_changed',
+    details: `${scope} → ${effectiveFrom || 'bugun'}`,
+    oldValue: JSON.stringify(before.current?.[scope]?.params || {}),
+    newValue: JSON.stringify(result.rate.params || {}),
+    ip: req.ip,
+  }).catch(() => {});
+  res.json(result);
+});
+
+adminRouter.get('/finance/reconciliation', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ months: [] });
+  const year = Number(req.query.year) || new Date().getFullYear();
+  res.json({ year, months: await financeMonthlyReconciliation(year) });
+});
+
+adminRouter.post('/finance/bank-actual', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const { period, actualAmount, note } = req.body || {};
+  const result = await financeSetBankActual({ period, actualAmount, note });
+  if (result.error) return res.status(422).json({ error: result.error });
+  logAdminActivity({ action: 'finance_bank_actual_set', details: `${period} → ${Math.round(Number(actualAmount) || 0)}`, ip: req.ip }).catch(() => {});
+  res.json(result);
+});
+
+adminRouter.get('/finance/expenses', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ expenses: [], categories: FINANCE_EXPENSE_CATEGORIES });
+  res.json({ expenses: await financeListExpenses(), categories: FINANCE_EXPENSE_CATEGORIES });
+});
+
+adminRouter.post('/finance/expenses', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const result = await financeAddExpense(req.body || {});
+  if (result.error) return res.status(422).json({ error: result.error });
+  logAdminActivity({ action: 'finance_expense_added', details: `${result.expense.title} — ${result.expense.amount}`, ip: req.ip }).catch(() => {});
+  res.json(result);
+});
+
+adminRouter.delete('/finance/expenses/:id', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json(await financeDeleteExpense(req.params.id));
+});
+
+adminRouter.get('/finance/documents', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.json({ documents: [], types: FINANCE_DOC_TYPES });
+  res.json({ documents: await financeListDocs(), types: FINANCE_DOC_TYPES });
+});
+
+adminRouter.post('/finance/documents', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  let url = String(req.body?.url || '').trim();
+  // Ixtiyoriy: fayl base64 dataURL sifatida kelsa — /uploads ga saqlaymiz.
+  const dataUrl = String(req.body?.dataUrl || '');
+  const m = /^data:(application\/pdf|text\/csv|image\/(png|jpeg|jpg|webp)|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|application\/vnd\.ms-excel);base64,(.+)$/.exec(dataUrl);
+  if (m) {
+    const buf = Buffer.from(m[m.length - 1], 'base64');
+    if (buf.length > 15 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+    const extMap = { 'application/pdf': 'pdf', 'text/csv': 'csv', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx', 'application/vnd.ms-excel': 'xls' };
+    const ext = extMap[m[1]] || 'bin';
+    try {
+      await fs.mkdir(UPLOAD_DIR, { recursive: true });
+      const name = `fin_${crypto.randomBytes(10).toString('hex')}.${ext}`;
+      await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+      url = `/uploads/${name}`;
+    } catch (err) {
+      console.error('[admin] finance doc upload:', err.message);
+      return res.status(500).json({ error: 'upload_failed' });
+    }
+  }
+  const result = await financeAddDoc({ name: req.body?.name, docType: req.body?.docType, period: req.body?.period, url });
+  if (result.error) return res.status(422).json({ error: result.error });
+  logAdminActivity({ action: 'finance_document_added', details: result.doc.name, ip: req.ip }).catch(() => {});
+  res.json(result);
+});
+
+adminRouter.delete('/finance/documents/:id', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json(await financeDeleteDoc(req.params.id));
+});
+
+// Buxgalter uchun paket — bitta ko'p varaqli XLSX (jamlama + tranzaksiyalar +
+// solishtirish). Alohida zip kutubxonasi shart emas.
+adminRouter.get('/finance/report', requireSuperAdmin, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const { fromIso, toIso, range } = financeRange(req);
+  const [ov, daily, tx] = await Promise.all([
+    financeComputePeriod(fromIso, toIso),
+    financeDailyBreakdown(fromIso, toIso),
+    financeListTransactions({ fromIso, toIso, limit: 200, page: 1 }),
+  ]);
+  const year = new Date(toIso).getFullYear();
+  const recon = await financeMonthlyReconciliation(year);
+
+  const XLSX = await import('xlsx');
+  const wb = XLSX.utils.book_new();
+
+  const summary = [
+    ['MOLIYA HISOBOTI (ichki / dastlabki)', ''],
+    ['Oraliq', `${ov.fromIso.slice(0, 10)} … ${ov.toIso.slice(0, 10)}`],
+    [],
+    ['Jami savdo (gross)', ov.grossSales],
+    ['Refund', ov.refunds],
+    ['Payme komissiyasi', ov.paymeFee],
+    [`Payme rejimi`, ov.paymeMode === 'settlement_deducted' ? 'Settlementdan ushlanadi' : 'Alohida'],
+    ['Payme’dan kutilgan tushum (expected)', ov.expectedBankSettlement],
+    ['Bankka real tushgan (actual)', ov.actualBankSettlement == null ? 'kiritilmagan' : ov.actualBankSettlement],
+    ['Solishtirish farqi', ov.reconciliationDifference == null ? '—' : ov.reconciliationDifference],
+    [],
+    ['Soliq bazasi', ov.taxBase],
+    [`Aylanma solig‘i (${ov.turnoverPct}%)`, ov.turnoverTax],
+    ['Ijtimoiy soliq', ov.socialTax],
+    ['Bank xizmat haqi', ov.bankFees],
+    ['Boshqa xarajatlar', ov.manualExpenses],
+    [],
+    ['SOF PUL OQIMI', ov.netCashFlow],
+    [],
+    ['To‘lov turi bo‘yicha:', ''],
+    ...ov.byType.map((r) => [r.kind, r.total]),
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summary);
+  ws1['!cols'] = [{ wch: 40 }, { wch: 20 }];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Jamlama');
+
+  const txHeader = ['Sana', 'Manba', 'Tur', 'Kod', 'Summa', 'Holat', 'Payme txn', 'Foydalanuvchi'];
+  const txRows = tx.items.map((r) => [
+    new Date(r.createdAt).toISOString().slice(0, 10), r.source, r.kind, r.code,
+    r.amount, r.status, r.paymeTxnId || '', r.userEmail || '',
+  ]);
+  const ws2 = XLSX.utils.aoa_to_sheet([txHeader, ...txRows]);
+  ws2['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 26 }, { wch: 26 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Tranzaksiyalar');
+
+  const dHeader = ['Kun', 'Buyurtma', 'Gross', 'Payme fee', 'Expected'];
+  const ws3 = XLSX.utils.aoa_to_sheet([dHeader, ...daily.map((d) => [d.day, d.orders, d.gross, d.paymeFee, d.expected])]);
+  ws3['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Kunlik');
+
+  const rHeader = ['Oy', 'Buyurtma', 'Gross', 'Payme fee', 'Expected', 'Actual', 'Farq', 'Holat'];
+  const ws4 = XLSX.utils.aoa_to_sheet([rHeader, ...recon.map((m) => [
+    m.period, m.orders, m.gross, m.paymeFee, m.expected, m.actual == null ? '' : m.actual, m.diff == null ? '' : m.diff, m.status,
+  ])]);
+  ws4['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, ws4, `Solishtirish ${year}`);
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  logAdminActivity({ action: 'finance_report_exported', details: `Oraliq: ${range}`, ip: req.ip }).catch(() => {});
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="nfcstore_moliya_${range}.xlsx"`);
+  res.send(buf);
 });

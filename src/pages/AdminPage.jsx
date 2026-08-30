@@ -125,7 +125,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -1890,6 +1890,577 @@ function VerificationTab() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MOLIYA / BUXGALTERIYA — faqat Super Admin. Mavjud to'lov mantig'iga
+// tegmaydi: web_orders/bot_orders'dan O'QIYDI, finance_* jadvallarni
+// boshqaradi.
+// ═══════════════════════════════════════════════════════════════════
+const FIN_RANGES = [['today', 'Bugun'], ['7d', '7 kun'], ['30d', '30 kun'], ['month', 'Shu oy'], ['prev_month', "O'tgan oy"], ['custom', 'Custom']];
+const FIN_SUBTABS = [['dashboard', 'Dashboard'], ['transactions', 'Tranzaksiyalar'], ['reconcile', 'Solishtirish'], ['rates', 'Tarif va soliqlar'], ['reports', 'Hisobotlar'], ['docs', 'Hujjatlar']];
+const FIN_TYPE_LABEL = { card_purchase: 'NFC ID xaridi', auction_payment: 'Auksion', premium_upgrade: 'Premium', premium_follow: 'Obuna', physical_card_order: 'Jismoniy karta' };
+const FIN_DOC_LABEL = { payme_report: 'Payme hisobot', bank_statement: 'Bank ko‘chirmasi', tax: 'Soliq hujjati', invoice: 'Hisob-faktura', receipt: 'Chek', other: 'Boshqa' };
+const FIN_RECON_TONE = { matched: 'success', difference: 'danger', pending: 'muted' };
+const FIN_RECON_LABEL = { matched: 'Mos', difference: 'Farq bor', pending: 'Kutilmoqda' };
+
+const money = (n) => (n == null ? '—' : `${fmt(Math.round(Number(n)))} ${'so’m'}`);
+
+function FinanceTab() {
+  const { t } = useLanguage();
+  const [sub, setSub] = useState('dashboard');
+  const [range, setRange] = useState('month');
+  const [cf, setCf] = useState('');
+  const [ct, setCt] = useState('');
+  const rangeQs = range === 'custom' ? `range=custom&from=${cf}&to=${ct}` : `range=${range}`;
+  const rangeReady = range !== 'custom' || (!!cf && !!ct);
+  const showDate = ['dashboard', 'transactions', 'reports'].includes(sub);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-1.5">
+        {FIN_SUBTABS.map(([k, l]) => (
+          <button key={k} onClick={() => setSub(k)} className={`btn btn-sm ${sub === k ? 'btn-primary' : 'btn-ghost'}`}>{t(l)}</button>
+        ))}
+      </div>
+
+      {showDate && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {FIN_RANGES.map(([k, l]) => (
+            <button key={k} onClick={() => setRange(k)} className={`btn btn-xs ${range === k ? 'btn-accent' : 'btn-ghost border border-white/10'}`}>{t(l)}</button>
+          ))}
+          {range === 'custom' && (
+            <>
+              <input type="date" value={cf} onChange={(e) => setCf(e.target.value)} className="input input-bordered input-xs bg-base-100" />
+              <span className="text-base-content/40">—</span>
+              <input type="date" value={ct} onChange={(e) => setCt(e.target.value)} className="input input-bordered input-xs bg-base-100" />
+            </>
+          )}
+        </div>
+      )}
+
+      {sub === 'dashboard' && <FinanceDashboard rangeQs={rangeQs} ready={rangeReady} onGoRates={() => setSub('rates')} />}
+      {sub === 'transactions' && <FinanceTransactions rangeQs={rangeQs} ready={rangeReady} />}
+      {sub === 'reconcile' && <FinanceReconcile />}
+      {sub === 'rates' && <FinanceRates />}
+      {sub === 'reports' && <FinanceReports range={range} rangeQs={rangeQs} ready={rangeReady} />}
+      {sub === 'docs' && <FinanceDocs />}
+    </div>
+  );
+}
+
+function FinanceDashboard({ rangeQs, ready, onGoRates }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    if (!ready) return;
+    setData(null); setErr(false);
+    adminApi(`/finance/overview?${rangeQs}`).then(setData).catch(() => setErr(true));
+  }, [rangeQs, ready]);
+
+  if (!ready) return <EmptyState icon="bank" title={t('Sanani tanlang')} hint={t('Custom oraliq uchun boshlanish va tugash sanasini kiriting.')} />;
+  if (err) return <EmptyState icon="bank" title={t('Xatolik yuz berdi.')} />;
+  if (!data) return <AdminLoading />;
+  const o = data.overview || {};
+  const daily = (data.daily || []).map((d) => ({ ...d, kun: d.day.slice(5) }));
+
+  return (
+    <div className="space-y-4">
+      {!o.ratesConfigured && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <span>{'⚠️'} {t('Payme / bank / soliq foizlari hali kiritilmagan — hisob-kitob to‘liq bo‘lmaydi.')}</span>
+          <button className="btn btn-warning btn-xs" onClick={onGoRates}>{t('Tarif va soliqlarni to‘ldirish')}</button>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1a1509] via-[#121013] to-[#101013] p-5">
+        <div className="text-[13px] text-base-content/50">{t('Jami savdo (gross)')}</div>
+        <div className="mt-1 text-[30px] font-extrabold tracking-tight">{money(o.grossSales)}</div>
+        <div className="mt-1 text-[11.5px] text-base-content/40">{o.orderCount} {t('ta to‘langan buyurtma')} · {o.fromIso?.slice(0, 10)} … {o.toIso?.slice(0, 10)}</div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard icon="wallet" tone="pending" label={t('Payme komissiyasi')} value={money(o.paymeFee)} sub={o.paymeMode === 'separate' ? t('Alohida hisoblanadi') : t('Settlementdan ushlanadi')} />
+        <KpiCard icon="bank" tone="info" label={t('Payme’dan kutilgan tushum')} value={money(o.expectedBankSettlement)} />
+        <KpiCard icon="bank" tone={o.actualBankSettlement == null ? 'muted' : 'success'} label={t('Bankka real tushgan')} value={o.actualBankSettlement == null ? t('kiritilmagan') : money(o.actualBankSettlement)} sub={o.reconciliationDifference == null ? null : `${t('Farq')}: ${money(o.reconciliationDifference)}`} />
+        <KpiCard icon="chart" tone="accent" label={t('Soliq bazasi')} value={money(o.taxBase)} />
+        <KpiCard icon="chart" tone="pending" label={`${t('Aylanma solig‘i')} (${o.turnoverPct || 0}%)`} value={money(o.turnoverTax)} />
+        <KpiCard icon="chart" tone="pending" label={t('Ijtimoiy soliq')} value={money(o.socialTax)} />
+        <KpiCard icon="bank" tone="muted" label={t('Bank xizmat haqi')} value={money(o.bankFees)} />
+        <KpiCard icon="tag" tone="muted" label={t('Boshqa xarajatlar')} value={money(o.manualExpenses)} />
+        <KpiCard icon="activity" tone={o.netCashFlow >= 0 ? 'success' : 'danger'} label={t('Sof pul oqimi')} value={money(o.netCashFlow)} />
+      </div>
+
+      {daily.length > 0 && (
+        <AdminCard title={t('Kunlik: gross va kutilgan tushum')}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={daily}>
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="kun" {...chartAxis} />
+                <YAxis {...chartAxis} width={70} tickFormatter={(v) => fmt(v)} />
+                <Tooltip {...chartTooltip} formatter={(v) => fmt(v) + " so'm"} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="gross" name={t('Gross')} stroke="#d8a34a" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="expected" name={t('Kutilgan')} stroke="#5b9bd5" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </AdminCard>
+      )}
+
+      {o.byType && o.byType.length > 0 && (
+        <AdminCard title={t('To‘lov turi bo‘yicha')}>
+          <div className="space-y-2">
+            {o.byType.map((r) => (
+              <div key={r.kind} className="flex items-center justify-between border-b border-white/5 pb-1.5 text-sm last:border-0">
+                <span className="text-base-content/70">{t(FIN_TYPE_LABEL[r.kind] || r.kind)}</span>
+                <span className="font-semibold">{money(r.total)}</span>
+              </div>
+            ))}
+          </div>
+        </AdminCard>
+      )}
+    </div>
+  );
+}
+
+function FinanceTransactions({ rangeQs, ready }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [type, setType] = useState('');
+  const [status, setStatus] = useState('');
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [rangeQs, type, status, q]);
+  useEffect(() => {
+    if (!ready) return;
+    setData(null);
+    const qs = `${rangeQs}&type=${type}&status=${status}&q=${encodeURIComponent(q)}&page=${page}`;
+    adminApi(`/finance/transactions?${qs}`).then(setData).catch(() => setData({ items: [], total: 0 }));
+  }, [rangeQs, ready, type, status, q, page]);
+
+  if (!ready) return <EmptyState icon="bank" title={t('Sanani tanlang')} />;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <select value={type} onChange={(e) => setType(e.target.value)} className="select select-bordered select-sm bg-base-100">
+          <option value="">{t('Barcha turlar')}</option>
+          {Object.entries(FIN_TYPE_LABEL).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
+        </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="select select-bordered select-sm bg-base-100">
+          <option value="">{t('Barcha holatlar')}</option>
+          <option value="paid">{t('To‘langan')}</option>
+          <option value="cancelled">{t('Bekor qilingan')}</option>
+          <option value="failed_code_taken">{t('Kod band bo‘lib qolgan')}</option>
+        </select>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Kod / email / Payme txn')} className="input input-bordered input-sm flex-1 bg-base-100" />
+      </div>
+
+      {!data ? <AdminLoading />
+        : data.items.length === 0 ? <EmptyState icon="bank" title={t('Bu shartlarga mos tranzaksiya yo‘q.')} />
+        : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead><tr><th>{t('Sana')}</th><th>{t('Manba')}</th><th>{t('Tur')}</th><th>{t('Kod')}</th><th>{t('Summa')}</th><th>{t('Holat')}</th><th>Payme txn</th><th>{t('Foydalanuvchi')}</th></tr></thead>
+                <tbody>
+                  {data.items.map((r) => (
+                    <tr key={`${r.source}-${r.id}`}>
+                      <td className="whitespace-nowrap text-xs text-base-content/60">{dateTime(new Date(r.createdAt).getTime())}</td>
+                      <td className="text-xs uppercase text-base-content/45">{r.source}</td>
+                      <td className="text-xs">{t(FIN_TYPE_LABEL[r.kind] || r.kind)}</td>
+                      <td className="font-mono text-xs">{r.code}</td>
+                      <td className="font-semibold">{money(r.amount)}</td>
+                      <td><StatusBadge tone={r.status === 'paid' ? 'success' : r.status === 'cancelled' ? 'muted' : 'danger'}>{r.status}</StatusBadge></td>
+                      <td className="max-w-[160px] truncate font-mono text-[11px] text-base-content/45">{r.paymeTxnId || '—'}</td>
+                      <td className="max-w-[180px] truncate text-xs text-base-content/60">{r.userEmail || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between text-xs text-base-content/50">
+              <span>{t('Jami')}: {data.total}</span>
+              <div className="flex gap-1">
+                <button className="btn btn-ghost btn-xs" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>←</button>
+                <span className="px-2 py-1">{page}</span>
+                <button className="btn btn-ghost btn-xs" disabled={data.items.length < data.limit} onClick={() => setPage((p) => p + 1)}>→</button>
+              </div>
+            </div>
+          </>
+        )}
+    </div>
+  );
+}
+
+function FinanceReconcile() {
+  const { t } = useLanguage();
+  const nowY = new Date().getFullYear();
+  const [year, setYear] = useState(nowY);
+  const [rows, setRows] = useState(null);
+  const [editId, setEditId] = useState(null);
+  const [val, setVal] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = () => { setRows(null); adminApi(`/finance/reconciliation?year=${year}`).then((d) => setRows(d.months || [])).catch(() => setRows([])); };
+  useEffect(load, [year]);
+
+  const save = async (period) => {
+    setBusy(true);
+    try {
+      await adminApi('/finance/bank-actual', { method: 'POST', body: JSON.stringify({ period, actualAmount: Number(val) || 0, note }) });
+      setEditId(null); setVal(''); setNote('');
+      load();
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button className="btn btn-ghost btn-xs" onClick={() => setYear((y) => y - 1)}>←</button>
+        <span className="text-sm font-bold">{year}</span>
+        <button className="btn btn-ghost btn-xs" disabled={year >= nowY} onClick={() => setYear((y) => y + 1)}>→</button>
+      </div>
+      <p className="text-xs text-base-content/45">{t('“Expected” — sotuvdan Payme komissiyasi ayirilgan hisob. “Actual” — Trastbank hisob varag‘iga real tushgan pul (siz kiritasiz).')}</p>
+
+      {!rows ? <AdminLoading /> : (
+        <div className="overflow-x-auto">
+          <table className="table table-sm">
+            <thead><tr><th>{t('Oy')}</th><th>{t('Gross')}</th><th>Payme fee</th><th>Expected</th><th>Actual</th><th>{t('Farq')}</th><th>{t('Holat')}</th><th></th></tr></thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr key={m.period}>
+                  <td className="font-mono text-xs">{m.period}</td>
+                  <td className="text-xs">{money(m.gross)}</td>
+                  <td className="text-xs text-base-content/50">{money(m.paymeFee)}</td>
+                  <td className="text-xs font-semibold">{money(m.expected)}</td>
+                  <td>
+                    {editId === m.period ? (
+                      <div className="flex flex-col gap-1">
+                        <input type="number" value={val} onChange={(e) => setVal(e.target.value)} placeholder={String(m.expected)} className="input input-bordered input-xs w-32 bg-base-100" />
+                        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('Izoh')} className="input input-bordered input-xs w-32 bg-base-100" />
+                      </div>
+                    ) : (m.actual == null ? <span className="text-base-content/30">—</span> : <span className="text-xs font-semibold">{money(m.actual)}</span>)}
+                  </td>
+                  <td className={`text-xs ${m.diff ? 'text-error' : 'text-base-content/40'}`}>{m.diff == null ? '—' : money(m.diff)}</td>
+                  <td><StatusBadge tone={FIN_RECON_TONE[m.status]}>{t(FIN_RECON_LABEL[m.status] || m.status)}</StatusBadge></td>
+                  <td>
+                    {editId === m.period ? (
+                      <div className="flex gap-1">
+                        <button className="btn btn-primary btn-xs" disabled={busy} onClick={() => save(m.period)}>{t('Saqlash')}</button>
+                        <button className="btn btn-ghost btn-xs" onClick={() => setEditId(null)}>×</button>
+                      </div>
+                    ) : (
+                      <button className="btn btn-ghost btn-xs" onClick={() => { setEditId(m.period); setVal(m.actual == null ? '' : String(m.actual)); setNote(m.note || ''); }}>{t('Kiritish')}</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const FIN_RATE_FIELDS = {
+  payme: [['pct', 'Komissiya %'], ['fixed', 'Fixed fee (so‘m)']],
+  bank: [['cashPct', 'Naqd yechish %'], ['transferPct', 'Transfer %'], ['monthlyFee', 'Oylik xizmat (so‘m)'], ['extraFee', 'Qo‘shimcha fee (so‘m)']],
+  tax: [['turnoverPct', 'Aylanma solig‘i %'], ['socialMonthly', 'Ijtimoiy soliq (so‘m/oy)']],
+};
+const FIN_RATE_TITLE = { payme: 'PAYME', bank: 'TRASTBANK', tax: 'SOLIQ' };
+
+function FinanceRateCard({ scope, current, history, onSaved }) {
+  const { t } = useLanguage();
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState(() => ({ ...(current?.params || {}) }));
+  const [eff, setEff] = useState(today);
+  const [mode, setMode] = useState(current?.params?.mode || 'settlement_deducted');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  useEffect(() => { setForm({ ...(current?.params || {}) }); setMode(current?.params?.mode || 'settlement_deducted'); }, [current]);
+
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    const params = {};
+    for (const [k] of FIN_RATE_FIELDS[scope]) params[k] = Number(form[k]) || 0;
+    if (scope === 'payme') params.mode = mode;
+    try {
+      await adminApi('/finance/rates', { method: 'POST', body: JSON.stringify({ scope, params, effectiveFrom: eff }) });
+      setMsg({ ok: true }); onSaved();
+    } catch { setMsg({ ok: false }); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-[#101013] p-5">
+      <div className="text-sm font-bold text-accent">{FIN_RATE_TITLE[scope]}</div>
+      {current && <div className="mt-0.5 text-[11px] text-base-content/40">{t('Hozir amalda')}: {current.effectiveFrom}{current.note ? ` · ${current.note}` : ''}</div>}
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        {FIN_RATE_FIELDS[scope].map(([k, label]) => (
+          <label key={k} className="text-xs">
+            <span className="text-base-content/55">{t(label)}</span>
+            <input type="number" step="any" value={form[k] ?? ''} onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))} className="input input-bordered input-sm mt-1 w-full bg-base-100" />
+          </label>
+        ))}
+        {scope === 'payme' && (
+          <label className="text-xs">
+            <span className="text-base-content/55">{t('Hisoblash usuli')}</span>
+            <select value={mode} onChange={(e) => setMode(e.target.value)} className="select select-bordered select-sm mt-1 w-full bg-base-100">
+              <option value="settlement_deducted">{t('Settlementdan ushlab qolinadi')}</option>
+              <option value="separate">{t('Alohida hisoblanadi')}</option>
+            </select>
+          </label>
+        )}
+        <label className="text-xs">
+          <span className="text-base-content/55">{t('Amal qiladi (sana)')}</span>
+          <input type="date" value={eff} onChange={(e) => setEff(e.target.value)} className="input input-bordered input-sm mt-1 w-full bg-base-100" />
+        </label>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <button className="btn btn-primary btn-sm" disabled={busy} onClick={save}>{busy ? <span className="loading loading-spinner loading-xs"></span> : t('Saqlash')}</button>
+        {msg && <span className={`text-xs ${msg.ok ? 'text-success' : 'text-error'}`}>{msg.ok ? t('Saqlandi') : t('Xatolik yuz berdi.')}</span>}
+      </div>
+      {history && history.length > 1 && (
+        <div className="mt-3 border-t border-white/5 pt-2 text-[11px] text-base-content/40">
+          {history.slice(0, 5).map((h) => (
+            <div key={h.id} className="flex justify-between py-0.5">
+              <span>{h.effectiveFrom}</span>
+              <span className="font-mono">{FIN_RATE_FIELDS[scope].map(([k]) => `${k}:${h.params?.[k] ?? 0}`).join('  ')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FinanceRates() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const load = () => adminApi('/finance/rates').then(setData).catch(() => setData({ current: {}, history: {} }));
+  useEffect(() => { load(); }, []);
+
+  if (!data) return <AdminLoading />;
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-base-content/45">{t('Foizlar kodga yozilmagan — shu yerdan boshqariladi. Bank bilan kelishgach real qiymatlarni kiriting. Har o‘zgarish sanasi bilan saqlanadi (eski tranzaksiyalar qayta hisoblanmaydi).')}</p>
+      {['payme', 'bank', 'tax'].map((s) => (
+        <FinanceRateCard key={s} scope={s} current={data.current?.[s]} history={data.history?.[s]} onSaved={load} />
+      ))}
+    </div>
+  );
+}
+
+function FinanceReports({ range, rangeQs, ready }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [dl, setDl] = useState(false);
+
+  useEffect(() => {
+    if (!ready) return;
+    setData(null);
+    adminApi(`/finance/overview?${rangeQs}`).then(setData).catch(() => setData(null));
+  }, [rangeQs, ready]);
+
+  const download = async () => {
+    setDl(true);
+    try {
+      const res = await fetch(`/api/admin/finance/report?${rangeQs}`, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `nfcstore_moliya_${range}.xlsx`; a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert(t('Excel faylni yuklab bo’lmadi.')); } finally { setDl(false); }
+  };
+
+  if (!ready) return <EmptyState icon="bank" title={t('Sanani tanlang')} />;
+  const o = data?.overview;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1a1509] via-[#121013] to-[#101013] p-5">
+        <div>
+          <div className="text-sm font-bold text-accent">{'\u{1F4E6}'} {t('Buxgalter uchun paket')}</div>
+          <p className="mt-1 text-xs text-base-content/45">{t('Bitta Excel: jamlama + tranzaksiyalar + kunlik + oylik solishtirish. Buxgalter/soliq uchun DASTLABKI hisobot.')}</p>
+        </div>
+        <button className="btn btn-accent btn-sm" disabled={dl} onClick={download}>{dl ? <span className="loading loading-spinner loading-xs"></span> : t('Excel yuklab olish')}</button>
+      </div>
+
+      {!data ? <AdminLoading /> : o && (
+        <AdminCard title={t('Davr jamlamasi')}>
+          <div className="space-y-1.5 text-sm">
+            {[
+              ['Jami savdo (gross)', o.grossSales],
+              ['Refund', o.refunds],
+              ['Payme komissiyasi', o.paymeFee],
+              ['Payme’dan kutilgan tushum', o.expectedBankSettlement],
+              ['Bankka real tushgan', o.actualBankSettlement],
+              ['Solishtirish farqi', o.reconciliationDifference],
+              ['Soliq bazasi', o.taxBase],
+              [`Aylanma solig‘i (${o.turnoverPct || 0}%)`, o.turnoverTax],
+              ['Ijtimoiy soliq', o.socialTax],
+              ['Bank xizmat haqi', o.bankFees],
+              ['Boshqa xarajatlar', o.manualExpenses],
+            ].map(([l, v]) => (
+              <div key={l} className="flex justify-between border-b border-white/5 pb-1">
+                <span className="text-base-content/60">{t(l)}</span>
+                <span className="font-medium">{v == null ? t('kiritilmagan') : money(v)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between pt-1.5 text-base font-bold">
+              <span>{t('Sof pul oqimi')}</span>
+              <span className={o.netCashFlow >= 0 ? 'text-success' : 'text-error'}>{money(o.netCashFlow)}</span>
+            </div>
+          </div>
+          <p className="mt-3 text-[11px] text-base-content/35">{t('Bu ichki/dastlabki hisobot. Rasmiy soliq hisoboti buxgalter tomonidan tasdiqlanadi — bu yerdan hech qanday davlat tizimiga avtomatik yuborilmaydi.')}</p>
+        </AdminCard>
+      )}
+
+      <FinanceExpenses />
+    </div>
+  );
+}
+
+function FinanceExpenses() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [form, setForm] = useState({ title: '', category: 'other', amount: '', spentOn: new Date().toISOString().slice(0, 10), note: '' });
+  const [busy, setBusy] = useState(false);
+
+  const load = () => adminApi('/finance/expenses').then(setData).catch(() => setData({ expenses: [], categories: [] }));
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    if (!form.title.trim() || !Number(form.amount)) return;
+    setBusy(true);
+    try {
+      await adminApi('/finance/expenses', { method: 'POST', body: JSON.stringify(form) });
+      setForm({ title: '', category: 'other', amount: '', spentOn: new Date().toISOString().slice(0, 10), note: '' });
+      load();
+    } finally { setBusy(false); }
+  };
+  const del = async (id) => { if (!confirm(t('O‘chirasizmi?'))) return; await adminApi(`/finance/expenses/${id}`, { method: 'DELETE' }); load(); };
+
+  return (
+    <AdminCard title={t('Boshqa xarajatlar')}>
+      <div className="grid gap-2 sm:grid-cols-6">
+        <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t('Nomi')} className="input input-bordered input-sm bg-base-100 sm:col-span-2" />
+        <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className="select select-bordered select-sm bg-base-100">
+          {(data?.categories || ['other']).map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} placeholder={t('Summa')} className="input input-bordered input-sm bg-base-100" />
+        <input type="date" value={form.spentOn} onChange={(e) => setForm((f) => ({ ...f, spentOn: e.target.value }))} className="input input-bordered input-sm bg-base-100" />
+        <button className="btn btn-primary btn-sm" disabled={busy} onClick={add}>{t('Qo‘shish')}</button>
+      </div>
+      <div className="mt-3">
+        {!data ? <AdminLoading /> : data.expenses.length === 0 ? <div className="text-xs text-base-content/40">{t('Hozircha xarajat yo‘q.')}</div> : (
+          <div className="overflow-x-auto">
+            <table className="table table-sm">
+              <thead><tr><th>{t('Sana')}</th><th>{t('Nomi')}</th><th>{t('Turkum')}</th><th>{t('Summa')}</th><th></th></tr></thead>
+              <tbody>
+                {data.expenses.map((e) => (
+                  <tr key={e.id}>
+                    <td className="text-xs text-base-content/55">{e.spentOn}</td>
+                    <td>{e.title}{e.note && <div className="text-[11px] text-base-content/35">{e.note}</div>}</td>
+                    <td className="text-xs">{e.category}</td>
+                    <td className="font-semibold">{money(e.amount)}</td>
+                    <td><button className="btn btn-ghost btn-xs text-error" onClick={() => del(e.id)}>{t('O‘chirish')}</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </AdminCard>
+  );
+}
+
+function FinanceDocs() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [form, setForm] = useState({ name: '', docType: 'other', period: '', url: '' });
+  const [busy, setBusy] = useState(false);
+
+  const load = () => adminApi('/finance/documents').then(setData).catch(() => setData({ documents: [], types: [] }));
+  useEffect(() => { load(); }, []);
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) { alert(t('Fayl 15 MB dan katta.')); return; }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setBusy(true);
+      try {
+        await adminApi('/finance/documents', { method: 'POST', body: JSON.stringify({ name: form.name || file.name, docType: form.docType, period: form.period, dataUrl: reader.result }) });
+        setForm({ name: '', docType: 'other', period: '', url: '' });
+        load();
+      } catch { alert(t('Xatolik yuz berdi.')); } finally { setBusy(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+  const addLink = async () => {
+    if (!form.name.trim() || !form.url.trim()) return;
+    setBusy(true);
+    try { await adminApi('/finance/documents', { method: 'POST', body: JSON.stringify(form) }); setForm({ name: '', docType: 'other', period: '', url: '' }); load(); }
+    finally { setBusy(false); }
+  };
+  const del = async (id) => { if (!confirm(t('O‘chirasizmi?'))) return; await adminApi(`/finance/documents/${id}`, { method: 'DELETE' }); load(); };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-white/[0.07] bg-[#101013] p-5">
+        <div className="text-sm font-semibold">{t('Hujjat qo‘shish')}</div>
+        <p className="mt-1 text-[11px] text-base-content/40">{t('Payme hisobot, bank ko‘chirmasi, soliq hujjati, chek… Fayl (PDF/Excel/CSV/rasm, ≤15 MB) yoki tashqi havola. Diqqat: yuklangan fayllar server yangilanganda o‘chishi mumkin — muhimlarini tashqi drayvda ham saqlang.')}</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('Nomi')} className="input input-bordered input-sm bg-base-100" />
+          <select value={form.docType} onChange={(e) => setForm((f) => ({ ...f, docType: e.target.value }))} className="select select-bordered select-sm bg-base-100">
+            {Object.entries(FIN_DOC_LABEL).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
+          </select>
+          <input value={form.period} onChange={(e) => setForm((f) => ({ ...f, period: e.target.value }))} placeholder={t('Davr (masalan 2026-08)')} className="input input-bordered input-sm bg-base-100" />
+          <input value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} placeholder={t('Havola (ixtiyoriy)')} className="input input-bordered input-sm bg-base-100" />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="btn btn-ghost btn-sm border border-white/10">
+            {t('Fayl tanlash')}
+            <input type="file" onChange={onFile} accept=".pdf,.csv,.xlsx,.xls,image/*" className="hidden" />
+          </label>
+          <button className="btn btn-primary btn-sm" disabled={busy || !form.url.trim()} onClick={addLink}>{t('Havola bilan qo‘shish')}</button>
+          {busy && <span className="loading loading-spinner loading-xs"></span>}
+        </div>
+      </div>
+
+      {!data ? <AdminLoading /> : data.documents.length === 0 ? <EmptyState icon="folder" title={t('Hozircha hujjat yo‘q.')} /> : (
+        <div className="overflow-x-auto">
+          <table className="table table-sm">
+            <thead><tr><th>{t('Nomi')}</th><th>{t('Tur')}</th><th>{t('Qaysi oy')}</th><th>{t('Sana')}</th><th></th></tr></thead>
+            <tbody>
+              {data.documents.map((d) => (
+                <tr key={d.id}>
+                  <td><a href={d.url} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{d.name}</a></td>
+                  <td className="text-xs">{t(FIN_DOC_LABEL[d.docType] || d.docType)}</td>
+                  <td className="font-mono text-xs">{d.period || '—'}</td>
+                  <td className="text-xs text-base-content/50">{d.createdAt ? dateTime(new Date(d.createdAt).getTime()) : '—'}</td>
+                  <td><button className="btn btn-ghost btn-xs text-error" onClick={() => del(d.id)}>{t('O‘chirish')}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Sidebar navigatsiyasi — index = haqiqiy TABS indeksi (content switch o'zgarmaydi).
 const ADMIN_NAV = [
   { index: 0, label: 'Umumiy', icon: 'dashboard' },
@@ -1897,6 +2468,7 @@ const ADMIN_NAV = [
   { index: 2, label: 'Foydalanuvchilar', icon: 'users' },
   { index: 3, label: 'Buyurtmalar', icon: 'bag' },
   { index: 4, label: "To'lanishi kerak pullar", icon: 'wallet' },
+  { index: 18, label: 'Moliya', icon: 'bank', superOnly: true },
   { index: 5, label: 'Auksionlar', icon: 'hammer' },
   { index: 6, label: "Auksion so'rovlari", icon: 'clipboard' },
   { index: 17, label: 'Talab', icon: 'flame' },
@@ -1947,6 +2519,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 15 && <CategoriesTab />}
         {tab === 16 && <VerificationTab />}
         {tab === 17 && <AuctionDemandTab />}
+        {tab === 18 && isSuperAdmin && <FinanceTab />}
       </div>
     </AdminShell>
   );

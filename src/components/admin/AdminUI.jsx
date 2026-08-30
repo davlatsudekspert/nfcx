@@ -25,6 +25,7 @@ const ICON_PATHS = {
   flame: 'M12 2c1 3 3 4.5 4.5 6S19 11.5 19 14a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5A2.5 2.5 0 0 0 11 11c0-1.4-.5-2-1-3-1-2-.2-4 3-6z',
   menu: 'M3 12h18 M3 6h18 M3 18h18',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+  bank: 'M3 21h18 M3 10h18 M5 6l7-3 7 3 M4 10v11 M20 10v11 M8 14v3 M12 14v3 M16 14v3',
 };
 
 export function AdminIcon({ name, className = 'h-[18px] w-[18px]' }) {
