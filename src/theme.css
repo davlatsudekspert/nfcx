@@ -200,6 +200,27 @@
   .tier-shine::after { animation: none; display: none; }
 }
 
+/* ===== Katalog kartasi — NFC ID darajasiga qarab rangli chegara + burchak
+   nuri; ustidan begushiy diagonal yaltiroq o'tib turadi (.tier-shine bilan,
+   JSX'da --tier rangi va --shine-delay indeks bo'yicha beriladi). ===== */
+.cat-card {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--tier-line, rgba(255,255,255,0.10));
+  background:
+    radial-gradient(120% 130% at 8% 0%, var(--tier-glow, transparent), transparent 58%),
+    rgba(255,255,255,0.02);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.cat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--tier, rgba(255,255,255,0.25));
+  box-shadow: 0 14px 36px rgba(0,0,0,0.42), 0 0 0 1px var(--tier-line, rgba(255,255,255,0.15));
+}
+.cat-card > * { position: relative; z-index: 3; }
+.cat-grid > * { content-visibility: auto; contain-intrinsic-size: auto 190px; }
+
 /* ===== Auksion "Talab" board kartasi — exclusive qora/oltin + begushiy yaltiroq ===
    .tier-shine bilan birga ishlatiladi (diagonal yorug'lik har kartadan navbat
    bilan o'tadi — JSX'da --shine-delay indeks bo'yicha beriladi). */

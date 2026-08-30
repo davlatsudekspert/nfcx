@@ -212,8 +212,9 @@ function rarity(code) {
 // Profil musiqasi — brauzerlar ovozli avtomatik ijroni bloklaydi, shuning
 // uchun kichik suzuvchi tugma sifatida ko'rsatamiz; birinchi bosishda
 // ijro boshlanadi va aylanayotgan belgi bilan holat ko'rsatiladi.
-// YouTube havolasi ham qo'llab-quvvatlanadi (yashirin iframe orqali —
-// iOS'da fayl yuklamasdan ishlaydi).
+// YouTube havolasi: mobil (iOS/Android) brauzerlar YASHIRIN (1px / opacity:0)
+// video ovozini bloklaydi — shu sabab ijro paytida KICHIK KO'RINADIGAN pleer
+// paneli ko'rsatiladi (foydalanuvchi bosishi ichida mount qilinadi).
 function MusicPlayer({ url, accentColor }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -240,17 +241,22 @@ function MusicPlayer({ url, accentColor }) {
   if (!source) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-30 flex items-center gap-2">
+    <div className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-2">
       {source.kind === 'youtube'
         ? (playing && (
-            <iframe
-              title="profil-musiqasi"
-              src={`https://www.youtube-nocookie.com/embed/${source.id}?autoplay=1&loop=1&playlist=${source.id}&controls=0&modestbranding=1&playsinline=1&rel=0`}
-              allow="autoplay; encrypted-media"
-              className="pointer-events-none h-px w-px overflow-hidden opacity-0"
-            />
+            <div className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)]">
+              <iframe
+                title="profil-musiqasi"
+                width="220"
+                height="124"
+                src={`https://www.youtube-nocookie.com/embed/${source.id}?autoplay=1&loop=1&playlist=${source.id}&modestbranding=1&playsinline=1&rel=0`}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                className="block h-[124px] w-[220px] max-w-[calc(100vw-2.5rem)]"
+              />
+            </div>
           ))
         : <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />}
+      <div className="flex items-center gap-2">
       {!playing && (
         <span className="hidden rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:inline-block">
           {'\u{1F3B5}'} {t('Musiqa')}
@@ -268,6 +274,7 @@ function MusicPlayer({ url, accentColor }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
         )}
       </button>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { dbSearchRecords } from '../lib/db.js';
 import { useCategories, catName, findCat, catPath } from '../lib/categories.js';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
+import { tierForCode, TIER_COLOR, TIER_LABEL, TIER_EMOJI } from '../lib/pricing.js';
 
 const TYPE_TABS = [
   ['all', 'Hammasi'],
@@ -66,7 +67,10 @@ export default function CatalogPage({ catalog }) {
       return true;
     });
 
-  const cardCls = 'cursor-pointer rounded-2xl border border-white/10 bg-base-200/60 p-5 transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200';
+  // NFC ID darajasiga qarab katalog kartasining rangi (chegara + burchak nuri).
+  // tierOverride serverdan keladi (admin qo'lda belgilagan tarif), bo'lmasa
+  // kod naqshi bo'yicha hisoblanadi. VIP001 → exclusive → tilla ohang, va h.k.
+  const tierOf = (it) => it.tierOverride || tierForCode(it.code);
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
@@ -125,13 +129,33 @@ export default function CatalogPage({ catalog }) {
       <section className="mt-16">
         <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Live</div>
         <h2 className="mt-2 text-2xl font-bold">{t("Barcha raqamli tashrif qog'ozlar")} <span className="text-base font-normal text-base-content/40">({fmt(filtered.length)})</span></h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="cat-grid mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.length === 0 && <div className="col-span-full py-10 text-center text-base-content/45">{t('Hech narsa topilmadi.')}</div>}
-          {filtered.map((it) => {
+          {filtered.map((it, idx) => {
             const cp = catPath(cats, it.categorySlug, lang);
+            const tier = tierOf(it);
+            const tc = TIER_COLOR[tier] || '#8a8a8a';
             return (
-              <button key={it.code} className={`${cardCls} text-left`} onClick={() => navigate('/' + it.code)}>
-                <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
+              <button
+                key={it.code}
+                className="cat-card tier-shine cursor-pointer rounded-2xl p-5 text-left"
+                style={{
+                  '--tier': tc,
+                  '--tier-line': tc + '59',
+                  '--tier-glow': tc + '22',
+                  '--shine-delay': `${(idx % 7) * 0.55}s`,
+                }}
+                onClick={() => navigate('/' + it.code)}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    style={{ color: tc, background: tc + '1f', border: `1px solid ${tc}44` }}
+                  >
+                    {TIER_EMOJI[tier] ? TIER_EMOJI[tier] + ' ' : ''}{t(TIER_LABEL[tier] || tier)}
+                  </span>
+                </div>
                 <div className="mt-1 flex items-center gap-1 truncate text-[13px] text-base-content/55">
                   <span className="truncate">{it.name}{it.tg ? ' · ' + it.tg : ''}</span>
                   {it.verified && <span title={t('Tasdiqlangan')} className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
