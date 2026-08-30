@@ -1237,11 +1237,4 @@ export const DICT = {
   'Hozircha tasdiqlangan profil yo‘q.': { ru: 'Пока нет верифицированных профилей.', en: 'No verified profiles yet.' },
   'Tasdiqlangan profil': { ru: 'Верифицированный профиль', en: 'Verified profile' },
   'Tasdiqlangan': { ru: 'Верифицирован', en: 'Verified' },
-  'Email imzosi': { ru: 'Подпись для email', en: 'Email signature' },
-  'Pochta xatlaringiz uchun tayyor imzo': { ru: 'Готовая подпись для ваших писем', en: 'A ready-made signature for your emails' },
-  'Gmail, Outlook va boshqa pochta ilovalarining "Imzo" sozlamasiga qo‘ying.': { ru: 'Вставьте в настройку «Подпись» в Gmail, Outlook и других почтовых клиентах.', en: 'Paste it into the “Signature” setting in Gmail, Outlook and other mail apps.' },
-  'Imzoni nusxalash': { ru: 'Скопировать подпись', en: 'Copy signature' },
-  'HTML kodini nusxalash': { ru: 'Скопировать HTML-код', en: 'Copy HTML code' },
-  'Nusxalandi ✔': { ru: 'Скопировано ✔', en: 'Copied ✔' },
-  'Nusxalab bo‘lmadi — HTML kodini qo‘lda tanlang.': { ru: 'Не удалось скопировать — выделите HTML-код вручную.', en: 'Copy failed — select the HTML code manually.' },
 };
