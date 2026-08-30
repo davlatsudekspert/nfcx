@@ -1,6 +1,7 @@
 import pg from 'pg';
 import crypto from 'crypto';
 import { hashPassword } from './auth.js';
+import { AUCTION_DEMAND_THRESHOLD } from '../src/lib/auctionDemand.js';
 
 const { Pool } = pg;
 
@@ -837,7 +838,8 @@ export async function initDb() {
       -- dirty read va poyga holati (race condition) bo'lmaydi. E-wallet
       -- yo'qligi sababli bu yerda balans bilan ishlanmaydi — taklif
       -- BEPUL, real to'lov faqat g'olib chiqqanda amalga oshadi.
-      SELECT id, seller_id, current_price, buy_now_price, highest_bidder_id, status, ends_at
+      SELECT id, seller_id, current_price, buy_now_price, highest_bidder_id, status, ends_at,
+             COALESCE(min_increment, 0) AS min_increment
         INTO v_auction FROM auctions WHERE id = p_auction_id FOR UPDATE;
 
       IF NOT FOUND THEN
@@ -849,8 +851,16 @@ export async function initDb() {
       IF v_auction.seller_id = p_user_id THEN
         RETURN jsonb_build_object('ok', false, 'error', 'OWN_AUCTION');
       END IF;
-      IF p_amount <= v_auction.current_price THEN
-        RETURN jsonb_build_object('ok', false, 'error', 'BID_TOO_LOW');
+      -- Birinchi taklif: current_price (= start_price) dan katta yoki teng.
+      -- Keyingi takliflar: joriy narx + minimal qadam dan kam bo'lmasin.
+      IF v_auction.highest_bidder_id IS NULL THEN
+        IF p_amount < v_auction.current_price THEN
+          RETURN jsonb_build_object('ok', false, 'error', 'BID_TOO_LOW');
+        END IF;
+      ELSE
+        IF p_amount < v_auction.current_price + v_auction.min_increment THEN
+          RETURN jsonb_build_object('ok', false, 'error', 'BID_TOO_LOW', 'minNext', v_auction.current_price + v_auction.min_increment);
+        END IF;
       END IF;
 
       INSERT INTO bids (auction_id, user_id, amount, idempotency_key)
@@ -1079,6 +1089,43 @@ export async function initDb() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS card_team_code_idx ON card_team (code, sort)`);
+
+  // ── Auksion "Talab" board (demand) ───────────────────────────────
+  // Foydalanuvchilar "Auksionda qatnashaman" bosib qiziqish bildiradi.
+  // AUCTION_DEMAND_THRESHOLD (20) ta unique hisob yig'ilganda admin +
+  // Telegram xabar oladi va "Auksionni boshlash mumkin" bo'ladi.
+  // Mavjud auctions / auction_requests jadvallariga TEGMAYDI.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS auction_demand (
+      id                    SERIAL PRIMARY KEY,
+      code                  VARCHAR(16) NOT NULL UNIQUE,
+      status                VARCHAR(20) NOT NULL DEFAULT 'collecting', -- collecting | ready | auction_live | done | hidden
+      suggested_start_price BIGINT NOT NULL DEFAULT 250000,
+      suggested_min_step    BIGINT NOT NULL DEFAULT 25000,
+      interest_count        INTEGER NOT NULL DEFAULT 0,
+      auction_id            INTEGER REFERENCES auctions(id) ON DELETE SET NULL,
+      notified_ready_at     TIMESTAMPTZ,
+      created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS auction_demand_status_idx ON auction_demand (status, interest_count DESC)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS auction_demand_votes (
+      demand_id  INTEGER NOT NULL REFERENCES auction_demand(id) ON DELETE CASCADE,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (demand_id, user_id)
+    )
+  `);
+
+  // Auksion minimal qadam (bid step) — har auksionга alohida, admin belgilaydi.
+  {
+    const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'auctions' AND column_name = 'min_increment'`);
+    if (!rows.length) {
+      await pool.query(`ALTER TABLE auctions ADD COLUMN min_increment BIGINT NOT NULL DEFAULT 25000`);
+      console.log('[db] auctions.min_increment ustuni qo’shildi.');
+    }
+  }
 
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
@@ -2937,6 +2984,7 @@ const AUCTION_FIELDS = `
   a.status, a.payment_deadline AS "paymentDeadline",
   a.seller_payout_amount AS "sellerPayoutAmount", a.seller_payout_status AS "sellerPayoutStatus",
   a.seller_payme_number AS "sellerPaymeNumber",
+  a.min_increment AS "minIncrement",
   a.created_at AS "createdAt"
 `;
 
@@ -2988,6 +3036,153 @@ export async function approveAuctionRequest(id) {
   return rows[0] || null;
 }
 
+// ---------- Auksion "Talab" board (demand) ----------
+
+const DEMAND_FIELDS = `
+  d.id, d.code, d.status,
+  d.suggested_start_price AS "suggestedStartPrice",
+  d.suggested_min_step AS "suggestedMinStep",
+  d.interest_count AS "interestCount",
+  d.auction_id AS "auctionId",
+  d.created_at AS "createdAt"
+`;
+
+function demandRow(r) {
+  if (!r) return r;
+  return {
+    ...r,
+    suggestedStartPrice: Number(r.suggestedStartPrice),
+    suggestedMinStep: Number(r.suggestedMinStep),
+    interestCount: Number(r.interestCount),
+    threshold: AUCTION_DEMAND_THRESHOLD,
+  };
+}
+
+// Ochiq ro'yxat — yashirilganlardan boshqa hammasi. userId berilса, har
+// qatorда shu foydalanuvchi ovoz berганmi (voted) ko'rsatiladi. Faol/sotilган
+// auksion narxi/tugash vaqti ham qo'shiladi.
+export async function listAuctionDemand(userId = null) {
+  const { rows } = await pool.query(
+    `SELECT ${DEMAND_FIELDS},
+            a.current_price AS "auctionCurrentPrice",
+            a.ends_at       AS "auctionEndsAt",
+            a.status        AS "auctionStatus",
+            ${userId ? `EXISTS(SELECT 1 FROM auction_demand_votes v WHERE v.demand_id = d.id AND v.user_id = $1)` : 'FALSE'} AS "voted"
+     FROM auction_demand d
+     LEFT JOIN auctions a ON a.id = d.auction_id
+     WHERE d.status <> 'hidden'
+     ORDER BY
+       CASE d.status WHEN 'ready' THEN 0 WHEN 'collecting' THEN 1 WHEN 'auction_live' THEN 2 ELSE 3 END,
+       d.interest_count DESC, d.created_at DESC
+     LIMIT 300`,
+    userId ? [userId] : []
+  );
+  return rows.map((r) => ({
+    ...demandRow(r),
+    voted: !!r.voted,
+    auctionCurrentPrice: r.auctionCurrentPrice != null ? Number(r.auctionCurrentPrice) : null,
+    auctionEndsAt: r.auctionEndsAt || null,
+    auctionStatus: r.auctionStatus || null,
+  }));
+}
+
+// "Auksionda qatnashaman" — bir hisob bir marta. Threshold yetganда
+// { becameReady: true } qaytadi (chaqiruvchi Telegram xabar yuboradi).
+export async function voteAuctionDemand(demandId, userId) {
+  const { rows: dRows } = await pool.query(
+    `SELECT id, code, status, interest_count FROM auction_demand WHERE id = $1`,
+    [demandId]
+  );
+  const d = dRows[0];
+  if (!d) return { error: 'NOT_FOUND' };
+  if (d.status !== 'collecting' && d.status !== 'ready') {
+    return { error: 'CLOSED' };
+  }
+  const ins = await pool.query(
+    `INSERT INTO auction_demand_votes (demand_id, user_id) VALUES ($1,$2)
+     ON CONFLICT (demand_id, user_id) DO NOTHING RETURNING demand_id`,
+    [demandId, userId]
+  );
+  if (!ins.rows[0]) {
+    // Allaqachon ovoz bergan — joriy holatni qaytaramiz.
+    return { ok: true, alreadyVoted: true, interestCount: Number(d.interest_count), status: d.status, code: d.code };
+  }
+  const { rows: uRows } = await pool.query(
+    `UPDATE auction_demand
+       SET interest_count = interest_count + 1,
+           status = CASE WHEN status = 'collecting' AND interest_count + 1 >= $2 THEN 'ready' ELSE status END,
+           notified_ready_at = CASE WHEN status = 'collecting' AND interest_count + 1 >= $2 AND notified_ready_at IS NULL THEN now() ELSE notified_ready_at END
+     WHERE id = $1
+     RETURNING code, status, interest_count`,
+    [demandId, AUCTION_DEMAND_THRESHOLD]
+  );
+  const u = uRows[0];
+  return {
+    ok: true,
+    voted: true,
+    code: u.code,
+    status: u.status,
+    interestCount: Number(u.interest_count),
+    becameReady: d.status === 'collecting' && u.status === 'ready',
+  };
+}
+
+// ── Admin ──
+export async function adminListAuctionDemand() {
+  const { rows } = await pool.query(
+    `SELECT ${DEMAND_FIELDS}, d.notified_ready_at AS "notifiedReadyAt"
+     FROM auction_demand d
+     ORDER BY
+       CASE d.status WHEN 'ready' THEN 0 WHEN 'collecting' THEN 1 WHEN 'auction_live' THEN 2 WHEN 'done' THEN 3 ELSE 4 END,
+       d.interest_count DESC, d.created_at DESC`
+  );
+  return rows.map(demandRow);
+}
+
+export async function adminAddAuctionDemand({ code, startPrice, minStep }) {
+  const { rows } = await pool.query(
+    `INSERT INTO auction_demand (code, suggested_start_price, suggested_min_step)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (code) DO NOTHING
+     RETURNING ${DEMAND_FIELDS}`,
+    [code, Math.max(10000, Math.round(Number(startPrice) || 250000)), Math.max(1000, Math.round(Number(minStep) || 25000))]
+  );
+  return rows[0] ? demandRow(rows[0]) : null;
+}
+
+export async function adminUpdateAuctionDemand(id, fields) {
+  const sets = [];
+  const vals = [id];
+  if (fields.status && ['collecting', 'ready', 'hidden', 'done'].includes(fields.status)) {
+    sets.push(`status = $${vals.push(fields.status)}`);
+  }
+  if (fields.startPrice != null) {
+    sets.push(`suggested_start_price = $${vals.push(Math.max(10000, Math.round(Number(fields.startPrice))))}`);
+  }
+  if (fields.minStep != null) {
+    sets.push(`suggested_min_step = $${vals.push(Math.max(1000, Math.round(Number(fields.minStep))))}`);
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE auction_demand SET ${sets.join(', ')} WHERE id = $1 RETURNING ${DEMAND_FIELDS}`,
+    vals
+  );
+  return rows[0] ? demandRow(rows[0]) : null;
+}
+
+export async function adminDeleteAuctionDemand(id) {
+  const { rows } = await pool.query(`DELETE FROM auction_demand WHERE id = $1 RETURNING id`, [id]);
+  return !!rows[0];
+}
+
+export async function getAuctionDemandByCode(code) {
+  const { rows } = await pool.query(
+    `SELECT ${DEMAND_FIELDS} FROM auction_demand d WHERE d.code = $1`,
+    [code]
+  );
+  return rows[0] ? demandRow(rows[0]) : null;
+}
+
 // ---------- Foydalanuvchi yutgan, hali to'lanmagan auksionlar ----------
 
 export async function listWonAuctionsAwaitingPayment(userId) {
@@ -3003,14 +3198,23 @@ export async function listWonAuctionsAwaitingPayment(userId) {
 // Admin tomonidan yangi (hali hech kimga tegishli bo'lmagan) kod uchun
 // auksion ochish — sellerId endi har doim NULL (sotuvchi yo'q, platforma
 // o'zi taklif qiladi).
-export async function createAuction({ code, startPrice, buyNowPrice, hours }) {
+export async function createAuction({ code, startPrice, buyNowPrice, hours, minStep }) {
+  const step = Math.max(1000, Math.round(Number(minStep) || 25000));
   const { rows } = await pool.query(
-    `INSERT INTO auctions (code, seller_id, start_price, buy_now_price, current_price, ends_at, created_by_admin)
-     VALUES ($1,NULL,$2,$3,$2, now() + ($4 || ' hours')::interval, TRUE)
+    `INSERT INTO auctions (code, seller_id, start_price, buy_now_price, current_price, ends_at, created_by_admin, min_increment)
+     VALUES ($1,NULL,$2,$3,$2, now() + ($4 || ' hours')::interval, TRUE, $5)
      RETURNING ${AUCTION_FIELDS.replace(/a\./g, '')}`,
-    [code, startPrice, buyNowPrice || null, hours]
+    [code, startPrice, buyNowPrice || null, hours, step]
   );
-  return rows[0] || null;
+  const auction = rows[0] || null;
+  // Shu kod "Talab" board'ida bo'lsa — auksionга bog'laymiz.
+  if (auction) {
+    await pool.query(
+      `UPDATE auction_demand SET status = 'auction_live', auction_id = $2 WHERE code = $1 AND status IN ('collecting','ready')`,
+      [code, auction.id]
+    ).catch(() => {});
+  }
+  return auction;
 }
 
 export async function getActiveAuctionByCode(code) {
@@ -3032,6 +3236,15 @@ export async function getAuction(id) {
 export async function listActiveAuctions() {
   const { rows } = await pool.query(
     `SELECT ${AUCTION_FIELDS} FROM auctions a WHERE a.status = 'active' ORDER BY a.ends_at ASC LIMIT 200`
+  );
+  return rows;
+}
+
+// "Sotilgan" filtri uchun — yaqinda sotilgan auksionlar (ochiq).
+export async function listRecentSoldAuctions(limit = 40) {
+  const { rows } = await pool.query(
+    `SELECT ${AUCTION_FIELDS} FROM auctions a WHERE a.status = 'sold' ORDER BY a.ends_at DESC LIMIT $1`,
+    [limit]
   );
   return rows;
 }

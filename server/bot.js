@@ -308,6 +308,16 @@ export async function notifyAdminAuctionRequest(userEmail, code, note) {
   await sendMessage(ADMIN_CHAT_ID, `\u{1F528} <b>Auksion so'rovi</b>\n${userEmail} — <code>${code}</code>${note ? `\n${note}` : ''}`);
 }
 
+// "Talab" board'ida bir kod threshold (20 kishi) ga yetganda — admin
+// auksionni boshlashi mumkin.
+export async function notifyAdminAuctionDemandReady(code, count) {
+  if (!ADMIN_CHAT_ID) return;
+  await sendMessage(
+    ADMIN_CHAT_ID,
+    `\u{1F525} <b>Auksionni boshlash mumkin</b>\n<code>${code}</code> — ${count} kishi qiziqdi.\nAdmin panel → "Talab" bo'limi.`
+  );
+}
+
 // Paynet webhook'i to'lovni tasdiqlaganda mijozga va adminga xabar.
 // index.js tomonidan chaqiriladi (fire-and-forget).
 export async function notifyOrderPaidAuto(order) {

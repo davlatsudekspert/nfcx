@@ -731,6 +731,30 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
 }
 .orbit-dot-lg{ width:10px; height:10px; background:rgba(255,255,255,0.7); box-shadow:0 0 16px 2px rgba(255,255,255,0.35); }
 
+/* ---- Auksion "Talab" board kartasi: exclusive gold/black + sekin diagonal yorug'lik ---- */
+@keyframes aucSheen{
+  0%   { transform:translate3d(-120%,-120%,0) rotate(25deg); }
+  100% { transform:translate3d(120%,120%,0) rotate(25deg); }
+}
+.auc-card{
+  position:relative; overflow:hidden; isolation:isolate;
+  background:
+    radial-gradient(120% 140% at 15% 0%, rgba(230,193,101,0.16), transparent 55%),
+    linear-gradient(150deg, #14110b 0%, #0d0b08 40%, #060505 100%);
+  border:1px solid rgba(230,193,101,0.28);
+  box-shadow:0 14px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.auc-card::after{
+  content:''; position:absolute; top:0; left:0; width:55%; height:100%;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,0.10) 42%, rgba(255,236,190,0.28) 50%, rgba(255,255,255,0.10) 58%, transparent);
+  animation:aucSheen 5.5s ease-in-out infinite;
+  pointer-events:none; z-index:2;
+}
+.auc-card.is-ready{ border-color:rgba(74,222,128,0.45); box-shadow:0 14px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(74,222,128,0.25); }
+.auc-card > *{ position:relative; z-index:3; }
+/* Ko'p karta bo'lganda ham yengil qolsin */
+.auc-grid > *{ content-visibility:auto; contain-intrinsic-size:220px; }
+
 .card-stack{ position:relative; width:340px; height:214px; }
 .card-ghost{ position:absolute; inset:0; opacity:.5; filter:blur(0.5px) saturate(0); pointer-events:none; }
 .card-ghost .nfc-card{ transition:none; }

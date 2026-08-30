@@ -501,9 +501,28 @@ export async function dbUploadAudio(dataUrl) {
 
 // ---------- Auksion ----------
 
-export async function dbListAuctions() {
-  const data = await api('/auctions');
-  return (data && data.auctions) || [];
+export async function dbListAuctions(withSold = false) {
+  const data = await api('/auctions' + (withSold ? '?withSold=1' : ''));
+  return { auctions: (data && data.auctions) || [], sold: (data && data.sold) || [] };
+}
+
+// ---------- Auksion "Talab" board ----------
+export async function dbListAuctionDemand() {
+  try {
+    const data = await api('/auction-demand');
+    return { demand: (data && data.demand) || [], threshold: (data && data.threshold) || 20 };
+  } catch {
+    return { demand: [], threshold: 20 };
+  }
+}
+
+export async function dbVoteAuctionDemand(id) {
+  const res = await fetch(`/api/auction-demand/${encodeURIComponent(id)}/vote`, {
+    method: 'POST', credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || 'error'), { code: data.error, status: res.status });
+  return data;
 }
 
 // ---------- Yangiliklar ----------

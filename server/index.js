@@ -29,6 +29,7 @@ import {
   createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser, getPendingAuctionPaymentOrder,
   finalizePaidWebOrder, cancelPendingWebOrder,
   createAuction, getActiveAuctionByCode, getAuction, listActiveAuctions, listExpiredActiveAuctions,
+  listRecentSoldAuctions, listAuctionDemand, voteAuctionDemand,
   listBidsByAuction, placeBid, closeAuctionBidding, expireUnpaidAuctions,
   setAuctionSellerPayme, markAuctionPayoutPaid,
   createAuctionRequest, listAuctionRequests, approveAuctionRequest, rejectAuctionRequest,
@@ -52,7 +53,8 @@ import {
 } from './auth.js';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { startBot, notifyOrderPaidAuto, sendTelegramOtp, notifyAdminSupportMessage, notifyAdminAuctionRequest } from './bot.js';
+import { startBot, notifyOrderPaidAuto, sendTelegramOtp, notifyAdminSupportMessage, notifyAdminAuctionRequest, notifyAdminAuctionDemandReady } from './bot.js';
+import { AUCTION_DEMAND_THRESHOLD } from '../src/lib/auctionDemand.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
 import { adminRouter } from './admin.js';
@@ -820,7 +822,45 @@ async function settleExpiredAuctions() {
 app.get('/api/auctions', async (req, res) => {
   if (!isDbReady()) return res.json({ auctions: [] });
   await settleExpiredAuctions();
-  res.json({ auctions: await listActiveAuctions() });
+  const auctions = await listActiveAuctions();
+  if (req.query.withSold === '1') {
+    return res.json({ auctions, sold: await listRecentSoldAuctions() });
+  }
+  res.json({ auctions });
+});
+
+// Auksion "Talab" board — ochiq ro'yxat. Kirgan foydalanuvchi bo'lsa
+// har qatorда "voted" ko'rsatiladi.
+app.get('/api/auction-demand', async (req, res) => {
+  if (!isDbReady()) return res.json({ demand: [], threshold: AUCTION_DEMAND_THRESHOLD });
+  try {
+    const user = await currentUser(req);
+    res.json({ demand: await listAuctionDemand(user ? user.id : null), threshold: AUCTION_DEMAND_THRESHOLD });
+  } catch (err) {
+    console.error('[api] auction-demand:', err.message);
+    res.json({ demand: [], threshold: AUCTION_DEMAND_THRESHOLD });
+  }
+});
+
+// "Auksionda qatnashaman" — bir hisob bir marta.
+app.post('/api/auction-demand/:id/vote', auctionRequestLimiter, async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const result = await voteAuctionDemand(id, user.id);
+    if (result.error === 'NOT_FOUND') return res.status(404).json({ error: 'not_found' });
+    if (result.error === 'CLOSED') return res.status(409).json({ error: 'closed' });
+    if (result.becameReady) {
+      notifyAdminAuctionDemandReady(result.code, result.interestCount).catch(() => {});
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('[api] auction-demand vote:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
 });
 
 // Yangiliklar — ochiq (faqat "published" bo'lganlari).

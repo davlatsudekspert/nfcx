@@ -38,6 +38,7 @@ import {
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
   adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
+  adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -360,15 +361,17 @@ adminRouter.post('/auctions', async (req, res) => {
   const startPrice = Math.round(Number(req.body?.startPrice));
   const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
   const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
+  const minStep = req.body?.minStep ? Math.round(Number(req.body.minStep)) : 25000;
 
   if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
   if (!startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
   if (buyNowPrice && buyNowPrice <= startPrice) return res.status(422).json({ error: 'buy_now_too_low' });
+  if (minStep < 1_000) return res.status(422).json({ error: 'bad_input' });
 
   try {
     if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
     if (await getActiveAuctionByCode(code)) return res.status(409).json({ error: 'already_in_auction' });
-    const auction = await createAuction({ code, startPrice, buyNowPrice, hours });
+    const auction = await createAuction({ code, startPrice, buyNowPrice, hours, minStep });
     logAdminActivity({ action: 'auction_created', details: `Kod: ${code}`, newValue: `Boshlang'ich: ${startPrice} so'm, ${hours} soat`, ip: req.ip }).catch(() => {});
     res.status(201).json(auction);
   } catch (err) {
@@ -530,6 +533,7 @@ adminRouter.post('/auction-requests/:id/approve', async (req, res) => {
   const startPrice = Math.round(Number(req.body?.startPrice));
   const buyNowPrice = req.body?.buyNowPrice ? Math.round(Number(req.body.buyNowPrice)) : null;
   const hours = Math.min(ADMIN_AUCTION_MAX_HOURS, Math.max(1, Math.round(Number(req.body?.hours) || 24)));
+  const minStep = req.body?.minStep ? Math.round(Number(req.body.minStep)) : 25000;
   if (!startPrice || startPrice < 10_000) return res.status(422).json({ error: 'bad_input' });
 
   try {
@@ -537,12 +541,57 @@ adminRouter.post('/auction-requests/:id/approve', async (req, res) => {
     if (!approved) return res.status(404).json({ error: 'not_found' });
     if (await getRecord(approved.code)) return res.status(409).json({ error: 'code_taken' });
     if (await getActiveAuctionByCode(approved.code)) return res.status(409).json({ error: 'already_in_auction' });
-    const auction = await createAuction({ code: approved.code, startPrice, buyNowPrice, hours });
+    const auction = await createAuction({ code: approved.code, startPrice, buyNowPrice, hours, minStep });
     res.status(201).json(auction);
   } catch (err) {
     console.error('[admin] approveAuctionRequest:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
+});
+
+// ---------- Auksion "Talab" board ----------
+
+adminRouter.get('/auction-demand', async (req, res) => {
+  if (!isDbReady()) return res.json({ demand: [] });
+  res.json({ demand: await adminListAuctionDemand() });
+});
+
+adminRouter.post('/auction-demand', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.body?.code || '').toUpperCase().trim();
+  if (!/^[A-Z0-9]{3,16}$/.test(code)) return res.status(422).json({ error: 'bad_code' });
+  try {
+    if (await getRecord(code)) return res.status(409).json({ error: 'code_taken' });
+    const row = await adminAddAuctionDemand({
+      code,
+      startPrice: req.body?.startPrice,
+      minStep: req.body?.minStep,
+    });
+    if (!row) return res.status(409).json({ error: 'already_exists' });
+    logAdminActivity({ action: 'auction_demand_added', details: code, ip: req.ip }).catch(() => {});
+    res.status(201).json(row);
+  } catch (err) {
+    console.error('[admin] addAuctionDemand:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+adminRouter.patch('/auction-demand/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const row = await adminUpdateAuctionDemand(Number(req.params.id), {
+    status: req.body?.status,
+    startPrice: req.body?.startPrice,
+    minStep: req.body?.minStep,
+  });
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  res.json(row);
+});
+
+adminRouter.delete('/auction-demand/:id', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const ok = await adminDeleteAuctionDemand(Number(req.params.id));
+  if (!ok) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true });
 });
 
 adminRouter.post('/auctions/:id/cancel', async (req, res) => {

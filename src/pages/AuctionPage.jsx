@@ -77,7 +77,11 @@ export default function AuctionPage({ id }) {
 
   const { auction, bids } = data;
   const st = STATUS_LABEL[auction.status] || { text: auction.status, cls: 'badge-ghost' };
-  const minNext = Number(auction.currentPrice) + Math.max(1000, Math.round(Number(auction.currentPrice) * 0.02));
+  // Minimal keyingi taklif: birinchi taklif = boshlang'ich narx; keyin joriy narx + qadam.
+  const bidStep = Math.max(1000, Number(auction.minIncrement) || Math.round(Number(auction.currentPrice) * 0.02));
+  const minNext = auction.highestBidderId
+    ? Number(auction.currentPrice) + bidStep
+    : Number(auction.currentPrice);
   const isOwner = user && user.id === auction.sellerId;
   const isHighest = user && user.id === auction.highestBidderId;
 

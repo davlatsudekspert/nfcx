@@ -124,7 +124,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab'];
 
 function StatCard({ label, value }) {
   return (
@@ -724,6 +724,134 @@ function CreateAuctionForm({ onCreated }) {
         {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Auksion ochish')}
       </button>
       {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
+    </div>
+  );
+}
+
+// ---------- Auksion "Talab" board ----------
+
+const DEMAND_STATUS_LABEL = {
+  collecting: 'Talab yig‘ilmoqda',
+  ready: 'Auksionga tayyor',
+  auction_live: 'Faol auksion',
+  done: 'Yakunlangan',
+  hidden: 'Yashirilgan',
+};
+
+function AuctionDemandTab() {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(null);
+  const [form, setForm] = useState({ code: '', startPrice: '250000', minStep: '25000' });
+  const [busy, setBusy] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [startId, setStartId] = useState(null);
+  const [startForm, setStartForm] = useState({ startPrice: '', buyNowPrice: '', minStep: '', hours: '24' });
+
+  const load = () => adminApi('/auction-demand').then((d) => setRows(d.demand));
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    const code = form.code.trim().toUpperCase();
+    if (!/^[A-Z0-9]{3,16}$/.test(code)) { setMsg({ type: 'err', text: t('Kod formati noto‘g‘ri.') }); return; }
+    setBusy('add'); setMsg(null);
+    try {
+      await adminApi('/auction-demand', { method: 'POST', body: JSON.stringify({ code, startPrice: Number(form.startPrice), minStep: Number(form.minStep) }) });
+      setForm({ code: '', startPrice: '250000', minStep: '25000' });
+      await load();
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message === 'code_taken' ? t('Bu kod allaqachon band.') : err.message === 'already_exists' ? t('Bu kod board‘da bor.') : t('Xatolik yuz berdi.') });
+    } finally { setBusy(null); }
+  };
+
+  const patch = async (id, body) => {
+    setBusy(id);
+    try { await adminApi(`/auction-demand/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); await load(); }
+    finally { setBusy(null); }
+  };
+
+  const del = async (id) => {
+    if (!confirm(t('Bu kodni board‘dan o‘chirasizmi?'))) return;
+    setBusy(id);
+    try { await adminApi(`/auction-demand/${id}`, { method: 'DELETE' }); await load(); }
+    finally { setBusy(null); }
+  };
+
+  const startAuction = async (row) => {
+    const startPrice = Math.round(Number(startForm.startPrice || row.suggestedStartPrice));
+    const minStep = Math.round(Number(startForm.minStep || row.suggestedMinStep));
+    const buyNowPrice = startForm.buyNowPrice ? Math.round(Number(startForm.buyNowPrice)) : null;
+    const hours = Math.min(72, Math.max(1, Math.round(Number(startForm.hours) || 24)));
+    if (!startPrice || startPrice < 10_000) { setMsg({ type: 'err', text: t("Boshlang'ich narx kamida 10 000 so'm bo'lishi kerak.") }); return; }
+    setBusy(row.id); setMsg(null);
+    try {
+      await adminApi('/auctions', { method: 'POST', body: JSON.stringify({ code: row.code, startPrice, buyNowPrice, minStep, hours }) });
+      setStartId(null);
+      setStartForm({ startPrice: '', buyNowPrice: '', minStep: '', hours: '24' });
+      await load();
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message === 'code_taken' ? t('Bu kod allaqachon band.') : err.message === 'already_in_auction' ? t('Bu kod allaqachon auksionda.') : t('Xatolik yuz berdi.') });
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t('Board‘ga kod qo‘shish')}</div>
+        <p className="mt-1 text-xs text-base-content/45">
+          {t("Tavsiya boshlang'ich narx: oddiy 250 000 · kuchli 500 000 · juda noyob 1 000 000+. Qadam: 25 000 / 50 000 / 100 000.")}
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-4">
+          <input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder={t('Kod (VIP007)')} className="input input-bordered input-sm bg-base-100 font-mono" />
+          <input type="number" value={form.startPrice} onChange={(e) => setForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder={t("Boshlang'ich narx")} className="input input-bordered input-sm bg-base-100" />
+          <input type="number" value={form.minStep} onChange={(e) => setForm((f) => ({ ...f, minStep: e.target.value }))} placeholder={t('Minimal qadam')} className="input input-bordered input-sm bg-base-100" />
+          <button className="btn btn-primary btn-sm" onClick={add} disabled={busy === 'add'}>
+            {busy === 'add' ? <span className="loading loading-spinner loading-xs"></span> : t('Qo‘shish')}
+          </button>
+        </div>
+        {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
+      </div>
+
+      {!rows ? <div className="text-base-content/45">{t('Yuklanmoqda...')}</div>
+        : rows.length === 0 ? <div className="text-base-content/45">{t('Board bo‘sh. Yuqoridan kod qo‘shing.')}</div>
+        : (
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div key={r.id} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-mono text-sm font-bold">{r.code}</span>
+                  <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] ${r.status === 'ready' ? 'bg-success/15 text-success' : r.status === 'auction_live' ? 'bg-accent/15 text-accent' : 'bg-white/10 text-base-content/60'}`}>
+                    {t(DEMAND_STATUS_LABEL[r.status] || r.status)}
+                  </span>
+                  <span className="ml-2 text-xs text-base-content/50">{'\u{1F525}'} {r.interestCount} / {r.threshold}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {(r.status === 'ready' || r.status === 'collecting') && (
+                    <button className="btn btn-primary btn-xs" onClick={() => { setStartId(startId === r.id ? null : r.id); setStartForm({ startPrice: String(r.suggestedStartPrice), buyNowPrice: '', minStep: String(r.suggestedMinStep), hours: '24' }); }}>
+                      {t('Auksionni boshlash')}
+                    </button>
+                  )}
+                  {r.status !== 'hidden'
+                    ? <button className="btn btn-ghost btn-xs" disabled={busy === r.id} onClick={() => patch(r.id, { status: 'hidden' })}>{t('Yashirish')}</button>
+                    : <button className="btn btn-ghost btn-xs" disabled={busy === r.id} onClick={() => patch(r.id, { status: 'collecting' })}>{t('Ko‘rsatish')}</button>}
+                  <button className="btn btn-ghost btn-xs text-error" disabled={busy === r.id} onClick={() => del(r.id)}>{t('O‘chirish')}</button>
+                </div>
+              </div>
+              {startId === r.id && (
+                <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 sm:grid-cols-4">
+                  <input type="number" value={startForm.startPrice} onChange={(e) => setStartForm((f) => ({ ...f, startPrice: e.target.value }))} placeholder={t("Boshlang'ich narx")} className="input input-bordered input-sm bg-base-100" />
+                  <input type="number" value={startForm.buyNowPrice} onChange={(e) => setStartForm((f) => ({ ...f, buyNowPrice: e.target.value }))} placeholder={t("Darhol sotib olish (ixt.)")} className="input input-bordered input-sm bg-base-100" />
+                  <input type="number" value={startForm.minStep} onChange={(e) => setStartForm((f) => ({ ...f, minStep: e.target.value }))} placeholder={t('Minimal qadam')} className="input input-bordered input-sm bg-base-100" />
+                  <input type="number" max={72} value={startForm.hours} onChange={(e) => setStartForm((f) => ({ ...f, hours: e.target.value }))} placeholder={t('Soat')} className="input input-bordered input-sm bg-base-100" />
+                  <button className="btn btn-primary btn-sm sm:col-span-4" disabled={busy === r.id} onClick={() => startAuction(r)}>
+                    {busy === r.id ? <span className="loading loading-spinner loading-xs"></span> : t('Auksionni ochish')}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1794,6 +1922,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 14 && <NewsTab />}
         {tab === 15 && <CategoriesTab />}
         {tab === 16 && <VerificationTab />}
+        {tab === 17 && <AuctionDemandTab />}
       </div>
     </main>
   );
