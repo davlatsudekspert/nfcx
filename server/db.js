@@ -937,6 +937,21 @@ export async function initDb() {
   }
   await seedCategories();
 
+  // ── Profil hodisalari (Analytics — Band 3.1) ───────────────────────
+  // Yengil tracking: har profil ko'rish / havola bosish bitta qator.
+  // Mavjud cards.views hisoblagichiga tegmaydi — parallel ishlaydi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_events (
+      id           BIGSERIAL PRIMARY KEY,
+      code         VARCHAR(16) NOT NULL,
+      event_type   VARCHAR(24) NOT NULL,
+      ref          TEXT,
+      visitor_hash VARCHAR(64),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_events_code_time_idx ON card_events (code, created_at DESC)`);
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
@@ -1274,6 +1289,71 @@ export async function incrementViews(code) {
     [code]
   );
   return rows[0] ? Number(rows[0].views) : null;
+}
+
+// ---------- Analytics (Band 3.1) ----------
+
+// Ruxsat etilgan hodisa turlari — frontend yuborgan har qanday satr emas.
+export const CARD_EVENT_TYPES = [
+  'profile_view', 'phone_click', 'telegram_click', 'whatsapp_click',
+  'instagram_click', 'website_click', 'email_click', 'link_click',
+  'contact_save', 'lead', 'menu_view',
+];
+
+export async function logCardEvent(code, eventType, { ref, visitorHash } = {}) {
+  if (!CARD_EVENT_TYPES.includes(eventType)) return false;
+  await pool.query(
+    `INSERT INTO card_events (code, event_type, ref, visitor_hash) VALUES ($1, $2, $3, $4)`,
+    [code, eventType, ref ? String(ref).slice(0, 120) : null, visitorHash || null]
+  );
+  return true;
+}
+
+// Egaga statistika: kunlik ko'rishlar, hodisa turlari bo'yicha sanoq, eng
+// ko'p bosilgan havolalar. days — oxirgi necha kun (1..365).
+export async function cardEventStats(code, days = 30) {
+  const d = Math.max(1, Math.min(365, Math.round(Number(days) || 30)));
+  const since = `now() - ($2::text || ' days')::interval`;
+  const [byType, byDay, byRef, uniqueVisitors, totalRow] = await Promise.all([
+    pool.query(
+      `SELECT event_type, COUNT(*)::int AS n FROM card_events
+        WHERE code = $1 AND created_at >= ${since} GROUP BY event_type`,
+      [code, d]
+    ),
+    pool.query(
+      `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+         FROM card_events
+        WHERE code = $1 AND event_type = 'profile_view' AND created_at >= ${since}
+        GROUP BY day ORDER BY day`,
+      [code, d]
+    ),
+    pool.query(
+      `SELECT ref, COUNT(*)::int AS n FROM card_events
+        WHERE code = $1 AND ref IS NOT NULL AND event_type <> 'profile_view'
+          AND created_at >= ${since}
+        GROUP BY ref ORDER BY n DESC LIMIT 20`,
+      [code, d]
+    ),
+    pool.query(
+      `SELECT COUNT(DISTINCT visitor_hash)::int AS n FROM card_events
+        WHERE code = $1 AND event_type = 'profile_view'
+          AND visitor_hash IS NOT NULL AND created_at >= ${since}`,
+      [code, d]
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS n FROM card_events
+        WHERE code = $1 AND event_type = 'profile_view' AND created_at >= ${since}`,
+      [code, d]
+    ),
+  ]);
+  return {
+    days: d,
+    totalViews: totalRow.rows[0]?.n || 0,
+    uniqueVisitors: uniqueVisitors.rows[0]?.n || 0,
+    byType: Object.fromEntries(byType.rows.map((r) => [r.event_type, r.n])),
+    byDay: byDay.rows,
+    byRef: byRef.rows,
+  };
 }
 
 // ---------- Auth ----------

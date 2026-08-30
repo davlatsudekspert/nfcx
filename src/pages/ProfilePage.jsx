@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -408,7 +408,9 @@ export default function ProfilePage({ code, catalog }) {
         try {
           if (!sessionStorage.getItem(seenKey)) {
             sessionStorage.setItem(seenKey, '1');
-            const views = await dbAddView(code);
+            const sp = new URLSearchParams(window.location.search);
+            const ref = sp.get('t') ? 'nfc' : (['qr', 'link'].includes(sp.get('ref')) ? sp.get('ref') : undefined);
+            const views = await dbAddView(code, ref);
             if (!cancelled && views !== null) {
               setRecord((r) => (r && r.code === code ? { ...r, views } : r));
             }
@@ -439,6 +441,12 @@ export default function ProfilePage({ code, catalog }) {
   const copyText = async (text, msg) => {
     try { await navigator.clipboard.writeText(text); flashToast(msg); }
     catch (e) { flashToast(text); }
+  };
+
+  // Analytics — havola/kontakt bosilishini yozadi (egasi bosgani hisobga
+  // olinmaydi). Fire-and-forget, hech qachon UI'ni bloklamaydi.
+  const track = (type, ref) => {
+    if (!isOwner && record && record.code) dbLogEvent(record.code, type, ref);
   };
 
   // "Ulashish" tugmasi — telefonlarda tizimning ulashish oynasini ochadi
@@ -732,24 +740,24 @@ export default function ProfilePage({ code, catalog }) {
             )}
 
             <div className="mt-[22px] flex flex-col gap-2.5">
-              {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
-              {record.email && <a className={linkBtn} href={`mailto:${record.email}`}><IconMail /> {record.email}</a>}
-              {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer"><IconTelegram /> Telegram</a>}
-              {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer"><IconInstagram /> Instagram</a>}
-              {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer"><IconFacebook /> Facebook</a>}
-              {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer"><IconX /> X (Twitter)</a>}
+              {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`} onClick={() => track('phone_click')}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
+              {record.email && <a className={linkBtn} href={`mailto:${record.email}`} onClick={() => track('email_click')}><IconMail /> {record.email}</a>}
+              {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer" onClick={() => track('telegram_click')}><IconTelegram /> Telegram</a>}
+              {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer" onClick={() => track('instagram_click')}><IconInstagram /> Instagram</a>}
+              {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer" onClick={() => track('link_click', 'facebook')}><IconFacebook /> Facebook</a>}
+              {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer" onClick={() => track('link_click', 'twitter')}><IconX /> X (Twitter)</a>}
               {record.cardNumber && (
-                <button type="button" onClick={() => copyText(record.cardNumber, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
+                <button type="button" onClick={() => { track('link_click', 'card_number'); copyText(record.cardNumber, t('Karta raqami nusxalandi!')); }} className={`${linkBtn} cursor-pointer`}>
                   <IconTag /> {t('Karta raqam')}
                 </button>
               )}
               {(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => (
-                <button type="button" key={`cn${i}`} onClick={() => copyText(c.number, t('Karta raqami nusxalandi!'))} className={`${linkBtn} cursor-pointer`}>
+                <button type="button" key={`cn${i}`} onClick={() => { track('link_click', 'card_number'); copyText(c.number, t('Karta raqami nusxalandi!')); }} className={`${linkBtn} cursor-pointer`}>
                   <IconTag /> {c.label || t('Karta raqam')}
                 </button>
               ))}
               {(record.extraLinks || []).map((l, i) => (
-                <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer"><IconLink /> {l.label || t('Havola')}</a>
+                <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer" onClick={() => track('link_click', l.label || l.url)}><IconLink /> {l.label || t('Havola')}</a>
               ))}
             </div>
 
@@ -783,7 +791,7 @@ export default function ProfilePage({ code, catalog }) {
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
             <div className="flex gap-2.5">
-              <button onClick={() => downloadVcf(record)} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
+              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
               {!isOwner && MESSAGING_ENABLED && (
                 <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
               )}

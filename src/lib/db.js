@@ -94,11 +94,13 @@ export async function dbGetOrder(orderId) {
 }
 
 // Fire-and-forget view counter. Returns the new views count or null.
-export async function dbAddView(code) {
+// `ref` — trafik manbai: 'nfc' | 'qr' | 'link' (ixtiyoriy).
+export async function dbAddView(code, ref) {
   try {
     const res = await fetch(`/api/records/${encodeURIComponent(code)}/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ref ? { ref } : {}),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -106,6 +108,26 @@ export async function dbAddView(code) {
   } catch {
     return null;
   }
+}
+
+// Havola/kontakt bosilishini yozadi — fire-and-forget, hech qachon xato tashlamaydi.
+export function dbLogEvent(code, type, ref) {
+  try {
+    fetch(`/api/records/${encodeURIComponent(code)}/event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, ref }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* jim */
+  }
+}
+
+// Egaga karta statistikasi. days — oxirgi necha kun (kengaytirilgan tarifda).
+export async function dbGetAnalytics(code, days) {
+  const qs = days ? `?days=${encodeURIComponent(days)}` : '';
+  return api(`/records/${encodeURIComponent(code)}/analytics${qs}`);
 }
 
 // ---------- Sotuv ----------

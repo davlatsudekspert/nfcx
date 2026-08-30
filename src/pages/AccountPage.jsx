@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost } from '../lib/db.js';
+import { dbUploadImage, dbUploadAudio, dbSetPrimary, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetAnalytics } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -68,6 +68,123 @@ function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
         </span>
       </button>
       {open && <div className="border-t border-white/10 px-4 pb-5 pt-4">{children}</div>}
+    </div>
+  );
+}
+
+// Analytics (Band 3.1) — karta bo'yicha statistika. Bazaviy sanoq barcha
+// tarifda; kunlik grafik + havola taqsimoti faqat Gold+ / Profile Premium.
+const EVENT_LABELS = {
+  profile_view: 'Profil ko‘rildi',
+  phone_click: 'Telefon bosildi',
+  telegram_click: 'Telegram bosildi',
+  whatsapp_click: 'WhatsApp bosildi',
+  instagram_click: 'Instagram bosildi',
+  website_click: 'Sayt bosildi',
+  email_click: 'Email bosildi',
+  link_click: 'Havola bosildi',
+  contact_save: 'Kontakt saqlandi',
+  lead: 'Yangi lead',
+  menu_view: 'Menyu ko‘rildi',
+};
+const RANGE_OPTS = [7, 30, 90];
+
+function AnalyticsSection({ code, advancedAllowed, onLock }) {
+  const { t } = useLanguage();
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let off = false;
+    setLoading(true); setErr(false);
+    dbGetAnalytics(code, days)
+      .then((d) => { if (!off) setData(d); })
+      .catch(() => { if (!off) setErr(true); })
+      .finally(() => { if (!off) setLoading(false); });
+    return () => { off = true; };
+  }, [code, days]);
+
+  const maxDay = data?.byDay?.reduce((m, r) => Math.max(m, r.n), 0) || 1;
+
+  return (
+    <div>
+      {loading && <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>}
+      {err && <div className="text-sm text-error">{t('Statistikani yuklab bo‘lmadi.')}</div>}
+      {data && !loading && (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="text-2xl font-extrabold">{fmt(data.totalViews)}</div>
+              <div className="text-[11px] text-base-content/50">{t('Ko‘rishlar')} · {t('{n} kun', { n: data.days })}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="text-2xl font-extrabold">{fmt(data.uniqueVisitors)}</div>
+              <div className="text-[11px] text-base-content/50">{t('Alohida tashrifchi')}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="text-2xl font-extrabold">{fmt(data.legacyViews || 0)}</div>
+              <div className="text-[11px] text-base-content/50">{t('Jami (butun davr)')}</div>
+            </div>
+          </div>
+
+          {Object.keys(data.byType || {}).filter((k) => k !== 'profile_view').length > 0 && (
+            <div className="mt-4 space-y-1.5">
+              {Object.entries(data.byType).filter(([k]) => k !== 'profile_view').sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+                <div key={k} className="flex items-center justify-between text-sm">
+                  <span className="text-base-content/70">{t(EVENT_LABELS[k] || k)}</span>
+                  <span className="font-semibold">{fmt(n)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {advancedAllowed ? (
+            <>
+              <div className="mt-5 flex gap-1.5">
+                {RANGE_OPTS.map((d) => (
+                  <button key={d} onClick={() => setDays(d)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-semibold ${days === d ? 'bg-accent text-accent-content' : 'bg-white/5 text-base-content/60'}`}>
+                    {t('{n} kun', { n: d })}
+                  </button>
+                ))}
+              </div>
+
+              {data.byDay && data.byDay.length > 0 ? (
+                <div className="mt-3 flex h-28 items-end gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-2">
+                  {data.byDay.map((r) => (
+                    <div key={r.day} className="flex min-w-[6px] flex-1 flex-col items-center justify-end" title={`${r.day}: ${r.n}`}>
+                      <div className="w-full rounded-t bg-accent/70" style={{ height: `${Math.max(3, (r.n / maxDay) * 100)}%` }}></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 text-sm text-base-content/45">{t('Bu davrda ko‘rish bo‘lmagan.')}</div>
+              )}
+
+              {data.byRef && data.byRef.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t('Eng ko‘p bosilgan havolalar')}</div>
+                  <div className="mt-2 space-y-1">
+                    {data.byRef.map((r) => (
+                      <div key={r.ref} className="flex items-center justify-between text-sm">
+                        <span className="truncate text-base-content/70">{r.ref}</span>
+                        <span className="ml-3 shrink-0 font-semibold">{fmt(r.n)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <button type="button" onClick={onLock}
+              className="mt-4 w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+              {'\u{1F512}'} {t('Kunlik grafik, havola taqsimoti va 90 kunlik tarix — Gold NFC ID yoki Profile Premiumda ochiladi.')}
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -1303,6 +1420,14 @@ function EditCardForm({ card, onSaved }) {
               <span className="text-xs font-semibold text-base-content/70">{t("Hashtaglar (vergul bilan)")}</span>
               <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
             </label>
+          </Section>
+
+          <Section title={t('Statistika')} subtitle={t('Profil ko‘rishlari va havola bosishlari')}>
+            <AnalyticsSection
+              code={card.code}
+              advancedAllowed={allow('advancedAnalytics')}
+              onLock={() => setLocked(t('Kengaytirilgan statistika'))}
+            />
           </Section>
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>

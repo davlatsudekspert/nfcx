@@ -7,6 +7,7 @@ import { effectiveAccess, featureAllowed, postLimitFor } from '../src/lib/access
 import {
   initDb, isDbReady,
   listRecords, getRecord, createRecord, countRecords, incrementViews,
+  logCardEvent, cardEventStats, CARD_EVENT_TYPES,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -167,6 +168,8 @@ const messageLimiter = rateLimit({ windowMs: 60_000, max: 15 });
 const giftLimiter = rateLimit({ windowMs: 60_000, max: 10 });
 const supportLimiter = rateLimit({ windowMs: 60_000, max: 5 });
 const auctionRequestLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+// Analytics — bir IP'dan daqiqada 40 hodisa (view + link bosishlar).
+const eventLimiter = rateLimit({ windowMs: 60_000, max: 40 });
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
@@ -1450,16 +1453,84 @@ app.post('/api/gift-offers/:id/cancel', async (req, res) => {
 // listForSale funksiyalari xavfsizlik uchun saqlab qo'yilgan (endi
 // hech qayerdan chaqirilmaydi).
 
-app.post('/api/records/:code/view', async (req, res) => {
+// Tashrifchi identifikatorini SAQLAMAYDIGAN xesh — faqat "unique visitor"
+// taxmini uchun (IP + User-Agent + kun + kod → 1 kunlik barqaror qiymat).
+function visitorHash(req, code) {
+  const day = new Date().toISOString().slice(0, 10);
+  const ua = String(req.headers['user-agent'] || '').slice(0, 200);
+  return crypto.createHash('sha256').update(`${req.ip}|${ua}|${day}|${code}`).digest('hex').slice(0, 64);
+}
+
+app.post('/api/records/:code/view', eventLimiter, async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
     const views = await incrementViews(code);
     if (views === null) return res.status(404).json({ error: 'not_found' });
+    const ref = cleanStr(req.body?.ref, 40) || null; // nfc | qr | link | undefined
+    logCardEvent(code, 'profile_view', { ref, visitorHash: visitorHash(req, code) }).catch(() => {});
     res.json({ views });
   } catch (err) {
     console.error('[api] incrementViews:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Havola/kontakt bosishlari — fire-and-forget (public profildan keladi).
+app.post('/api/records/:code/event', eventLimiter, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const type = String(req.body?.type || '');
+  if (!CARD_EVENT_TYPES.includes(type) || type === 'profile_view') {
+    return res.status(422).json({ error: 'bad_event' });
+  }
+  try {
+    const rec = await getRecord(code);
+    if (!rec) return res.status(404).json({ error: 'not_found' });
+    await logCardEvent(code, type, {
+      ref: cleanStr(req.body?.ref, 120) || null,
+      visitorHash: visitorHash(req, code),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] card event:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Egaga statistika. Bazaviy jami — barcha tarif; kunlik grafik + havola
+// taqsimoti (kengaytirilgan) faqat Gold+ (yoki Profile Premium).
+app.get('/api/records/:code/analytics', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    const owner = await getRecordOwner(code);
+    if (owner !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const rec = await getRecord(code);
+    const access = await cardAccess(code, user, rec);
+    const advanced = featureAllowed('advancedAnalytics', access);
+    const days = advanced ? Math.max(1, Math.min(365, Number(req.query.days) || 30)) : 30;
+    const stats = await cardEventStats(code, days);
+    if (!advanced) {
+      // Bazaviy: faqat jami ko'rish + unique tashrifchi + hodisa turlari sanоg'i.
+      res.json({
+        advanced: false,
+        days: stats.days,
+        totalViews: stats.totalViews,
+        uniqueVisitors: stats.uniqueVisitors,
+        byType: stats.byType,
+        legacyViews: rec ? rec.views : 0,
+      });
+      return;
+    }
+    res.json({ advanced: true, ...stats, legacyViews: rec ? rec.views : 0 });
+  } catch (err) {
+    console.error('[api] analytics:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
