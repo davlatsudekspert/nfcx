@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuEligible, MENU_LIMITS, productEligible, PRODUCT_LIMITS, serviceEligible, SERVICE_LIMITS, businessModule, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuEligible, MENU_LIMITS, productEligible, PRODUCT_LIMITS, serviceEligible, SERVICE_LIMITS, businessModule, fileLimitFor, videoLimitsFor, teamLimitFor, galleryLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews, deleteOwnCard,
@@ -23,6 +23,7 @@ import {
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
   listCardVideos, cardVideoCount, createCardVideo, updateCardVideo, deleteCardVideo,
   listCardTeam, cardTeamCount, createTeamMember, updateTeamMember, deleteTeamMember,
+  listCardGallery, cardGalleryCount, createGalleryImage, updateGalleryImage, deleteGalleryImage,
   createUser, getUserByEmail, updateUserPassword, createSession, getSessionUser, deleteSession, setUserTestFlag, createFreeAutoId,
   adminDeleteUser,
   attachCardToUser, listRecordsByUser, updateRecord, getRecordOwner, setPrimaryCard,
@@ -2889,6 +2890,109 @@ app.delete('/api/records/:code/team/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[api] team delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Galereya (Business Workspace) ----------
+// Team bilan bir xil naqsh — biznes profillar uchun rasm galereyasi.
+
+async function galleryOwner(req, res, code, { mutate = false } = {}) {
+  const user = await currentUser(req);
+  if (!user) { res.status(401).json({ error: 'unauthorized' }); return null; }
+  if ((await getRecordOwner(code)) !== user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
+  const rec = await getRecord(code);
+  const access = await cardAccess(code, user, rec);
+  const eligible = rec.profileType === 'business';
+  const limit = galleryLimitFor(access);
+  if (mutate && !eligible) { res.status(403).json({ error: 'not_business' }); return null; }
+  if (mutate && limit <= 0) { res.status(403).json({ error: 'feature_locked', feature: 'gallery' }); return null; }
+  return { user, rec, access, eligible, limit };
+}
+
+const galleryImage = (v) => {
+  const u = String(v || '').trim();
+  return u.startsWith('/uploads/') ? u.slice(0, 300) : '';
+};
+
+app.get('/api/records/:code/gallery', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ gallery: await listCardGallery(code) });
+  } catch (err) {
+    console.error('[api] gallery:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.get('/api/records/:code/gallery/manage', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await galleryOwner(req, res, code);
+    if (!ctx) return;
+    res.json({ gallery: await listCardGallery(code), limit: ctx.limit, count: await cardGalleryCount(code), eligible: ctx.eligible });
+  } catch (err) {
+    console.error('[api] gallery manage:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/gallery', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await galleryOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const imageUrl = galleryImage(req.body?.imageUrl);
+    if (!imageUrl) return res.status(422).json({ error: 'image_required' });
+    if ((await cardGalleryCount(code)) >= ctx.limit) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limit });
+    }
+    res.status(201).json(await createGalleryImage(code, {
+      imageUrl, caption: cleanStr(req.body?.caption, 140).trim(), sort: Number(req.body?.sort) || 0,
+    }));
+  } catch (err) {
+    console.error('[api] gallery create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/gallery/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await galleryOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('caption' in b) f.caption = cleanStr(b.caption, 140).trim();
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    const row = await updateGalleryImage(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] gallery update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/gallery/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await galleryOwner(req, res, code);
+    if (!ctx) return;
+    await deleteGalleryImage(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] gallery delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

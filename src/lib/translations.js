@@ -1286,6 +1286,17 @@ export const DICT = {
   // ishlatiladi (yuqorida allaqachon aniqlangan), shu yerda takrorlanmaydi.
   'Lokatsiya': { ru: 'Локация', en: 'Location' },
 
+  // ───────────────────────── Galereya (Business Workspace) ─────────────────────────
+  'Galereya': { ru: 'Галерея', en: 'Gallery' },
+  'Kompaniya rasmlari': { ru: 'Фотографии компании', en: 'Company photos' },
+  'Galereyani yuklab bo‘lmadi.': { ru: 'Не удалось загрузить галерею.', en: 'Could not load the gallery.' },
+  'Galereya faqat biznes profillar uchun.': { ru: 'Галерея доступна только бизнес-профилям.', en: 'The gallery is only for business profiles.' },
+  'Galereya — Silver NFC ID yoki undan yuqorida ochiladi.': { ru: 'Галерея — открывается с Silver NFC ID и выше.', en: 'Gallery — unlocked with a Silver NFC ID or higher.' },
+  'Rasmlar': { ru: 'Фотографии', en: 'Photos' },
+  'Galereya limiti tugadi ({n} ta).': { ru: 'Достигнут лимит фотографий ({n}).', en: 'Photo limit reached ({n}).' },
+  'Bu rasmni o‘chirasizmi?': { ru: 'Удалить это фото?', en: 'Delete this photo?' },
+  'Rasm qo‘shish': { ru: 'Добавить фото', en: 'Add photo' },
+
   'Fayllar': { ru: 'Файлы', en: 'Files' },
   'Fayllar va hujjatlar': { ru: 'Файлы и документы', en: 'Files and documents' },
   'PDF, narxnoma, katalog, CV': { ru: 'PDF, прайс-лист, каталог, резюме', en: 'PDF, price list, catalog, CV' },

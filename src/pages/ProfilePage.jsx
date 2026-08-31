@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -624,6 +624,27 @@ function ProfileTeam({ team, t }) {
 }
 
 
+// Galereya (Business Workspace) — biznes profil rasm galereyasi, ProfileTeam
+// bilan bir xil naqsh (vizitka tabida, Jamoa/Fayllar bilan bir qatorda).
+function ProfileGallery({ gallery, t }) {
+  if (!gallery || gallery.length === 0) return null;
+  return (
+    <div className="mt-6">
+      <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Galereya')}</div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {gallery.map((g) => (
+          <div key={g.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
+            <div className="aspect-square">
+              <img src={g.imageUrl} alt={g.caption || ''} loading="lazy" className="h-full w-full object-cover" />
+            </div>
+            {g.caption && <div className="p-1.5 text-center text-[10.5px] text-[color:var(--vz-ink-dim)]">{g.caption}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Restoran menyusi (Band 3.3) — public ko'rinish. Mobil-first.
 function MenuView({ menu, t }) {
   const money = (n) => `${fmt(n)} ${t("so'm")}`;
@@ -850,6 +871,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [services, setServices] = useState([]);
   const [files, setFiles] = useState([]);
   const [team, setTeam] = useState([]);
+  const [gallery, setGallery] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
   const { user, myCards } = useAuth();
@@ -865,6 +887,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     dbGetServices(code).then(setServices).catch(() => setServices([]));
     dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
     dbGetTeam(code).then(setTeam).catch(() => setTeam([]));
+    dbGetGallery(code).then(setGallery).catch(() => setGallery([]));
   }, [code, user]);
 
   // "Menyu" tabi ochilganda bir marta menu_view hodisasini yozamiz.
@@ -1391,6 +1414,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
             <ProfileTeam team={team} t={t} />
+            <ProfileGallery gallery={gallery} t={t} />
 
             {files.length > 0 && (
               <div className="mt-5">

@@ -189,3 +189,11 @@ export const VIDEO_LIMITS = {
 export function videoLimitsFor(currentAccess) {
   return VIDEO_LIMITS[currentAccess] || VIDEO_LIMITS.free;
 }
+
+// ── Galereya limiti (Business Workspace) — biznes profillar uchun ─────
+// Team bilan bir xil naqsh: kategoriyasiz oddiy ro'yxat, limit tarifga qarab.
+export const GALLERY_LIMIT = { free: 0, silver: 6, gold: 20, premium: 40, exclusive: 999 };
+
+export function galleryLimitFor(currentAccess) {
+  return GALLERY_LIMIT[currentAccess] ?? 0;
+}

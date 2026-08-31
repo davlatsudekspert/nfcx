@@ -1168,6 +1168,20 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS card_team_code_idx ON card_team (code, sort)`);
 
+  // ── Galereya (Business Workspace) — biznes profil rasm galereyasi ──
+  // card_team bilan bir xil naqsh: kategoriyasiz oddiy ro'yxat.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_gallery (
+      id         BIGSERIAL PRIMARY KEY,
+      code       VARCHAR(16) NOT NULL,
+      image_url  TEXT NOT NULL,
+      caption    TEXT,
+      sort       INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS card_gallery_code_idx ON card_gallery (code, sort)`);
+
   // ── Auksion "Talab" board (demand) ───────────────────────────────
   // Foydalanuvchilar "Auksionda qatnashaman" bosib qiziqish bildiradi.
   // AUCTION_DEMAND_THRESHOLD (20) ta unique hisob yig'ilganda admin +
@@ -2417,6 +2431,56 @@ export async function deleteTeamMember(code, id) {
   return rows[0]?.photoUrl || null;
 }
 
+// ---------- Galereya (Business Workspace) ----------
+// card_team bilan bir xil naqsh — kategoriyasiz oddiy ro'yxat.
+
+export async function listCardGallery(code) {
+  const { rows } = await pool.query(
+    `SELECT id, image_url AS "imageUrl", caption, sort FROM card_gallery
+      WHERE code = $1 ORDER BY sort, id`,
+    [code]
+  );
+  return rows;
+}
+
+export async function cardGalleryCount(code) {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM card_gallery WHERE code = $1`, [code]);
+  return rows[0]?.n || 0;
+}
+
+export async function createGalleryImage(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO card_gallery (code, image_url, caption, sort) VALUES ($1,$2,$3,$4)
+     RETURNING id, image_url AS "imageUrl", caption, sort`,
+    [code, f.imageUrl, f.caption || null, f.sort || 0]
+  );
+  return rows[0];
+}
+
+export async function updateGalleryImage(code, id, f) {
+  const sets = [];
+  const vals = [code, id];
+  const col = { caption: 'caption', sort: 'sort' };
+  for (const [k, c] of Object.entries(col)) {
+    if (k in f) { vals.push(f[k]); sets.push(`${c} = $${vals.length}`); }
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE card_gallery SET ${sets.join(', ')} WHERE code = $1 AND id = $2
+     RETURNING id, image_url AS "imageUrl", caption, sort`,
+    vals
+  );
+  return rows[0] || null;
+}
+
+export async function deleteGalleryImage(code, id) {
+  const { rows } = await pool.query(
+    `DELETE FROM card_gallery WHERE code = $1 AND id = $2 RETURNING image_url AS "imageUrl"`,
+    [code, id]
+  );
+  return rows[0]?.imageUrl || null;
+}
+
 // ---------- Auth ----------
 
 // Ro'yxatdan o'tgan har bir foydalanuvchiga avtomatik, bepul, 8 xonali
@@ -3106,6 +3170,11 @@ export async function deleteOwnCard(code, userId) {
     await client.query(`DELETE FROM posts WHERE code = $1`, [code]);
     await client.query(`DELETE FROM menu_items WHERE code = $1`, [code]);
     await client.query(`DELETE FROM menu_categories WHERE code = $1`, [code]);
+    // product_categories/service_categories'ni o'chirish yetarli — items
+    // jadvallari ON DELETE CASCADE bilan bog'langan (server/db.js schema).
+    await client.query(`DELETE FROM product_categories WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM service_categories WHERE code = $1`, [code]);
+    await client.query(`DELETE FROM card_gallery WHERE code = $1`, [code]);
     await client.query(`DELETE FROM card_files WHERE code = $1`, [code]);
     await client.query(`DELETE FROM card_videos WHERE code = $1`, [code]);
     await client.query(`DELETE FROM card_team WHERE code = $1`, [code]);

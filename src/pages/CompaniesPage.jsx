@@ -18,6 +18,66 @@ const FEATURES = [
 // haqiqiy kompaniyalar ro'yxatini filtrlaydi.
 const QUICK_EXAMPLES = ['Restoran', 'Do‘kon', 'Qurilish', 'IT xizmatlari'];
 
+// Search ostidagi "premium running showcase" (spec §17) — faqat REAL
+// kompaniyalar mavjud bo'lsa ular ko'rsatiladi. Hali birorta ham biznes
+// profil ro'yxatdan o'tmagan bo'lsa (masalan yangi deploy) — demo
+// namunalar "NAMUNA" belgisi bilan ko'rsatiladi, real qidiruv natijasi
+// sifatida hech qachon aralashtirilmaydi.
+const DEMO_SHOWCASE = [
+  ['Elite Qurilish', '\u{1F3D7}️'],
+  ['NFC Restaurant', '\u{1F37D}️'],
+  ['NFC Market', '\u{1F6CD}️'],
+  ['IT Solutions', '\u{1F4BB}'],
+  ['Beauty Salon', '\u{1F484}'],
+  ['Avtoservis', '\u{1F527}'],
+];
+
+// Sekin aylanuvchi "running showcase" — search pastida. Real businesslar
+// mavjud bo'lsa ular (bosilsa profiliga o'tadi), aks holda demo namunalar
+// (bosilmaydi, aniq "NAMUNA" bilan belgilangan). Hover/touch'da to'xtaydi,
+// prefers-reduced-motion hurmat qilinadi (motion-reduce:animate-none).
+function CompanyShowcaseMarquee({ catalog, t }) {
+  const real = useMemo(
+    () => catalog.filter((c) => c.profileType === 'business' && !c.hiddenFromDirectory).slice(0, 16),
+    [catalog]
+  );
+  const items = real.length > 0
+    ? real.map((c) => ({ label: c.name, code: c.code, real: true }))
+    : DEMO_SHOWCASE.map(([label, icon]) => ({ label, icon, real: false }));
+
+  const row = (dup) => (
+    <div className="flex shrink-0 items-center gap-3 px-3" aria-hidden={dup ? 'true' : undefined}>
+      {items.map((it, i) => (
+        it.real ? (
+          <button
+            key={`${dup}-${it.code}`}
+            type="button"
+            tabIndex={dup ? -1 : 0}
+            onClick={() => navigate('/' + it.code.toLowerCase())}
+            className="shrink-0 cursor-pointer rounded-full border border-white/10 bg-base-200/60 px-4 py-1.5 text-xs font-semibold text-base-content/70 transition hover:border-accent/40 hover:text-accent"
+          >
+            {it.label}
+          </button>
+        ) : (
+          <span key={`${dup}-${i}`} className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-white/10 bg-transparent px-4 py-1.5 text-xs text-base-content/40">
+            {it.icon} {it.label}
+            <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-base-content/30">{t('NAMUNA')}</span>
+          </span>
+        )
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto mt-6 max-w-2xl overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
+      <div className="flex w-max animate-[marqueeScroll_38s_linear_infinite] hover:[animation-play-state:paused] motion-reduce:animate-none">
+        {row(false)}
+        {row(true)}
+      </div>
+    </div>
+  );
+}
+
 // Demo namuna ma'lumotlari — FAQAT vizual namoyish uchun, DBga yozilmaydi
 // va haqiqiy qidiruv/reyting natijalariga aralashmaydi ("NAMUNA" belgisi
 // bilan aniq ajratilgan — Faz 13/29).
@@ -278,6 +338,8 @@ export default function CompaniesPage({ catalog = [] }) {
             </button>
           ))}
         </div>
+
+        <CompanyShowcaseMarquee catalog={catalog} t={t} />
       </section>
 
       <section className="mt-14 grid gap-5 lg:grid-cols-2">
