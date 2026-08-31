@@ -787,11 +787,13 @@ function LeadForm({ code, linkBtn, onDone }) {
   );
 }
 
-export default function ProfilePage({ code, catalog }) {
+export default function ProfilePage({ code, catalog, initialTab }) {
   const [record, setRecord] = useState(undefined);
   const [pendingGift, setPendingGift] = useState(undefined); // "Gift NFC ID" — yangi, izolyatsiyalangan
   const [toast, setToast] = useState('');
-  const [tab, setTab] = useState('vizitka');
+  // Company System — nfcstore.uz/{code}/menyu va /{code}/mahsulotlar
+  // to'g'ridan-to'g'ri shu tabga ochiladi (Faz 9/10).
+  const [tab, setTab] = useState(initialTab || 'vizitka');
   const [tapInactive, setTapInactive] = useState(false);
   const [followStats, setFollowStats] = useState(null);
   const [likeInfo, setLikeInfo] = useState(null);

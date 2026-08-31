@@ -2561,13 +2561,13 @@ function CompanyDetailModal({ code, onClose, onChanged }) {
             <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Restoran menyusi')}</div>
             <StatusBadge tone={menuStatus.tone}>{t(menuStatus.text)}</StatusBadge>
             <div className="mt-1 text-[11px] text-base-content/50">{row.menuCatCount} {t('kategoriya')} · {row.menuItemCount} {t('taom')}</div>
-            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code}`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
+            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/menyu`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Mahsulotlar katalogi')}</div>
             <StatusBadge tone={productStatus.tone}>{t(productStatus.text)}</StatusBadge>
             <div className="mt-1 text-[11px] text-base-content/50">{row.productCatCount} {t('kategoriya')} · {row.productItemCount} {t('mahsulot')}</div>
-            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code}`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
+            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/mahsulotlar`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
           </div>
         </div>
 

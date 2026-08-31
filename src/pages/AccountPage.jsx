@@ -169,6 +169,26 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange
   );
 }
 
+// Ulashiladigan public URL qatori (Company System — Faz 9/10). Har bir
+// biznes bo'lim ("menyu", "mahsulotlar") uchun alohida ulashish mumkin
+// bo'lgan havolani ko'rsatadi — yangi NFC ID talab qilinmaydi.
+function ShareLinkRow({ code, sub }) {
+  const { t } = useLanguage();
+  const [copied, setCopied] = useState(false);
+  const link = `${window.location.origin}/${code.toLowerCase()}/${sub}`;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* jim tur */ }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
+      <span className="shrink-0 text-[11px] text-base-content/40">{'\u{1F517}'}</span>
+      <code className="min-w-0 flex-1 truncate text-[11.5px] font-mono text-base-content/70">{link}</code>
+      <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={copy}>{copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
+    </div>
+  );
+}
+
 function MenuManagerSection({ code, allowed, onLock }) {
   const { t } = useLanguage();
   const [data, setData] = useState(null);
@@ -260,6 +280,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
         {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Taomlar')}: {counts.items}/{limits.item}
         {!limits.images && ` · ${t('rasm Gold+ dan')}`}
       </div>
+      <ShareLinkRow code={code} sub="menyu" />
       {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
 
       {menu.map((cat) => (
@@ -527,6 +548,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
         {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Mahsulotlar')}: {counts.items}/{limits.item}
         {!limits.images && ` · ${t('rasm Gold+ dan')}`}
       </div>
+      <ShareLinkRow code={code} sub="mahsulotlar" />
       {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
 
       {products.map((cat) => (
