@@ -2099,8 +2099,19 @@ function EditCardForm({ card, onSaved }) {
   // Shaxsiy/expert profillar uchun bu butunlay tegmaydi — ular hamon
   // eski flat accordion ko'rinishida (wsTab shart tekshiruvi har doim
   // `!isBusiness ||` bilan bypass qilinadi).
-  const isBusiness = card.profileType === 'business';
-  const catalogModule = businessModule(card.profileType, card.categorySlug); // 'menu' | 'products' | 'services' | null
+  //
+  // LIVE vs SAQLANGAN: tab-bar "Profil turi"da "Biznes" bosilgan zahoti
+  // (hali saqlanmagan bo'lsa ham) ko'rinsin — shuning uchun `isBusiness`/
+  // `catalogModule` joriy `form` qoralamasiga tayanadi. Lekin Katalog/
+  // Galereya/Jamoa bo'limlari haqiqiy API chaqiradi (dbGetMenuManage va
+  // h.k.), server esa SAQLANGAN `card.profileType`ga qarab ruxsat beradi
+  // — shuning uchun ularning ICHKI kontenti `saved*` qiymatlarga tayanadi
+  // va mos kelmasa "avval saqlang" xabari chiqadi (403 xatosini oldini olish).
+  const isBusiness = form.profileType === 'business';
+  const savedIsBusiness = card.profileType === 'business';
+  const catalogModule = businessModule(form.profileType, form.categorySlug); // 'menu' | 'products' | 'services' | null
+  const savedCatalogModule = businessModule(card.profileType, card.categorySlug);
+  const catalogReady = savedIsBusiness && savedCatalogModule === catalogModule;
   const CATALOG_TAB_LABEL = { menu: t('Menyu'), products: t('Mahsulotlar'), services: t('Xizmatlar') };
 
   return (
@@ -2545,7 +2556,13 @@ function EditCardForm({ card, onSaved }) {
           </>
           )}
 
-          {isBusiness && wsTab === 'katalog' && catalogModule === 'menu' && (
+          {isBusiness && wsTab === 'katalog' && !catalogReady && (
+            <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-6 text-center text-sm text-base-content/70">
+              {'\u{1F4BE}'} {t('Katalog moduli profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.')}
+            </div>
+          )}
+
+          {isBusiness && wsTab === 'katalog' && catalogReady && catalogModule === 'menu' && (
             <Section title={t('Restoran menyusi')} subtitle={t('Kategoriyalar va taomlar')} defaultOpen>
               <MenuManagerSection
                 code={card.code}
@@ -2555,7 +2572,7 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
 
-          {isBusiness && wsTab === 'katalog' && catalogModule === 'products' && (
+          {isBusiness && wsTab === 'katalog' && catalogReady && catalogModule === 'products' && (
             <Section title={t('Mahsulotlar katalogi')} subtitle={t('Kategoriyalar va mahsulotlar')} defaultOpen>
               <ProductManagerSection
                 code={card.code}
@@ -2565,7 +2582,7 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
 
-          {isBusiness && wsTab === 'katalog' && catalogModule === 'services' && (
+          {isBusiness && wsTab === 'katalog' && catalogReady && catalogModule === 'services' && (
             <Section title={t('Xizmatlar katalogi')} subtitle={t('Kategoriyalar va xizmatlar')} defaultOpen>
               <ServiceManagerSection
                 code={card.code}
@@ -2576,9 +2593,15 @@ function EditCardForm({ card, onSaved }) {
           )}
 
           {isBusiness && wsTab === 'galereya' && (
-            <Section title={t('Galereya')} subtitle={t('Kompaniya rasmlari')} defaultOpen>
-              <GallerySection code={card.code} onLock={() => setLocked(t('Galereya'))} />
-            </Section>
+            savedIsBusiness ? (
+              <Section title={t('Galereya')} subtitle={t('Kompaniya rasmlari')} defaultOpen>
+                <GallerySection code={card.code} onLock={() => setLocked(t('Galereya'))} />
+              </Section>
+            ) : (
+              <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-6 text-center text-sm text-base-content/70">
+                {'\u{1F4BE}'} {t('Galereya profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.')}
+              </div>
+            )
           )}
 
           {(!isBusiness || wsTab === 'sozlamalar') && (
@@ -2747,6 +2770,15 @@ export default function AccountPage({ refreshCatalog }) {
   }, [myCards, selectedCode]);
   const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
   const primaryCard = myCards.find((c) => c.isPrimary) || myCards[0];
+  // Business Workspace — kabinet yuqori navigatsiyasidan bitta bosishda
+  // ochilsin: biznes turidagi ID tanlanadi va tahrirlash bo'limiga skroll qilinadi.
+  const businessCards = myCards.filter((c) => c.profileType === 'business');
+  const primaryBusinessCard = businessCards.find((c) => c.isPrimary) || businessCards[0];
+  const openBusinessWorkspace = () => {
+    if (!primaryBusinessCard) return;
+    setSelectedCode(primaryBusinessCard.code);
+    setTimeout(() => document.getElementById('mening-profilim')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
   const [orders, setOrders] = useState([]);
   const [supportOpen, setSupportOpen] = useState(false);
 
@@ -2834,6 +2866,11 @@ export default function AccountPage({ refreshCatalog }) {
         <div className="flex min-w-max gap-1">
           <button className="btn btn-primary btn-sm min-h-11">{t('Hisob')}</button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())} disabled={!primaryCard}>{t('Profil')}</button>
+          {businessCards.length > 0 && (
+            <button className="btn btn-ghost btn-sm min-h-11" onClick={openBusinessWorkspace}>
+              {'\u{1F3E2}'} {t('Biznes')}
+            </button>
+          )}
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/bildirishnomalar')}>{t('Bildirishnomalar')}</button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => MESSAGING_ENABLED && navigate('/xabarlar')} disabled={!MESSAGING_ENABLED}>{t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada')}</button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/tolovlar')}>{t("To'lovlar")}</button>
@@ -2871,7 +2908,7 @@ export default function AccountPage({ refreshCatalog }) {
         </section>
       )}
 
-      <section className="pt-8">
+      <section className="pt-8" id="mening-profilim">
         <h2 className="text-xl font-bold">{t("Mening raqamli tashrif qog'ozilarim")}</h2>
         {myCards.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">

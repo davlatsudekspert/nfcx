@@ -1298,6 +1298,9 @@ export const DICT = {
   'Galereya limiti tugadi ({n} ta).': { ru: 'Достигнут лимит фотографий ({n}).', en: 'Photo limit reached ({n}).' },
   'Bu rasmni o‘chirasizmi?': { ru: 'Удалить это фото?', en: 'Delete this photo?' },
   'Rasm qo‘shish': { ru: 'Добавить фото', en: 'Add photo' },
+  'Katalog moduli profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.': { ru: 'Модуль каталога откроется после сохранения профиля. Сначала нажмите «Сохранить профиль».', en: 'The catalog module opens after you save the profile. Click "Save profile" first.' },
+  'Galereya profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.': { ru: 'Галерея откроется после сохранения профиля. Сначала нажмите «Сохранить профиль».', en: 'The gallery opens after you save the profile. Click "Save profile" first.' },
+  // 'Biznes' — mavjud kalit (yuqorida allaqachon aniqlangan) qayta ishlatiladi.
 
   'Fayllar': { ru: 'Файлы', en: 'Files' },
   'Fayllar va hujjatlar': { ru: 'Файлы и документы', en: 'Files and documents' },
