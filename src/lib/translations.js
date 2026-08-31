@@ -131,6 +131,8 @@ export const DICT = {
   'Band qilingan': { ru: 'Забронирован', en: 'Reserved' },
   "Raqamli tashrif qog'ozi": { ru: 'Цифровая визитка', en: 'Digital card' },
   "Qo'ng'iroq qilish": { ru: 'Позвонить', en: 'Call' },
+  "Qo'ng'iroq": { ru: 'Позвонить', en: 'Call' },
+  "Yo'nalishni ochish": { ru: 'Открыть маршрут', en: 'Get directions' },
   'yashiringan': { ru: 'скрыто', en: 'hidden' },
   "KARTA (to'lov)": { ru: 'КАРТА (оплата)', en: 'CARD (payment)' },
   "TO'LOV UCHUN KARTALAR": { ru: 'КАРТЫ ДЛЯ ОПЛАТЫ', en: 'PAYMENT CARDS' },
