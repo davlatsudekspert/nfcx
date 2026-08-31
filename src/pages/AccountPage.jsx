@@ -1904,13 +1904,6 @@ function EditCardForm({ card, onSaved }) {
               <input value={form.city} onChange={set('city')} placeholder={t('masalan Toshkent')} className={inp} />
             </label>
             <p className="mt-1.5 text-xs text-base-content/40">{t('Soha ro‘yxatда yo‘qmi? "Kasb / sarlavha" maydoniga o‘zingiz yozing.')}</p>
-            <label className="mt-3 flex cursor-pointer items-start gap-2.5">
-              <input type="checkbox" className="checkbox checkbox-sm mt-0.5" checked={form.hiddenFromDirectory} onChange={(e) => setForm((f) => ({ ...f, hiddenFromDirectory: e.target.checked }))} />
-              <span className="text-xs text-base-content/60">
-                {t('Meni katalog va qidiruvda ko‘rsatmaslik')}
-                <span className="mt-0.5 block text-base-content/40">{t('Profilingiz havola/NFC orqali ochiladi, lekin ro‘yxatlarda chiqmaydi.')}</span>
-              </span>
-            </label>
           </Section>
           <Section title={t("Asosiy ma'lumot")} subtitle={t("Ism, kasb, bio va rasm")} defaultOpen>
             <div className="flex items-start gap-4">
