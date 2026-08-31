@@ -453,6 +453,43 @@ export async function dbChangePassword(code, newPassword) {
   return data;
 }
 
+// Profilda telefon raqamini o'zgartirish \u2014 Telegram OTP bilan tasdiqlanadi.
+// Yangi raqam AVVAL botga ulangan bo'lishi kerak (bot_verifications).
+export async function dbRequestPhoneChangeCode(newPhone) {
+  const res = await fetch('/api/settings/request-phone-change-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ newPhone }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'bad_phone') throw new Error("Telefon raqamini to'g'ri kiriting.");
+    if (key === 'phone_not_verified') throw new Error("Bu raqam botda tasdiqlanmagan. Avval shu raqamdan botga \"Kontaktni ulashish\" orqali yozing.");
+    if (key === 'tg_send_failed') throw new Error("Telegram'ga xabar yuborib bo'lmadi.");
+    throw new Error('Xatolik yuz berdi.');
+  }
+  return data;
+}
+
+export async function dbConfirmPhoneChange(newPhone, code) {
+  const res = await fetch('/api/settings/confirm-phone-change', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ newPhone, code }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'bad_code') throw new Error("Kod noto'g'ri yoki muddati o'tgan.");
+    if (key === 'bad_phone') throw new Error("Telefon raqamini to'g'ri kiriting.");
+    throw new Error('Xatolik yuz berdi.');
+  }
+  return data;
+}
+
 export async function dbSetPrimary(code) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/set-primary`, {
     method: 'POST',

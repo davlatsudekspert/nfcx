@@ -1283,6 +1283,11 @@ export const DICT = {
   'Narx kelishiladi': { ru: 'Цена договорная', en: 'Price negotiable' },
   // 'dan' — mavjud kalit (pastroqda, narx oraliqlari uchun) qayta ishlatiladi.
 
+  "NFC ID sozlamalari": { ru: 'Настройки NFC ID', en: 'NFC ID settings' },
+  "Qiymati": { ru: 'Стоимость', en: 'Value' },
+  "Sovg'a qiymati, so'm (ixtiyoriy — 'sovg'a' so'zi o'rniga)": { ru: 'Стоимость подарка, сум (необязательно — вместо слова «подарок»)', en: "Gift value, so'm (optional — instead of the word 'gift')" },
+  "Sovg'a qilish, post, karta dizayni, o'chirish": { ru: 'Подарить, публикации, дизайн карты, удаление', en: 'Gift, posts, card design, deletion' },
+
   // ───────────────── Business Workspace navigatsiyasi ─────────────────
   // 'Asosiy'/'Katalog'/'Sozlamalar' — mavjud kalitlar boshqa joyda
   // ishlatiladi (yuqorida allaqachon aniqlangan), shu yerda takrorlanmaydi.
@@ -1617,4 +1622,20 @@ export const DICT = {
   'Eski qiymat': { ru: 'Старое значение', en: 'Old value' },
   'Yangi qiymat': { ru: 'Новое значение', en: 'New value' },
   'IP': { ru: 'IP', en: 'IP' },
+
+  // ───────────────────────── Telefon OTP (bot orqali) ─────────────────────────
+  'Telegram orqali tasdiqlash kodi': { ru: 'Код подтверждения через Telegram', en: 'Telegram verification code' },
+  'Kod yuborish': { ru: 'Отправить код', en: 'Send code' },
+  'Qayta yuborish': { ru: 'Отправить снова', en: 'Resend' },
+  '6 xonali kod': { ru: '6-значный код', en: '6-digit code' },
+  'Kod Telegram botga yuborildi.': { ru: 'Код отправлен в Telegram-бот.', en: 'Code sent to the Telegram bot.' },
+  "Kod botga yuboriladi — botga hali yozmagan bo'lsangiz, avval yuqoridagi katakchani belgilang.": { ru: 'Код придёт в бот — если ещё не писали боту, сначала отметьте галочку выше.', en: "The code goes to the bot — if you haven't messaged it yet, tick the box above first." },
+  "Telegram botga yuborilgan tasdiqlash kodini kiriting.": { ru: 'Введите код подтверждения, отправленный в Telegram-бот.', en: 'Enter the verification code sent to the Telegram bot.' },
+  "Tasdiqlash kodi noto'g'ri yoki muddati o'tgan. Qaytadan yuboring.": { ru: 'Код подтверждения неверный или истёк. Отправьте заново.', en: 'The verification code is wrong or expired. Send it again.' },
+  "Telefon raqamini to'g'ri kiriting.": { ru: 'Введите корректный номер телефона.', en: 'Enter a valid phone number.' },
+  "Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.": { ru: 'Не удалось отправить код через Telegram. Попробуйте чуть позже.', en: 'Could not send the code via Telegram. Try again shortly.' },
+  'Yangi telefon raqami': { ru: 'Новый номер телефона', en: 'New phone number' },
+  'Telefon raqamini o‘zgartirish': { ru: 'Изменить номер телефона', en: 'Change phone number' },
+  'Yangi raqamni kiriting, so‘ng shu raqam botga ulangan bo‘lishi kerak (avval botga "Kontaktni ulashish" orqali yozing).': { ru: 'Введите новый номер — он должен быть уже связан с ботом (сначала напишите боту через «Поделиться контактом»).', en: 'Enter the new number — it must already be linked to the bot (first message the bot via "Share contact").' },
+  'Telefon raqami yangilandi!': { ru: 'Номер телефона обновлён!', en: 'Phone number updated!' },
 };

@@ -32,6 +32,7 @@ import {
   getPendingGiftByCode, verifyGiftActivationCode, activateNfcGift, logAdminActivity,
   assignPromoCode, getUserByPromoCode, applyReferral, getPendingDiscountPct, consumeDiscount, listMyReferrals,
   getUserPhoneAndTgId, createPasswordResetCode, verifyAndConsumePasswordResetCode,
+  getTgUserIdForPhone, createPhoneOtpCode, verifyAndConsumePhoneOtpCode, updateUserPhone,
   // setForSale, transferCard, listForSale — endi ishlatilmaydi (Sotish
   // funksiyasi olib tashlandi), lekin server/db.js'da xavfsizlik uchun qoldirilgan.
   getBotOrder, setBotOrderStatus, finalizePaidBotOrder,
@@ -198,6 +199,9 @@ const assistantLimiterHour = rateLimit({ windowMs: 60 * 60_000, max: 40 });
 // Lead formasi — spam/suiiste'moldan himoya: bir IP'dan daqiqada 3, soatiga 10.
 const leadLimiterMin = rateLimit({ windowMs: 60_000, max: 3 });
 const leadLimiterHour = rateLimit({ windowMs: 60 * 60_000, max: 10 });
+// Telefon OTP so'rash — autentifikatsiyasiz endpoint, Telegram bot spam'ini
+// oldini olish uchun qattiq cheklov (bir IP'dan daqiqada 3 ta).
+const phoneOtpLimiter = rateLimit({ windowMs: 60_000, max: 3 });
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
@@ -1122,10 +1126,12 @@ function validateRegisterExtra(body) {
   const phone = cleanStr(body.phone, 20).replace(/[\s\-()]/g, '');
   const botAck = body.botAck === true;
   const tosAccepted = body.tosAccepted === true;
+  const code = cleanStr(body.code, 6);
   if (!PHONE_RE.test(phone)) return { error: 'Telefon raqamini to\u2019g\u2019ri kiriting (masalan +998901234567).' };
   if (!botAck) return { error: 'Avval Telegram botimizga yozib, tasdiqlash katagini belgilang.' };
   if (!tosAccepted) return { error: 'Davom etish uchun ommaviy oferta shartlariga rozilik bering.' };
-  return { phone, botAck, tosAccepted };
+  if (!code) return { error: 'code_required' };
+  return { phone, botAck, tosAccepted, code };
 }
 
 // Admin akkauntni avtomatik yaratish/sinxronlash (Railway Variables:
@@ -1159,6 +1165,27 @@ async function ensureAdminUser() {
   }
 }
 
+// Ro'yxatdan o'tishdan oldin — botga ulangan telefon raqamiga tasdiqlash
+// kodi yuboradi. Frontend "Kod yuborish" tugmasi shu yerni chaqiradi,
+// keyin foydalanuvchi kodni ro'yxatdan o'tish formasiga kiritadi.
+app.post('/api/auth/request-register-code', phoneOtpLimiter, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const phone = cleanStr(req.body?.phone, 20).replace(/[\s\-()]/g, '');
+  if (!PHONE_RE.test(phone)) return res.status(422).json({ error: 'bad_phone' });
+
+  const tgUserId = await getTgUserIdForPhone(phone);
+  if (!tgUserId) return res.status(422).json({ error: 'phone_not_verified' });
+
+  const code = await createPhoneOtpCode(phone, 'register');
+  try {
+    await sendTelegramOtp(tgUserId, code, 'register');
+  } catch (err) {
+    console.error('[api] sendTelegramOtp (register):', err.message);
+    return res.status(503).json({ error: 'tg_send_failed' });
+  }
+  res.json({ ok: true });
+});
+
 app.post('/api/auth/register', authLimiter, async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   const { email, password, error } = validateAuthBody(req.body || {});
@@ -1173,6 +1200,14 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     const verified = await isPhoneBotVerified(extra.phone);
     if (!verified) {
       return res.status(422).json({ error: 'phone_not_verified' });
+    }
+    // Bot orqali yuborilgan tasdiqlash kodi — telefon raqami HAQIQATAN
+    // shu odamga tegishli ekanini isbotlaydi (bot_verifications faqat
+    // "shu raqam botga ulangan"ligini bildiradi, lekin ro'yxatdan
+    // o'tayotgan odam aynan o'sha ekanini emas).
+    const codeOk = await verifyAndConsumePhoneOtpCode(extra.phone, extra.code, 'register');
+    if (!codeOk) {
+      return res.status(422).json({ error: 'bad_code' });
     }
 
     const existing = await getUserByEmail(email);
@@ -1619,6 +1654,49 @@ app.post('/api/settings/change-password', async (req, res) => {
 
   await updateUserPassword(user.id, hashPassword(newPassword));
   res.json({ ok: true });
+});
+
+// ---------- Sozlamalar: Telegram OTP orqali telefon raqamini o'zgartirish ----------
+// Yangi raqam AVVAL botga "Kontaktni ulashish" orqali ulangan bo'lishi shart
+// (aks holda kodni qayerga yuborishni bilmaymiz) — xuddi ro'yxatdan
+// o'tishdagi kabi haqiqiy tekshiruv.
+
+app.post('/api/settings/request-phone-change-code', phoneOtpLimiter, async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const phone = cleanStr(req.body?.newPhone, 20).replace(/[\s\-()]/g, '');
+  if (!PHONE_RE.test(phone)) return res.status(422).json({ error: 'bad_phone' });
+
+  const tgUserId = await getTgUserIdForPhone(phone);
+  if (!tgUserId) return res.status(422).json({ error: 'phone_not_verified' });
+
+  const code = await createPhoneOtpCode(phone, 'phone_change');
+  try {
+    await sendTelegramOtp(tgUserId, code, 'phone_change');
+  } catch (err) {
+    console.error('[api] sendTelegramOtp (phone_change):', err.message);
+    return res.status(503).json({ error: 'tg_send_failed' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/settings/confirm-phone-change', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+
+  const phone = cleanStr(req.body?.newPhone, 20).replace(/[\s\-()]/g, '');
+  const code = cleanStr(req.body?.code, 6);
+  if (!PHONE_RE.test(phone)) return res.status(422).json({ error: 'bad_phone' });
+  if (!code) return res.status(422).json({ error: 'code_required' });
+
+  const ok = await verifyAndConsumePhoneOtpCode(phone, code, 'phone_change');
+  if (!ok) return res.status(422).json({ error: 'bad_code' });
+
+  await updateUserPhone(user.id, phone);
+  res.json({ ok: true, phone });
 });
 
 app.post('/api/records/:code/set-primary', async (req, res) => {
