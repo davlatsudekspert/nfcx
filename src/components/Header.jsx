@@ -142,9 +142,11 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-base-100/80 backdrop-blur-md">
-      {/* BETA e'lon lentasi — doimiy aylanuvchi marquee (navbar bilan bir xil fon,
-          chok ko'rinishini oldini olish uchun) */}
-      <div className="overflow-hidden border-b border-white/10 bg-base-100/80">
+      {/* BETA e'lon lentasi — doimiy aylanuvchi marquee. Fon rangini bermaymiz —
+          header'ning o'zidagi bg-base-100/80 dan meros oladi, aks holda ikki
+          qavat shaffof fon ustma-ust tushib, marquee bilan navbar orasida
+          chok (rang farqi) hosil bo'ladi. */}
+      <div className="overflow-hidden border-b border-white/10">
         <div className="flex w-max animate-[marqueeScroll_30s_linear_infinite] whitespace-nowrap py-1 will-change-transform">
           {Array.from({ length: 6 }).map((_, i) => (
             <span key={i} className="px-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
