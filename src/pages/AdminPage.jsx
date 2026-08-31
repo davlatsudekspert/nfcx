@@ -2472,7 +2472,46 @@ function FinanceDocs() {
 // (free = FREE, boshqa har qanday daraja = PRO).
 // ═══════════════════════════════════════════════════════════════════
 
-const COMPANY_SUBTABS = [['overview', 'Umumiy'], ['list', 'Kompaniyalar'], ['pricing', 'Tariflar va narxlar']];
+const COMPANY_SUBTABS = [['overview', 'Umumiy'], ['list', 'Kompaniyalar'], ['pricing', 'Tariflar va narxlar'], ['log', 'Faoliyat jurnali']];
+
+const COMPANY_ACTION_LABEL = {
+  company_suspended: 'Kompaniya bloklandi',
+  company_activated: 'Kompaniya faollashtirildi',
+  company_tier_set: 'Tarif qo‘lda belgilandi',
+  company_limits_changed: 'FREE/PRO limit o‘zgartirildi',
+  company_limits_reset: 'Limit standartga qaytarildi',
+  physical_nfc_pricing_changed: 'Jismoniy NFC narxi o‘zgartirildi',
+  delivery_days_changed: 'Yetkazib berish muddati o‘zgartirildi',
+};
+
+function CompanyActivityLog() {
+  const { t } = useLanguage();
+  const [log, setLog] = useState(null);
+  useEffect(() => { adminApi('/companies/activity-log').then((d) => setLog(d.log)); }, []);
+  return (
+    <AdminCard title={t('Kompaniyalar bo‘yicha admin amallari')}>
+      <div className="overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>{t('Amal')}</th><th>{t('Tafsilot')}</th><th>{t('Eski qiymat')}</th><th>{t('Yangi qiymat')}</th><th>{t('IP')}</th><th>{t('Vaqt')}</th></tr></thead>
+          <tbody>
+            {!log && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">{t('Yuklanmoqda...')}</td></tr>}
+            {log?.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">{t("Hozircha yozuv yo'q.")}</td></tr>}
+            {log?.map((a) => (
+              <tr key={a.id}>
+                <td className="font-semibold">{t(COMPANY_ACTION_LABEL[a.action] || a.action)}</td>
+                <td className="text-xs text-base-content/60">{a.details || '—'}</td>
+                <td className="text-xs text-base-content/50">{a.oldValue || '—'}</td>
+                <td className="text-xs text-base-content/50">{a.newValue || '—'}</td>
+                <td className="font-mono text-xs text-base-content/40">{a.ip || '—'}</td>
+                <td className="text-xs text-base-content/50">{timeAgo(new Date(a.createdAt).getTime())}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+  );
+}
 const COMPANY_TIER_OPTIONS = ['silver', 'gold', 'premium', 'exclusive'];
 
 function companyModuleStatus(catCount, itemCount) {
@@ -2871,6 +2910,7 @@ function CompaniesTab() {
       )}
 
       {sub === 'pricing' && <CompanyPricingSubtab />}
+      {sub === 'log' && <CompanyActivityLog />}
 
       {openCode && <CompanyDetailModal code={openCode} onClose={() => setOpenCode(null)} onChanged={load} />}
     </div>

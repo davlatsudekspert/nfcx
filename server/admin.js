@@ -41,6 +41,7 @@ import {
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
   adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
   adminCompanyStats, adminListCompanies, adminGetCompany, adminSetCompanyDirectoryHidden, setCardTierOverride,
+  listCompanyActivityLog,
   getLimitsOverride, setLimitsOverride, getPhysicalNfcTiers, setPhysicalNfcTiers,
   getDeliveryDays, setDeliveryDays,
   adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand, getAuctionDemandByCode,
@@ -1041,6 +1042,14 @@ function mergeLimits(defaults, override) {
   }
   return out;
 }
+
+// Kompaniyalar bo'yicha admin amallari jurnali (Faz 28) — Security
+// tabidagi to'liq jurnaldan filtrlangan qism, admin (super bo'lmasa ham)
+// ko'ra oladi, chunki Kompaniyalar bo'limining o'zi ham shunday.
+adminRouter.get('/companies/activity-log', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json({ log: await listCompanyActivityLog() });
+});
 
 adminRouter.get('/company-settings', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });

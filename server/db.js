@@ -2349,6 +2349,23 @@ export async function listAdminActivityLog(limit = 200) {
   return rows;
 }
 
+// Kompaniyalar bilan bog'liq admin amallari — Security tabidagi to'liq
+// jurnaldan filtrlangan qism (Company System — Faz 28). Alohida jadval
+// yaratilmadi — mavjud admin_activity_log qayta ishlatildi.
+const COMPANY_LOG_ACTIONS = [
+  'company_suspended', 'company_activated', 'company_tier_set',
+  'company_limits_changed', 'company_limits_reset',
+  'physical_nfc_pricing_changed', 'delivery_days_changed',
+];
+export async function listCompanyActivityLog(limit = 200) {
+  const { rows } = await pool.query(
+    `SELECT id, action, details, old_value AS "oldValue", new_value AS "newValue", ip, created_at AS "createdAt"
+     FROM admin_activity_log WHERE action = ANY($1) ORDER BY created_at DESC LIMIT $2`,
+    [COMPANY_LOG_ACTIONS, limit]
+  );
+  return rows;
+}
+
 // ---------- IP Whitelist ----------
 export async function getAdminSetting(key) {
   const { rows } = await pool.query(`SELECT value FROM admin_settings WHERE key = $1`, [key]);

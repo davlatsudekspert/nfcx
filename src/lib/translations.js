@@ -1561,4 +1561,18 @@ export const DICT = {
   'Litsenziyalangan provayder hali ulanmagan.': { ru: 'Лицензированный провайдер ещё не подключён.', en: 'A licensed provider is not connected yet.' },
   'Fon o‘chirish provayderiga bog‘liq.': { ru: 'Зависит от провайдера удаления фона.', en: 'Depends on the background-removal provider.' },
   'Sifat oshirish provayderi hali ulanmagan.': { ru: 'Провайдер улучшения качества ещё не подключён.', en: 'A quality-enhancement provider is not connected yet.' },
+
+  // ── Admin panel — Kompaniyalar faoliyat jurnali (Faz 28) ──
+  'Faoliyat jurnali': { ru: 'Журнал действий', en: 'Activity log' },
+  'Kompaniyalar bo‘yicha admin amallari': { ru: 'Действия администратора по компаниям', en: 'Admin actions on companies' },
+  'Kompaniya bloklandi': { ru: 'Компания заблокирована', en: 'Company suspended' },
+  'Kompaniya faollashtirildi': { ru: 'Компания активирована', en: 'Company activated' },
+  'Tarif qo‘lda belgilandi': { ru: 'Тариф установлен вручную', en: 'Tier set manually' },
+  'FREE/PRO limit o‘zgartirildi': { ru: 'Лимит FREE/PRO изменён', en: 'FREE/PRO limit changed' },
+  'Limit standartga qaytarildi': { ru: 'Лимит сброшен по умолчанию', en: 'Limit reset to default' },
+  'Jismoniy NFC narxi o‘zgartirildi': { ru: 'Цена физического NFC изменена', en: 'Physical NFC pricing changed' },
+  'Yetkazib berish muddati o‘zgartirildi': { ru: 'Срок доставки изменён', en: 'Delivery time changed' },
+  'Eski qiymat': { ru: 'Старое значение', en: 'Old value' },
+  'Yangi qiymat': { ru: 'Новое значение', en: 'New value' },
+  'IP': { ru: 'IP', en: 'IP' },
 };
