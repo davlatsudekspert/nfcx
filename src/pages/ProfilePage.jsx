@@ -1105,6 +1105,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const isOwner = !!(user && myCards.some((c) => c.code === record.code));
   const tgUrl = socialUrl('tg', record.tg);
   const igUrl = socialUrl('ig', record.instagram);
+  const hasLocation = (record.latitude != null && record.longitude != null) || !!record.address;
+  const mapsUrl = record.latitude != null && record.longitude != null
+    ? `https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address || '')}`;
   const fbUrl = socialUrl('fb', record.facebook);
   const xUrl = socialUrl('x', record.twitter);
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
@@ -1321,6 +1325,33 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             </div>
           )}
           {record.about && <p className="mx-auto mt-2 max-w-[460px] text-center text-sm leading-relaxed text-[color:var(--vz-ink-dim)]">{record.about}</p>}
+
+          {/* Business Workspace — tezkor amallar (qo'ng'iroq/Telegram/yo'nalish)
+              tashrifchi tab tanlashini kutmasdan, darhol ko'rinadi. To'liq
+              tugmalar ro'yxati pastda (vizitka tabida) o'zgarishsiz qoladi —
+              bu shunchaki eng muhim uchtasini yuqoriga chiqaradi. */}
+          {record.profileType === 'business' && (record.phone && (!record.hidePhone || isOwner) || tgUrl || hasLocation) && (
+            <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
+              {record.phone && (!record.hidePhone || isOwner) && (
+                <a href={`tel:${record.phone}`} onClick={() => track('phone_click')}
+                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[12.5px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
+                  <IconPhone /> {t("Qo'ng'iroq")}
+                </a>
+              )}
+              {tgUrl && (
+                <a href={tgUrl} target="_blank" rel="noreferrer" onClick={() => track('telegram_click')}
+                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[12.5px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
+                  <IconTelegram /> Telegram
+                </a>
+              )}
+              {hasLocation && (
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}
+                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[12.5px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
+                  {'\u{1F4CD}'} {t("Yo'nalishni ochish")}
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-[22px] flex justify-center gap-11">
@@ -1382,12 +1413,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
             <div className="mt-[22px] flex flex-col gap-2.5">
               {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`} onClick={() => track('phone_click')}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
-              {(record.latitude != null && record.longitude != null || record.address) && (
-                <a className={linkBtn}
-                  href={record.latitude != null && record.longitude != null
-                    ? `https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`
-                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address)}`}
-                  target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}>
+              {hasLocation && (
+                <a className={linkBtn} href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}>
                   {'\u{1F4CD}'} {t('Xaritada ochish')}
                 </a>
               )}
