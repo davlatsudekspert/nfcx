@@ -339,6 +339,22 @@ export const dbAddTeamMember = (code, data) => api(`/records/${encodeURIComponen
 export const dbUpdateTeamMember = (code, id, data) => api(`/records/${encodeURIComponent(code)}/team/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const dbDeleteTeamMember = (code, id) => api(`/records/${encodeURIComponent(code)}/team/${id}`, { method: 'DELETE' });
 
+// ---------- Galereya (Business Workspace) ----------
+
+export async function dbGetGallery(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/gallery`);
+    return (j && j.gallery) || [];
+  } catch {
+    return [];
+  }
+}
+
+export const dbGetGalleryManage = (code) => api(`/records/${encodeURIComponent(code)}/gallery/manage`);
+export const dbAddGalleryImage = (code, data) => api(`/records/${encodeURIComponent(code)}/gallery`, { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateGalleryImage = (code, id, data) => api(`/records/${encodeURIComponent(code)}/gallery/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteGalleryImage = (code, id) => api(`/records/${encodeURIComponent(code)}/gallery/${id}`, { method: 'DELETE' });
+
 // ---------- Sotuv ----------
 
 // Sotuvdagi raqamli tashrif qog'ozlar ro'yxati.

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -1042,6 +1042,92 @@ function TeamSection({ code }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Galereya (Business Workspace) — biznes profil rasm galereyasi. Team
+// bilan bir xil naqsh: oddiy ro'yxat, kategoriyasiz, faqat rasm+izoh.
+function GallerySection({ code, onLock }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const load = () => dbGetGalleryManage(code).then(setData).catch(() => setErr(true));
+  useEffect(() => { load(); }, [code]);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3500); };
+
+  if (err) return <div className="text-sm text-error">{t('Galereyani yuklab bo‘lmadi.')}</div>;
+  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  const { gallery, limit, count, eligible } = data;
+
+  if (!eligible) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
+        {t('Galereya faqat biznes profillar uchun.')}
+      </div>
+    );
+  }
+  if (limit <= 0) {
+    return (
+      <button type="button" onClick={onLock}
+        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+        {'\u{1F512}'} {t('Galereya — Silver NFC ID yoki undan yuqorida ochiladi.')}
+      </button>
+    );
+  }
+
+  const addImage = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      const url = await dbUploadImage(dataUrl);
+      await dbAddGalleryImage(code, { imageUrl: url });
+      await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Galereya limiti tugadi ({n} ta).', { n: limit }) : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+  const del = async (id) => {
+    if (!confirm(t('Bu rasmni o‘chirasizmi?'))) return;
+    try { await dbDeleteGalleryImage(code, id); setData((d) => ({ ...d, gallery: d.gallery.filter((g) => g.id !== id), count: d.count - 1 })); }
+    catch { flash(t('Xatolik yuz berdi.')); }
+  };
+  const setCaption = async (id, caption) => { try { await dbUpdateGalleryImage(code, id, { caption }); await load(); } catch { flash(t('Xatolik yuz berdi.')); } };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-xs text-base-content/50">{t('Rasmlar')}: {count}/{limit}</div>
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {gallery.map((g) => (
+          <div key={g.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/20">
+            <div className="relative aspect-square">
+              <img src={g.imageUrl} alt="" className="h-full w-full object-cover" />
+              <button className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-error" title={t("O'chirish")} onClick={() => del(g.id)}>🗑</button>
+            </div>
+            <input className="input input-ghost input-xs w-full px-2 text-[11px]" defaultValue={g.caption || ''} placeholder={t('Izoh (ixtiyoriy)')}
+              onBlur={(e) => e.target.value !== (g.caption || '') && setCaption(g.id, e.target.value.trim())} />
+          </div>
+        ))}
+
+        {count < limit && (
+          <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/20 bg-base-200/40 text-xs text-base-content/50 hover:border-accent/40 hover:text-accent">
+            {busy ? <span className="loading loading-spinner loading-sm"></span> : <>
+              <span className="text-xl">+</span>
+              {t('Rasm qo‘shish')}
+            </>}
+            <input type="file" accept="image/*" className="hidden" disabled={busy}
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; addImage(f); }} />
+          </label>
+        )}
+      </div>
     </div>
   );
 }
@@ -2132,6 +2218,7 @@ function EditCardForm({ card, onSaved }) {
               {[
                 ['asosiy', t('Asosiy')],
                 ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog')],
+                ['galereya', t('Galereya')],
                 ['lokatsiya', t('Lokatsiya')],
                 ['sozlamalar', t('Sozlamalar')],
               ].map(([id, label]) => (
@@ -2485,6 +2572,12 @@ function EditCardForm({ card, onSaved }) {
                 allowed={allow('serviceCatalog')}
                 onLock={() => setLocked(t('Xizmatlar katalogi'))}
               />
+            </Section>
+          )}
+
+          {isBusiness && wsTab === 'galereya' && (
+            <Section title={t('Galereya')} subtitle={t('Kompaniya rasmlari')} defaultOpen>
+              <GallerySection code={card.code} onLock={() => setLocked(t('Galereya'))} />
             </Section>
           )}
 
