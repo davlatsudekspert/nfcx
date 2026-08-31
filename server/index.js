@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuEligible, MENU_LIMITS, productEligible, PRODUCT_LIMITS, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuEligible, MENU_LIMITS, productEligible, PRODUCT_LIMITS, serviceEligible, SERVICE_LIMITS, businessModule, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews, deleteOwnCard,
@@ -15,6 +15,9 @@ import {
   getProducts, productCounts, productCategoryBelongs,
   createProductCategory, updateProductCategory, deleteProductCategory,
   createProduct, updateProduct, deleteProduct,
+  getServices, serviceCounts, serviceCategoryBelongs,
+  createServiceCategory, updateServiceCategory, deleteServiceCategory,
+  createService, updateService, deleteService,
   getLimitsOverride, getPhysicalNfcTiers, getDeliveryDays, DEFAULT_PHYSICAL_NFC_TIERS, DEFAULT_DELIVERY_DAYS,
   searchCompanyDirectory,
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
@@ -1900,7 +1903,7 @@ app.delete('/api/records/:code/leads/:id', async (req, res) => {
 // tushadi. Frontend bunga ISHONMAYDI — bu funksiya faqat backendda
 // chaqiriladi va natija manage-javobida frontendga qaytariladi.
 async function getEffectiveLimits(kind, access) {
-  const defaultsMap = kind === 'menu' ? MENU_LIMITS : PRODUCT_LIMITS;
+  const defaultsMap = kind === 'menu' ? MENU_LIMITS : kind === 'service' ? SERVICE_LIMITS : PRODUCT_LIMITS;
   const fallback = defaultsMap[access] || defaultsMap.free;
   const map = await getLimitsOverride(kind);
   const tier = map && typeof map === 'object' ? map[access] : null;
@@ -1937,9 +1940,12 @@ async function menuOwner(req, res, code, { mutate = false } = {}) {
   const rec = await getRecord(code);
   const access = await cardAccess(code, user, rec);
   if (!featureAllowed('restaurantMenu', access)) { res.status(403).json({ error: 'feature_locked', feature: 'restaurantMenu' }); return null; }
-  const eligible = menuEligible(rec.categorySlug);
-  // Menyu qo'shish/tahrirlash faqat ovqatlanish sohasidagi profillar uchun
-  // (o'qish/o'chirish har doim — eski yozuvlarni tozalash mumkin bo'lsin).
+  // MUHIM: profile_type HAM tekshiriladi (faqat kategoriya emas) — shaxsiy/
+  // expert profil to'g'ridan-to'g'ri /menu/manage'ga so'rov yuborsa ham
+  // server ruxsat bermasin (frontend tekshiruvi yetarli emas).
+  const eligible = menuEligible(rec.profileType, rec.categorySlug);
+  // Menyu qo'shish/tahrirlash faqat ovqatlanish sohasidagi biznes profillar
+  // uchun (o'qish/o'chirish har doim — eski yozuvlarni tozalash mumkin bo'lsin).
   if (mutate && !eligible) { res.status(403).json({ error: 'not_restaurant' }); return null; }
   return { user, rec, access, eligible, limits: await getEffectiveLimits('menu', access) };
 }
@@ -2129,9 +2135,10 @@ async function productOwner(req, res, code, { mutate = false } = {}) {
   const rec = await getRecord(code);
   const access = await cardAccess(code, user, rec);
   if (!featureAllowed('productCatalog', access)) { res.status(403).json({ error: 'feature_locked', feature: 'productCatalog' }); return null; }
-  const eligible = productEligible(rec.profileType);
-  // Mahsulot qo'shish/tahrirlash faqat biznes profillar uchun (o'qish/o'chirish
-  // har doim — eski yozuvlarni tozalash mumkin bo'lsin).
+  const eligible = productEligible(rec.profileType, rec.categorySlug);
+  // Mahsulot qo'shish/tahrirlash faqat savdo/do'kon sohasidagi biznes
+  // profillar uchun (o'qish/o'chirish har doim — eski yozuvlarni tozalash
+  // mumkin bo'lsin).
   if (mutate && !eligible) { res.status(403).json({ error: 'not_business' }); return null; }
   return { user, rec, access, eligible, limits: await getEffectiveLimits('product', access) };
 }
@@ -2285,6 +2292,193 @@ app.delete('/api/records/:code/products/items/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[api] product delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Xizmatlar katalogi (Business Workspace — universal Catalog Engine) ----------
+// Menu/Products bilan bir xil naqsh — restoran/do'kon bo'lmagan boshqa
+// barcha biznes yo'nalishlari (qurilish, IT, go'zallik, ta'lim va h.k.) uchun.
+
+// Public — profil sahifasidagi "Xizmatlar" tab uchun.
+app.get('/api/records/:code/services', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ services: await getServices(code) });
+  } catch (err) {
+    console.error('[api] services:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Egaga: kontekst (kirish darajasi, limitlar, joriy sanoq) + to'liq katalog.
+async function serviceOwner(req, res, code, { mutate = false } = {}) {
+  const user = await currentUser(req);
+  if (!user) { res.status(401).json({ error: 'unauthorized' }); return null; }
+  if ((await getRecordOwner(code)) !== user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
+  const rec = await getRecord(code);
+  const access = await cardAccess(code, user, rec);
+  if (!featureAllowed('serviceCatalog', access)) { res.status(403).json({ error: 'feature_locked', feature: 'serviceCatalog' }); return null; }
+  const eligible = serviceEligible(rec.profileType, rec.categorySlug);
+  // Xizmat qo'shish/tahrirlash faqat restoran/do'kon bo'lmagan biznes
+  // profillar uchun (o'qish/o'chirish har doim — eski yozuvlarni tozalash
+  // mumkin bo'lsin).
+  if (mutate && !eligible) { res.status(403).json({ error: 'not_service_business' }); return null; }
+  return { user, rec, access, eligible, limits: await getEffectiveLimits('service', access) };
+}
+
+const serviceMoney = menuMoney;
+const serviceImage = menuImage;
+const servicePriceTypeIn = (v) => (['fixed', 'from', 'negotiable'].includes(v) ? v : 'fixed');
+
+app.get('/api/records/:code/services/manage', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code);
+    if (!ctx) return;
+    res.json({ services: await getServices(code, { includeDisabled: true }), limits: ctx.limits, counts: await serviceCounts(code), eligible: ctx.eligible });
+  } catch (err) {
+    console.error('[api] services manage:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/services/categories', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const name = cleanStr(req.body?.name, 60).trim();
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if ((await serviceCounts(code)).cats >= ctx.limits.cat) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limits.cat });
+    }
+    res.status(201).json(await createServiceCategory(code, { name, sort: Number(req.body?.sort) || 0 }));
+  } catch (err) {
+    console.error('[api] service cat create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/services/categories/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('name' in b) f.name = cleanStr(b.name, 60).trim();
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    if ('enabled' in b) f.enabled = b.enabled !== false;
+    const row = await updateServiceCategory(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] service cat update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/services/categories/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code);
+    if (!ctx) return;
+    await deleteServiceCategory(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] service cat delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/services/items', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const categoryId = Number(b.categoryId);
+    if (!categoryId || !(await serviceCategoryBelongs(code, categoryId))) {
+      return res.status(422).json({ error: 'bad_category' });
+    }
+    const name = cleanStr(b.name, 100).trim();
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if ((await serviceCounts(code)).items >= ctx.limits.item) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limits.item });
+    }
+    const imageUrl = ctx.limits.images ? serviceImage(b.imageUrl) : '';
+    res.status(201).json(await createService(code, {
+      categoryId,
+      name,
+      description: cleanStr(b.description, 500).trim(),
+      price: serviceMoney(b.price),
+      priceType: servicePriceTypeIn(b.priceType),
+      imageUrl,
+      available: b.available !== false,
+      featured: b.featured === true,
+      sort: Number(b.sort) || 0,
+    }));
+  } catch (err) {
+    console.error('[api] service create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/services/items/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('categoryId' in b) {
+      const cid = Number(b.categoryId);
+      if (!cid || !(await serviceCategoryBelongs(code, cid))) return res.status(422).json({ error: 'bad_category' });
+      f.categoryId = cid;
+    }
+    if ('name' in b) f.name = cleanStr(b.name, 100).trim();
+    if ('description' in b) f.description = cleanStr(b.description, 500).trim();
+    if ('price' in b) f.price = serviceMoney(b.price);
+    if ('priceType' in b) f.priceType = servicePriceTypeIn(b.priceType);
+    if ('imageUrl' in b) f.imageUrl = ctx.limits.images ? serviceImage(b.imageUrl) : '';
+    if ('available' in b) f.available = b.available !== false;
+    if ('featured' in b) f.featured = b.featured === true;
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    const row = await updateService(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] service update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/services/items/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await serviceOwner(req, res, code);
+    if (!ctx) return;
+    await deleteService(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] service delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

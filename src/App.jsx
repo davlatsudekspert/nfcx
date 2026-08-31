@@ -106,7 +106,7 @@ export default function App() {
   // nfcstore.uz/{code}/menyu, nfcstore.uz/{code}/mahsulotlar (Faz 9/10).
   // Yangi NFC ID talab qilinmaydi — bir xil ProfilePage, faqat boshlang'ich
   // tab oldindan belgilanadi.
-  const companySubMatch = cleanRoute.match(/^([^/]+)\/(menyu|mahsulotlar)$/);
+  const companySubMatch = cleanRoute.match(/^([^/]+)\/(menyu|mahsulotlar|xizmatlar)$/);
   if (!page && !RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
     const parsedRoute = parseAnyCode(cleanRoute);
     const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(cleanRoute) ? cleanRoute.toUpperCase() : null);
@@ -120,7 +120,7 @@ export default function App() {
     const parsedRoute = parseAnyCode(rawCode);
     const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(rawCode) ? rawCode.toUpperCase() : null);
     if (code) {
-      page = <ProfilePage key={`${code}/${sub}`} code={code} catalog={catalog} initialTab={sub === 'menyu' ? 'menyu' : 'mahsulotlar'} />;
+      page = <ProfilePage key={`${code}/${sub}`} code={code} catalog={catalog} initialTab={sub} />;
       bare = true;
     }
   }

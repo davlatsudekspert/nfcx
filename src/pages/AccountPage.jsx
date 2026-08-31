@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -10,10 +10,10 @@ import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
-import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
+import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, menuEligible, productEligible } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -670,6 +670,273 @@ function ProductManagerSection({ code, allowed, onLock }) {
             </div>
             <PhoneFrame>
               <ProductsPreviewGrid categories={previewCategories} t={t} />
+            </PhoneFrame>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Xizmatlar katalogi (Business Workspace) — Products bilan bir xil naqsh,
+// qo'shimcha maydon: narx turi (belgilangan / dan boshlab / kelishiladi).
+const SERVICE_EMPTY = { name: '', description: '', price: '', priceType: 'fixed', imageUrl: '', available: true, featured: false };
+const PRICE_TYPE_LABEL = { fixed: 'Belgilangan', from: 'Dan boshlab', negotiable: 'Kelishiladi' };
+
+function ServiceItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange, onDraftEnd }) {
+  const { t } = useLanguage();
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState(item);
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF((s) => {
+    const next = { ...s, [k]: e.target.value };
+    onDraftChange?.(next);
+    return next;
+  });
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const row = await dbUpdateService(code, item.id, {
+        name: f.name, description: f.description,
+        price: f.price === '' ? null : f.price,
+        priceType: f.priceType || 'fixed',
+        available: f.available, featured: f.featured,
+      });
+      onChanged(row); setEdit(false); onDraftEnd?.();
+    } finally { setBusy(false); }
+  };
+  const toggle = async (field) => {
+    const row = await dbUpdateService(code, item.id, { [field]: !item[field] });
+    onChanged(row);
+  };
+  const del = async () => {
+    if (!confirm(t('Bu xizmatni o‘chirasizmi?'))) return;
+    await dbDeleteService(code, item.id); onDeleted(item.id);
+  };
+  const applyImage = async (dataUrl) => {
+    if (!dataUrl) return;
+    setBusy(true);
+    try {
+      const url = await dbUploadImage(dataUrl);
+      const row = await dbUpdateService(code, item.id, { imageUrl: url });
+      onChanged(row);
+    } catch { /* jim */ } finally { setBusy(false); }
+  };
+
+  if (edit) {
+    return (
+      <div className="rounded-xl border border-accent/30 bg-black/20 p-3 space-y-2">
+        <input className="input input-bordered input-sm w-full bg-base-100" value={f.name} onChange={set('name')} placeholder={t('Xizmat nomi')} />
+        <textarea className="textarea textarea-bordered textarea-sm w-full bg-base-100" rows={2} value={f.description || ''} onChange={set('description')} placeholder={t('Tavsif')} />
+        <div className="flex gap-2">
+          <input className="input input-bordered input-sm w-full bg-base-100" type="number" value={f.price ?? ''} onChange={set('price')}
+            placeholder={t('Narx')} disabled={f.priceType === 'negotiable'} />
+          <select className="select select-bordered select-sm w-full bg-base-100" value={f.priceType || 'fixed'} onChange={set('priceType')}>
+            {Object.entries(PRICE_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <button className="btn btn-primary btn-xs" onClick={save} disabled={busy}>{t('Saqlash')}</button>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); onDraftEnd?.(); }}>{t('Bekor')}</button>
+        </div>
+      </div>
+    );
+  }
+  const priceLabel = item.priceType === 'negotiable' ? t('Kelishiladi')
+    : item.price != null ? `${fmt(item.price)}${item.priceType === 'from' ? ` ${t('dan')}` : ''}` : '';
+  return (
+    <div className={`flex flex-wrap gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
+      <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-1.5 text-sm font-semibold">
+          {item.featured && <span className="shrink-0">⭐</span>}
+          <span className="min-w-0 flex-1 truncate">{item.name}</span>
+          {priceLabel && <span className="shrink-0 text-xs text-base-content/60">{priceLabel}</span>}
+        </div>
+        {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
+        <div className="mt-1.5 flex items-center gap-1">
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
+            {item.available ? '🟢' : '⚫'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
+            {item.featured ? '⭐' : '☆'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServiceManagerSection({ code, allowed, onLock }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+  const [newCat, setNewCat] = useState('');
+  const [adding, setAdding] = useState({}); // catId -> SERVICE_EMPTY
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  // Live Phone Preview — Menu/ProductManagerSection bilan bir xil naqsh.
+  const [draft, setDraft] = useState(null);
+  const [mobilePreview, setMobilePreview] = useState(false);
+
+  const load = () => dbGetServicesManage(code).then(setData).catch(() => setErr(true));
+  useEffect(() => { if (allowed) load(); }, [code, allowed]);
+
+  if (!allowed) {
+    return (
+      <button type="button" onClick={onLock}
+        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+        {'\u{1F512}'} {t('Xizmatlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
+      </button>
+    );
+  }
+  if (err) return <div className="text-sm text-error">{t('Katalogni yuklab bo‘lmadi.')}</div>;
+  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  const { services, limits, counts } = data;
+  const eligible = data.eligible !== false;
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const previewCategories = mergeDraftIntoCategories(services, draft);
+
+  const addCat = async () => {
+    const name = newCat.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await dbAddServiceCategory(code, { name });
+      setNewCat(''); await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Kategoriya limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_service_business' ? t('Xizmatlar katalogi faqat biznes profillar uchun ochiladi.')
+        : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+  const updCat = async (id, patch) => { await dbUpdateServiceCategory(code, id, patch); await load(); };
+  const delCat = async (id) => {
+    if (!confirm(t('Kategoriya va uning barcha xizmatlari o‘chadi. Davom etamizmi?'))) return;
+    await dbDeleteServiceCategory(code, id); await load();
+  };
+  const addItem = async (catId) => {
+    const f = adding[catId] || SERVICE_EMPTY;
+    if (!f.name.trim()) return;
+    setBusy(true);
+    try {
+      await dbAddService(code, {
+        categoryId: catId, name: f.name, description: f.description,
+        price: f.price === '' ? null : f.price,
+        priceType: f.priceType || 'fixed',
+        available: true,
+      });
+      setAdding((s) => ({ ...s, [catId]: SERVICE_EMPTY }));
+      setDraft(null);
+      await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Xizmat limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_service_business' ? t('Xizmatlar katalogi faqat biznes profillar uchun ochiladi.')
+        : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+
+  const setAddF = (catId, k) => (e) => {
+    const val = e.target.value;
+    setAdding((s) => {
+      const next = { ...(s[catId] || SERVICE_EMPTY), [k]: val };
+      setDraft({ ...next, id: '__draft__', categoryId: catId });
+      return { ...s, [catId]: next };
+    });
+  };
+
+  const editorBody = (
+    <div className="space-y-4">
+      {!eligible && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
+          {t('Xizmatlar katalogi faqat biznes profillar uchun ochiladi.')}
+        </div>
+      )}
+      <div className="text-xs text-base-content/50">
+        {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Xizmatlar')}: {counts.items}/{limits.item}
+        {!limits.images && ` · ${t('rasm Gold+ dan')}`}
+      </div>
+      <ShareLinkRow code={code} sub="xizmatlar" />
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      {services.map((cat) => (
+        <div key={cat.id} className={`rounded-2xl border border-white/10 bg-base-200/40 p-3 ${cat.enabled ? '' : 'opacity-60'}`}>
+          <div className="flex items-center gap-1">
+            <input
+              className="input input-ghost input-sm min-w-0 flex-1 px-1 font-semibold"
+              defaultValue={cat.name}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
+            />
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {cat.items.map((it) => (
+              <ServiceItemRow
+                key={it.id} code={code} item={it} canImage={limits.images}
+                onChanged={() => load()} onDeleted={() => load()}
+                onDraftChange={(f) => setDraft({ ...f, categoryId: cat.id })}
+                onDraftEnd={() => setDraft(null)}
+              />
+            ))}
+          </div>
+          {eligible && (
+            <div className="mt-2 space-y-1.5">
+              <input className="input input-bordered input-xs w-full bg-base-100" placeholder={t('Yangi xizmat nomi')}
+                value={(adding[cat.id] || SERVICE_EMPTY).name} onChange={setAddF(cat.id, 'name')} />
+              <div className="flex gap-1.5">
+                <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" type="number" placeholder={t('Narx')}
+                  value={(adding[cat.id] || SERVICE_EMPTY).price} onChange={setAddF(cat.id, 'price')}
+                  disabled={(adding[cat.id] || SERVICE_EMPTY).priceType === 'negotiable'} />
+                <select className="select select-bordered select-xs shrink-0 bg-base-100" value={(adding[cat.id] || SERVICE_EMPTY).priceType} onChange={setAddF(cat.id, 'priceType')}>
+                  {Object.entries(PRICE_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
+                </select>
+                <button className="btn btn-primary btn-xs shrink-0" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {eligible && counts.cats < limits.cat && (
+        <div className="flex gap-2">
+          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Ta’mirlash ishlari)')}
+            value={newCat} onChange={(e) => setNewCat(e.target.value)} />
+          <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_296px] lg:items-start lg:gap-6">
+      {editorBody}
+
+      {/* Desktop — jonli preview yon tomonda (sticky) */}
+      <div className="hidden lg:sticky lg:top-20 lg:block">
+        <PhoneFrame label={t('Jonli ko‘rinish')}>
+          <ServicesPreviewList categories={previewCategories} t={t} />
+        </PhoneFrame>
+      </div>
+
+      {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
+      <button type="button" onClick={() => setMobilePreview(true)}
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
+        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+      </button>
+      {mobilePreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
+          <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+              {t('Jonli ko‘rinish')}
+              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+            </div>
+            <PhoneFrame>
+              <ServicesPreviewList categories={previewCategories} t={t} />
             </PhoneFrame>
           </div>
         </div>
@@ -1491,6 +1758,9 @@ function EditCardForm({ card, onSaved }) {
   const access = effectiveAccess(card, user);
   const allow = (feature) => featureAllowed(feature, access);
   const [locked, setLocked] = useState(null); // yopiq funksiya nomi (modal uchun)
+  // Business Workspace navigatsiyasi: 'asosiy' | 'katalog' | 'lokatsiya' | 'sozlamalar'.
+  // Shaxsiy/expert profillar uchun ishlatilmaydi (ular eski flat accordion'da qoladi).
+  const [wsTab, setWsTab] = useState('asosiy');
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',
@@ -1737,6 +2007,16 @@ function EditCardForm({ card, onSaved }) {
 
   const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
 
+  // ── Business Workspace navigatsiyasi (Architecture Correction) ──────
+  // Biznes profil uchun editor endi PERSONAL profil bilan bir xil uzun
+  // accordion emas — alohida, moduliga qarab moslashuvchan tab navigatsiya.
+  // Shaxsiy/expert profillar uchun bu butunlay tegmaydi — ular hamon
+  // eski flat accordion ko'rinishida (wsTab shart tekshiruvi har doim
+  // `!isBusiness ||` bilan bypass qilinadi).
+  const isBusiness = card.profileType === 'business';
+  const catalogModule = businessModule(card.profileType, card.categorySlug); // 'menu' | 'products' | 'services' | null
+  const CATALOG_TAB_LABEL = { menu: t('Menyu'), products: t('Mahsulotlar'), services: t('Xizmatlar') };
+
   return (
     <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1847,6 +2127,23 @@ function EditCardForm({ card, onSaved }) {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="min-w-0">
+          {isBusiness && (
+            <div className="mb-5 flex gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-base-200/40 p-1.5">
+              {[
+                ['asosiy', t('Asosiy')],
+                ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog')],
+                ['lokatsiya', t('Lokatsiya')],
+                ['sozlamalar', t('Sozlamalar')],
+              ].map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setWsTab(id)}
+                  className={`shrink-0 cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition ${wsTab === id ? 'bg-accent text-accent-content' : 'text-base-content/60 hover:bg-white/5'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {(!isBusiness || wsTab === 'asosiy') && (
+          <>
           <Section title={t('Profil turi')} subtitle={t('Katalog va qidiruvda qanday ko‘rinasiz')} defaultOpen>
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -2060,7 +2357,11 @@ function EditCardForm({ card, onSaved }) {
             </label>
             </Gate>
           </Section>
+          </>
+          )}
 
+          {(!isBusiness || wsTab === 'sozlamalar') && (
+          <>
           <Section title={t("Aloqa va ijtimoiy tarmoqlar")} subtitle={t("Telegram, Instagram, telefon va h.k.")}>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telegram</span><input value={form.tg} onChange={set('tg')} placeholder="@username" className={inp} /></label>
@@ -2079,8 +2380,10 @@ function EditCardForm({ card, onSaved }) {
               </label>
             )}
           </Section>
+          </>
+          )}
 
-          {card.profileType === 'business' && (
+          {isBusiness && wsTab === 'lokatsiya' && (
             <Section title={t('Manzil va lokatsiya')} subtitle={t("Qo'ng'iroq va xaritada ko'rsatish uchun")}>
               <Gate ok={allow('location')} onLock={() => setLocked(t('Manzil va lokatsiya'))}>
                 <label className="form-control block">
@@ -2104,6 +2407,8 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
 
+          {(!isBusiness || wsTab === 'sozlamalar') && (
+          <>
           <Section title={t("To'lov kartalari")} subtitle={t("Profilda ko'rinadigan karta raqamlari")}>
             <label className="form-control block">
               <span className="text-xs font-semibold text-base-content/70">{t("Asosiy karta raqami")}</span>
@@ -2150,9 +2455,11 @@ function EditCardForm({ card, onSaved }) {
               {t('Sozlamalar')}
             </button>{' '}{t('sahifasida.')}
           </div>
+          </>
+          )}
 
-          {card.profileType === 'business' && menuEligible(card.categorySlug) && (
-            <Section title={t('Restoran menyusi')} subtitle={t('Kategoriyalar va taomlar')}>
+          {isBusiness && wsTab === 'katalog' && catalogModule === 'menu' && (
+            <Section title={t('Restoran menyusi')} subtitle={t('Kategoriyalar va taomlar')} defaultOpen>
               <MenuManagerSection
                 code={card.code}
                 allowed={allow('restaurantMenu')}
@@ -2161,8 +2468,8 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
 
-          {card.profileType === 'business' && productEligible(card.profileType) && (
-            <Section title={t('Mahsulotlar katalogi')} subtitle={t('Kategoriyalar va mahsulotlar')}>
+          {isBusiness && wsTab === 'katalog' && catalogModule === 'products' && (
+            <Section title={t('Mahsulotlar katalogi')} subtitle={t('Kategoriyalar va mahsulotlar')} defaultOpen>
               <ProductManagerSection
                 code={card.code}
                 allowed={allow('productCatalog')}
@@ -2171,10 +2478,24 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
 
+          {isBusiness && wsTab === 'katalog' && catalogModule === 'services' && (
+            <Section title={t('Xizmatlar katalogi')} subtitle={t('Kategoriyalar va xizmatlar')} defaultOpen>
+              <ServiceManagerSection
+                code={card.code}
+                allowed={allow('serviceCatalog')}
+                onLock={() => setLocked(t('Xizmatlar katalogi'))}
+              />
+            </Section>
+          )}
+
+          {(!isBusiness || wsTab === 'sozlamalar') && (
+          <>
           {card.profileType === 'business' && (
             <Section title={t('Jamoa')} subtitle={t('Kompaniya a’zolari')}>
               <TeamSection code={card.code} />
             </Section>
+          )}
+          </>
           )}
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
@@ -2183,15 +2504,22 @@ function EditCardForm({ card, onSaved }) {
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
         </div>
 
-        <div className="hidden lg:block">
-          <PhonePreview form={form} code={card.code} />
-        </div>
+        {/* Katalog tabida modul o'zining ichki preview'iga ega (Menu/Product/
+            ServiceManagerSection) — asosiy karta preview'ini takrorlamaslik
+            uchun shu yerda yashiramiz. */}
+        {!(isBusiness && wsTab === 'katalog') && (
+          <div className="hidden lg:block">
+            <PhonePreview form={form} code={card.code} />
+          </div>
+        )}
       </div>
 
       {/* Mobil uchun preview forma tagida ko'rinadi */}
-      <div className="mt-8 lg:hidden">
-        <PhonePreview form={form} code={card.code} />
-      </div>
+      {!(isBusiness && wsTab === 'katalog') && (
+        <div className="mt-8 lg:hidden">
+          <PhonePreview form={form} code={card.code} />
+        </div>
+      )}
     </div>
   );
 }

@@ -228,6 +228,31 @@ export const dbAddProduct = (code, data) => productApi(code, '/items', { method:
 export const dbUpdateProduct = (code, id, data) => productApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const dbDeleteProduct = (code, id) => productApi(code, `/items/${id}`, { method: 'DELETE' });
 
+// ---------- Xizmatlar katalogi (Business Workspace) ----------
+
+export async function dbGetServices(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/services`);
+    return (j && j.services) || [];
+  } catch {
+    return [];
+  }
+}
+
+// Egaga — includeDisabled + limitlar + sanoq.
+export async function dbGetServicesManage(code) {
+  return api(`/records/${encodeURIComponent(code)}/services/manage`);
+}
+
+const serviceApi = (code, path, opts) => api(`/records/${encodeURIComponent(code)}/services${path}`, opts);
+
+export const dbAddServiceCategory = (code, data) => serviceApi(code, '/categories', { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateServiceCategory = (code, id, data) => serviceApi(code, `/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteServiceCategory = (code, id) => serviceApi(code, `/categories/${id}`, { method: 'DELETE' });
+export const dbAddService = (code, data) => serviceApi(code, '/items', { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateService = (code, id, data) => serviceApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteService = (code, id) => serviceApi(code, `/items/${id}`, { method: 'DELETE' });
+
 // ---------- Fayl / PDF / katalog (Band 3.4) ----------
 
 export async function dbGetFiles(code) {

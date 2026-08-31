@@ -1091,6 +1091,39 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS products_code_idx ON products (code, category_id, sort)`);
 
+  // ── Xizmatlar katalogi (Business Workspace — universal Catalog Engine) ──
+  // menu_categories/menu_items bilan bir xil naqsh — restoran/do'kon
+  // bo'lmagan boshqa barcha biznes yo'nalishlari (qurilish, IT, go'zallik,
+  // ta'lim va h.k.) uchun. Qo'shimcha: price_type (fixed/from/negotiable).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS service_categories (
+      id         BIGSERIAL PRIMARY KEY,
+      code       VARCHAR(16) NOT NULL,
+      name       TEXT NOT NULL,
+      sort       INTEGER NOT NULL DEFAULT 0,
+      enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS service_categories_code_idx ON service_categories (code, sort)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS services (
+      id             BIGSERIAL PRIMARY KEY,
+      code           VARCHAR(16) NOT NULL,
+      category_id    BIGINT NOT NULL REFERENCES service_categories(id) ON DELETE CASCADE,
+      name           TEXT NOT NULL,
+      description    TEXT,
+      price          BIGINT,
+      price_type     VARCHAR(12) NOT NULL DEFAULT 'fixed',
+      image_url      TEXT,
+      available      BOOLEAN NOT NULL DEFAULT TRUE,
+      featured       BOOLEAN NOT NULL DEFAULT FALSE,
+      sort           INTEGER NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS services_code_idx ON services (code, category_id, sort)`);
+
   // ── Fayl / PDF / katalog (Band 3.4) ───────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS card_files (
@@ -1294,6 +1327,7 @@ export async function initDb() {
     await pool.query(`CREATE INDEX IF NOT EXISTS cards_city_trgm_idx ON cards USING GIN (LOWER(city) gin_trgm_ops)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_name_trgm_idx ON menu_items USING GIN (LOWER(name) gin_trgm_ops)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS products_name_trgm_idx ON products USING GIN (LOWER(name) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS services_name_trgm_idx ON services USING GIN (LOWER(name) gin_trgm_ops)`);
   } catch (err) {
     console.warn('[db] pg_trgm indekslari o’rnatilmadi (qidiruv baribir ishlaydi, faqat sekinroq):', err.message);
   }
@@ -1681,12 +1715,28 @@ export async function searchCompanyDirectory(q, limit = 30) {
           AND LOWER(p.name) LIKE $1
         ORDER BY c.code, p.featured DESC, p.sort
      ),
+     service_match AS (
+       SELECT DISTINCT ON (c.code)
+              c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              'service'::text AS "matchType", s.name AS "matchLabel", s.price AS "matchPrice"
+         FROM services s
+         JOIN cards c ON c.code = s.code
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND LOWER(s.name) LIKE $1
+        ORDER BY c.code, s.featured DESC, s.sort
+     ),
      merged AS (
        SELECT * FROM menu_match
        UNION ALL
        SELECT * FROM product_match
        UNION ALL
-       SELECT * FROM company_match WHERE code NOT IN (SELECT code FROM menu_match) AND code NOT IN (SELECT code FROM product_match)
+       SELECT * FROM service_match
+       UNION ALL
+       SELECT * FROM company_match
+        WHERE code NOT IN (SELECT code FROM menu_match)
+          AND code NOT IN (SELECT code FROM product_match)
+          AND code NOT IN (SELECT code FROM service_match)
      )
      SELECT DISTINCT ON (code) * FROM merged ORDER BY code, "matchType" NULLS LAST, ts DESC
      LIMIT $2`,
@@ -1782,7 +1832,7 @@ export async function incrementViews(code) {
 export const CARD_EVENT_TYPES = [
   'profile_view', 'phone_click', 'telegram_click', 'whatsapp_click',
   'instagram_click', 'website_click', 'email_click', 'link_click',
-  'contact_save', 'lead', 'menu_view', 'products_view',
+  'contact_save', 'lead', 'menu_view', 'products_view', 'services_view',
 ];
 
 export async function logCardEvent(code, eventType, { ref, visitorHash } = {}) {
@@ -2109,6 +2159,116 @@ export async function updateProduct(code, id, f) {
 
 export async function deleteProduct(code, id) {
   await pool.query(`DELETE FROM products WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// ---------- Xizmatlar katalogi (Business Workspace) ----------
+// product_* funksiyalari bilan bir xil naqsh — jadval nomlari boshqa,
+// qo'shimcha maydon: priceType (fixed/from/negotiable).
+
+const SERVICE_PRICE_TYPES = new Set(['fixed', 'from', 'negotiable']);
+const servicePriceType = (v) => (SERVICE_PRICE_TYPES.has(v) ? v : 'fixed');
+
+export async function getServices(code, { includeDisabled = false } = {}) {
+  const [cats, items] = await Promise.all([
+    pool.query(
+      `SELECT id, name, sort, enabled FROM service_categories
+        WHERE code = $1 ${includeDisabled ? '' : 'AND enabled = TRUE'}
+        ORDER BY sort, id`,
+      [code]
+    ),
+    pool.query(
+      `SELECT id, category_id AS "categoryId", name, description, price, price_type AS "priceType",
+              image_url AS "imageUrl", available, featured, sort
+         FROM services WHERE code = $1 ORDER BY sort, id`,
+      [code]
+    ),
+  ]);
+  const byCat = new Map();
+  for (const it of items.rows) {
+    if (!byCat.has(it.categoryId)) byCat.set(it.categoryId, []);
+    byCat.get(it.categoryId).push({ ...it, price: it.price == null ? null : Number(it.price) });
+  }
+  return cats.rows.map((c) => ({ ...c, items: byCat.get(c.id) || [] }));
+}
+
+export async function serviceCounts(code) {
+  const { rows } = await pool.query(
+    `SELECT (SELECT COUNT(*)::int FROM service_categories WHERE code = $1) AS cats,
+            (SELECT COUNT(*)::int FROM services WHERE code = $1) AS items`,
+    [code]
+  );
+  return { cats: rows[0].cats, items: rows[0].items };
+}
+
+export async function createServiceCategory(code, { name, sort }) {
+  const { rows } = await pool.query(
+    `INSERT INTO service_categories (code, name, sort) VALUES ($1, $2, $3)
+     RETURNING id, name, sort, enabled`,
+    [code, name, sort || 0]
+  );
+  return rows[0];
+}
+
+export async function updateServiceCategory(code, id, f) {
+  const { rows } = await pool.query(
+    `UPDATE service_categories SET
+        name = COALESCE($3, name), sort = COALESCE($4, sort), enabled = COALESCE($5, enabled)
+      WHERE code = $1 AND id = $2
+      RETURNING id, name, sort, enabled`,
+    [code, id, f.name ?? null, f.sort ?? null, f.enabled ?? null]
+  );
+  return rows[0] || null;
+}
+
+export async function deleteServiceCategory(code, id) {
+  await pool.query(`DELETE FROM service_categories WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// category_id shu kartaga tegishli ekanini tekshiradi (IDOR himoyasi).
+export async function serviceCategoryBelongs(code, categoryId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM service_categories WHERE id = $1 AND code = $2`, [categoryId, code]
+  );
+  return !!rows[0];
+}
+
+const serviceRow = (r) => (r ? { ...r, price: r.price == null ? null : Number(r.price) } : null);
+
+export async function createService(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO services (code, category_id, name, description, price, price_type, image_url, available, featured, sort)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     RETURNING id, category_id AS "categoryId", name, description, price, price_type AS "priceType",
+               image_url AS "imageUrl", available, featured, sort`,
+    [code, f.categoryId, f.name, f.description || null, f.price ?? null, servicePriceType(f.priceType),
+     f.imageUrl || null, f.available !== false, f.featured === true, f.sort || 0]
+  );
+  return serviceRow(rows[0]);
+}
+
+export async function updateService(code, id, f) {
+  const sets = [];
+  const vals = [code, id];
+  const col = {
+    categoryId: 'category_id', name: 'name', description: 'description', price: 'price',
+    priceType: 'price_type', imageUrl: 'image_url', available: 'available',
+    featured: 'featured', sort: 'sort',
+  };
+  for (const [k, c] of Object.entries(col)) {
+    if (k in f) { vals.push(k === 'priceType' ? servicePriceType(f[k]) : f[k]); sets.push(`${c} = $${vals.length}`); }
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE services SET ${sets.join(', ')} WHERE code = $1 AND id = $2
+     RETURNING id, category_id AS "categoryId", name, description, price, price_type AS "priceType",
+               image_url AS "imageUrl", available, featured, sort`,
+    vals
+  );
+  return serviceRow(rows[0]) || null;
+}
+
+export async function deleteService(code, id) {
+  await pool.query(`DELETE FROM services WHERE code = $1 AND id = $2`, [code, id]);
 }
 
 // ---------- Fayl / PDF / katalog (Band 3.4) ----------

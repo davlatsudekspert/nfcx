@@ -1260,6 +1260,32 @@ export const DICT = {
   'Bu mahsulotni o‘chirasizmi?': { ru: 'Удалить этот товар?', en: 'Delete this product?' },
   'Mahsulot nomi': { ru: 'Название товара', en: 'Product name' },
   'Katalog hozircha bo‘sh': { ru: 'Каталог пока пустой', en: 'The catalog is empty for now' },
+
+  // ─────────────────── Xizmatlar katalogi (Business Workspace) ───────────────────
+  'Xizmatlar': { ru: 'Услуги', en: 'Services' },
+  'Xizmatlar katalogi': { ru: 'Каталог услуг', en: 'Service catalog' },
+  'Kategoriyalar va xizmatlar': { ru: 'Категории и услуги', en: 'Categories and services' },
+  'Xizmatlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.': { ru: 'Каталог услуг — открывается с Silver NFC ID и выше.', en: 'Service catalog — unlocked with a Silver NFC ID or higher.' },
+  'Xizmat limiti tugadi ({n} ta).': { ru: 'Достигнут лимит услуг ({n}).', en: 'Service limit reached ({n}).' },
+  'Xizmatlar katalogi faqat biznes profillar uchun ochiladi.': { ru: 'Каталог услуг доступен только бизнес-профилям.', en: 'The service catalog is only for business profiles.' },
+  'Kategoriya va uning barcha xizmatlari o‘chadi. Davom etamizmi?': { ru: 'Категория и все её услуги будут удалены. Продолжить?', en: 'The category and all its services will be deleted. Continue?' },
+  'Yangi xizmat nomi': { ru: 'Название новой услуги', en: 'New service name' },
+  'Yangi kategoriya (masalan: Ta’mirlash ishlari)': { ru: 'Новая категория (например: Ремонтные работы)', en: 'New category (e.g. Repair works)' },
+  'Bu xizmatni o‘chirasizmi?': { ru: 'Удалить эту услугу?', en: 'Delete this service?' },
+  'Xizmat nomi': { ru: 'Название услуги', en: 'Service name' },
+  'Xizmatlar hozircha bo‘sh': { ru: 'Услуг пока нет', en: 'No services yet' },
+  'Xizmatlaringiz shunday ko‘rinishi mumkin': { ru: 'Так могут выглядеть ваши услуги', en: 'This is how your services could look' },
+  'Belgilangan': { ru: 'Фиксированная', en: 'Fixed' },
+  'Dan boshlab': { ru: 'От', en: 'From' },
+  'Kelishiladi': { ru: 'Договорная', en: 'Negotiable' },
+  'Narx kelishiladi': { ru: 'Цена договорная', en: 'Price negotiable' },
+  // 'dan' — mavjud kalit (pastroqda, narx oraliqlari uchun) qayta ishlatiladi.
+
+  // ───────────────── Business Workspace navigatsiyasi ─────────────────
+  // 'Asosiy'/'Katalog'/'Sozlamalar' — mavjud kalitlar boshqa joyda
+  // ishlatiladi (yuqorida allaqachon aniqlangan), shu yerda takrorlanmaydi.
+  'Lokatsiya': { ru: 'Локация', en: 'Location' },
+
   'Fayllar': { ru: 'Файлы', en: 'Files' },
   'Fayllar va hujjatlar': { ru: 'Файлы и документы', en: 'Files and documents' },
   'PDF, narxnoma, katalog, CV': { ru: 'PDF, прайс-лист, каталог, резюме', en: 'PDF, price list, catalog, CV' },
