@@ -62,6 +62,7 @@ export const FEATURE_MIN = {
   fileCatalog:          'gold',
   restaurantMenu:       'silver',
   productCatalog:       'silver',
+  serviceCatalog:       'silver',
   location:             'gold',      // manzil/koordinatalar — "Lokatsiyani ochish" (Faz 19)
 };
 
@@ -95,18 +96,31 @@ export function menuLimitsFor(currentAccess) {
   return MENU_LIMITS[currentAccess] || MENU_LIMITS.free;
 }
 
-// Menyu moduli faqat ovqatlanish sohasidagi profillar uchun ochiladi
-// (spec §51/§52: Restaurant / Cafe / Fast Food → MENU). `food` asosiy
-// soha yoki uning kichik sohalari (`food-*`).
-export function menuEligible(categorySlug) {
+// ── Biznes moduli xaritasi (Business Workspace — Architecture Correction) ──
+// Har bir biznes profil FAQAT BITTA katalog moduliga ega: soha shu modulni
+// aniqlaydi (foydalanuvchi o'zi tanlamaydi — 1:1 xarita):
+//   food / food-*     → 'menu'      (Restoran menyusi)
+//   retail / retail-* → 'products'  (Mahsulotlar katalogi)
+//   boshqa har qanday soha (yoki soha tanlanmagan) → 'services' (Xizmatlar)
+// Shaxsiy/expert profillar uchun har doim null — bu modullar FAQAT
+// profile_type === 'business' uchun. Backend HAM shu funksiyadan
+// foydalanadi (frontendda yashirish yetarli emas — server ham tekshiradi).
+export function businessModule(profileType, categorySlug) {
+  if (profileType !== 'business') return null;
   const s = String(categorySlug || '');
-  return s === 'food' || s.startsWith('food-');
+  if (s === 'food' || s.startsWith('food-')) return 'menu';
+  if (s === 'retail' || s.startsWith('retail-')) return 'products';
+  return 'services';
+}
+
+// Menyu moduli faqat ovqatlanish sohasidagi BIZNES profillar uchun ochiladi
+// (spec §51/§52: Restaurant / Cafe / Fast Food → MENU).
+export function menuEligible(profileType, categorySlug) {
+  return businessModule(profileType, categorySlug) === 'menu';
 }
 
 // ── Mahsulotlar katalogi limiti (Company System — Products) ───────────
-// Menu bilan bir xil naqsh, lekin soha bilan cheklanmaydi — istalgan
-// biznes profil o'z mahsulot katalogini ochishi mumkin (masalan do'kon,
-// texnika, mebel — "NFC Market" namunasidagi kabi).
+// Menu bilan bir xil naqsh — savdo/do'kon sohasidagi biznes profillar uchun.
 export const PRODUCT_LIMITS = {
   free:      { cat: 0,   item: 0,    images: false },
   silver:    { cat: 1,   item: 15,   images: false },
@@ -119,10 +133,33 @@ export function productLimitsFor(currentAccess) {
   return PRODUCT_LIMITS[currentAccess] || PRODUCT_LIMITS.free;
 }
 
-// Mahsulot katalogi faqat biznes profillar uchun — soha cheklanmagan.
-export function productEligible(profileType) {
-  return profileType === 'business';
+// Mahsulot katalogi faqat savdo/do'kon sohasidagi biznes profillar uchun.
+export function productEligible(profileType, categorySlug) {
+  return businessModule(profileType, categorySlug) === 'products';
 }
+
+// ── Xizmatlar katalogi limiti (Business Workspace — universal Catalog Engine) ──
+// Menu/Products bilan bir xil naqsh — restoran/do'kon bo'lmagan boshqa
+// barcha biznes yo'nalishlari (qurilish, IT, go'zallik, ta'lim va h.k.)
+// uchun. Qo'shimcha: narx turi (FIXED/FROM/NEGOTIABLE).
+export const SERVICE_LIMITS = {
+  free:      { cat: 0,   item: 0,    images: false },
+  silver:    { cat: 1,   item: 15,   images: false },
+  gold:      { cat: 8,   item: 100,  images: true },
+  premium:   { cat: 20,  item: 300,  images: true },
+  exclusive: { cat: 999, item: 9999, images: true },
+};
+
+export function serviceLimitsFor(currentAccess) {
+  return SERVICE_LIMITS[currentAccess] || SERVICE_LIMITS.free;
+}
+
+// Xizmatlar katalogi — restoran/do'kon bo'lmagan barcha biznes sohalari.
+export function serviceEligible(profileType, categorySlug) {
+  return businessModule(profileType, categorySlug) === 'services';
+}
+
+export const PRICE_TYPES = ['fixed', 'from', 'negotiable'];
 
 // ── Fayl / PDF / katalog limiti (Band 3.4) ─────────────────────────────
 // Gold+ — spec §58. Mavjud fayllar hech qachon o'chirilmaydi.

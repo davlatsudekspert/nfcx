@@ -118,3 +118,42 @@ export function ProductsPreviewGrid({ categories, t }) {
     </div>
   );
 }
+
+// Xizmatlar — grid ko'rinishi (public ServicesView bilan bir xil uslub).
+// Products'dan farqi: narx o'rniga narx TURI (belgilangan/dan boshlab/kelishiladi).
+export function ServicesPreviewList({ categories, t }) {
+  const money = (n) => `${fmt(n)} ${t("so'm")}`;
+  const priceLabel = (it) => {
+    if (it.priceType === 'negotiable') return t('Kelishiladi');
+    if (it.price == null || it.price === '') return '';
+    return it.priceType === 'from' ? `${money(it.price)} ${t('dan')}` : money(it.price);
+  };
+  const shown = (categories || []).filter((c) => c.items && c.items.length > 0);
+  if (shown.length === 0) {
+    return <div className="py-10 text-center text-xs text-base-content/40">{t('Xizmatlaringiz shunday ko‘rinishi mumkin')}</div>;
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      {shown.map((cat) => (
+        <div key={cat.id}>
+          <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {cat.items.map((it) => (
+              <div key={it.id} className={`overflow-hidden rounded-xl border border-white/10 bg-black/20 ${it.available === false ? 'opacity-45' : ''} ${it.id === '__draft__' ? 'ring-1 ring-accent/60' : ''}`}>
+                <div className="flex aspect-square items-center justify-center bg-white/5">
+                  {it.imageUrl
+                    ? <img src={it.imageUrl} alt="" className="h-full w-full object-cover" />
+                    : <span className="px-1 text-center text-[9px] text-base-content/35">{it.name || t('Nomsiz')}</span>}
+                </div>
+                <div className="p-1.5">
+                  <div className="truncate text-[10.5px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                  {priceLabel(it) && <div className="mt-0.5 text-[10px] font-bold">{priceLabel(it)}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

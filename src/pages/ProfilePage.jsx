@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetFiles, dbGetTeam } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
-import { menuEligible, productEligible } from '../lib/access.js';
+import { menuEligible, productEligible, serviceEligible } from '../lib/access.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -717,6 +717,51 @@ function ProductsView({ products, t }) {
   );
 }
 
+// Xizmatlar katalogi (Business Workspace) — ProductsView bilan bir xil
+// grid, lekin narx o'rniga narx TURI hisobga olinadi (belgilangan / dan
+// boshlab / kelishiladi) — qurilish, IT, go'zallik va h.k. sohalar uchun.
+function ServicesView({ services, t }) {
+  const money = (n) => `${fmt(n)} ${t("so'm")}`;
+  const priceLabel = (it) => {
+    if (it.priceType === 'negotiable') return t('Narx kelishiladi');
+    if (it.price == null) return '';
+    return it.priceType === 'from' ? `${money(it.price)} ${t('dan')}` : money(it.price);
+  };
+  const shown = (services || []).filter((c) => c.items && c.items.length > 0);
+  if (shown.length === 0) {
+    return <div className="mt-8 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Xizmatlar hozircha bo‘sh')}</div>;
+  }
+  return (
+    <div className="mt-6 flex flex-col gap-7">
+      {shown.map((cat) => (
+        <div key={cat.id}>
+          <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            {cat.items.map((it) => (
+              <div key={it.id} className={`flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
+                <div className="flex aspect-square items-center justify-center overflow-hidden bg-black/20">
+                  {it.imageUrl
+                    ? <img src={it.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    : <span className="text-[10px] text-[color:var(--vz-ink-faint)]">{it.name}</span>}
+                </div>
+                <div className="min-w-0 flex-1 p-2.5">
+                  <div className="text-[12.5px] font-bold leading-snug text-[color:var(--vz-ink)]">
+                    {it.featured && <span className="mr-1">⭐</span>}{it.name}
+                  </div>
+                  {priceLabel(it) && (
+                    <div className="mt-1 text-[12.5px] font-bold text-[color:var(--vz-ink)]">{priceLabel(it)}</div>
+                  )}
+                  {!it.available && <div className="mt-1 text-[10.5px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Lead Capture (Band 3.2) — tashrifchi kontaktini qoldiradi. Egasi
 // "Lidlarni yig'ish" ni yoqqan Gold+/Premium profillarda ko'rinadi.
 function LeadForm({ code, linkBtn, onDone }) {
@@ -802,6 +847,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [posts, setPosts] = useState([]);
   const [menu, setMenu] = useState([]);
   const [products, setProducts] = useState([]);
+  const [services, setServices] = useState([]);
   const [files, setFiles] = useState([]);
   const [team, setTeam] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
@@ -816,6 +862,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
     dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
     dbGetProducts(code).then(setProducts).catch(() => setProducts([]));
+    dbGetServices(code).then(setServices).catch(() => setServices([]));
     dbGetFiles(code).then(setFiles).catch(() => setFiles([]));
     dbGetTeam(code).then(setTeam).catch(() => setTeam([]));
   }, [code, user]);
@@ -835,6 +882,15 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     if (tab === 'mahsulotlar' && !productsViewLogged.current && record && !isOwner) {
       productsViewLogged.current = true;
       dbLogEvent(code, 'products_view');
+    }
+  }, [tab]);
+
+  // "Xizmatlar" tabi ochilganda bir marta services_view hodisasini yozamiz.
+  const servicesViewLogged = useRef(false);
+  useEffect(() => {
+    if (tab === 'xizmatlar' && !servicesViewLogged.current && record && !isOwner) {
+      servicesViewLogged.current = true;
+      dbLogEvent(code, 'services_view');
     }
   }, [tab]);
 
@@ -1262,7 +1318,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           >
             {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
           </button>
-          {menu.length > 0 && menuEligible(record.categorySlug) && (
+          {menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('menyu')}
               className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
@@ -1270,7 +1326,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               {t('Menyu')}
             </button>
           )}
-          {products.length > 0 && productEligible(record.profileType) && (
+          {products.length > 0 && productEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('mahsulotlar')}
               className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'mahsulotlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
@@ -1278,11 +1334,20 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               {t('Mahsulotlar')}
             </button>
           )}
+          {services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && (
+            <button
+              onClick={() => setTab('xizmatlar')}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'xizmatlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+            >
+              {t('Xizmatlar')}
+            </button>
+          )}
         </div>
 
         {tab === 'postlar' && <PostsFeed posts={posts} onLike={togglePostLike} t={t} />}
         {tab === 'menyu' && <MenuView menu={menu} t={t} />}
         {tab === 'mahsulotlar' && <ProductsView products={products} t={t} />}
+        {tab === 'xizmatlar' && <ServicesView services={services} t={t} />}
 
         {tab === 'vizitka' && (
           <>
