@@ -1448,6 +1448,9 @@ function EditCardForm({ card, onSaved }) {
     profileType: ['personal', 'expert', 'business'].includes(card.profileType) ? card.profileType : 'personal',
     city: card.city || '',
     categorySlug: card.categorySlug || '',
+    address: card.address || '',
+    latitude: card.latitude != null ? String(card.latitude) : '',
+    longitude: card.longitude != null ? String(card.longitude) : '',
     hiddenFromDirectory: !!card.hiddenFromDirectory,
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
@@ -1625,6 +1628,9 @@ function EditCardForm({ card, onSaved }) {
         profileType: form.profileType,
         city: form.city.trim(),
         categorySlug: form.categorySlug,
+        address: form.address.trim(),
+        latitude: form.latitude === '' ? null : Number(form.latitude),
+        longitude: form.longitude === '' ? null : Number(form.longitude),
         hiddenFromDirectory: form.hiddenFromDirectory,
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
@@ -2031,6 +2037,30 @@ function EditCardForm({ card, onSaved }) {
               </label>
             )}
           </Section>
+
+          {card.profileType === 'business' && (
+            <Section title={t('Manzil va lokatsiya')} subtitle={t("Qo'ng'iroq va xaritada ko'rsatish uchun")}>
+              <Gate ok={allow('location')} onLock={() => setLocked(t('Manzil va lokatsiya'))}>
+                <label className="form-control block">
+                  <span className="text-xs font-semibold text-base-content/70">{t('Manzil')}</span>
+                  <input value={form.address} onChange={set('address')} placeholder={t('Ko‘cha, uy, mo‘ljal')} className={inp} />
+                </label>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="form-control">
+                    <span className="text-xs font-semibold text-base-content/70">{t('Kenglik (latitude)')}</span>
+                    <input value={form.latitude} onChange={set('latitude')} type="number" step="any" placeholder="41.311081" className={`${inp} font-mono`} />
+                  </label>
+                  <label className="form-control">
+                    <span className="text-xs font-semibold text-base-content/70">{t('Uzunlik (longitude)')}</span>
+                    <input value={form.longitude} onChange={set('longitude')} type="number" step="any" placeholder="69.240562" className={`${inp} font-mono`} />
+                  </label>
+                </div>
+                <p className="mt-2 text-[11.5px] text-base-content/40">
+                  {t('Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.')}
+                </p>
+              </Gate>
+            </Section>
+          )}
 
           <Section title={t("To'lov kartalari")} subtitle={t("Profilda ko'rinadigan karta raqamlari")}>
             <label className="form-control block">

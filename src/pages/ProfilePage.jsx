@@ -1294,6 +1294,15 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
             <div className="mt-[22px] flex flex-col gap-2.5">
               {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`} onClick={() => track('phone_click')}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
+              {(record.latitude != null && record.longitude != null || record.address) && (
+                <a className={linkBtn}
+                  href={record.latitude != null && record.longitude != null
+                    ? `https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address)}`}
+                  target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}>
+                  {'\u{1F4CD}'} {t('Xaritada ochish')}
+                </a>
+              )}
               {record.email && <a className={linkBtn} href={`mailto:${record.email}`} onClick={() => track('email_click')}><IconMail /> {record.email}</a>}
               {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer" onClick={() => track('telegram_click')}><IconTelegram /> Telegram</a>}
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer" onClick={() => track('instagram_click')}><IconInstagram /> Instagram</a>}

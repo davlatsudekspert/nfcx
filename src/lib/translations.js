@@ -1527,4 +1527,13 @@ export const DICT = {
   // ── Discovery qidiruvi (Faz 12) ──
   'qidirilmoqda': { ru: 'идёт поиск', en: 'searching' },
   'Mos natija': { ru: 'Совпадение', en: 'Match' },
+
+  // ── Manzil va lokatsiya (Faz 19) ──
+  'Manzil va lokatsiya': { ru: 'Адрес и локация', en: 'Address and location' },
+  "Qo'ng'iroq va xaritada ko'rsatish uchun": { ru: 'Для звонка и показа на карте', en: 'For calls and showing on the map' },
+  'Ko‘cha, uy, mo‘ljal': { ru: 'Улица, дом, ориентир', en: 'Street, building, landmark' },
+  'Kenglik (latitude)': { ru: 'Широта (latitude)', en: 'Latitude' },
+  'Uzunlik (longitude)': { ru: 'Долгота (longitude)', en: 'Longitude' },
+  'Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.': { ru: 'Координаты можно скопировать, нажав на место в Google Maps. Если указаны, в профиле появится кнопка «Открыть на карте».', en: 'You can copy the coordinates by tapping the spot in Google Maps. Once set, an "Open in Maps" button appears on the profile.' },
+  'Xaritada ochish': { ru: 'Открыть на карте', en: 'Open in Maps' },
 };

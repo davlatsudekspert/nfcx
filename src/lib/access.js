@@ -62,6 +62,7 @@ export const FEATURE_MIN = {
   fileCatalog:          'gold',
   restaurantMenu:       'silver',
   productCatalog:       'silver',
+  location:             'gold',      // manzil/koordinatalar — "Lokatsiyani ochish" (Faz 19)
 };
 
 // ── Tarif bo'yicha post limiti ─────────────────────────────────────────

@@ -289,6 +289,15 @@ function validateBody(body) {
   const profileType = ['personal', 'expert', 'business'].includes(body.profileType) ? body.profileType : 'personal';
   const city = cleanStr(body.city, 60);
   const categorySlug = String(body.categorySlug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
+  // Manzil + koordinatalar (Company System — Faz 1/19). Gold+ funksiya —
+  // "Lokatsiyani ochish" (Maps havolasi) uchun.
+  const address = cleanStr(body.address, 200);
+  const geoNum = (v, lo, hi) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
+  };
+  const latitude = geoNum(body.latitude, -90, 90);
+  const longitude = geoNum(body.longitude, -180, 180);
   const hiddenFromDirectory = body.hiddenFromDirectory === true;
   const leadCapture = body.leadCapture === true;
   // Profil kartasi (nfcstore.uz/<kod> sahifasida ko'rinadigan NFC karta)
@@ -373,6 +382,9 @@ function validateBody(body) {
   if ('profileType' in body) record.profileType = profileType;
   if ('city' in body) record.city = city;
   if ('categorySlug' in body) record.categorySlug = categorySlug;
+  if ('address' in body) record.address = address;
+  if ('latitude' in body) record.latitude = latitude;
+  if ('longitude' in body) record.longitude = longitude;
   if ('hiddenFromDirectory' in body) record.hiddenFromDirectory = hiddenFromDirectory;
   if ('leadCapture' in body) record.leadCapture = leadCapture;
   return { record };
@@ -1483,7 +1495,8 @@ app.put('/api/records/:code', async (req, res) => {
     const cur = await getRecord(code);
     if (!cur) return res.status(404).json({ error: 'not_found' });
 
-    const { record } = validateBody(req.body || {});
+    const { record, error } = validateBody(req.body || {});
+    if (error) return res.status(422).json({ error });
 
     // ── EFFECTIVE ACCESS enforcement ──────────────────────────────────
     // Tarif/Premium yetmasa, YOPIQ maydonni O'ZGARTIRIB bo'lmaydi.
@@ -1511,6 +1524,13 @@ app.put('/api/records/:code', async (req, res) => {
     // Lead formasini YOQISH — Gold+/Premium (o'chirish har doim mumkin).
     if ('leadCapture' in (req.body || {})) {
       guard('leadCapture', record.leadCapture === true && !cur.leadCapture);
+    }
+    // Manzil/koordinatalar — Gold+ ("Lokatsiyani ochish", Faz 19). Faqat
+    // haqiqatan yuborilgan bo'lsa tekshiramiz — aks holda boshqa
+    // maydonlarni saqlashda address/lat/lng yo'qolib qolardi.
+    if ('address' in (req.body || {}) || 'latitude' in (req.body || {}) || 'longitude' in (req.body || {})) {
+      guard('location', s(record.address) !== s(cur.address)
+        || s(record.latitude) !== s(cur.latitude) || s(record.longitude) !== s(cur.longitude));
     }
 
     const updated = await updateRecord(code, record);

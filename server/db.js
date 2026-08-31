@@ -212,6 +212,10 @@ export async function initDb() {
     profile_type: `ALTER TABLE cards ADD COLUMN profile_type VARCHAR(12) NOT NULL DEFAULT 'personal'`,
     city: `ALTER TABLE cards ADD COLUMN city TEXT`,
     hidden_from_directory: `ALTER TABLE cards ADD COLUMN hidden_from_directory BOOLEAN NOT NULL DEFAULT FALSE`,
+    // Manzil + koordinatalar (Company System — Faz 1/19). Gold+ funksiya.
+    address: `ALTER TABLE cards ADD COLUMN address TEXT`,
+    latitude: `ALTER TABLE cards ADD COLUMN latitude DOUBLE PRECISION`,
+    longitude: `ALTER TABLE cards ADD COLUMN longitude DOUBLE PRECISION`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -227,7 +231,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory', 'address', 'latitude', 'longitude']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -1505,6 +1509,7 @@ const SELECT_FIELDS = `
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
   links_transparent AS "linksTransparent", link_style AS "linkStyle",
   profile_type AS "profileType", city, category_slug AS "categorySlug", hidden_from_directory AS "hiddenFromDirectory",
+  address, latitude, longitude,
   lead_capture AS "leadCapture",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
@@ -1534,6 +1539,9 @@ function rowToRecord(row) {
     profileType: ['personal', 'expert', 'business'].includes(row.profileType) ? row.profileType : 'personal',
     city: row.city || '',
     categorySlug: row.categorySlug || '',
+    address: row.address || '',
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
     hiddenFromDirectory: !!row.hiddenFromDirectory,
     leadCapture: !!row.leadCapture,
     musicUrl: row.musicUrl || '',
@@ -1682,6 +1690,7 @@ export async function getRecord(code) {
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
             c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle",
             c.profile_type AS "profileType", c.city, c.category_slug AS "categorySlug",
+            c.address, c.latitude, c.longitude,
             c.hidden_from_directory AS "hiddenFromDirectory", c.lead_capture AS "leadCapture", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
@@ -2943,6 +2952,9 @@ export async function updateRecord(code, fields) {
     profileType: 'profile_type',
     city: 'city',
     categorySlug: 'category_slug',
+    address: 'address',
+    latitude: 'latitude',
+    longitude: 'longitude',
     hiddenFromDirectory: 'hidden_from_directory',
     leadCapture: 'lead_capture',
     musicUrl: 'music_url',
