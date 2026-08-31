@@ -16,6 +16,7 @@ import {
   createProductCategory, updateProductCategory, deleteProductCategory,
   createProduct, updateProduct, deleteProduct,
   getLimitsOverride, getPhysicalNfcTiers, getDeliveryDays, DEFAULT_PHYSICAL_NFC_TIERS, DEFAULT_DELIVERY_DAYS,
+  searchCompanyDirectory,
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
   listCardVideos, cardVideoCount, createCardVideo, updateCardVideo, deleteCardVideo,
   listCardTeam, cardTeamCount, createTeamMember, updateTeamMember, deleteTeamMember,
@@ -186,6 +187,7 @@ const supportLimiter = rateLimit({ windowMs: 60_000, max: 5 });
 const auctionRequestLimiter = rateLimit({ windowMs: 60_000, max: 10 });
 // Analytics — bir IP'dan daqiqada 40 hodisa (view + link bosishlar).
 const eventLimiter = rateLimit({ windowMs: 60_000, max: 40 });
+const companySearchLimiter = rateLimit({ windowMs: 60_000, max: 30 });
 // AI yordamchi — bir IP: daqiqada 6, soatiga 40 (spam/xarajat nazorati).
 const assistantLimiterMin = rateLimit({ windowMs: 60_000, max: 6 });
 const assistantLimiterHour = rateLimit({ windowMs: 60 * 60_000, max: 40 });
@@ -387,6 +389,21 @@ app.get('/api/health', (req, res) => {
 // Bu — korporativ (ko'p dona) buyurtma uchun INFORMATSION kalkulyator;
 // checkout/to'lov oqimiga ulanmagan (to'lovlar hozircha butunlay o'chiq —
 // buyurtma Telegram orqali qo'lda qilinadi).
+// ---------- Kompaniyalar (Discovery) qidiruvi — Company System Faz 12 ----------
+// Kompaniya nomi/soha/shahar VA Menyu/Mahsulot elementi nomi bo'yicha
+// qidiradi. Debounce/limit — mijozda; rate-limit — bu yerda.
+app.get('/api/companies/search', companySearchLimiter, async (req, res) => {
+  const q = cleanStr(req.query.q, 80).trim();
+  if (!q) return res.json({ results: [] });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ results: await searchCompanyDirectory(q, 30) });
+  } catch (err) {
+    console.error('[api] companies search:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
 app.get('/api/settings/physical-nfc-pricing', async (req, res) => {
   if (!isDbReady()) return res.json({ tiers: DEFAULT_PHYSICAL_NFC_TIERS, delivery: DEFAULT_DELIVERY_DAYS });
   try {

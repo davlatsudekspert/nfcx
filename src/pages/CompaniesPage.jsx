@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import { fmt } from '../lib/format.js';
-import { dbGetPhysicalNfcPricing } from '../lib/db.js';
+import { dbGetPhysicalNfcPricing, dbSearchCompanies } from '../lib/db.js';
 
 const FEATURES = [
   'Kompaniya logotipi va dizayni',
@@ -163,9 +163,26 @@ export default function CompaniesPage({ catalog = [] }) {
   const { t, lang } = useLanguage();
   const cats = useCategories();
   const [q, setQ] = useState('');
+  // Qidiruv (Faz 12) — kompaniya darajasida DARHOL (client-side, catalog
+  // allaqachon yuklangan), Menyu/Mahsulot ELEMENT nomlari uchun esa
+  // backend'dan (debounce bilan — har harfda so'rov yubormaslik uchun).
+  const [itemResults, setItemResults] = useState(null); // null — hali qidirilmagan
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef(null);
+
+  useEffect(() => {
+    const term = q.trim();
+    clearTimeout(debounceRef.current);
+    if (!term) { setItemResults(null); setSearching(false); return; }
+    setSearching(true);
+    debounceRef.current = setTimeout(() => {
+      dbSearchCompanies(term).then((res) => { setItemResults(res); setSearching(false); });
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [q]);
 
   const query = q.trim().toUpperCase();
-  const companies = useMemo(() => [...catalog]
+  const localMatches = useMemo(() => [...catalog]
     .filter((it) => it.profileType === 'business')
     .sort((a, b) => b.ts - a.ts)
     .filter((it) => !query
@@ -175,6 +192,20 @@ export default function CompaniesPage({ catalog = [] }) {
       || (it.city || '').toUpperCase().includes(query)
       || catPath(cats, it.categorySlug, lang).toUpperCase().includes(query)),
   [catalog, query, cats, lang]);
+
+  // Backend natijasi kelgach — Menyu/Mahsulot elementi bo'yicha topilgan
+  // kompaniyalarni ham qo'shamiz (local filter ularni ko'rmaydi, chunki
+  // `catalog` faqat kompaniya darajasidagi maydonlarni bilади).
+  const companies = useMemo(() => {
+    if (!query) return localMatches;
+    if (itemResults == null) return localMatches;
+    const byCode = new Map(localMatches.map((it) => [it.code, it]));
+    for (const r of itemResults) {
+      const existing = byCode.get(r.code);
+      byCode.set(r.code, { ...(existing || r), ...r });
+    }
+    return [...byCode.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }, [localMatches, itemResults, query]);
 
   const cardCls = 'cursor-pointer rounded-2xl border border-white/10 bg-base-200/60 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200';
 
@@ -247,7 +278,10 @@ export default function CompaniesPage({ catalog = [] }) {
 
       <section id="kompaniyalar-royxati" className="mt-16">
         <h2 className="text-xl font-bold">{t('Kompaniyalar va menyularni kashf eting')} <span className="text-base font-normal text-base-content/40">({fmt(companies.length)})</span></h2>
-        <p className="mt-1.5 text-[14px] text-base-content/50">{t('Restoranlar va kompaniyalarni qidiring, ularning menyu va kataloglarini ko‘ring.')}</p>
+        <p className="mt-1.5 text-[14px] text-base-content/50">
+          {t('Restoranlar va kompaniyalarni qidiring, ularning menyu va kataloglarini ko‘ring.')}
+          {searching && <span className="ml-2 text-base-content/35">{'…'} {t('qidirilmoqda')}</span>}
+        </p>
         {companies.length === 0 ? (
           <p className="mt-4 text-[15px] text-base-content/45">{t('Hozircha katalogda kompaniya profillari yo‘q. Birinchi bo‘lib qo‘shiling.')}</p>
         ) : (
@@ -272,6 +306,12 @@ export default function CompaniesPage({ catalog = [] }) {
                     <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] text-base-content/45">
                       {cp && <span className="rounded-full border border-white/10 px-2 py-0.5">{cp}</span>}
                       {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{'\u{1F4CD}'} {it.city}</span>}
+                    </div>
+                  )}
+                  {it.matchLabel && (
+                    <div className="mt-2.5 rounded-lg border border-accent/25 bg-accent/5 px-2.5 py-1.5 text-[11.5px] text-accent">
+                      {'✨'} {t('Mos natija')}: <b>{it.matchLabel}</b>
+                      {it.matchPrice != null && <> — {fmt(it.matchPrice)} {t("so'm")}</>}
                     </div>
                   )}
                 </button>

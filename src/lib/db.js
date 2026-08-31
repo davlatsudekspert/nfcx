@@ -870,3 +870,13 @@ export async function dbGetPhysicalNfcPricing() {
     return null;
   }
 }
+
+// ---------- Kompaniyalar (Discovery) qidiruvi (Company System — Faz 12) ----------
+export async function dbSearchCompanies(q) {
+  try {
+    const j = await api(`/companies/search?q=${encodeURIComponent(q)}`);
+    return (j && j.results) || [];
+  } catch {
+    return [];
+  }
+}

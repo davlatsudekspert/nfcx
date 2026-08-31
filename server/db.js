@@ -1607,6 +1607,70 @@ export async function searchRecords(q, { includeHidden = false, limit = 60 } = {
   return rows.map(rowToRecord);
 }
 
+// ---------- Kompaniyalar (Discovery) qidiruvi — Company System Faz 12 ----------
+// Faqat biznes profillar (yashiringanlar bundan mustasno). Kompaniya
+// darajasidagi maydonlar (nomi/soha/shahar) + Menyu/Mahsulot ELEMENT
+// nomlari bo'yicha ham qidiradi ("osh" → "Osh" bor restoranlar).
+// Har bir natija — bitta kompaniya, mos kelgan eng yaxshi element bilan
+// (matchType/matchLabel/matchPrice) — mavjud searchRecords()'ga
+// TEGILMAGAN (Header/Katalog qidiruvi shu funksiyaga bog'liq).
+export async function searchCompanyDirectory(q, limit = 30) {
+  const term = String(q || '').trim();
+  if (!term) return [];
+  const like = `%${term.toLowerCase()}%`;
+  const cap = Math.max(1, Math.min(60, limit));
+
+  const { rows } = await pool.query(
+    `WITH company_match AS (
+       SELECT c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              NULL::text AS "matchType", NULL::text AS "matchLabel", NULL::bigint AS "matchPrice"
+         FROM cards c
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND (LOWER(c.name) LIKE $1 OR LOWER(c.code) LIKE $1
+               OR LOWER(COALESCE(c.city, '')) LIKE $1 OR LOWER(COALESCE(c.role, '')) LIKE $1)
+     ),
+     menu_match AS (
+       SELECT DISTINCT ON (c.code)
+              c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              'menu'::text AS "matchType", mi.name AS "matchLabel", mi.price AS "matchPrice"
+         FROM menu_items mi
+         JOIN cards c ON c.code = mi.code
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND LOWER(mi.name) LIKE $1
+        ORDER BY c.code, mi.featured DESC, mi.sort
+     ),
+     product_match AS (
+       SELECT DISTINCT ON (c.code)
+              c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              'product'::text AS "matchType", p.name AS "matchLabel", p.price AS "matchPrice"
+         FROM products p
+         JOIN cards c ON c.code = p.code
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND LOWER(p.name) LIKE $1
+        ORDER BY c.code, p.featured DESC, p.sort
+     ),
+     merged AS (
+       SELECT * FROM menu_match
+       UNION ALL
+       SELECT * FROM product_match
+       UNION ALL
+       SELECT * FROM company_match WHERE code NOT IN (SELECT code FROM menu_match) AND code NOT IN (SELECT code FROM product_match)
+     )
+     SELECT DISTINCT ON (code) * FROM merged ORDER BY code, "matchType" NULLS LAST, ts DESC
+     LIMIT $2`,
+    [like, cap]
+  );
+  return rows.map((r) => ({
+    ...r,
+    ts: Number(r.ts),
+    verified: !!r.verified,
+    matchPrice: r.matchPrice == null ? null : Number(r.matchPrice),
+  })).sort((a, b) => b.ts - a.ts);
+}
+
 export async function countRecords() {
   const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM cards`);
   return Number(rows[0].n);

@@ -1523,4 +1523,8 @@ export const DICT = {
   'Nomsiz': { ru: 'Без названия', en: 'Untitled' },
   'Menyuingiz shunday ko‘rinishi mumkin': { ru: 'Так может выглядеть ваше меню', en: 'Your menu could look like this' },
   'Katalogingiz shunday ko‘rinishi mumkin': { ru: 'Так может выглядеть ваш каталог', en: 'Your catalog could look like this' },
+
+  // ── Discovery qidiruvi (Faz 12) ──
+  'qidirilmoqda': { ru: 'идёт поиск', en: 'searching' },
+  'Mos natija': { ru: 'Совпадение', en: 'Match' },
 };
