@@ -10,6 +10,7 @@ import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
+import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
@@ -75,12 +76,16 @@ function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
 // Restoran menyusi (Band 3.3) — egaga boshqaruv. Kategoriya → taom.
 const MENU_ITEM_EMPTY = { name: '', description: '', price: '', discountPrice: '', imageUrl: '', available: true, featured: false };
 
-function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
+function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange, onDraftEnd }) {
   const { t } = useLanguage();
   const [edit, setEdit] = useState(false);
   const [f, setF] = useState(item);
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const set = (k) => (e) => setF((s) => {
+    const next = { ...s, [k]: e.target.value };
+    onDraftChange?.(next);
+    return next;
+  });
 
   const save = async () => {
     setBusy(true);
@@ -91,7 +96,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         discountPrice: f.discountPrice === '' ? null : f.discountPrice,
         available: f.available, featured: f.featured,
       });
-      onChanged(row); setEdit(false);
+      onChanged(row); setEdit(false); onDraftEnd?.();
     } finally { setBusy(false); }
   };
   const toggle = async (field) => {
@@ -125,7 +130,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </div>
         <div className="flex gap-2">
           <button className="btn btn-primary btn-xs" onClick={save} disabled={busy}>{t('Saqlash')}</button>
-          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); }}>{t('Bekor')}</button>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); onDraftEnd?.(); }}>{t('Bekor')}</button>
         </div>
       </div>
     );
@@ -150,7 +155,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </div>
         {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
-          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => setEdit(true)}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
             {item.available ? '🟢' : '⚫'}
           </button>
@@ -172,6 +177,10 @@ function MenuManagerSection({ code, allowed, onLock }) {
   const [adding, setAdding] = useState({}); // catId -> MENU_ITEM_EMPTY
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  // Live Phone Preview (Faz 6) — hozir tahrirlanayotgan/qo'shilayotgan
+  // element, local state — backend'ga har harfda so'rov yubormaydi.
+  const [draft, setDraft] = useState(null);
+  const [mobilePreview, setMobilePreview] = useState(false);
 
   const load = () => dbGetMenuManage(code).then(setData).catch(() => setErr(true));
   useEffect(() => { if (allowed) load(); }, [code, allowed]);
@@ -190,6 +199,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
   const { menu, limits, counts } = data;
   const eligible = data.eligible !== false;
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const previewCategories = mergeDraftIntoCategories(menu, draft);
 
   const addCat = async () => {
     const name = newCat.trim();
@@ -221,6 +231,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
         available: true,
       });
       setAdding((s) => ({ ...s, [catId]: MENU_ITEM_EMPTY }));
+      setDraft(null);
       await load();
     } catch (e) {
       flash(e.message === 'limit_reached' ? t('Taom limiti tugadi ({n} ta).', { n: e.limit })
@@ -229,9 +240,16 @@ function MenuManagerSection({ code, allowed, onLock }) {
     } finally { setBusy(false); }
   };
 
-  const setAddF = (catId, k) => (e) => setAdding((s) => ({ ...s, [catId]: { ...(s[catId] || MENU_ITEM_EMPTY), [k]: e.target.value } }));
+  const setAddF = (catId, k) => (e) => {
+    const val = e.target.value;
+    setAdding((s) => {
+      const next = { ...(s[catId] || MENU_ITEM_EMPTY), [k]: val };
+      setDraft({ ...next, id: '__draft__', categoryId: catId });
+      return { ...s, [catId]: next };
+    });
+  };
 
-  return (
+  const editorBody = (
     <div className="space-y-4">
       {!eligible && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
@@ -260,6 +278,8 @@ function MenuManagerSection({ code, allowed, onLock }) {
               <MenuItemRow
                 key={it.id} code={code} item={it} canImage={limits.images}
                 onChanged={() => load()} onDeleted={() => load()}
+                onDraftChange={(f) => setDraft({ ...f, categoryId: cat.id })}
+                onDraftEnd={() => setDraft(null)}
               />
             ))}
           </div>
@@ -286,18 +306,54 @@ function MenuManagerSection({ code, allowed, onLock }) {
       )}
     </div>
   );
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_296px] lg:items-start lg:gap-6">
+      {editorBody}
+
+      {/* Desktop — jonli preview yon tomonda (sticky) */}
+      <div className="hidden lg:sticky lg:top-20 lg:block">
+        <PhoneFrame label={t('Jonli ko‘rinish')}>
+          <MenuPreviewList categories={previewCategories} t={t} />
+        </PhoneFrame>
+      </div>
+
+      {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
+      <button type="button" onClick={() => setMobilePreview(true)}
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
+        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+      </button>
+      {mobilePreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
+          <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+              {t('Jonli ko‘rinish')}
+              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+            </div>
+            <PhoneFrame>
+              <MenuPreviewList categories={previewCategories} t={t} />
+            </PhoneFrame>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Mahsulotlar katalogi (Company System — Products) — Menyu bilan bir xil
 // naqsh, lekin soha bilan cheklanmagan (istalgan biznes profil uchun).
 const PRODUCT_EMPTY = { name: '', description: '', price: '', discountPrice: '', imageUrl: '', available: true, featured: false };
 
-function ProductItemRow({ code, item, canImage, onChanged, onDeleted }) {
+function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange, onDraftEnd }) {
   const { t } = useLanguage();
   const [edit, setEdit] = useState(false);
   const [f, setF] = useState(item);
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const set = (k) => (e) => setF((s) => {
+    const next = { ...s, [k]: e.target.value };
+    onDraftChange?.(next);
+    return next;
+  });
 
   const save = async () => {
     setBusy(true);
@@ -308,7 +364,7 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted }) {
         discountPrice: f.discountPrice === '' ? null : f.discountPrice,
         available: f.available, featured: f.featured,
       });
-      onChanged(row); setEdit(false);
+      onChanged(row); setEdit(false); onDraftEnd?.();
     } finally { setBusy(false); }
   };
   const toggle = async (field) => {
@@ -342,7 +398,7 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </div>
         <div className="flex gap-2">
           <button className="btn btn-primary btn-xs" onClick={save} disabled={busy}>{t('Saqlash')}</button>
-          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); }}>{t('Bekor')}</button>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); onDraftEnd?.(); }}>{t('Bekor')}</button>
         </div>
       </div>
     );
@@ -367,7 +423,7 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </div>
         {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
-          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => setEdit(true)}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
             {item.available ? '🟢' : '⚫'}
           </button>
@@ -389,6 +445,9 @@ function ProductManagerSection({ code, allowed, onLock }) {
   const [adding, setAdding] = useState({}); // catId -> PRODUCT_EMPTY
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  // Live Phone Preview (Faz 8) — MenuManagerSection bilan bir xil naqsh.
+  const [draft, setDraft] = useState(null);
+  const [mobilePreview, setMobilePreview] = useState(false);
 
   const load = () => dbGetProductsManage(code).then(setData).catch(() => setErr(true));
   useEffect(() => { if (allowed) load(); }, [code, allowed]);
@@ -407,6 +466,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
   const { products, limits, counts } = data;
   const eligible = data.eligible !== false;
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const previewCategories = mergeDraftIntoCategories(products, draft);
 
   const addCat = async () => {
     const name = newCat.trim();
@@ -438,6 +498,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
         available: true,
       });
       setAdding((s) => ({ ...s, [catId]: PRODUCT_EMPTY }));
+      setDraft(null);
       await load();
     } catch (e) {
       flash(e.message === 'limit_reached' ? t('Mahsulot limiti tugadi ({n} ta).', { n: e.limit })
@@ -446,9 +507,16 @@ function ProductManagerSection({ code, allowed, onLock }) {
     } finally { setBusy(false); }
   };
 
-  const setAddF = (catId, k) => (e) => setAdding((s) => ({ ...s, [catId]: { ...(s[catId] || PRODUCT_EMPTY), [k]: e.target.value } }));
+  const setAddF = (catId, k) => (e) => {
+    const val = e.target.value;
+    setAdding((s) => {
+      const next = { ...(s[catId] || PRODUCT_EMPTY), [k]: val };
+      setDraft({ ...next, id: '__draft__', categoryId: catId });
+      return { ...s, [catId]: next };
+    });
+  };
 
-  return (
+  const editorBody = (
     <div className="space-y-4">
       {!eligible && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
@@ -477,6 +545,8 @@ function ProductManagerSection({ code, allowed, onLock }) {
               <ProductItemRow
                 key={it.id} code={code} item={it} canImage={limits.images}
                 onChanged={() => load()} onDeleted={() => load()}
+                onDraftChange={(f) => setDraft({ ...f, categoryId: cat.id })}
+                onDraftEnd={() => setDraft(null)}
               />
             ))}
           </div>
@@ -499,6 +569,38 @@ function ProductManagerSection({ code, allowed, onLock }) {
           <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Aksessuarlar)')}
             value={newCat} onChange={(e) => setNewCat(e.target.value)} />
           <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_296px] lg:items-start lg:gap-6">
+      {editorBody}
+
+      {/* Desktop — jonli preview yon tomonda (sticky) */}
+      <div className="hidden lg:sticky lg:top-20 lg:block">
+        <PhoneFrame label={t('Jonli ko‘rinish')}>
+          <ProductsPreviewGrid categories={previewCategories} t={t} />
+        </PhoneFrame>
+      </div>
+
+      {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
+      <button type="button" onClick={() => setMobilePreview(true)}
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
+        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+      </button>
+      {mobilePreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
+          <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+              {t('Jonli ko‘rinish')}
+              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+            </div>
+            <PhoneFrame>
+              <ProductsPreviewGrid categories={previewCategories} t={t} />
+            </PhoneFrame>
+          </div>
         </div>
       )}
     </div>

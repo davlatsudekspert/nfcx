@@ -1516,4 +1516,11 @@ export const DICT = {
   'Dona narxi': { ru: 'Цена за шт.', en: 'Price per unit' },
   'dona': { ru: 'шт.', en: 'units' },
   'Taxminiy yetkazib berish': { ru: 'Ориентировочная доставка', en: 'Estimated delivery' },
+
+  // ── Live Phone Preview (Faz 6/8) ──
+  'Jonli ko‘rinish': { ru: 'Живой предпросмотр', en: 'Live preview' },
+  'Ko‘rish': { ru: 'Просмотр', en: 'Preview' },
+  'Nomsiz': { ru: 'Без названия', en: 'Untitled' },
+  'Menyuingiz shunday ko‘rinishi mumkin': { ru: 'Так может выглядеть ваше меню', en: 'Your menu could look like this' },
+  'Katalogingiz shunday ko‘rinishi mumkin': { ru: 'Так может выглядеть ваш каталог', en: 'Your catalog could look like this' },
 };
