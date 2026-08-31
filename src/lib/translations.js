@@ -677,9 +677,13 @@ export const DICT = {
   'Olib tashlash': { ru: 'Убрать', en: 'Remove' },
   'yoki havola: https://.../musiqa.mp3': { ru: 'или ссылка: https://.../music.mp3', en: 'or a link: https://.../music.mp3' },
   'YouTube havolasi yoki https://.../musiqa.mp3': { ru: 'Ссылка на YouTube или https://.../music.mp3', en: 'YouTube link or https://.../music.mp3' },
+  'YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3': { ru: 'Ссылка на YouTube / Яндекс Музыку или https://.../music.mp3', en: 'YouTube / Yandex Music link or https://.../music.mp3' },
   'YouTube musiqasi ulandi — iPhone/Android hammasida ishlaydi.': { ru: 'Музыка с YouTube подключена — работает на iPhone/Android.', en: 'YouTube music connected — works on iPhone/Android.' },
+  'Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.': { ru: 'Ссылка на музыку подключена — работает на iPhone/Android.', en: 'Music link connected — works on iPhone/Android.' },
   "YouTube havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.":
     { ru: 'Если вставите ссылку на YouTube — без загрузки файла, работает и на iPhone. Либо прямая ссылка на .mp3 / файл. Посетитель профиля включает/выключает кнопкой внизу.', en: 'Paste a YouTube link — no file upload, works on iPhone too. Or a direct .mp3 link / file. A visitor toggles it with the button below.' },
+  "YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.":
+    { ru: 'Если вставите ссылку на YouTube или Яндекс Музыку — без загрузки файла, работает и на iPhone. Либо прямая ссылка на .mp3 / файл. Посетитель профиля включает/выключает кнопкой внизу.', en: 'Paste a YouTube or Yandex Music link — no file upload, works on iPhone too. Or a direct .mp3 link / file. A visitor toggles it with the button below.' },
   "Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chira oladi (brauzerlar avtomatik ovozli ijroni bloklaydi).":
     { ru: 'Посетитель вашего профиля может включать/выключать её кнопкой внизу (браузеры блокируют автовоспроизведение со звуком).', en: 'A visitor to your profile can toggle it with the button below (browsers block autoplay with sound).' },
   'username yoki havola': { ru: 'юзернейм или ссылка', en: 'username or link' },

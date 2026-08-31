@@ -206,20 +206,40 @@
 .cat-card {
   position: relative;
   isolation: isolate;
-  border: 1px solid var(--tier-line, rgba(255,255,255,0.10));
+  border: 1.5px solid var(--tier-line, rgba(255,255,255,0.14));
   background:
-    radial-gradient(120% 130% at 8% 0%, var(--tier-glow, transparent), transparent 58%),
-    rgba(255,255,255,0.02);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    radial-gradient(130% 140% at 6% -10%, var(--tier-glow, transparent), transparent 55%),
+    linear-gradient(160deg, var(--tier-fill, rgba(255,255,255,0.03)), rgba(255,255,255,0.015) 70%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 0 0 1px color-mix(in srgb, var(--tier, #fff) 12%, transparent);
   transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.cat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--tier, rgba(255,255,255,0.3));
+  box-shadow: 0 0 12px var(--tier-glow, transparent);
+  z-index: 1;
 }
 .cat-card:hover {
   transform: translateY(-2px);
-  border-color: var(--tier, rgba(255,255,255,0.25));
-  box-shadow: 0 14px 36px rgba(0,0,0,0.42), 0 0 0 1px var(--tier-line, rgba(255,255,255,0.15));
+  border-color: var(--tier, rgba(255,255,255,0.3));
+  box-shadow:
+    0 16px 40px rgba(0,0,0,0.45),
+    0 0 0 1px var(--tier-line, rgba(255,255,255,0.2)),
+    0 0 26px var(--tier-glow, transparent);
 }
 .cat-card > * { position: relative; z-index: 3; }
 .cat-grid > * { content-visibility: auto; contain-intrinsic-size: auto 190px; }
+
+/* Katalogdagi begushiy yaltiroq — kartadagi tarif urg'usi uchun biroz kuchliroq. */
+.cat-card.tier-shine::after {
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.10) 46%, rgba(255,255,255,0.42) 50%, rgba(255,255,255,0.10) 54%, transparent 62%);
+}
 
 /* ===== Auksion "Talab" board kartasi — exclusive qora/oltin + begushiy yaltiroq ===
    .tier-shine bilan birga ishlatiladi (diagonal yorug'lik har kartadan navbat

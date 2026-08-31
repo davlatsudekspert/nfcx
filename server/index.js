@@ -2096,8 +2096,8 @@ app.post('/api/upload-audio', async (req, res) => {
   if (!m) return res.status(422).json({ error: 'bad_audio' });
   const buf = Buffer.from(m[3], 'base64');
   if (!buf.length) return res.status(422).json({ error: 'bad_audio' });
-  // ~8 MB — profil musiqasi uchun yetarli (o'rtacha 3-4 daqiqalik mp3).
-  if (buf.length > 8 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
+  // ~10 MB — profil musiqasi uchun yetarli (o'rtacha 4-5 daqiqalik mp3).
+  if (buf.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'too_large' });
 
   try {
     await fs.mkdir(UPLOAD_DIR, { recursive: true });

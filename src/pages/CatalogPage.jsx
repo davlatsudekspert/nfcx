@@ -141,8 +141,9 @@ export default function CatalogPage({ catalog }) {
                 className="cat-card tier-shine cursor-pointer rounded-2xl p-5 text-left"
                 style={{
                   '--tier': tc,
-                  '--tier-line': tc + '59',
-                  '--tier-glow': tc + '22',
+                  '--tier-line': tc + 'b3',
+                  '--tier-glow': tc + '3d',
+                  '--tier-fill': tc + '14',
                   '--shine-delay': `${(idx % 7) * 0.55}s`,
                 }}
                 onClick={() => navigate('/' + it.code)}

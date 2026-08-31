@@ -4,7 +4,7 @@ import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDelete
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { isYoutubeMusic } from '../lib/music.js';
+import { isEmbedMusic } from '../lib/music.js';
 import { MESSAGING_ENABLED, PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
@@ -1199,8 +1199,8 @@ function EditCardForm({ card, onSaved }) {
   const onPickMusicFile = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      setMsg({ type: 'err', text: t("Musiqa fayli juda katta (maksimal ~8 MB).") });
+    if (file.size > 10 * 1024 * 1024) {
+      setMsg({ type: 'err', text: t("Musiqa fayli juda katta (maksimal ~10 MB).") });
       if (musicFileRef.current) musicFileRef.current.value = '';
       return;
     }
@@ -1653,7 +1653,7 @@ function EditCardForm({ card, onSaved }) {
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => musicFileRef.current && musicFileRef.current.click()} disabled={uploadingMusic}>
-                  {uploadingMusic ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl yuklash (mp3, maks. 8 MB)')}
+                  {uploadingMusic ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl yuklash (mp3, maks. 10 MB)')}
                 </button>
                 {form.musicUrl && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm((f) => ({ ...f, musicUrl: '' }))}>
@@ -1661,13 +1661,13 @@ function EditCardForm({ card, onSaved }) {
                   </button>
                 )}
               </div>
-              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder={t("YouTube havolasi yoki https://.../musiqa.mp3")} />
+              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder={t("YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3")} />
               {form.musicUrl && (
-                isYoutubeMusic(form.musicUrl)
-                  ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400"><span>{'▶'}</span> {t('YouTube musiqasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
+                isEmbedMusic(form.musicUrl)
+                  ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400"><span>{'▶'}</span> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
                   : <audio controls src={form.musicUrl} className="mt-2 h-9 w-full" />
               )}
-              <p className="mt-1.5 text-xs text-base-content/45">{t("YouTube havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.")}</p>
+              <p className="mt-1.5 text-xs text-base-content/45">{t("YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.")}</p>
             </label>
             </Gate>
           </Section>

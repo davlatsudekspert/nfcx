@@ -7,7 +7,7 @@ import { menuEligible } from '../lib/access.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { parseMusicSource } from '../lib/music.js';
+import { parseMusicSource, yandexEmbedSrc } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
@@ -212,19 +212,160 @@ function rarity(code) {
 // Profil musiqasi — brauzerlar ovozli avtomatik ijroni bloklaydi, shuning
 // uchun kichik suzuvchi tugma sifatida ko'rsatamiz; birinchi bosishda
 // ijro boshlanadi va aylanayotgan belgi bilan holat ko'rsatiladi.
-// YouTube havolasi: mobil (iOS/Android) brauzerlar YASHIRIN (1px / opacity:0)
-// video ovozini bloklaydi — shu sabab ijro paytida KICHIK KO'RINADIGAN pleer
-// paneli ko'rsatiladi (foydalanuvchi bosishi ichida mount qilinadi).
+// YouTube havolasi: mobil (iOS/Android) brauzerlar yashirin iframe ovozini
+// bloklaydi — shu sabab ijro paytida KICHIK video paneli ko'rsatiladi
+// (foydalanuvchi bir marta bosib qo'yadi, keyin ovoz chiqadi). Panelni
+// yig'ish (chevron) va butun pleerni ekran bo'ylab SURISH mumkin.
+const MUSIC_POS_KEY = 'nfc-music-pos';
+
+// YouTube IFrame Player API'ni bir marta yuklaydi. Mobil (iOS/Android)
+// brauzerlar oddiy `autoplay=1` iframe ovozini bloklaydi — ovoz faqat
+// foydalanuvchi imo-ishorasidan keyingina chiqadi. Shu sabab bu yerda
+// haqiqiy Player API ishlatiladi: pleer oldindan tayyorlanadi va tugma
+// bosilgan zahoti (aynan shu bosish ichida) player.playVideo() chaqiriladi.
+let _ytApiPromise = null;
+function loadYouTubeApi() {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+  if (_ytApiPromise) return _ytApiPromise;
+  _ytApiPromise = new Promise((resolve) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof prev === 'function') { try { prev(); } catch { /* ignore */ } }
+      resolve(window.YT);
+    };
+    if (!document.getElementById('yt-iframe-api')) {
+      const s = document.createElement('script');
+      s.id = 'yt-iframe-api';
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.async = true;
+      document.head.appendChild(s);
+    }
+  });
+  return _ytApiPromise;
+}
+
 function MusicPlayer({ url, accentColor }) {
   const audioRef = useRef(null);
+  const ytHostRef = useRef(null);
+  const ytPlayerRef = useRef(null);
+  const ytReadyRef = useRef(false);
+  const wantPlayRef = useRef(false);
   const [playing, setPlaying] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(true);
   const { t } = useLanguage();
   const source = parseMusicSource(url);
+  const ytId = source && source.kind === 'youtube' ? source.id : null;
+  const ydFrag = source && source.kind === 'yandex' ? source.frag : null;
+  // Yandex vidjeti: qo'shiq → past panel, albom/pleylist → balandroq (ro'yxat).
+  const ydW = 300;
+  const ydH = ydFrag && ydFrag.startsWith('track/') ? 180 : 220;
+
+  // YouTube pleerini oldindan yaratamiz (ijro emas) — shunda tugma
+  // bosilganda playVideo() darhol, imo-ishora ichida ishlaydi.
+  useEffect(() => {
+    if (!ytId) return undefined;
+    let cancelled = false;
+    ytReadyRef.current = false;
+    loadYouTubeApi().then((YT) => {
+      if (cancelled || !YT || !ytHostRef.current) return;
+      // React boshqaradigan div'ga tegmaymiz — ichiga o'z bolamizni qo'yamiz,
+      // YT.Player o'sha bolani <iframe> bilan almashtiradi.
+      const mount = document.createElement('div');
+      mount.className = 'h-full w-full';
+      ytHostRef.current.appendChild(mount);
+      ytPlayerRef.current = new YT.Player(mount, {
+        videoId: ytId,
+        playerVars: {
+          playsinline: 1,
+          modestbranding: 1,
+          rel: 0,
+          loop: 1,
+          playlist: ytId,
+          controls: 0,
+        },
+        events: {
+          onReady: () => {
+            ytReadyRef.current = true;
+            if (wantPlayRef.current) {
+              try { ytPlayerRef.current.playVideo(); } catch { /* ignore */ }
+            }
+          },
+          onStateChange: (e) => {
+            // 1 = playing, 2 = paused, 0 = ended
+            if (e.data === 1) setPlaying(true);
+            else if (e.data === 2) setPlaying(false);
+            else if (e.data === 0) {
+              // Takrorlash (ba'zi hollarda loop param yetarli emas).
+              try { e.target.seekTo(0); e.target.playVideo(); } catch { /* ignore */ }
+            }
+          },
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      try { ytPlayerRef.current && ytPlayerRef.current.destroy(); } catch { /* ignore */ }
+      ytPlayerRef.current = null;
+      ytReadyRef.current = false;
+      wantPlayRef.current = false;
+      if (ytHostRef.current) ytHostRef.current.innerHTML = '';
+    };
+  }, [ytId]);
+
+  // Suriladigan joylashuv — o'ng-past burchakdan siljish (localStorage'da saqlanadi).
+  const [pos, setPos] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(MUSIC_POS_KEY) || 'null');
+      if (s && typeof s.x === 'number' && typeof s.y === 'number') return s;
+    } catch { /* ignore */ }
+    return { x: 0, y: 0 };
+  });
+  const drag = useRef(null);
+  const posRef = useRef(pos);
+  posRef.current = pos;
+
+  const onPointerDown = (e) => {
+    drag.current = { sx: e.clientX, sy: e.clientY, ox: posRef.current.x, oy: posRef.current.y };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!drag.current) return;
+    const nx = drag.current.ox + (e.clientX - drag.current.sx);
+    const ny = drag.current.oy + (e.clientY - drag.current.sy);
+    setPos({
+      x: Math.min(0, Math.max(-(window.innerWidth - 96), nx)),
+      y: Math.min(0, Math.max(-(window.innerHeight - 96), ny)),
+    });
+  };
+  const onPointerUp = () => {
+    if (!drag.current) return;
+    drag.current = null;
+    try { localStorage.setItem(MUSIC_POS_KEY, JSON.stringify(posRef.current)); } catch { /* ignore */ }
+  };
 
   const toggle = () => {
-    if (source && source.kind === 'youtube') {
-      // Foydalanuvchi bosishi (user gesture) — iframe shu payt mount qilinadi,
-      // shu sabab iOS Safari ovoz bilan ijroga ruxsat beradi.
+    if (ytId) {
+      setVideoOpen(true);
+      const p = ytPlayerRef.current;
+      if (playing) {
+        wantPlayRef.current = false;
+        try { p && p.pauseVideo(); } catch { /* ignore */ }
+        setPlaying(false);
+      } else {
+        // Ovoz aynan shu bosish (imo-ishora) ichida chiqishi kerak.
+        wantPlayRef.current = true;
+        setPlaying(true);
+        if (p && ytReadyRef.current) {
+          try { p.playVideo(); } catch { /* ignore */ }
+        }
+      }
+      return;
+    }
+    if (ydFrag) {
+      // Yandex'da JS API yo'q — vidjetni ko'rsatamiz/yashiramiz, ijroni
+      // foydalanuvchi vidjet ichidagi ▶ tugmasi orqali boshlaydi.
+      setVideoOpen(true);
       setPlaying((p) => !p);
       return;
     }
@@ -239,41 +380,86 @@ function MusicPlayer({ url, accentColor }) {
   };
 
   if (!source) return null;
+  const isYt = source.kind === 'youtube';
+  const isYd = source.kind === 'yandex';
 
   return (
-    <div className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-2">
-      {source.kind === 'youtube'
-        ? (playing && (
-            <div className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)]">
-              <iframe
-                title="profil-musiqasi"
-                width="220"
-                height="124"
-                src={`https://www.youtube-nocookie.com/embed/${source.id}?autoplay=1&loop=1&playlist=${source.id}&modestbranding=1&playsinline=1&rel=0`}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                className="block h-[124px] w-[220px] max-w-[calc(100vw-2.5rem)]"
-              />
-            </div>
-          ))
-        : <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />}
-      <div className="flex items-center gap-2">
-      {!playing && (
-        <span className="hidden rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:inline-block">
-          {'\u{1F3B5}'} {t('Musiqa')}
-        </span>
+    <div
+      className="fixed bottom-5 right-5 z-30 flex select-none flex-col items-end gap-2"
+      style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}
+    >
+      {isYt && (
+        <div
+          className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)] transition-all duration-200"
+          style={{
+            width: playing && videoOpen ? 190 : 0,
+            height: playing && videoOpen ? 107 : 0,
+            opacity: playing && videoOpen ? 1 : 0,
+          }}
+        >
+          {/* YT.Player bu div'ni <iframe> bilan almashtiradi */}
+          <div ref={ytHostRef} className="block h-[107px] w-[190px]" />
+        </div>
       )}
-      <button
-        onClick={toggle}
-        className={`relative flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
-        style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
-        aria-label={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
-      >
-        {playing ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-        ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+      {isYd && (
+        <div
+          className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)] transition-all duration-200"
+          style={{
+            width: playing && videoOpen ? ydW : 0,
+            height: playing && videoOpen ? ydH : 0,
+            opacity: playing && videoOpen ? 1 : 0,
+          }}
+        >
+          <iframe
+            title="profil-musiqasi"
+            src={yandexEmbedSrc(ydFrag)}
+            width={ydW}
+            height={ydH}
+            frameBorder="0"
+            allow="autoplay; encrypted-media"
+            style={{ border: 'none', width: ydW, height: ydH }}
+          />
+        </div>
+      )}
+      {!isYt && !isYd && (
+        <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />
+      )}
+
+      <div className="flex items-center gap-1 rounded-full bg-black/70 p-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur">
+        <span
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          className="flex h-11 w-4 shrink-0 cursor-grab items-center justify-center text-white/35 active:cursor-grabbing"
+          style={{ touchAction: 'none' }}
+          title={t('Surish')}
+          aria-hidden="true"
+        >
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="3" r="1.4" /><circle cx="7.5" cy="3" r="1.4" /><circle cx="2.5" cy="8" r="1.4" /><circle cx="7.5" cy="8" r="1.4" /><circle cx="2.5" cy="13" r="1.4" /><circle cx="7.5" cy="13" r="1.4" /></svg>
+        </span>
+        <button
+          onClick={toggle}
+          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
+          style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
+          aria-label={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
+        >
+          {playing ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          )}
+        </button>
+        <span className="max-w-[110px] truncate px-1 text-xs font-semibold text-white/85">{'\u{1F3B5}'} {t('Musiqa')}</span>
+        {(isYt || isYd) && playing && (
+          <button
+            onClick={() => setVideoOpen((v) => !v)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            aria-label={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: videoOpen ? 'none' : 'rotate(180deg)' }}><path d="M6 9l6 6 6-6" /></svg>
+          </button>
         )}
-      </button>
       </div>
     </div>
   );
