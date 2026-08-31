@@ -1277,6 +1277,27 @@ export async function initDb() {
     )
   `);
 
+  // Kompaniyalar (Discovery) qidiruvi (Faz 12) ILIKE '%so'z%' ishlatadi —
+  // oddiy B-tree indeks bunga yordam bermaydi. pg_trgm mavjud bo'lsa
+  // (Railway/managed Postgres'da odatda ruxsat berilgan), GIN trigram
+  // indekslarni qo'shamiz — sekin sequential scan o'rniga tezkor qidiruv
+  // (Faz 32 — performance). Ruxsat yo'q bo'lsa (masalan cheklangan
+  // muhit) — jim o'tkazib yuboramiz, qidiruv baribir ishlayveradi,
+  // faqat sekinroq (mavjud xatti-harakat o'zgarmaydi).
+  try {
+    // MUHIM: qidiruv so'rovlari LOWER(ustun) LIKE $1 shaklida (searchRecords/
+    // searchCompanyDirectory) — indeks ham aynan shu ifoda ustida bo'lishi
+    // kerak (oddiy "name gin_trgm_ops" ishlamaydi, chunki Postgres LOWER()
+    // bilan o'ralgan ifodani indekslangan ustunga mos kelmaydi deb topadi).
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS cards_name_trgm_idx ON cards USING GIN (LOWER(name) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS cards_city_trgm_idx ON cards USING GIN (LOWER(city) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_name_trgm_idx ON menu_items USING GIN (LOWER(name) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS products_name_trgm_idx ON products USING GIN (LOWER(name) gin_trgm_ops)`);
+  } catch (err) {
+    console.warn('[db] pg_trgm indekslari o’rnatilmadi (qidiruv baribir ishlaydi, faqat sekinroq):', err.message);
+  }
+
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
   return true;
