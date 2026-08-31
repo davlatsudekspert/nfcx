@@ -1536,4 +1536,16 @@ export const DICT = {
   'Uzunlik (longitude)': { ru: 'Долгота (longitude)', en: 'Longitude' },
   'Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.': { ru: 'Координаты можно скопировать, нажав на место в Google Maps. Если указаны, в профиле появится кнопка «Открыть на карте».', en: 'You can copy the coordinates by tapping the spot in Google Maps. Once set, an "Open in Maps" button appears on the profile.' },
   'Xaritada ochish': { ru: 'Открыть на карте', en: 'Open in Maps' },
+
+  // ── Demo item detail (Faz 14/15) ──
+  'An’anaviy o‘zbek oshi — qo‘y go‘shti, sabzi va guruch bilan.': { ru: 'Традиционный узбекский плов — с бараниной, морковью и рисом.', en: 'Traditional Uzbek plov — with lamb, carrots and rice.' },
+  'Tandirda pishirilgan issiq non.': { ru: 'Горячая лепёшка из тандыра.', en: 'Hot bread baked in a tandoor.' },
+  'Mramor mol go‘shtidan, sabzavotlar bilan.': { ru: 'Из мраморной говядины, с овощами.', en: 'Marbled beef, served with vegetables.' },
+  '32 sm, mozarella va pepperoni bilan.': { ru: '32 см, с моцареллой и пепперони.', en: '32 cm, with mozzarella and pepperoni.' },
+  'Tovuq, parmezan va krouton bilan.': { ru: 'С курицей, пармезаном и гренками.', en: 'With chicken, parmesan and croutons.' },
+  'Yangi limon va yalpizdan tayyorlangan.': { ru: 'Приготовлен из свежего лимона и мяты.', en: 'Made from fresh lemon and mint.' },
+  '256 GB, Titanium. Rasmiy kafolat bilan.': { ru: '256 ГБ, Titanium. С официальной гарантией.', en: '256 GB, Titanium. With official warranty.' },
+  '512 GB, S Pen bilan birga.': { ru: '512 ГБ, в комплекте S Pen.', en: '512 GB, comes with S Pen.' },
+  'Faol shovqin bostirish (ANC) bilan.': { ru: 'С активным шумоподавлением (ANC).', en: 'With active noise cancellation (ANC).' },
+  '45mm, GPS + Cellular.': { ru: '45 мм, GPS + Cellular.', en: '45mm, GPS + Cellular.' },
 };

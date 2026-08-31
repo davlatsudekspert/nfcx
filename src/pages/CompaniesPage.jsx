@@ -23,41 +23,80 @@ const QUICK_EXAMPLES = ['Restoran', 'Do‘kon', 'Qurilish', 'IT xizmatlari'];
 // bilan aniq ajratilgan — Faz 13/29).
 const RESTAURANT_DEMO = {
   categories: [
-    { name: 'Nonushta', items: [{ n: 'Osh', p: 28000 }, { n: 'Non', p: 6000 }] },
-    { name: 'Issiq taomlar', items: [{ n: 'Steak', p: 89000 }, { n: 'Pizza Pepperoni', p: 70000 }] },
-    { name: 'Salatlar', items: [{ n: 'Sezar salat', p: 28000 }] },
-    { name: 'Ichimliklar', items: [{ n: 'Limonad', p: 15000 }] },
+    { name: 'Nonushta', items: [
+      { n: 'Osh', p: 28000, d: 'An’anaviy o‘zbek oshi — qo‘y go‘shti, sabzi va guruch bilan.' },
+      { n: 'Non', p: 6000, d: 'Tandirda pishirilgan issiq non.' },
+    ] },
+    { name: 'Issiq taomlar', items: [
+      { n: 'Steak', p: 89000, d: 'Mramor mol go‘shtidan, sabzavotlar bilan.' },
+      { n: 'Pizza Pepperoni', p: 70000, d: '32 sm, mozarella va pepperoni bilan.' },
+    ] },
+    { name: 'Salatlar', items: [{ n: 'Sezar salat', p: 28000, d: 'Tovuq, parmezan va krouton bilan.' }] },
+    { name: 'Ichimliklar', items: [{ n: 'Limonad', p: 15000, d: 'Yangi limon va yalpizdan tayyorlangan.' }] },
   ],
 };
 const MARKET_DEMO = {
   categories: [
-    { name: 'Telefonlar', items: [{ n: 'iPhone 15 Pro', p: 12990000 }, { n: 'Samsung S24 Ultra', p: 14500000 }] },
-    { name: 'Aksessuarlar', items: [{ n: 'AirPods Pro 2', p: 2990000 }, { n: 'Apple Watch 9', p: 4200000 }] },
+    { name: 'Telefonlar', items: [
+      { n: 'iPhone 15 Pro', p: 12990000, d: '256 GB, Titanium. Rasmiy kafolat bilan.' },
+      { n: 'Samsung S24 Ultra', p: 14500000, d: '512 GB, S Pen bilan birga.' },
+    ] },
+    { name: 'Aksessuarlar', items: [
+      { n: 'AirPods Pro 2', p: 2990000, d: 'Faol shovqin bostirish (ANC) bilan.' },
+      { n: 'Apple Watch 9', p: 4200000, d: '45mm, GPS + Cellular.' },
+    ] },
   ],
 };
 
+// Demo item detail — "read-only" (Faz 14/15): bosilganda kattaroq karta
+// ko'rinishida ochiladi, DBga hech narsa yozilmaydi/o'zgarmaydi.
+function DemoItemDetail({ tint, item, onBack, t }) {
+  return (
+    <div className="flex h-full flex-col rounded-2xl bg-base-100 p-3">
+      <button type="button" onClick={onBack} className="mb-2 flex items-center gap-1 self-start text-[10px] font-semibold text-base-content/50 hover:text-base-content/80">
+        {'←'} {t('Orqaga')}
+      </button>
+      <div className="flex aspect-square items-center justify-center rounded-xl text-[11px] font-semibold" style={{ background: `${tint}18`, color: tint }}>
+        {item.n}
+      </div>
+      <div className="mt-2.5 text-[12px] font-bold">{item.n}</div>
+      <div className="mt-1 text-[12px] font-bold" style={{ color: tint }}>{fmt(item.p)} {t("so'm")}</div>
+      {item.d && <p className="mt-1.5 text-[10.5px] leading-relaxed text-base-content/55">{item.d}</p>}
+      <div className="mt-auto pt-2 text-center text-[9px] text-base-content/30">{t('NAMUNA')}</div>
+    </div>
+  );
+}
+
 function DemoPhone({ tint, categories, t }) {
   const [expanded, setExpanded] = useState(false);
+  const [openItem, setOpenItem] = useState(null);
   const shown = expanded ? categories : categories.slice(0, 2);
   return (
     <div className="mx-auto w-[220px] shrink-0 rounded-[2rem] border-[3px] border-white/15 bg-black/60 p-2.5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]">
       <div className="h-4 w-full" />
-      <div className="max-h-[280px] space-y-3 overflow-hidden rounded-2xl bg-base-100 p-3">
-        {shown.map((cat) => (
-          <div key={cat.name}>
-            <div className="text-[9px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>{t(cat.name)}</div>
-            <div className="mt-1 space-y-1">
-              {cat.items.map((it) => (
-                <div key={it.n} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[10px]">
-                  <span className="min-w-0 truncate text-base-content/80">{t(it.n)}</span>
-                  <span className="shrink-0 font-semibold text-base-content/50">{fmt(it.p)}</span>
+      <div className="h-[280px] overflow-hidden rounded-2xl">
+        {openItem ? (
+          <DemoItemDetail tint={tint} item={openItem} onBack={() => setOpenItem(null)} t={t} />
+        ) : (
+          <div className="h-full space-y-3 overflow-hidden bg-base-100 p-3">
+            {shown.map((cat) => (
+              <div key={cat.name}>
+                <div className="text-[9px] font-extrabold uppercase tracking-wider" style={{ color: tint }}>{t(cat.name)}</div>
+                <div className="mt-1 space-y-1">
+                  {cat.items.map((it) => (
+                    <button key={it.n} type="button" onClick={() => setOpenItem(it)}
+                      className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-left text-[10px] transition hover:border-white/25 hover:bg-white/10">
+                      <span className="min-w-0 truncate text-base-content/80">{t(it.n)}</span>
+                      <span className="shrink-0 font-semibold text-base-content/50">{fmt(it.p)}</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
-      {categories.length > 2 && (
+      {!openItem && categories.length > 2 && (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -73,10 +112,10 @@ function DemoPhone({ tint, categories, t }) {
 function DemoCard({ tint, icon, title, question, desc, features, phone, onCreate, t }) {
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border p-6 sm:p-7"
+      className="demo-shine relative overflow-hidden rounded-3xl border p-6 sm:p-7"
       style={{ borderColor: `${tint}40`, background: `linear-gradient(160deg, ${tint}14 0%, rgba(10,10,10,0.4) 60%)` }}
     >
-      <div className="grid gap-6 sm:grid-cols-[1.15fr_0.85fr] sm:items-center">
+      <div className="relative z-[2] grid gap-6 sm:grid-cols-[1.15fr_0.85fr] sm:items-center">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl text-lg" style={{ background: `${tint}22`, color: tint }}>{icon}</span>
