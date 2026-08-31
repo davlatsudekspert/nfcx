@@ -39,6 +39,7 @@ import {
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
   adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
+  adminCompanyStats, adminListCompanies, adminGetCompany, adminSetCompanyDirectoryHidden, setCardTierOverride,
   adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand, getAuctionDemandByCode,
   FINANCE_EXPENSE_CATEGORIES, FINANCE_DOC_TYPES,
   financeGetRates, financeSetRate, financeComputePeriod, financeDailyBreakdown,
@@ -959,6 +960,59 @@ adminRouter.post('/records/:code/views', async (req, res) => {
   if (!row) return res.status(404).json({ error: 'not_found' });
   logAdminActivity({ action: 'card_views_set', details: `${code} → ${row.views}`, ip: req.ip }).catch(() => {});
   res.json(row);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// KOMPANIYALAR (Company System — Admin Panel Faz 20–23). "Company" =
+// profile_type = 'business' bo'lgan cards yozuvi — alohida jadval yo'q.
+// Tarif — mavjud NFC ID tier_override tizimi (alohida obuna emas).
+// ═══════════════════════════════════════════════════════════════════
+
+const COMPANY_TIERS = new Set(['silver', 'gold', 'premium', 'exclusive']);
+
+adminRouter.get('/companies/stats', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json(await adminCompanyStats());
+});
+
+adminRouter.get('/companies', async (req, res) => {
+  if (!isDbReady()) return res.json({ companies: [] });
+  res.json({ companies: await adminListCompanies() });
+});
+
+adminRouter.get('/companies/:code', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const row = await adminGetCompany(code);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  res.json(row);
+});
+
+// Ommaviy katalog/qidiruvdan yashirish yoki qaytarish ("suspend"/"activate").
+// Ma'lumot o'chirilmaydi — to'g'ridan-to'g'ri havola ishlayveradi.
+adminRouter.post('/companies/:code/status', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const hidden = req.body?.hidden === true;
+  const row = await adminSetCompanyDirectoryHidden(code, hidden);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  logAdminActivity({ action: hidden ? 'company_suspended' : 'company_activated', details: code, ip: req.ip }).catch(() => {});
+  res.json(row);
+});
+
+// Tarifni qo'lda belgilash (kod naqshidan qat'i nazar) — mavjud
+// tier_override mexanizmi. null/'' — avtomatik (kod naqshiga qaytadi).
+adminRouter.post('/companies/:code/tier', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const raw = req.body?.tier;
+  const tier = raw ? String(raw).toLowerCase() : null;
+  if (tier && !COMPANY_TIERS.has(tier)) return res.status(422).json({ error: 'bad_tier' });
+  const rec = await getRecord(code);
+  if (!rec || rec.profileType !== 'business') return res.status(404).json({ error: 'not_found' });
+  await setCardTierOverride(code, tier);
+  logAdminActivity({ action: 'company_tier_set', details: code, newValue: tier || 'auto', ip: req.ip }).catch(() => {});
+  res.json({ code, tierOverride: tier });
 });
 
 // ═══════════════════════════════════════════════════════════════════

@@ -4207,6 +4207,85 @@ export async function adminListVerifiedCards() {
   return rows;
 }
 
+// ---------- Company System — admin (Admin Panel Faz 20–23) ----------
+// "Company" = profile_type = 'business' bo'lgan cards yozuvi (alohida
+// jadval yo'q — Faz 0 audit qarori). Tarif — mavjud NFC ID tier tizimi
+// (tier_override / kod naqshi / owner Profile Premium), alohida
+// obuna jadvali emas.
+
+// Umumiy statistika: jami/faol/bloklangan kompaniyalar, Menyu/Mahsulotlar
+// modulidan foydalanayotganlar soni.
+export async function adminCompanyStats() {
+  const { rows } = await pool.query(`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE hidden_from_directory = FALSE)::int AS active,
+      COUNT(*) FILTER (WHERE hidden_from_directory = TRUE)::int AS suspended,
+      COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code))::int AS with_menu,
+      COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code))::int AS with_products,
+      COUNT(*) FILTER (
+        WHERE EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code)
+          AND EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code)
+      )::int AS with_both
+    FROM cards WHERE profile_type = 'business'
+  `);
+  const r = rows[0];
+  return {
+    total: r.total, active: r.active, suspended: r.suspended,
+    withMenu: r.with_menu, withProducts: r.with_products, withBoth: r.with_both,
+  };
+}
+
+const COMPANY_LIST_SQL = `
+  SELECT c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+         c.tier_override AS "tierOverride", c.verified, c.ts,
+         c.hidden_from_directory AS "hiddenFromDirectory",
+         c.phone, c.email, c.about,
+         u.id AS "ownerId", u.email AS "ownerEmail", u.phone AS "ownerPhone", u.is_premium AS "ownerIsPremium",
+         EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS "isGift",
+         (SELECT COUNT(*)::int FROM menu_categories mc WHERE mc.code = c.code) AS "menuCatCount",
+         (SELECT COUNT(*)::int FROM menu_items mi WHERE mi.code = c.code) AS "menuItemCount",
+         (SELECT COUNT(*)::int FROM product_categories pc WHERE pc.code = c.code) AS "productCatCount",
+         (SELECT COUNT(*)::int FROM products p WHERE p.code = c.code) AS "productItemCount",
+         (SELECT COUNT(*)::int FROM card_team tm WHERE tm.code = c.code) AS "teamCount"
+    FROM cards c
+    LEFT JOIN users u ON u.id = c.user_id
+   WHERE c.profile_type = 'business'
+`;
+
+function companyRow(r) {
+  return {
+    ...r,
+    ts: Number(r.ts),
+    verified: !!r.verified,
+    hiddenFromDirectory: !!r.hiddenFromDirectory,
+    ownerIsPremium: !!r.ownerIsPremium,
+    isGift: !!r.isGift,
+  };
+}
+
+export async function adminListCompanies(limit = 300) {
+  const { rows } = await pool.query(`${COMPANY_LIST_SQL} ORDER BY c.ts DESC LIMIT $1`, [limit]);
+  return rows.map(companyRow);
+}
+
+export async function adminGetCompany(code) {
+  const { rows } = await pool.query(`${COMPANY_LIST_SQL} AND c.code = $1`, [code]);
+  return rows[0] ? companyRow(rows[0]) : null;
+}
+
+// Direktoriya/qidiruvdan yashirish — "suspend" (mavjud "hidden_from_directory"
+// maydonini qayta ishlatadi; ma'lumot o'chirilmaydi, faqat ommaviy
+// katalog/qidiruvdan chiqadi — to'g'ridan-to'g'ri havola ishlayveradi).
+export async function adminSetCompanyDirectoryHidden(code, hidden) {
+  const { rows } = await pool.query(
+    `UPDATE cards SET hidden_from_directory = $2 WHERE code = $1 AND profile_type = 'business'
+     RETURNING code, name, hidden_from_directory AS "hiddenFromDirectory"`,
+    [code, !!hidden]
+  );
+  return rows[0] || null;
+}
+
 // ---------- Profil postlari ----------
 const MAX_POSTS_PER_PROFILE = 60;
 
