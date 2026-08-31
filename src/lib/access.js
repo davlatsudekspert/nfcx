@@ -61,6 +61,7 @@ export const FEATURE_MIN = {
   advancedAnalytics:    'gold',
   fileCatalog:          'gold',
   restaurantMenu:       'silver',
+  productCatalog:       'silver',
 };
 
 // ── Tarif bo'yicha post limiti ─────────────────────────────────────────
@@ -99,6 +100,27 @@ export function menuLimitsFor(currentAccess) {
 export function menuEligible(categorySlug) {
   const s = String(categorySlug || '');
   return s === 'food' || s.startsWith('food-');
+}
+
+// ── Mahsulotlar katalogi limiti (Company System — Products) ───────────
+// Menu bilan bir xil naqsh, lekin soha bilan cheklanmaydi — istalgan
+// biznes profil o'z mahsulot katalogini ochishi mumkin (masalan do'kon,
+// texnika, mebel — "NFC Market" namunasidagi kabi).
+export const PRODUCT_LIMITS = {
+  free:      { cat: 0,   item: 0,    images: false },
+  silver:    { cat: 1,   item: 15,   images: false },
+  gold:      { cat: 8,   item: 100,  images: true },
+  premium:   { cat: 20,  item: 300,  images: true },
+  exclusive: { cat: 999, item: 9999, images: true },
+};
+
+export function productLimitsFor(currentAccess) {
+  return PRODUCT_LIMITS[currentAccess] || PRODUCT_LIMITS.free;
+}
+
+// Mahsulot katalogi faqat biznes profillar uchun — soha cheklanmagan.
+export function productEligible(profileType) {
+  return profileType === 'business';
 }
 
 // ── Fayl / PDF / katalog limiti (Band 3.4) ─────────────────────────────

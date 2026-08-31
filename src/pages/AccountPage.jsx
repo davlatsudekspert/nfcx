@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -11,7 +11,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, menuEligible } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, menuEligible, productEligible } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -280,6 +280,223 @@ function MenuManagerSection({ code, allowed, onLock }) {
       {eligible && counts.cats < limits.cat && (
         <div className="flex gap-2">
           <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Ichimliklar)')}
+            value={newCat} onChange={(e) => setNewCat(e.target.value)} />
+          <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mahsulotlar katalogi (Company System — Products) — Menyu bilan bir xil
+// naqsh, lekin soha bilan cheklanmagan (istalgan biznes profil uchun).
+const PRODUCT_EMPTY = { name: '', description: '', price: '', discountPrice: '', imageUrl: '', available: true, featured: false };
+
+function ProductItemRow({ code, item, canImage, onChanged, onDeleted }) {
+  const { t } = useLanguage();
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState(item);
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const row = await dbUpdateProduct(code, item.id, {
+        name: f.name, description: f.description,
+        price: f.price === '' ? null : f.price,
+        discountPrice: f.discountPrice === '' ? null : f.discountPrice,
+        available: f.available, featured: f.featured,
+      });
+      onChanged(row); setEdit(false);
+    } finally { setBusy(false); }
+  };
+  const toggle = async (field) => {
+    const row = await dbUpdateProduct(code, item.id, { [field]: !item[field] });
+    onChanged(row);
+  };
+  const del = async () => {
+    if (!confirm(t('Bu mahsulotni o‘chirasizmi?'))) return;
+    await dbDeleteProduct(code, item.id); onDeleted(item.id);
+  };
+  const uploadImg = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      const url = await dbUploadImage(dataUrl);
+      const row = await dbUpdateProduct(code, item.id, { imageUrl: url });
+      onChanged(row);
+    } catch { /* jim */ } finally { setBusy(false); }
+  };
+
+  if (edit) {
+    return (
+      <div className="rounded-xl border border-accent/30 bg-black/20 p-3 space-y-2">
+        <input className="input input-bordered input-sm w-full bg-base-100" value={f.name} onChange={set('name')} placeholder={t('Mahsulot nomi')} />
+        <textarea className="textarea textarea-bordered textarea-sm w-full bg-base-100" rows={2} value={f.description || ''} onChange={set('description')} placeholder={t('Tavsif')} />
+        <div className="flex gap-2">
+          <input className="input input-bordered input-sm w-full bg-base-100" type="number" value={f.price ?? ''} onChange={set('price')} placeholder={t('Narx')} />
+          <input className="input input-bordered input-sm w-full bg-base-100" type="number" value={f.discountPrice ?? ''} onChange={set('discountPrice')} placeholder={t('Chegirma narxi')} />
+        </div>
+        <div className="flex gap-2">
+          <button className="btn btn-primary btn-xs" onClick={save} disabled={busy}>{t('Saqlash')}</button>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); }}>{t('Bekor')}</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className={`flex gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
+      {canImage && (
+        <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
+          {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
+          <input type="file" accept="image/*" className="hidden" onChange={uploadImg} />
+        </label>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-1.5 text-sm font-semibold">
+          {item.featured && <span className="shrink-0">⭐</span>}
+          <span className="min-w-0 flex-1 truncate">{item.name}</span>
+          {item.price != null && (
+            <span className="shrink-0 text-xs text-base-content/60">
+              {fmt(item.price)}{item.discountPrice != null ? ` → ${fmt(item.discountPrice)}` : ''}
+            </span>
+          )}
+        </div>
+        {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
+        <div className="mt-1.5 flex items-center gap-1">
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => setEdit(true)}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
+            {item.available ? '🟢' : '⚫'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
+            {item.featured ? '⭐' : '☆'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductManagerSection({ code, allowed, onLock }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+  const [newCat, setNewCat] = useState('');
+  const [adding, setAdding] = useState({}); // catId -> PRODUCT_EMPTY
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const load = () => dbGetProductsManage(code).then(setData).catch(() => setErr(true));
+  useEffect(() => { if (allowed) load(); }, [code, allowed]);
+
+  if (!allowed) {
+    return (
+      <button type="button" onClick={onLock}
+        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+        {'\u{1F512}'} {t('Mahsulotlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
+      </button>
+    );
+  }
+  if (err) return <div className="text-sm text-error">{t('Katalogni yuklab bo‘lmadi.')}</div>;
+  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  const { products, limits, counts } = data;
+  const eligible = data.eligible !== false;
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+
+  const addCat = async () => {
+    const name = newCat.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await dbAddProductCategory(code, { name });
+      setNewCat(''); await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Kategoriya limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_business' ? t('Mahsulotlar katalogi faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')
+        : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+  const updCat = async (id, patch) => { await dbUpdateProductCategory(code, id, patch); await load(); };
+  const delCat = async (id) => {
+    if (!confirm(t('Kategoriya va uning barcha mahsulotlari o‘chadi. Davom etamizmi?'))) return;
+    await dbDeleteProductCategory(code, id); await load();
+  };
+  const addItem = async (catId) => {
+    const f = adding[catId] || PRODUCT_EMPTY;
+    if (!f.name.trim()) return;
+    setBusy(true);
+    try {
+      await dbAddProduct(code, {
+        categoryId: catId, name: f.name, description: f.description,
+        price: f.price === '' ? null : f.price,
+        discountPrice: f.discountPrice === '' ? null : f.discountPrice,
+        available: true,
+      });
+      setAdding((s) => ({ ...s, [catId]: PRODUCT_EMPTY }));
+      await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Mahsulot limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_business' ? t('Mahsulotlar katalogi faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')
+        : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+
+  const setAddF = (catId, k) => (e) => setAdding((s) => ({ ...s, [catId]: { ...(s[catId] || PRODUCT_EMPTY), [k]: e.target.value } }));
+
+  return (
+    <div className="space-y-4">
+      {!eligible && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
+          {t('Mahsulotlar katalogi faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')}
+        </div>
+      )}
+      <div className="text-xs text-base-content/50">
+        {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Mahsulotlar')}: {counts.items}/{limits.item}
+        {!limits.images && ` · ${t('rasm Gold+ dan')}`}
+      </div>
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      {products.map((cat) => (
+        <div key={cat.id} className={`rounded-2xl border border-white/10 bg-base-200/40 p-3 ${cat.enabled ? '' : 'opacity-60'}`}>
+          <div className="flex items-center gap-1">
+            <input
+              className="input input-ghost input-sm min-w-0 flex-1 px-1 font-semibold"
+              defaultValue={cat.name}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
+            />
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {cat.items.map((it) => (
+              <ProductItemRow
+                key={it.id} code={code} item={it} canImage={limits.images}
+                onChanged={() => load()} onDeleted={() => load()}
+              />
+            ))}
+          </div>
+          {eligible && (
+            <div className="mt-2 space-y-1.5">
+              <input className="input input-bordered input-xs w-full bg-base-100" placeholder={t('Yangi mahsulot nomi')}
+                value={(adding[cat.id] || PRODUCT_EMPTY).name} onChange={setAddF(cat.id, 'name')} />
+              <div className="flex gap-1.5">
+                <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" type="number" placeholder={t('Narx')}
+                  value={(adding[cat.id] || PRODUCT_EMPTY).price} onChange={setAddF(cat.id, 'price')} />
+                <button className="btn btn-primary btn-xs shrink-0" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {eligible && counts.cats < limits.cat && (
+        <div className="flex gap-2">
+          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Aksessuarlar)')}
             value={newCat} onChange={(e) => setNewCat(e.target.value)} />
           <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
         </div>
@@ -1744,6 +1961,16 @@ function EditCardForm({ card, onSaved }) {
                 code={card.code}
                 allowed={allow('restaurantMenu')}
                 onLock={() => setLocked(t('Restoran menyusi'))}
+              />
+            </Section>
+          )}
+
+          {card.profileType === 'business' && productEligible(card.profileType) && (
+            <Section title={t('Mahsulotlar katalogi')} subtitle={t('Kategoriyalar va mahsulotlar')}>
+              <ProductManagerSection
+                code={card.code}
+                allowed={allow('productCatalog')}
+                onLock={() => setLocked(t('Mahsulotlar katalogi'))}
               />
             </Section>
           )}

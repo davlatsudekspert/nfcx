@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, productLimitsFor, productEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews, deleteOwnCard,
@@ -12,6 +12,9 @@ import {
   getMenu, menuCounts, menuCategoryBelongs,
   createMenuCategory, updateMenuCategory, deleteMenuCategory,
   createMenuItem, updateMenuItem, deleteMenuItem,
+  getProducts, productCounts, productCategoryBelongs,
+  createProductCategory, updateProductCategory, deleteProductCategory,
+  createProduct, updateProduct, deleteProduct,
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
   listCardVideos, cardVideoCount, createCardVideo, updateCardVideo, deleteCardVideo,
   listCardTeam, cardTeamCount, createTeamMember, updateTeamMember, deleteTeamMember,
@@ -2020,6 +2023,191 @@ app.delete('/api/records/:code/menu/items/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[api] menu item delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Mahsulotlar katalogi (Company System — Products) ----------
+// Restoran menyusi bilan bir xil naqsh — soha bilan cheklanmagan, faqat
+// biznes profillar uchun (nfcstore.uz/{code} — "NFC Market" namunasidagi kabi).
+
+// Public — profil sahifasidagi "Mahsulotlar" tab uchun.
+app.get('/api/records/:code/products', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json({ products: await getProducts(code) });
+  } catch (err) {
+    console.error('[api] products:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// Egaga: kontekst (kirish darajasi, limitlar, joriy sanoq) + to'liq katalog.
+async function productOwner(req, res, code, { mutate = false } = {}) {
+  const user = await currentUser(req);
+  if (!user) { res.status(401).json({ error: 'unauthorized' }); return null; }
+  if ((await getRecordOwner(code)) !== user.id) { res.status(403).json({ error: 'forbidden' }); return null; }
+  const rec = await getRecord(code);
+  const access = await cardAccess(code, user, rec);
+  if (!featureAllowed('productCatalog', access)) { res.status(403).json({ error: 'feature_locked', feature: 'productCatalog' }); return null; }
+  const eligible = productEligible(rec.profileType);
+  // Mahsulot qo'shish/tahrirlash faqat biznes profillar uchun (o'qish/o'chirish
+  // har doim — eski yozuvlarni tozalash mumkin bo'lsin).
+  if (mutate && !eligible) { res.status(403).json({ error: 'not_business' }); return null; }
+  return { user, rec, access, eligible, limits: productLimitsFor(access) };
+}
+
+const productMoney = menuMoney;
+const productImage = menuImage;
+
+app.get('/api/records/:code/products/manage', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code);
+    if (!ctx) return;
+    res.json({ products: await getProducts(code, { includeDisabled: true }), limits: ctx.limits, counts: await productCounts(code), eligible: ctx.eligible });
+  } catch (err) {
+    console.error('[api] products manage:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/products/categories', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const name = cleanStr(req.body?.name, 60).trim();
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if ((await productCounts(code)).cats >= ctx.limits.cat) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limits.cat });
+    }
+    res.status(201).json(await createProductCategory(code, { name, sort: Number(req.body?.sort) || 0 }));
+  } catch (err) {
+    console.error('[api] product cat create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/products/categories/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('name' in b) f.name = cleanStr(b.name, 60).trim();
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    if ('enabled' in b) f.enabled = b.enabled !== false;
+    const row = await updateProductCategory(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] product cat update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/products/categories/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code);
+    if (!ctx) return;
+    await deleteProductCategory(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] product cat delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/records/:code/products/items', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const categoryId = Number(b.categoryId);
+    if (!categoryId || !(await productCategoryBelongs(code, categoryId))) {
+      return res.status(422).json({ error: 'bad_category' });
+    }
+    const name = cleanStr(b.name, 100).trim();
+    if (!name) return res.status(422).json({ error: 'name_required' });
+    if ((await productCounts(code)).items >= ctx.limits.item) {
+      return res.status(429).json({ error: 'limit_reached', limit: ctx.limits.item });
+    }
+    const imageUrl = ctx.limits.images ? productImage(b.imageUrl) : '';
+    res.status(201).json(await createProduct(code, {
+      categoryId,
+      name,
+      description: cleanStr(b.description, 500).trim(),
+      price: productMoney(b.price),
+      discountPrice: productMoney(b.discountPrice),
+      imageUrl,
+      available: b.available !== false,
+      featured: b.featured === true,
+      sort: Number(b.sort) || 0,
+    }));
+  } catch (err) {
+    console.error('[api] product create:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/records/:code/products/items/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code, { mutate: true });
+    if (!ctx) return;
+    const b = req.body || {};
+    const f = {};
+    if ('categoryId' in b) {
+      const cid = Number(b.categoryId);
+      if (!cid || !(await productCategoryBelongs(code, cid))) return res.status(422).json({ error: 'bad_category' });
+      f.categoryId = cid;
+    }
+    if ('name' in b) f.name = cleanStr(b.name, 100).trim();
+    if ('description' in b) f.description = cleanStr(b.description, 500).trim();
+    if ('price' in b) f.price = productMoney(b.price);
+    if ('discountPrice' in b) f.discountPrice = productMoney(b.discountPrice);
+    if ('imageUrl' in b) f.imageUrl = ctx.limits.images ? productImage(b.imageUrl) : '';
+    if ('available' in b) f.available = b.available !== false;
+    if ('featured' in b) f.featured = b.featured === true;
+    if ('sort' in b) f.sort = Number(b.sort) || 0;
+    const row = await updateProduct(code, Number(req.params.id), f);
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[api] product update:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/records/:code/products/items/:id', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const ctx = await productOwner(req, res, code);
+    if (!ctx) return;
+    await deleteProduct(code, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] product delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });

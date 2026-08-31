@@ -1055,6 +1055,38 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_code_idx ON menu_items (code, category_id, sort)`);
 
+  // ── Mahsulotlar katalogi (Company System — Products) ───────────────
+  // menu_categories/menu_items bilan bir xil naqsh, lekin ovqatlanish
+  // sohasi bilan cheklanmagan — istalgan biznes profil uchun.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS product_categories (
+      id         BIGSERIAL PRIMARY KEY,
+      code       VARCHAR(16) NOT NULL,
+      name       TEXT NOT NULL,
+      sort       INTEGER NOT NULL DEFAULT 0,
+      enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS product_categories_code_idx ON product_categories (code, sort)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id             BIGSERIAL PRIMARY KEY,
+      code           VARCHAR(16) NOT NULL,
+      category_id    BIGINT NOT NULL REFERENCES product_categories(id) ON DELETE CASCADE,
+      name           TEXT NOT NULL,
+      description    TEXT,
+      price          BIGINT,
+      discount_price BIGINT,
+      image_url      TEXT,
+      available      BOOLEAN NOT NULL DEFAULT TRUE,
+      featured       BOOLEAN NOT NULL DEFAULT FALSE,
+      sort           INTEGER NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS products_code_idx ON products (code, category_id, sort)`);
+
   // ── Fayl / PDF / katalog (Band 3.4) ───────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS card_files (
@@ -1656,7 +1688,7 @@ export async function incrementViews(code) {
 export const CARD_EVENT_TYPES = [
   'profile_view', 'phone_click', 'telegram_click', 'whatsapp_click',
   'instagram_click', 'website_click', 'email_click', 'link_click',
-  'contact_save', 'lead', 'menu_view',
+  'contact_save', 'lead', 'menu_view', 'products_view',
 ];
 
 export async function logCardEvent(code, eventType, { ref, visitorHash } = {}) {
@@ -1869,6 +1901,120 @@ export async function updateMenuItem(code, id, f) {
 
 export async function deleteMenuItem(code, id) {
   await pool.query(`DELETE FROM menu_items WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// ---------- Mahsulotlar katalogi (Company System — Products) ----------
+// menu_* funksiyalari bilan bir xil naqsh — jadval nomlari boshqa.
+
+export async function getProducts(code, { includeDisabled = false } = {}) {
+  const [cats, items] = await Promise.all([
+    pool.query(
+      `SELECT id, name, sort, enabled FROM product_categories
+        WHERE code = $1 ${includeDisabled ? '' : 'AND enabled = TRUE'}
+        ORDER BY sort, id`,
+      [code]
+    ),
+    pool.query(
+      `SELECT id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+              image_url AS "imageUrl", available, featured, sort
+         FROM products WHERE code = $1 ORDER BY sort, id`,
+      [code]
+    ),
+  ]);
+  const byCat = new Map();
+  for (const it of items.rows) {
+    if (!byCat.has(it.categoryId)) byCat.set(it.categoryId, []);
+    byCat.get(it.categoryId).push({
+      ...it,
+      price: it.price == null ? null : Number(it.price),
+      discountPrice: it.discountPrice == null ? null : Number(it.discountPrice),
+    });
+  }
+  return cats.rows.map((c) => ({ ...c, items: byCat.get(c.id) || [] }));
+}
+
+export async function productCounts(code) {
+  const { rows } = await pool.query(
+    `SELECT (SELECT COUNT(*)::int FROM product_categories WHERE code = $1) AS cats,
+            (SELECT COUNT(*)::int FROM products WHERE code = $1) AS items`,
+    [code]
+  );
+  return { cats: rows[0].cats, items: rows[0].items };
+}
+
+export async function createProductCategory(code, { name, sort }) {
+  const { rows } = await pool.query(
+    `INSERT INTO product_categories (code, name, sort) VALUES ($1, $2, $3)
+     RETURNING id, name, sort, enabled`,
+    [code, name, sort || 0]
+  );
+  return rows[0];
+}
+
+export async function updateProductCategory(code, id, f) {
+  const { rows } = await pool.query(
+    `UPDATE product_categories SET
+        name = COALESCE($3, name), sort = COALESCE($4, sort), enabled = COALESCE($5, enabled)
+      WHERE code = $1 AND id = $2
+      RETURNING id, name, sort, enabled`,
+    [code, id, f.name ?? null, f.sort ?? null, f.enabled ?? null]
+  );
+  return rows[0] || null;
+}
+
+export async function deleteProductCategory(code, id) {
+  await pool.query(`DELETE FROM product_categories WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// category_id shu kartaga tegishli ekanini tekshiradi (IDOR himoyasi).
+export async function productCategoryBelongs(code, categoryId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM product_categories WHERE id = $1 AND code = $2`, [categoryId, code]
+  );
+  return !!rows[0];
+}
+
+const productRow = (r) => (r ? {
+  ...r,
+  price: r.price == null ? null : Number(r.price),
+  discountPrice: r.discountPrice == null ? null : Number(r.discountPrice),
+} : null);
+
+export async function createProduct(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO products (code, category_id, name, description, price, discount_price, image_url, available, featured, sort)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     RETURNING id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+               image_url AS "imageUrl", available, featured, sort`,
+    [code, f.categoryId, f.name, f.description || null, f.price ?? null, f.discountPrice ?? null,
+     f.imageUrl || null, f.available !== false, f.featured === true, f.sort || 0]
+  );
+  return productRow(rows[0]);
+}
+
+export async function updateProduct(code, id, f) {
+  const sets = [];
+  const vals = [code, id];
+  const col = {
+    categoryId: 'category_id', name: 'name', description: 'description', price: 'price',
+    discountPrice: 'discount_price', imageUrl: 'image_url', available: 'available',
+    featured: 'featured', sort: 'sort',
+  };
+  for (const [k, c] of Object.entries(col)) {
+    if (k in f) { vals.push(f[k]); sets.push(`${c} = $${vals.length}`); }
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE products SET ${sets.join(', ')} WHERE code = $1 AND id = $2
+     RETURNING id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+               image_url AS "imageUrl", available, featured, sort`,
+    vals
+  );
+  return productRow(rows[0]) || null;
+}
+
+export async function deleteProduct(code, id) {
+  await pool.query(`DELETE FROM products WHERE code = $1 AND id = $2`, [code, id]);
 }
 
 // ---------- Fayl / PDF / katalog (Band 3.4) ----------
