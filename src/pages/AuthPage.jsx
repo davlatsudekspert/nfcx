@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { authLogin, authRegister, useAuth } from '../lib/auth.jsx';
+import { authLogin, authRegister, authRequestRegisterCode, useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -17,6 +17,9 @@ function errText(err, t) {
   if (key === 'phone_not_verified') {
     return t('Bu telefon raqami botda tasdiqlanmagan. Avval {link} ga o‘ting, "Kontaktni ulashish" tugmasini bosing, so‘ng shu raqamni qayta kiriting.', { link: BOT_LINK });
   }
+  if (key === 'bad_code' || key === 'code_required') return t("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan. Qaytadan yuboring.");
+  if (key === 'bad_phone') return t("Telefon raqamini to'g'ri kiriting.");
+  if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
   // Backend validatsiya xabarlari — t() orqali (topilsa) tarjima qilinadi.
   if (key && /telefon|bot|kamida|format/i.test(key)) return t(key);
   return t("Xatolik yuz berdi. Ma'lumotlarni tekshirib qayta urinib ko'ring.");
@@ -35,6 +38,27 @@ export default function AuthPage({ mode }) {
   const [promoCode, setPromoCode] = useState(() => new URLSearchParams(window.location.search).get('promo') || '');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Telegram OTP — ro'yxatdan o'tishdan oldin telefon raqamini tasdiqlash
+  // (bot orqali kelgan bir martalik kod).
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeMsg, setCodeMsg] = useState(null);
+
+  const requestCode = async () => {
+    setCodeMsg(null);
+    if (!botAck) { setCodeMsg({ type: 'err', text: t('Avval botga yozganingizni tasdiqlovchi katakchani belgilang.') }); return; }
+    setCodeSending(true);
+    try {
+      await authRequestRegisterCode(phone.trim());
+      setCodeSent(true);
+      setCodeMsg({ type: 'ok', text: t("Kod Telegram botga yuborildi.") });
+    } catch (err) {
+      setCodeMsg({ type: 'err', text: errText(err, t) });
+    } finally {
+      setCodeSending(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -51,9 +75,13 @@ export default function AuthPage({ mode }) {
       setMsg({ type: 'err', text: t('Davom etish uchun ommaviy oferta shartlariga rozilik bering.') });
       return;
     }
+    if (isRegister && !code.trim()) {
+      setMsg({ type: 'err', text: t("Telegram botga yuborilgan tasdiqlash kodini kiriting.") });
+      return;
+    }
     setBusy(true);
     try {
-      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck, tosAccepted, promoCode: promoCode.trim() });
+      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck, tosAccepted, promoCode: promoCode.trim(), code: code.trim() });
       else await authLogin(email.trim(), password);
       await refresh();
       navigate('/account');
@@ -128,6 +156,21 @@ export default function AuthPage({ mode }) {
                     {t("o'ting va u yerga ism-familyangiz hamda telefon raqamingizni yozib qoldiring. Bu — jismoniy NFC kartangizni to'g'ri manzilga yetkazib berishimiz uchun kerak. Buni bajargan bo'lsangiz, shu katakchani belgilang.")}
                   </span>
                 </label>
+              </div>
+            )}
+            {isRegister && (
+              <div className="rounded-xl border border-white/10 bg-base-100/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-base-content/70">{t('Telegram orqali tasdiqlash kodi')}</span>
+                  <button type="button" className="btn btn-outline btn-xs" disabled={codeSending || !phone.trim()} onClick={requestCode}>
+                    {codeSending ? <span className="loading loading-spinner loading-xs"></span> : codeSent ? t('Qayta yuborish') : t('Kod yuborish')}
+                  </button>
+                </div>
+                {codeMsg && <p className={`mt-2 text-xs ${codeMsg.type === 'ok' ? 'text-accent' : 'text-error'}`}>{codeMsg.text}</p>}
+                <input type="text" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder={t('6 xonali kod')} maxLength={6}
+                  className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono tracking-widest" />
+                <p className="mt-1.5 text-[11px] text-base-content/45">{t("Kod botga yuboriladi — botga hali yozmagan bo'lsangiz, avval yuqoridagi katakchani belgilang.")}</p>
               </div>
             )}
             {isRegister && (

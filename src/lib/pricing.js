@@ -85,6 +85,8 @@ const PREMIUM_WORDS = [
   // Universal
   'SKY', 'SUN', 'FLY', 'JET', 'ICE', 'RED', 'FOX', 'GEM', 'ZEN', 'NEO',
   'PAY', 'STA',
+  // Valyuta (2026)
+  'USD', 'UZS',
 ];
 
 // DAVLAT XIZMATLARI qisqartmalari — bu so'z + oddiy raqam → Gold; bu so'z +
@@ -110,6 +112,13 @@ function hasAdjacentPair(s) {
 function isZeroSuperDigit(d) {
   return d === '001' || d === '007' || d === '077';
 }
+// Qo'shimcha "super" raqamlar (2026) — 71/72 juftligi bilan yakunlanuvchi
+// nodir kombinatsiyalar, PREMIUM so'z bilan birga kelganda PREMIUM'ga
+// ko'taradi (001/007/077 bilan bir xil mantiq).
+const EXTRA_SUPER_DIGITS = ['711', '712', '771', '772'];
+function isExtraSuperDigit(d) {
+  return EXTRA_SUPER_DIGITS.includes(d);
+}
 // "Zerkalniy" (ko'zgu) raqam — birinchi va oxirgi raqam bir xil:
 // 010, 101, 121, 202, 292, 909 ... (000 bundan mustasno — u alohida PREMIUM).
 function isMirrorDigit(d) {
@@ -121,7 +130,7 @@ function isX0X(d) {
 }
 // DAVLAT so'zi bilan birga kelganda PREMIUM qiladigan maxsus raqamlar.
 function isGovPremiumDigit(d) {
-  return d === '001' || d === '007' || d === '077' || d === '707' || d === '010';
+  return d === '001' || d === '007' || d === '077' || d === '707' || d === '010' || isExtraSuperDigit(d);
 }
 // PREMIUM so'z bilan birga kelganda darajani PREMIUM'ga ko'taradigan raqam:
 //   - 001 / 007 / 077
@@ -131,6 +140,7 @@ function isSuperDigit(d) {
   if (isZeroSuperDigit(d)) return true;
   if (allSame3(d) && d !== '000') return true;
   if (isX0X(d)) return true;
+  if (isExtraSuperDigit(d)) return true;
   return false;
 }
 
@@ -240,6 +250,7 @@ export const TIER_PAGE_GLOW = {
 export function letterPattern(l) {
   if (allSame3(l)) return { hot: true, label: 'Uchala harf bir xil' };
   if (EXCLUSIVE_WORDS.includes(l)) return { hot: true, label: 'Ekslyuziv so‘z' };
+  if (l === 'USD' || l === 'UZS') return { hot: true, label: 'Valyuta belgisi' };
   if (PREMIUM_WORDS.includes(l)) return { hot: true, label: 'Taniqli so‘z (brend/ism/shahar)' };
   if (GOV_WORDS.includes(l)) return { hot: true, label: 'Davlat xizmati qisqartmasi' };
   if (hasAdjacentPair(l)) return { hot: true, label: 'Ikkita harf yonma-yon bir xil' };
@@ -249,6 +260,7 @@ export function digitPattern(d) {
   if (d === '000') return { hot: true, label: "\"000\" — maxsus" };
   if (allSame3(d)) return { hot: true, label: 'Uchala raqam bir xil' };
   if (isZeroSuperDigit(d)) return { hot: true, label: 'Kuchli nol raqam (001/007/077)' };
+  if (isExtraSuperDigit(d)) return { hot: true, label: 'Nodir raqam (711/712/771/772)' };
   if (isX0X(d)) return { hot: true, label: 'O‘ta nodir raqam (X0X)' };
   if (isMirrorDigit(d)) return { hot: true, label: 'Zerkalniy (ko‘zgu) raqam' };
   if (hasAdjacentPair(d)) return { hot: true, label: 'Ikkita raqam yonma-yon bir xil' };

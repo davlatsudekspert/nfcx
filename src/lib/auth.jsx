@@ -53,6 +53,11 @@ export const authLogin = (email, password) =>
 export const authRegister = (email, password, extra = {}) =>
   api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, ...extra }) });
 
+// Ro'yxatdan o'tishdan oldin — botga ulangan telefon raqamiga tasdiqlash
+// kodi yuborishni so'raydi (Telegram orqali).
+export const authRequestRegisterCode = (phone) =>
+  api('/auth/request-register-code', { method: 'POST', body: JSON.stringify({ phone }) });
+
 export const authLogout = () => api('/auth/logout', { method: 'POST' });
 
 // Raqamli tashrif qog'ozini egasi sifatida tahrirlash.

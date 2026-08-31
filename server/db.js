@@ -428,6 +428,23 @@ export async function initDb() {
     )
   `);
 
+  // Telefon raqamini Telegram bot orqali kelgan bir martalik kod bilan
+  // tasdiqlash — ro'yxatdan o'tishda va profilda raqam o'zgartirishda.
+  // password_reset_codes bilan bir xil naqsh, lekin user_id emas, PHONE
+  // bilan bog'langan — chunki ro'yxatdan o'tishda hali user mavjud emas.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS phone_otp_codes (
+      id          SERIAL PRIMARY KEY,
+      phone       VARCHAR(32) NOT NULL,
+      code        VARCHAR(6) NOT NULL,
+      purpose     VARCHAR(20) NOT NULL DEFAULT 'register', -- register | phone_change
+      expires_at  TIMESTAMPTZ NOT NULL,
+      used        BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS phone_otp_codes_lookup_idx ON phone_otp_codes (phone, purpose, created_at DESC)`);
+
   // Admin panelga kirish tarixi — muvaffaqiyatli/noto'g'ri parol/2FA
   // xatosi/bloklangan IP/logout/sessiya tugashi — hammasi shu yerga.
   await pool.query(`
@@ -517,6 +534,7 @@ export async function initDb() {
       code                VARCHAR(16) UNIQUE NOT NULL,
       recipient_name      TEXT,
       note                TEXT,
+      value               BIGINT,
       activation_code     VARCHAR(20) UNIQUE NOT NULL,
       status              VARCHAR(20) NOT NULL DEFAULT 'reserved', -- reserved | activated
       created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -524,6 +542,17 @@ export async function initDb() {
       activated_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
     )
   `);
+  {
+    // Sovg'a qiymati (ixtiyoriy) — admin "so'z o'rniga summa" yozib
+    // qo'yishi mumkin (masalan hisobot/konvert uchun ko'rinadigan qiymat).
+    const { rows } = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'nfc_gifts'`
+    );
+    if (!rows.some((r) => r.column_name === 'value')) {
+      await pool.query(`ALTER TABLE nfc_gifts ADD COLUMN value BIGINT`);
+      console.log('[db] nfc_gifts.value ustuni qo’shildi.');
+    }
+  }
 
   // Xavfsizlik: foydalanuvchini bloklash va shikoyat qilish — xabar
   // yozish tizimidagi suiiste'moldan himoya.
@@ -2709,6 +2738,12 @@ export async function updateUserPassword(userId, passwordHash) {
   ]);
 }
 
+// Profilda telefon raqamini o'zgartirish — faqat Telegram OTP tasdiqlangandan
+// keyin (server/index.js /api/settings/confirm-phone-change chaqiradi).
+export async function updateUserPhone(userId, phone) {
+  await pool.query(`UPDATE users SET phone = $2 WHERE id = $1`, [userId, phone]);
+}
+
 export async function createSession(token, userId, ttlMs) {
   const { rows } = await pool.query(
     `INSERT INTO sessions (token, user_id, expires_at)
@@ -2724,7 +2759,7 @@ export async function getSessionUser(token) {
   await pool.query(`DELETE FROM sessions WHERE expires_at < now()`);
   if (!token) return null;
   const { rows } = await pool.query(
-    `SELECT u.id, u.email, u.is_premium AS "isPremium",
+    `SELECT u.id, u.email, u.phone, u.is_premium AS "isPremium",
             u.banned_until AS "bannedUntil", u.strike_count AS "strikeCount",
             u.promo_code AS "promoCode", u.pending_discount_pct AS "pendingDiscountPct",
             u.suspended_until AS "suspendedUntil", u.deleted_at AS "deletedAt"
@@ -2741,7 +2776,7 @@ export async function getSessionUser(token) {
   if (r.suspendedUntil && new Date(r.suspendedUntil) > new Date()) return null;
   const isBanned = r.bannedUntil && new Date(r.bannedUntil) > new Date();
   return {
-    id: r.id, email: r.email, isPremium: !!r.isPremium,
+    id: r.id, email: r.email, phone: r.phone || null, isPremium: !!r.isPremium,
     bannedUntil: isBanned ? r.bannedUntil : null,
     strikeCount: r.strikeCount || 0,
     promoCode: r.promoCode || null,
@@ -3114,6 +3149,43 @@ export async function verifyAndConsumePasswordResetCode(userId, code) {
      )
      RETURNING id`,
     [userId, code]
+  );
+  return !!rows[0];
+}
+
+// ---------- Telefon OTP (ro'yxatdan o'tish / raqam o'zgartirish) ----------
+// password_reset_codes bilan bir xil naqsh — PHONE bilan bog'langan
+// (user_id emas, chunki ro'yxatdan o'tishda hali user mavjud emas).
+
+// Shu telefon raqami botga "Kontaktni ulashish" orqali ulangan bo'lsa —
+// tg_user_id qaytaradi (aks holda null, kod yubora olmaymiz).
+export async function getTgUserIdForPhone(phone) {
+  const { rows } = await pool.query(
+    `SELECT tg_user_id AS "tgUserId" FROM bot_verifications WHERE phone = $1 ORDER BY id DESC LIMIT 1`,
+    [phone]
+  );
+  return rows[0]?.tgUserId || null;
+}
+
+export async function createPhoneOtpCode(phone, purpose = 'register') {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await pool.query(
+    `INSERT INTO phone_otp_codes (phone, code, purpose, expires_at) VALUES ($1,$2,$3, now() + interval '10 minutes')`,
+    [phone, code, purpose]
+  );
+  return code;
+}
+
+export async function verifyAndConsumePhoneOtpCode(phone, code, purpose = 'register') {
+  const { rows } = await pool.query(
+    `UPDATE phone_otp_codes SET used = TRUE
+     WHERE id = (
+       SELECT id FROM phone_otp_codes
+       WHERE phone = $1 AND code = $2 AND purpose = $3 AND used = FALSE AND expires_at > now()
+       ORDER BY created_at DESC LIMIT 1
+     )
+     RETURNING id`,
+    [phone, code, purpose]
   );
   return !!rows[0];
 }
@@ -5216,7 +5288,7 @@ function generateActivationCode() {
 
 // Admin — bo'sh (hech kimga tegishli bo'lmagan) kodni sovg'a sifatida
 // ajratib qo'yadi. Kod HALI HECH QANDAY profilga ulanmaydi.
-export async function createNfcGift(code, recipientName, note) {
+export async function createNfcGift(code, recipientName, note, value) {
   const { rows: taken } = await pool.query(`SELECT 1 FROM cards WHERE code = $1`, [code]);
   if (taken[0]) return { error: 'CODE_TAKEN' };
   const { rows: already } = await pool.query(`SELECT 1 FROM nfc_gifts WHERE code = $1 AND status = 'reserved'`, [code]);
@@ -5226,9 +5298,9 @@ export async function createNfcGift(code, recipientName, note) {
     const activationCode = generateActivationCode();
     try {
       const { rows } = await pool.query(
-        `INSERT INTO nfc_gifts (code, recipient_name, note, activation_code) VALUES ($1,$2,$3,$4)
+        `INSERT INTO nfc_gifts (code, recipient_name, note, value, activation_code) VALUES ($1,$2,$3,$4,$5)
          RETURNING id, code, activation_code AS "activationCode"`,
-        [code, recipientName || null, note || null, activationCode]
+        [code, recipientName || null, note || null, value ?? null, activationCode]
       );
       return { ok: true, gift: rows[0] };
     } catch (err) {
@@ -5240,14 +5312,14 @@ export async function createNfcGift(code, recipientName, note) {
 
 export async function listNfcGifts() {
   const { rows } = await pool.query(
-    `SELECT ng.id, ng.code, ng.recipient_name AS "recipientName", ng.note,
+    `SELECT ng.id, ng.code, ng.recipient_name AS "recipientName", ng.note, ng.value,
             ng.activation_code AS "activationCode", ng.status,
             ng.created_at AS "createdAt", ng.activated_at AS "activatedAt",
             u.email AS "activatedByEmail"
      FROM nfc_gifts ng LEFT JOIN users u ON u.id = ng.activated_by_user_id
      ORDER BY ng.created_at DESC`
   );
-  return rows;
+  return rows.map((r) => ({ ...r, value: r.value == null ? null : Number(r.value) }));
 }
 
 // Profil sahifasi ochilganda — shu kod uchun kutilayotgan sovg'a bor-yo'qligini

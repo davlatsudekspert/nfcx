@@ -1367,6 +1367,7 @@ function GiftNfcIdTab() {
   const [code, setCode] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [note, setNote] = useState('');
+  const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [lastCreated, setLastCreated] = useState(null);
@@ -1379,9 +1380,9 @@ function GiftNfcIdTab() {
     setBusy(true);
     setMsg(null);
     try {
-      const gift = await adminApi('/nfc-gifts', { method: 'POST', body: JSON.stringify({ code: code.trim(), recipientName: recipientName.trim(), note: note.trim() }) });
+      const gift = await adminApi('/nfc-gifts', { method: 'POST', body: JSON.stringify({ code: code.trim(), recipientName: recipientName.trim(), note: note.trim(), value: value === '' ? null : value }) });
       setLastCreated(gift);
-      setCode(''); setRecipientName(''); setNote('');
+      setCode(''); setRecipientName(''); setNote(''); setValue('');
       await load();
     } catch (e) {
       setMsg({ type: 'err', text: e.message === 'CODE_TAKEN' ? t('Bu NFC ID allaqachon band.') : e.message === 'ALREADY_RESERVED' ? t('Bu ID uchun sovg\u2019a allaqachon yaratilgan.') : t('Xatolik yuz berdi.') });
@@ -1401,6 +1402,7 @@ function GiftNfcIdTab() {
           <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t("NFC ID (masalan DDD333)")} className="input input-bordered input-sm w-full bg-base-100 font-mono uppercase" />
           <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder={t("Recipient (ixtiyoriy — kimga mo'ljallangani)")} className="input input-bordered input-sm w-full bg-base-100" />
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("Izoh (ixtiyoriy)")} className="input input-bordered input-sm w-full bg-base-100" />
+          <input value={value} onChange={(e) => setValue(e.target.value)} type="number" min="0" placeholder={t("Sovg'a qiymati, so'm (ixtiyoriy \u2014 'sovg'a' so'zi o'rniga)")} className="input input-bordered input-sm w-full bg-base-100" />
           <button className="btn btn-accent btn-sm w-full" disabled={busy} onClick={create}>
             {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Sovg\u2019a yaratish')}
           </button>
@@ -1418,16 +1420,17 @@ function GiftNfcIdTab() {
 
       <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10">
         <table className="table table-sm">
-          <thead><tr><th>NFC ID</th><th>Recipient</th><th>Activation Code</th><th>Status</th><th>{t('Yaratilgan')}</th><th>{t('Aktivlashtirilgan')}</th></tr></thead>
+          <thead><tr><th>NFC ID</th><th>Recipient</th><th>{t("Qiymati")}</th><th>Activation Code</th><th>Status</th><th>{t('Yaratilgan')}</th><th>{t('Aktivlashtirilgan')}</th></tr></thead>
           <tbody>
-            {!gifts && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">{t("Yuklanmoqda...")}</td></tr>}
-            {gifts?.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">{t("Hozircha sovg'a yaratilmagan.")}</td></tr>}
+            {!gifts && <tr><td colSpan={7} className="py-6 text-center text-base-content/45">{t("Yuklanmoqda...")}</td></tr>}
+            {gifts?.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-base-content/45">{t("Hozircha sovg'a yaratilmagan.")}</td></tr>}
             {gifts?.map((g) => {
               const st = STATUS_LABEL[g.status] || { text: g.status, cls: 'badge-ghost' };
               return (
                 <tr key={g.id}>
                   <td className="font-mono font-bold">{g.code}</td>
                   <td className="text-xs">{g.recipientName || '—'}</td>
+                  <td className="text-xs">{g.value != null ? `${fmt(g.value)} so'm` : '—'}</td>
                   <td className="font-mono text-xs">{g.activationCode}</td>
                   <td><span className={`badge badge-sm ${st.cls}`}>{st.text}</span></td>
                   <td className="text-xs text-base-content/50">{timeAgo(new Date(g.createdAt).getTime())}</td>

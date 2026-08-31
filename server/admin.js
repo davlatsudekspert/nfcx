@@ -207,7 +207,7 @@ adminRouter.post('/login', checkIpWhitelist, adminLoginLimiter, async (req, res)
   const tempToken = newTempToken();
   pending2fa.set(tempToken, { adminId: admin.id, method: 'telegram', code, expiresAt: Date.now() + PENDING_2FA_TTL_MS });
   try {
-    await sendTelegramOtp(adminChatId, code);
+    await sendTelegramOtp(adminChatId, code, 'admin_login');
   } catch (err) {
     console.error('[admin] 2FA kod yuborilmadi:', err.message);
     return res.status(503).json({ error: 'tg_send_failed' });
@@ -794,10 +794,18 @@ adminRouter.post('/nfc-gifts', requireAdmin, async (req, res) => {
   const recipientName = String(req.body?.recipientName || '').slice(0, 100).trim();
   const note = String(req.body?.note || '').slice(0, 300).trim();
   if (!/^[A-Z0-9]{3,16}$/.test(code) || isBlockedCode(code)) return res.status(422).json({ error: 'bad_code' });
+  // Sovg'a qiymati \u2014 ixtiyoriy, admin so'z ("sovg'a") o'rniga aniq summa
+  // yozib qo'yishi mumkin (konvert/hisobot uchun ko'rinadigan qiymat).
+  let value = null;
+  if (req.body?.value != null && req.body.value !== '') {
+    const n = Math.round(Number(req.body.value));
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000_000) return res.status(422).json({ error: 'bad_value' });
+    value = n;
+  }
 
-  const result = await createNfcGift(code, recipientName, note);
+  const result = await createNfcGift(code, recipientName, note, value);
   if (result.error) return res.status(409).json(result);
-  logAdminActivity({ action: 'nfc_gift_created', details: `${code} \u2192 ${recipientName || 'nomsiz'}`, newValue: result.gift.activationCode, ip: req.ip }).catch(() => {});
+  logAdminActivity({ action: 'nfc_gift_created', details: `${code} \u2192 ${recipientName || 'nomsiz'}${value ? ` (${value} so'm)` : ''}`, newValue: result.gift.activationCode, ip: req.ip }).catch(() => {});
   res.status(201).json(result.gift);
 });
 

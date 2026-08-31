@@ -2114,8 +2114,14 @@ function EditCardForm({ card, onSaved }) {
   const catalogReady = savedIsBusiness && savedCatalogModule === catalogModule;
   const CATALOG_TAB_LABEL = { menu: t('Menyu'), products: t('Mahsulotlar'), services: t('Xizmatlar') };
 
-  return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+  // ── NFC ID boshqaruv paneli (kod/narx/ko'rishlar + Sovg'a/Post/Karta
+  // dizayni/NFC buyurtma/O'chirish) — biznes profil uchun bu ENDI birinchi
+  // ko'rinadigan narsa emas ("avvalgi NFC ID'ga tegishli narsalar bo'lmasin"
+  // — Business Workspace faqat kompaniyaga tegishli bo'lsin). Shaxsiy/
+  // ekspert profilda o'zgarishsiz yuqorida qoladi; biznes profilda esa
+  // Sozlamalar tabiga ko'chadi — funksiya yo'qolmaydi, faqat joyi o'zgaradi.
+  const nfcIdBlock = (
+    <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 font-mono text-sm font-bold tracking-wide">
@@ -2183,6 +2189,51 @@ function EditCardForm({ card, onSaved }) {
           </div>
         </div>
       )}
+    </>
+  );
+
+  const giftBlock = (
+    <>
+      {giftOpen && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
+          <input
+            value={giftToCode}
+            onChange={(e) => setGiftToCode(e.target.value)}
+            placeholder={t("Qabul qiluvchining NFC ID'si (masalan ABZ007)")}
+            className="input input-bordered input-sm flex-1 bg-base-100 font-mono"
+          />
+          <button className="btn btn-accent btn-sm" onClick={sendGift} disabled={giftBusy}>
+            {giftBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Taklif yuborish')}
+          </button>
+          <p className="w-full text-xs text-base-content/45">{t("Pulsiz — qabul qiluvchi o'zi tasdiqlaguncha egalik o'tmaydi. U albatta o'z NFC ID'siga (mavjud profiliga) ega bo'lishi kerak.")}</p>
+        </div>
+      )}
+      {giftMsg && <div className={`alert mt-3 py-2 text-sm ${giftMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(giftMsg.text)}</span></div>}
+      {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(saleMsg.text)}</span></div>}
+    </>
+  );
+
+  return (
+    <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+      {!isBusiness && nfcIdBlock}
+
+      {isBusiness && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-lg font-bold text-base-content/70">
+              {card.avatarUrl ? <img src={card.avatarUrl} alt="" className="h-full w-full object-cover" /> : (card.name || '?').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 truncate text-base font-bold">
+                {card.name}
+                {card.verified && <span className="shrink-0 text-accent" title={t('Tasdiqlangan profil')}>✓</span>}
+              </div>
+              <div className="font-mono text-xs text-base-content/45">nfcstore.uz/{card.code.toLowerCase()}</div>
+            </div>
+          </div>
+          <button className="btn btn-ghost btn-sm shrink-0" onClick={() => navigate('/' + card.code)}>{'\u{1F441}️'} {t("Ko'rish")}</button>
+        </div>
+      )}
 
       {locked && (
         <LockedFeatureModal
@@ -2205,22 +2256,7 @@ function EditCardForm({ card, onSaved }) {
           onSaved={onSaved}
         />
       )}
-      {giftOpen && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
-          <input
-            value={giftToCode}
-            onChange={(e) => setGiftToCode(e.target.value)}
-            placeholder={t("Qabul qiluvchining NFC ID'si (masalan ABZ007)")}
-            className="input input-bordered input-sm flex-1 bg-base-100 font-mono"
-          />
-          <button className="btn btn-accent btn-sm" onClick={sendGift} disabled={giftBusy}>
-            {giftBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Taklif yuborish')}
-          </button>
-          <p className="w-full text-xs text-base-content/45">{t("Pulsiz — qabul qiluvchi o'zi tasdiqlaguncha egalik o'tmaydi. U albatta o'z NFC ID'siga (mavjud profiliga) ega bo'lishi kerak.")}</p>
-        </div>
-      )}
-      {giftMsg && <div className={`alert mt-3 py-2 text-sm ${giftMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(giftMsg.text)}</span></div>}
-      {saleMsg && <div className={`alert mt-4 py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(saleMsg.text)}</span></div>}
+      {!isBusiness && giftBlock}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
         <div className="min-w-0">
@@ -2612,6 +2648,13 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
           </>
+          )}
+
+          {isBusiness && wsTab === 'sozlamalar' && (
+            <Section title={t("NFC ID sozlamalari")} subtitle={t("Sovg'a qilish, post, karta dizayni, o'chirish")}>
+              {nfcIdBlock}
+              {giftBlock}
+            </Section>
           )}
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>

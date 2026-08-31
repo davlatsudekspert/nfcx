@@ -60,10 +60,18 @@ async function call(method, payload, timeoutMs = 35000) {
 const sendMessage = (chatId, text, extra = {}) =>
   call('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
 
-// Parol tiklash OTP kodini yuborish uchun tashqi (server/index.js)dan
-// chaqiriladigan eksport.
-export async function sendTelegramOtp(tgUserId, code) {
-  return sendMessage(tgUserId, `\uD83D\uDD10 Parolni o'zgartirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`);
+// OTP kodini yuborish uchun tashqi (server/index.js, admin.js)dan
+// chaqiriladigan eksport \u2014 bir nechta maqsad uchun umumlashtirilgan
+// (parol tiklash, admin 2FA, ro'yxatdan o'tish, telefon o'zgartirish).
+const OTP_MESSAGES = {
+  password_reset: (code) => `\uD83D\uDD10 Parolni o'zgartirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`,
+  admin_login: (code) => `\uD83D\uDD10 Admin panelga kirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`,
+  register: (code) => `\u2705 NFCSTORE ro'yxatdan o'tish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`,
+  phone_change: (code) => `\uD83D\uDCF1 Telefon raqamini tasdiqlash kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`,
+};
+export async function sendTelegramOtp(tgUserId, code, purpose = 'password_reset') {
+  const build = OTP_MESSAGES[purpose] || OTP_MESSAGES.password_reset;
+  return sendMessage(tgUserId, build(code));
 }
 
 async function sendPhoto(chatId, fileId, caption, extra = {}) {
