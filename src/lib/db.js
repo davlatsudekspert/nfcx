@@ -203,6 +203,31 @@ export const dbAddMenuItem = (code, data) => menuApi(code, '/items', { method: '
 export const dbUpdateMenuItem = (code, id, data) => menuApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const dbDeleteMenuItem = (code, id) => menuApi(code, `/items/${id}`, { method: 'DELETE' });
 
+// ---------- Mahsulotlar katalogi (Company System — Products) ----------
+
+export async function dbGetProducts(code) {
+  try {
+    const j = await api(`/records/${encodeURIComponent(code)}/products`);
+    return (j && j.products) || [];
+  } catch {
+    return [];
+  }
+}
+
+// Egaga — includeDisabled + limitlar + sanoq.
+export async function dbGetProductsManage(code) {
+  return api(`/records/${encodeURIComponent(code)}/products/manage`);
+}
+
+const productApi = (code, path, opts) => api(`/records/${encodeURIComponent(code)}/products${path}`, opts);
+
+export const dbAddProductCategory = (code, data) => productApi(code, '/categories', { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateProductCategory = (code, id, data) => productApi(code, `/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteProductCategory = (code, id) => productApi(code, `/categories/${id}`, { method: 'DELETE' });
+export const dbAddProduct = (code, data) => productApi(code, '/items', { method: 'POST', body: JSON.stringify(data) });
+export const dbUpdateProduct = (code, id, data) => productApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const dbDeleteProduct = (code, id) => productApi(code, `/items/${id}`, { method: 'DELETE' });
+
 // ---------- Fayl / PDF / katalog (Band 3.4) ----------
 
 export async function dbGetFiles(code) {
@@ -835,4 +860,23 @@ export async function dbActivateGift(code, payload) {
     throw new Error(map[key] || 'Xatolik yuz berdi.');
   }
   return data;
+}
+
+// ---------- Jismoniy NFC (ko'p dona) narx kalkulyatori (Company System — Faz 25/26) ----------
+export async function dbGetPhysicalNfcPricing() {
+  try {
+    return await api('/settings/physical-nfc-pricing');
+  } catch {
+    return null;
+  }
+}
+
+// ---------- Kompaniyalar (Discovery) qidiruvi (Company System — Faz 12) ----------
+export async function dbSearchCompanies(q) {
+  try {
+    const j = await api(`/companies/search?q=${encodeURIComponent(q)}`);
+    return (j && j.results) || [];
+  } catch {
+    return [];
+  }
 }

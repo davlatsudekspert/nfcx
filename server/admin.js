@@ -15,6 +15,7 @@ import path from 'path';
 import { generateSecret as totpGenerateSecret, generateURI as totpGenerateURI, verify as totpVerify } from 'otplib';
 import { UPLOAD_DIR } from './paths.js';
 import { isBlockedCode } from '../src/lib/pricing.js';
+import { MENU_LIMITS, PRODUCT_LIMITS } from '../src/lib/access.js';
 import { hashPassword, verifyPassword } from './auth.js';
 import { sendTelegramOtp } from './bot.js';
 import {
@@ -39,6 +40,10 @@ import {
   listNews, adminCreateNews, adminUpdateNews, adminDeleteNews,
   listCategories, adminCreateCategory, adminUpdateCategory, adminDeleteCategory,
   adminSetCardVerified, adminListVerifiedCards, adminSetCardViews,
+  adminCompanyStats, adminListCompanies, adminGetCompany, adminSetCompanyDirectoryHidden, setCardTierOverride,
+  listCompanyActivityLog,
+  getLimitsOverride, setLimitsOverride, getPhysicalNfcTiers, setPhysicalNfcTiers,
+  getDeliveryDays, setDeliveryDays,
   adminListAuctionDemand, adminAddAuctionDemand, adminUpdateAuctionDemand, adminDeleteAuctionDemand, getAuctionDemandByCode,
   FINANCE_EXPENSE_CATEGORIES, FINANCE_DOC_TYPES,
   financeGetRates, financeSetRate, financeComputePeriod, financeDailyBreakdown,
@@ -959,6 +964,178 @@ adminRouter.post('/records/:code/views', async (req, res) => {
   if (!row) return res.status(404).json({ error: 'not_found' });
   logAdminActivity({ action: 'card_views_set', details: `${code} → ${row.views}`, ip: req.ip }).catch(() => {});
   res.json(row);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// KOMPANIYALAR (Company System — Admin Panel Faz 20–23). "Company" =
+// profile_type = 'business' bo'lgan cards yozuvi — alohida jadval yo'q.
+// Tarif — mavjud NFC ID tier_override tizimi (alohida obuna emas).
+// ═══════════════════════════════════════════════════════════════════
+
+const COMPANY_TIERS = new Set(['silver', 'gold', 'premium', 'exclusive']);
+
+adminRouter.get('/companies/stats', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json(await adminCompanyStats());
+});
+
+adminRouter.get('/companies', async (req, res) => {
+  if (!isDbReady()) return res.json({ companies: [] });
+  res.json({ companies: await adminListCompanies() });
+});
+
+adminRouter.get('/companies/:code', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const row = await adminGetCompany(code);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  res.json(row);
+});
+
+// Ommaviy katalog/qidiruvdan yashirish yoki qaytarish ("suspend"/"activate").
+// Ma'lumot o'chirilmaydi — to'g'ridan-to'g'ri havola ishlayveradi.
+adminRouter.post('/companies/:code/status', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const hidden = req.body?.hidden === true;
+  const row = await adminSetCompanyDirectoryHidden(code, hidden);
+  if (!row) return res.status(404).json({ error: 'not_found' });
+  logAdminActivity({ action: hidden ? 'company_suspended' : 'company_activated', details: code, ip: req.ip }).catch(() => {});
+  res.json(row);
+});
+
+// Tarifni qo'lda belgilash (kod naqshidan qat'i nazar) — mavjud
+// tier_override mexanizmi. null/'' — avtomatik (kod naqshiga qaytadi).
+adminRouter.post('/companies/:code/tier', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const code = String(req.params.code || '').toUpperCase();
+  const raw = req.body?.tier;
+  const tier = raw ? String(raw).toLowerCase() : null;
+  if (tier && !COMPANY_TIERS.has(tier)) return res.status(422).json({ error: 'bad_tier' });
+  const rec = await getRecord(code);
+  if (!rec || rec.profileType !== 'business') return res.status(404).json({ error: 'not_found' });
+  await setCardTierOverride(code, tier);
+  logAdminActivity({ action: 'company_tier_set', details: code, newValue: tier || 'auto', ip: req.ip }).catch(() => {});
+  res.json({ code, tierOverride: tier });
+});
+
+// ── Tariflar va narxlar (Faz 4 / 24 / 25 / 26) ──────────────────────
+// Menyu/Mahsulotlar FREE-PRO limitlari, jismoniy NFC (ko'p dona) narx
+// pog'onalari va yetkazib berish muddati — barchasi admin_settings'da
+// saqlanadi, kod ichiga hard-code qilinmagan. Standart qiymatlar
+// server/db.js'da (MENU_LIMITS/PRODUCT_LIMITS — src/lib/access.js;
+// DEFAULT_PHYSICAL_NFC_TIERS/DEFAULT_DELIVERY_DAYS — server/db.js).
+
+const LIMIT_TIERS = ['free', 'silver', 'gold', 'premium', 'exclusive'];
+
+function mergeLimits(defaults, override) {
+  const out = {};
+  for (const tier of LIMIT_TIERS) {
+    const d = defaults[tier];
+    const o = (override && override[tier]) || {};
+    out[tier] = {
+      cat: Number.isFinite(Number(o.cat)) && Number(o.cat) >= 0 ? Number(o.cat) : d.cat,
+      item: Number.isFinite(Number(o.item)) && Number(o.item) >= 0 ? Number(o.item) : d.item,
+      images: typeof o.images === 'boolean' ? o.images : d.images,
+      isCustom: Object.prototype.hasOwnProperty.call(override || {}, tier),
+    };
+  }
+  return out;
+}
+
+// Kompaniyalar bo'yicha admin amallari jurnali (Faz 28) — Security
+// tabidagi to'liq jurnaldan filtrlangan qism, admin (super bo'lmasa ham)
+// ko'ra oladi, chunki Kompaniyalar bo'limining o'zi ham shunday.
+adminRouter.get('/companies/activity-log', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json({ log: await listCompanyActivityLog() });
+});
+
+adminRouter.get('/company-settings', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const [menuOverride, productOverride, tiers, delivery] = await Promise.all([
+    getLimitsOverride('menu'),
+    getLimitsOverride('product'),
+    getPhysicalNfcTiers(),
+    getDeliveryDays(),
+  ]);
+  res.json({
+    menuLimits: mergeLimits(MENU_LIMITS, menuOverride),
+    productLimits: mergeLimits(PRODUCT_LIMITS, productOverride),
+    physicalNfcTiers: tiers,
+    delivery,
+  });
+});
+
+// body: { kind: 'menu'|'product', tier: 'free'|..., cat, item, images }
+adminRouter.post('/company-settings/limits', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const kind = req.body?.kind === 'product' ? 'product' : (req.body?.kind === 'menu' ? 'menu' : null);
+  const tier = String(req.body?.tier || '');
+  if (!kind || !LIMIT_TIERS.includes(tier)) return res.status(422).json({ error: 'bad_input' });
+  const cat = Math.max(0, Math.min(100000, Math.round(Number(req.body?.cat))));
+  const item = Math.max(0, Math.min(1000000, Math.round(Number(req.body?.item))));
+  const images = req.body?.images !== false;
+  if (!Number.isFinite(cat) || !Number.isFinite(item)) return res.status(422).json({ error: 'bad_input' });
+  const map = await getLimitsOverride(kind);
+  const before = map[tier] || null;
+  map[tier] = { cat, item, images };
+  await setLimitsOverride(kind, map);
+  logAdminActivity({
+    action: 'company_limits_changed',
+    details: `${kind}/${tier}`,
+    oldValue: before ? JSON.stringify(before) : 'default',
+    newValue: JSON.stringify(map[tier]),
+    ip: req.ip,
+  }).catch(() => {});
+  res.json({ kind, tier, limits: map[tier] });
+});
+
+// Bitta tierni standart qiymatga qaytarish.
+adminRouter.delete('/company-settings/limits/:kind/:tier', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const kind = req.params.kind === 'product' ? 'product' : (req.params.kind === 'menu' ? 'menu' : null);
+  const tier = req.params.tier;
+  if (!kind || !LIMIT_TIERS.includes(tier)) return res.status(422).json({ error: 'bad_input' });
+  const map = await getLimitsOverride(kind);
+  delete map[tier];
+  await setLimitsOverride(kind, map);
+  logAdminActivity({ action: 'company_limits_reset', details: `${kind}/${tier}`, ip: req.ip }).catch(() => {});
+  res.json({ ok: true });
+});
+
+// Jismoniy NFC (ko'p dona) narx pog'onalari — [{ minQty, maxQty|null, pricePerUnit }].
+adminRouter.post('/company-settings/physical-pricing', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const raw = req.body?.tiers;
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 20) return res.status(422).json({ error: 'bad_input' });
+  const tiers = [];
+  for (const t of raw) {
+    const minQty = Math.round(Number(t?.minQty));
+    const maxQtyRaw = t?.maxQty;
+    const maxQty = maxQtyRaw === null || maxQtyRaw === '' || maxQtyRaw == null ? null : Math.round(Number(maxQtyRaw));
+    const pricePerUnit = Math.round(Number(t?.pricePerUnit));
+    if (!Number.isFinite(minQty) || minQty < 1) return res.status(422).json({ error: 'bad_tier' });
+    if (maxQty !== null && (!Number.isFinite(maxQty) || maxQty < minQty)) return res.status(422).json({ error: 'bad_tier' });
+    if (!Number.isFinite(pricePerUnit) || pricePerUnit < 0 || pricePerUnit > 100_000_000) return res.status(422).json({ error: 'bad_tier' });
+    tiers.push({ minQty, maxQty, pricePerUnit });
+  }
+  await setPhysicalNfcTiers(tiers);
+  logAdminActivity({ action: 'physical_nfc_pricing_changed', newValue: JSON.stringify(tiers), ip: req.ip }).catch(() => {});
+  res.json({ tiers });
+});
+
+adminRouter.post('/company-settings/delivery', async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  const minDays = Math.round(Number(req.body?.minDays));
+  const maxDays = Math.round(Number(req.body?.maxDays));
+  if (!Number.isFinite(minDays) || !Number.isFinite(maxDays) || minDays < 0 || maxDays < minDays || maxDays > 90) {
+    return res.status(422).json({ error: 'bad_input' });
+  }
+  const delivery = { minDays, maxDays };
+  await setDeliveryDays(delivery);
+  logAdminActivity({ action: 'delivery_days_changed', newValue: JSON.stringify(delivery), ip: req.ip }).catch(() => {});
+  res.json(delivery);
 });
 
 // ═══════════════════════════════════════════════════════════════════

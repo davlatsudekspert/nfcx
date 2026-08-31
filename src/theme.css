@@ -200,6 +200,21 @@
   .tier-shine::after { animation: none; display: none; }
 }
 
+/* Kompaniyalar sahifasi — NFC Restaurant/Market namuna kartalari ustidan
+   juda nozik, sekin (8s) diagonal yorug'lik o'tib turadi (Company System
+   Faz 16 — "premium kayfiyat", neon/gaming emas). .tier-shine'dan farqli —
+   kamroq chastota, kamroq intensivlik. */
+@keyframes demoShine { 0% { transform: translateX(-130%) translateY(-30%) rotate(8deg); } 60%, 100% { transform: translateX(130%) translateY(30%) rotate(8deg); } }
+.demo-shine { position: relative; overflow: hidden; isolation: isolate; }
+.demo-shine::after {
+  content: ""; position: absolute; inset: -20% -10%; z-index: 1; pointer-events: none;
+  background: linear-gradient(100deg, transparent 42%, rgba(255,255,255,0.05) 48%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.05) 52%, transparent 58%);
+  animation: demoShine 8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-shine::after { animation: none; display: none; }
+}
+
 /* ===== Katalog kartasi — NFC ID darajasiga qarab rangli chegara + burchak
    nuri; ustidan begushiy diagonal yaltiroq o'tib turadi (.tier-shine bilan,
    JSX'da --tier rangi va --shine-delay indeks bo'yicha beriladi). ===== */

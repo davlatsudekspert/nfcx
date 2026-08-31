@@ -102,11 +102,25 @@ export default function App() {
   let bare = false;
   const isAuctionDetail = cleanRoute.startsWith('auksion/');
   const isMessagesDetail = cleanRoute.startsWith('xabarlar/');
-  if (!RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
+  // Company System — Menyu/Mahsulotlar uchun alohida ulashiladigan URL:
+  // nfcstore.uz/{code}/menyu, nfcstore.uz/{code}/mahsulotlar (Faz 9/10).
+  // Yangi NFC ID talab qilinmaydi — bir xil ProfilePage, faqat boshlang'ich
+  // tab oldindan belgilanadi.
+  const companySubMatch = cleanRoute.match(/^([^/]+)\/(menyu|mahsulotlar)$/);
+  if (!page && !RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
     const parsedRoute = parseAnyCode(cleanRoute);
     const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(cleanRoute) ? cleanRoute.toUpperCase() : null);
     if (code) {
       page = <ProfilePage key={code} code={code} catalog={catalog} />;
+      bare = true;
+    }
+  }
+  if (!page && companySubMatch) {
+    const [, rawCode, sub] = companySubMatch;
+    const parsedRoute = parseAnyCode(rawCode);
+    const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(rawCode) ? rawCode.toUpperCase() : null);
+    if (code) {
+      page = <ProfilePage key={`${code}/${sub}`} code={code} catalog={catalog} initialTab={sub === 'menyu' ? 'menyu' : 'mahsulotlar'} />;
       bare = true;
     }
   }

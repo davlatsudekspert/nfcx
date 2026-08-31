@@ -5,6 +5,9 @@ import {
 } from 'recharts';
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { useCategories, catPath } from '../lib/categories.js';
+import { idTier, effectiveAccess } from '../lib/access.js';
+import { TIER_LABEL } from '../lib/pricing.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import { AdminShell, AdminCard, KpiCard, StatusBadge, EmptyState, AdminLoading, chartGrid, chartAxis, chartTooltip } from '../components/admin/AdminUI.jsx';
 
@@ -125,7 +128,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -2461,11 +2464,465 @@ function FinanceDocs() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// KOMPANIYALAR (Company System — Admin Panel Faz 20–23). "Company" =
+// profile_type = 'business' bo'lgan cards yozuvi — alohida jadval yo'q
+// (Faz 0 audit qarori). Tarif — mavjud NFC ID tier tizimi, alohida
+// obuna emas: shuning uchun "FREE/PRO" filtri idTier'ga asoslanadi
+// (free = FREE, boshqa har qanday daraja = PRO).
+// ═══════════════════════════════════════════════════════════════════
+
+const COMPANY_SUBTABS = [['overview', 'Umumiy'], ['list', 'Kompaniyalar'], ['pricing', 'Tariflar va narxlar'], ['log', 'Faoliyat jurnali']];
+
+const COMPANY_ACTION_LABEL = {
+  company_suspended: 'Kompaniya bloklandi',
+  company_activated: 'Kompaniya faollashtirildi',
+  company_tier_set: 'Tarif qo‘lda belgilandi',
+  company_limits_changed: 'FREE/PRO limit o‘zgartirildi',
+  company_limits_reset: 'Limit standartga qaytarildi',
+  physical_nfc_pricing_changed: 'Jismoniy NFC narxi o‘zgartirildi',
+  delivery_days_changed: 'Yetkazib berish muddati o‘zgartirildi',
+};
+
+function CompanyActivityLog() {
+  const { t } = useLanguage();
+  const [log, setLog] = useState(null);
+  useEffect(() => { adminApi('/companies/activity-log').then((d) => setLog(d.log)); }, []);
+  return (
+    <AdminCard title={t('Kompaniyalar bo‘yicha admin amallari')}>
+      <div className="overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>{t('Amal')}</th><th>{t('Tafsilot')}</th><th>{t('Eski qiymat')}</th><th>{t('Yangi qiymat')}</th><th>{t('IP')}</th><th>{t('Vaqt')}</th></tr></thead>
+          <tbody>
+            {!log && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">{t('Yuklanmoqda...')}</td></tr>}
+            {log?.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-base-content/45">{t("Hozircha yozuv yo'q.")}</td></tr>}
+            {log?.map((a) => (
+              <tr key={a.id}>
+                <td className="font-semibold">{t(COMPANY_ACTION_LABEL[a.action] || a.action)}</td>
+                <td className="text-xs text-base-content/60">{a.details || '—'}</td>
+                <td className="text-xs text-base-content/50">{a.oldValue || '—'}</td>
+                <td className="text-xs text-base-content/50">{a.newValue || '—'}</td>
+                <td className="font-mono text-xs text-base-content/40">{a.ip || '—'}</td>
+                <td className="text-xs text-base-content/50">{timeAgo(new Date(a.createdAt).getTime())}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+  );
+}
+const COMPANY_TIER_OPTIONS = ['silver', 'gold', 'premium', 'exclusive'];
+
+function companyModuleStatus(catCount, itemCount) {
+  if (catCount > 0 && itemCount > 0) return { text: 'Faol', tone: 'success' };
+  if (catCount > 0) return { text: 'Yaratilgan (bo‘sh)', tone: 'muted' };
+  return { text: 'Yaratilmagan', tone: 'muted' };
+}
+
+function CompaniesOverview() {
+  const { t } = useLanguage();
+  const [stats, setStats] = useState(null);
+  useEffect(() => { adminApi('/companies/stats').then(setStats).catch(() => {}); }, []);
+  if (!stats) return <AdminLoading />;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <KpiCard icon="building" tone="accent" label={t('Jami kompaniyalar')} value={fmt(stats.total)} />
+      <KpiCard icon="check" tone="success" label={t('Faol (katalogda ko‘rinadi)')} value={fmt(stats.active)} />
+      <KpiCard icon="shield" tone="danger" label={t('Bloklangan (katalogdan yashirilgan)')} value={fmt(stats.suspended)} />
+      <KpiCard icon="clipboard" tone="pending" label={t('Restoran menyusi ishlatayotgan')} value={fmt(stats.withMenu)} />
+      <KpiCard icon="bag" tone="info" label={t('Mahsulotlar katalogi ishlatayotgan')} value={fmt(stats.withProducts)} />
+      <KpiCard icon="idcard" tone="muted" label={t('Ikkalasini ham ishlatayotgan')} value={fmt(stats.withBoth)} />
+    </div>
+  );
+}
+
+function CompanyDetailModal({ code, onClose, onChanged }) {
+  const { t, lang } = useLanguage();
+  const cats = useCategories();
+  const [row, setRow] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [tierPick, setTierPick] = useState('');
+
+  const load = () => adminApi(`/companies/${encodeURIComponent(code)}`).then((d) => { setRow(d); setTierPick(d.tierOverride || ''); });
+  useEffect(() => { load(); }, [code]);
+
+  const toggleStatus = async () => {
+    setBusy(true);
+    try {
+      await adminApi(`/companies/${encodeURIComponent(code)}/status`, { method: 'POST', body: JSON.stringify({ hidden: !row.hiddenFromDirectory }) });
+      await load(); onChanged();
+    } finally { setBusy(false); }
+  };
+  const saveTier = async () => {
+    setBusy(true);
+    try {
+      await adminApi(`/companies/${encodeURIComponent(code)}/tier`, { method: 'POST', body: JSON.stringify({ tier: tierPick || null }) });
+      await load(); onChanged();
+    } finally { setBusy(false); }
+  };
+
+  if (!row) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+        <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-base-200 p-6" onClick={(e) => e.stopPropagation()}><AdminLoading /></div>
+      </div>
+    );
+  }
+
+  const tier = idTier({ code: row.code, tierOverride: row.tierOverride, isGift: row.isGift });
+  const access = effectiveAccess({ code: row.code, tierOverride: row.tierOverride, isGift: row.isGift }, { isPremium: row.ownerIsPremium });
+  const menuStatus = companyModuleStatus(row.menuCatCount, row.menuItemCount);
+  const productStatus = companyModuleStatus(row.productCatCount, row.productItemCount);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-base-200 p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-base font-bold">{row.name} {row.verified && <span title={t('Tasdiqlangan')}>✔️</span>}</div>
+            <div className="font-mono text-xs text-base-content/45">nfcstore.uz/{row.code.toLowerCase()}</div>
+          </div>
+          <button className="btn btn-ghost btn-xs btn-square" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <div><span className="text-base-content/45">{t('Egasi')}:</span> {row.ownerEmail || '—'}</div>
+          <div><span className="text-base-content/45">{t('Telefon')}:</span> {row.phone || row.ownerPhone || '—'}</div>
+          <div><span className="text-base-content/45">{t('Soha')}:</span> {catPath(cats, row.categorySlug, lang) || '—'}</div>
+          <div><span className="text-base-content/45">{t('Shahar')}:</span> {row.city || '—'}</div>
+          <div><span className="text-base-content/45">{t('Jamoa a’zolari')}:</span> {row.teamCount}</div>
+          <div><span className="text-base-content/45">{t('Band qilingan')}:</span> {timeAgo(row.ts)}</div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Restoran menyusi')}</div>
+            <StatusBadge tone={menuStatus.tone}>{t(menuStatus.text)}</StatusBadge>
+            <div className="mt-1 text-[11px] text-base-content/50">{row.menuCatCount} {t('kategoriya')} · {row.menuItemCount} {t('taom')}</div>
+            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/menyu`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Mahsulotlar katalogi')}</div>
+            <StatusBadge tone={productStatus.tone}>{t(productStatus.text)}</StatusBadge>
+            <div className="mt-1 text-[11px] text-base-content/50">{row.productCatCount} {t('kategoriya')} · {row.productItemCount} {t('mahsulot')}</div>
+            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/mahsulotlar`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Tarif')}</div>
+          <div className="mt-1 text-sm">{t(TIER_LABEL[tier] || tier)} {row.ownerIsPremium && access !== tier ? `→ ${t('Profile Premium orqali')} ${t(TIER_LABEL[access])}` : ''}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <select value={tierPick} onChange={(e) => setTierPick(e.target.value)} className="select select-bordered select-xs bg-base-100">
+              <option value="">{t('Avtomatik (kod naqshiga qarab)')}</option>
+              {COMPANY_TIER_OPTIONS.map((v) => <option key={v} value={v}>{t(TIER_LABEL[v])}</option>)}
+            </select>
+            <button className="btn btn-primary btn-xs" disabled={busy} onClick={saveTier}>{t('Saqlash')}</button>
+          </div>
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-base-content/40">{t('Bu — NFC ID darajasini qo‘lda belgilash (masalan sovg‘a/maxsus holat). Kod naqshidan kelib chiqadigan avtomatik darajani almashtiradi.')}</p>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-3">
+          <div className="text-xs">
+            <div className="font-semibold">{row.hiddenFromDirectory ? t('Bloklangan') : t('Faol')}</div>
+            <div className="text-[10.5px] text-base-content/40">{t('Bloklash faqat ommaviy katalog/qidiruvdan yashiradi — havola orqali ochish davom etadi.')}</div>
+          </div>
+          <button className={`btn btn-xs ${row.hiddenFromDirectory ? 'btn-success' : 'btn-warning'}`} disabled={busy} onClick={toggleStatus}>
+            {row.hiddenFromDirectory ? t('Faollashtirish') : t('Bloklash')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PRICING_TIERS = ['free', 'silver', 'gold', 'premium', 'exclusive'];
+
+function LimitsTable({ title, subtitle, kind, limits, onSaved }) {
+  const { t } = useLanguage();
+  const [edit, setEdit] = useState(null); // tier being edited
+  const [form, setForm] = useState({ cat: '', item: '', images: true });
+  const [busy, setBusy] = useState(false);
+
+  if (!limits) return null;
+
+  const startEdit = (tier) => { setEdit(tier); setForm({ ...limits[tier] }); };
+  const save = async (tier) => {
+    setBusy(true);
+    try {
+      await adminApi('/company-settings/limits', { method: 'POST', body: JSON.stringify({ kind, tier, cat: Number(form.cat), item: Number(form.item), images: form.images }) });
+      setEdit(null); await onSaved();
+    } finally { setBusy(false); }
+  };
+  const resetDefault = async (tier) => {
+    setBusy(true);
+    try { await adminApi(`/company-settings/limits/${kind}/${tier}`, { method: 'DELETE' }); await onSaved(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard title={title} right={<span className="text-[11px] text-base-content/40">{subtitle}</span>}>
+      <div className="overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>{t('Tarif')}</th><th>{t('Kategoriyalar')}</th><th>{t('Elementlar')}</th><th>{t('Rasm')}</th><th></th></tr></thead>
+          <tbody>
+            {PRICING_TIERS.map((tier) => {
+              const l = limits[tier];
+              const editing = edit === tier;
+              return (
+                <tr key={tier}>
+                  <td className="font-semibold">{t(TIER_LABEL[tier])} {l.isCustom && <span className="badge badge-accent badge-xs ml-1">{t('o‘zgartirilgan')}</span>}</td>
+                  {editing ? (
+                    <>
+                      <td><input type="number" min="0" value={form.cat} onChange={(e) => setForm((f) => ({ ...f, cat: e.target.value }))} className="input input-bordered input-xs w-16 bg-base-100" /></td>
+                      <td><input type="number" min="0" value={form.item} onChange={(e) => setForm((f) => ({ ...f, item: e.target.value }))} className="input input-bordered input-xs w-20 bg-base-100" /></td>
+                      <td>
+                        <input type="checkbox" checked={form.images} onChange={(e) => setForm((f) => ({ ...f, images: e.target.checked }))} className="checkbox checkbox-xs" />
+                      </td>
+                      <td className="flex gap-1">
+                        <button className="btn btn-primary btn-xs" disabled={busy} onClick={() => save(tier)}>{t('Saqlash')}</button>
+                        <button className="btn btn-ghost btn-xs" onClick={() => setEdit(null)}>{t('Bekor')}</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{l.cat}</td>
+                      <td>{l.item}</td>
+                      <td>{l.images ? '✅' : '—'}</td>
+                      <td className="flex gap-1">
+                        <button className="btn btn-ghost btn-xs" onClick={() => startEdit(tier)}>{t('Tahrirlash')}</button>
+                        {l.isCustom && <button className="btn btn-ghost btn-xs" disabled={busy} onClick={() => resetDefault(tier)}>{t('Standartga qaytarish')}</button>}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+  );
+}
+
+function PhysicalPricingCard({ tiers, onSaved }) {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(tiers);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setRows(tiers); }, [tiers]);
+
+  const setRow = (i, patch) => setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const addRow = () => setRows((rs) => [...rs, { minQty: 1, maxQty: null, pricePerUnit: 0 }]);
+  const delRow = (i) => setRows((rs) => rs.filter((_, idx) => idx !== i));
+
+  const save = async () => {
+    setBusy(true);
+    try { await adminApi('/company-settings/physical-pricing', { method: 'POST', body: JSON.stringify({ tiers: rows }) }); await onSaved(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard title={t('Jismoniy NFC — ko‘p dona narx pog‘onalari')}>
+      <p className="mb-3 text-[11.5px] text-base-content/45">{t('Korporativ buyurtma kalkulyatori uchun (Kompaniyalar sahifasida ko‘rinadi).')} {t('Bu — informatsion kalkulyator. To‘lov/checkout hozircha o‘chiq — buyurtma Telegram orqali qo‘lda amalga oshiriladi.')}</p>
+      <div className="space-y-2">
+        {rows.map((r, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
+            <span className="text-[11px] text-base-content/45">{t('dan')}</span>
+            <input type="number" min="1" value={r.minQty} onChange={(e) => setRow(i, { minQty: Number(e.target.value) })} className="input input-bordered input-xs w-16 bg-base-100" />
+            <span className="text-[11px] text-base-content/45">{t('gacha')}</span>
+            <input type="number" min="1" value={r.maxQty ?? ''} placeholder={t('cheksiz')} onChange={(e) => setRow(i, { maxQty: e.target.value === '' ? null : Number(e.target.value) })} className="input input-bordered input-xs w-20 bg-base-100" />
+            <span className="text-[11px] text-base-content/45">{t('dona —')}</span>
+            <input type="number" min="0" value={r.pricePerUnit} onChange={(e) => setRow(i, { pricePerUnit: Number(e.target.value) })} className="input input-bordered input-xs w-28 bg-base-100" />
+            <span className="text-[11px] text-base-content/45">{t("so'm/dona")}</span>
+            <button className="btn btn-ghost btn-xs text-error ml-auto" onClick={() => delRow(i)}>{t("O'chirish")}</button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button className="btn btn-ghost btn-xs border border-white/15" onClick={addRow}>{t('+ Pog‘ona qo‘shish')}</button>
+        <button className="btn btn-primary btn-xs" disabled={busy || rows.length === 0} onClick={save}>{t('Saqlash')}</button>
+      </div>
+    </AdminCard>
+  );
+}
+
+function DeliveryCard({ delivery, onSaved }) {
+  const { t } = useLanguage();
+  const [minDays, setMinDays] = useState(delivery.minDays);
+  const [maxDays, setMaxDays] = useState(delivery.maxDays);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setMinDays(delivery.minDays); setMaxDays(delivery.maxDays); }, [delivery]);
+
+  const save = async () => {
+    setBusy(true);
+    try { await adminApi('/company-settings/delivery', { method: 'POST', body: JSON.stringify({ minDays: Number(minDays), maxDays: Number(maxDays) }) }); await onSaved(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard title={t('Yetkazib berish muddati')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="number" min="0" value={minDays} onChange={(e) => setMinDays(e.target.value)} className="input input-bordered input-xs w-16 bg-base-100" />
+        <span className="text-[11px] text-base-content/45">—</span>
+        <input type="number" min="0" value={maxDays} onChange={(e) => setMaxDays(e.target.value)} className="input input-bordered input-xs w-16 bg-base-100" />
+        <span className="text-[11px] text-base-content/45">{t('ish kuni')}</span>
+        <button className="btn btn-primary btn-xs" disabled={busy} onClick={save}>{t('Saqlash')}</button>
+      </div>
+    </AdminCard>
+  );
+}
+
+function CompanyPricingSubtab() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const load = () => adminApi('/company-settings').then(setData);
+  useEffect(() => { load(); }, []);
+  if (!data) return <AdminLoading />;
+  return (
+    <div className="space-y-5">
+      <LimitsTable title={t('Restoran menyusi — FREE/PRO limitlar')} subtitle={t('Har bir NFC ID darajasi uchun')} kind="menu" limits={data.menuLimits} onSaved={load} />
+      <LimitsTable title={t('Mahsulotlar katalogi — FREE/PRO limitlar')} subtitle={t('Har bir NFC ID darajasi uchun')} kind="product" limits={data.productLimits} onSaved={load} />
+      <PhysicalPricingCard tiers={data.physicalNfcTiers} onSaved={load} />
+      <DeliveryCard delivery={data.delivery} onSaved={load} />
+    </div>
+  );
+}
+
+function CompaniesTab() {
+  const { t, lang } = useLanguage();
+  const cats = useCategories();
+  const [sub, setSub] = useState('overview');
+  const [rows, setRows] = useState(null);
+  const [q, setQ] = useState('');
+  const [planFilter, setPlanFilter] = useState('all'); // all | free | pro
+  const [typeFilter, setTypeFilter] = useState('all'); // all | menu | products | both
+  const [statusFilter, setStatusFilter] = useState('all'); // all | active | suspended
+  const [openCode, setOpenCode] = useState(null);
+
+  const load = () => adminApi('/companies').then((d) => setRows(d.companies || [])).catch(() => setRows([]));
+  useEffect(() => { if (sub === 'list') load(); }, [sub]);
+
+  const enriched = (rows || []).map((r) => ({
+    ...r,
+    tier: idTier({ code: r.code, tierOverride: r.tierOverride, isGift: r.isGift }),
+    hasMenu: r.menuCatCount > 0 && r.menuItemCount > 0,
+    hasProducts: r.productCatCount > 0 && r.productItemCount > 0,
+  }));
+
+  const query = q.trim().toLowerCase();
+  const filtered = enriched.filter((r) => {
+    if (query && !(
+      r.name.toLowerCase().includes(query) ||
+      r.code.toLowerCase().includes(query) ||
+      (r.ownerEmail || '').toLowerCase().includes(query)
+    )) return false;
+    if (planFilter === 'free' && r.tier !== 'free') return false;
+    if (planFilter === 'pro' && r.tier === 'free') return false;
+    if (typeFilter === 'menu' && !r.hasMenu) return false;
+    if (typeFilter === 'products' && !r.hasProducts) return false;
+    if (typeFilter === 'both' && !(r.hasMenu && r.hasProducts)) return false;
+    if (statusFilter === 'active' && r.hiddenFromDirectory) return false;
+    if (statusFilter === 'suspended' && !r.hiddenFromDirectory) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-1.5">
+        {COMPANY_SUBTABS.map(([v, l]) => (
+          <button key={v} onClick={() => setSub(v)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${sub === v ? 'bg-accent text-accent-content' : 'border border-white/10 text-base-content/60 hover:text-base-content'}`}>
+            {t(l)}
+          </button>
+        ))}
+      </div>
+
+      {sub === 'overview' && <CompaniesOverview />}
+
+      {sub === 'list' && (
+        <div>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Nomi, NFC ID yoki egasi bo'yicha qidirish...")}
+              className="input input-bordered input-sm min-w-0 flex-1 bg-base-100 sm:max-w-xs" />
+            <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
+              <option value="all">{t('Barcha tariflar')}</option>
+              <option value="free">FREE</option>
+              <option value="pro">PRO</option>
+            </select>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
+              <option value="all">{t('Barcha turlar')}</option>
+              <option value="menu">{t('Restoran menyusi')}</option>
+              <option value="products">{t('Mahsulotlar katalogi')}</option>
+              <option value="both">{t('Ikkalasi ham')}</option>
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
+              <option value="all">{t('Barcha holatlar')}</option>
+              <option value="active">{t('Faol')}</option>
+              <option value="suspended">{t('Bloklangan')}</option>
+            </select>
+          </div>
+
+          {!rows && <AdminLoading />}
+          {rows && filtered.length === 0 && <EmptyState icon="building" title={t('Hech qanday kompaniya topilmadi.')} />}
+          {rows && filtered.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>{t('Kompaniya')}</th>
+                    <th>{t('Egasi')}</th>
+                    <th>{t('Soha')}</th>
+                    <th>{t('Menyu')}</th>
+                    <th>{t('Mahsulotlar')}</th>
+                    <th>{t('Tarif')}</th>
+                    <th>{t('Holati')}</th>
+                    <th>{t('Yaratildi')}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => {
+                    const menuStatus = companyModuleStatus(r.menuCatCount, r.menuItemCount);
+                    const productStatus = companyModuleStatus(r.productCatCount, r.productItemCount);
+                    return (
+                      <tr key={r.code}>
+                        <td>
+                          <div className="font-semibold">{r.name} {r.verified && '✔️'}</div>
+                          <div className="font-mono text-[11px] text-base-content/40">{r.code}</div>
+                        </td>
+                        <td className="text-xs">{r.ownerEmail || '—'}</td>
+                        <td className="text-xs text-base-content/60">{catPath(cats, r.categorySlug, lang) || '—'}</td>
+                        <td><StatusBadge tone={menuStatus.tone}>{t(menuStatus.text)}</StatusBadge></td>
+                        <td><StatusBadge tone={productStatus.tone}>{t(productStatus.text)}</StatusBadge></td>
+                        <td className="text-xs font-semibold">{t(TIER_LABEL[r.tier] || r.tier)}</td>
+                        <td><StatusBadge tone={r.hiddenFromDirectory ? 'danger' : 'success'}>{r.hiddenFromDirectory ? t('Bloklangan') : t('Faol')}</StatusBadge></td>
+                        <td className="text-xs text-base-content/50">{timeAgo(r.ts)}</td>
+                        <td><button className="btn btn-ghost btn-xs" onClick={() => setOpenCode(r.code)}>{t('Batafsil')}</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {sub === 'pricing' && <CompanyPricingSubtab />}
+      {sub === 'log' && <CompanyActivityLog />}
+
+      {openCode && <CompanyDetailModal code={openCode} onClose={() => setOpenCode(null)} onChanged={load} />}
+    </div>
+  );
+}
+
 // Sidebar navigatsiyasi — index = haqiqiy TABS indeksi (content switch o'zgarmaydi).
 const ADMIN_NAV = [
   { index: 0, label: 'Umumiy', icon: 'dashboard' },
   { index: 1, label: 'Statistika', icon: 'chart' },
   { index: 2, label: 'Foydalanuvchilar', icon: 'users' },
+  { index: 19, label: 'Kompaniyalar', icon: 'building' },
   { index: 3, label: 'Buyurtmalar', icon: 'bag' },
   { index: 4, label: "To'lanishi kerak pullar", icon: 'wallet' },
   { index: 18, label: 'Moliya', icon: 'bank', superOnly: true },
@@ -2520,6 +2977,7 @@ function Dashboard({ onLogout, role }) {
         {tab === 16 && <VerificationTab />}
         {tab === 17 && <AuctionDemandTab />}
         {tab === 18 && isSuperAdmin && <FinanceTab />}
+        {tab === 19 && <CompaniesTab />}
       </div>
     </AdminShell>
   );

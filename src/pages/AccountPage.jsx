@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -10,8 +10,10 @@ import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
+import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
+import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, menuEligible } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, menuEligible, productEligible } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -75,12 +77,78 @@ function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
 // Restoran menyusi (Band 3.3) — egaga boshqaruv. Kategoriya → taom.
 const MENU_ITEM_EMPTY = { name: '', description: '', price: '', discountPrice: '', imageUrl: '', available: true, featured: false };
 
-function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
+// Rasm yuklashdan oldingi tahrirlash — "Avtomatik kesish"/"Markazlashtirish"
+// HOZIR ishlaydi (canvas, provayder shart emas); "Fonni olib
+// tashlash"/"Oq fon"/"Sifatni yaxshilash" hali ulanmagan — bosilganda
+// aniq "tez orada" xabari ko'rsatiladi, hech qachon soxta natija bermaydi
+// (Company System — Faz 17).
+function ImageUploadTools({ canImage, imageUrl, busy, onPicked }) {
+  const { t } = useLanguage();
+  const [pending, setPending] = useState(null);
+  const [toolBusy, setToolBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  if (!canImage) return null;
+
+  const pickFile = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setMsg('');
+    try { setPending(await fileToCompressedDataUrl(file)); }
+    catch (err) { setMsg(err.message || t('Xatolik yuz berdi.')); }
+  };
+  const runTool = async (fn) => {
+    if (!pending) return;
+    setToolBusy(true); setMsg('');
+    try {
+      const res = await fn(pending);
+      if (res.ok) setPending(res.dataUrl);
+      else setMsg(res.reason || t('Hozircha mavjud emas.'));
+    } finally { setToolBusy(false); }
+  };
+  const confirm = async () => {
+    const dataUrl = pending;
+    setPending(null);
+    await onPicked(dataUrl);
+  };
+
+  if (pending) {
+    return (
+      <div className="w-full space-y-2 rounded-xl border border-accent/30 bg-black/20 p-2.5">
+        <img src={pending} alt="" className="mx-auto h-24 w-24 rounded-lg object-cover" />
+        {msg && <div className="text-center text-[10.5px] text-warning">{msg}</div>}
+        <div className="flex flex-wrap justify-center gap-1">
+          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(autoCropToContent)}>{'✂️'} {t('Avtomatik kesish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(centerObject)}>{'\u{1F3AF}'} {t('Markazlashtirish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(removeBackground)}>{'✨'} {t('Fonni olib tashlash')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(whitenBackground)}>{'⬜'} {t('Oq fon qilish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(enhance)}>{'\u{1F48E}'} {t('Sifatni yaxshilash')}</button>
+        </div>
+        <div className="flex justify-center gap-2">
+          <button type="button" className="btn btn-primary btn-xs" disabled={toolBusy} onClick={confirm}>{t('Rasmni saqlash')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => setPending(null)}>{t('Bekor')}</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
+      {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
+      <input type="file" accept="image/*" className="hidden" onChange={pickFile} />
+    </label>
+  );
+}
+
+function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange, onDraftEnd }) {
   const { t } = useLanguage();
   const [edit, setEdit] = useState(false);
   const [f, setF] = useState(item);
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const set = (k) => (e) => setF((s) => {
+    const next = { ...s, [k]: e.target.value };
+    onDraftChange?.(next);
+    return next;
+  });
 
   const save = async () => {
     setBusy(true);
@@ -91,7 +159,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         discountPrice: f.discountPrice === '' ? null : f.discountPrice,
         available: f.available, featured: f.featured,
       });
-      onChanged(row); setEdit(false);
+      onChanged(row); setEdit(false); onDraftEnd?.();
     } finally { setBusy(false); }
   };
   const toggle = async (field) => {
@@ -102,12 +170,10 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
     if (!confirm(t('Bu taomni o‘chirasizmi?'))) return;
     await dbDeleteMenuItem(code, item.id); onDeleted(item.id);
   };
-  const uploadImg = async (e) => {
-    const file = e.target.files?.[0]; e.target.value = '';
-    if (!file) return;
+  const applyImage = async (dataUrl) => {
+    if (!dataUrl) return;
     setBusy(true);
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
       const url = await dbUploadImage(dataUrl);
       const row = await dbUpdateMenuItem(code, item.id, { imageUrl: url });
       onChanged(row);
@@ -125,19 +191,14 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </div>
         <div className="flex gap-2">
           <button className="btn btn-primary btn-xs" onClick={save} disabled={busy}>{t('Saqlash')}</button>
-          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); }}>{t('Bekor')}</button>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); onDraftEnd?.(); }}>{t('Bekor')}</button>
         </div>
       </div>
     );
   }
   return (
-    <div className={`flex gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
-      {canImage && (
-        <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
-          {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
-          <input type="file" accept="image/*" className="hidden" onChange={uploadImg} />
-        </label>
-      )}
+    <div className={`flex flex-wrap gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
+      <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5 text-sm font-semibold">
           {item.featured && <span className="shrink-0">⭐</span>}
@@ -150,7 +211,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
         </div>
         {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
-          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => setEdit(true)}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
             {item.available ? '🟢' : '⚫'}
           </button>
@@ -164,6 +225,26 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted }) {
   );
 }
 
+// Ulashiladigan public URL qatori (Company System — Faz 9/10). Har bir
+// biznes bo'lim ("menyu", "mahsulotlar") uchun alohida ulashish mumkin
+// bo'lgan havolani ko'rsatadi — yangi NFC ID talab qilinmaydi.
+function ShareLinkRow({ code, sub }) {
+  const { t } = useLanguage();
+  const [copied, setCopied] = useState(false);
+  const link = `${window.location.origin}/${code.toLowerCase()}/${sub}`;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* jim tur */ }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
+      <span className="shrink-0 text-[11px] text-base-content/40">{'\u{1F517}'}</span>
+      <code className="min-w-0 flex-1 truncate text-[11.5px] font-mono text-base-content/70">{link}</code>
+      <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={copy}>{copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
+    </div>
+  );
+}
+
 function MenuManagerSection({ code, allowed, onLock }) {
   const { t } = useLanguage();
   const [data, setData] = useState(null);
@@ -172,6 +253,10 @@ function MenuManagerSection({ code, allowed, onLock }) {
   const [adding, setAdding] = useState({}); // catId -> MENU_ITEM_EMPTY
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  // Live Phone Preview (Faz 6) — hozir tahrirlanayotgan/qo'shilayotgan
+  // element, local state — backend'ga har harfda so'rov yubormaydi.
+  const [draft, setDraft] = useState(null);
+  const [mobilePreview, setMobilePreview] = useState(false);
 
   const load = () => dbGetMenuManage(code).then(setData).catch(() => setErr(true));
   useEffect(() => { if (allowed) load(); }, [code, allowed]);
@@ -190,6 +275,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
   const { menu, limits, counts } = data;
   const eligible = data.eligible !== false;
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const previewCategories = mergeDraftIntoCategories(menu, draft);
 
   const addCat = async () => {
     const name = newCat.trim();
@@ -221,6 +307,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
         available: true,
       });
       setAdding((s) => ({ ...s, [catId]: MENU_ITEM_EMPTY }));
+      setDraft(null);
       await load();
     } catch (e) {
       flash(e.message === 'limit_reached' ? t('Taom limiti tugadi ({n} ta).', { n: e.limit })
@@ -229,9 +316,16 @@ function MenuManagerSection({ code, allowed, onLock }) {
     } finally { setBusy(false); }
   };
 
-  const setAddF = (catId, k) => (e) => setAdding((s) => ({ ...s, [catId]: { ...(s[catId] || MENU_ITEM_EMPTY), [k]: e.target.value } }));
+  const setAddF = (catId, k) => (e) => {
+    const val = e.target.value;
+    setAdding((s) => {
+      const next = { ...(s[catId] || MENU_ITEM_EMPTY), [k]: val };
+      setDraft({ ...next, id: '__draft__', categoryId: catId });
+      return { ...s, [catId]: next };
+    });
+  };
 
-  return (
+  const editorBody = (
     <div className="space-y-4">
       {!eligible && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
@@ -242,6 +336,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
         {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Taomlar')}: {counts.items}/{limits.item}
         {!limits.images && ` · ${t('rasm Gold+ dan')}`}
       </div>
+      <ShareLinkRow code={code} sub="menyu" />
       {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
 
       {menu.map((cat) => (
@@ -260,6 +355,8 @@ function MenuManagerSection({ code, allowed, onLock }) {
               <MenuItemRow
                 key={it.id} code={code} item={it} canImage={limits.images}
                 onChanged={() => load()} onDeleted={() => load()}
+                onDraftChange={(f) => setDraft({ ...f, categoryId: cat.id })}
+                onDraftEnd={() => setDraft(null)}
               />
             ))}
           </div>
@@ -282,6 +379,299 @@ function MenuManagerSection({ code, allowed, onLock }) {
           <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Ichimliklar)')}
             value={newCat} onChange={(e) => setNewCat(e.target.value)} />
           <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_296px] lg:items-start lg:gap-6">
+      {editorBody}
+
+      {/* Desktop — jonli preview yon tomonda (sticky) */}
+      <div className="hidden lg:sticky lg:top-20 lg:block">
+        <PhoneFrame label={t('Jonli ko‘rinish')}>
+          <MenuPreviewList categories={previewCategories} t={t} />
+        </PhoneFrame>
+      </div>
+
+      {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
+      <button type="button" onClick={() => setMobilePreview(true)}
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
+        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+      </button>
+      {mobilePreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
+          <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+              {t('Jonli ko‘rinish')}
+              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+            </div>
+            <PhoneFrame>
+              <MenuPreviewList categories={previewCategories} t={t} />
+            </PhoneFrame>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mahsulotlar katalogi (Company System — Products) — Menyu bilan bir xil
+// naqsh, lekin soha bilan cheklanmagan (istalgan biznes profil uchun).
+const PRODUCT_EMPTY = { name: '', description: '', price: '', discountPrice: '', imageUrl: '', available: true, featured: false };
+
+function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange, onDraftEnd }) {
+  const { t } = useLanguage();
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState(item);
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF((s) => {
+    const next = { ...s, [k]: e.target.value };
+    onDraftChange?.(next);
+    return next;
+  });
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const row = await dbUpdateProduct(code, item.id, {
+        name: f.name, description: f.description,
+        price: f.price === '' ? null : f.price,
+        discountPrice: f.discountPrice === '' ? null : f.discountPrice,
+        available: f.available, featured: f.featured,
+      });
+      onChanged(row); setEdit(false); onDraftEnd?.();
+    } finally { setBusy(false); }
+  };
+  const toggle = async (field) => {
+    const row = await dbUpdateProduct(code, item.id, { [field]: !item[field] });
+    onChanged(row);
+  };
+  const del = async () => {
+    if (!confirm(t('Bu mahsulotni o‘chirasizmi?'))) return;
+    await dbDeleteProduct(code, item.id); onDeleted(item.id);
+  };
+  const applyImage = async (dataUrl) => {
+    if (!dataUrl) return;
+    setBusy(true);
+    try {
+      const url = await dbUploadImage(dataUrl);
+      const row = await dbUpdateProduct(code, item.id, { imageUrl: url });
+      onChanged(row);
+    } catch { /* jim */ } finally { setBusy(false); }
+  };
+
+  if (edit) {
+    return (
+      <div className="rounded-xl border border-accent/30 bg-black/20 p-3 space-y-2">
+        <input className="input input-bordered input-sm w-full bg-base-100" value={f.name} onChange={set('name')} placeholder={t('Mahsulot nomi')} />
+        <textarea className="textarea textarea-bordered textarea-sm w-full bg-base-100" rows={2} value={f.description || ''} onChange={set('description')} placeholder={t('Tavsif')} />
+        <div className="flex gap-2">
+          <input className="input input-bordered input-sm w-full bg-base-100" type="number" value={f.price ?? ''} onChange={set('price')} placeholder={t('Narx')} />
+          <input className="input input-bordered input-sm w-full bg-base-100" type="number" value={f.discountPrice ?? ''} onChange={set('discountPrice')} placeholder={t('Chegirma narxi')} />
+        </div>
+        <div className="flex gap-2">
+          <button className="btn btn-primary btn-xs" onClick={save} disabled={busy}>{t('Saqlash')}</button>
+          <button className="btn btn-ghost btn-xs" onClick={() => { setF(item); setEdit(false); onDraftEnd?.(); }}>{t('Bekor')}</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className={`flex flex-wrap gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
+      <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-1.5 text-sm font-semibold">
+          {item.featured && <span className="shrink-0">⭐</span>}
+          <span className="min-w-0 flex-1 truncate">{item.name}</span>
+          {item.price != null && (
+            <span className="shrink-0 text-xs text-base-content/60">
+              {fmt(item.price)}{item.discountPrice != null ? ` → ${fmt(item.discountPrice)}` : ''}
+            </span>
+          )}
+        </div>
+        {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
+        <div className="mt-1.5 flex items-center gap-1">
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
+            {item.available ? '🟢' : '⚫'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
+            {item.featured ? '⭐' : '☆'}
+          </button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductManagerSection({ code, allowed, onLock }) {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
+  const [newCat, setNewCat] = useState('');
+  const [adding, setAdding] = useState({}); // catId -> PRODUCT_EMPTY
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  // Live Phone Preview (Faz 8) — MenuManagerSection bilan bir xil naqsh.
+  const [draft, setDraft] = useState(null);
+  const [mobilePreview, setMobilePreview] = useState(false);
+
+  const load = () => dbGetProductsManage(code).then(setData).catch(() => setErr(true));
+  useEffect(() => { if (allowed) load(); }, [code, allowed]);
+
+  if (!allowed) {
+    return (
+      <button type="button" onClick={onLock}
+        className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
+        {'\u{1F512}'} {t('Mahsulotlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
+      </button>
+    );
+  }
+  if (err) return <div className="text-sm text-error">{t('Katalogni yuklab bo‘lmadi.')}</div>;
+  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+
+  const { products, limits, counts } = data;
+  const eligible = data.eligible !== false;
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const previewCategories = mergeDraftIntoCategories(products, draft);
+
+  const addCat = async () => {
+    const name = newCat.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await dbAddProductCategory(code, { name });
+      setNewCat(''); await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Kategoriya limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_business' ? t('Mahsulotlar katalogi faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')
+        : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+  const updCat = async (id, patch) => { await dbUpdateProductCategory(code, id, patch); await load(); };
+  const delCat = async (id) => {
+    if (!confirm(t('Kategoriya va uning barcha mahsulotlari o‘chadi. Davom etamizmi?'))) return;
+    await dbDeleteProductCategory(code, id); await load();
+  };
+  const addItem = async (catId) => {
+    const f = adding[catId] || PRODUCT_EMPTY;
+    if (!f.name.trim()) return;
+    setBusy(true);
+    try {
+      await dbAddProduct(code, {
+        categoryId: catId, name: f.name, description: f.description,
+        price: f.price === '' ? null : f.price,
+        discountPrice: f.discountPrice === '' ? null : f.discountPrice,
+        available: true,
+      });
+      setAdding((s) => ({ ...s, [catId]: PRODUCT_EMPTY }));
+      setDraft(null);
+      await load();
+    } catch (e) {
+      flash(e.message === 'limit_reached' ? t('Mahsulot limiti tugadi ({n} ta).', { n: e.limit })
+        : e.message === 'not_business' ? t('Mahsulotlar katalogi faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')
+        : t('Xatolik yuz berdi.'));
+    } finally { setBusy(false); }
+  };
+
+  const setAddF = (catId, k) => (e) => {
+    const val = e.target.value;
+    setAdding((s) => {
+      const next = { ...(s[catId] || PRODUCT_EMPTY), [k]: val };
+      setDraft({ ...next, id: '__draft__', categoryId: catId });
+      return { ...s, [catId]: next };
+    });
+  };
+
+  const editorBody = (
+    <div className="space-y-4">
+      {!eligible && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-200/90">
+          {t('Mahsulotlar katalogi faqat biznes profillar uchun. "Profil turi" bo‘limida "Biznes"ni tanlang.')}
+        </div>
+      )}
+      <div className="text-xs text-base-content/50">
+        {t('Kategoriyalar')}: {counts.cats}/{limits.cat} · {t('Mahsulotlar')}: {counts.items}/{limits.item}
+        {!limits.images && ` · ${t('rasm Gold+ dan')}`}
+      </div>
+      <ShareLinkRow code={code} sub="mahsulotlar" />
+      {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
+
+      {products.map((cat) => (
+        <div key={cat.id} className={`rounded-2xl border border-white/10 bg-base-200/40 p-3 ${cat.enabled ? '' : 'opacity-60'}`}>
+          <div className="flex items-center gap-1">
+            <input
+              className="input input-ghost input-sm min-w-0 flex-1 px-1 font-semibold"
+              defaultValue={cat.name}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
+            />
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {cat.items.map((it) => (
+              <ProductItemRow
+                key={it.id} code={code} item={it} canImage={limits.images}
+                onChanged={() => load()} onDeleted={() => load()}
+                onDraftChange={(f) => setDraft({ ...f, categoryId: cat.id })}
+                onDraftEnd={() => setDraft(null)}
+              />
+            ))}
+          </div>
+          {eligible && (
+            <div className="mt-2 space-y-1.5">
+              <input className="input input-bordered input-xs w-full bg-base-100" placeholder={t('Yangi mahsulot nomi')}
+                value={(adding[cat.id] || PRODUCT_EMPTY).name} onChange={setAddF(cat.id, 'name')} />
+              <div className="flex gap-1.5">
+                <input className="input input-bordered input-xs min-w-0 flex-1 bg-base-100" type="number" placeholder={t('Narx')}
+                  value={(adding[cat.id] || PRODUCT_EMPTY).price} onChange={setAddF(cat.id, 'price')} />
+                <button className="btn btn-primary btn-xs shrink-0" onClick={() => addItem(cat.id)} disabled={busy}>{t("+ Qo'shish")}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {eligible && counts.cats < limits.cat && (
+        <div className="flex gap-2">
+          <input className="input input-bordered input-sm min-w-0 flex-1 bg-base-100" placeholder={t('Yangi kategoriya (masalan: Aksessuarlar)')}
+            value={newCat} onChange={(e) => setNewCat(e.target.value)} />
+          <button className="btn btn-primary btn-sm" onClick={addCat} disabled={busy}>{t("Qo‘shish")}</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_296px] lg:items-start lg:gap-6">
+      {editorBody}
+
+      {/* Desktop — jonli preview yon tomonda (sticky) */}
+      <div className="hidden lg:sticky lg:top-20 lg:block">
+        <PhoneFrame label={t('Jonli ko‘rinish')}>
+          <ProductsPreviewGrid categories={previewCategories} t={t} />
+        </PhoneFrame>
+      </div>
+
+      {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
+      <button type="button" onClick={() => setMobilePreview(true)}
+        className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
+        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+      </button>
+      {mobilePreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
+          <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
+              {t('Jonli ko‘rinish')}
+              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+            </div>
+            <PhoneFrame>
+              <ProductsPreviewGrid categories={previewCategories} t={t} />
+            </PhoneFrame>
+          </div>
         </div>
       )}
     </div>
@@ -1107,6 +1497,9 @@ function EditCardForm({ card, onSaved }) {
     profileType: ['personal', 'expert', 'business'].includes(card.profileType) ? card.profileType : 'personal',
     city: card.city || '',
     categorySlug: card.categorySlug || '',
+    address: card.address || '',
+    latitude: card.latitude != null ? String(card.latitude) : '',
+    longitude: card.longitude != null ? String(card.longitude) : '',
     hiddenFromDirectory: !!card.hiddenFromDirectory,
     avatarUrl: card.avatarUrl || '',
     bgUrl: card.bgUrl || '',
@@ -1284,6 +1677,9 @@ function EditCardForm({ card, onSaved }) {
         profileType: form.profileType,
         city: form.city.trim(),
         categorySlug: form.categorySlug,
+        address: form.address.trim(),
+        latitude: form.latitude === '' ? null : Number(form.latitude),
+        longitude: form.longitude === '' ? null : Number(form.longitude),
         hiddenFromDirectory: form.hiddenFromDirectory,
         avatarUrl: form.avatarUrl.trim(),
         bgUrl: form.bgUrl.trim(),
@@ -1691,6 +2087,30 @@ function EditCardForm({ card, onSaved }) {
             )}
           </Section>
 
+          {card.profileType === 'business' && (
+            <Section title={t('Manzil va lokatsiya')} subtitle={t("Qo'ng'iroq va xaritada ko'rsatish uchun")}>
+              <Gate ok={allow('location')} onLock={() => setLocked(t('Manzil va lokatsiya'))}>
+                <label className="form-control block">
+                  <span className="text-xs font-semibold text-base-content/70">{t('Manzil')}</span>
+                  <input value={form.address} onChange={set('address')} placeholder={t('Ko‘cha, uy, mo‘ljal')} className={inp} />
+                </label>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="form-control">
+                    <span className="text-xs font-semibold text-base-content/70">{t('Kenglik (latitude)')}</span>
+                    <input value={form.latitude} onChange={set('latitude')} type="number" step="any" placeholder="41.311081" className={`${inp} font-mono`} />
+                  </label>
+                  <label className="form-control">
+                    <span className="text-xs font-semibold text-base-content/70">{t('Uzunlik (longitude)')}</span>
+                    <input value={form.longitude} onChange={set('longitude')} type="number" step="any" placeholder="69.240562" className={`${inp} font-mono`} />
+                  </label>
+                </div>
+                <p className="mt-2 text-[11.5px] text-base-content/40">
+                  {t('Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.')}
+                </p>
+              </Gate>
+            </Section>
+          )}
+
           <Section title={t("To'lov kartalari")} subtitle={t("Profilda ko'rinadigan karta raqamlari")}>
             <label className="form-control block">
               <span className="text-xs font-semibold text-base-content/70">{t("Asosiy karta raqami")}</span>
@@ -1744,6 +2164,16 @@ function EditCardForm({ card, onSaved }) {
                 code={card.code}
                 allowed={allow('restaurantMenu')}
                 onLock={() => setLocked(t('Restoran menyusi'))}
+              />
+            </Section>
+          )}
+
+          {card.profileType === 'business' && productEligible(card.profileType) && (
+            <Section title={t('Mahsulotlar katalogi')} subtitle={t('Kategoriyalar va mahsulotlar')}>
+              <ProductManagerSection
+                code={card.code}
+                allowed={allow('productCatalog')}
+                onLock={() => setLocked(t('Mahsulotlar katalogi'))}
               />
             </Section>
           )}

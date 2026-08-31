@@ -212,6 +212,10 @@ export async function initDb() {
     profile_type: `ALTER TABLE cards ADD COLUMN profile_type VARCHAR(12) NOT NULL DEFAULT 'personal'`,
     city: `ALTER TABLE cards ADD COLUMN city TEXT`,
     hidden_from_directory: `ALTER TABLE cards ADD COLUMN hidden_from_directory BOOLEAN NOT NULL DEFAULT FALSE`,
+    // Manzil + koordinatalar (Company System — Faz 1/19). Gold+ funksiya.
+    address: `ALTER TABLE cards ADD COLUMN address TEXT`,
+    latitude: `ALTER TABLE cards ADD COLUMN latitude DOUBLE PRECISION`,
+    longitude: `ALTER TABLE cards ADD COLUMN longitude DOUBLE PRECISION`,
   };
   const existing = await pool.query(
     `SELECT column_name, character_maximum_length FROM information_schema.columns
@@ -227,7 +231,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory', 'address', 'latitude', 'longitude']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -1055,6 +1059,38 @@ export async function initDb() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_code_idx ON menu_items (code, category_id, sort)`);
 
+  // ── Mahsulotlar katalogi (Company System — Products) ───────────────
+  // menu_categories/menu_items bilan bir xil naqsh, lekin ovqatlanish
+  // sohasi bilan cheklanmagan — istalgan biznes profil uchun.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS product_categories (
+      id         BIGSERIAL PRIMARY KEY,
+      code       VARCHAR(16) NOT NULL,
+      name       TEXT NOT NULL,
+      sort       INTEGER NOT NULL DEFAULT 0,
+      enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS product_categories_code_idx ON product_categories (code, sort)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id             BIGSERIAL PRIMARY KEY,
+      code           VARCHAR(16) NOT NULL,
+      category_id    BIGINT NOT NULL REFERENCES product_categories(id) ON DELETE CASCADE,
+      name           TEXT NOT NULL,
+      description    TEXT,
+      price          BIGINT,
+      discount_price BIGINT,
+      image_url      TEXT,
+      available      BOOLEAN NOT NULL DEFAULT TRUE,
+      featured       BOOLEAN NOT NULL DEFAULT FALSE,
+      sort           INTEGER NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS products_code_idx ON products (code, category_id, sort)`);
+
   // ── Fayl / PDF / katalog (Band 3.4) ───────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS card_files (
@@ -1240,6 +1276,27 @@ export async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+
+  // Kompaniyalar (Discovery) qidiruvi (Faz 12) ILIKE '%so'z%' ishlatadi —
+  // oddiy B-tree indeks bunga yordam bermaydi. pg_trgm mavjud bo'lsa
+  // (Railway/managed Postgres'da odatda ruxsat berilgan), GIN trigram
+  // indekslarni qo'shamiz — sekin sequential scan o'rniga tezkor qidiruv
+  // (Faz 32 — performance). Ruxsat yo'q bo'lsa (masalan cheklangan
+  // muhit) — jim o'tkazib yuboramiz, qidiruv baribir ishlayveradi,
+  // faqat sekinroq (mavjud xatti-harakat o'zgarmaydi).
+  try {
+    // MUHIM: qidiruv so'rovlari LOWER(ustun) LIKE $1 shaklida (searchRecords/
+    // searchCompanyDirectory) — indeks ham aynan shu ifoda ustida bo'lishi
+    // kerak (oddiy "name gin_trgm_ops" ishlamaydi, chunki Postgres LOWER()
+    // bilan o'ralgan ifodani indekslangan ustunga mos kelmaydi deb topadi).
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS cards_name_trgm_idx ON cards USING GIN (LOWER(name) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS cards_city_trgm_idx ON cards USING GIN (LOWER(city) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS menu_items_name_trgm_idx ON menu_items USING GIN (LOWER(name) gin_trgm_ops)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS products_name_trgm_idx ON products USING GIN (LOWER(name) gin_trgm_ops)`);
+  } catch (err) {
+    console.warn('[db] pg_trgm indekslari o’rnatilmadi (qidiruv baribir ishlaydi, faqat sekinroq):', err.message);
+  }
 
   dbReady = true;
   console.log('[db] PostgreSQL ulanishi va schema tayyor.');
@@ -1473,6 +1530,7 @@ const SELECT_FIELDS = `
   accent_color AS "accentColor", bg_color AS "bgColor", bg_animated AS "bgAnimated", music_url AS "musicUrl",
   links_transparent AS "linksTransparent", link_style AS "linkStyle",
   profile_type AS "profileType", city, category_slug AS "categorySlug", hidden_from_directory AS "hiddenFromDirectory",
+  address, latitude, longitude,
   lead_capture AS "leadCapture",
   is_primary AS "isPrimary", giftable, hide_phone AS "hidePhone",
   tg, phone, email,
@@ -1502,6 +1560,9 @@ function rowToRecord(row) {
     profileType: ['personal', 'expert', 'business'].includes(row.profileType) ? row.profileType : 'personal',
     city: row.city || '',
     categorySlug: row.categorySlug || '',
+    address: row.address || '',
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
     hiddenFromDirectory: !!row.hiddenFromDirectory,
     leadCapture: !!row.leadCapture,
     musicUrl: row.musicUrl || '',
@@ -1575,6 +1636,70 @@ export async function searchRecords(q, { includeHidden = false, limit = 60 } = {
   return rows.map(rowToRecord);
 }
 
+// ---------- Kompaniyalar (Discovery) qidiruvi — Company System Faz 12 ----------
+// Faqat biznes profillar (yashiringanlar bundan mustasno). Kompaniya
+// darajasidagi maydonlar (nomi/soha/shahar) + Menyu/Mahsulot ELEMENT
+// nomlari bo'yicha ham qidiradi ("osh" → "Osh" bor restoranlar).
+// Har bir natija — bitta kompaniya, mos kelgan eng yaxshi element bilan
+// (matchType/matchLabel/matchPrice) — mavjud searchRecords()'ga
+// TEGILMAGAN (Header/Katalog qidiruvi shu funksiyaga bog'liq).
+export async function searchCompanyDirectory(q, limit = 30) {
+  const term = String(q || '').trim();
+  if (!term) return [];
+  const like = `%${term.toLowerCase()}%`;
+  const cap = Math.max(1, Math.min(60, limit));
+
+  const { rows } = await pool.query(
+    `WITH company_match AS (
+       SELECT c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              NULL::text AS "matchType", NULL::text AS "matchLabel", NULL::bigint AS "matchPrice"
+         FROM cards c
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND (LOWER(c.name) LIKE $1 OR LOWER(c.code) LIKE $1
+               OR LOWER(COALESCE(c.city, '')) LIKE $1 OR LOWER(COALESCE(c.role, '')) LIKE $1)
+     ),
+     menu_match AS (
+       SELECT DISTINCT ON (c.code)
+              c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              'menu'::text AS "matchType", mi.name AS "matchLabel", mi.price AS "matchPrice"
+         FROM menu_items mi
+         JOIN cards c ON c.code = mi.code
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND LOWER(mi.name) LIKE $1
+        ORDER BY c.code, mi.featured DESC, mi.sort
+     ),
+     product_match AS (
+       SELECT DISTINCT ON (c.code)
+              c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+              c.avatar_url AS "avatarUrl", c.verified, c.ts,
+              'product'::text AS "matchType", p.name AS "matchLabel", p.price AS "matchPrice"
+         FROM products p
+         JOIN cards c ON c.code = p.code
+        WHERE c.profile_type = 'business' AND c.hidden_from_directory = FALSE
+          AND LOWER(p.name) LIKE $1
+        ORDER BY c.code, p.featured DESC, p.sort
+     ),
+     merged AS (
+       SELECT * FROM menu_match
+       UNION ALL
+       SELECT * FROM product_match
+       UNION ALL
+       SELECT * FROM company_match WHERE code NOT IN (SELECT code FROM menu_match) AND code NOT IN (SELECT code FROM product_match)
+     )
+     SELECT DISTINCT ON (code) * FROM merged ORDER BY code, "matchType" NULLS LAST, ts DESC
+     LIMIT $2`,
+    [like, cap]
+  );
+  return rows.map((r) => ({
+    ...r,
+    ts: Number(r.ts),
+    verified: !!r.verified,
+    matchPrice: r.matchPrice == null ? null : Number(r.matchPrice),
+  })).sort((a, b) => b.ts - a.ts);
+}
+
 export async function countRecords() {
   const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM cards`);
   return Number(rows[0].n);
@@ -1586,6 +1711,7 @@ export async function getRecord(code) {
             c.accent_color AS "accentColor", c.bg_color AS "bgColor", c.bg_animated AS "bgAnimated", c.music_url AS "musicUrl",
             c.links_transparent AS "linksTransparent", c.link_style AS "linkStyle",
             c.profile_type AS "profileType", c.city, c.category_slug AS "categorySlug",
+            c.address, c.latitude, c.longitude,
             c.hidden_from_directory AS "hiddenFromDirectory", c.lead_capture AS "leadCapture", c.hide_phone AS "hidePhone",
             c.tg, c.phone, c.email, c.linkedin, c.instagram, c.about, c.facebook, c.twitter, c.website,
             c.card_number AS "cardNumber", c.extra_links AS "extraLinks", c.card_numbers AS "cardNumbers",
@@ -1656,7 +1782,7 @@ export async function incrementViews(code) {
 export const CARD_EVENT_TYPES = [
   'profile_view', 'phone_click', 'telegram_click', 'whatsapp_click',
   'instagram_click', 'website_click', 'email_click', 'link_click',
-  'contact_save', 'lead', 'menu_view',
+  'contact_save', 'lead', 'menu_view', 'products_view',
 ];
 
 export async function logCardEvent(code, eventType, { ref, visitorHash } = {}) {
@@ -1869,6 +1995,120 @@ export async function updateMenuItem(code, id, f) {
 
 export async function deleteMenuItem(code, id) {
   await pool.query(`DELETE FROM menu_items WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// ---------- Mahsulotlar katalogi (Company System — Products) ----------
+// menu_* funksiyalari bilan bir xil naqsh — jadval nomlari boshqa.
+
+export async function getProducts(code, { includeDisabled = false } = {}) {
+  const [cats, items] = await Promise.all([
+    pool.query(
+      `SELECT id, name, sort, enabled FROM product_categories
+        WHERE code = $1 ${includeDisabled ? '' : 'AND enabled = TRUE'}
+        ORDER BY sort, id`,
+      [code]
+    ),
+    pool.query(
+      `SELECT id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+              image_url AS "imageUrl", available, featured, sort
+         FROM products WHERE code = $1 ORDER BY sort, id`,
+      [code]
+    ),
+  ]);
+  const byCat = new Map();
+  for (const it of items.rows) {
+    if (!byCat.has(it.categoryId)) byCat.set(it.categoryId, []);
+    byCat.get(it.categoryId).push({
+      ...it,
+      price: it.price == null ? null : Number(it.price),
+      discountPrice: it.discountPrice == null ? null : Number(it.discountPrice),
+    });
+  }
+  return cats.rows.map((c) => ({ ...c, items: byCat.get(c.id) || [] }));
+}
+
+export async function productCounts(code) {
+  const { rows } = await pool.query(
+    `SELECT (SELECT COUNT(*)::int FROM product_categories WHERE code = $1) AS cats,
+            (SELECT COUNT(*)::int FROM products WHERE code = $1) AS items`,
+    [code]
+  );
+  return { cats: rows[0].cats, items: rows[0].items };
+}
+
+export async function createProductCategory(code, { name, sort }) {
+  const { rows } = await pool.query(
+    `INSERT INTO product_categories (code, name, sort) VALUES ($1, $2, $3)
+     RETURNING id, name, sort, enabled`,
+    [code, name, sort || 0]
+  );
+  return rows[0];
+}
+
+export async function updateProductCategory(code, id, f) {
+  const { rows } = await pool.query(
+    `UPDATE product_categories SET
+        name = COALESCE($3, name), sort = COALESCE($4, sort), enabled = COALESCE($5, enabled)
+      WHERE code = $1 AND id = $2
+      RETURNING id, name, sort, enabled`,
+    [code, id, f.name ?? null, f.sort ?? null, f.enabled ?? null]
+  );
+  return rows[0] || null;
+}
+
+export async function deleteProductCategory(code, id) {
+  await pool.query(`DELETE FROM product_categories WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+// category_id shu kartaga tegishli ekanini tekshiradi (IDOR himoyasi).
+export async function productCategoryBelongs(code, categoryId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM product_categories WHERE id = $1 AND code = $2`, [categoryId, code]
+  );
+  return !!rows[0];
+}
+
+const productRow = (r) => (r ? {
+  ...r,
+  price: r.price == null ? null : Number(r.price),
+  discountPrice: r.discountPrice == null ? null : Number(r.discountPrice),
+} : null);
+
+export async function createProduct(code, f) {
+  const { rows } = await pool.query(
+    `INSERT INTO products (code, category_id, name, description, price, discount_price, image_url, available, featured, sort)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     RETURNING id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+               image_url AS "imageUrl", available, featured, sort`,
+    [code, f.categoryId, f.name, f.description || null, f.price ?? null, f.discountPrice ?? null,
+     f.imageUrl || null, f.available !== false, f.featured === true, f.sort || 0]
+  );
+  return productRow(rows[0]);
+}
+
+export async function updateProduct(code, id, f) {
+  const sets = [];
+  const vals = [code, id];
+  const col = {
+    categoryId: 'category_id', name: 'name', description: 'description', price: 'price',
+    discountPrice: 'discount_price', imageUrl: 'image_url', available: 'available',
+    featured: 'featured', sort: 'sort',
+  };
+  for (const [k, c] of Object.entries(col)) {
+    if (k in f) { vals.push(f[k]); sets.push(`${c} = $${vals.length}`); }
+  }
+  if (!sets.length) return null;
+  const { rows } = await pool.query(
+    `UPDATE products SET ${sets.join(', ')} WHERE code = $1 AND id = $2
+     RETURNING id, category_id AS "categoryId", name, description, price, discount_price AS "discountPrice",
+               image_url AS "imageUrl", available, featured, sort`,
+    vals
+  );
+  return productRow(rows[0]) || null;
+}
+
+export async function deleteProduct(code, id) {
+  await pool.query(`DELETE FROM products WHERE code = $1 AND id = $2`, [code, id]);
 }
 
 // ---------- Fayl / PDF / katalog (Band 3.4) ----------
@@ -2130,6 +2370,23 @@ export async function listAdminActivityLog(limit = 200) {
   return rows;
 }
 
+// Kompaniyalar bilan bog'liq admin amallari — Security tabidagi to'liq
+// jurnaldan filtrlangan qism (Company System — Faz 28). Alohida jadval
+// yaratilmadi — mavjud admin_activity_log qayta ishlatildi.
+const COMPANY_LOG_ACTIONS = [
+  'company_suspended', 'company_activated', 'company_tier_set',
+  'company_limits_changed', 'company_limits_reset',
+  'physical_nfc_pricing_changed', 'delivery_days_changed',
+];
+export async function listCompanyActivityLog(limit = 200) {
+  const { rows } = await pool.query(
+    `SELECT id, action, details, old_value AS "oldValue", new_value AS "newValue", ip, created_at AS "createdAt"
+     FROM admin_activity_log WHERE action = ANY($1) ORDER BY created_at DESC LIMIT $2`,
+    [COMPANY_LOG_ACTIONS, limit]
+  );
+  return rows;
+}
+
 // ---------- IP Whitelist ----------
 export async function getAdminSetting(key) {
   const { rows } = await pool.query(`SELECT value FROM admin_settings WHERE key = $1`, [key]);
@@ -2141,6 +2398,53 @@ export async function setAdminSetting(key, value) {
      ON CONFLICT (key) DO UPDATE SET value = $2`,
     [key, value]
   );
+}
+
+// ---------- Jismoniy NFC (ko'p dona) narx pog'onalari + yetkazib berish
+// muddati (Company System — Faz 25/26). Bitta joyda saqlangan standart
+// qiymatlar — index.js (public o'qish) va admin.js (admin tahrirlash)
+// ikkalasi ham shu yerdan import qiladi. ----------
+export const DEFAULT_PHYSICAL_NFC_TIERS = [
+  { minQty: 1, maxQty: 1, pricePerUnit: 200000 },
+  { minQty: 2, maxQty: 4, pricePerUnit: 150000 },
+  { minQty: 5, maxQty: 9, pricePerUnit: 120000 },
+  { minQty: 10, maxQty: null, pricePerUnit: 100000 },
+];
+export const DEFAULT_DELIVERY_DAYS = { minDays: 3, maxDays: 5 };
+
+export async function getPhysicalNfcTiers() {
+  try {
+    const raw = await getAdminSetting('physical_nfc_pricing');
+    if (!raw) return DEFAULT_PHYSICAL_NFC_TIERS;
+    const tiers = JSON.parse(raw);
+    return Array.isArray(tiers) && tiers.length ? tiers : DEFAULT_PHYSICAL_NFC_TIERS;
+  } catch { return DEFAULT_PHYSICAL_NFC_TIERS; }
+}
+export async function setPhysicalNfcTiers(tiers) {
+  await setAdminSetting('physical_nfc_pricing', JSON.stringify(tiers));
+}
+export async function getDeliveryDays() {
+  try {
+    const raw = await getAdminSetting('delivery_days');
+    if (!raw) return DEFAULT_DELIVERY_DAYS;
+    const d = JSON.parse(raw);
+    return (d && Number.isFinite(d.minDays) && Number.isFinite(d.maxDays)) ? d : DEFAULT_DELIVERY_DAYS;
+  } catch { return DEFAULT_DELIVERY_DAYS; }
+}
+export async function setDeliveryDays(d) {
+  await setAdminSetting('delivery_days', JSON.stringify(d));
+}
+
+// Menyu/Mahsulotlar FREE-PRO limitlar override (Faz 4) — admin_settings'da
+// 'menu_limits'/'product_limits' kaliti ostida JSON: { free:{cat,item,images}, ... }.
+export async function getLimitsOverride(kind) {
+  try {
+    const raw = await getAdminSetting(`${kind}_limits`);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+export async function setLimitsOverride(kind, map) {
+  await setAdminSetting(`${kind}_limits`, JSON.stringify(map));
 }
 export async function listAdminIpWhitelist() {
   const { rows } = await pool.query(`SELECT id, ip, label, created_at AS "createdAt" FROM admin_ip_whitelist ORDER BY id ASC`);
@@ -2686,6 +2990,9 @@ export async function updateRecord(code, fields) {
     profileType: 'profile_type',
     city: 'city',
     categorySlug: 'category_slug',
+    address: 'address',
+    latitude: 'latitude',
+    longitude: 'longitude',
     hiddenFromDirectory: 'hidden_from_directory',
     leadCapture: 'lead_capture',
     musicUrl: 'music_url',
@@ -4059,6 +4366,85 @@ export async function adminListVerifiedCards() {
     `SELECT code, name, role, profile_type AS "profileType" FROM cards WHERE verified = TRUE ORDER BY name`
   );
   return rows;
+}
+
+// ---------- Company System — admin (Admin Panel Faz 20–23) ----------
+// "Company" = profile_type = 'business' bo'lgan cards yozuvi (alohida
+// jadval yo'q — Faz 0 audit qarori). Tarif — mavjud NFC ID tier tizimi
+// (tier_override / kod naqshi / owner Profile Premium), alohida
+// obuna jadvali emas.
+
+// Umumiy statistika: jami/faol/bloklangan kompaniyalar, Menyu/Mahsulotlar
+// modulidan foydalanayotganlar soni.
+export async function adminCompanyStats() {
+  const { rows } = await pool.query(`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE hidden_from_directory = FALSE)::int AS active,
+      COUNT(*) FILTER (WHERE hidden_from_directory = TRUE)::int AS suspended,
+      COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code))::int AS with_menu,
+      COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code))::int AS with_products,
+      COUNT(*) FILTER (
+        WHERE EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code)
+          AND EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code)
+      )::int AS with_both
+    FROM cards WHERE profile_type = 'business'
+  `);
+  const r = rows[0];
+  return {
+    total: r.total, active: r.active, suspended: r.suspended,
+    withMenu: r.with_menu, withProducts: r.with_products, withBoth: r.with_both,
+  };
+}
+
+const COMPANY_LIST_SQL = `
+  SELECT c.code, c.name, c.role, c.city, c.category_slug AS "categorySlug",
+         c.tier_override AS "tierOverride", c.verified, c.ts,
+         c.hidden_from_directory AS "hiddenFromDirectory",
+         c.phone, c.email, c.about,
+         u.id AS "ownerId", u.email AS "ownerEmail", u.phone AS "ownerPhone", u.is_premium AS "ownerIsPremium",
+         EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS "isGift",
+         (SELECT COUNT(*)::int FROM menu_categories mc WHERE mc.code = c.code) AS "menuCatCount",
+         (SELECT COUNT(*)::int FROM menu_items mi WHERE mi.code = c.code) AS "menuItemCount",
+         (SELECT COUNT(*)::int FROM product_categories pc WHERE pc.code = c.code) AS "productCatCount",
+         (SELECT COUNT(*)::int FROM products p WHERE p.code = c.code) AS "productItemCount",
+         (SELECT COUNT(*)::int FROM card_team tm WHERE tm.code = c.code) AS "teamCount"
+    FROM cards c
+    LEFT JOIN users u ON u.id = c.user_id
+   WHERE c.profile_type = 'business'
+`;
+
+function companyRow(r) {
+  return {
+    ...r,
+    ts: Number(r.ts),
+    verified: !!r.verified,
+    hiddenFromDirectory: !!r.hiddenFromDirectory,
+    ownerIsPremium: !!r.ownerIsPremium,
+    isGift: !!r.isGift,
+  };
+}
+
+export async function adminListCompanies(limit = 300) {
+  const { rows } = await pool.query(`${COMPANY_LIST_SQL} ORDER BY c.ts DESC LIMIT $1`, [limit]);
+  return rows.map(companyRow);
+}
+
+export async function adminGetCompany(code) {
+  const { rows } = await pool.query(`${COMPANY_LIST_SQL} AND c.code = $1`, [code]);
+  return rows[0] ? companyRow(rows[0]) : null;
+}
+
+// Direktoriya/qidiruvdan yashirish — "suspend" (mavjud "hidden_from_directory"
+// maydonini qayta ishlatadi; ma'lumot o'chirilmaydi, faqat ommaviy
+// katalog/qidiruvdan chiqadi — to'g'ridan-to'g'ri havola ishlayveradi).
+export async function adminSetCompanyDirectoryHidden(code, hidden) {
+  const { rows } = await pool.query(
+    `UPDATE cards SET hidden_from_directory = $2 WHERE code = $1 AND profile_type = 'business'
+     RETURNING code, name, hidden_from_directory AS "hiddenFromDirectory"`,
+    [code, !!hidden]
+  );
+  return rows[0] || null;
 }
 
 // ---------- Profil postlari ----------
