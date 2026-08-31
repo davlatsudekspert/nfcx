@@ -2472,7 +2472,7 @@ function FinanceDocs() {
 // (free = FREE, boshqa har qanday daraja = PRO).
 // ═══════════════════════════════════════════════════════════════════
 
-const COMPANY_SUBTABS = [['overview', 'Umumiy'], ['list', 'Kompaniyalar']];
+const COMPANY_SUBTABS = [['overview', 'Umumiy'], ['list', 'Kompaniyalar'], ['pricing', 'Tariflar va narxlar']];
 const COMPANY_TIER_OPTIONS = ['silver', 'gold', 'premium', 'exclusive'];
 
 function companyModuleStatus(catCount, itemCount) {
@@ -2598,6 +2598,158 @@ function CompanyDetailModal({ code, onClose, onChanged }) {
   );
 }
 
+const PRICING_TIERS = ['free', 'silver', 'gold', 'premium', 'exclusive'];
+
+function LimitsTable({ title, subtitle, kind, limits, onSaved }) {
+  const { t } = useLanguage();
+  const [edit, setEdit] = useState(null); // tier being edited
+  const [form, setForm] = useState({ cat: '', item: '', images: true });
+  const [busy, setBusy] = useState(false);
+
+  if (!limits) return null;
+
+  const startEdit = (tier) => { setEdit(tier); setForm({ ...limits[tier] }); };
+  const save = async (tier) => {
+    setBusy(true);
+    try {
+      await adminApi('/company-settings/limits', { method: 'POST', body: JSON.stringify({ kind, tier, cat: Number(form.cat), item: Number(form.item), images: form.images }) });
+      setEdit(null); await onSaved();
+    } finally { setBusy(false); }
+  };
+  const resetDefault = async (tier) => {
+    setBusy(true);
+    try { await adminApi(`/company-settings/limits/${kind}/${tier}`, { method: 'DELETE' }); await onSaved(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard title={title} right={<span className="text-[11px] text-base-content/40">{subtitle}</span>}>
+      <div className="overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>{t('Tarif')}</th><th>{t('Kategoriyalar')}</th><th>{t('Elementlar')}</th><th>{t('Rasm')}</th><th></th></tr></thead>
+          <tbody>
+            {PRICING_TIERS.map((tier) => {
+              const l = limits[tier];
+              const editing = edit === tier;
+              return (
+                <tr key={tier}>
+                  <td className="font-semibold">{t(TIER_LABEL[tier])} {l.isCustom && <span className="badge badge-accent badge-xs ml-1">{t('o‘zgartirilgan')}</span>}</td>
+                  {editing ? (
+                    <>
+                      <td><input type="number" min="0" value={form.cat} onChange={(e) => setForm((f) => ({ ...f, cat: e.target.value }))} className="input input-bordered input-xs w-16 bg-base-100" /></td>
+                      <td><input type="number" min="0" value={form.item} onChange={(e) => setForm((f) => ({ ...f, item: e.target.value }))} className="input input-bordered input-xs w-20 bg-base-100" /></td>
+                      <td>
+                        <input type="checkbox" checked={form.images} onChange={(e) => setForm((f) => ({ ...f, images: e.target.checked }))} className="checkbox checkbox-xs" />
+                      </td>
+                      <td className="flex gap-1">
+                        <button className="btn btn-primary btn-xs" disabled={busy} onClick={() => save(tier)}>{t('Saqlash')}</button>
+                        <button className="btn btn-ghost btn-xs" onClick={() => setEdit(null)}>{t('Bekor')}</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{l.cat}</td>
+                      <td>{l.item}</td>
+                      <td>{l.images ? '✅' : '—'}</td>
+                      <td className="flex gap-1">
+                        <button className="btn btn-ghost btn-xs" onClick={() => startEdit(tier)}>{t('Tahrirlash')}</button>
+                        {l.isCustom && <button className="btn btn-ghost btn-xs" disabled={busy} onClick={() => resetDefault(tier)}>{t('Standartga qaytarish')}</button>}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+  );
+}
+
+function PhysicalPricingCard({ tiers, onSaved }) {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(tiers);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setRows(tiers); }, [tiers]);
+
+  const setRow = (i, patch) => setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const addRow = () => setRows((rs) => [...rs, { minQty: 1, maxQty: null, pricePerUnit: 0 }]);
+  const delRow = (i) => setRows((rs) => rs.filter((_, idx) => idx !== i));
+
+  const save = async () => {
+    setBusy(true);
+    try { await adminApi('/company-settings/physical-pricing', { method: 'POST', body: JSON.stringify({ tiers: rows }) }); await onSaved(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard title={t('Jismoniy NFC — ko‘p dona narx pog‘onalari')}>
+      <p className="mb-3 text-[11.5px] text-base-content/45">{t('Korporativ buyurtma kalkulyatori uchun (Kompaniyalar sahifasida ko‘rinadi).')} {t('Bu — informatsion kalkulyator. To‘lov/checkout hozircha o‘chiq — buyurtma Telegram orqali qo‘lda amalga oshiriladi.')}</p>
+      <div className="space-y-2">
+        {rows.map((r, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
+            <span className="text-[11px] text-base-content/45">{t('dan')}</span>
+            <input type="number" min="1" value={r.minQty} onChange={(e) => setRow(i, { minQty: Number(e.target.value) })} className="input input-bordered input-xs w-16 bg-base-100" />
+            <span className="text-[11px] text-base-content/45">{t('gacha')}</span>
+            <input type="number" min="1" value={r.maxQty ?? ''} placeholder={t('cheksiz')} onChange={(e) => setRow(i, { maxQty: e.target.value === '' ? null : Number(e.target.value) })} className="input input-bordered input-xs w-20 bg-base-100" />
+            <span className="text-[11px] text-base-content/45">{t('dona —')}</span>
+            <input type="number" min="0" value={r.pricePerUnit} onChange={(e) => setRow(i, { pricePerUnit: Number(e.target.value) })} className="input input-bordered input-xs w-28 bg-base-100" />
+            <span className="text-[11px] text-base-content/45">{t("so'm/dona")}</span>
+            <button className="btn btn-ghost btn-xs text-error ml-auto" onClick={() => delRow(i)}>{t("O'chirish")}</button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button className="btn btn-ghost btn-xs border border-white/15" onClick={addRow}>{t('+ Pog‘ona qo‘shish')}</button>
+        <button className="btn btn-primary btn-xs" disabled={busy || rows.length === 0} onClick={save}>{t('Saqlash')}</button>
+      </div>
+    </AdminCard>
+  );
+}
+
+function DeliveryCard({ delivery, onSaved }) {
+  const { t } = useLanguage();
+  const [minDays, setMinDays] = useState(delivery.minDays);
+  const [maxDays, setMaxDays] = useState(delivery.maxDays);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setMinDays(delivery.minDays); setMaxDays(delivery.maxDays); }, [delivery]);
+
+  const save = async () => {
+    setBusy(true);
+    try { await adminApi('/company-settings/delivery', { method: 'POST', body: JSON.stringify({ minDays: Number(minDays), maxDays: Number(maxDays) }) }); await onSaved(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <AdminCard title={t('Yetkazib berish muddati')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="number" min="0" value={minDays} onChange={(e) => setMinDays(e.target.value)} className="input input-bordered input-xs w-16 bg-base-100" />
+        <span className="text-[11px] text-base-content/45">—</span>
+        <input type="number" min="0" value={maxDays} onChange={(e) => setMaxDays(e.target.value)} className="input input-bordered input-xs w-16 bg-base-100" />
+        <span className="text-[11px] text-base-content/45">{t('ish kuni')}</span>
+        <button className="btn btn-primary btn-xs" disabled={busy} onClick={save}>{t('Saqlash')}</button>
+      </div>
+    </AdminCard>
+  );
+}
+
+function CompanyPricingSubtab() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const load = () => adminApi('/company-settings').then(setData);
+  useEffect(() => { load(); }, []);
+  if (!data) return <AdminLoading />;
+  return (
+    <div className="space-y-5">
+      <LimitsTable title={t('Restoran menyusi — FREE/PRO limitlar')} subtitle={t('Har bir NFC ID darajasi uchun')} kind="menu" limits={data.menuLimits} onSaved={load} />
+      <LimitsTable title={t('Mahsulotlar katalogi — FREE/PRO limitlar')} subtitle={t('Har bir NFC ID darajasi uchun')} kind="product" limits={data.productLimits} onSaved={load} />
+      <PhysicalPricingCard tiers={data.physicalNfcTiers} onSaved={load} />
+      <DeliveryCard delivery={data.delivery} onSaved={load} />
+    </div>
+  );
+}
+
 function CompaniesTab() {
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -2717,6 +2869,8 @@ function CompaniesTab() {
           )}
         </div>
       )}
+
+      {sub === 'pricing' && <CompanyPricingSubtab />}
 
       {openCode && <CompanyDetailModal code={openCode} onClose={() => setOpenCode(null)} onChanged={load} />}
     </div>

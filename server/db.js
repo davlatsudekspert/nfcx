@@ -2288,6 +2288,53 @@ export async function setAdminSetting(key, value) {
     [key, value]
   );
 }
+
+// ---------- Jismoniy NFC (ko'p dona) narx pog'onalari + yetkazib berish
+// muddati (Company System — Faz 25/26). Bitta joyda saqlangan standart
+// qiymatlar — index.js (public o'qish) va admin.js (admin tahrirlash)
+// ikkalasi ham shu yerdan import qiladi. ----------
+export const DEFAULT_PHYSICAL_NFC_TIERS = [
+  { minQty: 1, maxQty: 1, pricePerUnit: 200000 },
+  { minQty: 2, maxQty: 4, pricePerUnit: 150000 },
+  { minQty: 5, maxQty: 9, pricePerUnit: 120000 },
+  { minQty: 10, maxQty: null, pricePerUnit: 100000 },
+];
+export const DEFAULT_DELIVERY_DAYS = { minDays: 3, maxDays: 5 };
+
+export async function getPhysicalNfcTiers() {
+  try {
+    const raw = await getAdminSetting('physical_nfc_pricing');
+    if (!raw) return DEFAULT_PHYSICAL_NFC_TIERS;
+    const tiers = JSON.parse(raw);
+    return Array.isArray(tiers) && tiers.length ? tiers : DEFAULT_PHYSICAL_NFC_TIERS;
+  } catch { return DEFAULT_PHYSICAL_NFC_TIERS; }
+}
+export async function setPhysicalNfcTiers(tiers) {
+  await setAdminSetting('physical_nfc_pricing', JSON.stringify(tiers));
+}
+export async function getDeliveryDays() {
+  try {
+    const raw = await getAdminSetting('delivery_days');
+    if (!raw) return DEFAULT_DELIVERY_DAYS;
+    const d = JSON.parse(raw);
+    return (d && Number.isFinite(d.minDays) && Number.isFinite(d.maxDays)) ? d : DEFAULT_DELIVERY_DAYS;
+  } catch { return DEFAULT_DELIVERY_DAYS; }
+}
+export async function setDeliveryDays(d) {
+  await setAdminSetting('delivery_days', JSON.stringify(d));
+}
+
+// Menyu/Mahsulotlar FREE-PRO limitlar override (Faz 4) — admin_settings'da
+// 'menu_limits'/'product_limits' kaliti ostida JSON: { free:{cat,item,images}, ... }.
+export async function getLimitsOverride(kind) {
+  try {
+    const raw = await getAdminSetting(`${kind}_limits`);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+export async function setLimitsOverride(kind, map) {
+  await setAdminSetting(`${kind}_limits`, JSON.stringify(map));
+}
 export async function listAdminIpWhitelist() {
   const { rows } = await pool.query(`SELECT id, ip, label, created_at AS "createdAt" FROM admin_ip_whitelist ORDER BY id ASC`);
   return rows;

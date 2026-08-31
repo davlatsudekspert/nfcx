@@ -861,3 +861,12 @@ export async function dbActivateGift(code, payload) {
   }
   return data;
 }
+
+// ---------- Jismoniy NFC (ko'p dona) narx kalkulyatori (Company System — Faz 25/26) ----------
+export async function dbGetPhysicalNfcPricing() {
+  try {
+    return await api('/settings/physical-nfc-pricing');
+  } catch {
+    return null;
+  }
+}

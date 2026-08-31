@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pricing.js';
-import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuLimitsFor, menuEligible, productLimitsFor, productEligible, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
+import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuEligible, MENU_LIMITS, productEligible, PRODUCT_LIMITS, fileLimitFor, videoLimitsFor, teamLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
   listRecords, searchRecords, getRecord, createRecord, countRecords, incrementViews, deleteOwnCard,
@@ -15,6 +15,7 @@ import {
   getProducts, productCounts, productCategoryBelongs,
   createProductCategory, updateProductCategory, deleteProductCategory,
   createProduct, updateProduct, deleteProduct,
+  getLimitsOverride, getPhysicalNfcTiers, getDeliveryDays, DEFAULT_PHYSICAL_NFC_TIERS, DEFAULT_DELIVERY_DAYS,
   listCardFiles, cardFileCount, createCardFile, updateCardFile, deleteCardFile,
   listCardVideos, cardVideoCount, createCardVideo, updateCardVideo, deleteCardVideo,
   listCardTeam, cardTeamCount, createTeamMember, updateTeamMember, deleteTeamMember,
@@ -377,6 +378,23 @@ function validateBody(body) {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, db: isDbReady() });
+});
+
+// ---------- Jismoniy NFC (ko'p dona) narx pog'onalari + yetkazib berish
+// muddati (Company System — Faz 25/26) ----------
+// Admin panel orqali boshqariladi (admin_settings: 'physical_nfc_pricing',
+// 'delivery_days' — server/db.js'dagi standart qiymatlar/funksiyalar).
+// Bu — korporativ (ko'p dona) buyurtma uchun INFORMATSION kalkulyator;
+// checkout/to'lov oqimiga ulanmagan (to'lovlar hozircha butunlay o'chiq —
+// buyurtma Telegram orqali qo'lda qilinadi).
+app.get('/api/settings/physical-nfc-pricing', async (req, res) => {
+  if (!isDbReady()) return res.json({ tiers: DEFAULT_PHYSICAL_NFC_TIERS, delivery: DEFAULT_DELIVERY_DAYS });
+  try {
+    res.json({ tiers: await getPhysicalNfcTiers(), delivery: await getDeliveryDays() });
+  } catch (err) {
+    console.error('[api] physical-nfc-pricing:', err.message);
+    res.json({ tiers: DEFAULT_PHYSICAL_NFC_TIERS, delivery: DEFAULT_DELIVERY_DAYS });
+  }
 });
 
 // ---------- AI yordamchi (o'ng past burchakdagi chat vidjeti) ----------
@@ -1837,6 +1855,28 @@ app.delete('/api/records/:code/leads/:id', async (req, res) => {
   }
 });
 
+// ---------- Admin-configurable FREE/PRO limitlar (Company System — Faz 4) ----------
+// access.js'dagi MENU_LIMITS/PRODUCT_LIMITS — standart (hard-coded) qiymatlar.
+// Admin panel ularni admin_settings'da ('menu_limits'/'product_limits' —
+// JSON: { free: {cat,item,images}, silver: {...}, ... }) qisman almashtira
+// oladi (faqat kiritilgan tier/maydonlar); qolgani standart qiymatga
+// tushadi. Frontend bunga ISHONMAYDI — bu funksiya faqat backendda
+// chaqiriladi va natija manage-javobida frontendga qaytariladi.
+async function getEffectiveLimits(kind, access) {
+  const defaultsMap = kind === 'menu' ? MENU_LIMITS : PRODUCT_LIMITS;
+  const fallback = defaultsMap[access] || defaultsMap.free;
+  const map = await getLimitsOverride(kind);
+  const tier = map && typeof map === 'object' ? map[access] : null;
+  if (!tier || typeof tier !== 'object') return fallback;
+  const cat = Number(tier.cat);
+  const item = Number(tier.item);
+  return {
+    cat: Number.isFinite(cat) && cat >= 0 ? cat : fallback.cat,
+    item: Number.isFinite(item) && item >= 0 ? item : fallback.item,
+    images: typeof tier.images === 'boolean' ? tier.images : fallback.images,
+  };
+}
+
 // ---------- Restoran menyusi (Band 3.3) ----------
 
 // Public — profil sahifasidagi "Menyu" tab uchun.
@@ -1864,7 +1904,7 @@ async function menuOwner(req, res, code, { mutate = false } = {}) {
   // Menyu qo'shish/tahrirlash faqat ovqatlanish sohasidagi profillar uchun
   // (o'qish/o'chirish har doim — eski yozuvlarni tozalash mumkin bo'lsin).
   if (mutate && !eligible) { res.status(403).json({ error: 'not_restaurant' }); return null; }
-  return { user, rec, access, eligible, limits: menuLimitsFor(access) };
+  return { user, rec, access, eligible, limits: await getEffectiveLimits('menu', access) };
 }
 
 const menuMoney = (v) => {
@@ -2056,7 +2096,7 @@ async function productOwner(req, res, code, { mutate = false } = {}) {
   // Mahsulot qo'shish/tahrirlash faqat biznes profillar uchun (o'qish/o'chirish
   // har doim — eski yozuvlarni tozalash mumkin bo'lsin).
   if (mutate && !eligible) { res.status(403).json({ error: 'not_business' }); return null; }
-  return { user, rec, access, eligible, limits: productLimitsFor(access) };
+  return { user, rec, access, eligible, limits: await getEffectiveLimits('product', access) };
 }
 
 const productMoney = menuMoney;

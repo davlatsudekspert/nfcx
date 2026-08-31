@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import { fmt } from '../lib/format.js';
+import { dbGetPhysicalNfcPricing } from '../lib/db.js';
 
 const FEATURES = [
   'Kompaniya logotipi va dizayni',
@@ -101,6 +102,59 @@ function DemoCard({ tint, icon, title, question, desc, features, phone, onCreate
         </div>
         <DemoPhone tint={tint} categories={phone.categories} t={t} />
       </div>
+    </div>
+  );
+}
+
+// Jismoniy NFC (ko'p dona) narx kalkulyatori — admin panelda boshqariladigan
+// pog'onalarni /api/settings/physical-nfc-pricing'dan o'qiydi (Faz 25/26).
+// Faqat informatsion — checkout/to'lovga ulanmagan (to'lovlar hozircha o'chiq).
+function pickTier(tiers, qty) {
+  return tiers.find((t) => qty >= t.minQty && (t.maxQty == null || qty <= t.maxQty)) || tiers[tiers.length - 1];
+}
+
+function PhysicalPricingCalculator() {
+  const { t } = useLanguage();
+  const [pricing, setPricing] = useState(null);
+  const [qty, setQty] = useState(1);
+
+  useEffect(() => { dbGetPhysicalNfcPricing().then(setPricing); }, []);
+
+  if (!pricing || !pricing.tiers?.length) return null;
+  const { tiers, delivery } = pricing;
+  const n = Math.max(1, Math.min(100000, Math.round(Number(qty) || 1)));
+  const tier = pickTier(tiers, n);
+  const total = tier.pricePerUnit * n;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block">
+          <span className="text-xs text-base-content/50">{t('Dona soni')}</span>
+          <input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
+            className="input input-bordered input-sm mt-1 w-28 bg-base-100" />
+        </label>
+        <div>
+          <div className="text-xs text-base-content/50">{t('Dona narxi')}</div>
+          <div className="text-lg font-bold">{fmt(tier.pricePerUnit)} {t("so'm")}</div>
+        </div>
+        <div>
+          <div className="text-xs text-base-content/50">{t('Jami')}</div>
+          <div className="text-lg font-bold text-accent">{fmt(total)} {t("so'm")}</div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] text-base-content/45">
+        {tiers.map((tr, i) => (
+          <span key={i} className={`rounded-full border px-2.5 py-1 ${tr === tier ? 'border-accent/50 text-accent' : 'border-white/10'}`}>
+            {tr.maxQty == null ? `${tr.minQty}+` : `${tr.minQty}–${tr.maxQty}`} {t('dona')} — {fmt(tr.pricePerUnit)} {t("so'm/dona")}
+          </span>
+        ))}
+      </div>
+      {delivery && (
+        <p className="mt-3 text-[13px] text-base-content/55">
+          {'\u{1F69A}'} {t('Taxminiy yetkazib berish')}: {delivery.minDays}–{delivery.maxDays} {t('ish kuni')}.
+        </p>
+      )}
     </div>
   );
 }
@@ -266,6 +320,7 @@ export default function CompaniesPage({ catalog = [] }) {
         <p className="mt-3 max-w-2xl text-[15px] text-base-content/50">
           {t("Aniq narx buyurtma hajmiga qarab belgilanadi — hamkorlik uchun to'g'ridan-to'g'ri murojaat qiling.")}
         </p>
+        <PhysicalPricingCalculator />
       </section>
     </main>
   );
