@@ -11,6 +11,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
+import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
@@ -76,6 +77,68 @@ function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
 // Restoran menyusi (Band 3.3) — egaga boshqaruv. Kategoriya → taom.
 const MENU_ITEM_EMPTY = { name: '', description: '', price: '', discountPrice: '', imageUrl: '', available: true, featured: false };
 
+// Rasm yuklashdan oldingi tahrirlash — "Avtomatik kesish"/"Markazlashtirish"
+// HOZIR ishlaydi (canvas, provayder shart emas); "Fonni olib
+// tashlash"/"Oq fon"/"Sifatni yaxshilash" hali ulanmagan — bosilganda
+// aniq "tez orada" xabari ko'rsatiladi, hech qachon soxta natija bermaydi
+// (Company System — Faz 17).
+function ImageUploadTools({ canImage, imageUrl, busy, onPicked }) {
+  const { t } = useLanguage();
+  const [pending, setPending] = useState(null);
+  const [toolBusy, setToolBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  if (!canImage) return null;
+
+  const pickFile = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setMsg('');
+    try { setPending(await fileToCompressedDataUrl(file)); }
+    catch (err) { setMsg(err.message || t('Xatolik yuz berdi.')); }
+  };
+  const runTool = async (fn) => {
+    if (!pending) return;
+    setToolBusy(true); setMsg('');
+    try {
+      const res = await fn(pending);
+      if (res.ok) setPending(res.dataUrl);
+      else setMsg(res.reason || t('Hozircha mavjud emas.'));
+    } finally { setToolBusy(false); }
+  };
+  const confirm = async () => {
+    const dataUrl = pending;
+    setPending(null);
+    await onPicked(dataUrl);
+  };
+
+  if (pending) {
+    return (
+      <div className="w-full space-y-2 rounded-xl border border-accent/30 bg-black/20 p-2.5">
+        <img src={pending} alt="" className="mx-auto h-24 w-24 rounded-lg object-cover" />
+        {msg && <div className="text-center text-[10.5px] text-warning">{msg}</div>}
+        <div className="flex flex-wrap justify-center gap-1">
+          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(autoCropToContent)}>{'✂️'} {t('Avtomatik kesish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(centerObject)}>{'\u{1F3AF}'} {t('Markazlashtirish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(removeBackground)}>{'✨'} {t('Fonni olib tashlash')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(whitenBackground)}>{'⬜'} {t('Oq fon qilish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(enhance)}>{'\u{1F48E}'} {t('Sifatni yaxshilash')}</button>
+        </div>
+        <div className="flex justify-center gap-2">
+          <button type="button" className="btn btn-primary btn-xs" disabled={toolBusy} onClick={confirm}>{t('Rasmni saqlash')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" onClick={() => setPending(null)}>{t('Bekor')}</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
+      {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
+      <input type="file" accept="image/*" className="hidden" onChange={pickFile} />
+    </label>
+  );
+}
+
 function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange, onDraftEnd }) {
   const { t } = useLanguage();
   const [edit, setEdit] = useState(false);
@@ -107,12 +170,10 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange
     if (!confirm(t('Bu taomni o‘chirasizmi?'))) return;
     await dbDeleteMenuItem(code, item.id); onDeleted(item.id);
   };
-  const uploadImg = async (e) => {
-    const file = e.target.files?.[0]; e.target.value = '';
-    if (!file) return;
+  const applyImage = async (dataUrl) => {
+    if (!dataUrl) return;
     setBusy(true);
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
       const url = await dbUploadImage(dataUrl);
       const row = await dbUpdateMenuItem(code, item.id, { imageUrl: url });
       onChanged(row);
@@ -136,13 +197,8 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange
     );
   }
   return (
-    <div className={`flex gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
-      {canImage && (
-        <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
-          {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
-          <input type="file" accept="image/*" className="hidden" onChange={uploadImg} />
-        </label>
-      )}
+    <div className={`flex flex-wrap gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
+      <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5 text-sm font-semibold">
           {item.featured && <span className="shrink-0">⭐</span>}
@@ -396,12 +452,10 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
     if (!confirm(t('Bu mahsulotni o‘chirasizmi?'))) return;
     await dbDeleteProduct(code, item.id); onDeleted(item.id);
   };
-  const uploadImg = async (e) => {
-    const file = e.target.files?.[0]; e.target.value = '';
-    if (!file) return;
+  const applyImage = async (dataUrl) => {
+    if (!dataUrl) return;
     setBusy(true);
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
       const url = await dbUploadImage(dataUrl);
       const row = await dbUpdateProduct(code, item.id, { imageUrl: url });
       onChanged(row);
@@ -425,13 +479,8 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
     );
   }
   return (
-    <div className={`flex gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
-      {canImage && (
-        <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
-          {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
-          <input type="file" accept="image/*" className="hidden" onChange={uploadImg} />
-        </label>
-      )}
+    <div className={`flex flex-wrap gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5 ${item.available ? '' : 'opacity-50'}`}>
+      <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5 text-sm font-semibold">
           {item.featured && <span className="shrink-0">⭐</span>}

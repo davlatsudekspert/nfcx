@@ -1548,4 +1548,17 @@ export const DICT = {
   '512 GB, S Pen bilan birga.': { ru: '512 ГБ, в комплекте S Pen.', en: '512 GB, comes with S Pen.' },
   'Faol shovqin bostirish (ANC) bilan.': { ru: 'С активным шумоподавлением (ANC).', en: 'With active noise cancellation (ANC).' },
   '45mm, GPS + Cellular.': { ru: '45 мм, GPS + Cellular.', en: '45mm, GPS + Cellular.' },
+
+  // ── Rasm uchun AI/avtomatik vositalar (Faz 17) ──
+  'Avtomatik kesish': { ru: 'Автообрезка', en: 'Auto-crop' },
+  'Markazlashtirish': { ru: 'Центрировать', en: 'Center' },
+  'Fonni olib tashlash': { ru: 'Удалить фон', en: 'Remove background' },
+  'Oq fon qilish': { ru: 'Сделать белый фон', en: 'White background' },
+  'Sifatni yaxshilash': { ru: 'Улучшить качество', en: 'Enhance quality' },
+  'Tez orada': { ru: 'Скоро', en: 'Coming soon' },
+  'Rasmni saqlash': { ru: 'Сохранить фото', en: 'Save photo' },
+  'Hozircha mavjud emas.': { ru: 'Пока недоступно.', en: 'Not available yet.' },
+  'Litsenziyalangan provayder hali ulanmagan.': { ru: 'Лицензированный провайдер ещё не подключён.', en: 'A licensed provider is not connected yet.' },
+  'Fon o‘chirish provayderiga bog‘liq.': { ru: 'Зависит от провайдера удаления фона.', en: 'Depends on the background-removal provider.' },
+  'Sifat oshirish provayderi hali ulanmagan.': { ru: 'Провайдер улучшения качества ещё не подключён.', en: 'A quality-enhancement provider is not connected yet.' },
 };
