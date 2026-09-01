@@ -10,7 +10,7 @@
     "dev": "concurrently -k -n server,client \"npm:server\" \"npm:client\"",
     "client": "vite",
     "server": "node server/index.js",
-    "build": "vite build",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
     "start": "node server/index.js",
     "preview": "vite preview"
   },
@@ -27,6 +27,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@openai/sites-vite-plugin": "^0.2.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.0.1",

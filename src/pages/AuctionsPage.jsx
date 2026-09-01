@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { dbListAuctions, dbListAuctionDemand, dbVoteAuctionDemand, dbRequestAuction } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
@@ -15,6 +15,43 @@ function timeLeft(endsAt, t) {
   if (h >= 24) return t('{d} kun {h} soat qoldi', { d: Math.floor(h / 24), h: h % 24 });
   if (h > 0) return t('{h} soat {m} daqiqa qoldi', { h, m });
   return t('{m} daqiqa qoldi', { m });
+}
+
+function AuctionHammerShowcase({ code }) {
+  const { t } = useLanguage();
+  const [strike, setStrike] = useState(0);
+  const [striking, setStriking] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const hitCard = () => {
+    setStriking(false);
+    requestAnimationFrame(() => {
+      setStriking(true);
+      setStrike((value) => value + 1);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setStriking(false), 920);
+    });
+  };
+
+  return (
+    <div className={`auction-hammer-stage ${striking ? 'is-striking' : ''}`}>
+      <div className="auction-card-impact">
+        <Interactive3DCard flipSignal={strike}>
+          <NfcCard code={code} name={t("G'OLIB SIZ BO'LING")} finish="showcase" size="lg" rim />
+        </Interactive3DCard>
+      </div>
+      <button type="button" className="auction-hammer" onClick={hitCard} aria-label={t("Bolg‘ani bosib kartaga uring")}>
+        <span className="auction-hammer-tool" aria-hidden="true">
+          <i className="auction-hammer-head"><b /></i>
+          <i className="auction-hammer-handle" />
+        </span>
+        <em><b>●</b> {t("Bolg‘ani bosing")}</em>
+      </button>
+      <span className="auction-impact-ring" aria-hidden="true" />
+    </div>
+  );
 }
 
 // Foydalanuvchi "shu noyob nomni auksionga qo'ying" deb adminga
@@ -222,9 +259,7 @@ export default function AuctionsPage() {
           </p>
         </div>
         <div className="hidden justify-self-center lg:flex">
-          <Interactive3DCard>
-            <NfcCard code={collecting[0]?.code || auctions[0]?.code || 'VIP001'} name={t("G'OLIB SIZ BO'LING")} finish="showcase" size="lg" rim />
-          </Interactive3DCard>
+          <AuctionHammerShowcase code={collecting[0]?.code || auctions[0]?.code || 'VIP001'} />
         </div>
       </section>
 

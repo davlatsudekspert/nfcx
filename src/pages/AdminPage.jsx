@@ -2475,7 +2475,7 @@ function FinanceDocs() {
 // (free = FREE, boshqa har qanday daraja = PRO).
 // ═══════════════════════════════════════════════════════════════════
 
-const COMPANY_SUBTABS = [['overview', 'Umumiy'], ['list', 'Kompaniyalar'], ['pricing', 'Tariflar va narxlar'], ['log', 'Faoliyat jurnali']];
+const COMPANY_SUBTABS = [['requests', 'Company ID arizalari'], ['overview', 'Eski tizim — umumiy'], ['list', 'Eski biznes profillar'], ['pricing', 'Eski tariflar'], ['log', 'Eski jurnal']];
 
 const COMPANY_ACTION_LABEL = {
   company_suspended: 'Kompaniya bloklandi',
@@ -2792,10 +2792,66 @@ function CompanyPricingSubtab() {
   );
 }
 
+function CompanyIdRequests() {
+  const { t } = useLanguage();
+  const [data, setData] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [busy, setBusy] = useState('');
+  const [rule, setRule] = useState({ companyId: '', rule: 'reserved', tierOverride: '', priceOverride: '', note: '' });
+  const [rules, setRules] = useState([]);
+  const load = () => Promise.all([
+    adminApi(`/company-requests${filter === 'all' ? '' : `?status=${filter}`}`).then(setData),
+    adminApi('/company-id-rules').then((d) => setRules(d.rules || [])),
+  ]).catch(() => setData({ companies: [], counts: [] }));
+  useEffect(() => { load(); }, [filter]);
+
+  const setStatus = async (companyId, status) => {
+    const note = ['rejected', 'suspended'].includes(status) ? (prompt(t('Admin izohi')) || '') : '';
+    if (status === 'rejected' && !note) return;
+    setBusy(companyId + status);
+    try {
+      await adminApi(`/company-requests/${companyId}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) });
+      await load();
+    } finally { setBusy(''); }
+  };
+  const saveRule = async (event) => {
+    event.preventDefault(); setBusy('rule');
+    try {
+      await adminApi('/company-id-rules', { method: 'PUT', body: JSON.stringify(rule) });
+      setRule({ companyId: '', rule: 'reserved', tierOverride: '', priceOverride: '', note: '' });
+      await load();
+    } finally { setBusy(''); }
+  };
+
+  const tone = { pending_review: 'pending', approved: 'info', payment_pending: 'pending', paid: 'success', active: 'success', rejected: 'danger', suspended: 'danger', draft: 'muted' };
+  const labels = { draft: 'Qoralama', pending_review: 'Tekshiruvda', approved: 'Tasdiqlangan', payment_pending: 'To‘lov kutilmoqda', paid: 'To‘langan', active: 'Faol', rejected: 'Rad etilgan', suspended: 'Bloklangan' };
+  const rows = data?.companies || [];
+  return <div className="space-y-5">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <KpiCard icon="clipboard" tone="pending" label={t('Tekshiruvdagi arizalar')} value={(data?.counts || []).find((r) => r.status === 'pending_review')?.count || 0} />
+      <KpiCard icon="check" tone="info" label={t('Tasdiqlangan')} value={(data?.counts || []).find((r) => r.status === 'approved')?.count || 0} />
+      <KpiCard icon="wallet" tone="pending" label={t('To‘lov kutilmoqda')} value={(data?.counts || []).find((r) => r.status === 'payment_pending')?.count || 0} />
+      <KpiCard icon="building" tone="success" label={t('Faol Company ID')} value={(data?.counts || []).find((r) => r.status === 'active')?.count || 0} />
+    </div>
+    <AdminCard title={t('Mustaqil Company ID arizalari')} right={<select value={filter} onChange={(e) => setFilter(e.target.value)} className="select select-bordered select-xs bg-base-100"><option value="all">{t('Barchasi')}</option>{Object.entries(labels).map(([value,label]) => <option key={value} value={value}>{t(label)}</option>)}</select>}>
+      <p className="mb-4 text-xs leading-relaxed text-base-content/45">{t('Bu ro‘yxat shaxsiy NFC IDlardan butunlay alohida. Tasdiqlash personal profil, personal narx yoki personal kartani o‘zgartirmaydi.')}</p>
+      <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>Company ID</th><th>{t('Kompaniya')}</th><th>{t('Egasi')}</th><th>{t('Tarif / narx')}</th><th>{t('Status')}</th><th>{t('Amal')}</th></tr></thead><tbody>
+        {data === null && <tr><td colSpan={6}><AdminLoading /></td></tr>}
+        {data && rows.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-base-content/40">{t('Ariza topilmadi.')}</td></tr>}
+        {rows.map((company) => <tr key={company.companyId}><td><b className="font-mono text-accent">{company.companyId}</b><div className="text-[10px] text-base-content/35">/c/{company.companyId.toLowerCase()}</div></td><td><b>{company.displayName}</b><div className="text-[10px] text-base-content/45">{company.category} · {company.city}</div>{company.sourceCardCode && <div className="text-[10px] text-warning">nusxa: {company.sourceCardCode}</div>}</td><td><div className="text-xs">{company.ownerEmail || company.ownerUserId}</div></td><td><b>{company.tier?.toUpperCase()}</b><div className="text-[10px] text-base-content/45">{fmt(company.price)} so‘m</div></td><td><StatusBadge tone={tone[company.status] || 'muted'}>{t(labels[company.status] || company.status)}</StatusBadge></td><td><div className="flex flex-wrap gap-1">{company.status === 'pending_review' && <><button className="btn btn-success btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'approved')}>{t('Tasdiqlash')}</button><button className="btn btn-error btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'rejected')}>{t('Rad etish')}</button></>}{['approved','payment_pending','paid'].includes(company.status) && <button className="btn btn-primary btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Faollashtirish')}</button>}{company.status === 'active' && <button className="btn btn-warning btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'suspended')}>{t('Bloklash')}</button>}{company.status === 'suspended' && <button className="btn btn-success btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Qayta ochish')}</button>}<a className="btn btn-ghost btn-xs" href={`/company/${company.companyId.toLowerCase()}`} target="_blank" rel="noreferrer">↗</a></div></td></tr>)}
+      </tbody></table></div>
+    </AdminCard>
+    <AdminCard title={t('Company ID rezerv va narx override')}>
+      <form className="grid gap-2 md:grid-cols-6" onSubmit={saveRule}><input required pattern="[A-Za-z]{3,15}" value={rule.companyId} onChange={(e) => setRule((old) => ({ ...old, companyId:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,15) }))} placeholder="COMPANYID" className="input input-bordered input-sm bg-base-100 font-mono"/><select value={rule.rule} onChange={(e) => setRule((old) => ({ ...old, rule:e.target.value }))} className="select select-bordered select-sm bg-base-100"><option value="reserved">Reserved</option><option value="off_sale">Off sale</option><option value="blocked">Blocked</option><option value="exclusive">Exclusive</option><option value="allow">Allow</option></select><select value={rule.tierOverride} onChange={(e) => setRule((old) => ({ ...old, tierOverride:e.target.value }))} className="select select-bordered select-sm bg-base-100"><option value="">Auto tier</option><option value="silver">Silver</option><option value="gold">Gold</option><option value="premium">Premium</option><option value="exclusive">Exclusive</option></select><input type="number" min="0" value={rule.priceOverride} onChange={(e) => setRule((old) => ({ ...old, priceOverride:e.target.value }))} placeholder="Maxsus narx" className="input input-bordered input-sm bg-base-100"/><input value={rule.note} onChange={(e) => setRule((old) => ({ ...old, note:e.target.value }))} placeholder="Admin izohi" className="input input-bordered input-sm bg-base-100"/><button className="btn btn-primary btn-sm" disabled={busy === 'rule'}>{t('Saqlash')}</button></form>
+      {rules.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{rules.slice(0,20).map((entry) => { const id = entry.company_id || entry.companyId; const price = entry.price_override ?? entry.priceOverride; return <span key={id} className="badge badge-outline gap-1 font-mono">{id} · {entry.rule}{price != null ? ` · ${fmt(price)}` : ''}</span>; })}</div>}
+    </AdminCard>
+  </div>;
+}
+
 function CompaniesTab() {
   const { t, lang } = useLanguage();
   const cats = useCategories();
-  const [sub, setSub] = useState('overview');
+  const [sub, setSub] = useState('requests');
   const [rows, setRows] = useState(null);
   const [q, setQ] = useState('');
   const [planFilter, setPlanFilter] = useState('all'); // all | free | pro
@@ -2841,6 +2897,7 @@ function CompaniesTab() {
         ))}
       </div>
 
+      {sub === 'requests' && <CompanyIdRequests />}
       {sub === 'overview' && <CompaniesOverview />}
 
       {sub === 'list' && (

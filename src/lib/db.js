@@ -228,6 +228,42 @@ export const dbAddProduct = (code, data) => productApi(code, '/items', { method:
 export const dbUpdateProduct = (code, id, data) => productApi(code, `/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const dbDeleteProduct = (code, id) => productApi(code, `/items/${id}`, { method: 'DELETE' });
 
+// ---------- Katalog reaksiyalari, ko‘rishlar va aksiyalar ----------
+// Sites deploymentida bu endpointlar D1 orqali, to‘liq serverda esa shu
+// API kontrakti orqali ishlaydi. Mahsulotning asosiy yozuviga tegmaydi.
+
+const catalogMetaPath = (code, module = 'products') =>
+  `/catalog-meta/${encodeURIComponent(code)}?module=${encodeURIComponent(module)}`;
+
+export async function dbGetCatalogMeta(code, module = 'products') {
+  try {
+    const result = await api(catalogMetaPath(code, module));
+    return result && result.items ? result : { items: {} };
+  } catch {
+    return { items: {} };
+  }
+}
+
+export const dbAddCatalogItemView = (code, module, itemId) =>
+  api(`/catalog-meta/${encodeURIComponent(code)}/items/${encodeURIComponent(itemId)}/view?module=${encodeURIComponent(module)}`, {
+    method: 'POST', body: '{}',
+  });
+
+export const dbSetCatalogReaction = (code, module, itemId, reaction) =>
+  api(`/catalog-meta/${encodeURIComponent(code)}/items/${encodeURIComponent(itemId)}/reaction?module=${encodeURIComponent(module)}`, {
+    method: 'POST', body: JSON.stringify({ reaction }),
+  });
+
+export const dbSaveCatalogPromotion = (code, module, itemId, promotion) =>
+  api(`/catalog-meta/${encodeURIComponent(code)}/items/${encodeURIComponent(itemId)}/promotion?module=${encodeURIComponent(module)}`, {
+    method: 'PUT', body: JSON.stringify(promotion),
+  });
+
+export const dbDeleteCatalogPromotion = (code, module, itemId) =>
+  api(`/catalog-meta/${encodeURIComponent(code)}/items/${encodeURIComponent(itemId)}/promotion?module=${encodeURIComponent(module)}`, {
+    method: 'DELETE',
+  });
+
 // ---------- Xizmatlar katalogi (Business Workspace) ----------
 
 export async function dbGetServices(code) {

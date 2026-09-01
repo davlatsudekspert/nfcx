@@ -32,6 +32,12 @@ const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx'));
 const PaymentsPage = lazy(() => import('./pages/PaymentsPage.jsx'));
 const CardDesignerPage = lazy(() => import('./pages/CardDesignerPage.jsx'));
+const BusinessWorkspacePage = lazy(() => import('./pages/BusinessWorkspacePage.jsx'));
+const BusinessPublicDemoPage = lazy(() => import('./pages/BusinessPublicDemoPage.jsx'));
+const CompanyCreatePage = lazy(() => import('./pages/CompanyCreatePage.jsx'));
+const CompanyWorkspacePage = lazy(() => import('./pages/CompanyWorkspacePage.jsx'));
+const CompanyQuickProfilePage = lazy(() => import('./pages/CompanyQuickProfilePage.jsx'));
+const CompanyPublicPage = lazy(() => import('./pages/CompanyPublicPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -52,13 +58,14 @@ const STATIC_ROUTES = {
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
   'karta-dizayni': CardDesignerPage,
+  'biznes-namuna': BusinessPublicDemoPage,
 };
 // STATIC_ROUTES'dan tashqari, if-zanjirida ishlov beriladigan sahifalar ham
 // "band" hisoblanadi — aks holda /reyting kabi manzillar profil kodi deb
 // noto'g'ri talqin qilinishi mumkin.
 const RESERVED = new Set([
   ...Object.keys(STATIC_ROUTES).filter(Boolean),
-  'reyting', 'kompaniyalar', 'bildirishnomalar', 'sozlamalar',
+  'reyting', 'kompaniyalar', 'bildirishnomalar', 'sozlamalar', 'business', 'biznes-namuna', 'company', 'workspace', 'c',
 ]);
 
 // Profil sifatida hal qilinadigan manzil: standart AAA000, ro'yxatdan o'tishda
@@ -106,7 +113,31 @@ export default function App() {
   // nfcstore.uz/{code}/menyu, nfcstore.uz/{code}/mahsulotlar (Faz 9/10).
   // Yangi NFC ID talab qilinmaydi — bir xil ProfilePage, faqat boshlang'ich
   // tab oldindan belgilanadi.
-  const companySubMatch = cleanRoute.match(/^([^/]+)\/(menyu|mahsulotlar|xizmatlar)$/);
+  const businessWorkspaceMatch = cleanRoute.match(/^business\/([^/]+)$/);
+  const companyQuickMatch = cleanRoute.match(/^c\/([A-Za-z]{3,15})$/);
+  const companyPublicMatch = cleanRoute.match(/^company\/([A-Za-z]{3,15})$/);
+  const companyWorkspaceMatch = cleanRoute.match(/^workspace\/([A-Za-z]{3,15})$/);
+  const companySubMatch = cleanRoute.match(/^([^/]+)\/(menu|products|services|menyu|mahsulotlar|xizmatlar|aksiyalar)$/);
+  if (!page && cleanRoute === 'company/create') {
+    page = <CompanyCreatePage />;
+    bare = true;
+  }
+  if (!page && companyQuickMatch) {
+    page = <CompanyQuickProfilePage key={cleanRoute} companyId={companyQuickMatch[1].toUpperCase()} />;
+    bare = true;
+  }
+  if (!page && companyPublicMatch) {
+    page = <CompanyPublicPage key={cleanRoute} companyId={companyPublicMatch[1].toUpperCase()} />;
+    bare = true;
+  }
+  if (!page && companyWorkspaceMatch) {
+    page = <CompanyWorkspacePage key={cleanRoute} companyId={companyWorkspaceMatch[1].toUpperCase()} />;
+    bare = true;
+  }
+  if (!page && businessWorkspaceMatch) {
+    page = <BusinessWorkspacePage key={cleanRoute} code={businessWorkspaceMatch[1]} />;
+    bare = true;
+  }
   if (!page && !RESERVED.has(cleanRoute) && !isAuctionDetail && !isMessagesDetail && cleanRoute && !cleanRoute.includes('/')) {
     const parsedRoute = parseAnyCode(cleanRoute);
     const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(cleanRoute) ? cleanRoute.toUpperCase() : null);
@@ -120,7 +151,8 @@ export default function App() {
     const parsedRoute = parseAnyCode(rawCode);
     const code = parsedRoute ? parsedRoute.code : (ROUTE_PROFILE_RE.test(rawCode) ? rawCode.toUpperCase() : null);
     if (code) {
-      page = <ProfilePage key={`${code}/${sub}`} code={code} catalog={catalog} initialTab={sub} />;
+      const initialTab = ({ menu: 'menyu', products: 'mahsulotlar', services: 'xizmatlar' })[sub] || sub;
+      page = <ProfilePage key={`${code}/${sub}`} code={code} catalog={catalog} initialTab={initialTab} />;
       bare = true;
     }
   }
@@ -140,9 +172,10 @@ export default function App() {
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
     else if (cleanRoute === 'auksion') page = <AuctionsPage />;
-    else if (cleanRoute === 'gifts') page = <GiftsPage />;
+    else if (cleanRoute === 'gifts') page = <GiftsPage catalog={catalog} />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
+    else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
     else if (isAuctionDetail) page = <AuctionPage key={cleanRoute} id={cleanRoute.slice('auksion/'.length)} />;
     else if (cleanRoute === 'xabarlar' && MESSAGING_ENABLED) page = <MessagesPage />;

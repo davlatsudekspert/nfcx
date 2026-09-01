@@ -50,6 +50,8 @@ import {
   financeMonthlyReconciliation, financeSetBankActual, financeListTransactions,
   financeListExpenses, financeAddExpense, financeDeleteExpense,
   financeListDocs, financeAddDoc, financeDeleteDoc,
+  normalizeCompanyIdV2, adminListCompaniesV2, setCompanyStatusV2,
+  listCompanyIdRulesV2, upsertCompanyIdRuleV2,
 } from './db.js';
 
 // Oddiy in-memory rate-limiter (login endpointini brute-force'dan himoya
@@ -981,6 +983,44 @@ adminRouter.post('/records/:code/views', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 
 const COMPANY_TIERS = new Set(['silver', 'gold', 'premium', 'exclusive']);
+const COMPANY_V2_STATUSES = new Set(['draft','pending_review','approved','payment_pending','paid','active','rejected','suspended']);
+
+// Mustaqil Company Account v2 arizalari. Quyidagi eski /companies
+// endpointlari profile_type='business' legacy yozuvlari uchun qoldiriladi.
+adminRouter.get('/company-requests', async (req,res) => {
+  if (!isDbReady()) return res.json({ companies:[],counts:[] });
+  const status = COMPANY_V2_STATUSES.has(req.query.status) ? req.query.status : null;
+  res.json(await adminListCompaniesV2(status));
+});
+
+adminRouter.patch('/company-requests/:companyId/status', async (req,res) => {
+  if (!isDbReady()) return res.status(503).json({ error:'db_unavailable' });
+  const id = normalizeCompanyIdV2(req.params.companyId);
+  const status = String(req.body?.status || '');
+  const note = String(req.body?.note || '').trim().slice(0,500);
+  if (!id || !COMPANY_V2_STATUSES.has(status)) return res.status(422).json({ error:'bad_status' });
+  if (status === 'rejected' && !note) return res.status(422).json({ error:'note_required' });
+  const company = await setCompanyStatusV2(id,status,`admin:${req.adminId}`,note);
+  if (!company) return res.status(404).json({ error:'not_found' });
+  logAdminActivity({ action:`company_v2_${status}`,details:id,newValue:status,ip:req.ip }).catch(()=>{});
+  res.json({ company });
+});
+
+adminRouter.get('/company-id-rules', async (_req,res) => {
+  if (!isDbReady()) return res.json({ rules:[] });
+  res.json({ rules:await listCompanyIdRulesV2() });
+});
+
+adminRouter.put('/company-id-rules', async (req,res) => {
+  if (!isDbReady()) return res.status(503).json({ error:'db_unavailable' });
+  const id = normalizeCompanyIdV2(req.body?.companyId);
+  const rule = ['reserved','off_sale','blocked','exclusive','allow'].includes(req.body?.rule) ? req.body.rule : 'reserved';
+  const tierOverride = COMPANY_TIERS.has(req.body?.tierOverride) ? req.body.tierOverride : null;
+  const priceOverride = req.body?.priceOverride === '' || req.body?.priceOverride == null ? null : Math.max(0,Math.round(Number(req.body.priceOverride)||0));
+  if (!id) return res.status(422).json({ error:'bad_company_id' });
+  await upsertCompanyIdRuleV2({ companyId:id,rule,tierOverride,priceOverride,note:String(req.body?.note||'').slice(0,500),updatedBy:`admin:${req.adminId}` });
+  res.json({ ok:true });
+});
 
 adminRouter.get('/companies/stats', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });

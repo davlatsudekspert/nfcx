@@ -15,6 +15,8 @@ import {
   getProducts, productCounts, productCategoryBelongs,
   createProductCategory, updateProductCategory, deleteProductCategory,
   createProduct, updateProduct, deleteProduct,
+  getCatalogMeta, addCatalogItemView, setCatalogItemReaction,
+  saveCatalogPromotion, deleteCatalogPromotion,
   getServices, serviceCounts, serviceCategoryBelongs,
   createServiceCategory, updateServiceCategory, deleteServiceCategory,
   createService, updateService, deleteService,
@@ -37,7 +39,7 @@ import {
   // funksiyasi olib tashlandi), lekin server/db.js'da xavfsizlik uchun qoldirilgan.
   getBotOrder, setBotOrderStatus, finalizePaidBotOrder,
   createWebOrder, getWebOrder, activeWebOrderByCode, listWebOrdersByUser, getPendingAuctionPaymentOrder,
-  finalizePaidWebOrder, cancelPendingWebOrder,
+  getPendingCompanyPaymentOrder, finalizePaidWebOrder, cancelPendingWebOrder,
   createAuction, getActiveAuctionByCode, getAuction, listActiveAuctions, listExpiredActiveAuctions,
   listRecentSoldAuctions, listAuctionDemand, voteAuctionDemand,
   listBidsByAuction, placeBid, closeAuctionBidding, expireUnpaidAuctions,
@@ -56,6 +58,9 @@ import {
   sendMessage, markConversationRead, totalUnreadCount,
   listNews, incrementNewsViews, toggleNewsLike, newsLikedBy,
   listCategories,
+  normalizeCompanyIdV2, companyAvailabilityV2, createCompanyV2, listCompaniesV2ByOwner,
+  getCompanyV2, updateCompanyV2, submitCompanyV2, addCompanyCatalogItemV2,
+  updateCompanyCatalogItemV2, deleteCompanyCatalogItemV2, setCompanyStatusV2,
 } from './db.js';
 import {
   hashPassword, verifyPassword, newSessionToken,
@@ -1300,6 +1305,137 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+// ---------- Company Account v2 ----------
+// Bu route'lar personal /records va cards jadvaliga tegmaydi. Company NFC
+// karta /c/:companyId quick profilini, to'liq sayt /company/:companyId ni ochadi.
+const COMPANY_V2_CATEGORIES = new Set(['restaurant','cafe','market','shop','services','construction','clinic','pharmacy','education','other']);
+
+app.get('/api/companies/check', companySearchLimiter, async (req, res) => {
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  res.json(await companyAvailabilityV2(req.query.id));
+});
+
+app.get('/api/companies/mine', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  res.json({ companies: await listCompaniesV2ByOwner(user.id) });
+});
+
+app.post('/api/companies', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  const id = normalizeCompanyIdV2(req.body?.companyId);
+  const availability = await companyAvailabilityV2(id);
+  if (!availability.valid) return res.status(422).json({ error: 'bad_company_id' });
+  if (!availability.available) return res.status(409).json({ error: availability.rule ? 'company_id_reserved' : 'company_id_taken', ...availability });
+  const displayName = cleanStr(req.body?.displayName, 120);
+  const city = cleanStr(req.body?.city, 100);
+  const phone = cleanStr(req.body?.phone, 40);
+  const description = cleanStr(req.body?.description, 1200);
+  if (!displayName || !city || !phone || description.length < 20) return res.status(422).json({ error: 'required_fields' });
+  const sourceCode = cleanStr(req.body?.sourceCardCode, 32).toUpperCase();
+  let source = null;
+  if (sourceCode && await getRecordOwner(sourceCode) === user.id) source = await getRecord(sourceCode);
+  try {
+    const company = await createCompanyV2({
+      userId: user.id, companyId: id, displayName,
+      category: COMPANY_V2_CATEGORIES.has(req.body?.category) ? req.body.category : 'other',
+      subcategory: cleanStr(req.body?.subcategory,100) || cleanStr(source?.role,100),
+      city, address: cleanStr(req.body?.address,300) || cleanStr(source?.address,300),
+      description, phone, telegram: cleanStr(req.body?.telegram,100) || cleanStr(source?.tg,100),
+      whatsapp: cleanStr(req.body?.whatsapp,100), website: safeUrl(req.body?.website) || safeUrl(source?.website),
+      logoUrl: safeUrl(req.body?.logoUrl) || source?.avatarUrl || '', coverUrl: safeUrl(req.body?.coverUrl) || source?.bgUrl || '',
+      sourceCardCode: source ? sourceCode : '', tier: availability.tier, price: availability.price,
+    });
+    res.status(201).json({ company });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'company_id_taken' });
+    console.error('[api] createCompanyV2:', err.message);
+    res.status(503).json({ error: 'company_create_failed' });
+  }
+});
+
+app.get('/api/companies/:companyId', async (req, res) => {
+  const id = normalizeCompanyIdV2(req.params.companyId);
+  if (!id) return res.status(404).json({ error: 'not_found' });
+  const user = await currentUser(req);
+  const company = await getCompanyV2(id, user?.id || null, false);
+  if (!company) return res.status(404).json({ error: 'not_found' });
+  res.json({ company });
+});
+
+app.patch('/api/companies/:companyId', async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  const id = normalizeCompanyIdV2(req.params.companyId);
+  const current = await getCompanyV2(id, user.id, true);
+  if (!current || current.ownerUserId !== user.id) return res.status(403).json({ error: 'forbidden' });
+  const val = (key,max) => req.body?.[key] == null ? current[key] : cleanStr(req.body[key],max);
+  const company = await updateCompanyV2(id,user.id,{
+    displayName:val('displayName',120),subcategory:val('subcategory',100),city:val('city',100),address:val('address',300),
+    description:val('description',1200),phone:val('phone',40),telegram:val('telegram',100),whatsapp:val('whatsapp',100),
+    website:req.body?.website==null?current.website:safeUrl(req.body.website),logoUrl:req.body?.logoUrl==null?current.logoUrl:safeUrl(req.body.logoUrl),
+    coverUrl:req.body?.coverUrl==null?current.coverUrl:safeUrl(req.body.coverUrl),gallery:Array.isArray(req.body?.gallery)?req.body.gallery.map(safeUrl).filter(Boolean).slice(0,12):current.gallery,
+  });
+  res.json({ company });
+});
+
+app.post('/api/companies/:companyId/submit', async (req,res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error:'unauthorized' });
+  const company = await submitCompanyV2(normalizeCompanyIdV2(req.params.companyId),user.id);
+  if (!company) return res.status(409).json({ error:'bad_status' });
+  res.json({ company });
+});
+
+app.post('/api/companies/:companyId/payment', async (req,res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error:'unauthorized' });
+  if (!paymentsEnabled()) return res.status(503).json({ error:'payments_disabled' });
+  const id = normalizeCompanyIdV2(req.params.companyId);
+  const company = await getCompanyV2(id,user.id,true);
+  if (!company || company.ownerUserId !== user.id) return res.status(403).json({ error:'forbidden' });
+  if (!['approved','payment_pending'].includes(company.status)) return res.status(409).json({ error:'not_approved' });
+  let order = await getPendingCompanyPaymentOrder(id,user.id);
+  if (!order) order = await createWebOrder({ userId:user.id,code:id,kind:'company_purchase',price:company.price,payload:{ companyId:id } });
+  if (company.status === 'approved') await setCompanyStatusV2(id,'payment_pending',`user:${user.id}`,'Payme boshlandi');
+  res.status(202).json({ orderId:order.id,amount:Number(order.price),payLink:paymeCheckoutLink(order.id,Number(order.price)) });
+});
+
+app.post('/api/companies/:companyId/catalog', async (req,res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error:'unauthorized' });
+  const id = normalizeCompanyIdV2(req.params.companyId);
+  const price = Math.max(0,Math.round(Number(req.body?.price)||0));
+  const promotionPrice = req.body?.promotionPrice==null||req.body.promotionPrice===''?null:Math.max(0,Math.round(Number(req.body.promotionPrice)||0));
+  if (promotionPrice!=null&&promotionPrice>=price) return res.status(422).json({ error:'bad_promotion_price' });
+  const company = await addCompanyCatalogItemV2(id,user.id,{ name:cleanStr(req.body?.name,120),category:cleanStr(req.body?.category,100),description:cleanStr(req.body?.description,600),price,promotionPrice,imageUrl:safeUrl(req.body?.imageUrl),available:req.body?.available!==false });
+  if (!company) return res.status(403).json({ error:'forbidden' });
+  res.status(201).json({ company });
+});
+
+app.delete('/api/companies/:companyId/catalog/:itemId', async (req,res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error:'unauthorized' });
+  const company = await deleteCompanyCatalogItemV2(normalizeCompanyIdV2(req.params.companyId),user.id,req.params.itemId);
+  if (!company) return res.status(404).json({ error:'not_found' });
+  res.json({ company });
+});
+
+app.patch('/api/companies/:companyId/catalog/:itemId', async (req,res) => {
+  const user = await currentUser(req);
+  if (!user) return res.status(401).json({ error:'unauthorized' });
+  const id = normalizeCompanyIdV2(req.params.companyId);
+  const current = await getCompanyV2(id,user.id,true);
+  const old = current?.catalog?.find((entry) => String(entry.id) === String(req.params.itemId));
+  if (!current || current.ownerUserId !== user.id || !old) return res.status(404).json({ error:'not_found' });
+  const price = req.body?.price==null?old.price:Math.max(0,Math.round(Number(req.body.price)||0));
+  const promotionPrice = req.body?.promotionPrice===undefined?old.promotionPrice:req.body.promotionPrice==null||req.body.promotionPrice===''?null:Math.max(0,Math.round(Number(req.body.promotionPrice)||0));
+  if (promotionPrice!=null&&promotionPrice>=price) return res.status(422).json({ error:'bad_promotion_price' });
+  const company = await updateCompanyCatalogItemV2(id,user.id,req.params.itemId,{ name:req.body?.name==null?old.name:cleanStr(req.body.name,120),category:req.body?.category==null?old.category:cleanStr(req.body.category,100),description:req.body?.description==null?old.description:cleanStr(req.body.description,600),price,promotionPrice,imageUrl:req.body?.imageUrl==null?old.imageUrl:safeUrl(req.body.imageUrl),available:req.body?.available==null?old.available:req.body.available!==false });
+  res.json({ company });
+});
+
 // Foydalanuvchi yutib, hali to'lamagan auksionlari — profilida
 // "Buyurtmalarim" bo'limida ko'rsatish uchun.
 app.get('/api/auctions/won/pending', async (req, res) => {
@@ -1816,6 +1952,11 @@ function visitorHash(req, code) {
   const day = new Date().toISOString().slice(0, 10);
   const ua = String(req.headers['user-agent'] || '').slice(0, 200);
   return crypto.createHash('sha256').update(`${req.ip}|${ua}|${day}|${code}`).digest('hex').slice(0, 64);
+}
+
+function catalogVisitorHash(req, code) {
+  const ua = String(req.headers['user-agent'] || '').slice(0, 200);
+  return crypto.createHash('sha256').update(`catalog|${req.ip}|${ua}|${code}`).digest('hex').slice(0, 64);
 }
 
 app.post('/api/records/:code/view', eventLimiter, async (req, res) => {
@@ -2371,6 +2512,89 @@ app.delete('/api/records/:code/products/items/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[api] product delete:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+// ---------- Katalog engagement + vaqtli aksiyalar ----------
+const CATALOG_MODULES = new Set(['menu', 'products', 'services']);
+const catalogModuleParam = (req) => CATALOG_MODULES.has(String(req.query.module || '')) ? String(req.query.module) : 'products';
+
+app.get('/api/catalog-meta/:code', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json(await getCatalogMeta(code, catalogModuleParam(req), catalogVisitorHash(req, code)));
+  } catch (err) {
+    console.error('[api] catalog meta:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/catalog-meta/:code/items/:id/view', eventLimiter, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const itemId = cleanStr(req.params.id, 80);
+  if (!validCode(code) || !itemId) return res.status(400).json({ error: 'bad_request' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json(await addCatalogItemView(code, catalogModuleParam(req), itemId, catalogVisitorHash(req, code)));
+  } catch (err) {
+    console.error('[api] catalog item view:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.post('/api/catalog-meta/:code/items/:id/reaction', eventLimiter, async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const itemId = cleanStr(req.params.id, 80);
+  if (!validCode(code) || !itemId) return res.status(400).json({ error: 'bad_request' });
+  const reaction = ['like', 'dislike'].includes(req.body?.reaction) ? req.body.reaction : null;
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    res.json(await setCatalogItemReaction(code, catalogModuleParam(req), itemId, catalogVisitorHash(req, code), reaction));
+  } catch (err) {
+    console.error('[api] catalog reaction:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.put('/api/catalog-meta/:code/items/:id/promotion', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const itemId = cleanStr(req.params.id, 80);
+  if (!validCode(code) || !itemId) return res.status(400).json({ error: 'bad_request' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'unauthorized' });
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    const rec = await getRecord(code);
+    if (!rec || rec.profileType !== 'business') return res.status(403).json({ error: 'not_business' });
+    const oldPrice = Math.round(Number(req.body?.oldPrice));
+    const newPrice = Math.round(Number(req.body?.newPrice));
+    const days = Math.max(1, Math.min(365, Math.round(Number(req.body?.days) || 1)));
+    if (!(oldPrice > 0) || !(newPrice > 0) || newPrice >= oldPrice) return res.status(422).json({ error: 'bad_promotion_price' });
+    const promotion = await saveCatalogPromotion(code, catalogModuleParam(req), itemId, { oldPrice, newPrice, days, updatedBy: user.email });
+    res.json({ promotion });
+  } catch (err) {
+    console.error('[api] catalog promotion:', err.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
+
+app.delete('/api/catalog-meta/:code/items/:id/promotion', async (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const itemId = cleanStr(req.params.id, 80);
+  if (!validCode(code) || !itemId) return res.status(400).json({ error: 'bad_request' });
+  if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: 'unauthorized' });
+    if ((await getRecordOwner(code)) !== user.id) return res.status(403).json({ error: 'forbidden' });
+    await deleteCatalogPromotion(code, catalogModuleParam(req), itemId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api] catalog promotion delete:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
 });
@@ -3065,7 +3289,7 @@ app.delete('/api/records/:code/gallery/:id', async (req, res) => {
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
   try {
-    const ctx = await galleryOwner(req, res, code);
+    const ctx = await galleryOwner(req, res, code, { mutate: true });
     if (!ctx) return;
     await deleteGalleryImage(code, Number(req.params.id));
     res.json({ ok: true });

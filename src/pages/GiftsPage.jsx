@@ -40,7 +40,7 @@ export function GiftCard({ gift }) {
   );
 }
 
-export default function GiftsPage() {
+export default function GiftsPage({ catalog = [] }) {
   const { t } = useLanguage();
   const [gifts, setGifts] = useState(null);
   const [page, setPage] = useState(1);
@@ -63,7 +63,7 @@ export default function GiftsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <section className="pt-14">
+      <section className="pt-14 gift-page-heading">
         <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
           <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
           {t('Sovg‘alar')}
@@ -75,8 +75,9 @@ export default function GiftsPage() {
       </section>
 
       <section className="mt-8">
-        <div className="grid items-center gap-8 rounded-3xl border border-[#e6c165]/20 bg-gradient-to-br from-[#17130c] via-[#100d09] to-[#070605] p-6 sm:p-9 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="gift-luxe-hero grid items-center gap-8 rounded-3xl border border-[#e6c165]/20 bg-gradient-to-br from-[#17130c] via-[#100d09] to-[#070605] p-6 sm:p-9 lg:grid-cols-[1.02fr_0.98fr]">
           <div>
+            <span className="gift-luxe-kicker">NFCSTORE GOLD EDITION</span>
             <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
               {t('NFC ID — nafaqat siz uchun')}
             </h2>
@@ -94,8 +95,12 @@ export default function GiftsPage() {
               </p>
             </div>
           </div>
-          <div className="flex justify-center">
-            <NfcCard code="VIP007" name={t('Noyob ID — unutilmas sovg‘a')} finish="showcase" size="md" />
+          <div className="gift-luxe-visual">
+            <img src="/business-assets/nfcstore-gift-gold.png" alt="NFCSTORE yozuvli oltin bantli premium sovg‘a qutisi" />
+            <div className="gift-luxe-card">
+              <NfcCard code="VIP007" name={t('Noyob ID — unutilmas sovg‘a')} finish="showcase" size="md" />
+            </div>
+            <span className="gift-luxe-seal">NFC<br />GIFT</span>
           </div>
         </div>
       </section>
@@ -121,6 +126,27 @@ export default function GiftsPage() {
           </div>
         )}
       </section>
+
+      {catalog.length > 0 && (
+        <section className="gift-live-profiles mt-12">
+          <header>
+            <div>
+              <span>NFCSTORE LIVE</span>
+              <h2>{t('Yangi egasini topgan NFC ID’lar')}</h2>
+              <p>{t('Bazaga ulangan haqiqiy profillar — NFC karta yoki havola orqali o‘z sahifasini ochadi.')}</p>
+            </div>
+            <button type="button" onClick={() => navigate('/katalog')}>{t('Barchasini ko‘rish')} →</button>
+          </header>
+          <div>
+            {catalog.slice(0, 6).map((item) => (
+              <button type="button" key={item.code} onClick={() => navigate('/' + item.code.toLowerCase())}>
+                <NfcCard code={item.code} name={(item.name || item.code).toUpperCase()} finish="showcase" size="sm" rim />
+                <span><b>{item.name || item.code}</b><small>{item.city || item.role || `nfcstore.uz/${item.code.toLowerCase()}`}</small></span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <p className="mt-14 max-w-3xl text-xs leading-relaxed text-base-content/40">
         {t('NFCStore NFC ID egaligini texnik jihatdan o‘tkazish xizmatini taqdim etadi. Foydalanuvchilar o‘rtasidagi mustaqil kelishuvlar va hisob-kitoblarda NFCStore taraf, to‘lov agenti yoki vositachi sifatida ishtirok etmaydi.')}

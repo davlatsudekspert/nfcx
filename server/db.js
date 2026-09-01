@@ -296,6 +296,55 @@ export async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_user_idx ON web_orders (user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_code_idx ON web_orders (code)`);
 
+  // Company Account v2 — cards jadvalidan qasddan ajratilgan. Company ID
+  // shaxsiy NFC ID emas va hech qachon cards(code)ga FK qilinmaydi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS companies_v2 (
+      id SERIAL PRIMARY KEY,
+      company_id VARCHAR(15) UNIQUE NOT NULL CHECK (company_id ~ '^[A-Z]{3,15}$'),
+      owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      display_name VARCHAR(120) NOT NULL,
+      category VARCHAR(40) NOT NULL DEFAULT 'other', subcategory VARCHAR(100),
+      city VARCHAR(100), address VARCHAR(300), description TEXT,
+      phone VARCHAR(40), telegram VARCHAR(100), whatsapp VARCHAR(100), website VARCHAR(700),
+      logo_url VARCHAR(700), cover_url VARCHAR(700), gallery JSONB NOT NULL DEFAULT '[]'::jsonb,
+      source_card_code VARCHAR(32),
+      tier VARCHAR(20) NOT NULL, price INTEGER NOT NULL,
+      status VARCHAR(24) NOT NULL DEFAULT 'draft',
+      admin_note TEXT, rejected_reason TEXT,
+      approved_at TIMESTAMPTZ, paid_at TIMESTAMPTZ, activated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS companies_v2_owner_idx ON companies_v2(owner_user_id, created_at DESC)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS companies_v2_status_idx ON companies_v2(status, created_at DESC)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS company_catalog_items_v2 (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id VARCHAR(15) NOT NULL REFERENCES companies_v2(company_id) ON DELETE CASCADE,
+      name VARCHAR(120) NOT NULL, category VARCHAR(100), description TEXT,
+      price INTEGER NOT NULL DEFAULT 0, promotion_price INTEGER,
+      image_url VARCHAR(700), available BOOLEAN NOT NULL DEFAULT TRUE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS company_catalog_v2_company_idx ON company_catalog_items_v2(company_id, sort_order, created_at)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS company_id_rules_v2 (
+      company_id VARCHAR(15) PRIMARY KEY CHECK (company_id ~ '^[A-Z]{3,15}$'),
+      rule VARCHAR(20) NOT NULL DEFAULT 'reserved', tier_override VARCHAR(20),
+      price_override INTEGER, note TEXT, updated_by TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS company_status_log_v2 (
+      id BIGSERIAL PRIMARY KEY, company_id VARCHAR(15) NOT NULL,
+      from_status VARCHAR(24), to_status VARCHAR(24) NOT NULL,
+      actor TEXT, note TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
   // Hamyon to'ldirish buyurtmalari (Payme orqali).
   await pool.query(`
     CREATE TABLE IF NOT EXISTS wallet_topups (
@@ -1119,6 +1168,50 @@ export async function initDb() {
     )
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS products_code_idx ON products (code, category_id, sort)`);
+
+  // Katalog elementlari uchun mustaqil engagement va vaqtli aksiyalar.
+  // Asosiy products jadvalini yoki mavjud NFC ID yozuvlarini o‘zgartirmaydi.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS catalog_item_reactions (
+      code         VARCHAR(32) NOT NULL,
+      module       VARCHAR(16) NOT NULL,
+      item_id      TEXT NOT NULL,
+      visitor_hash TEXT NOT NULL,
+      reaction     VARCHAR(8) NOT NULL CHECK (reaction IN ('like', 'dislike')),
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (code, module, item_id, visitor_hash)
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS catalog_item_reactions_item_idx ON catalog_item_reactions (code, module, item_id)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS catalog_item_views (
+      code         VARCHAR(32) NOT NULL,
+      module       VARCHAR(16) NOT NULL,
+      item_id      TEXT NOT NULL,
+      visitor_hash TEXT NOT NULL,
+      view_day     DATE NOT NULL,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (code, module, item_id, visitor_hash, view_day)
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS catalog_item_views_item_idx ON catalog_item_views (code, module, item_id)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS catalog_promotions (
+      code       VARCHAR(32) NOT NULL,
+      module     VARCHAR(16) NOT NULL,
+      item_id    TEXT NOT NULL,
+      old_price  BIGINT NOT NULL,
+      new_price  BIGINT NOT NULL,
+      starts_at  TIMESTAMPTZ NOT NULL,
+      ends_at    TIMESTAMPTZ NOT NULL,
+      active     BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (code, module, item_id)
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS catalog_promotions_active_idx ON catalog_promotions (code, module, active, ends_at)`);
 
   // ── Xizmatlar katalogi (Business Workspace — universal Catalog Engine) ──
   // menu_categories/menu_items bilan bir xil naqsh — restoran/do'kon
@@ -2202,6 +2295,82 @@ export async function updateProduct(code, id, f) {
 
 export async function deleteProduct(code, id) {
   await pool.query(`DELETE FROM products WHERE code = $1 AND id = $2`, [code, id]);
+}
+
+export async function getCatalogMeta(code, module, visitorHash) {
+  const [reactions, views, mine, promotions] = await Promise.all([
+    pool.query(`SELECT item_id AS "itemId", reaction, COUNT(*)::int AS count
+      FROM catalog_item_reactions WHERE code = $1 AND module = $2
+      GROUP BY item_id, reaction`, [code, module]),
+    pool.query(`SELECT item_id AS "itemId", COUNT(*)::int AS count
+      FROM catalog_item_views WHERE code = $1 AND module = $2 GROUP BY item_id`, [code, module]),
+    pool.query(`SELECT item_id AS "itemId", reaction FROM catalog_item_reactions
+      WHERE code = $1 AND module = $2 AND visitor_hash = $3`, [code, module, visitorHash]),
+    pool.query(`SELECT item_id AS "itemId", old_price AS "oldPrice", new_price AS "newPrice",
+      starts_at AS "startsAt", ends_at AS "endsAt", active
+      FROM catalog_promotions WHERE code = $1 AND module = $2`, [code, module]),
+  ]);
+  const items = {};
+  const ensure = (id) => (items[id] ||= { likes: 0, dislikes: 0, views: 0, reaction: null, promotion: null });
+  for (const row of reactions.rows) {
+    const entry = ensure(String(row.itemId));
+    if (row.reaction === 'like') entry.likes = row.count;
+    if (row.reaction === 'dislike') entry.dislikes = row.count;
+  }
+  for (const row of views.rows) ensure(String(row.itemId)).views = row.count;
+  for (const row of mine.rows) ensure(String(row.itemId)).reaction = row.reaction;
+  for (const row of promotions.rows) ensure(String(row.itemId)).promotion = {
+    oldPrice: Number(row.oldPrice), newPrice: Number(row.newPrice),
+    startsAt: row.startsAt, endsAt: row.endsAt, active: !!row.active,
+  };
+  return { items };
+}
+
+export async function addCatalogItemView(code, module, itemId, visitorHash) {
+  await pool.query(`INSERT INTO catalog_item_views (code, module, item_id, visitor_hash, view_day)
+    VALUES ($1, $2, $3, $4, CURRENT_DATE) ON CONFLICT DO NOTHING`, [code, module, String(itemId), visitorHash]);
+  return getCatalogItemCounts(code, module, itemId, visitorHash);
+}
+
+export async function setCatalogItemReaction(code, module, itemId, visitorHash, reaction) {
+  if (reaction) {
+    await pool.query(`INSERT INTO catalog_item_reactions (code, module, item_id, visitor_hash, reaction)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (code, module, item_id, visitor_hash)
+      DO UPDATE SET reaction = EXCLUDED.reaction, updated_at = now()`, [code, module, String(itemId), visitorHash, reaction]);
+  } else {
+    await pool.query(`DELETE FROM catalog_item_reactions
+      WHERE code = $1 AND module = $2 AND item_id = $3 AND visitor_hash = $4`, [code, module, String(itemId), visitorHash]);
+  }
+  return getCatalogItemCounts(code, module, itemId, visitorHash);
+}
+
+export async function getCatalogItemCounts(code, module, itemId, visitorHash) {
+  const { rows } = await pool.query(`SELECT
+    COUNT(*) FILTER (WHERE reaction = 'like')::int AS likes,
+    COUNT(*) FILTER (WHERE reaction = 'dislike')::int AS dislikes,
+    COALESCE((SELECT COUNT(*)::int FROM catalog_item_views v WHERE v.code = $1 AND v.module = $2 AND v.item_id = $3), 0) AS views,
+    MAX(reaction) FILTER (WHERE visitor_hash = $4) AS reaction
+    FROM catalog_item_reactions WHERE code = $1 AND module = $2 AND item_id = $3`, [code, module, String(itemId), visitorHash]);
+  return { likes: rows[0]?.likes || 0, dislikes: rows[0]?.dislikes || 0, views: rows[0]?.views || 0, reaction: rows[0]?.reaction || null };
+}
+
+export async function saveCatalogPromotion(code, module, itemId, { oldPrice, newPrice, days, updatedBy }) {
+  const { rows } = await pool.query(`INSERT INTO catalog_promotions
+    (code, module, item_id, old_price, new_price, starts_at, ends_at, active, updated_by, updated_at)
+    VALUES ($1, $2, $3, $4, $5, now(), now() + ($6::text || ' days')::interval, TRUE, $7, now())
+    ON CONFLICT (code, module, item_id) DO UPDATE SET
+      old_price = EXCLUDED.old_price, new_price = EXCLUDED.new_price,
+      starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at,
+      active = TRUE, updated_by = EXCLUDED.updated_by, updated_at = now()
+    RETURNING old_price AS "oldPrice", new_price AS "newPrice", starts_at AS "startsAt", ends_at AS "endsAt", active`,
+    [code, module, String(itemId), oldPrice, newPrice, days, updatedBy || null]);
+  const row = rows[0];
+  return { oldPrice: Number(row.oldPrice), newPrice: Number(row.newPrice), startsAt: row.startsAt, endsAt: row.endsAt, active: !!row.active };
+}
+
+export async function deleteCatalogPromotion(code, module, itemId) {
+  await pool.query(`DELETE FROM catalog_promotions WHERE code = $1 AND module = $2 AND item_id = $3`, [code, module, String(itemId)]);
 }
 
 // ---------- Xizmatlar katalogi (Business Workspace) ----------
@@ -3597,6 +3766,15 @@ export async function finalizePaidWebOrder(orderId) {
     return { ok: true };
   }
 
+  // Company ID to'lovi shaxsiy cards jadvaliga yozilmaydi. Payme bir xil
+  // web_orders mexanizmidan foydalanadi, yakunda faqat companies_v2
+  // statusi faollashadi.
+  if (order.kind === 'company_purchase') {
+    const company = await activatePaidCompanyV2(order.code, order.userId);
+    await setWebOrderStatus(order.id, company ? 'paid' : 'failed_company_state');
+    return { ok: !!company, company };
+  }
+
   // 'card_purchase' — oddiy vizitka xaridi (jismoniy karta bilan yoki bo'lmasa).
   const existing = await getRecord(order.code);
   if (existing) {
@@ -3640,6 +3818,16 @@ export async function listWebOrdersByUser(userId) {
     [userId]
   );
   return rows;
+}
+
+export async function getPendingCompanyPaymentOrder(companyId, userId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders
+     WHERE user_id=$1 AND code=$2 AND kind='company_purchase' AND status='pending'
+     ORDER BY created_at DESC LIMIT 1`,
+    [userId, companyId]
+  );
+  return rows[0] || null;
 }
 
 // ---------- Hamyon (balans) — Payme orqali to'ldiriladi ----------
@@ -5728,4 +5916,143 @@ export async function financeAddDoc({ name, docType, period, url }) {
 export async function financeDeleteDoc(id) {
   const { rowCount } = await pool.query(`DELETE FROM finance_docs WHERE id = $1`, [Number(id)]);
   return { ok: rowCount > 0 };
+}
+
+// ---------- Company Account v2 (personal cards'dan mustaqil) ----------
+
+const COMPANY_V2_FIELDS = `
+  c.id, c.company_id AS "companyId", c.owner_user_id AS "ownerUserId",
+  u.email AS "ownerEmail", c.display_name AS "displayName", c.category,
+  c.subcategory, c.city, c.address, c.description, c.phone, c.telegram,
+  c.whatsapp, c.website, c.logo_url AS "logoUrl", c.cover_url AS "coverUrl",
+  c.gallery, c.source_card_code AS "sourceCardCode", c.tier, c.price,
+  c.status, c.admin_note AS "adminNote", c.rejected_reason AS "rejectedReason",
+  c.approved_at AS "approvedAt", c.paid_at AS "paidAt", c.activated_at AS "activatedAt",
+  c.created_at AS "createdAt", c.updated_at AS "updatedAt"
+`;
+
+export function normalizeCompanyIdV2(value) {
+  const id = String(value || '').trim().toUpperCase();
+  return /^[A-Z]{3,15}$/.test(id) ? id : '';
+}
+
+export function companyPriceV2(id, rule = null) {
+  const length = id.length;
+  let tier = length === 3 ? 'exclusive' : length <= 5 ? 'premium' : length <= 7 ? 'gold' : 'silver';
+  let price = { silver: 349000, gold: 549000, premium: 749000, exclusive: 990000 }[tier];
+  if (['silver', 'gold', 'premium', 'exclusive'].includes(rule?.tierOverride)) tier = rule.tierOverride;
+  if (Number(rule?.priceOverride) >= 0) price = Number(rule.priceOverride);
+  return { tier, price };
+}
+
+export async function companyAvailabilityV2(value) {
+  const id = normalizeCompanyIdV2(value);
+  if (!id) return { companyId: String(value || '').toUpperCase(), valid: false, available: false, reason: 'bad_company_id' };
+  const [{ rows: companies }, { rows: rules }] = await Promise.all([
+    pool.query(`SELECT status FROM companies_v2 WHERE company_id=$1 AND status <> 'rejected'`, [id]),
+    pool.query(`SELECT company_id AS "companyId", rule, tier_override AS "tierOverride", price_override AS "priceOverride", note FROM company_id_rules_v2 WHERE company_id=$1`, [id]),
+  ]);
+  const rule = rules[0] || null;
+  const builtin = new Set(['NFCSTORE', 'ADMIN', 'SUPPORT', 'PAYME', 'COMPANY', 'KOMPANIYA', 'WORKSPACE']);
+  const blocked = builtin.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
+  return { companyId: id, valid: true, available: companies.length === 0 && !blocked, reason: companies.length ? 'company_id_taken' : blocked ? (rule?.note || 'company_id_reserved') : '', ...companyPriceV2(id, rule), rule: rule?.rule || null };
+}
+
+export async function createCompanyV2({ userId, companyId, displayName, category, subcategory, city, address, description, phone, telegram, whatsapp, website, logoUrl, coverUrl, sourceCardCode, tier, price }) {
+  const { rows } = await pool.query(
+    `INSERT INTO companies_v2(company_id,owner_user_id,display_name,category,subcategory,city,address,description,phone,telegram,whatsapp,website,logo_url,cover_url,source_card_code,tier,price,status)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'pending_review') RETURNING id`,
+    [companyId, userId, displayName, category, subcategory || null, city || null, address || null, description || null, phone || null, telegram || null, whatsapp || null, website || null, logoUrl || null, coverUrl || null, sourceCardCode || null, tier, price]
+  );
+  await pool.query(`INSERT INTO company_status_log_v2(company_id,from_status,to_status,actor,note) VALUES($1,'draft','pending_review',$2,$3)`, [companyId, `user:${userId}`, sourceCardCode ? `Legacy ${sourceCardCode} dan nusxa` : null]);
+  return getCompanyV2(companyId, userId, true);
+}
+
+export async function listCompaniesV2ByOwner(userId) {
+  const { rows } = await pool.query(`SELECT ${COMPANY_V2_FIELDS} FROM companies_v2 c JOIN users u ON u.id=c.owner_user_id WHERE c.owner_user_id=$1 ORDER BY c.created_at DESC`, [userId]);
+  return rows;
+}
+
+export async function getCompanyV2(companyId, userId = null, includePrivate = false) {
+  const args = [companyId];
+  let where = 'c.company_id=$1';
+  if (!includePrivate) { args.push(userId); where += ` AND (c.status='active' OR c.owner_user_id=$2)`; }
+  const { rows } = await pool.query(`SELECT ${COMPANY_V2_FIELDS} FROM companies_v2 c JOIN users u ON u.id=c.owner_user_id WHERE ${where}`, args);
+  if (!rows[0]) return null;
+  const { rows: items } = await pool.query(`SELECT id,name,category,description,price,promotion_price AS "promotionPrice",image_url AS "imageUrl",available,sort_order AS "sortOrder" FROM company_catalog_items_v2 WHERE company_id=$1 ORDER BY sort_order,created_at`, [companyId]);
+  return { ...rows[0], price: Number(rows[0].price), gallery: rows[0].gallery || [], catalog: items.map((item) => ({ ...item, price: Number(item.price), promotionPrice: item.promotionPrice == null ? null : Number(item.promotionPrice) })) };
+}
+
+export async function updateCompanyV2(companyId, userId, fields) {
+  const { rowCount } = await pool.query(
+    `UPDATE companies_v2 SET display_name=$3,subcategory=$4,city=$5,address=$6,description=$7,phone=$8,telegram=$9,whatsapp=$10,website=$11,logo_url=$12,cover_url=$13,gallery=$14::jsonb,updated_at=now() WHERE company_id=$1 AND owner_user_id=$2`,
+    [companyId,userId,fields.displayName,fields.subcategory||null,fields.city||null,fields.address||null,fields.description||null,fields.phone||null,fields.telegram||null,fields.whatsapp||null,fields.website||null,fields.logoUrl||null,fields.coverUrl||null,JSON.stringify(fields.gallery||[])]
+  );
+  return rowCount ? getCompanyV2(companyId, userId, true) : null;
+}
+
+export async function setCompanyStatusV2(companyId, status, actor, note = '') {
+  const { rows } = await pool.query(`SELECT status FROM companies_v2 WHERE company_id=$1`, [companyId]);
+  if (!rows[0]) return null;
+  const old = rows[0].status;
+  await pool.query(
+    `UPDATE companies_v2 SET status=$2,updated_at=now(),approved_at=CASE WHEN $2='approved' THEN now() ELSE approved_at END,paid_at=CASE WHEN $2 IN ('paid','active') THEN now() ELSE paid_at END,activated_at=CASE WHEN $2='active' THEN now() ELSE activated_at END,rejected_reason=CASE WHEN $2='rejected' THEN $3 ELSE rejected_reason END WHERE company_id=$1`,
+    [companyId, status, note || null]
+  );
+  await pool.query(`INSERT INTO company_status_log_v2(company_id,from_status,to_status,actor,note) VALUES($1,$2,$3,$4,$5)`, [companyId, old, status, actor, note || null]);
+  return getCompanyV2(companyId, null, true);
+}
+
+export async function submitCompanyV2(companyId, userId) {
+  const { rows } = await pool.query(`SELECT status FROM companies_v2 WHERE company_id=$1 AND owner_user_id=$2`, [companyId, userId]);
+  if (!rows[0] || !['draft','rejected'].includes(rows[0].status)) return null;
+  return setCompanyStatusV2(companyId, 'pending_review', `user:${userId}`, 'Qayta tekshiruv');
+}
+
+export async function addCompanyCatalogItemV2(companyId, userId, item) {
+  const owner = await pool.query(`SELECT 1 FROM companies_v2 WHERE company_id=$1 AND owner_user_id=$2`, [companyId,userId]);
+  if (!owner.rowCount) return null;
+  const { rows: counts } = await pool.query(`SELECT COUNT(*)::int AS n FROM company_catalog_items_v2 WHERE company_id=$1`, [companyId]);
+  await pool.query(`INSERT INTO company_catalog_items_v2(company_id,name,category,description,price,promotion_price,image_url,available,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [companyId,item.name,item.category||null,item.description||null,item.price,item.promotionPrice,item.imageUrl||null,item.available!==false,counts[0].n]);
+  return getCompanyV2(companyId,userId,true);
+}
+
+export async function deleteCompanyCatalogItemV2(companyId, userId, itemId) {
+  const { rowCount } = await pool.query(`DELETE FROM company_catalog_items_v2 i USING companies_v2 c WHERE i.id=$1 AND i.company_id=$2 AND c.company_id=i.company_id AND c.owner_user_id=$3`, [itemId,companyId,userId]);
+  return rowCount ? getCompanyV2(companyId,userId,true) : null;
+}
+
+export async function updateCompanyCatalogItemV2(companyId, userId, itemId, item) {
+  const { rowCount } = await pool.query(
+    `UPDATE company_catalog_items_v2 i SET name=$4,category=$5,description=$6,price=$7,promotion_price=$8,image_url=$9,available=$10,updated_at=now()
+     FROM companies_v2 c WHERE i.id=$1 AND i.company_id=$2 AND c.company_id=i.company_id AND c.owner_user_id=$3`,
+    [itemId,companyId,userId,item.name,item.category||null,item.description||null,item.price,item.promotionPrice,item.imageUrl||null,item.available!==false]
+  );
+  return rowCount ? getCompanyV2(companyId,userId,true) : null;
+}
+
+export async function adminListCompaniesV2(status = null) {
+  const args = status ? [status] : [];
+  const where = status ? 'WHERE c.status=$1' : '';
+  const [{ rows }, counts] = await Promise.all([
+    pool.query(`SELECT ${COMPANY_V2_FIELDS} FROM companies_v2 c JOIN users u ON u.id=c.owner_user_id ${where} ORDER BY c.created_at DESC`, args),
+    pool.query(`SELECT status,COUNT(*)::int AS count FROM companies_v2 GROUP BY status`),
+  ]);
+  return { companies: rows.map((row) => ({ ...row, price: Number(row.price) })), counts: counts.rows };
+}
+
+export async function listCompanyIdRulesV2() {
+  const { rows } = await pool.query(`SELECT company_id AS "companyId",rule,tier_override AS "tierOverride",price_override AS "priceOverride",note,updated_by AS "updatedBy",updated_at AS "updatedAt" FROM company_id_rules_v2 ORDER BY updated_at DESC`);
+  return rows.map((row) => ({ ...row, priceOverride: row.priceOverride == null ? null : Number(row.priceOverride) }));
+}
+
+export async function upsertCompanyIdRuleV2({ companyId, rule, tierOverride, priceOverride, note, updatedBy }) {
+  await pool.query(`INSERT INTO company_id_rules_v2(company_id,rule,tier_override,price_override,note,updated_by) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(company_id) DO UPDATE SET rule=EXCLUDED.rule,tier_override=EXCLUDED.tier_override,price_override=EXCLUDED.price_override,note=EXCLUDED.note,updated_by=EXCLUDED.updated_by,updated_at=now()`, [companyId,rule,tierOverride||null,priceOverride==null?null:priceOverride,note||null,updatedBy]);
+}
+
+export async function activatePaidCompanyV2(companyId, userId) {
+  const { rows } = await pool.query(`UPDATE companies_v2 SET status='active',paid_at=now(),activated_at=now(),updated_at=now() WHERE company_id=$1 AND owner_user_id=$2 AND status IN ('approved','payment_pending','paid') RETURNING company_id`, [companyId,userId]);
+  if (!rows[0]) return null;
+  await pool.query(`INSERT INTO company_status_log_v2(company_id,from_status,to_status,actor,note) VALUES($1,'payment_pending','active',$2,'Payme tasdiqladi')`, [companyId,`payment:${userId}`]);
+  return getCompanyV2(companyId,userId,true);
 }

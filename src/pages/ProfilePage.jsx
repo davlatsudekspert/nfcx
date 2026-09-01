@@ -11,6 +11,7 @@ import { parseMusicSource, yandexEmbedSrc } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
+import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
@@ -1113,6 +1114,24 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const xUrl = socialUrl('x', record.twitter);
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
   const wsUrl = record.website || '';
+
+  // Business profil shaxsiy NFC vizitkasining nusxasi emas. Katalog,
+  // galereya, lokatsiya va aloqa uchun maxsus professional public layout.
+  if (record.profileType === 'business') {
+    return (
+      <BusinessPublicProfile
+        record={record}
+        menu={menu}
+        products={products}
+        services={services}
+        gallery={gallery}
+        team={team}
+        initialTab={initialTab}
+        isOwner={isOwner}
+        t={t}
+      />
+    );
+  }
   // hasSocials endi ishlatilmaydi — shaxsiy ijtimoiy tarmoq havolalari
   // faqat yuqoridagi to'liq nomli tugmalarda ko'rsatiladi (takrorlanmaydi).
   // Admin sovg'a qilgan NFC ID — kod tekin daraja bo'lsa ham karta rangi

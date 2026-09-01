@@ -1,14 +1,22 @@
-import { cloneElement, useState } from 'react';
+import { cloneElement, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 
 // Bosilganda kartaning old tomoni yo'qolib, ORQA TOMONI ko'rinadigan
 // haqiqiy 3D flip (rotateY 180deg). `children` — bitta <NfcCard .../>
 // elementi bo'lishi kerak; orqa tomon avtomatik hosil qilinadi
 // (bir xil elementning `back` propi TRUE qilingan nusxasi).
-export default function Interactive3DCard({ children, className = '' }) {
+export default function Interactive3DCard({ children, className = '', flipSignal = 0 }) {
   const { t } = useLanguage();
   const [flipped, setFlipped] = useState(false);
+  const previousSignal = useRef(flipSignal);
   const backChild = cloneElement(children, { back: true });
+
+  useEffect(() => {
+    if (flipSignal !== previousSignal.current) {
+      previousSignal.current = flipSignal;
+      setFlipped((value) => !value);
+    }
+  }, [flipSignal]);
 
   return (
     <div

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -492,6 +492,12 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
           )}
         </div>
         {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-base-content/55">
+          <span className="rounded-full border border-rose-400/20 bg-rose-400/5 px-2 py-0.5 text-rose-300">♥ {fmt(item.engagement?.likes || 0)}</span>
+          <span className="rounded-full border border-white/10 bg-white/[.02] px-2 py-0.5">↓ {fmt(item.engagement?.dislikes || 0)}</span>
+          <span className="rounded-full border border-accent/20 bg-accent/5 px-2 py-0.5 text-accent">◉ {fmt(item.engagement?.views || 0)}</span>
+          {item.engagement?.promotion?.active && new Date(item.engagement.promotion.endsAt).getTime() > Date.now() && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-content">◆ {t('AKSIYA')}</span>}
+        </div>
         <div className="mt-1.5 flex items-center gap-1">
           <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
@@ -519,7 +525,15 @@ function ProductManagerSection({ code, allowed, onLock }) {
   const [draft, setDraft] = useState(null);
   const [mobilePreview, setMobilePreview] = useState(false);
 
-  const load = () => dbGetProductsManage(code).then(setData).catch(() => setErr(true));
+  const load = () => Promise.all([dbGetProductsManage(code), dbGetCatalogMeta(code, 'products')])
+    .then(([payload, meta]) => setData({
+      ...payload,
+      products: payload.products.map((category) => ({
+        ...category,
+        items: category.items.map((item) => ({ ...item, engagement: meta.items?.[String(item.id)] || {} })),
+      })),
+    }))
+    .catch(() => setErr(true));
   useEffect(() => { if (allowed) load(); }, [code, allowed]);
 
   if (!allowed) {
@@ -674,6 +688,118 @@ function ProductManagerSection({ code, allowed, onLock }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function remainingPromotionDays(promotion) {
+  if (!promotion?.endsAt) return 7;
+  return Math.max(1, Math.ceil((new Date(promotion.endsAt).getTime() - Date.now()) / 86400000));
+}
+
+function PromotionProductRow({ code, item, onSaved }) {
+  const { t } = useLanguage();
+  const promotion = item.engagement?.promotion;
+  const live = Boolean(promotion?.active && new Date(promotion.endsAt).getTime() > Date.now());
+  const [form, setForm] = useState({
+    oldPrice: promotion?.oldPrice ?? item.price ?? '',
+    newPrice: promotion?.newPrice ?? item.discountPrice ?? '',
+    days: remainingPromotionDays(promotion),
+  });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const change = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+
+  const save = async () => {
+    const oldPrice = Math.round(Number(form.oldPrice));
+    const newPrice = Math.round(Number(form.newPrice));
+    const days = Math.max(1, Math.min(365, Math.round(Number(form.days) || 1)));
+    if (!(oldPrice > 0) || !(newPrice > 0) || newPrice >= oldPrice) {
+      setMessage(t('Yangi narx eski narxdan kichik bo‘lishi kerak.'));
+      return;
+    }
+    setBusy(true);
+    setMessage('');
+    try {
+      await dbUpdateProduct(code, item.id, { price: oldPrice, discountPrice: newPrice });
+      await dbSaveCatalogPromotion(code, 'products', item.id, { oldPrice, newPrice, days });
+      setMessage(`✓ ${t('Aksiya saqlandi')}`);
+      await onSaved();
+    } catch (error) {
+      setMessage(error.message === 'forbidden' ? t('Faqat profil egasi aksiyani o‘zgartira oladi.') : t('Aksiyani saqlab bo‘lmadi.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stop = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await dbDeleteCatalogPromotion(code, 'products', item.id);
+      await dbUpdateProduct(code, item.id, { discountPrice: null });
+      setMessage(`✓ ${t('Aksiya yakunlandi')}`);
+      await onSaved();
+    } catch {
+      setMessage(t('Aksiyani yakunlab bo‘lmadi.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <article className={`overflow-hidden rounded-2xl border bg-black/20 ${live ? 'border-accent/45 shadow-[0_20px_55px_rgba(0,0,0,.22)]' : 'border-white/10'}`}>
+      <div className="grid gap-4 p-4 sm:grid-cols-[112px_1fr]">
+        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
+          {item.imageUrl ? <img className="h-28 w-full object-cover sm:h-full" src={item.imageUrl} alt="" /> : <div className="flex h-28 items-center justify-center text-3xl font-black text-accent">{item.name?.slice(0, 1)}</div>}
+          {live && <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-1 text-[9px] font-black text-accent-content">◆ {t('FAOL')}</span>}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div><h3 className="font-display text-base font-bold">{item.name}</h3><p className="mt-0.5 text-[11px] text-base-content/45">{item.categoryName}</p></div>
+            <div className="flex gap-1 text-[10px] font-semibold"><span className="rounded-full border border-rose-400/20 px-2 py-1 text-rose-300">♥ {fmt(item.engagement?.likes || 0)}</span><span className="rounded-full border border-white/10 px-2 py-1">↓ {fmt(item.engagement?.dislikes || 0)}</span><span className="rounded-full border border-accent/20 px-2 py-1 text-accent">◉ {fmt(item.engagement?.views || 0)}</span></div>
+          </div>
+          {live && <div className="mt-3 rounded-xl border border-accent/20 bg-accent/5 px-3 py-2 text-xs text-accent">◆ {remainingPromotionDays(promotion)} {t('kun qoldi')} · {fmt(promotion.oldPrice)} → <b>{fmt(promotion.newPrice)} {t('so‘m')}</b></div>}
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <label className="form-control"><span className="mb-1 text-[10px] font-semibold text-base-content/55">{t('Eski narx')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" value={form.oldPrice} onChange={change('oldPrice')} /></label>
+            <label className="form-control"><span className="mb-1 text-[10px] font-semibold text-base-content/55">{t('Yangi narx')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" value={form.newPrice} onChange={change('newPrice')} /></label>
+            <label className="form-control"><span className="mb-1 text-[10px] font-semibold text-base-content/55">{t('Aksiya muddati (kun)')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" min="1" max="365" value={form.days} onChange={change('days')} /></label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy}>{busy ? <span className="loading loading-spinner loading-xs" /> : `◆ ${live ? t('Yangilash') : t('Aksiyani boshlash')}`}</button>{live && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={stop} disabled={busy}>{t('Aksiyani yakunlash')}</button>}{message && <span className={`text-[11px] ${message.startsWith('✓') ? 'text-success' : 'text-error'}`}>{message}</span>}</div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PromotionsManagerSection({ code, allowed, onLock }) {
+  const { t } = useLanguage();
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState(false);
+  const load = async () => {
+    try {
+      const [payload, meta] = await Promise.all([dbGetProductsManage(code), dbGetCatalogMeta(code, 'products')]);
+      setItems(payload.products.flatMap((category) => category.items.map((item) => ({
+        ...item,
+        categoryName: category.name,
+        engagement: meta.items?.[String(item.id)] || {},
+      }))));
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  };
+  useEffect(() => { if (allowed) load(); }, [code, allowed]);
+
+  if (!allowed) return <button type="button" onClick={onLock} className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70">🔒 {t('Aksiyalar mahsulotlar katalogi bilan birga ochiladi.')}</button>;
+  if (error) return <div className="text-sm text-error">{t('Aksiyalarni yuklab bo‘lmadi.')}</div>;
+  if (!items) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (!items.length) return <div className="rounded-2xl border border-dashed border-white/15 px-5 py-10 text-center text-sm text-base-content/50">{t('Avval katalogga mahsulot qo‘shing, keyin unga aksiya belgilang.')}</div>;
+
+  return (
+    <div>
+      <div className="mb-4 rounded-2xl border border-accent/25 bg-accent/5 p-4"><div className="text-sm font-bold text-accent">◆ {t('Aksiya boshqaruvi')}</div><p className="mt-1 text-xs leading-relaxed text-base-content/55">{t('Eski va yangi narxni, aksiya davomiyligini belgilang. Taklif public profildagi “Aksiyalar” bo‘limiga avtomatik chiqadi.')}</p></div>
+      <div className="space-y-3">{items.map((item) => <PromotionProductRow key={item.id} code={code} item={item} onSaved={load} />)}</div>
     </div>
   );
 }
@@ -1836,7 +1962,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   );
 }
 
-function EditCardForm({ card, onSaved }) {
+export function EditCardForm({ card, onSaved, workspaceOnly = false }) {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
   const cats = useCategories();
@@ -2265,6 +2391,7 @@ function EditCardForm({ card, onSaved }) {
               {[
                 ['asosiy', t('Asosiy')],
                 ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog')],
+                ...(catalogModule === 'products' ? [['aksiyalar', `◆ ${t('Aksiyalar')}`]] : []),
                 ['galereya', t('Galereya')],
                 ['lokatsiya', t('Lokatsiya')],
                 ['sozlamalar', t('Sozlamalar')],
@@ -2278,21 +2405,27 @@ function EditCardForm({ card, onSaved }) {
           )}
           {(!isBusiness || wsTab === 'asosiy') && (
           <>
-          <Section title={t('Profil turi')} subtitle={t('Katalog va qidiruvda qanday ko‘rinasiz')} defaultOpen>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                ['personal', t('Shaxsiy'), t('Odam')],
-                ['expert', t('Ekspert'), t('Mutaxassis')],
-                ['business', t('Biznes'), t('Kompaniya')],
-              ].map(([id, label, sub]) => (
-                <button key={id} type="button"
-                  onClick={() => setForm((f) => ({ ...f, profileType: id }))}
-                  className={`rounded-xl border p-3 text-left transition ${form.profileType === id ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/25'}`}>
-                  <div className={`text-sm font-bold ${form.profileType === id ? 'text-accent' : ''}`}>{label}</div>
-                  <div className="mt-0.5 text-[11px] text-base-content/45">{sub}</div>
-                </button>
-              ))}
-            </div>
+          <Section
+            title={workspaceOnly ? t('Kompaniya yo‘nalishi') : t('Profil turi')}
+            subtitle={workspaceOnly ? t('Katalog moduli faoliyat sohasiga qarab avtomatik tanlanadi') : t('Katalog va qidiruvda qanday ko‘rinasiz')}
+            defaultOpen
+          >
+            {!workspaceOnly && (
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ['personal', t('Shaxsiy'), t('Odam')],
+                  ['expert', t('Ekspert'), t('Mutaxassis')],
+                  ['business', t('Biznes'), t('Kompaniya')],
+                ].map(([id, label, sub]) => (
+                  <button key={id} type="button"
+                    onClick={() => setForm((f) => ({ ...f, profileType: id }))}
+                    className={`rounded-xl border p-3 text-left transition ${form.profileType === id ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/25'}`}>
+                    <div className={`text-sm font-bold ${form.profileType === id ? 'text-accent' : ''}`}>{label}</div>
+                    <div className="mt-0.5 text-[11px] text-base-content/45">{sub}</div>
+                  </button>
+                ))}
+              </div>
+            )}
             {cats.length > 0 && (() => {
               const sel = findCat(cats, form.categorySlug);
               const mainSlug = sel ? (sel.parentSlug || sel.slug) : '';
@@ -2628,6 +2761,16 @@ function EditCardForm({ card, onSaved }) {
             </Section>
           )}
 
+          {isBusiness && wsTab === 'aksiyalar' && catalogReady && catalogModule === 'products' && (
+            <Section title={t('Aksiyalar')} subtitle={t('Eski narx, yangi narx va muddat')} defaultOpen>
+              <PromotionsManagerSection
+                code={card.code}
+                allowed={allow('productCatalog')}
+                onLock={() => setLocked(t('Aksiyalar'))}
+              />
+            </Section>
+          )}
+
           {isBusiness && wsTab === 'galereya' && (
             savedIsBusiness ? (
               <Section title={t('Galereya')} subtitle={t('Kompaniya rasmlari')} defaultOpen>
@@ -2651,10 +2794,24 @@ function EditCardForm({ card, onSaved }) {
           )}
 
           {isBusiness && wsTab === 'sozlamalar' && (
-            <Section title={t("NFC ID sozlamalari")} subtitle={t("Sovg'a qilish, post, karta dizayni, o'chirish")}>
-              {nfcIdBlock}
-              {giftBlock}
-            </Section>
+            workspaceOnly ? (
+              <Section title={t('Workspace sozlamalari')} subtitle={t('NFC ID boshqaruvi alohida saqlanadi')}>
+                <div className="rounded-2xl border border-accent/25 bg-accent/5 p-4">
+                  <div className="text-sm font-bold">{t('Bu bo‘lim faqat kompaniya profili va katalogi uchun.')}</div>
+                  <p className="mt-1 text-xs leading-relaxed text-base-content/55">
+                    {t('NFC ID tarifi, sovg‘a qilish, karta dizayni va IDni o‘chirish Mening profilim bo‘limida boshqariladi.')}
+                  </p>
+                  <button type="button" className="btn btn-outline btn-sm mt-3" onClick={() => navigate('/account#mening-profilim')}>
+                    {t('NFC ID boshqaruviga o‘tish')} →
+                  </button>
+                </div>
+              </Section>
+            ) : (
+              <Section title={t("NFC ID sozlamalari")} subtitle={t("Sovg'a qilish, post, karta dizayni, o'chirish")}>
+                {nfcIdBlock}
+                {giftBlock}
+              </Section>
+            )
           )}
 
           <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
@@ -2666,7 +2823,7 @@ function EditCardForm({ card, onSaved }) {
         {/* Katalog tabida modul o'zining ichki preview'iga ega (Menu/Product/
             ServiceManagerSection) — asosiy karta preview'ini takrorlamaslik
             uchun shu yerda yashiramiz. */}
-        {!(isBusiness && wsTab === 'katalog') && (
+        {!(isBusiness && ['katalog', 'aksiyalar'].includes(wsTab)) && (
           <div className="hidden lg:block">
             <PhonePreview form={form} code={card.code} />
           </div>
@@ -2674,7 +2831,7 @@ function EditCardForm({ card, onSaved }) {
       </div>
 
       {/* Mobil uchun preview forma tagida ko'rinadi */}
-      {!(isBusiness && wsTab === 'katalog') && (
+      {!(isBusiness && ['katalog', 'aksiyalar'].includes(wsTab)) && (
         <div className="mt-8 lg:hidden">
           <PhonePreview form={form} code={card.code} />
         </div>
@@ -2817,11 +2974,9 @@ export default function AccountPage({ refreshCatalog }) {
   // ochilsin: biznes turidagi ID tanlanadi va tahrirlash bo'limiga skroll qilinadi.
   const businessCards = myCards.filter((c) => c.profileType === 'business');
   const primaryBusinessCard = businessCards.find((c) => c.isPrimary) || businessCards[0];
-  const openBusinessWorkspace = () => {
-    if (!primaryBusinessCard) return;
-    setSelectedCode(primaryBusinessCard.code);
-    setTimeout(() => document.getElementById('mening-profilim')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-  };
+  const openBusinessWorkspace = () => navigate(primaryBusinessCard
+    ? '/company/create?from=' + primaryBusinessCard.code.toLowerCase()
+    : '/company/create');
   const [orders, setOrders] = useState([]);
   const [supportOpen, setSupportOpen] = useState(false);
 
@@ -2909,11 +3064,9 @@ export default function AccountPage({ refreshCatalog }) {
         <div className="flex min-w-max gap-1">
           <button className="btn btn-primary btn-sm min-h-11">{t('Hisob')}</button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())} disabled={!primaryCard}>{t('Profil')}</button>
-          {businessCards.length > 0 && (
-            <button className="btn btn-ghost btn-sm min-h-11" onClick={openBusinessWorkspace}>
-              {'\u{1F3E2}'} {t('Biznes')}
-            </button>
-          )}
+          <button className="btn btn-ghost btn-sm min-h-11" onClick={openBusinessWorkspace}>
+            {'\u{1F3E2}'} {t('Kompaniya')}
+          </button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/bildirishnomalar')}>{t('Bildirishnomalar')}</button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => MESSAGING_ENABLED && navigate('/xabarlar')} disabled={!MESSAGING_ENABLED}>{t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada')}</button>
           <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/tolovlar')}>{t("To'lovlar")}</button>
@@ -2976,7 +3129,31 @@ export default function AccountPage({ refreshCatalog }) {
                 </select>
               </label>
             )}
-            {selectedCard && <EditCardForm key={selectedCard.code} card={selectedCard} onSaved={onSaved} />}
+            {selectedCard && (
+              selectedCard.profileType === 'business' ? (
+                <div className="mt-5 overflow-hidden rounded-3xl border border-amber-400/25 bg-gradient-to-br from-amber-400/10 via-base-200 to-base-100 p-6 shadow-xl">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">ESKI BUSINESS PROFIL · NFC ID {selectedCard.code}</div>
+                      <h3 className="mt-2 text-xl font-black">{selectedCard.name || selectedCard.code}</h3>
+                      <p className="mt-1 max-w-xl text-sm leading-relaxed text-base-content/60">
+                        {t('Bu NFC ID o‘z holicha qoladi. Kompaniya uchun faqat harflardan iborat alohida Company ID oching; admin tasdig‘idan keyin uning NFC va public profili mustaqil ishlaydi.')}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/' + selectedCard.code)}>
+                        {t('Profilni ko‘rish')}
+                      </button>
+                      <button type="button" className="btn btn-warning btn-sm" onClick={() => navigate('/company/create?from=' + selectedCard.code.toLowerCase())}>
+                        {t('Company ID ochish')} →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <EditCardForm key={selectedCard.code} card={selectedCard} onSaved={onSaved} />
+              )
+            )}
           </>
         )}
       </section>
