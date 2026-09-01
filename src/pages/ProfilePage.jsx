@@ -283,6 +283,14 @@ function MusicPlayer({ url, accentColor }) {
           loop: 1,
           playlist: ytId,
           controls: 0,
+          fs: 0,
+          disablekb: 1,
+          iv_load_policy: 3,
+          // Mobil (iOS/Android) brauzerlar dasturiy `playVideo()`ni faqat
+          // video OVOZSIZ boshlansagina ruxsat etadi. Shu sabab ovozsiz
+          // boshlaymiz va darhol `unMute()` bilan ovozni yoqamiz.
+          mute: 1,
+          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
         },
         events: {
           onReady: () => {
@@ -293,7 +301,11 @@ function MusicPlayer({ url, accentColor }) {
           },
           onStateChange: (e) => {
             // 1 = playing, 2 = paused, 0 = ended
-            if (e.data === 1) setPlaying(true);
+            if (e.data === 1) {
+              setPlaying(true);
+              // Ovozsiz boshlangan bo'lsa — endi ovozni yoqamiz.
+              try { e.target.unMute(); e.target.setVolume(100); } catch { /* ignore */ }
+            }
             else if (e.data === 2) setPlaying(false);
             else if (e.data === 0) {
               // Takrorlash (ba'zi hollarda loop param yetarli emas).
@@ -398,7 +410,18 @@ function MusicPlayer({ url, accentColor }) {
           }}
         >
           {/* YT.Player bu div'ni <iframe> bilan almashtiradi */}
-          <div ref={ytHostRef} className="block h-[107px] w-[190px]" />
+          <div className="relative block h-[107px] w-[190px]">
+            <div ref={ytHostRef} className="block h-full w-full" />
+            {/* Mobil brauzerlarda iframe ustidagi bosish YouTube ilovasiga/
+                sahifasiga o'tkazib yuboradi — shaffof qatlam buni to'sadi va
+                bosishni pleer tugmasiga yo'naltiradi. */}
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={playing ? t('Musiqani to‘xtatish') : t('Musiqani yoqish')}
+              className="absolute inset-0 z-10 h-full w-full bg-transparent"
+            />
+          </div>
         </div>
       )}
       {isYd && (
