@@ -1561,7 +1561,7 @@ function PremiumPanel({ user, onBecamePremium }) {
           </p>
         </div>
       )}
-      {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+      {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
     </div>
   );
 }
@@ -1680,7 +1680,7 @@ function PostsManager({ code }) {
         <button type="button" className="btn btn-accent btn-sm mt-3 w-full" onClick={publish} disabled={!agreed || (!imageUrl && !videoUrl) || busy}>
           {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Joylash')}
         </button>
-        {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+        {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
       </div>
 
       <div className="mt-4 space-y-2">
@@ -1910,7 +1910,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
             <button className="btn btn-primary btn-sm mt-5" onClick={save} disabled={busy || uploading}>
               {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Saqlash')}
             </button>
-            {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{msg.text}</span></div>}
+            {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
           </div>
 
           <div className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-4">
