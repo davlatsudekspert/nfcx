@@ -121,13 +121,13 @@ function DemoCompanyCard({ type, t }) {
     <article className={`co-directory-card ${restaurant ? 'gold' : 'violet'}`}>
       <div className="co-directory-image">
         <img src={restaurant ? '/business-assets/restaurant-interior.jpg' : '/business-assets/market-interior.jpg'} alt="" />
-        <span>{restaurant ? '♨ Menyu' : '▣ Katalog'}</span><em>{t('NAMUNA')}</em>
+        <span>{restaurant ? '♨' : '▣'} {restaurant ? t('Menyu') : t('Katalog')}</span><em>{t('NAMUNA')}</em>
       </div>
       <div className="co-directory-copy">
         <i>{restaurant ? 'NR' : 'NM'}</i>
-        <div><h3>{restaurant ? 'NFC Restaurant' : 'NFC Market'} <span>✓</span></h3><p>{restaurant ? 'Restoran · Oziq-ovqat' : 'Savdo do‘koni · Elektronika'}</p><small>⌖ Toshkent, {restaurant ? 'Yunusobod' : 'Chilonzor'} tumani</small></div>
+        <div><h3>{restaurant ? 'NFC Restaurant' : 'NFC Market'} <span>✓</span></h3><p>{t(restaurant ? 'Restoran · Oziq-ovqat' : 'Savdo do‘koni · Elektronika')}</p><small>⌖ {t('Toshkent')}, {t(restaurant ? 'Yunusobod' : 'Chilonzor')} {t('tumani')}</small></div>
       </div>
-      <p>{restaurant ? 'Milliy va Yevropa taomlari. Sifatli xizmat va mazali taomlar.' : 'Smartfonlar, aksessuarlar va noutbuklar. Eng yaxshi narxlar.'}</p>
+      <p>{t(restaurant ? 'Milliy va Yevropa taomlari. Sifatli xizmat va mazali taomlar.' : 'Smartfonlar, aksessuarlar va noutbuklar. Eng yaxshi narxlar.')}</p>
       <button type="button" onClick={() => navigate('/biznes-namuna')}>{t('Profilga o‘tish')} →</button>
     </article>
   );
@@ -200,7 +200,7 @@ export default function CompaniesPage({ catalog = [] }) {
     <main className="companies-luxe">
       <section className="co-hero">
         <div className="co-hero-glow" />
-        <span className="co-eyebrow">NFCSTORE BUSINESS DIRECTORY</span>
+        <span className="co-eyebrow">NFCSTORE {t('Kompaniyalar katalogi')}</span>
         <h1>{t('Kompaniyalar va')}<br />{t('mutaxassislarni')} <strong>{t('toping')}</strong></h1>
         <p>{t('Kerakli kompaniya, xizmat yoki mutaxassisni NFCStore orqali toping.')}<br />{t('Ularning faoliyat sohasi, katalogi va ochiq aloqa ma’lumotlarini bitta joyda ko‘ring.')}</p>
         <form className="co-search" onSubmit={search}>

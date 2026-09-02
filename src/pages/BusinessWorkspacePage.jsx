@@ -68,7 +68,7 @@ const NAV_ITEMS = [
   ['settings', 'Sozlamalar', '⚙'],
 ];
 
-function WorkspacePhone({ profile, items, active, accent }) {
+function WorkspacePhone({ profile, items, active, accent, t }) {
   const selected = items[0];
   return (
     <div className="bw-phone-shell" style={{ '--bw-accent': accent }}>
@@ -81,16 +81,16 @@ function WorkspacePhone({ profile, items, active, accent }) {
             <div className="bw-phone-logo">{profile.name.slice(0, 2)}</div>
             <h3>{profile.name}</h3><p>{profile.role}</p>
             <span className="bw-phone-place">⌖ {profile.city}</span>
-            <div className="bw-phone-actions"><b>☎ Qo‘ng‘iroq</b><span>Telegram</span></div>
-            <nav><b>Asosiy</b><span>Katalog</span><span>Galereya</span></nav>
-            <article><small>BIZ HAQIMIZDA</small><p>{profile.about}</p></article>
+            <div className="bw-phone-actions"><b>☎ {t('Qo‘ng‘iroq')}</b><span>Telegram</span></div>
+            <nav><b>{t('Asosiy')}</b><span>{t('Katalog')}</span><span>{t('Galereya')}</span></nav>
+            <article><small>{t('BIZ HAQIMIZDA')}</small><p>{profile.about}</p></article>
           </div>
         )}
         {active === 'catalog' && (
           <div className="bw-phone-catalog">
             <div className="bw-phone-head"><span>←</span><b>{profile.module}</b><span>⌕</span></div>
-            <input readOnly value="Qidirish..." />
-            <div className="bw-phone-chips"><b>Barchasi</b><span>{items[0]?.category}</span><span>{items[1]?.category}</span></div>
+            <input readOnly value={t('Qidirish...')} />
+            <div className="bw-phone-chips"><b>{t('Barchasi')}</b><span>{items[0]?.category}</span><span>{items[1]?.category}</span></div>
             <div className="bw-phone-list">
               {items.map((item) => <article key={item.name}><img src={item.image} alt="" /><div><b>{item.name}</b><small>{item.description}</small><strong>{item.price} {item.unit}</strong></div></article>)}
             </div>
@@ -98,24 +98,24 @@ function WorkspacePhone({ profile, items, active, accent }) {
         )}
         {active === 'promotions' && (
           <div className="bw-phone-catalog">
-            <div className="bw-phone-head"><span>←</span><b>Aksiyalar</b><span>◆</span></div>
-            <div className="bw-phone-chips"><b>Faol</b><span>Tez tugaydi</span></div>
+            <div className="bw-phone-head"><span>←</span><b>{t('Aksiyalar')}</b><span>◆</span></div>
+            <div className="bw-phone-chips"><b>{t('Faol')}</b><span>{t('Tez tugaydi')}</span></div>
             <div className="bw-phone-list">
-              {items.filter((entry) => entry.discountPrice).map((entry) => <article key={entry.name}><img src={entry.image} alt="" /><div><b>{entry.name}</b><small><s>{entry.price} {entry.unit}</s> · {entry.promotionDays} kun</small><strong>{entry.discountPrice} {entry.unit}</strong></div></article>)}
+              {items.filter((entry) => entry.discountPrice).map((entry) => <article key={entry.name}><img src={entry.image} alt="" /><div><b>{entry.name}</b><small><s>{entry.price} {entry.unit}</s> · {t('{n} kun', { n: entry.promotionDays })}</small><strong>{entry.discountPrice} {entry.unit}</strong></div></article>)}
             </div>
           </div>
         )}
         {active === 'gallery' && (
-          <div className="bw-phone-gallery"><div className="bw-phone-head"><span>←</span><b>Galereya</b><span>•••</span></div><div>{[profile.cover, ...items.map((item) => item.image)].slice(0, 6).map((image, index) => <img key={`${image}-${index}`} src={image} alt="" />)}</div></div>
+          <div className="bw-phone-gallery"><div className="bw-phone-head"><span>←</span><b>{t('Galereya')}</b><span>•••</span></div><div>{[profile.cover, ...items.map((item) => item.image)].slice(0, 6).map((image, index) => <img key={`${image}-${index}`} src={image} alt="" />)}</div></div>
         )}
         {active === 'location' && (
-          <div className="bw-phone-location"><div className="bw-phone-head"><span>←</span><b>Lokatsiya</b><span>•••</span></div><div className="bw-mini-map"><i>⌖</i></div><h3>{profile.city}</h3><p>{profile.address}</p><b>⌖ Yo‘nalishni ochish</b></div>
+          <div className="bw-phone-location"><div className="bw-phone-head"><span>←</span><b>{t('Lokatsiya')}</b><span>•••</span></div><div className="bw-mini-map"><i>⌖</i></div><h3>{profile.city}</h3><p>{profile.address}</p><b>⌖ {t('Yo‘nalishni ochish')}</b></div>
         )}
         {active === 'contact' && (
-          <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>Aloqa</b><span>•••</span></div><small>BOG‘LANISH</small><h3>Keling, gaplashamiz</h3><a>☎ <span><small>Telefon</small><b>{profile.phone}</b></span></a><a>↗ <span><small>Telegram</small><b>{profile.telegram}</b></span></a><a>⌖ <span><small>Manzil</small><b>{profile.city}</b></span></a></div>
+          <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>{t('Aloqa')}</b><span>•••</span></div><small>{t('BOG‘LANISH')}</small><h3>{t('Keling, gaplashamiz')}</h3><a>☎ <span><small>{t('Telefon')}</small><b>{profile.phone}</b></span></a><a>↗ <span><small>Telegram</small><b>{profile.telegram}</b></span></a><a>⌖ <span><small>{t('Manzil')}</small><b>{profile.city}</b></span></a></div>
         )}
         {active === 'settings' && (
-          <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>Profil holati</b><span>•••</span></div><small>PUBLIC PROFILE</small><h3>{profile.name}</h3><a>✓ <span><small>Nashr holati</small><b>Faol</b></span></a><a>↗ <span><small>Public manzil</small><b>nfcstore.uz/elite</b></span></a></div>
+          <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>{t('Profil holati')}</b><span>•••</span></div><small>{t('PUBLIC PROFILE')}</small><h3>{profile.name}</h3><a>✓ <span><small>{t('Nashr holati')}</small><b>{t('Faol')}</b></span></a><a>↗ <span><small>{t('Public manzil')}</small><b>nfcstore.uz/elite</b></span></a></div>
         )}
       </div>
       <div className="bw-phone-home" />
@@ -213,7 +213,7 @@ function DemoWorkspace() {
           <div className="bw-editor-footer"><span>{saved ? `✓ ${t('Barcha o‘zgarishlar saqlandi')}` : t('Saqlanmagan o‘zgarishlar local previewda ko‘rinmoqda')}</span><button type="button" onClick={save}>{saved ? t('Saqlandi') : t('O‘zgarishlarni saqlash')}</button></div>
         </section>
 
-        <aside className={`bw-preview ${mobileView === 'edit' ? 'mobile-hidden' : ''}`}><div className="bw-preview-head"><div><span>{t('JONLI KO‘RISH')}</span><b>{t(navItems.find(([id]) => id === active)?.[1] || 'Asosiy')}</b></div><i><span /> {t('REAL VAQTDA')}</i></div><WorkspacePhone profile={{ ...profile, module: profile.module }} items={items} active={active} accent={accent} /><p>{t('Telefondagi preview serverga so‘rov yubormasdan local state bilan yangilanadi.')}</p><div className="bw-preview-links"><button type="button" onClick={() => navigate('/biznes-namuna')}>↗ {t('Public profilni ochish')}</button><button type="button">▣ {t('QR ko‘rish')}</button></div></aside>
+        <aside className={`bw-preview ${mobileView === 'edit' ? 'mobile-hidden' : ''}`}><div className="bw-preview-head"><div><span>{t('JONLI KO‘RISH')}</span><b>{t(navItems.find(([id]) => id === active)?.[1] || 'Asosiy')}</b></div><i><span /> {t('REAL VAQTDA')}</i></div><WorkspacePhone profile={{ ...profile, module: profile.module }} items={items} active={active} accent={accent} t={t} /><p>{t('Telefondagi preview serverga so‘rov yubormasdan local state bilan yangilanadi.')}</p><div className="bw-preview-links"><button type="button" onClick={() => navigate('/biznes-namuna')}>↗ {t('Public profilni ochish')}</button><button type="button">▣ {t('QR ko‘rish')}</button></div></aside>
       </div>
       {saved && <div className="bw-toast">✓ {t('O‘zgarishlar muvaffaqiyatli saqlandi')}</div>}
     </main>
@@ -231,11 +231,11 @@ export default function BusinessWorkspacePage({ code }) {
   return (
     <main className="bw-auth-state" style={{ minHeight: '100vh', background: '#050505', color: '#fff', padding: '32px' }}>
       <div style={{ width: 'min(760px,100%)', margin: '9vh auto', border: '1px solid rgba(239,183,47,.28)', borderRadius: 28, background: 'linear-gradient(145deg,rgba(239,183,47,.08),#0b0b0b 38%)', padding: 'clamp(28px,5vw,56px)', textAlign: 'left' }}>
-        <span style={{ color: '#efb72f', fontSize: 11, fontWeight: 800, letterSpacing: '.16em' }}>YANGI COMPANY SYSTEM</span>
+        <span style={{ color: '#efb72f', fontSize: 11, fontWeight: 800, letterSpacing: '.16em' }}>{t('YANGI COMPANY SYSTEM')}</span>
         <h1 style={{ margin: '14px 0 12px', fontSize: 'clamp(34px,5vw,56px)', letterSpacing: '-.04em' }}>{card.name || card.code}</h1>
         <p style={{ color: '#aaa397', lineHeight: 1.75 }}>{t('Bu eski biznes ko‘rinishi shaxsiy NFC ID bilan aralashib qolgan edi. Endi kompaniya alohida, faqat harflardan iborat Company ID va admin tasdig‘i bilan ochiladi.')}</p>
         <div style={{ marginTop: 24, padding: 18, border: '1px solid #2e291e', borderRadius: 14, background: '#090909' }}>
-          <b style={{ color: '#efc45a' }}>{card.code} — mavjud NFC ID</b>
+          <b style={{ color: '#efc45a' }}>{card.code} — {t('mavjud NFC ID')}</b>
           <p style={{ color: '#7f796e', fontSize: 13, lineHeight: 1.6, marginBottom: 0 }}>{t('Uning profili va bazadagi ma’lumotlari o‘zgarmaydi. Yangi kompaniyaga kerakli biznes ma’lumotlarini nusxalash mumkin.')}</p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 25 }}>

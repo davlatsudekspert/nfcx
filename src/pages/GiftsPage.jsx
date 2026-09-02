@@ -100,7 +100,7 @@ export default function GiftsPage({ catalog = [] }) {
             <div className="gift-luxe-card">
               <NfcCard code="VIP007" name={t('Noyob ID — unutilmas sovg‘a')} finish="showcase" size="md" />
             </div>
-            <span className="gift-luxe-seal">NFC<br />GIFT</span>
+            <span className="gift-luxe-seal">NFC<br />{t('GIFT')}</span>
           </div>
         </div>
       </section>

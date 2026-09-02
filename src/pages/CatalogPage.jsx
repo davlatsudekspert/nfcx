@@ -127,7 +127,7 @@ export default function CatalogPage({ catalog }) {
         </div>
       </section>
       <section className="mt-16">
-        <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">Live</div>
+        <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('Jonli')}</div>
         <h2 className="mt-2 text-2xl font-bold">{t("Barcha raqamli tashrif qog'ozlar")} <span className="text-base font-normal text-base-content/40">({fmt(filtered.length)})</span></h2>
         <div className="cat-grid mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.length === 0 && <div className="col-span-full py-10 text-center text-base-content/45">{t('Hech narsa topilmadi.')}</div>}

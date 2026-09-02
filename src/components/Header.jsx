@@ -157,18 +157,18 @@ export default function Header() {
           ))}
         </div>
       </div>
-      <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14">
+      <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-8 2xl:px-14">
         <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={() => go('/')} className="flex shrink-0 cursor-pointer items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
             <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)]" />
             NFCSTORE
           </button>
-          <div className="hidden w-40 shrink-0 md:block lg:w-52">
+          <div className="hidden w-36 shrink-0 md:block lg:w-40">
             <HeaderSearch />
           </div>
         </div>
 
-        <nav className="hidden flex-1 items-center justify-center gap-4 text-sm text-base-content/60 xl:flex 2xl:gap-6">
+        <nav className="hidden flex-1 items-center justify-center gap-1.5 text-sm text-base-content/60 xl:flex 2xl:gap-6">
           {DESKTOP_NAV.map(([label, href]) => (
             <button key={href} onClick={() => go(href)} className="shrink-0 cursor-pointer transition-colors hover:text-base-content">
               {t(label)}
