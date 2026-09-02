@@ -96,6 +96,14 @@ export async function dbSearchRecords(q) {
 //  - 409: already taken -> null
 // Throws for auth errors (err.code === 'unauthorized') so the caller can
 // prompt the user to sign in / create an account first.
+//
+// NO localStorage fallback here (unlike the read-only helpers above): a
+// purchase is a server-authoritative record — the price/tier check and the
+// actual row only exist in D1 (see POST /api/records/:code). Silently
+// fabricating a local-only "owned" card on any API/network error would let
+// a user end up believing they own an ID that was never actually reserved
+// or paid for. Any error other than a real 409 (code already taken) is
+// re-thrown so the caller shows a real error instead of a false success.
 export async function dbCreate(code, data) {
   try {
     return await api(`/records/${encodeURIComponent(code)}`, {
@@ -104,8 +112,7 @@ export async function dbCreate(code, data) {
     });
   } catch (err) {
     if (err && err.message === 'api_error_409') return null;
-    if (err && (err.code === 'unauthorized' || err.code === 'reserved_pending_payment' || err.code === 'exclusive_auction_only' || err.code === 'payments_disabled' || err.code === 'payme_disabled')) throw err;
-    return lsGet(code) ? null : lsSet(code, { ...data, code });
+    throw err;
   }
 }
 

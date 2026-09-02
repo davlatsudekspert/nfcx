@@ -166,7 +166,7 @@ export const DICT = {
 
   // Tarif nomlari (pricing.js TIER_LABEL)
   'Ekslyuziv': { ru: 'Эксклюзивный', en: 'Exclusive' },
-  'Tekin': { ru: 'Бесплатный', en: 'Free' },
+  'Bronza': { ru: 'Бронза', en: 'Bronze' },
   'Premium': { ru: 'Premium', en: 'Premium' },
   'Gold': { ru: 'Gold', en: 'Gold' },
   'Silver': { ru: 'Silver', en: 'Silver' },
@@ -562,7 +562,7 @@ export const DICT = {
   'nfcstore.uz/{code} hozircha bo‘sh — {price} so‘m': { ru: 'nfcstore.uz/{code} пока свободен — {price} сум', en: 'nfcstore.uz/{code} is available — {price} UZS' },
   'Bandlash': { ru: 'Забронировать', en: 'Reserve' },
   "0 so'mdan": { ru: 'от 0 сум', en: 'from 0 UZS' },
-  "Tekin darajadagi ID'lar": { ru: 'ID уровня «Бесплатный»', en: 'Free-tier IDs' },
+  "Bronza darajadagi ID'lar": { ru: 'ID уровня «Бронза»', en: 'Bronze-tier IDs' },
   "99 000 so'm": { ru: '99 000 сум', en: '99,000 UZS' },
   'Silver darajadan boshlab': { ru: 'начиная с уровня Silver', en: 'starting from the Silver tier' },
   'Batafsil': { ru: 'Подробнее', en: 'Details' },

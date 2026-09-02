@@ -208,27 +208,32 @@ export function tierForCode(code) {
 // Har bir daraja uchun qat'iy narx. EKSKLYUZIV uchun narx yo'q (null) —
 // bu kod to'g'ridan-to'g'ri sotib olinmaydi, faqat admin ochgan auksion
 // orqali egasini topadi.
-export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 0 };
+// "free" (ichki kalit, o'zgartirilmagan — access.js'dagi feature-limit
+// tizimi ham shu kalitni ishlatadi, u butunlay boshqa tushuncha) — endi
+// tijoriy nomi "Bronza", narxi 49 000 so'm (avval 0 edi).
+export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 49000 };
 
 // PROFILE PREMIUM narxi — NFC ID darajasidan ALOHIDA. Bir martalik to'lov;
 // profil funksiyalarini (post, musiqa, maxsus fon, analitika va h.k.) ochadi,
 // NFC ID kodini/tarifini o'zgartirmaydi. Frontend ham, backend ham SHU
 // yagona konstantani ishlatadi.
 export const PROFILE_PREMIUM_FEE = 20000;
-export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Tekin' };
+export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Bronza' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
-// Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Emerald.
+// Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Bronza+yashil.
 export const TIER_COLOR = {
   exclusive: '#d4af37', // Titanium Gold — eng yuqori status
   premium: '#d8a34a',   // Bronza-oltin — issiq metall
   gold: '#f0c419',      // Pure Gold — klassik toza tilla
   silver: '#9aa3ad',    // Chrome Silver — bosiq metall
-  free: '#3fae6a',      // Emerald — bosiq zumrad yashil
+  free: '#C58A55',      // Bronza + to'q yashil aralash — bronza highlight
 };
 // Titanium Gold / Platinum uchun ikki rangli metall gradient (matn/badge fonida).
 export const TIER_GRADIENT = {
   exclusive: 'linear-gradient(135deg, #d4af37 0%, #ffffff 25%, #8a8275 50%, #d4af37 100%)',
   premium: 'linear-gradient(135deg, #e0b46a 0%, #fbe8c8 30%, #a06c1e 60%, #e0b46a 100%)',
+  // Bronza (asos/to'q) -> to'q yashil — "Bronza + to'q yashil aralash".
+  free: 'linear-gradient(135deg, #A66A3F 0%, #C58A55 30%, #347A54 65%, #1F513A 100%)',
 };
 // Premium, Gold va Ekslyuziv — qirol/olmos emoji; Silver — yulduzcha.
 export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: '\u{1F451}', silver: '\u2728', free: '' };
@@ -238,7 +243,7 @@ export const TIER_EMOJI = { exclusive: '\u{1F48E}', premium: '\u{1F451}', gold: 
 // qilmaydi \u2014 outer har doim ID tarifiga bog'liq). Tema fonining ustiga
 // nozik rangli "halo" sifatida qo'yiladi.
 export const TIER_PAGE_GLOW = {
-  free:      'radial-gradient(1200px 620px at 50% -12%, rgba(63,174,106,0.10), transparent 62%)',
+  free:      'radial-gradient(1200px 620px at 50% -12%, rgba(166,106,63,0.12), transparent 62%)',
   silver:    'radial-gradient(1200px 620px at 50% -12%, rgba(154,163,173,0.13), transparent 62%)',
   gold:      'radial-gradient(1200px 620px at 50% -12%, rgba(240,196,25,0.13), transparent 60%)',
   premium:   'radial-gradient(1200px 620px at 50% -12%, rgba(216,163,74,0.15), transparent 60%)',

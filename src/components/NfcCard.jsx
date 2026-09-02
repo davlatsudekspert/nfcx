@@ -22,7 +22,8 @@ const FINISHES = {
   'tier-premium': { bg: 'linear-gradient(145deg, #4a2f0c 0%, #c78e34 45%, #2c1c06 100%)', fg: '#fbeccd', sub: 'rgba(251,236,205,0.62)', code: '#f0c98a', border: '1px solid rgba(216,163,74,0.6)' },
   'tier-gold': { bg: 'linear-gradient(135deg, #f0c419 0%, #a9840f 45%, #f0c419 100%)', fg: '#1a1206', sub: 'rgba(26,18,6,0.6)', code: '#1a1206' },
   'tier-silver': { bg: 'linear-gradient(135deg, #c4cad2 0%, #8f97a3 45%, #c4cad2 100%)', fg: '#15181c', sub: 'rgba(21,24,28,0.55)', code: '#15181c' },
-  'tier-free': { bg: 'linear-gradient(135deg, #22352a 0%, #14201a 55%, #22352a 100%)', fg: '#eafff2', sub: 'rgba(63,174,106,0.65)', code: '#3fae6a', border: '1px solid rgba(63,174,106,0.4)' },
+  // Bronza + to'q yashil aralash (avvalgi sof zumrad yashildan farqli).
+  'tier-free': { bg: 'linear-gradient(135deg, #3f2c16 0%, #1c2e1a 55%, #3f2c16 100%)', fg: '#f3ecd8', sub: 'rgba(197,138,85,0.62)', code: '#C58A55', border: '1px solid rgba(197,138,85,0.45)' },
   // Ink — chuqur indigo-havo rang (sayt "Ink" temasiga mos).
   ink: { bg: 'linear-gradient(145deg, #10163a 0%, #0a0d1c 55%, #1b2456 100%)', fg: '#eef0fb', sub: 'rgba(142,162,255,0.7)', code: '#8ea2ff', border: '1px solid rgba(142,162,255,0.35)' },
 };

@@ -48,9 +48,9 @@ const TIER_HINT = {
   },
 };
 const TIER_PRICE_TEXT = {
-  uz: { exclusive: 'Auksionda', premium: '199 000', gold: '149 000', silver: '99 000', free: '0' },
-  ru: { exclusive: 'На аукционе', premium: '199 000', gold: '149 000', silver: '99 000', free: '0' },
-  en: { exclusive: 'At auction', premium: '199,000', gold: '149,000', silver: '99,000', free: '0' },
+  uz: { exclusive: 'Auksionda', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
+  ru: { exclusive: 'На аукционе', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
+  en: { exclusive: 'At auction', premium: '199,000', gold: '149,000', silver: '99,000', free: '49,000' },
 };
 const EXAMPLES = {
   uz: [
@@ -116,12 +116,13 @@ const TIER_CARD_MIX = {
     iconColor: '#b6bdc7',
     nameColor: '#c6cdd6',
   },
+  // Bronza + to'q yashil aralash (avvalgi sof zumrad yashildan farqli).
   free: {
-    background: 'linear-gradient(120deg, #000 0%, #0a0f0c 38%, #16281c 68%, #2f5f3f 100%)',
-    border: '1px solid rgba(63,174,106,0.40)',
-    iconBg: 'rgba(63,174,106,0.18)',
-    iconColor: '#5fc98a',
-    nameColor: '#7fd6a2',
+    background: 'linear-gradient(120deg, #000 0%, #241708 35%, #704225 60%, #1F513A 100%)',
+    border: '1px solid rgba(197,138,85,0.45)',
+    iconBg: 'rgba(197,138,85,0.20)',
+    iconColor: '#C58A55',
+    nameColor: '#dba876',
   },
 };
 
