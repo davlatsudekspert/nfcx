@@ -38,6 +38,7 @@ const CompanyCreatePage = lazy(() => import('./pages/CompanyCreatePage.jsx'));
 const CompanyWorkspacePage = lazy(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazy(() => import('./pages/CompanyQuickProfilePage.jsx'));
 const CompanyPublicPage = lazy(() => import('./pages/CompanyPublicPage.jsx'));
+const GuidePage = lazy(() => import('./pages/GuidePage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -54,6 +55,7 @@ const STATIC_ROUTES = {
   maxfiylik: PrivacyPage,
   auksion: AuctionsPage,
   gifts: GiftsPage,
+  qollanma: GuidePage,
   admin: AdminPage,
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
@@ -173,6 +175,7 @@ export default function App() {
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
     else if (cleanRoute === 'auksion') page = <AuctionsPage />;
     else if (cleanRoute === 'gifts') page = <GiftsPage catalog={catalog} />;
+    else if (cleanRoute === 'qollanma') page = <GuidePage />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
     else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
