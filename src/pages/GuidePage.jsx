@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
-import { fmt } from '../lib/format.js';
-import { GUIDES, GUIDE_TABS, GUIDE_CATEGORIES, PRICING_OVERVIEW } from '../lib/guides.js';
+import { GUIDES, GUIDE_TABS, GUIDE_CATEGORIES } from '../lib/guides.js';
 import GuideCard from '../components/guides/GuideCard.jsx';
 import GuideViewer from '../components/guides/GuideViewer.jsx';
 
@@ -68,33 +67,17 @@ export default function GuidePage() {
         </div>
       </section>
 
-      <section className="mt-8 flex flex-wrap justify-center gap-1.5">
+      <section className="mt-8 flex flex-wrap justify-center gap-2">
         {GUIDE_CATEGORIES.map((c) => (
           <button
             key={c.id}
             onClick={() => setCategory(c.id)}
-            className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition ${category === c.id ? 'border-accent bg-accent/10 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}
+            className={`flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition ${category === c.id ? 'border-accent bg-accent/10 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}
           >
             {t(c.label)}
           </button>
         ))}
       </section>
-
-      {category === 'tariflar' && (
-        <section className="mx-auto mt-10 max-w-3xl rounded-2xl border border-white/10 bg-base-200/50 p-5">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-base-content/50">{t('Joriy tariflar')}</h2>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-            {PRICING_OVERVIEW.map((p) => (
-              <div key={p.key} className="rounded-xl border border-white/10 bg-base-100/40 p-3 text-center">
-                <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: p.color }}>{t(p.label)}</div>
-                <div className="mt-1 text-sm font-extrabold">
-                  {p.price == null ? t('Auksion') : `${fmt(p.price)} ${t("so'm")}`}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="mt-10">
         <div className="qollanma-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

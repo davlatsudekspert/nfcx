@@ -15,6 +15,7 @@ const VARIANTS = {
   grid: GridMock,
   card: CardMock,
   tap: TapMock,
+  qr: QrMock,
 };
 
 // `highlight` — joriy frame'ning `highlight` maydoni bilan mos keladigan
@@ -77,6 +78,21 @@ function CardMock({ highlight }) {
         <div className="mt-3 h-2.5 w-20 rounded-full bg-white/20" />
         <div className="mt-2 h-2 w-28 rounded-full bg-white/10" />
         <div className={`mt-3 h-6 w-16 rounded-md bg-white/10 ${hl(highlight, 'price')}`} />
+      </div>
+    </div>
+  );
+}
+
+function QrMock({ highlight }) {
+  // Sof CSS "soxta QR" naqshi — haqiqiy skanerlanadigan kod emas, faqat
+  // "bu yerda QR kod bo'ladi" g'oyasini ko'rsatuvchi vizual eskiz.
+  const cells = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1];
+  return (
+    <div className="flex h-full items-center justify-center p-6">
+      <div className={`grid grid-cols-4 gap-1 rounded-xl border border-white/10 bg-white/5 p-4 ${hl(highlight, 'qr')}`}>
+        {cells.map((on, i) => (
+          <span key={i} className={`h-4 w-4 rounded-sm ${on ? 'bg-[var(--mock-accent)]' : 'bg-white/10'}`} />
+        ))}
       </div>
     </div>
   );
