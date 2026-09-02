@@ -604,6 +604,21 @@ function nowTs() {
   return new Date().toISOString().replace('T', ' ').replace('Z', '+00');
 }
 
+// Every migrated timestamp column (users.banned_until, .suspended_until,
+// etc.) can hold the old Postgres-style "YYYY-MM-DD HH:MM:SS.ffffff+00"
+// text (space separator, no colon/minutes in the UTC offset) alongside
+// newly-written standard ISO 8601 ("...T...Z") values. `new Date(...)` on
+// the Postgres style is NOT reliably parsed the same way across JS engines
+// — normalize to ISO 8601 first so comparisons are correct everywhere.
+function parseDbDate(value) {
+  if (!value) return null;
+  let s = String(value);
+  if (!s.includes('T')) s = s.replace(' ', 'T');
+  if (/\+00$/.test(s)) s = s.replace(/\+00$/, 'Z');
+  else if (/[+-]\d{2}$/.test(s)) s = s.replace(/([+-]\d{2})$/, '$1:00');
+  return new Date(s);
+}
+
 function toHex(bytes) {
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -963,8 +978,8 @@ async function getCurrentUser(request, env) {
   ).bind(token, nowTs()).first();
   if (!row) return null;
   if (row.deletedAt) return null;
-  if (row.suspendedUntil && new Date(row.suspendedUntil) > new Date()) return null;
-  const isBanned = row.bannedUntil && new Date(row.bannedUntil) > new Date();
+  if (row.suspendedUntil && parseDbDate(row.suspendedUntil) > new Date()) return null;
+  const isBanned = row.bannedUntil && parseDbDate(row.bannedUntil) > new Date();
   return {
     id: row.id, email: row.email, phone: row.phone || null, isPremium: !!row.isPremium,
     bannedUntil: isBanned ? row.bannedUntil : null, strikeCount: row.strikeCount || 0,
@@ -1162,7 +1177,7 @@ async function authApi(request, env, url) {
     ).bind(email).first();
     if (!row || !(await verifyPassword(password, row.password_hash))) return json({ error: 'bad_credentials' }, 401);
     if (row.deleted_at) return json({ error: 'account_deleted' }, 403);
-    if (row.suspended_until && new Date(row.suspended_until) > new Date()) {
+    if (row.suspended_until && parseDbDate(row.suspended_until) > new Date()) {
       return json({ error: 'account_suspended', suspendedUntil: row.suspended_until, reason: row.suspend_reason }, 403);
     }
     const token = newToken();
