@@ -64,23 +64,24 @@ export default function GuideViewer({ guide, onClose }) {
       <div ref={boxRef} className="qollanma-player my-8 w-full max-w-xl rounded-2xl border border-white/10 bg-base-200 p-5 shadow-2xl sm:my-0">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-[11px] text-base-content/45">
-              <span className="rounded-full border border-white/10 px-2 py-0.5 uppercase tracking-wide">{t(catLabel)}</span>
-              <span>·</span>
-              <span>{'⏱️'} {t(guideDurationLabel(guide.durationMin))}</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+              <span className="flex h-7 items-center rounded-full border border-white/15 px-3 font-bold uppercase tracking-wide">{t(catLabel)}</span>
+              <span className="flex h-7 items-center gap-1 rounded-full border border-white/10 px-3">
+                <span className="text-base leading-none">{'⏱️'}</span> {t(guideDurationLabel(guide.durationMin))}
+              </span>
             </div>
-            <h3 className="mt-1.5 text-lg font-bold leading-snug">{t(guide.title)}</h3>
+            <h3 className="mt-2 text-lg font-bold leading-snug">{t(guide.title)}</h3>
           </div>
-          <button className="btn btn-ghost btn-xs shrink-0" onClick={onClose} aria-label="close">&times;</button>
+          <button className="btn btn-ghost btn-sm btn-square shrink-0 text-xl" onClick={onClose} aria-label="close">&times;</button>
         </div>
 
         {hasFrames ? (
           <>
-            <div className="mt-4 flex items-center justify-between text-[11px] text-base-content/40">
+            <div className="mt-4 flex items-center justify-between text-xs text-base-content/45">
               {frame.kind === 'mock' ? (
-                <span className="rounded-full border border-white/15 px-2 py-0.5 font-semibold uppercase tracking-wide text-base-content/45">{t('Demo')}</span>
+                <span className="flex h-7 items-center rounded-full border border-white/15 px-3 font-bold uppercase tracking-wide text-base-content/50">{t('Demo')}</span>
               ) : <span />}
-              <span>{i + 1} / {frames.length}</span>
+              <span className="font-semibold">{i + 1} / {frames.length}</span>
             </div>
             <GuideFrame frame={frame} className="mt-1" />
             <p className="mt-3 min-h-[2.5em] text-sm leading-relaxed text-base-content/75">{t(frame.caption)}</p>
@@ -100,14 +101,14 @@ export default function GuideViewer({ guide, onClose }) {
               ))}
             </div>
 
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <button className="btn btn-ghost btn-sm btn-square" onClick={prev} disabled={i === 0} title={t('Oldingi')} aria-label={t('Oldingi')}>{'⏮'}</button>
-              <button className="btn btn-sm btn-circle bg-accent text-accent-content hover:bg-accent/80" onClick={togglePlay} title={playing ? t('Pauza') : t('Ijro')} aria-label={playing ? t('Pauza') : t('Ijro')}>
+            <div className="mt-4 flex items-center justify-center gap-2.5">
+              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={prev} disabled={i === 0} title={t('Oldingi')} aria-label={t('Oldingi')}>{'⏮'}</button>
+              <button className="btn btn-circle h-12 w-12 bg-accent text-xl text-accent-content hover:bg-accent/80" onClick={togglePlay} title={playing ? t('Pauza') : t('Ijro')} aria-label={playing ? t('Pauza') : t('Ijro')}>
                 {playing ? '⏸' : '▶'}
               </button>
-              <button className="btn btn-ghost btn-sm btn-square" onClick={next} disabled={i === frames.length - 1} title={t('Keyingi')} aria-label={t('Keyingi')}>{'⏭'}</button>
-              <button className="btn btn-ghost btn-sm btn-square" onClick={restart} title={t('Qaytadan boshlash')} aria-label={t('Qaytadan boshlash')}>{'↺'}</button>
-              <button className="btn btn-ghost btn-sm btn-square" onClick={goFullscreen} title={t("To'liq ekran")} aria-label={t("To'liq ekran")}>{'⛶'}</button>
+              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={next} disabled={i === frames.length - 1} title={t('Keyingi')} aria-label={t('Keyingi')}>{'⏭'}</button>
+              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={restart} title={t('Qaytadan boshlash')} aria-label={t('Qaytadan boshlash')}>{'↺'}</button>
+              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={goFullscreen} title={t("To'liq ekran")} aria-label={t("To'liq ekran")}>{'⛶'}</button>
             </div>
           </>
         ) : (
