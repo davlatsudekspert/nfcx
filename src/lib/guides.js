@@ -5,14 +5,21 @@
 // TIER_COLOR — pricing.js'dan FAQAT O'QIB olinadi (import), pricing logikasi
 // bu yerda umuman qayta yozilmagan/o'zgartirilmagan.
 //
-// Ekran namoyishlari ("frames"): bu bosqichda HECH QANDAY real production
-// screenshot ishlatilmagan — buning o'rniga <GuideMockFrame> orqali
-// chiziladigan, sxematik ("mock") interfeys ko'rinishlari ishlatiladi
-// (haqiqiy foydalanuvchi ma'lumoti, real profil yoki real auksion holati
-// ko'rsatilmaydi). `image` maydoni shuning uchun rasm URL emas, balki
-// <GuideMockFrame>ga uzatiladigan sxema nomi (`variant`) — keyinchalik bu
-// qiymatlarni real screenshot URL'lariga almashtirish oson (data shakli
-// o'zgarmaydi), lekin bu birinchi versiya uchun shart emas.
+// Ekran namoyishlari ("frames") — ikki xil bo'lishi mumkin (`kind`):
+//   - 'real': /public/guides/<id>/frame-N.jpg — HAQIQIY NFCSTORE interfeysi
+//     skrinshoti. MUHIM: bu skrinshotlar production nfcstore.uz'dan
+//     OLINMAGAN (bu muhitdan tashqi tarmoqqa umuman chiqib bo'lmaydi) —
+//     buning o'rniga xuddi shu frontend kodi (aynan shu React komponentlar,
+//     aynan shu CSS) mahalliy (local), butunlay alohida, bir martalik test
+//     D1/R2 bilan ishga tushirilib, ochiq-oydin DEMO ma'lumotlar (masalan
+//     "Aziz Karimov", "Demo Do'kon") bilan to'ldirilgan holda skrinshot
+//     qilingan. Production'ga hech qanday yozuv/o'qish bo'lmagan, hech
+//     qanday haqiqiy foydalanuvchi ma'lumoti ko'rsatilmagan.
+//   - 'mock': <GuideMockFrame> orqali chiziladigan sxematik namoyish —
+//     faqat jismoniy amal (NFC kartani telefonga yaqinlashtirish) yoki
+//     hozircha production'da o'chirilgan funksiya (auksion stavkasi —
+//     Payme hali yoqilmagan) uchun, har doim "Demo" belgisi bilan
+//     ko'rsatiladi.
 
 import { TIER_PRICE, TIER_LABEL, TIER_COLOR } from './pricing.js';
 
@@ -166,16 +173,34 @@ const PRICING_GUIDE = [
 ];
 
 // ─────────────────────────── "Flagship" — to'liq animatsiyali darslar ───────────────────────────
-// Har biriga ekran-namoyish (frame) ketma-ketligi qo'shilgan. Qolgan barcha
-// darslar hozircha faqat matn/metama'lumot bilan katalogda ko'rinadi ("tez
-// orada to'ldiriladi" holati) — bu tanlov TASODIFIY EMAS: user talab qilgan
-// "misol flow" (Profil rasmini o'zgartirish) shu ro'yxatda, va har bir asosiy
-// kategoriyadan (boshlash/NFC/karta/auksion/kompaniya) kamida bitta to'liq
-// misol bor.
-function frame(sortOrder, image, caption, opts = {}) {
+// Quyidagi 10 ta dars uchun HAQIQIY NFCSTORE skrinshotlari ishlatiladi
+// (`kind: 'real'`) — mahalliy (production EMAS) sinov muhitida, demo
+// hisob/kompaniya/auksion ma'lumotlari bilan olingan (fayl boshidagi katta
+// izohga qarang). Faqat jismoniy amal (NFC kartani telefonga yaqinlashtirish)
+// yoki hozircha o'chirilgan funksiya (auksion stavkasi — to'lov tizimi hali
+// yoqilmagan) uchun `kind: 'mock'` (sxematik namoyish, aniq "Demo" belgisi
+// bilan) ishlatiladi. Qolgan barcha darslar (frames: null) katalogda "tez
+// orada" holatida qoladi.
+function realFrame(sortOrder, folder, n, caption, opts = {}) {
   return {
     sortOrder,
-    image, // GuideMockFrame variant nomi — pastdagi izohga qarang
+    kind: 'real',
+    image: `/guides/${folder}/frame-${n}.jpg`,
+    thumb: `/guides/${folder}/frame-${n}-thumb.jpg`,
+    caption,
+    durationMs: opts.durationMs ?? 2400,
+    cursorX: opts.cursorX ?? null,
+    cursorY: opts.cursorY ?? null,
+    clickEffect: !!opts.clickEffect,
+    highlightBox: opts.highlightBox ?? null,
+    zoomTarget: opts.zoomTarget ?? null,
+  };
+}
+function mockFrame(sortOrder, variant, caption, opts = {}) {
+  return {
+    sortOrder,
+    kind: 'mock',
+    image: variant,
     caption,
     durationMs: opts.durationMs ?? 2200,
     cursorX: opts.cursorX ?? null,
@@ -187,48 +212,78 @@ function frame(sortOrder, image, caption, opts = {}) {
 }
 
 const FLAGSHIP_FRAMES = {
-  // "NFCSTORE'da ro'yxatdan o'tish"
+  // 1. "NFCSTORE'da ro'yxatdan o'tish" — to'liq real oqim, haqiqiy Telegram
+  // OTP kodi bilan (mahalliy sinov muhitida generatsiya qilingan).
   'shaxsiy-boshlash-1': [
-    frame(1, 'form', "Bosh sahifada “Bepul profil yaratish” tugmasini bosing.", { cursorX: 78, cursorY: 18, highlight: 'topbar' }),
-    frame(2, 'form', 'Telefon raqamingizni kiriting.', { cursorX: 50, cursorY: 42 }),
-    frame(3, 'form', 'Telegram botga kelgan tasdiqlash kodini kiriting.', { cursorX: 50, cursorY: 58, clickEffect: true }),
-    frame(4, 'dashboard', 'Tabriklaymiz — hisobingiz tayyor!', { cursorX: 50, cursorY: 50, zoomTarget: 'center' }),
+    realFrame(1, 'shaxsiy-boshlash-1', 1, "Bosh sahifada yuqori o‘ng burchakdagi «Bepul profil yaratish» tugmasini bosing.", { cursorX: 97, cursorY: 7, highlightBox: { xPct: 90, yPct: 4, wPct: 10, hPct: 6 } }),
+    realFrame(2, 'shaxsiy-boshlash-1', 2, 'Email, parol, telefon raqamingizni kiriting va botga yozganingizni tasdiqlang.', { cursorX: 67, cursorY: 73, highlightBox: { xPct: 54, yPct: 70, wPct: 26, hPct: 6 } }),
+    realFrame(3, 'shaxsiy-boshlash-1', 3, '«Kod yuborish»ni bosgach, tasdiqlash kodi Telegram botga yuboriladi.', { cursorX: 74, cursorY: 97 }),
+    realFrame(4, 'shaxsiy-boshlash-1', 4, 'Kelgan kodni kiriting, shartlarga rozilik bildiring va «Akkaunt yaratish»ni bosing.', { cursorX: 62, cursorY: 65, clickEffect: true }),
+    realFrame(5, 'shaxsiy-boshlash-1', 5, 'Tabriklaymiz — hisobingiz va shaxsiy NFC ID’ingiz tayyor!', { zoomTarget: 'center', durationMs: 2800 }),
   ],
-  // "NFC ID tanlash"
-  'shaxsiy-nfc-3': [
-    frame(1, 'grid', 'Narxlar sahifasida mavjud tariflarni ko‘ring.', { cursorX: 30, cursorY: 30 }),
-    frame(2, 'grid', 'Bronza, Silver, Gold, Premium yoki Ekslyuziv — birini tanlang.', { cursorX: 55, cursorY: 45, highlight: 'card-2' }),
-    frame(3, 'grid', 'Mavjud ID’lardan birini bosing.', { cursorX: 55, cursorY: 45, clickEffect: true }),
-    frame(4, 'form', 'ID sizga biriktiriladi va profil sahifangiz ochiladi.', { cursorX: 50, cursorY: 50, zoomTarget: 'center' }),
+  // 2. "Shaxsiy profil yaratish"
+  'shaxsiy-boshlash-2': [
+    realFrame(1, 'shaxsiy-boshlash-2', 1, 'Ro‘yxatdan o‘tgach, profilingiz avtomatik yaratiladi — hali bo‘sh, faqat ID bilan.', { cursorX: 69, cursorY: 44, highlightBox: { xPct: 64, yPct: 41, wPct: 9, hPct: 4 } }),
+    realFrame(2, 'shaxsiy-boshlash-2', 2, '«Tahrirlash» tugmasi orqali profil sozlamalariga kirasiz.', { cursorX: 19, cursorY: 63 }),
+    realFrame(3, 'shaxsiy-boshlash-2', 3, 'Barcha o‘zgarishlar o‘ng tarafdagi jonli oldindan ko‘rishda darhol ko‘rinadi.', { cursorX: 12, cursorY: 60, zoomTarget: 'left center' }),
+    realFrame(4, 'shaxsiy-boshlash-2', 4, 'Tayyor — profilingiz shunday ko‘rinadi, istalgan vaqt qayta tahrirlashingiz mumkin.', { zoomTarget: 'center', durationMs: 2600 }),
   ],
-  // "Profil rasmi" — spec'dagi asosiy misol ("Profil rasmini o'zgartirish")
+  // 3. "Profilni to'liq to'ldirish"
+  'shaxsiy-profil-4': [
+    realFrame(1, 'shaxsiy-profil-4', 1, 'Profilni to‘ldirish «Asosiy ma’lumot» bo‘limidan boshlanadi: rasm, ism, kasb, bio.', { cursorX: 20, cursorY: 84 }),
+    realFrame(2, 'shaxsiy-profil-4', 2, 'Rasm va ismni to‘ldirgach, o‘ng tarafdagi kartochka darhol yangilanadi.', { cursorX: 10, cursorY: 60, zoomTarget: 'right center' }),
+    realFrame(3, 'shaxsiy-profil-4', 3, 'Keyin «Aloqa va ijtimoiy tarmoqlar» bo‘limini to‘ldiring.', { cursorX: 12, cursorY: 40 }),
+    realFrame(4, 'shaxsiy-profil-4', 4, 'Barcha maydonlar to‘ldirilgach, profilingiz to‘liq va professional ko‘rinadi.', { zoomTarget: 'center', durationMs: 2600 }),
+  ],
+  // 4. "Profil rasmi" (Avatar yuklash)
   'shaxsiy-profil-7': [
-    frame(1, 'dashboard', '“Mening profilim” bo‘limini oching.', { cursorX: 85, cursorY: 12, highlight: 'topbar' }),
-    frame(2, 'dashboard', 'Bosing.', { cursorX: 85, cursorY: 12, clickEffect: true }),
-    frame(3, 'card', 'Profil tahrirlash oynasi ochiladi.', { cursorX: 50, cursorY: 50 }),
-    frame(4, 'card', 'Avatar qismini bosing va yangi rasm tanlang.', { cursorX: 22, cursorY: 28, highlight: 'avatar', zoomTarget: 'top left' }),
-    frame(5, 'card', 'Yangi profil rasmi saqlandi.', { cursorX: 22, cursorY: 28, clickEffect: true }),
+    realFrame(1, 'shaxsiy-profil-7', 1, 'Yangi profilingizda standart holatda ismning bosh harfi ko‘rsatiladi.', { cursorX: 50, cursorY: 63 }),
+    realFrame(2, 'shaxsiy-profil-7', 2, '«Asosiy ma’lumot» bo‘limida «Rasm tanlash»ni bosing.', { cursorX: 19, cursorY: 84, highlightBox: { xPct: 14, yPct: 82, wPct: 10, hPct: 5 } }),
+    realFrame(3, 'shaxsiy-profil-7', 3, 'Tanlangan rasm darhol yuklanadi va o‘ng tarafdagi jonli oldindan ko‘rishda chiqadi.', { cursorX: 10, cursorY: 60, zoomTarget: 'right center', clickEffect: true }),
+    realFrame(4, 'shaxsiy-profil-7', 4, 'Yangi profil rasmi endi ommaviy sahifangizda ko‘rinadi.', { zoomTarget: 'center', durationMs: 2600 }),
   ],
-  // "Telefonni kartaga yaqinlashtiring"
+  // 5. "Telegram" (Telegram/Instagram/telefon qo'shish)
+  'shaxsiy-profil-11': [
+    mockFrame(1, 'form', '«Aloqa va ijtimoiy tarmoqlar» bo‘limini oching — u boshida yopiq turadi.', { cursorX: 30, cursorY: 40 }),
+    realFrame(2, 'shaxsiy-profil-11', 2, 'Telegram foydalanuvchi nomingizni kiriting.', { cursorX: 25, cursorY: 15, highlightBox: { xPct: 3, yPct: 66, wPct: 30, hPct: 6 } }),
+    realFrame(3, 'shaxsiy-profil-11', 3, 'Xuddi shunday Instagram, Facebook va boshqa tarmoqlarni ham qo‘shishingiz mumkin.', { cursorX: 25, cursorY: 25 }),
+    realFrame(4, 'shaxsiy-profil-11', 4, 'Saqlagach, tugmalar to‘g‘ridan-to‘g‘ri profilingizda ko‘rinadi.', { zoomTarget: 'right center', durationMs: 2600 }),
+  ],
+  // 6. "NFC ID tanlash"
+  'shaxsiy-nfc-3': [
+    realFrame(1, 'shaxsiy-nfc-3', 1, 'Narxlar sahifasida Bronza, Silver, Gold, Premium va Ekslyuziv tariflarini solishtiring.', { cursorX: 30, cursorY: 68, highlightBox: { xPct: 5, yPct: 63, wPct: 40, hPct: 7 } }),
+    realFrame(2, 'shaxsiy-nfc-3', 2, 'Katalogda band qilingan ID’lar va ularning darajasi (rangli belgi) ko‘rinadi.', { cursorX: 40, cursorY: 40 }),
+    realFrame(3, 'shaxsiy-nfc-3', 3, 'Ro‘yxatdan o‘tganda avtomatik bepul 8 xonali ID beriladi — yoki narxlar sahifasidan yuqoriroq darajani tanlashingiz mumkin.', { zoomTarget: 'center', durationMs: 2700 }),
+  ],
+  // 7. "Telefonni kartaga yaqinlashtiring" (NFC kartadan foydalanish)
   'shaxsiy-nfc-23': [
-    frame(1, 'tap', 'NFC kartangizni tayyorlang.', { cursorX: 50, cursorY: 70 }),
-    frame(2, 'tap', 'Telefoningizni kartaning orqa tomoniga yaqinlashtiring.', { cursorX: 50, cursorY: 40, highlight: 'nfc-zone' }),
-    frame(3, 'tap', "Telefon kartani aniqlaydi — “tegizish” shart emas, yaqinlashtirish kifoya.", { cursorX: 50, cursorY: 40, clickEffect: true }),
-    frame(4, 'dashboard', 'Profil avtomatik ravishda brauzerda ochiladi.', { cursorX: 50, cursorY: 50, zoomTarget: 'center' }),
+    mockFrame(1, 'tap', 'NFC kartangizni tayyorlang.', { cursorX: 50, cursorY: 70 }),
+    mockFrame(2, 'tap', 'Telefoningizni kartaning orqa tomoniga yaqinlashtiring.', { cursorX: 50, cursorY: 40, highlight: 'nfc-zone' }),
+    mockFrame(3, 'tap', '“Tegizish” shart emas — yaqinlashtirish kifoya. Telefon kartani avtomatik aniqlaydi.', { cursorX: 50, cursorY: 40, clickEffect: true }),
+    realFrame(4, 'shaxsiy-boshlash-1', 5, 'Profil avtomatik ravishda telefon brauzerida ochiladi.', { zoomTarget: 'center', durationMs: 2600 }),
   ],
-  // "Taklif/stavka berish" — AUKSION, o'qish-uchun demo
-  'both-auksion-5': [
-    frame(1, 'grid', 'Auksion sahifasida ID’ni oching (demo).', { cursorX: 40, cursorY: 35 }),
-    frame(2, 'card', 'Joriy eng yuqori taklifni ko‘ring.', { cursorX: 50, cursorY: 40, highlight: 'price' }),
-    frame(3, 'form', 'O‘z taklifingiz summasini kiriting (demo qiymat).', { cursorX: 50, cursorY: 55 }),
-    frame(4, 'card', '“Taklif berish”ni bosing — bu FAQAT namoyish, real stavka emas.', { cursorX: 50, cursorY: 70, clickEffect: true }),
-  ],
-  // "Kompaniya profilini yaratish"
+  // 8. "Kompaniya profilini yaratish"
   'kompaniya-kompaniya-1': [
-    frame(1, 'form', '“Kompaniya yaratish” bo‘limini oching.', { cursorX: 60, cursorY: 20 }),
-    frame(2, 'form', 'Kompaniya nomi va faoliyat turini kiriting.', { cursorX: 50, cursorY: 45 }),
-    frame(3, 'form', 'Logo yuklang.', { cursorX: 30, cursorY: 55, highlight: 'avatar' }),
-    frame(4, 'dashboard', 'Kompaniya profili tayyor — endi to‘ldirishni davom ettiring.', { cursorX: 50, cursorY: 50, zoomTarget: 'center' }),
+    realFrame(1, 'kompaniya-kompaniya-1', 1, '«Kompaniya yaratish» sahifasida o‘ziga xos Company ID tanlang.', { cursorX: 77, cursorY: 44, highlightBox: { xPct: 62, yPct: 42, wPct: 30, hPct: 3 } }),
+    realFrame(2, 'kompaniya-kompaniya-1', 2, 'Kompaniya nomi, yo‘nalishi, shahar va kontaktlarni kiriting.', { cursorX: 50, cursorY: 30 }),
+    realFrame(3, 'kompaniya-kompaniya-1', 3, 'Barcha maydonlarni to‘ldirib bo‘lgach, arizani yuboring.', { cursorX: 76, cursorY: 68, clickEffect: true }),
+    realFrame(4, 'kompaniya-kompaniya-1', 4, 'Ariza yuborildi — admin tekshiruvi paytida ham boshqaruv panelidan foydalanishingiz mumkin.', { zoomTarget: 'center', durationMs: 2700 }),
+  ],
+  // 9. "Kompaniya haqida" (Kompaniya profilini to'ldirish)
+  'kompaniya-kompaniya-7': [
+    realFrame(1, 'kompaniya-kompaniya-7', 1, 'Business Workspace — chap menyudan «Profil» bo‘limini oching.', { cursorX: 9, cursorY: 30, highlightBox: { xPct: 1, yPct: 27, wPct: 17, hPct: 6 } }),
+    realFrame(2, 'kompaniya-kompaniya-7', 2, 'Nomi, kichik soha, «Biz haqimizda» va logo/muqova havolalarini kiriting.', { cursorX: 50, cursorY: 50 }),
+    realFrame(3, 'kompaniya-kompaniya-7', 3, 'Katalog bo‘limida mahsulot/xizmatlaringizni qo‘shasiz.', { cursorX: 9, cursorY: 40 }),
+    realFrame(4, 'kompaniya-kompaniya-7', 4, '«Aloqa» bo‘limida telefon, ish vaqti va manzilni to‘ldiring.', { cursorX: 9, cursorY: 46, zoomTarget: 'center', durationMs: 2600 }),
+  ],
+  // 10. "Taklif/stavka berish" (Auksionda qatnashish) — oxirgi ikki frame DEMO
+  // (Payme hali yoqilmagani uchun real stavka berish formasi hozircha
+  // o'chirilgan — buni real skrinshot ham tasdiqlaydi, 2-frame'ga qarang).
+  'both-auksion-5': [
+    realFrame(1, 'both-auksion-5', 1, 'Auksion sahifasida faol lotlar ro‘yxatini ko‘ring.', { cursorX: 72, cursorY: 37 }),
+    realFrame(2, 'both-auksion-5', 2, 'Lot sahifasida joriy narx, qolgan vaqt va «Darhol sotib olish» narxi ko‘rinadi.', { cursorX: 20, cursorY: 57 }),
+    mockFrame(3, 'form', 'Taklif summasini kiritasiz (demo qiymat — to‘lov tizimi yoqilgach ishlaydi).', { cursorX: 50, cursorY: 55 }),
+    mockFrame(4, 'card', '«Taklif berish»ni bosasiz — bu FAQAT namoyish, hozircha real stavka berilmaydi.', { cursorX: 50, cursorY: 70, clickEffect: true }),
   ],
 };
 
