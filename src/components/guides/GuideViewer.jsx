@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../lib/i18n.jsx';
 import { GUIDE_CATEGORIES, guideDurationLabel } from '../../lib/guides.js';
-import GuideMockFrame from './GuideMockFrame.jsx';
+import GuideFrame from './GuideFrame.jsx';
 
 // Interaktiv "guide player" — bosqichma-bosqich animatsion namoyish.
 // Frame modeli (src/lib/guides.js): image, caption, durationMs, cursorX,
@@ -76,18 +76,21 @@ export default function GuideViewer({ guide, onClose }) {
 
         {hasFrames ? (
           <>
-            <div className="mt-4 text-right text-[11px] text-base-content/40">{i + 1} / {frames.length}</div>
-            <GuideMockFrame
-              variant={frame.image}
-              cursorX={frame.cursorX}
-              cursorY={frame.cursorY}
-              clickEffect={frame.clickEffect}
-              highlight={frame.highlight}
-              zoomTarget={frame.zoomTarget}
-              className="mt-1"
-            />
+            <div className="mt-4 flex items-center justify-between text-[11px] text-base-content/40">
+              {frame.kind === 'mock' ? (
+                <span className="rounded-full border border-white/15 px-2 py-0.5 font-semibold uppercase tracking-wide text-base-content/45">{t('Demo')}</span>
+              ) : <span />}
+              <span>{i + 1} / {frames.length}</span>
+            </div>
+            <GuideFrame frame={frame} className="mt-1" />
             <p className="mt-3 min-h-[2.5em] text-sm leading-relaxed text-base-content/75">{t(frame.caption)}</p>
 
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-300"
+                style={{ width: `${((i + 1) / frames.length) * 100}%` }}
+              />
+            </div>
             <div className="mt-2 flex items-center justify-center gap-1.5">
               {frames.map((f, idx) => (
                 <span
