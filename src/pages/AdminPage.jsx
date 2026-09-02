@@ -594,10 +594,11 @@ function OrdersTab() {
 function AuctionRequestsTab() {
   const { t } = useLanguage();
   const [requests, setRequests] = useState(null);
+  const [loadErr, setLoadErr] = useState(false);
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState(null);
 
-  const load = () => adminApi('/auction-requests').then((d) => setRequests(d.requests));
+  const load = () => { setLoadErr(false); adminApi('/auction-requests').then((d) => setRequests(d.requests)).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const reject = async (id) => {
@@ -620,6 +621,7 @@ function AuctionRequestsTab() {
     }
   };
 
+  if (loadErr) return <EmptyState icon="clipboard" title={t("Ma'lumotlarni yuklab bo'lmadi.")} hint={t("Server yoki ma'lumotlar bazasida xatolik bo'lishi mumkin.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />;
   if (!requests) return <AdminLoading />;
   if (requests.length === 0) return <EmptyState icon="clipboard" title={t("Hozircha so'rov yo'q.")} hint={t("Foydalanuvchilar yuborgan auksion so'rovlari shu yerda ko'rinadi.")} />;
   return (
@@ -754,13 +756,14 @@ const DEMAND_STATUS_LABEL = {
 function AuctionDemandTab() {
   const { t } = useLanguage();
   const [rows, setRows] = useState(null);
+  const [loadErr, setLoadErr] = useState(false);
   const [form, setForm] = useState({ code: '', startPrice: '250000', minStep: '25000' });
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState(null);
   const [startId, setStartId] = useState(null);
   const [startForm, setStartForm] = useState({ startPrice: '', buyNowPrice: '', minStep: '', hours: '24' });
 
-  const load = () => adminApi('/auction-demand').then((d) => setRows(d.demand));
+  const load = () => { setLoadErr(false); adminApi('/auction-demand').then((d) => setRows(d.demand)).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const add = async () => {
@@ -824,7 +827,8 @@ function AuctionDemandTab() {
         {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
       </div>
 
-      {!rows ? <AdminLoading />
+      {loadErr ? <EmptyState icon="clipboard" title={t("Ma'lumotlarni yuklab bo'lmadi.")} hint={t("Server yoki ma'lumotlar bazasida xatolik bo'lishi mumkin.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />
+        : !rows ? <AdminLoading />
         : rows.length === 0 ? <EmptyState icon="flame" title={t('Board bo‘sh.')} hint={t('Yuqoridan kod qo‘shing.')} />
         : (
         <div className="space-y-2">
@@ -883,9 +887,10 @@ const AUCTION_STATUS_LABEL = {
 function AuctionsTab() {
   const { t } = useLanguage();
   const [auctions, setAuctions] = useState(null);
+  const [loadErr, setLoadErr] = useState(false);
   const [busy, setBusy] = useState(null);
 
-  const load = () => adminApi('/auctions').then((d) => setAuctions(d.auctions));
+  const load = () => { setLoadErr(false); adminApi('/auctions').then((d) => setAuctions(d.auctions)).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const cancel = async (id) => {
@@ -906,6 +911,14 @@ function AuctionsTab() {
     finally { setBusy(null); }
   };
 
+  if (loadErr) {
+    return (
+      <div>
+        <CreateAuctionForm onCreated={load} />
+        <EmptyState icon="clipboard" title={t("Ma'lumotlarni yuklab bo'lmadi.")} hint={t("Server yoki ma'lumotlar bazasida xatolik bo'lishi mumkin.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />
+      </div>
+    );
+  }
   if (!auctions) return <AdminLoading />;
   return (
     <div>

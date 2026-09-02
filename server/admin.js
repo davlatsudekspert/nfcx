@@ -362,7 +362,12 @@ adminRouter.get('/topups', async (req, res) => {
 
 adminRouter.get('/auctions', async (req, res) => {
   if (!isDbReady()) return res.json({ auctions: [] });
-  res.json({ auctions: await adminListAuctions() });
+  try {
+    res.json({ auctions: await adminListAuctions() });
+  } catch (err) {
+    console.error('[admin] listAuctions:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // Auksion yaratishning YAGONA yo'li — faqat admin, faqat hali hech kimga
@@ -529,14 +534,24 @@ adminRouter.post('/support-messages/:id/reply', async (req, res) => {
 
 adminRouter.get('/auction-requests', async (req, res) => {
   if (!isDbReady()) return res.json({ requests: [] });
-  res.json({ requests: await listAuctionRequests('pending') });
+  try {
+    res.json({ requests: await listAuctionRequests('pending') });
+  } catch (err) {
+    console.error('[admin] listAuctionRequests:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 adminRouter.post('/auction-requests/:id/reject', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const ok = await rejectAuctionRequest(Number(req.params.id));
-  if (!ok) return res.status(404).json({ error: 'not_found' });
-  res.json({ ok: true });
+  try {
+    const ok = await rejectAuctionRequest(Number(req.params.id));
+    if (!ok) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] rejectAuctionRequest:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // Tasdiqlash — so'rovni "Talab" board'iga qo'shadi (DEMAND_ACTIVE). Auksion
@@ -562,7 +577,12 @@ adminRouter.post('/auction-requests/:id/approve', async (req, res) => {
 
 adminRouter.get('/auction-demand', async (req, res) => {
   if (!isDbReady()) return res.json({ demand: [] });
-  res.json({ demand: await adminListAuctionDemand() });
+  try {
+    res.json({ demand: await adminListAuctionDemand() });
+  } catch (err) {
+    console.error('[admin] listAuctionDemand:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 adminRouter.post('/auction-demand', async (req, res) => {
@@ -587,28 +607,43 @@ adminRouter.post('/auction-demand', async (req, res) => {
 
 adminRouter.patch('/auction-demand/:id', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const row = await adminUpdateAuctionDemand(Number(req.params.id), {
-    status: req.body?.status,
-    startPrice: req.body?.startPrice,
-    minStep: req.body?.minStep,
-  });
-  if (!row) return res.status(404).json({ error: 'not_found' });
-  res.json(row);
+  try {
+    const row = await adminUpdateAuctionDemand(Number(req.params.id), {
+      status: req.body?.status,
+      startPrice: req.body?.startPrice,
+      minStep: req.body?.minStep,
+    });
+    if (!row) return res.status(404).json({ error: 'not_found' });
+    res.json(row);
+  } catch (err) {
+    console.error('[admin] updateAuctionDemand:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 adminRouter.delete('/auction-demand/:id', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const ok = await adminDeleteAuctionDemand(Number(req.params.id));
-  if (!ok) return res.status(404).json({ error: 'not_found' });
-  res.json({ ok: true });
+  try {
+    const ok = await adminDeleteAuctionDemand(Number(req.params.id));
+    if (!ok) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] deleteAuctionDemand:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 adminRouter.post('/auctions/:id/cancel', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const id = Number(req.params.id);
-  const ok = await adminCancelAuction(id, req.body?.note);
-  if (!ok) return res.status(409).json({ error: 'cannot_cancel' });
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    const ok = await adminCancelAuction(id, req.body?.note);
+    if (!ok) return res.status(409).json({ error: 'cannot_cancel' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] cancelAuction:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // Muddatidan oldin majburan bidlashni yopish (masalan sotuvchi so'ragan
@@ -616,10 +651,15 @@ adminRouter.post('/auctions/:id/cancel', async (req, res) => {
 // harakatlanmaydi (e-wallet yo'q).
 adminRouter.post('/auctions/:id/force-settle', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const id = Number(req.params.id);
-  const result = await closeAuctionBidding(id);
-  if (!result) return res.status(409).json({ error: 'cannot_settle' });
-  res.json(result);
+  try {
+    const id = Number(req.params.id);
+    const result = await closeAuctionBidding(id);
+    if (!result) return res.status(409).json({ error: 'cannot_settle' });
+    res.json(result);
+  } catch (err) {
+    console.error('[admin] forceSettleAuction:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // G'olib "To'lash" bosgan, lekin to'lov webhook kelmagan (yoki qo'lda
@@ -628,22 +668,32 @@ adminRouter.post('/auctions/:id/force-settle', async (req, res) => {
 // (auksion 'sold' bo'ladi, karta g'olibga o'tadi).
 adminRouter.post('/auctions/:id/confirm-payment', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const id = Number(req.params.id);
-  const order = await findPendingAuctionPaymentOrderByAuction(id);
-  if (!order) return res.status(409).json({ error: 'no_pending_payment' });
-  const result = await finalizePaidWebOrder(order.id);
-  if (!result || result.ok === false) return res.status(409).json({ error: 'confirm_failed' });
-  logAdminActivity({ action: 'auction_payment_confirmed', details: `Auksion #${id} to'lovi qo'lda tasdiqlandi (buyurtma #${order.id})`, ip: req.ip }).catch(() => {});
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    const order = await findPendingAuctionPaymentOrderByAuction(id);
+    if (!order) return res.status(409).json({ error: 'no_pending_payment' });
+    const result = await finalizePaidWebOrder(order.id);
+    if (!result || result.ok === false) return res.status(409).json({ error: 'confirm_failed' });
+    logAdminActivity({ action: 'auction_payment_confirmed', details: `Auksion #${id} to'lovi qo'lda tasdiqlandi (buyurtma #${order.id})`, ip: req.ip }).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] confirmAuctionPayment:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // Sotuvchiga auksion daromadini (95%) qo'lda to'lagach shu bosiladi.
 adminRouter.post('/auctions/:id/mark-payout-paid', async (req, res) => {
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  const id = Number(req.params.id);
-  const result = await markAuctionPayoutPaid(id);
-  if (!result) return res.status(409).json({ error: 'cannot_mark_paid' });
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    const result = await markAuctionPayoutPaid(id);
+    if (!result) return res.status(409).json({ error: 'cannot_mark_paid' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin] markAuctionPayoutPaid:', err.message);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 adminRouter.get('/physical-cards', async (req, res) => {

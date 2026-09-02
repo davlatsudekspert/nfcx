@@ -693,8 +693,12 @@ export async function dbUploadAudio(dataUrl) {
 // ---------- Auksion ----------
 
 export async function dbListAuctions(withSold = false) {
-  const data = await api('/auctions' + (withSold ? '?withSold=1' : ''));
-  return { auctions: (data && data.auctions) || [], sold: (data && data.sold) || [] };
+  try {
+    const data = await api('/auctions' + (withSold ? '?withSold=1' : ''));
+    return { auctions: (data && data.auctions) || [], sold: (data && data.sold) || [] };
+  } catch {
+    return { auctions: [], sold: [] };
+  }
 }
 
 // ---------- Auksion "Talab" board ----------
