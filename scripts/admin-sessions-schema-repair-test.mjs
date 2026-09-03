@@ -27,7 +27,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createHmac } from 'node:crypto';
 import worker, { ensureCoreSchema, hashPassword } from '../hosting/worker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -56,28 +55,30 @@ function makeEnv(sqlite) {
       exec: (sql) => sqlite.exec(sql),
     },
     ASSETS: { fetch: async () => new Response('not found', { status: 404 }) },
+    // Telegram OTP is the sole 2FA method now — /login refuses to even
+    // start it without these configured (see hosting/worker.js), so every
+    // scenario below needs them.
+    TELEGRAM_BOT_TOKEN: 'test-bot-token',
+    ADMIN_CHAT_ID: '123456789',
+    ADMIN_OTP_SECRET: 'test-otp-pepper',
   };
 }
 function req(pathname, init = {}) { return new Request(`https://nfcstore.uz${pathname}`, init); }
 
-const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-function base32Decode(input) {
-  const clean = String(input).toUpperCase().replace(/[^A-Z2-7]/g, '');
-  const bytes = []; let bits = 0, value = 0;
-  for (const ch of clean) { const idx = B32.indexOf(ch); if (idx === -1) continue; value = (value << 5) | idx; bits += 5; if (bits >= 8) { bits -= 8; bytes.push((value >>> bits) & 0xff); } }
-  return Buffer.from(bytes);
-}
-function hotpAt(secretB32, counter) {
-  const key = base32Decode(secretB32);
-  const buf = Buffer.alloc(8);
-  buf.writeUInt32BE(Math.floor(counter / 2 ** 32), 0);
-  buf.writeUInt32BE(counter >>> 0, 4);
-  const hmac = createHmac('sha1', key).update(buf).digest();
-  const offset = hmac[hmac.length - 1] & 0x0f;
-  const code = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
-  return String(code % 1_000_000).padStart(6, '0');
-}
-function totpNow(secretB32) { return hotpAt(secretB32, Math.floor(Date.now() / 1000 / 30)); }
+// Telegram OTP is the sole 2FA method now — intercept api.telegram.org so
+// this test never touches the real Bot API, and capture the code the
+// Worker actually sent so we can complete verify-2fa with it.
+const realFetch = globalThis.fetch;
+let lastTelegramCode = null;
+globalThis.fetch = async (url, init) => {
+  const href = typeof url === 'string' ? url : url.url;
+  if (href.startsWith('https://api.telegram.org/')) {
+    const body = init?.body ? JSON.parse(init.body) : {};
+    lastTelegramCode = (String(body.text || '').match(/(\d{6})/) || [])[1] || null;
+    return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 });
+  }
+  return realFetch(url, init);
+};
 
 // =====================================================================
 // Scenario 1 — admin_sessions pre-exists with an OLDER/INCOMPATIBLE shape
@@ -102,17 +103,18 @@ function totpNow(secretB32) { return hotpAt(secretB32, Math.floor(Date.now() / 1
   check('ensureCoreSchema self-heals the missing column (no data loss — table still exists, same rows)', after.includes('last_activity'), true);
   check('the pre-existing columns are untouched', ['token', 'admin_id', 'role', 'abs_exp'].every((c) => after.includes(c)), true);
 
-  // Full login -> 2FA -> session flow must now work end-to-end — this is
-  // the EXACT production repro (verify-2fa's INSERT INTO admin_sessions).
-  const secret = 'JBSWY3DPEHPK3PXP';
+  // Full login -> Telegram OTP -> session flow must now work end-to-end —
+  // this is the EXACT production repro (verify-2fa's INSERT INTO
+  // admin_sessions).
   const passHash = await hashPassword('correct-horse-battery-staple');
-  await env.DB.prepare(`INSERT INTO admins (id, phone, password_hash, role, totp_secret, totp_enabled) VALUES (1, '+998900000001', ?, 'manager', ?, 1)`).bind(passHash, secret).run();
+  await env.DB.prepare(`INSERT INTO admins (id, phone, password_hash, role) VALUES (1, '+998900000001', ?, 'manager')`).bind(passHash).run();
 
   const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', body: JSON.stringify({ phone: '+998900000001', password: 'correct-horse-battery-staple' }) }), env);
   const loginData = await loginRes.json();
-  check('login -> twoFactor:true (unchanged behavior)', { status: loginRes.status, twoFactor: loginData.twoFactor }, { status: 200, twoFactor: true });
+  check('login -> twoFactor:true, method:telegram, OTP auto-sent (unchanged behavior)', { status: loginRes.status, twoFactor: loginData.twoFactor, method: loginData.method }, { status: 200, twoFactor: true, method: 'telegram' });
+  checkTrue_otpSent();
 
-  const verifyRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', body: JSON.stringify({ tempToken: loginData.tempToken, code: totpNow(secret) }) }), env);
+  const verifyRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', body: JSON.stringify({ tempToken: loginData.tempToken, code: lastTelegramCode }) }), env);
   check('verify-2fa against a previously-broken-shape admin_sessions -> 200, NOT 503 (the actual production bug)', verifyRes.status, 200);
   checkTrue_hasCookie(verifyRes);
 
@@ -120,6 +122,8 @@ function totpNow(secretB32) { return hotpAt(secretB32, Math.floor(Date.now() / 1
   check('the session row was actually written, with a real last_activity', typeof row?.last_activity === 'string' && row.last_activity.length > 0, true);
 }
 function checkTrue_hasCookie(res) { check('verify-2fa response sets a session cookie', !!res.headers.get('set-cookie'), true); }
+function checkTrue_otpSent() { check('a real 6-digit Telegram OTP was captured', /^\d{6}$/.test(String(lastTelegramCode)), true); }
 
+globalThis.fetch = realFetch;
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

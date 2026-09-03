@@ -1,5 +1,14 @@
-// Opt-in Telegram OTP as a secondary 2FA method (Google Authenticator stays
-// primary/default) — regression test.
+// Telegram OTP as the SOLE, MANDATORY 2FA method — regression test.
+//
+// Google Authenticator/TOTP has been removed from the login flow entirely
+// (per the latest decision): password correct -> /login itself generates
+// a 6-digit code, hashes it with HMAC-SHA256 keyed by env.ADMIN_OTP_SECRET,
+// stores only the hash, and sends the raw code to the admin's Telegram via
+// the Bot API — no separate "get code" button, no opt-in choice. admins.
+// totp_secret/totp_enabled/totp_last_counter stay in the schema untouched,
+// simply never read by /login or /verify-2fa any more (the standalone
+// /2fa/totp/setup|confirm|disable|status self-service endpoints are
+// covered separately in admin-login-totp-followers-test.mjs).
 //
 // Runs the ACTUAL hosting/worker.js default export (worker.fetch) against
 // an in-memory, D1-API-compatible SQLite database. Never touches
@@ -8,12 +17,18 @@
 //
 //   node scripts/admin-telegram-2fa-test.mjs
 //
-// Covers: TOTP flow is completely unaffected (regression); Telegram OTP is
-// NEVER sent unless explicitly requested (no auto/IP-based trigger); the
-// code is stored as a hash (never raw) and a fresh request invalidates the
-// previous one; a 5-minute expiry; a per-pending-login attempt limit;
-// telegram_not_configured when the bot isn't wired up; and that
-// admin_sessions never receives a raw token either way.
+// Covers: telegram_not_configured before any pending row is created; wrong
+// password rejected before any OTP is ever sent; the correct password
+// auto-sends a real 6-digit code with no separate request needed; the code
+// is stored as an HMAC-SHA256(ADMIN_OTP_SECRET, code) hash — never raw,
+// and NOT just a plain unsalted hash either; wrong OTP rejected; correct
+// OTP creates a session whose token is also stored as a hash, never raw;
+// expired OTP rejected; OTP reuse (same code, same or fresh login)
+// rejected; a per-pending attempt limit that permanently invalidates the
+// pending login once exhausted; a rejected Telegram send surfacing as
+// tg_send_failed with no dangling pending row; and that the standalone
+// manual-resend endpoint still works and stays consistent with the same
+// hashing scheme.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -23,6 +38,8 @@ import worker, { ensureCoreSchema, hashPassword } from '../hosting/worker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sha256Hex = (text) => createHash('sha256').update(text).digest('hex');
+const OTP_SECRET = 'test-otp-pepper-do-not-use-in-prod';
+const hmacOtpHash = (code) => createHmac('sha256', OTP_SECRET).update(code).digest('hex');
 
 let pass = 0;
 let fail = 0;
@@ -55,6 +72,7 @@ function makeEnv(extra = {}) {
   };
 }
 function req(pathname, init = {}) { return new Request(`https://nfcstore.uz${pathname}`, init); }
+const fullyConfigured = { TELEGRAM_BOT_TOKEN: 'test-bot-token', ADMIN_CHAT_ID: '123456789', ADMIN_OTP_SECRET: OTP_SECRET };
 
 // Intercept only calls to api.telegram.org — everything else (there
 // shouldn't be any in this test) passes through to the real global fetch.
@@ -71,135 +89,144 @@ globalThis.fetch = async (url, init) => {
   return realFetch(url, init);
 };
 
-const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-function base32Decode(input) {
-  const clean = String(input).toUpperCase().replace(/[^A-Z2-7]/g, '');
-  const bytes = []; let bits = 0, value = 0;
-  for (const ch of clean) { const idx = B32.indexOf(ch); if (idx === -1) continue; value = (value << 5) | idx; bits += 5; if (bits >= 8) { bits -= 8; bytes.push((value >>> bits) & 0xff); } }
-  return Buffer.from(bytes);
-}
-function hotpAt(secretB32, counter) {
-  const key = base32Decode(secretB32);
-  const buf = Buffer.alloc(8);
-  buf.writeUInt32BE(Math.floor(counter / 2 ** 32), 0);
-  buf.writeUInt32BE(counter >>> 0, 4);
-  const hmac = createHmac('sha1', key).update(buf).digest();
-  const offset = hmac[hmac.length - 1] & 0x0f;
-  const code = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
-  return String(code % 1_000_000).padStart(6, '0');
-}
-function totpNow(secretB32) { return hotpAt(secretB32, Math.floor(Date.now() / 1000 / 30)); }
-
 sqlite.exec(readFileSync(path.join(__dirname, '../db/d1-migration/0001-schema.sql'), 'utf8'));
 
-const secret = 'JBSWY3DPEHPK3PXP';
 const passHash = await hashPassword('correct-horse-battery-staple');
 await (async () => {
   const env0 = makeEnv();
   await ensureCoreSchema(env0);
 })();
-await sqlite.prepare(`INSERT INTO admins (id, phone, password_hash, role, totp_secret, totp_enabled) VALUES (1, '+998900000009', ?, 'manager', ?, 1)`).run(passHash, secret);
-// A second admin with its OWN totp_last_counter, used wherever a scenario
-// needs its own independent TOTP verify — admin #1's replay guard (a
-// GENUINE, intentional feature: the same 30s-window code can never be
-// accepted twice) would otherwise make two back-to-back TOTP logins for
-// the SAME admin within this test's sub-second runtime collide with each
-// other, which is a test-harness artifact, not a real bug.
-await sqlite.prepare(`INSERT INTO admins (id, phone, password_hash, role, totp_secret, totp_enabled) VALUES (2, '+998900000010', ?, 'manager', ?, 1)`).run(passHash, secret);
+// Two admins, TOTP columns left completely untouched (null/0) — proves the
+// login flow needs nothing from them any more.
+await sqlite.prepare(`INSERT INTO admins (id, phone, password_hash, role) VALUES (1, '+998900000009', ?, 'manager')`).run(passHash);
+await sqlite.prepare(`INSERT INTO admins (id, phone, password_hash, role) VALUES (2, '+998900000010', ?, 'manager')`).run(passHash);
 
 // loginRateLimited() is IP-keyed (3 per 30 min) shared across /login,
 // /verify-2fa AND /2fa/telegram/send — give each logical scenario below
-// its own fake source IP so they never contend for the same budget
-// within this one test run (a real deployment sees them spread across
-// wall-clock time and real distinct IPs, so this is purely a test-harness
-// concern, same pattern as the other admin-auth test files).
+// its own fake source IP so they never contend for the same budget within
+// this one test run.
 let ipCounter = 0;
 const nextIp = () => ({ 'cf-connecting-ip': `20.20.20.${++ipCounter}` });
+const codeOf = () => (lastTelegramCall?.body?.text.match(/(\d{6})/) || [])[1];
 
 // =====================================================================
-// 1) Without the bot configured — TOTP flow is completely unaffected
-//    (regression: this must keep working exactly as before, "ishxonada
-//    ishlayapti" must never break).
+// 1) Telegram not configured — /login refuses BEFORE creating any pending
+//    row or touching the admin's password result beyond the check itself.
 // =====================================================================
 {
-  const env = makeEnv(); // no TELEGRAM_BOT_TOKEN / ADMIN_CHAT_ID
+  const env = makeEnv(); // no TELEGRAM_BOT_TOKEN / ADMIN_CHAT_ID / ADMIN_OTP_SECRET
+  const ip = nextIp();
+  const res = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
+  const data = await res.json();
+  check('correct password but Telegram not configured -> 503 telegram_not_configured', { status: res.status, error: data.error }, { status: 503, error: 'telegram_not_configured' });
+  checkTrue('no Telegram API call was made', lastTelegramCall === null);
+  const pendingCount = await sqlite.prepare(`SELECT COUNT(*) AS n FROM admin_2fa_pending`).get();
+  check('no pending 2FA row was left behind', pendingCount.n, 0);
+}
+
+// =====================================================================
+// 2) Wrong password — rejected before any OTP is generated/sent, whether
+//    or not Telegram is configured.
+// =====================================================================
+{
+  const env = makeEnv(fullyConfigured);
+  const ip = nextIp();
+  const res = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000009', password: 'wrong-password' }) }), env);
+  check('wrong password -> 401 bad_credentials', res.status, 401);
+  checkTrue('no Telegram API call was made for a wrong password', lastTelegramCall === null);
+}
+
+// =====================================================================
+// 3) Correct password, Telegram configured — OTP auto-sent, hashed at
+//    rest with the keyed HMAC (not a plain unsalted hash), wrong code
+//    rejected, correct code creates a session whose token is also hashed.
+// =====================================================================
+lastTelegramCall = null;
+let acceptedTempToken = '';
+let acceptedCode = '';
+{
+  const env = makeEnv(fullyConfigured);
   const ip = nextIp();
   const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
   const loginData = await loginRes.json();
-  check('TOTP-only login (no Telegram involved) -> twoFactor:true, method:totp (unchanged)', { status: loginRes.status, twoFactor: loginData.twoFactor, method: loginData.method }, { status: 200, twoFactor: true, method: 'totp' });
+  check('correct password -> 200, twoFactor:true, method:telegram', { status: loginRes.status, twoFactor: loginData.twoFactor, method: loginData.method }, { status: 200, twoFactor: true, method: 'telegram' });
+  checkTrue('no admin session cookie set before the OTP is verified', !loginRes.headers.get('set-cookie'));
+  checkTrue('Telegram API was called automatically — no separate request needed', !!lastTelegramCall);
+  check('sent to the configured ADMIN_CHAT_ID', lastTelegramCall.body.chat_id, '123456789');
+  const code = codeOf();
+  checkTrue('message contains a real 6-digit code', /^\d{6}$/.test(String(code)));
 
-  const verifyRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken, code: totpNow(secret) }) }), env);
-  check('TOTP verify-2fa still works end-to-end (regression) -> 200 + session cookie', { status: verifyRes.status, hasCookie: !!verifyRes.headers.get('set-cookie') }, { status: 200, hasCookie: true });
-  checkTrue('Telegram API was never called for a pure-TOTP login', lastTelegramCall === null);
+  const pendingRow = await sqlite.prepare(`SELECT method, code FROM admin_2fa_pending WHERE temp_token = ?`).get(loginData.tempToken);
+  check('pending method is telegram', pendingRow.method, 'telegram');
+  checkTrue('raw OTP is NEVER written to D1 — stored value is a hash, not the plaintext code', pendingRow.code !== code);
+  check('stored hash is HMAC-SHA256 keyed with ADMIN_OTP_SECRET, not just a plain sha256(code)', pendingRow.code, hmacOtpHash(code));
+  checkTrue('the stored hash is NOT merely an unkeyed sha256(code) — proves the secret is actually used', pendingRow.code !== sha256Hex(code));
+
+  const wrongRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken, code: '000000' }) }), env);
+  check('wrong OTP -> 401 bad_code (assuming it does not coincidentally match)', wrongRes.status === 401 || code === '000000', true);
+
+  const okRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken, code }) }), env);
+  check('correct OTP -> 200 + session cookie', { status: okRes.status, hasCookie: !!okRes.headers.get('set-cookie') }, { status: 200, hasCookie: true });
+
+  const sessionRow = await sqlite.prepare(`SELECT token FROM admin_sessions ORDER BY rowid DESC LIMIT 1`).get();
+  checkTrue('raw session token is NEVER written to D1 — stored value is a 64-hex-char SHA-256 hash', /^[0-9a-f]{64}$/.test(sessionRow.token));
+
+  acceptedTempToken = loginData.tempToken;
+  acceptedCode = code;
 }
 
 // =====================================================================
-// 2) Telegram OTP not configured -> 503, TOTP still untouched
+// 4) OTP reuse — the already-used tempToken is gone (expired), and the
+//    same code replayed against a FRESH login (its own fresh code) also
+//    fails.
 // =====================================================================
 {
-  const env = makeEnv();
+  const env = makeEnv(fullyConfigured);
+  const ip = nextIp();
+  const reuseSameRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: acceptedTempToken, code: acceptedCode }) }), env);
+  check('reusing the same (now-deleted) tempToken -> 401 expired', reuseSameRes.status, 401);
+
+  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
+  const loginData = await loginRes.json();
+  const reuseFreshRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken, code: acceptedCode }) }), env);
+  check('replaying a previous OTP code against a fresh login -> 401 bad_code', reuseFreshRes.status, 401);
+}
+
+// =====================================================================
+// 5) Expired OTP — a pending row past its expires_at is rejected and
+//    cleaned up, even with the objectively correct code.
+// =====================================================================
+{
+  const env = makeEnv(fullyConfigured);
   const ip = nextIp();
   const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000010', password: 'correct-horse-battery-staple' }) }), env);
   const loginData = await loginRes.json();
-  const sendRes = await worker.fetch(req('/api/admin/2fa/telegram/send', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken }) }), env);
-  const sendData = await sendRes.json();
-  check('requesting Telegram OTP with no bot configured -> 503 telegram_not_configured', { status: sendRes.status, error: sendData.error }, { status: 503, error: 'telegram_not_configured' });
-  // the pending row must still be usable via TOTP after a failed Telegram attempt
-  const verifyRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken, code: totpNow(secret) }) }), env);
-  check('TOTP still works after a failed (not-configured) Telegram OTP request', verifyRes.status, 200);
+  const code = codeOf();
+  await sqlite.prepare(`UPDATE admin_2fa_pending SET expires_at = '2000-01-01T00:00:00.000Z' WHERE temp_token = ?`).run(loginData.tempToken);
+  const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ip, body: JSON.stringify({ tempToken: loginData.tempToken, code }) }), env);
+  check('expired OTP -> 401 expired even with the correct code', res.status, 401);
+  const pendingRow = await sqlite.prepare(`SELECT 1 FROM admin_2fa_pending WHERE temp_token = ?`).get(loginData.tempToken);
+  check('the expired pending row was cleaned up', pendingRow, undefined);
 }
 
 // =====================================================================
-// 3) Telegram OTP configured — full opt-in flow, hashed at rest, prior
-//    code invalidated by a fresh request, admin_sessions gets a hash too.
-// =====================================================================
-lastTelegramCall = null;
-{
-  const env = makeEnv({ TELEGRAM_BOT_TOKEN: 'test-bot-token', ADMIN_CHAT_ID: '123456789' });
-  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: nextIp(), body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
-  const loginData = await loginRes.json();
-  check('login still offers TOTP by default even with the bot configured (opt-in only)', loginData.method, 'totp');
-
-  const sendRes1 = await worker.fetch(req('/api/admin/2fa/telegram/send', { method: 'POST', headers: nextIp(), body: JSON.stringify({ tempToken: loginData.tempToken }) }), env);
-  check('explicit "Telegram orqali kod olish" -> 200', sendRes1.status, 200);
-  checkTrue('Telegram API was actually called (only because the admin asked)', !!lastTelegramCall);
-  check('sent to the configured ADMIN_CHAT_ID', lastTelegramCall.body.chat_id, '123456789');
-  const firstCodeMatch = lastTelegramCall.body.text.match(/(\d{6})/);
-  checkTrue('message contains a 6-digit code', !!firstCodeMatch);
-  const firstCode = firstCodeMatch[1];
-
-  const pendingRow = await sqlite.prepare(`SELECT method, code FROM admin_2fa_pending WHERE temp_token = ?`).get(loginData.tempToken);
-  check('pending method switched to telegram', pendingRow.method, 'telegram');
-  checkTrue('raw OTP is NEVER written to D1 — stored value is a hash, not the plaintext code', pendingRow.code !== firstCode && pendingRow.code === sha256Hex(firstCode));
-
-  // Request a SECOND code — the first one must be invalidated immediately.
-  const sendRes2 = await worker.fetch(req('/api/admin/2fa/telegram/send', { method: 'POST', headers: { 'cf-connecting-ip': '7.7.7.7' }, body: JSON.stringify({ tempToken: loginData.tempToken }) }), env);
-  check('requesting a second Telegram code -> 200', sendRes2.status, 200);
-  const secondCode = lastTelegramCall.body.text.match(/(\d{6})/)[1];
-
-  const oldCodeRes = await worker.fetch(req('/api/admin/verify-2fa', { headers: { 'cf-connecting-ip': '7.7.7.8' }, method: 'POST', body: JSON.stringify({ tempToken: loginData.tempToken, code: firstCode }) }), env);
-  check('the FIRST (now-superseded) Telegram code no longer works', oldCodeRes.status, 401);
-
-  const newCodeRes = await worker.fetch(req('/api/admin/verify-2fa', { headers: { 'cf-connecting-ip': '7.7.7.9' }, method: 'POST', body: JSON.stringify({ tempToken: loginData.tempToken, code: secondCode }) }), env);
-  check('the SECOND (current) Telegram code works -> 200 + session', { status: newCodeRes.status, hasCookie: !!newCodeRes.headers.get('set-cookie') }, { status: 200, hasCookie: true });
-
-  const sessionRow = await sqlite.prepare(`SELECT token FROM admin_sessions ORDER BY rowid DESC LIMIT 1`).get();
-  checkTrue('the new admin_sessions row stores a hash, not a guessable raw token (64 hex chars = SHA-256)', /^[0-9a-f]{64}$/.test(sessionRow.token));
-}
-
-// =====================================================================
-// 4) Attempt limit on a live Telegram OTP — wrong codes exhaust it, then
-//    the pending login is invalidated outright (must restart from /login).
+// 6) Attempt limit — wrong codes exhaust it, then the pending login is
+//    invalidated outright (must restart from /login).
 // =====================================================================
 {
-  const env = makeEnv({ TELEGRAM_BOT_TOKEN: 'test-bot-token', ADMIN_CHAT_ID: '123456789' });
-  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: { 'cf-connecting-ip': '8.8.8.1' }, body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
+  const env = makeEnv(fullyConfigured);
+  const ip = nextIp();
+  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
   const loginData = await loginRes.json();
-  await worker.fetch(req('/api/admin/2fa/telegram/send', { method: 'POST', headers: { 'cf-connecting-ip': '8.8.8.1' }, body: JSON.stringify({ tempToken: loginData.tempToken }) }), env);
 
+  // Each attempt below uses its own fake IP — otherwise the shared
+  // login-rate-limiter (3 per IP per 30 min, spanning /login and
+  // /verify-2fa together) would block attempts 4-6 with 429 before the
+  // attempt-limit logic under test ever gets to run, which is a
+  // test-harness artifact, not the behavior being tested here.
   let lastStatus = null;
   for (let i = 0; i < 6; i++) {
-    const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: { 'cf-connecting-ip': `9.9.9.${i}` }, body: JSON.stringify({ tempToken: loginData.tempToken, code: '000000' }) }), env);
+    const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: nextIp(), body: JSON.stringify({ tempToken: loginData.tempToken, code: '000000' }) }), env);
     lastStatus = res.status;
   }
   check('after exhausting the attempt limit, the pending login is gone (expired), not just "bad_code" forever', lastStatus, 401);
@@ -208,18 +235,47 @@ lastTelegramCall = null;
 }
 
 // =====================================================================
-// 5) Telegram send failure (bot API rejects) surfaces tg_send_failed,
-//    doesn't silently pretend success.
+// 7) Telegram send failure during /login itself surfaces tg_send_failed,
+//    and leaves no dangling pending row behind.
 // =====================================================================
 {
   telegramShouldFail = true;
-  const env = makeEnv({ TELEGRAM_BOT_TOKEN: 'test-bot-token', ADMIN_CHAT_ID: '123456789' });
-  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: { 'cf-connecting-ip': '10.10.10.1' }, body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
-  const loginData = await loginRes.json();
-  const sendRes = await worker.fetch(req('/api/admin/2fa/telegram/send', { method: 'POST', headers: { 'cf-connecting-ip': '10.10.10.1' }, body: JSON.stringify({ tempToken: loginData.tempToken }) }), env);
-  const sendData = await sendRes.json();
-  check('a rejected Telegram API call surfaces as 503 tg_send_failed', { status: sendRes.status, error: sendData.error }, { status: 503, error: 'tg_send_failed' });
+  const env = makeEnv(fullyConfigured);
+  const ip = nextIp();
+  const res = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ip, body: JSON.stringify({ phone: '+998900000010', password: 'correct-horse-battery-staple' }) }), env);
+  const data = await res.json();
+  check('a rejected Telegram API call during /login surfaces as 503 tg_send_failed', { status: res.status, error: data.error }, { status: 503, error: 'tg_send_failed' });
+  // Scoped to THIS admin (id 2) — earlier scenarios intentionally leave
+  // their own still-live (not yet expired/exhausted) pending rows for
+  // OTHER admins around, which is correct app behavior, not a leak.
+  const pendingCount = await sqlite.prepare(`SELECT COUNT(*) AS n FROM admin_2fa_pending WHERE admin_id = 2`).get();
+  check('no pending row was left behind after the failed send', pendingCount.n, 0);
   telegramShouldFail = false;
+}
+
+// =====================================================================
+// 8) Standalone manual-resend endpoint (/2fa/telegram/send) — no longer
+//    called by the frontend, but still correct if ever used (e.g. the
+//    first message got lost): invalidates the auto-sent code and uses the
+//    same keyed hash.
+// =====================================================================
+{
+  const env = makeEnv(fullyConfigured);
+  // A distinct IP per call — 4 requests here would otherwise exceed the
+  // shared 3-per-IP-per-30-min login rate limiter on their own.
+  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: nextIp(), body: JSON.stringify({ phone: '+998900000009', password: 'correct-horse-battery-staple' }) }), env);
+  const loginData = await loginRes.json();
+  const firstCode = codeOf();
+
+  const sendRes = await worker.fetch(req('/api/admin/2fa/telegram/send', { method: 'POST', headers: nextIp(), body: JSON.stringify({ tempToken: loginData.tempToken }) }), env);
+  check('manual resend -> 200', sendRes.status, 200);
+  const secondCode = codeOf();
+
+  const oldCodeRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: nextIp(), body: JSON.stringify({ tempToken: loginData.tempToken, code: firstCode }) }), env);
+  check('the auto-sent (now-superseded) code no longer works after a manual resend', oldCodeRes.status, 401);
+
+  const newCodeRes = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: nextIp(), body: JSON.stringify({ tempToken: loginData.tempToken, code: secondCode }) }), env);
+  check('the resent code works -> 200 + session', { status: newCodeRes.status, hasCookie: !!newCodeRes.headers.get('set-cookie') }, { status: 200, hasCookie: true });
 }
 
 globalThis.fetch = realFetch;

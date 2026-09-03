@@ -9,11 +9,15 @@
 //   node scripts/admin-login-totp-followers-test.mjs
 //
 // Covers: POST /api/admin/login always responding with a real JSON status
-// (never a native 405) for every HTTP method, the full TOTP setup→confirm→
-// login→replay-rejected flow (RFC 6238, Google-Authenticator-shaped
-// otpauth:// URI), that /2fa/totp/setup never touches the working secret
-// of an already-enrolled admin until /confirm proves the new one, the
-// newly-ported admin 501 Group A (read-only) endpoints, and the Followers
+// (never a native 405) for every HTTP method; the standalone Google
+// Authenticator (TOTP) self-service setup→confirm flow (RFC 6238,
+// Google-Authenticator-shaped otpauth:// URI) — /2fa/totp/setup never
+// touches the working secret of an already-enrolled admin until /confirm
+// proves the new one — which still exists as an opt-in extra even though
+// the LOGIN flow itself no longer consults it; the full login→Telegram
+// OTP→verify-2fa→session flow (Telegram is now the sole, mandatory 2FA
+// method, auto-sent by /login) including OTP-reuse rejection; the
+// newly-ported admin 501 Group A (read-only) endpoints; and the Followers
 // read path (follow-list) an already-existing profile relies on.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -55,11 +59,30 @@ const env = {
     exec: (sql) => sqlite.exec(sql),
   },
   ASSETS: { fetch: async () => new Response('not found', { status: 404 }) },
+  // Telegram OTP is the sole 2FA method in the login flow now — /login
+  // refuses to start without these (see hosting/worker.js).
+  TELEGRAM_BOT_TOKEN: 'test-bot-token',
+  ADMIN_CHAT_ID: '123456789',
+  ADMIN_OTP_SECRET: 'test-otp-pepper',
 };
 sqlite.exec(readFileSync(path.join(__dirname, '../db/d1-migration/0001-schema.sql'), 'utf8'));
 await ensureCoreSchema(env);
 
 function req(pathname, init = {}) { return new Request(`https://nfcstore.uz${pathname}`, init); }
+
+// Intercept api.telegram.org so the login flow's automatic OTP send never
+// touches the real Bot API — capture the code so the test can verify it.
+const realFetch = globalThis.fetch;
+let lastTelegramCode = null;
+globalThis.fetch = async (url, init) => {
+  const href = typeof url === 'string' ? url : url.url;
+  if (href.startsWith('https://api.telegram.org/')) {
+    const body = init?.body ? JSON.parse(init.body) : {};
+    lastTelegramCode = (String(body.text || '').match(/(\d{6})/) || [])[1] || null;
+    return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 });
+  }
+  return realFetch(url, init);
+};
 
 // ---------- standalone RFC 6238 TOTP generator (independent re-implementation
 // — deliberately NOT importing hosting/worker.js's own totp helpers, so this
@@ -162,36 +185,32 @@ let setupSecret = '';
   await env.DB.prepare(`DELETE FROM admin_totp_setup_pending WHERE admin_id = 1`).run();
 }
 
-// Full login -> 2FA -> session flow, on a FRESH admin (#2) seeded with TOTP
-// already enabled directly (bypassing setup/confirm) so its
-// totp_last_counter starts clean — admin #1's confirm step above already
-// "spent" its own current time-step, which would otherwise collide with a
-// code generated a few milliseconds later in the very same 30s window.
-// Each logical group below also uses its own fake source IP so the shared
-// login/verify-2fa rate limiter (keyed by IP, 3 per 30 min) never
-// cross-contaminates between unrelated checks in this same test run.
+// Full login -> Telegram OTP -> session flow, on a FRESH admin (#2) — TOTP
+// (admins.totp_secret/totp_enabled) is NEVER set here at all, proving the
+// login flow no longer consults it: Telegram OTP is the sole, mandatory
+// second factor now, auto-sent by /login itself. Each logical group below
+// uses its own fake source IP so the shared login/verify-2fa rate limiter
+// (keyed by IP, 3 per 30 min) never cross-contaminates between unrelated
+// checks in this same test run.
 const realHash = await hashPassword('correct-horse-battery-staple');
-const totpSecret2 = 'JBSWY3DPEHPK3PXP'; // fixed, valid base32 — not a real production secret
-await env.DB.prepare(`INSERT INTO admins (id, phone, password_hash, role, totp_secret, totp_enabled) VALUES (2, '+998900000002', ?, 'manager', ?, 1)`)
-  .bind(realHash, totpSecret2).run();
+await env.DB.prepare(`INSERT INTO admins (id, phone, password_hash, role) VALUES (2, '+998900000002', ?, 'manager')`)
+  .bind(realHash).run();
 const ipFullLogin = { headers: { 'cf-connecting-ip': '9.9.9.2' } };
 
 let tempToken = '';
 {
   const res = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ipFullLogin.headers, body: JSON.stringify({ phone: '+998900000002', password: 'correct-horse-battery-staple' }) }), env);
   const data = await res.json();
-  check('login with correct password + totp_enabled -> twoFactor:true, no session cookie yet', { status: res.status, twoFactor: data.twoFactor, method: data.method }, { status: 200, twoFactor: true, method: 'totp' });
+  check('login with correct password -> twoFactor:true, method:telegram, no session cookie yet', { status: res.status, twoFactor: data.twoFactor, method: data.method }, { status: 200, twoFactor: true, method: 'telegram' });
   checkTrue('no admin session cookie set before 2FA is verified', !res.headers.get('set-cookie'));
+  checkTrue('Telegram OTP was auto-sent by /login itself (no separate button/call needed)', /^\d{6}$/.test(String(lastTelegramCode)));
   tempToken = data.tempToken;
 }
 let acceptedCode = '';
 {
-  const { code } = totpNow(totpSecret2);
-  acceptedCode = code;
-  const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ipFullLogin.headers, body: JSON.stringify({ tempToken, code }) }), env);
-  check('verify-2fa with the real current code -> 200 + session cookie', { status: res.status, hasCookie: !!res.headers.get('set-cookie') }, { status: 200, hasCookie: true });
-  const row = await env.DB.prepare(`SELECT totp_last_counter FROM admins WHERE id = 2`).first();
-  checkTrue('admins.totp_last_counter was persisted after the accepted login', row.totp_last_counter != null);
+  acceptedCode = lastTelegramCode;
+  const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ipFullLogin.headers, body: JSON.stringify({ tempToken, code: acceptedCode }) }), env);
+  check('verify-2fa with the real Telegram code -> 200 + session cookie', { status: res.status, hasCookie: !!res.headers.get('set-cookie') }, { status: 200, hasCookie: true });
 }
 
 // re-using the same (now-deleted) tempToken -> the temp-token itself is
@@ -201,18 +220,17 @@ let acceptedCode = '';
   check('re-using the same (now-deleted) tempToken -> 401 expired, not a new session', res.status, 401);
 }
 
-// Direct replay guard: a FRESH tempToken (new login), but the SAME 6-digit
-// code the admin already used a moment ago for the previous login — must
-// be rejected even though the code is still numerically "valid" for the
-// current 30s window, because totp_last_counter already recorded that step
-// as spent. Uses a distinct fake IP so this third /login call doesn't
-// exhaust the ipFullLogin budget consumed above.
+// OTP reuse across a FRESH login: a new tempToken (new /login call) gets
+// its OWN freshly-generated code — the previous login's now-consumed code
+// must never verify against it, even though it's still numerically a
+// well-formed 6-digit string. Uses a distinct fake IP so this third
+// /login call doesn't exhaust the ipFullLogin budget consumed above.
 {
-  const ipReplay = { 'cf-connecting-ip': '9.9.9.3' };
-  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ipReplay, body: JSON.stringify({ phone: '+998900000002', password: 'correct-horse-battery-staple' }) }), env);
+  const ipReuse = { 'cf-connecting-ip': '9.9.9.3' };
+  const loginRes = await worker.fetch(req('/api/admin/login', { method: 'POST', headers: ipReuse, body: JSON.stringify({ phone: '+998900000002', password: 'correct-horse-battery-staple' }) }), env);
   const loginData = await loginRes.json();
-  const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ipReplay, body: JSON.stringify({ tempToken: loginData.tempToken, code: acceptedCode }) }), env);
-  check('replaying the previously-accepted TOTP code on a fresh login -> 401 bad_code (replay guard)', res.status, 401);
+  const res = await worker.fetch(req('/api/admin/verify-2fa', { method: 'POST', headers: ipReuse, body: JSON.stringify({ tempToken: loginData.tempToken, code: acceptedCode }) }), env);
+  check('reusing a previous login\'s OTP code on a fresh login -> 401 bad_code', res.status, 401);
 }
 
 // =====================================================================
@@ -343,5 +361,6 @@ await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (
   check('GET /api/follow-list/:unknownCode -> 200 with an empty list (not an error) — modal shows empty state', data.list, []);
 }
 
+globalThis.fetch = realFetch;
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

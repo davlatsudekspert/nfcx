@@ -748,6 +748,25 @@ async function sha256Hex(text) {
   return toHex(new Uint8Array(digest));
 }
 
+// Telegram-OTP codes specifically are hashed with this instead of plain
+// sha256Hex above — HMAC-SHA256 keyed with env.ADMIN_OTP_SECRET (a
+// Cloudflare secret, never in git). A 6-digit code only has 1,000,000
+// possible values, so an unsalted/unkeyed hash of it would be reversible
+// by brute force from a D1 leak alone in seconds; keying the hash with a
+// secret the leak doesn't include keeps that infeasible even though the
+// attempt-limit/expiry above are the primary defense in normal operation.
+// Falls back to the plain hash only if the secret is somehow unset, so a
+// misconfigured env never hard-fails login — but ADMIN_OTP_SECRET is
+// expected to always be configured in production.
+async function hmacOtpHash(env, code) {
+  if (!env.ADMIN_OTP_SECRET) return sha256Hex(code);
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(env.ADMIN_OTP_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(code));
+  return toHex(new Uint8Array(signature));
+}
+
 // ---------- scrypt (RFC 7914) — bit-exact with Node's crypto.scryptSync ----------
 // Only reason this exists: server/auth.js hashed every migrated password
 // with `crypto.scryptSync(password, salt, 64)` (N=16384, r=8, p=1,
@@ -2610,34 +2629,35 @@ async function adminAuthApi(request, env, url) {
       await logAdminLoginEvent(env, 'ip_blocked', ip, request.headers.get('user-agent'));
       return json({ error: 'ip_not_whitelisted' }, 403);
     }
-    if (admin.totp_enabled && admin.totp_secret) {
-      const tempToken = newToken(24);
-      await env.DB.prepare(`INSERT INTO admin_2fa_pending (temp_token, admin_id, method, expires_at) VALUES (?, ?, 'totp', ?)`)
-        .bind(tempToken, admin.id, new Date(Date.now() + 5 * 60_000).toISOString()).run();
-      return json({ ok: true, twoFactor: true, method: 'totp', tempToken });
+    // Telegram OTP is now the sole, mandatory second factor — sent
+    // automatically right here on every successful password check, no
+    // separate opt-in step and no TOTP branch. Google Authenticator/TOTP
+    // is no longer part of the login flow at all: admins.totp_secret /
+    // totp_enabled / totp_last_counter are left in the schema untouched
+    // (and the standalone /api/admin/2fa/totp/setup|confirm|disable|status
+    // self-service endpoints still exist below), simply never consulted
+    // here anymore.
+    if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_CHAT_ID) return json({ error: 'telegram_not_configured' }, 503);
+    const tempToken = newToken(24);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = await hmacOtpHash(env, code);
+    await env.DB.prepare(`INSERT INTO admin_2fa_pending (temp_token, admin_id, method, code, attempts, expires_at) VALUES (?, ?, 'telegram', ?, 0, ?)`)
+      .bind(tempToken, admin.id, codeHash, new Date(Date.now() + 5 * 60_000).toISOString()).run();
+    const sent = await sendTelegramMessage(env, `🔐 Admin panelga kirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 5 daqiqa ichida amal qiladi.`);
+    if (!sent) {
+      await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+      return json({ error: 'tg_send_failed' }, 503);
     }
-    // TOTP not set up yet, and Telegram-OTP is only ever offered as an
-    // opt-in choice ON the 2FA screen (see /2fa/telegram/send) — there's
-    // no 2FA screen to offer it from here, so log the admin straight in
-    // and surface a strong nudge to enable TOTP immediately via
-    // /api/admin/2fa/totp/setup. This is intentionally temporary —
-    // tracked as follow-up work.
-    const token = newToken();
-    const now = new Date();
-    await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
-      .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
-    await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
-    return jsonWithCookie({ ok: true, totpSetupRecommended: true }, 200, adminCookieHeader(token, secure));
+    return json({ ok: true, twoFactor: true, method: 'telegram', tempToken });
   }
 
-  // Opt-in Telegram OTP — ONLY reachable by an admin who already passed
-  // password + has a live pending 2FA session (tempToken from /login), and
-  // ONLY ever sent when they explicitly click "Telegram orqali kod olish"
-  // on the 2FA screen. TOTP remains the default/primary method; this never
-  // fires automatically (no IP/location heuristics). Overwrites whatever
-  // was pending for this tempToken (any earlier Telegram OTP for it is
-  // immediately invalidated — there is only ever one live code per
-  // pending login), and stores the code as a SHA-256 hash, never raw.
+  // Manual resend — NOT called by the current frontend (login above now
+  // sends the first code automatically), kept only as a standalone,
+  // still-correct API for resending a fresh code against an existing
+  // pending login (e.g. the first Telegram message got lost/delayed).
+  // Same rules as the automatic send: only valid against a live pending
+  // tempToken, overwrites/invalidates whatever code was pending before,
+  // stores the new code as a keyed hash (hmacOtpHash), never raw.
   if (path === '/api/admin/2fa/telegram/send' && request.method === 'POST') {
     if (loginRateLimited(ip)) return json({ error: 'too_many_requests' }, 429);
     const body = await request.json().catch(() => ({}));
@@ -2653,7 +2673,7 @@ async function adminAuthApi(request, env, url) {
     }
     if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_CHAT_ID) return json({ error: 'telegram_not_configured' }, 503);
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    const codeHash = await sha256Hex(code);
+    const codeHash = await hmacOtpHash(env, code);
     await env.DB.prepare(`UPDATE admin_2fa_pending SET method = 'telegram', code = ?, attempts = 0, expires_at = ? WHERE temp_token = ?`)
       .bind(codeHash, new Date(Date.now() + 5 * 60_000).toISOString(), tempToken).run();
     const sent = await sendTelegramMessage(env, `🔐 Admin panelga kirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 5 daqiqa ichida amal qiladi.`);
@@ -2676,8 +2696,13 @@ async function adminAuthApi(request, env, url) {
       return json({ error: 'ip_not_whitelisted' }, 403);
     }
     const admin = await env.DB.prepare(`SELECT * FROM admins WHERE id = ?`).bind(pending.admin_id).first();
+    // Telegram OTP is the sole 2FA method in the login flow now — TOTP
+    // (admins.totp_secret / totp_last_counter) is never consulted here.
+    // /login above only ever creates a pending row with method:'telegram',
+    // but this still checks it explicitly rather than assuming, so any
+    // other/unrecognized pending shape just fails closed (valid stays
+    // false) instead of falling through to a TOTP check.
     let valid = false;
-    let totpCounter = null;
     if (pending.method === 'telegram') {
       // Attempt limit is per pending record — a fresh /2fa/telegram/send
       // resets it to 0, so this only ever throttles repeated guesses
@@ -2687,26 +2712,17 @@ async function adminAuthApi(request, env, url) {
         await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
         return json({ error: 'expired' }, 401);
       }
-      valid = pending.code && (await sha256Hex(code)) === pending.code;
+      valid = pending.code && (await hmacOtpHash(env, code)) === pending.code;
       if (!valid) await env.DB.prepare(`UPDATE admin_2fa_pending SET attempts = ? WHERE temp_token = ?`).bind(Number(pending.attempts || 0) + 1, tempToken).run();
-    } else if (admin?.totp_secret) {
-      const result = await totpVerify({ secret: admin.totp_secret, token: code, afterCounter: admin.totp_last_counter });
-      valid = result.valid;
-      totpCounter = result.counter ?? null;
     }
     if (!valid) {
       await logAdminLoginEvent(env, 'bad_2fa', ip, request.headers.get('user-agent'));
       return json({ error: 'bad_code' }, 401);
     }
+    // DELETE makes the just-used code single-use immediately — no replay
+    // window to guard against (unlike TOTP, there's no separate counter to
+    // persist here anymore).
     await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
-    if (totpCounter != null) {
-      // Persist the accepted time-step BEFORE anything else can race it —
-      // the exact same 6-digit code (or an older one inside the ±1 step
-      // window) can never be replayed for a second login after this.
-      // Telegram codes need no equivalent: DELETE above already makes the
-      // just-used code single-use (and a fresh /send is required for another).
-      await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run();
-    }
     const token = newToken();
     const now = new Date();
     await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
