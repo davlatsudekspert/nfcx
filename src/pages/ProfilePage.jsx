@@ -12,6 +12,7 @@ import { useCategories, catPath } from '../lib/categories.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
 import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 import {
   IconArrowLeft, IconShare, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
@@ -1662,7 +1663,7 @@ function GiftActivationScreen({ code, recipientName }) {
               <input value={form.name} onChange={set('name')} placeholder={t('Ism Familiya *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.username} onChange={set('username')} placeholder={t('Username / Nickname')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.email} onChange={set('email')} type="email" placeholder={t('Email *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
-              <input value={form.password} onChange={set('password')} type="password" placeholder={t('Parol (kamida 6 belgi) *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
+              <PasswordInput value={form.password} onChange={set('password')} placeholder={t('Parol (kamida 6 belgi) *')} containerClassName="w-full" iconClassName="text-[color:var(--vz-ink)]" className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.phone} onChange={set('phone')} placeholder={t('Telefon')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.avatarUrl} onChange={set('avatarUrl')} placeholder={t('Profil rasmi (URL)')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <textarea value={form.bio} onChange={set('bio')} placeholder={t('Bio')} rows={2} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />

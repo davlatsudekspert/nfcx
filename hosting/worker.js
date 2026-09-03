@@ -1353,7 +1353,7 @@ function catalogCard(record) {
     code: record.code, name: record.name, role: record.role, avatarUrl: record.avatarUrl, tg: record.tg,
     hashtags: record.hashtags, theme: record.theme, price: record.price, ts: record.ts, views: record.views,
     profileType: record.profileType, city: record.city, categorySlug: record.categorySlug,
-    verified: record.verified, tierOverride: record.tierOverride || '',
+    verified: record.verified, tierOverride: record.tierOverride || '', isGift: !!record.isGift,
   };
 }
 
@@ -2107,8 +2107,13 @@ async function recordsApi(request, env, url) {
   const path = url.pathname;
 
   if (path === '/api/records' && request.method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT ${RECORD_COLUMNS} FROM cards WHERE hidden_from_directory = 0 ORDER BY ts DESC LIMIT 500`).all();
-    return json((rows.results || []).map(rowToRecord).map(catalogCard));
+    // is_gift: admin tomonidan sovg'a qilingan (nfc_gifts.status='activated')
+    // kodlar katalogda ham narx o'rniga "Sovg'a" sifatida ko'rsatilishi
+    // uchun — getRecord()dagi bir xil EXISTS naqshi.
+    const rows = await env.DB.prepare(`SELECT ${RECORD_COLUMNS},
+        EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
+      FROM cards WHERE hidden_from_directory = 0 ORDER BY ts DESC LIMIT 500`).all();
+    return json((rows.results || []).map((row) => ({ ...rowToRecord(row), isGift: !!row.is_gift })).map(catalogCard));
   }
 
   if (path === '/api/records/search' && request.method === 'GET') {
@@ -2117,7 +2122,8 @@ async function recordsApi(request, env, url) {
     const like = `%${q.toLowerCase()}%`;
     const rows = await env.DB.prepare(
       `SELECT c.code, c.name, c.role, c.avatar_url, c.tg, c.hashtags, c.theme, c.price, c.ts, c.views,
-              c.profile_type, c.city, c.category_slug, c.verified, c.tier_override
+              c.profile_type, c.city, c.category_slug, c.verified, c.tier_override,
+              EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
        FROM cards c LEFT JOIN users u ON u.id = c.user_id
        WHERE c.hidden_from_directory = 0 AND (
          LOWER(c.code) LIKE ? OR LOWER(c.name) LIKE ? OR LOWER(COALESCE(c.role,'')) LIKE ? OR
@@ -2130,7 +2136,7 @@ async function recordsApi(request, env, url) {
       code: r.code, name: r.name, role: r.role || '', avatarUrl: r.avatar_url || '', tg: r.tg || '',
       hashtags: parseJsonArray(r.hashtags), theme: r.theme, price: Number(r.price), ts: Number(r.ts), views: Number(r.views),
       profileType: r.profile_type, city: r.city || '', categorySlug: r.category_slug || '', verified: !!r.verified,
-      tierOverride: r.tier_override || '',
+      tierOverride: r.tier_override || '', isGift: !!r.is_gift,
     }));
     return json({ records });
   }

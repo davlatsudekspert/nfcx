@@ -10,6 +10,7 @@ import { idTier, effectiveAccess } from '../lib/access.js';
 import { TIER_LABEL } from '../lib/pricing.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import { AdminShell, AdminCard, KpiCard, StatusBadge, EmptyState, AdminLoading, chartGrid, chartAxis, chartTooltip } from '../components/admin/AdminUI.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 async function adminApi(path, options) {
   const res = await fetch('/api/admin' + path, {
@@ -138,8 +139,8 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
             </label>
             <label className="form-control">
               <span className="text-xs font-semibold text-base-content/70">{t("Parol")}</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className="input input-bordered mt-1 w-full bg-base-100" />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
+                containerClassName="mt-1 w-full" className="input input-bordered w-full bg-base-100" />
             </label>
             <button className="btn btn-primary w-full" disabled={busy}>
               {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Kirish')}
@@ -1394,7 +1395,7 @@ function AdminsTab() {
         <div className="mt-3 flex max-w-lg flex-wrap gap-2 rounded-xl border border-white/10 bg-base-200/50 p-3">
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567" className="input input-bordered input-sm flex-1 bg-base-100" />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("Ism")} className="input input-bordered input-sm flex-1 bg-base-100" />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("Parol (kamida 6 belgi)")} className="input input-bordered input-sm flex-1 bg-base-100" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("Parol (kamida 6 belgi)")} containerClassName="flex-1" className="input input-bordered input-sm w-full bg-base-100" />
           <select value={role} onChange={(e) => setRole(e.target.value)} className="select select-bordered select-sm bg-base-100">
             <option value="manager">Manager</option>
             <option value="content_manager">Content Manager</option>

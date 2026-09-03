@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { dbRequestPasswordCode, dbChangePassword, dbRequestPhoneChangeCode, dbConfirmPhoneChange } from '../lib/db.js';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import CardTools from '../components/CardTools.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 // Profildagi Sozlamalar sahifasi — o'z ma'lumotlarini ko'rish va
 // Telegram orqali kelgan bir martalik kod bilan parolni o'zgartirish.
@@ -177,18 +178,18 @@ export default function SettingsPage() {
                 className="input input-bordered input-sm w-full bg-base-100 font-mono tracking-widest"
                 maxLength={6}
               />
-              <input
-                type="password"
+              <PasswordInput
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={t('Yangi parol (kamida 6 belgi)')}
+                containerClassName="w-full"
                 className="input input-bordered input-sm w-full bg-base-100"
               />
-              <input
-                type="password"
+              <PasswordInput
                 value={newPassword2}
                 onChange={(e) => setNewPassword2(e.target.value)}
                 placeholder={t('Yangi parolni takrorlang')}
+                containerClassName="w-full"
                 className="input input-bordered input-sm w-full bg-base-100"
               />
               <div className="flex gap-2">

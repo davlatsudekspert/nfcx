@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
+import PasswordInput from '../components/PasswordInput.jsx';
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
 const BOT_USERNAME = 'nfcsalebot';
@@ -123,16 +124,16 @@ export default function AuthPage({ mode }) {
             </label>
             <label className="form-control">
               <span className="text-xs font-semibold text-base-content/70">{t('Parol')}</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('Kamida 6 belgi')} autoComplete={isRegister ? 'new-password' : 'current-password'} required minLength={6}
-                className="input input-bordered mt-1 w-full bg-base-100" />
+                containerClassName="mt-1 w-full" className="input input-bordered w-full bg-base-100" />
             </label>
             {isRegister && (
               <label className="form-control">
                 <span className="text-xs font-semibold text-base-content/70">{t('Parolni takrorlang')}</span>
-                <input type="password" value={password2} onChange={(e) => setPassword2(e.target.value)}
+                <PasswordInput value={password2} onChange={(e) => setPassword2(e.target.value)}
                   placeholder={t('Parolni qayta kiriting')} autoComplete="new-password" required
-                  className="input input-bordered mt-1 w-full bg-base-100" />
+                  containerClassName="mt-1 w-full" className="input input-bordered w-full bg-base-100" />
               </label>
             )}
             {isRegister && (

@@ -7,6 +7,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { PAYMENTS_ENABLED } from '../lib/features.js';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 import TelegramChannelCTA from './TelegramChannelCTA.jsx';
+import PasswordInput from './PasswordInput.jsx';
 const CardDesignerPage = lazy(() => import('../pages/CardDesignerPage.jsx'));
 
 // Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
@@ -252,7 +253,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                   </label>
                   <label className={field}>
                     <span className="text-xs font-semibold text-base-content/70">{t('Parol (min. 6 belgi) *')}</span>
-                    <input type="password" value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" className={inp} />
+                    <PasswordInput value={acctPassword} onChange={(e) => setAcctPassword(e.target.value)} placeholder="••••••" autoComplete="new-password" containerClassName="mt-1 w-full" className={inp.replace('mt-1 ', '')} />
                   </label>
                   <label className={field}>
                     <span className="text-xs font-semibold text-base-content/70">{t('Telefon raqamingiz *')}</span>

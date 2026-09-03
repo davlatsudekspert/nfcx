@@ -70,7 +70,9 @@ export default function CatalogPage({ catalog }) {
   // NFC ID darajasiga qarab katalog kartasining rangi (chegara + burchak nuri).
   // tierOverride serverdan keladi (admin qo'lda belgilagan tarif), bo'lmasa
   // kod naqshi bo'yicha hisoblanadi. VIP001 → exclusive → tilla ohang, va h.k.
-  const tierOf = (it) => it.tierOverride || tierForCode(it.code);
+  // Admin sovg'a qilgan NFC ID — tekin daraja bo'lsa ham EKSLYUZIV rangda
+  // ko'rsatiladi (ProfilePage.jsx'dagi bir xil qoida).
+  const tierOf = (it) => it.isGift ? 'exclusive' : (it.tierOverride || tierForCode(it.code));
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
@@ -167,7 +169,13 @@ export default function CatalogPage({ catalog }) {
                     {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{'\u{1F4CD}'} {it.city}</span>}
                   </div>
                 )}
-                <div className="mt-3 flex items-center gap-2 text-sm text-base-content/75">{t("{n} so'm", { n: fmt(it.price) })} · {timeAgo(it.ts)}</div>
+                <div className="mt-3 flex items-center gap-2 text-sm text-base-content/75">
+                  {it.isGift ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-[#c81e1e]">
+                      {'\u{1F381}'} {t("Sovg'a")}
+                    </span>
+                  ) : t("{n} so'm", { n: fmt(it.price) })} · {timeAgo(it.ts)}
+                </div>
               </button>
             );
           })}
