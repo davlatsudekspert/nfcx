@@ -11,6 +11,25 @@ export function isBlockedCode(raw) {
   return BLOCKED_PREFIXES.some((p) => c.startsWith(p));
 }
 
+// ── Avtomatik-bepul 8 xonali profil ID (createFreeAutoId, server/db.js) ──
+// Ro'yxatdan o'tishda avtomatik beriladi, HECH QACHON pullik NFC ID sotib
+// olish oqimi (POST /api/records, Payme order yaratish) orqali
+// yaratilmaydi/sotilmaydi — bu qat'iy biznes qoidasi (Payme integratsiyasi
+// audit qismida topilgan bo'shliqni yopish uchun qo'shilgan).
+export const FREE_AUTO_ID_RE = /^[0-9]{8}$/;
+
+// Kod pullik NFC ID sifatida sotib olinishi mumkinmi? (bloklangan prefiks
+// yoki 8 xonali avtomatik-bepul shakl bo'lsa — YO'Q). Bu FAQAT "sotib
+// olinadimi" savoliga javob beradi — kodning formati/uzunligi umuman
+// to'g'ri ekanini (parseCode/parseAnyCode) alohida tekshirish kerak.
+export function isPurchasableCode(raw) {
+  const c = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!c) return false;
+  if (isBlockedCode(c)) return false;
+  if (FREE_AUTO_ID_RE.test(c)) return false;
+  return true;
+}
+
 export function parseCode(raw) {
   const c = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (c.length !== 6) return null;
@@ -290,4 +309,46 @@ export function priceForCode(code, _sold) {
     return { total, tier: ov, base: total, override: true };
   }
   return priceFor(c.slice(0, 3), c.slice(3, 6));
+}
+
+// ── Xavfsiz xarid entry-point (Payme fundamenti — Phase 2A safety fix) ──
+// `priceForCode()` UI/kalkulyator ko'rsatuvi uchun — u ekslyuziv daraja
+// uchun ham `total` maydonida texnik jihatdan `0` qaytaradi (chunki
+// TIER_PRICE.exclusive = null, `?? 0` bilan sonlashtiriladi: ko'rsatish
+// uchun xavfsiz, lekin haqiqiy pul olish kodi buni ADASHIB "narxi 0 so'm"
+// deb ishlatib, tekin ekslyuziv order yaratib qo'yishi MUMKIN edi).
+// `priceForCode()`ning bu UI xulqi ATAYLAB o'zgartirilmagan (kalkulyator/
+// checker sahifalarida hozirgidek ishlashda davom etadi).
+//
+// KELAJAKDAGI Payme order-yaratish kodi (hali yozilmagan — Phase 2A/2B)
+// HECH QACHON `priceForCode()`ni to'g'ridan-to'g'ri ishlatmasin — FAQAT
+// shu funksiyani chaqirsin. Bu — real pul undirish uchun YAGONA xavfsiz
+// kirish nuqtasi (single entrypoint), uchta holatni sonli `0` bilan hech
+// qachon aralashtirmaydigan aniq shaklda qaytaradi:
+//
+//   1) sotib olib bo'lmaydi (8 xonali avtomatik-bepul ID, bloklangan
+//      prefiks, yoki umuman noto'g'ri format — standart 6-belgili
+//      AAA000 emas) ->
+//        { purchasable: false, reason: 'not_purchasable' }
+//
+//   2) ekslyuziv (faqat auksion orqali) ->
+//        { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }
+//      `amount` MAYDONI UMUMAN YO'Q (undefined) — `0` EMAS. Chaqiruvchi
+//      kod `result.amount`ni to'g'ridan-to'g'ri ishlatsa ham, `purchasable`
+//      tekshirilmagan holatda ham, `undefined` bilan haqiqiy Payme
+//      so'roviga (`amount` musbat butun son bo'lishi shart) hech qachon
+//      yaroqli qiymat sifatida yetib bormaydi.
+//
+//   3) sotib olinadigan (Bronza/Silver/Gold/Premium) ->
+//        { purchasable: true, tier, amount }
+//      `amount` doim TIER_PRICE'dan olingan musbat son (49000/99000/
+//      149000/199000) — hech qachon `0` yoki `null` emas.
+export function getPersonalPurchaseQuote(rawCode) {
+  const parsed = parseCode(rawCode); // faqat standart 6-belgili AAA000 format — 8 xonali/boshqa uzunlik avtomatik rad etiladi
+  if (!parsed) return { purchasable: false, reason: 'not_purchasable' };
+  if (!isPurchasableCode(parsed.code)) return { purchasable: false, reason: 'not_purchasable' };
+  const { tier } = priceForCode(parsed.code);
+  if (tier === 'exclusive') return { purchasable: false, reason: 'exclusive_auction_only', tier };
+  const amount = TIER_PRICE[tier];
+  return { purchasable: true, tier, amount };
 }
