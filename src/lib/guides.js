@@ -135,7 +135,7 @@ export const GUIDES = [
   // kerak bo'lardi — bu vazifada aniq taqiqlangan. Shu sabab hammasi DEMO,
   // lekin har bir maydon nomi CompanyCreatePage.jsx/CompanyWorkspacePage.jsx
   // manba kodidan tekshirilgan haqiqiy matn.
-  guide(4, 'company-create-fill', 'Kompaniya profilini yaratish va to‘ldirish',
+  guide(4, 'company-create-fill', 'Kompaniya sifatida ro‘yxatdan o‘tish / kompaniya profilini yaratish',
     'Alohida Company ID ochish, biznes ma’lumotlarini to‘ldirish va public sahifani ko‘rish.', 'kompaniya', 'kompaniya', 3, [
       mockFrame(1, 'companyForm', '«Kompaniyalar» bo‘limidan yangi kompaniya yaratishni boshlang — o‘ziga xos Company ID tanlaysiz, bu shaxsiy NFC ID’dan butunlay alohida.', {
         data: { companyId: 'DEMOSHOP', fields: [{ label: 'Kompaniya nomi', value: 'Demo Do‘kon', focus: true }] },
@@ -167,7 +167,7 @@ export const GUIDES = [
   // sarlavhasi (companyCta.noun: Mahsulotlar/Xizmatlar/Taomlar) va
   // tarkib boshqacha; shuning uchun mock'larda ham xuddi shu haqiqiy farq
   // aks ettirilgan.
-  guide(5, 'catalog-menu', 'Mahsulot / xizmat / restoran menyusi qo‘shish',
+  guide(5, 'catalog-menu', 'Kompaniyaga mahsulot / xizmat / restoran menyusi qo‘shish',
     'Universal katalog bo‘limi orqali mahsulot, xizmat yoki restoran menyusini qo‘shish — barchasi bitta joyda.', 'kompaniya', 'kompaniya', 4, [
       // ── A. Mahsulot ──
       mockFrame(1, 'companyTabs', '«Katalog» bo‘limini oching — bu yerda mahsulot nomi va narxini kiritasiz.', {

@@ -2328,4 +2328,8 @@ export const DICT = {
   "Norin": { ru: "Норин", en: "Norin" },
   "Do‘kon / market": { ru: "Магазин / маркет", en: "Shop / market" },
   "Sport krossovka, 40-45": { ru: "Спортивные кроссовки, 40-45", en: "Sport sneakers, sizes 40-45" },
+  "Kompaniya sifatida ro‘yxatdan o‘tish / kompaniya profilini yaratish": { ru: "Регистрация как компания / создание профиля компании", en: "Registering as a company / creating a company profile" },
+  "Kompaniyaga mahsulot / xizmat / restoran menyusi qo‘shish": { ru: "Добавление товара / услуги / меню ресторана компании", en: "Adding a product / service / restaurant menu to your company" },
+  "O'lchamini o'zgartirish": { ru: "Изменить размер", en: "Resize" },
+  "To'liq ekrandan chiqish": { ru: "Выйти из полноэкранного режима", en: "Exit fullscreen" },
 };

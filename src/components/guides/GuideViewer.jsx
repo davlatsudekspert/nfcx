@@ -8,22 +8,51 @@ import GuideFrame from './GuideFrame.jsx';
 // cursorY, clickEffect, highlight, zoomTarget, sortOrder. Bu komponent
 // faqat shu ma'lumotlarni o'qiydi — hech qanday tarmoq so'rovi yubormaydi,
 // hech narsani saqlamaydi.
+//
+// Resize/fullscreen tuzatish (bu fayl bo'yicha regression fix):
+//   - Modal endi flex-col: header + o'sib-qisqaruvchi scroll qism (rasm/
+//     caption/progress-dots) + PASTGA MAHKAMLANGAN (sticky) boshqaruv
+//     paneli. Shu tufayli boshqaruv tugmalari HECH QACHON (oddiy va
+//     fullscreen rejimida ham) yashirinib qolmaydi — ular flex-footer
+//     bo'lib, agar kontent balandlik yetmasa faqat o'rtadagi qism scroll
+//     bo'ladi, footer joyidan siljimaydi.
+//   - Desktop'da pastki-o'ng burchakdan pointer bilan tortib resize qilish
+//     mumkin (mobil/tablet'da yashirin — ular allaqachon responsive).
+//   - `⛶` tugmasi endi ENTER/EXIT fullscreen'ni almashtiradi (toggle).
+//   - Fullscreen paytida Escape avval brauzerning o'z fullscreen'dan
+//     chiqishiga beriladi — modal shu bosishda ham yopilib ketmaydi.
+const MIN_W = 380;
+const MIN_H = 420;
+
 export default function GuideViewer({ guide, onClose }) {
   const { t } = useLanguage();
   const frames = guide.frames || [];
   const hasFrames = frames.length > 0;
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [size, setSize] = useState(null); // {w,h} px — faqat desktop qo'lda resize qilgach
   const boxRef = useRef(null);
   const timerRef = useRef(null);
+  const resizeRef = useRef(null);
 
   const catLabel = GUIDE_CATEGORIES.find((c) => c.id === guide.category)?.label || guide.category;
   const frame = frames[i];
 
   useEffect(() => {
+    const onFsChange = () => setIsFullscreen(document.fullscreenElement === boxRef.current);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
+  useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-      else if (hasFrames && e.key === 'ArrowRight') next();
+      if (e.key === 'Escape') {
+        // Fullscreen ochiq bo'lsa, birinchi Escape faqat undan chiqsin —
+        // brauzer buni o'zi bajaradi; modalni endi yopmaymiz.
+        if (document.fullscreenElement) return;
+        onClose();
+      } else if (hasFrames && e.key === 'ArrowRight') next();
       else if (hasFrames && e.key === 'ArrowLeft') prev();
     };
     document.addEventListener('keydown', onKey);
@@ -52,77 +81,174 @@ export default function GuideViewer({ guide, onClose }) {
     if (i >= frames.length - 1) { setI(0); setPlaying(true); return; }
     setPlaying((p) => !p);
   };
-  const goFullscreen = () => {
-    try { boxRef.current?.requestFullscreen?.(); } catch { /* fullscreen taqiqlangan bo'lishi mumkin — jim o'tamiz */ }
+  const toggleFullscreen = () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else boxRef.current?.requestFullscreen?.();
+    } catch { /* fullscreen taqiqlangan bo'lishi mumkin — jim o'tamiz */ }
   };
+
+  // Pastki-o'ng burchakdan pointer bilan tortib o'lchamini o'zgartirish —
+  // faqat desktop (fullscreen paytida o'chirilgan, brauzer o'zi to'liq
+  // ekranni boshqaradi).
+  const startResize = (e) => {
+    if (isFullscreen) return;
+    e.preventDefault();
+    const box = boxRef.current;
+    if (!box) return;
+    const startRect = box.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    resizeRef.current = { startX, startY, startW: startRect.width, startH: startRect.height };
+
+    const onMove = (ev) => {
+      const r = resizeRef.current;
+      if (!r) return;
+      // MUHIM: bu yerdagi 0.96/0.92 nisbatlar pastdagi `boxStyle`'dagi
+      // CSS `maxWidth: 96vw` / `maxHeight: 92vh` bilan AYNAN bir xil
+      // bo'lishi shart — aks holda drag hisoblagan qiymat CSS max-height
+      // tomonidan yashirincha kesib tashlanadi va resize "ishlamayotgandek"
+      // ko'rinadi (bu yerda topilgan asl xato — oldin 0.94 ishlatilgan edi).
+      const maxW = window.innerWidth * 0.96;
+      const maxH = window.innerHeight * 0.92;
+      const w = Math.min(maxW, Math.max(MIN_W, r.startW + (ev.clientX - r.startX)));
+      const h = Math.min(maxH, Math.max(MIN_H, r.startH + (ev.clientY - r.startY)));
+      setSize({ w, h });
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    // Ham mouse, ham pointer eventlarini tinglaymiz — turli brauzer/kirish
+    // qurilmalarida (sichqoncha, trackpad, ba'zi test avtomatlashtirish
+    // vositalari) barqaror ishlashi uchun.
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  // MUHIM: `size` hali o'rnatilmagan bo'lsa (foydalanuvchi hali resize
+  // qilmagan, ya'ni standart holat), style umuman qo'yilmaydi — shunda
+  // asl ixcham "max-w-2xl" klassi ishlaydi. Aks holda (avval bu yerda
+  // maxWidth/maxHeight har doim qo'yilardi) standart modal ham har safar
+  // ekranning deyarli to'liq eniga cho'zilib ketardi — bu topilgan
+  // regressiya edi.
+  const boxStyle = (isFullscreen || !size)
+    ? undefined
+    : {
+        width: `${size.w}px`,
+        height: `${size.h}px`,
+        maxWidth: '96vw',
+        maxHeight: '92vh',
+      };
 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div ref={boxRef} className="qollanma-player my-8 w-full max-w-2xl rounded-2xl border border-white/10 bg-base-200 p-5 shadow-2xl sm:my-0 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
-              <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide">{t(catLabel)}</span>
-              <span className="flex h-8 items-center gap-1.5 rounded-full border border-white/10 px-3.5">
-                <span className="text-base leading-none">{'⏱️'}</span> {t(guideDurationLabel(guide.durationMin))}
-              </span>
+      <div
+        ref={boxRef}
+        style={boxStyle}
+        className={`qollanma-player relative my-8 flex w-full max-w-2xl flex-col overflow-hidden border border-white/10 bg-base-200 shadow-2xl sm:my-0 ${isFullscreen ? 'h-screen w-screen max-w-none rounded-none' : 'rounded-2xl'}`}
+      >
+        {/* ── Scroll bo'ladigan yuqori qism: sarlavha + rasm + caption + progress-dots ── */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+          {/* MUHIM (fullscreen-fill fix): frame/mock kontent asl "kartochka"
+              o'lchamlari uchun chizilgan (kompakt forma qatorlari, ingichka
+              matnlar). Fullscreen'da (yoki qo'lda katta resize qilinganda)
+              modal o'zi ekran kengligiga cho'ziladi — agar shu ustun ham
+              cheklovsiz cho'zilsa, `aspect-[16/10]` konteyner juda baland
+              bo'lib ketadi-yu, ichidagi siyrak mock forma faqat yuqori
+              chap burchakni egallab, pastda katta bo'sh qora joy qoladi
+              (topilgan real xato). Shuning uchun bu ustunni har doim
+              o'rtacha, o'qish uchun qulay kenglikda o'rtaga joylaymiz —
+              natijada frame o'z nisbatini saqlab, ko'rinadigan joyni real
+              to'ldiradi (kino-pleyer letterbox mantig'iga o'xshash). */}
+          <div className="mx-auto w-full max-w-3xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+                <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide">{t(catLabel)}</span>
+                <span className="flex h-8 items-center gap-1.5 rounded-full border border-white/10 px-3.5">
+                  <span className="text-base leading-none">{'⏱️'}</span> {t(guideDurationLabel(guide.durationMin))}
+                </span>
+              </div>
+              <h3 className="mt-2 text-lg font-bold leading-snug sm:text-xl">{t(guide.title)}</h3>
             </div>
-            <h3 className="mt-2 text-lg font-bold leading-snug sm:text-xl">{t(guide.title)}</h3>
+            <button className="btn btn-ghost btn-square h-10 w-10 shrink-0 text-2xl" onClick={onClose} aria-label="close">&times;</button>
           </div>
-          <button className="btn btn-ghost btn-square h-10 w-10 shrink-0 text-2xl" onClick={onClose} aria-label="close">&times;</button>
+
+          {hasFrames ? (
+            <>
+              <div className="mt-4 flex items-center justify-between text-xs text-base-content/45">
+                <span className="flex items-center gap-2">
+                  {frame.kind === 'mock' && (
+                    <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide text-base-content/50">{t('Demo')}</span>
+                  )}
+                  {frame.section && (
+                    <span className="flex h-8 items-center rounded-full bg-accent/10 px-3.5 font-bold text-accent">{t(frame.section)}</span>
+                  )}
+                </span>
+                <span className="font-semibold">{i + 1} / {frames.length}</span>
+              </div>
+              <GuideFrame frame={frame} className="mt-2" />
+              <p className="mt-3 min-h-[2.5em] text-[15px] leading-relaxed text-base-content/75">{t(frame.caption)}</p>
+
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-300"
+                  style={{ width: `${((i + 1) / frames.length) * 100}%` }}
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {frames.map((f, idx) => (
+                  <button
+                    key={f.sortOrder}
+                    type="button"
+                    onClick={() => { setPlaying(false); setI(idx); }}
+                    aria-label={`${idx + 1}`}
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full transition ${idx === i ? 'bg-accent' : 'bg-white/20 hover:bg-white/40'}`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-base-100/40 p-8 text-center">
+              <p className="text-sm text-base-content/60">{t(guide.description)}</p>
+              <p className="mt-3 text-xs text-base-content/35">{t('Bu darsning interaktiv namoyishi tez orada qo‘shiladi.')}</p>
+            </div>
+          )}
+          </div>
         </div>
 
-        {hasFrames ? (
-          <>
-            <div className="mt-4 flex items-center justify-between text-xs text-base-content/45">
-              <span className="flex items-center gap-2">
-                {frame.kind === 'mock' && (
-                  <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide text-base-content/50">{t('Demo')}</span>
-                )}
-                {frame.section && (
-                  <span className="flex h-8 items-center rounded-full bg-accent/10 px-3.5 font-bold text-accent">{t(frame.section)}</span>
-                )}
-              </span>
-              <span className="font-semibold">{i + 1} / {frames.length}</span>
-            </div>
-            <GuideFrame frame={frame} className="mt-2" />
-            <p className="mt-3 min-h-[2.5em] text-[15px] leading-relaxed text-base-content/75">{t(frame.caption)}</p>
+        {/* ── Pastga mahkamlangan (sticky) boshqaruv paneli — oddiy va fullscreen rejimida ham doim ko'rinadi ── */}
+        {hasFrames && (
+          <div className="flex shrink-0 items-center justify-center gap-2 border-t border-white/10 bg-base-200 p-4 sm:gap-3">
+            <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={prev} disabled={i === 0} title={t('Oldingi')} aria-label={t('Oldingi')}>{'⏮'}</button>
+            <button className="btn btn-circle h-14 w-14 bg-accent text-2xl text-accent-content hover:bg-accent/80" onClick={togglePlay} title={playing ? t('Pauza') : t('Ijro')} aria-label={playing ? t('Pauza') : t('Ijro')}>
+              {playing ? '⏸' : '▶'}
+            </button>
+            <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={next} disabled={i === frames.length - 1} title={t('Keyingi')} aria-label={t('Keyingi')}>{'⏭'}</button>
+            <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={restart} title={t('Qaytadan boshlash')} aria-label={t('Qaytadan boshlash')}>{'↺'}</button>
+            <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={toggleFullscreen} title={isFullscreen ? t("To'liq ekrandan chiqish") : t("To'liq ekran")} aria-label={isFullscreen ? t("To'liq ekrandan chiqish") : t("To'liq ekran")}>{isFullscreen ? '⛶' : '⛶'}</button>
+          </div>
+        )}
 
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-300"
-                style={{ width: `${((i + 1) / frames.length) * 100}%` }}
-              />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              {frames.map((f, idx) => (
-                <button
-                  key={f.sortOrder}
-                  type="button"
-                  onClick={() => { setPlaying(false); setI(idx); }}
-                  aria-label={`${idx + 1}`}
-                  className={`h-2.5 w-2.5 shrink-0 rounded-full transition ${idx === i ? 'bg-accent' : 'bg-white/20 hover:bg-white/40'}`}
-                />
-              ))}
-            </div>
-
-            <div className="mt-5 flex items-center justify-center gap-2 sm:gap-3">
-              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={prev} disabled={i === 0} title={t('Oldingi')} aria-label={t('Oldingi')}>{'⏮'}</button>
-              <button className="btn btn-circle h-14 w-14 bg-accent text-2xl text-accent-content hover:bg-accent/80" onClick={togglePlay} title={playing ? t('Pauza') : t('Ijro')} aria-label={playing ? t('Pauza') : t('Ijro')}>
-                {playing ? '⏸' : '▶'}
-              </button>
-              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={next} disabled={i === frames.length - 1} title={t('Keyingi')} aria-label={t('Keyingi')}>{'⏭'}</button>
-              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={restart} title={t('Qaytadan boshlash')} aria-label={t('Qaytadan boshlash')}>{'↺'}</button>
-              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={goFullscreen} title={t("To'liq ekran")} aria-label={t("To'liq ekran")}>{'⛶'}</button>
-            </div>
-          </>
-        ) : (
-          <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-base-100/40 p-8 text-center">
-            <p className="text-sm text-base-content/60">{t(guide.description)}</p>
-            <p className="mt-3 text-xs text-base-content/35">{t('Bu darsning interaktiv namoyishi tez orada qo‘shiladi.')}</p>
+        {/* ── Resize dastagi — faqat desktop, fullscreen'da yashiringan ── */}
+        {!isFullscreen && (
+          <div
+            onMouseDown={startResize}
+            onPointerDown={startResize}
+            className="absolute bottom-0 right-0 z-10 hidden h-7 w-7 cursor-nwse-resize items-end justify-end p-1.5 text-white/30 hover:text-white/70 md:flex"
+            title={t("O'lchamini o'zgartirish")}
+            aria-hidden="true"
+          >
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M11 1L1 11M11 6L6 11M11 11L11 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
           </div>
         )}
       </div>

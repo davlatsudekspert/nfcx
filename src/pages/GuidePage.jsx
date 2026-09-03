@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
-import { GUIDES, GUIDE_TABS, GUIDE_CATEGORIES } from '../lib/guides.js';
+import { GUIDES, GUIDE_CATEGORIES } from '../lib/guides.js';
 import GuideCard from '../components/guides/GuideCard.jsx';
 import GuideViewer from '../components/guides/GuideViewer.jsx';
 
@@ -9,25 +9,25 @@ import GuideViewer from '../components/guides/GuideViewer.jsx';
 // datadan olinadi. Mavjud auth/profil/auksion/pricing logikasiga hech
 // qanday yozuv/ta'sir yo'q — faqat tayyor TIER_PRICE/TIER_LABEL'ni
 // (pricing.js) o'qib ko'rsatadi.
+//
+// MUHIM: yakuniy 6 ta dars endi hech qanday "Shaxsiy/Kompaniya" tab
+// ortida bo'linmaydi — barchasi bir vaqtda, bitta 3x2 grid'da ko'rinadi
+// (avval standart tab='shaxsiy' faqat 4 tasini ko'rsatardi, qolgan 2 tasi
+// faqat "Kompaniya profili" tabiga o'tgandagina ko'rinar edi — bu chalkash
+// va noto'g'ri edi).
 export default function GuidePage() {
   const { t } = useLanguage();
-  const [tab, setTab] = useState('shaxsiy');
   const [category, setCategory] = useState('all');
   const [q, setQ] = useState('');
   const [active, setActive] = useState(null); // ochiq GuideViewer uchun tanlangan dars
 
-  const visibleByTab = useMemo(
-    () => GUIDES.filter((g) => g.tab === tab || g.tab === 'both'),
-    [tab],
-  );
-
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return visibleByTab
+    return GUIDES
       .filter((g) => category === 'all' || g.category === category)
       .filter((g) => !query || g.title.toLowerCase().includes(query) || g.description.toLowerCase().includes(query))
       .sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [visibleByTab, category, q]);
+  }, [category, q]);
 
   return (
     <main className="qollanma-page mx-auto w-full max-w-[1800px] px-6 pb-20 sm:px-10 lg:px-14">
@@ -52,18 +52,6 @@ export default function GuidePage() {
             autoComplete="off"
             className="w-full bg-transparent px-2 py-3 text-sm outline-none"
           />
-        </div>
-
-        <div className="mx-auto mt-6 flex w-fit gap-1 rounded-full border border-white/10 bg-base-200/60 p-1">
-          {GUIDE_TABS.map((tb) => (
-            <button
-              key={tb.id}
-              onClick={() => setTab(tb.id)}
-              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${tab === tb.id ? 'bg-accent text-accent-content' : 'text-base-content/60 hover:text-base-content'}`}
-            >
-              {t(tb.label)}
-            </button>
-          ))}
         </div>
       </section>
 

@@ -1,5 +1,6 @@
 import { useLanguage } from '../../lib/i18n.jsx';
 import { GUIDE_CATEGORIES, guideDurationLabel } from '../../lib/guides.js';
+import GuideFrame from './GuideFrame.jsx';
 
 // Kategoriya bo'yicha katta ikonka — kartochkaning eng ko'zga tashlanadigan
 // belgilaridan biri (talab: 22-24px). Emoji ishlatamiz — qo'shimcha ikon
@@ -15,12 +16,12 @@ export default function GuideCard({ guide, onOpen }) {
   const { t } = useLanguage();
   const catLabel = GUIDE_CATEGORIES.find((c) => c.id === guide.category)?.label || guide.category;
   const catIcon = CATEGORY_ICON[guide.category] || '✦';
-  // Kartochka rasmi uchun — birinchi mavjud REAL frame'ni izlaymiz (ba'zi
-  // darslar 'mock' frame bilan boshlanadi, masalan NFC tegizish namoyishi —
-  // bunday holda ham karta hech qachon bo'sh/"Tez orada" ko'rinishida
-  // qolmasligi kerak, chunki har bir darsda kamida bitta real frame bor).
-  const thumb = guide.frames?.find((f) => f.kind === 'real');
-  const thumbSrc = thumb ? thumb.thumb || thumb.image : null;
+  // Kartochka rasmi — avval biror REAL frame'ni izlaymiz (eng tabiiy
+  // ko'rinish). Agar dars TO'LIQ mock bo'lsa (masalan Kompaniya tizimi
+  // darslari — production D1 Worker'da mahalliy sinovdan o'tkazib
+  // bo'lmaydi), birinchi frame — u mock bo'lsa ham — <GuideFrame> orqali
+  // jonli chizib ko'rsatamiz, shunda karta hech qachon bo'sh qolmaydi.
+  const thumbFrame = guide.frames?.find((f) => f.kind === 'real') || guide.frames?.[0] || null;
   const stepCount = guide.frames?.length || 0;
 
   return (
@@ -29,13 +30,18 @@ export default function GuideCard({ guide, onOpen }) {
       className="qollanma-card group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-base-200/60 text-left transition duration-200 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-[0_0_0_1px_rgba(201,162,39,0.35),0_18px_40px_-12px_rgba(201,162,39,0.25)]"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-base-100">
-        {thumbSrc && (
+        {thumbFrame && thumbFrame.kind === 'real' && (
           <img
-            src={thumbSrc}
+            src={thumbFrame.thumb || thumbFrame.image}
             alt=""
             loading="lazy"
             className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03]"
           />
+        )}
+        {thumbFrame && thumbFrame.kind === 'mock' && (
+          <div className="pointer-events-none h-full w-full transition duration-300 group-hover:scale-[1.03]">
+            <GuideFrame frame={thumbFrame} className="!rounded-none !border-0" />
+          </div>
         )}
         <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
           <span className="flex h-9 items-center gap-1.5 rounded-full bg-black/75 px-3.5 text-[13px] font-semibold text-white/90 backdrop-blur-sm">
