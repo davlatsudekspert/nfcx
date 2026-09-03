@@ -61,54 +61,62 @@ export default function GuideViewer({ guide, onClose }) {
       className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div ref={boxRef} className="qollanma-player my-8 w-full max-w-xl rounded-2xl border border-white/10 bg-base-200 p-5 shadow-2xl sm:my-0">
+      <div ref={boxRef} className="qollanma-player my-8 w-full max-w-2xl rounded-2xl border border-white/10 bg-base-200 p-5 shadow-2xl sm:my-0 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
-              <span className="flex h-7 items-center rounded-full border border-white/15 px-3 font-bold uppercase tracking-wide">{t(catLabel)}</span>
-              <span className="flex h-7 items-center gap-1 rounded-full border border-white/10 px-3">
+              <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide">{t(catLabel)}</span>
+              <span className="flex h-8 items-center gap-1.5 rounded-full border border-white/10 px-3.5">
                 <span className="text-base leading-none">{'⏱️'}</span> {t(guideDurationLabel(guide.durationMin))}
               </span>
             </div>
-            <h3 className="mt-2 text-lg font-bold leading-snug">{t(guide.title)}</h3>
+            <h3 className="mt-2 text-lg font-bold leading-snug sm:text-xl">{t(guide.title)}</h3>
           </div>
-          <button className="btn btn-ghost btn-sm btn-square shrink-0 text-xl" onClick={onClose} aria-label="close">&times;</button>
+          <button className="btn btn-ghost btn-square h-10 w-10 shrink-0 text-2xl" onClick={onClose} aria-label="close">&times;</button>
         </div>
 
         {hasFrames ? (
           <>
             <div className="mt-4 flex items-center justify-between text-xs text-base-content/45">
-              {frame.kind === 'mock' ? (
-                <span className="flex h-7 items-center rounded-full border border-white/15 px-3 font-bold uppercase tracking-wide text-base-content/50">{t('Demo')}</span>
-              ) : <span />}
+              <span className="flex items-center gap-2">
+                {frame.kind === 'mock' && (
+                  <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide text-base-content/50">{t('Demo')}</span>
+                )}
+                {frame.section && (
+                  <span className="flex h-8 items-center rounded-full bg-accent/10 px-3.5 font-bold text-accent">{t(frame.section)}</span>
+                )}
+              </span>
               <span className="font-semibold">{i + 1} / {frames.length}</span>
             </div>
-            <GuideFrame frame={frame} className="mt-1" />
-            <p className="mt-3 min-h-[2.5em] text-sm leading-relaxed text-base-content/75">{t(frame.caption)}</p>
+            <GuideFrame frame={frame} className="mt-2" />
+            <p className="mt-3 min-h-[2.5em] text-[15px] leading-relaxed text-base-content/75">{t(frame.caption)}</p>
 
-            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-accent transition-all duration-300"
                 style={{ width: `${((i + 1) / frames.length) * 100}%` }}
               />
             </div>
-            <div className="mt-2 flex items-center justify-center gap-1.5">
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               {frames.map((f, idx) => (
-                <span
+                <button
                   key={f.sortOrder}
-                  className={`h-1.5 w-1.5 rounded-full transition ${idx === i ? 'bg-accent' : 'bg-white/20'}`}
+                  type="button"
+                  onClick={() => { setPlaying(false); setI(idx); }}
+                  aria-label={`${idx + 1}`}
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full transition ${idx === i ? 'bg-accent' : 'bg-white/20 hover:bg-white/40'}`}
                 />
               ))}
             </div>
 
-            <div className="mt-4 flex items-center justify-center gap-2.5">
-              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={prev} disabled={i === 0} title={t('Oldingi')} aria-label={t('Oldingi')}>{'⏮'}</button>
-              <button className="btn btn-circle h-12 w-12 bg-accent text-xl text-accent-content hover:bg-accent/80" onClick={togglePlay} title={playing ? t('Pauza') : t('Ijro')} aria-label={playing ? t('Pauza') : t('Ijro')}>
+            <div className="mt-5 flex items-center justify-center gap-2 sm:gap-3">
+              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={prev} disabled={i === 0} title={t('Oldingi')} aria-label={t('Oldingi')}>{'⏮'}</button>
+              <button className="btn btn-circle h-14 w-14 bg-accent text-2xl text-accent-content hover:bg-accent/80" onClick={togglePlay} title={playing ? t('Pauza') : t('Ijro')} aria-label={playing ? t('Pauza') : t('Ijro')}>
                 {playing ? '⏸' : '▶'}
               </button>
-              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={next} disabled={i === frames.length - 1} title={t('Keyingi')} aria-label={t('Keyingi')}>{'⏭'}</button>
-              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={restart} title={t('Qaytadan boshlash')} aria-label={t('Qaytadan boshlash')}>{'↺'}</button>
-              <button className="btn btn-ghost btn-square h-11 w-11 text-xl" onClick={goFullscreen} title={t("To'liq ekran")} aria-label={t("To'liq ekran")}>{'⛶'}</button>
+              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={next} disabled={i === frames.length - 1} title={t('Keyingi')} aria-label={t('Keyingi')}>{'⏭'}</button>
+              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={restart} title={t('Qaytadan boshlash')} aria-label={t('Qaytadan boshlash')}>{'↺'}</button>
+              <button className="btn btn-ghost btn-square h-12 w-12 text-2xl" onClick={goFullscreen} title={t("To'liq ekran")} aria-label={t("To'liq ekran")}>{'⛶'}</button>
             </div>
           </>
         ) : (
