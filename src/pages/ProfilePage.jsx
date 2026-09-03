@@ -528,9 +528,24 @@ function PostsFeed({ posts, onLike, t }) {
 // Obunachilar / obunalar ro'yxati modali — har biri profilga link.
 function FollowListModal({ code, dir, onClose, t }) {
   const [list, setList] = useState(null);
+  const [error, setError] = useState(false);
+
   useEffect(() => {
-    dbFollowList(code, dir).then(setList).catch(() => setList([]));
+    setList(null);
+    setError(false);
+    let cancelled = false;
+    dbFollowList(code, dir)
+      .then((rows) => { if (!cancelled) setList(rows); })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
   }, [code, dir]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className="flex max-h-[80vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
@@ -539,9 +554,26 @@ function FollowListModal({ code, dir, onClose, t }) {
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)]">✕</button>
         </div>
         <div className="overflow-y-auto p-2">
-          {list === null && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Yuklanmoqda...')}</div>}
-          {list && list.length === 0 && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Ro‘yxat bo‘sh')}</div>}
-          {(list || []).map((m) => (
+          {list === null && !error && (
+            <div className="space-y-1 p-2" aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+                  <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-white/10" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 w-2/5 animate-pulse rounded bg-white/10" />
+                    <div className="h-2.5 w-1/3 animate-pulse rounded bg-white/5" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {error && (
+            <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">
+              {t("Ro'yxatni yuklab bo'lmadi. Qaytadan urinib ko'ring.")}
+            </div>
+          )}
+          {list && !error && list.length === 0 && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Ro‘yxat bo‘sh')}</div>}
+          {list && !error && list.map((m) => (
             <button
               key={m.code}
               onClick={() => { onClose(); navigate('/' + m.code); }}
@@ -1264,16 +1296,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         </div>
         {followStats && (
           <div className="mt-2 flex items-center gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
-            <button
-              onClick={() => followStats.followers > 0 && setFollowListDir('followers')}
-              className={`${followStats.followers > 0 ? 'cursor-pointer hover:text-[color:var(--vz-ink)]' : ''}`}
-            >
+            <button type="button" onClick={() => setFollowListDir('followers')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
               <b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}
             </button>
-            <button
-              onClick={() => followStats.following > 0 && setFollowListDir('following')}
-              className={`${followStats.following > 0 ? 'cursor-pointer hover:text-[color:var(--vz-ink)]' : ''}`}
-            >
+            <button type="button" onClick={() => setFollowListDir('following')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
               <b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}
             </button>
             <button

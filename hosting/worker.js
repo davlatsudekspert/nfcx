@@ -292,6 +292,21 @@ function companyPricing(id, rule) {
   return { tier, price };
 }
 
+// Mirrors src/lib/access.js MENU_LIMITS/PRODUCT_LIMITS exactly — duplicated
+// here (not imported) for the same reason as the Payme personal-pricing
+// mirror above: this file is deployed standalone, with zero `import`
+// statements, straight from the Cloudflare dashboard "Edit Code" editor.
+const MENU_LIMITS_DEFAULT = {
+  free: { cat: 0, item: 0, images: false }, silver: { cat: 1, item: 15, images: false },
+  gold: { cat: 8, item: 100, images: true }, premium: { cat: 20, item: 300, images: true },
+  exclusive: { cat: 999, item: 9999, images: true },
+};
+const PRODUCT_LIMITS_DEFAULT = {
+  free: { cat: 0, item: 0, images: false }, silver: { cat: 1, item: 15, images: false },
+  gold: { cat: 8, item: 100, images: true }, premium: { cat: 20, item: 300, images: true },
+  exclusive: { cat: 999, item: 9999, images: true },
+};
+
 // NOTE: these used to `fetch()` https://nfcstore.uz/api/auth|admin/me — that
 // was the Railway backend, now shut down (and even before that, calling out
 // to the Worker's own public domain risked Cloudflare's same-zone loop
@@ -721,6 +736,18 @@ function newToken(bytes = 32) {
   return toHex(crypto.getRandomValues(new Uint8Array(bytes)));
 }
 
+// Used to store admin session tokens and Telegram-2FA OTP codes AT REST as
+// a hash, never the raw value — a D1 read/backup leak alone then never
+// yields a directly-usable session token or OTP. SHA-256 (not a slow
+// password hash) is the right tool here: both inputs are either
+// high-entropy random tokens (brute-forcing a preimage is infeasible
+// regardless of hash speed) or short-lived, attempt-rate-limited 6-digit
+// codes (the rate limit is the real defense, not hash cost).
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return toHex(new Uint8Array(digest));
+}
+
 // ---------- scrypt (RFC 7914) — bit-exact with Node's crypto.scryptSync ----------
 // Only reason this exists: server/auth.js hashed every migrated password
 // with `crypto.scryptSync(password, salt, 64)` (N=16384, r=8, p=1,
@@ -907,13 +934,22 @@ async function hotp(secretBytes, counter) {
   return String(code % 1_000_000).padStart(6, '0');
 }
 
-async function totpVerify({ secret, token }) {
+// `afterCounter` — replay guard: when given (the admin's last-ACCEPTED
+// TOTP time-step, persisted in admins.totp_last_counter), a step at or
+// before it is never accepted, even if the 6-digit code matches — so the
+// exact same code (or an older one still inside the ±1 step window)
+// cannot be replayed a second time. Callers MUST persist the returned
+// `counter` back to admins.totp_last_counter on a valid result, or this
+// guard has no effect on the next call.
+async function totpVerify({ secret, token, afterCounter }) {
   const clean = String(token || '').trim();
   if (!/^\d{6}$/.test(clean)) return { valid: false };
   const secretBytes = base32Decode(secret);
-  const counter = Math.floor(Date.now() / 1000 / 30);
+  const nowCounter = Math.floor(Date.now() / 1000 / 30);
   for (const delta of [0, -1, 1]) {
-    if ((await hotp(secretBytes, counter + delta)) === clean) return { valid: true, delta };
+    const counter = nowCounter + delta;
+    if (afterCounter != null && counter <= afterCounter) continue;
+    if ((await hotp(secretBytes, counter)) === clean) return { valid: true, counter };
   }
   return { valid: false };
 }
@@ -924,6 +960,13 @@ async function totpVerify({ secret, token }) {
 let coreSchemaReady;
 async function ensureCoreSchema(env) {
   if (!env.DB) throw new Error('d1_unavailable');
+  // Admin auth's own tables/columns are ensured FIRST and independently of
+  // the shared batch below — see ensureAdminAuthTables()'s comment. This
+  // order matters: if these ran after `await coreSchemaReady`, a rejected
+  // batch would throw right there and they'd never be reached at all,
+  // defeating the whole point of decoupling them.
+  await ensureAdminAuthTables(env);
+  await ensureTotpReplayColumn(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -1000,17 +1043,9 @@ async function ensureCoreSchema(env) {
         "id" INTEGER PRIMARY KEY DEFAULT 1 NOT NULL, "balance" INTEGER DEFAULT 0 NOT NULL, CHECK(("id" = 1))
       )`),
       env.DB.prepare(`INSERT OR IGNORE INTO "platform_wallet" ("id", "balance") VALUES (1, 0)`),
-      // New — the old server kept admin sessions and pending-2FA state in an
-      // in-memory Map, which does not exist as shared state across Worker
-      // invocations. Persisted in D1 instead.
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admin_sessions" (
-        "token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "role" TEXT NOT NULL,
-        "abs_exp" TEXT NOT NULL, "last_activity" TEXT NOT NULL
-      )`),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admin_2fa_pending" (
-        "temp_token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "method" TEXT NOT NULL,
-        "code" TEXT, "expires_at" TEXT NOT NULL
-      )`),
+      // admin_sessions / admin_2fa_pending / admin_totp_setup_pending are
+      // deliberately NOT in this batch — see ensureAdminAuthTables() below
+      // for why (2026-09: production 503 root-cause fix).
       // Sayt buyurtmalari (Payme Phase 2B) — db/d1-migration/0001-schema.sql
       // orqali ALLAQACHON import qilingan production D1'da bu jadval mavjud;
       // shu IF NOT EXISTS boshqa jadvallar bilan bir xil naqsh bo'yicha
@@ -1070,6 +1105,89 @@ async function ensureCoreSchema(env) {
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
   await coreSchemaReady;
+}
+
+// admin_sessions / admin_2fa_pending / admin_totp_setup_pending — pulled
+// OUT of the shared ensureCoreSchema batch above and given their own
+// independent, individually-caught statements (2026-09 production 503
+// root-cause fix: POST /api/admin/verify-2fa was throwing from D1 at the
+// `INSERT INTO admin_sessions` line — confirmed NOT a "the whole batch
+// never runs" problem, since adminAuthApi's own earlier statements ran
+// fine first; see the actual root cause in point 2). Two reasons for the
+// split:
+//   1) These statements now run, and get a chance to self-heal (see the
+//      ALTER loop below) every time `ensureCoreSchema` is called, BEFORE
+//      the shared batch — so admin auth keeps working, and stays fixed,
+//      even on a request where the shared batch fails for a reason that
+//      has nothing to do with it (that request still 503s from
+//      `ensureCoreSchema` itself for its OWN routes, same as before — but
+//      it no longer stops D1 from permanently repairing admin_sessions'
+//      shape once, which is what actually matters for the next login).
+//   2) These three tables have ZERO presence in db/d1-migration/0001-schema.sql
+//      — unlike users/cards/admins/etc., the old Express server kept
+//      admin sessions and pending-2FA state in an in-memory Map, never in
+//      Postgres. So their real production shape was decided entirely by
+//      whichever code first created them there (possibly an earlier,
+//      manually-pasted dashboard version, predating this exact column
+//      set) — `CREATE TABLE IF NOT EXISTS` is a permanent no-op against
+//      whatever already exists, so it can never repair a shape mismatch.
+//      The ALTER TABLE loop below is the actual repair: it adds any of
+//      this code's expected columns that a pre-existing, differently-
+//      shaped table is missing, WITHOUT touching any existing column or
+//      row — self-healing, and safe to run against real production data
+//      every time (steady state after the first successful run is
+//      "duplicate column name" on every statement, caught and ignored,
+//      same as ensureTotpReplayColumn above).
+let adminAuthTablesReady;
+async function ensureAdminAuthTables(env) {
+  if (!adminAuthTablesReady) {
+    adminAuthTablesReady = (async () => {
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admin_sessions" (
+        "token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "role" TEXT NOT NULL,
+        "abs_exp" TEXT NOT NULL, "last_activity" TEXT NOT NULL
+      )`).run().catch(() => {});
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admin_2fa_pending" (
+        "temp_token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "method" TEXT NOT NULL,
+        "code" TEXT, "attempts" INTEGER DEFAULT 0 NOT NULL, "expires_at" TEXT NOT NULL
+      )`).run().catch(() => {});
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admin_totp_setup_pending" (
+        "admin_id" INTEGER PRIMARY KEY NOT NULL, "secret" TEXT NOT NULL, "created_at" TEXT NOT NULL
+      )`).run().catch(() => {});
+      for (const stmt of [
+        `ALTER TABLE admin_sessions ADD COLUMN admin_id INTEGER`,
+        `ALTER TABLE admin_sessions ADD COLUMN role TEXT`,
+        `ALTER TABLE admin_sessions ADD COLUMN abs_exp TEXT`,
+        `ALTER TABLE admin_sessions ADD COLUMN last_activity TEXT`,
+        `ALTER TABLE admin_2fa_pending ADD COLUMN admin_id INTEGER`,
+        `ALTER TABLE admin_2fa_pending ADD COLUMN method TEXT`,
+        `ALTER TABLE admin_2fa_pending ADD COLUMN code TEXT`,
+        `ALTER TABLE admin_2fa_pending ADD COLUMN attempts INTEGER`,
+        `ALTER TABLE admin_2fa_pending ADD COLUMN expires_at TEXT`,
+        `ALTER TABLE admin_totp_setup_pending ADD COLUMN secret TEXT`,
+        `ALTER TABLE admin_totp_setup_pending ADD COLUMN created_at TEXT`,
+      ]) {
+        await env.DB.prepare(stmt).run().catch(() => {});
+      }
+    })();
+  }
+  await adminAuthTablesReady;
+}
+
+// TOTP replay-protection column — added via a genuine ALTER TABLE (not the
+// batch above) because `CREATE TABLE IF NOT EXISTS "admins" (...)` is a
+// no-op on the REAL, already-populated production `admins` table: it would
+// never actually add this column there. Run once per Worker isolate,
+// caught defensively — "duplicate column name" (the column already
+// exists, e.g. in production after this ships) is the expected steady
+// state, not an error; any OTHER failure still surfaces (not swallowed
+// forever) because `totpColumnReady` only caches the settled promise, not
+// a blanket "never try again" flag across isolates.
+let totpColumnReady;
+async function ensureTotpReplayColumn(env) {
+  if (!totpColumnReady) {
+    totpColumnReady = env.DB.prepare(`ALTER TABLE admins ADD COLUMN totp_last_counter INTEGER`).run().catch(() => {});
+  }
+  await totpColumnReady;
 }
 
 // ---------- cookies ----------
@@ -1140,24 +1258,56 @@ async function getCurrentUser(request, env) {
 async function getCurrentAdmin(request, env) {
   const token = parseCookies(request)[ADMIN_COOKIE];
   if (!token) return null;
-  const row = await env.DB.prepare(`SELECT admin_id AS adminId, role, abs_exp AS absExp, last_activity AS lastActivity FROM admin_sessions WHERE token = ?`).bind(token).first();
+  // admin_sessions.token stores SHA-256(raw token), never the raw value —
+  // the cookie is the only place the raw token ever exists after issuance.
+  const tokenHash = await sha256Hex(token);
+  const row = await env.DB.prepare(`SELECT admin_id AS adminId, role, abs_exp AS absExp, last_activity AS lastActivity FROM admin_sessions WHERE token = ?`).bind(tokenHash).first();
   if (!row) return null;
   const now = Date.now();
   if (now > new Date(row.absExp).getTime()) {
-    await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(token).run();
+    await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(tokenHash).run();
     return null;
   }
   if (now - new Date(row.lastActivity).getTime() > ADMIN_IDLE_MS) {
-    await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(token).run();
+    await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(tokenHash).run();
     return { idleTimeout: true };
   }
-  await env.DB.prepare(`UPDATE admin_sessions SET last_activity = ? WHERE token = ?`).bind(nowTs(), token).run();
+  await env.DB.prepare(`UPDATE admin_sessions SET last_activity = ? WHERE token = ?`).bind(nowTs(), tokenHash).run();
   return { adminId: row.adminId, role: row.role, token };
+}
+
+// IP Whitelist — yoqilgan bo'lsa, faqat ro'yxatdagi IP'lardan (aniq
+// CF-Connecting-IP, spoof qilib bo'lmaydigan Cloudflare edge sarlavhasi)
+// admin panelga kirishga ruxsat. server/admin.js'dagi checkIpWhitelist
+// bilan AYNAN bir xil qoida (shu jumladan xatolik bo'lsa fail-OPEN —
+// adminni butunlay qulflab qo'ymaslik uchun ataylab shunday). Har bir
+// himoyalangan so'rovda (requireAdmin orqali) VA to'g'ridan-to'g'ri
+// /login, /verify-2fa'da ham chaqiriladi — bir marta sessiya ochilgach
+// keyingi har bir amalda ham qayta tekshiriladi, xuddi legacy kabi.
+//
+// XAVFSIZ TIKLASH: agar o'zingiz (dinamik IP tufayli) bloklanib qolsangiz,
+// nfcstore-api Worker'ga (Cloudflare Dashboard → Settings → Variables)
+// ADMIN_IP_WHITELIST_BYPASS=true muhit o'zgaruvchisini vaqtincha qo'shing.
+async function checkIpWhitelist(request, env, ip) {
+  if (env.ADMIN_IP_WHITELIST_BYPASS === 'true') return true;
+  try {
+    const setting = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'ip_whitelist_enabled'`).first();
+    if (setting?.value !== 'true') return true;
+    const rows = await env.DB.prepare(`SELECT 1 FROM admin_ip_whitelist WHERE ip = ?`).bind(ip).first();
+    // Ro'yxat butunlay bo'sh bo'lsa hali cheklamaymiz — legacy bilan bir xil
+    // ("hech kim qo'shmagan holda o'zini-o'zi qulflab qo'yish" xavfidan saqlaydi).
+    const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM admin_ip_whitelist`).first();
+    if (Number(count?.n || 0) === 0) return true;
+    return !!rows;
+  } catch {
+    return true; // xatolik bo'lsa adminni butunlay qulflab qo'ymaymiz
+  }
 }
 
 async function requireAdmin(request, env) {
   const admin = await getCurrentAdmin(request, env);
   if (!admin || admin.idleTimeout) return null;
+  if (!(await checkIpWhitelist(request, env, reqIp(request)))) return null;
   return admin;
 }
 
@@ -1831,7 +1981,7 @@ export {
 
 // production-drift integration: exposed for scripts/production-worker-parity-test.mjs.
 export {
-  uploadApi, serveUpload, putUploadR2, parseUploadRange, followApi, publicContentApi,
+  uploadApi, serveUpload, putUploadR2, parseUploadRange, followApi, publicContentApi, hashPassword,
 };
 
 // nfcstore.uz'dagi mavjud sahifa yo'llari bilan to'qnashmasligi uchun —
@@ -2414,6 +2564,27 @@ function loginRateLimited(ip) {
   return false;
 }
 
+// Telegram OTP as an OPT-IN alternative to TOTP during the 2FA step (NOT
+// automatic, NOT IP/location-based — only ever sent when the admin
+// explicitly clicks "Telegram orqali kod olish" on the 2FA screen; see
+// POST /api/admin/2fa/telegram/send below). TOTP stays the primary/
+// default method — this never disables or replaces it.
+async function sendTelegramMessage(env, text) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_CHAT_ID) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: env.ADMIN_CHAT_ID, text, parse_mode: 'HTML' }),
+    });
+    const data = await res.json().catch(() => null);
+    return !!data?.ok;
+  } catch {
+    return false;
+  }
+}
+const TELEGRAM_OTP_MAX_ATTEMPTS = 5;
+
 // ---------- admin: auth ----------
 
 async function adminAuthApi(request, env, url) {
@@ -2435,23 +2606,59 @@ async function adminAuthApi(request, env, url) {
       await logAdminLoginEvent(env, 'bad_password', ip, request.headers.get('user-agent'));
       return json({ error: 'bad_credentials' }, 401);
     }
+    if (!(await checkIpWhitelist(request, env, ip))) {
+      await logAdminLoginEvent(env, 'ip_blocked', ip, request.headers.get('user-agent'));
+      return json({ error: 'ip_not_whitelisted' }, 403);
+    }
     if (admin.totp_enabled && admin.totp_secret) {
       const tempToken = newToken(24);
       await env.DB.prepare(`INSERT INTO admin_2fa_pending (temp_token, admin_id, method, expires_at) VALUES (?, ?, 'totp', ?)`)
         .bind(tempToken, admin.id, new Date(Date.now() + 5 * 60_000).toISOString()).run();
       return json({ ok: true, twoFactor: true, method: 'totp', tempToken });
     }
-    // TOTP not set up yet, and the Telegram-OTP fallback needs the bot
-    // webhook (not ported yet — see task list): log the admin straight in
-    // so the panel is usable, and surface a strong nudge to enable TOTP
-    // immediately via /api/admin/2fa/totp/setup (pure crypto, no bot
-    // needed). This is intentionally temporary — tracked as follow-up work.
+    // TOTP not set up yet, and Telegram-OTP is only ever offered as an
+    // opt-in choice ON the 2FA screen (see /2fa/telegram/send) — there's
+    // no 2FA screen to offer it from here, so log the admin straight in
+    // and surface a strong nudge to enable TOTP immediately via
+    // /api/admin/2fa/totp/setup. This is intentionally temporary —
+    // tracked as follow-up work.
     const token = newToken();
     const now = new Date();
     await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
-      .bind(token, admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
+      .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
     await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
     return jsonWithCookie({ ok: true, totpSetupRecommended: true }, 200, adminCookieHeader(token, secure));
+  }
+
+  // Opt-in Telegram OTP — ONLY reachable by an admin who already passed
+  // password + has a live pending 2FA session (tempToken from /login), and
+  // ONLY ever sent when they explicitly click "Telegram orqali kod olish"
+  // on the 2FA screen. TOTP remains the default/primary method; this never
+  // fires automatically (no IP/location heuristics). Overwrites whatever
+  // was pending for this tempToken (any earlier Telegram OTP for it is
+  // immediately invalidated — there is only ever one live code per
+  // pending login), and stores the code as a SHA-256 hash, never raw.
+  if (path === '/api/admin/2fa/telegram/send' && request.method === 'POST') {
+    if (loginRateLimited(ip)) return json({ error: 'too_many_requests' }, 429);
+    const body = await request.json().catch(() => ({}));
+    const tempToken = String(body.tempToken || '');
+    const pending = await env.DB.prepare(`SELECT * FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).first();
+    if (!pending || new Date(pending.expires_at) < new Date()) {
+      if (pending) await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+      return json({ error: 'expired' }, 401);
+    }
+    if (!(await checkIpWhitelist(request, env, ip))) {
+      await logAdminLoginEvent(env, 'ip_blocked', ip, request.headers.get('user-agent'));
+      return json({ error: 'ip_not_whitelisted' }, 403);
+    }
+    if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_CHAT_ID) return json({ error: 'telegram_not_configured' }, 503);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = await sha256Hex(code);
+    await env.DB.prepare(`UPDATE admin_2fa_pending SET method = 'telegram', code = ?, attempts = 0, expires_at = ? WHERE temp_token = ?`)
+      .bind(codeHash, new Date(Date.now() + 5 * 60_000).toISOString(), tempToken).run();
+    const sent = await sendTelegramMessage(env, `🔐 Admin panelga kirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 5 daqiqa ichida amal qiladi.`);
+    if (!sent) return json({ error: 'tg_send_failed' }, 503);
+    return json({ ok: true, method: 'telegram' });
   }
 
   if (path === '/api/admin/verify-2fa' && request.method === 'POST') {
@@ -2464,24 +2671,53 @@ async function adminAuthApi(request, env, url) {
       if (pending) await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
       return json({ error: 'expired' }, 401);
     }
+    if (!(await checkIpWhitelist(request, env, ip))) {
+      await logAdminLoginEvent(env, 'ip_blocked', ip, request.headers.get('user-agent'));
+      return json({ error: 'ip_not_whitelisted' }, 403);
+    }
     const admin = await env.DB.prepare(`SELECT * FROM admins WHERE id = ?`).bind(pending.admin_id).first();
-    const result = admin?.totp_secret ? await totpVerify({ secret: admin.totp_secret, token: code }) : { valid: false };
-    if (!result.valid) {
+    let valid = false;
+    let totpCounter = null;
+    if (pending.method === 'telegram') {
+      // Attempt limit is per pending record — a fresh /2fa/telegram/send
+      // resets it to 0, so this only ever throttles repeated guesses
+      // against ONE still-live code, not the admin's login attempts as a
+      // whole (loginRateLimited above already covers that).
+      if (Number(pending.attempts || 0) >= TELEGRAM_OTP_MAX_ATTEMPTS) {
+        await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+        return json({ error: 'expired' }, 401);
+      }
+      valid = pending.code && (await sha256Hex(code)) === pending.code;
+      if (!valid) await env.DB.prepare(`UPDATE admin_2fa_pending SET attempts = ? WHERE temp_token = ?`).bind(Number(pending.attempts || 0) + 1, tempToken).run();
+    } else if (admin?.totp_secret) {
+      const result = await totpVerify({ secret: admin.totp_secret, token: code, afterCounter: admin.totp_last_counter });
+      valid = result.valid;
+      totpCounter = result.counter ?? null;
+    }
+    if (!valid) {
       await logAdminLoginEvent(env, 'bad_2fa', ip, request.headers.get('user-agent'));
       return json({ error: 'bad_code' }, 401);
     }
     await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+    if (totpCounter != null) {
+      // Persist the accepted time-step BEFORE anything else can race it —
+      // the exact same 6-digit code (or an older one inside the ±1 step
+      // window) can never be replayed for a second login after this.
+      // Telegram codes need no equivalent: DELETE above already makes the
+      // just-used code single-use (and a fresh /send is required for another).
+      await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run();
+    }
     const token = newToken();
     const now = new Date();
     await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
-      .bind(token, admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
+      .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
     await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
     return jsonWithCookie({ ok: true }, 200, adminCookieHeader(token, secure));
   }
 
   if (path === '/api/admin/logout' && request.method === 'POST') {
     const token = parseCookies(request)[ADMIN_COOKIE];
-    if (token) await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(token).run();
+    if (token) await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(await sha256Hex(token)).run();
     await logAdminLoginEvent(env, 'logout', ip, request.headers.get('user-agent'));
     return jsonWithCookie({ ok: true }, 200, clearedAdminCookieHeader(secure));
   }
@@ -2758,6 +2994,118 @@ async function adminCoreApi(request, env, url, admin) {
     return json({ ok: true });
   }
 
+  // ---------- production-drift/admin-501 audit — GROUP A (read-only) ----------
+  if (path === '/api/admin/manual-adjustments' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT t.id, t.user_id, u.email, t.amount, t.note, t.created_at FROM transactions t
+      LEFT JOIN users u ON u.id = t.user_id WHERE t.kind = 'admin_adjust' ORDER BY t.created_at DESC LIMIT 50`).all();
+    return json({ adjustments: (rows.results || []).map((r) => ({ id: r.id, userId: r.user_id, email: r.email, amount: Number(r.amount), note: r.note, createdAt: r.created_at })) });
+  }
+
+  if (path === '/api/admin/verified-cards' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT code, name, role, profile_type FROM cards WHERE verified = 1 ORDER BY name`).all();
+    return json({ cards: (rows.results || []).map((r) => ({ code: r.code, name: r.name, role: r.role, profileType: r.profile_type })) });
+  }
+
+  const adminRecordMatch = path.match(/^\/api\/admin\/records\/([A-Za-z0-9]+)$/);
+  if (adminRecordMatch && request.method === 'GET') {
+    const rec = await getRecord(env, adminRecordMatch[1].toUpperCase());
+    if (!rec) return json({ error: 'not_found' }, 404);
+    return json({ code: rec.code, name: rec.name, role: rec.role, verified: !!rec.verified, profileType: rec.profileType, views: rec.views });
+  }
+
+  // "Kompaniyalar" tabining "Eski tizim" (deprecated) qismi — server/admin.js
+  // bilan AYNAN bir xil manba: alohida jadval EMAS, `cards.profile_type =
+  // 'business'` yozuvlari (Company System — Faz 0 audit qarori). Bu YANGI
+  // `companies` jadvali (company_id, approval workflow, /api/companies*)
+  // bilan ARALASHTIRILMAYDI — frontend o'zi ham buni "Eski tizim"/"Eski
+  // biznes profillar" deb belgilaydi (COMPANY_SUBTABS).
+  if (path === '/api/admin/companies/stats' && request.method === 'GET') {
+    const row = await env.DB.prepare(`SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN hidden_from_directory = 0 THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN hidden_from_directory = 1 THEN 1 ELSE 0 END) AS suspended,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code) THEN 1 ELSE 0 END) AS with_menu,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code) THEN 1 ELSE 0 END) AS with_products,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code)
+                  AND EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code) THEN 1 ELSE 0 END) AS with_both
+      FROM cards WHERE profile_type = 'business'`).first();
+    return json({
+      total: Number(row?.total || 0), active: Number(row?.active || 0), suspended: Number(row?.suspended || 0),
+      withMenu: Number(row?.with_menu || 0), withProducts: Number(row?.with_products || 0), withBoth: Number(row?.with_both || 0),
+    });
+  }
+
+  if (path === '/api/admin/companies/activity-log' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT id, action, details, old_value, new_value, ip, created_at FROM admin_activity_log
+      WHERE action IN ('company_suspended','company_activated','company_tier_set','company_limits_changed','company_limits_reset','physical_nfc_pricing_changed','delivery_days_changed')
+      ORDER BY created_at DESC LIMIT 200`).all();
+    return json({ log: (rows.results || []).map((r) => ({ id: r.id, action: r.action, details: r.details, oldValue: r.old_value, newValue: r.new_value, ip: r.ip, createdAt: r.created_at })) });
+  }
+
+  const OLD_COMPANY_SELECT = `c.code, c.name, c.role, c.city, c.category_slug AS categorySlug,
+    c.tier_override AS tierOverride, c.verified, c.ts, c.hidden_from_directory AS hiddenFromDirectory,
+    c.phone, c.email, c.about,
+    u.id AS ownerId, u.email AS ownerEmail, u.phone AS ownerPhone, u.is_premium AS ownerIsPremium,
+    (SELECT COUNT(*) FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS isGift,
+    (SELECT COUNT(*) FROM menu_categories mc WHERE mc.code = c.code) AS menuCatCount,
+    (SELECT COUNT(*) FROM menu_items mi WHERE mi.code = c.code) AS menuItemCount,
+    (SELECT COUNT(*) FROM product_categories pc WHERE pc.code = c.code) AS productCatCount,
+    (SELECT COUNT(*) FROM products p WHERE p.code = c.code) AS productItemCount,
+    (SELECT COUNT(*) FROM card_team tm WHERE tm.code = c.code) AS teamCount
+    FROM cards c LEFT JOIN users u ON u.id = c.user_id WHERE c.profile_type = 'business'`;
+  function oldCompanyRow(r) {
+    return {
+      code: r.code, name: r.name, role: r.role, city: r.city, categorySlug: r.categorySlug,
+      tierOverride: r.tierOverride, verified: !!r.verified, ts: Number(r.ts), hiddenFromDirectory: !!r.hiddenFromDirectory,
+      phone: r.phone, email: r.email, about: r.about, ownerId: r.ownerId, ownerEmail: r.ownerEmail,
+      ownerPhone: r.ownerPhone, ownerIsPremium: !!r.ownerIsPremium, isGift: !!r.isGift,
+      menuCatCount: Number(r.menuCatCount || 0), menuItemCount: Number(r.menuItemCount || 0),
+      productCatCount: Number(r.productCatCount || 0), productItemCount: Number(r.productItemCount || 0),
+      teamCount: Number(r.teamCount || 0),
+    };
+  }
+  if (path === '/api/admin/companies' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT ${OLD_COMPANY_SELECT} ORDER BY c.ts DESC LIMIT 300`).all();
+    return json({ companies: (rows.results || []).map(oldCompanyRow) });
+  }
+  const oldCompanyMatch = path.match(/^\/api\/admin\/companies\/([A-Za-z0-9]+)$/);
+  if (oldCompanyMatch && request.method === 'GET') {
+    const row = await env.DB.prepare(`SELECT ${OLD_COMPANY_SELECT} AND c.code = ?`).bind(oldCompanyMatch[1].toUpperCase()).first();
+    if (!row) return json({ error: 'not_found' }, 404);
+    return json(oldCompanyRow(row));
+  }
+
+  if (path === '/api/admin/company-settings' && request.method === 'GET') {
+    const mergeLimits = (defaults, override) => {
+      const out = {};
+      for (const tier of ['free', 'silver', 'gold', 'premium', 'exclusive']) {
+        const d = defaults[tier]; const o = (override && override[tier]) || {};
+        out[tier] = {
+          cat: Number.isFinite(Number(o.cat)) && Number(o.cat) >= 0 ? Number(o.cat) : d.cat,
+          item: Number.isFinite(Number(o.item)) && Number(o.item) >= 0 ? Number(o.item) : d.item,
+          images: typeof o.images === 'boolean' ? o.images : d.images,
+          isCustom: Object.prototype.hasOwnProperty.call(override || {}, tier),
+        };
+      }
+      return out;
+    };
+    const parseSetting = (text, fallback) => { if (text == null || text === '') return fallback; try { return JSON.parse(text); } catch { return fallback; } };
+    const [menuRow, productRow, tiersRow, deliveryRow] = await Promise.all([
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'menu_limits'`).first(),
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'product_limits'`).first(),
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'physical_nfc_pricing'`).first(),
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'delivery_days'`).first(),
+    ]);
+    return json({
+      menuLimits: mergeLimits(MENU_LIMITS_DEFAULT, parseSetting(menuRow?.value, null)),
+      productLimits: mergeLimits(PRODUCT_LIMITS_DEFAULT, parseSetting(productRow?.value, null)),
+      physicalNfcTiers: parseSetting(tiersRow?.value, [
+        { minQty: 1, maxQty: 9, pricePerUnit: 120000 }, { minQty: 10, maxQty: 49, pricePerUnit: 95000 }, { minQty: 50, maxQty: null, pricePerUnit: 75000 },
+      ]),
+      delivery: parseSetting(deliveryRow?.value, { minDays: 3, maxDays: 5 }),
+    });
+  }
+
   if (path === '/api/admin/users' && request.method === 'GET') {
     const rows = await env.DB.prepare(
       `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test,
@@ -2830,25 +3178,47 @@ async function adminCoreApi(request, env, url, admin) {
     return json({ history: (rows.results || []).map((r) => ({ id: r.id, event: r.event, ip: r.ip, userAgent: r.user_agent, createdAt: r.created_at })) });
   }
 
-  // ---------- 2FA (TOTP) setup — pure crypto, no bot dependency ----------
+  // ---------- 2FA (TOTP / Google Authenticator) setup — pure crypto, no
+  // bot dependency. The new secret is staged in admin_totp_setup_pending,
+  // NOT written to admins.totp_secret, until /confirm proves the admin
+  // can produce a code for it. Calling /setup again (a re-scan, or a
+  // mistaken click) never disturbs the secret an already-enrolled admin's
+  // authenticator app is still using for real logins. ----------
+  if (path === '/api/admin/2fa/totp/status' && request.method === 'GET') {
+    const row = await env.DB.prepare(`SELECT totp_enabled FROM admins WHERE id = ?`).bind(admin.adminId).first();
+    return json({ enabled: !!row?.totp_enabled });
+  }
   if (path === '/api/admin/2fa/totp/setup' && request.method === 'POST') {
     const secret = generateTotpSecret();
     const row = await env.DB.prepare(`SELECT phone FROM admins WHERE id = ?`).bind(admin.adminId).first();
-    await env.DB.prepare(`UPDATE admins SET totp_secret = ? WHERE id = ?`).bind(secret, admin.adminId).run();
+    await env.DB.prepare(`INSERT INTO admin_totp_setup_pending (admin_id, secret, created_at) VALUES (?, ?, ?)
+      ON CONFLICT(admin_id) DO UPDATE SET secret = excluded.secret, created_at = excluded.created_at`)
+      .bind(admin.adminId, secret, nowTs()).run();
+    // `secret` is returned ONCE, here, for the QR/manual-key display —
+    // never persisted anywhere the UI can re-fetch it later, and never
+    // logged (logAdminActivity below only records the *event*, not this
+    // value).
     return json({ secret, otpauth: totpAuthUri(secret, row.phone, 'NFCSTORE Admin') });
   }
   if (path === '/api/admin/2fa/totp/confirm' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
-    const row = await env.DB.prepare(`SELECT totp_secret FROM admins WHERE id = ?`).bind(admin.adminId).first();
-    if (!row?.totp_secret) return json({ error: 'not_set_up' }, 422);
-    const result = await totpVerify({ secret: row.totp_secret, token: String(body.code || '').trim() });
+    const pending = await env.DB.prepare(`SELECT secret FROM admin_totp_setup_pending WHERE admin_id = ?`).bind(admin.adminId).first();
+    if (!pending?.secret) return json({ error: 'not_set_up' }, 422);
+    const result = await totpVerify({ secret: pending.secret, token: String(body.code || '').trim() });
     if (!result.valid) return json({ error: 'bad_code' }, 401);
-    await env.DB.prepare(`UPDATE admins SET totp_enabled = 1 WHERE id = ?`).bind(admin.adminId).run();
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE admins SET totp_secret = ?, totp_enabled = 1, totp_last_counter = ? WHERE id = ?`)
+        .bind(pending.secret, result.counter, admin.adminId),
+      env.DB.prepare(`DELETE FROM admin_totp_setup_pending WHERE admin_id = ?`).bind(admin.adminId),
+    ]);
     await logAdminActivity(env, { action: 'totp_enabled', ip });
     return json({ ok: true });
   }
   if (path === '/api/admin/2fa/totp/disable' && request.method === 'POST') {
-    await env.DB.prepare(`UPDATE admins SET totp_enabled = 0, totp_secret = NULL WHERE id = ?`).bind(admin.adminId).run();
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE admins SET totp_enabled = 0, totp_secret = NULL, totp_last_counter = NULL WHERE id = ?`).bind(admin.adminId),
+      env.DB.prepare(`DELETE FROM admin_totp_setup_pending WHERE admin_id = ?`).bind(admin.adminId),
+    ]);
     await logAdminActivity(env, { action: 'totp_disabled', ip });
     return json({ ok: true });
   }
@@ -3314,9 +3684,18 @@ async function coreApi(request, env, url) {
   if (url.pathname.startsWith('/api/admin/')) {
     const authRes = await adminAuthApi(request, env, url);
     if (authRes) return authRes;
-    // Every other /api/admin/* route requires a valid session.
-    const admin = await requireAdmin(request, env);
-    if (!admin) return json({ error: 'unauthorized' }, 401);
+    // Every other /api/admin/* route requires a valid session AND (if
+    // enabled) an IP still on the whitelist — checked separately from
+    // requireAdmin() here so a blocked-but-otherwise-valid session gets
+    // the specific, actionable reason (matches legacy server/admin.js's
+    // checkIpWhitelist behavior exactly).
+    const sessionAdmin = await getCurrentAdmin(request, env);
+    if (!sessionAdmin || sessionAdmin.idleTimeout) return json({ error: 'unauthorized' }, 401);
+    if (!(await checkIpWhitelist(request, env, reqIp(request)))) {
+      await logAdminLoginEvent(env, 'ip_blocked', reqIp(request), request.headers.get('user-agent'));
+      return json({ error: 'ip_not_whitelisted' }, 403);
+    }
+    const admin = sessionAdmin;
     const auctionRes = await adminAuctionsApi(request, env, url, admin);
     if (auctionRes) return auctionRes;
     const coreRes = await adminCoreApi(request, env, url, admin);
