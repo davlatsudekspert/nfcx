@@ -2332,4 +2332,5 @@ export const DICT = {
   "Kompaniyaga mahsulot / xizmat / restoran menyusi qo‘shish": { ru: "Добавление товара / услуги / меню ресторана компании", en: "Adding a product / service / restaurant menu to your company" },
   "O'lchamini o'zgartirish": { ru: "Изменить размер", en: "Resize" },
   "To'liq ekrandan chiqish": { ru: "Выйти из полноэкранного режима", en: "Exit fullscreen" },
+  "Ro‘yxatni hozircha yuklab bo‘lmadi. Birozdan so‘ng qayta urining.": { ru: "Список пока не удалось загрузить. Попробуйте немного позже.", en: "Couldn't load the list right now. Please try again shortly." },
 };

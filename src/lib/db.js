@@ -70,13 +70,12 @@ export async function dbList() {
 }
 
 // Obunachilar / obunalar ro'yxati (profil linklari bilan).
+// MUHIM: xatolikni yutib yubormaymiz (avval shunday edi) — chaqiruvchi
+// (FollowListModal) haqiqiy "ro'yxat bo'sh" bilan "so'rov muvaffaqiyatsiz
+// tugadi" holatlarini ajratib ko'rsatishi uchun xatolik yuqoriga uzatiladi.
 export async function dbFollowList(code, dir) {
-  try {
-    const j = await api(`/follow-list/${encodeURIComponent(code)}?dir=${dir === 'following' ? 'following' : 'followers'}`);
-    return (j && j.list) || [];
-  } catch {
-    return [];
-  }
+  const j = await api(`/follow-list/${encodeURIComponent(code)}?dir=${dir === 'following' ? 'following' : 'followers'}`);
+  return (j && j.list) || [];
 }
 
 // Katalog qidiruvi — serverда email/telefon bo'yicha ham topadi

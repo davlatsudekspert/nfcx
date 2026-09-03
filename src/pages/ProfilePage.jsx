@@ -528,8 +528,11 @@ function PostsFeed({ posts, onLike, t }) {
 // Obunachilar / obunalar ro'yxati modali — har biri profilga link.
 function FollowListModal({ code, dir, onClose, t }) {
   const [list, setList] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
-    dbFollowList(code, dir).then(setList).catch(() => setList([]));
+    setList(null);
+    setLoadError(false);
+    dbFollowList(code, dir).then(setList).catch(() => setLoadError(true));
   }, [code, dir]);
   return (
     <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
@@ -539,8 +542,13 @@ function FollowListModal({ code, dir, onClose, t }) {
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)]">✕</button>
         </div>
         <div className="overflow-y-auto p-2">
-          {list === null && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Yuklanmoqda...')}</div>}
-          {list && list.length === 0 && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Ro‘yxat bo‘sh')}</div>}
+          {list === null && !loadError && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Yuklanmoqda...')}</div>}
+          {/* MUHIM: "ro'yxat bo'sh" faqat so'rov haqiqatan muvaffaqiyatli
+              tugab, hech kim topilmaganda ko'rsatiladi — so'rov xato bilan
+              tugasa (masalan backend hali tayyor emas), buni "bo'sh" deb
+              noto'g'ri ko'rsatmasdan, aniq xato holatini bildiramiz. */}
+          {loadError && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Ro‘yxatni hozircha yuklab bo‘lmadi. Birozdan so‘ng qayta urining.')}</div>}
+          {list && list.length === 0 && !loadError && <div className="p-6 text-center text-sm text-[color:var(--vz-ink-faint)]">{t('Ro‘yxat bo‘sh')}</div>}
           {(list || []).map((m) => (
             <button
               key={m.code}
