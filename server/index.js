@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode } from '../src/lib/pricing.js';
+import { priceForCode, PROFILE_PREMIUM_FEE, isBlockedCode, isPurchasableCode } from '../src/lib/pricing.js';
 import { effectiveAccess, featureAllowed, postLimitFor, hasAccess, menuEligible, MENU_LIMITS, productEligible, PRODUCT_LIMITS, serviceEligible, SERVICE_LIMITS, businessModule, fileLimitFor, videoLimitsFor, teamLimitFor, galleryLimitFor } from '../src/lib/access.js';
 import {
   initDb, isDbReady,
@@ -1537,6 +1537,13 @@ app.post('/api/records/:code', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!validCode(code)) return res.status(400).json({ error: 'bad_code' });
   if (RESERVED_CODES.has(code)) return res.status(400).json({ error: 'reserved' });
+  // Avtomatik-bepul 8 xonali profil ID (createFreeAutoId, faqat ro'yxatdan
+  // o'tishda beriladi) — pullik NFC ID xarid oqimiga HECH QACHON kirmasin.
+  // `validCode` FREE_ID_RE'ni "to'g'ri format" deb qabul qilgani uchun bu
+  // tekshiruv shart — aks holda kimdir 8 xonali raqamni oddiy Bronza NFC ID
+  // sifatida sotib olishga urinishi mumkin edi (Payme audit'da topilgan
+  // bo'shliq).
+  if (!isPurchasableCode(code)) return res.status(409).json({ error: 'not_purchasable' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
 
   // MUHIM: akkauntsiz band qilishga ruxsat berilmaydi — aks holda karta

@@ -1096,6 +1096,208 @@ function validCode(code) {
   return STD_CODE_RE.test(code) || LETTER_CODE_RE.test(code) || FREE_ID_RE.test(code);
 }
 
+// ---------- personal NFC ID pricing (Payme foundation — PHASE 2A) ----------
+// MUHIM: bu `companyPricing()` (yuqorida, Company ID uchun — 3/4-5/6-7/8+
+// uzunlik asosida, 349k/549k/749k/990k narxlar) bilan ARALASHTIRILMASIN.
+// Bu yerdagi mantiq shaxsiy 6-belgili NFC ID (AAA000 shaklidagi) uchun va
+// src/lib/pricing.js'dagi tierFromCode()/TIER_PRICE/codeTierOverride()
+// (src/lib/codeTiers.js) bilan BAYT-BA-BAYT bir xil bo'lishi SHART.
+//
+// Nega bu yerda alohida nusxa (import emas)? hosting/worker.js Cloudflare
+// Worker sifatida oddiy fayl-nusxalash orqali deploy qilinadi
+// (scripts/prepare-sites-build.mjs — bundler emas, faqat `copyFile`), shu
+// sababli `import ... from '../src/lib/pricing.js'` deploy qilingan
+// artifaktda ishlamas edi (nisbiy yo'l boshqa muhitda mavjud emas — bu
+// oldingi Payme arxitektura auditida topilgan cheklov). src/lib/pricing.js
+// yoki src/lib/codeTiers.js o'zgarsa, BU BLOK QO'LDA ham yangilanishi va
+// scripts/payme-pricing-parity-test.mjs qayta ishga tushirilishi SHART —
+// aks holda ikki tomon orasida narx farqi (pricing drift) paydo bo'lishi
+// mumkin. Hozircha bu funksiyalar hech qanday route tomonidan
+// chaqirilmaydi (haqiqiy Payme xarid endpointi hali yozilmagan) — faqat
+// keyingi bosqich uchun tayyor, sinovdan o'tgan fundament.
+
+// Qo'lda belgilangan tarif (src/lib/codeTiers.js bilan bir xil, 2026-08
+// holati). O'zgartirish: shu ikkala faylni BIRGA yangilang.
+const PERSONAL_AUCTION_CODES = [
+  'AAA001', 'AAA007', 'OOO001', 'OOO007', 'JJJ007', 'DDD001', 'DDD007', 'FFF007',
+  'BEK001', 'BEK007', 'BEK777', 'UZB000', 'UZB001', 'UZB007', 'UAE001', 'USD100',
+  'ABC123', 'DEV001', 'GEM001', 'UNO000', 'WOW013', 'ASL777', 'AGA777', 'KHU777',
+  'ISA777', 'FAY777', 'USS777', 'OZZ777', 'PZP777', 'PLT034', 'RMA007', 'FCB010',
+  'AMG063', 'CLS063',
+];
+const PERSONAL_PREMIUM_CODES = [
+  'AAA100', 'AAA701', 'AAA717', 'AAA097', 'AAA066', 'ZZZ717', 'ZZZ727', 'ZZZ005',
+  'OOO005', 'OOO013', 'EMR777', 'GRL999', 'GRL444', 'GRL555', 'GRL777', 'GRL888',
+  'GRL333', 'GRL222', 'AZU555', 'TEN444', 'KAP444', 'DYR444', 'AKL444', 'ACA666',
+  'PBP888', 'SKB888', 'GIO111', 'WEF111', 'ETS111', 'SZZ222', 'BOY222', 'MLN222',
+  'GGG200', 'VVV700', 'NMX700', 'ZOO700', 'GRL700', 'BMW010',
+];
+const PERSONAL_EXACT_PREMIUM_CODES = [
+  'KHB029', 'UFC229', 'UFC300', 'UFC205', 'UFC194', 'UFC100', 'UFC200', 'UFC254',
+  'MMA029', 'MMA300', 'KHB254', 'CON013', 'CON205', 'CON194',
+];
+const PERSONAL_CODE_TIERS = {};
+for (const c of PERSONAL_AUCTION_CODES) PERSONAL_CODE_TIERS[c] = 'exclusive';
+for (const c of PERSONAL_PREMIUM_CODES) PERSONAL_CODE_TIERS[c] = 'premium';
+for (const c of PERSONAL_EXACT_PREMIUM_CODES) PERSONAL_CODE_TIERS[c] = 'premium';
+function personalCodeTierOverride(code) {
+  const c = String(code || '').toUpperCase();
+  return Object.prototype.hasOwnProperty.call(PERSONAL_CODE_TIERS, c) ? PERSONAL_CODE_TIERS[c] : null;
+}
+
+const PERSONAL_EXCLUSIVE_WORDS = ['VIP', 'CEO', 'KNG', 'LEG', 'ROY', 'ACE', 'WIN', 'UZB', 'LUX'];
+const PERSONAL_PREMIUM_WORDS = [
+  'BMW', 'AMG', 'GTR', 'AUD', 'GTI', 'GTS', 'EVO', 'RSQ', 'SUV', 'CAR',
+  'KIA', 'BYD', 'RRS', 'LMB', 'TSL', 'PRS', 'MRX',
+  'BOS', 'TOP', 'PRO', 'MAX', 'BIG', 'ONE', 'MBA', 'DEV', 'DOC', 'LAW',
+  'ART', 'FIT', 'GYM', 'BIZ', 'DJX', 'BND',
+  'TAS', 'SAM', 'BUX', 'AND', 'NAV', 'FER', 'XIV', 'NUK', 'JIZ', 'QAR',
+  'TER', 'URG', 'NMG',
+  'ALI', 'AZI', 'JAS', 'BOB', 'SAR', 'SHO', 'TIM', 'UMR', 'MIR',
+  'SHX', 'BEK', 'ABR', 'ODI', 'RUS', 'ISL', 'KAM', 'NOD', 'OYB', 'SUX',
+  'FUR', 'ELY', 'DIY', 'HAS', 'HUS', 'ZAF', 'AKM', 'BAX', 'JAV', 'SHR',
+  'AZM', 'FAR', 'TOX', 'ULU', 'XON', 'OTA', 'IBR', 'SUL', 'NUR',
+  'DIL', 'NIL', 'ZAR', 'NOZ', 'MAL', 'LAY', 'MAD', 'GUL', 'SEV', 'MOX',
+  'LOB', 'IRO', 'MUX', 'SHA', 'ZUL', 'FOT', 'OYS', 'NAF', 'RAY', 'MEH',
+  'KOM', 'NIG', 'MAR', 'MAH', 'XUR',
+  'SKY', 'SUN', 'FLY', 'JET', 'ICE', 'RED', 'FOX', 'GEM', 'ZEN', 'NEO',
+  'PAY', 'STA',
+  'USD', 'UZS',
+];
+const PERSONAL_GOV_WORDS = [
+  'IIB', 'DXX', 'MXX', 'DAV', 'YHX', 'YPX', 'GAI', 'FVV', 'DBX', 'DSX',
+  'DSI', 'ADL', 'SUD', 'PRK', 'TIV', 'MUD', 'HKM', 'VZR', 'BOJ', 'GUV',
+];
+
+function personalAllSame3(s) { return s[0] === s[1] && s[1] === s[2]; }
+function personalHasAdjacentPair(s) { return s[0] === s[1] || s[1] === s[2]; }
+function personalIsZeroSuperDigit(d) { return d === '001' || d === '007' || d === '077'; }
+const PERSONAL_EXTRA_SUPER_DIGITS = ['711', '712', '771', '772'];
+function personalIsExtraSuperDigit(d) { return PERSONAL_EXTRA_SUPER_DIGITS.includes(d); }
+function personalIsMirrorDigit(d) { return d[0] === d[2] && d !== '000'; }
+function personalIsX0X(d) { return d[1] === '0' && d[0] === d[2] && d[0] !== '0'; }
+function personalIsGovPremiumDigit(d) {
+  return d === '001' || d === '007' || d === '077' || d === '707' || d === '010' || personalIsExtraSuperDigit(d);
+}
+function personalIsSuperDigit(d) {
+  if (personalIsZeroSuperDigit(d)) return true;
+  if (personalAllSame3(d) && d !== '000') return true;
+  if (personalIsX0X(d)) return true;
+  if (personalIsExtraSuperDigit(d)) return true;
+  return false;
+}
+
+// Kod darajasini aniqlaydi — src/lib/pricing.js'dagi tierFromCode() bilan
+// AYNAN bir xil qoida tartibi (izohlar uchun o'sha faylga qarang).
+function personalTierFromCode(letters, digits) {
+  const lettersAllSame = personalAllSame3(letters);
+  const digitsAllSame = personalAllSame3(digits);
+  const exclusiveWord = PERSONAL_EXCLUSIVE_WORDS.includes(letters);
+  const premiumWord = PERSONAL_PREMIUM_WORDS.includes(letters);
+  const govWord = PERSONAL_GOV_WORDS.includes(letters);
+
+  if (lettersAllSame && digitsAllSame) return 'exclusive';
+  if (exclusiveWord) return 'exclusive';
+
+  if (digits === '000') return 'premium';
+  if (govWord && personalIsGovPremiumDigit(digits)) return 'premium';
+  if (premiumWord && personalIsSuperDigit(digits)) return 'premium';
+
+  if (premiumWord) return 'gold';
+  if (govWord) return 'gold';
+  if (lettersAllSame || digitsAllSame) return 'gold';
+  if (personalIsZeroSuperDigit(digits)) return 'gold';
+
+  if (personalIsMirrorDigit(digits)) return 'silver';
+  if (personalHasAdjacentPair(letters) && personalHasAdjacentPair(digits)) return 'silver';
+
+  return 'free';
+}
+
+// MUHIM: bu narxlar src/lib/pricing.js'dagi TIER_PRICE bilan AYNAN bir xil
+// bo'lishi shart — Bronza(free)=49000, Silver=99000, Gold=149000,
+// Premium=199000, Exclusive=null (to'g'ridan-to'g'ri sotilmaydi, faqat
+// auksion orqali).
+const PERSONAL_TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 49000 };
+
+// Kod pullik shaxsiy NFC ID sifatida sotib olinishi mumkinmi? Bloklangan
+// prefiks (GOD...) yoki avtomatik-bepul 8 xonali profil ID shakli
+// (FREE_ID_RE — faqat ro'yxatdan o'tishda beriladi, server/db.js
+// createFreeAutoId ekvivalenti) bo'lsa — YO'Q. Bu tekshiruv har qanday
+// kelajakdagi xarid/Payme order-yaratish endpointidan OLDIN chaqirilishi
+// SHART (server/index.js'dagi bir xil nomdagi tekshiruvga qarang).
+function isPersonalCodePurchasable(rawCode) {
+  const c = String(rawCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!c) return false;
+  if (isBlockedCode(c)) return false;
+  if (FREE_ID_RE.test(c)) return false;
+  return true;
+}
+
+// Shaxsiy NFC ID narxi — src/lib/pricing.js'dagi priceForCode() bilan bir
+// xil ustuvorlik: AVVAL qo'lda belgilangan override, bo'lmasa naqsh
+// mantig'i. Chaqiruvchi buni har doim isPersonalCodePurchasable()dan
+// KEYIN chaqirishi kerak (8 xonali/bloklangan kodlar uchun natija
+// noto'g'ri bo'lishi mumkin, chunki ular standart 6-belgili AAA000
+// shaklida emas).
+function personalPriceForCode(rawCode) {
+  const c = String(rawCode || '').toUpperCase();
+  const ov = personalCodeTierOverride(c);
+  if (ov) {
+    const total = PERSONAL_TIER_PRICE[ov] ?? 0;
+    return { total, tier: ov, base: total, override: true };
+  }
+  const letters = c.slice(0, 3);
+  const digits = c.slice(3, 6);
+  const tier = personalTierFromCode(letters, digits);
+  const total = PERSONAL_TIER_PRICE[tier] ?? 0;
+  return { total, tier, base: total };
+}
+
+// ── Xavfsiz xarid entry-point (Payme fundamenti — Phase 2A safety fix) ──
+// `personalPriceForCode()` (yuqorida) ekslyuziv daraja uchun ham `total`
+// maydonida texnik jihatdan `0` qaytaradi (`PERSONAL_TIER_PRICE.exclusive
+// = null`, `?? 0` bilan sonlashtiriladi) — bu KELAJAKDAGI Payme order-
+// yaratish kodi tomonidan ADASHIB "narxi 0 so'm" deb ishlatib, tekin
+// ekslyuziv order yaratib qo'yilishiga olib kelishi MUMKIN edi.
+//
+// KELAJAKDA yoziladigan Payme order-yaratish route'i HECH QACHON
+// `personalPriceForCode()`ni to'g'ridan-to'g'ri ishlatmasin — FAQAT shu
+// funksiyani chaqirsin (src/lib/pricing.js'dagi `getPersonalPurchaseQuote`
+// bilan BAYT-BA-BAYT bir xil xulq — parity testda tekshiriladi):
+//
+//   1) sotib olib bo'lmaydi (8 xonali avtomatik-bepul ID, bloklangan
+//      prefiks, yoki standart 6-belgili AAA000 format emas) ->
+//        { purchasable: false, reason: 'not_purchasable' }
+//   2) ekslyuziv (faqat auksion) ->
+//        { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }
+//      `amount` MAYDONI YO'Q (undefined) — `0` EMAS.
+//   3) sotib olinadigan (Bronza/Silver/Gold/Premium) ->
+//        { purchasable: true, tier, amount } — `amount` doim musbat son.
+function personalPurchaseQuote(rawCode) {
+  const c = String(rawCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Faqat standart 6-belgili AAA000 format qabul qilinadi (STD_CODE_RE) —
+  // 8 xonali avtomatik-bepul ID yoki boshqa har qanday uzunlik/shakl
+  // avtomatik rad etiladi (server/index.js'dagi parseCode bilan bir xil
+  // qat'iylik).
+  if (c.length !== 6 || !STD_CODE_RE.test(c)) return { purchasable: false, reason: 'not_purchasable' };
+  if (!isPersonalCodePurchasable(c)) return { purchasable: false, reason: 'not_purchasable' };
+  const { tier } = personalPriceForCode(c);
+  if (tier === 'exclusive') return { purchasable: false, reason: 'exclusive_auction_only', tier };
+  const amount = PERSONAL_TIER_PRICE[tier];
+  return { purchasable: true, tier, amount };
+}
+
+// Node'dagi parity test (scripts/payme-pricing-parity-test.mjs) uchun
+// nomlangan export — Cloudflare Workers runtime faqat pastdagi `export
+// default { fetch }`ni ishlatadi, qo'shimcha nomlangan exportlar unga
+// hech qanday ta'sir qilmaydi/xalaqit bermaydi.
+export {
+  personalPriceForCode, isPersonalCodePurchasable, personalTierFromCode,
+  personalCodeTierOverride, PERSONAL_TIER_PRICE, PERSONAL_CODE_TIERS,
+  personalPurchaseQuote,
+};
+
 function validateRecordBody(body) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
