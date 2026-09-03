@@ -28,6 +28,7 @@ export default function GuideFrame({ frame, className }) {
       clickEffect={frame.clickEffect}
       highlight={frame.highlight}
       zoomTarget={frame.zoomTarget}
+      data={frame.data}
       className={className}
     />
   );
