@@ -21,8 +21,30 @@ import GuideFrame from './GuideFrame.jsx';
 //   - `⛶` tugmasi endi ENTER/EXIT fullscreen'ni almashtiradi (toggle).
 //   - Fullscreen paytida Escape avval brauzerning o'z fullscreen'dan
 //     chiqishiga beriladi — modal shu bosishda ham yopilib ketmaydi.
+//
+// Frame responsive-scale tuzatish (ikkinchi round — real qurilmada
+// topilgan xato):
+//   - AVVALGI fix (frame ustunini `max-w-3xl`ga qattiq cheklash) fullscreen
+//     ochilganda frame kichik/yuqorida qolib, pastda katta bo'sh qora joy
+//     qoldirar edi — chunki kenglik FIXED edi, box qancha kattalashsa ham
+//     frame o'smasdi.
+//   - TO'G'RI YECHIM: frame o'lchami faqat box haqiqatan ANIQ balandlikka
+//     ega bo'lgan holatlarda (fullscreen — h-screen, yoki qo'lda resize —
+//     inline style.height) ResizeObserver orqali o'lchanadi va
+//     `width = min(mavjud_kenglik, mavjud_balandlik * nisbat)` formulasi
+//     bilan hisoblanadi (video-pleyer "letterbox" mantig'i) — shu tufayli
+//     box kattalashsa/kichraysa frame HAM proporsional o'sadi/kichrayadi,
+//     nisbat (aspect ratio) hech qachon buzilmaydi va viewportdan chiqib
+//     ketmaydi.
+//   - Standart (kompakt, hali resize qilinmagan, fullscreen'siz) holatda
+//     box ANIQ balandlikka ega EMAS (tabiiy kontent balandligi) — bu holda
+//     ResizeObserver mantiqiy natija bermaydi (balandlik hali "auto"), shu
+//     sabab bu holatda ASL sodda yondashuv qaytarilgan: frame shunchaki
+//     o'zining `aspect-[16/10] w-full` klassi bilan ustun kengligiga mos
+//     chiziladi — bu eski (pre-fix) va allaqachon to'g'ri ishlagan holat.
 const MIN_W = 380;
 const MIN_H = 420;
+const FRAME_RATIO = 16 / 10; // GuideFrame/GuideMockFrame/GuideRealFrame'dagi aspect-[16/10] bilan bir xil bo'lishi shart
 
 export default function GuideViewer({ guide, onClose }) {
   const { t } = useLanguage();
@@ -32,12 +54,16 @@ export default function GuideViewer({ guide, onClose }) {
   const [playing, setPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [size, setSize] = useState(null); // {w,h} px — faqat desktop qo'lda resize qilgach
+  const [frameSize, setFrameSize] = useState(null); // {w,h} px — faqat fullscreen/resize holatida (ResizeObserver bilan hisoblangan)
   const boxRef = useRef(null);
+  const frameAreaRef = useRef(null);
   const timerRef = useRef(null);
-  const resizeRef = useRef(null);
 
   const catLabel = GUIDE_CATEGORIES.find((c) => c.id === guide.category)?.label || guide.category;
   const frame = frames[i];
+  // Box ANIQ balandlikka ega bo'lgan holatlar — faqat shu holatlarda frame
+  // uchun "mavjud joyni to'ldirish" hisob-kitobi mantiqiy (pastga qarang).
+  const boxHasFixedHeight = isFullscreen || !!size;
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(document.fullscreenElement === boxRef.current);
@@ -73,6 +99,30 @@ export default function GuideViewer({ guide, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, i, frames.length]);
 
+  // Fullscreen'da yoki qo'lda resize qilinganda frame uchun mavjud joyni
+  // (frameAreaRef konteynerining haqiqiy piksel o'lchamini) kuzatib,
+  // "kengligi = min(kenglik, balandlik * nisbat)" letterbox formulasi
+  // bo'yicha frame o'lchamini qayta hisoblaymiz. ResizeObserver box
+  // kattalashtirilganda/kichraytirilganda, fullscreen almashtirilganda va
+  // oyna resize qilinganda AVTOMATIK qayta ishga tushadi — alohida
+  // effect/dependency kerak emas.
+  useEffect(() => {
+    if (!hasFrames || !boxHasFixedHeight) { setFrameSize(null); return undefined; }
+    const el = frameAreaRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      const fw = Math.min(w, h * FRAME_RATIO);
+      setFrameSize({ w: fw, h: fw / FRAME_RATIO });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasFrames, boxHasFixedHeight]);
+
   const next = () => { setI((cur) => Math.min(cur + 1, frames.length - 1)); };
   const prev = () => { setI((cur) => Math.max(cur - 1, 0)); };
   const restart = () => { setI(0); setPlaying(true); };
@@ -91,19 +141,30 @@ export default function GuideViewer({ guide, onClose }) {
   // Pastki-o'ng burchakdan pointer bilan tortib o'lchamini o'zgartirish —
   // faqat desktop (fullscreen paytida o'chirilgan, brauzer o'zi to'liq
   // ekranni boshqaradi).
+  //
+  // Pointer Capture tuzatish (real brauzerda topilgan xato): avval
+  // mousemove/mouseup `window`ga osib qo'yilardi — agar foydalanuvchi
+  // tez harakat qilib kursor dastakdan chiqib ketsa yoki tugmani boshqa
+  // elementning ustida qo'yib yuborsa, drag holati g'alati tugar yoki
+  // umuman tugamas edi. Endi dastakning o'ziga `setPointerCapture`
+  // qilinadi — shundan keyin pointermove/pointerup/pointercancel FAQAT
+  // shu elementga, kursor qayerda bo'lishidan qat'i nazar, kelib turadi;
+  // shuning uchun drag har doim tabiiy va barqaror tugaydi.
   const startResize = (e) => {
     if (isFullscreen) return;
     e.preventDefault();
     const box = boxRef.current;
-    if (!box) return;
+    const handle = e.currentTarget;
+    if (!box || !handle) return;
     const startRect = box.getBoundingClientRect();
     const startX = e.clientX;
     const startY = e.clientY;
-    resizeRef.current = { startX, startY, startW: startRect.width, startH: startRect.height };
+    const startW = startRect.width;
+    const startH = startRect.height;
+
+    try { handle.setPointerCapture(e.pointerId); } catch { /* eski brauzer — jim o'tamiz */ }
 
     const onMove = (ev) => {
-      const r = resizeRef.current;
-      if (!r) return;
       // MUHIM: bu yerdagi 0.96/0.92 nisbatlar pastdagi `boxStyle`'dagi
       // CSS `maxWidth: 96vw` / `maxHeight: 92vh` bilan AYNAN bir xil
       // bo'lishi shart — aks holda drag hisoblagan qiymat CSS max-height
@@ -111,24 +172,25 @@ export default function GuideViewer({ guide, onClose }) {
       // ko'rinadi (bu yerda topilgan asl xato — oldin 0.94 ishlatilgan edi).
       const maxW = window.innerWidth * 0.96;
       const maxH = window.innerHeight * 0.92;
-      const w = Math.min(maxW, Math.max(MIN_W, r.startW + (ev.clientX - r.startX)));
-      const h = Math.min(maxH, Math.max(MIN_H, r.startH + (ev.clientY - r.startY)));
+      const w = Math.min(maxW, Math.max(MIN_W, startW + (ev.clientX - startX)));
+      const h = Math.min(maxH, Math.max(MIN_H, startH + (ev.clientY - startY)));
       setSize({ w, h });
     };
-    const onUp = () => {
-      resizeRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
+    const onUp = (ev) => {
+      try { handle.releasePointerCapture(ev.pointerId); } catch { /* jim o'tamiz */ }
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
+      document.body.style.removeProperty('cursor');
+      document.body.style.removeProperty('user-select');
     };
-    // Ham mouse, ham pointer eventlarini tinglaymiz — turli brauzer/kirish
-    // qurilmalarida (sichqoncha, trackpad, ba'zi test avtomatlashtirish
-    // vositalari) barqaror ishlashi uchun.
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+    // Drag paytida butun sahifa bo'ylab matn belgilanishi ("ghost drag")ni
+    // oldini olish va kursor turini saqlash uchun.
+    document.body.style.cursor = 'nwse-resize';
+    document.body.style.userSelect = 'none';
   };
 
   // MUHIM: `size` hali o'rnatilmagan bo'lsa (foydalanuvchi hali resize
@@ -158,19 +220,14 @@ export default function GuideViewer({ guide, onClose }) {
       >
         {/* ── Scroll bo'ladigan yuqori qism: sarlavha + rasm + caption + progress-dots ── */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-          {/* MUHIM (fullscreen-fill fix): frame/mock kontent asl "kartochka"
-              o'lchamlari uchun chizilgan (kompakt forma qatorlari, ingichka
-              matnlar). Fullscreen'da (yoki qo'lda katta resize qilinganda)
-              modal o'zi ekran kengligiga cho'ziladi — agar shu ustun ham
-              cheklovsiz cho'zilsa, `aspect-[16/10]` konteyner juda baland
-              bo'lib ketadi-yu, ichidagi siyrak mock forma faqat yuqori
-              chap burchakni egallab, pastda katta bo'sh qora joy qoladi
-              (topilgan real xato). Shuning uchun bu ustunni har doim
-              o'rtacha, o'qish uchun qulay kenglikda o'rtaga joylaymiz —
-              natijada frame o'z nisbatini saqlab, ko'rinadigan joyni real
-              to'ldiradi (kino-pleyer letterbox mantig'iga o'xshash). */}
-          <div className="mx-auto w-full max-w-3xl">
-          <div className="flex items-start justify-between gap-3">
+          {/* `flex h-full min-h-0 flex-col`: box ANIQ balandlikka ega bo'lgan
+              holatda (fullscreen/resize) bu ustun ham to'liq balandlikni
+              egallaydi va pastdagi frame-maydon `flex-1` bilan qolgan
+              bo'sh joyni oladi. Standart (auto-height) holatda `h-full`
+              ta'sirsiz — ustun oddiy kontent balandligiga mos chiziladi
+              (hech qanday regressiya yo'q). */}
+          <div className="flex h-full min-h-0 flex-col">
+          <div className="flex shrink-0 items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-base-content/50">
                 <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide">{t(catLabel)}</span>
@@ -185,7 +242,7 @@ export default function GuideViewer({ guide, onClose }) {
 
           {hasFrames ? (
             <>
-              <div className="mt-4 flex items-center justify-between text-xs text-base-content/45">
+              <div className="mt-4 flex shrink-0 items-center justify-between text-xs text-base-content/45">
                 <span className="flex items-center gap-2">
                   {frame.kind === 'mock' && (
                     <span className="flex h-8 items-center rounded-full border border-white/15 px-3.5 font-bold uppercase tracking-wide text-base-content/50">{t('Demo')}</span>
@@ -196,16 +253,30 @@ export default function GuideViewer({ guide, onClose }) {
                 </span>
                 <span className="font-semibold">{i + 1} / {frames.length}</span>
               </div>
-              <GuideFrame frame={frame} className="mt-2" />
-              <p className="mt-3 min-h-[2.5em] text-[15px] leading-relaxed text-base-content/75">{t(frame.caption)}</p>
 
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              {boxHasFixedHeight ? (
+                // Fullscreen / qo'lda-resize: frame mavjud joyni (kenglik VA
+                // balandlik) hisobga olib, nisbatini saqlagan holda iloji
+                // boricha kattalashadi — letterbox mantig'i.
+                <div ref={frameAreaRef} className="mt-2 flex min-h-0 flex-1 items-center justify-center">
+                  <div style={frameSize ? { width: `${frameSize.w}px`, height: `${frameSize.h}px` } : { width: '100%', aspectRatio: '16 / 10' }}>
+                    <GuideFrame frame={frame} />
+                  </div>
+                </div>
+              ) : (
+                // Standart kompakt holat — asl, o'zgartirilmagan xulq.
+                <GuideFrame frame={frame} className="mt-2" />
+              )}
+
+              <p className="mt-3 min-h-[2.5em] shrink-0 text-[15px] leading-relaxed text-base-content/75">{t(frame.caption)}</p>
+
+              <div className="mt-3 h-1.5 w-full shrink-0 overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-accent transition-all duration-300"
                   style={{ width: `${((i + 1) / frames.length) * 100}%` }}
                 />
               </div>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <div className="mt-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
                 {frames.map((f, idx) => (
                   <button
                     key={f.sortOrder}
@@ -242,9 +313,8 @@ export default function GuideViewer({ guide, onClose }) {
         {/* ── Resize dastagi — faqat desktop, fullscreen'da yashiringan ── */}
         {!isFullscreen && (
           <div
-            onMouseDown={startResize}
             onPointerDown={startResize}
-            className="absolute bottom-0 right-0 z-10 hidden h-7 w-7 cursor-nwse-resize items-end justify-end p-1.5 text-white/30 hover:text-white/70 md:flex"
+            className="absolute bottom-0 right-0 z-10 hidden h-7 w-7 cursor-nwse-resize touch-none select-none items-end justify-end p-1.5 text-white/30 hover:text-white/70 md:flex"
             title={t("O'lchamini o'zgartirish")}
             aria-hidden="true"
           >
