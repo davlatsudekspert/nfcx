@@ -917,6 +917,46 @@ async function ensureCoreSchema(env) {
         "temp_token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "method" TEXT NOT NULL,
         "code" TEXT, "expires_at" TEXT NOT NULL
       )`),
+      // Sayt buyurtmalari (Payme Phase 2B) — db/d1-migration/0001-schema.sql
+      // orqali ALLAQACHON import qilingan production D1'da bu jadval mavjud;
+      // shu IF NOT EXISTS boshqa jadvallar bilan bir xil naqsh bo'yicha
+      // faqat xavfsizlik-tarmog'i (masalan yangi/toza test muhitida).
+      // Ustunlar server/db.js'dagi web_orders bilan AYNAN bir xil.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "web_orders" (
+        "id" INTEGER PRIMARY KEY NOT NULL, "user_id" INTEGER NOT NULL, "code" TEXT (40) NOT NULL,
+        "price" INTEGER NOT NULL, "payload" TEXT NOT NULL, "status" TEXT (20) DEFAULT 'pending' NOT NULL,
+        "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL, "kind" TEXT (24) DEFAULT 'card_purchase' NOT NULL,
+        "payme_transaction_id" TEXT, UNIQUE ("payme_transaction_id"),
+        FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "web_orders_user_idx" ON "web_orders" ("user_id")`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "web_orders_code_idx" ON "web_orders" ("code")`),
+      // MUHIM — bu yerda ATAYLAB `CREATE UNIQUE INDEX ... WHERE status =
+      // 'pending'` YO'Q (pre-commit review'da topilgan xavf — Fix 1):
+      // agar production D1'da allaqachon bir xil kod uchun 2+ eski
+      // "pending" qator bo'lsa (tozalanmagan tarixiy ma'lumot), bunday
+      // indeksni SHU YERDA (har bir so'rovda ishlaydigan runtime schema
+      // batch'ida) yaratishga urinish "UNIQUE constraint failed" bilan
+      // XATO BERADI — va bu BATTA `env.DB.batch([...])` tranzaksion
+      // bo'lgani uchun (bitta a'zo yiqilsa hammasi yiqiladi) BUTUN
+      // ported API (auth/records/auctions/admin/orders/payme) doimiy
+      // 503'ga tushib qoladi, chunki `coreApi()` HAR bir so'rovda
+      // `ensureCoreSchema()`ni chaqiradi. Bir martalik "pending"
+      // rezervatsiya kafolati o'rniga PASTDAGI `createPendingWebOrderD1`
+      // ATOMIK `INSERT ... SELECT ... WHERE NOT EXISTS` orqali amalga
+      // oshiriladi — bu YANGI duplikat qator qo'shilishining oldini
+      // oladi, lekin mavjud (eski, tozalanmagan) ma'lumotga TEGMAYDI va
+      // schema-init'ni yiqitmaydi.
+      //
+      // Partial UNIQUE indeksni HAQIQIY DB-darajasidagi kafolat sifatida
+      // qo'shish kerak bo'lsa — bu FAQAT alohida, nazorat qilinadigan
+      // migratsiya sifatida bo'lishi kerak: (1) production'da
+      // `SELECT code, COUNT(*) FROM web_orders WHERE status='pending'
+      // GROUP BY code HAVING COUNT(*) > 1` bilan duplikatlarni topish,
+      // (2) ularni qo'lda/nazorat ostida tozalash (masalan har bir kod
+      // uchun eng yangisidan boshqasini 'cancelled'ga o'tkazish), (3)
+      // shundan KEYINGINA `wrangler d1 execute` orqali indeksni qo'lda
+      // qo'shish — runtime `ensureCoreSchema`ning umumiy batch'iga emas.
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
   await coreSchemaReady;
@@ -1298,6 +1338,393 @@ export {
   personalPurchaseQuote,
 };
 
+// ---------- web_orders write layer (Payme Phase 2B) ----------
+// Mirrors server/db.js's web_orders functions field-for-field (see that
+// file's "Sayt buyurtmalari" section) — same names, same state machine
+// (pending -> paid | cancelled | failed_code_taken). D1/SQLite has no
+// JSONB: `payload` is a plain TEXT column, so every read/write here does
+// its own JSON.stringify/JSON.parse (unlike node-postgres's ::jsonb cast,
+// nothing does this automatically).
+const WEB_ORDER_SELECT = `id, user_id AS userId, code, kind, price, payload, status,
+  created_at AS createdAt, payme_transaction_id AS paymeTransactionId`;
+
+function parseWebOrderRow(row) {
+  if (!row) return null;
+  let payload = {};
+  try { payload = row.payload ? JSON.parse(row.payload) : {}; } catch { payload = {}; }
+  return {
+    id: row.id, userId: row.userId, code: row.code, kind: row.kind,
+    price: Number(row.price), payload, status: row.status,
+    createdAt: row.createdAt, paymeTransactionId: row.paymeTransactionId ?? null,
+  };
+}
+
+async function createWebOrderD1(env, { userId, code, price, payload, kind = 'card_purchase' }) {
+  const row = await env.DB.prepare(
+    `INSERT INTO web_orders (user_id, code, kind, price, payload) VALUES (?, ?, ?, ?, ?) RETURNING ${WEB_ORDER_SELECT}`
+  ).bind(userId, code, kind, price, JSON.stringify(payload || {})).first();
+  return parseWebOrderRow(row);
+}
+
+// Xavfsiz rezervatsiya (pre-commit review Fix 1) — bitta kod uchun
+// bir vaqtda faqat bitta "pending" order bo'lishini DB DARAJASIDA
+// kafolatlaydi, LEKIN buni schema-darajasidagi UNIQUE constraint (va
+// uning mavjud tozalanmagan ma'lumotga tegib butun API'ni yiqitish
+// xavfi) ORQALI EMAS, balki BITTA ATOMIK statement orqali qiladi:
+// `INSERT ... SELECT ... WHERE NOT EXISTS (...)`. D1/SQLite'da yozuvlar
+// bitta bazada ketma-ket (serializatsiya qilingan, bir vaqtning o'zida
+// faqat bitta yozuvchi) bajariladi — shuning uchun ikkita parallel
+// so'rov ham bitta-birdan-keyin ishlaydi va WHERE NOT EXISTS ikkinchisi
+// uchun to'g'ri "allaqachon bor" holatini ko'radi. Muvaffaqiyatli
+// bo'lmasa (boshqa pending order allaqachon mavjud) — hech narsa
+// INSERT qilinmaydi, RETURNING bo'sh natija beradi, `null` qaytadi.
+async function createPendingWebOrderD1(env, { userId, code, price, payload, kind = 'card_purchase' }) {
+  const row = await env.DB.prepare(`
+    INSERT INTO web_orders (user_id, code, kind, price, payload, status)
+    SELECT ?, ?, ?, ?, ?, 'pending'
+    WHERE NOT EXISTS (SELECT 1 FROM web_orders WHERE code = ? AND status = 'pending')
+    RETURNING ${WEB_ORDER_SELECT}
+  `).bind(userId, code, kind, price, JSON.stringify(payload || {}), code).first();
+  return parseWebOrderRow(row);
+}
+
+async function getWebOrderD1(env, id) {
+  const row = await env.DB.prepare(`SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE id = ?`).bind(id).first();
+  return parseWebOrderRow(row);
+}
+
+async function getWebOrderByPaymeIdD1(env, paymeTransactionId) {
+  const row = await env.DB.prepare(`SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE payme_transaction_id = ?`)
+    .bind(paymeTransactionId).first();
+  return parseWebOrderRow(row);
+}
+
+async function setWebOrderPaymeIdD1(env, id, paymeTransactionId) {
+  await env.DB.prepare(`UPDATE web_orders SET payme_transaction_id = ? WHERE id = ?`).bind(paymeTransactionId, id).run();
+}
+
+async function setWebOrderStatusD1(env, id, status) {
+  const row = await env.DB.prepare(`UPDATE web_orders SET status = ? WHERE id = ? RETURNING ${WEB_ORDER_SELECT}`)
+    .bind(status, id).first();
+  return parseWebOrderRow(row);
+}
+
+async function activeWebOrderByCodeD1(env, code) {
+  const row = await env.DB.prepare(`SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE code = ? AND status = 'pending' LIMIT 1`)
+    .bind(code).first();
+  return parseWebOrderRow(row);
+}
+
+// Shaxsiy vizitka (NFC ID) yozuvini yaratish — server/db.js'dagi
+// createRecord() bilan bir xil ustunlar to'plami (qolgan RECORD_COLUMNS
+// ustunlari jadval DEFAULT qiymatlarida qoladi — legacy ham xuddi shunday
+// ishlaydi). `code` PRIMARY KEY bo'lgani uchun `ON CONFLICT DO NOTHING`
+// parallel so'rovlar uchun ham xavfsiz (ikkinchisi hech narsa qaytarmaydi).
+async function createRecordD1(env, record) {
+  const row = await env.DB.prepare(`
+    INSERT INTO cards
+      (code, name, role, avatar_url, bg_url, bg_pattern, accent_color, bg_color, bg_animated, music_url,
+       tg, phone, email, linkedin, instagram,
+       about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT("code") DO NOTHING
+    RETURNING ${RECORD_COLUMNS}
+  `).bind(
+    record.code, record.name, record.role || '', record.avatarUrl || '', record.bgUrl || '',
+    record.bgPattern === false ? 0 : 1, record.accentColor || null, record.bgColor || null,
+    record.bgAnimated === false ? 0 : 1, record.musicUrl || null,
+    record.tg || '', record.phone || '', record.email || '', record.linkedin || '', record.instagram || '',
+    record.about || '', record.facebook || '', record.twitter || '', record.website || '',
+    record.cardNumber || '', JSON.stringify(record.extraLinks || []), JSON.stringify(record.cardNumbers || []),
+    record.theme || 'classic', JSON.stringify(record.hashtags || []), record.price, Date.now(),
+  ).first();
+  return row ? rowToRecord(row) : null;
+}
+
+async function attachCardToUserD1(env, code, userId) {
+  await env.DB.prepare(`UPDATE cards SET user_id = ? WHERE code = ? AND user_id IS NULL`).bind(userId, code).run();
+}
+
+// Buyurtma turi (kind)ga qarab to'g'ri "finalize" mantig'ini bajaradi —
+// server/db.js'dagi finalizePaidWebOrder() bilan bir xil, LEKIN Phase 2B
+// FAQAT 'card_purchase'ni qo'llab-quvvatlaydi (task shart-sharoiti).
+// Boshqa kind'lar (auction_payment/premium_upgrade/premium_follow/
+// physical_card_order/company_purchase) hali D1'da portlanmagan — ularni
+// xato holatda "paid" qilib qo'yish egalik/pul oqibatlariga olib kelishi
+// mumkin (masalan auksionni noto'g'ri yakunlash), shuning uchun buyurtma
+// 'pending' holatida QOLDIRILADI va xavfsiz "unsupported" natija
+// qaytariladi — admin buni qo'lda ko'rib chiqishi mumkin.
+//
+// ATOMIK/RESUMABLE dizayn (pre-commit review Fix 2): "record yaratish →
+// userga biriktirish → order paid" uchtasi alohida, mustaqil D1
+// chaqiruvi — Worker ular orasida to'xtab qolsa (crash/xato/timeout),
+// keyingi chaqiruv (masalan Payme'ning duplicate PerformTransaction'i)
+// buni "code_taken" xato deb NOTO'G'RI belgilash o'rniga, DB'ning
+// HAQIQIY joriy holatiga qarab to'g'ri qadamdan DAVOM ETADI:
+//   CASE A — record umuman yo'q            -> yaratish + biriktirish + paid
+//   CASE B — record bor, egasi YO'Q        -> (oldingi yarim urinishdan
+//                                              qolgan) shu userga
+//                                              biriktirish + paid
+//   CASE C — record bor, egasi ALLAQACHON shu order useri -> faqat paid
+//            (idempotent, hech narsa qayta yaratilmaydi/o'zgartirilmaydi)
+//   CASE D — record bor, egasi BOSHQA (chinakam begona) user -> ownership
+//            HECH QACHON o'zgartirilmaydi, haqiqiy code_taken xatosi
+async function finalizePaidWebOrderD1(env, orderId) {
+  const order = await getWebOrderD1(env, orderId);
+  if (!order) return { alreadyProcessed: true };
+
+  if (order.status === 'paid') {
+    // Idempotent qayta-chaqiruv (masalan duplicate PerformTransaction):
+    // DB holatini haqiqatan tasdiqlab, mos javob beramiz — hech qanday
+    // yangi yozuv yaratilmaydi/o'zgartirilmaydi.
+    const owner = await getRecordOwner(env, order.code);
+    return String(owner) === String(order.userId)
+      ? { ok: true, alreadyPaid: true }
+      : { ok: false, reason: 'code_taken' };
+  }
+  if (order.status !== 'pending') return { alreadyProcessed: true };
+  if (order.kind !== 'card_purchase') return { ok: false, reason: 'unsupported_order_kind' };
+
+  // CASE B/C/D uchun umumiy hal qiluvchi — mavjud record uchun egalik
+  // holatiga qarab to'g'ri (va faqat to'g'ri) amalni bajaradi.
+  const resolveExisting = async (record) => {
+    const owner = await getRecordOwner(env, order.code);
+    if (owner == null) {
+      // CASE B — oldingi qisman (yarim to'xtagan) urinishdan qolgan
+      // egasiz karta: shu userga biriktirib yakunlaymiz.
+      await attachCardToUserD1(env, order.code, order.userId);
+      await setWebOrderStatusD1(env, order.id, 'paid');
+      return { ok: true, created: record, resumed: true };
+    }
+    if (String(owner) === String(order.userId)) {
+      // CASE C — allaqachon shu userga tegishli: ownership qayta
+      // o'zgartirilmaydi, faqat order holati yakunlanadi (idempotent).
+      await setWebOrderStatusD1(env, order.id, 'paid');
+      return { ok: true, created: record, resumed: true };
+    }
+    // CASE D — chinakam begona egasi bor: ownership HECH QACHON
+    // o'zgartirilmaydi — haqiqiy xato.
+    await setWebOrderStatusD1(env, order.id, 'failed_code_taken');
+    return { ok: false, reason: 'code_taken' };
+  };
+
+  const existing = await getRecord(env, order.code);
+  if (existing) return resolveExisting(existing);
+
+  // CASE A — record umuman yo'q: yaratamiz.
+  const created = await createRecordD1(env, { ...order.payload, code: order.code, price: order.price });
+  if (created) {
+    await attachCardToUserD1(env, order.code, order.userId);
+    await setWebOrderStatusD1(env, order.id, 'paid');
+    return { ok: true, created };
+  }
+  // ON CONFLICT DO NOTHING hech narsa qaytarmadi — parallel ravishda band
+  // bo'lib qolgan (juda tor race, ehtimol bizning o'z parallel
+  // urinishimiz). Qayta o'qib, xuddi B/C/D mantig'ini qo'llaymiz.
+  const raced = await getRecord(env, order.code);
+  if (raced) return resolveExisting(raced);
+  await setWebOrderStatusD1(env, order.id, 'failed_code_taken');
+  return { ok: false, reason: 'code_taken' };
+}
+
+// ---------- Payme Merchant API (Phase 2B) ----------
+// server/payme.js kontraktini audit qilib yozilgan — javob/xato shakllari
+// (rpc result/error, xatolik kodlari, account.order_id, tiyin miqdori)
+// AYNAN saqlangan. Farqi faqat D1 write-layer chaqiruvlarida (yuqorida).
+const PAYME_ERR = {
+  INVALID_AMOUNT: -31001,
+  ACCOUNT_NOT_FOUND: -31050,
+  CANT_DO_OPERATION: -31008,
+  TRANSACTION_NOT_FOUND: -31003,
+  CANT_CANCEL: -31007,
+  SYSTEM: -32400,
+};
+function paymeRpcError(id, code, message) {
+  return { jsonrpc: '2.0', id, error: { code, message: { ru: message, uz: message, en: message } } };
+}
+function paymeRpcResult(id, result) {
+  return { jsonrpc: '2.0', id, result };
+}
+
+// Node'ning crypto.timingSafeEqual'i Workers runtime'da har doim ham
+// oson mavjud emas (nodejs_compat bayrog'iga bog'liq) — shu qisqa
+// umumiy-sir satrni solishtirish uchun mustaqil, kutubxonasiz doimiy-
+// vaqtli taqqoslash yetarli.
+function timingSafeEqualStr(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function verifyPaymeAuthD1(request, env) {
+  const key = env.PAYME_KEY || '';
+  if (!key) return false;
+  const header = request.headers.get('authorization') || request.headers.get('Authorization') || '';
+  const [scheme, b64] = header.split(' ');
+  if (scheme !== 'Basic' || !b64) return false;
+  let decoded;
+  try { decoded = atob(b64); } catch { return false; }
+  const sep = decoded.indexOf(':');
+  if (sep < 0) return false;
+  const login = decoded.slice(0, sep);
+  const pass = decoded.slice(sep + 1);
+  return login === 'Paycom' && timingSafeEqualStr(pass, key);
+}
+
+// Ikkala gate ham rost bo'lishi kerak — xuddi legacy paymentsEnabled()
+// kabi (PAYMENTS_ENABLED muhit o'zgaruvchisi VA Payme kredentsiallari).
+// Hozircha ikkalasi ham sozlanmagan — bu funksiya har doim `false`
+// qaytaradi, hech qanday real to'lov qabul qilinmaydi.
+function paymentsEnabledD1(env) {
+  return env.PAYMENTS_ENABLED === 'true' && !!(env.PAYME_MERCHANT_ID && env.PAYME_KEY);
+}
+
+// Checkout havolasi — server/payme.js'dagi paymeCheckoutLink() bilan bir
+// xil format (base64({m, ac.order_id, a})). `Buffer` Node-only — Workers
+// runtime'ning global `btoa`sidan foydalanamiz (parametrlar faqat ASCII).
+function paymeCheckoutLinkD1(env, orderId, amountSom) {
+  const merchantId = env.PAYME_MERCHANT_ID || '';
+  if (!merchantId || !orderId) return '';
+  const tiyin = Math.round(Number(amountSom) * 100);
+  const params = `m=${merchantId};ac.order_id=${orderId};a=${tiyin}`;
+  return `https://checkout.paycom.uz/${btoa(params)}`;
+}
+
+async function handlePaymeRequestD1(env, body) {
+  const { method, params, id } = body || {};
+  const orderId = Number(params?.account?.order_id);
+
+  try {
+    switch (method) {
+      case 'CheckPerformTransaction': {
+        if (!orderId) return paymeRpcError(id, PAYME_ERR.ACCOUNT_NOT_FOUND, 'Buyurtma topilmadi');
+        const order = await getWebOrderD1(env, orderId);
+        if (!order || order.status !== 'pending') {
+          return paymeRpcError(id, PAYME_ERR.ACCOUNT_NOT_FOUND, 'Buyurtma topilmadi yoki allaqachon yopilgan');
+        }
+        const expected = Math.round(Number(order.price) * 100);
+        if (Number(params.amount) !== expected) return paymeRpcError(id, PAYME_ERR.INVALID_AMOUNT, 'Summa mos emas');
+        return paymeRpcResult(id, { allow: true });
+      }
+
+      case 'CreateTransaction': {
+        if (!orderId) return paymeRpcError(id, PAYME_ERR.ACCOUNT_NOT_FOUND, 'Buyurtma topilmadi');
+        const order = await getWebOrderD1(env, orderId);
+        if (!order) return paymeRpcError(id, PAYME_ERR.ACCOUNT_NOT_FOUND, 'Buyurtma topilmadi');
+
+        const existing = await getWebOrderByPaymeIdD1(env, params.id);
+        if (existing) {
+          // MUHIM (Phase 2B xavfsizlik talabi — task D): bitta Payme
+          // tranzaksiya ID'si boshqa order_id bilan qayta ishlatilishi
+          // mumkin emas. Legacy bu holatni tekshirmaydi (har doim mavjud
+          // orderni qaytaradi) — bu yerda qat'iyroq: order_id mos
+          // kelmasa aniq xato qaytariladi.
+          if (String(existing.id) !== String(order.id)) {
+            return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, 'Tranzaksiya boshqa buyurtmaga tegishli');
+          }
+          return paymeRpcResult(id, {
+            create_time: new Date(existing.createdAt).getTime(),
+            transaction: String(existing.id),
+            state: existing.status === 'paid' ? 2 : existing.status === 'cancelled' ? -1 : 1,
+          });
+        }
+        if (order.status !== 'pending') return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, 'Buyurtma band emas');
+        const expected = Math.round(Number(order.price) * 100);
+        if (Number(params.amount) !== expected) return paymeRpcError(id, PAYME_ERR.INVALID_AMOUNT, 'Summa mos emas');
+
+        try {
+          await setWebOrderPaymeIdD1(env, order.id, params.id);
+        } catch (err) {
+          // payme_transaction_id UNIQUE — parallel/duplicate chaqiruv
+          // boshqa so'rov bilan poyga (race)da mag'lub bo'lgan bo'lishi
+          // mumkin; g'olib bo'lgan tomonning natijasini qaytaramiz.
+          if (String(err?.message || '').toLowerCase().includes('unique')) {
+            const winner = await getWebOrderByPaymeIdD1(env, params.id);
+            if (winner && String(winner.id) === String(order.id)) {
+              return paymeRpcResult(id, {
+                create_time: new Date(winner.createdAt).getTime(),
+                transaction: String(winner.id),
+                state: winner.status === 'paid' ? 2 : winner.status === 'cancelled' ? -1 : 1,
+              });
+            }
+            return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, 'Tranzaksiya boshqa buyurtmaga tegishli');
+          }
+          throw err;
+        }
+        return paymeRpcResult(id, { create_time: Date.now(), transaction: String(order.id), state: 1 });
+      }
+
+      case 'PerformTransaction': {
+        const order = await getWebOrderByPaymeIdD1(env, params.id);
+        if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
+        if (order.status === 'paid') {
+          // Idempotent — allaqachon to'langan, xuddi shu natijani qaytadi,
+          // ownership qayta yaratilmaydi/o'zgartirilmaydi.
+          return paymeRpcResult(id, { transaction: String(order.id), perform_time: new Date(order.createdAt).getTime(), state: 2 });
+        }
+        if (order.status !== 'pending') return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, "Amalni bajarib bo'lmaydi");
+        // MUHIM (task E — ownership faqat shu yerdan keyin): finalize
+        // muvaffaqiyatli bo'lmaguncha hech qanday NFC record yaratilmaydi/
+        // biriktirilmaydi.
+        const result = await finalizePaidWebOrderD1(env, order.id);
+        if (!result.ok) return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, "Amalni bajarib bo'lmaydi");
+        return paymeRpcResult(id, { transaction: String(order.id), perform_time: Date.now(), state: 2 });
+      }
+
+      case 'CancelTransaction': {
+        const order = await getWebOrderByPaymeIdD1(env, params.id);
+        if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
+        const wasPaid = order.status === 'paid';
+        // Legacy bilan bir xil: agar allaqachon 'paid' bo'lsa, avtomatik
+        // "orqaga qaytarish" qilinmaydi (egalik allaqachon berilgan
+        // bo'lishi mumkin) — admin qo'lda ko'rib chiqadi. Aks holda
+        // (pending yoki allaqachon cancelled/failed_*) 'cancelled'ga
+        // o'rnatiladi — bu idempotent (qayta chaqirilsa ham xavfsiz).
+        if (!wasPaid) await setWebOrderStatusD1(env, order.id, 'cancelled');
+        return paymeRpcResult(id, { transaction: String(order.id), cancel_time: Date.now(), state: wasPaid ? -2 : -1 });
+      }
+
+      case 'CheckTransaction': {
+        const order = await getWebOrderByPaymeIdD1(env, params.id);
+        if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
+        return paymeRpcResult(id, {
+          create_time: new Date(order.createdAt).getTime(),
+          perform_time: order.status === 'paid' ? new Date(order.createdAt).getTime() : 0,
+          cancel_time: order.status === 'cancelled' ? Date.now() : 0,
+          transaction: String(order.id),
+          state: order.status === 'paid' ? 2 : order.status === 'cancelled' ? -1 : 1,
+          reason: null,
+        });
+      }
+
+      case 'GetStatement': {
+        return paymeRpcResult(id, { transactions: [] });
+      }
+
+      default:
+        return paymeRpcError(id, -32601, 'Metod topilmadi');
+    }
+  } catch (err) {
+    return paymeRpcError(id, PAYME_ERR.SYSTEM, 'Tizim xatoligi');
+  }
+}
+
+// Node'dagi test (scripts/payme-order-flow-test.mjs) uchun nomlangan
+// export — Workers runtime faqat `export default { fetch }`ni ishlatadi.
+export {
+  createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
+  setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
+  finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymentsEnabledD1,
+  paymeCheckoutLinkD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
+};
+
+// nfcstore.uz'dagi mavjud sahifa yo'llari bilan to'qnashmasligi uchun —
+// server/index.js'dagi RESERVED_CODES bilan bir xil.
+const RESERVED_CODES = new Set([
+  'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
+]);
+
 function validateRecordBody(body) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
@@ -1478,7 +1905,90 @@ async function recordsApi(request, env, url) {
       return json(updated);
     }
 
+    if (request.method === 'POST') {
+      // Shaxsiy NFC ID sotib olish (Payme Phase 2B) — server/index.js'dagi
+      // POST /api/records/:code bilan bir xil kontrakt (endpoint, javob
+      // shakllari), shu bilan frontend (ReserveModal.jsx) o'zgarishsiz
+      // ishlaydi.
+      const user = await getCurrentUser(request, env);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      if (RESERVED_CODES.has(code)) return json({ error: 'reserved' }, 400);
+
+      const body = await request.json().catch(() => ({}));
+      const { record, error } = validateRecordBody(body);
+      if (error) return json({ error }, 422);
+
+      // Jismoniy karta qo'shimchasi hali D1'da portlanmagan
+      // (createPhysicalCard yo'q) — pul olib, keyin jismoniy kartani
+      // yetkazib bera olmaydigan holatga yo'l qo'ymaslik uchun bu
+      // so'rov ATAYLAB rad etiladi (task: "hozir port qilinmasin").
+      if (body?.physicalCard === true) return json({ error: 'physical_card_not_supported_yet' }, 501);
+
+      // Narxni SERVER o'zi hisoblaydi (Phase 2A'dagi YAGONA xavfsiz
+      // helper orqali) — clientdan kelgan narxga ISHONILMAYDI. 8 xonali
+      // avtomatik-bepul ID va ekslyuziv daraja bu yerda ALLAQACHON
+      // "purchasable:false" bo'lib qaytadi — hech qachon 0 so'mlik order
+      // yaratilmaydi.
+      const quote = personalPurchaseQuote(code);
+      if (!quote.purchasable) return json({ error: quote.reason || 'not_purchasable' }, 409);
+
+      if (await getRecord(env, code)) return json({ error: 'already_taken' }, 409);
+
+      // Band qilish oqimi to'lov tizimi tayyor bo'lmaguncha butunlay
+      // yopiq — legacy server/index.js bilan bir xil xulq.
+      if (!paymentsEnabledD1(env)) return json({ error: 'payments_disabled' }, 503);
+
+      // Bir xil kod uchun faqat bitta pending order — avval aniq xato
+      // xabari uchun oddiy tekshiruv (tezroq, ko'pincha yetarli), lekin
+      // haqiqiy kafolat pastdagi ATOMIK `createPendingWebOrderD1` orqali
+      // (INSERT ... SELECT ... WHERE NOT EXISTS — pre-commit review
+      // Fix 1: schema-darajasidagi UNIQUE index emas, chunki u mavjud
+      // tozalanmagan ma'lumotga tegib butun API'ni yiqitishi mumkin edi).
+      const existingOrder = await activeWebOrderByCodeD1(env, code);
+      if (existingOrder) return json({ error: 'reserved_pending_payment' }, 409);
+
+      const order = await createPendingWebOrderD1(env, { userId: user.id, code, price: quote.amount, payload: record });
+      if (!order) {
+        // Atomik INSERT hech narsa qaytarmadi — parallel so'rov g'olib
+        // chiqqan (yuqoridagi oddiy tekshiruv bilan bir vaqtga to'g'ri
+        // kelgan tor race). Foydalanuvchiga toza, kutilgan xato.
+        return json({ error: 'reserved_pending_payment' }, 409);
+      }
+      const payLink = paymeCheckoutLinkD1(env, order.id, quote.amount);
+      return json({ pending: true, orderId: order.id, code, price: quote.amount, payLink }, 202);
+    }
+
     return null;
+  }
+
+  return null;
+}
+
+// ---------- web orders (Payme Phase 2B — order status polling) ----------
+// server/index.js'dagi GET /api/orders/:id va GET /api/orders bilan bir
+// xil kontrakt — frontend (ReserveModal.jsx dbGetOrder, AccountPage.jsx)
+// o'zgarishsiz shu javob shaklini kutadi.
+async function ordersApi(request, env, url) {
+  const path = url.pathname;
+
+  const idMatch = path.match(/^\/api\/orders\/(\d+)$/);
+  if (idMatch && request.method === 'GET') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const order = await getWebOrderD1(env, Number(idMatch[1]));
+    // Boshqa foydalanuvchining buyurtmasi bo'lsa ham 404 (mavjudligini
+    // oshkor qilmaslik uchun) — legacy bilan bir xil.
+    if (!order || String(order.userId) !== String(user.id)) return json({ error: 'not_found' }, 404);
+    return json({ id: order.id, code: order.code, status: order.status, price: order.price });
+  }
+
+  if (path === '/api/orders' && request.method === 'GET') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ orders: [] });
+    const rows = await env.DB.prepare(
+      `SELECT id, code, kind, price, status, created_at AS createdAt FROM web_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`
+    ).bind(user.id).all();
+    return json({ orders: (rows.results || []).map((r) => ({ ...r, price: Number(r.price) })) });
   }
 
   return null;
@@ -2080,6 +2590,28 @@ async function coreApi(request, env, url) {
     const res = await recordsApi(request, env, url);
     if (res) return res;
   }
+  if (url.pathname.startsWith('/api/orders')) {
+    const res = await ordersApi(request, env, url);
+    if (res) return res;
+  }
+  if (url.pathname === '/api/pay/payme' && request.method === 'POST') {
+    // Payme Merchant API — server/index.js'dagi POST /api/pay/payme bilan
+    // AYNAN bir xil kontrakt/tartib (payments o'chiq -> keyin Basic Auth ->
+    // keyin metod). Basic Auth: login "Paycom", parol env.PAYME_KEY.
+    // Kredentsial hech qachon kodga yozilmaydi, faqat Worker Secret
+    // sifatida (`wrangler secret put PAYME_KEY`) beriladi — bu commit'da
+    // qo'shilmagan.
+    let body;
+    try { body = await request.json(); } catch { body = null; }
+    if (!paymentsEnabledD1(env)) {
+      return json({ jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32601, message: 'payme disabled' } });
+    }
+    if (!verifyPaymeAuthD1(request, env)) {
+      return json({ jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32504, message: "Ruxsat yo'q" } });
+    }
+    const result = await handlePaymeRequestD1(env, body);
+    return json(result);
+  }
   if (url.pathname.startsWith('/api/auction') || url.pathname === '/api/auctions') {
     const res = await auctionsPublicApi(request, env, url);
     if (res) return res;
@@ -2132,11 +2664,13 @@ export default {
       }
     }
 
-    // NEW — auth/records/auctions/admin now served directly from D1
-    // (see the CORE section above). Falls through (returns null) for
-    // anything not yet ported, so the legacy proxy below still handles it.
+    // NEW — auth/records/auctions/admin/orders/pay(Payme) now served
+    // directly from D1 (see the CORE section above). Falls through
+    // (returns null) for anything not yet ported, so the legacy proxy
+    // below still handles it.
     if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/records')
-      || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')) {
+      || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')
+      || url.pathname.startsWith('/api/orders') || url.pathname === '/api/pay/payme') {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;
@@ -2147,12 +2681,14 @@ export default {
     }
 
     // LEGACY FALLBACK — the Railway PostgreSQL backend this used to proxy
-    // everything to has been shut down. Auth/records/auctions/admin are now
-    // served directly from D1 above; this only still catches what hasn't
-    // been ported yet (payments, the Telegram bot, premium/follow,
-    // messaging, gifts, physical cards, news, company extras — see the
-    // task list at the top of the CORE section) and will correctly report
-    // them as unavailable rather than silently doing nothing.
+    // everything to has been shut down. Auth/records/auctions/admin/
+    // orders/Payme (NFC ID purchase — card_purchase kind only, Phase 2B)
+    // are now served directly from D1 above; this only still catches what
+    // hasn't been ported yet (the Telegram bot, premium/follow,
+    // messaging, gifts, physical cards, news, company extras, and every
+    // web_orders kind besides card_purchase — see the task list at the
+    // top of the CORE section) and will correctly report them as
+    // unavailable rather than silently doing nothing.
     if (url.pathname.startsWith('/api/') || url.pathname === '/api' || url.pathname.startsWith('/uploads/')) {
       const upstreamUrl = new URL(url.pathname + url.search, 'https://nfcstore.uz');
       const upstreamRequest = new Request(upstreamUrl, request);
