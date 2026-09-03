@@ -7,7 +7,7 @@
 //
 // Ekran namoyishlari ("frames") — ikki xil bo'lishi mumkin (`kind`):
 //   - 'real': /public/guides/<folder>/frame-N.jpg — HAQIQIY NFCSTORE
-//     interfeysi skrinshoti. MUHIM: bu skrinshotlar production nfcstore.uz'dan
+//     interfeysi skrinshoti. Bu skrinshotlar production nfcstore.uz'dan
 //     OLINMAGAN (bu muhitdan tashqi tarmoqqa umuman chiqib bo'lmaydi) —
 //     buning o'rniga xuddi shu frontend kodi (aynan shu React komponentlar,
 //     aynan shu CSS) mahalliy (local), butunlay alohida, bir martalik test
@@ -18,16 +18,17 @@
 //   - 'mock': <GuideMockFrame> orqali chiziladigan sxematik namoyish —
 //     faqat jismoniy amal (NFC kartani telefonga yaqinlashtirish), hozircha
 //     production'da o'chirilgan funksiya (auksion stavkasi, to'lov — Payme
-//     hali yoqilmagan) yoki hali skrinshoti olinmagan bosqich (QR) uchun,
-//     har doim "Demo" belgisi bilan ko'rsatiladi.
+//     hali yoqilmagan) yoki login talab qiladigan oraliq bosqich uchun, har
+//     doim "Demo" belgisi bilan ko'rsatiladi.
 //
-// v2 — SODDALASHTIRISH: oldingi versiyada ~80 mayda dars bor edi (ko'pchiligi
-// "Tez orada" placeholder holatida). Endi faqat 12 ta ASOSIY, TO'LIQ TAYYOR
-// dars qoldirildi — har biri foydalanuvchini boshidan oxirigacha
-// tushuntiradi, hech qanday bo'sh/tayyor bo'lmagan karta yo'q. Oldingi
-// bosqichda olingan real skrinshotlar shu 12 ta dars ichiga qayta
-// birlashtirildi (papka nomlari o'zgarmadi, faqat qaysi darsga tegishli
-// ekanligi qayta tashkil qilindi).
+// v3 — YAKUNIY 6 GUIDE: oldingi versiyada 12 ta o'rta darajadagi dars bor
+// edi. Endi ular mantiqan 6 ta TO'LIQ, boshidan oxirigacha tushuntiruvchi
+// darsga birlashtirildi (masalan "Ro'yxatdan o'tish" + "Profil yaratish" →
+// bitta dars). Barcha real skrinshotlar — hech biri o'chirilmagan — shu 6
+// dars ichida qayta guruhlangan, ba'zilari bir nechta bosqichda turli
+// cursor/zoom/highlight bilan qayta ishlatilgan (masalan "Katalog" formasi
+// bitta skrinshot — Mahsulot/Xizmat/Restoran menyusi uchastkalarida uchtasi
+// ham xuddi shu universal katalog dvigателi orqali ishlaydi).
 
 import { TIER_PRICE, TIER_LABEL, TIER_COLOR } from './pricing.js';
 
@@ -36,14 +37,13 @@ export const GUIDE_TABS = [
   { id: 'kompaniya', label: 'Kompaniya profili' },
 ];
 
-// Soddalashtirilgan kategoriya filtri — faqat eng muhim 6 tasi.
+// Yakuniy 6 darsga mos soddalashtirilgan kategoriya filtri.
 export const GUIDE_CATEGORIES = [
   { id: 'all', label: 'Barchasi' },
   { id: 'profil', label: 'Profil' },
   { id: 'kompaniya', label: 'Kompaniya' },
   { id: 'nfc', label: 'NFC' },
   { id: 'auksion', label: 'Auksion' },
-  { id: 'buyurtma', label: 'Buyurtma' },
 ];
 
 function realFrame(sortOrder, folder, n, caption, opts = {}) {
@@ -53,6 +53,7 @@ function realFrame(sortOrder, folder, n, caption, opts = {}) {
     image: `/guides/${folder}/frame-${n}.jpg`,
     thumb: `/guides/${folder}/frame-${n}-thumb.jpg`,
     caption,
+    section: opts.section ?? null,
     durationMs: opts.durationMs ?? 2400,
     cursorX: opts.cursorX ?? null,
     cursorY: opts.cursorY ?? null,
@@ -67,6 +68,7 @@ function mockFrame(sortOrder, variant, caption, opts = {}) {
     kind: 'mock',
     image: variant,
     caption,
+    section: opts.section ?? null,
     durationMs: opts.durationMs ?? 2200,
     cursorX: opts.cursorX ?? null,
     cursorY: opts.cursorY ?? null,
@@ -82,103 +84,108 @@ function guide(sortOrder, id, title, description, category, tab, durationMin, fr
 }
 
 export const GUIDES = [
-  guide(1, 'register', "NFCSTORE'da ro'yxatdan o'tish",
-    "Telefon raqami bilan hisob yaratish va birinchi kirish.", 'profil', 'shaxsiy', 2, [
+  // ═══════════════════════ 1. Ro'yxatdan o'tish va shaxsiy profil yaratish ═══════════════════════
+  guide(1, 'register-profile', "Ro'yxatdan o'tish va shaxsiy profil yaratish",
+    "Noldan hisob ochish, tasdiqlash va birinchi profilingizni ko'rish — boshidan oxirigacha.", 'profil', 'shaxsiy', 3, [
       realFrame(1, 'shaxsiy-boshlash-1', 1, "Bosh sahifada yuqori o‘ng burchakdagi «Bepul profil yaratish» tugmasini bosing.", { cursorX: 97, cursorY: 7, highlightBox: { xPct: 90, yPct: 4, wPct: 10, hPct: 6 } }),
-      realFrame(2, 'shaxsiy-boshlash-1', 2, 'Email, parol, telefon raqamingizni kiriting va botga yozganingizni tasdiqlang.', { cursorX: 67, cursorY: 73, highlightBox: { xPct: 54, yPct: 70, wPct: 26, hPct: 6 } }),
+      realFrame(2, 'shaxsiy-boshlash-1', 2, 'Email, parol va telefon raqamingizni kiriting.', { cursorX: 67, cursorY: 73, highlightBox: { xPct: 54, yPct: 70, wPct: 26, hPct: 6 } }),
       realFrame(3, 'shaxsiy-boshlash-1', 3, '«Kod yuborish»ni bosgach, tasdiqlash kodi Telegram botga yuboriladi.', { cursorX: 74, cursorY: 97 }),
       realFrame(4, 'shaxsiy-boshlash-1', 4, 'Kelgan kodni kiriting, shartlarga rozilik bildiring va «Akkaunt yaratish»ni bosing.', { cursorX: 62, cursorY: 65, clickEffect: true }),
-      realFrame(5, 'shaxsiy-boshlash-1', 5, 'Tabriklaymiz — hisobingiz va shaxsiy NFC ID’ingiz tayyor!', { zoomTarget: 'center', durationMs: 2800 }),
+      realFrame(5, 'shaxsiy-boshlash-1', 5, 'Tabriklaymiz — hisobingiz tayyor! Sizga avtomatik 8 xonali profil ID’ berildi.', { zoomTarget: 'center', durationMs: 2700 }),
+      realFrame(6, 'shaxsiy-boshlash-1', 5, 'MUHIM: bu 8 xonali ID — 0 so‘m, mutlaqo BEPUL. Bu alohida, 6 belgili PULLIK NFC ID (masalan ABZ007) bilan bir narsa emas — buni keyingi darsda ko‘rib chiqamiz.', { zoomTarget: 'left center', durationMs: 3000 }),
+      realFrame(7, 'shaxsiy-boshlash-2', 1, 'Ro‘yxatdan o‘tgach, profilingiz avtomatik yaratiladi — hali bo‘sh, faqat ID bilan.', { cursorX: 69, cursorY: 44, highlightBox: { xPct: 64, yPct: 41, wPct: 9, hPct: 4 } }),
+      realFrame(8, 'shaxsiy-boshlash-2', 2, '«Tahrirlash» tugmasi orqali «Mening profilim» sozlamalariga kirasiz.', { cursorX: 19, cursorY: 63 }),
+      realFrame(9, 'shaxsiy-boshlash-2', 3, 'Barcha o‘zgarishlar o‘ng tarafdagi jonli oldindan ko‘rishda darhol ko‘rinadi.', { cursorX: 12, cursorY: 60, zoomTarget: 'left center' }),
+      realFrame(10, 'shaxsiy-boshlash-2', 4, 'Tayyor — profilingiz shunday ko‘rinadi. Keyingi qadam: uni to‘liq sozlash.', { zoomTarget: 'center', durationMs: 2800 }),
     ]),
 
-  guide(2, 'create-profile', 'Shaxsiy profil yaratish',
-    "Ro'yxatdan o'tgach shaxsiy raqamli tashrif qog'ozini ochish va tahrirlashni boshlash.", 'profil', 'shaxsiy', 2, [
-      realFrame(1, 'shaxsiy-boshlash-2', 1, 'Ro‘yxatdan o‘tgach, profilingiz avtomatik yaratiladi — hali bo‘sh, faqat ID bilan.', { cursorX: 69, cursorY: 44, highlightBox: { xPct: 64, yPct: 41, wPct: 9, hPct: 4 } }),
-      realFrame(2, 'shaxsiy-boshlash-2', 2, '«Tahrirlash» tugmasi orqali profil sozlamalariga kirasiz.', { cursorX: 19, cursorY: 63 }),
-      realFrame(3, 'shaxsiy-boshlash-2', 3, 'Barcha o‘zgarishlar o‘ng tarafdagi jonli oldindan ko‘rishda darhol ko‘rinadi.', { cursorX: 12, cursorY: 60, zoomTarget: 'left center' }),
-      realFrame(4, 'shaxsiy-boshlash-2', 4, 'Tayyor — profilingiz shunday ko‘rinadi, istalgan vaqt qayta tahrirlashingiz mumkin.', { zoomTarget: 'center', durationMs: 2600 }),
-    ]),
-
-  guide(3, 'fill-profile', "Profilni to'ldirish",
-    'Ism, kasb, bio va boshqa asosiy maydonlarni birma-bir to‘ldirish tartibi.', 'profil', 'shaxsiy', 2, [
+  // ═══════════════════════ 2. Shaxsiy profilni to'liq sozlash ═══════════════════════
+  guide(2, 'profile-setup', 'Shaxsiy profilni to‘liq sozlash',
+    'Rasm, ism, bio, kontaktlar va ijtimoiy tarmoqlar — profilingizni professional ko‘rinishga keltiring.', 'profil', 'shaxsiy', 3, [
       realFrame(1, 'shaxsiy-profil-4', 1, 'Profilni to‘ldirish «Asosiy ma’lumot» bo‘limidan boshlanadi: rasm, ism, kasb, bio.', { cursorX: 20, cursorY: 84 }),
       realFrame(2, 'shaxsiy-profil-4', 2, 'Rasm va ismni to‘ldirgach, o‘ng tarafdagi kartochka darhol yangilanadi.', { cursorX: 10, cursorY: 60, zoomTarget: 'right center' }),
-      realFrame(3, 'shaxsiy-profil-4', 3, 'Keyin «Aloqa va ijtimoiy tarmoqlar» bo‘limini to‘ldiring.', { cursorX: 12, cursorY: 40 }),
-      realFrame(4, 'shaxsiy-profil-4', 4, 'Barcha maydonlar to‘ldirilgach, profilingiz to‘liq va professional ko‘rinadi.', { zoomTarget: 'center', durationMs: 2600 }),
+      realFrame(3, 'shaxsiy-profil-7', 1, 'Standart holatda ismning bosh harfi ko‘rsatiladi — profil rasmi hali yo‘q.', { cursorX: 50, cursorY: 63 }),
+      realFrame(4, 'shaxsiy-profil-7', 2, '«Rasm tanlash»ni bosing. Pastroqda «Dizayn va fon» bo‘limi ham bor.', { cursorX: 19, cursorY: 84, highlightBox: { xPct: 14, yPct: 82, wPct: 10, hPct: 5 } }),
+      realFrame(5, 'shaxsiy-profil-7', 3, 'Tanlangan rasm darhol yuklanadi va jonli oldindan ko‘rishda chiqadi.', { cursorX: 10, cursorY: 60, zoomTarget: 'right center', clickEffect: true }),
+      realFrame(6, 'shaxsiy-profil-7', 4, 'Yangi profil rasmi endi ommaviy sahifangizda ko‘rinadi.', { zoomTarget: 'center', durationMs: 2600 }),
+      realFrame(7, 'shaxsiy-profil-4', 3, 'Keyin «Aloqa va ijtimoiy tarmoqlar» bo‘limini to‘ldiring.', { cursorX: 12, cursorY: 40 }),
+      mockFrame(8, 'form', '«Aloqa va ijtimoiy tarmoqlar» bo‘limini oching — u boshida yopiq turadi.', { cursorX: 30, cursorY: 40 }),
+      realFrame(9, 'shaxsiy-profil-11', 2, 'Telegram foydalanuvchi nomingizni kiriting.', { cursorX: 25, cursorY: 15, highlightBox: { xPct: 3, yPct: 66, wPct: 30, hPct: 6 } }),
+      realFrame(10, 'shaxsiy-profil-11', 3, 'Xuddi shunday Instagram, Facebook, WhatsApp va boshqa tarmoqlarni ham qo‘shishingiz mumkin.', { cursorX: 25, cursorY: 25 }),
+      realFrame(11, 'shaxsiy-profil-11', 4, 'Saqlagach, tugmalar to‘g‘ridan-to‘g‘ri profilingizda ko‘rinadi.', { zoomTarget: 'right center', durationMs: 2600 }),
+      realFrame(12, 'shaxsiy-profil-4', 4, 'Barcha maydonlar to‘ldirilgach, profilingiz to‘liq va professional ko‘rinadi.', { zoomTarget: 'center', durationMs: 2800 }),
     ]),
 
-  guide(4, 'avatar-design', 'Avatar, fon va dizaynni sozlash',
-    "Profil rasmini, fonini va umumiy dizaynini o'zgartirish.", 'profil', 'shaxsiy', 2, [
-      realFrame(1, 'shaxsiy-profil-7', 1, 'Yangi profilingizda standart holatda ismning bosh harfi ko‘rsatiladi.', { cursorX: 50, cursorY: 63 }),
-      realFrame(2, 'shaxsiy-profil-7', 2, '«Asosiy ma’lumot» bo‘limida «Rasm tanlash»ni bosing. Pastroqda «Dizayn va fon» bo‘limi ham bor.', { cursorX: 19, cursorY: 84, highlightBox: { xPct: 14, yPct: 82, wPct: 10, hPct: 5 } }),
-      realFrame(3, 'shaxsiy-profil-7', 3, 'Tanlangan rasm darhol yuklanadi va o‘ng tarafdagi jonli oldindan ko‘rishda chiqadi.', { cursorX: 10, cursorY: 60, zoomTarget: 'right center', clickEffect: true }),
-      realFrame(4, 'shaxsiy-profil-7', 4, 'Yangi profil rasmi endi ommaviy sahifangizda ko‘rinadi.', { zoomTarget: 'center', durationMs: 2600 }),
-    ]),
-
-  guide(5, 'contacts-social', 'Kontaktlar va ijtimoiy tarmoqlar qo‘shish',
-    'Telegram, Instagram, telefon va boshqa aloqa vositalarini profilga ulash.', 'profil', 'shaxsiy', 1, [
-      mockFrame(1, 'form', '«Aloqa va ijtimoiy tarmoqlar» bo‘limini oching — u boshida yopiq turadi.', { cursorX: 30, cursorY: 40 }),
-      realFrame(2, 'shaxsiy-profil-11', 2, 'Telegram foydalanuvchi nomingizni kiriting.', { cursorX: 25, cursorY: 15, highlightBox: { xPct: 3, yPct: 66, wPct: 30, hPct: 6 } }),
-      realFrame(3, 'shaxsiy-profil-11', 3, 'Xuddi shunday Instagram, Facebook va boshqa tarmoqlarni ham qo‘shishingiz mumkin.', { cursorX: 25, cursorY: 25 }),
-      realFrame(4, 'shaxsiy-profil-11', 4, 'Saqlagach, tugmalar to‘g‘ridan-to‘g‘ri profilingizda ko‘rinadi.', { zoomTarget: 'right center', durationMs: 2600 }),
-    ]),
-
-  guide(6, 'nfc-id-pricing', 'NFC ID tanlash va tarifni tushunish',
-    "Bronza, Silver, Gold, Premium, Ekslyuziv — daraja va narxlarni solishtirib tanlash.", 'nfc', 'both', 2, [
+  // ═══════════════════════ 3. NFC ID tanlash va sotib olish ═══════════════════════
+  guide(3, 'nfc-id-purchase', 'NFC ID tanlash va sotib olish',
+    "Bepul avtomatik ID bilan pullik 6 belgili NFC ID orasidagi farq, narxlar va buyurtma jarayoni.", 'nfc', 'shaxsiy', 3, [
       realFrame(1, 'shaxsiy-nfc-3', 1, 'Narxlar sahifasida Bronza, Silver, Gold, Premium va Ekslyuziv tariflarini solishtiring.', { cursorX: 30, cursorY: 68, highlightBox: { xPct: 5, yPct: 63, wPct: 40, hPct: 7 } }),
       realFrame(2, 'shaxsiy-nfc-3', 2, 'Katalogda band qilingan ID’lar va ularning darajasi (rangli belgi) ko‘rinadi.', { cursorX: 40, cursorY: 40 }),
-      realFrame(3, 'shaxsiy-nfc-3', 3, 'Ro‘yxatdan o‘tganda avtomatik bepul 8 xonali ID beriladi — yoki narxlar sahifasidan yuqoriroq darajani tanlashingiz mumkin.', { zoomTarget: 'center', durationMs: 2700 }),
+      realFrame(3, 'shaxsiy-nfc-3', 2, 'Xohlagan ID’ni qidiruv orqali toping — masalan «ABZ007» yoki o‘zingizga yoqqan kombinatsiyani kiriting.', { cursorX: 25, cursorY: 40, clickEffect: true }),
+      realFrame(4, 'shaxsiy-nfc-3', 1, 'Har bir daraja narxi kod naqshiga bog‘liq va qat’iy (o‘zgarmas) — pastdagi kalkulyatorda o‘zingizga mos ID narxini hisoblashingiz mumkin.', { zoomTarget: 'bottom center' }),
+      realFrame(5, 'shaxsiy-nfc-3', 3, 'Ro‘yxatdan o‘tganda avtomatik BEPUL 8 xonali ID beriladi — yoki bu yerdan yuqoriroq darajadagi ID tanlashingiz mumkin.', { zoomTarget: 'center', durationMs: 2700 }),
+      mockFrame(6, 'form', 'Tanlangan ID’ni band qilish uchun avval tizimga kiring — hisobingiz bo‘lishi shart.', { cursorX: 50, cursorY: 40 }),
+      realFrame(7, 'order-payment', 1, 'Profilingiz ustida «NFC ID buyurtma berish» tugmasini toping — buyurtma jarayoni shu yerdan boshlanadi.', { cursorX: 58, cursorY: 27, highlightBox: { xPct: 43, yPct: 22, wPct: 28, hPct: 10 } }),
+      mockFrame(8, 'card', 'To‘lov usulini tanlaysiz — hozircha Payme integratsiyasi ishga tushirilmoqda, shuning uchun bu FAQAT namoyish.', { cursorX: 50, cursorY: 50 }),
+      mockFrame(9, 'card', '«To‘lash»ni bosasiz — bu DEMO, hozircha real to‘lov amalga oshmaydi.', { cursorX: 50, cursorY: 70, clickEffect: true }),
+      realFrame(10, 'shaxsiy-nfc-3', 2, 'Muvaffaqiyatli to‘lovdan keyin yangi NFC ID’ingiz profilingizga avtomatik biriktiriladi.', { zoomTarget: 'center', durationMs: 2800 }),
     ]),
 
-  guide(7, 'nfc-usage', 'NFC kartadan foydalanish',
-    'Telefonni NFC kartaga yaqinlashtirib profilni ochish.', 'nfc', 'both', 1, [
-      mockFrame(1, 'tap', 'NFC kartangizni tayyorlang.', { cursorX: 50, cursorY: 70 }),
-      mockFrame(2, 'tap', 'Telefoningizni kartaning orqa tomoniga yaqinlashtiring.', { cursorX: 50, cursorY: 40, highlight: 'nfc-zone' }),
-      mockFrame(3, 'tap', '“Tegizish” shart emas — yaqinlashtirish kifoya. Telefon kartani avtomatik aniqlaydi.', { cursorX: 50, cursorY: 40, clickEffect: true }),
-      realFrame(4, 'shaxsiy-boshlash-1', 5, 'Profil avtomatik ravishda telefon brauzerida ochiladi.', { zoomTarget: 'center', durationMs: 2600 }),
+  // ═══════════════════════ 4. Kompaniya profilini yaratish va to'ldirish ═══════════════════════
+  guide(4, 'company-create-fill', 'Kompaniya profilini yaratish va to‘ldirish',
+    'Alohida Company ID ochish, biznes ma’lumotlarini to‘ldirish va public sahifani ko‘rish.', 'kompaniya', 'kompaniya', 3, [
+      realFrame(1, 'kompaniya-kompaniya-1', 1, '«Kompaniya yaratish» sahifasida o‘ziga xos Company ID tanlang — bu shaxsiy NFC ID’dan butunlay alohida.', { cursorX: 77, cursorY: 44, highlightBox: { xPct: 62, yPct: 42, wPct: 30, hPct: 3 } }),
+      realFrame(2, 'kompaniya-kompaniya-1', 2, 'Kompaniya nomi va faoliyat yo‘nalishini kiriting.', { cursorX: 50, cursorY: 30 }),
+      realFrame(3, 'kompaniya-kompaniya-1', 2, 'Yo‘nalishni to‘g‘ri tanlash muhim — bu keyinchalik katalog atamalarini belgilaydi (masalan, restoran uchun «Taomlar»).', { cursorX: 76, cursorY: 30, zoomTarget: 'right center' }),
+      realFrame(4, 'kompaniya-kompaniya-1', 2, 'Shahar va telefon raqamingizni ham kiriting.', { cursorX: 50, cursorY: 60 }),
+      realFrame(5, 'kompaniya-kompaniya-1', 3, 'Barcha maydonlarni to‘ldirib bo‘lgach, arizani yuboring.', { cursorX: 76, cursorY: 68, clickEffect: true }),
+      realFrame(6, 'kompaniya-kompaniya-1', 4, 'Ariza yuborildi — admin tekshiruvi paytida ham boshqaruv panelidan foydalanishingiz mumkin.', { zoomTarget: 'center', durationMs: 2600 }),
+      realFrame(7, 'kompaniya-kompaniya-7', 1, 'Business Workspace — chap menyudan «Profil» bo‘limini oching.', { cursorX: 9, cursorY: 30, highlightBox: { xPct: 1, yPct: 27, wPct: 17, hPct: 6 } }),
+      realFrame(8, 'kompaniya-kompaniya-7', 2, 'Nomi, kichik soha, «Biz haqimizda» va logo/muqova havolalarini kiriting.', { cursorX: 50, cursorY: 50 }),
+      realFrame(9, 'kompaniya-kompaniya-7', 4, '«Aloqa» bo‘limida telefon, Telegram va manzilni to‘ldiring.', { cursorX: 9, cursorY: 46, zoomTarget: 'center' }),
+      realFrame(10, 'kompaniya-kompaniya-7', 1, 'Tayyor bo‘lgach, yuqoridagi «Kompaniya sahifasi» tugmasi orqali public profilingizni ko‘ring.', { cursorX: 82, cursorY: 8, clickEffect: true, durationMs: 2700 }),
     ]),
 
-  guide(8, 'qr-share', 'QR va profil havolasini ulashish',
-    'Profilingizni QR kod yoki to‘g‘ridan-to‘g‘ri havola orqali ulashish.', 'nfc', 'both', 1, [
-      realFrame(1, 'shaxsiy-boshlash-2', 1, 'Profil sahifangizda, ID belgisi yonida nusxalash va ulashish belgilari bor.', { cursorX: 69, cursorY: 21, highlightBox: { xPct: 65, yPct: 18, wPct: 8, hPct: 4 } }),
-      realFrame(2, 'shaxsiy-boshlash-2', 1, 'Havolani nusxalab, istalgan joyga (Telegram, Instagram bio va h.k.) joylashtirishingiz mumkin.', { cursorX: 69, cursorY: 21, clickEffect: true, zoomTarget: 'right top' }),
-      mockFrame(3, 'qr', 'Fizik kartangizda esa QR kod avtomatik ishlaydi — kamera bilan skanerlash orqali ham profil ochiladi.', { durationMs: 2600 }),
+  // ═══════════════════════ 5. Mahsulot / xizmat / restoran menyusi qo'shish ═══════════════════════
+  guide(5, 'catalog-menu', 'Mahsulot / xizmat / restoran menyusi qo‘shish',
+    'Universal katalog bo‘limi orqali mahsulot, xizmat yoki restoran menyusini qo‘shish — barchasi bitta joyda.', 'kompaniya', 'kompaniya', 4, [
+      // ── A. Mahsulot ──
+      realFrame(1, 'kompaniya-kompaniya-7', 1, 'Chap menyudan «Katalog» bo‘limini oching.', { section: 'Mahsulot', cursorX: 9, cursorY: 51, highlightBox: { xPct: 1, yPct: 48, wPct: 17, hPct: 6 } }),
+      realFrame(2, 'kompaniya-kompaniya-7', 3, 'Mahsulot nomi va narxini kiriting.', { section: 'Mahsulot', cursorX: 30, cursorY: 51, zoomTarget: 'top left' }),
+      realFrame(3, 'kompaniya-kompaniya-7', 3, 'Rasm URL va qisqa tavsif qo‘shing — bu mijozga mahsulotni tushunarli qiladi.', { section: 'Mahsulot', cursorX: 45, cursorY: 68, zoomTarget: 'bottom' }),
+      realFrame(4, 'kompaniya-kompaniya-7', 3, '«+ Qo‘shish»ni bosing — element darhol katalogga qo‘shiladi.', { section: 'Mahsulot', cursorX: 45, cursorY: 84, clickEffect: true }),
+      realFrame(5, 'kompaniya-kompaniya-7', 1, 'Qo‘shilgan mahsulotlar public profilingizda «Mahsulotlarni ko‘rish» tugmasi orqali ko‘rinadi.', { section: 'Mahsulot', zoomTarget: 'right center', durationMs: 2600 }),
+      // ── B. Xizmat ──
+      realFrame(6, 'kompaniya-kompaniya-7', 3, 'Xizmat turi uchun ham xuddi shu bo‘lim ishlatiladi — nomini kiriting, narxni belgilang yoki «Kelishiladi» qoldiring.', { section: 'Xizmat', cursorX: 30, cursorY: 51, zoomTarget: 'top left' }),
+      realFrame(7, 'kompaniya-kompaniya-7', 3, 'Xizmat tavsifini aniq yozing — mijoz nima olishini bir qarashda tushunsin.', { section: 'Xizmat', cursorX: 45, cursorY: 84, zoomTarget: 'bottom' }),
+      realFrame(8, 'kompaniya-kompaniya-7', 4, '«Aloqa» bo‘limidagi telefon/Telegram orqali mijoz sizga to‘g‘ridan-to‘g‘ri murojaat qiladi.', { section: 'Xizmat', zoomTarget: 'center' }),
+      realFrame(9, 'kompaniya-kompaniya-7', 3, 'Saqlangach, xizmat ro‘yxatingiz avtomatik yangilanadi.', { section: 'Xizmat', cursorX: 45, cursorY: 92, durationMs: 2600 }),
+      // ── C. Restoran menyusi ──
+      realFrame(10, 'kompaniya-kompaniya-7', 1, 'Agar biznes turingiz restoran/kafe bo‘lsa, xuddi shu Katalog bo‘limi «Taomlar» deb nomlanadi.', { section: 'Restoran menyusi', cursorX: 9, cursorY: 51, highlightBox: { xPct: 1, yPct: 48, wPct: 17, hPct: 6 } }),
+      realFrame(11, 'kompaniya-kompaniya-7', 3, 'Kategoriya maydoniga «Nonushta», «Issiq taomlar» kabi bo‘lim nomini kiriting.', { section: 'Restoran menyusi', cursorX: 63, cursorY: 51, zoomTarget: 'top right' }),
+      realFrame(12, 'kompaniya-kompaniya-7', 3, 'Taom rasmi, nomi, tavsifi va narxini kiriting.', { section: 'Restoran menyusi', cursorX: 45, cursorY: 68, zoomTarget: 'top' }),
+      realFrame(13, 'kompaniya-kompaniya-7', 3, '«+ Qo‘shish»ni bosing — taom menyuga qo‘shiladi.', { section: 'Restoran menyusi', cursorX: 45, cursorY: 84, clickEffect: true }),
+      realFrame(14, 'kompaniya-kompaniya-7', 1, 'Telefondagi jonli ko‘rishda mijoz to‘liq menyuni ko‘radi.', { section: 'Restoran menyusi', zoomTarget: 'right center', durationMs: 2800 }),
     ]),
 
-  guide(9, 'company-create', 'Kompaniya profilini yaratish',
-    'Biznesingiz uchun alohida Company ID va profil ochish.', 'kompaniya', 'kompaniya', 2, [
-      realFrame(1, 'kompaniya-kompaniya-1', 1, '«Kompaniya yaratish» sahifasida o‘ziga xos Company ID tanlang.', { cursorX: 77, cursorY: 44, highlightBox: { xPct: 62, yPct: 42, wPct: 30, hPct: 3 } }),
-      realFrame(2, 'kompaniya-kompaniya-1', 2, 'Kompaniya nomi, yo‘nalishi, shahar va kontaktlarni kiriting.', { cursorX: 50, cursorY: 30 }),
-      realFrame(3, 'kompaniya-kompaniya-1', 3, 'Barcha maydonlarni to‘ldirib bo‘lgach, arizani yuboring.', { cursorX: 76, cursorY: 68, clickEffect: true }),
-      realFrame(4, 'kompaniya-kompaniya-1', 4, 'Ariza yuborildi — admin tekshiruvi paytida ham boshqaruv panelidan foydalanishingiz mumkin.', { zoomTarget: 'center', durationMs: 2700 }),
-    ]),
-
-  guide(10, 'company-fill', "Kompaniya profilini to'ldirish",
-    'Nomi, tavsifi, kontaktlari va katalogini to‘ldirish.', 'kompaniya', 'kompaniya', 2, [
-      realFrame(1, 'kompaniya-kompaniya-7', 1, 'Business Workspace — chap menyudan «Profil» bo‘limini oching.', { cursorX: 9, cursorY: 30, highlightBox: { xPct: 1, yPct: 27, wPct: 17, hPct: 6 } }),
-      realFrame(2, 'kompaniya-kompaniya-7', 2, 'Nomi, kichik soha, «Biz haqimizda» va logo/muqova havolalarini kiriting.', { cursorX: 50, cursorY: 50 }),
-      realFrame(3, 'kompaniya-kompaniya-7', 3, 'Katalog bo‘limida mahsulot/xizmatlaringizni qo‘shasiz.', { cursorX: 9, cursorY: 40 }),
-      realFrame(4, 'kompaniya-kompaniya-7', 4, '«Aloqa» bo‘limida telefon, ish vaqti va manzilni to‘ldiring.', { cursorX: 9, cursorY: 46, zoomTarget: 'center', durationMs: 2600 }),
-    ]),
-
-  guide(11, 'auction-join', 'Auksionda qatnashish',
-    'Faol lotlarni topish, narxini kuzatish va taklif berish.', 'auksion', 'both', 2, [
+  // ═══════════════════════ 6. Auksionda qatnashish ═══════════════════════
+  guide(6, 'auction-join', 'Auksionda qatnashish',
+    'Ekslyuziv NFC ID’lar uchun faol lotlarni topish, narxini kuzatish va taklif berish jarayoni.', 'auksion', 'both', 3, [
       realFrame(1, 'both-auksion-5', 1, 'Auksion sahifasida faol lotlar ro‘yxatini ko‘ring.', { cursorX: 72, cursorY: 37 }),
-      realFrame(2, 'both-auksion-5', 2, 'Lot sahifasida joriy narx, qolgan vaqt va «Darhol sotib olish» narxi ko‘rinadi.', { cursorX: 20, cursorY: 57 }),
-      mockFrame(3, 'form', 'Taklif summasini kiritasiz (demo qiymat — to‘lov tizimi yoqilgach ishlaydi).', { cursorX: 50, cursorY: 55 }),
-      mockFrame(4, 'card', '«Taklif berish»ni bosasiz — bu FAQAT namoyish, hozircha real stavka berilmaydi.', { cursorX: 50, cursorY: 70, clickEffect: true }),
-    ]),
-
-  guide(12, 'order-payment', "NFC karta buyurtmasi va to'lov jarayoni",
-    'Jismoniy NFC kartaga buyurtma berish va to‘lov bosqichi.', 'buyurtma', 'both', 2, [
-      realFrame(1, 'order-payment', 1, 'Profilingiz ustida «Karta dizayni» va «NFC ID buyurtma berish» tugmalarini toping.', { cursorX: 58, cursorY: 27, highlightBox: { xPct: 43, yPct: 22, wPct: 28, hPct: 10 } }),
-      mockFrame(2, 'card', 'Karta dizaynini tanlaysiz — rang, material va joylashuvni sozlash mumkin.', { cursorX: 50, cursorY: 50 }),
-      realFrame(3, 'shaxsiy-boshlash-1', 5, 'Hozircha to‘lov tizimi (Payme) ishga tushirilmoqda — tez orada buyurtma shu yerdan to‘lanadi.', { cursorX: 20, cursorY: 60, highlightBox: { xPct: 6, yPct: 56, wPct: 92, hPct: 15 }, durationMs: 2800 }),
+      realFrame(2, 'both-auksion-5', 2, 'Lot sahifasida boshlang‘ich narx, joriy narx va qolgan vaqt ko‘rinadi.', { cursorX: 20, cursorY: 57 }),
+      realFrame(3, 'both-auksion-5', 2, '«Darhol sotib olish» narxi orqali auksionni kutmasdan ham sotib olish mumkin.', { cursorX: 60, cursorY: 40, zoomTarget: 'right center' }),
+      mockFrame(4, 'form', 'Taklif berish uchun avval tizimga kirishingiz kerak.', { cursorX: 50, cursorY: 30 }),
+      mockFrame(5, 'form', 'Taklif summasini kiritasiz — bu FAQAT namoyish, hozircha real stavka berilmaydi.', { cursorX: 50, cursorY: 55 }),
+      mockFrame(6, 'card', '«Taklif berish»ni bosasiz.', { cursorX: 50, cursorY: 70, clickEffect: true }),
+      mockFrame(7, 'card', 'Taklifingiz qabul qilindi — hozircha siz eng yuqori tariflovchisiz (DEMO holat).', { cursorX: 50, cursorY: 50, highlight: 'price' }),
+      mockFrame(8, 'card', 'Agar boshqa foydalanuvchi yuqoriroq taklif bersa, sizga darhol bildirishnoma keladi (DEMO holat).', { cursorX: 50, cursorY: 50, highlight: 'price' }),
+      mockFrame(9, 'card', 'Auksion vaqti tugagach, eng yuqori taklif g‘olib deb e’lon qilinadi (DEMO holat).', { cursorX: 50, cursorY: 50 }),
+      realFrame(10, 'both-auksion-5', 1, 'G‘olib bo‘lgan ID endi profilingizga NFC ID sifatida biriktiriladi.', { zoomTarget: 'center', durationMs: 2800 }),
     ]),
 ];
 
 // ─────────────────────────── Tariflar — REAL narxlardan dinamik ───────────────────────────
-// Guide #6 (nfc-id-pricing) ichida real /narxlar skrinshoti orqali ko'rsatiladi.
+// Guide #3 (nfc-id-purchase) ichida real /narxlar skrinshoti orqali ko'rsatiladi.
 // Bu eksport — kelajakda kerak bo'lsa (masalan boshqa joyda) qayta
 // ishlatish uchun — hech qanday narx qo'lda yozilmagan, to'g'ridan-to'g'ri
 // src/lib/pricing.js'dan olinadi.
