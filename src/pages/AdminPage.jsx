@@ -546,7 +546,8 @@ function OrdersTab() {
   const { t } = useLanguage();
   const [orders, setOrders] = useState(null);
   const [busy, setBusy] = useState(null);
-  const load = () => adminApi('/orders').then((d) => setOrders(d.orders));
+  const [loadErr, setLoadErr] = useState(false);
+  const load = () => { setLoadErr(false); setOrders(null); return adminApi('/orders').then((d) => setOrders(Array.isArray(d?.orders) ? d.orders : [])).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const confirmPayment = async (o) => {
@@ -561,6 +562,7 @@ function OrdersTab() {
     finally { setBusy(null); }
   };
 
+  if (loadErr) return <EmptyState icon="clipboard" title={t("Buyurtmalarni yuklab bo'lmadi.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />;
   if (!orders) return <AdminLoading />;
   return (
     <div className="overflow-x-auto">
@@ -662,7 +664,8 @@ function PendingPayoutsTab() {
   const { t } = useLanguage();
   const [payouts, setPayouts] = useState(null);
   const [busy, setBusy] = useState(null);
-  const load = () => adminApi('/pending-payouts').then((d) => setPayouts(d.payouts));
+  const [loadErr, setLoadErr] = useState(false);
+  const load = () => { setLoadErr(false); setPayouts(null); return adminApi('/pending-payouts').then((d) => setPayouts(Array.isArray(d?.payouts) ? d.payouts : [])).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const clear = async (userId, amount) => {
@@ -671,6 +674,7 @@ function PendingPayoutsTab() {
     try { await adminApi(`/pending-payouts/${userId}/clear`, { method: 'POST', body: JSON.stringify({ amount }) }); await load(); } finally { setBusy(null); }
   };
 
+  if (loadErr) return <EmptyState icon="wallet" title={t("To'lovlar ro'yxatini yuklab bo'lmadi.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />;
   if (!payouts) return <AdminLoading />;
   if (payouts.length === 0) return <EmptyState icon="wallet" title={t("Hozircha hech kimga to'lanishi kerak bo'lgan pul yo'q.")} />;
   return (
@@ -1260,8 +1264,9 @@ function NotificationsTab() {
   const [replyFor, setReplyFor] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loadErr, setLoadErr] = useState(false);
 
-  const load = () => adminApi('/support-messages').then((d) => setMessages(d.messages));
+  const load = () => { setLoadErr(false); setMessages(null); return adminApi('/support-messages').then((d) => setMessages(Array.isArray(d?.messages) ? d.messages : [])).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const sendReply = async (id) => {
@@ -1277,6 +1282,7 @@ function NotificationsTab() {
     }
   };
 
+  if (loadErr) return <EmptyState icon="bell" title={t("Murojaatlarni yuklab bo'lmadi.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />;
   if (!messages) return <AdminLoading />;
   if (messages.length === 0) return <EmptyState icon="bell" title={t("Hozircha murojaat yo'q.")} />;
   return (
@@ -1315,7 +1321,8 @@ function PhysicalCardsTab() {
   const { t } = useLanguage();
   const [cards, setCards] = useState(null);
   const [busy, setBusy] = useState(null);
-  const load = () => adminApi('/physical-cards').then((d) => setCards(d.cards));
+  const [loadErr, setLoadErr] = useState(false);
+  const load = () => { setLoadErr(false); setCards(null); return adminApi('/physical-cards').then((d) => setCards(Array.isArray(d?.cards) ? d.cards : [])).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const setStatus = async (id, status) => {
@@ -1334,6 +1341,7 @@ function PhysicalCardsTab() {
     }
   };
 
+  if (loadErr) return <EmptyState icon="idcard" title={t("Jismoniy kartalarni yuklab bo'lmadi.")} action={<button className="btn btn-sm" onClick={load}>{t('Qayta urinish')}</button>} />;
   if (!cards) return <AdminLoading />;
   if (cards.length === 0) return <EmptyState icon="idcard" title={t("Hozircha jismoniy karta buyurtmasi yo'q.")} />;
   return (
@@ -1384,8 +1392,9 @@ function GiftNfcIdTab() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [lastCreated, setLastCreated] = useState(null);
+  const [loadErr, setLoadErr] = useState(false);
 
-  const load = () => adminApi('/nfc-gifts').then((d) => setGifts(d.gifts));
+  const load = () => { setLoadErr(false); setGifts(null); return adminApi('/nfc-gifts').then((d) => setGifts(Array.isArray(d?.gifts) ? d.gifts : [])).catch(() => setLoadErr(true)); };
   useEffect(() => { load(); }, []);
 
   const create = async () => {
@@ -1435,7 +1444,8 @@ function GiftNfcIdTab() {
         <table className="table table-sm">
           <thead><tr><th>NFC ID</th><th>Recipient</th><th>{t("Qiymati")}</th><th>Activation Code</th><th>Status</th><th>{t('Yaratilgan')}</th><th>{t('Aktivlashtirilgan')}</th></tr></thead>
           <tbody>
-            {!gifts && <tr><td colSpan={7} className="py-6 text-center text-base-content/45">{t("Yuklanmoqda...")}</td></tr>}
+            {loadErr && <tr><td colSpan={7} className="py-6 text-center text-error">{t("Sovg'alarni yuklab bo'lmadi.")} <button className="btn btn-xs ml-2" onClick={load}>{t('Qayta urinish')}</button></td></tr>}
+            {!loadErr && !gifts && <tr><td colSpan={7} className="py-6 text-center text-base-content/45">{t("Yuklanmoqda...")}</td></tr>}
             {gifts?.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-base-content/45">{t("Hozircha sovg'a yaratilmagan.")}</td></tr>}
             {gifts?.map((g) => {
               const st = STATUS_LABEL[g.status] || { text: g.status, cls: 'badge-ghost' };
