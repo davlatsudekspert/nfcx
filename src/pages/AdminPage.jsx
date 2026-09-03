@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -41,15 +41,29 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
   const [step, setStep] = useState('credentials'); // credentials | code
   const [tempToken, setTempToken] = useState(null);
   const [code, setCode] = useState('');
+  // 'totp' (default/primary — Google Authenticator) or 'telegram' (opt-in
+  // alternative, only ever requested by the admin clicking the button
+  // below — never automatic, never IP/location-based).
+  const [twoFaMethod, setTwoFaMethod] = useState('totp');
+  const [tgBusy, setTgBusy] = useState(false);
+  // `busy` state alone doesn't rule out a genuine double-click firing two
+  // submits before React re-renders the disabled button — this ref updates
+  // synchronously, so a second submit inside that same window is dropped
+  // immediately, guaranteeing at most one /api/admin/login request per
+  // click/Enter.
+  const submitLock = useRef(false);
 
   const submitCredentials = async (e) => {
     e.preventDefault();
+    if (submitLock.current) return;
+    submitLock.current = true;
     setBusy(true);
     setErr(null);
     try {
       const result = await adminApi('/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
       if (result.twoFactor) {
         setTempToken(result.tempToken);
+        setTwoFaMethod(result.method === 'telegram' ? 'telegram' : 'totp');
         setStep('code');
       } else {
         onLoggedIn();
@@ -62,11 +76,35 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
           : t('Login yoki parol xato.'));
     } finally {
       setBusy(false);
+      submitLock.current = false;
+    }
+  };
+
+  const sendTelegramCode = async () => {
+    setTgBusy(true);
+    setErr(null);
+    try {
+      await adminApi('/2fa/telegram/send', { method: 'POST', body: JSON.stringify({ tempToken }) });
+      setTwoFaMethod('telegram');
+      setCode('');
+    } catch (e2) {
+      setErr(e2.message === 'telegram_not_configured'
+        ? t("Telegram bot sozlanmagan. Administratorga murojaat qiling.")
+        : e2.message === 'tg_send_failed'
+          ? t("Telegram'ga kod yuborib bo'lmadi. Birozdan so'ng qayta urinib ko'ring.")
+          : e2.message === 'expired'
+            ? t("Sessiya muddati o'tgan — qaytadan kiring.")
+            : t('Xatolik yuz berdi.'));
+      if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
+    } finally {
+      setTgBusy(false);
     }
   };
 
   const submitCode = async (e) => {
     e.preventDefault();
+    if (submitLock.current) return;
+    submitLock.current = true;
     setBusy(true);
     setErr(null);
     try {
@@ -77,6 +115,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
       if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
     } finally {
       setBusy(false);
+      submitLock.current = false;
     }
   };
 
@@ -109,15 +148,22 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
         ) : (
           <form onSubmit={submitCode} className="mt-6 space-y-3">
             <p className="text-sm text-base-content/60">
-              {t("Telegram botga 6 xonali kod yuborildi. Kodni kiriting:")}
+              {twoFaMethod === 'telegram'
+                ? t('Telegram botga 6 xonali kod yuborildi. Kodni kiriting:')
+                : t('Google Authenticator ilovasidagi 6 xonali kodni kiriting:')}
             </p>
             <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000" maxLength={6}
+              placeholder="000000" maxLength={6} inputMode="numeric" autoComplete="one-time-code"
               className="input input-bordered w-full bg-base-100 text-center font-mono text-lg tracking-widest" autoFocus />
             <button className="btn btn-primary w-full" disabled={busy || code.length !== 6}>
               {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Tasdiqlash')}
             </button>
-            <button type="button" className="btn btn-ghost btn-sm w-full" onClick={() => { setStep('credentials'); setCode(''); setErr(null); }}>{t('Orqaga')}</button>
+            <button type="button" className="btn btn-ghost btn-sm w-full" disabled={tgBusy} onClick={sendTelegramCode}>
+              {tgBusy
+                ? <span className="loading loading-spinner loading-xs"></span>
+                : twoFaMethod === 'telegram' ? t('Kodni qayta yuborish (Telegram)') : t('Telegram orqali kod olish')}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm w-full" onClick={() => { setStep('credentials'); setCode(''); setErr(null); setTwoFaMethod('totp'); }}>{t('Orqaga')}</button>
           </form>
         )}
         {err && <div className="alert alert-error mt-4 py-2 text-sm"><span>{t(err)}</span></div>}
@@ -1014,7 +1060,7 @@ function ExternalAnalyticsTab() {
 // qolgan bo'limlar hozircha rejalashtirilgan — bu birinchi qismi).
 function SecurityTab() {
   const { t } = useLanguage();
-  const [subTab, setSubTab] = useState('login'); // login | activity | ip
+  const [subTab, setSubTab] = useState('login'); // login | activity | ip | 2fa
   const [history, setHistory] = useState(null);
   const [activity, setActivity] = useState(null);
   const [ipData, setIpData] = useState(null);
@@ -1025,11 +1071,81 @@ function SecurityTab() {
 
   const loadIp = () => adminApi('/ip-whitelist').then(setIpData);
 
+  // ---------- 2FA / Google Authenticator (TOTP) ----------
+  const [totpStatus, setTotpStatus] = useState(null); // { enabled }
+  // `totpSetup` holds the secret ONLY transiently, in memory, for the
+  // duration of this one setup flow — never localStorage, never logged,
+  // cleared the moment setup finishes (success or cancel) or this
+  // component unmounts.
+  const [totpSetup, setTotpSetup] = useState(null); // { secret, otpauth }
+  const [totpCode, setTotpCode] = useState('');
+  const [totpBusy, setTotpBusy] = useState(false);
+  const [totpMsg, setTotpMsg] = useState(null);
+  const totpCanvasRef = useRef(null);
+
+  const loadTotpStatus = () => adminApi('/2fa/totp/status').then(setTotpStatus).catch(() => setTotpStatus({ enabled: false }));
+
   useEffect(() => {
     if (subTab === 'login' && !history) adminApi('/login-history').then((d) => setHistory(d.history));
     if (subTab === 'activity' && !activity) adminApi('/activity-log').then((d) => setActivity(d.log));
     if (subTab === 'ip' && !ipData) loadIp();
+    if (subTab === '2fa' && !totpStatus) loadTotpStatus();
   }, [subTab]);
+
+  useEffect(() => {
+    if (!totpSetup?.otpauth || !totpCanvasRef.current) return;
+    let cancelled = false;
+    import('qrcode').then((QRCode) => {
+      if (cancelled || !totpCanvasRef.current) return;
+      QRCode.toCanvas(totpCanvasRef.current, totpSetup.otpauth, { margin: 1, width: 220 }, () => {});
+    });
+    return () => { cancelled = true; };
+  }, [totpSetup]);
+
+  // Setup faqat shu componentda, faqat xotirada — sahifadan chiqilsa
+  // (tab almashsa) tugallanmagan setup holati (secret) darhol tozalanadi.
+  useEffect(() => () => setTotpSetup(null), []);
+
+  const startTotpSetup = async () => {
+    setTotpBusy(true);
+    setTotpMsg(null);
+    try {
+      const result = await adminApi('/2fa/totp/setup', { method: 'POST' });
+      setTotpSetup(result);
+      setTotpCode('');
+    } catch {
+      setTotpMsg(t('Xatolik yuz berdi.'));
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+  const confirmTotpSetup = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(totpCode.trim())) { setTotpMsg(t("6 xonali kodni to'liq kiriting.")); return; }
+    setTotpBusy(true);
+    setTotpMsg(null);
+    try {
+      await adminApi('/2fa/totp/confirm', { method: 'POST', body: JSON.stringify({ code: totpCode.trim() }) });
+      setTotpSetup(null);
+      setTotpCode('');
+      await loadTotpStatus();
+    } catch (e2) {
+      setTotpMsg(e2.message === 'not_set_up' ? t("Avval 'Google Authenticator ulash' tugmasini bosing.") : t("Kod noto'g'ri."));
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+  const cancelTotpSetup = () => { setTotpSetup(null); setTotpCode(''); setTotpMsg(null); };
+  const disableTotp = async () => {
+    if (!confirm(t("Google Authenticator'ni O'CHIRASIZMI? Bu keyingi kirishlarda 2FA kodi so'ralmasligini bildiradi."))) return;
+    setTotpBusy(true);
+    try {
+      await adminApi('/2fa/totp/disable', { method: 'POST' });
+      await loadTotpStatus();
+    } finally {
+      setTotpBusy(false);
+    }
+  };
 
   const addIp = async () => {
     if (!newIp.trim()) return;
@@ -1087,9 +1203,10 @@ function SecurityTab() {
         <button className={`btn btn-sm ${subTab === 'login' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('login')}>Login History</button>
         <button className={`btn btn-sm ${subTab === 'activity' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('activity')}>Activity Log</button>
         <button className={`btn btn-sm ${subTab === 'ip' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('ip')}>IP Whitelist</button>
+        <button className={`btn btn-sm ${subTab === '2fa' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSubTab('2fa')}>Google Authenticator</button>
       </div>
 
-      {subTab === 'login' ? (
+      {subTab === 'login' && (
         <div className="overflow-x-auto rounded-2xl border border-white/10">
           <table className="table table-sm">
             <thead><tr><th>{t('Hodisa')}</th><th>IP</th><th>{t('Qurilma')}</th><th>{t('Vaqt')}</th></tr></thead>
@@ -1110,7 +1227,8 @@ function SecurityTab() {
             </tbody>
           </table>
         </div>
-      ) : (
+      )}
+      {subTab === 'activity' && (
         <div className="overflow-x-auto rounded-2xl border border-white/10">
           <table className="table table-sm">
             <thead><tr><th>{t('Amal')}</th><th>{t('Tafsilot')}</th><th>{t('Qiymat')}</th><th>{t('Vaqt')}</th></tr></thead>
@@ -1164,8 +1282,60 @@ function SecurityTab() {
             {ipMsg && <div className="alert alert-error mt-3 py-2 text-xs"><span>{t(ipMsg)}</span></div>}
 
             <div className="mt-5 rounded-lg border border-dashed border-warning/30 bg-warning/5 p-3 text-xs text-warning">
-              {'\u26A0\uFE0F'} <b>{t('Xavfsiz tiklash:')}</b> {t("agar o'zingiz (dinamik IP tufayli) bloklanib qolsangiz, Railway loyihangizda ADMIN_IP_WHITELIST_BYPASS=true muhit o'zgaruvchisini qo'shing — bu whitelist'ni vaqtincha chetlab o'tadi. Kirib, IP'ni yangilagach, bu o'zgaruvchini albatta o'chirib qo'ying.")}
+              {'\u26A0\uFE0F'} <b>{t('Xavfsiz tiklash:')}</b> {t("agar o'zingiz (dinamik IP tufayli) bloklanib qolsangiz, Cloudflare Dashboard → nfcstore-api Worker → Settings → Variables bo'limida ADMIN_IP_WHITELIST_BYPASS=true muhit o'zgaruvchisini qo'shing — bu whitelist'ni vaqtincha chetlab o'tadi. Kirib, IP'ni yangilagach, bu o'zgaruvchini albatta o'chirib qo'ying.")}
             </div>
+          </div>
+        )
+      )}
+
+      {subTab === '2fa' && (
+        !totpStatus ? <AdminLoading /> : (
+          <div className="rounded-2xl border border-white/10 p-5">
+            {totpStatus.enabled && !totpSetup ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold text-success">{'✅'} {t('Google Authenticator ULANGAN')}</div>
+                  <p className="mt-1 text-xs text-base-content/50">{t('Har bir kirishda 6 xonali kod so‘raladi.')}</p>
+                </div>
+                <button className="btn btn-error btn-sm" disabled={totpBusy} onClick={disableTotp}>{t("O'chirish")}</button>
+              </div>
+            ) : !totpSetup ? (
+              <div>
+                <div className="text-sm font-bold">{t('Google Authenticator ulanmagan')}</div>
+                <p className="mt-1 text-xs text-base-content/50">
+                  {t('Google Authenticator, Microsoft Authenticator yoki 1Password kabi ilova bilan ulash — kirishda parolga qo‘shimcha 6 xonali kod so‘raladi.')}
+                </p>
+                <button className="btn btn-primary btn-sm mt-3" disabled={totpBusy} onClick={startTotpSetup}>
+                  {totpBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Google Authenticator ulash')}
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={confirmTotpSetup}>
+                <div className="text-sm font-bold">{t('1-qadam: QR kodni skanerlang')}</div>
+                <div className="mt-3 flex flex-col items-center gap-2 sm:flex-row sm:items-start">
+                  <canvas ref={totpCanvasRef} className="rounded-lg bg-white p-2" />
+                  <div className="min-w-0 text-xs text-base-content/60">
+                    <p>{t("Ilova bilan skanerlab bo'lmasa, quyidagi kalitni qo'lda kiriting:")}</p>
+                    <code className="mt-1 block break-all rounded bg-black/30 px-2 py-1 font-mono text-[11px] select-all">{totpSetup.secret}</code>
+                    <p className="mt-2 text-warning">{'⚠️'} {t('Bu kalit faqat hozir ko‘rsatiladi — keyinroq qayta ochilmaydi.')}</p>
+                  </div>
+                </div>
+                <div className="mt-4 text-sm font-bold">{t('2-qadam: 6 xonali kodni kiriting')}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    inputMode="numeric" autoComplete="one-time-code" placeholder="000000"
+                    className="input input-bordered input-sm w-32 bg-base-100 font-mono tracking-widest"
+                  />
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={totpBusy || totpCode.length !== 6}>
+                    {totpBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Tasdiqlash')}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" disabled={totpBusy} onClick={cancelTotpSetup}>{t('Bekor qilish')}</button>
+                </div>
+              </form>
+            )}
+            {totpMsg && <div className="alert alert-error mt-3 py-2 text-xs"><span>{totpMsg}</span></div>}
           </div>
         )
       )}

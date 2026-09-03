@@ -69,14 +69,13 @@ export async function dbList() {
   }
 }
 
-// Obunachilar / obunalar ro'yxati (profil linklari bilan).
+// Obunachilar / obunalar ro'yxati (profil linklari bilan). Xato bo'lsa
+// (tarmoq/server) chaqiruvchiga uzatiladi — bo'sh ro'yxat bilan
+// aralashtirmaslik uchun (chaqiruvchi UI bunga alohida "friendly error"
+// ko'rsatishi kerak, FollowListModal'dagi kabi).
 export async function dbFollowList(code, dir) {
-  try {
-    const j = await api(`/follow-list/${encodeURIComponent(code)}?dir=${dir === 'following' ? 'following' : 'followers'}`);
-    return (j && j.list) || [];
-  } catch {
-    return [];
-  }
+  const j = await api(`/follow-list/${encodeURIComponent(code)}?dir=${dir === 'following' ? 'following' : 'followers'}`);
+  return (j && j.list) || [];
 }
 
 // Katalog qidiruvi — serverда email/telefon bo'yicha ham topadi

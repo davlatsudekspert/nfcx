@@ -18,7 +18,13 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 import worker, { ensureCoreSchema } from '../hosting/worker.js';
+
+// admin_sessions.token stores SHA-256(raw token), never the raw value —
+// fixtures that hand-seed a session row (rather than going through the
+// real login flow) must store the hash the cookie's raw value hashes to.
+const sha256Hex = (text) => createHash('sha256').update(text).digest('hex');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -128,7 +134,7 @@ await ensureCoreSchema(env);
 // ---------- test fixtures: one signed-in user, one super_admin session ----------
 await env.DB.prepare(`INSERT INTO users (id, email, password_hash) VALUES (1, 'user@test.local', 'x')`).run();
 await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES ('user-token', 1, '2999-01-01T00:00:00.000Z')`).run();
-await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES ('admin-token', 1, 'super_admin', '2999-01-01T00:00:00.000Z', ?)`).bind(new Date().toISOString()).run();
+await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, 1, 'super_admin', '2999-01-01T00:00:00.000Z', ?)`).bind(sha256Hex('admin-token'), new Date().toISOString()).run();
 
 function req(pathname, init = {}) {
   return new Request(`https://nfcstore.uz${pathname}`, init);
