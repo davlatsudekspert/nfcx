@@ -917,6 +917,21 @@ async function ensureCoreSchema(env) {
         "temp_token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "method" TEXT NOT NULL,
         "code" TEXT, "expires_at" TEXT NOT NULL
       )`),
+      // Followers subsystem — mirrors the "follows" table already present in
+      // db/d1-migration/0001-schema.sql (paid/amount kept only for schema
+      // parity with the legacy Postgres table; every follow created below is
+      // always free). IF NOT EXISTS makes this a safety net, not a real
+      // migration, matching the pattern used for every other table above.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "follows" (
+        "id" INTEGER PRIMARY KEY NOT NULL, "follower_id" INTEGER NOT NULL, "followee_id" INTEGER NOT NULL,
+        "paid" INTEGER DEFAULT 0 NOT NULL, "amount" INTEGER DEFAULT 0 NOT NULL,
+        "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        UNIQUE("follower_id", "followee_id"),
+        FOREIGN KEY("followee_id") REFERENCES "users"("id") ON DELETE CASCADE,
+        FOREIGN KEY("follower_id") REFERENCES "users"("id") ON DELETE CASCADE
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "follows_followee_idx" ON "follows" ("followee_id")`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "follows_follower_idx" ON "follows" ("follower_id")`),
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
   await coreSchemaReady;
@@ -1863,6 +1878,129 @@ async function adminAuctionsApi(request, env, url, admin) {
   return null;
 }
 
+// ---------- followers (mirrors server/db.js followUserFree / unfollowUser /
+// getFollowStats / listFollowers / listFollowing — see server/index.js for
+// the original Express routes this replaces). Follow is always free (no
+// premium/paid tier here); "paid"/"amount" columns are kept only for schema
+// parity with the legacy Postgres table and are always written as 0/false.
+// Only public fields are ever returned in the list: code, name, avatarUrl,
+// verified — never email/phone.
+
+// D1/SQLite has no DISTINCT ON, so de-duplicating a followed/follower user
+// down to their one preferred (primary, then oldest) non-hidden card uses a
+// ROW_NUMBER() window function instead — same end result as the Postgres
+// "DISTINCT ON (u.id) ... ORDER BY u.id, c.is_primary DESC, c.ts ASC".
+async function followListRows(env, ownerId, dir) {
+  const wantFollowing = dir === 'following';
+  // followers: kim ownerId'ga obuna bo'lgan -> u = follower_id tomon, WHERE followee_id = ownerId
+  // following: ownerId kimga obuna bo'lgan  -> u = followee_id tomon, WHERE follower_id = ownerId
+  // (joinCol/whereCol faqat shu ikkita qattiq-kodlangan qiymatdan biri bo'ladi — foydalanuvchi
+  // kiritgan `dir` to'g'ridan-to'g'ri SQL'ga qo'yilmaydi, shuning uchun injection xavfi yo'q.)
+  const joinCol = wantFollowing ? 'fw.followee_id' : 'fw.follower_id';
+  const whereCol = wantFollowing ? 'fw.follower_id' : 'fw.followee_id';
+  const rows = await env.DB.prepare(`
+    WITH ranked AS (
+      SELECT u.id AS uid, c.code AS code, c.name AS name, c.avatar_url AS avatar_url, c.verified AS verified,
+             ROW_NUMBER() OVER (PARTITION BY u.id ORDER BY c.is_primary DESC, c.ts ASC) AS rn
+      FROM follows fw
+      JOIN users u ON u.id = ${joinCol}
+      JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      WHERE ${whereCol} = ?
+    )
+    SELECT code, name, avatar_url, verified FROM ranked WHERE rn = 1 ORDER BY uid LIMIT 200
+  `).bind(ownerId).all();
+  return (rows.results || []).map((r) => ({
+    code: r.code, name: r.name, avatarUrl: r.avatar_url || '', verified: !!r.verified,
+  }));
+}
+
+async function getFollowStatsRow(env, userId, viewerId) {
+  const row = await env.DB.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM follows WHERE followee_id = ?) AS followers,
+      (SELECT COUNT(*) FROM follows WHERE follower_id = ?) AS following,
+      (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following
+  `).bind(userId, userId, viewerId || -1, userId).first();
+  return {
+    followers: Number(row?.followers || 0),
+    following: Number(row?.following || 0),
+    isFollowing: !!(row && row.is_following),
+  };
+}
+
+async function followApi(request, env, url) {
+  const path = url.pathname;
+
+  const followMatch = path.match(/^\/api\/follow\/([A-Za-z0-9]{1,32})$/);
+  if (followMatch && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const code = decodeURIComponent(followMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ error: 'NOT_FOUND' }, 404);
+    // O'zini follow qilishni taqiqlash — ALWAYS FIRST, xuddi eski
+    // followUserFree(followerId, followeeId) tartibi kabi.
+    if (Number(ownerId) === Number(user.id)) return json({ error: 'CANNOT_FOLLOW_SELF' }, 409);
+    const already = await env.DB.prepare(`SELECT id FROM follows WHERE follower_id = ? AND followee_id = ?`)
+      .bind(user.id, ownerId).first();
+    if (already) return json({ error: 'ALREADY_FOLLOWING' }, 409);
+    try {
+      await env.DB.prepare(`INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES (?, ?, 0, 0)`)
+        .bind(user.id, ownerId).run();
+    } catch (err) {
+      // UNIQUE(follower_id, followee_id) — bir vaqtda yuborilgan ikkita
+      // so'rov (parallel double-click) uchun ham xavfsiz: duplicate qator
+      // yaratilmaydi, foydalanuvchiga oddiy ALREADY_FOLLOWING qaytadi.
+      if (String((err && err.message) || '').toLowerCase().includes('unique')) {
+        return json({ error: 'ALREADY_FOLLOWING' }, 409);
+      }
+      throw err;
+    }
+    return json({ ok: true, paid: false });
+  }
+
+  const unfollowMatch = path.match(/^\/api\/unfollow\/([A-Za-z0-9]{1,32})$/);
+  if (unfollowMatch && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const code = decodeURIComponent(unfollowMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ error: 'NOT_FOUND' }, 404);
+    // Obuna mavjud bo'lmasa ham DELETE shunchaki 0 qator o'chiradi va xato
+    // bermaydi — eski server/index.js bilan bir xil xulq (duplicate
+    // unfollow xavfsiz).
+    await env.DB.prepare(`DELETE FROM follows WHERE follower_id = ? AND followee_id = ?`)
+      .bind(user.id, ownerId).run();
+    return json({ ok: true });
+  }
+
+  const statsMatch = path.match(/^\/api\/follow-stats\/([A-Za-z0-9]{1,32})$/);
+  if (statsMatch && request.method === 'GET') {
+    const code = decodeURIComponent(statsMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ followers: 0, following: 0, isFollowing: false });
+    const user = await getCurrentUser(request, env);
+    return json(await getFollowStatsRow(env, ownerId, user?.id));
+  }
+
+  const listMatch = path.match(/^\/api\/follow-list\/([A-Za-z0-9]{1,32})$/);
+  if (listMatch && request.method === 'GET') {
+    const code = decodeURIComponent(listMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ list: [] });
+    const dir = url.searchParams.get('dir') === 'following' ? 'following' : 'followers';
+    try {
+      const list = await followListRows(env, ownerId, dir);
+      return json({ list });
+    } catch (err) {
+      console.error('[worker] follow-list:', err.message);
+      return json({ list: [] });
+    }
+  }
+
+  return null;
+}
+
 // ---------- top-level dispatcher for everything in this section ----------
 // Returns a Response for anything it recognizes, or null to fall through
 // to the legacy proxy (for routes not yet ported — see the task list at
@@ -1880,6 +2018,10 @@ async function coreApi(request, env, url) {
   }
   if (url.pathname.startsWith('/api/auction') || url.pathname === '/api/auctions') {
     const res = await auctionsPublicApi(request, env, url);
+    if (res) return res;
+  }
+  if (url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')) {
+    const res = await followApi(request, env, url);
     if (res) return res;
   }
   if (url.pathname.startsWith('/api/admin/')) {
@@ -1930,11 +2072,12 @@ export default {
       }
     }
 
-    // NEW — auth/records/auctions/admin now served directly from D1
+    // NEW — auth/records/auctions/admin/follow now served directly from D1
     // (see the CORE section above). Falls through (returns null) for
     // anything not yet ported, so the legacy proxy below still handles it.
     if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/records')
-      || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')) {
+      || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')
+      || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')) {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;
@@ -1945,9 +2088,9 @@ export default {
     }
 
     // LEGACY FALLBACK — the Railway PostgreSQL backend this used to proxy
-    // everything to has been shut down. Auth/records/auctions/admin are now
-    // served directly from D1 above; this only still catches what hasn't
-    // been ported yet (payments, the Telegram bot, premium/follow,
+    // everything to has been shut down. Auth/records/auctions/admin/follow
+    // are now served directly from D1 above; this only still catches what
+    // hasn't been ported yet (payments, the Telegram bot, premium upgrade,
     // messaging, gifts, physical cards, news, company extras — see the
     // task list at the top of the CORE section) and will correctly report
     // them as unavailable rather than silently doing nothing.
