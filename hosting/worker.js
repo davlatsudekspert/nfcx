@@ -398,6 +398,100 @@ async function requireCompanyOwner(request, env, id) {
   return { auth, row };
 }
 
+// ---------- production manual-only public content (no git history — see
+// production-drift integration): business directory search, categories,
+// public news feed, NFC-tap presence check, physical-NFC pricing/delivery
+// config. Response shapes kept byte-for-byte identical to the production
+// source these were reverse-engineered from. ----------
+
+// Matches production's news-like visitor fingerprint exactly (IP + UA +
+// Accept-Language, SHA-256) — NOT the same as this file's visitorKey()
+// (used for catalog reactions), which hashes a differently-prefixed
+// input; reusing that one here would silently break "liked" continuity
+// for every visitor who already liked a news item in production.
+async function newsVisitorHash(request) {
+  const raw = [
+    request.headers.get('cf-connecting-ip') || '',
+    request.headers.get('user-agent') || '',
+    request.headers.get('accept-language') || '',
+  ].join('|');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function publicContentApi(request, env, url) {
+  const path = url.pathname;
+
+  if (path === '/api/companies/search' && request.method === 'GET') {
+    const q = shortText(url.searchParams.get('q'), 80).toLowerCase();
+    if (!q) return json({ results: [] });
+    const like = `%${q}%`;
+    const rows = await env.DB.prepare(`SELECT * FROM cards WHERE profile_type = 'business' AND hidden_from_directory = 0 AND
+      (LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(role,'')) LIKE ? OR LOWER(COALESCE(city,'')) LIKE ?)
+      ORDER BY verified DESC, ts DESC LIMIT 30`).bind(like, like, like, like).all();
+    return json({
+      results: (rows.results || []).map((r) => ({
+        code: r.code, name: r.name, role: r.role || '', city: r.city || '',
+        categorySlug: r.category_slug || '', avatarUrl: r.avatar_url || '', verified: !!r.verified,
+        matchType: null, matchLabel: null, matchPrice: null,
+      })),
+    });
+  }
+
+  if (path === '/api/categories' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT * FROM categories WHERE enabled = 1 ORDER BY sort, name_uz`).all();
+    return json({
+      categories: (rows.results || []).map((r) => ({
+        id: Number(r.id), slug: r.slug, parentSlug: r.parent_slug || null,
+        nameUz: r.name_uz || '', nameRu: r.name_ru || '', nameEn: r.name_en || '',
+        sort: Number(r.sort || 0), enabled: !!r.enabled,
+      })),
+    });
+  }
+
+  if (path === '/api/news' && request.method === 'GET') {
+    const [rows, visitor] = await Promise.all([
+      env.DB.prepare(`SELECT n.*, (SELECT COUNT(*) FROM news_likes l WHERE l.news_id = n.id) AS like_count
+        FROM news n WHERE published = 1 ORDER BY created_at DESC LIMIT 100`).all(),
+      newsVisitorHash(request),
+    ]);
+    const liked = await env.DB.prepare(`SELECT news_id FROM news_likes WHERE visitor_hash = ?`).bind(visitor).all();
+    return json({
+      news: (rows.results || []).map(newsRow),
+      liked: (liked.results || []).map((r) => Number(r.news_id)),
+    });
+  }
+
+  const tapMatch = path.match(/^\/api\/tap\/([^/]+)$/);
+  if (tapMatch && request.method === 'GET') {
+    const row = await env.DB.prepare(`SELECT active, blocked_by_owner, linked_code FROM physical_cards WHERE chip_token = ?`)
+      .bind(decodeURIComponent(tapMatch[1])).first();
+    return json(row ? { active: !!row.active && !row.blocked_by_owner, linkedCode: row.linked_code || null } : { active: true });
+  }
+
+  if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
+    const defaultTiers = [
+      { minQty: 1, maxQty: 9, pricePerUnit: 120000 },
+      { minQty: 10, maxQty: 49, pricePerUnit: 95000 },
+      { minQty: 50, maxQty: null, pricePerUnit: 75000 },
+    ];
+    const [tiersRow, deliveryRow] = await Promise.all([
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'physical_nfc_pricing'`).first(),
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'delivery_days'`).first(),
+    ]);
+    const parseOr = (text, fallback) => {
+      if (text == null || text === '') return fallback;
+      try { return JSON.parse(text); } catch { return fallback; }
+    };
+    return json({
+      tiers: parseOr(tiersRow?.value, defaultTiers),
+      delivery: parseOr(deliveryRow?.value, { minDays: 3, maxDays: 5 }),
+    });
+  }
+
+  return null;
+}
+
 async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
   const path = url.pathname;
@@ -957,6 +1051,22 @@ async function ensureCoreSchema(env) {
       // uchun eng yangisidan boshqasini 'cancelled'ga o'tkazish), (3)
       // shundan KEYINGINA `wrangler d1 execute` orqali indeksni qo'lda
       // qo'shish — runtime `ensureCoreSchema`ning umumiy batch'iga emas.
+      //
+      // Followers subsystem — mirrors the "follows" table already present in
+      // db/d1-migration/0001-schema.sql (paid/amount kept only for schema
+      // parity with the legacy Postgres table; every follow created below is
+      // always free). IF NOT EXISTS makes this a safety net, not a real
+      // migration, matching the pattern used for every other table above.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "follows" (
+        "id" INTEGER PRIMARY KEY NOT NULL, "follower_id" INTEGER NOT NULL, "followee_id" INTEGER NOT NULL,
+        "paid" INTEGER DEFAULT 0 NOT NULL, "amount" INTEGER DEFAULT 0 NOT NULL,
+        "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        UNIQUE("follower_id", "followee_id"),
+        FOREIGN KEY("followee_id") REFERENCES "users"("id") ON DELETE CASCADE,
+        FOREIGN KEY("follower_id") REFERENCES "users"("id") ON DELETE CASCADE
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "follows_followee_idx" ON "follows" ("followee_id")`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "follows_follower_idx" ON "follows" ("follower_id")`),
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
   await coreSchemaReady;
@@ -1719,6 +1829,11 @@ export {
   paymeCheckoutLinkD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
 };
 
+// production-drift integration: exposed for scripts/production-worker-parity-test.mjs.
+export {
+  uploadApi, serveUpload, putUploadR2, parseUploadRange, followApi, publicContentApi,
+};
+
 // nfcstore.uz'dagi mavjud sahifa yo'llari bilan to'qnashmasligi uchun —
 // server/index.js'dagi RESERVED_CODES bilan bir xil.
 const RESERVED_CODES = new Set([
@@ -1994,6 +2109,157 @@ async function ordersApi(request, env, url) {
   return null;
 }
 
+// ---------- R2 file uploads (production manual-only drift — ported from the
+// live Cloudflare dashboard "Edit Code" source of nfcstore-api, version
+// d185949b; there is no git history for this — the legacy Postgres/Express
+// backend (server/index.js + server/paths.js) stored uploads on local disk
+// / a Railway Volume, never on R2). Contract, size limits, key scheme,
+// caching and range/ETag behavior below are kept byte-for-byte identical to
+// that production source so existing /uploads/* URLs (avatars, card audio,
+// card video, PDFs, news images) keep working unchanged. ----------
+
+const UPLOAD_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const UPLOAD_IMAGE_RE = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)$/;
+const UPLOAD_AUDIO_RE = /^data:(audio\/(mpeg|mp3|mp4|ogg|wav|webm|x-m4a|m4a));base64,([A-Za-z0-9+/=]+)$/;
+
+function uploadRandomHex(byteLen = 10) {
+  const bytes = new Uint8Array(byteLen);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function uploadBase64ToBytes(b64) {
+  try {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+// Content-Type fallback when an R2 object's stored httpMetadata doesn't
+// have one (defensive only — every object written by putUploadR2 below
+// always sets contentType at write time).
+function uploadContentTypeFromExt(key) {
+  const ext = key.split('.').pop()?.toLowerCase();
+  return {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp',
+    mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', wav: 'audio/wav',
+    mp4: 'video/mp4', webm: 'video/webm', pdf: 'application/pdf',
+  }[ext] || 'application/octet-stream';
+}
+
+async function putUploadR2(env, filename, bytes, contentType, actor = '') {
+  if (!env.UPLOADS) throw new Error('r2_unavailable');
+  await env.UPLOADS.put(`uploads/${filename}`, bytes, {
+    httpMetadata: { contentType, cacheControl: UPLOAD_CACHE_CONTROL },
+    customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
+  });
+  return `/uploads/${filename}`;
+}
+
+// POST /api/upload, /api/upload-audio, /api/upload-card-video, /api/admin/upload
+async function uploadApi(request, env, pathname) {
+  const isAdmin = pathname === '/api/admin/upload';
+  const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
+  if (!auth) return json({ error: 'unauthorized' }, 401);
+  const actor = isAdmin ? `admin:${auth.role || 'admin'}` : `user:${auth.id || auth.email || 'authenticated'}`;
+
+  if (pathname === '/api/upload-card-video') {
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.length) return json({ error: 'bad_file' }, 422);
+    if (bytes.length > 10 * 1024 * 1024) return json({ error: 'too_large' }, 413);
+    const looksMp4 = String.fromCharCode(...bytes.slice(0, 40)).includes('ftyp');
+    const looksWebm = bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3;
+    if (!looksMp4 && !looksWebm) return json({ error: 'bad_file' }, 422);
+    const filename = `cardvid_${uploadRandomHex(12)}.${looksWebm ? 'webm' : 'mp4'}`;
+    return json({ url: await putUploadR2(env, filename, bytes, looksWebm ? 'video/webm' : 'video/mp4', actor) });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const isAudio = pathname === '/api/upload-audio';
+  const match = (isAudio ? UPLOAD_AUDIO_RE : UPLOAD_IMAGE_RE).exec(String(body.dataUrl || ''));
+  if (!match) return json({ error: isAudio ? 'bad_audio' : 'bad_image' }, 422);
+  const bytes = uploadBase64ToBytes(match[3]);
+  if (!bytes?.length) return json({ error: isAudio ? 'bad_audio' : 'bad_image' }, 422);
+  const imageLimit = match[2] === 'gif' ? 3 * 1024 * 1024 : 700 * 1024;
+  const limit = (isAdmin || isAudio) ? 10 * 1024 * 1024 : imageLimit;
+  if (bytes.length > limit) return json({ error: 'too_large' }, 413);
+  const ext = isAudio
+    ? ({ mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' })[match[2]]
+    : (['jpeg', 'jpg'].includes(match[2]) ? 'jpg' : match[2]);
+  const filename = `${isAdmin ? 'news_' : ''}${uploadRandomHex(10)}.${ext}`;
+  return json({ url: await putUploadR2(env, filename, bytes, match[1], actor) });
+}
+
+function buildUploadResponseHeaders(r2object, key) {
+  const headers = new Headers();
+  r2object.writeHttpMetadata?.(headers);
+  if (!headers.get('content-type')) headers.set('content-type', uploadContentTypeFromExt(key));
+  if (!headers.get('cache-control')) headers.set('cache-control', UPLOAD_CACHE_CONTROL);
+  headers.set('accept-ranges', 'bytes');
+  if (r2object.httpEtag) headers.set('etag', r2object.httpEtag);
+  return headers;
+}
+
+// Parses a `Range: bytes=a-b` or suffix `bytes=-N` header against a known
+// object size. Returns null when the header is absent/unparseable/out of
+// bounds (caller falls back to a normal 200, matching production).
+function parseUploadRange(rangeHeader, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(rangeHeader || '').trim());
+  if (!m) return null;
+  let offset; let end;
+  if (m[1]) {
+    offset = Number(m[1]);
+    end = m[2] ? Number(m[2]) : size - 1;
+  } else {
+    const suffixLen = Number(m[2]);
+    if (!(suffixLen > 0)) return null;
+    offset = Math.max(0, size - suffixLen);
+    end = size - 1;
+  }
+  if (!Number.isInteger(offset) || !Number.isInteger(end) || offset < 0 || offset >= size || end < offset) return null;
+  return { offset, length: Math.min(end, size - 1) - offset + 1 };
+}
+
+// GET/HEAD /uploads/* — R2 read, with HEAD, If-None-Match/304, Range/206,
+// invalid-range/416 and path-traversal protection, matching production.
+async function serveUpload(request, env, url) {
+  if (!env.UPLOADS) return null;
+  const key = decodeURIComponent(url.pathname).replace(/^\//, '');
+  if (!key.startsWith('uploads/') || key.includes('..')) return json({ error: 'bad_path' }, 400);
+  const head = await env.UPLOADS.head(key);
+  if (!head) return null;
+  const headers = buildUploadResponseHeaders(head, key);
+  if (request.headers.get('if-none-match') === head.httpEtag) {
+    return new Response(null, { status: 304, headers });
+  }
+  if (request.method === 'HEAD') {
+    headers.set('content-length', String(head.size));
+    return new Response(null, { status: 200, headers });
+  }
+  const rangeHeader = request.headers.get('range');
+  if (rangeHeader) {
+    const range = parseUploadRange(rangeHeader, head.size);
+    if (!range) {
+      headers.set('content-range', `bytes */${head.size}`);
+      return new Response(null, { status: 416, headers });
+    }
+    const obj = await env.UPLOADS.get(key, { range });
+    if (!obj) return null;
+    const rangeEnd = range.offset + range.length - 1;
+    headers.set('content-range', `bytes ${range.offset}-${rangeEnd}/${head.size}`);
+    headers.set('content-length', String(range.length));
+    return new Response(obj.body, { status: 206, headers });
+  }
+  const obj = await env.UPLOADS.get(key);
+  if (!obj) return null;
+  headers.set('content-length', String(head.size));
+  return new Response(obj.body, { status: 200, headers });
+}
+
 // ---------- auctions (public) ----------
 
 const AUCTION_DEMAND_THRESHOLD = 20;
@@ -2111,9 +2377,7 @@ async function auctionsPublicApi(request, env, url) {
   // disabled in production (PAYMENTS_ENABLED=false) independently of this
   // migration — matches server/index.js's existing behavior exactly.
   if ((path.match(/^\/api\/auctions\/\d+\/bid$/) && request.method === 'POST')
-    || (path.match(/^\/api\/auctions\/\d+\/pay$/) && request.method === 'POST')
-    || (path === '/api/auctions/won/pending' && request.method === 'GET')) {
-    if (path === '/api/auctions/won/pending') return json({ auctions: [] });
+    || (path.match(/^\/api\/auctions\/\d+\/pay$/) && request.method === 'POST')) {
     return json({ error: 'payments_disabled' }, 503);
   }
 
@@ -2233,6 +2497,15 @@ async function adminAuthApi(request, env, url) {
 
 // ---------- admin: everything past this point requires a session ----------
 
+function newsRow(r) {
+  return {
+    id: Number(r.id), title: r.title, body: r.body || '',
+    titleRu: r.title_ru || '', titleEn: r.title_en || '', bodyRu: r.body_ru || '', bodyEn: r.body_en || '',
+    imageUrl: r.image_url || '', published: !!r.published, views: Number(r.views || 0),
+    likeCount: Number(r.like_count || 0), createdAt: r.created_at, updatedAt: r.updated_at,
+  };
+}
+
 async function adminCoreApi(request, env, url, admin) {
   const path = url.pathname;
   const ip = reqIp(request);
@@ -2258,10 +2531,231 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/analytics' && request.method === 'GET') {
-    // Full revenue/signup/card time-series charts are not ported yet
-    // (Admin dashboard "Analitika" tab) — return an empty-but-valid shape
-    // so the dashboard renders instead of erroring.
-    return json({ breakdown: [], commissionSeries: [], signupsSeries: [], cardsSeries: [] });
+    const [breakdownRows, commissions, signups, cards] = await Promise.all([
+      env.DB.prepare(`SELECT kind, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE amount > 0 AND kind <> 'admin_adjust' GROUP BY kind ORDER BY total DESC`).all(),
+      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'platform_commission' AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM users WHERE is_test = 0 AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS count FROM cards WHERE ts >= (unixepoch('now', '-29 days') * 1000) GROUP BY strftime('%Y-%m-%d', ts / 1000, 'unixepoch') ORDER BY day`).all(),
+    ]);
+    return json({
+      breakdown: (breakdownRows.results || []).map((r) => ({ kind: r.kind, count: Number(r.count), total: Number(r.total) })),
+      commissionSeries: (commissions.results || []).map((r) => ({ day: r.day, total: Number(r.total) })),
+      signupsSeries: (signups.results || []).map((r) => ({ day: r.day, count: Number(r.count) })),
+      cardsSeries: (cards.results || []).map((r) => ({ day: r.day, count: Number(r.count) })),
+    });
+  }
+
+  if (path === '/api/admin/orders' && request.method === 'GET') {
+    const [web, bot] = await Promise.all([
+      env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at FROM web_orders ORDER BY created_at DESC LIMIT 100`).all(),
+      env.DB.prepare(`SELECT id, 'bot' AS source, tg_user_id AS user_id, code, price AS amount, status, created_at, tg_username, tg_name FROM bot_orders ORDER BY created_at DESC LIMIT 100`).all(),
+    ]);
+    const orders = [...(web.results || []), ...(bot.results || [])]
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 100)
+      .map((r) => ({ id: r.id, source: r.source, userId: r.user_id, code: r.code, amount: Number(r.amount), status: r.status, createdAt: r.created_at, tgUsername: r.tg_username, tgName: r.tg_name }));
+    return json({ orders });
+  }
+
+  if (path === '/api/admin/referrals' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT r.id, r.created_at, ru.email AS referrer_email, ru.promo_code AS referrer_promo,
+      (SELECT name FROM cards WHERE user_id = ru.id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS referrer_name,
+      rd.email AS referred_email, (SELECT name FROM cards WHERE user_id = rd.id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS referred_name
+      FROM referral_uses r JOIN users ru ON ru.id = r.referrer_id JOIN users rd ON rd.id = r.referred_id ORDER BY r.created_at DESC LIMIT 2000`).all();
+    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referrerEmail: r.referrer_email, referrerPromo: r.referrer_promo, referrerName: r.referrer_name, referredEmail: r.referred_email, referredName: r.referred_name })) });
+  }
+
+  if (path === '/api/admin/support-messages' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT sm.*, u.email AS user_email,
+      (SELECT code FROM cards WHERE user_id = sm.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS user_code
+      FROM support_messages sm JOIN users u ON u.id = sm.user_id ORDER BY sm.created_at DESC LIMIT 200`).all();
+    return json({ messages: (rows.results || []).map((r) => ({ id: r.id, userId: r.user_id, userEmail: r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at })) });
+  }
+
+  const supportReplyMatch = path.match(/^\/api\/admin\/support-messages\/(\d+)\/reply$/);
+  if (supportReplyMatch && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const reply = shortText(body.reply, 1000);
+    if (!reply) return json({ error: 'reply_required' }, 422);
+    const row = await env.DB.prepare(`UPDATE support_messages SET reply = ?, status = 'replied', replied_at = ? WHERE id = ? RETURNING id`)
+      .bind(reply, nowTs(), Number(supportReplyMatch[1])).first();
+    if (!row) return json({ error: 'not_found' }, 404);
+    return json({ ok: true });
+  }
+
+  if (path === '/api/admin/physical-cards' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT 100`).all();
+    return json({ cards: (rows.results || []).map((r) => ({ id: r.id, chipToken: r.chip_token, linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: r.shipping_phone, shippingAddress: r.shipping_address, createdAt: r.created_at })) });
+  }
+
+  const physicalStatusMatch = path.match(/^\/api\/admin\/physical-cards\/(\d+)\/status$/);
+  if (physicalStatusMatch && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const status = String(body.status || '');
+    if (!['pending', 'printing', 'shipped', 'delivered'].includes(status)) return json({ error: 'bad_status' }, 422);
+    const row = await env.DB.prepare(`UPDATE physical_cards SET status = ? WHERE id = ? RETURNING id, status`)
+      .bind(status, Number(physicalStatusMatch[1])).first();
+    if (!row) return json({ error: 'not_found' }, 404);
+    return json(row);
+  }
+
+  const physicalActiveMatch = path.match(/^\/api\/admin\/physical-cards\/(\d+)\/active$/);
+  if (physicalActiveMatch && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const active = body.active !== false;
+    const row = await env.DB.prepare(`UPDATE physical_cards SET active = ? WHERE id = ? RETURNING id, linked_code`)
+      .bind(active ? 1 : 0, Number(physicalActiveMatch[1])).first();
+    if (!row) return json({ error: 'not_found' }, 404);
+    await logAdminActivity(env, { action: active ? 'nfc_card_unblocked' : 'nfc_card_blocked', details: `Kod: ${row.linked_code || row.id}`, ip });
+    return json({ ok: true });
+  }
+
+  if (path === '/api/admin/nfc-gifts' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT ng.*, u.email AS activated_by_email FROM nfc_gifts ng LEFT JOIN users u ON u.id = ng.activated_by_user_id ORDER BY ng.created_at DESC`).all();
+    return json({ gifts: (rows.results || []).map((r) => ({ id: r.id, code: r.code, recipientName: r.recipient_name, note: r.note, activationCode: r.activation_code, status: r.status, value: r.value == null ? null : Number(r.value), createdAt: r.created_at, activatedAt: r.activated_at, activatedByEmail: r.activated_by_email })) });
+  }
+
+  if (path === '/api/admin/pending-payouts' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT id, email, phone, pending_payout FROM users WHERE pending_payout > 0 ORDER BY pending_payout DESC`).all();
+    return json({ payouts: (rows.results || []).map((r) => ({ id: r.id, email: r.email, phone: r.phone, pendingPayout: Number(r.pending_payout) })) });
+  }
+
+  const payoutClearMatch = path.match(/^\/api\/admin\/pending-payouts\/(\d+)\/clear$/);
+  if (payoutClearMatch && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const amount = Math.round(Number(body.amount));
+    if (!amount || amount <= 0) return json({ error: 'bad_amount' }, 422);
+    const id = Number(payoutClearMatch[1]);
+    const row = await env.DB.prepare(`UPDATE users SET pending_payout = pending_payout - ? WHERE id = ? AND pending_payout >= ? RETURNING pending_payout`)
+      .bind(amount, id, amount).first();
+    if (!row) return json({ error: 'amount_exceeds_pending' }, 409);
+    await env.DB.prepare(`INSERT INTO transactions (user_id, amount, kind, note, created_at) VALUES (?, 0, 'admin_adjust', ?, ?)`)
+      .bind(id, `Admin qo'lda ${amount} so'm to'lab berdi (pending_payout kamaytirildi)`, nowTs()).run();
+    return json({ pendingPayout: Number(row.pending_payout) });
+  }
+
+  if (path === '/api/admin/finance/overview' && request.method === 'GET') {
+    // Moliyaviy ma'lumot — faqat Super Admin (server/admin.js'dagi
+    // requireSuperAdmin bilan bir xil qoida; login/2FA/IP whitelist oqimiga
+    // tegilmagan, faqat shu bitta endpointga rol tekshiruvi qo'shildi).
+    if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
+    const range = String(url.searchParams.get('range') || 'month');
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const start = range === 'today' ? "datetime('now','start of day')" : range === '7d' ? "datetime('now','-6 days','start of day')" : range === '30d' ? "datetime('now','-29 days','start of day')" : range === 'prev_month' ? "datetime('now','start of month','-1 month')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(from || '') ? `datetime('${from}T00:00:00')` : "datetime('now','start of month')";
+    const end = range === 'prev_month' ? "datetime('now','start of month','-1 second')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(to || '') ? `datetime('${to}T23:59:59')` : "datetime('now')";
+    const [sales, daily, expenses, bank] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN ${start} AND ${end}`).first(),
+      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN ${start} AND ${end} GROUP BY substr(created_at,1,10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT COALESCE(SUM(amount),0) AS total FROM finance_expenses WHERE datetime(spent_on) BETWEEN ${start} AND ${end}`).first(),
+      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(actual_amount),0) AS total FROM finance_bank_actuals WHERE period BETWEEN substr(${start},1,7) AND substr(${end},1,7)`).first(),
+    ]);
+    const gross = Number(sales.gross || 0); const manualExpenses = Number(expenses.total || 0);
+    // finance_bank_actuals'da davr uchun umuman yozuv bo'lmasa (n === 0) —
+    // "hali kiritilmagan" holatini frontend'ga null sifatida bildiramiz
+    // (0 so'm bilan aralashtirmaslik uchun — original server/db.js xatti-harakati).
+    const actualBankSettlement = Number(bank.n || 0) > 0 ? Number(bank.total || 0) : null;
+    const reconciliationDifference = actualBankSettlement == null ? null : actualBankSettlement - gross;
+    // Sof pul oqimi — haqiqiy bank tushumi hali kiritilmagan bo'lsa, kutilgan
+    // (gross) qiymatga tayanadi, original'dagi settlementForNet fallback'i kabi.
+    const netCashFlow = (actualBankSettlement != null ? actualBankSettlement : gross) - manualExpenses;
+    return json({ overview: { grossSales: gross, orderCount: Number(sales.order_count || 0), fromIso: from || null, toIso: to || null, ratesConfigured: false, paymeFee: 0, paymeMode: 'separate', expectedBankSettlement: gross, actualBankSettlement, reconciliationDifference, taxBase: gross, turnoverPct: 0, turnoverTax: 0, socialTax: 0, bankFees: 0, manualExpenses, netCashFlow }, daily: (daily.results || []).map((r) => ({ day: r.day, gross: Number(r.gross), expected: Number(r.gross) })) });
+  }
+
+  // ---------- news (Yangiliklar) — faqat admin joylaydi/tahrirlaydi/o'chiradi ----------
+  if (path === '/api/admin/news' && request.method === 'GET') {
+    const rows = await env.DB.prepare(`SELECT n.*, (SELECT COUNT(*) FROM news_likes l WHERE l.news_id = n.id) AS like_count
+      FROM news n ORDER BY n.created_at DESC LIMIT 100`).all();
+    return json({ news: (rows.results || []).map(newsRow) });
+  }
+
+  if (path === '/api/admin/news' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const title = shortText(body.title, 200);
+    if (!title) return json({ error: 'title_required' }, 422);
+    const now = nowTs();
+    const row = await env.DB.prepare(`INSERT INTO news (title, body, title_ru, title_en, body_ru, body_en, image_url, published, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`)
+      .bind(title, shortText(body.body, 8000), shortText(body.titleRu, 200), shortText(body.titleEn, 200),
+        shortText(body.bodyRu, 8000), shortText(body.bodyEn, 8000), safeUrl(body.imageUrl),
+        body.published === false ? 0 : 1, now, now).first();
+    await logAdminActivity(env, { action: 'news_created', details: title, ip });
+    return json(newsRow(row), 201);
+  }
+
+  const newsIdMatch = path.match(/^\/api\/admin\/news\/(\d+)$/);
+  if (newsIdMatch && request.method === 'PUT') {
+    const id = Number(newsIdMatch[1]);
+    const body = await request.json().catch(() => ({}));
+    const existing = await env.DB.prepare(`SELECT * FROM news WHERE id = ?`).bind(id).first();
+    if (!existing) return json({ error: 'not_found' }, 404);
+    const row = await env.DB.prepare(`UPDATE news SET title = ?, body = ?, title_ru = ?, title_en = ?, body_ru = ?, body_en = ?,
+      image_url = ?, published = ?, updated_at = ? WHERE id = ? RETURNING *`)
+      .bind(
+        body.title == null ? existing.title : shortText(body.title, 200),
+        body.body == null ? existing.body : shortText(body.body, 8000),
+        body.titleRu == null ? existing.title_ru : shortText(body.titleRu, 200),
+        body.titleEn == null ? existing.title_en : shortText(body.titleEn, 200),
+        body.bodyRu == null ? existing.body_ru : shortText(body.bodyRu, 8000),
+        body.bodyEn == null ? existing.body_en : shortText(body.bodyEn, 8000),
+        body.imageUrl == null ? existing.image_url : safeUrl(body.imageUrl),
+        body.published == null ? existing.published : (body.published !== false ? 1 : 0),
+        nowTs(), id,
+      ).first();
+    await logAdminActivity(env, { action: 'news_updated', details: `#${id}`, ip });
+    return json(newsRow(row));
+  }
+  if (newsIdMatch && request.method === 'DELETE') {
+    await env.DB.prepare(`DELETE FROM news WHERE id = ?`).bind(Number(newsIdMatch[1])).run();
+    await logAdminActivity(env, { action: 'news_deleted', details: `#${newsIdMatch[1]}`, ip });
+    return json({ ok: true });
+  }
+
+  // ---------- IP whitelist (super_admin only) ----------
+  if (path === '/api/admin/ip-whitelist' && request.method === 'GET') {
+    if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
+    const [setting, rows] = await Promise.all([
+      env.DB.prepare(`SELECT value FROM admin_settings WHERE key = 'ip_whitelist_enabled'`).first(),
+      env.DB.prepare(`SELECT id, ip, label, created_at FROM admin_ip_whitelist ORDER BY created_at DESC`).all(),
+    ]);
+    return json({ enabled: setting?.value === 'true', ips: rows.results || [], yourIp: ip });
+  }
+
+  if (path === '/api/admin/ip-whitelist/toggle' && request.method === 'POST') {
+    if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
+    const body = await request.json().catch(() => ({}));
+    const enabled = body.enabled === true;
+    if (enabled) {
+      const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM admin_ip_whitelist`).first();
+      if (Number(count?.n || 0) === 0) return json({ error: 'no_ips' }, 422);
+    }
+    await env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('ip_whitelist_enabled', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+      .bind(enabled ? 'true' : 'false').run();
+    await logAdminActivity(env, { action: enabled ? 'ip_whitelist_enabled' : 'ip_whitelist_disabled', ip });
+    return json({ ok: true });
+  }
+
+  if (path === '/api/admin/ip-whitelist/add' && request.method === 'POST') {
+    if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
+    const body = await request.json().catch(() => ({}));
+    const addIp = shortText(body.ip, 45);
+    const label = shortText(body.label, 60);
+    if (!addIp) return json({ error: 'ip_required' }, 422);
+    try {
+      await env.DB.prepare(`INSERT INTO admin_ip_whitelist (ip, label, created_at) VALUES (?, ?, ?)`)
+        .bind(addIp, label || null, nowTs()).run();
+    } catch {
+      return json({ error: 'already_exists' }, 409);
+    }
+    await logAdminActivity(env, { action: 'ip_whitelist_added', newValue: `${addIp} (${label})`, ip });
+    return json({ ok: true }, 201);
+  }
+
+  const ipRemoveMatch = path.match(/^\/api\/admin\/ip-whitelist\/(\d+)\/remove$/);
+  if (ipRemoveMatch && request.method === 'POST') {
+    if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
+    await env.DB.prepare(`DELETE FROM admin_ip_whitelist WHERE id = ?`).bind(Number(ipRemoveMatch[1])).run();
+    await logAdminActivity(env, { action: 'ip_whitelist_removed', details: `ID: ${ipRemoveMatch[1]}`, ip });
+    return json({ ok: true });
   }
 
   if (path === '/api/admin/users' && request.method === 'GET') {
@@ -2575,12 +3069,209 @@ async function adminAuctionsApi(request, env, url, admin) {
   return null;
 }
 
+// ---------- signed-in user endpoints ported from server/index.js ----------
+async function userAccountApi(request, env, url) {
+  const path = url.pathname;
+  const user = await getCurrentUser(request, env);
+
+  if (path === '/api/conversations/unread-count' && request.method === 'GET') {
+    if (!user) return json({ count: 0 });
+    const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM messages m JOIN conversations c ON c.id = m.conversation_id
+      WHERE (c.user_a_id = ? OR c.user_b_id = ?) AND m.sender_id != ? AND m.is_read = 0`).bind(user.id, user.id, user.id).first();
+    return json({ count: Number(row?.n || 0) });
+  }
+
+  if (path === '/api/gift-offers' && request.method === 'GET') {
+    if (!user) return json({ incoming: [], outgoing: [] });
+    const [incoming, outgoing] = await Promise.all([
+      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS from_email FROM gift_offers g JOIN users u ON u.id = g.from_user_id WHERE g.to_user_id = ? AND g.status = 'pending' ORDER BY g.created_at DESC`).bind(user.id).all(),
+      env.DB.prepare(`SELECT g.id, g.code, g.created_at, u.email AS to_email FROM gift_offers g JOIN users u ON u.id = g.to_user_id WHERE g.from_user_id = ? AND g.status = 'pending' ORDER BY g.created_at DESC`).bind(user.id).all(),
+    ]);
+    return json({
+      incoming: (incoming.results || []).map((r) => ({ id: r.id, code: r.code, createdAt: r.created_at, fromEmail: r.from_email })),
+      outgoing: (outgoing.results || []).map((r) => ({ id: r.id, code: r.code, createdAt: r.created_at, toEmail: r.to_email })),
+    });
+  }
+
+  const giftAction = path.match(/^\/api\/gift-offers\/(\d+)\/(accept|reject|cancel)$/);
+  if (giftAction && request.method === 'POST') {
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const id = Number(giftAction[1]); const action = giftAction[2];
+    const offer = await env.DB.prepare(`SELECT id, code, from_user_id, to_user_id FROM gift_offers WHERE id = ? AND status = 'pending'`).bind(id).first();
+    if (!offer) return json({ error: 'not_found' }, 404);
+    if (action === 'cancel') {
+      if (Number(offer.from_user_id) !== Number(user.id)) return json({ error: 'forbidden' }, 403);
+      await env.DB.prepare(`UPDATE gift_offers SET status = 'cancelled', decided_at = ? WHERE id = ? AND status = 'pending'`).bind(nowTs(), id).run();
+      return json({ ok: true });
+    }
+    if (Number(offer.to_user_id) !== Number(user.id)) return json({ error: 'forbidden' }, 403);
+    if (action === 'reject') {
+      await env.DB.prepare(`UPDATE gift_offers SET status = 'rejected', decided_at = ? WHERE id = ? AND status = 'pending'`).bind(nowTs(), id).run();
+      return json({ ok: true });
+    }
+    const results = await env.DB.batch([
+      env.DB.prepare(`UPDATE cards SET user_id = ?, is_primary = 0 WHERE code = ? AND user_id = ?`).bind(user.id, offer.code, offer.from_user_id),
+      env.DB.prepare(`UPDATE gift_offers SET status = 'accepted', decided_at = ? WHERE id = ? AND status = 'pending'`).bind(nowTs(), id),
+    ]);
+    if (!results[0]?.meta?.changes) return json({ error: 'OWNERSHIP_CHANGED' }, 409);
+    return json({ ok: true, code: offer.code });
+  }
+
+  if (path === '/api/auctions/won/pending' && request.method === 'GET') {
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const rows = await env.DB.prepare(`SELECT id, code, current_price, payment_deadline FROM auctions WHERE highest_bidder_id = ? AND status = 'awaiting_payment' ORDER BY payment_deadline`).bind(user.id).all();
+    return json({ auctions: (rows.results || []).map((r) => ({ id: r.id, code: r.code, currentPrice: Number(r.current_price), paymentDeadline: r.payment_deadline })) });
+  }
+
+  if (path === '/api/referrals' && request.method === 'GET') {
+    if (!user) return json({ referrals: [] });
+    const rows = await env.DB.prepare(`SELECT r.id, r.created_at, u.email AS referred_email FROM referral_uses r JOIN users u ON u.id = r.referred_id WHERE r.referrer_id = ? ORDER BY r.created_at DESC`).bind(user.id).all();
+    return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referredEmail: r.referred_email })) });
+  }
+
+  // NOTE: GET /api/orders and GET /api/orders/:id are intentionally NOT
+  // duplicated here — ordersApi() (Payme Phase 2B, below) is the single
+  // source of truth for both, already tested against the exact same
+  // contract this function used to reimplement (production-drift
+  // integration: see coreApi's dispatch order — orders/:id routes there).
+  return null;
+}
+
+// ---------- followers (mirrors server/db.js followUserFree / unfollowUser /
+// getFollowStats / listFollowers / listFollowing — see server/index.js for
+// the original Express routes this replaces). Follow is always free (no
+// premium/paid tier here); "paid"/"amount" columns are kept only for schema
+// parity with the legacy Postgres table and are always written as 0/false.
+// Only public fields are ever returned in the list: code, name, avatarUrl,
+// verified — never email/phone.
+
+// D1/SQLite has no DISTINCT ON, so de-duplicating a followed/follower user
+// down to their one preferred (primary, then oldest) non-hidden card uses a
+// ROW_NUMBER() window function instead — same end result as the Postgres
+// "DISTINCT ON (u.id) ... ORDER BY u.id, c.is_primary DESC, c.ts ASC".
+async function followListRows(env, ownerId, dir) {
+  const wantFollowing = dir === 'following';
+  // followers: kim ownerId'ga obuna bo'lgan -> u = follower_id tomon, WHERE followee_id = ownerId
+  // following: ownerId kimga obuna bo'lgan  -> u = followee_id tomon, WHERE follower_id = ownerId
+  // (joinCol/whereCol faqat shu ikkita qattiq-kodlangan qiymatdan biri bo'ladi — foydalanuvchi
+  // kiritgan `dir` to'g'ridan-to'g'ri SQL'ga qo'yilmaydi, shuning uchun injection xavfi yo'q.)
+  const joinCol = wantFollowing ? 'fw.followee_id' : 'fw.follower_id';
+  const whereCol = wantFollowing ? 'fw.follower_id' : 'fw.followee_id';
+  const rows = await env.DB.prepare(`
+    WITH ranked AS (
+      SELECT u.id AS uid, c.code AS code, c.name AS name, c.avatar_url AS avatar_url, c.verified AS verified,
+             ROW_NUMBER() OVER (PARTITION BY u.id ORDER BY c.is_primary DESC, c.ts ASC) AS rn
+      FROM follows fw
+      JOIN users u ON u.id = ${joinCol}
+      JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      WHERE ${whereCol} = ?
+    )
+    SELECT code, name, avatar_url, verified FROM ranked WHERE rn = 1 ORDER BY uid LIMIT 200
+  `).bind(ownerId).all();
+  return (rows.results || []).map((r) => ({
+    code: r.code, name: r.name, avatarUrl: r.avatar_url || '', verified: !!r.verified,
+  }));
+}
+
+async function getFollowStatsRow(env, userId, viewerId) {
+  const row = await env.DB.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM follows WHERE followee_id = ?) AS followers,
+      (SELECT COUNT(*) FROM follows WHERE follower_id = ?) AS following,
+      (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following
+  `).bind(userId, userId, viewerId || -1, userId).first();
+  return {
+    followers: Number(row?.followers || 0),
+    following: Number(row?.following || 0),
+    isFollowing: !!(row && row.is_following),
+  };
+}
+
+async function followApi(request, env, url) {
+  const path = url.pathname;
+
+  const followMatch = path.match(/^\/api\/follow\/([A-Za-z0-9]{1,32})$/);
+  if (followMatch && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const code = decodeURIComponent(followMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ error: 'NOT_FOUND' }, 404);
+    // O'zini follow qilishni taqiqlash — ALWAYS FIRST, xuddi eski
+    // followUserFree(followerId, followeeId) tartibi kabi.
+    if (Number(ownerId) === Number(user.id)) return json({ error: 'CANNOT_FOLLOW_SELF' }, 409);
+    const already = await env.DB.prepare(`SELECT id FROM follows WHERE follower_id = ? AND followee_id = ?`)
+      .bind(user.id, ownerId).first();
+    if (already) return json({ error: 'ALREADY_FOLLOWING' }, 409);
+    try {
+      await env.DB.prepare(`INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES (?, ?, 0, 0)`)
+        .bind(user.id, ownerId).run();
+    } catch (err) {
+      // UNIQUE(follower_id, followee_id) — bir vaqtda yuborilgan ikkita
+      // so'rov (parallel double-click) uchun ham xavfsiz: duplicate qator
+      // yaratilmaydi, foydalanuvchiga oddiy ALREADY_FOLLOWING qaytadi.
+      if (String((err && err.message) || '').toLowerCase().includes('unique')) {
+        return json({ error: 'ALREADY_FOLLOWING' }, 409);
+      }
+      throw err;
+    }
+    return json({ ok: true, paid: false });
+  }
+
+  const unfollowMatch = path.match(/^\/api\/unfollow\/([A-Za-z0-9]{1,32})$/);
+  if (unfollowMatch && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const code = decodeURIComponent(unfollowMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ error: 'NOT_FOUND' }, 404);
+    // Obuna mavjud bo'lmasa ham DELETE shunchaki 0 qator o'chiradi va xato
+    // bermaydi — eski server/index.js bilan bir xil xulq (duplicate
+    // unfollow xavfsiz).
+    await env.DB.prepare(`DELETE FROM follows WHERE follower_id = ? AND followee_id = ?`)
+      .bind(user.id, ownerId).run();
+    return json({ ok: true });
+  }
+
+  const statsMatch = path.match(/^\/api\/follow-stats\/([A-Za-z0-9]{1,32})$/);
+  if (statsMatch && request.method === 'GET') {
+    const code = decodeURIComponent(statsMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ followers: 0, following: 0, isFollowing: false });
+    const user = await getCurrentUser(request, env);
+    return json(await getFollowStatsRow(env, ownerId, user?.id));
+  }
+
+  const listMatch = path.match(/^\/api\/follow-list\/([A-Za-z0-9]{1,32})$/);
+  if (listMatch && request.method === 'GET') {
+    const code = decodeURIComponent(listMatch[1]).toUpperCase();
+    const ownerId = await getRecordOwner(env, code);
+    if (!ownerId) return json({ list: [] });
+    const dir = url.searchParams.get('dir') === 'following' ? 'following' : 'followers';
+    try {
+      const list = await followListRows(env, ownerId, dir);
+      return json({ list });
+    } catch (err) {
+      console.error('[worker] follow-list:', err.message);
+      return json({ list: [] });
+    }
+  }
+
+  return null;
+}
+
 // ---------- top-level dispatcher for everything in this section ----------
 // Returns a Response for anything it recognizes, or null to fall through
 // to the legacy proxy (for routes not yet ported — see the task list at
 // the top of this section).
 async function coreApi(request, env, url) {
   await ensureCoreSchema(env);
+
+  if (url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
+    || url.pathname === '/api/auctions/won/pending' || url.pathname === '/api/referrals') {
+    const res = await userAccountApi(request, env, url);
+    if (res) return res;
+  }
 
   if (url.pathname.startsWith('/api/auth/')) {
     const res = await authApi(request, env, url);
@@ -2616,6 +3307,10 @@ async function coreApi(request, env, url) {
     const res = await auctionsPublicApi(request, env, url);
     if (res) return res;
   }
+  if (url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')) {
+    const res = await followApi(request, env, url);
+    if (res) return res;
+  }
   if (url.pathname.startsWith('/api/admin/')) {
     const authRes = await adminAuthApi(request, env, url);
     if (authRes) return authRes;
@@ -2648,6 +3343,41 @@ export default {
       }
     }
 
+    if (request.method === 'POST'
+      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/admin/upload'].includes(url.pathname)) {
+      try {
+        return await uploadApi(request, env, url.pathname);
+      } catch (error) {
+        console.error('r2 upload api', error);
+        return json({ error: error?.message === 'r2_unavailable' ? 'r2_unavailable' : 'upload_failed' }, 500);
+      }
+    }
+
+    if (url.pathname.startsWith('/uploads/') && ['GET', 'HEAD'].includes(request.method)) {
+      try {
+        const res = await serveUpload(request, env, url);
+        if (res) return res;
+      } catch (error) {
+        console.error('r2 read', error);
+      }
+      return json({ error: 'not_found' }, 404);
+    }
+
+    // Checked BEFORE the generic /api/companies/:id dispatch below —
+    // "search" would otherwise match that route's company-id shape
+    // (3-15 letters) and be misread as a literal company ID.
+    if (url.pathname === '/api/companies/search' || url.pathname === '/api/categories'
+      || url.pathname === '/api/news' || url.pathname.startsWith('/api/tap/')
+      || url.pathname === '/api/settings/physical-nfc-pricing') {
+      try {
+        const res = await publicContentApi(request, env, url);
+        if (res) return res;
+      } catch (error) {
+        console.error('public content api', error);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'public_content_unavailable' }, 503);
+      }
+    }
+
     if (url.pathname === '/api/companies' || url.pathname.startsWith('/api/companies/')) {
       try { return await companyApi(request, env, url); }
       catch (error) {
@@ -2664,13 +3394,16 @@ export default {
       }
     }
 
-    // NEW — auth/records/auctions/admin/orders/pay(Payme) now served
-    // directly from D1 (see the CORE section above). Falls through
-    // (returns null) for anything not yet ported, so the legacy proxy
-    // below still handles it.
+    // NEW — auth/records/auctions/admin/orders/pay(Payme)/follow/account-gift
+    // now served directly from D1 (see the CORE section above). Falls
+    // through (returns null) for anything not yet ported, so the legacy
+    // proxy below still handles it.
     if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/records')
       || url.pathname.startsWith('/api/auction') || url.pathname.startsWith('/api/admin/')
-      || url.pathname.startsWith('/api/orders') || url.pathname === '/api/pay/payme') {
+      || url.pathname.startsWith('/api/orders') || url.pathname === '/api/pay/payme'
+      || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
+      || url.pathname === '/api/referrals' || url.pathname === '/api/auctions/won/pending'
+      || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')) {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;
@@ -2682,14 +3415,20 @@ export default {
 
     // LEGACY FALLBACK — the Railway PostgreSQL backend this used to proxy
     // everything to has been shut down. Auth/records/auctions/admin/
-    // orders/Payme (NFC ID purchase — card_purchase kind only, Phase 2B)
-    // are now served directly from D1 above; this only still catches what
-    // hasn't been ported yet (the Telegram bot, premium/follow,
-    // messaging, gifts, physical cards, news, company extras, and every
-    // web_orders kind besides card_purchase — see the task list at the
-    // top of the CORE section) and will correctly report them as
-    // unavailable rather than silently doing nothing.
-    if (url.pathname.startsWith('/api/') || url.pathname === '/api' || url.pathname.startsWith('/uploads/')) {
+    // orders/Payme (NFC ID purchase — card_purchase kind only, Phase 2B)/
+    // follow/account-gift cluster/uploads (R2) are now served directly
+    // above; this only still catches what hasn't been ported yet (the
+    // Telegram bot, premium upgrade, messaging, physical cards, news,
+    // company extras, and every web_orders kind besides card_purchase —
+    // see the task list at the top of the CORE section) and will
+    // correctly report them as unavailable rather than silently doing
+    // nothing. NOTE: /uploads/* is intentionally NOT included here any
+    // more — it used to self-proxy to this same Worker's own domain
+    // (nfcstore.uz/uploads/*, which this Worker itself serves in
+    // production), which would have been a dead/broken loop once the
+    // Railway upstream it was written for went away; R2 above is now the
+    // real source of truth for it.
+    if (url.pathname.startsWith('/api/') || url.pathname === '/api') {
       const upstreamUrl = new URL(url.pathname + url.search, 'https://nfcstore.uz');
       const upstreamRequest = new Request(upstreamUrl, request);
       try {

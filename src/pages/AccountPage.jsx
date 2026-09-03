@@ -1390,7 +1390,12 @@ function GiftOffersPanel({ onChanged }) {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(null);
 
-  const load = () => dbListGiftOffers().then(setData).catch(() => setData({ incoming: [], outgoing: [] }));
+  const load = () => dbListGiftOffers()
+    .then((value) => setData({
+      incoming: Array.isArray(value?.incoming) ? value.incoming : [],
+      outgoing: Array.isArray(value?.outgoing) ? value.outgoing : [],
+    }))
+    .catch(() => setData({ incoming: [], outgoing: [] }));
   useEffect(() => {
     load();
     const timer = setInterval(load, 8000);
@@ -1412,13 +1417,15 @@ function GiftOffersPanel({ onChanged }) {
     try { await dbCancelGift(id); await load(); } finally { setBusy(null); }
   };
 
-  if (!data || (data.incoming.length === 0 && data.outgoing.length === 0)) return null;
+  const incoming = Array.isArray(data?.incoming) ? data.incoming : [];
+  const outgoing = Array.isArray(data?.outgoing) ? data.outgoing : [];
+  if (!data || (incoming.length === 0 && outgoing.length === 0)) return null;
 
   return (
     <section className="pt-8">
       <h2 className="text-xl font-bold">{'\u{1F381}'} {t("Sovg'a takliflari")}</h2>
       <div className="mt-3 space-y-2">
-        {data.incoming.map((g) => (
+        {incoming.map((g) => (
           <div key={'in' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
             <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.fromEmail}</span> {t('sizga sovg‘a qilmoqchi')}</span>
             <div className="flex gap-1.5">
@@ -1427,7 +1434,7 @@ function GiftOffersPanel({ onChanged }) {
             </div>
           </div>
         ))}
-        {data.outgoing.map((g) => (
+        {outgoing.map((g) => (
           <div key={'out' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">
             <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.toEmail}</span>{t('ga yuborilgan, javob kutilmoqda')}</span>
             <button className="btn btn-ghost btn-xs" disabled={busy === g.id} onClick={() => cancel(g.id)}>{t('Bekor qilish')}</button>
@@ -2920,7 +2927,7 @@ function ReferralPanel({ user }) {
   const { t } = useLanguage();
   const [referrals, setReferrals] = useState([]);
   const [copied, setCopied] = useState(false);
-  useEffect(() => { dbListReferrals().then(setReferrals).catch(() => {}); }, []);
+  useEffect(() => { dbListReferrals().then((rows) => setReferrals(Array.isArray(rows) ? rows : [])).catch(() => setReferrals([])); }, []);
 
   if (!user.promoCode) return null;
   const link = `${window.location.origin}/register?promo=${user.promoCode}`;
