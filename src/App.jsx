@@ -4,6 +4,7 @@ import { parseAnyCode } from './lib/pricing.js';
 import { dbList } from './lib/db.js';
 import { AuthProvider } from './lib/auth.jsx';
 import { LanguageProvider } from './lib/i18n.jsx';
+import { PaymentsEnabledProvider } from './lib/paymentsEnabled.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AiAssistant from './components/AiAssistant.jsx';
@@ -194,16 +195,18 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <AuthProvider>
-        {bare ? renderedPage : (
-          <>
-            <Header />
-            {renderedPage}
-            <Footer />
-            <AiAssistant />
-          </>
-        )}
-      </AuthProvider>
+      <PaymentsEnabledProvider>
+        <AuthProvider>
+          {bare ? renderedPage : (
+            <>
+              <Header />
+              {renderedPage}
+              <Footer />
+              <AiAssistant />
+            </>
+          )}
+        </AuthProvider>
+      </PaymentsEnabledProvider>
     </LanguageProvider>
   );
 }

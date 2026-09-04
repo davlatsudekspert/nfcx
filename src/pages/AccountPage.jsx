@@ -5,7 +5,8 @@ import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { isEmbedMusic } from '../lib/music.js';
-import { MESSAGING_ENABLED, PAYMENTS_ENABLED } from '../lib/features.js';
+import { MESSAGING_ENABLED } from '../lib/features.js';
+import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
@@ -1447,6 +1448,7 @@ function GiftOffersPanel({ onChanged }) {
 
 function WonAuctionsPanel() {
   const { t } = useLanguage();
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [list, setList] = useState(null);
   const [, tick] = useState(0);
 
@@ -1496,6 +1498,7 @@ function WonAuctionsPanel() {
 
 function PremiumPanel({ user, onBecamePremium }) {
   const { t } = useLanguage();
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [order, setOrder] = useState(null);

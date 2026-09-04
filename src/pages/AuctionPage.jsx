@@ -4,7 +4,7 @@ import { fmt, timeAgo, dateTime } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { PAYMENTS_ENABLED } from '../lib/features.js';
+import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
@@ -32,6 +32,7 @@ const STATUS_LABEL = {
 export default function AuctionPage({ id }) {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [data, setData] = useState(null);
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);

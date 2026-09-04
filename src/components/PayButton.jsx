@@ -1,4 +1,4 @@
-import { PAYMENTS_ENABLED } from '../lib/features.js';
+import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 
@@ -18,6 +18,7 @@ export default function PayButton({
   label, payLink, onClick, className = '', disabled = false, busy = false, notice = true,
 }) {
   const { t } = useLanguage();
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const base = `btn ${className}`;
 
   if (!PAYMENTS_ENABLED) {

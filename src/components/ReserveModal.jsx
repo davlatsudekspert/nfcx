@@ -4,7 +4,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { PAYMENTS_ENABLED } from '../lib/features.js';
+import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 import TelegramChannelCTA from './TelegramChannelCTA.jsx';
 const CardDesignerPage = lazy(() => import('../pages/CardDesignerPage.jsx'));
@@ -42,6 +42,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   // To'lov bosqichi: buyurtma yaratilgach shu yerga o'tamiz.
   const [order, setOrder] = useState(null); // { orderId, payLink, code, price }
   const pollRef = useRef(null);
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const totalPrice = price + (wantPhysicalCard ? PHYSICAL_CARD_FEE : 0);
   // Band qilish to'lov tizimi tayyor bo'lmaguncha butunlay yopiq —
   // tekin (0 so'm) nomlar ham band qilinmaydi.

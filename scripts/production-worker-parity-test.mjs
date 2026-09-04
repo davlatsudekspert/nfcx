@@ -346,5 +346,22 @@ await env.DB.prepare(`INSERT INTO cards (code, name, user_id, ts, price, profile
   check('POST /api/pay/payme route exists (JSON-RPC "disabled" shape while PAYMENTS_ENABLED is unset/false)', data?.error?.code, -32601);
 }
 
+// =====================================================================
+// GET /api/settings/payments-enabled — single source of truth the
+// frontend now polls at runtime (src/lib/paymentsEnabled.jsx) instead of
+// a build-time-hardcoded flag that had to be manually kept in sync.
+// =====================================================================
+{
+  const res = await worker.fetch(req('/api/settings/payments-enabled'), env);
+  const data = await res.json();
+  check('GET /api/settings/payments-enabled -> 200, enabled:false (matches this env\'s PAYMENTS_ENABLED unset/false)', { status: res.status, enabled: data.enabled }, { status: 200, enabled: false });
+}
+{
+  const enabledEnv = { ...env, PAYMENTS_ENABLED: 'true', PAYME_MERCHANT_ID: 'test_merchant', PAYME_KEY: 'test_key' };
+  const res = await worker.fetch(req('/api/settings/payments-enabled'), enabledEnv);
+  const data = await res.json();
+  check('GET /api/settings/payments-enabled -> enabled:true once PAYMENTS_ENABLED + credentials are set', data.enabled, true);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -504,6 +504,15 @@ async function publicContentApi(request, env, url) {
     });
   }
 
+  // Yagona haqiqat manbai — frontend endi PAYMENTS_ENABLED'ni o'zida
+  // qattiq yozib qo'ymaydi (src/lib/paymentsEnabled.jsx), shu yerdan
+  // real vaqtda so'raydi. paymentsEnabledD1() Payme Merchant API
+  // bo'limida quyida e'lon qilingan (function hoisting orqali bu yerdan
+  // ham chaqirish mumkin).
+  if (path === '/api/settings/payments-enabled' && request.method === 'GET') {
+    return json({ enabled: paymentsEnabledD1(env) });
+  }
+
   return null;
 }
 
@@ -1105,6 +1114,11 @@ async function ensureCoreSchema(env) {
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
   await coreSchemaReady;
+  // web_orders itself is created just above (inside the shared batch) —
+  // this must run AFTER it, not before, or the ALTER TABLE below would
+  // target a table that doesn't exist yet on a fresh DB and silently
+  // no-op (swallowed by its own .catch), leaving the columns missing.
+  await ensureWebOrderTimestampColumns(env);
 }
 
 // admin_sessions / admin_2fa_pending / admin_totp_setup_pending — pulled
@@ -1188,6 +1202,23 @@ async function ensureTotpReplayColumn(env) {
     totpColumnReady = env.DB.prepare(`ALTER TABLE admins ADD COLUMN totp_last_counter INTEGER`).run().catch(() => {});
   }
   await totpColumnReady;
+}
+
+// web_orders had no perform_time/cancel_time/cancel_reason columns —
+// Payme's CheckTransaction/GetStatement need REAL, STABLE historical
+// timestamps for these (not "now" recomputed on every call, which is
+// what this used to do for cancel_time). Additive/nullable, same
+// self-healing ALTER pattern as the two functions above.
+let webOrderTimestampColumnsReady;
+async function ensureWebOrderTimestampColumns(env) {
+  if (!webOrderTimestampColumnsReady) {
+    webOrderTimestampColumnsReady = (async () => {
+      await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN perform_time TEXT`).run().catch(() => {});
+      await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN cancel_time TEXT`).run().catch(() => {});
+      await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN cancel_reason INTEGER`).run().catch(() => {});
+    })();
+  }
+  await webOrderTimestampColumnsReady;
 }
 
 // ---------- cookies ----------
@@ -1606,7 +1637,8 @@ export {
 // its own JSON.stringify/JSON.parse (unlike node-postgres's ::jsonb cast,
 // nothing does this automatically).
 const WEB_ORDER_SELECT = `id, user_id AS userId, code, kind, price, payload, status,
-  created_at AS createdAt, payme_transaction_id AS paymeTransactionId`;
+  created_at AS createdAt, payme_transaction_id AS paymeTransactionId,
+  perform_time AS performTime, cancel_time AS cancelTime, cancel_reason AS cancelReason`;
 
 function parseWebOrderRow(row) {
   if (!row) return null;
@@ -1616,6 +1648,13 @@ function parseWebOrderRow(row) {
     id: row.id, userId: row.userId, code: row.code, kind: row.kind,
     price: Number(row.price), payload, status: row.status,
     createdAt: row.createdAt, paymeTransactionId: row.paymeTransactionId ?? null,
+    // perform_time/cancel_time: REAL stored timestamps of when the order
+    // actually transitioned to paid/cancelled (set once, via COALESCE —
+    // see setWebOrderStatusD1/stampWebOrderCancelD1) — never recomputed
+    // live, so Payme's CheckTransaction/GetStatement get a stable answer
+    // every time they ask, not a fresh "now" on each call.
+    performTime: row.performTime ?? null, cancelTime: row.cancelTime ?? null,
+    cancelReason: row.cancelReason == null ? null : Number(row.cancelReason),
   };
 }
 
@@ -1664,8 +1703,28 @@ async function setWebOrderPaymeIdD1(env, id, paymeTransactionId) {
 }
 
 async function setWebOrderStatusD1(env, id, status) {
-  const row = await env.DB.prepare(`UPDATE web_orders SET status = ? WHERE id = ? RETURNING ${WEB_ORDER_SELECT}`)
-    .bind(status, id).first();
+  // 'paid' additionally stamps perform_time exactly once (COALESCE — a
+  // later idempotent re-call, e.g. a duplicate PerformTransaction, never
+  // overwrites the real first timestamp with a later, less accurate one).
+  const now = new Date().toISOString();
+  const row = status === 'paid'
+    ? await env.DB.prepare(`UPDATE web_orders SET status = ?, perform_time = COALESCE(perform_time, ?) WHERE id = ? RETURNING ${WEB_ORDER_SELECT}`)
+        .bind(status, now, id).first()
+    : await env.DB.prepare(`UPDATE web_orders SET status = ? WHERE id = ? RETURNING ${WEB_ORDER_SELECT}`)
+        .bind(status, id).first();
+  return parseWebOrderRow(row);
+}
+
+// Stamps the cancel_time/cancel_reason Payme actually asked for, ALWAYS
+// (even when the order's own `status` stays 'paid' — CancelTransaction on
+// an already-paid order is a refund request the merchant has to review
+// manually, per the existing intentional design below, but Payme still
+// gets a real, stable cancel_time back). COALESCE makes this idempotent
+// too — a duplicate CancelTransaction call never moves the timestamp.
+async function stampWebOrderCancelD1(env, id, reason) {
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(`UPDATE web_orders SET cancel_time = COALESCE(cancel_time, ?), cancel_reason = COALESCE(cancel_reason, ?) WHERE id = ? RETURNING ${WEB_ORDER_SELECT}`)
+    .bind(now, reason, id).first();
   return parseWebOrderRow(row);
 }
 
@@ -1843,12 +1902,19 @@ function paymentsEnabledD1(env) {
 // Checkout havolasi — server/payme.js'dagi paymeCheckoutLink() bilan bir
 // xil format (base64({m, ac.order_id, a})). `Buffer` Node-only — Workers
 // runtime'ning global `btoa`sidan foydalanamiz (parametrlar faqat ASCII).
+//
+// Checkout domeni env.PAYME_CHECKOUT_DOMAIN orqali sozlanadi (Cloudflare
+// Variable, kod emas) — Payme test/sandbox rejimi production'dan boshqa
+// domen talab qilsa (masalan checkout.test.paycom.uz), kodni
+// o'zgartirmasdan/qayta deploy qilmasdan shu o'zgaruvchini almashtirish
+// kifoya. Sozlanmagan bo'lsa production domeniga tushadi.
 function paymeCheckoutLinkD1(env, orderId, amountSom) {
   const merchantId = env.PAYME_MERCHANT_ID || '';
   if (!merchantId || !orderId) return '';
   const tiyin = Math.round(Number(amountSom) * 100);
   const params = `m=${merchantId};ac.order_id=${orderId};a=${tiyin}`;
-  return `https://checkout.paycom.uz/${btoa(params)}`;
+  const domain = env.PAYME_CHECKOUT_DOMAIN || 'checkout.paycom.uz';
+  return `https://${domain}/${btoa(params)}`;
 }
 
 async function handlePaymeRequestD1(env, body) {
@@ -1942,24 +2008,64 @@ async function handlePaymeRequestD1(env, body) {
         // (pending yoki allaqachon cancelled/failed_*) 'cancelled'ga
         // o'rnatiladi — bu idempotent (qayta chaqirilsa ham xavfsiz).
         if (!wasPaid) await setWebOrderStatusD1(env, order.id, 'cancelled');
-        return paymeRpcResult(id, { transaction: String(order.id), cancel_time: Date.now(), state: wasPaid ? -2 : -1 });
+        // Payme requests carry `params.reason` (1-5 — developer.help.
+        // paycom.uz's documented codes: 1 recipient not found, 2 debit
+        // error, 3 execution error, 4 timeout, 5 refund) stating WHY it's
+        // cancelling — persisted so CheckTransaction/GetStatement can
+        // echo the REAL reason back later instead of always returning
+        // null. cancel_time is stamped for real here too (once, via
+        // COALESCE) — even on the wasPaid/refund-review branch, so a
+        // repeat CheckTransaction never sees a different value.
+        const reasonFromPayme = Number.isInteger(params?.reason) ? params.reason : null;
+        const stamped = await stampWebOrderCancelD1(env, order.id, reasonFromPayme);
+        return paymeRpcResult(id, { transaction: String(stamped.id), cancel_time: new Date(stamped.cancelTime).getTime(), state: wasPaid ? -2 : -1 });
       }
 
       case 'CheckTransaction': {
         const order = await getWebOrderByPaymeIdD1(env, params.id);
         if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
+        const isCancelled = order.status === 'cancelled' || order.status === 'failed_code_taken';
         return paymeRpcResult(id, {
           create_time: new Date(order.createdAt).getTime(),
-          perform_time: order.status === 'paid' ? new Date(order.createdAt).getTime() : 0,
-          cancel_time: order.status === 'cancelled' ? Date.now() : 0,
+          // Real, stable, persisted timestamps (set once — see
+          // setWebOrderStatusD1/stampWebOrderCancelD1) — never
+          // recomputed live, so this answers identically every time
+          // Payme asks, as its reconciliation expects.
+          perform_time: order.performTime ? new Date(order.performTime).getTime() : 0,
+          cancel_time: order.cancelTime ? new Date(order.cancelTime).getTime() : 0,
           transaction: String(order.id),
-          state: order.status === 'paid' ? 2 : order.status === 'cancelled' ? -1 : 1,
-          reason: null,
+          state: order.status === 'paid' ? 2 : isCancelled ? -1 : 1,
+          reason: order.cancelReason ?? null,
         });
       }
 
       case 'GetStatement': {
-        return paymeRpcResult(id, { transactions: [] });
+        // params.from/params.to — millisecond unix timestamps bounding
+        // the requested date range (Payme's documented GetStatement
+        // contract). Only transactions Payme actually created
+        // (payme_transaction_id set) are ever reported.
+        const fromIso = new Date(Number(params?.from) || 0).toISOString();
+        const toIso = new Date(Number(params?.to) || Date.now()).toISOString();
+        const rows = await env.DB.prepare(
+          `SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE payme_transaction_id IS NOT NULL AND created_at BETWEEN ? AND ? ORDER BY created_at`
+        ).bind(fromIso, toIso).all();
+        const transactions = (rows.results || []).map((r) => {
+          const o = parseWebOrderRow(r);
+          const isCancelled = o.status === 'cancelled' || o.status === 'failed_code_taken';
+          return {
+            id: o.paymeTransactionId,
+            time: new Date(o.createdAt).getTime(),
+            amount: Math.round(Number(o.price) * 100),
+            account: { order_id: String(o.id) },
+            create_time: new Date(o.createdAt).getTime(),
+            perform_time: o.performTime ? new Date(o.performTime).getTime() : 0,
+            cancel_time: o.cancelTime ? new Date(o.cancelTime).getTime() : 0,
+            transaction: String(o.id),
+            state: o.status === 'paid' ? 2 : isCancelled ? -1 : 1,
+            reason: o.cancelReason ?? null,
+          };
+        });
+        return paymeRpcResult(id, { transactions });
       }
 
       default:
@@ -3747,7 +3853,8 @@ export default {
     // (3-15 letters) and be misread as a literal company ID.
     if (url.pathname === '/api/companies/search' || url.pathname === '/api/categories'
       || url.pathname === '/api/news' || url.pathname.startsWith('/api/tap/')
-      || url.pathname === '/api/settings/physical-nfc-pricing') {
+      || url.pathname === '/api/settings/physical-nfc-pricing'
+      || url.pathname === '/api/settings/payments-enabled') {
       try {
         const res = await publicContentApi(request, env, url);
         if (res) return res;

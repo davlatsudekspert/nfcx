@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { fmt, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { PAYMENTS_ENABLED } from '../lib/features.js';
+import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 
@@ -26,6 +26,7 @@ const STATUS_LABEL = {
 export default function PaymentsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [data, setData] = useState(null);
   const [orders, setOrders] = useState([]);
   const [wonAuctions, setWonAuctions] = useState([]);

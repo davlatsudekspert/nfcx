@@ -193,12 +193,15 @@ let createOrder;
 {
   const order = await createWebOrderD1(env, { userId: 1, code: 'CAN001', price: 49000, payload: PAYLOAD });
   await handlePaymeRequestD1(env, { method: 'CreateTransaction', id: 8, params: { id: 'ptx-can-001', account: { order_id: order.id }, amount: 4900000 } });
-  const c1 = await handlePaymeRequestD1(env, { method: 'CancelTransaction', id: 9, params: { id: 'ptx-can-001' } });
+  // reason: 4 = "cancelled by timeout" (developer.help.paycom.uz's
+  // documented CancelTransaction reason codes) — real Payme calls always
+  // include this; asserted below to prove we persist and echo it back.
+  const c1 = await handlePaymeRequestD1(env, { method: 'CancelTransaction', id: 9, params: { id: 'ptx-can-001', reason: 4 } });
   check('15) CancelTransaction on pending order -> state -1', c1.result?.state, -1);
   const afterCancel = await getWebOrderD1(env, order.id);
   check('15b) order status is cancelled', afterCancel.status, 'cancelled');
 
-  const c2 = await handlePaymeRequestD1(env, { method: 'CancelTransaction', id: 10, params: { id: 'ptx-can-001' } });
+  const c2 = await handlePaymeRequestD1(env, { method: 'CancelTransaction', id: 10, params: { id: 'ptx-can-001', reason: 4 } });
   check('16) duplicate CancelTransaction is idempotent (still -1, no error)', c2.result?.state, -1);
 
   // Cancelling an ALREADY-PAID order must never flip it back / re-run finalize.
@@ -222,11 +225,38 @@ let createOrder;
 }
 
 // ============================================================
-// 18) GetStatement
+// 18) GetStatement — real implementation (no longer an always-empty stub)
 // ============================================================
 {
+  // No range -> covers everything created so far in this test run,
+  // including the cancelled/paid/pending transactions from tests 15-17.
   const r = await handlePaymeRequestD1(env, { method: 'GetStatement', id: 16, params: {} });
-  check('18) GetStatement returns empty transactions array (contract match)', r, { jsonrpc: '2.0', id: 16, result: { transactions: [] } });
+  const byId = Object.fromEntries((r.result?.transactions || []).map((t) => [t.id, t]));
+  checkTrue('18) GetStatement includes the cancelled transaction', !!byId['ptx-can-001']);
+  checkTrue('18) GetStatement includes the paid transaction', !!byId['ptx-can-002']);
+  checkTrue('18) GetStatement includes the pending transaction', !!byId['ptx-cht-001']);
+  check('18b) cancelled transaction reports state -1 with the real reason Payme sent (4 = timeout)', { state: byId['ptx-can-001'].state, reason: byId['ptx-can-001'].reason }, { state: -1, reason: 4 });
+  checkTrue('18c) cancelled transaction reports a real, non-zero cancel_time', byId['ptx-can-001'].cancel_time > 0);
+  check('18d) paid transaction reports state 2 with a real, non-zero perform_time', { state: byId['ptx-can-002'].state, hasPerformTime: byId['ptx-can-002'].perform_time > 0 }, { state: 2, hasPerformTime: true });
+  check('18e) pending transaction reports state 1, cancel_time/perform_time 0', { state: byId['ptx-cht-001'].state, performTime: byId['ptx-cht-001'].perform_time, cancelTime: byId['ptx-cht-001'].cancel_time }, { state: 1, performTime: 0, cancelTime: 0 });
+  checkTrue('18f) each transaction carries account.order_id', Object.values(byId).every((t) => t.account && t.account.order_id));
+
+  // A `from` set safely after everything created above -> empty (proves
+  // the date-range filter is real, not decorative).
+  const future = await handlePaymeRequestD1(env, { method: 'GetStatement', id: 17, params: { from: Date.now() + 3600_000, to: Date.now() + 7200_000 } });
+  check('18g) GetStatement with a future date range -> empty', future.result?.transactions, []);
+}
+
+// ============================================================
+// 18h) CheckTransaction's cancel_time is STABLE across repeated calls
+// (the original bug: it used to recompute Date.now() every single call)
+// ============================================================
+{
+  const first = await handlePaymeRequestD1(env, { method: 'CheckTransaction', id: 18, params: { id: 'ptx-can-001' } });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const second = await handlePaymeRequestD1(env, { method: 'CheckTransaction', id: 19, params: { id: 'ptx-can-001' } });
+  check('18h) cancel_time is identical across repeated CheckTransaction calls', first.result?.cancel_time, second.result?.cancel_time);
+  checkTrue('18h) cancel_time is a real (non-zero) timestamp', first.result?.cancel_time > 0);
 }
 
 // ============================================================
@@ -469,6 +499,24 @@ let createOrder;
   // must also leave zero ownership trace — no card was ever created.
   const rec = await getRecord(env, 'AUC001');
   check('7b) unsupported-kind failure created no NFC record at all (no ownership leak possible)', rec, null);
+}
+
+// ============================================================
+// 19) checkout domain is configurable (env.PAYME_CHECKOUT_DOMAIN) —
+// defaults to production, but a test/sandbox domain can be set without
+// any code change/redeploy.
+// ============================================================
+{
+  const defaultLink = paymeCheckoutLinkD1(env, 999, 49000);
+  checkTrue('19) checkout link defaults to the production domain when PAYME_CHECKOUT_DOMAIN is unset', defaultLink.startsWith('https://checkout.paycom.uz/'));
+
+  const testEnv = { ...env, PAYME_CHECKOUT_DOMAIN: 'checkout.test.paycom.uz' };
+  const testLink = paymeCheckoutLinkD1(testEnv, 999, 49000);
+  checkTrue('19b) checkout link uses PAYME_CHECKOUT_DOMAIN when set (no code change needed for test mode)', testLink.startsWith('https://checkout.test.paycom.uz/'));
+
+  // The encoded payload itself (merchant id / order id / amount) must be
+  // identical either way — only the domain differs.
+  check('19c) the base64 payload is unaffected by which domain is used', defaultLink.split('/').pop(), testLink.split('/').pop());
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
