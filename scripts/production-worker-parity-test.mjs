@@ -361,6 +361,14 @@ await env.DB.prepare(`INSERT INTO cards (code, name, user_id, ts, price, profile
   const res = await worker.fetch(req('/api/settings/payments-enabled'), enabledEnv);
   const data = await res.json();
   check('GET /api/settings/payments-enabled -> enabled:true once PAYMENTS_ENABLED + credentials are set', data.enabled, true);
+
+  // Malformed JSON body -> Payme's own documented -32700 (Parse error),
+  // not the -32601 (method not found) handlePaymeRequestD1 would return
+  // for it otherwise (an unparseable body has no `.method` either).
+  const authHeader = 'Basic ' + Buffer.from('Paycom:test_key').toString('base64');
+  const parseErrRes = await worker.fetch(req('/api/pay/payme', { method: 'POST', headers: { authorization: authHeader }, body: '{not valid json' }), enabledEnv);
+  const parseErrData = await parseErrRes.json();
+  check('POST /api/pay/payme with malformed JSON -> -32700 Parse error (not -32601)', { status: parseErrRes.status, code: parseErrData?.error?.code }, { status: 200, code: -32700 });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

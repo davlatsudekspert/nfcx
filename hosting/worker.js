@@ -3769,12 +3769,20 @@ async function coreApi(request, env, url) {
     // sifatida (`wrangler secret put PAYME_KEY`) beriladi — bu commit'da
     // qo'shilmagan.
     let body;
-    try { body = await request.json(); } catch { body = null; }
+    let parseFailed = false;
+    try { body = await request.json(); } catch { body = null; parseFailed = true; }
     if (!paymentsEnabledD1(env)) {
       return json({ jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32601, message: 'payme disabled' } });
     }
     if (!verifyPaymeAuthD1(request, env)) {
       return json({ jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32504, message: "Ruxsat yo'q" } });
+    }
+    // -32700 (JSON parse error) — Payme's own documented code for a
+    // malformed request body, distinct from -32601 (method not found),
+    // which handlePaymeRequestD1() below would otherwise return for it
+    // (an unparseable body has no `.method` either).
+    if (parseFailed) {
+      return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });
     }
     const result = await handlePaymeRequestD1(env, body);
     return json(result);
