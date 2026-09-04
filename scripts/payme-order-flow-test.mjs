@@ -294,6 +294,21 @@ let createOrder;
   // the date-range filter is real, not decorative).
   const future = await handlePaymeRequestD1(env, { method: 'GetStatement', id: 17, params: { from: Date.now() + 3600_000, to: Date.now() + 7200_000 } });
   check('18g) GetStatement with a future date range -> empty', future.result?.transactions, []);
+
+  // Regression check for a real bug found via Payme's own sandbox: a
+  // "today" range (exactly what real reconciliation/certification calls
+  // use) returned an empty list even though transactions existed, because
+  // 1) the filter compared SQLite's CURRENT_TIMESTAMP format
+  // ("YYYY-MM-DD HH:MM:SS") against toISOString()'s format
+  // ("YYYY-MM-DDTHH:MM:SS.sssZ") as raw strings — ' ' sorts before 'T',
+  // so any same-day row was wrongly treated as "before the range start" —
+  // and 2) it filtered on order.createdAt (reservation time) instead of
+  // the real transaction-creation time. `midnightToday` deliberately
+  // shares today's SQLite-stored calendar day, the exact shape that broke.
+  const midnightToday = new Date(); midnightToday.setUTCHours(0, 0, 0, 0);
+  const today = await handlePaymeRequestD1(env, { method: 'GetStatement', id: 17.5, params: { from: midnightToday.getTime(), to: Date.now() + 60_000 } });
+  checkTrue('18i) a same-day date range (SQLite-format vs ISO-format timestamp mismatch) still finds today\'s transactions', (today.result?.transactions || []).length > 0);
+  checkTrue('18j) the same-day range specifically includes a known transaction', !!Object.fromEntries((today.result?.transactions || []).map((t) => [t.id, t]))['ptx-can-001']);
 }
 
 // ============================================================

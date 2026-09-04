@@ -2151,19 +2151,48 @@ async function handlePaymeRequestD1(env, body) {
         // the requested date range (Payme's documented GetStatement
         // contract). Only transactions Payme actually created
         // (payme_transaction_id set) are ever reported.
+        //
+        // TWO real bugs fixed here (found via Payme's own sandbox — a
+        // real order's transaction went missing from a same-day range):
+        //
+        // 1. Filtered by created_at (order/reservation time — when
+        //    "Band qilish" happened, possibly long before Payme was ever
+        //    involved) instead of the actual transaction-creation time.
+        //    A buyer who reserves on day 1 but pays on day 5 would be
+        //    invisible to a GetStatement call for day 5's range.
+        //    COALESCE(payme_create_time, created_at) matches every other
+        //    surface (paymeCreateTimeMs()) and falls back correctly for
+        //    rows written before this column existed.
+        //
+        // 2. Compared raw strings: SQLite's own CURRENT_TIMESTAMP writes
+        //    "YYYY-MM-DD HH:MM:SS" (a space at position 10), while
+        //    toISOString() produces "YYYY-MM-DDTHH:MM:SS.sssZ" ('T' at
+        //    position 10). Lexicographically ' ' (0x20) < 'T' (0x54), so
+        //    ANY same-day stored timestamp compared against a 'T'-style
+        //    bound was WRONGLY treated as "before the range" — a same-day
+        //    query (exactly what Payme's own tooling and real
+        //    reconciliation runs use) silently returned nothing.
+        //    Wrapping both sides in SQLite's own datetime() normalizes
+        //    the format before comparing, sidestepping the mismatch
+        //    entirely — the same pattern already used elsewhere in this
+        //    file for a bank-settlement date range.
         const fromIso = new Date(Number(params?.from) || 0).toISOString();
         const toIso = new Date(Number(params?.to) || Date.now()).toISOString();
-        const rows = await env.DB.prepare(
-          `SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE payme_transaction_id IS NOT NULL AND created_at BETWEEN ? AND ? ORDER BY created_at`
-        ).bind(fromIso, toIso).all();
+        const rows = await env.DB.prepare(`
+          SELECT ${WEB_ORDER_SELECT} FROM web_orders
+          WHERE payme_transaction_id IS NOT NULL
+            AND datetime(COALESCE(payme_create_time, created_at)) BETWEEN datetime(?) AND datetime(?)
+          ORDER BY COALESCE(payme_create_time, created_at)
+        `).bind(fromIso, toIso).all();
         const transactions = (rows.results || []).map((r) => {
           const o = parseWebOrderRow(r);
+          const createMs = paymeCreateTimeMs(o);
           return {
             id: o.paymeTransactionId,
-            time: new Date(o.createdAt).getTime(),
+            time: createMs,
             amount: Math.round(Number(o.price) * 100),
             account: { order_id: String(o.id) },
-            create_time: paymeCreateTimeMs(o),
+            create_time: createMs,
             perform_time: o.performTime ? new Date(o.performTime).getTime() : 0,
             cancel_time: o.cancelTime ? new Date(o.cancelTime).getTime() : 0,
             transaction: String(o.id),
