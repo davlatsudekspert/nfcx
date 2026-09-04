@@ -134,17 +134,34 @@ check('6) Premium 199000', personalPurchaseQuote('BMW007'), { purchasable: true,
 let createOrder;
 {
   createOrder = await createWebOrderD1(env, { userId: 1, code: 'CRE001', price: 99000, payload: PAYLOAD });
+  // Real gap between order creation and CreateTransaction, so createdAt and
+  // the real payme_create_time are guaranteed to differ — needed to make
+  // 11c below a meaningful regression check (Payme's own sandbox
+  // certification caught this exact bug: create_time must stay
+  // byte-identical across the original call, a duplicate call, and
+  // CheckTransaction — it must NOT silently fall back to order.createdAt).
+  await new Promise((resolve) => setTimeout(resolve, 5));
+
   const r1 = await handlePaymeRequestD1(env, { method: 'CreateTransaction', id: 3, params: { id: 'ptx-cre-001', account: { order_id: createOrder.id }, amount: 9900000 } });
   check('10) CreateTransaction success', r1.result?.state, 1);
 
-  // NOTE: the dup-detection branch derives create_time from the STORED
-  // created_at column (second precision, per SQLite's CURRENT_TIMESTAMP —
-  // matches legacy server/payme.js's identical `new Date(existing.createdAt)
-  // .getTime()` call exactly), so it won't equal r1's original millisecond
-  // Date.now() value — only `transaction`/`state` are asserted for equality.
   const r2 = await handlePaymeRequestD1(env, { method: 'CreateTransaction', id: 4, params: { id: 'ptx-cre-001', account: { order_id: createOrder.id }, amount: 9900000 } });
   check('11) duplicate CreateTransaction (same payme id) returns same transaction, state unchanged', { transaction: r2.result?.transaction, state: r2.result?.state }, { transaction: String(createOrder.id), state: 1 });
-  checkTrue('11b) duplicate CreateTransaction create_time is a valid timestamp', Number.isFinite(r2.result?.create_time));
+  check('11c) duplicate CreateTransaction reports the SAME create_time as the original call', r2.result?.create_time, r1.result?.create_time);
+  checkTrue('11d) create_time is the real transaction-creation time, not the order/reservation time', r1.result?.create_time !== new Date(createOrder.createdAt).getTime());
+
+  const chk = await handlePaymeRequestD1(env, { method: 'CheckTransaction', id: 4.5, params: { id: 'ptx-cre-001' } });
+  check('11e) CheckTransaction agrees on the exact same create_time too', chk.result?.create_time, r1.result?.create_time);
+
+  // A SECOND, DIFFERENT Payme transaction id must never be able to hijack
+  // an order a transaction has already claimed while it's still open —
+  // Payme's sandbox certification expects this to fail in the
+  // -31099...-31050 range ("another transaction occupies this account"),
+  // not silently overwrite payme_transaction_id and orphan the first one.
+  const hijack = await handlePaymeRequestD1(env, { method: 'CreateTransaction', id: 4.6, params: { id: 'ptx-cre-001-HIJACK', account: { order_id: createOrder.id }, amount: 9900000 } });
+  checkTrue('11f) a second, different transaction id cannot claim an order another transaction already holds', hijack.error?.code <= -31050 && hijack.error?.code >= -31099);
+  const stillOriginal = await getWebOrderD1(env, createOrder.id);
+  check('11g) the order is still bound to the ORIGINAL transaction id, not the hijack attempt', stillOriginal.paymeTransactionId, 'ptx-cre-001');
 }
 
 // ============================================================

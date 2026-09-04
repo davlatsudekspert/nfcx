@@ -1216,6 +1216,14 @@ async function ensureWebOrderTimestampColumns(env) {
       await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN perform_time TEXT`).run().catch(() => {});
       await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN cancel_time TEXT`).run().catch(() => {});
       await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN cancel_reason INTEGER`).run().catch(() => {});
+      // Real, stable moment the Payme TRANSACTION (not the underlying
+      // order/reservation) was first created — see setWebOrderPaymeIdD1.
+      // Payme's own sandbox certification requires create_time to be
+      // byte-identical across the original CreateTransaction call, any
+      // duplicate CreateTransaction call, CheckTransaction, and
+      // GetStatement — order.created_at (when "Band qilish" happened,
+      // possibly long before Payme was ever involved) is the wrong value.
+      await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN payme_create_time TEXT`).run().catch(() => {});
     })();
   }
   await webOrderTimestampColumnsReady;
@@ -1638,7 +1646,8 @@ export {
 // nothing does this automatically).
 const WEB_ORDER_SELECT = `id, user_id AS userId, code, kind, price, payload, status,
   created_at AS createdAt, payme_transaction_id AS paymeTransactionId,
-  perform_time AS performTime, cancel_time AS cancelTime, cancel_reason AS cancelReason`;
+  perform_time AS performTime, cancel_time AS cancelTime, cancel_reason AS cancelReason,
+  payme_create_time AS paymeCreateTime`;
 
 function parseWebOrderRow(row) {
   if (!row) return null;
@@ -1655,6 +1664,12 @@ function parseWebOrderRow(row) {
     // every time they ask, not a fresh "now" on each call.
     performTime: row.performTime ?? null, cancelTime: row.cancelTime ?? null,
     cancelReason: row.cancelReason == null ? null : Number(row.cancelReason),
+    // Real, stable moment the Payme TRANSACTION was first created (set
+    // once, via COALESCE — see setWebOrderPaymeIdD1) — deliberately NOT
+    // the same as createdAt (order/reservation time), which can be much
+    // earlier. Used for the create_time Payme expects back from
+    // CreateTransaction/CheckTransaction/GetStatement, identically.
+    paymeCreateTime: row.paymeCreateTime ?? null,
   };
 }
 
@@ -1698,8 +1713,20 @@ async function getWebOrderByPaymeIdD1(env, paymeTransactionId) {
   return parseWebOrderRow(row);
 }
 
+// payme_create_time is stamped here, exactly once (COALESCE), the moment
+// a Payme transaction id is first bound to this order — NOT order.created_at
+// (which is when "Band qilish" happened, possibly long before). Returns the
+// updated row so the CALLER's immediate response can echo this SAME stamped
+// value instead of taking its own fresh Date.now() — Payme's own sandbox
+// certification requires create_time to stay byte-identical across the
+// original CreateTransaction call and every later CreateTransaction
+// (duplicate)/CheckTransaction/GetStatement call for this transaction.
 async function setWebOrderPaymeIdD1(env, id, paymeTransactionId) {
-  await env.DB.prepare(`UPDATE web_orders SET payme_transaction_id = ? WHERE id = ?`).bind(paymeTransactionId, id).run();
+  const now = new Date().toISOString();
+  const row = await env.DB.prepare(
+    `UPDATE web_orders SET payme_transaction_id = ?, payme_create_time = COALESCE(payme_create_time, ?) WHERE id = ? RETURNING ${WEB_ORDER_SELECT}`
+  ).bind(paymeTransactionId, now, id).first();
+  return parseWebOrderRow(row);
 }
 
 async function setWebOrderStatusD1(env, id, status) {
@@ -1905,6 +1932,16 @@ function paymeOrderState(order) {
   return order.status === 'paid' ? 2 : 1;
 }
 
+// The real, stable moment the Payme TRANSACTION was created (order.paymeCreateTime
+// — see setWebOrderPaymeIdD1), never order.createdAt (order/reservation time,
+// which can be much earlier). Falls back to createdAt only for rows written
+// before this column existed / before a transaction was ever bound — Payme's
+// own sandbox certification requires this value to be byte-identical across
+// CreateTransaction (original + duplicate), CheckTransaction, and GetStatement.
+function paymeCreateTimeMs(order) {
+  return new Date(order.paymeCreateTime || order.createdAt).getTime();
+}
+
 // Node'ning crypto.timingSafeEqual'i Workers runtime'da har doim ham
 // oson mavjud emas (nodejs_compat bayrog'iga bog'liq) — shu qisqa
 // umumiy-sir satrni solishtirish uchun mustaqil, kutubxonasiz doimiy-
@@ -1989,18 +2026,35 @@ async function handlePaymeRequestD1(env, body) {
           if (String(existing.id) !== String(order.id)) {
             return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, 'Tranzaksiya boshqa buyurtmaga tegishli');
           }
+          // create_time — HAQIQIY, saqlangan qiymat (existing.paymeCreateTime),
+          // existing.createdAt (order/rezervatsiya vaqti) EMAS — aks holda bu
+          // qiymat original CreateTransaction chaqiruvi qaytargan create_time
+          // bilan mos kelmay qolar edi (Payme'ning o'z sandbox
+          // sertifikatlashida aynan shu narsa "спецификацияга mos emas"
+          // deb belgilangan edi).
           return paymeRpcResult(id, {
-            create_time: new Date(existing.createdAt).getTime(),
+            create_time: paymeCreateTimeMs(existing),
             transaction: String(existing.id),
             state: existing.status === 'paid' ? 2 : existing.status === 'cancelled' ? -1 : 1,
           });
+        }
+        // Bu buyurtma ALLAQACHON boshqa (hali ochiq) Payme tranzaksiyasi
+        // tomonidan band qilingan — ikkinchi, boshqa transaction id bilan
+        // kelgan CreateTransaction uni "bosib olishi" (payme_transaction_id'ni
+        // almashtirib, birinchi tranzaksiyani "orphan" qilib qo'yishi) mumkin
+        // emas. Payme sandbox sertifikatlashi buni aniq talab qiladi:
+        // "Обрабатывается — другая транзакция заняла этот счет" ->
+        // -31099...-31050 oralig'idagi xato.
+        if (order.paymeTransactionId && String(order.paymeTransactionId) !== String(params.id)) {
+          return paymeRpcError(id, PAYME_ERR.ACCOUNT_NOT_FOUND, 'Boshqa tranzaksiya ushbu hisobni band qilgan');
         }
         if (order.status !== 'pending') return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, 'Buyurtma band emas');
         const expected = Math.round(Number(order.price) * 100);
         if (Number(params.amount) !== expected) return paymeRpcError(id, PAYME_ERR.INVALID_AMOUNT, 'Summa mos emas');
 
         try {
-          await setWebOrderPaymeIdD1(env, order.id, params.id);
+          const stamped = await setWebOrderPaymeIdD1(env, order.id, params.id);
+          return paymeRpcResult(id, { create_time: paymeCreateTimeMs(stamped), transaction: String(stamped.id), state: 1 });
         } catch (err) {
           // payme_transaction_id UNIQUE — parallel/duplicate chaqiruv
           // boshqa so'rov bilan poyga (race)da mag'lub bo'lgan bo'lishi
@@ -2009,7 +2063,7 @@ async function handlePaymeRequestD1(env, body) {
             const winner = await getWebOrderByPaymeIdD1(env, params.id);
             if (winner && String(winner.id) === String(order.id)) {
               return paymeRpcResult(id, {
-                create_time: new Date(winner.createdAt).getTime(),
+                create_time: paymeCreateTimeMs(winner),
                 transaction: String(winner.id),
                 state: winner.status === 'paid' ? 2 : winner.status === 'cancelled' ? -1 : 1,
               });
@@ -2018,7 +2072,6 @@ async function handlePaymeRequestD1(env, body) {
           }
           throw err;
         }
-        return paymeRpcResult(id, { create_time: Date.now(), transaction: String(order.id), state: 1 });
       }
 
       case 'PerformTransaction': {
@@ -2043,7 +2096,14 @@ async function handlePaymeRequestD1(env, body) {
         // biriktirilmaydi.
         const result = await finalizePaidWebOrderD1(env, order.id);
         if (!result.ok) return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, "Amalni bajarib bo'lmaydi");
-        return paymeRpcResult(id, { transaction: String(order.id), perform_time: Date.now(), state: 2 });
+        // perform_time — finalize ichida stamplangan HAQIQIY qiymatni qayta
+        // o'qib qaytaramiz (Date.now() bilan yangi vaqt olish EMAS) — aks
+        // holda ikkalasi orasida millisekundlik farq bo'lib qolishi mumkin
+        // edi, va bu qiymat keyingi CheckTransaction/duplicate
+        // PerformTransaction qaytaradigan perform_time bilan mos kelmay
+        // qolardi.
+        const finalized = await getWebOrderD1(env, order.id);
+        return paymeRpcResult(id, { transaction: String(order.id), perform_time: new Date(finalized.performTime).getTime(), state: 2 });
       }
 
       case 'CancelTransaction': {
@@ -2073,7 +2133,7 @@ async function handlePaymeRequestD1(env, body) {
         const order = await getWebOrderByPaymeIdD1(env, params.id);
         if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
         return paymeRpcResult(id, {
-          create_time: new Date(order.createdAt).getTime(),
+          create_time: paymeCreateTimeMs(order),
           // Real, stable, persisted timestamps (set once — see
           // setWebOrderStatusD1/stampWebOrderCancelD1) — never
           // recomputed live, so this answers identically every time
@@ -2103,7 +2163,7 @@ async function handlePaymeRequestD1(env, body) {
             time: new Date(o.createdAt).getTime(),
             amount: Math.round(Number(o.price) * 100),
             account: { order_id: String(o.id) },
-            create_time: new Date(o.createdAt).getTime(),
+            create_time: paymeCreateTimeMs(o),
             perform_time: o.performTime ? new Date(o.performTime).getTime() : 0,
             cancel_time: o.cancelTime ? new Date(o.cancelTime).getTime() : 0,
             transaction: String(o.id),
