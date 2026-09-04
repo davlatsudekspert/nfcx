@@ -82,7 +82,7 @@ export default function NewsPage() {
               {pick(item, 'body', lang) && (
                 <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-base-content/70">{pick(item, 'body', lang)}</p>
               )}
-              <div className="mt-4 flex items-center gap-4 text-[13px] text-base-content/55">
+              <div className="mt-4 flex items-center gap-4 text-[16px] text-base-content/55">
                 <button
                   onClick={() => toggleLike(item)}
                   className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${

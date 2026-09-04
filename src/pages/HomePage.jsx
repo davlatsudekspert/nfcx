@@ -179,7 +179,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   </button>
                 </div>
                 {checkResult && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1 text-[13.5px]">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1 text-[16px]">
                     {checkResult.bad && <>
                       <span className="badge badge-error badge-outline">{t("Noto'g'ri format")}</span>
                       <span className="text-base-content/60">{t('3 harf + 3 raqam kiriting, masalan ABZ007')}</span>
@@ -240,7 +240,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   <span
                     key={it.code + i}
                     onClick={() => navigate('/' + it.code)}
-                    className="cursor-pointer whitespace-nowrap font-mono text-[12.5px] tracking-wide text-base-content/40 transition-colors hover:text-base-content"
+                    className="cursor-pointer whitespace-nowrap font-mono text-[15px] tracking-wide text-base-content/40 transition-colors hover:text-base-content"
                   >
                     nfcstore.uz/{it.code.toLowerCase()} · {it.name}
                   </span>
@@ -284,7 +284,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                 className="group cursor-pointer rounded-2xl border border-white/10 bg-base-200/70 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200"
               >
                 <h3 className="font-semibold">{t(item.title)}</h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">{t(item.desc)}</p>
+                <p className="mt-2 text-[16px] leading-relaxed text-base-content/55">{t(item.desc)}</p>
                 <span className="mt-4 inline-block text-sm text-base-content/80 transition-transform group-hover:translate-x-1">{t(item.go)}</span>
               </button>
             ))}

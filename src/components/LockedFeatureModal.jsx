@@ -51,7 +51,7 @@ export default function LockedFeatureModal({ featureLabel, onClose, onGoPremium 
           </button>
         </div>
 
-        <div className="my-3 flex items-center gap-3 text-[11px] uppercase tracking-widest text-base-content/35">
+        <div className="my-3 flex items-center gap-3 text-[14px] uppercase tracking-widest text-base-content/35">
           <span className="h-px flex-1 bg-white/10" /> {t('YOKI')} <span className="h-px flex-1 bg-white/10" />
         </div>
 

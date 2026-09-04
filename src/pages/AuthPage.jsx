@@ -108,7 +108,7 @@ export default function AuthPage({ mode }) {
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200/70 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
           <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">NFCSTORE</div>
           <h2 className="mt-2 text-2xl font-bold">{isRegister ? t('Ro\u2019yxatdan o\u2019tish') : t('Kirish')}</h2>
-          <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">
+          <p className="mt-2 text-[16px] leading-relaxed text-base-content/55">
             {isRegister
               ? t("Akkaunt yarating — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
               : t("Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring.")}
@@ -170,7 +170,7 @@ export default function AuthPage({ mode }) {
                 <input type="text" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder={t('6 xonali kod')} maxLength={6}
                   className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono tracking-widest" />
-                <p className="mt-1.5 text-[11px] text-base-content/45">{t("Kod botga yuboriladi — botga hali yozmagan bo'lsangiz, avval yuqoridagi katakchani belgilang.")}</p>
+                <p className="mt-1.5 text-[14px] text-base-content/45">{t("Kod botga yuboriladi — botga hali yozmagan bo'lsangiz, avval yuqoridagi katakchani belgilang.")}</p>
               </div>
             )}
             {isRegister && (

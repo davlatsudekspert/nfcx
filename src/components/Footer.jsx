@@ -29,7 +29,7 @@ export default function Footer() {
                   <li key={href}>
                     <button
                       onClick={() => navigate(href)}
-                      className="cursor-pointer text-left text-[13px] text-base-content/40 transition-colors hover:text-base-content"
+                      className="cursor-pointer text-left text-[16px] text-base-content/40 transition-colors hover:text-base-content"
                     >
                       {t(label)}
                     </button>

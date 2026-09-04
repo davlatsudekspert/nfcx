@@ -245,7 +245,7 @@ function StatsTab() {
       <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1b1509] via-[#121013] to-[#0d0d10] p-6">
         <div className="grid items-center gap-6 lg:grid-cols-[1fr_320px]">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-base-content/45">{t('Platforma daromadi (komissiyalar)')}</div>
+            <div className="text-[14px] font-semibold uppercase tracking-[0.12em] text-base-content/45">{t('Platforma daromadi (komissiyalar)')}</div>
             <div className="mt-2 text-[38px] font-extrabold leading-none tracking-tight text-accent">
               {wallet === null ? '\u2014' : fmt(wallet)} <span className="text-2xl">{t("so'm")}</span>
             </div>
@@ -512,7 +512,7 @@ function UsersTab() {
                 {u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">{t("SINOV")}</span>}
                 {u.deletedAt && <span className="badge badge-error badge-xs ml-1">{t("O'CHIRILGAN")}</span>}
                 {!u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date() && (
-                  <div className="mt-0.5 text-[10px] text-error">{t('Bloklangan:')} {t(u.suspendReason)} ({timeAgo(new Date(u.suspendedUntil).getTime())} {t('gacha')})</div>
+                  <div className="mt-0.5 text-[13px] text-error">{t('Bloklangan:')} {t(u.suspendReason)} ({timeAgo(new Date(u.suspendedUntil).getTime())} {t('gacha')})</div>
                 )}
               </td>
               <td className="font-mono text-xs">{u.phone || '—'}</td>
@@ -1245,7 +1245,7 @@ function SecurityTab() {
               ))}
             </tbody>
           </table>
-          <p className="p-3 text-[11px] text-base-content/35">{t("Bu jurnal oddiy admin tomonidan o'chirilmaydi.")}</p>
+          <p className="p-3 text-[14px] text-base-content/35">{t("Bu jurnal oddiy admin tomonidan o'chirilmaydi.")}</p>
         </div>
       )}
 
@@ -1316,7 +1316,7 @@ function SecurityTab() {
                   <canvas ref={totpCanvasRef} className="rounded-lg bg-white p-2" />
                   <div className="min-w-0 text-xs text-base-content/60">
                     <p>{t("Ilova bilan skanerlab bo'lmasa, quyidagi kalitni qo'lda kiriting:")}</p>
-                    <code className="mt-1 block break-all rounded bg-black/30 px-2 py-1 font-mono text-[11px] select-all">{totpSetup.secret}</code>
+                    <code className="mt-1 block break-all rounded bg-black/30 px-2 py-1 font-mono text-[14px] select-all">{totpSetup.secret}</code>
                     <p className="mt-2 text-warning">{'⚠️'} {t('Bu kalit faqat hozir ko‘rsatiladi — keyinroq qayta ochilmaydi.')}</p>
                   </div>
                 </div>
@@ -1669,7 +1669,7 @@ function PromoCodesTab() {
             <tbody>
               {summary.map((s) => (
                 <tr key={s.email}>
-                  <td>{s.name || s.email}<div className="text-[11px] text-base-content/40">{s.email}</div></td>
+                  <td>{s.name || s.email}<div className="text-[14px] text-base-content/40">{s.email}</div></td>
                   <td className="font-mono text-xs">{s.promo || '—'}</td>
                   <td className="font-bold">{s.n}</td>
                 </tr>
@@ -1688,9 +1688,9 @@ function PromoCodesTab() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="whitespace-nowrap text-xs text-base-content/60">{dateTime(new Date(r.createdAt).getTime())}</td>
-                  <td>{r.referrerName || r.referrerEmail}<div className="text-[11px] text-base-content/40">{r.referrerEmail}</div></td>
+                  <td>{r.referrerName || r.referrerEmail}<div className="text-[14px] text-base-content/40">{r.referrerEmail}</div></td>
                   <td className="font-mono text-xs">{r.referrerPromo || '—'}</td>
-                  <td>{r.referredName || r.referredEmail}<div className="text-[11px] text-base-content/40">{r.referredEmail}</div></td>
+                  <td>{r.referredName || r.referredEmail}<div className="text-[14px] text-base-content/40">{r.referredEmail}</div></td>
                 </tr>
               ))}
             </tbody>
@@ -1803,7 +1803,7 @@ function NewsTab() {
           placeholder={langTab === 'uz' ? t('Matn') : t('Matn (tarjima)')} rows={4}
           className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
         {langTab !== 'uz' && (
-          <div className="mt-1 text-[11px] text-base-content/40">{t("Bo'sh qoldirsangiz, bu tilda o'zbekcha matn ko'rsatiladi.")}</div>
+          <div className="mt-1 text-[14px] text-base-content/40">{t("Bo'sh qoldirsangiz, bu tilda o'zbekcha matn ko'rsatiladi.")}</div>
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1839,7 +1839,7 @@ function NewsTab() {
                   {n.titleRu && <span className="badge badge-outline badge-xs">RU</span>}
                   {n.titleEn && <span className="badge badge-outline badge-xs">EN</span>}
                 </div>
-                <div className="mt-0.5 text-[11px] text-base-content/40">
+                <div className="mt-0.5 text-[14px] text-base-content/40">
                   {dateTime(new Date(n.createdAt).getTime())} · 👁 {n.views || 0} · ❤️ {n.likeCount || 0}
                 </div>
                 {n.body && <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-base-content/60">{n.body}</p>}
@@ -1940,11 +1940,11 @@ function CategoriesTab() {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-semibold">{c.nameUz}</span>
-          <span className="font-mono text-[11px] text-base-content/35">{c.slug}</span>
+          <span className="font-mono text-[14px] text-base-content/35">{c.slug}</span>
           {c.nameRu && <span className="badge badge-outline badge-xs">RU</span>}
           {c.nameEn && <span className="badge badge-outline badge-xs">EN</span>}
           {!c.enabled && <span className="badge badge-ghost badge-xs">{t('Yashirin')}</span>}
-          <span className="text-[11px] text-base-content/35">#{c.sort}</span>
+          <span className="text-[14px] text-base-content/35">#{c.sort}</span>
         </div>
       </div>
       <button className="btn btn-ghost btn-xs" onClick={() => startEdit(c)}>{t('Tahrirlash')}</button>
@@ -2173,9 +2173,9 @@ function FinanceDashboard({ rangeQs, ready, onGoRates }) {
       )}
 
       <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-[#1a1509] via-[#121013] to-[#101013] p-5">
-        <div className="text-[13px] text-base-content/50">{t('Jami savdo (gross)')}</div>
+        <div className="text-[16px] text-base-content/50">{t('Jami savdo (gross)')}</div>
         <div className="mt-1 text-[30px] font-extrabold tracking-tight">{money(o.grossSales)}</div>
-        <div className="mt-1 text-[11.5px] text-base-content/40">{o.orderCount} {t('ta to‘langan buyurtma')} · {o.fromIso?.slice(0, 10)} … {o.toIso?.slice(0, 10)}</div>
+        <div className="mt-1 text-[14px] text-base-content/40">{o.orderCount} {t('ta to‘langan buyurtma')} · {o.fromIso?.slice(0, 10)} … {o.toIso?.slice(0, 10)}</div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -2274,7 +2274,7 @@ function FinanceTransactions({ rangeQs, ready }) {
                       <td className="font-mono text-xs">{r.code}</td>
                       <td className="font-semibold">{money(r.amount)}</td>
                       <td><StatusBadge tone={r.status === 'paid' ? 'success' : r.status === 'cancelled' ? 'muted' : 'danger'}>{r.status}</StatusBadge></td>
-                      <td className="max-w-[160px] truncate font-mono text-[11px] text-base-content/45">{r.paymeTxnId || '—'}</td>
+                      <td className="max-w-[160px] truncate font-mono text-[14px] text-base-content/45">{r.paymeTxnId || '—'}</td>
                       <td className="max-w-[180px] truncate text-xs text-base-content/60">{r.userEmail || '—'}</td>
                     </tr>
                   ))}
@@ -2399,7 +2399,7 @@ function FinanceRateCard({ scope, current, history, onSaved }) {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#101013] p-5">
       <div className="text-sm font-bold text-accent">{FIN_RATE_TITLE[scope]}</div>
-      {current && <div className="mt-0.5 text-[11px] text-base-content/40">{t('Hozir amalda')}: {current.effectiveFrom}{current.note ? ` · ${current.note}` : ''}</div>}
+      {current && <div className="mt-0.5 text-[14px] text-base-content/40">{t('Hozir amalda')}: {current.effectiveFrom}{current.note ? ` · ${current.note}` : ''}</div>}
       <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
         {FIN_RATE_FIELDS[scope].map(([k, label]) => (
           <label key={k} className="text-xs">
@@ -2426,7 +2426,7 @@ function FinanceRateCard({ scope, current, history, onSaved }) {
         {msg && <span className={`text-xs ${msg.ok ? 'text-success' : 'text-error'}`}>{msg.ok ? t('Saqlandi') : t('Xatolik yuz berdi.')}</span>}
       </div>
       {history && history.length > 1 && (
-        <div className="mt-3 border-t border-white/5 pt-2 text-[11px] text-base-content/40">
+        <div className="mt-3 border-t border-white/5 pt-2 text-[14px] text-base-content/40">
           {history.slice(0, 5).map((h) => (
             <div key={h.id} className="flex justify-between py-0.5">
               <span>{h.effectiveFrom}</span>
@@ -2519,7 +2519,7 @@ function FinanceReports({ range, rangeQs, ready }) {
               <span className={o.netCashFlow >= 0 ? 'text-success' : 'text-error'}>{money(o.netCashFlow)}</span>
             </div>
           </div>
-          <p className="mt-3 text-[11px] text-base-content/35">{t('Bu ichki/dastlabki hisobot. Rasmiy soliq hisoboti buxgalter tomonidan tasdiqlanadi — bu yerdan hech qanday davlat tizimiga avtomatik yuborilmaydi.')}</p>
+          <p className="mt-3 text-[14px] text-base-content/35">{t('Bu ichki/dastlabki hisobot. Rasmiy soliq hisoboti buxgalter tomonidan tasdiqlanadi — bu yerdan hech qanday davlat tizimiga avtomatik yuborilmaydi.')}</p>
         </AdminCard>
       )}
 
@@ -2568,7 +2568,7 @@ function FinanceExpenses() {
                 {data.expenses.map((e) => (
                   <tr key={e.id}>
                     <td className="text-xs text-base-content/55">{e.spentOn}</td>
-                    <td>{e.title}{e.note && <div className="text-[11px] text-base-content/35">{e.note}</div>}</td>
+                    <td>{e.title}{e.note && <div className="text-[14px] text-base-content/35">{e.note}</div>}</td>
                     <td className="text-xs">{e.category}</td>
                     <td className="font-semibold">{money(e.amount)}</td>
                     <td><button className="btn btn-ghost btn-xs text-error" onClick={() => del(e.id)}>{t('O‘chirish')}</button></td>
@@ -2619,7 +2619,7 @@ function FinanceDocs() {
     <div className="space-y-3">
       <div className="rounded-2xl border border-white/[0.07] bg-[#101013] p-5">
         <div className="text-sm font-semibold">{t('Hujjat qo‘shish')}</div>
-        <p className="mt-1 text-[11px] text-base-content/40">{t('Payme hisobot, bank ko‘chirmasi, soliq hujjati, chek… Fayl (PDF/Excel/CSV/rasm, ≤15 MB) yoki tashqi havola. Diqqat: yuklangan fayllar server yangilanganda o‘chishi mumkin — muhimlarini tashqi drayvda ham saqlang.')}</p>
+        <p className="mt-1 text-[14px] text-base-content/40">{t('Payme hisobot, bank ko‘chirmasi, soliq hujjati, chek… Fayl (PDF/Excel/CSV/rasm, ≤15 MB) yoki tashqi havola. Diqqat: yuklangan fayllar server yangilanganda o‘chishi mumkin — muhimlarini tashqi drayvda ham saqlang.')}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
           <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('Nomi')} className="input input-bordered input-sm bg-base-100" />
           <select value={form.docType} onChange={(e) => setForm((f) => ({ ...f, docType: e.target.value }))} className="select select-bordered select-sm bg-base-100">
@@ -2793,21 +2793,21 @@ function CompanyDetailModal({ code, onClose, onChanged }) {
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Restoran menyusi')}</div>
+            <div className="text-[14px] font-semibold uppercase tracking-wide text-base-content/45">{t('Restoran menyusi')}</div>
             <StatusBadge tone={menuStatus.tone}>{t(menuStatus.text)}</StatusBadge>
-            <div className="mt-1 text-[11px] text-base-content/50">{row.menuCatCount} {t('kategoriya')} · {row.menuItemCount} {t('taom')}</div>
-            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/menyu`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
+            <div className="mt-1 text-[14px] text-base-content/50">{row.menuCatCount} {t('kategoriya')} · {row.menuItemCount} {t('taom')}</div>
+            <a className="mt-1.5 inline-block text-[14px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/menyu`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
           </div>
           <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Mahsulotlar katalogi')}</div>
+            <div className="text-[14px] font-semibold uppercase tracking-wide text-base-content/45">{t('Mahsulotlar katalogi')}</div>
             <StatusBadge tone={productStatus.tone}>{t(productStatus.text)}</StatusBadge>
-            <div className="mt-1 text-[11px] text-base-content/50">{row.productCatCount} {t('kategoriya')} · {row.productItemCount} {t('mahsulot')}</div>
-            <a className="mt-1.5 inline-block text-[11px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/mahsulotlar`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
+            <div className="mt-1 text-[14px] text-base-content/50">{row.productCatCount} {t('kategoriya')} · {row.productItemCount} {t('mahsulot')}</div>
+            <a className="mt-1.5 inline-block text-[14px] font-semibold text-accent underline underline-offset-2" href={`/${row.code.toLowerCase()}/mahsulotlar`} target="_blank" rel="noopener noreferrer">{t('Ochish')} ↗</a>
           </div>
         </div>
 
         <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-base-content/45">{t('Tarif')}</div>
+          <div className="text-[14px] font-semibold uppercase tracking-wide text-base-content/45">{t('Tarif')}</div>
           <div className="mt-1 text-sm">{t(TIER_LABEL[tier] || tier)} {row.ownerIsPremium && access !== tier ? `→ ${t('Profile Premium orqali')} ${t(TIER_LABEL[access])}` : ''}</div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <select value={tierPick} onChange={(e) => setTierPick(e.target.value)} className="select select-bordered select-xs bg-base-100">
@@ -2816,13 +2816,13 @@ function CompanyDetailModal({ code, onClose, onChanged }) {
             </select>
             <button className="btn btn-primary btn-xs" disabled={busy} onClick={saveTier}>{t('Saqlash')}</button>
           </div>
-          <p className="mt-1.5 text-[10.5px] leading-relaxed text-base-content/40">{t('Bu — NFC ID darajasini qo‘lda belgilash (masalan sovg‘a/maxsus holat). Kod naqshidan kelib chiqadigan avtomatik darajani almashtiradi.')}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-base-content/40">{t('Bu — NFC ID darajasini qo‘lda belgilash (masalan sovg‘a/maxsus holat). Kod naqshidan kelib chiqadigan avtomatik darajani almashtiradi.')}</p>
         </div>
 
         <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-3">
           <div className="text-xs">
             <div className="font-semibold">{row.hiddenFromDirectory ? t('Bloklangan') : t('Faol')}</div>
-            <div className="text-[10.5px] text-base-content/40">{t('Bloklash faqat ommaviy katalog/qidiruvdan yashiradi — havola orqali ochish davom etadi.')}</div>
+            <div className="text-[13px] text-base-content/40">{t('Bloklash faqat ommaviy katalog/qidiruvdan yashiradi — havola orqali ochish davom etadi.')}</div>
           </div>
           <button className={`btn btn-xs ${row.hiddenFromDirectory ? 'btn-success' : 'btn-warning'}`} disabled={busy} onClick={toggleStatus}>
             {row.hiddenFromDirectory ? t('Faollashtirish') : t('Bloklash')}
@@ -2858,7 +2858,7 @@ function LimitsTable({ title, subtitle, kind, limits, onSaved }) {
   };
 
   return (
-    <AdminCard title={title} right={<span className="text-[11px] text-base-content/40">{subtitle}</span>}>
+    <AdminCard title={title} right={<span className="text-[14px] text-base-content/40">{subtitle}</span>}>
       <div className="overflow-x-auto">
         <table className="table table-sm">
           <thead><tr><th>{t('Tarif')}</th><th>{t('Kategoriyalar')}</th><th>{t('Elementlar')}</th><th>{t('Rasm')}</th><th></th></tr></thead>
@@ -2920,17 +2920,17 @@ function PhysicalPricingCard({ tiers, onSaved }) {
 
   return (
     <AdminCard title={t('Jismoniy NFC — ko‘p dona narx pog‘onalari')}>
-      <p className="mb-3 text-[11.5px] text-base-content/45">{t('Korporativ buyurtma kalkulyatori uchun (Kompaniyalar sahifasida ko‘rinadi).')} {t('Bu — informatsion kalkulyator. To‘lov/checkout hozircha o‘chiq — buyurtma Telegram orqali qo‘lda amalga oshiriladi.')}</p>
+      <p className="mb-3 text-[14px] text-base-content/45">{t('Korporativ buyurtma kalkulyatori uchun (Kompaniyalar sahifasida ko‘rinadi).')} {t('Bu — informatsion kalkulyator. To‘lov/checkout hozircha o‘chiq — buyurtma Telegram orqali qo‘lda amalga oshiriladi.')}</p>
       <div className="space-y-2">
         {rows.map((r, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
-            <span className="text-[11px] text-base-content/45">{t('dan')}</span>
+            <span className="text-[14px] text-base-content/45">{t('dan')}</span>
             <input type="number" min="1" value={r.minQty} onChange={(e) => setRow(i, { minQty: Number(e.target.value) })} className="input input-bordered input-xs w-16 bg-base-100" />
-            <span className="text-[11px] text-base-content/45">{t('gacha')}</span>
+            <span className="text-[14px] text-base-content/45">{t('gacha')}</span>
             <input type="number" min="1" value={r.maxQty ?? ''} placeholder={t('cheksiz')} onChange={(e) => setRow(i, { maxQty: e.target.value === '' ? null : Number(e.target.value) })} className="input input-bordered input-xs w-20 bg-base-100" />
-            <span className="text-[11px] text-base-content/45">{t('dona —')}</span>
+            <span className="text-[14px] text-base-content/45">{t('dona —')}</span>
             <input type="number" min="0" value={r.pricePerUnit} onChange={(e) => setRow(i, { pricePerUnit: Number(e.target.value) })} className="input input-bordered input-xs w-28 bg-base-100" />
-            <span className="text-[11px] text-base-content/45">{t("so'm/dona")}</span>
+            <span className="text-[14px] text-base-content/45">{t("so'm/dona")}</span>
             <button className="btn btn-ghost btn-xs text-error ml-auto" onClick={() => delRow(i)}>{t("O'chirish")}</button>
           </div>
         ))}
@@ -2960,9 +2960,9 @@ function DeliveryCard({ delivery, onSaved }) {
     <AdminCard title={t('Yetkazib berish muddati')}>
       <div className="flex flex-wrap items-center gap-2">
         <input type="number" min="0" value={minDays} onChange={(e) => setMinDays(e.target.value)} className="input input-bordered input-xs w-16 bg-base-100" />
-        <span className="text-[11px] text-base-content/45">—</span>
+        <span className="text-[14px] text-base-content/45">—</span>
         <input type="number" min="0" value={maxDays} onChange={(e) => setMaxDays(e.target.value)} className="input input-bordered input-xs w-16 bg-base-100" />
-        <span className="text-[11px] text-base-content/45">{t('ish kuni')}</span>
+        <span className="text-[14px] text-base-content/45">{t('ish kuni')}</span>
         <button className="btn btn-primary btn-xs" disabled={busy} onClick={save}>{t('Saqlash')}</button>
       </div>
     </AdminCard>
@@ -3031,7 +3031,7 @@ function CompanyIdRequests() {
       <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>Company ID</th><th>{t('Kompaniya')}</th><th>{t('Egasi')}</th><th>{t('Tarif / narx')}</th><th>{t('Status')}</th><th>{t('Amal')}</th></tr></thead><tbody>
         {data === null && <tr><td colSpan={6}><AdminLoading /></td></tr>}
         {data && rows.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-base-content/40">{t('Ariza topilmadi.')}</td></tr>}
-        {rows.map((company) => <tr key={company.companyId}><td><b className="font-mono text-accent">{company.companyId}</b><div className="text-[10px] text-base-content/35">/c/{company.companyId.toLowerCase()}</div></td><td><b>{company.displayName}</b><div className="text-[10px] text-base-content/45">{company.category} · {company.city}</div>{company.sourceCardCode && <div className="text-[10px] text-warning">nusxa: {company.sourceCardCode}</div>}</td><td><div className="text-xs">{company.ownerEmail || company.ownerUserId}</div></td><td><b>{company.tier?.toUpperCase()}</b><div className="text-[10px] text-base-content/45">{fmt(company.price)} so‘m</div></td><td><StatusBadge tone={tone[company.status] || 'muted'}>{t(labels[company.status] || company.status)}</StatusBadge></td><td><div className="flex flex-wrap gap-1">{company.status === 'pending_review' && <><button className="btn btn-success btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'approved')}>{t('Tasdiqlash')}</button><button className="btn btn-error btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'rejected')}>{t('Rad etish')}</button></>}{['approved','payment_pending','paid'].includes(company.status) && <button className="btn btn-primary btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Faollashtirish')}</button>}{company.status === 'active' && <button className="btn btn-warning btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'suspended')}>{t('Bloklash')}</button>}{company.status === 'suspended' && <button className="btn btn-success btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Qayta ochish')}</button>}<a className="btn btn-ghost btn-xs" href={`/company/${company.companyId.toLowerCase()}`} target="_blank" rel="noreferrer">↗</a></div></td></tr>)}
+        {rows.map((company) => <tr key={company.companyId}><td><b className="font-mono text-accent">{company.companyId}</b><div className="text-[13px] text-base-content/35">/c/{company.companyId.toLowerCase()}</div></td><td><b>{company.displayName}</b><div className="text-[13px] text-base-content/45">{company.category} · {company.city}</div>{company.sourceCardCode && <div className="text-[13px] text-warning">nusxa: {company.sourceCardCode}</div>}</td><td><div className="text-xs">{company.ownerEmail || company.ownerUserId}</div></td><td><b>{company.tier?.toUpperCase()}</b><div className="text-[13px] text-base-content/45">{fmt(company.price)} so‘m</div></td><td><StatusBadge tone={tone[company.status] || 'muted'}>{t(labels[company.status] || company.status)}</StatusBadge></td><td><div className="flex flex-wrap gap-1">{company.status === 'pending_review' && <><button className="btn btn-success btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'approved')}>{t('Tasdiqlash')}</button><button className="btn btn-error btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'rejected')}>{t('Rad etish')}</button></>}{['approved','payment_pending','paid'].includes(company.status) && <button className="btn btn-primary btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Faollashtirish')}</button>}{company.status === 'active' && <button className="btn btn-warning btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'suspended')}>{t('Bloklash')}</button>}{company.status === 'suspended' && <button className="btn btn-success btn-xs" disabled={!!busy} onClick={() => setStatus(company.companyId, 'active')}>{t('Qayta ochish')}</button>}<a className="btn btn-ghost btn-xs" href={`/company/${company.companyId.toLowerCase()}`} target="_blank" rel="noreferrer">↗</a></div></td></tr>)}
       </tbody></table></div>
     </AdminCard>
     <AdminCard title={t('Company ID rezerv va narx override')}>
@@ -3142,7 +3142,7 @@ function CompaniesTab() {
                       <tr key={r.code}>
                         <td>
                           <div className="font-semibold">{r.name} {r.verified && '✔️'}</div>
-                          <div className="font-mono text-[11px] text-base-content/40">{r.code}</div>
+                          <div className="font-mono text-[14px] text-base-content/40">{r.code}</div>
                         </td>
                         <td className="text-xs">{r.ownerEmail || '—'}</td>
                         <td className="text-xs text-base-content/60">{catPath(cats, r.categorySlug, lang) || '—'}</td>

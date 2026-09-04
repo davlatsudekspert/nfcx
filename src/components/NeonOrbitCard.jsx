@@ -49,7 +49,7 @@ export default function NeonOrbitCard({ code = 'AAA000', name, finish = 'black' 
         <span className="z-[1] -mb-1.5 h-[34px] w-[34px] rounded-full border-[5px] border-[#c9a227] border-t-[#f0cf7a] border-l-[#e8c165] shadow-md"></span>
         <div className="flex h-[118px] w-[78px] flex-col items-center justify-center gap-2 rounded-[20px] border border-[rgba(201,162,39,0.18)] bg-gradient-to-b from-[#221c12] via-[#101010] to-[#1c1611] text-[#e8c165] shadow-[0_20px_44px_rgba(0,0,0,0.6),0_0_20px_rgba(180,140,30,0.12)]">
           <IconWave />
-          <b className="font-mono text-[11px] tracking-[0.2em] text-[rgba(232,193,101,0.6)]">NFC</b>
+          <b className="font-mono text-[14px] tracking-[0.2em] text-[rgba(232,193,101,0.6)]">NFC</b>
         </div>
       </div>
     </div>

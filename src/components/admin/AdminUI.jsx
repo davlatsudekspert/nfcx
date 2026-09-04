@@ -58,7 +58,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
               <button
                 key={item.index}
                 onClick={() => { onSelect(item.index); setOpen(false); }}
-                className={`flex w-full items-center gap-3 px-5 py-2.5 text-left text-[13.5px] transition-colors ${
+                className={`flex w-full items-center gap-3 px-5 py-2.5 text-left text-[16px] transition-colors ${
                   on
                     ? 'border-r-2 border-accent bg-accent/[0.12] font-semibold text-accent'
                     : 'border-r-2 border-transparent text-base-content/55 hover:bg-white/[0.03] hover:text-base-content'
@@ -71,14 +71,14 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
           })}
         </nav>
         <div className="border-t border-white/[0.07] p-4">
-          <div className="flex items-center gap-2 text-[11.5px] text-base-content/60">
+          <div className="flex items-center gap-2 text-[14px] text-base-content/60">
             <span className="h-2 w-2 rounded-full bg-success"></span>
             {t('Barchasi ishlamoqda')}
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
             <div className="h-full w-[85%] rounded-full bg-accent/70"></div>
           </div>
-          <div className="mt-1 text-[10px] text-base-content/40">85% {t('server yuklamasi')}</div>
+          <div className="mt-1 text-[13px] text-base-content/40">85% {t('server yuklamasi')}</div>
         </div>
       </aside>
 
@@ -95,7 +95,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
           <div className="flex shrink-0 items-center gap-2">
             <LanguageSwitcher />
             <div className="hidden items-center gap-2 rounded-lg border border-white/10 py-1.5 pl-1.5 pr-3 sm:flex">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-[11px] font-bold text-accent">A</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-[14px] font-bold text-accent">A</span>
               <span className="text-xs text-base-content/70">{roleLabel}</span>
             </div>
             <button className="btn btn-ghost btn-sm gap-1.5" onClick={onLogout}>
@@ -122,7 +122,7 @@ const TONE = {
 
 export function StatusBadge({ tone = 'muted', children }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold ${TONE[tone] || TONE.muted}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[14px] font-semibold ${TONE[tone] || TONE.muted}`}>
       {children}
     </span>
   );
@@ -150,9 +150,9 @@ export function KpiCard({ icon = 'chart', label, value, sub, tone = 'accent' }) 
           <AdminIcon name={icon} className="h-[20px] w-[20px]" />
         </span>
       </div>
-      <div className="mt-3.5 text-[13px] text-base-content/50">{label}</div>
+      <div className="mt-3.5 text-[16px] text-base-content/50">{label}</div>
       <div className="mt-1 text-[26px] font-extrabold leading-none tracking-tight">{value}</div>
-      {sub && <div className="mt-2 text-[11.5px] text-base-content/40">{sub}</div>}
+      {sub && <div className="mt-2 text-[14px] text-base-content/40">{sub}</div>}
     </div>
   );
 }

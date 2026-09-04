@@ -44,20 +44,20 @@ export default function GuideCard({ guide, onOpen }) {
           </div>
         )}
         <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
-          <span className="flex h-9 items-center gap-1.5 rounded-full bg-black/75 px-3.5 text-[13px] font-semibold text-white/90 backdrop-blur-sm">
+          <span className="flex h-9 items-center gap-1.5 rounded-full bg-black/75 px-3.5 text-[16px] font-semibold text-white/90 backdrop-blur-sm">
             <span className="text-lg leading-none">{'⏱️'}</span> {t(guideDurationLabel(guide.durationMin))}
           </span>
-          <span className="flex h-8 items-center gap-1 rounded-full bg-black/75 px-3 text-[13px] font-semibold text-white/80 backdrop-blur-sm">
+          <span className="flex h-8 items-center gap-1 rounded-full bg-black/75 px-3 text-[16px] font-semibold text-white/80 backdrop-blur-sm">
             {stepCount} {t('qadam')}
           </span>
         </div>
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <span className="flex h-9 w-fit items-center gap-1.5 rounded-full border border-white/15 px-4 text-[13px] font-bold uppercase tracking-wide text-base-content/70">
+        <span className="flex h-9 w-fit items-center gap-1.5 rounded-full border border-white/15 px-4 text-[16px] font-bold uppercase tracking-wide text-base-content/70">
           <span className="text-lg leading-none">{catIcon}</span> {t(catLabel)}
         </span>
         <h3 className="mt-3 text-lg font-bold leading-snug text-base-content group-hover:text-accent">{t(guide.title)}</h3>
-        <p className="mt-2 line-clamp-2 flex-1 text-[13.5px] leading-relaxed text-base-content/60">{t(guide.description)}</p>
+        <p className="mt-2 line-clamp-2 flex-1 text-[16px] leading-relaxed text-base-content/60">{t(guide.description)}</p>
         <span className="btn mt-4 h-12 min-h-12 w-full border-white/15 bg-white/5 text-[15px] group-hover:border-accent/60 group-hover:bg-accent/10 group-hover:text-accent">
           {t("Ko'rish")}
         </span>

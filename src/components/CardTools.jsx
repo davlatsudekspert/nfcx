@@ -74,15 +74,15 @@ function AnalyticsSection({ code, advancedAllowed }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <div className="text-2xl font-extrabold">{fmt(data.totalViews)}</div>
-              <div className="text-[11px] text-base-content/50">{t('Ko‘rishlar')} · {t('{n} kun', { n: data.days })}</div>
+              <div className="text-[14px] text-base-content/50">{t('Ko‘rishlar')} · {t('{n} kun', { n: data.days })}</div>
             </div>
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <div className="text-2xl font-extrabold">{fmt(data.uniqueVisitors)}</div>
-              <div className="text-[11px] text-base-content/50">{t('Alohida tashrifchi')}</div>
+              <div className="text-[14px] text-base-content/50">{t('Alohida tashrifchi')}</div>
             </div>
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <div className="text-2xl font-extrabold">{fmt(data.legacyViews || 0)}</div>
-              <div className="text-[11px] text-base-content/50">{t('Jami (butun davr)')}</div>
+              <div className="text-[14px] text-base-content/50">{t('Jami (butun davr)')}</div>
             </div>
           </div>
 
@@ -199,14 +199,14 @@ function LeadsSection({ code, name, allowed, initialEnabled }) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-semibold">{l.name}{l.company ? ` · ${l.company}` : ''}</div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-base-content/70">
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[15px] text-base-content/70">
                       {l.phone && <a className="link" href={`tel:${l.phone}`}>{l.phone}</a>}
                       {l.telegram && <a className="link" href={`https://t.me/${l.telegram}`} target="_blank" rel="noreferrer">@{l.telegram}</a>}
                       {l.whatsapp && <a className="link" href={`https://wa.me/${l.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>}
                       {l.email && <a className="link" href={`mailto:${l.email}`}>{l.email}</a>}
                     </div>
-                    {l.note && <div className="mt-1 whitespace-pre-wrap text-[12.5px] text-base-content/55">{l.note}</div>}
-                    <div className="mt-1 text-[11px] text-base-content/35">{timeAgo(new Date(l.createdAt).getTime())}</div>
+                    {l.note && <div className="mt-1 whitespace-pre-wrap text-[15px] text-base-content/55">{l.note}</div>}
+                    <div className="mt-1 text-[14px] text-base-content/35">{timeAgo(new Date(l.createdAt).getTime())}</div>
                   </div>
                   <button className="btn btn-ghost btn-xs shrink-0" onClick={() => remove(l.id)}>{t("O'chirish")}</button>
                 </div>
@@ -292,7 +292,7 @@ function FilesSection({ code, access, allowed }) {
           <div key={f.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2.5">
             <span className="text-accent">📄</span>
             <a href={f.fileUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm font-semibold hover:underline">{f.title}</a>
-            {f.sizeBytes != null && <span className="shrink-0 text-[11px] text-base-content/40">{Math.round(f.sizeBytes / 1024)} KB</span>}
+            {f.sizeBytes != null && <span className="shrink-0 text-[14px] text-base-content/40">{Math.round(f.sizeBytes / 1024)} KB</span>}
             <button className="btn btn-ghost btn-xs" onClick={() => rename(f)}>{t('Nomi')}</button>
             <button className="btn btn-ghost btn-xs text-error" onClick={() => del(f)}>{t("O'chirish")}</button>
           </div>

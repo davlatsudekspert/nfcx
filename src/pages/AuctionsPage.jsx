@@ -117,7 +117,7 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
       style={{ '--shine-delay': `${(idx % 6) * 0.6}s` }}
     >
       {ready && (
-        <div className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-bold text-success">
+        <div className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-[14px] font-bold text-success">
           {t('AUKSIONNI BOSHLASH MUMKIN')}
         </div>
       )}
@@ -132,7 +132,7 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
         <div className="h-2 overflow-hidden rounded-full bg-white/10">
           <div className={`h-full rounded-full ${ready ? 'bg-success' : 'bg-[#e6c165]'}`} style={{ width: `${Math.max(4, pct)}%` }} />
         </div>
-        <div className="mt-1 flex items-center justify-between text-[11px] text-base-content/45">
+        <div className="mt-1 flex items-center justify-between text-[14px] text-base-content/45">
           <span>{ready ? t('Auksionga tayyor') : t('Talab yig’ilmoqda')}</span>
           <span>{item.interestCount} / {threshold}</span>
         </div>

@@ -104,7 +104,7 @@ function MyProfileAvatar({ src, label, size = 'h-6 w-6' }) {
   return src ? (
     <img src={src} alt="" className={`${size} shrink-0 rounded-full object-cover ring-1 ring-white/15`} />
   ) : (
-    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent/20 text-[11px] font-bold text-accent ring-1 ring-white/15`}>
+    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent/20 text-[14px] font-bold text-accent ring-1 ring-white/15`}>
       {letter}
     </span>
   );
@@ -151,7 +151,7 @@ export default function Header() {
       <div className="overflow-hidden border-b border-white/10">
         <div className="flex w-max animate-[marqueeScroll_30s_linear_infinite] whitespace-nowrap py-1 will-change-transform">
           {Array.from({ length: 6 }).map((_, i) => (
-            <span key={i} className="px-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+            <span key={i} className="px-10 text-[14px] font-semibold uppercase tracking-[0.14em] text-accent">
               {'✨'} NFCSTORE BETA — {t('Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.')}
             </span>
           ))}
@@ -168,7 +168,11 @@ export default function Header() {
           </div>
         </div>
 
-        <nav className="hidden flex-1 items-center justify-center gap-1.5 text-sm text-base-content/60 xl:flex 2xl:gap-6">
+        {/* Diqqat: bu yerda ataylab text-sm ISHLATILMAYDI — sayt bo'ylab
+            text-sm global kattalashtirilgan (o'qilishni yaxshilash uchun),
+            lekin bu navigatsiya qatori juda zich (9 ta havola bitta qatorda)
+            va kattaroq matn bilan sig'may, ustma-ust tushib qolar edi. */}
+        <nav className="hidden flex-1 items-center justify-center gap-1.5 text-[13.5px] text-base-content/60 xl:flex 2xl:gap-6">
           {DESKTOP_NAV.map(([label, href]) => (
             <button key={href} onClick={() => go(href)} className="shrink-0 cursor-pointer transition-colors hover:text-base-content">
               {t(label)}

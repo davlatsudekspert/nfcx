@@ -135,7 +135,7 @@ function CompanyFormMock({ data }) {
   const d = data || {};
   return (
     <div className="flex h-full flex-col gap-2.5 p-6">
-      <div className="text-[11px] font-bold uppercase tracking-widest text-[var(--mock-accent)]">{t('COMPANY ID')}</div>
+      <div className="text-[14px] font-bold uppercase tracking-widest text-[var(--mock-accent)]">{t('COMPANY ID')}</div>
       <div className="flex h-8 items-center rounded-lg border border-[var(--mock-accent)]/50 bg-white/5 px-3 font-mono text-xs text-white/80">
         nfcstore.uz/c/{d.companyId || 'DEMOSHOP'}
       </div>
@@ -158,13 +158,13 @@ function CompanyTabsMock({ data }) {
     <div className="flex h-full flex-col p-5">
       <div className="flex gap-1 overflow-hidden rounded-lg border border-white/10 bg-black/20 p-1">
         {tabs.map((tb) => (
-          <div key={tb} className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${tb === d.activeTab ? 'bg-[var(--mock-accent)] text-black' : 'text-white/50'}`}>{t(tb)}</div>
+          <div key={tb} className={`rounded-md px-2.5 py-1 text-[13px] font-semibold ${tb === d.activeTab ? 'bg-[var(--mock-accent)] text-black' : 'text-white/50'}`}>{t(tb)}</div>
         ))}
       </div>
-      <div className="mt-3 text-[11px] font-bold text-white/70">{t(d.panelTitle || 'Kompaniya profili')}</div>
+      <div className="mt-3 text-[14px] font-bold text-white/70">{t(d.panelTitle || 'Kompaniya profili')}</div>
       <div className="mt-2 flex-1 space-y-2">
         {(d.rows || []).map((r, i) => (
-          <div key={i} className="flex h-7 items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 text-[11px]">
+          <div key={i} className="flex h-7 items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 text-[14px]">
             <span className="text-white/40">{t(r.label)}</span>
             <span className="text-white/75">{mockValue(t, r.value)}</span>
           </div>
@@ -188,9 +188,9 @@ function CompanyPublicMock({ data }) {
         </div>
       </div>
       <div className="flex h-full flex-1 flex-col justify-center gap-2">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--mock-accent)]">{t(d.categoryLabel || 'Mahsulotlar')}</div>
+        <div className="text-[13px] font-bold uppercase tracking-widest text-[var(--mock-accent)]">{t(d.categoryLabel || 'Mahsulotlar')}</div>
         {(d.items || []).map((it, i) => (
-          <div key={i} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px]">
+          <div key={i} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[14px]">
             <span className="text-white/75">{t(it.name)}</span>
             <span className="font-semibold text-[var(--mock-accent)]">{mockValue(t, it.price)}</span>
           </div>
@@ -215,7 +215,7 @@ export default function GuideMockFrame({ variant = 'form', label, cursorX, curso
         <Comp highlight={highlight} data={data} />
       </div>
       {label && (
-        <div className="absolute left-3 top-3 rounded-md bg-black/55 px-2 py-1 text-[10px] font-semibold text-white/85">{label}</div>
+        <div className="absolute left-3 top-3 rounded-md bg-black/55 px-2 py-1 text-[13px] font-semibold text-white/85">{label}</div>
       )}
       {cursorX != null && cursorY != null && (
         <div

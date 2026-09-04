@@ -32,8 +32,8 @@ function TopCard({ rank, item }) {
       <div className="mt-3 max-w-[140px] truncate font-semibold">{item.name}</div>
       <div className="mt-0.5 font-mono text-xs text-base-content/50">{item.code}</div>
       <div className="mt-2 text-lg font-extrabold" style={{ color: m.ring }}>{fmt(item.views || 0)}</div>
-      <div className="text-[10px] uppercase tracking-widest text-base-content/40">{t("ko'rish")}</div>
-      <span className="mt-2 text-[11px] font-semibold" style={{ color: TIER_COLOR[tier] }}>{t(TIER_LABEL[tier])}</span>
+      <div className="text-[13px] uppercase tracking-widest text-base-content/40">{t("ko'rish")}</div>
+      <span className="mt-2 text-[14px] font-semibold" style={{ color: TIER_COLOR[tier] }}>{t(TIER_LABEL[tier])}</span>
     </button>
   );
 }

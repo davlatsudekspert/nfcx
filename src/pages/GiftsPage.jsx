@@ -90,7 +90,7 @@ export default function GiftsPage({ catalog = [] }) {
             </div>
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <div className="text-sm font-bold">{'\u{1F381}'} {t('Noyob ID — unutilmas sovg‘a')}</div>
-              <p className="mt-1 text-[13px] leading-relaxed text-base-content/55">
+              <p className="mt-1 text-[16px] leading-relaxed text-base-content/55">
                 {t('Ism, sana, brend yoki alohida ma’noga ega NFC ID’ni tanlang va yaqin insoningizga raqamli sovg‘a sifatida taqdim eting.')}
               </p>
             </div>

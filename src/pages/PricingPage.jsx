@@ -288,7 +288,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
             return (
               <div key={ex.code} className="rounded-2xl border border-white/10 bg-base-200/60 p-5 transition-colors hover:border-white/20">
                 <div className="font-mono text-lg font-bold tracking-widest">{ex.code}</div>
-                <div className="mt-1 text-[13px] text-white/55">{ex.note}</div>
+                <div className="mt-1 text-[16px] text-white/55">{ex.note}</div>
                 <div className="mt-3 text-sm font-semibold" style={{ color: TIER_COLOR[info.tier] }}>
                   {info.tier === 'exclusive' ? t('Faqat auksion') : t("{n} so'm", { n: fmt(info.total) })}
                 </div>

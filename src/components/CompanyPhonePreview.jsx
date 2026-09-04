@@ -31,7 +31,7 @@ export function PhoneFrame({ children, label }) {
       </div>
       <div className="max-h-[560px] overflow-y-auto rounded-[1.6rem] bg-base-100 p-3 text-base-content">
         {label && (
-          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-base-content/40">
+          <div className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-base-content/40">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" /> {label}
           </div>
         )}
@@ -52,23 +52,23 @@ export function MenuPreviewList({ categories, t }) {
     <div className="flex flex-col gap-4">
       {shown.map((cat) => (
         <div key={cat.id}>
-          <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
+          <div className="mb-1.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
           <div className="flex flex-col gap-1.5">
             {cat.items.map((it) => (
               <div key={it.id} className={`flex gap-2 rounded-xl border border-white/10 bg-black/20 p-2 ${it.available === false ? 'opacity-45' : ''} ${it.id === '__draft__' ? 'ring-1 ring-accent/60' : ''}`}>
                 {it.imageUrl && <img src={it.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-1.5">
-                    <div className="min-w-0 truncate text-[12px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                    <div className="min-w-0 truncate text-[15px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
                     {it.price != null && it.price !== '' && (
-                      <div className="shrink-0 text-[11px] font-bold">
+                      <div className="shrink-0 text-[14px] font-bold">
                         {it.discountPrice != null && it.discountPrice !== '' ? (
                           <><span className="mr-1 text-base-content/40 line-through">{money(it.price)}</span><span className="text-accent">{money(it.discountPrice)}</span></>
                         ) : money(it.price)}
                       </div>
                     )}
                   </div>
-                  {it.description && <p className="mt-0.5 truncate text-[10.5px] text-base-content/50">{it.description}</p>}
+                  {it.description && <p className="mt-0.5 truncate text-[13px] text-base-content/50">{it.description}</p>}
                   {it.available === false && <div className="mt-0.5 text-[9.5px] font-semibold text-base-content/40">{t('Hozircha yo‘q')}</div>}
                 </div>
               </div>
@@ -91,7 +91,7 @@ export function ProductsPreviewGrid({ categories, t }) {
     <div className="flex flex-col gap-4">
       {shown.map((cat) => (
         <div key={cat.id}>
-          <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
+          <div className="mb-1.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
           <div className="grid grid-cols-2 gap-1.5">
             {cat.items.map((it) => (
               <div key={it.id} className={`overflow-hidden rounded-xl border border-white/10 bg-black/20 ${it.available === false ? 'opacity-45' : ''} ${it.id === '__draft__' ? 'ring-1 ring-accent/60' : ''}`}>
@@ -101,9 +101,9 @@ export function ProductsPreviewGrid({ categories, t }) {
                     : <span className="px-1 text-center text-[9px] text-base-content/35">{it.name || t('Nomsiz')}</span>}
                 </div>
                 <div className="p-1.5">
-                  <div className="truncate text-[10.5px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                  <div className="truncate text-[13px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
                   {it.price != null && it.price !== '' && (
-                    <div className="mt-0.5 text-[10px] font-bold">
+                    <div className="mt-0.5 text-[13px] font-bold">
                       {it.discountPrice != null && it.discountPrice !== '' ? (
                         <span className="text-accent">{money(it.discountPrice)}</span>
                       ) : money(it.price)}
@@ -136,7 +136,7 @@ export function ServicesPreviewList({ categories, t }) {
     <div className="flex flex-col gap-4">
       {shown.map((cat) => (
         <div key={cat.id}>
-          <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
+          <div className="mb-1.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-base-content/70">{cat.name}</div>
           <div className="grid grid-cols-2 gap-1.5">
             {cat.items.map((it) => (
               <div key={it.id} className={`overflow-hidden rounded-xl border border-white/10 bg-black/20 ${it.available === false ? 'opacity-45' : ''} ${it.id === '__draft__' ? 'ring-1 ring-accent/60' : ''}`}>
@@ -146,8 +146,8 @@ export function ServicesPreviewList({ categories, t }) {
                     : <span className="px-1 text-center text-[9px] text-base-content/35">{it.name || t('Nomsiz')}</span>}
                 </div>
                 <div className="p-1.5">
-                  <div className="truncate text-[10.5px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
-                  {priceLabel(it) && <div className="mt-0.5 text-[10px] font-bold">{priceLabel(it)}</div>}
+                  <div className="truncate text-[13px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                  {priceLabel(it) && <div className="mt-0.5 text-[13px] font-bold">{priceLabel(it)}</div>}
                 </div>
               </div>
             ))}

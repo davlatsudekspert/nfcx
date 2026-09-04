@@ -117,7 +117,7 @@ function ImageUploadTools({ canImage, imageUrl, busy, onPicked }) {
     return (
       <div className="w-full space-y-2 rounded-xl border border-accent/30 bg-black/20 p-2.5">
         <img src={pending} alt="" className="mx-auto h-24 w-24 rounded-lg object-cover" />
-        {msg && <div className="text-center text-[10.5px] text-warning">{msg}</div>}
+        {msg && <div className="text-center text-[13px] text-warning">{msg}</div>}
         <div className="flex flex-wrap justify-center gap-1">
           <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(autoCropToContent)}>{'✂️'} {t('Avtomatik kesish')}</button>
           <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(centerObject)}>{'\u{1F3AF}'} {t('Markazlashtirish')}</button>
@@ -133,7 +133,7 @@ function ImageUploadTools({ canImage, imageUrl, busy, onPicked }) {
     );
   }
   return (
-    <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[10px] text-base-content/40">
+    <label className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-base-100 text-[13px] text-base-content/40">
       {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : (busy ? '…' : t('rasm'))}
       <input type="file" accept="image/*" className="hidden" onChange={pickFile} />
     </label>
@@ -210,7 +210,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange
             </span>
           )}
         </div>
-        {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
+        {item.description && <div className="truncate text-[14px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
           <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
@@ -239,8 +239,8 @@ function ShareLinkRow({ code, sub }) {
   };
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
-      <span className="shrink-0 text-[11px] text-base-content/40">{'\u{1F517}'}</span>
-      <code className="min-w-0 flex-1 truncate text-[11.5px] font-mono text-base-content/70">{link}</code>
+      <span className="shrink-0 text-[14px] text-base-content/40">{'\u{1F517}'}</span>
+      <code className="min-w-0 flex-1 truncate text-[14px] font-mono text-base-content/70">{link}</code>
       <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={copy}>{copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
     </div>
   );
@@ -492,8 +492,8 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
             </span>
           )}
         </div>
-        {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-base-content/55">
+        {item.description && <div className="truncate text-[14px] text-base-content/50">{item.description}</div>}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-base-content/55">
           <span className="rounded-full border border-rose-400/20 bg-rose-400/5 px-2 py-0.5 text-rose-300">♥ {fmt(item.engagement?.likes || 0)}</span>
           <span className="rounded-full border border-white/10 bg-white/[.02] px-2 py-0.5">↓ {fmt(item.engagement?.dislikes || 0)}</span>
           <span className="rounded-full border border-accent/20 bg-accent/5 px-2 py-0.5 text-accent">◉ {fmt(item.engagement?.views || 0)}</span>
@@ -757,16 +757,16 @@ function PromotionProductRow({ code, item, onSaved }) {
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><h3 className="font-display text-base font-bold">{item.name}</h3><p className="mt-0.5 text-[11px] text-base-content/45">{item.categoryName}</p></div>
-            <div className="flex gap-1 text-[10px] font-semibold"><span className="rounded-full border border-rose-400/20 px-2 py-1 text-rose-300">♥ {fmt(item.engagement?.likes || 0)}</span><span className="rounded-full border border-white/10 px-2 py-1">↓ {fmt(item.engagement?.dislikes || 0)}</span><span className="rounded-full border border-accent/20 px-2 py-1 text-accent">◉ {fmt(item.engagement?.views || 0)}</span></div>
+            <div><h3 className="font-display text-base font-bold">{item.name}</h3><p className="mt-0.5 text-[14px] text-base-content/45">{item.categoryName}</p></div>
+            <div className="flex gap-1 text-[13px] font-semibold"><span className="rounded-full border border-rose-400/20 px-2 py-1 text-rose-300">♥ {fmt(item.engagement?.likes || 0)}</span><span className="rounded-full border border-white/10 px-2 py-1">↓ {fmt(item.engagement?.dislikes || 0)}</span><span className="rounded-full border border-accent/20 px-2 py-1 text-accent">◉ {fmt(item.engagement?.views || 0)}</span></div>
           </div>
           {live && <div className="mt-3 rounded-xl border border-accent/20 bg-accent/5 px-3 py-2 text-xs text-accent">◆ {remainingPromotionDays(promotion)} {t('kun qoldi')} · {fmt(promotion.oldPrice)} → <b>{fmt(promotion.newPrice)} {t('so‘m')}</b></div>}
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <label className="form-control"><span className="mb-1 text-[10px] font-semibold text-base-content/55">{t('Eski narx')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" value={form.oldPrice} onChange={change('oldPrice')} /></label>
-            <label className="form-control"><span className="mb-1 text-[10px] font-semibold text-base-content/55">{t('Yangi narx')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" value={form.newPrice} onChange={change('newPrice')} /></label>
-            <label className="form-control"><span className="mb-1 text-[10px] font-semibold text-base-content/55">{t('Aksiya muddati (kun)')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" min="1" max="365" value={form.days} onChange={change('days')} /></label>
+            <label className="form-control"><span className="mb-1 text-[13px] font-semibold text-base-content/55">{t('Eski narx')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" value={form.oldPrice} onChange={change('oldPrice')} /></label>
+            <label className="form-control"><span className="mb-1 text-[13px] font-semibold text-base-content/55">{t('Yangi narx')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" value={form.newPrice} onChange={change('newPrice')} /></label>
+            <label className="form-control"><span className="mb-1 text-[13px] font-semibold text-base-content/55">{t('Aksiya muddati (kun)')}</span><input className="input input-bordered input-sm w-full bg-base-100" type="number" min="1" max="365" value={form.days} onChange={change('days')} /></label>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy}>{busy ? <span className="loading loading-spinner loading-xs" /> : `◆ ${live ? t('Yangilash') : t('Aksiyani boshlash')}`}</button>{live && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={stop} disabled={busy}>{t('Aksiyani yakunlash')}</button>}{message && <span className={`text-[11px] ${message.startsWith('✓') ? 'text-success' : 'text-error'}`}>{message}</span>}</div>
+          <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={busy}>{busy ? <span className="loading loading-spinner loading-xs" /> : `◆ ${live ? t('Yangilash') : t('Aksiyani boshlash')}`}</button>{live && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={stop} disabled={busy}>{t('Aksiyani yakunlash')}</button>}{message && <span className={`text-[14px] ${message.startsWith('✓') ? 'text-success' : 'text-error'}`}>{message}</span>}</div>
         </div>
       </div>
     </article>
@@ -881,7 +881,7 @@ function ServiceItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
           <span className="min-w-0 flex-1 truncate">{item.name}</span>
           {priceLabel && <span className="shrink-0 text-xs text-base-content/60">{priceLabel}</span>}
         </div>
-        {item.description && <div className="truncate text-[11.5px] text-base-content/50">{item.description}</div>}
+        {item.description && <div className="truncate text-[14px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
           <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
@@ -1138,7 +1138,7 @@ function TeamSection({ code }) {
       <div className="space-y-2">
         {team.map((m) => (
           <div key={m.id} className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/20 p-2.5">
-            <label className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-[10px] text-base-content/40">
+            <label className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-[13px] text-base-content/40">
               {m.photoUrl ? <img src={m.photoUrl} alt="" className="h-full w-full object-cover" /> : t('rasm')}
               <input type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; uploadPhoto(f, (url) => upd(m.id, { photoUrl: url })); }} />
@@ -1148,7 +1148,7 @@ function TeamSection({ code }) {
                 onBlur={(e) => e.target.value.trim() && e.target.value !== m.name && upd(m.id, { name: e.target.value.trim() })} />
               <input className="input input-ghost input-xs w-full px-1 text-base-content/60" defaultValue={m.position || ''} placeholder={t('Lavozim')}
                 onBlur={(e) => e.target.value !== (m.position || '') && upd(m.id, { position: e.target.value.trim() })} />
-              <input className="input input-ghost input-xs w-full px-1 font-mono text-[11px] text-base-content/40" defaultValue={m.memberCode || ''} placeholder={t('Profil kodi (ixtiyoriy)')}
+              <input className="input input-ghost input-xs w-full px-1 font-mono text-[14px] text-base-content/40" defaultValue={m.memberCode || ''} placeholder={t('Profil kodi (ixtiyoriy)')}
                 onBlur={(e) => e.target.value.toUpperCase() !== (m.memberCode || '') && upd(m.id, { memberCode: e.target.value.trim() })} />
             </div>
             <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => del(m.id)}>🗑</button>
@@ -1239,7 +1239,7 @@ function GallerySection({ code, onLock }) {
               <img src={g.imageUrl} alt="" className="h-full w-full object-cover" />
               <button className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-error" title={t("O'chirish")} onClick={() => del(g.id)}>🗑</button>
             </div>
-            <input className="input input-ghost input-xs w-full px-2 text-[11px]" defaultValue={g.caption || ''} placeholder={t('Izoh (ixtiyoriy)')}
+            <input className="input input-ghost input-xs w-full px-2 text-[14px]" defaultValue={g.caption || ''} placeholder={t('Izoh (ixtiyoriy)')}
               onBlur={(e) => e.target.value !== (g.caption || '') && setCaption(g.id, e.target.value.trim())} />
           </div>
         ))}
@@ -1289,8 +1289,8 @@ function PhonePreview({ form, code }) {
             <div className="mx-auto flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[18px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
               {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
             </div>
-            <div className="mt-2.5 text-[14px] font-bold leading-tight">{form.name || t('Ismingiz')}</div>
-            {form.role && <div className="mt-0.5 text-[10.5px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
+            <div className="mt-2.5 text-[16.5px] font-bold leading-tight">{form.name || t('Ismingiz')}</div>
+            {form.role && <div className="mt-0.5 text-[13px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
             {form.about && <p className="mx-auto mt-1.5 max-w-[190px] text-[9.5px] leading-snug text-[color:var(--vz-ink-dim)]">{form.about}</p>}
 
             {form.hashtags && (
@@ -1306,7 +1306,7 @@ function PhonePreview({ form, code }) {
                 </div>
               )}
               {socials.map(({ Icon, label }) => (
-                <div key={label} className="flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--vz-pill)] px-3 py-2 text-[10px] font-bold text-white">
+                <div key={label} className="flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--vz-pill)] px-3 py-2 text-[13px] font-bold text-white">
                   <Icon width={11} height={11} /> {label}
                 </div>
               ))}
@@ -1315,7 +1315,7 @@ function PhonePreview({ form, code }) {
           </div>
         </div>
       </div>
-      <p className="mt-3 text-center text-[11px] text-base-content/40">{t("Jonli oldindan ko'rish — real vaqtda yangilanadi")}</p>
+      <p className="mt-3 text-center text-[14px] text-base-content/40">{t("Jonli oldindan ko'rish — real vaqtda yangilanadi")}</p>
     </div>
   );
 }
@@ -1680,7 +1680,7 @@ function PostsManager({ code }) {
           <button type="button" className="btn btn-outline btn-sm" disabled={!agreed || uploading} onClick={() => videoRef.current && videoRef.current.click()}>{'\u{1F3AC}'} {t('Video')}</button>
           <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
         </div>
-        <p className="mt-1 text-[11px] text-base-content/40">{t('Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.')}</p>
+        <p className="mt-1 text-[14px] text-base-content/40">{t('Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.')}</p>
         {uploading && <p className="mt-1 flex items-center gap-2 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
         {imageUrl && <img src={imageUrl} alt="" className="mt-2 max-h-52 rounded-lg border border-white/10 object-cover" />}
         {videoUrl && <video src={videoUrl} controls playsInline className="mt-2 max-h-52 rounded-lg border border-white/10" />}
@@ -1703,7 +1703,7 @@ function PostsManager({ code }) {
               : <img src={p.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />}
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-base-content/70">{p.caption || <span className="text-base-content/35">{t('(izohsiz)')}</span>}</div>
-              <div className="text-[10px] text-base-content/40">{timeAgo(p.createdAt)} · {'\u{1F90D}'} {p.likeCount}</div>
+              <div className="text-[13px] text-base-content/40">{timeAgo(p.createdAt)} · {'\u{1F90D}'} {p.likeCount}</div>
             </div>
             <button type="button" className="btn btn-ghost btn-xs shrink-0 text-error" onClick={() => remove(p.id)}>{t('O‘chirish')}</button>
           </div>
@@ -1859,7 +1859,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
       {tab === 'profile' && (
         <div className="grid gap-5 md:grid-cols-[1fr_280px]">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-base-content/45">{t('Karta rangi')}</div>
+            <div className="text-[14px] font-semibold uppercase tracking-wider text-base-content/45">{t('Karta rangi')}</div>
             <div className="mt-2 flex flex-wrap gap-2">
               {CARD_FINISHES.map((f) => (
                 <button key={f.id} type="button" title={t(f.label)} onClick={() => setFinish(f.id)}
@@ -1888,7 +1888,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                 <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
                 {bgUrl && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setBgUrl('')}>{t('Olib tashlash')}</button>}
               </div>
-              <p className="mt-1 text-[11px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm/GIF maks. 3 MB, video (MP4/WebM) maks. 10 MB.')}</p>
+              <p className="mt-1 text-[14px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm/GIF maks. 3 MB, video (MP4/WebM) maks. 10 MB.')}</p>
               {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
             </div>
 
@@ -1924,7 +1924,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
           </div>
 
           <div className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-4">
-            <div className="text-[11px] uppercase tracking-wider text-base-content/40">{t('Oldindan ko‘rish')}</div>
+            <div className="text-[14px] uppercase tracking-wider text-base-content/40">{t('Oldindan ko‘rish')}</div>
             <NfcCard
               code={card.code}
               name={name || card.name}
@@ -2431,7 +2431,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false }) {
                     onClick={() => setForm((f) => ({ ...f, profileType: id }))}
                     className={`rounded-xl border p-3 text-left transition ${form.profileType === id ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/25'}`}>
                     <div className={`text-sm font-bold ${form.profileType === id ? 'text-accent' : ''}`}>{label}</div>
-                    <div className="mt-0.5 text-[11px] text-base-content/45">{sub}</div>
+                    <div className="mt-0.5 text-[14px] text-base-content/45">{sub}</div>
                   </button>
                 ))}
               </div>
@@ -2506,7 +2506,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false }) {
           </Section>
 
           <Section title={t("Dizayn va fon")} subtitle={t("Tema, fon rasmi, naqsh")}>
-            <div className="font-mono text-[11px] uppercase tracking-widest text-base-content/45">{t("Tema")}</div>
+            <div className="font-mono text-[14px] uppercase tracking-widest text-base-content/45">{t("Tema")}</div>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
               {THEMES.map((th) => (
                 <button key={th.id} type="button"
@@ -2520,12 +2520,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false }) {
 
             <Gate ok={allow('innerBackground')} onLock={() => setLocked(t('Maxsus profil foni'))}>
             <div>
-            <div className="mt-5 font-mono text-[11px] uppercase tracking-widest text-base-content/45">{t("Fon rasmi")}</div>
+            <div className="mt-5 font-mono text-[14px] uppercase tracking-widest text-base-content/45">{t("Fon rasmi")}</div>
             <div className="mt-2 flex items-start gap-4">
               <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-white/15 bg-base-100">
                 {form.bgUrl
                   ? <img src={form.bgUrl} alt="fon" className="h-full w-full object-cover" />
-                  : <div className="flex h-full w-full items-center justify-center text-[10px] text-base-content/40">{t("Standart")}</div>}
+                  : <div className="flex h-full w-full items-center justify-center text-[13px] text-base-content/40">{t("Standart")}</div>}
               </div>
               <div className="min-w-0 flex-1">
                 <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBgFile} />
@@ -2677,7 +2677,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false }) {
                     <input value={form.longitude} onChange={set('longitude')} type="number" step="any" placeholder="69.240562" className={`${inp} font-mono`} />
                   </label>
                 </div>
-                <p className="mt-2 text-[11.5px] text-base-content/40">
+                <p className="mt-2 text-[14px] text-base-content/40">
                   {t('Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.')}
                 </p>
               </Gate>

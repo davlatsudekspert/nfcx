@@ -508,15 +508,15 @@ function PostsFeed({ posts, onLike, t }) {
             </button>
           )}
           <div className="px-4 py-3">
-            {p.caption && <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[color:var(--vz-ink-dim)]">{p.caption}</p>}
+            {p.caption && <p className="whitespace-pre-wrap text-[16px] leading-relaxed text-[color:var(--vz-ink-dim)]">{p.caption}</p>}
             <div className="mt-2 flex items-center gap-3">
               <button
                 onClick={() => onLike(p.id)}
-                className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] transition ${p.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-[15px] transition ${p.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
               >
                 <span>{p.liked ? '❤️' : '\u{1F90D}'}</span><b>{p.likeCount}</b>
               </button>
-              <span className="text-[11.5px] text-[color:var(--vz-ink-faint)]">{timeAgo(p.createdAt)}</span>
+              <span className="text-[14px] text-[color:var(--vz-ink-faint)]">{timeAgo(p.createdAt)}</span>
             </div>
           </div>
         </div>
@@ -582,14 +582,14 @@ function FollowListModal({ code, dir, onClose, t }) {
               <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[color:var(--vz-pill)]">
                 {m.avatarUrl
                   ? <img src={m.avatarUrl} alt="" className="h-full w-full object-cover" />
-                  : <span className="flex h-full w-full items-center justify-center text-[13px] font-bold text-[color:var(--vz-ink)]">{initials(m.name)}</span>}
+                  : <span className="flex h-full w-full items-center justify-center text-[16px] font-bold text-[color:var(--vz-ink)]">{initials(m.name)}</span>}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1 truncate text-[13.5px] font-semibold text-[color:var(--vz-ink)]">
+                <div className="flex items-center gap-1 truncate text-[16px] font-semibold text-[color:var(--vz-ink)]">
                   {m.name}
                   {m.verified && <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
                 </div>
-                <div className="truncate font-mono text-[11px] text-[color:var(--vz-ink-faint)]">nfcstore.uz/{m.code.toLowerCase()}</div>
+                <div className="truncate font-mono text-[14px] text-[color:var(--vz-ink-faint)]">nfcstore.uz/{m.code.toLowerCase()}</div>
               </div>
             </button>
           ))}
@@ -629,7 +629,7 @@ function ProfileTeam({ team, t }) {
   if (!team || team.length === 0) return null;
   return (
     <div className="mt-6">
-      <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Jamoa')}</div>
+      <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Jamoa')}</div>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {team.map((m) => {
           const clickable = !!m.memberCode;
@@ -645,9 +645,9 @@ function ProfileTeam({ team, t }) {
                   ? <img src={m.photoUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
                   : <span className="flex h-full w-full items-center justify-center text-[15px] font-bold">{initials(m.name)}</span>}
               </div>
-              <div className="mt-1.5 text-[12.5px] font-bold text-[color:var(--vz-ink)]">{m.name}</div>
-              {m.position && <div className="text-[11px] text-[color:var(--vz-ink-dim)]">{m.position}</div>}
-              {clickable && <div className="mt-0.5 font-mono text-[10px] text-[color:var(--vz-ink-faint)]">/{m.memberCode.toLowerCase()}</div>}
+              <div className="mt-1.5 text-[15px] font-bold text-[color:var(--vz-ink)]">{m.name}</div>
+              {m.position && <div className="text-[14px] text-[color:var(--vz-ink-dim)]">{m.position}</div>}
+              {clickable && <div className="mt-0.5 font-mono text-[13px] text-[color:var(--vz-ink-faint)]">/{m.memberCode.toLowerCase()}</div>}
             </Wrap>
           );
         })}
@@ -663,14 +663,14 @@ function ProfileGallery({ gallery, t }) {
   if (!gallery || gallery.length === 0) return null;
   return (
     <div className="mt-6">
-      <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Galereya')}</div>
+      <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Galereya')}</div>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {gallery.map((g) => (
           <div key={g.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
             <div className="aspect-square">
               <img src={g.imageUrl} alt={g.caption || ''} loading="lazy" className="h-full w-full object-cover" />
             </div>
-            {g.caption && <div className="p-1.5 text-center text-[10.5px] text-[color:var(--vz-ink-dim)]">{g.caption}</div>}
+            {g.caption && <div className="p-1.5 text-center text-[13px] text-[color:var(--vz-ink-dim)]">{g.caption}</div>}
           </div>
         ))}
       </div>
@@ -689,7 +689,7 @@ function MenuView({ menu, t }) {
     <div className="mt-6 flex flex-col gap-7">
       {shown.map((cat) => (
         <div key={cat.id}>
-          <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
+          <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
           <div className="flex flex-col gap-2.5">
             {cat.items.map((it) => (
               <div key={it.id} className={`flex gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 ${it.available ? '' : 'opacity-45'}`}>
@@ -698,11 +698,11 @@ function MenuView({ menu, t }) {
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="text-[14px] font-bold text-[color:var(--vz-ink)]">
+                    <div className="text-[16.5px] font-bold text-[color:var(--vz-ink)]">
                       {it.featured && <span className="mr-1">⭐</span>}{it.name}
                     </div>
                     {it.price != null && (
-                      <div className="shrink-0 text-right text-[13px] font-bold text-[color:var(--vz-ink)]">
+                      <div className="shrink-0 text-right text-[16px] font-bold text-[color:var(--vz-ink)]">
                         {it.discountPrice != null ? (
                           <>
                             <span className="mr-1.5 text-[color:var(--vz-ink-faint)] line-through">{money(it.price)}</span>
@@ -712,8 +712,8 @@ function MenuView({ menu, t }) {
                       </div>
                     )}
                   </div>
-                  {it.description && <p className="mt-0.5 text-[12.5px] leading-snug text-[color:var(--vz-ink-dim)]">{it.description}</p>}
-                  {!it.available && <div className="mt-1 text-[11px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
+                  {it.description && <p className="mt-0.5 text-[15px] leading-snug text-[color:var(--vz-ink-dim)]">{it.description}</p>}
+                  {!it.available && <div className="mt-1 text-[14px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
                 </div>
               </div>
             ))}
@@ -737,30 +737,30 @@ function ProductsView({ products, t }) {
     <div className="mt-6 flex flex-col gap-7">
       {shown.map((cat) => (
         <div key={cat.id}>
-          <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
+          <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {cat.items.map((it) => (
               <div key={it.id} className={`flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
                 <div className="flex aspect-square items-center justify-center overflow-hidden bg-black/20">
                   {it.imageUrl
                     ? <img src={it.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-                    : <span className="text-[10px] text-[color:var(--vz-ink-faint)]">{it.name}</span>}
+                    : <span className="text-[13px] text-[color:var(--vz-ink-faint)]">{it.name}</span>}
                 </div>
                 <div className="min-w-0 flex-1 p-2.5">
-                  <div className="text-[12.5px] font-bold leading-snug text-[color:var(--vz-ink)]">
+                  <div className="text-[15px] font-bold leading-snug text-[color:var(--vz-ink)]">
                     {it.featured && <span className="mr-1">⭐</span>}{it.name}
                   </div>
                   {it.price != null && (
-                    <div className="mt-1 text-[12.5px] font-bold text-[color:var(--vz-ink)]">
+                    <div className="mt-1 text-[15px] font-bold text-[color:var(--vz-ink)]">
                       {it.discountPrice != null ? (
                         <>
-                          <span className="mr-1 text-[11px] text-[color:var(--vz-ink-faint)] line-through">{money(it.price)}</span>
+                          <span className="mr-1 text-[14px] text-[color:var(--vz-ink-faint)] line-through">{money(it.price)}</span>
                           <span className="text-[color:var(--vz-accent)]">{money(it.discountPrice)}</span>
                         </>
                       ) : money(it.price)}
                     </div>
                   )}
-                  {!it.available && <div className="mt-1 text-[10.5px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
+                  {!it.available && <div className="mt-1 text-[13px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
                 </div>
               </div>
             ))}
@@ -789,23 +789,23 @@ function ServicesView({ services, t }) {
     <div className="mt-6 flex flex-col gap-7">
       {shown.map((cat) => (
         <div key={cat.id}>
-          <div className="mb-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
+          <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {cat.items.map((it) => (
               <div key={it.id} className={`flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
                 <div className="flex aspect-square items-center justify-center overflow-hidden bg-black/20">
                   {it.imageUrl
                     ? <img src={it.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-                    : <span className="text-[10px] text-[color:var(--vz-ink-faint)]">{it.name}</span>}
+                    : <span className="text-[13px] text-[color:var(--vz-ink-faint)]">{it.name}</span>}
                 </div>
                 <div className="min-w-0 flex-1 p-2.5">
-                  <div className="text-[12.5px] font-bold leading-snug text-[color:var(--vz-ink)]">
+                  <div className="text-[15px] font-bold leading-snug text-[color:var(--vz-ink)]">
                     {it.featured && <span className="mr-1">⭐</span>}{it.name}
                   </div>
                   {priceLabel(it) && (
-                    <div className="mt-1 text-[12.5px] font-bold text-[color:var(--vz-ink)]">{priceLabel(it)}</div>
+                    <div className="mt-1 text-[15px] font-bold text-[color:var(--vz-ink)]">{priceLabel(it)}</div>
                   )}
-                  {!it.available && <div className="mt-1 text-[10.5px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
+                  {!it.available && <div className="mt-1 text-[13px] font-semibold text-[color:var(--vz-ink-faint)]">{t('Hozircha yo‘q')}</div>}
                 </div>
               </div>
             ))}
@@ -852,22 +852,22 @@ function LeadForm({ code, linkBtn, onDone }) {
     }
   };
 
-  const inCls = 'w-full rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-2.5 text-[13.5px] text-[color:var(--vz-ink)] outline-none placeholder:text-[color:var(--vz-ink-faint)] focus:border-[color:var(--vz-ink-dim)]';
+  const inCls = 'w-full rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-2.5 text-[16px] text-[color:var(--vz-ink)] outline-none placeholder:text-[color:var(--vz-ink-faint)] focus:border-[color:var(--vz-ink-dim)]';
 
   if (done) {
     return (
       <div className="mt-6 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-5 text-center">
         <div className="text-2xl">✅</div>
-        <div className="mt-1.5 text-[14px] font-bold text-[color:var(--vz-ink)]">{t('Rahmat! Kontaktingiz yuborildi.')}</div>
-        <div className="mt-1 text-[12.5px] text-[color:var(--vz-ink-faint)]">{t('Profil egasi tez orada bog‘lanadi.')}</div>
+        <div className="mt-1.5 text-[16.5px] font-bold text-[color:var(--vz-ink)]">{t('Rahmat! Kontaktingiz yuborildi.')}</div>
+        <div className="mt-1 text-[15px] text-[color:var(--vz-ink-faint)]">{t('Profil egasi tez orada bog‘lanadi.')}</div>
       </div>
     );
   }
 
   return (
     <div className="mt-6 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-5">
-      <div className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--vz-ink)]">{t('Kontaktingizni qoldiring')}</div>
-      <div className="mt-1 text-[12px] text-[color:var(--vz-ink-faint)]">{t('Profil egasi siz bilan bog‘lanadi.')}</div>
+      <div className="text-[16px] font-extrabold uppercase tracking-[0.08em] text-[color:var(--vz-ink)]">{t('Kontaktingizni qoldiring')}</div>
+      <div className="mt-1 text-[15px] text-[color:var(--vz-ink-faint)]">{t('Profil egasi siz bilan bog‘lanadi.')}</div>
       <div className="mt-3 flex flex-col gap-2">
         <input className={inCls} value={f.name} onChange={set('name')} placeholder={t('Ismingiz')} autoComplete="name" />
         <input className={inCls} value={f.phone} onChange={set('phone')} placeholder={t('Telefon')} inputMode="tel" autoComplete="tel" />
@@ -878,7 +878,7 @@ function LeadForm({ code, linkBtn, onDone }) {
         {/* Honeypot — ekranда ko'rinmaydi, faqat botlar to'ldiradi */}
         <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" value={f.website_url} onChange={set('website_url')} />
       </div>
-      {err && <div className="mt-2 text-[12.5px] text-red-400">{err}</div>}
+      {err && <div className="mt-2 text-[15px] text-red-400">{err}</div>}
       <button onClick={submit} disabled={busy} className={`${linkBtn} mt-3 w-full cursor-pointer disabled:opacity-60`}>
         {busy ? t('Yuborilmoqda...') : t('Yuborish')}
       </button>
@@ -1104,7 +1104,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         <div className="mx-auto max-w-[520px] px-5 py-[70px] text-center">
           <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t('Bu karta endi faol emas')}</h2>
           <p>{t("Ushbu jismoniy karta boshqa profilga o'tkazilgan yoki bekor qilingan. Agar bu xato deb hisoblasangiz, biz bilan bog'laning.")}</p>
-          <button onClick={() => navigate('/aloqa')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">{t('Aloqa')}</button>
+          <button onClick={() => navigate('/aloqa')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[16px] font-bold text-white transition hover:brightness-125">{t('Aloqa')}</button>
         </div>
       </div>
     );
@@ -1128,8 +1128,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           <h2 className="font-display mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t('nfcstore.uz/{code} hali bo‘sh', { code: code.toLowerCase() })}</h2>
           <p>{t("Bu raqamli tashrif qog'ozi hech kimga tegishli emas. Uni birinchi bo'lib siz oling.")}</p>
           {parsed
-            ? <button onClick={() => navigate('/')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] font-bold text-white transition hover:brightness-125">{t('Bosh sahifada band qilish')}</button>
-            : <p className="text-[13px]">{t("Format noto'g'ri: ABZ007 yoki faqat harflardan iborat so'z bo'lishi kerak.")}</p>}
+            ? <button onClick={() => navigate('/')} className="mt-5 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[16px] font-bold text-white transition hover:brightness-125">{t('Bosh sahifada band qilish')}</button>
+            : <p className="text-[16px]">{t("Format noto'g'ri: ABZ007 yoki faqat harflardan iborat so'z bo'lishi kerak.")}</p>}
         </div>
       </div>
     );
@@ -1188,13 +1188,13 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
   const otherCodes = isOwner ? myCards.filter((c) => c.code !== record.code) : [];
 
-  const pillBtn = 'cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2 text-[13px] font-bold text-white transition hover:brightness-125';
+  const pillBtn = 'cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2 text-[16px] font-bold text-white transition hover:brightness-125';
   const linkStyleName = ['standard', 'transparent', 'glass'].includes(record.linkStyle)
     ? record.linkStyle
     : (record.linksTransparent ? 'glass' : 'standard');
   const linkStyleCls = linkStyleName === 'glass' ? ' vz-link--glass' : linkStyleName === 'transparent' ? ' vz-link--transparent' : '';
-  const linkBtn = `vz-link${linkStyleCls} flex items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-[13.5px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
-  const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide';
+  const linkBtn = `vz-link${linkStyleCls} flex items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-[16px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
+  const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[14px] font-extrabold uppercase tracking-wide';
 
   return (
     <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={outerPageStyle(record.theme || 'classic', record, tier)}>
@@ -1204,7 +1204,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           <IconArrowLeft /> {t('Bosh sahifaga')}
         </button>
         <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5">
-          <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[13.5px] text-[color:var(--vz-ink)] outline-none" />
+          <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[16px] text-[color:var(--vz-ink)] outline-none" />
           <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
         </div>
         <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
@@ -1215,15 +1215,15 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
         <div className="flex flex-wrap items-center gap-2.5">
           {otherCodes.length > 0 && otherCodes.slice(0, 3).map((c) => (
-            <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[12.5px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
+            <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[15px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
           ))}
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
           {record.isGift ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[15px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
               {'\u{1F381}'} {t("Sovg'a")}
             </span>
           ) : (
-            <span className="text-[13.5px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
+            <span className="text-[16px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
           )}
         </div>
         <div className="flex gap-1">
@@ -1234,7 +1234,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
       {record.isPremium && (
         <div className="mt-2 flex justify-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-4 py-1 font-mono text-[11px] font-extrabold tracking-[0.12em] text-[#1a1206] shadow-[0_2px_10px_rgba(212,175,90,0.4)]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-4 py-1 font-mono text-[14px] font-extrabold tracking-[0.12em] text-[#1a1206] shadow-[0_2px_10px_rgba(212,175,90,0.4)]">
             {'\u{1F451}'} PREMIUM
           </span>
         </div>
@@ -1295,7 +1295,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           </div>
         </div>
         {followStats && (
-          <div className="mt-2 flex items-center gap-4 text-[13px] text-[color:var(--vz-ink-dim)]">
+          <div className="mt-2 flex items-center gap-4 text-[16px] text-[color:var(--vz-ink-dim)]">
             <button type="button" onClick={() => setFollowListDir('followers')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
               <b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}
             </button>
@@ -1311,7 +1311,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             </button>
           </div>
         )}
-        {followMsg && <div className="mt-2 text-[12.5px] text-red-400">{t(followMsg)}</div>}
+        {followMsg && <div className="mt-2 text-[15px] text-red-400">{t(followMsg)}</div>}
 
 
         <div className="mt-0.5 flex flex-col items-center">
@@ -1344,23 +1344,23 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           <div className="font-display mt-4 flex items-center justify-center gap-1.5 text-[23px] font-bold">
             {record.name}
             {record.verified && (
-              <span title={t('Tasdiqlangan profil')} className="inline-flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[12px] font-black text-white">✓</span>
+              <span title={t('Tasdiqlangan profil')} className="inline-flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[15px] font-black text-white">✓</span>
             )}
           </div>
-          <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[13.5px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
+          <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[16px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
             {tierEmoji && <span>{tierEmoji}</span>}
             nfcstore.uz/{record.code.toLowerCase()}
             <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
           </div>
           {tier !== 'free' && (
-            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
+            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[13px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
               {t('{tier} tarif', { tier: t(TIER_LABEL[tier]) })}
             </div>
           )}
           <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">{t('Faol bo‘lgan: {when}', { when: timeAgo(record.ts) })}</div>
           {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
           {(catPath(cats, record.categorySlug, lang) || record.city) && (
-            <div className="mx-auto mt-1 flex max-w-[420px] flex-wrap justify-center gap-1.5 text-[11.5px] text-[color:var(--vz-ink-faint)]">
+            <div className="mx-auto mt-1 flex max-w-[420px] flex-wrap justify-center gap-1.5 text-[14px] text-[color:var(--vz-ink-faint)]">
               {catPath(cats, record.categorySlug, lang) && (
                 <span className="rounded-full border border-[color:var(--vz-line)] px-2.5 py-0.5">{catPath(cats, record.categorySlug, lang)}</span>
               )}
@@ -1379,19 +1379,19 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
               {record.phone && (!record.hidePhone || isOwner) && (
                 <a href={`tel:${record.phone}`} onClick={() => track('phone_click')}
-                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[12.5px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
+                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[15px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
                   <IconPhone /> {t("Qo'ng'iroq")}
                 </a>
               )}
               {tgUrl && (
                 <a href={tgUrl} target="_blank" rel="noreferrer" onClick={() => track('telegram_click')}
-                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[12.5px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
+                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[15px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
                   <IconTelegram /> Telegram
                 </a>
               )}
               {hasLocation && (
                 <a href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}
-                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[12.5px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
+                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[15px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
                   {'\u{1F4CD}'} {t("Yo'nalishni ochish")}
                 </a>
               )}
@@ -1407,20 +1407,20 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         <div className="mt-6 flex justify-center gap-[26px] border-b border-[color:var(--vz-line)]">
           <button
             onClick={() => setTab('vizitka')}
-            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
           >
             {t("Raqamli tashrif qog'ozi")}
           </button>
           <button
             onClick={() => setTab('postlar')}
-            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
           >
             {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
           </button>
           {menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('menyu')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
             >
               {t('Menyu')}
             </button>
@@ -1428,7 +1428,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           {products.length > 0 && productEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('mahsulotlar')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'mahsulotlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'mahsulotlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
             >
               {t('Mahsulotlar')}
             </button>
@@ -1436,7 +1436,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           {services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('xizmatlar')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[14.5px] font-semibold transition ${tab === 'xizmatlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'xizmatlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
             >
               {t('Xizmatlar')}
             </button>
@@ -1451,7 +1451,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         {tab === 'vizitka' && (
           <>
             {record.hashtags && record.hashtags.length > 0 && (
-              <div className="mt-5 flex flex-wrap justify-center gap-4 text-[13px] font-semibold text-[color:var(--vz-accent)]">
+              <div className="mt-5 flex flex-wrap justify-center gap-4 text-[16px] font-semibold text-[color:var(--vz-accent)]">
                 {record.hashtags.map((h) => <span key={h}>#{h}</span>)}
               </div>
             )}
@@ -1483,22 +1483,22 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               ))}
             </div>
 
-            {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[13px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
+            {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[16px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
 
             <ProfileTeam team={team} t={t} />
             <ProfileGallery gallery={gallery} t={t} />
 
             {files.length > 0 && (
               <div className="mt-5">
-                <div className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Fayllar')}</div>
+                <div className="mb-2 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Fayllar')}</div>
                 <div className="flex flex-col gap-2">
                   {files.map((f) => (
                     <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" download
                       onClick={() => track('link_click', 'file')}
-                      className="flex items-center gap-2.5 rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-3 text-[13.5px] font-semibold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-ink-dim)]">
+                      className="flex items-center gap-2.5 rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-3 text-[16px] font-semibold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-ink-dim)]">
                       <span className="text-[color:var(--vz-accent)]">📄</span>
                       <span className="min-w-0 flex-1 truncate">{f.title}</span>
-                      {f.sizeBytes != null && <span className="shrink-0 text-[11px] font-normal text-[color:var(--vz-ink-faint)]">{Math.round(f.sizeBytes / 1024)} KB</span>}
+                      {f.sizeBytes != null && <span className="shrink-0 text-[14px] font-normal text-[color:var(--vz-ink-faint)]">{Math.round(f.sizeBytes / 1024)} KB</span>}
                     </a>
                   ))}
                 </div>
@@ -1528,7 +1528,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {otherCodes.length > 0 && (
               <>
                 <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-3 text-center text-[11.5px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t("SIZNING BOSHQA RAQAMLI TASHRIF QOG'OZILARINGIZ")}</div>
+                <div className="mb-3 text-center text-[14px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t("SIZNING BOSHQA RAQAMLI TASHRIF QOG'OZILARINGIZ")}</div>
                 <div className="flex flex-wrap justify-center gap-2">
                   {otherCodes.map((c) => (
                     <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]">nfcstore.uz/{c.code.toLowerCase()}</span>
@@ -1539,7 +1539,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
             <div className="flex gap-2.5">
-              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[13.5px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
+              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[16px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
               {!isOwner && MESSAGING_ENABLED && (
                 <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
               )}
@@ -1549,7 +1549,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       </div>
 
       <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{t("{n} ko'rishlar", { n: fmt(record.views || 1) })}</div>
-      {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[13px] text-white shadow-xl">{toast}</div>}
+      {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[16px] text-white shadow-xl">{toast}</div>}
 
       {followListDir && record && (
         <FollowListModal code={record.code} dir={followListDir} onClose={() => setFollowListDir(null)} t={t} />
@@ -1629,8 +1629,8 @@ function GiftActivationScreen({ code, recipientName }) {
             <div className="text-5xl">{'\u{1F381}'}</div>
             <h2 className="font-display mt-3 mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t("Sizga maxsus NFC ID sovg'a qilingan")}</h2>
             <div className="mb-4 font-mono text-3xl font-extrabold text-[color:var(--vz-ink)]">#{code}</div>
-            <p className="text-[14px]">{t("Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni yarating.")}</p>
-            <button onClick={() => setStep('code')} className="mt-6 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-7 py-3 text-[14px] font-bold text-white transition hover:brightness-125">
+            <p className="text-[16.5px]">{t("Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni yarating.")}</p>
+            <button onClick={() => setStep('code')} className="mt-6 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-7 py-3 text-[16.5px] font-bold text-white transition hover:brightness-125">
               {t("Sovg'ani faollashtirish")}
             </button>
           </div>
@@ -1639,15 +1639,15 @@ function GiftActivationScreen({ code, recipientName }) {
         {step === 'code' && (
           <div>
             <h2 className="font-display mb-2 text-xl font-bold text-[color:var(--vz-ink)]">{t('Aktivatsiya kodi')}</h2>
-            <p className="mb-4 text-[13.5px]">{t('Konvertdagi kartochkada yozilgan kodni kiriting (masalan: NFC-X7K9-P2LM).')}</p>
+            <p className="mb-4 text-[16px]">{t('Konvertdagi kartochkada yozilgan kodni kiriting (masalan: NFC-X7K9-P2LM).')}</p>
             <input
               value={activationCode}
               onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
               placeholder="NFC-XXXX-XXXX"
               className="w-full rounded-xl border border-[color:var(--vz-line)] bg-transparent px-4 py-3 text-center font-mono text-lg tracking-wider text-[color:var(--vz-ink)] outline-none"
             />
-            {err && <p className="mt-2 text-center text-[13px] text-red-400">{t(err)}</p>}
-            <button onClick={verifyCode} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[14px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
+            {err && <p className="mt-2 text-center text-[16px] text-red-400">{t(err)}</p>}
+            <button onClick={verifyCode} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[16.5px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
               {busy ? '...' : t('Tasdiqlash')}
             </button>
           </div>
@@ -1655,7 +1655,7 @@ function GiftActivationScreen({ code, recipientName }) {
 
         {step === 'form' && (
           <div>
-            <div className="mb-4 rounded-xl bg-green-500/10 px-4 py-3 text-center text-[13.5px] text-green-400">
+            <div className="mb-4 rounded-xl bg-green-500/10 px-4 py-3 text-center text-[16px] text-green-400">
               {t('NFC ID #{code} muvaffaqiyatli tasdiqlandi! Endi profilingizni yarating.', { code })}
             </div>
             <div className="space-y-2.5">
@@ -1671,8 +1671,8 @@ function GiftActivationScreen({ code, recipientName }) {
               <input value={form.youtube} onChange={set('youtube')} placeholder={t('YouTube (havola)')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
               <input value={form.tiktok} onChange={set('tiktok')} placeholder={t('TikTok (havola)')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
             </div>
-            {err && <p className="mt-2 text-center text-[13px] text-red-400">{t(err)}</p>}
-            <button onClick={submit} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[14px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
+            {err && <p className="mt-2 text-center text-[16px] text-red-400">{t(err)}</p>}
+            <button onClick={submit} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[16.5px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
               {busy ? '...' : t('Profil yaratish')}
             </button>
           </div>
@@ -1682,7 +1682,7 @@ function GiftActivationScreen({ code, recipientName }) {
           <div className="text-center">
             <div className="text-5xl">{'\u2705'}</div>
             <h2 className="font-display mt-3 text-xl font-bold text-[color:var(--vz-ink)]">{t('Tayyor! Profilingiz yaratildi.')}</h2>
-            <p className="mt-2 text-[13.5px]">{t("Hozir yo'naltirilasiz...")}</p>
+            <p className="mt-2 text-[16px]">{t("Hozir yo'naltirilasiz...")}</p>
           </div>
         )}
       </div>

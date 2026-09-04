@@ -81,7 +81,7 @@ export default function HowItWorksPage() {
             <div key={s.n} className="rounded-2xl border border-white/10 bg-base-200/60 p-6 transition-colors hover:border-white/25">
               <div className="font-mono text-sm font-bold tracking-widest text-base-content/40">{s.n}</div>
               <h3 className="mt-3 font-semibold">{s.title}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-base-content/55">{s.text}</p>
+              <p className="mt-2 text-[16px] leading-relaxed text-base-content/55">{s.text}</p>
             </div>
           ))}
         </div>

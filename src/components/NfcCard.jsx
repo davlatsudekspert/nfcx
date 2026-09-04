@@ -102,8 +102,8 @@ export default function NfcCard({
               <span key={i} className="h-[5px] w-[5px] rounded-[1px]" style={{ background: (i * 7 + code.length) % 3 === 0 ? 'transparent' : f.code, opacity: 0.9 }} />
             ))}
           </div>
-          <div className="relative z-[1] text-center font-mono text-[10px] tracking-[0.1em]" style={{ color: f.sub }}>nfcstore.uz/{String(code).toLowerCase()}</div>
-          <div className="relative z-[1] text-center font-display text-[10px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
+          <div className="relative z-[1] text-center font-mono text-[13px] tracking-[0.1em]" style={{ color: f.sub }}>nfcstore.uz/{String(code).toLowerCase()}</div>
+          <div className="relative z-[1] text-center font-display text-[13px] font-bold tracking-[0.22em]" style={{ color: f.sub }}>NFCSTORE</div>
           <div className="relative z-[1] text-center font-mono text-[8px] leading-snug tracking-[0.08em]" style={{ color: f.sub }}>MEMBER SINCE {year}</div>
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function NfcCard({
         </div>
         {(brandPositioned || hideBrand)
           ? <span />
-          : <div className="relative z-[1] text-center font-display text-[11px] font-bold tracking-[0.22em]" style={{ color: brandClr }}>NFCSTORE</div>}
+          : <div className="relative z-[1] text-center font-display text-[14px] font-bold tracking-[0.22em]" style={{ color: brandClr }}>NFCSTORE</div>}
         {codePositioned
           ? <span />
           : (

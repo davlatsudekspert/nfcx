@@ -247,7 +247,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             {!user ? (
               <>
                 <div className="divider my-2"></div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/60">{t("Akkaunt — raqamli tashrif qog'ozingizni boshqarish uchun shart *")}</div>
+                <div className="text-[14px] font-bold uppercase tracking-wider text-base-content/60">{t("Akkaunt — raqamli tashrif qog'ozingizni boshqarish uchun shart *")}</div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className={field}>
                     <span className="text-xs font-semibold text-base-content/70">{t('Email (login) *')}</span>

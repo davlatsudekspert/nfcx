@@ -56,12 +56,12 @@ function ConversationList({ conversations, activeId, q, onSelect }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-semibold">{c.otherEmail}</span>
-              {c.lastAt && <span className="shrink-0 text-[11px] text-base-content/40">{timeAgo(new Date(c.lastAt).getTime())}</span>}
+              {c.lastAt && <span className="shrink-0 text-[14px] text-base-content/40">{timeAgo(new Date(c.lastAt).getTime())}</span>}
             </div>
             <div className="truncate text-xs text-base-content/50">{c.lastMessage || t('Xabar yo\u2019q')}</div>
           </div>
           {c.unreadCount > 0 && (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-black">{c.unreadCount}</span>
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[14px] font-bold text-black">{c.unreadCount}</span>
           )}
         </button>
       ))}
@@ -81,7 +81,7 @@ function MessageBubble({ m, mine }) {
         ) : (
           <span className="whitespace-pre-wrap break-words">{m.body}</span>
         )}
-        <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${mine ? 'text-black/60' : 'opacity-60'}`}>
+        <div className={`mt-0.5 flex items-center justify-end gap-1 text-[13px] ${mine ? 'text-black/60' : 'opacity-60'}`}>
           {timeAgo(new Date(m.createdAt).getTime())}
           {mine && (
             m.isRead ? (
@@ -177,7 +177,7 @@ function Thread({ conversation, myUserId, onBack }) {
         <Avatar label={conversation.otherEmail} active={isRecentlyActive(conversation.lastAt)} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{conversation.otherEmail}</div>
-          <div className="text-[11px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? t('Onlayn') : t('Oxirgi faollik:') + ' ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '\u2014')}</div>
+          <div className="text-[14px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? t('Onlayn') : t('Oxirgi faollik:') + ' ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '\u2014')}</div>
         </div>
         <button className="btn btn-ghost btn-circle btn-sm hidden text-base-content/50 sm:inline-flex"><IconSearch width={16} height={16} /></button>
         <button className="btn btn-ghost btn-circle btn-sm text-base-content/50"><IconPhone width={16} height={16} /></button>

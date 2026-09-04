@@ -356,7 +356,7 @@ function SwatchRow({ items, value, onChange }) {
 }
 
 function Label({ children }) {
-  return <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-base-content/45">{children}</label>;
+  return <label className="mb-1.5 block text-[14px] font-semibold uppercase tracking-wider text-base-content/45">{children}</label>;
 }
 
 function FieldGroup({ title, children }) {
@@ -568,7 +568,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
             <div className="mt-3">
               <Label>{t('Asosiy matn o\'lchami:')} {fontSize}px</Label>
               <input type="range" min={40} max={140} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
-              <p className="mt-1 text-[11px] text-base-content/40">{t("Katta harf kerak bo'lsa — slayderni o'ngga suring")}</p>
+              <p className="mt-1 text-[14px] text-base-content/40">{t("Katta harf kerak bo'lsa — slayderni o'ngga suring")}</p>
             </div>
 
             <div className="mt-4">
@@ -603,7 +603,7 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current && bgFileRef.current.click()}>
                   {t('Rasm tanlash')}
                 </button>
-                <p className="mt-2 text-[11px] text-base-content/40">{t("Rasm avtomatik karta o'lchamiga moslanadi (crop qilinadi)")}</p>
+                <p className="mt-2 text-[14px] text-base-content/40">{t("Rasm avtomatik karta o'lchamiga moslanadi (crop qilinadi)")}</p>
                 <div className="mt-3">
                   <Label>{t("Rasm qorong'uligi (matn o'qilishi uchun)")}</Label>
                   <input type="range" min={0} max={80} value={darken} onChange={(e) => setDarken(Number(e.target.value))} className="range range-xs range-primary mt-1" />

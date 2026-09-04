@@ -77,13 +77,13 @@ export default function AiAssistant() {
 
           <div ref={bodyRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-4">
             {msgs.length === 0 && (
-              <div className="rounded-xl bg-base-100/60 px-3 py-2.5 text-[13px] leading-relaxed text-base-content/70">
+              <div className="rounded-xl bg-base-100/60 px-3 py-2.5 text-[16px] leading-relaxed text-base-content/70">
                 {t('Salom! Men NFCSTORE yordamchisiman. Profil yaratish, NFC karta, narxlar yoki sozlamalar bo‘yicha savol bering.')}
               </div>
             )}
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[13px] leading-relaxed ${
+                <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[16px] leading-relaxed ${
                   m.role === 'user' ? 'bg-accent text-accent-content' : 'bg-base-100 text-base-content/85'
                 }`}>
                   {m.content}
@@ -92,7 +92,7 @@ export default function AiAssistant() {
             ))}
             {busy && (
               <div className="flex justify-start">
-                <div className="rounded-2xl bg-base-100 px-3 py-2 text-[13px] text-base-content/50">
+                <div className="rounded-2xl bg-base-100 px-3 py-2 text-[16px] text-base-content/50">
                   <span className="loading loading-dots loading-sm"></span>
                 </div>
               </div>
@@ -106,7 +106,7 @@ export default function AiAssistant() {
               onKeyDown={onKey}
               rows={1}
               placeholder={t('Savolingizni yozing...')}
-              className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-white/10 bg-base-100 px-3 py-2 text-[13px] outline-none focus:border-accent/50"
+              className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-white/10 bg-base-100 px-3 py-2 text-[16px] outline-none focus:border-accent/50"
             />
             <button
               onClick={send}

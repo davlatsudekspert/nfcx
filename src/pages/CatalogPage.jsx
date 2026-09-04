@@ -87,13 +87,13 @@ export default function CatalogPage({ catalog }) {
           <div className="mt-3 flex flex-wrap gap-1.5">
             {TYPE_TABS.map(([id, label]) => (
               <button key={id} onClick={() => setType(id)}
-                className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition ${type === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
+                className={`rounded-full border px-3.5 py-1.5 text-[16px] font-semibold transition ${type === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
                 {t(label)}
               </button>
             ))}
             {cats.length > 0 && (
               <button onClick={() => setShowFilters((s) => !s)}
-                className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition ${activeCat || showFilters ? 'border-accent/60 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
+                className={`rounded-full border px-3.5 py-1.5 text-[16px] font-semibold transition ${activeCat || showFilters ? 'border-accent/60 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
                 {activeCat ? catName(findCat(cats, activeCat), lang) : t('Faoliyat sohasi')} ▾
               </button>
             )}
@@ -151,18 +151,18 @@ export default function CatalogPage({ catalog }) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
                   <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[13px] font-bold uppercase tracking-wide"
                     style={{ color: tc, background: tc + '1f', border: `1px solid ${tc}44` }}
                   >
                     {TIER_EMOJI[tier] ? TIER_EMOJI[tier] + ' ' : ''}{t(TIER_LABEL[tier] || tier)}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center gap-1 truncate text-[13px] text-base-content/55">
+                <div className="mt-1 flex items-center gap-1 truncate text-[16px] text-base-content/55">
                   <span className="truncate">{it.name}{it.tg ? ' · ' + it.tg : ''}</span>
                   {it.verified && <span title={t('Tasdiqlangan')} className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
                 </div>
                 {(cp || it.city) && (
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-base-content/45">
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[14px] text-base-content/45">
                     {cp && <span className="rounded-full border border-white/10 px-2 py-0.5">{cp}</span>}
                     {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{'\u{1F4CD}'} {it.city}</span>}
                   </div>
