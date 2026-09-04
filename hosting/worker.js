@@ -1865,6 +1865,27 @@ function paymeRpcResult(id, result) {
   return { jsonrpc: '2.0', id, result };
 }
 
+// Payme's own documented state codes: 1 pending, 2 paid, -1 cancelled
+// while pending, -2 cancelled AFTER being paid (a refund). A
+// CancelTransaction call always stamps cancel_time (see
+// stampWebOrderCancelD1), regardless of whether the order was paid or
+// still pending at that moment — whether it happened WHILE paid is
+// recoverable from order.status: CancelTransaction's wasPaid branch
+// deliberately leaves status alone at 'paid' (ownership already granted,
+// admin reviews refunds manually — see its own comment), while the
+// not-yet-paid branch flips it to 'cancelled'/'failed_code_taken'. So:
+//   cancel_time set + status still 'paid'       -> cancelled AFTER paid (-2)
+//   cancel_time set + status cancelled/failed   -> cancelled BEFORE paid (-1)
+//   no cancel_time  + status 'paid'             -> paid, active (2)
+//   no cancel_time  + otherwise                 -> pending (1)
+// Verified against Payme's own official sandbox certification demo
+// (CancelTransaction on a paid order -> CheckTransaction must echo -2,
+// not silently keep reporting 2 as if nothing happened).
+function paymeOrderState(order) {
+  if (order.cancelTime) return order.status === 'paid' ? -2 : -1;
+  return order.status === 'paid' ? 2 : 1;
+}
+
 // Node'ning crypto.timingSafeEqual'i Workers runtime'da har doim ham
 // oson mavjud emas (nodejs_compat bayrog'iga bog'liq) — shu qisqa
 // umumiy-sir satrni solishtirish uchun mustaqil, kutubxonasiz doimiy-
@@ -2032,7 +2053,6 @@ async function handlePaymeRequestD1(env, body) {
       case 'CheckTransaction': {
         const order = await getWebOrderByPaymeIdD1(env, params.id);
         if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
-        const isCancelled = order.status === 'cancelled' || order.status === 'failed_code_taken';
         return paymeRpcResult(id, {
           create_time: new Date(order.createdAt).getTime(),
           // Real, stable, persisted timestamps (set once — see
@@ -2042,7 +2062,7 @@ async function handlePaymeRequestD1(env, body) {
           perform_time: order.performTime ? new Date(order.performTime).getTime() : 0,
           cancel_time: order.cancelTime ? new Date(order.cancelTime).getTime() : 0,
           transaction: String(order.id),
-          state: order.status === 'paid' ? 2 : isCancelled ? -1 : 1,
+          state: paymeOrderState(order),
           reason: order.cancelReason ?? null,
         });
       }
@@ -2059,7 +2079,6 @@ async function handlePaymeRequestD1(env, body) {
         ).bind(fromIso, toIso).all();
         const transactions = (rows.results || []).map((r) => {
           const o = parseWebOrderRow(r);
-          const isCancelled = o.status === 'cancelled' || o.status === 'failed_code_taken';
           return {
             id: o.paymeTransactionId,
             time: new Date(o.createdAt).getTime(),
@@ -2069,7 +2088,7 @@ async function handlePaymeRequestD1(env, body) {
             perform_time: o.performTime ? new Date(o.performTime).getTime() : 0,
             cancel_time: o.cancelTime ? new Date(o.cancelTime).getTime() : 0,
             transaction: String(o.id),
-            state: o.status === 'paid' ? 2 : isCancelled ? -1 : 1,
+            state: paymeOrderState(o),
             reason: o.cancelReason ?? null,
           };
         });

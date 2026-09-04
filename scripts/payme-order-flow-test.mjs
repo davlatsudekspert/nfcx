@@ -222,10 +222,22 @@ let createOrder;
   const paidOrder = await createWebOrderD1(env, { userId: 1, code: 'CAN002', price: 49000, payload: PAYLOAD });
   await handlePaymeRequestD1(env, { method: 'CreateTransaction', id: 11, params: { id: 'ptx-can-002', account: { order_id: paidOrder.id }, amount: 4900000 } });
   await handlePaymeRequestD1(env, { method: 'PerformTransaction', id: 12, params: { id: 'ptx-can-002' } });
-  const cancelAfterPaid = await handlePaymeRequestD1(env, { method: 'CancelTransaction', id: 13, params: { id: 'ptx-can-002' } });
+  const cancelAfterPaid = await handlePaymeRequestD1(env, { method: 'CancelTransaction', id: 13, params: { id: 'ptx-can-002', reason: 5 } });
   check('16b) CancelTransaction on an already-paid order -> state -2, status stays paid', cancelAfterPaid.result?.state, -2);
   const stillPaid = await getWebOrderD1(env, paidOrder.id);
   check('16c) paid order status unchanged by cancel attempt', stillPaid.status, 'paid');
+
+  // Regression check for a real protocol-compliance bug found via Payme's
+  // own official sandbox certification demo: after CancelTransaction on a
+  // PAID order returns state -2, every LATER CheckTransaction/GetStatement
+  // call for that same transaction must keep reporting -2 too — not
+  // silently revert to 2 as if the cancellation never happened (order.status
+  // deliberately stays 'paid' for ownership/admin-review reasons, but the
+  // reported Payme state must not).
+  const checkAfterCancel = await handlePaymeRequestD1(env, { method: 'CheckTransaction', id: 13.5, params: { id: 'ptx-can-002' } });
+  check('16d) CheckTransaction after cancelling a paid order still reports state -2 (matches Payme cert demo)', checkAfterCancel.result?.state, -2);
+  check('16e) CheckTransaction after cancelling a paid order echoes the real reason', checkAfterCancel.result?.reason, 5);
+  checkTrue('16f) CheckTransaction after cancelling a paid order still reports a real, non-zero perform_time', checkAfterCancel.result?.perform_time > 0);
 }
 
 // ============================================================
@@ -247,11 +259,17 @@ let createOrder;
   const r = await handlePaymeRequestD1(env, { method: 'GetStatement', id: 16, params: {} });
   const byId = Object.fromEntries((r.result?.transactions || []).map((t) => [t.id, t]));
   checkTrue('18) GetStatement includes the cancelled transaction', !!byId['ptx-can-001']);
-  checkTrue('18) GetStatement includes the paid transaction', !!byId['ptx-can-002']);
+  checkTrue('18) GetStatement includes the cancelled-after-paid transaction', !!byId['ptx-can-002']);
   checkTrue('18) GetStatement includes the pending transaction', !!byId['ptx-cht-001']);
   check('18b) cancelled transaction reports state -1 with the real reason Payme sent (4 = timeout)', { state: byId['ptx-can-001'].state, reason: byId['ptx-can-001'].reason }, { state: -1, reason: 4 });
   checkTrue('18c) cancelled transaction reports a real, non-zero cancel_time', byId['ptx-can-001'].cancel_time > 0);
-  check('18d) paid transaction reports state 2 with a real, non-zero perform_time', { state: byId['ptx-can-002'].state, hasPerformTime: byId['ptx-can-002'].perform_time > 0 }, { state: 2, hasPerformTime: true });
+  // Cancelled AFTER being paid (test 16b/16d above) — GetStatement must
+  // agree with CheckTransaction: state -2 (Payme cert demo), reason
+  // echoed back, AND a real, non-zero perform_time preserved (it WAS
+  // paid before the cancellation).
+  check('18d) cancelled-after-paid transaction reports state -2 with the real reason (5 = refund)', { state: byId['ptx-can-002'].state, reason: byId['ptx-can-002'].reason }, { state: -2, reason: 5 });
+  checkTrue('18d-2) cancelled-after-paid transaction still reports a real, non-zero perform_time', byId['ptx-can-002'].perform_time > 0);
+  checkTrue('18d-3) cancelled-after-paid transaction reports a real, non-zero cancel_time', byId['ptx-can-002'].cancel_time > 0);
   check('18e) pending transaction reports state 1, cancel_time/perform_time 0', { state: byId['ptx-cht-001'].state, performTime: byId['ptx-cht-001'].perform_time, cancelTime: byId['ptx-cht-001'].cancel_time }, { state: 1, performTime: 0, cancelTime: 0 });
   checkTrue('18f) each transaction carries account.order_id', Object.values(byId).every((t) => t.account && t.account.order_id));
 
