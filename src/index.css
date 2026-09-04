@@ -676,6 +676,26 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
   animation:shimmerSweep 3.6s ease-in-out infinite; pointer-events:none;
 }
 .nfc-card-row{display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;}
+
+/* ---- "Payme yoqilgan" (available) belgisi — katta, yaltiroq, diqqatni
+   tortuvchi, "tez kunlarda" holatining ijobiy o'rnini bosuvchi ko'rinishi.
+   PaymeReadyBadge.jsx shu klasslarni ishlatadi. ---- */
+@keyframes paymeGlow{
+  0%,100%{ box-shadow:0 0 0 0 rgba(51,200,182,0.5), 0 4px 16px rgba(51,200,182,0.25); }
+  50%{ box-shadow:0 0 0 8px rgba(51,200,182,0), 0 6px 22px rgba(51,200,182,0.5); }
+}
+.payme-ready-badge{
+  position:relative; display:inline-flex; align-items:center; overflow:hidden;
+  border-radius:12px; padding:8px 20px; font-family:'Space Grotesk', sans-serif;
+  font-size:21px; font-weight:800; letter-spacing:-0.01em; line-height:1; color:#fff;
+  background:linear-gradient(135deg, #33c8b6, #1fae9c);
+  animation:paymeGlow 2.4s ease-in-out infinite;
+}
+.payme-ready-sweep{
+  position:absolute; top:-60%; left:-60%; width:60%; height:220%;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,0.55) 45%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.55) 55%, transparent);
+  animation:shimmerSweep 2.4s ease-in-out infinite; pointer-events:none;
+}
 .nfc-card-brand{font-family:'Space Grotesk'; font-size:11px; font-weight:700; letter-spacing:.22em; text-align:center; position:relative; z-index:1;}
 .nfc-card-number{font-size:19px; font-weight:700; letter-spacing:.14em; text-align:center; position:relative; z-index:1; text-shadow:0 1px 1px rgba(0,0,0,0.15);}
 .nfc-card-name{font-family:'Space Grotesk'; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; position:relative; z-index:1;}

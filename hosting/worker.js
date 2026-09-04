@@ -1728,10 +1728,29 @@ async function stampWebOrderCancelD1(env, id, reason) {
   return parseWebOrderRow(row);
 }
 
+// "Band qilish" (reserve) muddati — shu vaqt ichida Payme orqali
+// to'lanmasa, joy avtomatik bo'shaydi. Foydalanuvchi to'lovni umuman
+// boshlamasa ham (Payme checkout'ni hech ochmasa ham) himoya qiladi —
+// aks holda bunday "band qilish" abadiy qolib, o'sha kod hech kimga
+// tegmasdan yotib qolar edi (Payme o'zi CancelTransaction bilan faqat
+// HAQIQIY boshlangan tranzaksiyalarni timeout qiladi, umuman
+// boshlanmagan buyurtmani emas).
+const PENDING_ORDER_TTL_MS = 24 * 60 * 60 * 1000;
+
 async function activeWebOrderByCodeD1(env, code) {
   const row = await env.DB.prepare(`SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE code = ? AND status = 'pending' LIMIT 1`)
     .bind(code).first();
-  return parseWebOrderRow(row);
+  const order = parseWebOrderRow(row);
+  if (!order) return null;
+  const ageMs = Date.now() - new Date(order.createdAt).getTime();
+  if (ageMs < PENDING_ORDER_TTL_MS) return order;
+  // Muddati o'tgan — avtomatik bekor qilamiz, shu kod endi bo'sh deb
+  // hisoblanadi (keyingi createPendingWebOrderD1 chaqiruvi uni band
+  // qila oladi). Agar Payme keyinroq shu tranzaksiyani (agar u umuman
+  // yaratilgan bo'lsa) CancelTransaction bilan yopsa — bu allaqachon
+  // 'cancelled' bo'lgani uchun idempotent, hech narsa buzilmaydi.
+  await setWebOrderStatusD1(env, order.id, 'cancelled');
+  return null;
 }
 
 // Shaxsiy vizitka (NFC ID) yozuvini yaratish — server/db.js'dagi

@@ -407,6 +407,36 @@ let createOrder;
 }
 
 // ============================================================
+// 24) "Band qilish" (reserve) 24-soatlik muddati — to'lanmasdan shu
+// muddatdan o'tgan pending buyurtma avtomatik bo'shaydi, kod qayta
+// band qilinishi mumkin bo'lib qoladi.
+// ============================================================
+{
+  const stale = await createPendingWebOrderD1(env, { userId: 1, code: 'TTL001', price: 49000, payload: PAYLOAD });
+  checkTrue('24a) stale-order setup: reservation created', !!stale);
+  // created_at'ni 25 soat oldinga suramiz — real Payme trafigisiz,
+  // faqat vaqt o'tishini simulyatsiya qilamiz.
+  env.DB.exec(`UPDATE web_orders SET created_at = datetime('now', '-25 hours') WHERE id = ${stale.id}`);
+
+  const activeBeforeExpiry = await activeWebOrderByCodeD1(env, 'TTL001');
+  check('24b) a 25-hour-old unpaid reservation is treated as expired (not active)', activeBeforeExpiry, null);
+
+  const expiredRow = await getWebOrderD1(env, stale.id);
+  check('24c) the expired reservation is actually marked cancelled in storage', expiredRow.status, 'cancelled');
+
+  // Muddati o'tgan bo'lgani uchun, boshqa foydalanuvchi endi SHU KOD
+  // uchun yangi rezervatsiya qila olishi kerak (bloklanmasligi kerak).
+  const reReserved = await createPendingWebOrderD1(env, { userId: 2, code: 'TTL001', price: 49000, payload: PAYLOAD });
+  checkTrue('24d) after expiry, a DIFFERENT user can reserve the same code', !!reReserved);
+  check('24e) the new reservation belongs to the new user', reReserved.userId, 2);
+
+  // Yangi (yaqinda yaratilgan) rezervatsiya hali muddati o'tmagan —
+  // hali ham to'g'ri "band" deb hisoblanishi kerak.
+  const stillActive = await activeWebOrderByCodeD1(env, 'TTL001');
+  check('24f) a fresh reservation right after expiry is correctly reported as still active', stillActive?.id, reReserved.id);
+}
+
+// ============================================================
 // Extra: unsupported order kinds must never be silently finalized.
 // ============================================================
 {

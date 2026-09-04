@@ -6,6 +6,7 @@ import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
+import PaymeReadyBadge from './PaymeReadyBadge.jsx';
 import TelegramChannelCTA from './TelegramChannelCTA.jsx';
 const CardDesignerPage = lazy(() => import('../pages/CardDesignerPage.jsx'));
 
@@ -121,7 +122,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
     } catch (err) {
       const code2 = err && err.code;
       const text = code2 === 'reserved_pending_payment'
-        ? t("Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan to\u2019lanmoqda. Bir ozdan keyin qayta urinib ko\u2019ring.")
+        ? t("Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan band qilingan (to'lov kutilmoqda). Agar u 24 soat ichida to'lamasa, avtomatik bo'shaydi \u2014 birozdan keyin qayta urinib ko'ring.")
         : code2 === 'exclusive_auction_only'
           ? t("\u{1F48E} Bu NFC ID EKSLYUZIV daraja — to'g'ridan-to'g'ri sotib olib bo'lmaydi, faqat saytdagi Auksion bo'limi orqali qo'lga kiritiladi.")
           : String(err.message).startsWith('bad_credentials')
@@ -172,7 +173,8 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             </p>
             {PAYMENTS_ENABLED ? (
               <>
-                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-5 w-full">
+                <div className="mt-4 flex justify-center"><PaymeReadyBadge /></div>
+                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-4 w-full">
                   {t("To'lash — {n} so'm", { n: fmt(order.price) })}
                 </a>
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
@@ -323,6 +325,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <b className="text-lg">{t("{n} so'm", { n: fmt(totalPrice) })}</b>
           </div>
           {paymentBlocked && <TelegramChannelCTA />}
+          {!paymentBlocked && <div className="mt-3 flex justify-center"><PaymeReadyBadge /></div>}
           <button
             className={`btn btn-primary mt-3 w-full ${paymentBlocked ? 'btn-disabled !cursor-not-allowed opacity-60' : ''}`}
             onClick={submit}
@@ -332,6 +335,11 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           >
             {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Band qilish')}
           </button>
+          {!paymentBlocked && (
+            <p className="mt-2 text-center text-xs text-base-content/45">
+              {t("Band qilingandan so'ng 24 soat ichida to'lashingiz kerak — aks holda joy avtomatik bo'shaydi.")}
+            </p>
+          )}
           {paymentBlocked && <div className="mt-3"><PaymentUnavailableNotice /></div>}
           {msg && (
             <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}>
