@@ -1986,8 +1986,16 @@ async function handlePaymeRequestD1(env, body) {
         if (!order) return paymeRpcError(id, PAYME_ERR.TRANSACTION_NOT_FOUND, 'Tranzaksiya topilmadi');
         if (order.status === 'paid') {
           // Idempotent — allaqachon to'langan, xuddi shu natijani qaytadi,
-          // ownership qayta yaratilmaydi/o'zgartirilmaydi.
-          return paymeRpcResult(id, { transaction: String(order.id), perform_time: new Date(order.createdAt).getTime(), state: 2 });
+          // ownership qayta yaratilmaydi/o'zgartirilmaydi. perform_time —
+          // HAQIQIY, saqlangan to'lov vaqti (order.performTime), createdAt
+          // EMAS — aks holda bu qiymat CheckTransaction/GetStatement
+          // qaytaradigan perform_time bilan mos kelmay qolar edi (ular
+          // ikkalasi ham order.performTime'dan foydalanadi).
+          return paymeRpcResult(id, {
+            transaction: String(order.id),
+            perform_time: order.performTime ? new Date(order.performTime).getTime() : Date.now(),
+            state: 2,
+          });
         }
         if (order.status !== 'pending') return paymeRpcError(id, PAYME_ERR.CANT_DO_OPERATION, "Amalni bajarib bo'lmaydi");
         // MUHIM (task E — ownership faqat shu yerdan keyin): finalize

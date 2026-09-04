@@ -154,6 +154,11 @@ let createOrder;
   const before = await getRecord(env, 'CRE001');
   check('before PerformTransaction: NFC record does not exist yet', before, null);
 
+  // Real gap between order creation and payment, so createdAt and the
+  // actual perform_time are guaranteed to differ — needed to make test
+  // 13c below a meaningful regression check, not a coincidence.
+  await new Promise((resolve) => setTimeout(resolve, 5));
+
   const p1 = await handlePaymeRequestD1(env, { method: 'PerformTransaction', id: 5, params: { id: 'ptx-cre-001' } });
   check('12) PerformTransaction success', p1.result?.state, 2);
 
@@ -168,6 +173,15 @@ let createOrder;
 
   const p2 = await handlePaymeRequestD1(env, { method: 'PerformTransaction', id: 6, params: { id: 'ptx-cre-001' } });
   check('13) duplicate PerformTransaction is idempotent (state 2, no error)', p2.result?.state, 2);
+
+  // Regression check for a real bug found in review: the idempotent
+  // duplicate-PerformTransaction branch used to echo back order.createdAt
+  // as perform_time instead of the real, persisted order.performTime —
+  // silently disagreeing with what CheckTransaction/GetStatement report
+  // for the SAME transaction. Both calls must agree, and neither may equal
+  // the order's createdAt (guaranteed distinct by the delay above).
+  check('13c) duplicate PerformTransaction reports the SAME real perform_time as the first call', p2.result?.perform_time, p1.result?.perform_time);
+  checkTrue('13d) perform_time is the real payment time, not the order creation time', p2.result?.perform_time !== new Date(createOrder.createdAt).getTime());
 
   const recordCountRow = await env.DB.prepare(`SELECT COUNT(*) AS n FROM cards WHERE code = ?`).bind('CRE001').first();
   check('13b) duplicate PerformTransaction did NOT create a second record', recordCountRow.n, 1);
