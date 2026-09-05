@@ -1,9 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nfcstore-uz",
+  // Worker skripti — `npm run build` (scripts/prepare-sites-build.mjs)
+  // hosting/worker.js'ni shu yerga nusxalaydi. Avval bu maydon yo'q edi,
+  // shu sabab `wrangler deploy` faqat statik fayllarni joylardi —
+  // hosting/worker.js'dagi /api/* logikasi HECH QACHON ishga tushmasdi.
+  "main": "./dist/server/index.js",
   "compatibility_date": "2026-08-31",
   "assets": {
-    "directory": "./dist",
+    // dist/client — statik fayllarning "toza" nusxasi (dist/ ildizida
+    // esa Express serveri o'qiydigan asl Vite chiqishi + dist/client,
+    // dist/server pastki papkalari ham bor — ularni Cloudflare'ga
+    // statik aktiv sifatida yubormaslik uchun aynan dist/client tanlangan).
+    "directory": "./dist/client",
     "not_found_handling": "single-page-application"
   }
 }
