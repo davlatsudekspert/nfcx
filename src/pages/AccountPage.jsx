@@ -3422,17 +3422,29 @@ export default function AccountPage({ refreshCatalog }) {
         </div>
       </section>
 
-      <nav className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-base-200/55 p-2" aria-label={t('Kabinet bo‘limlari')}>
-        <div className="flex min-w-max gap-1">
-          <button className="btn btn-primary btn-sm min-h-11">{t('Hisob')}</button>
-          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())} disabled={!primaryCard}>{t('Profil')}</button>
-          <button className="btn btn-ghost btn-sm min-h-11" onClick={openBusinessWorkspace}>
-            {'\u{1F3E2}'} {t('Kompaniya')}
+      <nav className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-gradient-to-r from-base-200/70 via-base-200/50 to-base-200/70 p-2" aria-label={t('Kabinet bo‘limlari')}>
+        <div className="flex min-w-max gap-1.5">
+          <button className="btn btn-primary min-h-12 flex-1 gap-1.5 font-semibold">
+            <span className="text-base leading-none">{'\u{1F3E0}'}</span> {t('Boshqaruv')}
           </button>
-          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/bildirishnomalar')}>{t('Bildirishnomalar')}</button>
-          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => MESSAGING_ENABLED && navigate('/xabarlar')} disabled={!MESSAGING_ENABLED}>{t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada')}</button>
-          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/tolovlar')}>{t("To'lovlar")}</button>
-          <button className="btn btn-ghost btn-sm min-h-11" onClick={() => navigate('/sozlamalar')}>{t('Sozlamalar')}</button>
+          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())} disabled={!primaryCard}>
+            <span className="text-base leading-none">{'\u{1F464}'}</span> {t('Profil')}
+          </button>
+          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={openBusinessWorkspace}>
+            <span className="text-base leading-none">{'\u{1F3E2}'}</span> {t('Kompaniya')}
+          </button>
+          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => navigate('/bildirishnomalar')}>
+            <span className="text-base leading-none">{'\u{1F514}'}</span> {t('Bildirishnomalar')}
+          </button>
+          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => MESSAGING_ENABLED && navigate('/xabarlar')} disabled={!MESSAGING_ENABLED}>
+            <span className="text-base leading-none">{'\u{1F4AC}'}</span> {t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada')}
+          </button>
+          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => navigate('/tolovlar')}>
+            <span className="text-base leading-none">{'\u{1F4B3}'}</span> {t("To'lovlar")}
+          </button>
+          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => navigate('/sozlamalar')}>
+            <span className="text-base leading-none">{'⚙️'}</span> {t('Sozlamalar')}
+          </button>
         </div>
       </nav>
 
