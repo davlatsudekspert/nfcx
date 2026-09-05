@@ -65,29 +65,30 @@ export function vzVars(theme, record) {
 }
 
 // ─── OUTER FON — NFC ID darajasining vizual identity'si ───────────────
-// Tema gradienti + tarif "halo"si. Foydalanuvchi O'ZGARTIRA OLMAYDI.
-export function outerPageStyle(theme, record, tier) {
-  const glow = TIER_PAGE_GLOW[tier] || TIER_PAGE_GLOW.free;
-  return {
-    ...vzVars(theme, record),
-    backgroundColor: 'var(--vz-bg-a)',
-    backgroundImage: `${glow}, linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))`,
-    backgroundAttachment: 'fixed',
-  };
-}
-
-// ─── INNER FON — profil kontent PANELI ichida (butun sahifada emas) ───
-// bgUrl → rasm + o'qish uchun qora qatlam; bgColor → sekin gradient;
-// aks holda tema kartasi rangi.
-export function innerPanelStyle(record) {
+// Tema gradienti + tarif "halo"si. Foydalanuvchi fon rasm/gif qo'ygan bo'lsa
+// — endi shu YERDA, BUTUN sahifa (header + NFC karta + asosiy panel) foniga
+// yoyiladi (avval faqat ichki panel ichida ko'rinardi).
+// `fixedBg=false` — kichik telefon namoyishi (Sozlamalar) uchun: u o'zi
+// scroll bo'lmaydigan kichik ramka ichida joylashgan, shuning uchun
+// backgroundAttachment:'fixed' (brauzer oynasiga nisbatan) sahifa
+// aylantirilganda fonni maketdan "sirg'anib" ketkazadi — shu holatda
+// 'scroll' berilib, fon har doim ramka ichida, o'z joyida qoladi.
+export function outerPageStyle(theme, record, tier, opts = {}) {
+  const { fixedBg = true } = opts;
+  const vars = vzVars(theme, record);
   if (record && record.bgUrl) {
-    // Rasm + qora qatlam → panel ichidagi matn/karta ranglarini oqqa
-    // majburlab o'tkazamiz (tanlangan tema yorug' bo'lsa ham o'qiladi).
+    // Rasm/gif + o'qish uchun yarim shaffof qora qatlam → matn/karta
+    // ranglarini oqqa majburlab o'tkazamiz (tanlangan tema yorug' bo'lsa ham
+    // o'qiladi). Shu CSS o'zgaruvchilari pastdagi barcha elementlarga
+    // (header, ichki panel) meros bo'lib o'tadi — butun sahifa "glass" bo'ladi.
     return {
-      backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url("${record.bgUrl}")`,
+      ...vars,
+      backgroundColor: 'var(--vz-bg-a)',
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
+      backgroundAttachment: fixedBg ? 'fixed' : 'scroll',
       '--vz-ink': '#ffffff',
       '--vz-ink-dim': 'rgba(255,255,255,0.82)',
       '--vz-ink-faint': 'rgba(255,255,255,0.58)',
@@ -96,6 +97,21 @@ export function innerPanelStyle(record) {
       '--vz-pill': 'rgba(255,255,255,0.14)',
     };
   }
+  const glow = TIER_PAGE_GLOW[tier] || TIER_PAGE_GLOW.free;
+  return {
+    ...vars,
+    backgroundColor: 'var(--vz-bg-a)',
+    backgroundImage: `${glow}, linear-gradient(160deg, var(--vz-bg-a), var(--vz-bg-b))`,
+    backgroundAttachment: fixedBg ? 'fixed' : 'scroll',
+  };
+}
+
+// ─── INNER FON — profil kontent PANELI ichida (butun sahifada emas) ───
+// bgUrl holatida rasm endi outerPageStyle'da (butun sahifa foni) — panel
+// shunchaki var(--vz-card) orqali (yuqoridan meros bo'lgan yarim shaffof
+// "glass" rangda) chiziladi, fon undan orqada to'liq ko'rinib turadi.
+// bgColor → sekin gradient; aks holda tema kartasi rangi.
+export function innerPanelStyle(record) {
   if (record && record.bgColor) {
     const c1 = record.bgColor;
     const c2 = shadeColor(record.bgColor, -22);
@@ -935,6 +951,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [gallery, setGallery] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
+  const [otherCodesOpen, setOtherCodesOpen] = useState(false); // "Boshqa tashrif qog'ozlaringiz" ochiladigan ro'yxati
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -1556,18 +1573,37 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {otherCodes.length > 0 && (
               <>
                 <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                <div className="mb-3 text-center text-[14px] font-extrabold tracking-[0.08em] text-[color:var(--vz-ink-faint)]">{t("SIZNING BOSHQA RAQAMLI TASHRIF QOG'OZILARINGIZ")}</div>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {otherCodes.map((c) => (
-                    <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]">nfcstore.uz/{c.code.toLowerCase()}</span>
-                  ))}
-                </div>
+                {/* Ixcham, yopiq holatda boshlanadigan ro'yxat — bosilganda
+                    pastga ochiladi (dropdown), tanlansa o'sha profilga
+                    o'tadi va o'zi yopiladi. */}
+                <button
+                  type="button"
+                  onClick={() => setOtherCodesOpen((v) => !v)}
+                  aria-expanded={otherCodesOpen}
+                  className="mx-auto flex w-full max-w-[300px] cursor-pointer items-center justify-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-4 py-2 text-[13px] font-extrabold uppercase tracking-[0.06em] text-[color:var(--vz-ink-faint)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"
+                >
+                  {t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})
+                  <span className={`inline-block transition-transform duration-200 ${otherCodesOpen ? 'rotate-180' : ''}`}>▾</span>
+                </button>
+                {otherCodesOpen && (
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {otherCodes.map((c) => (
+                      <span
+                        key={c.code}
+                        onClick={() => { setOtherCodesOpen(false); navigate('/' + c.code); }}
+                        className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]"
+                      >
+                        nfcstore.uz/{c.code.toLowerCase()}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
             <div className="flex gap-2.5">
-              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-transparent px-4 py-2.5 text-[16px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconDownload /> {t('Saqlash')}</button>
+              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-5 py-3.5 text-[18px] font-extrabold text-[color:var(--vz-ink)] transition hover:border-[color:var(--vz-ink-dim)] hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
               {!isOwner && MESSAGING_ENABLED && (
                 <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
               )}

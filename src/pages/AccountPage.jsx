@@ -1286,7 +1286,7 @@ function PhonePreview({ form, code }) {
         <div className="absolute -left-[2px] top-[188px] h-10 w-[3px] rounded-l-sm bg-[#3a3a3c]"></div>
         <div className="absolute -right-[2px] top-[132px] h-14 w-[3px] rounded-r-sm bg-[#3a3a3c]"></div>
         <div className="rounded-[49px] border-[5px] border-[#0c0c0d] bg-[#0c0c0d]">
-        <div className="relative h-[540px] overflow-hidden rounded-[44px]" style={outerPageStyle(form.theme || 'classic', record, tierForCode(code))}>
+        <div className="relative h-[540px] overflow-hidden rounded-[44px]" style={outerPageStyle(form.theme || 'classic', record, tierForCode(code), { fixedBg: false })}>
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 pt-2.5 text-[11px] font-semibold text-[color:var(--vz-ink)]">
             <span>9:41</span>
             <div className="flex items-center gap-1">
