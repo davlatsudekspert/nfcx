@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PremiumCard } from '../design-system/components/PremiumCard';
 import { PremiumBadge, TierBadge } from '../design-system/components/PremiumBadge';
 import { tierForCode } from '../lib/pricing';
+import { haptics } from '../native/haptics';
 import { color, space, type as typeTokens } from '../design-system/tokens';
 
 export interface NfcIdCardProps {
@@ -25,7 +26,12 @@ export function NfcIdCard({ code, name, state, onPress, index }: NfcIdCardProps)
   const tier = tierForCode(code);
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
+      }}
+    >
       <PremiumCard index={index} featured={tier === 'exclusive' || tier === 'premium'} style={styles.card}>
         <View style={styles.topRow}>
           <TierBadge tier={tier} />

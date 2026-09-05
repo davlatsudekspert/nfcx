@@ -4,6 +4,7 @@ import { PremiumCard } from '../design-system/components/PremiumCard';
 import { PremiumBadge } from '../design-system/components/PremiumBadge';
 import { AuctionCountdown } from './AuctionCountdown';
 import { formatSom } from '../lib/format';
+import { haptics } from '../native/haptics';
 import type { Auction } from '../api/types';
 import { color, space, type as typeTokens } from '../design-system/tokens';
 
@@ -25,7 +26,12 @@ export function AuctionListCard({ auction, onPress, index }: AuctionListCardProp
   const ended = auction.status !== 'active';
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
+      }}
+    >
       <PremiumCard index={index} style={styles.card} featured={auction.status === 'active'}>
         <View style={styles.topRow}>
           <Text style={styles.code}>#{auction.code}</Text>

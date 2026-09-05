@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -11,6 +11,7 @@ import { PremiumLoadingSkeleton } from '../../design-system/components/PremiumLo
 import { SuccessCheck } from '../../composites/SuccessCheck';
 import { ordersApi } from '../../api/orders';
 import { tierForCode } from '../../lib/pricing';
+import { haptics } from '../../native/haptics';
 import { color, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<IdStackParamList, 'PurchaseResult'>;
@@ -19,6 +20,11 @@ export function PurchaseResultScreen({ route, navigation }: Props) {
   const { code, orderId } = route.params;
   const tabNavigation = navigation.getParent<BottomTabNavigationProp<MainTabParamList>>();
   const order = useQuery({ queryKey: ['orders', orderId], queryFn: () => ordersApi.get(orderId) });
+  const status = order.data?.status;
+
+  useEffect(() => {
+    if (status === 'paid') haptics.success();
+  }, [status]);
 
   const goHome = () => tabNavigation?.navigate('HomeTab', { screen: 'Home' });
   const goEditProfile = () => tabNavigation?.navigate('ProfileTab', { screen: 'ProfileEdit' });
@@ -32,8 +38,6 @@ export function PurchaseResultScreen({ route, navigation }: Props) {
       </ScreenContainer>
     );
   }
-
-  const status = order.data?.status;
 
   return (
     <ScreenContainer scroll={false}>

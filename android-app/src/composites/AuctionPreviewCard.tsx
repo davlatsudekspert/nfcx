@@ -4,6 +4,7 @@ import { PremiumCard } from '../design-system/components/PremiumCard';
 import { PremiumBadge } from '../design-system/components/PremiumBadge';
 import { AuctionCountdown } from './AuctionCountdown';
 import { formatSom } from '../lib/format';
+import { haptics } from '../native/haptics';
 import type { Auction } from '../api/types';
 import { color, space, type as typeTokens } from '../design-system/tokens';
 
@@ -15,7 +16,12 @@ export interface AuctionPreviewCardProps {
 
 export function AuctionPreviewCard({ auction, onPress, index }: AuctionPreviewCardProps) {
   return (
-    <Pressable onPress={onPress}>
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
+      }}
+    >
       <PremiumCard index={index} style={styles.card}>
         <View style={styles.topRow}>
           <Text style={styles.code}>#{auction.code}</Text>
