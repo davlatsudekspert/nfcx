@@ -1711,6 +1711,20 @@ const SELECT_FIELDS = `
   sale_price AS "salePrice", hashtags, price, ts, views
 `;
 
+// `music_url` ustuni ilgari bitta URL matnini saqlagan; endi ko'pi bilan
+// 5 ta qo'shiq ro'yxati shu ustunga JSON massiv sifatida yoziladi (yangi
+// ustun/migratsiya kerak emas). Eski yozuvlar bilan orqaga moslik: matn
+// JSON massiv bo'lmasa, lekin bo'sh bo'lmasa — bitta elementli ro'yxat
+// deb o'qiladi. hosting/worker.js'dagi parseMusicUrls bilan bir xil.
+function parseMusicUrls(text) {
+  if (!text) return [];
+  try {
+    const v = JSON.parse(text);
+    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x).slice(0, 5);
+  } catch { /* eski (bitta URL) format — pastda */ }
+  return typeof text === 'string' && text.trim() ? [text.trim()] : [];
+}
+
 function rowToRecord(row) {
   return {
     code: row.code,
@@ -1735,7 +1749,8 @@ function rowToRecord(row) {
     longitude: row.longitude != null ? Number(row.longitude) : null,
     hiddenFromDirectory: !!row.hiddenFromDirectory,
     leadCapture: !!row.leadCapture,
-    musicUrl: row.musicUrl || '',
+    musicUrls: parseMusicUrls(row.musicUrl),
+    musicUrl: parseMusicUrls(row.musicUrl)[0] || '',
     tg: row.tg || '',
     phone: row.phone || '',
     email: row.email || '',
@@ -1932,7 +1947,8 @@ export async function createRecord(record) {
       record.accentColor || null,
       record.bgColor || null,
       record.bgAnimated === false ? false : true,
-      record.musicUrl || null,
+      // Ko'pi bilan 5 ta qo'shiq — JSON massiv (parseMusicUrls o'qiydi).
+      JSON.stringify(Array.isArray(record.musicUrls) ? record.musicUrls.slice(0, 5) : (record.musicUrl ? [record.musicUrl] : [])),
       record.tg,
       record.phone,
       record.email,
@@ -3465,7 +3481,6 @@ export async function updateRecord(code, fields) {
     longitude: 'longitude',
     hiddenFromDirectory: 'hidden_from_directory',
     leadCapture: 'lead_capture',
-    musicUrl: 'music_url',
     tg: 'tg',
     phone: 'phone',
     email: 'email',
@@ -3500,6 +3515,11 @@ export async function updateRecord(code, fields) {
   if ('cardDesign' in fields) {
     vals.push(fields.cardDesign ? JSON.stringify(fields.cardDesign) : null);
     sets.push(`card_design = $${vals.length}::jsonb`);
+  }
+  // Ko'pi bilan 5 ta qo'shiq — `music_url` ustuniga JSON massiv sifatida.
+  if ('musicUrls' in fields) {
+    vals.push(JSON.stringify(Array.isArray(fields.musicUrls) ? fields.musicUrls.slice(0, 5) : []));
+    sets.push(`music_url = $${vals.length}`);
   }
   if (!sets.length) return getRecord(code);
   const { rows } = await pool.query(

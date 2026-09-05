@@ -297,6 +297,8 @@
 @keyframes marqueeScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes glowBarPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.18), 0 14px 30px rgba(0,0,0,0.12); } 50% { box-shadow: 0 0 0 6px rgba(255,255,255,0.05), 0 14px 30px rgba(0,0,0,0.12); } }
 @keyframes cardBreath { 0%,100% { box-shadow: 0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 0 0 rgba(255,255,255,0); } 50% { box-shadow: 0 20px 45px rgba(20,25,30,0.08), 0 2px 8px rgba(20,25,30,0.04), 0 0 30px 2px rgba(255,255,255,0.06); } }
+/* Avatar ortidagi yengil oltin porlash (premium ko'rinish) — sekin "nafas oladi". */
+@keyframes goldGlow { 0%,100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.08); } }
 
 /* Profil havola tugmalari — doimiy "yorug'lik yugurishi" (shimmer). */
 @keyframes linkShine { 0% { left: -60%; } 60%, 100% { left: 120%; } }

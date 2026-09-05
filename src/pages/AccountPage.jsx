@@ -1286,7 +1286,7 @@ function PhonePreview({ form, code }) {
         <div className="absolute -left-[2px] top-[188px] h-10 w-[3px] rounded-l-sm bg-[#3a3a3c]"></div>
         <div className="absolute -right-[2px] top-[132px] h-14 w-[3px] rounded-r-sm bg-[#3a3a3c]"></div>
         <div className="rounded-[49px] border-[5px] border-[#0c0c0d] bg-[#0c0c0d]">
-        <div className="relative h-[540px] overflow-hidden rounded-[44px]" style={outerPageStyle(form.theme || 'classic', record, tierForCode(code))}>
+        <div className="relative h-[540px] overflow-hidden rounded-[44px]" style={outerPageStyle(form.theme || 'classic', record, tierForCode(code), { fixedBg: false })}>
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 pt-2.5 text-[11px] font-semibold text-[color:var(--vz-ink)]">
             <span>9:41</span>
             <div className="flex items-center gap-1">
@@ -1305,8 +1305,13 @@ function PhonePreview({ form, code }) {
               # {code}
             </div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-white/12 px-3 pb-4 pt-3" style={innerPanelStyle(record)}>
-            <div className="mx-auto flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[18px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
-              {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
+            {/* Haqiqiy ochiq profildagi kabi — kattaroq, dumaloq avatar +
+                yengil oltin porlash (premium ko'rinish, real vaqtda mos). */}
+            <div className="relative mx-auto flex h-[88px] w-[88px] items-center justify-center">
+              <span className="pointer-events-none absolute inset-[-14px] animate-[goldGlow_3.6s_ease-in-out_infinite] rounded-full" style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--vz-accent) 45%, transparent), transparent 70%)' }}></span>
+              <div className="relative z-10 flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[22px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
+                {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
+              </div>
             </div>
             <div className="mt-2.5 text-[16.5px] font-bold leading-tight">{form.name || t('Ismingiz')}</div>
             {form.role && <div className="mt-0.5 text-[13px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
@@ -2496,13 +2501,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 ['nfckarta', PERSONAL_WS_TAB_LABEL.nfckarta, WS_ICON.nfckarta],
                 ['myids', PERSONAL_WS_TAB_LABEL.myids, WS_ICON.myids],
                 ['postlar', PERSONAL_WS_TAB_LABEL.postlar, WS_ICON.postlar],
-                ['aloqa', PERSONAL_WS_TAB_LABEL.aloqa, WS_ICON.aloqa],
                 ['sozlamalar', PERSONAL_WS_TAB_LABEL.sozlamalar, WS_ICON.sozlamalar],
               ].map(([id, label, icon]) => (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setWsTab(id === 'aloqa' ? 'profil' : id)}
+                  onClick={() => setWsTab(id)}
                   className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${wsTab === id ? 'bg-accent text-accent-content' : 'text-base-content/60 hover:bg-white/5'}`}
                 >
                   <span className="text-base leading-none">{icon}</span> {t(label)}
@@ -3127,11 +3131,11 @@ const ORDER_STATUS_LABEL = {
 // biznes Workspace'ga tegishli emas, undan mustaqil.
 const WS_ICON = {
   boshqaruv: '\u{1F3E0}', profil: '\u{1F464}', nfckarta: '\u{1F4B3}',
-  myids: '\u{1F194}', postlar: '\u{1F5BC}️', aloqa: '\u{1F4DE}', sozlamalar: '⚙️',
+  myids: '\u{1F194}', postlar: '\u{1F5BC}️', sozlamalar: '⚙️',
 };
 const PERSONAL_WS_TAB_LABEL = {
   boshqaruv: 'Boshqaruv', profil: 'Profil', nfckarta: 'NFC karta',
-  myids: 'My IDs', postlar: 'Postlar / Media', aloqa: 'Aloqa', sozlamalar: 'Sozlamalar',
+  myids: 'My IDs', postlar: 'Postlar / Media', sozlamalar: 'Sozlamalar',
 };
 
 // Account sahifasining yuqori "hero" qismi — profil kartalari uchun
@@ -3146,7 +3150,6 @@ const HERO_EYE = '\u{1F441}️';
 const HERO_PROFILES = '\u{1F464}';
 const HERO_SHIELD = '\u{1F6E1}️';
 const HERO_CART = '\u{1F6D2}';
-const HERO_SEARCH = '\u{1F50D}';
 const HERO_CHECK = '✓';
 
 // Profil to'ldirilish foizi — faqat REAL form maydonlariga qarab hisoblanadi,
@@ -3298,10 +3301,6 @@ export default function AccountPage({ refreshCatalog }) {
     : '/company/create');
   const [orders, setOrders] = useState([]);
   const [supportOpen, setSupportOpen] = useState(false);
-  // Account hero'dagi "Mening raqamli tashrif qog'ozlarim" toolbar'i —
-  // mavjud myCards ro'yxati ustida frontendda qidirish/filtr (backend'ga tegilmaydi).
-  const [cardQuery, setCardQuery] = useState('');
-  const [cardFilter, setCardFilter] = useState('all');
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
@@ -3482,79 +3481,21 @@ export default function AccountPage({ refreshCatalog }) {
         <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
 
+      {/* "Mening raqamli tashrif qog'ozilarim" katta karta panjarasi olib
+          tashlandi — "My IDs" bo'limida (EditCardForm sidebar) xuddi shu
+          kartalar ixcham ro'yxatda bor. Bu yerda faqat tahrirlash formasi
+          (yoki bo'sh holat xabari) qoladi; "Profilni tahrirlash" tezkor
+          tugmasi (yuqorida) shu yerga ("mening-profilim") olib keladi. */}
       <section className="pt-8" id="mening-profilim">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold">{t("Mening raqamli tashrif qog'ozilarim")}</h2>
-            <p className="mt-0.5 text-xs text-base-content/45">{t('Barcha profilingizni bir joydan boshqaring')}</p>
-          </div>
-          {myCards.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <label className="input input-bordered input-sm flex items-center gap-2 bg-base-100">
-                <span className="text-base-content/40">{HERO_SEARCH}</span>
-                <input
-                  type="text"
-                  value={cardQuery}
-                  onChange={(e) => setCardQuery(e.target.value)}
-                  placeholder={t("ID bo'yicha qidirish")}
-                  className="w-32 grow bg-transparent focus:outline-none"
-                />
-              </label>
-              <select value={cardFilter} onChange={(e) => setCardFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
-                <option value="all">{t('Barchasi')}</option>
-                <option value="personal">{t('Shaxsiy')}</option>
-                <option value="expert">{t('Ekspert')}</option>
-                <option value="business">{t('Biznes')}</option>
-              </select>
-              <button className="btn btn-accent btn-sm" onClick={() => navigate('/')}>+ {t('Yangi profil')}</button>
-            </div>
-          )}
-        </div>
-
         {myCards.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
+          <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
             {t("Hozircha raqamli tashrif qog'ozingiz yo'q.")}{' '}
             <button className="cursor-pointer underline underline-offset-2 hover:text-base-content" onClick={() => navigate('/')}>
               {t('Bosh sahifada band qilish')} &rarr;
             </button>
           </div>
         ) : (
-          <>
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
-              {myCards.filter((c) => {
-                if (cardFilter !== 'all' && c.profileType !== cardFilter) return false;
-                const q = cardQuery.trim().toLowerCase();
-                if (!q) return true;
-                return c.code.toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q);
-              }).map((c) => {
-                // Karta ko'rinishi — real NFC ID darajasiga (tarifiga) qarab
-                // avtomatik rang/finish oladi, xuddi haqiqiy NFC kartadagidek
-                // (saqlangan `finish` bo'lsa o'shani, aks holda kod darajasidan).
-                const finish = c.finish && c.finish !== 'auto' ? c.finish : ('tier-' + tierForCode(c.code));
-                return (
-                  <div key={c.code} className={`flex flex-col items-center gap-2.5 rounded-2xl border p-3 ${c.isPrimary ? 'border-accent/50 bg-accent/5' : 'border-white/10 bg-base-200/40'}`}>
-                    <div className="flex w-full items-center justify-between px-1">
-                      {c.isPrimary ? <span className="badge badge-accent badge-xs">{t('ASOSIY')}</span> : <span />}
-                      <span className="badge badge-success badge-xs">{t('Faol')}</span>
-                    </div>
-                    <NfcCard code={c.code} name={c.name || c.code} finish={finish} size="sm" />
-                    <div className="flex w-full gap-1.5">
-                      <button
-                        className="btn btn-accent btn-xs flex-1"
-                        onClick={() => {
-                          setSelectedCode(c.code);
-                          document.getElementById('kartani-tahrirlash')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                      >
-                        {t('Boshqarish')}
-                      </button>
-                      <button className="btn btn-ghost btn-xs flex-1" onClick={() => navigate('/' + c.code.toLowerCase())}>{t("Ko'rish")}</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div id="kartani-tahrirlash">
+          <div id="kartani-tahrirlash">
               {selectedCard && (
                 selectedCard.profileType === 'business' ? (
                   <div className="mt-5 overflow-hidden rounded-3xl border border-amber-400/25 bg-gradient-to-br from-amber-400/10 via-base-200 to-base-100 p-6 shadow-xl">
@@ -3581,7 +3522,6 @@ export default function AccountPage({ refreshCatalog }) {
                 )
               )}
             </div>
-          </>
         )}
       </section>
 

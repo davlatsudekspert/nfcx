@@ -353,11 +353,20 @@ function validateBody(body) {
     }
   }
   // Profil musiqasi — tashqi havola YOKI serverga yuklangan /uploads/...
-  // fayli (xuddi avatar/fon rasmi kabi).
-  let musicUrl = safeUrl(body.musicUrl);
-  if (!musicUrl && typeof body.musicUrl === 'string' && body.musicUrl.startsWith('/uploads/')) {
-    musicUrl = cleanStr(body.musicUrl, 300).replace(/[^\w\-./]/g, '');
-  }
+  // fayli (xuddi avatar/fon rasmi kabi). Ko'pi bilan 5 ta qo'shiq:
+  // frontend `musicUrls` (ro'yxat) yuboradi; eski `musicUrl` (bitta URL)
+  // ham orqaga moslik uchun qabul qilinadi. Avval faqat bitta `musicUrl`
+  // o'qilardi — shu sabab ro'yxat saqlanmay qolar edi (hosting/worker.js
+  // bilan bir xil mantiq).
+  const musicOne = (v) => {
+    const ext = safeUrl(v);
+    if (ext) return ext;
+    if (typeof v === 'string' && v.startsWith('/uploads/')) return cleanStr(v, 300).replace(/[^\w\-./]/g, '');
+    return '';
+  };
+  const musicUrls = (Array.isArray(body.musicUrls) ? body.musicUrls : (body.musicUrl ? [body.musicUrl] : []))
+    .map(musicOne).filter(Boolean).slice(0, 5);
+  const musicUrl = musicUrls[0] || '';
   const record = {
       name,
       role: cleanStr(body.role, 100),
@@ -369,6 +378,7 @@ function validateBody(body) {
       bgAnimated,
       linksTransparent,
       linkStyle,
+      musicUrls,
       musicUrl,
       tg: cleanStr(body.tg, 40).replace(/^@/, ''),
       phone: cleanStr(body.phone, 24),
@@ -1693,7 +1703,8 @@ app.put('/api/records/:code', async (req, res) => {
         throw e;
       }
     };
-    guard('music', s(record.musicUrl) !== s(cur.musicUrl));
+    // Musiqa endi ro'yxat (musicUrls) — taqqoslash ham ro'yxat bo'yicha.
+    guard('music', JSON.stringify(record.musicUrls || []) !== JSON.stringify(cur.musicUrls || []));
     guard('innerBackground', s(record.bgUrl) !== s(cur.bgUrl) || s(record.bgColor) !== s(cur.bgColor)
       || (record.bgAnimated !== false) !== (cur.bgAnimated !== false));
     guard('advancedColors', s(record.accentColor) !== s(cur.accentColor));
