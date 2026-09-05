@@ -109,7 +109,9 @@ jobs:
       - name: Confirm the APK is actually signed (not left unsigned)
         working-directory: android-app/android
         run: |
-          "$ANDROID_HOME/build-tools"/*/apksigner verify --print-certs "$APK_PATH" | tee /tmp/apksigner-out.txt
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -n1)
+          echo "Using $APKSIGNER"
+          "$APKSIGNER" verify --print-certs "$APK_PATH" | tee /tmp/apksigner-out.txt
           grep -q "Signer #1 certificate DN" /tmp/apksigner-out.txt
 
       - name: Upload APK artifact
