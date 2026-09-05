@@ -51,6 +51,21 @@ jobs:
       - name: Expo prebuild (Android)
         run: npx expo prebuild -p android --no-install
 
+      # node_modules/@react-native-cookies/cookies/android/build.gradle (a
+      # deprecated upstream package, already flagged as such in
+      # src/native/cookies.ts) calls the removed `jcenter()` DSL method,
+      # which no longer exists on modern Gradle — "Could not find method
+      # jcenter()". This does not touch android-app/ code or dependency
+      # versions; it's a build-time-only Gradle init script that makes
+      # `jcenter()` resolve to `mavenCentral()` for every subproject.
+      - name: Workaround removed Gradle jcenter() DSL (legacy dependency build.gradle)
+        run: |
+          cat > /tmp/jcenter-compat-init.gradle <<'EOF'
+          allprojects {
+              repositories.metaClass.jcenter = { -> delegate.mavenCentral() }
+          }
+          EOF
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -63,7 +78,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: android-app/android
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --init-script /tmp/jcenter-compat-init.gradle
 
       - name: Locate APK
         working-directory: android-app/android
