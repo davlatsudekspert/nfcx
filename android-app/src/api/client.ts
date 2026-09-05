@@ -106,7 +106,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (isMutating) {
     inFlight.set(key, exec);
-    exec.finally(() => inFlight.delete(key));
+    // `.finally()` adopts `exec`'s rejection into a new, unobserved promise
+    // — swallow it here (the real caller still gets the original `exec`
+    // rejection via the `return exec` below) so a failed mutation never
+    // surfaces as an unhandled promise rejection.
+    exec.finally(() => inFlight.delete(key)).catch(() => {});
   }
 
   return exec;
