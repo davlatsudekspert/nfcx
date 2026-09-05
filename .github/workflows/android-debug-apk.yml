@@ -1,9 +1,21 @@
-name: Android Debug APK
+name: Android Standalone Test APK
 
-# Minimal, self-contained CI job: build a DEBUG APK from android-app/ on a
-# real Ubuntu + JDK 17 + Android SDK runner, since the local sandbox this
-# app was developed in has none of those (see android/docs/07..16 phase
-# reports). No signing, no release build, no Play Store step — debug only.
+# Minimal, self-contained CI job: build a STANDALONE, Metro-free test APK
+# from android-app/ on a real Ubuntu + JDK 17 + Android SDK runner, since
+# the local sandbox this app was developed in has none of those (see
+# android/docs/07..16 phase reports).
+#
+# Why "release" build type and not "debug": React Native's Gradle plugin
+# only embeds the JS bundle (index.android.bundle + assets) into non-debug
+# variants by default — a plain `assembleDebug` APK expects a live Metro
+# dev server and crashes standalone with "Unable to load script". The
+# `release` build type always bundles JS, and since this repo has no
+# keystore.properties at the project root (no real keystore was generated,
+# per the project's own non-negotiables), plugins/withReleaseSigning.js
+# no-ops and the generated build.gradle falls back to Android's own
+# automatic debug-keystore signing for the release build type too — so
+# this is an internal-test-only APK, not a Play-Store-signed artifact. No
+# release keystore, no Play Store step, no app code changes.
 on:
   push:
     branches:
@@ -18,11 +30,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-debug-apk:
+  build-standalone-test-apk:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: android-app
+    outputs:
+      apk_path: ${{ steps.locate-apk.outputs.apk_path }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,29 +80,6 @@ jobs:
           }
           EOF
 
-      # React Native's Gradle plugin excludes the "debug" build variant from
-      # JS bundling by default (project.react.debuggableVariants = ["debug"]
-      # internally) — a debug APK built that way only runs while a Metro dev
-      # server is reachable, and crashes standalone with "Unable to load
-      # script". Since this CI job has no Metro server and no device to
-      # reach one, and the whole point of this workflow is a debug APK a
-      # tester can just install and open, this init script clears
-      # debuggableVariants on the generated app module so `assembleDebug`
-      # also runs the JS-bundling task and embeds index.android.bundle +
-      # assets into the APK itself. It does not touch any android-app/ file
-      # — same class of build-time-only fix as the jcenter workaround above.
-      - name: Force JS bundling into the debug APK (no Metro dependency at runtime)
-        run: |
-          cat > /tmp/bundle-debug-init.gradle <<'EOF'
-          allprojects {
-              afterEvaluate { proj ->
-                  if (proj.extensions.findByName('react')) {
-                      proj.react.debuggableVariants = []
-                  }
-              }
-          }
-          EOF
-
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -99,20 +90,85 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Build debug APK
+      # release build type: bundles JS into the APK by default and (with no
+      # keystore.properties present) falls back to Android's own automatic
+      # debug-keystore signing — see the top-of-file comment.
+      - name: Build standalone test APK (release build type, debug-keystore signing)
         working-directory: android-app/android
-        run: ./gradlew assembleDebug --stacktrace --init-script /tmp/jcenter-compat-init.gradle --init-script /tmp/bundle-debug-init.gradle
+        run: ./gradlew assembleRelease --stacktrace --init-script /tmp/jcenter-compat-init.gradle
 
       - name: Locate APK
+        id: locate-apk
         working-directory: android-app/android
         run: |
-          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n1)
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n1)
           echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
+          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
           ls -lh "$APK_PATH"
+
+      - name: Confirm the APK is actually signed (not left unsigned)
+        working-directory: android-app/android
+        run: |
+          "$ANDROID_HOME/build-tools"/*/apksigner verify --print-certs "$APK_PATH" | tee /tmp/apksigner-out.txt
+          grep -q "Signer #1 certificate DN" /tmp/apksigner-out.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nfcstore-debug-apk
+          name: nfcstore-standalone-test-apk
           path: android-app/android/${{ env.APK_PATH }}
           if-no-files-found: error
+
+  smoke-test:
+    needs: build-standalone-test-apk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: nfcstore-standalone-test-apk
+          path: apk
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # GitHub-hosted Ubuntu runners have nested virtualization (/dev/kvm)
+      # available, so this boots a real emulator image in CI — no physical
+      # device or Metro server involved, exactly what "standalone" means.
+      - name: Boot emulator, install APK, confirm it launches without Metro
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          force-avd-creation: false
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            APK_FILE=$(find apk -name "*.apk" | head -n1)
+            echo "Installing $APK_FILE"
+            adb install -r "$APK_FILE"
+            adb logcat -c
+            adb shell monkey -p uz.nfcstore.app -c android.intent.category.LAUNCHER 1
+            sleep 15
+            adb logcat -d > /tmp/logcat.txt
+            echo "---- last 200 lines of logcat ----"
+            tail -n 200 /tmp/logcat.txt
+            if grep -qi "Unable to load script" /tmp/logcat.txt; then
+              echo "SMOKE TEST FAILED: JS bundle is not embedded (Metro-dependent crash reproduced)."
+              exit 1
+            fi
+            if grep -q "FATAL EXCEPTION" /tmp/logcat.txt; then
+              echo "SMOKE TEST FAILED: app crashed on launch (see logcat above)."
+              exit 1
+            fi
+            RUNNING=$(adb shell "pidof uz.nfcstore.app" || true)
+            if [ -z "$RUNNING" ]; then
+              echo "SMOKE TEST FAILED: process is not running after launch attempt."
+              exit 1
+            fi
+            echo "SMOKE TEST PASSED: app launched and is running, no JS-bundle-load crash, no Metro connection used."
