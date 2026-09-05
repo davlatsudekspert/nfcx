@@ -1305,8 +1305,13 @@ function PhonePreview({ form, code }) {
               # {code}
             </div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-white/12 px-3 pb-4 pt-3" style={innerPanelStyle(record)}>
-            <div className="mx-auto flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[18px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
-              {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
+            {/* Haqiqiy ochiq profildagi kabi — kattaroq, dumaloq avatar +
+                yengil oltin porlash (premium ko'rinish, real vaqtda mos). */}
+            <div className="relative mx-auto flex h-[88px] w-[88px] items-center justify-center">
+              <span className="pointer-events-none absolute inset-[-14px] animate-[goldGlow_3.6s_ease-in-out_infinite] rounded-full" style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--vz-accent) 45%, transparent), transparent 70%)' }}></span>
+              <div className="relative z-10 flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--vz-card)] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[22px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line)]">
+                {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
+              </div>
             </div>
             <div className="mt-2.5 text-[16.5px] font-bold leading-tight">{form.name || t('Ismingiz')}</div>
             {form.role && <div className="mt-0.5 text-[13px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
@@ -3302,6 +3307,9 @@ export default function AccountPage({ refreshCatalog }) {
   // mavjud myCards ro'yxati ustida frontendda qidirish/filtr (backend'ga tegilmaydi).
   const [cardQuery, setCardQuery] = useState('');
   const [cardFilter, setCardFilter] = useState('all');
+  // Karta panjarasi (grid) yopiq holatda boshlanadi — bosilganda ochiladi,
+  // shunda hammasi bir vaqtda ekranga sig'ib ketmaydi.
+  const [cardsOpen, setCardsOpen] = useState(false);
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
@@ -3412,6 +3420,7 @@ export default function AccountPage({ refreshCatalog }) {
                 onClick={() => {
                   if (!primaryCard) return;
                   setSelectedCode(primaryCard.code);
+                  setCardsOpen(true);
                   document.getElementById('mening-profilim')?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
@@ -3489,24 +3498,34 @@ export default function AccountPage({ refreshCatalog }) {
             <p className="mt-0.5 text-xs text-base-content/45">{t('Barcha profilingizni bir joydan boshqaring')}</p>
           </div>
           {myCards.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <label className="input input-bordered input-sm flex items-center gap-2 bg-base-100">
-                <span className="text-base-content/40">{HERO_SEARCH}</span>
-                <input
-                  type="text"
-                  value={cardQuery}
-                  onChange={(e) => setCardQuery(e.target.value)}
-                  placeholder={t("ID bo'yicha qidirish")}
-                  className="w-32 grow bg-transparent focus:outline-none"
-                />
-              </label>
-              <select value={cardFilter} onChange={(e) => setCardFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
-                <option value="all">{t('Barchasi')}</option>
-                <option value="personal">{t('Shaxsiy')}</option>
-                <option value="expert">{t('Ekspert')}</option>
-                <option value="business">{t('Biznes')}</option>
-              </select>
-              <button className="btn btn-accent btn-sm" onClick={() => navigate('/')}>+ {t('Yangi profil')}</button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Ro'yxat yopiq holatda boshlanadi — hammasi ekranga sig'ib
+                  ketmasligi uchun. Bosilganda ochiladi/yopiladi. */}
+              <button type="button" className="btn btn-sm" onClick={() => setCardsOpen((v) => !v)}>
+                {cardsOpen ? t('Yashirish') : t('Kartalarni ko‘rsatish')} ({myCards.length})
+                <span className={`inline-block transition-transform ${cardsOpen ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+              {cardsOpen && (
+                <>
+                  <label className="input input-bordered input-sm flex items-center gap-2 bg-base-100">
+                    <span className="text-base-content/40">{HERO_SEARCH}</span>
+                    <input
+                      type="text"
+                      value={cardQuery}
+                      onChange={(e) => setCardQuery(e.target.value)}
+                      placeholder={t("ID bo'yicha qidirish")}
+                      className="w-32 grow bg-transparent focus:outline-none"
+                    />
+                  </label>
+                  <select value={cardFilter} onChange={(e) => setCardFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
+                    <option value="all">{t('Barchasi')}</option>
+                    <option value="personal">{t('Shaxsiy')}</option>
+                    <option value="expert">{t('Ekspert')}</option>
+                    <option value="business">{t('Biznes')}</option>
+                  </select>
+                  <button className="btn btn-accent btn-sm" onClick={() => navigate('/')}>+ {t('Yangi profil')}</button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -3518,7 +3537,7 @@ export default function AccountPage({ refreshCatalog }) {
               {t('Bosh sahifada band qilish')} &rarr;
             </button>
           </div>
-        ) : (
+        ) : !cardsOpen ? null : (
           <>
             <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
               {myCards.filter((c) => {

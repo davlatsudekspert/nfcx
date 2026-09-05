@@ -913,7 +913,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [gallery, setGallery] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
-  const [otherCodesOpen, setOtherCodesOpen] = useState(false); // "Boshqa tashrif qog'ozlaringiz" ochiladigan ro'yxati
   const { user, myCards } = useAuth();
   const { t, lang } = useLanguage();
   const cats = useCategories();
@@ -1535,36 +1534,9 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
             </div>
 
-            {otherCodes.length > 0 && (
-              <>
-                <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-                {/* Ixcham, yopiq holatda boshlanadigan ro'yxat — bosilganda
-                    pastga ochiladi (dropdown), tanlansa o'sha profilga
-                    o'tadi va o'zi yopiladi. */}
-                <button
-                  type="button"
-                  onClick={() => setOtherCodesOpen((v) => !v)}
-                  aria-expanded={otherCodesOpen}
-                  className="mx-auto flex w-full max-w-[300px] cursor-pointer items-center justify-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-4 py-2 text-[13px] font-extrabold uppercase tracking-[0.06em] text-[color:var(--vz-ink-faint)] transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"
-                >
-                  {t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})
-                  <span className={`inline-block transition-transform duration-200 ${otherCodesOpen ? 'rotate-180' : ''}`}>▾</span>
-                </button>
-                {otherCodesOpen && (
-                  <div className="mt-3 flex flex-wrap justify-center gap-2">
-                    {otherCodes.map((c) => (
-                      <span
-                        key={c.code}
-                        onClick={() => { setOtherCodesOpen(false); navigate('/' + c.code); }}
-                        className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-1.5 font-mono text-xs hover:border-[color:var(--vz-ink)]"
-                      >
-                        nfcstore.uz/{c.code.toLowerCase()}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+            {/* "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati pastda
+                TAKRORLANMAYDI — yuqorida (sarlavha qatorida, kod belgisi
+                yonida) allaqachon ko'rsatilgan, shu yetarli. */}
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
             <div className="flex gap-2.5">
