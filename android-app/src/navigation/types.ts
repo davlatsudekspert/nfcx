@@ -15,10 +15,17 @@ export type HomeStackParamList = {
   PublicProfile: { code: string; initialTab?: 'menu' | 'products' | 'services' | 'promotions' };
 };
 
+export interface DraftPurchaseProfile {
+  name: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+}
+
 export type IdStackParamList = {
   IdSearch: undefined;
   PurchaseStep1: { code: string };
-  PurchaseStep2: { code: string };
+  PurchaseStep2: { code: string; profile: DraftPurchaseProfile };
   PurchaseStep3: { code: string; orderId: number; price: number; payLink: string | null };
   PurchaseResult: { code: string; orderId: number };
 };
