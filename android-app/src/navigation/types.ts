@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 /** Param lists for every stack — kept in one file so screens and the linking
  * config never drift. Matches the 29-screen inventory in
  * android/docs/04-SCREEN_MAP.md §4.1. */
@@ -47,12 +49,18 @@ export type ProfileStackParamList = {
   NfcRead: undefined;
 };
 
+/**
+ * Each tab's param type is `NavigatorScreenParams<...>` (not `undefined`) so
+ * cross-tab navigation — e.g. Home's notification bell jumping straight to
+ * `ProfileTab > Notifications` — is fully type-checked, with no `as never`
+ * escape hatches anywhere in the app.
+ */
 export type MainTabParamList = {
-  HomeTab: undefined;
-  IdTab: undefined;
-  AuctionTab: undefined;
-  CompanyTab: undefined;
-  ProfileTab: undefined;
+  HomeTab: NavigatorScreenParams<HomeStackParamList>;
+  IdTab: NavigatorScreenParams<IdStackParamList>;
+  AuctionTab: NavigatorScreenParams<AuctionStackParamList>;
+  CompanyTab: NavigatorScreenParams<CompanyStackParamList>;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 export type RootStackParamList = {

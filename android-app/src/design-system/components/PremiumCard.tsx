@@ -5,7 +5,7 @@ import { color, motion, radius, space } from '../tokens';
 import { PremiumLoadingSkeleton } from './PremiumLoadingSkeleton';
 
 export interface PremiumCardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   featured?: boolean;
   loading?: boolean;
   /** Position in a list — drives the staggered entrance animation, capped
