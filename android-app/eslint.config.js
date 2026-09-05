@@ -6,6 +6,15 @@ module.exports = [
     ignores: ['node_modules/**', 'android/**', 'ios/**', 'dist/**'],
   },
   {
+    // One-off Node-context tooling (asset generation, Expo config
+    // plugins) — not part of the React Native app bundle, so RN/browser
+    // globals don't apply and dev-only tool deps (e.g. `sharp`) are
+    // intentionally not listed in package.json.
+    files: ['scripts/**', 'plugins/**'],
+    languageOptions: { globals: { Buffer: 'readonly', require: 'readonly', module: 'readonly', process: 'readonly', console: 'readonly' } },
+    rules: { 'import/no-unresolved': 'off' },
+  },
+  {
     files: ['**/__tests__/**', '**/__mocks__/**', '**/*.test.{ts,tsx}'],
     languageOptions: {
       globals: { jest: 'readonly', describe: 'readonly', it: 'readonly', expect: 'readonly', beforeEach: 'readonly', afterEach: 'readonly' },

@@ -11,13 +11,23 @@
     "plugins": [
       "expo-secure-store",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#050505"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
             "usesCleartextTraffic": false
           }
         }
-      ]
+      ],
+      "./plugins/withReleaseSigning.js"
     ],
     "android": {
       "package": "uz.nfcstore.app",
