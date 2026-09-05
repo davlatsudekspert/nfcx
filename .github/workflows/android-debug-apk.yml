@@ -66,6 +66,29 @@ jobs:
           }
           EOF
 
+      # React Native's Gradle plugin excludes the "debug" build variant from
+      # JS bundling by default (project.react.debuggableVariants = ["debug"]
+      # internally) — a debug APK built that way only runs while a Metro dev
+      # server is reachable, and crashes standalone with "Unable to load
+      # script". Since this CI job has no Metro server and no device to
+      # reach one, and the whole point of this workflow is a debug APK a
+      # tester can just install and open, this init script clears
+      # debuggableVariants on the generated app module so `assembleDebug`
+      # also runs the JS-bundling task and embeds index.android.bundle +
+      # assets into the APK itself. It does not touch any android-app/ file
+      # — same class of build-time-only fix as the jcenter workaround above.
+      - name: Force JS bundling into the debug APK (no Metro dependency at runtime)
+        run: |
+          cat > /tmp/bundle-debug-init.gradle <<'EOF'
+          allprojects {
+              afterEvaluate { proj ->
+                  if (proj.extensions.findByName('react')) {
+                      proj.react.debuggableVariants = []
+                  }
+              }
+          }
+          EOF
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -78,7 +101,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: android-app/android
-        run: ./gradlew assembleDebug --stacktrace --init-script /tmp/jcenter-compat-init.gradle
+        run: ./gradlew assembleDebug --stacktrace --init-script /tmp/jcenter-compat-init.gradle --init-script /tmp/bundle-debug-init.gradle
 
       - name: Locate APK
         working-directory: android-app/android
