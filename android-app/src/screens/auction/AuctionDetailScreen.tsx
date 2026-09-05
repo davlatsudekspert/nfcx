@@ -81,8 +81,12 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
     bid.mutate(amount);
   };
 
-  return (
-    <ScreenWithHeader title={`#${auction.code}`} onBack={navigation.goBack}>
+  // The bid-history FlashList is the screen's single scrollable element —
+  // everything above it (price card, bid CTA) renders via `ListHeaderComponent`
+  // rather than as ScrollView-then-nested-FlashList siblings, which would
+  // silently defeat FlashList's virtualization (QA finding, Phase 12).
+  const listHeader = (
+    <View>
       <View style={styles.headerRow}>
         <Text style={styles.code}>#{auction.code}</Text>
         {isActive && <PremiumBadge label="LIVE" tone="live" pulse />}
@@ -106,12 +110,18 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
       {isActive && <PremiumButton label="Taklif berish" onPress={openBidSheet} disabled={paymentsOff} style={styles.bidButton} />}
 
       <Text style={styles.sectionTitle}>Takliflar tarixi</Text>
-      {bids.length === 0 ? (
-        <Text style={styles.emptyBids}>Hali takliflar yo'q.</Text>
-      ) : (
+      {bids.length === 0 && <Text style={styles.emptyBids}>Hali takliflar yo'q.</Text>}
+    </View>
+  );
+
+  return (
+    <ScreenWithHeader title={`#${auction.code}`} onBack={navigation.goBack} scroll={false}>
+      <View style={styles.listWrapper}>
         <FlashList
           data={bids}
           keyExtractor={(item) => String(item.id)}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <View style={styles.bidRow}>
               <Text style={styles.bidderCode}>{item.bidderCode ? `#${item.bidderCode}` : 'Anonim'}</Text>
@@ -120,7 +130,7 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
             </View>
           )}
         />
-      )}
+      </View>
 
       <PremiumSheet ref={sheetRef} title="Taklif berish">
         <Text style={styles.sheetHint}>Minimal taklif: {formatSom(minBid)}</Text>
@@ -138,6 +148,8 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  listWrapper: { flex: 1 },
+  listContent: { padding: space.lg },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   code: { ...typeTokens.display, color: color.textPrimary },
   countdown: { marginTop: space.xs, fontSize: 18 },

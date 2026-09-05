@@ -46,7 +46,11 @@ export function PremiumLoadingSkeleton({ height = 16, width = '100%', borderRadi
   }));
 
   return (
-    <View style={[styles.base, { height, width, borderRadius }]}>
+    <View
+      style={[styles.base, { height, width, borderRadius }]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       {!reduceMotion && <Animated.View style={[styles.sweep, shimmerStyle]} />}
     </View>
   );

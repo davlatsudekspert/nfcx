@@ -48,6 +48,8 @@ export function PremiumToastProvider({ children }: { children: React.ReactNode }
           exiting={SlideOutDown.duration(180)}
           style={styles.wrapper}
           pointerEvents="none"
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
         >
           <View style={[styles.bar, { backgroundColor: TONE_COLOR[current.tone] }]} />
           <Text style={styles.text} numberOfLines={2}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { CompanyStackParamList } from '../../navigation/types';
 import { ScreenWithHeader } from '../shared/ScreenWithHeader';
@@ -38,23 +38,21 @@ export function CompanyHomeScreen({ navigation }: Props) {
         />
       )}
 
-      <ScrollView>
-        {companies.data?.map((c) => (
-          <PremiumCard key={c.companyId} style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.name}>{c.displayName}</Text>
-              <PremiumBadge label={STATUS_LABEL[c.status] ?? c.status} tone={c.status === 'active' ? 'success' : 'warning'} />
-            </View>
-            <Text style={styles.id}>#{c.companyId}</Text>
-            <PremiumButton
-              label="Boshqarish"
-              variant="ghost"
-              onPress={() => navigation.navigate('CompanyDashboard', { companyId: c.companyId })}
-              style={styles.manageButton}
-            />
-          </PremiumCard>
-        ))}
-      </ScrollView>
+      {companies.data?.map((c) => (
+        <PremiumCard key={c.companyId} style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.name}>{c.displayName}</Text>
+            <PremiumBadge label={STATUS_LABEL[c.status] ?? c.status} tone={c.status === 'active' ? 'success' : 'warning'} />
+          </View>
+          <Text style={styles.id}>#{c.companyId}</Text>
+          <PremiumButton
+            label="Boshqarish"
+            variant="ghost"
+            onPress={() => navigation.navigate('CompanyDashboard', { companyId: c.companyId })}
+            style={styles.manageButton}
+          />
+        </PremiumCard>
+      ))}
     </ScreenWithHeader>
   );
 }

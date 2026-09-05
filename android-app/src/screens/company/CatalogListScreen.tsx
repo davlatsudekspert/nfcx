@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type BottomSheet from '@gorhom/bottom-sheet';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +22,14 @@ type Props = NativeStackScreenProps<CompanyStackParamList, 'CatalogList'>;
 
 const MODULE_LABEL = { menu: 'Menyu', products: 'Mahsulotlar', services: 'Xizmatlar' } as const;
 
+/**
+ * `access.ts`'s catalog limits allow up to 300 items on a premium company
+ * (`PRODUCT_LIMITS`/`SERVICE_LIMITS`/`MENU_LIMITS`) — real enough to need
+ * real virtualization (brief §18), so this uses `FlashList` as the
+ * screen's single scrollable element (`ScreenWithHeader scroll={false}`) —
+ * nesting FlashList inside the header's own ScrollView would silently
+ * defeat the virtualization entirely.
+ */
 export function CatalogListScreen({ route, navigation }: Props) {
   const { companyId } = route.params;
   const queryClient = useQueryClient();
@@ -79,7 +88,8 @@ export function CatalogListScreen({ route, navigation }: Props) {
     <ScreenWithHeader
       title={module ? MODULE_LABEL[module] : 'Katalog'}
       onBack={navigation.goBack}
-      actions={[{ icon: 'plus', accessibilityLabel: 'Qo\'shish', onPress: openAddSheet }]}
+      scroll={false}
+      actions={[{ icon: 'plus', accessibilityLabel: "Qo'shish", onPress: openAddSheet }]}
     >
       {company.isLoading && <PremiumLoadingSkeleton height={80} />}
 
@@ -87,19 +97,28 @@ export function CatalogListScreen({ route, navigation }: Props) {
         <PremiumEmptyState icon="grid" title="Hali katalog elementi yo'q" ctaLabel="Qo'shish" onPressCta={openAddSheet} />
       )}
 
-      {items.map((item) => (
-        <PremiumCard key={item.id} style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemPrice}>{formatSom(item.promotionPrice ?? item.price)}</Text>
-          </View>
-          {!!item.description && <Text style={styles.itemDescription}>{item.description}</Text>}
-          <View style={styles.actionsRow}>
-            <PremiumButton label="Tahrirlash" variant="ghost" fullWidth={false} onPress={() => openEditSheet(item)} style={styles.actionButton} />
-            <PremiumButton label="O'chirish" variant="danger" fullWidth={false} onPress={() => deleteItem.mutate(item.id)} style={styles.actionButton} />
-          </View>
-        </PremiumCard>
-      ))}
+      {!company.isLoading && !!items.length && (
+        <View style={styles.listWrapper}>
+        <FlashList
+          data={items}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => (
+            <PremiumCard index={index} style={styles.card}>
+              <View style={styles.row}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemPrice}>{formatSom(item.promotionPrice ?? item.price)}</Text>
+              </View>
+              {!!item.description && <Text style={styles.itemDescription}>{item.description}</Text>}
+              <View style={styles.actionsRow}>
+                <PremiumButton label="Tahrirlash" variant="ghost" fullWidth={false} onPress={() => openEditSheet(item)} style={styles.actionButton} />
+                <PremiumButton label="O'chirish" variant="danger" fullWidth={false} onPress={() => deleteItem.mutate(item.id)} style={styles.actionButton} />
+              </View>
+            </PremiumCard>
+          )}
+        />
+        </View>
+      )}
 
       <PremiumSheet ref={sheetRef} title={editing ? 'Tahrirlash' : "Qo'shish"}>
         <PremiumInput label="Nomi" value={name} onChangeText={setName} />
@@ -117,6 +136,8 @@ export function CatalogListScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  listWrapper: { flex: 1 },
+  listContent: { padding: space.lg },
   card: { marginBottom: space.md },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   itemName: { ...typeTokens.h2, color: color.textPrimary, flex: 1 },
