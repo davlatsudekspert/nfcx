@@ -81,14 +81,21 @@ export function outerPageStyle(theme, record, tier, opts = {}) {
     // ranglarini oqqa majburlab o'tkazamiz (tanlangan tema yorug' bo'lsa ham
     // o'qiladi). Shu CSS o'zgaruvchilari pastdagi barcha elementlarga
     // (header, ichki panel) meros bo'lib o'tadi — butun sahifa "glass" bo'ladi.
+    // DIQQAT: bu yerda backgroundAttachment doim 'scroll' (fixedBg'ga
+    // qaramasdan) — 'fixed' brauzer OYNASI balandligiga nisbatan hisoblanadi,
+    // sahifa esa (skroll qilinadigan, ko'pincha undan ancha baland) o'z
+    // balandligiga ega, shu sabab 'fixed' + 'cover' rasmni faqat bir ekran
+    // balandligida to'ldirib, qolgan qismini bo'sh (fon rangida) qoldirar edi.
+    // 'scroll' esa elementning O'Z qutisiga nisbatan hisoblanadi — shuning
+    // uchun rasm har doim BUTUN sahifa balandligini to'liq qoplaydi.
     return {
       ...vars,
       backgroundColor: 'var(--vz-bg-a)',
       backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
       backgroundSize: 'cover',
-      backgroundPosition: 'center',
+      backgroundPosition: 'center top',
       backgroundRepeat: 'no-repeat',
-      backgroundAttachment: fixedBg ? 'fixed' : 'scroll',
+      backgroundAttachment: 'scroll',
       '--vz-ink': '#ffffff',
       '--vz-ink-dim': 'rgba(255,255,255,0.82)',
       '--vz-ink-faint': 'rgba(255,255,255,0.58)',
@@ -227,13 +234,14 @@ function rarity(code) {
 
 
 // Profil musiqasi — brauzerlar ovozli avtomatik ijroni bloklaydi, shuning
-// uchun kichik suzuvchi tugma sifatida ko'rsatamiz; birinchi bosishda
-// ijro boshlanadi va aylanayotgan belgi bilan holat ko'rsatiladi.
+// uchun bosiladigan tugma sifatida ko'rsatamiz; birinchi bosishda ijro
+// boshlanadi va aylanayotgan belgi bilan holat ko'rsatiladi. Profil
+// dizayniga mos, ichki (statik) premium blok sifatida joylashgan —
+// suzuvchi/siljitiladigan widget emas.
 // YouTube havolasi: mobil (iOS/Android) brauzerlar yashirin iframe ovozini
 // bloklaydi — shu sabab ijro paytida KICHIK video paneli ko'rsatiladi
 // (foydalanuvchi bir marta bosib qo'yadi, keyin ovoz chiqadi). Panelni
-// yig'ish (chevron) va butun pleerni ekran bo'ylab SURISH mumkin.
-const MUSIC_POS_KEY = 'nfc-music-pos';
+// yig'ish (chevron) mumkin.
 
 // YouTube IFrame Player API'ni bir marta yuklaydi. Mobil (iOS/Android)
 // brauzerlar oddiy `autoplay=1` iframe ovozini bloklaydi — ovoz faqat
@@ -338,37 +346,6 @@ function MusicPlayer({ urls = [], accentColor }) {
     };
   }, [ytId]);
 
-  // Suriladigan joylashuv — o'ng-past burchakdan siljish (localStorage'da saqlanadi).
-  const [pos, setPos] = useState(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem(MUSIC_POS_KEY) || 'null');
-      if (s && typeof s.x === 'number' && typeof s.y === 'number') return s;
-    } catch { /* ignore */ }
-    return { x: 0, y: 0 };
-  });
-  const drag = useRef(null);
-  const posRef = useRef(pos);
-  posRef.current = pos;
-
-  const onPointerDown = (e) => {
-    drag.current = { sx: e.clientX, sy: e.clientY, ox: posRef.current.x, oy: posRef.current.y };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-  const onPointerMove = (e) => {
-    if (!drag.current) return;
-    const nx = drag.current.ox + (e.clientX - drag.current.sx);
-    const ny = drag.current.oy + (e.clientY - drag.current.sy);
-    setPos({
-      x: Math.min(0, Math.max(-(window.innerWidth - 96), nx)),
-      y: Math.min(0, Math.max(-(window.innerHeight - 96), ny)),
-    });
-  };
-  const onPointerUp = () => {
-    if (!drag.current) return;
-    drag.current = null;
-    try { localStorage.setItem(MUSIC_POS_KEY, JSON.stringify(posRef.current)); } catch { /* ignore */ }
-  };
-
   const toggle = () => {
     if (ytId) {
       setVideoOpen(true);
@@ -409,10 +386,7 @@ function MusicPlayer({ urls = [], accentColor }) {
   const isYd = source.kind === 'yandex';
 
   return (
-    <div
-      className="fixed bottom-5 right-5 z-30 flex select-none flex-col items-end gap-2"
-      style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}
-    >
+    <div className="mx-auto mt-4 flex w-full max-w-[300px] flex-col items-center gap-2 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
       {isYt && (
         <div
           className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)] transition-all duration-200"
@@ -450,23 +424,11 @@ function MusicPlayer({ urls = [], accentColor }) {
         <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />
       )}
 
-      <div className="flex items-center gap-1 rounded-full bg-black/70 p-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur">
-        <span
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          className="flex h-11 w-4 shrink-0 cursor-grab items-center justify-center text-white/35 active:cursor-grabbing"
-          style={{ touchAction: 'none' }}
-          title={t('Surish')}
-          aria-hidden="true"
-        >
-          <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="3" r="1.4" /><circle cx="7.5" cy="3" r="1.4" /><circle cx="2.5" cy="8" r="1.4" /><circle cx="7.5" cy="8" r="1.4" /><circle cx="2.5" cy="13" r="1.4" /><circle cx="7.5" cy="13" r="1.4" /></svg>
-        </span>
+      <div className="flex w-full items-center justify-center gap-1">
         {urls.length > 1 && (
           <button
             onClick={() => switchTrack(-1)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] hover:bg-white/10 hover:text-[color:var(--vz-ink)]"
             aria-label={t('Oldingi qo\u2018shiq')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
@@ -487,19 +449,19 @@ function MusicPlayer({ urls = [], accentColor }) {
         {urls.length > 1 && (
           <button
             onClick={() => switchTrack(1)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] hover:bg-white/10 hover:text-[color:var(--vz-ink)]"
             aria-label={t('Keyingi qo\u2018shiq')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </button>
         )}
-        <span className="max-w-[110px] truncate px-1 text-xs font-semibold text-white/85">
+        <span className="max-w-[110px] truncate px-1 text-xs font-semibold text-[color:var(--vz-ink-dim)]">
           {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
         </span>
         {(isYt || isYd) && playing && (
           <button
             onClick={() => setVideoOpen((v) => !v)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] hover:bg-white/10 hover:text-[color:var(--vz-ink)]"
             aria-label={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: videoOpen ? 'none' : 'rotate(180deg)' }}><path d="M6 9l6 6 6-6" /></svg>
@@ -1243,7 +1205,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
   return (
     <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={outerPageStyle(record.theme || 'classic', record, tier)}>
-      <MusicPlayer urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])} accentColor={record.accentColor} />
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
         <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
           <IconArrowLeft /> {t('Bosh sahifaga')}
@@ -1360,9 +1321,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
 
         <div className="mt-0.5 flex flex-col items-center">
-          <div className="relative flex h-[120px] w-[120px] items-center justify-center">
+          <div className="relative flex h-[152px] w-[152px] items-center justify-center">
+            {/* Yengil oltin porlash (glow) — premium ko'rinish uchun, avatar ortida sekin nafas oladi. */}
+            <span className="pointer-events-none absolute inset-[-22px] animate-[goldGlow_3.6s_ease-in-out_infinite] rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${tier === 'free' ? 'var(--vz-accent)' : tierColor} 45%, transparent), transparent 70%)` }}></span>
             <span className={`pointer-events-none absolute inset-[-4px] animate-[spinSlow_18s_linear_infinite] rounded-full border border-dashed border-[color:var(--vz-line)] ${glass ? 'opacity-40' : ''}`}></span>
-            <span className={`pointer-events-none absolute inset-[-12px] animate-[spinSlow_30s_linear_infinite_reverse] rounded-full border border-[color:var(--vz-line)] ${glass ? 'opacity-20' : 'opacity-50'}`}></span>
+            <span className={`pointer-events-none absolute inset-[-14px] animate-[spinSlow_30s_linear_infinite_reverse] rounded-full border border-[color:var(--vz-line)] ${glass ? 'opacity-20' : 'opacity-50'}`}></span>
             <span className="pointer-events-none absolute left-[82%] top-[4%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[88%] top-[78%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
             <span className="pointer-events-none absolute left-[10%] top-[86%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
@@ -1381,7 +1344,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               ))}
             </div>
 
-            <div className="font-display z-10 flex h-[104px] w-[104px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[32px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_24px_rgba(20,25,30,0.12)]"
+            <div className="font-display z-10 flex h-[132px] w-[132px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[38px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
               style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
               {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
             </div>
@@ -1501,6 +1464,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               </div>
             )}
 
+            <MusicPlayer urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])} accentColor={record.accentColor} />
+
             <div className="mt-[22px] flex flex-col gap-2.5">
               {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`} onClick={() => track('phone_click')}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
               {hasLocation && (
@@ -1603,7 +1568,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
             <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
             <div className="flex gap-2.5">
-              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-5 py-3.5 text-[18px] font-extrabold text-[color:var(--vz-ink)] transition hover:border-[color:var(--vz-ink-dim)] hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
+              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
               {!isOwner && MESSAGING_ENABLED && (
                 <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
               )}
