@@ -3481,42 +3481,39 @@ export default function AccountPage({ refreshCatalog }) {
           </div>
         ) : (
           <>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
               {myCards.filter((c) => {
                 if (cardFilter !== 'all' && c.profileType !== cardFilter) return false;
                 const q = cardQuery.trim().toLowerCase();
                 if (!q) return true;
                 return c.code.toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q);
-              }).map((c) => (
-                <div key={c.code} className={`rounded-2xl border p-4 ${c.isPrimary ? 'border-accent/50 bg-accent/5' : 'border-white/10 bg-base-200/40'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-base-300 font-bold">
-                      {c.avatarUrl ? <img src={c.avatarUrl} alt="" className="h-full w-full object-cover" /> : (c.name || c.code).charAt(0).toUpperCase()}
+              }).map((c) => {
+                // Karta ko'rinishi — real NFC ID darajasiga (tarifiga) qarab
+                // avtomatik rang/finish oladi, xuddi haqiqiy NFC kartadagidek
+                // (saqlangan `finish` bo'lsa o'shani, aks holda kod darajasidan).
+                const finish = c.finish && c.finish !== 'auto' ? c.finish : ('tier-' + tierForCode(c.code));
+                return (
+                  <div key={c.code} className={`flex flex-col items-center gap-2.5 rounded-2xl border p-3 ${c.isPrimary ? 'border-accent/50 bg-accent/5' : 'border-white/10 bg-base-200/40'}`}>
+                    <div className="flex w-full items-center justify-between px-1">
+                      {c.isPrimary ? <span className="badge badge-accent badge-xs">{t('ASOSIY')}</span> : <span />}
+                      <span className="badge badge-success badge-xs">{t('Faol')}</span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate font-mono text-sm font-bold">{c.code}</span>
-                        {c.isPrimary && <span className="badge badge-accent badge-xs shrink-0">{t('ASOSIY')}</span>}
-                      </div>
-                      <div className="truncate text-xs text-base-content/50">{c.name || t(CARD_TYPE_LABEL[c.profileType]) || c.code}</div>
+                    <NfcCard code={c.code} name={c.name || c.code} finish={finish} size="sm" />
+                    <div className="flex w-full gap-1.5">
+                      <button
+                        className="btn btn-accent btn-xs flex-1"
+                        onClick={() => {
+                          setSelectedCode(c.code);
+                          document.getElementById('kartani-tahrirlash')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                      >
+                        {t('Boshqarish')}
+                      </button>
+                      <button className="btn btn-ghost btn-xs flex-1" onClick={() => navigate('/' + c.code.toLowerCase())}>{t("Ko'rish")}</button>
                     </div>
-                    <span className="badge badge-success badge-xs shrink-0">{t('Faol')}</span>
                   </div>
-                  <div className="mt-2 truncate font-mono text-[11px] text-base-content/40">nfcstore.uz/{c.code.toLowerCase()}</div>
-                  <div className="mt-3 flex gap-1.5">
-                    <button
-                      className="btn btn-accent btn-xs flex-1"
-                      onClick={() => {
-                        setSelectedCode(c.code);
-                        document.getElementById('kartani-tahrirlash')?.scrollIntoView({ behavior: 'smooth' });
-                      }}
-                    >
-                      {t('Boshqarish')}
-                    </button>
-                    <button className="btn btn-ghost btn-xs flex-1" onClick={() => navigate('/' + c.code.toLowerCase())}>{t("Ko'rish")}</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div id="kartani-tahrirlash">
               {selectedCard && (
