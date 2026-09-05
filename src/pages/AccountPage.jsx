@@ -2501,13 +2501,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 ['nfckarta', PERSONAL_WS_TAB_LABEL.nfckarta, WS_ICON.nfckarta],
                 ['myids', PERSONAL_WS_TAB_LABEL.myids, WS_ICON.myids],
                 ['postlar', PERSONAL_WS_TAB_LABEL.postlar, WS_ICON.postlar],
-                ['aloqa', PERSONAL_WS_TAB_LABEL.aloqa, WS_ICON.aloqa],
                 ['sozlamalar', PERSONAL_WS_TAB_LABEL.sozlamalar, WS_ICON.sozlamalar],
               ].map(([id, label, icon]) => (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setWsTab(id === 'aloqa' ? 'profil' : id)}
+                  onClick={() => setWsTab(id)}
                   className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${wsTab === id ? 'bg-accent text-accent-content' : 'text-base-content/60 hover:bg-white/5'}`}
                 >
                   <span className="text-base leading-none">{icon}</span> {t(label)}
@@ -3132,11 +3131,11 @@ const ORDER_STATUS_LABEL = {
 // biznes Workspace'ga tegishli emas, undan mustaqil.
 const WS_ICON = {
   boshqaruv: '\u{1F3E0}', profil: '\u{1F464}', nfckarta: '\u{1F4B3}',
-  myids: '\u{1F194}', postlar: '\u{1F5BC}️', aloqa: '\u{1F4DE}', sozlamalar: '⚙️',
+  myids: '\u{1F194}', postlar: '\u{1F5BC}️', sozlamalar: '⚙️',
 };
 const PERSONAL_WS_TAB_LABEL = {
   boshqaruv: 'Boshqaruv', profil: 'Profil', nfckarta: 'NFC karta',
-  myids: 'My IDs', postlar: 'Postlar / Media', aloqa: 'Aloqa', sozlamalar: 'Sozlamalar',
+  myids: 'My IDs', postlar: 'Postlar / Media', sozlamalar: 'Sozlamalar',
 };
 
 // Account sahifasining yuqori "hero" qismi — profil kartalari uchun
@@ -3151,7 +3150,6 @@ const HERO_EYE = '\u{1F441}️';
 const HERO_PROFILES = '\u{1F464}';
 const HERO_SHIELD = '\u{1F6E1}️';
 const HERO_CART = '\u{1F6D2}';
-const HERO_SEARCH = '\u{1F50D}';
 const HERO_CHECK = '✓';
 
 // Profil to'ldirilish foizi — faqat REAL form maydonlariga qarab hisoblanadi,
@@ -3303,13 +3301,6 @@ export default function AccountPage({ refreshCatalog }) {
     : '/company/create');
   const [orders, setOrders] = useState([]);
   const [supportOpen, setSupportOpen] = useState(false);
-  // Account hero'dagi "Mening raqamli tashrif qog'ozlarim" toolbar'i —
-  // mavjud myCards ro'yxati ustida frontendda qidirish/filtr (backend'ga tegilmaydi).
-  const [cardQuery, setCardQuery] = useState('');
-  const [cardFilter, setCardFilter] = useState('all');
-  // Karta panjarasi (grid) yopiq holatda boshlanadi — bosilganda ochiladi,
-  // shunda hammasi bir vaqtda ekranga sig'ib ketmaydi.
-  const [cardsOpen, setCardsOpen] = useState(false);
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
@@ -3420,7 +3411,6 @@ export default function AccountPage({ refreshCatalog }) {
                 onClick={() => {
                   if (!primaryCard) return;
                   setSelectedCode(primaryCard.code);
-                  setCardsOpen(true);
                   document.getElementById('mening-profilim')?.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
@@ -3491,89 +3481,21 @@ export default function AccountPage({ refreshCatalog }) {
         <PremiumPanel user={user} onBecamePremium={refresh} />
       </section>
 
+      {/* "Mening raqamli tashrif qog'ozilarim" katta karta panjarasi olib
+          tashlandi — "My IDs" bo'limida (EditCardForm sidebar) xuddi shu
+          kartalar ixcham ro'yxatda bor. Bu yerda faqat tahrirlash formasi
+          (yoki bo'sh holat xabari) qoladi; "Profilni tahrirlash" tezkor
+          tugmasi (yuqorida) shu yerga ("mening-profilim") olib keladi. */}
       <section className="pt-8" id="mening-profilim">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold">{t("Mening raqamli tashrif qog'ozilarim")}</h2>
-            <p className="mt-0.5 text-xs text-base-content/45">{t('Barcha profilingizni bir joydan boshqaring')}</p>
-          </div>
-          {myCards.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Ro'yxat yopiq holatda boshlanadi — hammasi ekranga sig'ib
-                  ketmasligi uchun. Bosilganda ochiladi/yopiladi. */}
-              <button type="button" className="btn btn-sm" onClick={() => setCardsOpen((v) => !v)}>
-                {cardsOpen ? t('Yashirish') : t('Kartalarni ko‘rsatish')} ({myCards.length})
-                <span className={`inline-block transition-transform ${cardsOpen ? 'rotate-180' : ''}`}>▾</span>
-              </button>
-              {cardsOpen && (
-                <>
-                  <label className="input input-bordered input-sm flex items-center gap-2 bg-base-100">
-                    <span className="text-base-content/40">{HERO_SEARCH}</span>
-                    <input
-                      type="text"
-                      value={cardQuery}
-                      onChange={(e) => setCardQuery(e.target.value)}
-                      placeholder={t("ID bo'yicha qidirish")}
-                      className="w-32 grow bg-transparent focus:outline-none"
-                    />
-                  </label>
-                  <select value={cardFilter} onChange={(e) => setCardFilter(e.target.value)} className="select select-bordered select-sm bg-base-100">
-                    <option value="all">{t('Barchasi')}</option>
-                    <option value="personal">{t('Shaxsiy')}</option>
-                    <option value="expert">{t('Ekspert')}</option>
-                    <option value="business">{t('Biznes')}</option>
-                  </select>
-                  <button className="btn btn-accent btn-sm" onClick={() => navigate('/')}>+ {t('Yangi profil')}</button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
         {myCards.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
+          <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
             {t("Hozircha raqamli tashrif qog'ozingiz yo'q.")}{' '}
             <button className="cursor-pointer underline underline-offset-2 hover:text-base-content" onClick={() => navigate('/')}>
               {t('Bosh sahifada band qilish')} &rarr;
             </button>
           </div>
-        ) : !cardsOpen ? null : (
-          <>
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
-              {myCards.filter((c) => {
-                if (cardFilter !== 'all' && c.profileType !== cardFilter) return false;
-                const q = cardQuery.trim().toLowerCase();
-                if (!q) return true;
-                return c.code.toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q);
-              }).map((c) => {
-                // Karta ko'rinishi — real NFC ID darajasiga (tarifiga) qarab
-                // avtomatik rang/finish oladi, xuddi haqiqiy NFC kartadagidek
-                // (saqlangan `finish` bo'lsa o'shani, aks holda kod darajasidan).
-                const finish = c.finish && c.finish !== 'auto' ? c.finish : ('tier-' + tierForCode(c.code));
-                return (
-                  <div key={c.code} className={`flex flex-col items-center gap-2.5 rounded-2xl border p-3 ${c.isPrimary ? 'border-accent/50 bg-accent/5' : 'border-white/10 bg-base-200/40'}`}>
-                    <div className="flex w-full items-center justify-between px-1">
-                      {c.isPrimary ? <span className="badge badge-accent badge-xs">{t('ASOSIY')}</span> : <span />}
-                      <span className="badge badge-success badge-xs">{t('Faol')}</span>
-                    </div>
-                    <NfcCard code={c.code} name={c.name || c.code} finish={finish} size="sm" />
-                    <div className="flex w-full gap-1.5">
-                      <button
-                        className="btn btn-accent btn-xs flex-1"
-                        onClick={() => {
-                          setSelectedCode(c.code);
-                          document.getElementById('kartani-tahrirlash')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                      >
-                        {t('Boshqarish')}
-                      </button>
-                      <button className="btn btn-ghost btn-xs flex-1" onClick={() => navigate('/' + c.code.toLowerCase())}>{t("Ko'rish")}</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div id="kartani-tahrirlash">
+        ) : (
+          <div id="kartani-tahrirlash">
               {selectedCard && (
                 selectedCard.profileType === 'business' ? (
                   <div className="mt-5 overflow-hidden rounded-3xl border border-amber-400/25 bg-gradient-to-br from-amber-400/10 via-base-200 to-base-100 p-6 shadow-xl">
@@ -3600,7 +3522,6 @@ export default function AccountPage({ refreshCatalog }) {
                 )
               )}
             </div>
-          </>
         )}
       </section>
 

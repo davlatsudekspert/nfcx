@@ -1111,6 +1111,30 @@ async function ensureCoreSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "follows_followee_idx" ON "follows" ("followee_id")`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "follows_follower_idx" ON "follows" ("follower_id")`),
+      // db/d1-migration/0001-schema.sql bilan AYNAN bir xil DDL (profil
+      // like'lari va postlar). Avval bu jadvallar uchun Worker'da hech
+      // qanday handler yo'q edi — /api/records/:code/{view,like,posts}
+      // so'rovlari legacy proxy'ga tushib, 405 qaytarar edi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "card_likes" (
+        "id" INTEGER PRIMARY KEY NOT NULL, "code" TEXT (16) NOT NULL, "user_id" INTEGER NOT NULL,
+        "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        UNIQUE ("code", "user_id"),
+        FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "card_likes_code_idx" ON "card_likes" ("code")`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "posts" (
+        "id" INTEGER PRIMARY KEY NOT NULL, "code" TEXT (16) NOT NULL, "user_id" INTEGER,
+        "image_url" TEXT, "caption" TEXT, "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL, "video_url" TEXT,
+        FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS "posts_code_idx" ON "posts" ("code", "created_at" DESC)`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "post_likes" (
+        "id" INTEGER PRIMARY KEY NOT NULL, "post_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL,
+        "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        UNIQUE ("post_id", "user_id"),
+        FOREIGN KEY ("post_id") REFERENCES "posts" ("id") ON DELETE CASCADE,
+        FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
+      )`),
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
   await coreSchemaReady;
@@ -2394,6 +2418,81 @@ async function recordsApi(request, env, url) {
       tierOverride: r.tier_override || '',
     }));
     return json({ records });
+  }
+
+  // ---- /api/records/:code/{view,like,posts} — server/index.js bilan bir xil
+  // kontrakt (frontend src/lib/db.js o'zgarishsiz ishlaydi). Avval bu
+  // yo'llar Worker'da yo'q edi → legacy proxy → 405.
+  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|posts)$/);
+  if (subMatch) {
+    const code = subMatch[1].toUpperCase();
+    const action = subMatch[2];
+    if (!validCode(code)) return json({ error: 'bad_code' }, 400);
+
+    // Ko'rishlar hisoblagichi — fire-and-forget (public profildan keladi).
+    if (action === 'view' && request.method === 'POST') {
+      const row = await env.DB.prepare(`UPDATE cards SET views = views + 1 WHERE code = ? RETURNING views`)
+        .bind(code).first();
+      if (!row) return json({ error: 'not_found' }, 404);
+      return json({ views: Number(row.views) });
+    }
+
+    if (action === 'like' && request.method === 'GET') {
+      const user = await getCurrentUser(request, env);
+      const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM card_likes WHERE code = ?`).bind(code).first();
+      let liked = false;
+      if (user) {
+        const mine = await env.DB.prepare(`SELECT 1 AS x FROM card_likes WHERE code = ? AND user_id = ?`).bind(code, user.id).first();
+        liked = !!mine;
+      }
+      return json({ count: Number(cnt?.n || 0), liked });
+    }
+
+    if (action === 'like' && request.method === 'POST') {
+      const user = await getCurrentUser(request, env);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const existing = await env.DB.prepare(`SELECT id FROM card_likes WHERE code = ? AND user_id = ?`).bind(code, user.id).first();
+      if (existing) {
+        await env.DB.prepare(`DELETE FROM card_likes WHERE id = ?`).bind(existing.id).run();
+        return json({ liked: false });
+      }
+      await env.DB.prepare(`INSERT OR IGNORE INTO card_likes (code, user_id) VALUES (?, ?)`).bind(code, user.id).run();
+      return json({ liked: true });
+    }
+
+    if (action === 'posts' && request.method === 'GET') {
+      const user = await getCurrentUser(request, env);
+      return json({ posts: await listPostsD1(env, code, user ? user.id : null) });
+    }
+
+    if (action === 'posts' && request.method === 'POST') {
+      const user = await getCurrentUser(request, env);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const body = await request.json().catch(() => ({}));
+      const imageUrl = String(body?.imageUrl || '');
+      const videoUrl = String(body?.videoUrl || '');
+      const caption = String(body?.caption || '').slice(0, 600);
+      const okImg = imageUrl.startsWith('/uploads/') && !/[^\w\-./]/.test(imageUrl);
+      const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl);
+      if (!okImg && !okVid) return json({ error: 'bad_image' }, 422);
+      const rec = await getRecord(env, code);
+      if (!rec) return json({ error: 'not_found' }, 404);
+      const owner = await getRecordOwner(env, code);
+      if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
+      const access = effectiveAccessD1(rec);
+      if (!featureAllowedD1('post', access)) return json({ error: 'feature_locked', feature: 'post' }, 403);
+      if (okVid && !featureAllowedD1('video', access)) return json({ error: 'feature_locked', feature: 'video' }, 403);
+      // Grandfathering: limit faqat YANGI post qo'shishga ta'sir qiladi.
+      const limit = POST_LIMIT_D1[access] ?? 0;
+      const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM posts WHERE code = ?`).bind(code).first();
+      if (Number(cnt?.n || 0) >= limit) return json({ error: 'limit_reached', limit }, 409);
+      const row = await env.DB.prepare(
+        `INSERT INTO posts (code, user_id, image_url, video_url, caption) VALUES (?, ?, ?, ?, ?)
+         RETURNING id, image_url, video_url, caption, created_at`
+      ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null).first();
+      return json(postRowToJson(row, 0, false), 201);
+    }
+    return null;
   }
 
   const codeMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)$/);
@@ -3818,6 +3917,90 @@ async function getFollowStatsRow(env, userId, viewerId) {
   };
 }
 
+// ---------- profil postlari (D1) ----------
+// src/lib/access.js'dagi ACCESS_RANK / FEATURE_MIN / POST_LIMIT bilan
+// AYNAN bir xil qiymatlar (Worker bitta fayl — import qilinmaydi).
+const ACCESS_LEVELS_D1 = ['free', 'silver', 'gold', 'premium', 'exclusive'];
+const ACCESS_RANK_D1 = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
+const POST_LIMIT_D1 = { free: 0, silver: 5, gold: 30, premium: 60, exclusive: 999 };
+const FEATURE_MIN_D1 = { post: 'silver', video: 'premium' };
+
+// NFC ID ning "xom" darajasi — src/lib/access.js idTier() + pricing.js
+// tierForCode() tartibi: admin tier_override → sovg'a → per-code override
+// → faqat harflar (ekslyuziv) → 6-belgili naqsh → aks holda free.
+function personalIdTierD1(rec) {
+  if (rec.tierOverride && ACCESS_RANK_D1[rec.tierOverride] != null) return rec.tierOverride;
+  if (rec.isGift) return 'exclusive';
+  const c = String(rec.code || '').toUpperCase();
+  const ov = personalCodeTierOverride(c);
+  if (ov && ACCESS_RANK_D1[ov] != null) return ov;
+  if (LETTER_CODE_RE.test(c)) return 'exclusive';
+  if (c.length !== 6) return 'free';
+  const t = personalTierFromCode(c.slice(0, 3), c.slice(3, 6));
+  return ACCESS_RANK_D1[t] != null ? t : 'free';
+}
+// EFFECTIVE ACCESS = max(idTier, egasi Premium bo'lsa 'premium').
+function effectiveAccessD1(rec) {
+  const a = ACCESS_RANK_D1[personalIdTierD1(rec)] ?? 0;
+  const floor = rec.isPremium ? ACCESS_RANK_D1.premium : 0;
+  return ACCESS_LEVELS_D1[Math.max(a, floor)];
+}
+function featureAllowedD1(feature, access) {
+  const min = FEATURE_MIN_D1[feature];
+  return min ? (ACCESS_RANK_D1[access] ?? 0) >= (ACCESS_RANK_D1[min] ?? 99) : true;
+}
+
+function postRowToJson(r, likeCount, liked) {
+  const d = parseDbDate(r.created_at);
+  return {
+    id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '', caption: r.caption || '',
+    createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
+    likeCount: Number(likeCount || 0), liked: !!liked,
+  };
+}
+
+async function listPostsD1(env, code, viewerUserId) {
+  const rows = await env.DB.prepare(
+    `SELECT p.id, p.image_url, p.video_url, p.caption, p.created_at,
+            (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
+            EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
+     FROM posts p WHERE p.code = ? ORDER BY p.created_at DESC, p.id DESC`
+  ).bind(viewerUserId == null ? 0 : viewerUserId, code).all();
+  return (rows.results || []).map((r) => postRowToJson(r, r.like_count, r.liked));
+}
+
+// DELETE /api/posts/:id, POST /api/posts/:id/like — server/index.js bilan
+// bir xil javob shakllari ({ok:true} / {liked,count}).
+async function postsApi(request, env, url) {
+  const path = url.pathname;
+  const m = path.match(/^\/api\/posts\/(\d+)(?:\/(like))?$/);
+  if (!m) return null;
+  const postId = Number(m[1]);
+  const user = await getCurrentUser(request, env);
+  if (!user) return json({ error: 'unauthorized' }, 401);
+
+  if (!m[2] && request.method === 'DELETE') {
+    const res = await env.DB.prepare(`DELETE FROM posts WHERE id = ? AND user_id = ?`).bind(postId, user.id).run();
+    const changed = Number(res?.meta?.changes || 0);
+    if (!changed) return json({ error: 'not_found' }, 404);
+    return json({ ok: true });
+  }
+
+  if (m[2] === 'like' && request.method === 'POST') {
+    const post = await env.DB.prepare(`SELECT id FROM posts WHERE id = ?`).bind(postId).first();
+    if (!post) return json({ error: 'not_found' }, 404);
+    const existing = await env.DB.prepare(`SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?`).bind(postId, user.id).first();
+    if (existing) {
+      await env.DB.prepare(`DELETE FROM post_likes WHERE id = ?`).bind(existing.id).run();
+    } else {
+      await env.DB.prepare(`INSERT OR IGNORE INTO post_likes (post_id, user_id) VALUES (?, ?)`).bind(postId, user.id).run();
+    }
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM post_likes WHERE post_id = ?`).bind(postId).first();
+    return json({ liked: !existing, count: Number(cnt?.n || 0) });
+  }
+  return null;
+}
+
 async function followApi(request, env, url) {
   const path = url.pathname;
 
@@ -3910,6 +4093,10 @@ async function coreApi(request, env, url) {
   }
   if (url.pathname.startsWith('/api/records')) {
     const res = await recordsApi(request, env, url);
+    if (res) return res;
+  }
+  if (url.pathname.startsWith('/api/posts/')) {
+    const res = await postsApi(request, env, url);
     if (res) return res;
   }
   if (url.pathname.startsWith('/api/orders')) {
@@ -4052,7 +4239,8 @@ export default {
       || url.pathname.startsWith('/api/orders') || url.pathname === '/api/pay/payme'
       || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
       || url.pathname === '/api/referrals' || url.pathname === '/api/auctions/won/pending'
-      || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')) {
+      || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')
+      || url.pathname.startsWith('/api/posts/')) {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;

@@ -1219,10 +1219,22 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
       <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
         <div className="flex flex-wrap items-center gap-2.5">
-          {otherCodes.length > 0 && otherCodes.slice(0, 3).map((c) => (
-            <span key={c.code} onClick={() => navigate('/' + c.code)} className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1 font-mono text-[15px] text-[color:var(--vz-ink-dim)] opacity-60 hover:opacity-100"># {c.code}</span>
-          ))}
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
+          {/* Egaga: boshqa raqamli tashrif qog'ozlari — tepada, ixcham
+              select ro'yxat; tanlansa o'sha profilga o'tadi. */}
+          {otherCodes.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
+              aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
+              className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
+            >
+              <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
+              {otherCodes.map((c) => (
+                <option key={c.code} value={c.code}>nfcstore.uz/{c.code.toLowerCase()}</option>
+              ))}
+            </select>
+          )}
           {record.isGift ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[15px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
               {'\u{1F381}'} {t("Sovg'a")}
