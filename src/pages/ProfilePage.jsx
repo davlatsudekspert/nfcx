@@ -246,7 +246,7 @@ function loadYouTubeApi() {
   return _ytApiPromise;
 }
 
-function MusicPlayer({ url, accentColor }) {
+function MusicPlayer({ urls = [], accentColor }) {
   const audioRef = useRef(null);
   const ytHostRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -254,8 +254,16 @@ function MusicPlayer({ url, accentColor }) {
   const wantPlayRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [videoOpen, setVideoOpen] = useState(true);
+  // Ko'pi bilan 5 ta qo'shiq — pastdagi ‹ › tugmalari orasida almashtiradi.
+  const [trackIndex, setTrackIndex] = useState(0);
   const { t } = useLanguage();
+  const url = urls[trackIndex] || '';
   const source = parseMusicSource(url);
+  const switchTrack = (delta) => {
+    wantPlayRef.current = false;
+    setPlaying(false);
+    setTrackIndex((i) => (i + delta + urls.length) % urls.length);
+  };
   const ytId = source && source.kind === 'youtube' ? source.id : null;
   const ydFrag = source && source.kind === 'yandex' ? source.frag : null;
   // Yandex vidjeti: qo'shiq → past panel, albom/pleylist → balandroq (ro'yxat).
@@ -439,6 +447,15 @@ function MusicPlayer({ url, accentColor }) {
         >
           <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="3" r="1.4" /><circle cx="7.5" cy="3" r="1.4" /><circle cx="2.5" cy="8" r="1.4" /><circle cx="7.5" cy="8" r="1.4" /><circle cx="2.5" cy="13" r="1.4" /><circle cx="7.5" cy="13" r="1.4" /></svg>
         </span>
+        {urls.length > 1 && (
+          <button
+            onClick={() => switchTrack(-1)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            aria-label={t('Oldingi qo\u2018shiq')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+        )}
         <button
           onClick={toggle}
           className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
@@ -451,7 +468,18 @@ function MusicPlayer({ url, accentColor }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
           )}
         </button>
-        <span className="max-w-[110px] truncate px-1 text-xs font-semibold text-white/85">{'\u{1F3B5}'} {t('Musiqa')}</span>
+        {urls.length > 1 && (
+          <button
+            onClick={() => switchTrack(1)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+            aria-label={t('Keyingi qo\u2018shiq')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        )}
+        <span className="max-w-[110px] truncate px-1 text-xs font-semibold text-white/85">
+          {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
+        </span>
         {(isYt || isYd) && playing && (
           <button
             onClick={() => setVideoOpen((v) => !v)}
@@ -1198,7 +1226,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
   return (
     <div className="min-h-screen pb-[60px] text-[color:var(--vz-ink)]" style={outerPageStyle(record.theme || 'classic', record, tier)}>
-      <MusicPlayer url={record.musicUrl} accentColor={record.accentColor} />
+      <MusicPlayer urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])} accentColor={record.accentColor} />
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
         <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
           <IconArrowLeft /> {t('Bosh sahifaga')}

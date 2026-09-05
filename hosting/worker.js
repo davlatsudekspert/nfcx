@@ -1355,6 +1355,19 @@ async function requireAdmin(request, env) {
 function parseJsonArray(text) {
   try { const v = JSON.parse(text); return Array.isArray(v) ? v : []; } catch { return []; }
 }
+// `music_url` ustuni ilgari bitta URL matnini saqlagan; endi ko'pi bilan
+// 5 ta qo'shiq ro'yxatini shu ustunga JSON massiv sifatida yozamiz (yangi
+// ustun/migratsiya kerak emas). Eski yozuvlar bilan orqaga moslik: matn
+// JSON massiv bo'lmasa, lekin bo'sh bo'lmasa — bitta elementli ro'yxat
+// deb o'qiladi.
+function parseMusicUrls(text) {
+  if (!text) return [];
+  try {
+    const v = JSON.parse(text);
+    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x).slice(0, 5);
+  } catch { /* eski (bitta URL) format — pastda */ }
+  return typeof text === 'string' && text.trim() ? [text.trim()] : [];
+}
 function parseJsonObjectOrNull(text) {
   if (!text) return null;
   try { const v = JSON.parse(text); return v && typeof v === 'object' ? v : null; } catch { return null; }
@@ -1370,7 +1383,8 @@ function rowToRecord(row) {
     profileType: ['personal', 'expert', 'business'].includes(row.profile_type) ? row.profile_type : 'personal',
     city: row.city || '', categorySlug: row.category_slug || '', address: row.address || '',
     latitude: row.latitude != null ? Number(row.latitude) : null, longitude: row.longitude != null ? Number(row.longitude) : null,
-    hiddenFromDirectory: !!row.hidden_from_directory, leadCapture: !!row.lead_capture, musicUrl: row.music_url || '',
+    hiddenFromDirectory: !!row.hidden_from_directory, leadCapture: !!row.lead_capture,
+    musicUrls: parseMusicUrls(row.music_url), musicUrl: parseMusicUrls(row.music_url)[0] || '',
     tg: row.tg || '', phone: row.phone || '', email: row.email || '', linkedin: row.linkedin || '',
     instagram: row.instagram || '', about: row.about || '', facebook: row.facebook || '', twitter: row.twitter || '',
     website: row.website || '', cardNumber: row.card_number || '', extraLinks: parseJsonArray(row.extra_links),
@@ -1797,7 +1811,7 @@ async function createRecordD1(env, record) {
   `).bind(
     record.code, record.name, record.role || '', record.avatarUrl || '', record.bgUrl || '',
     record.bgPattern === false ? 0 : 1, record.accentColor || null, record.bgColor || null,
-    record.bgAnimated === false ? 0 : 1, record.musicUrl || null,
+    record.bgAnimated === false ? 0 : 1, JSON.stringify(Array.isArray(record.musicUrls) ? record.musicUrls.slice(0, 5) : []),
     record.tg || '', record.phone || '', record.email || '', record.linkedin || '', record.instagram || '',
     record.about || '', record.facebook || '', record.twitter || '', record.website || '',
     record.cardNumber || '', JSON.stringify(record.extraLinks || []), JSON.stringify(record.cardNumbers || []),
@@ -2218,6 +2232,7 @@ export {
   setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
   finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymentsEnabledD1,
   paymeCheckoutLinkD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
+  validateRecordBody, updateRecord, parseMusicUrls,
 };
 
 // production-drift integration: exposed for scripts/production-worker-parity-test.mjs.
@@ -2242,12 +2257,16 @@ function validateRecordBody(body) {
     ? body.cardNumbers.map((c) => ({ label: cleanStr(c && c.label, 30), number: cleanStr(c && c.number, 34).replace(/\s+/g, ' ') })).filter((c) => c.number).slice(0, 10) : [];
   const theme = THEME_WHITELIST.includes(body.theme) ? body.theme : 'classic';
   const linkStyle = ['standard', 'transparent', 'glass'].includes(body.linkStyle) ? body.linkStyle : 'standard';
+  // Ko'pi bilan 5 ta qo'shiq — `musicUrls` (yangi, ro'yxat) yoki eski
+  // `musicUrl` (bitta URL, orqaga moslik uchun) qabul qilinadi.
+  const musicUrls = (Array.isArray(body.musicUrls) ? body.musicUrls : (body.musicUrl ? [body.musicUrl] : []))
+    .map((u) => uploadOrSafeUrl(u)).filter(Boolean).slice(0, 5);
   const record = {
     name, role: cleanStr(body.role, 100), avatarUrl: uploadOrSafeUrl(body.avatarUrl), bgUrl: uploadOrSafeUrl(body.bgUrl),
     bgPattern: body.bgPattern !== false, accentColor: /^#[0-9a-fA-F]{6}$/.test(String(body.accentColor || '').trim()) ? body.accentColor.trim() : '',
     bgColor: /^#[0-9a-fA-F]{6}$/.test(String(body.bgColor || '').trim()) ? body.bgColor.trim() : '', bgAnimated: body.bgAnimated !== false,
     linksTransparent: linkStyle === 'glass' || body.linksTransparent === true, linkStyle,
-    musicUrl: uploadOrSafeUrl(body.musicUrl), tg: cleanStr(body.tg, 40).replace(/^@/, ''), phone: cleanStr(body.phone, 24),
+    musicUrls, tg: cleanStr(body.tg, 40).replace(/^@/, ''), phone: cleanStr(body.phone, 24),
     email: cleanStr(body.email, 120), linkedin: cleanStr(body.linkedin, 200), instagram: cleanStr(body.instagram, 40).replace(/^@/, ''),
     about: cleanStr(body.about, 600), facebook: cleanStr(body.facebook, 60).replace(/^@/, ''), twitter: cleanStr(body.twitter, 60).replace(/^@/, ''),
     website: recSafeUrl(body.website), cardNumber: cleanStr(body.cardNumber, 34).replace(/\s+/g, ' '), extraLinks, cardNumbers, theme, hashtags,
@@ -2272,7 +2291,7 @@ async function updateRecord(env, code, fields) {
     accentColor: 'accent_color', bgColor: 'bg_color', bgAnimated: 'bg_animated', linksTransparent: 'links_transparent',
     linkStyle: 'link_style', profileType: 'profile_type', city: 'city', categorySlug: 'category_slug', address: 'address',
     latitude: 'latitude', longitude: 'longitude', hiddenFromDirectory: 'hidden_from_directory', leadCapture: 'lead_capture',
-    musicUrl: 'music_url', tg: 'tg', phone: 'phone', email: 'email', linkedin: 'linkedin', instagram: 'instagram',
+    tg: 'tg', phone: 'phone', email: 'email', linkedin: 'linkedin', instagram: 'instagram',
     about: 'about', facebook: 'facebook', twitter: 'twitter', website: 'website', cardNumber: 'card_number',
     theme: 'theme', hidePhone: 'hide_phone',
   };
@@ -2288,6 +2307,7 @@ async function updateRecord(env, code, fields) {
   }
   if ('hashtags' in fields) { sets.push('hashtags = ?'); vals.push(JSON.stringify(fields.hashtags)); }
   if ('extraLinks' in fields) { sets.push('extra_links = ?'); vals.push(JSON.stringify(fields.extraLinks)); }
+  if ('musicUrls' in fields) { sets.push('music_url = ?'); vals.push(JSON.stringify(fields.musicUrls.slice(0, 5))); }
   if ('cardNumbers' in fields) { sets.push('card_numbers = ?'); vals.push(JSON.stringify(fields.cardNumbers)); }
   if ('cardDesign' in fields) { sets.push('card_design = ?'); vals.push(fields.cardDesign ? JSON.stringify(fields.cardDesign) : null); }
   if (!sets.length) return getRecord(env, code);

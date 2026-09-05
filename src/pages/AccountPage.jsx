@@ -1863,7 +1863,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
         bgUrl: card.bgUrl || '', accentColor: card.accentColor || '', bgColor: card.bgColor || '',
         bgAnimated: card.bgAnimated !== false,
         linkStyle: ['standard', 'transparent', 'glass'].includes(card.linkStyle) ? card.linkStyle : (card.linksTransparent ? 'glass' : 'standard'),
-        musicUrl: card.musicUrl || '', tg: card.tg || '', phone: card.phone || '', hidePhone: !!card.hidePhone,
+        musicUrls: card.musicUrls || [], tg: card.tg || '', phone: card.phone || '', hidePhone: !!card.hidePhone,
         email: card.email || '', linkedin: card.linkedin || '', instagram: card.instagram || '',
         facebook: card.facebook || '', twitter: card.twitter || '', website: card.website || '',
         about: card.about || '', cardNumber: card.cardNumber || '',
@@ -2035,7 +2035,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     linkStyle: ['standard', 'transparent', 'glass'].includes(card.linkStyle)
       ? card.linkStyle
       : (card.linksTransparent ? 'glass' : 'standard'),
-    musicUrl: card.musicUrl || '',
+    // Ko'pi bilan 5 ta qo'shiq (eski bitta-URL kartalar bilan moslik uchun
+    // `card.musicUrl` ham qabul qilinadi, agar `musicUrls` bo'lmasa).
+    musicUrls: Array.isArray(card.musicUrls) ? card.musicUrls.slice(0, 5) : (card.musicUrl ? [card.musicUrl] : []),
     tg: card.tg || '',
     phone: card.phone || '',
     hidePhone: !!card.hidePhone,
@@ -2061,8 +2063,15 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
   const musicFileRef = useRef(null);
+  // Qaysi qo'shiq qatoriga fayl yuklanayotgani (bitta umumiy fayl input
+  // barcha qatorlar uchun ishlatiladi) — ko'pi bilan 5 ta qo'shiq.
+  const [musicUploadIndex, setMusicUploadIndex] = useState(null);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const addMusic = () => setForm((f) => (f.musicUrls.length >= 5 ? f : { ...f, musicUrls: [...f.musicUrls, ''] }));
+  const updateMusic = (i) => (e) => setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, idx) => (idx === i ? e.target.value : u)) }));
+  const removeMusic = (i) => setForm((f) => ({ ...f, musicUrls: f.musicUrls.filter((_, idx) => idx !== i) }));
 
   const addLink = () => setForm((f) => ({ ...f, extraLinks: [...f.extraLinks, { label: '', url: '' }] }));
   const updateLink = (i, key) => (e) => setForm((f) => {
@@ -2116,7 +2125,8 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
   const onPickMusicFile = async (e) => {
     const file = e.target.files && e.target.files[0];
-    if (!file) return;
+    const idx = musicUploadIndex;
+    if (!file || idx == null) return;
     if (file.size > 10 * 1024 * 1024) {
       setMsg({ type: 'err', text: t("Musiqa fayli juda katta (maksimal ~10 MB).") });
       if (musicFileRef.current) musicFileRef.current.value = '';
@@ -2127,12 +2137,13 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     try {
       const dataUrl = await audioFileToDataUrl(file);
       const url = await dbUploadAudio(dataUrl);
-      setForm((f) => ({ ...f, musicUrl: url }));
+      setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, i) => (i === idx ? url : u)) }));
       setMsg({ type: 'ok', text: t('Musiqa yuklandi. Saqlash tugmasini bosing.') });
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
       setUploadingMusic(false);
+      setMusicUploadIndex(null);
       if (musicFileRef.current) musicFileRef.current.value = '';
     }
   };
@@ -2212,7 +2223,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         bgColor: form.bgColor,
         bgAnimated: form.bgAnimated,
         linkStyle: form.linkStyle,
-        musicUrl: form.musicUrl.trim(),
+        musicUrls: form.musicUrls.map((u) => u.trim()).filter(Boolean).slice(0, 5),
         tg: form.tg.trim(),
         phone: form.phone.trim(),
         hidePhone: form.hidePhone,
@@ -2838,25 +2849,41 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
             <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
             <label className="form-control mt-5 block">
-              <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} {t('Profil musiqasi')}</span>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => musicFileRef.current && musicFileRef.current.click()} disabled={uploadingMusic}>
-                  {uploadingMusic ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl yuklash (mp3, maks. 10 MB)')}
-                </button>
-                {form.musicUrl && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm((f) => ({ ...f, musicUrl: '' }))}>
-                    {t('Olib tashlash')}
-                  </button>
-                )}
+              <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/5)</span></span>
+              <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
+              <div className="mt-2 space-y-3">
+                {form.musicUrls.map((url, i) => (
+                  <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 text-xs font-semibold text-base-content/45">#{i + 1}</span>
+                      <input
+                        className={`${inp} !mt-0 flex-1 font-mono text-xs`}
+                        value={url}
+                        onChange={updateMusic(i)}
+                        placeholder={t("YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3")}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm shrink-0"
+                        onClick={() => { setMusicUploadIndex(i); musicFileRef.current && musicFileRef.current.click(); }}
+                        disabled={uploadingMusic}
+                      >
+                        {uploadingMusic && musicUploadIndex === i ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl')}
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeMusic(i)}>&times;</button>
+                    </div>
+                    {url && (
+                      isEmbedMusic(url)
+                        ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400"><span>{'▶'}</span> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
+                        : <audio controls src={url} className="mt-2 h-9 w-full" />
+                    )}
+                  </div>
+                ))}
               </div>
-              <input className={`${inp} font-mono text-xs`} value={form.musicUrl} onChange={set('musicUrl')} placeholder={t("YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3")} />
-              {form.musicUrl && (
-                isEmbedMusic(form.musicUrl)
-                  ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400"><span>{'▶'}</span> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
-                  : <audio controls src={form.musicUrl} className="mt-2 h-9 w-full" />
+              {form.musicUrls.length < 5 && (
+                <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={addMusic}>{t("+ Qo'shiq qo'shish")}</button>
               )}
-              <p className="mt-1.5 text-xs text-base-content/45">{t("YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi.")}</p>
+              <p className="mt-2 text-xs text-base-content/45">{t("Ko'pi bilan 5 ta qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
             </label>
             </Gate>
           </Section>
