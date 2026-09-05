@@ -142,16 +142,19 @@ jobs:
       # GitHub-hosted Ubuntu runners have nested virtualization (/dev/kvm)
       # available, so this boots a real emulator image in CI — no physical
       # device or Metro server involved, exactly what "standalone" means.
+      # api-level 30 (vs. 33 originally) boots noticeably faster/more
+      # reliably in this kind of headless CI environment.
       - name: Boot emulator, install APK, confirm it launches without Metro
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
+          api-level: 30
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          force-avd-creation: false
+          force-avd-creation: true
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-spellchecker: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           script: |
             APK_FILE=$(find apk -name "*.apk" | head -n1)
             echo "Installing $APK_FILE"
