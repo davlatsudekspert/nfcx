@@ -112,7 +112,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -n1)
           echo "Using $APKSIGNER"
           "$APKSIGNER" verify --print-certs "$APK_PATH" | tee /tmp/apksigner-out.txt
-          grep -q "Signer #1 certificate DN" /tmp/apksigner-out.txt
+          # Newer apksigner prints "V2 Signer: certificate DN: ...", older
+          # ones "Signer #1 certificate DN: ..." — match the common part.
+          grep -q "certificate DN" /tmp/apksigner-out.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
