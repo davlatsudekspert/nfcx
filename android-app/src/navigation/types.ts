@@ -36,13 +36,29 @@ export type AuctionStackParamList = {
   AuctionPayment: { auctionId: number };
 };
 
+export interface DraftCompanyProfile {
+  companyId: string;
+  displayName: string;
+  category: string;
+  subcategory?: string;
+  city: string;
+  phone: string;
+  description: string;
+  address?: string;
+  telegram?: string;
+  whatsapp?: string;
+  website?: string;
+  logoUrl?: string;
+  coverUrl?: string;
+}
+
 export type CompanyStackParamList = {
   CompanyHome: undefined;
   CompanyCreate1: undefined;
-  CompanyCreate2: { companyId: string };
-  CompanyCreate3: { companyId: string };
-  CompanyCreate4: { companyId: string };
-  CompanyCreate5: { companyId: string };
+  CompanyCreate2: { draft: DraftCompanyProfile };
+  CompanyCreate3: { draft: DraftCompanyProfile };
+  CompanyCreate4: { draft: DraftCompanyProfile };
+  CompanyCreate5: { draft: DraftCompanyProfile };
   CompanyDashboard: { companyId: string };
   CatalogList: { companyId: string };
   PublicCompany: { companyId: string };

@@ -19,6 +19,8 @@
     "expo-contacts": "^57.0.4",
     "expo-font": "^57.0.3",
     "expo-haptics": "^57.0.2",
+    "expo-image-manipulator": "^57.0.16",
+    "expo-image-picker": "^57.0.16",
     "expo-linear-gradient": "^57.0.1",
     "expo-linking": "^57.0.9",
     "expo-notifications": "^57.0.17",
