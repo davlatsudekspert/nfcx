@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { color, space, touchTarget, type as typeTokens } from '../tokens';
+import { color, radius, space, touchTarget, type as typeTokens } from '../tokens';
 
 export interface PremiumHeaderAction {
   icon: React.ComponentProps<typeof Feather>['name'];
@@ -19,6 +19,14 @@ export interface PremiumHeaderProps {
   actions?: PremiumHeaderAction[];
 }
 
+/**
+ * Screen chrome. The bar itself is transparent so the screen's ambient gold
+ * wash reads through it (see ScreenWithHeader) — a painted-black header on a
+ * black screen is exactly the flat rectangle the brief argues against.
+ *
+ * Controls are 40dp machined discs centred inside 48dp touch targets, so the
+ * hit area stays Android-legal while the visible chrome stays small.
+ */
 export function PremiumHeader({ title, onBack, actions = [] }: PremiumHeaderProps) {
   const insets = useSafeAreaInsets();
 
@@ -26,11 +34,9 @@ export function PremiumHeader({ title, onBack, actions = [] }: PremiumHeaderProp
     <View style={[styles.wrapper, { paddingTop: insets.top + space.sm }]}>
       <View style={styles.row}>
         {onBack ? (
-          <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Orqaga" style={styles.iconButton}>
-            <Feather name="chevron-left" size={22} color={color.textPrimary} />
-          </Pressable>
+          <IconControl icon="chevron-left" size={22} onPress={onBack} accessibilityLabel="Orqaga" />
         ) : (
-          <View style={styles.iconButton} />
+          <View style={styles.spacer} />
         )}
         {!!title && (
           <Text style={styles.title} numberOfLines={1}>
@@ -39,41 +45,90 @@ export function PremiumHeader({ title, onBack, actions = [] }: PremiumHeaderProp
         )}
         <View style={styles.actionsRow}>
           {actions.map((action) => (
-            <Pressable
+            <IconControl
               key={action.accessibilityLabel}
+              icon={action.icon}
+              size={19}
               onPress={action.onPress}
-              accessibilityRole="button"
               accessibilityLabel={action.accessibilityLabel}
-              style={styles.iconButton}
-            >
-              <Feather name={action.icon} size={20} color={color.textPrimary} />
-              {action.showDot && <View style={styles.dot} />}
-            </Pressable>
+              showDot={action.showDot}
+            />
           ))}
         </View>
       </View>
+      <View style={styles.hairline} pointerEvents="none" />
     </View>
   );
 }
 
+function IconControl({
+  icon,
+  size,
+  onPress,
+  accessibilityLabel,
+  showDot,
+}: {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  size: number;
+  onPress: () => void;
+  accessibilityLabel: string;
+  showDot?: boolean;
+}) {
+  const [pressed, setPressed] = React.useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={styles.hit}
+    >
+      <View style={[styles.disc, pressed && styles.discPressed]}>
+        <Feather name={icon} size={size} color={color.textPrimary} />
+        <View style={styles.discLip} pointerEvents="none" />
+      </View>
+      {showDot && <View style={styles.dot} />}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  wrapper: { backgroundColor: color.bg, paddingHorizontal: space.md, paddingBottom: space.sm },
+  wrapper: { paddingHorizontal: space.sm, paddingBottom: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: touchTarget },
-  title: { ...typeTokens.h2, color: color.textPrimary, flex: 1 },
-  actionsRow: { flexDirection: 'row', gap: space.xs },
-  iconButton: {
+  title: { ...typeTokens.h2, color: color.textPrimary, flex: 1, letterSpacing: 0.2, marginHorizontal: space.xs },
+  actionsRow: { flexDirection: 'row', alignItems: 'center' },
+  spacer: { width: space.sm },
+  hit: {
     width: touchTarget,
     height: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  disc: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: color.border,
+    overflow: 'hidden',
+  },
+  discPressed: { backgroundColor: 'rgba(215,182,93,0.12)', borderColor: color.borderGold },
+  discLip: { position: 'absolute', top: 0, left: 8, right: 8, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' },
+  /** One faint machined edge under the header instead of a drawn divider. */
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.06)', marginTop: space.xs },
   dot: {
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: color.danger,
+    width: 9,
+    height: 9,
+    borderRadius: radius.pill,
+    backgroundColor: color.gold,
+    borderWidth: 2,
+    borderColor: color.bgDeep,
   },
 });

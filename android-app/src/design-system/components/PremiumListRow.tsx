@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { color, space, touchTarget, type as typeTokens } from '../tokens';
+import { color, radius, space, touchTarget, type as typeTokens } from '../tokens';
 
 export interface PremiumListRowProps {
   label: string;
@@ -17,6 +17,14 @@ export interface PremiumListRowProps {
   testID?: string;
 }
 
+/**
+ * One row of a settings/detail list.
+ *
+ * Deliberately flat-cost: no gradients and no shadows, because these render
+ * dozens at a time inside scrollers. The material cue is the small machined
+ * icon disc plus a hairline-lit pressed state — cheap to draw, still reads as
+ * the same metal as everything around it.
+ */
 export function PremiumListRow({
   label,
   subtitle,
@@ -40,7 +48,11 @@ export function PremiumListRow({
       accessibilityRole={onPress ? 'button' : undefined}
       testID={testID}
     >
-      {icon && <Feather name={icon} size={18} color={destructive ? color.danger : color.textSecondary} style={styles.icon} />}
+      {icon && (
+        <View style={[styles.iconDisc, destructive && styles.iconDiscDestructive]}>
+          <Feather name={icon} size={16} color={destructive ? color.danger : color.textSecondary} />
+        </View>
+      )}
       <View style={styles.labelWrap}>
         <Text style={[styles.label, destructive && styles.labelDestructive]} numberOfLines={1}>
           {label}
@@ -67,14 +79,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: touchTarget,
     paddingHorizontal: space.md,
-    gap: space.sm,
-    borderRadius: 12,
+    paddingVertical: space.xs,
+    gap: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  rowPressed: { backgroundColor: color.surfaceRaised },
-  icon: { width: 22 },
+  rowPressed: { backgroundColor: 'rgba(255,255,255,0.045)', borderColor: color.border },
+  iconDisc: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  iconDiscDestructive: { backgroundColor: 'rgba(229,72,77,0.08)', borderColor: 'rgba(229,72,77,0.28)' },
   labelWrap: { flex: 1, paddingVertical: space.xs },
-  subtitle: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
   label: { ...typeTokens.body, color: color.textPrimary },
   labelDestructive: { color: color.danger },
+  subtitle: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
   value: { ...typeTokens.body, color: color.textSecondary, marginRight: space.xs },
 });
