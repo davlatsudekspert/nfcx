@@ -7,9 +7,9 @@ import * as apiAdminExtra from './api/admin-extra.js';
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 
-const json = (body, status = 200) => new Response(JSON.stringify(body), {
+const json = (body, status = 200, extraHeaders) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'content-type': 'application/json; charset=utf-8' },
+  headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders },
 });
 
 let catalogSchemaReady;
@@ -3017,18 +3017,63 @@ async function rateLimitD1(env, key, limit, windowMs) {
     console.error('rateLimitD1', e); return false; // DB xatosida bloklamaymiz (login ishlashi ustun)
   }
 }
+// Faqat o'qiydi (hisoblagichni oshirmaydi) — 429 javobida Retry-After
+// hisoblash uchun. Qator topilmasa yoki oyna allaqachon tugagan bo'lsa 0.
+async function rateLimitRemainingSecD1(env, key, windowMs) {
+  try {
+    const row = await env.DB.prepare(`SELECT window_start FROM rate_limits WHERE key = ?`).bind(key).first();
+    if (!row) return 0;
+    const left = windowMs - (Date.now() - Number(row.window_start));
+    return left > 0 ? Math.ceil(left / 1000) : 0;
+  } catch { return 0; }
+}
+// Muvaffaqiyatli login/2FA'dan keyin shu kalit uchun D1 hisoblagichini
+// tozalaydi (qonuniy adminning o'z urinishlari keyingi kirishga
+// ta'sir qilmasin). Xatolik sokin yutiladi — reset ishlamasa ham
+// himoya (limit) o'zi buzilmaydi, faqat keyingi urinish erta tugaydi.
+async function resetRateLimitD1(env, key) {
+  try { await env.DB.prepare(`DELETE FROM rate_limits WHERE key = ?`).bind(key).run(); } catch { /* jim tur */ }
+}
 const ADMIN_ROLE_RANK = { content_manager: 1, manager: 2, super_admin: 3 };
 function roleAtLeast(admin, role) { return (ADMIN_ROLE_RANK[admin?.role] || 0) >= (ADMIN_ROLE_RANK[role] || 99); }
 
-const loginHits = new Map();
-function loginRateLimited(ip) {
+// 2026-09 hotfix: bu limitlar avval BITTA umumiy `ip` kaliti ostida
+// /login, /2fa/telegram/send va /verify-2fa uchastida BIR XIL 3ta so'rov
+// byudjetini baham ko'rardi — bitta oddiy 2FA login (parol → kod → tasdiq)
+// shu 3ta so'rovni to'liq sarflab qo'yardi va bitta 2FA kodini xato
+// kiritish (qayta urinish) qonuniy adminni 30 daqiqaga bloklab qo'yardi.
+// Endi HAR BIR endpoint o'zining alohida `purpose:ip` kaliti bilan bir xil
+// qat'iylikda (3/30min) himoyalanadi — bu HIMOYANI KAMAYTIRISH emas
+// (brute-force uchun har bir endpoint hali ham 3/30min bilan cheklangan),
+// faqat noto'g'ri ulashilgan byudjetni tuzatish.
+const loginHits = new Map(); // key: `${purpose}:${ip}` -> timestamp[]
+const LOGIN_RATE_WINDOW_MS = 30 * 60_000;
+const LOGIN_RATE_MAX = 3;
+function loginRateLimited(key) {
   const now = Date.now();
-  const windowMs = 30 * 60_000;
-  const arr = (loginHits.get(ip) || []).filter((t) => now - t < windowMs);
-  if (arr.length >= 3) return true;
+  const arr = (loginHits.get(key) || []).filter((t) => now - t < LOGIN_RATE_WINDOW_MS);
+  if (arr.length >= LOGIN_RATE_MAX) return true;
   arr.push(now);
-  loginHits.set(ip, arr);
+  loginHits.set(key, arr);
   return false;
+}
+// Qolgan kutish vaqti (sekundda) — 429 javobida Retry-After va foydalanuvchiga
+// aniq countdown ko'rsatish uchun. Hali hech qanday urinish bo'lmagan
+// (yoki limitga yetmagan) bo'lsa 0 qaytaradi.
+function loginRateRemainingSec(key) {
+  const arr = (loginHits.get(key) || []).filter((t) => Date.now() - t < LOGIN_RATE_WINDOW_MS);
+  if (arr.length < LOGIN_RATE_MAX) return 0;
+  const oldest = Math.min(...arr);
+  return Math.max(1, Math.ceil((LOGIN_RATE_WINDOW_MS - (Date.now() - oldest)) / 1000));
+}
+// Muvaffaqiyatli autentifikatsiyadan keyin shu IP uchun BARCHA admin-auth
+// (login/telegram-2fa/verify-2fa) hisoblagichlarini tozalaydi — qonuniy
+// admin o'zining oldingi (zarur bo'lgan, hujum emas) urinishlari tufayli
+// keyingi kirishda jazolanmasin. Hujumchi uchun bu hech narsani
+// kamaytirmaydi: muvaffaqiyatli parol+2FA topib bo'lmasa, bu kod hech
+// qachon chaqirilmaydi.
+function clearLoginRateLimit(ip) {
+  for (const k of loginHits.keys()) if (k.endsWith(':' + ip)) loginHits.delete(k);
 }
 
 // Telegram OTP as an OPT-IN alternative to TOTP during the 2FA step (NOT
@@ -3071,9 +3116,11 @@ async function adminAuthApi(request, env, url) {
   const ip = reqIp(request);
 
   if (path === '/api/admin/login' && request.method === 'POST') {
-    if (loginRateLimited(ip) || await rateLimitD1(env, 'admin-login:ip:' + ip, 5, 30 * 60_000)) {
+    const D1_KEY = 'admin-login:ip:' + ip;
+    if (loginRateLimited('login:' + ip) || await rateLimitD1(env, D1_KEY, 5, 30 * 60_000)) {
       await logAdminLoginEvent(env, 'rate_limited', ip, request.headers.get('user-agent'));
-      return json({ error: 'too_many_requests' }, 429);
+      const retryAfterSec = Math.max(loginRateRemainingSec('login:' + ip), await rateLimitRemainingSecD1(env, D1_KEY, 30 * 60_000)) || 60;
+      return json({ error: 'too_many_requests', retryAfterSec }, 429, { 'Retry-After': String(retryAfterSec) });
     }
     const body = await request.json().catch(() => ({}));
     const phone = String(body.phone || '').trim();
@@ -3105,6 +3152,10 @@ async function adminAuthApi(request, env, url) {
     await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
       .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
     await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
+    // Muvaffaqiyatli kirish — shu IP uchun oldingi (zarur) urinishlar
+    // keyingi kirishga xalaqit bermasin (pastdagi izohga qarang).
+    clearLoginRateLimit(ip);
+    await resetRateLimitD1(env, D1_KEY);
     return jsonWithCookie({ ok: true, totpSetupRecommended: true }, 200, adminCookieHeader(token, secure));
   }
 
@@ -3117,7 +3168,11 @@ async function adminAuthApi(request, env, url) {
   // immediately invalidated — there is only ever one live code per
   // pending login), and stores the code as a SHA-256 hash, never raw.
   if (path === '/api/admin/2fa/telegram/send' && request.method === 'POST') {
-    if (loginRateLimited(ip)) return json({ error: 'too_many_requests' }, 429);
+    const RK = 'tg2fa:' + ip;
+    if (loginRateLimited(RK)) {
+      const retryAfterSec = loginRateRemainingSec(RK) || 60;
+      return json({ error: 'too_many_requests', retryAfterSec }, 429, { 'Retry-After': String(retryAfterSec) });
+    }
     const body = await request.json().catch(() => ({}));
     const tempToken = String(body.tempToken || '');
     const pending = await env.DB.prepare(`SELECT * FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).first();
@@ -3140,57 +3195,76 @@ async function adminAuthApi(request, env, url) {
   }
 
   if (path === '/api/admin/verify-2fa' && request.method === 'POST') {
-    if (loginRateLimited(ip)) return json({ error: 'too_many_requests' }, 429);
+    const RK = 'verify2fa:' + ip;
+    if (loginRateLimited(RK)) {
+      const retryAfterSec = loginRateRemainingSec(RK) || 60;
+      return json({ error: 'too_many_requests', retryAfterSec }, 429, { 'Retry-After': String(retryAfterSec) });
+    }
     const body = await request.json().catch(() => ({}));
     const tempToken = String(body.tempToken || '');
     const code = String(body.code || '').trim();
-    const pending = await env.DB.prepare(`SELECT * FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).first();
-    if (!pending || new Date(pending.expires_at) < new Date()) {
-      if (pending) await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
-      return json({ error: 'expired' }, 401);
-    }
-    if (!(await checkIpWhitelist(request, env, ip))) {
-      await logAdminLoginEvent(env, 'ip_blocked', ip, request.headers.get('user-agent'));
-      return json({ error: 'ip_not_whitelisted' }, 403);
-    }
-    const admin = await env.DB.prepare(`SELECT * FROM admins WHERE id = ?`).bind(pending.admin_id).first();
-    let valid = false;
-    let totpCounter = null;
-    if (pending.method === 'telegram') {
-      // Attempt limit is per pending record — a fresh /2fa/telegram/send
-      // resets it to 0, so this only ever throttles repeated guesses
-      // against ONE still-live code, not the admin's login attempts as a
-      // whole (loginRateLimited above already covers that).
-      if (Number(pending.attempts || 0) >= TELEGRAM_OTP_MAX_ATTEMPTS) {
-        await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+    // 2026-09 hotfix: this whole block is wrapped so an UNEXPECTED D1/
+    // config exception never surfaces as the generic, unhelpful
+    // `core_api_unavailable` 503 from the outer dispatcher — it is
+    // logged server-side (D1 error shape only, never a secret or
+    // password value) and returned as a distinguishable, still fail-
+    // closed (2FA is NEVER skipped/bypassed here) `verify_2fa_unavailable`.
+    try {
+      const pending = await env.DB.prepare(`SELECT * FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).first();
+      if (!pending || new Date(pending.expires_at) < new Date()) {
+        if (pending) await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
         return json({ error: 'expired' }, 401);
       }
-      valid = pending.code && (await sha256Hex(code)) === pending.code;
-      if (!valid) await env.DB.prepare(`UPDATE admin_2fa_pending SET attempts = ? WHERE temp_token = ?`).bind(Number(pending.attempts || 0) + 1, tempToken).run();
-    } else if (admin?.totp_secret) {
-      const result = await totpVerify({ secret: admin.totp_secret, token: code, afterCounter: admin.totp_last_counter });
-      valid = result.valid;
-      totpCounter = result.counter ?? null;
+      if (!(await checkIpWhitelist(request, env, ip))) {
+        await logAdminLoginEvent(env, 'ip_blocked', ip, request.headers.get('user-agent'));
+        return json({ error: 'ip_not_whitelisted' }, 403);
+      }
+      const admin = await env.DB.prepare(`SELECT * FROM admins WHERE id = ?`).bind(pending.admin_id).first();
+      let valid = false;
+      let totpCounter = null;
+      if (pending.method === 'telegram') {
+        // Attempt limit is per pending record — a fresh /2fa/telegram/send
+        // resets it to 0, so this only ever throttles repeated guesses
+        // against ONE still-live code, not the admin's login attempts as a
+        // whole (loginRateLimited above already covers that).
+        if (Number(pending.attempts || 0) >= TELEGRAM_OTP_MAX_ATTEMPTS) {
+          await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+          return json({ error: 'expired' }, 401);
+        }
+        valid = pending.code && (await sha256Hex(code)) === pending.code;
+        if (!valid) await env.DB.prepare(`UPDATE admin_2fa_pending SET attempts = ? WHERE temp_token = ?`).bind(Number(pending.attempts || 0) + 1, tempToken).run();
+      } else if (admin?.totp_secret) {
+        const result = await totpVerify({ secret: admin.totp_secret, token: code, afterCounter: admin.totp_last_counter });
+        valid = result.valid;
+        totpCounter = result.counter ?? null;
+      }
+      if (!valid) {
+        await logAdminLoginEvent(env, 'bad_2fa', ip, request.headers.get('user-agent'));
+        return json({ error: 'bad_code' }, 401);
+      }
+      await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
+      if (totpCounter != null) {
+        // Persist the accepted time-step BEFORE anything else can race it —
+        // the exact same 6-digit code (or an older one inside the ±1 step
+        // window) can never be replayed for a second login after this.
+        // Telegram codes need no equivalent: DELETE above already makes the
+        // just-used code single-use (and a fresh /send is required for another).
+        await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run();
+      }
+      const token = newToken();
+      const now = new Date();
+      await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
+        .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
+      await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
+      // Muvaffaqiyatli 2FA — shu IP uchun barcha admin-auth hisoblagichlarini
+      // tozalaymiz (login bosqichida sarflangan byudjet ham).
+      clearLoginRateLimit(ip);
+      await resetRateLimitD1(env, 'admin-login:ip:' + ip);
+      return jsonWithCookie({ ok: true }, 200, adminCookieHeader(token, secure));
+    } catch (error) {
+      console.error('verify-2fa', error);
+      return json({ error: 'verify_2fa_unavailable' }, 503);
     }
-    if (!valid) {
-      await logAdminLoginEvent(env, 'bad_2fa', ip, request.headers.get('user-agent'));
-      return json({ error: 'bad_code' }, 401);
-    }
-    await env.DB.prepare(`DELETE FROM admin_2fa_pending WHERE temp_token = ?`).bind(tempToken).run();
-    if (totpCounter != null) {
-      // Persist the accepted time-step BEFORE anything else can race it —
-      // the exact same 6-digit code (or an older one inside the ±1 step
-      // window) can never be replayed for a second login after this.
-      // Telegram codes need no equivalent: DELETE above already makes the
-      // just-used code single-use (and a fresh /send is required for another).
-      await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run();
-    }
-    const token = newToken();
-    const now = new Date();
-    await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
-      .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
-    await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
-    return jsonWithCookie({ ok: true }, 200, adminCookieHeader(token, secure));
   }
 
   if (path === '/api/admin/logout' && request.method === 'POST') {

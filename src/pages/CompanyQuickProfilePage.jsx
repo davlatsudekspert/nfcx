@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import { IconPhone, IconTelegram, IconGlobe } from '../components/Icons.jsx';
+import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
 const fallbackCover = '/business-assets/construction-hero.jpg';
@@ -66,7 +67,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
   if (!company) {
     return (
       <main className="cq-state">
-        <div className="cq-mark">N</div>
+        <div className="cq-mark"><img src={logo} alt="NFCSTORE" /></div>
         <h1 className="vz-h1" style={{ fontSize: 'clamp(26px,5vw,36px)' }}>{error ? t("Server bilan aloqa yo'q") : t('Kompaniya topilmadi')}</h1>
         <p className="vz-lead mx-auto">{error
           ? t("Ma'lumotni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.")
@@ -86,7 +87,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
   return (
     <main className="cq-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
       <div className="cq-shell">
-        <header className="cq-top"><span className="cq-brand"><i>N</i> NFCSTORE</span><span className="cq-id">COMPANY ID · {company.companyId}</span></header>
+        <header className="cq-top"><span className="cq-brand"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span><span className="cq-id">COMPANY ID · {company.companyId}</span></header>
         <section className="cq-identity">
           <div className="cq-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
           <span className="cq-live">● {t('TASDIQLANGAN KOMPANIYA')}</span>

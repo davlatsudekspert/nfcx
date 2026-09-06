@@ -4,6 +4,7 @@ import { checkCompanyId, companyIdLocalInfo, COMPANY_STATUS, createCompany, list
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
+import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
 const categories = [
@@ -52,7 +53,7 @@ export default function CompanyCreatePage() {
       </main>
     );
   }
-  if (!user) return <main className="cc-state"><div className="cc-logo">N</div><h1>{t('Kompaniya ochish uchun kiring')}</h1><p>{t('Company ID akkauntingizga biriktiriladi.')}</p><button type="button" className="vz-tap" onClick={() => navigate('/login')}>{t('Kirish')}</button></main>;
+  if (!user) return <main className="cc-state"><div className="cc-logo"><img src={logo} alt="NFCSTORE" /></div><h1>{t('Kompaniya ochish uchun kiring')}</h1><p>{t('Company ID akkauntingizga biriktiriladi.')}</p><button type="button" className="vz-tap" onClick={() => navigate('/login')}>{t('Kirish')}</button></main>;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -67,7 +68,7 @@ export default function CompanyCreatePage() {
   };
 
   return <main className="cc-page">
-    <header className="cc-header"><button type="button" className="vz-tap" onClick={() => navigate('/')}><i>N</i><b>NFCSTORE</b></button><span>{t('COMPANY ACCOUNT')}</span><button type="button" className="vz-tap" onClick={() => navigate('/account')}>← {t('Kabinet')}</button></header>
+    <header className="cc-header"><button type="button" className="vz-tap" onClick={() => navigate('/')}><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b></button><span>{t('COMPANY ACCOUNT')}</span><button type="button" className="vz-tap" onClick={() => navigate('/account')}>← {t('Kabinet')}</button></header>
     <div className="cc-layout">
       <section className="cc-intro"><span className="cc-kicker">{t('YANGI TIZIM · SHAXSIY NFC ID’DAN ALOHIDA')}</span><h1>{t('Kompaniyangiz uchun')} <em>{t('alohida ID')}</em></h1><p>{t('Company ID kompaniya NFC profili, public sahifasi va boshqaruv markazini bir-biriga bog‘laydi. Mavjud shaxsiy NFC kartalaringiz o‘z holicha qoladi.')}</p><div className="cc-flow"><div><b>01</b><span>{t('ID tanlash')}</span></div><i>→</i><div><b>02</b><span>{t('Admin tekshiruvi')}</span></div><i>→</i><div><b>03</b><span>Payme</span></div><i>→</i><div><b>04</b><span>{t('Faollashadi')}</span></div></div>
         {mineState === 'loading' && <div className="cc-existing" aria-busy="true"><span>{t('SIZNING KOMPANIYALARINGIZ')}</span><div className="vz-skel mt-3" style={{ height: 56, borderRadius: 14 }} /></div>}
