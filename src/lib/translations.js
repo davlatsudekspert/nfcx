@@ -2121,6 +2121,22 @@ const DICT_BASE = {
   "Videoni yashirish": { ru: "Скрыть видео", en: "Hide video" },
   // 2026-09: ixcham YouTube pleeri — minimizatsiya tugmasi.
   "Videoni yig‘ish": { ru: "Свернуть видео", en: "Collapse video" },
+  // 2026-09: suzuvchi mini-pleer va kabinetdagi YouTube ogohlantirishi.
+  "Musiqani yopish": { ru: "Закрыть музыку", en: "Close music" },
+  "YouTube havolasi — video ko‘rinadi.": { ru: "Ссылка YouTube — видео будет видно.", en: "YouTube link — the video will be visible." },
+  "YouTube qoidasiga ko'ra ijro paytida rasmiy player ko'rinib turishi shart (eng kichigi 200×200 px). U profilingizning o'ng-pastki burchagida kichkina oynada chiqadi.":
+    { ru: "По правилам YouTube во время воспроизведения официальный плеер должен быть виден (минимум 200×200 px). Он появится в небольшом окне в правом нижнем углу вашего профиля.",
+      en: "YouTube's rules require the official player to stay visible during playback (at least 200×200 px). It appears in a small window in the bottom-right corner of your profile." },
+  "Video umuman kerak bo'lmasa — «Fayl» tugmasi orqali MP3/M4A/OGG yuklang, u holda faqat musiqa yangraydi.":
+    { ru: "Если видео не нужно совсем — загрузите MP3/M4A/OGG кнопкой «Файл», тогда будет звучать только музыка.",
+      en: "If you don't want video at all, upload an MP3/M4A/OGG with the \"File\" button — then only the music plays." },
+  "Audio fayl — video umuman yo‘q.": { ru: "Аудиофайл — видео нет вообще.", en: "Audio file — no video at all." },
+  "Faqat NFCSTORE pleeri: muqova, nom va oldingi / ijro / keyingi tugmalari.":
+    { ru: "Только плеер NFCSTORE: обложка, название и кнопки назад / play / вперёд.",
+      en: "Just the NFCSTORE player: cover art, title and previous / play / next buttons." },
+  "iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~10 MB.":
+    { ru: "Где взять MP3 на iPhone: откройте трек в Telegram → Поделиться → «Сохранить в Файлы», затем выберите его кнопкой «Файл» здесь. На Android файл выбирается прямо из файлового менеджера. Максимальный размер ~10 МБ.",
+      en: "Where to get an MP3 on iPhone: open the track in Telegram → Share → \"Save to Files\", then pick it with the \"File\" button here. On Android you choose it straight from the file manager. Max size ~10 MB." },
   "Videoni ko‘rsatish": { ru: "Показать видео", en: "Show video" },
   "Havola": { ru: "Ссылка", en: "Link" },
   "Yangi telefon raqamini kiriting.": { ru: "Введите новый номер телефона.", en: "Enter your new phone number." },

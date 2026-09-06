@@ -4,7 +4,7 @@ import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MA
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { isEmbedMusic } from '../lib/music.js';
+import { isEmbedMusic, isYoutubeMusic } from '../lib/music.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
@@ -2840,10 +2840,34 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 </button>
                 <button type="button" className="btn btn-ghost btn-square btn-sm min-h-11 min-w-11 shrink-0" aria-label={t("O'chirish")} onClick={() => removeMusic(i)}>&times;</button>
               </div>
-              {url && (
-                isEmbedMusic(url)
-                  ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1.5 text-xs text-accent"><IconCheck width={12} height={12} /> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
-                  : <audio controls src={url} className="mt-2 h-9 w-full" />
+              {/* 2026-09: YouTube havolasi qo'yilganda OGOHLANTIRISH — ijro
+                  paytida rasmiy player ko'rinib turishi YouTube qoidasi
+                  (eng kichigi 200x200 px). Video umuman kerak bo'lmaganlar
+                  uchun MP3 yo'li ko'rsatiladi (iPhone qadamlari bilan). */}
+              {url && isYoutubeMusic(url) && (
+                <div className="mt-2 flex gap-2 rounded-lg border border-warning/35 bg-warning/10 px-2.5 py-2 text-xs leading-relaxed text-warning">
+                  <span aria-hidden="true">{'\u26A0\uFE0F'}</span>
+                  <span>
+                    <b>{t('YouTube havolasi — video ko‘rinadi.')}</b>{' '}
+                    {t("YouTube qoidasiga ko'ra ijro paytida rasmiy player ko'rinib turishi shart (eng kichigi 200×200 px). U profilingizning o'ng-pastki burchagida kichkina oynada chiqadi.")}{' '}
+                    <span className="text-base-content/70">{t("Video umuman kerak bo'lmasa — «Fayl» tugmasi orqali MP3/M4A/OGG yuklang, u holda faqat musiqa yangraydi.")}</span>
+                  </span>
+                </div>
+              )}
+              {url && !isYoutubeMusic(url) && isEmbedMusic(url) && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1.5 text-xs text-accent"><IconCheck width={12} height={12} /> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
+              )}
+              {url && !isEmbedMusic(url) && (
+                <>
+                  <div className="mt-2 flex gap-2 rounded-lg border border-success/30 bg-success/10 px-2.5 py-2 text-xs leading-relaxed text-success">
+                    <span aria-hidden="true">{'\u2705'}</span>
+                    <span>
+                      <b>{t("Audio fayl — video umuman yo‘q.")}</b>{' '}
+                      <span className="text-base-content/70">{t("Faqat NFCSTORE pleeri: muqova, nom va oldingi / ijro / keyingi tugmalari.")}</span>
+                    </span>
+                  </div>
+                  <audio controls src={url} className="mt-2 h-9 w-full" />
+                </>
               )}
             </div>
           ))}
@@ -2856,6 +2880,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           </button>
         )}
         <p className="mt-2 text-xs text-base-content/45">{t("Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
+        <p className="mt-1.5 text-xs text-base-content/40">{t("iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~10 MB.")}</p>
       </label>
       </Gate>
     </Section>
