@@ -2008,7 +2008,7 @@ const DICT_BASE = {
   "To'lov kutilmoqda...": { ru: "Ожидание оплаты...", en: "Awaiting payment..." },
   "Avval rasm yoki video yuklang.": { ru: "Сначала загрузите фото или видео.", en: "Upload a photo or video first." },
   "Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.": { ru: "Фото или видео (MP4/WebM, макс. 10 МБ). На iPhone для GIF/видео выбирайте через «Файлы».", en: "Photo or video (MP4/WebM, max. 10 MB). On iPhone, pick GIF/video via \"Files\"." },
-  "Musiqa fayli juda katta (maksimal ~{n} MB).": { ru: "Музыкальный файл слишком большой (максимум ~{n} МБ).", en: "The music file is too large (max ~{n} MB)." },
+  "Fayl {size} MB — maksimal {n} MB. Kichikroq fayl tanlang.": { ru: "Файл {size} МБ — максимум {n} МБ. Выберите файл поменьше.", en: "The file is {size} MB — the maximum is {n} MB. Please pick a smaller one." },
   "{n} ko'rish": { ru: "{n} просмотров", en: "{n} views" },
   "NFC ID'ni o'chirish": { ru: "Удалить NFC ID", en: "Delete NFC ID" },
   "butunlay o'chiriladi. Bu amalni QAYTARIB BO'LMAYDI — barcha postlar, menyu, fayllar va sozlamalar yo'qoladi.": { ru: "будет полностью удалён. Это действие НЕЛЬЗЯ ОТМЕНИТЬ — все посты, меню, файлы и настройки будут потеряны.", en: "will be permanently deleted. This action CANNOT BE UNDONE — all posts, menu, files and settings will be lost." },
