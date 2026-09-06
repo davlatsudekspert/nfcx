@@ -519,7 +519,9 @@ async function publicContentApi(request, env, url) {
   // bo'limida quyida e'lon qilingan (function hoisting orqali bu yerdan
   // ham chaqirish mumkin).
   if (path === '/api/settings/payments-enabled' && request.method === 'GET') {
-    return json({ enabled: paymentsEnabledD1(env) });
+    // `sandbox` — faqat interfeysdagi "TEST REJIMI" belgisini boshqaradi
+    // (paymeSandboxD1 izohiga qarang). Maxfiy qiymatlar qaytarilmaydi.
+    return json({ enabled: paymentsEnabledD1(env), sandbox: paymeSandboxD1(env) });
   }
 
   return null;
@@ -620,8 +622,19 @@ async function companyApi(request, env, url) {
 
   if (action === 'payment' && request.method === 'POST') {
     if (!['approved', 'payment_pending'].includes(owned.row.status)) return json({ error: 'not_approved' }, 409);
-    if (owned.row.status === 'approved') await setCompanyStatus(env, id, 'payment_pending', `user:${owned.auth.user.id}`, 'Payme boshlandi');
-    return json({ error: 'payments_backend_pending', message: 'Company Payme moduli backend deployini kutmoqda' }, 503);
+    if (owned.row.status === 'approved') await setCompanyStatus(env, id, 'payment_pending', `user:${owned.auth.user.id}`, 'To\'lov kutilmoqda');
+    // 2026-09: bu javob avval "backend deployini kutmoqda" der edi — endi
+    // backend deploy qilingan, shuning uchun sabab ANIQLASHTIRILDI.
+    // Kompaniya tarifi (summa) hali BELGILANMAGAN — narxni bu yerda
+    // taxmin qilib qo'yish tijorat qoidasini o'zboshimchalik bilan
+    // o'zgartirish bo'lardi. Shu sababli kompaniya to'lovi hozircha admin
+    // tomonidan qo'lda faollashtiriladi (status: payment_pending -> active).
+    // Bu Payme'ning yoqilgan/o'chirilganiga BOG'LIQ EMAS, shuning uchun
+    // "Payme tez kunlarda" degan noto'g'ri xabar ko'rsatilmaydi.
+    return json({
+      error: 'company_tariff_not_set',
+      message: 'Kompaniya tarifi hali belgilanmagan — arizangiz qabul qilindi, admin tasdiqlagach faollashadi.',
+    }, 409);
   }
 
   if (action === 'catalog' && !itemId && request.method === 'POST') {
@@ -2181,6 +2194,24 @@ function paymentsEnabledD1(env) {
   return env.PAYMENTS_ENABLED === 'true' && !!(env.PAYME_MERCHANT_ID && env.PAYME_KEY);
 }
 
+// Payme test/sandbox rejimi — FAQAT oshkora (maxfiy bo'lmagan) sozlamadan
+// aniqlanadi: `PAYME_SANDBOX="true"` yoki test checkout domeni. Merchant
+// kalitining o'zi HECH QACHON o'qilmaydi/tekshirilmaydi.
+//
+// Bu bayroq faqat KO'RINISHGA ta'sir qiladi — interfeysda "TEST REJIMI /
+// Real pul yechilmaydi" yozuvi chiqadi. To'lov mantig'i, Merchant API
+// metodlari va idempotentlik unga UMUMAN bog'liq emas.
+//
+// Standart qiymati — false (yoqilmagan). Sababi: agar Dashboard'dagi
+// merchant kalitlari aslida REAL bo'lsa-yu, biz taxmin bilan "real pul
+// yechilmaydi" deb yozib qo'ysak — bu foydalanuvchini aldash bo'lardi.
+// Shuning uchun bu yozuvni faqat operator ATAYLAB `PAYME_SANDBOX=true`
+// qo'ygandagina ko'rsatamiz.
+function paymeSandboxD1(env) {
+  if (env.PAYME_SANDBOX === 'true') return true;
+  return /(^|\.)test\./i.test(String(env.PAYME_CHECKOUT_DOMAIN || ''));
+}
+
 // Checkout havolasi — server/payme.js'dagi paymeCheckoutLink() bilan bir
 // xil format (base64({m, ac.order_id, a})). `Buffer` Node-only — Workers
 // runtime'ning global `btoa`sidan foydalanamiz (parametrlar faqat ASCII).
@@ -2980,10 +3011,170 @@ function demandRow(r) {
   };
 }
 
+// 2026-09 hotfix — "Faol / tugadi" ZIDDIYATI.
+// Postgres versiyasida auksionni yopish `closeAuctionBidding()` orqali
+// bo'lardi; Worker migratsiyasida esa auksionni yopadigan YAGONA joy admin
+// paneldagi qo'lda "force-settle" bo'lib qolgan edi. Natijada `ends_at`
+// o'tib ketgan auksion D1'da abadiy `status='active'` bo'lib qolardi —
+// frontend rozetkasi `Faol` deb ko'rsatardi, qolgan vaqt esa `tugadi` deb.
+// Shu yerda o'sha YO'QOLGAN qadam tiklanadi (yangi qoida EMAS — aynan
+// server/db.js closeAuctionBidding() mantig'i): muddati o'tgan `active`
+// auksion, taklif bo'lgan bo'lsa `awaiting_payment` (+24 soat to'lov
+// muddati), taklif bo'lmagan bo'lsa `expired` holatiga o'tadi. Hech qanday
+// pul harakati yoki egalik o'tkazish BU YERDA sodir bo'lmaydi — u faqat
+// to'lov webhook'i tasdiqlagandan keyin.
+//
+// Cloudflare Workers'da doimiy ishlab turuvchi jarayon yo'q, shuning uchun
+// bu "dangasa" (lazy) tarzda — auksion o'qilgan/taklif yuborilgan har bir
+// so'rovda — bajariladi. `WHERE ... AND status='active'` sharti tufayli
+// parallel so'rovlar bir xil auksionni ikki marta yopa olmaydi.
+async function closeExpiredAuctionsD1(env) {
+  try {
+    // ends_at TEXT ustuni ikki xil formatda bo'lishi mumkin (eski Postgres
+    // "YYYY-MM-DD HH:MM:SS+00" va yangi ISO 8601) — SQL satr taqqoslash
+    // ishonchsiz, shuning uchun parseDbDate() bilan JS tomonda solishtiramiz.
+    const rows = await env.DB.prepare(
+      `SELECT id, ends_at, highest_bidder_id FROM auctions WHERE status = 'active' ORDER BY ends_at ASC LIMIT 200`
+    ).all();
+    const now = Date.now();
+    const due = (rows.results || []).filter((r) => {
+      const d = parseDbDate(r.ends_at);
+      return d && d.getTime() <= now;
+    });
+    if (!due.length) return 0;
+    for (const a of due) {
+      if (a.highest_bidder_id) {
+        const deadline = new Date(now + 24 * 3600_000).toISOString();
+        await env.DB.prepare(
+          `UPDATE auctions SET status = 'awaiting_payment', payment_deadline = ? WHERE id = ? AND status = 'active'`
+        ).bind(deadline, a.id).run();
+      } else {
+        await env.DB.prepare(`UPDATE auctions SET status = 'expired' WHERE id = ? AND status = 'active'`).bind(a.id).run();
+      }
+    }
+    return due.length;
+  } catch (e) {
+    // Yopish ishlamasa ham o'qish so'rovi yiqilmasin — eng yomoni status
+    // bir zumga eskicha ko'rinadi, lekin taklif yo'li (placeBidD1) baribir
+    // `ends_at`ni alohida tekshiradi, ya'ni tugagan auksionga taklif
+    // O'TMAYDI.
+    console.error('closeExpiredAuctionsD1', e && e.message);
+    return 0;
+  }
+}
+
+// server/db.js'dagi `place_bid()` PL/pgSQL funksiyasining D1 (SQLite)
+// portlanishi — biznes qoidalari AYNAN o'sha: idempotentlik, o'z
+// auksioniga taklif qilmaslik, birinchi taklif >= boshlang'ich narx,
+// keyingilari >= joriy narx + min qadam, "darhol sotib olish" va
+// 5 daqiqalik ANTI-SNIPE uzaytmasi.
+//
+// D1'da `SELECT ... FOR UPDATE` yo'q, lekin bitta bazaga yozuvlar ketma-ket
+// (serializatsiya qilingan) bajariladi. Shu sababli poyga holati (ikki
+// foydalanuvchi bir vaqtda bir xil narxni taklif qilishi) OPTIMISTIK
+// qulf bilan yopiladi: auksion UPDATE'i `WHERE ... AND status='active'
+// AND current_price = <biz o'qigan narx>` sharti bilan bajariladi va
+// RETURNING bo'sh kelsa — kimdir bizdan oldin ulgurgan, taklif qabul
+// qilinmaydi (409), pul yoki tarix buzilmaydi.
+async function placeBidD1(env, { auctionId, userId, amount, idempotencyKey }) {
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: 'BID_TOO_LOW' };
+
+  if (idempotencyKey) {
+    const prev = await env.DB.prepare(`SELECT id FROM bids WHERE idempotency_key = ?`).bind(idempotencyKey).first();
+    if (prev) return { ok: true, idempotent: true, bidId: prev.id };
+  }
+
+  const a = await env.DB.prepare(
+    `SELECT id, seller_id, current_price, buy_now_price, highest_bidder_id, status, ends_at,
+            COALESCE(min_increment, 0) AS min_increment
+     FROM auctions WHERE id = ?`
+  ).bind(auctionId).first();
+  if (!a) return { ok: false, error: 'AUCTION_NOT_FOUND' };
+
+  const endsAt = parseDbDate(a.ends_at);
+  if (a.status !== 'active' || !endsAt || endsAt.getTime() <= Date.now()) {
+    return { ok: false, error: 'AUCTION_ALREADY_CLOSED' };
+  }
+  if (a.seller_id != null && Number(a.seller_id) === Number(userId)) return { ok: false, error: 'OWN_AUCTION' };
+
+  const currentPrice = Number(a.current_price);
+  const minIncrement = Number(a.min_increment) || 0;
+  if (a.highest_bidder_id == null) {
+    if (amount < currentPrice) return { ok: false, error: 'BID_TOO_LOW', minNext: currentPrice };
+  } else if (amount < currentPrice + minIncrement) {
+    return { ok: false, error: 'BID_TOO_LOW', minNext: currentPrice + minIncrement };
+  }
+
+  const buyNow = a.buy_now_price != null && amount >= Number(a.buy_now_price);
+  const FIVE_MIN_MS = 5 * 60_000;
+  let antiSnipe = false;
+  let newEndsAt = a.ends_at;
+  if (!buyNow && endsAt.getTime() - Date.now() <= FIVE_MIN_MS) {
+    newEndsAt = new Date(endsAt.getTime() + FIVE_MIN_MS).toISOString();
+    antiSnipe = true;
+  }
+
+  let updated;
+  if (buyNow) {
+    const closedAt = new Date().toISOString();
+    const deadline = new Date(Date.now() + 24 * 3600_000).toISOString();
+    updated = await env.DB.prepare(
+      `UPDATE auctions
+          SET current_price = ?, highest_bidder_id = ?, status = 'awaiting_payment',
+              ends_at = ?, payment_deadline = ?
+        WHERE id = ? AND status = 'active' AND current_price = ?
+        RETURNING id`
+    ).bind(amount, userId, closedAt, deadline, auctionId, currentPrice).first();
+  } else {
+    updated = await env.DB.prepare(
+      `UPDATE auctions
+          SET current_price = ?, highest_bidder_id = ?, ends_at = ?
+        WHERE id = ? AND status = 'active' AND current_price = ?
+        RETURNING id`
+    ).bind(amount, userId, newEndsAt, auctionId, currentPrice).first();
+  }
+  // Bizdan oldin boshqa taklif o'tib ketdi (yoki auksion yopildi) —
+  // narx o'zgargani uchun bu taklif endi yaroqsiz.
+  if (!updated) return { ok: false, error: 'BID_TOO_LOW', minNext: currentPrice + minIncrement };
+
+  let bidId = null;
+  try {
+    const ins = await env.DB.prepare(
+      `INSERT INTO bids (auction_id, user_id, amount, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id`
+    ).bind(auctionId, userId, amount, idempotencyKey || null, nowTs()).first();
+    bidId = ins ? ins.id : null;
+  } catch (e) {
+    // UNIQUE(idempotency_key) — aynan bir xil kalitli ikkita so'rov bir
+    // vaqtda kirib kelgan holat. Narx allaqachon yangilangan, shuning
+    // uchun bu MUVAFFAQIYAT (idempotent takror), xato emas.
+    if (!/UNIQUE|constraint/i.test(String(e && e.message))) throw e;
+    return { ok: true, idempotent: true, buyNow, antiSnipe, newEndsAt };
+  }
+
+  return { ok: true, buyNow, bidId, antiSnipe, newEndsAt };
+}
+
+// Bir xil auksion uchun allaqachon to'lov kutayotgan buyurtma (ikki marta
+// to'lov xavfini oldini olish uchun) — server/index.js'dagi
+// getPendingAuctionPaymentOrder() bilan bir xil.
+async function getPendingAuctionPaymentOrderD1(env, auctionId, userId) {
+  const rows = await env.DB.prepare(
+    `SELECT ${WEB_ORDER_SELECT} FROM web_orders
+      WHERE user_id = ? AND kind = 'auction_payment' AND status = 'pending'
+      ORDER BY id DESC LIMIT 20`
+  ).bind(userId).all();
+  for (const r of rows.results || []) {
+    const o = parseWebOrderRow(r);
+    if (o && Number(o.payload?.auctionId) === Number(auctionId)) return o;
+  }
+  return null;
+}
+
 async function auctionsPublicApi(request, env, url) {
   const path = url.pathname;
 
   if (path === '/api/auctions' && request.method === 'GET') {
+    await closeExpiredAuctionsD1(env);
     const active = await env.DB.prepare(`SELECT * FROM auctions WHERE status = 'active' ORDER BY ends_at ASC LIMIT 200`).all();
     const auctions = (active.results || []).map(auctionRow);
     if (url.searchParams.get('withSold') === '1') {
@@ -3054,6 +3245,8 @@ async function auctionsPublicApi(request, env, url) {
   const auctionIdMatch = path.match(/^\/api\/auctions\/(\d+)$/);
   if (auctionIdMatch && request.method === 'GET') {
     const id = Number(auctionIdMatch[1]);
+    // Muddati o'tgan auksion "Faol" ko'rinmasin (yuqoridagi izohga qarang).
+    await closeExpiredAuctionsD1(env);
     const a = await env.DB.prepare(`SELECT * FROM auctions WHERE id = ?`).bind(id).first();
     if (!a) return json({ error: 'not_found' }, 404);
     const bids = await env.DB.prepare(
@@ -3070,12 +3263,89 @@ async function auctionsPublicApi(request, env, url) {
     });
   }
 
-  // Bidding and winner payment require the payment system, which is
-  // disabled in production (PAYMENTS_ENABLED=false) independently of this
-  // migration — matches server/index.js's existing behavior exactly.
-  if ((path.match(/^\/api\/auctions\/\d+\/bid$/) && request.method === 'POST')
-    || (path.match(/^\/api\/auctions\/\d+\/pay$/) && request.method === 'POST')) {
-    return json({ error: 'payments_disabled' }, 503);
+  // 2026-09 hotfix — /api/auctions/:id/bid va /:id/pay HAR DOIM 503
+  // qaytarardi.
+  //
+  // ILDIZ SABAB: Express -> Worker migratsiyasida bu ikki route KO'CHIRILMAY
+  // qolgan, o'rniga qattiq yozilgan (hardcoded) `503 payments_disabled`
+  // zaglushka qo'yilgan edi. Ya'ni 503 D1 jadval shakli, sessiya, auksion
+  // holati yoki frontend payload'iga UMUMAN bog'liq emas edi — server
+  // so'rovni hatto o'qib ham ko'rmasdan rad etardi. Shu sababli
+  // foydalanuvchi har doim faqat umumiy "Xatolik yuz berdi" xabarini
+  // ko'rardi. Endi server/index.js + server/db.js place_bid() mantig'i
+  // to'liq portlandi (biznes qoidalari o'zgarmagan).
+  const bidMatch = path.match(/^\/api\/auctions\/(\d+)\/bid$/);
+  if (bidMatch && request.method === 'POST') {
+    if (!paymentsEnabledD1(env)) return json({ error: 'payments_disabled' }, 503);
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    if (user.bannedUntil) return json({ error: 'BANNED', bannedUntil: user.bannedUntil }, 403);
+
+    const body = await request.json().catch(() => null);
+    const auctionId = Number(bidMatch[1]);
+    const amount = Math.round(Number(body?.amount));
+    const idempotencyKey = typeof body?.idempotencyKey === 'string' ? body.idempotencyKey.slice(0, 100) : null;
+    if (!auctionId || !Number.isFinite(amount) || !amount) return json({ error: 'BAD_INPUT' }, 422);
+
+    // Muddati o'tgan auksionlar avval to'g'ri holatga o'tkaziladi, shunda
+    // pastdagi javob "AUCTION_ALREADY_CLOSED" (409) bo'ladi — 503 emas.
+    await closeExpiredAuctionsD1(env);
+    try {
+      const result = await placeBidD1(env, { auctionId, userId: user.id, amount, idempotencyKey });
+      // Biznes qoidasi buzilishi = mijoz xatosi (4xx), server nosozligi emas.
+      if (result.error) return json(result, result.error === 'AUCTION_NOT_FOUND' ? 404 : 409);
+      return json(result);
+    } catch (e) {
+      // Faqat HAQIQIY server/D1 nosozligi 503 bo'ladi. Logga faqat xato
+      // matni yoziladi — token, sessiya yoki maxfiy qiymatlar emas.
+      console.error('placeBidD1', e && e.message);
+      return json({ error: 'SYSTEM' }, 503);
+    }
+  }
+
+  const payMatch = path.match(/^\/api\/auctions\/(\d+)\/pay$/);
+  if (payMatch && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    if (user.bannedUntil) return json({ error: 'BANNED', bannedUntil: user.bannedUntil }, 403);
+    if (!paymentsEnabledD1(env)) return json({ error: 'payments_disabled' }, 503);
+
+    const id = Number(payMatch[1]);
+    await closeExpiredAuctionsD1(env);
+    const a = await env.DB.prepare(`SELECT * FROM auctions WHERE id = ?`).bind(id).first();
+    if (!a) return json({ error: 'AUCTION_NOT_FOUND' }, 404);
+    if (a.status !== 'awaiting_payment') return json({ error: 'AUCTION_NOT_AWAITING_PAYMENT' }, 409);
+    if (Number(a.highest_bidder_id) !== Number(user.id)) return json({ error: 'NOT_WINNER' }, 403);
+    const deadline = parseDbDate(a.payment_deadline);
+    if (!deadline || deadline.getTime() <= Date.now()) return json({ error: 'PAYMENT_DEADLINE_PASSED' }, 409);
+
+    const body = await request.json().catch(() => null);
+    const name = cleanStr(body?.name, 60);
+    const phone = cleanStr(body?.phone, 30).replace(/[\s\-()]/g, '');
+    if (!name) return json({ error: 'name_required' }, 422);
+    if (!phone) return json({ error: 'phone_required' }, 422);
+    const profile = {
+      name,
+      role: cleanStr(body?.role, 100),
+      tg: cleanStr(body?.tg, 40).replace(/^@/, ''),
+      phone,
+      email: cleanStr(body?.email, 100),
+    };
+
+    try {
+      const existing = await getPendingAuctionPaymentOrderD1(env, a.id, user.id);
+      if (existing) {
+        return json({ orderId: existing.id, amount: Number(existing.price), payLink: paymeCheckoutLinkD1(env, existing.id, Number(existing.price)) }, 202);
+      }
+      const order = await createWebOrderD1(env, {
+        userId: user.id, code: a.code, kind: 'auction_payment', price: Number(a.current_price),
+        payload: { auctionId: a.id, ...profile },
+      });
+      return json({ orderId: order.id, amount: Number(a.current_price), payLink: paymeCheckoutLinkD1(env, order.id, Number(a.current_price)) }, 202);
+    } catch (e) {
+      console.error('auctionPay', e && e.message);
+      return json({ error: 'SYSTEM' }, 503);
+    }
   }
 
   return null;

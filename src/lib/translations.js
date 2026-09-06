@@ -452,6 +452,26 @@ const DICT_BASE = {
   "Taklifingiz qabul qilindi! Tugash vaqti oxirgi daqiqada bo'lgani uchun +5 daqiqaga uzaytirildi.":
     { ru: 'Ваша ставка принята! Так как это была последняя минута, время окончания продлено на +5 минут.', en: 'Your bid was accepted! Since it was the last minute, the end time was extended by +5 minutes.' },
   'Taklifingiz qabul qilindi!': { ru: 'Ваша ставка принята!', en: 'Your bid was accepted!' },
+  // 2026-09: musiqa boshqaruvi tugmalarining aria-label'lari (ProfilePage).
+  'Oldingi qo\u2018shiq': { ru: 'Предыдущий трек', en: 'Previous track' },
+  'Keyingi qo\u2018shiq': { ru: 'Следующий трек', en: 'Next track' },
+  // 2026-09: auksion taklif xatolari (src/lib/db.js AUCTION_ERRORS) —
+  // avval faqat o'zbekcha bo'lgan, RU/EN'da tarjimasiz qolardi.
+  'Tugagan': { ru: 'Завершён', en: 'Ended' },
+  'Auksion yakunlandi': { ru: 'Аукцион завершён', en: 'Auction ended' },
+  "Bu auksionning vaqti tugadi — yangi taklif qabul qilinmaydi. Natija bir necha soniyada yangilanadi.":
+    { ru: 'Время этого аукциона истекло — новые ставки не принимаются. Результат обновится через несколько секунд.', en: 'This auction has ended — new bids are no longer accepted. The result will update in a few seconds.' },
+  'Auksion topilmadi.': { ru: 'Аукцион не найден.', en: 'Auction not found.' },
+  'Auksion allaqachon yakunlangan.': { ru: 'Аукцион уже завершён.', en: 'This auction has already ended.' },
+  "Bu auksion hozir to'lov kutish holatida emas.": { ru: 'Этот аукцион сейчас не ожидает оплаты.', en: 'This auction is not awaiting payment right now.' },
+  "Faqat auksion g'olibi to'lov qila oladi.": { ru: 'Оплатить может только победитель аукциона.', en: 'Only the auction winner can pay.' },
+  "To'lov muddati (24 soat) o'tib ketgan.": { ru: 'Срок оплаты (24 часа) истёк.', en: 'The payment deadline (24 hours) has passed.' },
+  "O'z auksioningizga taklif qila olmaysiz.": { ru: 'Вы не можете делать ставки на своём аукционе.', en: 'You cannot bid on your own auction.' },
+  "Taklifingiz joriy narxdan yuqori bo'lishi kerak.": { ru: 'Ваша ставка должна быть выше текущей цены.', en: 'Your bid must be higher than the current price.' },
+  "Akkauntingiz vaqtincha bloklangan (to'lanmagan auksion sababli).":
+    { ru: 'Ваш аккаунт временно заблокирован (из-за неоплаченного аукциона).', en: 'Your account is temporarily blocked (due to an unpaid auction).' },
+  'Tizim xatoligi yuz berdi, birozdan keyin qayta urinib ko’ring.':
+    { ru: 'Произошла системная ошибка, попробуйте позже.', en: 'A system error occurred, please try again shortly.' },
   "To'lov tasdiqlandi — tabriklaymiz, raqamli tashrif qog'ozi endi sizniki!":
     { ru: 'Оплата подтверждена — поздравляем, цифровая визитка теперь ваша!', en: 'Payment confirmed — congratulations, the digital card is now yours!' },
   "To'lov bekor qilindi.": { ru: 'Оплата отменена.', en: 'Payment cancelled.' },

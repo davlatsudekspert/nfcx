@@ -516,3 +516,78 @@
 :focus-visible{outline:2px solid var(--vz-gold);outline-offset:2px;}
 /* Kamaytirilgan harakat */
 @media (prefers-reduced-motion:reduce){.vz-skel{animation:none;}}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   YAGONA PAYME TO'LOV BLOKI — src/components/PaymeBlock.jsx
+   Qora premium fon + ingichka oltin ramka. Payme logotipi RASMIY turkuaz
+   firma rangida qoladi (oltinga bo'yalmaydi, qayta chizilmaydi).
+   ═══════════════════════════════════════════════════════════════════════ */
+.payme-block{
+  background:linear-gradient(180deg,#0d0a06,#080604);
+  border:1px solid rgba(212,175,90,.34);
+  border-radius:var(--vz-radius);
+  padding:18px;
+  box-shadow:0 18px 44px -26px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.payme-block__head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+/* Payme rasmiy so'z belgisi — turkuaz gradient + oq matn. */
+.payme-block__logo{
+  display:inline-flex;align-items:center;border-radius:10px;
+  padding:6px 14px;line-height:1;color:#fff;
+  font-family:'Space Grotesk',system-ui,sans-serif;font-size:19px;font-weight:800;letter-spacing:-.01em;
+  background:linear-gradient(135deg,#33c8b6,#1fae9c);
+}
+.payme-block__badge{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  font-size:11px;font-weight:800;letter-spacing:.06em;line-height:1.2;text-transform:uppercase;
+}
+.payme-block__badge--test{background:rgba(51,200,182,.14);color:#5fd9ca;border:1px solid rgba(51,200,182,.36);}
+.payme-block__badge--off{background:rgba(245,158,11,.16);color:#fbbf24;border:1px solid rgba(245,158,11,.34);}
+.payme-block__order{
+  display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;
+  margin-top:14px;padding:12px 14px;border-radius:var(--vz-radius-sm);
+  background:rgba(255,255,255,.028);border:1px solid var(--vz-line);
+}
+.payme-block__title{font-size:15px;font-weight:800;color:var(--vz-ink);line-height:1.35;}
+.payme-block__subtitle{margin-top:3px;font-size:12.5px;color:var(--vz-ink-3);line-height:1.45;}
+.payme-block__amount{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;text-align:right;}
+.payme-block__amount-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--vz-ink-3);}
+.payme-block__amount-value{font-size:20px;font-weight:800;color:var(--vz-gold-2);line-height:1.2;}
+.payme-block__cta{margin-top:14px;}
+.payme-block__foot{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.payme-block__secure{display:flex;align-items:flex-start;gap:7px;font-size:12px;line-height:1.5;color:var(--vz-ink-3);}
+.payme-block__secure svg{flex:0 0 auto;margin-top:2px;}
+.payme-block__sandbox-note{font-size:12px;font-weight:700;color:#5fd9ca;}
+.payme-block__off-note{font-size:12px;line-height:1.5;color:#fbbf24;}
+.payme-block__note{font-size:12px;line-height:1.5;color:var(--vz-ink-3);}
+@media (max-width:420px){
+  .payme-block{padding:15px;}
+  .payme-block__order{flex-direction:column;align-items:flex-start;}
+  .payme-block__amount{align-items:flex-start;margin-left:0;text-align:left;}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NARXLAR SAHIFASI — UZLUKSIZ BLACK & GOLD PRESTIGE FONI (2026-09)
+   Avval `bg-black` max-w-[1800px] konteynerga qo'yilgani uchun sahifa foni
+   bilan orasida ko'rinadigan chok (tik va yotiq) hosil bo'lardi. Endi fon
+   butun brauzer kengligi bo'ylab, hech qanday qattiq chegarasiz.
+   Kontent kengligi O'ZGARMAYDI — u avvalgi max-width konteynerida qoladi.
+   ═══════════════════════════════════════════════════════════════════════ */
+.pricing-page{
+  position:relative;
+  /* Butun brauzer kengligi — ota konteynerning padding'idan qat'i nazar.
+     `100vw` ATAYLAB ISHLATILMAYDI: u vertikal scrollbar kengligini ham
+     qo'shib, gorizontal scroll hosil qilardi. */
+  width:100%;
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(212,175,90,.10), transparent 62%),
+    radial-gradient(900px 520px at 88% 6%, rgba(212,175,90,.06), transparent 58%),
+    linear-gradient(180deg, #000 0%, #050402 42%, #000 100%);
+}
+/* Sahifa kontenti tugagandan keyin ham fon pastgacha davom etsin — pastda
+   body foniga o'tadigan qattiq chok qolmasligi uchun. */
+.pricing-page::after{
+  content:''; position:absolute; left:0; right:0; top:100%; height:220px;
+  background:linear-gradient(180deg, #000, rgba(0,0,0,0));
+  pointer-events:none;
+}

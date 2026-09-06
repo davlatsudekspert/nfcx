@@ -143,7 +143,16 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   const calcTaken = calcParsed ? !!takenMap[calcParsed.code] : false;
 
   return (
-    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-24 bg-black">
+    // 2026-09 hotfix — NARXLAR SAHIFASI FONI.
+    // Avval `bg-black` AYNAN shu `max-w-[1800px]` konteynerda edi: sahifa
+    // foni (body, #0a0a0b + radial nurlar) bilan mos kelmagani uchun keng
+    // ekranlarda 1800px chetida TIK chok, `pb-24` tugagan joyda esa YOTIQ
+    // chok ko'rinardi — bo'lim sun'iy to'rtburchak bo'lib ajralib turardi.
+    // Endi fon `pricing-page` (butun brauzer kengligi bo'ylab uzluksiz
+    // Black & Gold Prestige) qatlamida, kontent esa avvalgi max-width
+    // konteynerida qoladi. Tariflar, narxlar va oltin urg'ular tegilmagan.
+    <div className="pricing-page">
+    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-24">
       <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
           <span className="vz-kicker">{t('Narxlar')}</span>
@@ -307,5 +316,6 @@ export default function PricingPage({ catalog, refreshCatalog }) {
         />
       )}
     </main>
+    </div>
   );
 }

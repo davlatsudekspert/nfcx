@@ -98,4 +98,30 @@ export const DICT_ACCOUNT = {
   'Jismoniy karta dizayni hozirgi tarifingizda yopiq (Silver va undan yuqori).': { ru: 'Дизайн физической карты недоступен на вашем тарифе (Silver и выше).', en: 'Physical card design is locked on your plan (Silver and above).' },
   "Email formati noto'g'ri.": { ru: 'Неверный формат email.', en: 'Invalid email format.' },
   "Kod noto'g'ri yoki muddati o'tgan. Qaytadan so'rang.": { ru: 'Код неверный или истёк. Запросите новый.', en: 'The code is wrong or expired. Request a new one.' },
+
+  // ─── Yagona Payme to'lov bloki (src/components/PaymeBlock.jsx, 2026-09) ───
+  "To'lov summasi": { ru: 'Сумма оплаты', en: 'Payment amount' },
+  "Payme orqali to'lash": { ru: 'Оплатить через Payme', en: 'Pay with Payme' },
+  "Buyurtma berish va to'lash": { ru: 'Оформить заказ и оплатить', en: 'Place the order and pay' },
+  "To'lovga o'tish": { ru: 'Перейти к оплате', en: 'Go to payment' },
+  'Vaqtincha mavjud emas': { ru: 'Временно недоступно', en: 'Temporarily unavailable' },
+  'PAYME SANDBOX \u00b7 TEST REJIMI': { ru: 'PAYME SANDBOX \u00b7 ТЕСТОВЫЙ РЕЖИМ', en: 'PAYME SANDBOX \u00b7 TEST MODE' },
+  'Real pul yechilmaydi \u2014 bu test to\u2019lovi.': { ru: 'Реальные деньги не списываются \u2014 это тестовый платёж.', en: 'No real money is charged \u2014 this is a test payment.' },
+  "To'lov Payme'ning himoyalangan sahifasida amalga oshiriladi \u2014 karta ma'lumotlaringiz saytda saqlanmaydi.":
+    { ru: 'Оплата проходит на защищённой странице Payme \u2014 данные вашей карты на сайте не хранятся.', en: 'Payment happens on Payme\u2019s secure page \u2014 your card details are never stored on this site.' },
+  "To'lov tizimi vaqtincha o'chirilgan.": { ru: 'Платёжная система временно отключена.', en: 'The payment system is temporarily disabled.' },
+  "To'lov tizimi hozircha o'chirilgan. Buyurtmani biroz keyinroq rasmiylashtirasiz.":
+    { ru: 'Платёжная система пока отключена. Вы сможете оформить заказ чуть позже.', en: 'The payment system is off for now. You will be able to place the order shortly.' },
+  'Qabul qiluvchi ismi': { ru: 'Имя получателя', en: 'Recipient name' },
+  'Yetkazib berish manzili': { ru: 'Адрес доставки', en: 'Delivery address' },
+  'Davom etish uchun yetkazib berish ma\u02bclumotlarini to\u02bcldiring.':
+    { ru: 'Для продолжения заполните данные доставки.', en: 'Fill in the delivery details to continue.' },
+  "Buyurtma yaratildi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.":
+    { ru: 'Заказ создан. Как только оплата подтвердится, мы начнём изготовление карты.', en: 'Order created. Once the payment is confirmed we start producing the card.' },
+  "Ism, telefon va manzilni to'liq kiriting.": { ru: 'Укажите имя, телефон и адрес полностью.', en: 'Fill in the name, phone and address completely.' },
+  'Arizangiz qabul qilindi \u2014 kompaniya tarifi tasdiqlangach faollashadi.':
+    { ru: 'Ваша заявка принята \u2014 компания активируется после подтверждения тарифа.', en: 'Your request was received \u2014 the company becomes active once the plan is confirmed.' },
+  'Arizangiz qabul qilindi \u2014 admin tasdig\u2019i kutilmoqda.':
+    { ru: 'Ваша заявка принята \u2014 ожидается подтверждение администратора.', en: 'Your request was received \u2014 awaiting admin confirmation.' },
+  'To\u2018lov tizimi vaqtincha o\u2018chirilgan.': { ru: 'Платёжная система временно отключена.', en: 'The payment system is temporarily disabled.' },
 };

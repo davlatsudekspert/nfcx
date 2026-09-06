@@ -28,6 +28,39 @@
 }
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   2026-09 hotfix — iPhone'da bo'lim markazdan siljishi va gorizontal
+   scroll uchun UMUMIY (root darajadagi) himoya.
+
+   Asosiy ildiz sabab alohida tuzatildi (src/components/NfcCard.jsx —
+   WebKit preserve-3d + overflow:hidden qirqmasligi). Bu yerdagi qoidalar
+   esa ikkinchi himoya qatlami: bundan keyin BIRON element tasodifan
+   kengaydi ham, sahifa gorizontal siljimaydi va markazlashuvi buzilmaydi.
+
+   `overflow-x:clip` (`hidden` emas) tanlangan — `hidden` yangi scroll
+   konteyner yaratib, `position:sticky` elementlarni buzadi; `clip` esa
+   faqat qirqadi. Eski brauzerlar uchun `hidden` fallback sifatida oldin
+   yoziladi.
+   ═══════════════════════════════════════════════════════════════════════ */
+html, body{
+  max-width:100%;
+  overflow-x:hidden;
+  overflow-x:clip;
+}
+body{
+  /* iPhone notch/Dynamic Island — index.html'dagi viewport-fit=cover bilan
+     birga ishlaydi. Portret rejimda chap/o'ng inset odatda 0, landshaftda
+     esa real qiymat bo'ladi; ikkala holatda ham kontent markazda qoladi. */
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+}
+/* Safari'da `100vh` manzil paneli sababli haqiqiy ko'rinadigan balandlikdan
+   katta bo'ladi (pastki elementlar kesiladi). `svh` qo'llab-quvvatlansa —
+   kichik (small) viewport balandligiga o'tamiz. */
+@supports (height: 100svh){
+  .min-h-screen{min-height:100svh;}
+}
 body{
   margin:0;
   background:

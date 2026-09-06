@@ -2,7 +2,11 @@
 <html lang="uz" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover — iPhone (notch/Dynamic Island) uchun: sahifa
+       xavfsiz zonaga cheklanib qolmasdan butun ekranni egallaydi, ichki
+       joylashuv esa env(safe-area-inset-*) orqali to'g'ri hisoblanadi
+       (src/index.css'dagi .vz-safe-x va body qoidalariga qarang). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>NFCSTORE — raqamli profil va NFC karta</title>
   <meta name="description" content="Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni bitta raqamli profilda jamlang va NFC karta orqali ulashing." />
   <meta name="theme-color" content="#0a0805" />

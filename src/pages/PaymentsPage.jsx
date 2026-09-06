@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { fmt, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
+import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import { IconBag } from '../components/Icons.jsx';
@@ -27,7 +27,7 @@ const STATUS_LABEL = {
 export default function PaymentsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const PAYMENTS_ENABLED = usePaymentsEnabled();
+  const { enabled: PAYMENTS_ENABLED, sandbox: paymentsSandbox } = usePaymentsInfo();
   const [data, setData] = useState(null);       // null = yuklanmoqda
   const [dataErr, setDataErr] = useState(false);
   const [orders, setOrders] = useState([]);
@@ -86,7 +86,11 @@ export default function PaymentsPage() {
             <div className="flex items-center gap-2.5">
               <span className="rounded-lg bg-[#33c8b6] px-2.5 py-1 text-sm font-extrabold text-white">Payme</span>
               <span className="vz-badge vz-badge--ok">{t('Faol')}</span>
-              <span className="vz-badge vz-badge--muted">{t('Sinov (sandbox)')}</span>
+              {/* 2026-09: "Sinov (sandbox)" avval QATTIQ YOZILGAN edi va
+                  Payme real rejimga o'tgach ham qolib ketardi. Endi u ham
+                  backend'dagi yagona manbadan (/api/settings/payments-enabled
+                  -> sandbox) keladi. */}
+              {paymentsSandbox && <span className="vz-badge vz-badge--muted">{t('Sinov (sandbox)')}</span>}
             </div>
             <p className="mt-2 text-sm text-base-content/55">{t("To'lovlar Payme orqali xavfsiz amalga oshiriladi.")}</p>
           </div>

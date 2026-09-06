@@ -4,7 +4,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
+import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 import PaymeReadyBadge from './PaymeReadyBadge.jsx';
 import TelegramChannelCTA from './TelegramChannelCTA.jsx';
@@ -56,7 +56,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   // To'lov bosqichi: buyurtma yaratilgach shu yerga o'tamiz.
   const [order, setOrder] = useState(null); // { orderId, payLink, code, price }
   const pollRef = useRef(null);
-  const PAYMENTS_ENABLED = usePaymentsEnabled();
+  const { enabled: PAYMENTS_ENABLED, sandbox: paymentsSandbox } = usePaymentsInfo();
   const totalPrice = price + (wantPhysicalCard ? PHYSICAL_CARD_FEE : 0);
   // Band qilish to'lov tizimi tayyor bo'lmaguncha butunlay yopiq —
   // tekin (0 so'm) nomlar ham band qilinmaydi.
@@ -172,7 +172,10 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const field = 'form-control';
   const inp = 'vz-input mt-1 w-full';
   // Payme sandbox (test.paycom.uz) — foydalanuvchiga bu test rejimi ekani ko'rsatiladi.
-  const payIsSandbox = !!order?.payLink && /test\.paycom\.uz/i.test(order.payLink);
+  // Sandbox belgisi endi YAGONA manbadan keladi: backend bayrog'i
+  // (/api/settings/payments-enabled -> sandbox) YOKI checkout havolasining
+  // test domeni. Avval faqat havola tekshirilardi.
+  const payIsSandbox = paymentsSandbox || (!!order?.payLink && /test\.paycom\.uz/i.test(order.payLink));
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -191,11 +194,14 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
               <>
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                   <PaymeReadyBadge />
-                  {payIsSandbox && <span className="vz-badge vz-badge--warn">{t('Test rejimi')}</span>}
+                  {payIsSandbox && <span className="vz-badge vz-badge--warn">{t('PAYME SANDBOX \u00b7 TEST REJIMI')}</span>}
                 </div>
                 <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold mt-4 w-full">
                   {t("To'lash — {n} so'm", { n: fmt(order.price) })}
                 </a>
+                {payIsSandbox && (
+                  <p className="mt-2 text-center text-xs font-bold text-[#5fd9ca]">{t('Real pul yechilmaydi \u2014 bu test to\u2019lovi.')}</p>
+                )}
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
                   <span className="loading loading-spinner loading-xs"></span>
                   {t("To'lov tasdiqlanishini kutmoqdamiz...")}
