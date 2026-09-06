@@ -203,6 +203,10 @@ export async function initDb() {
     bg_color: `ALTER TABLE cards ADD COLUMN bg_color TEXT`,
     bg_animated: `ALTER TABLE cards ADD COLUMN bg_animated BOOLEAN NOT NULL DEFAULT TRUE`,
     is_primary: `ALTER TABLE cards ADD COLUMN is_primary BOOLEAN NOT NULL DEFAULT FALSE`,
+    // Kartaning manba belgisi ('registration_auto' | 'gift_activation' |
+    // 'web_order' | 'admin_order'). Qo'shimcha va nullable — eski qatorlar
+    // tegilmaydi. Worker (hosting/worker.js) bilan bir xil nom/qiymatlar.
+    source: `ALTER TABLE cards ADD COLUMN source TEXT`,
     giftable: `ALTER TABLE cards ADD COLUMN giftable BOOLEAN NOT NULL DEFAULT TRUE`,
     hide_phone: `ALTER TABLE cards ADD COLUMN hide_phone BOOLEAN NOT NULL DEFAULT FALSE`,
     music_url: `ALTER TABLE cards ADD COLUMN music_url TEXT`,
@@ -231,7 +235,7 @@ export async function initDb() {
     await pool.query(desired.code_wide);
     console.log('[db] cards.code ustuni VARCHAR(16)ga kengaytirildi.');
   }
-  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory', 'address', 'latitude', 'longitude']) {
+  for (const key of ['about', 'facebook', 'twitter', 'website', 'card_number', 'theme', 'for_sale', 'sale_price', 'extra_links', 'card_numbers', 'bg_url', 'bg_pattern', 'accent_color', 'bg_color', 'bg_animated', 'music_url', 'is_primary', 'giftable', 'hide_phone', 'links_transparent', 'card_design', 'link_style', 'profile_type', 'city', 'hidden_from_directory', 'address', 'latitude', 'longitude', 'source']) {
     if (!cols.has(key)) {
       await pool.query(desired[key]);
       console.log(`[db] cards.${key} ustuni qo'shildi.`);
@@ -2705,8 +2709,8 @@ export async function createFreeAutoId(userId, name) {
     const code = String(Math.floor(10_000_000 + Math.random() * 89_999_999));
     try {
       const { rows } = await pool.query(
-        `INSERT INTO cards (code, name, theme, hashtags, price, ts, user_id, is_primary, giftable)
-         VALUES ($1,$2,'classic','[]'::jsonb,0,$3,$4,TRUE,FALSE)
+        `INSERT INTO cards (code, name, theme, hashtags, price, ts, user_id, is_primary, giftable, source)
+         VALUES ($1,$2,'classic','[]'::jsonb,0,$3,$4,TRUE,FALSE,'registration_auto')
          ON CONFLICT (code) DO NOTHING
          RETURNING code`,
         [code, name || 'Yangi foydalanuvchi', Date.now(), userId]

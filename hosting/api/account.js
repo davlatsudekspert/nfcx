@@ -455,8 +455,8 @@ export async function handle(request, env, url, H) {
       const ins = await env.DB.prepare(
         `INSERT INTO cards (code, name, role, avatar_url, bg_url, bg_pattern, accent_color, bg_color, bg_animated, music_url,
            tg, phone, email, linkedin, instagram, about, facebook, twitter, website, card_number,
-           extra_links, card_numbers, theme, hashtags, price, ts, user_id)
-         VALUES (?, ?, '', ?, '', 1, NULL, NULL, 1, '[]', ?, ?, '', '', ?, ?, '', '', '', '', ?, '[]', 'classic', '[]', 0, ?, ?)
+           extra_links, card_numbers, theme, hashtags, price, ts, user_id, source)
+         VALUES (?, ?, '', ?, '', 1, NULL, NULL, 1, '[]', ?, ?, '', '', ?, ?, '', '', '', '', ?, '[]', 'classic', '[]', 0, ?, ?, 'gift_activation')
          ON CONFLICT (code) DO NOTHING RETURNING code`
       ).bind(code, username ? `${name} (@${username})` : name, avatarUrl, telegram, phone, instagram, bio,
         JSON.stringify(extraLinks), Date.now(), user.id).first();

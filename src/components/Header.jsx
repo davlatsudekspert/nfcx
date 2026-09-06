@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { navigate } from '../lib/router.js';
+import { navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbUnreadCount, dbList } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
@@ -114,6 +114,9 @@ function MyProfileAvatar({ src, label, size = 'h-6 w-6' }) {
 export default function Header() {
   const { user, myCards } = useAuth();
   const { t } = useLanguage();
+  // Joriy sahifa — navigatsiyada oltin rang + indikator uchun.
+  const path = usePathRoute();
+  const isActive = (href) => path === href || path.startsWith(href + '/');
   const primaryCard = Array.isArray(myCards) ? myCards[0] : null;
   const myAvatar = primaryCard?.avatarUrl || '';
   const myLabel = primaryCard?.name || user?.email || '';
@@ -158,24 +161,31 @@ export default function Header() {
           ))}
         </div>
       </div>
-      <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-8 2xl:px-14">
+      <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2.5 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)]">
-            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)]" />
+          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
+            <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" />
             NFCSTORE
           </button>
-          <div className="hidden w-36 shrink-0 md:block lg:w-40">
+          <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-40">
             <HeaderSearch />
           </div>
         </div>
 
-        {/* Diqqat: bu yerda ataylab text-sm ISHLATILMAYDI — sayt bo'ylab
-            text-sm global kattalashtirilgan (o'qilishni yaxshilash uchun),
-            lekin bu navigatsiya qatori juda zich (9 ta havola bitta qatorda)
-            va kattaroq matn bilan sig'may, ustma-ust tushib qolar edi. */}
-        <nav className="hidden flex-1 items-center justify-center gap-1.5 text-[13.5px] text-base-content/60 xl:flex 2xl:gap-6">
+        {/* Navigatsiya uslubi src/theme.css'dagi `.vz-nav` / `.vz-nav__link`
+            da (Black & Gold Prestige): 15-16px, vazn 500/600, iliq oq
+            (--vz-ink) matn, hover va joriy sahifada yumshoq oltin
+            (--vz-gold-2) + nozik oltin indikator. O'lcham va oraliq
+            `clamp()` bilan — 9 ta havola 1366/1440/1920 px ekranlarda
+            bitta qatorga sig'adi, UZ/RU/EN uzun matnlarida ham. */}
+        <nav className="vz-nav hidden min-w-0 flex-1 xl:flex" aria-label={t('Asosiy menyu')}>
           {DESKTOP_NAV.map(([label, href]) => (
-            <button key={href} onClick={() => go(href)} className="shrink-0 cursor-pointer transition-colors hover:text-base-content">
+            <button
+              key={href}
+              onClick={() => go(href)}
+              className="vz-nav__link"
+              aria-current={isActive(href) ? 'page' : undefined}
+            >
               {t(label)}
             </button>
           ))}
@@ -212,7 +222,14 @@ export default function Header() {
           {/* Kirgan foydalanuvchi uchun asosiy CTA "Mening profilim" — ro'yxatdan
               o'tish tugmasi faqat mehmonlarga (xl kengligida navbar sig'ishi uchun ham). */}
           {!user && (
-            <button className="btn btn-gold h-10 min-h-10 px-5 text-[13.5px]" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
+            /* xl (1280-1535px) da navigatsiyaning 9 ta havolasi sig'ishi
+               uchun CTA qisqa variantda ("Ro'yxatdan o'tish"), 2xl dan
+               boshlab to'liq matn qaytadi. Tugma, manzil va harakat
+               O'ZGARMAYDI — faqat yorlig'i qisqaradi. */
+            <button className="btn btn-gold h-10 min-h-10 px-4 text-[13.5px] 2xl:px-5" onClick={() => go('/register')}>
+              <span className="2xl:hidden">{t("Ro'yxatdan o'tish")}</span>
+              <span className="hidden 2xl:inline">{t('Bepul profil yaratish')}</span>
+            </button>
           )}
           <LanguageSwitcher />
         </div>
@@ -235,7 +252,14 @@ export default function Header() {
           <ul className="menu w-full gap-1 bg-transparent p-0">
             {NAV.map(([label, href]) => (
               <li key={href}>
-                <button onClick={() => go(href)} className="min-h-11 cursor-pointer">{t(label)}</button>
+                {/* .vz-nav-m__link — 16px matn, kamida 48px teginish maydoni. */}
+                <button
+                  onClick={() => go(href)}
+                  className="vz-nav-m__link"
+                  aria-current={isActive(href) ? 'page' : undefined}
+                >
+                  {t(label)}
+                </button>
               </li>
             ))}
             <li className="mt-2 border-t border-white/10 pt-2">

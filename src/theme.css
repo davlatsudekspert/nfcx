@@ -690,3 +690,72 @@ body.pricing-bg footer{background:var(--color-page-bg);}
    Video qatlamlarining o'zi eng pastda (z-index:0) qoladi. */
 .profile-panel--video > *:not(.profile-bg-layer){position:relative;z-index:1;}
 .profile-panel--video > .profile-bg-layer{z-index:0;}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   YUQORI HEADER NAVIGATSIYASI — Black & Gold Prestige (2026-09)
+   ─────────────────────────────────────────────────────────────────────────
+   Avval menyu `text-[13.5px] text-base-content/60` edi: juda mayda va xira
+   (past kontrast). Endi barcha rang/shrift/transition qiymatlari MAVJUD
+   dizayn tokenlaridan olinadi (--vz-ink = iliq oq/ivory, --vz-gold-2 =
+   yumshoq oltin, --vz-line, --vz-gold).
+
+   O'lcham `clamp()` bilan boshqariladi, shuning uchun 1366 / 1440 / 1920 px
+   ekranlarda 9 ta havola bir qatorga SIG'ADI va ustma-ust tushmaydi
+   (UZ/RU/EN uzunroq matnlarida ham). Header balandligi o'zgarmaydi —
+   havolalarning vertikal padding'i eski qator balandligi ichida qoladi. */
+/* DIQQAT: bu yerda `display` BERILMAYDI — ko'rinishni Tailwind'ning
+   `hidden xl:flex` utilitalari boshqaradi. Aks holda theme.css utilitalardan
+   KEYIN yuklangani uchun `.vz-nav{display:flex}` mobil ekranda `hidden` ni
+   bosib, desktop menyu hamburger tugmasi ustida qolib ketardi. */
+.vz-nav{align-items:center;justify-content:center;gap:clamp(2px,.4vw,18px);}
+.vz-nav__link{
+  position:relative;flex:none;border:0;background:transparent;cursor:pointer;
+  padding:7px clamp(2px,.3vw,10px);border-radius:9px;
+  font-size:clamp(15px,1.08vw,16px);font-weight:500;line-height:1.2;white-space:nowrap;
+  /* Xira kulrang EMAS — iliq oq/ivory (--vz-ink), yengil shaffoflik bilan. */
+  color:color-mix(in srgb,var(--vz-ink) 88%,transparent);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  transition:color .18s ease;
+}
+/* Nozik oltin indikator — glow/neon YO'Q, faqat 1.5px chiziq markazdan
+   ochiladi. */
+.vz-nav__link::after{
+  content:"";position:absolute;left:50%;right:50%;bottom:1px;height:1.5px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--vz-gold-2),transparent);
+  opacity:0;transition:left .22s ease,right .22s ease,opacity .22s ease;
+}
+.vz-nav__link:hover{color:var(--vz-gold-2);}
+.vz-nav__link:hover::after{left:12%;right:12%;opacity:.8;}
+.vz-nav__link:focus-visible{
+  outline:2px solid var(--vz-gold);outline-offset:2px;color:var(--vz-gold-2);
+}
+/* Joriy sahifa — oltin matn + doimiy oltin indikator. */
+.vz-nav__link[aria-current="page"]{color:var(--vz-gold-2);font-weight:600;}
+.vz-nav__link[aria-current="page"]::after{left:8%;right:8%;opacity:1;}
+
+/* Tor desktop (1280-1365px — `xl` boshlanishi): 9 ta havola shu kenglikda
+   ham SIG'ISHI uchun faqat ORALIQ va yon padding qisqaradi. Shrift o'lchami
+   (15px) va ranglar O'ZGARMAYDI. 1366px va undan keng ekranlarda odatdagi
+   bemalol oraliq qaytadi. */
+@media (min-width:1280px) and (max-width:1365.98px){
+  .vz-nav{gap:1px;}
+  .vz-nav__link{padding-left:1px;padding-right:1px;}
+}
+
+/* Planshet/mobil menyu — matn kamida 16px, teginish maydoni kamida 44px. */
+.vz-nav-m__link{
+  display:flex;align-items:center;width:100%;min-height:48px;
+  padding:10px 12px;border:0;border-radius:11px;background:transparent;cursor:pointer;
+  font-size:16px;font-weight:500;line-height:1.3;text-align:left;
+  color:color-mix(in srgb,var(--vz-ink) 90%,transparent);
+  transition:color .18s ease,background-color .18s ease;
+}
+.vz-nav-m__link:hover{color:var(--vz-gold-2);background:rgba(212,175,90,.07);}
+.vz-nav-m__link:focus-visible{outline:2px solid var(--vz-gold);outline-offset:-2px;color:var(--vz-gold-2);}
+.vz-nav-m__link[aria-current="page"]{
+  color:var(--vz-gold-2);font-weight:600;
+  background:rgba(212,175,90,.09);box-shadow:inset 2px 0 0 var(--vz-gold-2);
+}
+@media (prefers-reduced-motion:reduce){
+  .vz-nav__link,.vz-nav__link::after,.vz-nav-m__link{transition:none;}
+}

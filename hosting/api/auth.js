@@ -163,8 +163,13 @@ async function createFreeAutoId(env, userId, name) {
   for (let i = 0; i < 8; i++) {
     const code = String(Math.floor(10_000_000 + Math.random() * 89_999_999));
     const row = await env.DB.prepare(
-      `INSERT INTO cards (code, name, theme, hashtags, price, ts, user_id, is_primary, giftable)
-       VALUES (?, ?, 'classic', '[]', 0, ?, ?, 1, 0)
+      // `source = 'registration_auto'` — kartaning ISHONCHLI manba belgisi.
+      // Katalog aynan shu belgi bo'yicha bu ID'ni ro'yxat/qidiruv/filtr va
+      // sanoqdan chiqarib tashlaydi (hosting/worker.js catalogVisibleSql).
+      // Foydalanuvchining kabineti, public profili va Admin Panel
+      // ta'sirlanmaydi.
+      `INSERT INTO cards (code, name, theme, hashtags, price, ts, user_id, is_primary, giftable, source)
+       VALUES (?, ?, 'classic', '[]', 0, ?, ?, 1, 0, 'registration_auto')
        ON CONFLICT (code) DO NOTHING RETURNING code`
     ).bind(code, name || 'Yangi foydalanuvchi', Date.now(), userId).first().catch(() => null);
     if (row?.code) return row.code;
