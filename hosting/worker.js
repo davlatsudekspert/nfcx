@@ -1344,24 +1344,125 @@ async function getCurrentUser(request, env) {
   };
 }
 
+// ---------- admin sessiya do'koni (production 503 root-cause, 2026-09) ----------
+// MUAMMO: production D1'dagi `admin_sessions` jadvali bu koddan OLDIN (eski
+// versiya yoki Dashboard orqali qo'lda) yaratilgan bo'lishi mumkin va unda
+// bizning INSERT to'ldirmaydigan QO'SHIMCHA "NOT NULL" ustun bo'lishi mumkin.
+// `CREATE TABLE IF NOT EXISTS` mavjud jadvalga umuman ta'sir qilmaydi, va
+// `ALTER TABLE ADD COLUMN` bunday ustunni OLIB TASHLAY OLMAYDI — natijada
+// `INSERT INTO admin_sessions` "NOT NULL constraint failed" bilan yiqilib,
+// /api/admin/verify-2fa 503 qaytarardi. Bu Google TOTP va Telegram OTP
+// yo'llarining IKKALASIGA ham tegishli, chunki sessiya yozish — ularning
+// UMUMIY oxirgi qadami (shuning uchun "ikkala kod ham noto'g'ri" emas).
+//
+// YECHIM (migration talab qilmaydi, hech narsa o'chirilmaydi/DROP qilinmaydi):
+//   1) kanonik INSERT;
+//   2) yiqilsa — PRAGMA table_info bilan jadval shaklini o'qib, eski
+//      sxemadagi majburiy ustunlarni ham to'ldirib qayta urinish;
+//   3) u ham yiqilsa — o'zimiz nazorat qiladigan `admin_sessions_v2`
+//      jadvaliga yozish (CREATE TABLE IF NOT EXISTS — additiv).
+// O'qish/o'chirish ikkala jadvaldan ham ishlaydi, shuning uchun mavjud
+// (eski jadvaldagi) sessiyalar ham amal qilaveradi.
+const ADMIN_SESSION_TABLE = 'admin_sessions';
+const ADMIN_SESSION_FALLBACK_TABLE = 'admin_sessions_v2';
+const ADMIN_SESSION_SELECT = 'admin_id AS adminId, role, abs_exp AS absExp, last_activity AS lastActivity';
+
+let adminSessionFallbackReady;
+async function ensureAdminSessionFallbackTable(env) {
+  if (!adminSessionFallbackReady) {
+    adminSessionFallbackReady = env.DB.prepare(`CREATE TABLE IF NOT EXISTS "${ADMIN_SESSION_FALLBACK_TABLE}" (
+      "token" TEXT PRIMARY KEY NOT NULL, "admin_id" INTEGER NOT NULL, "role" TEXT NOT NULL,
+      "abs_exp" TEXT NOT NULL, "last_activity" TEXT NOT NULL
+    )`).run();
+  }
+  await adminSessionFallbackReady;
+}
+
+async function createAdminSessionD1(env, { tokenHash, adminId, role, absExp, lastActivity }) {
+  const base = { token: tokenHash, admin_id: adminId, role, abs_exp: absExp, last_activity: lastActivity };
+  const insertInto = async (table, extra) => {
+    const cols = { ...base, ...(extra || {}) };
+    const names = Object.keys(cols);
+    const sql = `INSERT INTO "${table}" (${names.map((n) => `"${n}"`).join(', ')}) VALUES (${names.map(() => '?').join(', ')})`;
+    await env.DB.prepare(sql).bind(...names.map((n) => cols[n])).run();
+  };
+
+  try {
+    await insertInto(ADMIN_SESSION_TABLE);
+    return ADMIN_SESSION_TABLE;
+  } catch (error) {
+    // Faqat D1 xato MATNI yoziladi — token/parol/secret hech qachon emas.
+    console.error('admin session insert (canonical)', String(error?.message || error));
+  }
+
+  try {
+    const info = await env.DB.prepare(`PRAGMA table_info("${ADMIN_SESSION_TABLE}")`).all();
+    const extra = {};
+    for (const col of info?.results || []) {
+      const name = col?.name;
+      if (!name || name in base) continue;
+      const isRequired = Number(col.notnull) === 1 && col.dflt_value == null && Number(col.pk) !== 1;
+      if (!isRequired) continue;
+      const type = String(col.type || '').toUpperCase();
+      // Eski sxemalarda bunday ustun odatda muddat/vaqt (TEXT) yoki hisoblagich (INTEGER)
+      extra[name] = type.includes('INT') || type.includes('REAL') || type.includes('NUM')
+        ? 0
+        : (/(^|_)(at|exp|expires?|time|date)($|_)/i.test(name) ? absExp : '');
+    }
+    if (Object.keys(extra).length) {
+      await insertInto(ADMIN_SESSION_TABLE, extra);
+      console.error('admin session insert: legacy shape adapted, extra columns:', Object.keys(extra).join(','));
+      return ADMIN_SESSION_TABLE;
+    }
+  } catch (error) {
+    console.error('admin session insert (shape-adapted)', String(error?.message || error));
+  }
+
+  await ensureAdminSessionFallbackTable(env);
+  await insertInto(ADMIN_SESSION_FALLBACK_TABLE);
+  console.error('admin session insert: fell back to', ADMIN_SESSION_FALLBACK_TABLE);
+  return ADMIN_SESSION_FALLBACK_TABLE;
+}
+
+async function findAdminSessionRow(env, tokenHash) {
+  try {
+    const row = await env.DB.prepare(`SELECT ${ADMIN_SESSION_SELECT} FROM "${ADMIN_SESSION_TABLE}" WHERE token = ?`).bind(tokenHash).first();
+    if (row) return { row, table: ADMIN_SESSION_TABLE };
+  } catch (error) {
+    console.error('admin session lookup', String(error?.message || error));
+  }
+  try {
+    const row = await env.DB.prepare(`SELECT ${ADMIN_SESSION_SELECT} FROM "${ADMIN_SESSION_FALLBACK_TABLE}" WHERE token = ?`).bind(tokenHash).first();
+    if (row) return { row, table: ADMIN_SESSION_FALLBACK_TABLE };
+  } catch { /* fallback jadval hali yo'q — normal holat */ }
+  return null;
+}
+
+async function deleteAdminSessionD1(env, tokenHash) {
+  for (const table of [ADMIN_SESSION_TABLE, ADMIN_SESSION_FALLBACK_TABLE]) {
+    try { await env.DB.prepare(`DELETE FROM "${table}" WHERE token = ?`).bind(tokenHash).run(); } catch { /* jadval yo'q */ }
+  }
+}
+
 async function getCurrentAdmin(request, env) {
   const token = parseCookies(request)[ADMIN_COOKIE];
   if (!token) return null;
   // admin_sessions.token stores SHA-256(raw token), never the raw value —
   // the cookie is the only place the raw token ever exists after issuance.
   const tokenHash = await sha256Hex(token);
-  const row = await env.DB.prepare(`SELECT admin_id AS adminId, role, abs_exp AS absExp, last_activity AS lastActivity FROM admin_sessions WHERE token = ?`).bind(tokenHash).first();
-  if (!row) return null;
+  const found = await findAdminSessionRow(env, tokenHash);
+  if (!found) return null;
+  const { row, table } = found;
   const now = Date.now();
   if (now > new Date(row.absExp).getTime()) {
-    await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(tokenHash).run();
+    await deleteAdminSessionD1(env, tokenHash);
     return null;
   }
   if (now - new Date(row.lastActivity).getTime() > ADMIN_IDLE_MS) {
-    await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(tokenHash).run();
+    await deleteAdminSessionD1(env, tokenHash);
     return { idleTimeout: true };
   }
-  await env.DB.prepare(`UPDATE admin_sessions SET last_activity = ? WHERE token = ?`).bind(nowTs(), tokenHash).run();
+  await env.DB.prepare(`UPDATE "${table}" SET last_activity = ? WHERE token = ?`).bind(nowTs(), tokenHash).run().catch(() => {});
   return { adminId: row.adminId, role: row.role, token };
 }
 
@@ -3149,8 +3250,10 @@ async function adminAuthApi(request, env, url) {
     // tracked as follow-up work.
     const token = newToken();
     const now = new Date();
-    await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
-      .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
+    await createAdminSessionD1(env, {
+      tokenHash: await sha256Hex(token), adminId: admin.id, role: admin.role,
+      absExp: new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), lastActivity: now.toISOString(),
+    });
     await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
     // Muvaffaqiyatli kirish — shu IP uchun oldingi (zarur) urinishlar
     // keyingi kirishga xalaqit bermasin (pastdagi izohga qarang).
@@ -3249,12 +3352,26 @@ async function adminAuthApi(request, env, url) {
         // window) can never be replayed for a second login after this.
         // Telegram codes need no equivalent: DELETE above already makes the
         // just-used code single-use (and a fresh /send is required for another).
-        await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run();
+        // Ustun eski production `admins` jadvalida bo'lmasligi mumkin —
+        // bu holda ALTER'ni qayta urinib ko'ramiz. Ikkalasi ham yiqilsa,
+        // replay himoyasi shu login uchun yozilmay qoladi (kod baribir
+        // bir martalik: pending yozuv yuqorida DELETE qilingan), lekin
+        // BUTUN admin panelga kirish 503 bilan buzilmaydi.
+        try {
+          await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run();
+        } catch (error) {
+          console.error('totp_last_counter update', String(error?.message || error));
+          await env.DB.prepare(`ALTER TABLE admins ADD COLUMN totp_last_counter INTEGER`).run().catch(() => {});
+          await env.DB.prepare(`UPDATE admins SET totp_last_counter = ? WHERE id = ?`).bind(totpCounter, admin.id).run()
+            .catch((err) => console.error('totp_last_counter update (retry)', String(err?.message || err)));
+        }
       }
       const token = newToken();
       const now = new Date();
-      await env.DB.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, ?, ?, ?, ?)`)
-        .bind(await sha256Hex(token), admin.id, admin.role, new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), now.toISOString()).run();
+      await createAdminSessionD1(env, {
+        tokenHash: await sha256Hex(token), adminId: admin.id, role: admin.role,
+        absExp: new Date(now.getTime() + ADMIN_TTL_MS).toISOString(), lastActivity: now.toISOString(),
+      });
       await logAdminLoginEvent(env, 'login_ok', ip, request.headers.get('user-agent'));
       // Muvaffaqiyatli 2FA — shu IP uchun barcha admin-auth hisoblagichlarini
       // tozalaymiz (login bosqichida sarflangan byudjet ham).
@@ -3269,7 +3386,7 @@ async function adminAuthApi(request, env, url) {
 
   if (path === '/api/admin/logout' && request.method === 'POST') {
     const token = parseCookies(request)[ADMIN_COOKIE];
-    if (token) await env.DB.prepare(`DELETE FROM admin_sessions WHERE token = ?`).bind(await sha256Hex(token)).run();
+    if (token) await deleteAdminSessionD1(env, await sha256Hex(token));
     await logAdminLoginEvent(env, 'logout', ip, request.headers.get('user-agent'));
     return jsonWithCookie({ ok: true }, 200, clearedAdminCookieHeader(secure));
   }
