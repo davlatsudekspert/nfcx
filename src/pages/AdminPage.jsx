@@ -112,6 +112,13 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
     return () => clearInterval(id);
   }, [cooldown]);
   const onRateLimited = (e2) => { const sec = Number(e2?.data?.retryAfterSec) || 60; setCooldown(sec); };
+  // 2FA bosqichini to'liq tozalab, telefon+parol formasiga qaytaradi.
+  const resetToCredentials = () => {
+    setStep('credentials');
+    setCode('');
+    setTempToken(null);
+    setTwoFaMethod('totp');
+  };
 
   const submitCredentials = async (e) => {
     e.preventDefault();
@@ -164,7 +171,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
             : e2.status === 429 || e2.message === 'too_many_requests'
               ? retryAfterText(e2, t)
               : t('Xatolik yuz berdi.'));
-      if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
+      if (e2.status === 401 && (e2.code === 'expired' || e2.message === 'expired')) resetToCredentials();
     } finally {
       setTgBusy(false);
     }
@@ -181,14 +188,23 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
       onLoggedIn();
     } catch (e2) {
       if (e2.status === 429 || e2.message === 'too_many_requests') onRateLimited(e2);
-      setErr(e2.message === 'expired'
-        ? t("Kod muddati o'tgan — qaytadan kiring.")
+      // Xato turlari ANIQ farqlanadi: muddati tugagan sessiya (401 expired),
+      // noto'g'ri kod (401 bad_code), rate-limit (429) va HAQIQIY server
+      // xatosi (503) — har biri o'z matni bilan (UZ/RU/EN).
+      const expired = e2.status === 401 && (e2.code === 'expired' || e2.message === 'expired');
+      setErr(expired
+        ? t("Sessiya muddati tugadi — telefon va parolni qaytadan kiriting.")
         : e2.status === 503 || e2.message === 'verify_2fa_unavailable'
           ? t("Server vaqtincha ishlamayapti. Birozdan so'ng qayta urinib ko'ring.")
           : e2.status === 429 || e2.message === 'too_many_requests'
             ? retryAfterText(e2, t)
-            : t("Kod noto'g'ri."));
-      if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
+            : e2.status === 0 || e2.message === 'network_error'
+              ? t("Server bilan aloqa yo'q. Qayta urinish")
+              : t("Kod noto'g'ri."));
+      // Sessiya tugagan bo'lsa 2FA formasi to'liq tozalanadi va foydalanuvchi
+      // login (telefon+parol) bosqichiga qaytariladi — eski tempToken bilan
+      // qayta-qayta so'rov yuborilmasin.
+      if (expired) resetToCredentials();
     } finally {
       setBusy(false);
       submitLock.current = false;

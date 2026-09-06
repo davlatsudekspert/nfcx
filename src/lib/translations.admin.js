@@ -197,4 +197,5 @@ export const DICT_ADMIN = {
   'Juda ko‘p urinish. {n} soniyadan keyin qayta urinib ko‘ring.': { ru: 'Слишком много попыток. Повторите через {n} сек.', en: 'Too many attempts. Try again in {n} sec.' },
   'Kutish: {n}': { ru: 'Ожидание: {n}', en: 'Wait: {n}' },
   "Server vaqtincha ishlamayapti. Birozdan so'ng qayta urinib ko'ring.": { ru: 'Сервер временно недоступен. Повторите чуть позже.', en: 'Server is temporarily unavailable. Please try again shortly.' },
+  'Sessiya muddati tugadi — telefon va parolni qaytadan kiriting.': { ru: 'Сессия истекла — введите телефон и пароль заново.', en: 'Session expired — enter your phone and password again.' },
 };

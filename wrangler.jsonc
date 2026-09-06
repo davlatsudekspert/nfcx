@@ -10,6 +10,18 @@
   // hosting/worker.js'dagi /api/* logikasi HECH QACHON ishga tushmasdi.
   "main": "./dist/server/index.js",
   "compatibility_date": "2026-08-31",
+  // wrangler'ning standart xatti-harakati: bu fayl "vars" uchun yagona
+  // haqiqat manbai hisoblanadi va HAR BIR deploy'da Dashboard'da qo'lda
+  // qo'yilgan, lekin shu yerda yozilmagan istalgan boshqa vars'ni
+  // O'CHIRIB TASHLAYDI. `keep_vars: true` buni oldini oladi — Dashboard'da
+  // allaqachon mavjud har qanday boshqa o'zgaruvchi (masalan kelajakda
+  // qo'shilishi mumkin bo'lgan TELEGRAM_BOT_USERNAME kabi) tegilmay qoladi;
+  // pastdagi PAYMENTS_ENABLED esa aniq shu qiymat bilan qo'yiladi/yangilanadi.
+  // DIQQAT: PAYME_KEY va PAYME_MERCHANT_ID hech qachon shu faylda yozilmaydi
+  // — ular Cloudflare secret sifatida Dashboard'da alohida saqlanadi va
+  // `keep_vars`dan qat'i nazar `wrangler deploy` ularga umuman tegmaydi
+  // (secretlar "vars" reconciliation'iga kirmaydi).
+  "keep_vars": true,
   "assets": {
     // dist/client — statik fayllarning "toza" nusxasi (dist/ ildizida
     // esa Express serveri o'qiydigan asl Vite chiqishi + dist/client,
@@ -36,5 +48,17 @@
       "binding": "UPLOADS",
       "bucket_name": "nfcstore-uploads"
     }
-  ]
+  ],
+  // Payme SANDBOX'ni yoqish uchun foydalanuvchining aniq ruxsati bilan
+  // qo'shildi (2026-09). PAYME_MERCHANT_ID va PAYME_KEY (Cloudflare
+  // Dashboard'da secret sifatida ALLAQACHON mavjud) bilan birga
+  // hosting/worker.js'dagi paymentsEnabledD1() shartini rost qiladi —
+  // kod aynan `env.PAYMENTS_ENABLED === 'true'` (kichik harf, satr) ni
+  // kutadi. Bu maxfiy qiymat EMAS — oddiy feature-flag, shuning uchun
+  // repo'da ochiq saqlanishi xavfsiz. Real (production) Payme kalitlariga
+  // o'tish yoki to'lovni yoqish/o'chirish qarori BU FAYLDA emas — u to'liq
+  // Dashboard'dagi PAYME_MERCHANT_ID/PAYME_KEY qiymatlariga bog'liq.
+  "vars": {
+    "PAYMENTS_ENABLED": "true"
+  }
 }

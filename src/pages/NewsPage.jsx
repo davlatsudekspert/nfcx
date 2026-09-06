@@ -207,8 +207,16 @@ export default function NewsPage({ newsId = null }) {
   }
 
   // ---------- Ro'yxat ----------
+  // Premium responsive grid: katta desktopda 3, oddiy desktop/planshetda 2,
+  // telefonda 1 ustun. Kartalar `h-full flex-col` — matn uzunligidan qat'i
+  // nazar bir xil balandlikda ko'rinadi, pastki qator esa `mt-auto` bilan
+  // doim eng pastda turadi. Bitta yangilik bo'lsa karta butun ekran
+  // kengligiga cho'zilmaydi (`max-w-md` bilan markazda qoladi).
+  const items = news || [];
+  const single = items.length === 1;
+
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pb-20 sm:px-6 lg:px-10" style={{ color: 'var(--vz-ink)' }}>
+    <main className="mx-auto w-full max-w-[1200px] px-4 pb-20 sm:px-6 lg:px-10" style={{ color: 'var(--vz-ink)' }}>
       <section className="pt-10 sm:pt-14">
         <span className="vz-kicker">{t('Yangiliklar')}</span>
         <h1 className="vz-h2 mt-3">{t('NFCSTORE')} {t('yangiliklari')}</h1>
@@ -217,7 +225,7 @@ export default function NewsPage({ newsId = null }) {
         </p>
       </section>
 
-      <section className="mt-10 space-y-5">
+      <section className="mt-10">
         {err && (
           <div role="alert" className="flex flex-col items-center gap-3 rounded-[14px] border p-8 text-center" style={{ borderColor: 'rgba(229,72,77,.45)', background: 'rgba(229,72,77,.06)' }}>
             <div className="text-sm font-semibold" style={{ color: '#ff7b81' }}>{t("Yangiliklarni yuklab bo'lmadi.")}</div>
@@ -226,52 +234,78 @@ export default function NewsPage({ newsId = null }) {
           </div>
         )}
         {!err && news === null && (
-          <div className="space-y-5" aria-busy="true">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="vz-card p-6">
-                <div className="vz-skel h-3 w-24" />
-                <div className="vz-skel mt-4 h-5 w-2/3" />
-                <div className="vz-skel mt-4 h-3" />
-                <div className="vz-skel mt-2 h-3 w-5/6" />
+              <div key={i} className="vz-card min-w-0 overflow-hidden">
+                <div className="vz-skel aspect-[16/9] w-full rounded-none" />
+                <div className="p-5">
+                  <div className="vz-skel h-3 w-24" />
+                  <div className="vz-skel mt-4 h-5 w-2/3" />
+                  <div className="vz-skel mt-4 h-3" />
+                  <div className="vz-skel mt-2 h-3 w-5/6" />
+                </div>
               </div>
             ))}
             <span className="sr-only">{t('Yuklanmoqda...')}</span>
           </div>
         )}
-        {!err && news !== null && news.length === 0 && (
+        {!err && news !== null && items.length === 0 && (
           <div className="vz-empty">
             <div className="text-sm font-semibold" style={{ color: 'var(--vz-ink)' }}>{t('Hozircha yangiliklar yo‘q.')}</div>
             <div className="text-xs">{t("Yangi e'lonlar shu yerda paydo bo'ladi.")}</div>
           </div>
         )}
-        {likeErr && <div role="alert" className="vz-err">{likeErr}</div>}
-        {(news || []).map((item) => {
-          const href = `/yangiliklar/${item.id}`;
-          return (
-            <article key={item.id} className="vz-card min-w-0 overflow-hidden">
-              {item.imageUrl && (
-                <a href={href} onClick={(e) => go(e, href)} className="block">
-                  <img src={item.imageUrl} alt="" className="max-h-[360px] w-full object-cover" loading="lazy" />
-                </a>
-              )}
-              <div className="p-5 sm:p-6">
-                {meta(item)}
-                <h2 className="mt-2 break-words font-display text-xl font-semibold leading-snug sm:text-2xl">
-                  <a href={href} onClick={(e) => go(e, href)} className="hover:underline underline-offset-4">{pick(item, 'title', lang)}</a>
-                </h2>
-                {pick(item, 'body', lang) && (
-                  <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-[15px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{pick(item, 'body', lang)}</p>
-                )}
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  {likeBtn(item)}
-                  <a href={href} onClick={(e) => go(e, href)} className="vz-tap inline-flex items-center rounded-full px-3 text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>
-                    {t("Batafsil o'qish")} →
+        {likeErr && <div role="alert" className="vz-err mb-4">{likeErr}</div>}
+
+        {items.length > 0 && (
+          <div className={single ? 'mx-auto w-full max-w-md' : 'grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3'}>
+            {items.map((item) => {
+              const href = `/yangiliklar/${item.id}`;
+              const body = pick(item, 'body', lang);
+              return (
+                <article
+                  key={item.id}
+                  className="vz-card flex h-full min-w-0 flex-col overflow-hidden transition duration-200 hover:-translate-y-0.5"
+                  style={{ borderColor: 'var(--vz-line)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,90,0.5)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--vz-line)'; }}
+                >
+                  <a href={href} onClick={(e) => go(e, href)} className="block aspect-[16/9] w-full overflow-hidden" aria-label={pick(item, 'title', lang)}>
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      // Rasm yo'q bo'lsa ham kartalar bir xil balandlikda qolsin
+                      <span
+                        className="flex h-full w-full items-center justify-center font-display text-sm tracking-[0.18em]"
+                        style={{ background: 'linear-gradient(135deg,#1a1409,#0d0b07)', color: 'rgba(212,175,90,0.5)' }}
+                        aria-hidden="true"
+                      >
+                        NFCSTORE
+                      </span>
+                    )}
                   </a>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+                  <div className="flex min-w-0 flex-1 flex-col p-5">
+                    <h2 className="line-clamp-3 break-words font-display text-lg font-semibold leading-snug">
+                      <a href={href} onClick={(e) => go(e, href)} className="underline-offset-4 hover:underline">{pick(item, 'title', lang)}</a>
+                    </h2>
+                    {body && (
+                      <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-[15px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{body}</p>
+                    )}
+                    <div className="mt-auto pt-4">
+                      {meta(item)}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        {likeBtn(item)}
+                        <a href={href} onClick={(e) => go(e, href)} className="vz-tap inline-flex items-center rounded-full text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>
+                          {t("Batafsil o'qish")} →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
     </main>
   );
