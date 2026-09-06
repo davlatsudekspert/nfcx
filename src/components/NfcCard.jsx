@@ -96,7 +96,9 @@ export default function NfcCard({
           className={`relative flex ${CARD_SIZES[size]} select-none flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl px-5 py-[18px]`}
           style={{ background: f.bg, color: f.fg, boxShadow: rim ? SHADOW_RIM : SHADOW_DEFAULT }}
         >
-          <div className="pointer-events-none absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden [border-radius:inherit] [transform:translateZ(0)]">
+            <div className="absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+          </div>
           <div className="relative z-[1] grid grid-cols-5 gap-[3px] rounded-md p-2" style={{ background: 'rgba(0,0,0,0.12)' }}>
             {Array.from({ length: 25 }).map((_, i) => (
               <span key={i} className="h-[5px] w-[5px] rounded-[1px]" style={{ background: (i * 7 + code.length) % 3 === 0 ? 'transparent' : f.code, opacity: 0.9 }} />
@@ -147,7 +149,22 @@ export default function NfcCard({
           className="pointer-events-none absolute inset-0 opacity-55 mix-blend-overlay"
           style={{ background: `radial-gradient(360px circle at ${tilt.mx}% ${tilt.my}%, rgba(255,255,255,0.55), transparent 45%)` }}
         />
-        <div className="pointer-events-none absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+        {/* iPhone/Safari GORIZONTAL SILJISH ILDIZ SABABI (2026-09 hotfix).
+            Yaltirash qatlami kartadan ANCHA kengroq (-left-60%, w-60%,
+            h-220%). Uni tashqi div `overflow-hidden` bilan qirqishi kerak
+            edi — LEKIN o'sha divda bir vaqtda `[transform-style:preserve-3d]`
+            ham bor, WebKit (iOS Safari) esa preserve-3d qo'yilgan elementda
+            `overflow:hidden` bilan avlodlarni QIRQMAYDI (Chromium qirqadi —
+            shuning uchun muammo faqat iPhone'da ko'rinardi). Natijada
+            yaltirash kartadan chiqib sahifani kengaytirar va profil
+            bo'limini markazdan siljitardi.
+            Yechim — yuqoridagi bgImage qatlamidagi usulning o'zi: yaltirash
+            O'ZINING `overflow-hidden` + `translateZ(0)` qatlamiga o'raldi.
+            translateZ(0) yassi (flat) qirqish konteksti yaratadi, uni
+            WebKit ham to'g'ri qirqadi. Vizual ko'rinish o'zgarmadi. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden [border-radius:inherit] [transform:translateZ(0)]">
+            <div className="absolute -left-[60%] -top-[60%] h-[220%] w-[60%] animate-[shimmerSweep_3.6s_ease-in-out_infinite] bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.16)_40%,rgba(255,255,255,0.35)_50%,rgba(255,255,255,0.16)_60%,transparent)]" />
+          </div>
         <div className="relative z-[1] flex items-center justify-end">
           <IconWave style={{ color: f.sub }} />
         </div>

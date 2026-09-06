@@ -30,7 +30,12 @@ export default function CompanyWorkspacePage({ companyId }) {
     catch { setNotice(t('Saqlab bo‘lmadi')); } finally { setBusy(false); }
   };
   const sendReview = async () => { setBusy(true); try { await save(); const data = await submitCompany(company.companyId); setCompany(data.company); setForm(data.company); setNotice(t('Ariza admin tekshiruviga yuborildi')); } finally { setBusy(false); } };
-  const payment = async () => { setBusy(true); try { const data = await beginCompanyPayment(company.companyId); if (data.payLink) window.location.href = data.payLink; else setNotice(data.message || t('Payme havolasi tayyorlanmoqda')); } catch (err) { setNotice(err.message === 'payments_backend_pending' ? t('Payme kompaniya to‘lovi backend deployidan keyin ochiladi. Admin hozircha faollashtirishi mumkin.') : t('To‘lovni boshlab bo‘lmadi.')); } finally { setBusy(false); } };
+  // 2026-09: xabar ANIQLASHTIRILDI. Avval "Payme ... backend deployidan
+  // keyin ochiladi" deb yozardi — bu endi to'g'ri emas (backend deploy
+  // qilingan) va Payme'ni ayblab, foydalanuvchini chalg'itardi. Haqiqiy
+  // sabab: kompaniya tarifi hali belgilanmagan, shuning uchun kompaniya
+  // adminning tasdig'i bilan faollashadi.
+  const payment = async () => { setBusy(true); try { const data = await beginCompanyPayment(company.companyId); if (data.payLink) window.location.href = data.payLink; else setNotice(data.message || t('Arizangiz qabul qilindi — admin tasdig‘i kutilmoqda.')); } catch (err) { const code = err.error || err.message; setNotice(code === 'company_tariff_not_set' ? t('Arizangiz qabul qilindi — kompaniya tarifi tasdiqlangach faollashadi.') : code === 'payments_disabled' ? t('To‘lov tizimi vaqtincha o‘chirilgan.') : t('To‘lovni boshlab bo‘lmadi.')); } finally { setBusy(false); } };
   const addItem = async (e) => { e.preventDefault(); setBusy(true); try { const data = await addCompanyItem(company.companyId, item); setCompany(data.company); setForm(data.company); setItem(blankItem); setNotice(t('Katalog elementi qo‘shildi')); } finally { setBusy(false); } };
   const removeItem = async (id) => { if (!confirm(t('Element o‘chirilsinmi?'))) return; const data = await deleteCompanyItem(company.companyId, id); setCompany(data.company); setForm(data.company); };
   const set = (key) => (e) => setForm((old) => ({ ...old, [key]: e.target.value }));

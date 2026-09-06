@@ -76,34 +76,18 @@ export function vzVars(theme, record) {
 export function outerPageStyle(theme, record, tier, opts = {}) {
   const { fixedBg = true } = opts;
   const vars = vzVars(theme, record);
-  if (record && record.bgUrl) {
-    // Rasm/gif + o'qish uchun yarim shaffof qora qatlam → matn/karta
-    // ranglarini oqqa majburlab o'tkazamiz (tanlangan tema yorug' bo'lsa ham
-    // o'qiladi). Shu CSS o'zgaruvchilari pastdagi barcha elementlarga
-    // (header, ichki panel) meros bo'lib o'tadi — butun sahifa "glass" bo'ladi.
-    // DIQQAT: bu yerda backgroundAttachment doim 'scroll' (fixedBg'ga
-    // qaramasdan) — 'fixed' brauzer OYNASI balandligiga nisbatan hisoblanadi,
-    // sahifa esa (skroll qilinadigan, ko'pincha undan ancha baland) o'z
-    // balandligiga ega, shu sabab 'fixed' + 'cover' rasmni faqat bir ekran
-    // balandligida to'ldirib, qolgan qismini bo'sh (fon rangida) qoldirar edi.
-    // 'scroll' esa elementning O'Z qutisiga nisbatan hisoblanadi — shuning
-    // uchun rasm har doim BUTUN sahifa balandligini to'liq qoplaydi.
-    return {
-      ...vars,
-      backgroundColor: 'var(--vz-bg-a)',
-      backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url("${record.bgUrl}")`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center top',
-      backgroundRepeat: 'no-repeat',
-      backgroundAttachment: 'scroll',
-      '--vz-ink': '#ffffff',
-      '--vz-ink-dim': 'rgba(255,255,255,0.82)',
-      '--vz-ink-faint': 'rgba(255,255,255,0.58)',
-      '--vz-card': 'rgba(255,255,255,0.10)',
-      '--vz-line': 'rgba(255,255,255,0.20)',
-      '--vz-pill': 'rgba(255,255,255,0.14)',
-    };
-  }
+  // ─── 2026-09 hotfix — FON RASMI ENDI SAHIFAGA YOYILMAYDI ───
+  // Avval foydalanuvchining `bgUrl` rasmi AYNAN SHU YERDA butun sahifa
+  // (min-h-screen) foni sifatida chizilardi. Natijada u profil bo'limidan
+  // tashqariga — yuqoridagi navigatsiya qatori, NFC ID belgisi, karta
+  // ko'rinishi va sahifaning pastki bo'sh qismiga ham — yoyilib ketardi.
+  // Endi rasm FAQAT profil panelining o'zida (innerPanelStyle) chiziladi:
+  // panelda `overflow-hidden` + `rounded-[22px]` bor, shuning uchun rasm
+  // bo'lim chegarasidan chiqmaydi. Foydalanuvchi tanlagan fon ALMASHTIRILMAYDI
+  // — u faqat o'z bo'limiga qaytarildi.
+  //
+  // Sahifa foni esa daraja (tier) gradientida qoladi, shu sababli matn
+  // kontrasti va tugmalar o'qilishi buzilmaydi.
   const glow = TIER_PAGE_GLOW[tier] || TIER_PAGE_GLOW.free;
   return {
     ...vars,
@@ -114,11 +98,40 @@ export function outerPageStyle(theme, record, tier, opts = {}) {
 }
 
 // ─── INNER FON — profil kontent PANELI ichida (butun sahifada emas) ───
-// bgUrl holatida rasm endi outerPageStyle'da (butun sahifa foni) — panel
-// shunchaki var(--vz-card) orqali (yuqoridan meros bo'lgan yarim shaffof
-// "glass" rangda) chiziladi, fon undan orqada to'liq ko'rinib turadi.
+// 2026-09 hotfix: foydalanuvchining `bgUrl` fon rasmi endi AYNAN SHU
+// YERDA — profil bo'limining o'z qutisida — chiziladi (avval u butun
+// sahifaga yoyilib ketardi, outerPageStyle izohiga qarang).
+//
+// Bo'lim ichida ushlab turish kafolatlari:
+//   • backgroundSize: 'cover'      — rasm cho'zilmaydi/deformatsiyalanmaydi
+//   • backgroundPosition: 'center' — markazlashgan kadrlash
+//   • backgroundRepeat: 'no-repeat'
+//   • backgroundAttachment: 'scroll' — rasm brauzer oynasiga emas, SHU
+//     elementga nisbatan hisoblanadi, ya'ni panel bilan birga harakatlanadi
+//   • panelning o'zida `overflow-hidden` + `rounded-[22px]` bor (JSX'da),
+//     shuning uchun rasm burchaklardan chiqib ketmaydi
+//   • ustidan qora gradient qatlam — matn, tugmalar, tablar va musiqa
+//     paneli kontrasti saqlanadi
 // bgColor → sekin gradient; aks holda tema kartasi rangi.
 export function innerPanelStyle(record) {
+  if (record && record.bgUrl) {
+    return {
+      backgroundColor: 'var(--vz-bg-a)',
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.52), rgba(0,0,0,0.62)), url("${record.bgUrl}")`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      backgroundAttachment: 'scroll',
+      // Rasm ustida hamma narsa oq matn bilan o'qilishi uchun — bu
+      // o'zgaruvchilar FAQAT shu panel ichida amal qiladi.
+      '--vz-ink': '#ffffff',
+      '--vz-ink-dim': 'rgba(255,255,255,0.86)',
+      '--vz-ink-faint': 'rgba(255,255,255,0.62)',
+      '--vz-card': 'rgba(255,255,255,0.10)',
+      '--vz-line': 'rgba(255,255,255,0.22)',
+      '--vz-pill': 'rgba(255,255,255,0.16)',
+    };
+  }
   if (record && record.bgColor) {
     const c1 = record.bgColor;
     const c2 = shadeColor(record.bgColor, -22);
@@ -424,49 +437,71 @@ function MusicPlayer({ urls = [], accentColor }) {
         <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />
       )}
 
-      <div className="flex w-full items-center justify-center gap-1">
-        {urls.length > 1 && (
-          <button
-            onClick={() => switchTrack(-1)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] hover:bg-white/10 hover:text-[color:var(--vz-ink)]"
-            aria-label={t('Oldingi qo\u2018shiq')}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-        )}
-        <button
-          onClick={toggle}
-          className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-transform hover:scale-105 ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
-          style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
-          aria-label={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
-        >
-          {playing ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+      {/* \u2500\u2500\u2500 MUSIQA BOSHQARUVI (2026-09 hotfix) \u2500\u2500\u2500
+          Oldingi/keyingi tugmalari 28x28 px edi \u2014 barmoq bilan bosish juda
+          qiyin (ikonka atigi 12px). Endi ular 44x44 px (Apple HIG / WCAG
+          2.5.8 minimal bosish maydoni), ikonkalar 20px va yuqori
+          kontrastli, o'z yumaloq foni bilan. Ijro/pauza esa ASOSIY tugma
+          bo'lib qoladi \u2014 u kattaroq (56px) va aksent rangda.
+          Uchala tugma bitta qatorda, markazda. Klaviatura fokusi
+          `focus-visible` halqasi bilan ko'rinadi. aria-label'lar t() orqali
+          UZ/RU/EN'da. Audio almashtirish (switchTrack) va toggle mantig'i
+          o'zgarmadi. */}
+      <div className="flex w-full flex-col items-center gap-2">
+        <div className="flex items-center justify-center gap-3">
+          {urls.length > 1 && (
+            <button
+              type="button"
+              onClick={() => switchTrack(-1)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink)] transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
+              aria-label={t('Oldingi qo\u2018shiq')}
+              title={t('Oldingi qo\u2018shiq')}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.5 5.2v13.6c0 .8-.9 1.2-1.5.7l-7.6-6.1v5.4c0 .8-.9 1.2-1.5.7L7 18.4V5.6l.9-1.1c.6-.5 1.5-.1 1.5.7v5.4l7.6-6.1c.6-.5 1.5-.1 1.5.7z" /><rect x="5" y="4.5" width="2.2" height="15" rx="1" /></svg>
+            </button>
           )}
-        </button>
-        {urls.length > 1 && (
           <button
-            onClick={() => switchTrack(1)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] hover:bg-white/10 hover:text-[color:var(--vz-ink)]"
-            aria-label={t('Keyingi qo\u2018shiq')}
+            type="button"
+            onClick={toggle}
+            className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
+            style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
+            aria-label={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
+            title={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            {playing ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            )}
           </button>
-        )}
-        <span className="max-w-[110px] truncate px-1 text-xs font-semibold text-[color:var(--vz-ink-dim)]">
-          {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
-        </span>
-        {(isYt || isYd) && playing && (
-          <button
-            onClick={() => setVideoOpen((v) => !v)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] hover:bg-white/10 hover:text-[color:var(--vz-ink)]"
-            aria-label={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: videoOpen ? 'none' : 'rotate(180deg)' }}><path d="M6 9l6 6 6-6" /></svg>
-          </button>
-        )}
+          {urls.length > 1 && (
+            <button
+              type="button"
+              onClick={() => switchTrack(1)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink)] transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
+              aria-label={t('Keyingi qo\u2018shiq')}
+              title={t('Keyingi qo\u2018shiq')}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.5 5.2v13.6c0 .8.9 1.2 1.5.7l7.6-6.1v5.4c0 .8.9 1.2 1.5.7l.9-1.1V5.6L16.1 4.5c-.6-.5-1.5-.1-1.5.7v5.4L7 4.5c-.6-.5-1.5-.1-1.5.7z" /><rect x="16.8" y="4.5" width="2.2" height="15" rx="1" /></svg>
+            </button>
+          )}
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <span className="max-w-[160px] truncate text-xs font-semibold text-[color:var(--vz-ink-dim)]">
+            {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
+          </span>
+          {(isYt || isYd) && playing && (
+            <button
+              type="button"
+              onClick={() => setVideoOpen((v) => !v)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] transition hover:bg-white/10 hover:text-[color:var(--vz-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
+              aria-label={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
+              title={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: videoOpen ? 'none' : 'rotate(180deg)' }}><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1218,7 +1253,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       </div>
 
       <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5">
           <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
           {/* Egaga: boshqa raqamli tashrif qog'ozlari — tepada, ixcham
               select ro'yxat; tanlansa o'sha profilga o'tadi. */}
@@ -1227,7 +1262,12 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               value=""
               onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
               aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
-              className="cursor-pointer rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
+              // `max-w-full min-w-0 truncate` — `select` elementining ichki
+              // (intrinsic) kengligi eng uzun `option` matnidan kelib chiqadi;
+              // 390px telefonda u 392px bo'lib sahifadan chiqib ketardi va
+              // gorizontal scroll hosil qilardi (faqat karta EGASIGA
+              // ko'rinadigan element bo'lgani uchun ilgari sezilmagan).
+              className="min-w-0 max-w-full cursor-pointer truncate rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
             >
               <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
               {otherCodes.map((c) => (

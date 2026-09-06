@@ -112,7 +112,17 @@ export default function AuctionPage({ id }) {
   }
 
   const { auction, bids } = data;
-  const st = STATUS_LABEL[auction.status] || { text: auction.status, cls: 'badge-ghost', vz: 'vz-badge--muted' };
+  // "Faol" rozetkasi bilan "tugadi" hisoblagichi ZIDDIYATI (2026-09 hotfix).
+  // Asosiy tuzatish backendda (muddati o'tgan auksion endi `active` bo'lib
+  // qolmaydi — hosting/worker.js closeExpiredAuctionsD1), bu esa qo'shimcha
+  // himoya: sahifa har 5 sekundda yangilanadi, shu oraliqda ham vaqt
+  // tugagan auksion "Faol" ko'rinmasin va taklif formasi ochiq qolmasin.
+  const endsAtMs = new Date(auction.endsAt).getTime();
+  const timeIsUp = Number.isFinite(endsAtMs) && endsAtMs <= Date.now();
+  const biddingOpen = auction.status === 'active' && !timeIsUp;
+  const st = (auction.status === 'active' && timeIsUp)
+    ? { text: 'Tugagan', cls: 'badge-ghost', vz: 'vz-badge--muted' }
+    : (STATUS_LABEL[auction.status] || { text: auction.status, cls: 'badge-ghost', vz: 'vz-badge--muted' });
   // Minimal keyingi taklif: birinchi taklif = boshlang'ich narx; keyin joriy narx + qadam.
   const bidStep = Math.max(1000, Number(auction.minIncrement) || Math.round(Number(auction.currentPrice) * 0.02));
   const minNext = auction.highestBidderId
@@ -143,7 +153,17 @@ export default function AuctionPage({ id }) {
       await load();
     } catch (err) {
       if (err.code && err.code !== 'SYSTEM') idemRef.current = null;
-      setMsg({ type: 'err', text: err.message });
+      // Server aniq minimal narxni qaytargan bo'lsa (BID_TOO_LOW), umumiy
+      // matn o'rniga o'sha aniq summani ko'rsatamiz.
+      setMsg({
+        type: 'err',
+        text: (err.code === 'BID_TOO_LOW' && err.minNext)
+          ? t("Taklif kamida {n} so'm bo'lishi kerak.", { n: fmt(err.minNext) })
+          : err.message,
+      });
+      // Auksion yopilgan/narx o'zgargan bo'lsa — holatni darhol yangilaymiz,
+      // foydalanuvchi eskirgan narx bilan qayta urinmasin.
+      if (err.code === 'AUCTION_ALREADY_CLOSED' || err.code === 'BID_TOO_LOW') await load();
     } finally {
       setBusy(false);
     }
@@ -203,7 +223,7 @@ export default function AuctionPage({ id }) {
         </div>
       </section>
 
-      {isHighest && auction.status === 'active' && (
+      {isHighest && biddingOpen && (
         <div className="alert alert-success mt-6 py-2 text-sm"><span>{t('Hozircha siz yetakchisiz!')}</span></div>
       )}
       {isOwner && (
@@ -259,7 +279,16 @@ export default function AuctionPage({ id }) {
         </section>
       )}
 
-      {auction.status === 'active' && !isOwner && !PAYMENTS_ENABLED && (
+      {auction.status === 'active' && timeIsUp && (
+        <section className="vz-card mt-6 p-5">
+          <div className="text-sm font-bold">{t('Auksion yakunlandi')}</div>
+          <p className="mt-1 text-xs text-base-content/50">
+            {t("Bu auksionning vaqti tugadi — yangi taklif qabul qilinmaydi. Natija bir necha soniyada yangilanadi.")}
+          </p>
+        </section>
+      )}
+
+      {biddingOpen && !isOwner && !PAYMENTS_ENABLED && (
         <section className="vz-card mt-6 p-5">
           <div className="text-sm font-bold">{t('Narx taklif qilish')}</div>
           <p className="mt-1 text-xs text-base-content/50">
@@ -269,7 +298,7 @@ export default function AuctionPage({ id }) {
         </section>
       )}
 
-      {auction.status === 'active' && !isOwner && PAYMENTS_ENABLED && (
+      {biddingOpen && !isOwner && PAYMENTS_ENABLED && (
         <section className="vz-card mt-6 p-5">
           <div className="text-sm font-bold">{t('Narx taklif qilish')}</div>
           <p className="mt-1 text-xs text-base-content/50">
@@ -284,8 +313,11 @@ export default function AuctionPage({ id }) {
               aria-label={t('Narx taklif qilish')}
               className="vz-input w-full sm:w-48"
             />
-            <button type="button" className="btn btn-gold" onClick={bid} disabled={busy || !user || !PAYMENTS_ENABLED}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : (!PAYMENTS_ENABLED ? t('Tez kunlarda') : user ? t('Taklif qilish') : t('Kirish kerak'))}
+            {/* Bu tarmoq faqat PAYMENTS_ENABLED === true bo'lganda
+                render qilinadi, shuning uchun tugmada "Tez kunlarda"
+                holati QATTIQ YOZILGAN ko'rinishda qolmaydi. */}
+            <button type="button" className="btn btn-gold" onClick={bid} disabled={busy || !user}>
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : (user ? t('Taklif qilish') : t('Kirish kerak'))}
             </button>
             {auction.buyNowPrice && (
               <button type="button" className="btn btn-ghost-vz" onClick={() => setAmount(String(auction.buyNowPrice))} disabled={busy}>

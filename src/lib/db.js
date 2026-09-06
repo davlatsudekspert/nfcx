@@ -866,6 +866,9 @@ export async function dbPlaceBid(auctionId, amount, idempotencyKey) {
     const err = new Error(AUCTION_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
     err.code = data && data.error;
     err.available = data && data.available;
+    // Server "minimal keyingi taklif" ni qaytarsa, uni ham uzatamiz —
+    // sahifa foydalanuvchiga aniq summani ko'rsatadi.
+    err.minNext = data && data.minNext;
     throw err;
   }
   return data;

@@ -8,6 +8,7 @@ import { isEmbedMusic } from '../lib/music.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
+import PaymeBlock from '../components/PaymeBlock.jsx';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -1929,6 +1930,38 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const fileRef = useRef(null);
   const videoRef = useRef(null);
 
+  // 2026-09 hotfix — jismoniy NFC karta buyurtmasi.
+  // Bu oyna avval Payme holatini QATTIQ YOZIB qo'ygan edi: tugma har doim
+  // `disabled`, tagida esa shartsiz "Tez kunlarda" izohi turardi va
+  // dbOrderPhysicalCard() HECH QACHON chaqirilmasdi — ya'ni backend
+  // (hosting/api/account.js `order-physical-card`) tayyor bo'lsa ham
+  // buyurtma berib bo'lmasdi. Endi holat faqat PaymeBlock orqali
+  // backend'dagi yagona manbadan keladi va yetkazib berish formasi bilan
+  // to'liq buyurtma oqimi ishlaydi.
+  const [shipName, setShipName] = useState('');
+  const [shipPhone, setShipPhone] = useState('');
+  const [shipAddress, setShipAddress] = useState('');
+  const [cardOrder, setCardOrder] = useState(null);
+  const shippingFilled = !!(shipName.trim() && shipPhone.trim() && shipAddress.trim());
+
+  const orderPhysicalCard = async () => {
+    if (!shippingFilled) {
+      setMsg({ type: 'err', text: t("Ism, telefon va manzilni to'liq kiriting.") });
+      return;
+    }
+    setBusy(true); setMsg(null);
+    try {
+      const res = await dbOrderPhysicalCard(card.code, {
+        shippingName: shipName.trim(), shippingPhone: shipPhone.trim(), shippingAddress: shipAddress.trim(),
+      });
+      setCardOrder(res);
+    } catch (err) {
+      setMsg({ type: 'err', text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const autoTier = tierForCode(card.code);
   const previewFinish = finish && finish !== 'auto' ? finish : ('tier-' + autoTier);
 
@@ -2098,18 +2131,37 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 
       {tab === 'print' && (
         <div>
-          <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold">{t('Jismoniy NFC karta buyurtma berish')}</div>
-                <p className="mt-1 text-xs text-base-content/50">{t('Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.')}</p>
-              </div>
-              <div className="text-right text-lg font-extrabold text-accent">{t("{n} so'm", { n: fmt(PHYSICAL_CARD_FEE_UZS) })}</div>
-            </div>
-            <button className="btn btn-accent btn-sm mt-3 w-full btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
-              {t("Buyurtma berish — {n} so'm", { n: fmt(PHYSICAL_CARD_FEE_UZS) })}
-            </button>
-            <div className="mt-3"><PaymentUnavailableNotice /></div>
+          <div className="mb-4">
+            <PaymeBlock
+              title={t('Jismoniy NFC karta buyurtma berish')}
+              subtitle={t('Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.')}
+              amount={PHYSICAL_CARD_FEE_UZS}
+              payLink={cardOrder ? cardOrder.payLink : null}
+              onPay={orderPhysicalCard}
+              payLabel={cardOrder ? t("To'lovga o'tish") : t("Buyurtma berish va to'lash")}
+              busy={busy}
+              disabled={!cardOrder && !shippingFilled}
+              note={cardOrder
+                ? t("Buyurtma yaratildi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.")
+                : (!shippingFilled ? t('Davom etish uchun yetkazib berish maʼlumotlarini toʻldiring.') : null)}
+            >
+              {!cardOrder && (
+                <div className="mt-3 grid gap-2">
+                  <input
+                    className="vz-input" value={shipName} onChange={(e) => setShipName(e.target.value)}
+                    placeholder={t('Qabul qiluvchi ismi')} aria-label={t('Qabul qiluvchi ismi')}
+                  />
+                  <input
+                    className="vz-input" value={shipPhone} onChange={(e) => setShipPhone(e.target.value)}
+                    placeholder={t('Telefon raqamingiz (+998...)')} aria-label={t('Telefon raqamingiz (+998...)')}
+                  />
+                  <textarea
+                    className="vz-input" rows={2} value={shipAddress} onChange={(e) => setShipAddress(e.target.value)}
+                    placeholder={t('Yetkazib berish manzili')} aria-label={t('Yetkazib berish manzili')}
+                  />
+                </div>
+              )}
+            </PaymeBlock>
           </div>
           <Suspense fallback={<div className="py-10 text-center text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>}>
             <CardDesignerPage embedded code={card.code} />

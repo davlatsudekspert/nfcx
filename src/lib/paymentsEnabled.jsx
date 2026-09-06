@@ -8,21 +8,39 @@ import { createContext, useContext, useEffect, useState } from 'react';
 // build+deploy qilish) kerak edi. Endi ikkalasi mos kelmasligi mumkin
 // emas: yagona haqiqat manbai — backend. Tarmoq xatosi/ulanmagan holatda
 // XAVFSIZ TOMONGA (false — to'lov o'chiq) qoladi.
-const PaymentsEnabledContext = createContext(false);
+//
+// 2026-09: kontekst endi obyekt saqlaydi ({ enabled, sandbox, loaded }),
+// lekin `usePaymentsEnabled()` AVVALGIDEK sof boolean qaytaradi — shu
+// sababli uni ishlatayotgan barcha sahifalar (ReserveModal, PayButton,
+// AccountPage, AuctionPage, PaymentsPage...) o'zgarishsiz ishlayveradi.
+// Sandbox belgisi kerak bo'lgan joylar `usePaymentsInfo()` chaqiradi.
+const PaymentsEnabledContext = createContext({ enabled: false, sandbox: false, loaded: false });
 
 export function PaymentsEnabledProvider({ children }) {
-  const [enabled, setEnabled] = useState(false);
+  const [info, setInfo] = useState({ enabled: false, sandbox: false, loaded: false });
   useEffect(() => {
     let cancelled = false;
     fetch('/api/settings/payments-enabled')
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setEnabled(!!(d && d.enabled)); })
-      .catch(() => { /* xavfsiz tomonga — o'chiq holatda qoladi */ });
+      .then((d) => {
+        if (cancelled) return;
+        setInfo({ enabled: !!(d && d.enabled), sandbox: !!(d && d.sandbox), loaded: true });
+      })
+      .catch(() => {
+        // xavfsiz tomonga — o'chiq holatda qoladi. `loaded: true` qo'yiladi,
+        // shunda interfeys abadiy "yuklanmoqda" holatida osilib qolmaydi.
+        if (!cancelled) setInfo({ enabled: false, sandbox: false, loaded: true });
+      });
     return () => { cancelled = true; };
   }, []);
-  return <PaymentsEnabledContext.Provider value={enabled}>{children}</PaymentsEnabledContext.Provider>;
+  return <PaymentsEnabledContext.Provider value={info}>{children}</PaymentsEnabledContext.Provider>;
 }
 
 export function usePaymentsEnabled() {
+  return useContext(PaymentsEnabledContext).enabled;
+}
+
+// { enabled, sandbox, loaded } — PaymeBlock kabi to'liq to'lov oynalari uchun.
+export function usePaymentsInfo() {
   return useContext(PaymentsEnabledContext);
 }
