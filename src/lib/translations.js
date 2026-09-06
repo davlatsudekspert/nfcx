@@ -2123,6 +2123,11 @@ const DICT_BASE = {
   "Videoni yig‘ish": { ru: "Свернуть видео", en: "Collapse video" },
   // 2026-09: suzuvchi mini-pleer va kabinetdagi YouTube ogohlantirishi.
   "Musiqani yopish": { ru: "Закрыть музыку", en: "Close music" },
+  // 2026-09: katalog saralashi va ko'rishlar soni.
+  "Ko'p ko'rilgan": { ru: 'Популярные', en: 'Most viewed' },
+  'Yangilar': { ru: 'Новые', en: 'Newest' },
+  'Qimmatlar': { ru: 'Дорогие', en: 'Most expensive' },
+  "Ko'rishlar": { ru: 'Просмотры', en: 'Views' },
   "YouTube havolasi — video ko‘rinadi.": { ru: "Ссылка YouTube — видео будет видно.", en: "YouTube link — the video will be visible." },
   "YouTube qoidasiga ko'ra ijro paytida rasmiy player ko'rinib turishi shart (eng kichigi 200×200 px). U profilingizning o'ng-pastki burchagida kichkina oynada chiqadi.":
     { ru: "По правилам YouTube во время воспроизведения официальный плеер должен быть виден (минимум 200×200 px). Он появится в небольшом окне в правом нижнем углу вашего профиля.",
