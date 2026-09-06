@@ -821,25 +821,38 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .cat-price { font-size: 15px; font-weight: 800; color: rgba(247,242,232,.88); white-space: nowrap; }
 .cat-when { font-size: 11.5px; color: rgba(247,242,232,.38); white-space: nowrap; }
 
-/* Hover — rasm 1.75 barobar kattalashadi va kartadan tashqariga chiqadi,
-   shuning uchun ID va ismni TO'SMAYDI. Kartaning `overflow` i shu paytda
-   ochiladi, begushiy yaltiroq esa vaqtincha to'xtaydi (aks holda u ham
-   kartadan tashqariga chiqib ketardi). */
-.cat-card--v2:hover { overflow: visible; }
-.cat-card--v2:hover.tier-shine::after { display: none; }
-.cat-card--v2:hover .cat-av {
-  transform: translate(-20px, -14px) scale(1.75);
-  border-color: var(--tier, #f0cf7a);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tier, #f0cf7a) 55%, transparent), 0 16px 34px rgba(0,0,0,.65);
+/* Hover — RASM emas, KARTANING O'ZI kattalashadi.
+   Avval avatar 1.75 barobar kattayib kartadan tashqariga chiqib ketardi va
+   qo'shni kartalar ustiga tushardi. Endi butun karta bir tekis kattalashadi:
+   ichidagi hamma narsa (rasm, ID, ism) o'z joyida turgani holda birga
+   kattayadi, `overflow` esa yopiq qoladi — hech narsa tashqariga chiqmaydi.
+   Kattaygan karta qo'shnilaridan yuqorida turishi uchun z-index ko'tariladi. */
+.cat-card--v2 { transform-origin: center; }
+.cat-card--v2:hover {
+  transform: translateY(-3px) scale(1.045);
+  z-index: 6;
+  border-color: var(--tier, rgba(255,255,255,.3));
+  box-shadow:
+    0 22px 48px rgba(0,0,0,.55),
+    0 0 0 1px var(--tier-line, rgba(255,255,255,.2)),
+    0 0 30px var(--tier-glow, transparent);
 }
-@media (prefers-reduced-motion: reduce) { .cat-av { transition: none; } }
+/* Rasm o'z o'lchamida qoladi — faqat tarif rangidagi halqa yonadi. */
+.cat-card--v2:hover .cat-av {
+  border-color: var(--tier, #f0cf7a);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tier, #f0cf7a) 45%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-av { transition: none; }
+  .cat-card--v2:hover { transform: none; }
+}
 /* Telefon: sichqoncha yo'q — rasm o'z holicha turadi, karta biroz pastroq.
    Bundan tashqari tarif belgisi va ko'rishlar soni ALOHIDA qatorga
    tushadi: aks holda ular ID uchun joyni yeb, "VIP001" kesilib qolardi
    (320px ekranda o'lchandi). */
 @media (max-width: 639px) {
   .cat-card--v2 { aspect-ratio: auto; min-height: 190px; }
-  .cat-card--v2:hover .cat-av { transform: none; box-shadow: none; }
+  .cat-card--v2:hover { transform: none; }
   .cat-head { flex-wrap: wrap; }
   .cat-idwrap { flex: 1 1 calc(100% - 82px); }
   .cat-meta { order: 3; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 10px; }
