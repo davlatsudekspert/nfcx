@@ -112,7 +112,7 @@ export function buildRecordUpdateBody(
   const base: Record<string, unknown> = {};
   if (current) {
     for (const key of REPLACED_FIELDS) {
-      const value = (current as Record<string, unknown>)[key];
+      const value = (current as unknown as Record<string, unknown>)[key];
       if (value !== undefined) base[key] = value;
     }
     base.hashtags = Array.isArray(current.hashtags) ? current.hashtags : [];
@@ -130,7 +130,7 @@ export const recordsApi = {
 
   /** Full-replace update — always build the body with `buildRecordUpdateBody`. */
   update: (code: string, body: RecordUpdateBody) =>
-    api.put<FullNfcRecord>(`/api/records/${encodeURIComponent(code)}`, body as Record<string, unknown>),
+    api.put<FullNfcRecord>(`/api/records/${encodeURIComponent(code)}`, body as unknown as Record<string, unknown>),
 
   /**
    * The purchase/reserve entrypoint (android/docs/02-API_MAP.md §2.2). The

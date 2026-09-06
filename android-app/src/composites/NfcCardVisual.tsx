@@ -22,12 +22,11 @@ export interface NfcCardVisualProps {
  */
 export function NfcCardVisual({ avatarUrl, size = 128, verified = false }: NfcCardVisualProps) {
   const glow = useSharedValue(0.6);
-  const [failed, setFailed] = useState(false);
   const uri = resolveMediaUrl(avatarUrl);
-
-  useEffect(() => {
-    setFailed(false);
-  }, [uri]);
+  // Keyed by URI rather than a boolean reset in an effect, so pointing at a
+  // new avatar automatically clears a previous load failure.
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const failed = !!uri && failedUri === uri;
 
   useEffect(() => {
     glow.value = withRepeat(withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.ease) }), -1, true);
@@ -51,7 +50,7 @@ export function NfcCardVisual({ avatarUrl, size = 128, verified = false }: NfcCa
         {showImage ? (
           <Image
             source={{ uri }}
-            onError={() => setFailed(true)}
+            onError={() => setFailedUri(uri ?? null)}
             style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
           />
         ) : (

@@ -15,6 +15,7 @@ import { AuctionBidSheet } from './AuctionBidSheet';
 import { AuctionBidRow } from './AuctionBidRow';
 import { InfoBanner, MetaChip, MetricTile, PaymentsClosedNotice, SectionLabel } from './AuctionUi';
 import { recoverSession } from './sessionRecovery';
+import { useManualRefresh } from './useManualRefresh';
 import {
   apiErrorMessage,
   auctionCurrentPrice,
@@ -66,6 +67,7 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
   const viewerId = useAuthStore((s) => s.user?.id ?? null);
   const paymentsStatus = usePaymentsEnabledStore((s) => s.status);
 
+  const refresh = useManualRefresh(detail.refetch);
   const sheetRef = useRef<BottomSheet>(null);
   const [amount, setAmount] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -183,11 +185,14 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
       <View style={styles.metricsRow}>
         <MetricTile label="Boshlang'ich" value={formatSom(auctionStartPrice(auction))} />
         <MetricTile label="Minimal qadam" value={formatSom(auctionMinIncrement(auction))} />
-        <MetricTile
-          label={live ? 'Keyingi taklif' : 'Oxirgi qadam'}
-          value={formatSom(nextMinBid)}
-          tone={live ? 'gold' : 'neutral'}
-        />
+        {/* "Keyingi taklif" only means something while bidding is open — a
+            finished auction shows the recorded bid count instead of a
+            hypothetical next price. */}
+        {live ? (
+          <MetricTile label="Keyingi taklif" value={formatSom(nextMinBid)} tone="gold" />
+        ) : (
+          <MetricTile label="Takliflar" value={formatCount(bids.length)} />
+        )}
       </View>
 
       <ViewerStateBanner
@@ -256,8 +261,8 @@ export function AuctionDetailScreen({ route, navigation }: Props) {
           ListHeaderComponent={header}
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={BidSeparator}
-          refreshing={detail.isRefetching}
-          onRefresh={() => void detail.refetch()}
+          refreshing={refresh.refreshing}
+          onRefresh={refresh.onRefresh}
           renderItem={({ item, index }: { item: Bid; index: number }) => (
             <AuctionBidRow
               bid={item}

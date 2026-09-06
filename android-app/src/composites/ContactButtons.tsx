@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: space.xxl,
   },
-  sweepMask: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  sweepMask: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
   sweep: {
     position: 'absolute',
     top: 0,

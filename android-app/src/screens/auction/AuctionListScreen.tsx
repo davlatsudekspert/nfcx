@@ -19,6 +19,7 @@ import { AuctionRequestSheet } from './AuctionRequestSheet';
 import { InfoBanner, MetricTile, PaymentsClosedNotice } from './AuctionUi';
 import { apiErrorMessage, summarizeAuctions } from './auctionModel';
 import { recoverSession } from './sessionRecovery';
+import { useManualRefresh } from './useManualRefresh';
 import { useActiveAuctions, useEndedAuctions, useWonPendingAuctions } from '../../hooks/useAuctions';
 import { useAuctionDemand, useVoteAuctionDemand } from '../../hooks/useAuctionDemand';
 import { useAuthStore } from '../../state/authStore';
@@ -131,6 +132,7 @@ function LiveTab({
   const auctions = useActiveAuctions();
   const demand = useAuctionDemand();
   const won = useWonPendingAuctions();
+  const refresh = useManualRefresh(auctions.refetch);
   const paymentsOff = usePaymentsEnabledStore((s) => s.status === 'disabled');
   const viewerId = useAuthStore((s) => s.user?.id ?? null);
 
@@ -197,8 +199,8 @@ function LiveTab({
       contentContainerStyle={styles.listContent}
       ListHeaderComponent={header}
       ListFooterComponent={explainer}
-      refreshing={auctions.isRefetching}
-      onRefresh={() => void auctions.refetch()}
+      refreshing={refresh.refreshing}
+      onRefresh={refresh.onRefresh}
       renderItem={({ item, index }) => (
         <AuctionListCard
           auction={item}
@@ -226,6 +228,7 @@ function DemandTab({ navigation }: { navigation: Navigation }) {
   const vote = useVoteAuctionDemand();
   const paymentsOff = usePaymentsEnabledStore((s) => s.status === 'disabled');
   const toast = useToast();
+  const refresh = useManualRefresh(demand.refetch);
   const sheetRef = useRef<BottomSheet>(null);
 
   const rows = (demand.data?.demand ?? []).filter((row) => row.status !== 'hidden');
@@ -233,7 +236,15 @@ function DemandTab({ navigation }: { navigation: Navigation }) {
 
   const onVote = (demandId: number) => {
     vote.mutate(demandId, {
-      onSuccess: (result) => toast.show(result.voted ? 'Ovozingiz qabul qilindi.' : 'Ovoz allaqachon berilgan.', 'success'),
+      onSuccess: (result) => {
+        if (result.becameReady) {
+          toast.show("Chegara to'ldi — bu ID auksionga tayyor.", 'success');
+          return;
+        }
+        // `voted` is the state the server reports back after the call; the UI
+        // never claims more than that.
+        toast.show(result.voted ? 'Ovozingiz qabul qilindi.' : 'Ovoz holati yangilandi.', 'success');
+      },
       onError: (error) => toast.show(apiErrorMessage(error), 'warning'),
     });
   };
@@ -294,8 +305,8 @@ function DemandTab({ navigation }: { navigation: Navigation }) {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<View style={styles.headerBlock}>{intro}</View>}
         ListFooterComponent={<AuctionHowItWorks threshold={threshold} paymentsOff={paymentsOff} />}
-        refreshing={demand.isRefetching}
-        onRefresh={() => void demand.refetch()}
+        refreshing={refresh.refreshing}
+        onRefresh={refresh.onRefresh}
         renderItem={({ item, index }) => (
           <AuctionDemandCard
             demand={item}
@@ -319,6 +330,7 @@ function DemandTab({ navigation }: { navigation: Navigation }) {
 function EndedTab({ navigation }: { navigation: Navigation }) {
   const auctions = useEndedAuctions();
   const viewerId = useAuthStore((s) => s.user?.id ?? null);
+  const refresh = useManualRefresh(auctions.refetch);
   const rows = auctions.data ?? [];
 
   const archiveNote = (
@@ -359,8 +371,8 @@ function EndedTab({ navigation }: { navigation: Navigation }) {
         </View>
       }
       ListFooterComponent={archiveNote}
-      refreshing={auctions.isRefetching}
-      onRefresh={() => void auctions.refetch()}
+      refreshing={refresh.refreshing}
+      onRefresh={refresh.onRefresh}
       renderItem={({ item, index }) => (
         <AuctionListCard
           auction={item}
@@ -386,6 +398,7 @@ function EndedTab({ navigation }: { navigation: Navigation }) {
 function MineTab({ navigation, onSeeLive }: { navigation: Navigation; onSeeLive: () => void }) {
   const won = useWonPendingAuctions();
   const paymentsOff = usePaymentsEnabledStore((s) => s.status === 'disabled');
+  const refresh = useManualRefresh(won.refetch);
   const rows = won.data ?? [];
 
   const deadlineNote = (
@@ -427,13 +440,15 @@ function MineTab({ navigation, onSeeLive }: { navigation: Navigation; onSeeLive:
       keyExtractor={(item) => String(item.id)}
       contentContainerStyle={styles.listContent}
       ListHeaderComponent={
-        <View style={styles.headerBlock}>
-          {paymentsOff && <PaymentsClosedNotice style={styles.headerBannerFirst} />}
-        </View>
+        paymentsOff ? (
+          <View style={styles.headerBlock}>
+            <PaymentsClosedNotice style={styles.headerBannerFirst} />
+          </View>
+        ) : null
       }
       ListFooterComponent={deadlineNote}
-      refreshing={won.isRefetching}
-      onRefresh={() => void won.refetch()}
+      refreshing={refresh.refreshing}
+      onRefresh={refresh.onRefresh}
       renderItem={({ item, index }) => (
         <WonAuctionCard
           code={item.code}

@@ -10,12 +10,25 @@ import { CompanyCreateStep5Screen } from '../screens/company/CompanyCreateStep5S
 import { CompanyDashboardScreen } from '../screens/company/CompanyDashboardScreen';
 import { CatalogListScreen } from '../screens/company/CatalogListScreen';
 import { PublicCompanyScreen } from '../screens/company/PublicCompanyScreen';
+import { color } from '../design-system/tokens';
 
 const Stack = createNativeStackNavigator<CompanyStackParamList>();
 
+/**
+ * `contentStyle` pins the stack's own background to the app's near-black:
+ * without it every push flashes the navigator's default light surface for a
+ * frame, which is exactly the kind of detail that makes an otherwise premium
+ * flow feel cheap.
+ */
 export function CompanyNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: color.bg },
+      }}
+    >
       <Stack.Screen name="CompanyHome" component={CompanyHomeScreen} />
       <Stack.Screen name="CompanyCreate1" component={CompanyCreateStep1Screen} />
       <Stack.Screen name="CompanyCreate2" component={CompanyCreateStep2Screen} />

@@ -66,7 +66,10 @@ export function NotificationsScreen({ navigation }: Props) {
    * on unmount, and "mark all read" clears them immediately. */
   const [seenIds, setSeenIds] = useState<string[] | null>(null);
   const latestIds = useRef<string[]>([]);
-  latestIds.current = items.map((i) => i.id);
+
+  useEffect(() => {
+    latestIds.current = items.map((i) => i.id);
+  }, [items]);
 
   useEffect(() => {
     let active = true;
@@ -92,10 +95,10 @@ export function NotificationsScreen({ navigation }: Props) {
   const unreadCount = items.filter((i) => isUnread(i.id)).length;
 
   const markAllRead = useCallback(() => {
-    const ids = latestIds.current;
+    const ids = items.map((i) => i.id);
     setSeenIds(ids);
     saveSeenIds(ids);
-  }, []);
+  }, [items]);
 
   const [refreshing, setRefreshing] = useState(false);
   const refreshAll = useCallback(async () => {

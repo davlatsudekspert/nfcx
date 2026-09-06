@@ -10,6 +10,10 @@ import { formatSom } from '../../lib/format';
 import type { Auction } from '../../api/types';
 import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
 
+/** Module-level so the sheet's snap points keep a stable identity across the
+ * screen's 4s poll re-renders (a new array each render re-measures the sheet). */
+const SNAP_POINTS = ['62%', '88%'];
+
 export interface AuctionBidSheetProps {
   auction: Auction | null;
   /** `currentPrice + minIncrement`, or null when the current price is unknown. */
@@ -59,7 +63,7 @@ export const AuctionBidSheet = forwardRef<BottomSheet, AuctionBidSheetProps>(fun
   const quickSteps = minBid == null ? [] : [0, 1, 4].map((n) => minBid + n * increment);
 
   return (
-    <PremiumSheet ref={ref} title="Taklif berish" snapPoints={['62%', '88%']} onDismiss={onDismiss}>
+    <PremiumSheet ref={ref} title="Taklif berish" snapPoints={SNAP_POINTS} onDismiss={onDismiss}>
       <View style={styles.metrics}>
         <MetricTile label="Joriy narx" value={formatSom(currentPrice)} />
         <MetricTile label="Minimal taklif" value={formatSom(minBid)} tone="gold" />

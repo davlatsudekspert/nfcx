@@ -209,6 +209,9 @@ export function SettingsScreen({ navigation }: Props) {
           <PremiumCard variant="sunken" contentStyle={styles.heroContent}>
             <Text style={styles.heroEmail}>{c('accountGuest')}</Text>
             <Text style={styles.heroHint}>{c('accountGuestHint')}</Text>
+            {/* Defensive branch (the stack is auth-gated, so `user` is
+                normally set): clearing the session drops straight into the
+                Auth flow via RootNavigator — a real route, not a dead button. */}
             <PremiumButton label={c('accountLogin')} onPress={() => logout()} style={styles.guestButton} />
           </PremiumCard>
         )}

@@ -6,6 +6,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { ProfileStackParamList, MainTabParamList } from '../../navigation/types';
 import { PremiumHeader } from '../../design-system/components/PremiumHeader';
 import { PremiumEmptyState } from '../../design-system/components/PremiumEmptyState';
+import { PremiumLoadingSkeleton } from '../../design-system/components/PremiumLoadingSkeleton';
 import { NfcIdCard } from '../../composites/NfcIdCard';
 import { useAuthStore } from '../../state/authStore';
 import { useT } from '../../i18n';
@@ -38,9 +39,18 @@ export function ProfileEditScreen({ navigation }: Props) {
     if (target) navigation.replace('IdOwnerWorkspace', { code: target.code });
   }, [target, navigation]);
 
-  // A frame may render before `replace` commits — show nothing jarring.
+  // A frame or two may render before `replace` commits — show the workspace's
+  // own loading shape rather than a blank screen.
   if (target) {
-    return <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']} />;
+    return (
+      <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
+        <PremiumHeader title={t('owner.workspace')} />
+        <View style={styles.body}>
+          <PremiumLoadingSkeleton height={140} />
+          <PremiumLoadingSkeleton height={96} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (!cards.length) {

@@ -23,17 +23,11 @@
  * this sandbox does not have (android/docs/14-PHASE11-NATIVE-REPORT.md).
  */
 import NfcManager, { NfcTech, Ndef, NdefStatus, type NdefRecord } from 'react-native-nfc-manager';
+import { NFC_CODE_RE, NFC_PROFILE_ORIGIN, parseNfcPayload, type NfcTagPayload } from './nfcPayload';
 
-/** Production origin — same constant shape as src/native/cookies.ts / share.ts. */
-export const NFC_PROFILE_ORIGIN = 'https://nfcstore.uz';
-
-/** Path segments of `nfcstore.uz/*` that are app routes, not profile codes. */
-const RESERVED_PATH_SEGMENTS = new Set([
-  'company', 'c', 'auksion', 'auction', 'login', 'register', 'account', 'api',
-  'uploads', 'news', 'yangiliklar', 'aloqa', 'narxlar', 'qollanma', 'faq',
-]);
-
-const CODE_RE = /^[A-Z0-9]{3,16}$/;
+// Re-exported so callers have a single NFC entry point.
+export { NFC_PROFILE_ORIGIN, parseNfcPayload };
+export type { NfcTagPayload };
 
 export type NfcHardwareState =
   /** NFC hardware present and switched on — scanning can start. */
@@ -44,15 +38,6 @@ export type NfcHardwareState =
   | 'unsupported'
   /** Availability not probed yet. */
   | 'unknown';
-
-export interface NfcTagPayload {
-  /** The decoded record text exactly as it was stored on the tag. */
-  raw: string;
-  /** Profile code parsed out of an `nfcstore.uz/<CODE>` URL, when present. */
-  code: string | null;
-  /** Physical-card chip token (`?t=` param, or a bare-token legacy tag). */
-  chipToken: string | null;
-}
 
 export type NfcReadResult =
   | { status: 'ok'; payload: NfcTagPayload; chipToken: string | null }
@@ -113,56 +98,6 @@ export async function openNfcSettings(): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-/**
- * Parses whatever a tag stored into the two things this app can act on: a
- * profile code and/or a physical-card chip token.
- *
- * Accepted shapes (all real formats used in production today):
- *   `https://nfcstore.uz/AAA100?t=<token>` — physical card written by admin
- *   `https://nfcstore.uz/AAA100`           — profile URL (share.ts / this app's write flow)
- *   `nfcstore://profile/AAA100`            — app deep link (src/navigation/linking.ts)
- *   `<token>`                              — legacy bare-token tag
- */
-export function parseNfcPayload(raw: unknown): NfcTagPayload {
-  const text = typeof raw === 'string' ? raw.trim() : '';
-  if (!text) return { raw: '', code: null, chipToken: null };
-
-  const httpMatch = text.match(/^(?:https?:\/\/)?(?:www\.)?nfcstore\.uz\/([^/?#]+)(?:\/[^?#]*)?(?:\?([^#]*))?/i);
-  const schemeMatch = text.match(/^nfcstore:\/\/(?:profile\/)?([^/?#]+)(?:\?([^#]*))?/i);
-  const match = httpMatch ?? schemeMatch;
-
-  if (match) {
-    const segment = safeDecode(match[1]).toUpperCase();
-    const code = CODE_RE.test(segment) && !RESERVED_PATH_SEGMENTS.has(segment.toLowerCase()) ? segment : null;
-    return { raw: text, code, chipToken: readQueryParam(match[2], 't') };
-  }
-
-  // Legacy tags store the bare chip token with no URL around it.
-  if (/^[A-Za-z0-9_-]{6,128}$/.test(text)) return { raw: text, code: null, chipToken: text };
-  return { raw: text, code: null, chipToken: null };
-}
-
-function readQueryParam(query: string | undefined, key: string): string | null {
-  if (!query) return null;
-  for (const pair of query.split('&')) {
-    const eq = pair.indexOf('=');
-    const name = eq === -1 ? pair : pair.slice(0, eq);
-    if (name === key) {
-      const value = eq === -1 ? '' : safeDecode(pair.slice(eq + 1));
-      return value || null;
-    }
-  }
-  return null;
-}
-
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
   }
 }
 
@@ -239,7 +174,7 @@ export async function readNfcChipToken(): Promise<
  */
 export async function writeProfileUrlToTag(code: string): Promise<NfcWriteResult> {
   const normalized = String(code || '').trim().toUpperCase();
-  if (!CODE_RE.test(normalized)) return { status: 'tag_unsupported' };
+  if (!NFC_CODE_RE.test(normalized)) return { status: 'tag_unsupported' };
   const url = `${NFC_PROFILE_ORIGIN}/${normalized}`;
 
   const state = await getNfcHardwareState();

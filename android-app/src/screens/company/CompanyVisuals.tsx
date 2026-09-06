@@ -39,7 +39,14 @@ export function CompanyLogo({
 }) {
   const box = { width: size, height: size, borderRadius: Math.round(size / 3.2) };
   if (logoUrl) {
-    return <Image source={{ uri: logoUrl }} style={[styles.logo, box, style]} resizeMode="cover" />;
+    // The image lives inside the styled box (rather than being styled itself)
+    // so callers can pass any ViewStyle — a border, a shadow — without
+    // fighting React Native's separate ImageStyle type.
+    return (
+      <View style={[styles.logo, box, style]}>
+        <Image source={{ uri: logoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      </View>
+    );
   }
   const initial = (displayName ?? '').trim().charAt(0).toUpperCase();
   return (
@@ -255,7 +262,7 @@ const styles = StyleSheet.create({
   chipDot: { width: 6, height: 6, borderRadius: 3 },
   chipText: { ...typeTokens.caption, fontWeight: '700' },
 
-  logo: { backgroundColor: color.surfaceHigh },
+  logo: { backgroundColor: color.surfaceHigh, overflow: 'hidden' },
   logoFallback: {
     alignItems: 'center',
     justifyContent: 'center',

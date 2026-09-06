@@ -20,6 +20,18 @@ export interface NewsItem {
   likeCount: number;
 }
 
+/**
+ * No notifications endpoint exists.
+ *
+ * `hosting/worker.js` has no notifications route, the D1 schema has no
+ * notifications table (android/docs/02-API_MAP.md §2.9), and the web app's own
+ * NotificationsPage aggregates gift-offers / won-pending-auctions client-side
+ * for exactly that reason. The user-facing `GET /api/support` the web also
+ * calls is **not ported** to the Worker (only `/api/admin/support-messages`
+ * exists). Nothing is stubbed here to paper over that — the mobile inbox
+ * (src/screens/profile/notificationInbox.ts) aggregates the same real
+ * endpoints, and the gap is reported as a backend blocker.
+ */
 export const contentApi = {
   categories: () => api.get<{ categories: Category[] }>('/api/categories'),
 

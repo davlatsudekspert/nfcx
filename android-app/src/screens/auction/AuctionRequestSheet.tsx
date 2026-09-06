@@ -18,6 +18,7 @@ export interface AuctionRequestSheetProps {
 }
 
 const CODE_RE = /^[A-Z0-9]{3,12}$/;
+const SNAP_POINTS = ['58%', '88%'];
 
 function normalizeCode(raw: string): string {
   return String(raw ?? '')
@@ -66,7 +67,7 @@ export const AuctionRequestSheet = forwardRef<BottomSheet, AuctionRequestSheetPr
     <PremiumSheet
       ref={ref}
       title="ID ni auksionga so'rash"
-      snapPoints={['58%', '88%']}
+      snapPoints={SNAP_POINTS}
       onDismiss={() => {
         reset();
         onDismiss?.();
