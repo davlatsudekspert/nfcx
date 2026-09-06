@@ -124,7 +124,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,rgba(212,175,90,0.14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto flex w-full max-w-[1100px] flex-col items-center px-6 pb-10 pt-14 text-center sm:px-10 md:pt-20">
+        <div className="relative z-[1] mx-auto w-full max-w-[1400px] px-6 pb-10 pt-14 sm:px-10 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-8 lg:pt-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-12">
+          {/* ===== CHAP USTUN: sarlavha, CTA, afzalliklar, NFC ID qidiruvi ===== */}
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <Reveal>
             <span className="vz-kicker">{t('NFC karta + raqamli profil')}</span>
           </Reveal>
@@ -138,17 +140,17 @@ export default function HomePage({ catalog, refreshCatalog }) {
           </Reveal>
 
           <Reveal delay="[transition-delay:160ms]">
-            <p className="vz-lead mx-auto mt-5">
+            <p className="vz-lead mx-auto mt-5 lg:mx-0">
               {t("Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va o‘ziga xos NFCSTORE ID’ingizni bitta profilda jamlang. NFC karta yoki havola orqali qulay ulashing.")}
             </p>
           </Reveal>
 
           <Reveal delay="[transition-delay:220ms]" className="w-full">
-            <div className="mt-7 flex flex-col justify-center gap-2.5 sm:flex-row">
+            <div className="mt-7 flex flex-col justify-center gap-2.5 sm:flex-row lg:justify-start">
               <button onClick={() => navigate('/register')} className="btn btn-gold min-h-12 px-7 text-[15px]">{t('Bepul profil yaratish')}</button>
               <button onClick={() => navigate('/qanday-ishlaydi')} className="btn btn-ghost-vz min-h-12 px-7 text-[15px]">{t('Qanday ishlaydi')}</button>
             </div>
-            <ul className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm text-[color:var(--vz-ink-2)]">
+            <ul className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm text-[color:var(--vz-ink-2)] lg:justify-start">
               {['Bepul boshlash', 'Telefon ilovasi shart emas', 'Kontaktni .VCF formatida saqlash'].map((b) => (
                 <li key={b} className="inline-flex items-center gap-1.5"><IconCheck width="14" height="14" className="text-[color:var(--vz-gold)]" /> {t(b)}</li>
               ))}
@@ -157,7 +159,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
           {/* Ixtiyoriy maxsus NFC ID qidiruvi */}
           <Reveal delay="[transition-delay:240ms]" className="w-full">
-            <div className="vz-panel mx-auto mt-8 w-full max-w-xl p-3 text-left sm:p-4">
+            <div className="vz-panel mx-auto mt-8 w-full max-w-xl p-3 text-left sm:p-4 lg:mx-0">
               <div className="vz-label mb-2">{t('Maxsus NFC ID tekshirish (ixtiyoriy)')}</div>
               <div className="flex items-center gap-2.5">
                 <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[rgba(212,175,90,0.25)] bg-black/45 focus-within:border-[rgba(212,175,90,0.7)] focus-within:shadow-[0_0_0_3px_rgba(212,175,90,0.18)]">
@@ -208,9 +210,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
               )}
             </div>
           </Reveal>
+          </div>
 
+          {/* ===== O'NG USTUN: karta vizuali + statistika (faqat lg+ da haqiqiy 2-ustun; mobil/planshetda chapdan keyin oqim bo'ylab) ===== */}
+          <div className="mt-10 flex flex-col items-center lg:mt-0 lg:items-stretch">
           {/* ===== Karta — qahramon (V1) ===== */}
-          <Reveal delay="[transition-delay:160ms]" className="relative mt-10 flex w-full justify-center overflow-visible">
+          <Reveal delay="[transition-delay:160ms]" className="relative flex w-full justify-center overflow-visible lg:justify-self-center">
             <div className="hidden lg:block">
               <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} />
             </div>
@@ -224,7 +229,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
           {/* Stats — faqat haqiqiy ko'rsatkichlar */}
           <Reveal delay="[transition-delay:320ms]" className="w-full">
-            <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3 lg:max-w-none lg:mt-8">
               <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
                 <div className="font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><CountUp value={catalog.length} /></div>
                 <div className="text-xs text-[color:var(--vz-ink-2)]">{t('Band qilingan')}</div>
@@ -239,6 +244,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
               </div>
             </div>
           </Reveal>
+          </div>
         </div>
 
         {/* Marquee — so'nggi band qilingan ID'lar */}

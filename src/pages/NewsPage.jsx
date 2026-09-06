@@ -83,13 +83,18 @@ export default function NewsPage({ newsId = null }) {
 
   const detail = newsId && news ? news.find((n) => String(n.id) === String(newsId)) : null;
 
-  // Sahifa sarlavhasi
+  // Sahifa sarlavhasi — faqat DETAIL ko'rinishi uchun (aniq maqola nomi bilan),
+  // chunki App.jsx'dagi markazlashtirilgan SeoSync (src/lib/seo.js) har bir
+  // marshrut o'zgarishida umumiy "Yangiliklar — NFCSTORE.UZ"ni allaqachon
+  // qo'yadi. 2026-09 hotfix: avval bu yerda "eski title'ni tiklash" cleanup
+  // bo'lgan (`document.title = prev`) — u boshqa sahifaga o'tishda SeoSync
+  // bilan poyga holatiga tushib, ba'zan "Yangiliklar — NFCSTORE.UZ" boshqa
+  // sahifada (masalan Kompaniyalar) qolib ketishiga sabab bo'lardi. Endi
+  // ketishda hech narsa qo'lda tiklanmaydi — keyingi sahifaning o'zi SeoSync
+  // orqali to'g'ri sarlavha qo'yadi.
   useEffect(() => {
-    const prev = document.title;
     if (newsId && detail) document.title = `${pick(detail, 'title', lang)} — NFCSTORE`;
-    else if (!newsId) document.title = `${t('Yangiliklar')} — NFCSTORE`;
-    return () => { document.title = prev; };
-  }, [newsId, detail, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [newsId, detail, lang]);
 
   const toggleLike = async (item) => {
     // optimistik

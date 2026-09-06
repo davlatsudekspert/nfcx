@@ -49,10 +49,28 @@ async function adminApi(path, options) {
 // Umumiy xatolik matni (429 / tarmoq / 403 / boshqa).
 function apiErrText(e, t, fallback) {
   const status = e && typeof e === 'object' ? e.status : undefined;
-  if (status === 429 || e?.message === 'too_many_requests') return t("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.");
+  if (status === 429 || e?.message === 'too_many_requests') return retryAfterText(e, t);
   if (status === 0 || e?.message === 'network_error') return t("Server bilan aloqa yo'q. Qayta urinish");
   if (status === 403) return t("Ruxsat yo'q");
   return fallback || t('Xatolik yuz berdi.');
+}
+
+// 429 javobidagi `retryAfterSec`ni (agar bo'lsa) o'qib, aniq kutish
+// vaqti bilan xabar tuzadi: "Juda ko'p urinish. 12 daqiqadan keyin
+// qayta urinib ko'ring." Server bu maydonni bermasa umumiy matnga tushadi.
+function retryAfterText(e, t) {
+  const sec = Number(e?.data?.retryAfterSec) || 0;
+  if (!sec) return t("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.");
+  if (sec >= 60) return t('Juda ko‘p urinish. {n} daqiqadan keyin qayta urinib ko‘ring.', { n: Math.ceil(sec / 60) });
+  return t('Juda ko‘p urinish. {n} soniyadan keyin qayta urinib ko‘ring.', { n: sec });
+}
+
+// mm:ss (yoki soniya, agar 1 daqiqadan kam qolgan bo'lsa) — tugma ustidagi
+// jonli countdown uchun.
+function formatCountdown(sec) {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60); const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 // Rol / 2FA holati — barcha tab'lar uchun kontekst.
@@ -84,10 +102,20 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
   // immediately, guaranteeing at most one /api/admin/login request per
   // click/Enter.
   const submitLock = useRef(false);
+  // 429 kelganda server bergan `retryAfterSec`dan jonli countdown —
+  // tugma shu vaqt tugagunga qadar bloklangan (qayta-qayta urinib,
+  // hisoblagichni yanada uzaytirib yubormaslik uchun).
+  const [cooldown, setCooldown] = useState(0);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown((s) => (s > 1 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
+  const onRateLimited = (e2) => { const sec = Number(e2?.data?.retryAfterSec) || 60; setCooldown(sec); };
 
   const submitCredentials = async (e) => {
     e.preventDefault();
-    if (submitLock.current) return;
+    if (submitLock.current || cooldown > 0) return;
     submitLock.current = true;
     setBusy(true);
     setErr(null);
@@ -101,12 +129,13 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
         onLoggedIn();
       }
     } catch (e2) {
+      if (e2.status === 429 || e2.message === 'too_many_requests') onRateLimited(e2);
       setErr(e2.message === 'admin_not_configured'
         ? t("Admin panel hali sozlanmagan (ADMIN_PANEL_PHONE / ADMIN_PANEL_PASSWORD env o'zgaruvchilarini qo'shing).")
         : e2.message === 'tg_send_failed'
           ? t("Telegram'ga kod yuborib bo'lmadi. ADMIN_CHAT_ID va bot sozlamalarini tekshiring.")
           : e2.status === 429 || e2.message === 'too_many_requests'
-            ? t("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.")
+            ? retryAfterText(e2, t)
             : e2.status === 0
               ? t("Server bilan aloqa yo'q. Qayta urinish")
               : t('Login yoki parol xato.'));
@@ -117,6 +146,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
   };
 
   const sendTelegramCode = async () => {
+    if (cooldown > 0) return;
     setTgBusy(true);
     setErr(null);
     try {
@@ -124,13 +154,16 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
       setTwoFaMethod('telegram');
       setCode('');
     } catch (e2) {
+      if (e2.status === 429 || e2.message === 'too_many_requests') onRateLimited(e2);
       setErr(e2.message === 'telegram_not_configured'
         ? t("Telegram bot sozlanmagan. Administratorga murojaat qiling.")
         : e2.message === 'tg_send_failed'
           ? t("Telegram'ga kod yuborib bo'lmadi. Birozdan so'ng qayta urinib ko'ring.")
           : e2.message === 'expired'
             ? t("Sessiya muddati o'tgan — qaytadan kiring.")
-            : t('Xatolik yuz berdi.'));
+            : e2.status === 429 || e2.message === 'too_many_requests'
+              ? retryAfterText(e2, t)
+              : t('Xatolik yuz berdi.'));
       if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
     } finally {
       setTgBusy(false);
@@ -139,7 +172,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
   const submitCode = async (e) => {
     e.preventDefault();
-    if (submitLock.current) return;
+    if (submitLock.current || cooldown > 0) return;
     submitLock.current = true;
     setBusy(true);
     setErr(null);
@@ -147,7 +180,14 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
       await adminApi('/verify-2fa', { method: 'POST', body: JSON.stringify({ tempToken, code: code.trim() }) });
       onLoggedIn();
     } catch (e2) {
-      setErr(e2.message === 'expired' ? t("Kod muddati o'tgan — qaytadan kiring.") : t("Kod noto'g'ri."));
+      if (e2.status === 429 || e2.message === 'too_many_requests') onRateLimited(e2);
+      setErr(e2.message === 'expired'
+        ? t("Kod muddati o'tgan — qaytadan kiring.")
+        : e2.status === 503 || e2.message === 'verify_2fa_unavailable'
+          ? t("Server vaqtincha ishlamayapti. Birozdan so'ng qayta urinib ko'ring.")
+          : e2.status === 429 || e2.message === 'too_many_requests'
+            ? retryAfterText(e2, t)
+            : t("Kod noto'g'ri."));
       if (e2.message === 'expired') { setStep('credentials'); setCode(''); }
     } finally {
       setBusy(false);
@@ -177,8 +217,10 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password"
                 className="vz-input" />
             </label>
-            <button className="btn btn-gold w-full" disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Kirish')}
+            <button className="btn btn-gold w-full" disabled={busy || cooldown > 0}>
+              {busy ? <span className="loading loading-spinner loading-sm"></span>
+                : cooldown > 0 ? t('Kutish: {n}', { n: formatCountdown(cooldown) })
+                  : t('Kirish')}
             </button>
           </form>
         ) : (
@@ -191,13 +233,16 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
             <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000" maxLength={6} inputMode="numeric" autoComplete="one-time-code"
               className="vz-input text-center font-mono text-lg tracking-widest" autoFocus />
-            <button className="btn btn-gold w-full" disabled={busy || code.length !== 6}>
-              {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Tasdiqlash')}
+            <button className="btn btn-gold w-full" disabled={busy || cooldown > 0 || code.length !== 6}>
+              {busy ? <span className="loading loading-spinner loading-sm"></span>
+                : cooldown > 0 ? t('Kutish: {n}', { n: formatCountdown(cooldown) })
+                  : t('Tasdiqlash')}
             </button>
-            <button type="button" className="btn btn-ghost-vz w-full" disabled={tgBusy} onClick={sendTelegramCode}>
+            <button type="button" className="btn btn-ghost-vz w-full" disabled={tgBusy || cooldown > 0} onClick={sendTelegramCode}>
               {tgBusy
                 ? <span className="loading loading-spinner loading-xs"></span>
-                : twoFaMethod === 'telegram' ? t('Kodni qayta yuborish (Telegram)') : t('Telegram orqali kod olish')}
+                : cooldown > 0 ? t('Kutish: {n}', { n: formatCountdown(cooldown) })
+                  : twoFaMethod === 'telegram' ? t('Kodni qayta yuborish (Telegram)') : t('Telegram orqali kod olish')}
             </button>
             <button type="button" className="btn btn-ghost-vz w-full" onClick={() => { setStep('credentials'); setCode(''); setErr(null); setTwoFaMethod('totp'); }}>{t('Orqaga')}</button>
           </form>

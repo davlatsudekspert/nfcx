@@ -191,4 +191,10 @@ export const DICT_ADMIN = {
   "Bu yangilik o'chirilgan yoki hali chop etilmagan bo'lishi mumkin.": { ru: 'Возможно, новость удалена или ещё не опубликована.', en: 'This post may have been deleted or not published yet.' },
   "Yangi e'lonlar shu yerda paydo bo'ladi.": { ru: 'Новые объявления появятся здесь.', en: 'New announcements will appear here.' },
   "Batafsil o'qish": { ru: 'Читать полностью', en: 'Read more' },
+
+  // ── Admin login: rate-limit countdown (2026-09 hotfix) ──
+  'Juda ko‘p urinish. {n} daqiqadan keyin qayta urinib ko‘ring.': { ru: 'Слишком много попыток. Повторите через {n} мин.', en: 'Too many attempts. Try again in {n} min.' },
+  'Juda ko‘p urinish. {n} soniyadan keyin qayta urinib ko‘ring.': { ru: 'Слишком много попыток. Повторите через {n} сек.', en: 'Too many attempts. Try again in {n} sec.' },
+  'Kutish: {n}': { ru: 'Ожидание: {n}', en: 'Wait: {n}' },
+  "Server vaqtincha ishlamayapti. Birozdan so'ng qayta urinib ko'ring.": { ru: 'Сервер временно недоступен. Повторите чуть позже.', en: 'Server is temporarily unavailable. Please try again shortly.' },
 };
