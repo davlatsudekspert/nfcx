@@ -4,6 +4,8 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepe
 import { Feather } from '@expo/vector-icons';
 import { color, radius, space, touchTarget, type as typeTokens } from '../design-system/tokens';
 import { haptics } from '../native/haptics';
+import { normalizeExtraLinks } from '../api/records';
+import { displayUrl, resolveExternalUrl } from './mediaUrl';
 
 export interface ContactButtonSpec {
   key: string;
@@ -48,6 +50,8 @@ function ContactButtonRow({ icon, label, onPress, delayMs }: Omit<ContactButtonS
         haptics.light();
         onPress();
       }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={styles.button}
     >
       <View style={styles.sweepMask} pointerEvents="none">
@@ -61,22 +65,86 @@ function ContactButtonRow({ icon, label, onPress, delayMs }: Omit<ContactButtonS
   );
 }
 
+/** `Linking.openURL` rejects on a URI no installed app can handle (no
+ * dialer on a tablet, no mail client). Swallowing it keeps a missing
+ * handler from crashing the profile screen with an unhandled rejection. */
+function open(url: string) {
+  Linking.openURL(url).catch(() => {});
+}
+
+export interface ContactSource {
+  phone?: string;
+  tg?: string;
+  whatsapp?: string;
+  email?: string;
+  website?: string;
+  instagram?: string;
+  linkedin?: string;
+  facebook?: string;
+  twitter?: string;
+  /** Raw wire value — normalized here, so either shape is safe. */
+  extraLinks?: unknown;
+  /** When true the phone is not offered at all. The Worker already strips
+   * `phone` for non-owners on a hidePhone record; honoring the flag here as
+   * well is what makes the owner's own NFC preview truthful. */
+  hidePhone?: boolean;
+}
+
 /** Builds the button spec list from whichever contact fields the record
  * actually has — never renders a dead button for a missing field. */
-export function buildContactButtons(record: { phone?: string; tg?: string; whatsapp?: string; email?: string }): ContactButtonSpec[] {
+export function buildContactButtons(record: ContactSource): ContactButtonSpec[] {
   const items: ContactButtonSpec[] = [];
-  if (record.phone) {
-    items.push({ key: 'phone', icon: 'phone', label: "Qo'ng'iroq qilish", onPress: () => Linking.openURL(`tel:${record.phone}`) });
+
+  if (record.phone && !record.hidePhone) {
+    const phone = record.phone;
+    items.push({ key: 'phone', icon: 'phone', label: "Qo'ng'iroq qilish", onPress: () => open(`tel:${phone}`) });
   }
   if (record.tg) {
-    items.push({ key: 'telegram', icon: 'send', label: 'Telegram', onPress: () => Linking.openURL(`https://t.me/${record.tg!.replace(/^@/, '')}`) });
+    const tg = record.tg.replace(/^@/, '');
+    items.push({ key: 'telegram', icon: 'send', label: 'Telegram', onPress: () => open(`https://t.me/${tg}`) });
   }
   if (record.whatsapp) {
-    items.push({ key: 'whatsapp', icon: 'message-circle', label: 'WhatsApp', onPress: () => Linking.openURL(`https://wa.me/${record.whatsapp!.replace(/\D/g, '')}`) });
+    const wa = record.whatsapp.replace(/\D/g, '');
+    if (wa) items.push({ key: 'whatsapp', icon: 'message-circle', label: 'WhatsApp', onPress: () => open(`https://wa.me/${wa}`) });
+  }
+  if (record.instagram) {
+    const ig = record.instagram.replace(/^@/, '');
+    items.push({ key: 'instagram', icon: 'instagram', label: 'Instagram', onPress: () => open(`https://instagram.com/${ig}`) });
+  }
+  if (record.linkedin) {
+    const url = resolveExternalUrl(record.linkedin);
+    if (url) items.push({ key: 'linkedin', icon: 'linkedin', label: 'LinkedIn', onPress: () => open(url) });
+  }
+  if (record.facebook) {
+    const fb = record.facebook.replace(/^@/, '');
+    items.push({ key: 'facebook', icon: 'facebook', label: 'Facebook', onPress: () => open(`https://facebook.com/${fb}`) });
+  }
+  if (record.twitter) {
+    const tw = record.twitter.replace(/^@/, '');
+    items.push({ key: 'twitter', icon: 'twitter', label: 'X / Twitter', onPress: () => open(`https://x.com/${tw}`) });
   }
   if (record.email) {
-    items.push({ key: 'email', icon: 'mail', label: 'Email', onPress: () => Linking.openURL(`mailto:${record.email}`) });
+    const email = record.email;
+    items.push({ key: 'email', icon: 'mail', label: 'Email', onPress: () => open(`mailto:${email}`) });
   }
+  if (record.website) {
+    const url = resolveExternalUrl(record.website);
+    if (url) {
+      items.push({ key: 'website', icon: 'globe', label: displayUrl(url) || 'Veb-sayt', onPress: () => open(url) });
+    }
+  }
+
+  normalizeExtraLinks(record.extraLinks).forEach((link, i) => {
+    const url = resolveExternalUrl(link.url);
+    if (!url) return;
+    items.push({
+      key: `extra-${i}-${link.url}`,
+      icon: 'link',
+      label: link.label || displayUrl(url) || 'Havola',
+      onPress: () => open(url),
+    });
+  });
+
   return items;
 }
 
@@ -92,8 +160,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    paddingHorizontal: space.xxl,
   },
-  sweepMask: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
+  sweepMask: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   sweep: {
     position: 'absolute',
     top: 0,

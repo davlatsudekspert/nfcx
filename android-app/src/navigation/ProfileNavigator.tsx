@@ -2,6 +2,8 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from './types';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
+import { IdOwnerWorkspaceScreen } from '../screens/profile/IdOwnerWorkspaceScreen';
+import { IdPublicPreviewScreen } from '../screens/profile/IdPublicPreviewScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
 import { NotificationsScreen } from '../screens/profile/NotificationsScreen';
@@ -13,6 +15,8 @@ export function ProfileNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MyProfile" component={MyProfileScreen} />
+      <Stack.Screen name="IdOwnerWorkspace" component={IdOwnerWorkspaceScreen} />
+      <Stack.Screen name="IdPublicPreview" component={IdPublicPreviewScreen} />
       <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

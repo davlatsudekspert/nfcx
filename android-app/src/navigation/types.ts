@@ -20,6 +20,7 @@ export interface DraftPurchaseProfile {
   role?: string;
   phone?: string;
   email?: string;
+  city?: string;
 }
 
 export type IdStackParamList = {
@@ -27,6 +28,8 @@ export type IdStackParamList = {
   PurchaseStep1: { code: string };
   PurchaseStep2: { code: string; profile: DraftPurchaseProfile };
   PurchaseStep3: { code: string; orderId: number; price: number; payLink: string | null };
+  /** Also reachable from the "my orders" list on ID search — the screen
+   * re-reads the authoritative status from `GET /api/orders/:id`. */
   PurchaseResult: { code: string; orderId: number };
 };
 
@@ -65,7 +68,16 @@ export type CompanyStackParamList = {
 };
 
 export type ProfileStackParamList = {
+  /** "Mening ID'larim" — the list of every owned NFC ID. */
   MyProfile: undefined;
+  /** The per-ID owner workspace. `code` is mandatory: a multi-ID owner must
+   * never be silently edited into `cards[0]`. */
+  IdOwnerWorkspace: { code: string };
+  /** The owner's own "what an NFC tap shows" preview — the same public
+   * profile body, fed from the same public endpoint. */
+  IdPublicPreview: { code: string };
+  /** Kept as the entry point Settings links to; it resolves which ID to open
+   * and hands off to `IdOwnerWorkspace`. */
   ProfileEdit: undefined;
   Settings: undefined;
   Notifications: undefined;
