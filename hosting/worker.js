@@ -3614,7 +3614,15 @@ async function ownedExclusiveSoldD1(env, alreadySold) {
     for (const r of rows.results || []) {
       const code = String(r.code || '').toUpperCase();
       if (taken.has(code)) continue;
-      const tier = personalIdTierD1({ code, tierOverride: r.tier_override || '', isGift: !!r.is_gift });
+      // SOVG'A "Sotilgan" EMAS. Sovg'a qilingan karta hech qachon sotuvdan
+      // o'tmagan — uni "Sotildi ... so'm" deb ko'rsatish noto'g'ri
+      // (2026-09: SAV571 katalogda "Sovg'a", auksionda esa "Sotildi
+      // 210 000 so'm" bo'lib chiqib qolgan edi). Bu haqiqiy `nfc_gifts`
+      // yozuvi bo'lgan kartalarga ham, egasi qo'lda belgilagan
+      // ro'yxatga (GIFT_CODES_D1) ham tegishli.
+      const isGift = !!r.is_gift || isGiftCodeD1(code);
+      if (isGift) continue;
+      const tier = personalIdTierD1({ code, tierOverride: r.tier_override || '', isGift });
       if (tier !== 'exclusive') continue;
       const price = codePriceOverrideD1(code) ?? (Number(r.price) > 0 ? Number(r.price) : null);
       if (price == null) continue; // narx yo'q -> o'ylab topmaymiz

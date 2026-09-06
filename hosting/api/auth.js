@@ -1,3 +1,4 @@
+import { cardContentCleanupStmts } from './card-cleanup.js';
 // hosting/api/auth.js — ro'yxatdan o'tish (Telegram OTP) va parolni tiklash.
 // CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
@@ -138,10 +139,20 @@ async function verifyAndConsumePasswordResetCode(env, H, userId, code) {
 
 // Foydalanuvchini BUTUNLAY o'chiradi (server/db.js adminDeleteUser porti) —
 // admin o'chirgan akkauntning emaili bo'shab, qayta ro'yxatdan o'tish
-// mumkin bo'ladi. CASCADE'siz FK'lar (cards, physical_cards, bot_orders,
-// auctions.highest_bidder_id) qo'lda tozalanadi; qolganlari CASCADE.
+// mumkin bo'ladi.
+//
+// 2026-09 TUZATISH: bu yerdagi eski izohda "qolganlari CASCADE" deyilgan
+// edi va bu NOTO'G'RI — `posts`, `menu_items`, `products`, `card_gallery`
+// va h.k. `cards` ga FK bilan bog'lanmagan (sxemada FK umuman yo'q),
+// shuning uchun hech narsa cascade bo'lmaydi. Natijada kartalar
+// o'chirilgach, ularning kontenti (postlar, menyu, galereya, MIJOZ
+// LIDLARI) bazada qolib ketardi va o'sha KOD keyin boshqa odamga o'tsa,
+// eski egasining ma'lumotlari yangi profilda ko'rinardi.
+// Endi kontent `cardContentCleanupStmts()` orqali tozalanadi.
 async function hardDeleteUser(env, userId) {
+  const codeSelect = `SELECT code FROM cards WHERE user_id = ?`;
   await env.DB.batch([
+    ...cardContentCleanupStmts(env, codeSelect, [userId], new Date().toISOString()),
     env.DB.prepare(`DELETE FROM physical_cards WHERE owner_user_id = ?`).bind(userId),
     env.DB.prepare(`DELETE FROM cards WHERE user_id = ?`).bind(userId),
     env.DB.prepare(`UPDATE bot_orders SET user_id = NULL WHERE user_id = ?`).bind(userId),

@@ -71,4 +71,14 @@ const j = async (pathname, init) => {
   check('kartaning bazadagi narxi O\'ZGARTIRILMAGAN', Number(c.price), 49000);
 }
 
+// ═══ 6. SOVG'A "Sotilgan" ro'yxatida CHIQMAYDI ═══
+// SAV571 katalogda "Sovg'a" edi, lekin auksionda "Sotildi 210 000 so'm"
+// bo'lib chiqib qolgandi — sovg'a hech qachon sotilmagan.
+{
+  const a = await j('/api/auctions?withSold=1');
+  const sold = (a.body?.sold || []).map((x) => x.code);
+  check('SAV571 "Sotilgan" ro\'yxatida YO\'Q', sold.includes('SAV571'), false);
+  check('haqiqiy nfc_gifts kartasi ham ro\'yxatda yo\'q', sold.includes('GFT100'), false);
+}
+
 done();

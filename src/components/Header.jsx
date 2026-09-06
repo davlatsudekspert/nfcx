@@ -18,7 +18,17 @@ function HeaderSearch({ onNavigate }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
 
-  useEffect(() => { dbList().then((r) => setCatalog(Array.isArray(r) ? r : [])).catch(() => {}); }, []);
+  // Katalog FAQAT foydalanuvchi qidiruvga tegganda yuklanadi (2026-09).
+  // Avval u har bir sahifa ochilishida yuklanardi — header hamma sahifada
+  // bo'lgani uchun bu /api/records ni HAR SAHIFADA IKKI MARTA chaqirardi
+  // (biri shu yerda, ikkinchisi App.jsx dagi katalog uchun). Qidiruvdan
+  // foydalanmaydigan mehmon uchun endi bu so'rov umuman ketmaydi.
+  const loadedRef = useRef(false);
+  const ensureCatalog = () => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    dbList().then((r) => setCatalog(Array.isArray(r) ? r : [])).catch(() => { loadedRef.current = false; });
+  };
   useEffect(() => {
     const onDoc = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', onDoc);
@@ -45,8 +55,8 @@ function HeaderSearch({ onNavigate }) {
     <div ref={boxRef} className="relative">
       <input
         value={q}
-        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
+        onChange={(e) => { ensureCatalog(); setQ(e.target.value); setOpen(true); }}
+        onFocus={() => { ensureCatalog(); setOpen(true); }}
         onKeyDown={onKeyDown}
         placeholder={t('ID yoki ism bo‘yicha qidirish')}
         className="input input-bordered input-sm w-full bg-base-100"
