@@ -6,3 +6,7 @@ dist
 .env.local
 
 server/uploads/
+
+# dizayn prototiplari screenshotlari (36MB, tools/screenshot.mjs bilan qayta olinadi)
+design-proposals/screenshots/
+.wrangler/

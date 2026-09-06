@@ -20,18 +20,22 @@
   --color-neutral: #1c1916;
   --color-neutral-content: #f6f2ea;
   --color-info: #e8c165;
+  --color-info-content: #17130a;
   --color-success: #7fb28e;
+  --color-success-content: #0f1a12;
   --color-warning: #e0b458;
+  --color-warning-content: #1a1206;
   --color-error: #c9573f;
+  --color-error-content: #fff3f0;
   --radius-selector: 0.75rem;
   --radius-field: 999px;
-  --radius-box: 1rem;
+  --radius-box: 0.875rem;
 }
 
 @theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, monospace;
-  --font-display: "Space Grotesk", ui-sans-serif, sans-serif;
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
 
   /* O'qilishni yaxshilash uchun kattalashtirilgan matn shkalasi —
      Tailwind'ning standart text-xs (12px)/text-sm (14px) o'lchamlari
@@ -460,3 +464,55 @@
 @keyframes hammerStrikeV2{0%{transform:rotate(-18deg)}40%{transform:rotate(-54deg)}52%{transform:rotate(-50deg)}100%{transform:rotate(-18deg)}}
 @keyframes auctionCardImpactV2{0%{transform:rotate(-1deg) translate3d(-24px,0,0)}42%{transform:rotate(-2.4deg) translate3d(-33px,5px,-22px)}67%{transform:rotate(-.2deg) translate3d(-19px,-2px,14px)}100%{transform:rotate(-1deg) translate3d(-24px,0,0)}}
 @media(max-width:760px){.bp-engagement{padding:7px}.bp-engagement button{padding:0 6px}.bp-promo-banner{grid-template-columns:1fr auto}.bp-promo-banner>span{grid-column:1/-1}.bp-catalog-copy{min-height:140px}.auction-hammer-stage{transform:scale(.67);transform-origin:center;margin:-56px -92px}}
+
+/* ═══════════ V1 — Black & Gold Prestige dizayn tizimi (docs/DESIGN_SYSTEM.md) ═══════════ */
+:root{
+  --vz-gold:#d4af5a; --vz-gold-2:#f0cf7a; --vz-gold-3:#b3860f; --vz-gold-ink:#1a1206;
+  --vz-bg:#0a0805; --vz-bg-2:#14100a; --vz-card:#141009; --vz-card-2:#1e1810; --vz-line:#2d2518;
+  --vz-ink:#f6efe0; --vz-ink-2:#b5a78b; --vz-ink-3:#8a7f68;
+  --vz-radius:14px; --vz-radius-sm:10px;
+  --vz-shadow:0 12px 30px -16px rgba(0,0,0,.7);
+}
+.font-display{font-family:var(--font-display);}
+/* Sarlavhalar */
+.vz-h1{font-family:var(--font-display);font-weight:600;letter-spacing:-.015em;line-height:1.05;font-size:clamp(34px,5.4vw,66px);}
+.vz-h2{font-family:var(--font-display);font-weight:600;letter-spacing:-.01em;line-height:1.15;font-size:clamp(26px,3.2vw,38px);position:relative;padding-bottom:14px;}
+.vz-h2::after{content:"";position:absolute;left:0;bottom:0;width:56px;height:2px;background:linear-gradient(90deg,var(--vz-gold-2),transparent);}
+.vz-h2--center{text-align:center;} .vz-h2--center::after{left:50%;transform:translateX(-50%);}
+.vz-kicker{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--vz-gold-2);}
+.vz-kicker::before{content:"— ";opacity:.6;}
+.vz-lead{font-size:clamp(16px,1.3vw,19px);color:var(--vz-ink-2);max-width:56ch;}
+/* Tugmalar (daisyUI .btn ustiga) */
+.btn-gold{background:linear-gradient(135deg,var(--vz-gold-2),var(--vz-gold-3));color:var(--vz-gold-ink);border:0;font-weight:800;border-radius:999px;box-shadow:0 10px 24px -10px rgba(212,175,90,.6);min-height:44px;}
+.btn-gold:hover{filter:brightness(1.06);} .btn-gold:disabled{opacity:.45;filter:none;}
+.btn-outline-gold{background:transparent;border:1px solid rgba(212,175,90,.45);color:var(--vz-gold);border-radius:999px;min-height:44px;font-weight:700;}
+.btn-outline-gold:hover{border-color:var(--vz-gold);background:rgba(212,175,90,.08);}
+.btn-ghost-vz{background:transparent;border:1px solid var(--vz-line);color:var(--vz-ink);border-radius:999px;min-height:44px;font-weight:600;}
+/* Kartalar / panellar */
+.vz-card{background:linear-gradient(180deg,#171209,#120e08);border:1px solid var(--vz-line);border-radius:var(--vz-radius);box-shadow:var(--vz-shadow);}
+.vz-card--flat{background:var(--vz-card);box-shadow:none;}
+.vz-panel{background:var(--vz-card-2);border:1px solid var(--vz-line);border-radius:var(--vz-radius-sm);}
+.vz-divider{height:1px;background:var(--vz-line);}
+/* Holat belgilari */
+.vz-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.2;}
+.vz-badge--gold{background:linear-gradient(135deg,#f3d27a,#b3860f);color:#1a1206;}
+.vz-badge--ok{background:rgba(34,197,94,.16);color:#4ade80;} .vz-badge--warn{background:rgba(245,158,11,.18);color:#fbbf24;}
+.vz-badge--info{background:rgba(59,130,246,.16);color:#7fb1ff;} .vz-badge--danger{background:rgba(229,72,77,.18);color:#ff7b7f;} .vz-badge--muted{background:var(--vz-card-2);color:var(--vz-ink-2);border:1px solid var(--vz-line);}
+/* Formalar */
+.vz-label{display:block;font-size:13px;font-weight:600;color:var(--vz-ink-2);margin-bottom:6px;}
+.vz-input{width:100%;background:#0f0c07;border:1px solid var(--vz-line);border-radius:var(--vz-radius-sm);padding:12px 14px;min-height:44px;color:var(--vz-ink);outline:none;transition:border-color .15s,box-shadow .15s;}
+.vz-input:focus{border-color:var(--vz-gold);box-shadow:0 0 0 3px rgba(212,175,90,.22);}
+.vz-input--err{border-color:#e5484d;}
+.vz-err{color:#ff7b81;font-size:13px;margin-top:6px;}
+/* Skeleton / bo'sh holat */
+.vz-skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--vz-card-2),var(--vz-line),var(--vz-card-2));background-size:200% 100%;animation:vzSk 1.4s infinite;}
+@keyframes vzSk{to{background-position:-200% 0;}}
+.vz-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px;border:1px dashed var(--vz-line);border-radius:var(--vz-radius);color:var(--vz-ink-2);text-align:center;}
+/* Havola tugmasi (ommaviy profil) */
+.vz-linkbtn{display:flex;align-items:center;justify-content:center;gap:12px;min-height:52px;padding:0 16px;border-radius:999px;background:#1b150d;border:1px solid var(--vz-line);font-weight:700;color:var(--vz-ink);transition:transform .12s,border-color .15s;}
+.vz-linkbtn:hover{transform:translateY(-1px);border-color:var(--vz-gold);}
+/* Bosiladigan minimal o'lcham va focus */
+.vz-tap{min-height:44px;min-width:44px;}
+:focus-visible{outline:2px solid var(--vz-gold);outline-offset:2px;}
+/* Kamaytirilgan harakat */
+@media (prefers-reduced-motion:reduce){.vz-skel{animation:none;}}

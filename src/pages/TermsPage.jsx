@@ -165,14 +165,15 @@ export default function TermsPage() {
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
       <div className="mx-auto max-w-3xl">
-        <h1 className="pt-14 text-3xl font-extrabold tracking-tight">{c.title}</h1>
-        <div className="mt-2 font-mono text-xs uppercase tracking-wider text-base-content/40">{c.updated}</div>
-        <div className="mt-6 space-y-6 text-[15px] leading-relaxed text-base-content/70">
+        <span className="vz-kicker mt-14">NFCSTORE</span>
+        <h1 className="vz-h1 mt-3">{c.title}</h1>
+        <div className="mt-3 font-mono text-xs uppercase tracking-wider text-base-content/40">{c.updated}</div>
+        <div className="mt-6 space-y-6 break-words text-[15px] leading-relaxed text-base-content/70">
           <p>{c.intro}</p>
 
           {c.sections.map((s, i) => (
             <div key={i}>
-              <h2 className="text-lg font-bold text-base-content">{s.h}</h2>
+              <h2 className="font-display text-lg font-bold text-base-content">{s.h}</h2>
               {(s.p || []).map((p, j) => (
                 <p key={j} className={j === 0 && s.ul ? 'mt-1.5 font-semibold text-base-content/80' : 'mt-1.5'}>{p}</p>
               ))}

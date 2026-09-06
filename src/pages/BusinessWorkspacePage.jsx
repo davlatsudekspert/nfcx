@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
-import { EditCardForm } from './AccountPage.jsx';
 
 const DEMO_PRESETS = {
   construction: {
@@ -65,7 +64,7 @@ const NAV_ITEMS = [
   ['gallery', 'Galereya', '▧'],
   ['location', 'Lokatsiya', '⌖'],
   ['contact', 'Aloqa', '↗'],
-  ['settings', 'Sozlamalar', '⚙'],
+  ['settings', 'Sozlamalar', '◎'],
 ];
 
 function WorkspacePhone({ profile, items, active, accent, t }) {
@@ -81,7 +80,7 @@ function WorkspacePhone({ profile, items, active, accent, t }) {
             <div className="bw-phone-logo">{profile.name.slice(0, 2)}</div>
             <h3>{profile.name}</h3><p>{profile.role}</p>
             <span className="bw-phone-place">⌖ {profile.city}</span>
-            <div className="bw-phone-actions"><b>☎ {t('Qo‘ng‘iroq')}</b><span>Telegram</span></div>
+            <div className="bw-phone-actions"><b>{t('Qo‘ng‘iroq')}</b><span>Telegram</span></div>
             <nav><b>{t('Asosiy')}</b><span>{t('Katalog')}</span><span>{t('Galereya')}</span></nav>
             <article><small>{t('BIZ HAQIMIZDA')}</small><p>{profile.about}</p></article>
           </div>
@@ -112,7 +111,7 @@ function WorkspacePhone({ profile, items, active, accent, t }) {
           <div className="bw-phone-location"><div className="bw-phone-head"><span>←</span><b>{t('Lokatsiya')}</b><span>•••</span></div><div className="bw-mini-map"><i>⌖</i></div><h3>{profile.city}</h3><p>{profile.address}</p><b>⌖ {t('Yo‘nalishni ochish')}</b></div>
         )}
         {active === 'contact' && (
-          <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>{t('Aloqa')}</b><span>•••</span></div><small>{t('BOG‘LANISH')}</small><h3>{t('Keling, gaplashamiz')}</h3><a>☎ <span><small>{t('Telefon')}</small><b>{profile.phone}</b></span></a><a>↗ <span><small>Telegram</small><b>{profile.telegram}</b></span></a><a>⌖ <span><small>{t('Manzil')}</small><b>{profile.city}</b></span></a></div>
+          <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>{t('Aloqa')}</b><span>•••</span></div><small>{t('BOG‘LANISH')}</small><h3>{t('Keling, gaplashamiz')}</h3><a>◌ <span><small>{t('Telefon')}</small><b>{profile.phone}</b></span></a><a>↗ <span><small>Telegram</small><b>{profile.telegram}</b></span></a><a>⌖ <span><small>{t('Manzil')}</small><b>{profile.city}</b></span></a></div>
         )}
         {active === 'settings' && (
           <div className="bw-phone-contact"><div className="bw-phone-head"><span>←</span><b>{t('Profil holati')}</b><span>•••</span></div><small>{t('PUBLIC PROFILE')}</small><h3>{profile.name}</h3><a>✓ <span><small>{t('Nashr holati')}</small><b>{t('Faol')}</b></span></a><a>↗ <span><small>{t('Public manzil')}</small><b>nfcstore.uz/elite</b></span></a></div>
@@ -224,26 +223,36 @@ export default function BusinessWorkspacePage({ code }) {
   const { user, myCards } = useAuth();
   const { t } = useLanguage();
   if (String(code || '').toLowerCase() === 'demo') return <DemoWorkspace />;
-  if (user === undefined) return <main className="bw-auth-state">{t('Yuklanmoqda...')}</main>;
-  if (!user) return <main className="bw-auth-state"><h1>{t('Business Workspace')}</h1><p>{t('Bu bo‘lim faqat biznes profili egasi uchun.')}</p><button onClick={() => navigate('/login')}>{t('Kirish')}</button></main>;
+  if (user === undefined) {
+    return (
+      <main className="bw-auth-state" aria-busy="true">
+        <div className="w-full max-w-md space-y-3"><div className="vz-skel h-8 w-1/2"></div><div className="vz-skel h-24 w-full"></div></div>
+      </main>
+    );
+  }
+  if (!user) return <main className="bw-auth-state"><h1 className="vz-h2 vz-h2--center">{t('Business Workspace')}</h1><p>{t('Bu bo‘lim faqat biznes profili egasi uchun.')}</p><button className="btn btn-gold min-h-11" onClick={() => navigate('/login')}>{t('Kirish')}</button></main>;
   const card = myCards.find((entry) => entry.code.toLowerCase() === String(code || '').toLowerCase());
-  if (!card || card.profileType !== 'business') return <main className="bw-auth-state"><h1>{t('Ruxsat yo‘q')}</h1><p>{t('Business Workspace faqat sizga tegishli biznes profil uchun ochiladi.')}</p><button onClick={() => navigate('/account')}>{t('Kabinetga qaytish')}</button></main>;
+  if (!card || card.profileType !== 'business') return <main className="bw-auth-state"><h1 className="vz-h2 vz-h2--center">{t('Ruxsat yo‘q')}</h1><p>{t('Business Workspace faqat sizga tegishli biznes profil uchun ochiladi.')}</p><button className="btn btn-gold min-h-11" onClick={() => navigate('/account')}>{t('Kabinetga qaytish')}</button></main>;
+  // Eski (NFC ID'ga bog'langan) biznes profil — yangi Company System'ga yo'naltirish.
   return (
-    <main className="bw-auth-state" style={{ minHeight: '100vh', background: '#050505', color: '#fff', padding: '32px' }}>
-      <div style={{ width: 'min(760px,100%)', margin: '9vh auto', border: '1px solid rgba(239,183,47,.28)', borderRadius: 28, background: 'linear-gradient(145deg,rgba(239,183,47,.08),#0b0b0b 38%)', padding: 'clamp(28px,5vw,56px)', textAlign: 'left' }}>
-        <span style={{ color: '#efb72f', fontSize: 11, fontWeight: 800, letterSpacing: '.16em' }}>{t('YANGI COMPANY SYSTEM')}</span>
-        <h1 style={{ margin: '14px 0 12px', fontSize: 'clamp(34px,5vw,56px)', letterSpacing: '-.04em' }}>{card.name || card.code}</h1>
-        <p style={{ color: '#aaa397', lineHeight: 1.75 }}>{t('Bu eski biznes ko‘rinishi shaxsiy NFC ID bilan aralashib qolgan edi. Endi kompaniya alohida, faqat harflardan iborat Company ID va admin tasdig‘i bilan ochiladi.')}</p>
-        <div style={{ marginTop: 24, padding: 18, border: '1px solid #2e291e', borderRadius: 14, background: '#090909' }}>
-          <b style={{ color: '#efc45a' }}>{card.code} — {t('mavjud NFC ID')}</b>
-          <p style={{ color: '#7f796e', fontSize: 13, lineHeight: 1.6, marginBottom: 0 }}>{t('Uning profili va bazadagi ma’lumotlari o‘zgarmaydi. Yangi kompaniyaga kerakli biznes ma’lumotlarini nusxalash mumkin.')}</p>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 25 }}>
-          <button style={{ background: '#efb72f', color: '#080705', border: 0, borderRadius: 11, padding: '13px 18px', fontWeight: 900, cursor: 'pointer' }} onClick={() => navigate(`/company/create?from=${card.code.toLowerCase()}`)}>{t('Alohida Company ID ochish')} →</button>
-          <button style={{ background: '#111', color: '#d7d0c4', border: '1px solid #302c24', borderRadius: 11, padding: '13px 18px', cursor: 'pointer' }} onClick={() => navigate('/' + card.code.toLowerCase())}>{t('Eski profilni ko‘rish')} ↗</button>
-          <button style={{ background: 'transparent', color: '#8c8578', border: 0, padding: '13px 18px', cursor: 'pointer' }} onClick={() => navigate('/account')}>← {t('Kabinet')}</button>
-        </div>
+    <main className="mx-auto w-full max-w-[1800px] overflow-x-hidden px-5 pb-16 sm:px-10 lg:px-14">
+      <div className="pt-8 font-mono text-xs uppercase tracking-widest text-base-content/45">
+        {t('Kabinet')} <span className="text-base-content/25">/</span> <span className="text-base-content/80">{t('Biznes Workspace')}</span>
       </div>
+      <section className="vz-card mx-auto mt-6 max-w-3xl border-accent/30 p-6 sm:p-10">
+        <span className="vz-kicker">{t('Yangi Company System')}</span>
+        <h1 className="vz-h1 mt-3 break-words !text-[clamp(28px,5vw,48px)]">{card.name || card.code}</h1>
+        <p className="vz-lead mt-4 text-[15px]">{t('Bu eski biznes ko‘rinishi shaxsiy NFC ID bilan aralashib qolgan edi. Endi kompaniya alohida, faqat harflardan iborat Company ID va admin tasdig‘i bilan ochiladi.')}</p>
+        <div className="vz-panel mt-6 p-4">
+          <b className="font-mono text-[color:var(--vz-gold-2)]">{card.code} — {t('mavjud NFC ID')}</b>
+          <p className="mt-1 text-sm leading-relaxed text-base-content/55">{t('Uning profili va bazadagi ma’lumotlari o‘zgarmaydi. Yangi kompaniyaga kerakli biznes ma’lumotlarini nusxalash mumkin.')}</p>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2.5">
+          <button type="button" className="btn btn-gold min-h-11" onClick={() => navigate(`/company/create?from=${card.code.toLowerCase()}`)}>{t('Alohida Company ID ochish')} &rarr;</button>
+          <button type="button" className="btn btn-outline-gold min-h-11" onClick={() => navigate('/' + card.code.toLowerCase())}>{t('Eski profilni ko‘rish')}</button>
+          <button type="button" className="btn btn-ghost-vz min-h-11" onClick={() => navigate('/account')}>&larr; {t('Kabinet')}</button>
+        </div>
+      </section>
     </main>
   );
 }

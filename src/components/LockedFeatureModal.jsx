@@ -3,6 +3,7 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import { PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
+import { IconLock } from './Icons.jsx';
 
 // Yopiq (premium) funksiya bosilganda ko'rsatiladigan oyna. Spec 18:
 // funksiyani YASHIRMAYMIZ — bosilganda ikki yo'lni tushuntiramiz:
@@ -29,14 +30,14 @@ export default function LockedFeatureModal({ featureLabel, onClose, onGoPremium 
       className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="my-8 w-full max-w-md rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
+      <div className="vz-card my-8 w-full max-w-md p-6">
         <div className="flex items-start justify-between gap-3">
-          <div className="text-base font-bold">
-            {'\u{1F512}'} {featureLabel
+          <div className="flex items-start gap-2 text-base font-bold">
+            <IconLock className="mt-0.5 shrink-0 text-[color:var(--vz-gold-2)]" /> <span>{featureLabel
               ? t('«{f}» — hozirgi profilingizda yopiq', { f: featureLabel })
-              : t('Bu funksiya hozirgi profilingizda yopiq.')}
+              : t('Bu funksiya hozirgi profilingizda yopiq.')}</span>
           </div>
-          <button className="btn btn-ghost btn-xs shrink-0" onClick={onClose}>&times;</button>
+          <button className="btn btn-ghost btn-circle h-10 min-h-10 w-10 shrink-0" onClick={onClose} aria-label={t('Yopish')}>&times;</button>
         </div>
 
         <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-4">

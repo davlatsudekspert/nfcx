@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -13,14 +13,63 @@ import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
-import { tierForCode, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule } from '../lib/access.js';
+import { tierForCode, PROFILE_PREMIUM_FEE, TIER_LABEL } from '../lib/pricing.js';
+import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown,
+  IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown, IconShare,
+  IconCopy, IconImage, IconSupport, IconBell, IconChat, IconUser, IconCheck, IconStar,
 } from '../components/Icons.jsx';
+
+// Kabinet ichki ikonalari (Icons.jsx'da hali yo'q) — 18px, currentColor,
+// Icons.jsx bilan bir xil uslub. Emoji o'rniga ishlatiladi.
+const mkIcon = (paths) => function LocalIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths}</svg>
+  );
+};
+const IconHome = mkIcon(<><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /></>);
+const IconGrid = mkIcon(<><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></>);
+const IconCog = mkIcon(<><circle cx="12" cy="12" r="3" /><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M4.9 19.1 7 17m10-10 2.1-2.1" /></>);
+const IconGift = mkIcon(<><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M5 12v8h14v-8M12 8v12" /><path d="M12 8c-2-3-6-3-6-1s3 1 6 1zm0 0c2-3 6-3 6-1s-3 1-6 1z" /></>);
+const IconTrash = mkIcon(<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3" />);
+const IconEye = mkIcon(<><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>);
+const IconCrown = mkIcon(<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" />);
+const IconCard = mkIcon(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h4" /></>);
+const IconMusic = mkIcon(<><path d="M9 18V6l11-2v12" /><circle cx="6" cy="18" r="3" /><circle cx="17" cy="16" r="3" /></>);
+const IconPin = mkIcon(<><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></>);
+const IconWallet = mkIcon(<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M16 12h5M3 10h18" /></>);
+const IconPalette = mkIcon(<><circle cx="12" cy="12" r="9" /><circle cx="8" cy="10" r="1.2" /><circle cx="12" cy="7" r="1.2" /><circle cx="16" cy="10" r="1.2" /><path d="M12 21a3 3 0 0 0 0-6h-1a2 2 0 0 1 0-4" /></>);
+const IconPen = mkIcon(<><path d="M4 20h4l10-10-4-4L4 16z" /><path d="M12 6l4 4" /></>);
+const IconUsers = mkIcon(<><circle cx="9" cy="8" r="3.5" /><path d="M2 20a7 7 0 0 1 14 0" /><circle cx="17" cy="9" r="2.5" /><path d="M16 14a5 5 0 0 1 6 5" /></>);
+const IconIdCard = mkIcon(<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="12" r="2" /><path d="M14 10h4M14 14h4M5 17h7" /></>);
+const IconLock = mkIcon(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>);
+const IconBriefcase = mkIcon(<><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M9 7V5h6v2M3 12h18" /></>);
+const IconRefresh = mkIcon(<><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v5h-5" /></>);
+const IconTrophy = mkIcon(<><path d="M8 4h8v5a4 4 0 0 1-8 0z" /><path d="M8 6H5a3 3 0 0 0 3 5M16 6h3a3 3 0 0 1-3 5M12 13v4M8 21h8M10 17h4" /></>);
+const IconWarn = mkIcon(<><path d="M12 3 2 21h20z" /><path d="M12 10v5m0 3v.5" /></>);
+
+// Ro'yxat/so'rov holatlari — brief: loading (.vz-skel) / empty (.vz-empty) /
+// error (matn + "Qayta urinish") / success. Har fetch bo'limi shu ikkitasini ishlatadi.
+function SkeletonRows({ n = 3, h = 44 }) {
+  return (
+    <div className="space-y-2" aria-busy="true">
+      {Array.from({ length: n }).map((_, i) => <div key={i} className="vz-skel w-full" style={{ height: h }}></div>)}
+    </div>
+  );
+}
+function ErrorRetry({ text, onRetry }) {
+  const { t } = useLanguage();
+  return (
+    <div className="vz-empty !border-error/40">
+      <span className="text-error"><IconWarn /></span>
+      <div className="text-sm text-base-content/70">{text || t("Server bilan aloqa yo'q. Qayta urinib ko'ring.")}</div>
+      {onRetry && <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={onRetry}><IconRefresh width={14} height={14} /> {t('Qayta urinish')}</button>}
+    </div>
+  );
+}
 
 const THEMES = [
   { id: 'classic', label: 'Classic', css: 'linear-gradient(160deg,#241e17,#15120f)', accent: '#d4af5a' },
@@ -46,7 +95,7 @@ function Gate({ ok, onLock, children }) {
         onClick={onLock}
         className="absolute inset-0 flex items-center justify-center gap-1.5 bg-base-200/55 text-xs font-semibold text-base-content/75 transition hover:bg-base-200/70"
       >
-        {'\u{1F512}'} {t('Premiumda ochiladi — bosing')}
+        <IconLock width={14} height={14} /> {t('Premiumda ochiladi — bosing')}
       </button>
     </div>
   );
@@ -56,14 +105,15 @@ function Section({ title, subtitle, defaultOpen, openSignal, id, children }) {
   const [open, setOpen] = useState(!!defaultOpen);
   useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
   return (
-    <div id={id} className={`mt-4 overflow-hidden rounded-2xl border bg-base-200/30 backdrop-blur-sm transition-all duration-200 first:mt-0 ${open ? 'border-accent/25 shadow-[0_10px_35px_rgba(0,0,0,0.35)]' : 'border-white/10 hover:border-white/20'}`}>
+    <div id={id} className={`mt-4 overflow-hidden rounded-2xl border bg-[color:var(--vz-card)] transition-all duration-200 first:mt-0 ${open ? 'border-accent/30 shadow-[0_10px_35px_rgba(0,0,0,0.35)]' : 'border-[color:var(--vz-line)] hover:border-white/20'}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+        aria-expanded={open}
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
       >
-        <div>
-          <div className="text-sm font-bold">{title}</div>
+        <div className="min-w-0">
+          <div className="font-display text-[15px] font-semibold">{title}</div>
           {subtitle && <div className="mt-0.5 text-xs text-base-content/45">{subtitle}</div>}
         </div>
         <span className={`shrink-0 text-base-content/50 transition-transform duration-200 ${open ? 'rotate-180 text-accent' : ''}`}>
@@ -119,11 +169,11 @@ function ImageUploadTools({ canImage, imageUrl, busy, onPicked }) {
         <img src={pending} alt="" className="mx-auto h-24 w-24 rounded-lg object-cover" />
         {msg && <div className="text-center text-[13px] text-warning">{msg}</div>}
         <div className="flex flex-wrap justify-center gap-1">
-          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(autoCropToContent)}>{'✂️'} {t('Avtomatik kesish')}</button>
-          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(centerObject)}>{'\u{1F3AF}'} {t('Markazlashtirish')}</button>
-          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(removeBackground)}>{'✨'} {t('Fonni olib tashlash')}</button>
-          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(whitenBackground)}>{'⬜'} {t('Oq fon qilish')}</button>
-          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(enhance)}>{'\u{1F48E}'} {t('Sifatni yaxshilash')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(autoCropToContent)}>{t('Avtomatik kesish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs" disabled={toolBusy} onClick={() => runTool(centerObject)}>{t('Markazlashtirish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(removeBackground)}>{t('Fonni olib tashlash')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(whitenBackground)}>{t('Oq fon qilish')}</button>
+          <button type="button" className="btn btn-ghost btn-xs opacity-50" disabled={toolBusy} title={t('Tez orada')} onClick={() => runTool(enhance)}>{t('Sifatni yaxshilash')}</button>
         </div>
         <div className="flex justify-center gap-2">
           <button type="button" className="btn btn-primary btn-xs" disabled={toolBusy} onClick={confirm}>{t('Rasmni saqlash')}</button>
@@ -202,7 +252,7 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange
       <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5 text-sm font-semibold">
-          {item.featured && <span className="shrink-0">⭐</span>}
+          {item.featured && <span className="shrink-0 text-[color:var(--vz-gold)]"><IconStar width={12} height={12} /></span>}
           <span className="min-w-0 flex-1 truncate">{item.name}</span>
           {item.price != null && (
             <span className="shrink-0 text-xs text-base-content/60">
@@ -212,14 +262,14 @@ function MenuItemRow({ code, item, canImage, onChanged, onDeleted, onDraftChange
         </div>
         {item.description && <div className="truncate text-[14px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
-          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }} aria-label={t('Tahrirlash')}><IconPen width={14} height={14} /></button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
-            {item.available ? '🟢' : '⚫'}
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${item.available ? 'bg-success' : 'bg-base-content/30'}`} aria-hidden="true"></span>
           </button>
           <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
-            {item.featured ? '⭐' : '☆'}
+            <span className={item.featured ? 'text-[color:var(--vz-gold)]' : 'text-base-content/40'}><IconStar width={14} height={14} /></span>
           </button>
-          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={del}><IconTrash width={14} height={14} /></button>
         </div>
       </div>
     </div>
@@ -239,7 +289,7 @@ function ShareLinkRow({ code, sub }) {
   };
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5">
-      <span className="shrink-0 text-[14px] text-base-content/40">{'\u{1F517}'}</span>
+      <span className="shrink-0 text-base-content/40"><IconLink width={14} height={14} /></span>
       <code className="min-w-0 flex-1 truncate text-[14px] font-mono text-base-content/70">{link}</code>
       <button type="button" className="btn btn-ghost btn-xs shrink-0" onClick={copy}>{copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
     </div>
@@ -266,12 +316,12 @@ function MenuManagerSection({ code, allowed, onLock }) {
     return (
       <button type="button" onClick={onLock}
         className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-        {'\u{1F512}'} {t('Restoran menyusi — Silver NFC ID yoki undan yuqorida ochiladi.')}
+        <IconLock width={14} height={14} /> {t('Restoran menyusi — Silver NFC ID yoki undan yuqorida ochiladi.')}
       </button>
     );
   }
-  if (err) return <div className="text-sm text-error">{t('Menyuni yuklab bo‘lmadi.')}</div>;
-  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (err) return <ErrorRetry text={t('Menyuni yuklab bo‘lmadi.')} onRetry={() => { setErr(false); setData(null); load(); }} />;
+  if (!data) return <SkeletonRows n={3} h={56} />;
 
   const { menu, limits, counts } = data;
   const eligible = data.eligible !== false;
@@ -348,8 +398,8 @@ function MenuManagerSection({ code, allowed, onLock }) {
               defaultValue={cat.name}
               onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
             />
-            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
-            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}><span className={`inline-block h-2.5 w-2.5 rounded-full ${cat.enabled ? 'bg-success' : 'bg-base-content/30'}`} aria-hidden="true"></span></button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={() => delCat(cat.id)}><IconTrash width={14} height={14} /></button>
           </div>
           <div className="mt-2 space-y-2">
             {cat.items.map((it) => (
@@ -399,7 +449,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
       {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
       <button type="button" onClick={() => setMobilePreview(true)}
         className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
-        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+        <IconEye width={14} height={14} /> {t('Ko‘rish')}
       </button>
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
@@ -484,7 +534,7 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
       <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5 text-sm font-semibold">
-          {item.featured && <span className="shrink-0">⭐</span>}
+          {item.featured && <span className="shrink-0 text-[color:var(--vz-gold)]"><IconStar width={12} height={12} /></span>}
           <span className="min-w-0 flex-1 truncate">{item.name}</span>
           {item.price != null && (
             <span className="shrink-0 text-xs text-base-content/60">
@@ -500,14 +550,14 @@ function ProductItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
           {item.engagement?.promotion?.active && new Date(item.engagement.promotion.endsAt).getTime() > Date.now() && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-content">◆ {t('AKSIYA')}</span>}
         </div>
         <div className="mt-1.5 flex items-center gap-1">
-          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }} aria-label={t('Tahrirlash')}><IconPen width={14} height={14} /></button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
-            {item.available ? '🟢' : '⚫'}
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${item.available ? 'bg-success' : 'bg-base-content/30'}`} aria-hidden="true"></span>
           </button>
           <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
-            {item.featured ? '⭐' : '☆'}
+            <span className={item.featured ? 'text-[color:var(--vz-gold)]' : 'text-base-content/40'}><IconStar width={14} height={14} /></span>
           </button>
-          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={del}><IconTrash width={14} height={14} /></button>
         </div>
       </div>
     </div>
@@ -541,12 +591,12 @@ function ProductManagerSection({ code, allowed, onLock }) {
     return (
       <button type="button" onClick={onLock}
         className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-        {'\u{1F512}'} {t('Mahsulotlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
+        <IconLock width={14} height={14} /> {t('Mahsulotlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
       </button>
     );
   }
-  if (err) return <div className="text-sm text-error">{t('Katalogni yuklab bo‘lmadi.')}</div>;
-  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (err) return <ErrorRetry text={t('Katalogni yuklab bo‘lmadi.')} onRetry={() => { setErr(false); setData(null); load(); }} />;
+  if (!data) return <SkeletonRows n={3} h={56} />;
 
   const { products, limits, counts } = data;
   const eligible = data.eligible !== false;
@@ -623,8 +673,8 @@ function ProductManagerSection({ code, allowed, onLock }) {
               defaultValue={cat.name}
               onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
             />
-            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
-            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}><span className={`inline-block h-2.5 w-2.5 rounded-full ${cat.enabled ? 'bg-success' : 'bg-base-content/30'}`} aria-hidden="true"></span></button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={() => delCat(cat.id)}><IconTrash width={14} height={14} /></button>
           </div>
           <div className="mt-2 space-y-2">
             {cat.items.map((it) => (
@@ -674,7 +724,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
       {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
       <button type="button" onClick={() => setMobilePreview(true)}
         className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
-        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+        <IconEye width={14} height={14} /> {t('Ko‘rish')}
       </button>
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
@@ -792,10 +842,10 @@ function PromotionsManagerSection({ code, allowed, onLock }) {
   };
   useEffect(() => { if (allowed) load(); }, [code, allowed]);
 
-  if (!allowed) return <button type="button" onClick={onLock} className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70">🔒 {t('Aksiyalar mahsulotlar katalogi bilan birga ochiladi.')}</button>;
-  if (error) return <div className="text-sm text-error">{t('Aksiyalarni yuklab bo‘lmadi.')}</div>;
-  if (!items) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
-  if (!items.length) return <div className="rounded-2xl border border-dashed border-white/15 px-5 py-10 text-center text-sm text-base-content/50">{t('Avval katalogga mahsulot qo‘shing, keyin unga aksiya belgilang.')}</div>;
+  if (!allowed) return <button type="button" onClick={onLock} className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70"><IconLock width={14} height={14} /> {t('Aksiyalar mahsulotlar katalogi bilan birga ochiladi.')}</button>;
+  if (error) return <ErrorRetry text={t('Aksiyalarni yuklab bo‘lmadi.')} onRetry={load} />;
+  if (!items) return <SkeletonRows n={3} h={56} />;
+  if (!items.length) return <div className="vz-empty"><span className="text-sm">{t('Avval katalogga mahsulot qo‘shing, keyin unga aksiya belgilang.')}</span></div>;
 
   return (
     <div>
@@ -877,20 +927,20 @@ function ServiceItemRow({ code, item, canImage, onChanged, onDeleted, onDraftCha
       <ImageUploadTools canImage={canImage} imageUrl={item.imageUrl} busy={busy} onPicked={applyImage} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-1.5 text-sm font-semibold">
-          {item.featured && <span className="shrink-0">⭐</span>}
+          {item.featured && <span className="shrink-0 text-[color:var(--vz-gold)]"><IconStar width={12} height={12} /></span>}
           <span className="min-w-0 flex-1 truncate">{item.name}</span>
           {priceLabel && <span className="shrink-0 text-xs text-base-content/60">{priceLabel}</span>}
         </div>
         {item.description && <div className="truncate text-[14px] text-base-content/50">{item.description}</div>}
         <div className="mt-1.5 flex items-center gap-1">
-          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }}>✏️</button>
+          <button className="btn btn-ghost btn-xs px-2" title={t('Tahrirlash')} onClick={() => { setF(item); setEdit(true); onDraftChange?.(item); }} aria-label={t('Tahrirlash')}><IconPen width={14} height={14} /></button>
           <button className="btn btn-ghost btn-xs px-2" title={item.available ? t('Yo‘q deb belgilash') : t('Bor deb belgilash')} onClick={() => toggle('available')}>
-            {item.available ? '🟢' : '⚫'}
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${item.available ? 'bg-success' : 'bg-base-content/30'}`} aria-hidden="true"></span>
           </button>
           <button className="btn btn-ghost btn-xs px-2" title={item.featured ? t('Tavsiyadan olib tashlash') : t('Tavsiya qilish')} onClick={() => toggle('featured')}>
-            {item.featured ? '⭐' : '☆'}
+            <span className={item.featured ? 'text-[color:var(--vz-gold)]' : 'text-base-content/40'}><IconStar width={14} height={14} /></span>
           </button>
-          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} onClick={del}>🗑</button>
+          <button className="btn btn-ghost btn-xs px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={del}><IconTrash width={14} height={14} /></button>
         </div>
       </div>
     </div>
@@ -916,12 +966,12 @@ function ServiceManagerSection({ code, allowed, onLock }) {
     return (
       <button type="button" onClick={onLock}
         className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-        {'\u{1F512}'} {t('Xizmatlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
+        <IconLock width={14} height={14} /> {t('Xizmatlar katalogi — Silver NFC ID yoki undan yuqorida ochiladi.')}
       </button>
     );
   }
-  if (err) return <div className="text-sm text-error">{t('Katalogni yuklab bo‘lmadi.')}</div>;
-  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (err) return <ErrorRetry text={t('Katalogni yuklab bo‘lmadi.')} onRetry={() => { setErr(false); setData(null); load(); }} />;
+  if (!data) return <SkeletonRows n={3} h={56} />;
 
   const { services, limits, counts } = data;
   const eligible = data.eligible !== false;
@@ -998,8 +1048,8 @@ function ServiceManagerSection({ code, allowed, onLock }) {
               defaultValue={cat.name}
               onBlur={(e) => e.target.value.trim() && e.target.value !== cat.name && updCat(cat.id, { name: e.target.value.trim() })}
             />
-            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}>{cat.enabled ? '🟢' : '⚫'}</button>
-            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => delCat(cat.id)}>🗑</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2" title={cat.enabled ? t('Yashirish') : t('Chiqarish')} onClick={() => updCat(cat.id, { enabled: !cat.enabled })}><span className={`inline-block h-2.5 w-2.5 rounded-full ${cat.enabled ? 'bg-success' : 'bg-base-content/30'}`} aria-hidden="true"></span></button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={() => delCat(cat.id)}><IconTrash width={14} height={14} /></button>
           </div>
           <div className="mt-2 space-y-2">
             {cat.items.map((it) => (
@@ -1053,7 +1103,7 @@ function ServiceManagerSection({ code, allowed, onLock }) {
       {/* Mobil — suzuvchi "Ko'rish" tugmasi + fullscreen preview */}
       <button type="button" onClick={() => setMobilePreview(true)}
         className="fixed bottom-20 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-xs font-bold text-accent-content shadow-lg lg:hidden">
-        {'\u{1F441}\u{FE0F}'} {t('Ko‘rish')}
+        <IconEye width={14} height={14} /> {t('Ko‘rish')}
       </button>
       {mobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/85 p-4 lg:hidden" onClick={() => setMobilePreview(false)}>
@@ -1089,8 +1139,8 @@ function TeamSection({ code }) {
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3500); };
   const set = (k) => (e) => setForm((s) => ({ ...s, [k]: e.target.value }));
 
-  if (err) return <div className="text-sm text-error">{t('Jamoani yuklab bo‘lmadi.')}</div>;
-  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (err) return <ErrorRetry text={t('Jamoani yuklab bo‘lmadi.')} onRetry={() => { setErr(false); setData(null); load(); }} />;
+  if (!data) return <SkeletonRows n={3} h={56} />;
 
   const { team, limit, count, eligible } = data;
 
@@ -1151,7 +1201,7 @@ function TeamSection({ code }) {
               <input className="input input-ghost input-xs w-full px-1 font-mono text-[14px] text-base-content/40" defaultValue={m.memberCode || ''} placeholder={t('Profil kodi (ixtiyoriy)')}
                 onBlur={(e) => e.target.value.toUpperCase() !== (m.memberCode || '') && upd(m.id, { memberCode: e.target.value.trim() })} />
             </div>
-            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} onClick={() => del(m.id)}>🗑</button>
+            <button className="btn btn-ghost btn-xs shrink-0 px-2 text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={() => del(m.id)}><IconTrash width={14} height={14} /></button>
           </div>
         ))}
       </div>
@@ -1187,8 +1237,8 @@ function GallerySection({ code, onLock }) {
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3500); };
 
-  if (err) return <div className="text-sm text-error">{t('Galereyani yuklab bo‘lmadi.')}</div>;
-  if (!data) return <div className="text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>;
+  if (err) return <ErrorRetry text={t('Galereyani yuklab bo‘lmadi.')} onRetry={() => { setErr(false); setData(null); load(); }} />;
+  if (!data) return <SkeletonRows n={3} h={56} />;
 
   const { gallery, limit, count, eligible } = data;
 
@@ -1203,7 +1253,7 @@ function GallerySection({ code, onLock }) {
     return (
       <button type="button" onClick={onLock}
         className="w-full rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-3 text-left text-sm text-base-content/70 transition hover:bg-accent/10">
-        {'\u{1F512}'} {t('Galereya — Silver NFC ID yoki undan yuqorida ochiladi.')}
+        <IconLock width={14} height={14} /> {t('Galereya — Silver NFC ID yoki undan yuqorida ochiladi.')}
       </button>
     );
   }
@@ -1237,7 +1287,7 @@ function GallerySection({ code, onLock }) {
           <div key={g.id} className="overflow-hidden rounded-xl border border-white/10 bg-black/20">
             <div className="relative aspect-square">
               <img src={g.imageUrl} alt="" className="h-full w-full object-cover" />
-              <button className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-error" title={t("O'chirish")} onClick={() => del(g.id)}>🗑</button>
+              <button className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-error" title={t("O'chirish")} aria-label={t("O'chirish")} onClick={() => del(g.id)}><IconTrash width={12} height={12} /></button>
             </div>
             <input className="input input-ghost input-xs w-full px-2 text-[14px]" defaultValue={g.caption || ''} placeholder={t('Izoh (ixtiyoriy)')}
               onBlur={(e) => e.target.value !== (g.caption || '') && setCaption(g.id, e.target.value.trim())} />
@@ -1412,21 +1462,27 @@ const PREMIUM_FEE = PROFILE_PREMIUM_FEE;  // src/lib/pricing.js — yagona manba
 // akkaunt 72 soatga bloklanadi.
 // Kelgan va yuborilgan sovg'a takliflari — qabul qilish/rad etish/bekor
 // qilish shu yerdan boshqariladi.
-function GiftOffersPanel({ onChanged }) {
+function GiftOffersPanel({ onChanged, onCount }) {
   const { t } = useLanguage();
   const [data, setData] = useState(null);
+  const [err, setErr] = useState(false);
   const [busy, setBusy] = useState(null);
 
   const load = () => dbListGiftOffers()
-    .then((value) => setData({
-      incoming: Array.isArray(value?.incoming) ? value.incoming : [],
-      outgoing: Array.isArray(value?.outgoing) ? value.outgoing : [],
-    }))
-    .catch(() => setData({ incoming: [], outgoing: [] }));
+    .then((value) => {
+      const next = {
+        incoming: Array.isArray(value?.incoming) ? value.incoming : [],
+        outgoing: Array.isArray(value?.outgoing) ? value.outgoing : [],
+      };
+      setData(next); setErr(false);
+      onCount?.(next.incoming.length);
+    })
+    .catch(() => { setErr(true); setData((d) => d || { incoming: [], outgoing: [] }); });
   useEffect(() => {
     load();
     const timer = setInterval(load, 8000);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const accept = async (id) => {
@@ -1446,25 +1502,28 @@ function GiftOffersPanel({ onChanged }) {
 
   const incoming = Array.isArray(data?.incoming) ? data.incoming : [];
   const outgoing = Array.isArray(data?.outgoing) ? data.outgoing : [];
-  if (!data || (incoming.length === 0 && outgoing.length === 0)) return null;
+  const empty = data && !err && incoming.length === 0 && outgoing.length === 0;
 
   return (
-    <section className="pt-8">
-      <h2 className="text-xl font-bold">{'\u{1F381}'} {t("Sovg'a takliflari")}</h2>
+    <section className="vz-card p-5">
+      <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconGift /> {t("Sovg'a takliflari")}</h2>
+      {!data && <div className="mt-3"><SkeletonRows n={2} /></div>}
+      {data && err && <div className="mt-3"><ErrorRetry onRetry={load} /></div>}
+      {empty && <div className="mt-3 vz-empty"><span className="text-sm">{t("Hozircha sovg'a takliflari yo'q.")}</span></div>}
       <div className="mt-3 space-y-2">
         {incoming.map((g) => (
           <div key={'in' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
             <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.fromEmail}</span> {t('sizga sovg‘a qilmoqchi')}</span>
             <div className="flex gap-1.5">
-              <button className="btn btn-success btn-xs" disabled={busy === g.id} onClick={() => accept(g.id)}>{t('Qabul qilish')}</button>
-              <button className="btn btn-ghost btn-xs" disabled={busy === g.id} onClick={() => reject(g.id)}>{t('Rad etish')}</button>
+              <button className="btn btn-gold btn-xs min-h-11" disabled={busy === g.id} onClick={() => accept(g.id)}>{t('Qabul qilish')}</button>
+              <button className="btn btn-ghost btn-xs min-h-11" disabled={busy === g.id} onClick={() => reject(g.id)}>{t('Rad etish')}</button>
             </div>
           </div>
         ))}
         {outgoing.map((g) => (
           <div key={'out' + g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">
             <span><b className="font-mono">{g.code}</b> — <span className="text-base-content/60">{g.toEmail}</span>{t('ga yuborilgan, javob kutilmoqda')}</span>
-            <button className="btn btn-ghost btn-xs" disabled={busy === g.id} onClick={() => cancel(g.id)}>{t('Bekor qilish')}</button>
+            <button className="btn btn-ghost btn-xs min-h-11" disabled={busy === g.id} onClick={() => cancel(g.id)}>{t('Bekor qilish')}</button>
           </div>
         ))}
       </div>
@@ -1472,27 +1531,35 @@ function GiftOffersPanel({ onChanged }) {
   );
 }
 
-function WonAuctionsPanel() {
+function WonAuctionsPanel({ onCount }) {
   const { t } = useLanguage();
   const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [list, setList] = useState(null);
+  const [err, setErr] = useState(false);
   const [, tick] = useState(0);
 
+  const load = () => dbListWonPendingAuctions()
+    .then((rows) => { const arr = Array.isArray(rows) ? rows : []; setList(arr); setErr(false); onCount?.(arr.length); })
+    .catch(() => { setErr(true); setList((l) => l || []); });
   useEffect(() => {
-    const load = () => dbListWonPendingAuctions().then(setList).catch(() => setList([]));
     load();
     const timer = setInterval(load, 10000);
     const ticker = setInterval(() => tick((n) => n + 1), 1000);
     return () => { clearInterval(timer); clearInterval(ticker); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!list || list.length === 0) return null;
+  // Tinch holat (yuklandi, xato yo'q, ro'yxat bo'sh) — bo'lim ko'rsatilmaydi:
+  // g'olib bo'lmagan foydalanuvchi uchun bu shunchaki shovqin.
+  if (list && !err && list.length === 0) return null;
 
   return (
-    <section className="pt-8">
-      <h2 className="text-xl font-bold">{'\u{1F3C6}'} {t('Yutgan auksionlaringiz')}</h2>
+    <section className="vz-card p-5">
+      <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconTrophy /> {t('Yutgan auksionlaringiz')}</h2>
+      {!list && <div className="mt-3"><SkeletonRows n={1} h={72} /></div>}
+      {list && err && <div className="mt-3"><ErrorRetry onRetry={load} /></div>}
       <div className="mt-3 space-y-3">
-        {list.map((a) => {
+        {(list || []).map((a) => {
           const msLeft = new Date(a.paymentDeadline).getTime() - Date.now();
           const h = Math.max(0, Math.floor(msLeft / 3600000));
           const m = Math.max(0, Math.floor((msLeft % 3600000) / 60000));
@@ -1504,12 +1571,12 @@ function WonAuctionsPanel() {
                   <div className="text-xs text-base-content/60">{t("Siz g'olib bo'ldingiz — {n} so'm", { n: fmt(a.currentPrice) })}</div>
                 </div>
                 {PAYMENTS_ENABLED
-                  ? <button className="btn btn-warning btn-sm" onClick={() => navigate('/auksion/' + a.id)}>{t("To'lov qiling")}</button>
-                  : <button className="btn btn-sm btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">{t("To'lov qiling")}</button>}
+                  ? <button className="btn btn-gold btn-sm min-h-11" onClick={() => navigate('/auksion/' + a.id)}>{t("To'lov qiling")}</button>
+                  : <button className="btn btn-sm min-h-11 btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">{t("To'lov qiling")}</button>}
               </div>
               {PAYMENTS_ENABLED ? (
-                <p className="mt-2 text-xs font-semibold text-warning">
-                  {'\u26A0\uFE0F'} {t("Diqqat: {h} soat {m} daqiqa ichida to'lov qilmasangiz, auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.", { h, m })}
+                <p className="mt-2 flex items-start gap-1.5 text-xs font-semibold text-warning">
+                  <IconWarn width={14} height={14} className="mt-0.5 shrink-0" /> {t("Diqqat: {h} soat {m} daqiqa ichida to'lov qilmasangiz, auksion bekor bo'ladi va akkauntingiz 72 soatga bloklanadi.", { h, m })}
                 </p>
               ) : (
                 <div className="mt-2"><PaymentUnavailableNotice compact /></div>
@@ -1522,12 +1589,27 @@ function WonAuctionsPanel() {
   );
 }
 
-function PremiumPanel({ user, onBecamePremium }) {
+// Premium ochadigan imkoniyatlar — src/lib/access.js FEATURE_MIN'dan (bitta manba).
+const PREMIUM_UNLOCK_LABEL = {
+  post: 'Postlar / Media', music: 'Profil musiqasi', innerBackground: 'Maxsus profil foni',
+  advancedColors: 'Maxsus ranglar', animatedBackground: 'Animatsiyali fon', premiumThemes: 'Premium temalar',
+  glassContent: 'Shisha (glass) kontent', linkStyle: 'Havola tugmalari uslubi', video: 'Video',
+  physicalCardDesigner: 'Jismoniy NFC karta dizayni', profileCardCustom: 'Karta dizayni',
+  leadCapture: 'Lidlarni yig‘ish', advancedAnalytics: 'Kengaytirilgan statistika', fileCatalog: 'Fayl / PDF katalog',
+  location: 'Manzil va lokatsiya',
+};
+
+function PremiumPanel({ user, card, onBecamePremium }) {
   const { t } = useLanguage();
   const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [order, setOrder] = useState(null);
+  const [disabledByServer, setDisabledByServer] = useState(false);
+  // Joriy daraja: NFC ID tarifi + Profile Premium (src/lib/access.js).
+  const access = effectiveAccess(card || null, user);
+  const unlocked = Object.keys(PREMIUM_UNLOCK_LABEL).filter((f) => hasAccess(access, FEATURE_MIN[f]));
+  const lockedNow = Object.keys(PREMIUM_UNLOCK_LABEL).filter((f) => !hasAccess(access, FEATURE_MIN[f]) && hasAccess('premium', FEATURE_MIN[f]));
 
   useEffect(() => {
     if (!order) return;
@@ -1549,63 +1631,90 @@ function PremiumPanel({ user, onBecamePremium }) {
     return () => clearInterval(timer);
   }, [order]);
 
-  // Ixcham bir qatorli tarif strip — avvalgi katta banner o'rniga.
-  if (user?.isPremium) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="text-lg leading-none">{HERO_CROWN}</span>
-          <div className="min-w-0">
-            <span className="font-bold text-accent">{t("Premium a'zo")}</span>
-            <span className="ml-2 text-xs text-base-content/50">{t('Barcha premium imkoniyatlar faol. Amal qilish muddati cheklanmagan.')}</span>
-          </div>
-        </div>
-        <span className="badge badge-accent badge-outline shrink-0 gap-1">{HERO_CHECK} {t('Cheklanmagan')}</span>
-      </div>
-    );
-  }
-
   const submit = async () => {
     setBusy(true);
     setMsg(null);
     try {
       const res = await dbRequestPremium();
       setOrder(res);
+      // Payme (SANDBOX) checkout — yangi oynada; bloklansa pastdagi havola qoladi.
+      if (res && res.payLink) { try { window.open(res.payLink, '_blank', 'noopener'); } catch { /* popup bloklangan */ } }
     } catch (err) {
+      // 503 payments_disabled → to'lov vaqtincha o'chiq (PaymentUnavailableNotice);
+      // 409 ALREADY_PREMIUM / ALREADY_PENDING → matn (db.js xaritasi); 429 → matn.
+      if (err.code === 'payments_disabled' || err.code === 'payme_disabled') setDisabledByServer(true);
+      if (err.code === 'ALREADY_PREMIUM') onBecamePremium?.();
       setMsg({ type: 'err', text: err.message });
     } finally {
       setBusy(false);
     }
   };
 
+  const paymentsOn = PAYMENTS_ENABLED && !disabledByServer;
+  const tierLabel = t(TIER_LABEL[access] || access);
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-base-200/60 px-5 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="vz-card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-sm font-bold">{t('Tarif: Bepul')}</div>
-          <p className="mt-0.5 max-w-md text-xs text-base-content/50">
-            {t("Premium'ga o'ting — profilingiz oltin rangda ")}{HERO_CROWN}{t(" bilan ko'zga tashlanadi. Narxi: ")}<b>{fmt(PREMIUM_FEE)} so'm</b>{t(' (bir martalik).')}
+          <div className="vz-kicker">{t('Tarif')}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
+            {user?.isPremium && <span className="vz-badge vz-badge--gold"><IconCheck width={12} height={12} /> {t("Premium a'zo")}</span>}
+            {card?.code && <span className="vz-badge vz-badge--muted font-mono">{card.code}</span>}
+          </div>
+          <p className="mt-2 max-w-md text-sm text-base-content/55">
+            {user?.isPremium
+              ? t('Barcha premium imkoniyatlar faol. Amal qilish muddati cheklanmagan.')
+              : t("Daraja = NFC ID tarifi yoki Profile Premium (qaysi biri yuqori bo'lsa). Premium — bir martalik to'lov, muddatsiz.")}
           </p>
         </div>
-        <div className="shrink-0">
-          {!PAYMENTS_ENABLED ? (
-            <button className="btn btn-accent btn-sm btn-disabled !cursor-not-allowed opacity-60" disabled aria-disabled="true">
-              {t("To'lash — {n} so'm", { n: fmt(PREMIUM_FEE) })}
-            </button>
-          ) : !order ? (
-            <button className="btn btn-accent btn-sm" onClick={submit} disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : t("To'lash — {n} so'm", { n: fmt(PREMIUM_FEE) })}
-            </button>
-          ) : (
-            <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-sm">
-              {t("To'lovga o'tish")} &rarr;
-            </a>
-          )}
-        </div>
+        {!user?.isPremium && (
+          <div className="w-full shrink-0 sm:w-auto">
+            {!paymentsOn ? (
+              <button className="btn btn-gold btn-sm min-h-11 w-full btn-disabled !cursor-not-allowed opacity-60 sm:w-auto" disabled aria-disabled="true">
+                {t("To'lash — {n} so'm", { n: fmt(PREMIUM_FEE) })}
+              </button>
+            ) : !order ? (
+              <button className="btn btn-gold btn-sm min-h-11 w-full sm:w-auto" onClick={submit} disabled={busy}>
+                {busy ? <span className="loading loading-spinner loading-xs"></span> : t("To'lash — {n} so'm", { n: fmt(PREMIUM_FEE) })}
+              </button>
+            ) : (
+              <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-sm min-h-11 w-full sm:w-auto">
+                {t("To'lovga o'tish")} &rarr;
+              </a>
+            )}
+          </div>
+        )}
       </div>
-      {!PAYMENTS_ENABLED && <div className="mt-3"><PaymentUnavailableNotice compact /></div>}
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="vz-panel min-w-0 p-4">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Sizga ochiq')}</div>
+          {unlocked.length === 0 && <p className="mt-2 text-sm text-base-content/50">{t("Bepul tarifda faqat asosiy profil.")}</p>}
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {unlocked.map((f) => (
+              <li key={f} className="flex items-start gap-2"><span className="mt-0.5 shrink-0 text-success"><IconCheck width={14} height={14} /></span><span className="min-w-0 break-words">{t(PREMIUM_UNLOCK_LABEL[f])}</span></li>
+            ))}
+          </ul>
+        </div>
+        {!user?.isPremium && (
+          <div className="vz-panel min-w-0 border-accent/30 p-4">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--vz-gold-2)]">{t('Premium ochadi')}</div>
+            {lockedNow.length === 0 && <p className="mt-2 text-sm text-base-content/50">{t("NFC ID tarifingiz allaqachon Premium darajasida.")}</p>}
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {lockedNow.map((f) => (
+                <li key={f} className="flex items-start gap-2"><span className="mt-0.5 shrink-0 text-base-content/40"><IconLock width={14} height={14} /></span><span className="min-w-0 break-words">{t(PREMIUM_UNLOCK_LABEL[f])}</span></li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-base-content/45">{t("Narxi: {n} so'm (bir martalik). To'lov Payme orqali.", { n: fmt(PREMIUM_FEE) })}</p>
+          </div>
+        )}
+      </div>
+
+      {!paymentsOn && !user?.isPremium && <div className="mt-3"><PaymentUnavailableNotice compact /></div>}
       {order && (
-        <p className="mt-2 flex items-center gap-2 text-xs text-base-content/45">
+        <p className="mt-3 flex items-center gap-2 text-xs text-base-content/45">
           <span className="loading loading-spinner loading-xs"></span> {t("To'lov kutilmoqda...")}
         </p>
       )}
@@ -1629,9 +1738,9 @@ function PostsManager({ code }) {
   const fileRef = useRef(null);
   const videoRef = useRef(null);
 
-  useEffect(() => {
-    dbListPosts(code).then(setPosts).catch(() => setPosts([]));
-  }, [code]);
+  const [postsErr, setPostsErr] = useState(false);
+  const loadPosts = () => { setPostsErr(false); setPosts(null); dbListPosts(code).then(setPosts).catch(() => { setPosts([]); setPostsErr(true); }); };
+  useEffect(() => { loadPosts(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [code]);
 
   const onPick = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -1715,7 +1824,7 @@ function PostsManager({ code }) {
 
         <div className="mt-3 flex flex-wrap gap-2">
           <input ref={fileRef} type="file" accept="image/*" onChange={onPick} disabled={!agreed || uploading} className="file-input file-input-bordered file-input-sm flex-1 bg-base-100 disabled:opacity-50" />
-          <button type="button" className="btn btn-outline btn-sm" disabled={!agreed || uploading} onClick={() => videoRef.current && videoRef.current.click()}>{'\u{1F3AC}'} {t('Video')}</button>
+          <button type="button" className="btn btn-outline-gold btn-sm min-h-11" disabled={!agreed || uploading} onClick={() => videoRef.current && videoRef.current.click()}>{t('Video')}</button>
           <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
         </div>
         <p className="mt-1 text-[14px] text-base-content/40">{t('Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.')}</p>
@@ -1725,15 +1834,16 @@ function PostsManager({ code }) {
 
         <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 600))} placeholder={t('Izoh (ixtiyoriy)')} rows={2} className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
 
-        <button type="button" className="btn btn-accent btn-sm mt-3 w-full" onClick={publish} disabled={!agreed || (!imageUrl && !videoUrl) || busy}>
+        <button type="button" className="btn btn-gold btn-sm mt-3 min-h-11 w-full" onClick={publish} disabled={!agreed || (!imageUrl && !videoUrl) || busy}>
           {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Joylash')}
         </button>
         {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
       </div>
 
       <div className="mt-4 space-y-2">
-        {posts === null && <p className="text-xs text-base-content/45">{t('Yuklanmoqda...')}</p>}
-        {posts !== null && posts.length === 0 && <p className="text-xs text-base-content/45">{t('Hali post yo‘q')}</p>}
+        {posts === null && <SkeletonRows n={2} h={64} />}
+        {posts !== null && postsErr && <ErrorRetry onRetry={loadPosts} />}
+        {posts !== null && !postsErr && posts.length === 0 && <div className="vz-empty"><span className="text-base-content/40"><IconImage /></span><span className="text-sm">{t('Hali post yo‘q')}</span></div>}
         {(posts || []).map((p) => (
           <div key={p.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-2">
             {p.videoUrl
@@ -1741,9 +1851,9 @@ function PostsManager({ code }) {
               : <img src={p.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />}
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-base-content/70">{p.caption || <span className="text-base-content/35">{t('(izohsiz)')}</span>}</div>
-              <div className="text-[13px] text-base-content/40">{timeAgo(p.createdAt)} · {'\u{1F90D}'} {p.likeCount}</div>
+              <div className="text-[13px] text-base-content/40">{timeAgo(p.createdAt)} · {t('{n} layk', { n: p.likeCount })}</div>
             </div>
-            <button type="button" className="btn btn-ghost btn-xs shrink-0 text-error" onClick={() => remove(p.id)}>{t('O‘chirish')}</button>
+            <button type="button" className="btn btn-ghost btn-xs min-h-11 shrink-0 text-error" onClick={() => remove(p.id)}>{t('O‘chirish')}</button>
           </div>
         ))}
       </div>
@@ -1884,7 +1994,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   };
 
   return (
-    <Modal title={'\u{1F3A8} ' + t('Karta dizayni')} onClose={onClose} wide>
+    <Modal title={t('Karta dizayni')} onClose={onClose} wide>
       <div className="mb-4 flex gap-1 border-b border-white/10">
         <button className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${tab === 'profile' ? 'border-accent text-accent' : 'border-transparent text-base-content/50'}`} onClick={() => setTab('profile')}>
           {t('Profil kartasi')}
@@ -1922,7 +2032,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               <span className="text-xs font-semibold text-base-content/70">{t('Karta foni: rasm, GIF yoki video (ixtiyoriy)')}</span>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <input ref={fileRef} type="file" accept="image/*,image/gif" onChange={onPick} className="file-input file-input-bordered file-input-sm bg-base-100" disabled={uploading} />
-                <button type="button" className="btn btn-outline btn-sm" disabled={uploading} onClick={() => videoRef.current && videoRef.current.click()}>{'\u{1F3AC}'} {t('Video tanlash')}</button>
+                <button type="button" className="btn btn-outline btn-sm" disabled={uploading} onClick={() => videoRef.current && videoRef.current.click()}>{t('Video tanlash')}</button>
                 <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
                 {bgUrl && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setBgUrl('')}>{t('Olib tashlash')}</button>}
               </div>
@@ -1991,7 +2101,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-bold">{'\u{1F4E6}'} {t('Jismoniy NFC karta buyurtma berish')}</div>
+                <div className="text-sm font-bold">{t('Jismoniy NFC karta buyurtma berish')}</div>
                 <p className="mt-1 text-xs text-base-content/50">{t('Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.')}</p>
               </div>
               <div className="text-right text-lg font-extrabold text-accent">{t("{n} so'm", { n: fmt(PHYSICAL_CARD_FEE_UZS) })}</div>
@@ -2010,7 +2120,13 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   );
 }
 
-export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [], onSelectCard }) {
+// extraSections: [{ id, label, Icon, content, badge }] — kabinet (AccountPage)
+//   shu forma navigatsiyasiga qo'shimcha bo'limlar (Premium, Sovg'a/Buyurtma)
+//   beradi — natijada kabinetda BITTA navigatsiya bo'ladi.
+// cabinetLinks: [{ id, label, Icon, onClick, disabled }] — boshqa sahifalarga
+//   (Bildirishnomalar, To'lovlar, Akkaunt sozlamalari...) havolalar, sidebar'ning
+//   pastki guruhi.
+export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [], onSelectCard, extraSections = [], cabinetLinks = [] }) {
   const { t, lang } = useLanguage();
   const { user, refresh } = useAuth();
   const cats = useCategories();
@@ -2061,6 +2177,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   });
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Saqlanmagan o'zgarishlar: oxirgi saqlangan holat JSON'i bilan solishtiriladi.
+  // dirty=false bo'lsa "Saqlash" o'chiq; dirty bo'lsa sahifadan chiqishda ogohlantirish.
+  const savedFormRef = useRef(null);
+  const formKey = JSON.stringify(form);
+  if (savedFormRef.current === null) savedFormRef.current = formKey;
+  const dirty = formKey !== savedFormRef.current;
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const guard = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [dirty]);
   const [uploading, setUploading] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
@@ -2249,6 +2377,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         theme: form.theme,
         hashtags: form.hashtags.split(',').map((h) => h.trim()).filter(Boolean),
       });
+      savedFormRef.current = JSON.stringify(form);
       setMsg({ type: 'ok', text: t('Saqlandi! Profilingiz yangilandi.') });
       onSaved(updated);
     } catch (err) {
@@ -2269,7 +2398,11 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         ? t('Avval tizimga kiring.')
         : err.message === 'forbidden'
           ? t("Bu raqamli tashrif qog'ozi sizga tegishli emas.")
-          : t("Saqlashda xatolik yuz berdi.");
+          : (err.message === 'too_many_requests' || err.message === 'api_error_429')
+            ? t("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.")
+            : err.name === 'TypeError'
+              ? t("Server bilan aloqa yo'q. Qayta urinib ko'ring.")
+              : t("Saqlashda xatolik yuz berdi.");
       setMsg({ type: 'err', text });
     } finally {
       setBusy(false);
@@ -2307,8 +2440,11 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // wsTab boshqa tizimning tab id'sida qolib ketmasin (aks holda tab bar
   // ko'rinadi-yu, ichi bo'sh qolib ketadi) — mos kelmasa mos andozaga qaytaramiz.
   useEffect(() => {
-    const businessTabs = ['asosiy', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar'];
-    const personalTabs = ['boshqaruv', 'profil', 'nfckarta', 'myids', 'postlar', 'sozlamalar'];
+    const extraIds = extraSections.map((x) => x.id);
+    const businessTabs = ['asosiy', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
+    // Shaxsiy profilda alohida "Sozlamalar" tabi yo'q — akkaunt sozlamalari
+    // sidebar'ning "Kabinet" guruhidan (bitta kirish nuqtasi) ochiladi.
+    const personalTabs = ['boshqaruv', 'profil', 'nfckarta', 'myids', 'postlar', ...extraIds];
     if (isBusiness && !businessTabs.includes(wsTab)) setWsTab('asosiy');
     if (!isBusiness && !personalTabs.includes(wsTab)) setWsTab('boshqaruv');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2339,37 +2475,37 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/' + card.code)}>{t("Ko'rish")}</button>
+          <button className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => navigate('/' + card.code)}><IconEye width={14} height={14} /> {t("Ko'rish")}</button>
           {!card.isPrimary && (
-            <button className="btn btn-ghost btn-sm" onClick={makePrimary} disabled={primaryBusy}>
+            <button className="btn btn-ghost-vz btn-sm min-h-11" onClick={makePrimary} disabled={primaryBusy}>
               {primaryBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Asosiy qilish')}
             </button>
           )}
           {card.giftable !== false && (
-            <button className="btn btn-outline btn-sm" onClick={() => setGiftOpen((o) => !o)}>
-              {'\u{1F381}'} {t("Sovg'a qilish")}
+            <button className="btn btn-outline-gold btn-sm min-h-11" onClick={() => setGiftOpen((o) => !o)}>
+              <IconGift width={14} height={14} /> {t("Sovg'a qilish")}
             </button>
           )}
           <button
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline-gold btn-sm min-h-11"
             onClick={() => (allow('post') ? setPostModal(true) : setLocked(t('Post joylashtirish')))}
           >
-            {'\u{1F4DD}'} {t('Post')}{!allow('post') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
+            <IconImage width={14} height={14} /> {t('Post')}{!allow('post') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
           </button>
           <button
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline-gold btn-sm min-h-11"
             onClick={() => (allow('profileCardCustom') ? setDesignModal('profile') : setLocked(t('Karta dizayni')))}
           >
-            {'\u{1F3A8}'} {t('Karta dizayni')}{!allow('profileCardCustom') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
+            <IconPalette width={14} height={14} /> {t('Karta dizayni')}{!allow('profileCardCustom') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
           </button>
           <button
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline-gold btn-sm min-h-11"
             onClick={() => (allow('physicalCardDesigner') ? setDesignModal('print') : setLocked(t('Jismoniy NFC karta dizayni')))}
           >
-            {'\u{1F4B3}'} {t('NFC ID buyurtma berish')}{!allow('physicalCardDesigner') && <span className="ml-1 opacity-70">{'\u{1F512}'}</span>}
+            <IconCard width={14} height={14} /> {t('NFC ID buyurtma berish')}{!allow('physicalCardDesigner') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
           </button>
-          <button className="btn btn-ghost btn-sm text-error" onClick={() => setDelOpen(true)}>
-            {'\u{1F5D1}'} {t("O'chirish")}
+          <button className="btn btn-ghost btn-sm min-h-11 text-error" onClick={() => setDelOpen(true)}>
+            <IconTrash width={14} height={14} /> {t("O'chirish")}
           </button>
         </div>
       </div>
@@ -2377,7 +2513,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       {delOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => !delBusy && setDelOpen(false)}>
           <div className="w-full max-w-md rounded-2xl border border-error/30 bg-base-200 p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="text-base font-bold text-error">{'⚠️'} {t("NFC ID'ni o'chirish")}</div>
+            <div className="flex items-center gap-2 text-base font-bold text-error"><IconWarn /> {t("NFC ID'ni o'chirish")}</div>
             <p className="mt-2 text-sm leading-relaxed text-base-content/70">
               <b className="font-mono">nfcstore.uz/{card.code.toLowerCase()}</b> {t("butunlay o'chiriladi. Bu amalni QAYTARIB BO'LMAYDI — barcha postlar, menyu, fayllar va sozlamalar yo'qoladi.")}
             </p>
@@ -2387,8 +2523,8 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 : t("Bu NFC ID o'chirilгач yana bo'sh bo'ladi va boshqa foydalanuvchi uni band qilishi mumkin.")}
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <button className="btn btn-ghost btn-sm" disabled={delBusy} onClick={() => setDelOpen(false)}>{t('Bekor')}</button>
-              <button className="btn btn-error btn-sm" disabled={delBusy} onClick={doDelete}>
+              <button className="btn btn-ghost btn-sm min-h-11" disabled={delBusy} onClick={() => setDelOpen(false)}>{t('Bekor')}</button>
+              <button className="btn btn-error btn-sm min-h-11" disabled={delBusy} onClick={doDelete}>
                 {delBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Ha, butunlay o'chirish")}
               </button>
             </div>
@@ -2408,7 +2544,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             placeholder={t("Qabul qiluvchining NFC ID'si (masalan ABZ007)")}
             className="input input-bordered input-sm flex-1 bg-base-100 font-mono"
           />
-          <button className="btn btn-accent btn-sm" onClick={sendGift} disabled={giftBusy}>
+          <button className="btn btn-gold btn-sm min-h-11" onClick={sendGift} disabled={giftBusy}>
             {giftBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Taklif yuborish')}
           </button>
           <p className="w-full text-xs text-base-content/45">{t("Pulsiz — qabul qiluvchi o'zi tasdiqlaguncha egalik o'tmaydi. U albatta o'z NFC ID'siga (mavjud profiliga) ega bo'lishi kerak.")}</p>
@@ -2419,29 +2555,448 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     </>
   );
 
-  return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
-      {!isBusiness && (
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-accent/70">{t('Shaxsiy Workspace')}</div>
-            <h2 className="mt-1 truncate text-xl font-black">{t('Shaxsiy Profil Boshqaruvi')}</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-xs text-base-content/50">
-              <span>NFC ID · {card.code}</span>
-              {card.isPrimary && <span className="badge badge-accent badge-xs">{t('ASOSIY')}</span>}
-              <span className="inline-flex items-center gap-1 text-success">● {t('Faol')}</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/account')}>{'←'} {t('Orqaga')}</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/' + card.code)}>{'\u{1F441}️'} {t("Ko'rish")}</button>
-            <button className="btn btn-ghost btn-sm" onClick={wsLogout}>{t('Chiqish')}</button>
-          </div>
+  // ── Profil formasi bo'limlari (JSX bloklari) — maydonlar va saqlash mantiqi
+  // o'zgarmagan, faqat aniq sarlavhali guruhlarga ajratilgan. Shaxsiy va
+  // biznes tablari shu bloklardan o'ziga keraklisini teradi (pastda).
+  const secType = (
+    <Section
+      title={workspaceOnly ? t('Kompaniya yo‘nalishi') : t('Profil turi va soha')}
+      subtitle={workspaceOnly ? t('Katalog moduli faoliyat sohasiga qarab avtomatik tanlanadi') : t('Katalog va qidiruvda qanday ko‘rinasiz')}
+      defaultOpen
+    >
+      {!workspaceOnly && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ['personal', t('Shaxsiy'), t('Odam')],
+            ['expert', t('Ekspert'), t('Mutaxassis')],
+            ['business', t('Biznes'), t('Kompaniya')],
+          ].map(([id, label, sub]) => (
+            <button key={id} type="button"
+              onClick={() => setForm((f) => ({ ...f, profileType: id }))}
+              aria-pressed={form.profileType === id}
+              className={`min-h-11 min-w-0 rounded-xl border p-3 text-left transition ${form.profileType === id ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/25'}`}>
+              <div className={`truncate text-sm font-bold ${form.profileType === id ? 'text-accent' : ''}`}>{label}</div>
+              <div className="mt-0.5 truncate text-[13px] text-base-content/45">{sub}</div>
+            </button>
+          ))}
         </div>
       )}
+      {cats.length > 0 && (() => {
+        const sel = findCat(cats, form.categorySlug);
+        const mainSlug = sel ? (sel.parentSlug || sel.slug) : '';
+        const subs = cats.filter((c) => c.parentSlug === mainSlug);
+        return (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <label className="form-control block min-w-0">
+              <span className="text-xs font-semibold text-base-content/70">{t('Faoliyat sohasi')}</span>
+              <select
+                value={mainSlug}
+                onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value }))}
+                className="select select-bordered select-sm mt-1 min-h-11 w-full bg-base-100"
+              >
+                <option value="">{t('— tanlanmagan —')}</option>
+                {cats.filter((c) => !c.parentSlug).map((c) => (
+                  <option key={c.slug} value={c.slug}>{catName(c, lang)}</option>
+                ))}
+              </select>
+            </label>
+            {subs.length > 0 && (
+              <label className="form-control block min-w-0">
+                <span className="text-xs font-semibold text-base-content/70">{t('Kichik soha')}</span>
+                <select
+                  value={form.categorySlug === mainSlug ? '' : form.categorySlug}
+                  onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value || mainSlug }))}
+                  className="select select-bordered select-sm mt-1 min-h-11 w-full bg-base-100"
+                >
+                  <option value="">{t('Umumiy')}</option>
+                  {subs.map((c) => (
+                    <option key={c.slug} value={c.slug}>{catName(c, lang)}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        );
+      })()}
+      <label className="form-control mt-3 block">
+        <span className="text-xs font-semibold text-base-content/70">{t('Shahar / viloyat (ixtiyoriy)')}</span>
+        <input value={form.city} onChange={set('city')} placeholder={t('masalan Toshkent')} className={inp} />
+      </label>
+      <p className="mt-1.5 text-xs text-base-content/40">{t('Soha ro‘yxatда yo‘qmi? "Kasb / sarlavha" maydoniga o‘zingiz yozing.')}</p>
+    </Section>
+  );
 
-      {isBusiness && (
-        <div className="flex flex-wrap items-center justify-between gap-4">
+  const secBasic = (
+    <Section title={t("Asosiy ma'lumot")} subtitle={t("Ism, kasb va bio")} defaultOpen>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="form-control min-w-0"><span className="text-xs font-semibold text-base-content/70">{t("Ism *")}</span><input value={form.name} onChange={set('name')} className={inp} /></label>
+        <label className="form-control min-w-0"><span className="text-xs font-semibold text-base-content/70">{t("Kasb / sarlavha")}</span><input value={form.role} onChange={set('role')} className={inp} /></label>
+      </div>
+      <label className="form-control mt-3 block">
+        <span className="text-xs font-semibold text-base-content/70">{t("O'zingiz haqingizda (bio)")}</span>
+        <textarea rows={3} value={form.about} onChange={set('about')} placeholder={t("Qisqacha o'zingiz haqingizda...")} className="textarea textarea-bordered mt-1 w-full bg-base-100" />
+      </label>
+    </Section>
+  );
+
+  const secContact = (
+    <Section title={t('Aloqa')} subtitle={t('Telegram, telefon, email')} defaultOpen>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconTelegram width={12} height={12} /> Telegram</span><input value={form.tg} onChange={set('tg')} placeholder="@username" className={inp} /></label>
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconPhone width={12} height={12} /> {t("Telefon")}</span><input value={form.phone} onChange={set('phone')} type="tel" className={inp} /></label>
+        <label className="form-control min-w-0"><span className="text-xs font-semibold text-base-content/70">Email</span><input value={form.email} onChange={set('email')} type="email" className={inp} /></label>
+      </div>
+      {form.phone && (
+        <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-2.5">
+          <input type="checkbox" className="checkbox checkbox-sm" checked={form.hidePhone} onChange={(e) => setForm((f) => ({ ...f, hidePhone: e.target.checked }))} />
+          <span className="text-xs text-base-content/60">{t("Telefon raqamini profilda hammadan yashirish (faqat menga ko'rinsin)")}</span>
+        </label>
+      )}
+    </Section>
+  );
+
+  const secSocial = (
+    <Section title={t('Ijtimoiy tarmoqlar')} subtitle={t('Instagram, Facebook, X, LinkedIn, veb-sayt, havolalar, hashtaglar')}>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconInstagram width={12} height={12} /> Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder="@username" className={inp} /></label>
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconFacebook width={12} height={12} /> Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder={t("username yoki havola")} className={inp} /></label>
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconX width={12} height={12} /> X (Twitter)</span><input value={form.twitter} onChange={set('twitter')} placeholder="@username" className={inp} /></label>
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconLinkedIn width={12} height={12} /> LinkedIn</span><input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." className={inp} /></label>
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconGlobe width={12} height={12} /> {t("Veb-sayt")}</span><input value={form.website} onChange={set('website')} placeholder="https://sayt.uz" className={inp} /></label>
+      </div>
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-base-content/55"><IconLink width={12} height={12} /> {t("Qo'shimcha havolalar (istalgancha)")}</div>
+        <div className="mt-3 space-y-2">
+          {form.extraLinks.map((l, i) => (
+            <div className="flex flex-col gap-2 sm:flex-row" key={i}>
+              <input value={l.label} onChange={updateLink(i, 'label')} placeholder={t("Nomi (masalan: Portfolio)")} className={`${inp} !mt-0 min-w-0`} />
+              <div className="flex min-w-0 flex-1 gap-2">
+                <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." className={`${inp} !mt-0 min-w-0 font-mono`} />
+                <button type="button" className="btn btn-ghost btn-square btn-sm min-h-11 min-w-11 shrink-0" aria-label={t("O'chirish")} onClick={() => removeLink(i)}>&times;</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="btn btn-ghost btn-xs mt-3 min-h-9" onClick={addLink}>{t("+ Havola qo'shish")}</button>
+      </div>
+      <label className="form-control mt-4 block">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconTag width={12} height={12} /> {t("Hashtaglar (vergul bilan)")}</span>
+        <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
+      </label>
+    </Section>
+  );
+
+  const secMedia = (
+    <Section title={t('Media (rasm/fon/musiqa)')} subtitle={t('Profil rasmi, fon rasmi va musiqa')}>
+      <div className="flex items-start gap-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
+          {form.avatarUrl
+            ? <img src={form.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+            : <span>{initials(form.name)}</span>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-base-content/70">{t('Profil rasmi')}</div>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
+          <button type="button" className="btn btn-ghost-vz btn-sm mt-1 min-h-11" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
+            {uploading ? <span className="loading loading-spinner loading-xs"></span> : <><IconImage width={14} height={14} /> {t('Rasm tanlash')}</>}
+          </button>
+          <p className="mt-2 text-xs text-base-content/45">{t("JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.")}</p>
+          <input className={`${inp} font-mono text-xs`} value={form.avatarUrl} onChange={set('avatarUrl')} placeholder={t("https://... yoki /uploads/...")} />
+        </div>
+      </div>
+
+      <Gate ok={allow('innerBackground')} onLock={() => setLocked(t('Maxsus profil foni'))}>
+      <div>
+      <div className="mt-5 font-mono text-[13px] uppercase tracking-widest text-base-content/45">{t("Fon rasmi")}</div>
+      <div className="mt-2 flex items-start gap-4">
+        <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-white/15 bg-base-100">
+          {form.bgUrl
+            ? <img src={form.bgUrl} alt="fon" className="h-full w-full object-cover" />
+            : <div className="flex h-full w-full items-center justify-center text-[13px] text-base-content/40">{t("Standart")}</div>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBgFile} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => bgFileRef.current && bgFileRef.current.click()} disabled={uploadingBg}>
+              {uploadingBg ? <span className="loading loading-spinner loading-xs"></span> : t('Fon rasmi tanlash')}
+            </button>
+            {form.bgUrl && (
+              <button type="button" className="btn btn-ghost btn-sm min-h-11" onClick={() => setForm((f) => ({ ...f, bgUrl: '' }))}>
+                {t('Standart fonga qaytarish')}
+              </button>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-base-content/45">{t("O'z rasmingizni qo'ysangiz, u tema fonining o'rniga ishlatiladi.")}</p>
+          <input className={`${inp} font-mono text-xs`} value={form.bgUrl} onChange={set('bgUrl')} placeholder={t("https://... yoki /uploads/...")} />
+        </div>
+      </div>
+      </div>
+      </Gate>
+
+      <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
+      <label className="form-control mt-5 block">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconMusic width={12} height={12} /> {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/5)</span></span>
+        <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
+        <div className="mt-2 space-y-3">
+          {form.musicUrls.map((url, i) => (
+            <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 text-xs font-semibold text-base-content/45">#{i + 1}</span>
+                <input
+                  className={`${inp} !mt-0 min-w-0 flex-1 font-mono text-xs`}
+                  value={url}
+                  onChange={updateMusic(i)}
+                  placeholder={t("YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3")}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm min-h-11 shrink-0"
+                  onClick={() => { setMusicUploadIndex(i); musicFileRef.current && musicFileRef.current.click(); }}
+                  disabled={uploadingMusic}
+                >
+                  {uploadingMusic && musicUploadIndex === i ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl')}
+                </button>
+                <button type="button" className="btn btn-ghost btn-square btn-sm min-h-11 min-w-11 shrink-0" aria-label={t("O'chirish")} onClick={() => removeMusic(i)}>&times;</button>
+              </div>
+              {url && (
+                isEmbedMusic(url)
+                  ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-accent/10 px-2.5 py-1.5 text-xs text-accent"><IconCheck width={12} height={12} /> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
+                  : <audio controls src={url} className="mt-2 h-9 w-full" />
+              )}
+            </div>
+          ))}
+        </div>
+        {form.musicUrls.length < 5 && (
+          <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={addMusic}>{t("+ Qo'shiq qo'shish")}</button>
+        )}
+        <p className="mt-2 text-xs text-base-content/45">{t("Ko'pi bilan 5 ta qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
+      </label>
+      </Gate>
+    </Section>
+  );
+
+  const secLook = (
+    <Section title={t("Ko'rinish")} subtitle={t("Tema, ranglar va havola tugmalari uslubi")}>
+      <div className="font-mono text-[13px] uppercase tracking-widest text-base-content/45">{t("Tema")}</div>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {THEMES.map((th) => (
+          <button key={th.id} type="button"
+            aria-pressed={form.theme === th.id}
+            className={`min-h-11 cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === th.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
+            style={{ background: th.css }}
+            onClick={() => setForm((f) => ({ ...f, theme: th.id, bgColor: '', bgUrl: '' }))}>
+            <span style={{ color: th.accent }}>{th.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <Gate ok={allow('innerBackground')} onLock={() => setLocked(t('Maxsus profil foni'))}>
+      <div>
+      <div className="mt-5 flex items-center gap-3">
+        <input
+          type="color"
+          value={form.bgColor || '#1a1a1c'}
+          onChange={(e) => setForm((f) => ({ ...f, bgColor: e.target.value }))}
+          className="h-11 w-11 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-base-content/70">{t("Profil fon rangi")}</div>
+          <p className="mt-0.5 text-xs text-base-content/45">{t("Aksent rangdan mustaqil — butun profil foni shu rangda (sekin qimirlab turadigan gradient bilan) chiqadi. Diqqat: bu tanlangan temaning o'z fonidan ustun turadi — yuqoridagi temalardan birini qayta bossangiz, bu rang avtomatik tozalanadi.")}</p>
+        </div>
+        {form.bgColor && (
+          <button type="button" className="btn btn-ghost btn-xs min-h-9" onClick={() => setForm((f) => ({ ...f, bgColor: '' }))}>
+            {t('Andozaga qaytarish')}
+          </button>
+        )}
+      </div>
+      {form.bgColor && (
+        <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+          <input type="checkbox" className="checkbox checkbox-sm" checked={form.bgAnimated} onChange={(e) => setForm((f) => ({ ...f, bgAnimated: e.target.checked }))} />
+          <span>{t("Fon sekin qimirlab (animatsiyali) tursin")}</span>
+        </label>
+      )}
+      </div>
+      </Gate>
+
+      <Gate ok={allow('advancedColors')} onLock={() => setLocked(t('Maxsus ranglar'))}>
+      <div className="mt-5 flex items-center gap-3">
+        <input
+          type="color"
+          value={form.accentColor || '#f5a524'}
+          onChange={(e) => setForm((f) => ({ ...f, accentColor: e.target.value }))}
+          className="h-11 w-11 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-base-content/70">{t("Istalgan aksent rang")}</div>
+          <p className="mt-0.5 text-xs text-base-content/45">{t("Tugmalar va urg'u rangi shu bilan almashadi — tema tanlovidan mustaqil.")}</p>
+        </div>
+        {form.accentColor && (
+          <button type="button" className="btn btn-ghost btn-xs min-h-9" onClick={() => setForm((f) => ({ ...f, accentColor: '' }))}>
+            {t('Andozaga qaytarish')}
+          </button>
+        )}
+      </div>
+      </Gate>
+
+      <Gate ok={allow('linkStyle')} onLock={() => setLocked(t('Havola tugmalari uslubi'))}>
+      <div className="mt-4">
+        <div className="text-xs font-semibold text-base-content/70">{t('Havola tugmalari uslubi')}</div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {[
+            ['standard', t('Standart')],
+            ['transparent', t('Shaffof')],
+            ['glass', t('Glass (shisha)')],
+          ].map(([id, label]) => (
+            <button key={id} type="button"
+              aria-pressed={form.linkStyle === id}
+              onClick={() => setForm((f) => ({ ...f, linkStyle: id }))}
+              className={`min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold transition ${form.linkStyle === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/10 text-base-content/60 hover:border-white/25'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-base-content/45">{t("Shaffof/Glass — tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinadi (maxsus fon bilan chiroyli).")}</p>
+      </div>
+      </Gate>
+    </Section>
+  );
+
+  const secLocation = (
+    <Section title={t('Manzil va lokatsiya')} subtitle={t("Qo'ng'iroq va xaritada ko'rsatish uchun")} defaultOpen={isBusiness}>
+      <Gate ok={allow('location')} onLock={() => setLocked(t('Manzil va lokatsiya'))}>
+        <label className="form-control block">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconPin width={12} height={12} /> {t('Manzil')}</span>
+          <input value={form.address} onChange={set('address')} placeholder={t('Ko‘cha, uy, mo‘ljal')} className={inp} />
+        </label>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <label className="form-control min-w-0">
+            <span className="text-xs font-semibold text-base-content/70">{t('Kenglik (latitude)')}</span>
+            <input value={form.latitude} onChange={set('latitude')} type="number" step="any" placeholder="41.311081" className={`${inp} font-mono`} />
+          </label>
+          <label className="form-control min-w-0">
+            <span className="text-xs font-semibold text-base-content/70">{t('Uzunlik (longitude)')}</span>
+            <input value={form.longitude} onChange={set('longitude')} type="number" step="any" placeholder="69.240562" className={`${inp} font-mono`} />
+          </label>
+        </div>
+        <p className="mt-2 text-[13px] text-base-content/40">
+          {t('Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.')}
+        </p>
+      </Gate>
+    </Section>
+  );
+
+  const secCards = (
+    <Section title={t("To'lov kartalari")} subtitle={t("Profilda ko'rinadigan karta raqamlari")}>
+      <label className="form-control block">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconCard width={12} height={12} /> {t("Asosiy karta raqami")}</span>
+        <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" className={`${inp} font-mono`} />
+      </label>
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t("Qo'shimcha karta raqamlari")}</div>
+        <div className="mt-3 space-y-2">
+          {form.cardNumbers.map((c, i) => (
+            <div className="flex flex-col gap-2 sm:flex-row" key={i}>
+              <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder={t("Nomi (masalan: Humo)")} className={`${inp} !mt-0 min-w-0`} />
+              <div className="flex min-w-0 flex-1 gap-2">
+                <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" className={`${inp} !mt-0 min-w-0 font-mono`} />
+                <button type="button" className="btn btn-ghost btn-square btn-sm min-h-11 min-w-11 shrink-0" aria-label={t("O'chirish")} onClick={() => removeCardNum(i)}>&times;</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="btn btn-ghost btn-xs mt-3 min-h-9" onClick={addCardNum}>{t("+ Karta qo'shish")}</button>
+      </div>
+    </Section>
+  );
+
+  const noteTools = (
+    <div className="mt-4 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-4 py-3.5 text-sm text-base-content/60">
+      {t('Statistika, lidlar, fayllar va video —')}{' '}
+      <button type="button" className="min-h-8 font-semibold text-accent underline underline-offset-2" onClick={() => navigate('/sozlamalar')}>
+        {t('Sozlamalar')}
+      </button>{' '}{t('sahifasida.')}
+    </div>
+  );
+
+  // ── Yagona navigatsiya (sidebar lg / gorizontal tab qatori mobil) ──
+  // Shaxsiy va biznes uchun ro'yxat `isBusiness` bilan tanlanadi; kabinet
+  // qo'shimcha bo'limlari (extraSections) ikkalasiga ham qo'shiladi.
+  const personalNav = [
+    ['boshqaruv', t('Umumiy'), IconHome],
+    ['profil', t('Profil'), IconUser],
+    ['nfckarta', t('NFC karta'), IconCard],
+    ['myids', t("Mening ID'larim"), IconIdCard],
+    ['postlar', t('Postlar / Media'), IconImage],
+  ];
+  const businessNav = [
+    ['asosiy', t('Asosiy'), IconBriefcase],
+    ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog'), IconGrid],
+    ...(catalogModule === 'products' ? [['aksiyalar', t('Aksiyalar'), IconTag]] : []),
+    ['galereya', t('Galereya'), IconImage],
+    ['lokatsiya', t('Lokatsiya'), IconPin],
+    ['sozlamalar', t('Sozlamalar'), IconCog],
+  ];
+  const navItems = [
+    ...(isBusiness ? businessNav : personalNav),
+    ...extraSections.map((x) => [x.id, x.label, x.Icon || IconGrid, x.badge]),
+  ];
+  const activeExtra = extraSections.find((x) => x.id === wsTab);
+  // Katalog/Aksiyalar tabida modul o'z preview'iga ega; qo'shimcha kabinet
+  // bo'limlarida (Premium, Sovg'alar) telefon preview kerak emas.
+  const showPreview = !activeExtra && !(isBusiness && ['katalog', 'aksiyalar'].includes(wsTab));
+  const isFormTab = isBusiness ? ['asosiy', 'sozlamalar', 'lokatsiya'].includes(wsTab) : wsTab === 'profil';
+  const goPremium = () => {
+    const prem = extraSections.find((x) => x.id === 'tarif');
+    if (prem) { setWsTab('tarif'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    else document.getElementById('premium-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  const navBtn = (id, label, Icon, badge) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setWsTab(id)}
+      aria-current={wsTab === id ? 'page' : undefined}
+      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--vz-gold-2)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
+    >
+      <span className="shrink-0"><Icon width={16} height={16} /></span>
+      <span className="truncate">{label}</span>
+      {badge > 0 && <span className="vz-badge vz-badge--gold ml-auto !px-1.5 !py-0 text-[11px]">{badge}</span>}
+    </button>
+  );
+  const nav = (
+    <aside className="mb-5 min-w-0 lg:sticky lg:top-6 lg:mb-0" aria-label={t('Kabinet bo‘limlari')}>
+      <div className="hidden items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 lg:flex">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-sm font-bold">
+          {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-bold">{form.name || card.name}</div>
+          <div className="truncate font-mono text-[11px] text-base-content/45">NFC ID · {card.code}{card.isPrimary ? ` · ${t('ASOSIY')}` : ''}</div>
+        </div>
+      </div>
+      <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 lg:mt-3 lg:flex-col lg:overflow-visible">
+        {navItems.map(([id, label, Icon, badge]) => navBtn(id, label, Icon, badge))}
+        {cabinetLinks.length > 0 && (
+          <>
+            <div className="mx-1 hidden h-px bg-[color:var(--vz-line)] lg:my-1.5 lg:block"></div>
+            <div className="hidden px-3 pt-1 text-[11px] font-bold uppercase tracking-wider text-base-content/35 lg:block">{t('Kabinet')}</div>
+            {cabinetLinks.map(({ id, label, Icon, onClick, disabled }) => (
+              <button key={id} type="button" onClick={onClick} disabled={disabled}
+                className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] border-transparent px-3 py-2 text-left text-sm font-semibold text-base-content/60 transition hover:bg-white/5 hover:text-base-content disabled:opacity-40 lg:w-full">
+                <span className="shrink-0">{Icon ? <Icon width={16} height={16} /> : null}</span>
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+          </>
+        )}
+      </nav>
+    </aside>
+  );
+
+  return (
+    <div className="mt-6 min-w-0">
+      {workspaceOnly && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-lg font-bold text-base-content/70">
               {card.avatarUrl ? <img src={card.avatarUrl} alt="" className="h-full w-full object-cover" /> : (card.name || '?').charAt(0).toUpperCase()}
@@ -2449,12 +3004,15 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 truncate text-base font-bold">
                 {card.name}
-                {card.verified && <span className="shrink-0 text-accent" title={t('Tasdiqlangan profil')}>✓</span>}
+                {card.verified && <span className="shrink-0 text-accent" title={t('Tasdiqlangan profil')}><IconCheck width={14} height={14} /></span>}
               </div>
               <div className="font-mono text-xs text-base-content/45">nfcstore.uz/{card.code.toLowerCase()}</div>
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm shrink-0" onClick={() => navigate('/' + card.code)}>{'\u{1F441}️'} {t("Ko'rish")}</button>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-ghost-vz btn-sm min-h-11 shrink-0" onClick={() => navigate('/' + card.code)}><IconEye width={14} height={14} /> {t("Ko'rish")}</button>
+            <button className="btn btn-ghost btn-sm min-h-11" onClick={wsLogout}>{t('Chiqish')}</button>
+          </div>
         </div>
       )}
 
@@ -2462,12 +3020,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         <LockedFeatureModal
           featureLabel={locked}
           onClose={() => setLocked(null)}
-          onGoPremium={() => document.getElementById('premium-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          onGoPremium={goPremium}
         />
       )}
 
       {postModal && (
-        <Modal title={'\u{1F4DD}' + ' ' + t('Postlar')} onClose={() => setPostModal(false)}>
+        <Modal title={t('Postlar')} onClose={() => setPostModal(false)}>
           <PostsManager code={card.code} />
         </Modal>
       )}
@@ -2480,63 +3038,33 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         />
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_260px]">
+      <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-6">
+        {nav}
         <div className="min-w-0">
-        <div className={!isBusiness ? 'lg:grid lg:grid-cols-[220px_1fr] lg:items-start lg:gap-6' : ''}>
-        {!isBusiness && (
-          <div className="mb-6 lg:sticky lg:top-6 lg:mb-0">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-base-200/40 p-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-base-100 text-sm font-bold">
-                {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-bold">{form.name || card.name}</div>
-                <div className="font-mono text-[11px] text-base-content/45">NFC ID · {card.code}</div>
-              </div>
-            </div>
-            <nav className="mt-3 flex gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-base-200/40 p-1.5 lg:flex-col lg:overflow-visible">
-              {[
-                ['boshqaruv', PERSONAL_WS_TAB_LABEL.boshqaruv, WS_ICON.boshqaruv],
-                ['profil', PERSONAL_WS_TAB_LABEL.profil, WS_ICON.profil],
-                ['nfckarta', PERSONAL_WS_TAB_LABEL.nfckarta, WS_ICON.nfckarta],
-                ['myids', PERSONAL_WS_TAB_LABEL.myids, WS_ICON.myids],
-                ['postlar', PERSONAL_WS_TAB_LABEL.postlar, WS_ICON.postlar],
-                ['sozlamalar', PERSONAL_WS_TAB_LABEL.sozlamalar, WS_ICON.sozlamalar],
-              ].map(([id, label, icon]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setWsTab(id)}
-                  className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${wsTab === id ? 'bg-accent text-accent-content' : 'text-base-content/60 hover:bg-white/5'}`}
-                >
-                  <span className="text-base leading-none">{icon}</span> {t(label)}
-                </button>
-              ))}
-            </nav>
-          </div>
-        )}
+        <div className={`grid gap-6 ${showPreview ? 'xl:grid-cols-[minmax(0,1fr)_280px]' : ''}`}>
         <div className="min-w-0">
+        {activeExtra && <div className="min-w-0">{activeExtra.content}</div>}
         {!isBusiness && wsTab === 'boshqaruv' && (
           <div className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
+              <div className="vz-panel min-w-0 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Tarif')}</div>
-                <div className="mt-1 text-lg font-black text-accent">{user?.isPremium ? t('Premium') : t('Bepul')}</div>
+                <div className="mt-1 flex items-center gap-1.5 text-lg font-black text-accent"><IconCrown width={16} height={16} /> {t(TIER_LABEL[access] || access)}</div>
                 <div className="mt-0.5 text-xs text-base-content/45">{user?.isPremium ? t('Jami imkoniyatlar ochiq') : t("Premium'ga o'tish mumkin")}</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
+              <div className="vz-panel min-w-0 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Holat')}</div>
-                <div className="mt-1 flex items-center gap-1.5 text-lg font-black text-success">{'●'} {t('Faol')}</div>
+                <div className="mt-1 flex items-center gap-1.5 text-lg font-black text-success"><span className="inline-block h-2 w-2 rounded-full bg-current"></span> {t('Faol')}</div>
                 <div className="mt-0.5 text-xs text-base-content/45">{form.hiddenFromDirectory ? t('Katalogda yashirin') : t('Public profil ochiq')}</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
+              <div className="vz-panel min-w-0 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Public URL')}</div>
                 <div className="mt-1 flex items-center gap-2">
                   <span className="truncate font-mono text-sm font-bold">/{card.code.toLowerCase()}</span>
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => { navigator.clipboard?.writeText(window.location.origin + '/' + card.code.toLowerCase()).then(() => setSaleMsg({ type: 'ok', text: t('Nusxalandi!') })).catch(() => {}); }}>{t('Nusxalash')}</button>
+                  <button type="button" className="btn btn-ghost btn-xs min-h-8" onClick={() => { navigator.clipboard?.writeText(window.location.origin + '/' + card.code.toLowerCase()).then(() => setSaleMsg({ type: 'ok', text: t('Nusxalandi!') })).catch(() => {}); }}><IconCopy width={12} height={12} /> {t('Nusxalash')}</button>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
+              <div className="vz-panel min-w-0 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Primary ID')}</div>
                 {card.isPrimary ? (
                   <div className="mt-1 text-lg font-black text-accent">{card.code}</div>
@@ -2549,42 +3077,27 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-base-200/40 p-4">
-              <div className="text-xs font-semibold text-base-content/60">{t("Profil {p}% to'ldirilgan", { p: personalProfileCompletion(form) })}</div>
+            <div className="vz-panel p-4">
+              <div className="flex items-center justify-between gap-2 text-xs font-semibold text-base-content/60">
+                <span>{t("Profil {p}% to'ldirilgan", { p: personalProfileCompletion(form) })}</span>
+                {personalProfileCompletion(form) < 100 && (
+                  <button type="button" className="min-h-8 text-accent underline underline-offset-2" onClick={() => setWsTab('profil')}>{t("To'ldirish")}</button>
+                )}
+              </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/30">
-                <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${personalProfileCompletion(form)}%` }}></div>
+                <div className="h-full rounded-full bg-[color:var(--vz-gold)] transition-all" style={{ width: `${personalProfileCompletion(form)}%` }}></div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => setWsTab('nfckarta')} className="rounded-xl border border-white/10 bg-base-200/30 p-4 text-left transition hover:border-white/25">
-                <div className="text-sm font-bold">{WS_ICON.nfckarta} {t('Tezkor NFC profil')}</div>
-                <div className="mt-0.5 text-xs text-base-content/45">{t("NFC ID, narx, ko'rishlar")}</div>
-              </button>
-              <button type="button" onClick={() => navigate('/' + card.code)} className="rounded-xl border border-white/10 bg-base-200/30 p-4 text-left transition hover:border-white/25">
-                <div className="text-sm font-bold">{'\u{1F441}️'} {t("Profilni ko'rish")}</div>
-                <div className="mt-0.5 text-xs text-base-content/45">{t('Public sahifada ochish')}</div>
-              </button>
-              <button type="button" onClick={() => setWsTab('postlar')} className="rounded-xl border border-white/10 bg-base-200/30 p-4 text-left transition hover:border-white/25">
-                <div className="text-sm font-bold">{WS_ICON.postlar} {t('Postlar / Media')}</div>
-                <div className="mt-0.5 text-xs text-base-content/45">{t('Rasm va izohlarni boshqarish')}</div>
-              </button>
-              <button type="button" onClick={() => setWsTab('sozlamalar')} className="rounded-xl border border-white/10 bg-base-200/30 p-4 text-left transition hover:border-white/25">
-                <div className="text-sm font-bold">{WS_ICON.sozlamalar} {t('Sozlamalar')}</div>
-                <div className="mt-0.5 text-xs text-base-content/45">{t("Ko'rinish va qo'shimcha maydonlar")}</div>
-              </button>
-            </div>
-
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-outline btn-sm" onClick={async () => {
+              <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={async () => {
                 const shareUrl = window.location.origin + '/' + card.code.toLowerCase();
                 if (navigator.share) { try { await navigator.share({ title: form.name || card.code, url: shareUrl }); return; } catch { /* bekor qilindi */ } }
                 navigator.clipboard?.writeText(shareUrl).then(() => setSaleMsg({ type: 'ok', text: t('Havola nusxalandi!') })).catch(() => {});
-              }}>{'\u{1F517}'} {t('Ulashish')}</button>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => (allow('profileCardCustom') ? setDesignModal('profile') : setLocked(t('Karta dizayni')))}>
-                {'\u{1F3A8}'} {t('Karta dizayni')}
-              </button>
+              }}><IconShare width={14} height={14} /> {t('Ulashish')}</button>
+              <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => navigate('/' + card.code)}><IconEye width={14} height={14} /> {t("Profilni ko'rish")}</button>
             </div>
+            {saleMsg && <div className={`alert py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(saleMsg.text)}</span></div>}
           </div>
         )}
 
@@ -2596,12 +3109,13 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         )}
 
         {!isBusiness && wsTab === 'myids' && (
-          <Section title={t('My IDs')} subtitle={t("Barcha raqamli tashrif qog'ozlaringiz")} defaultOpen>
+          <Section title={t("Mening ID'larim")} subtitle={t("Barcha raqamli tashrif qog'ozlaringiz")} defaultOpen>
             {myCards.length <= 1 ? (
-              <p className="text-sm text-base-content/50">
-                {t('Sizda hozircha faqat shu bitta ID bor.')}{' '}
-                <button type="button" className="text-accent underline underline-offset-2" onClick={() => navigate('/')}>{t('Yangi ID band qilish')}</button>
-              </p>
+              <div className="vz-empty">
+                <span className="text-base-content/40"><IconIdCard /></span>
+                <span className="text-sm">{t('Sizda hozircha faqat shu bitta ID bor.')}</span>
+                <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={() => navigate('/')}>{t('Yangi ID band qilish')}</button>
+              </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {myCards.map((c) => (
@@ -2619,10 +3133,10 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                       </div>
                     </div>
                     <div className="mt-2 flex gap-1.5">
-                      <button type="button" className="btn btn-xs flex-1" disabled={c.code === card.code} onClick={() => onSelectCard && onSelectCard(c.code)}>
+                      <button type="button" className="btn btn-outline-gold btn-xs min-h-11 flex-1" disabled={c.code === card.code} onClick={() => onSelectCard && onSelectCard(c.code)}>
                         {c.code === card.code ? t('Joriy') : t('Boshqarish')}
                       </button>
-                      <button type="button" className="btn btn-ghost btn-xs flex-1" onClick={() => navigate('/' + c.code.toLowerCase())}>{t("Ko'rish")}</button>
+                      <button type="button" className="btn btn-ghost btn-xs min-h-11 flex-1" onClick={() => navigate('/' + c.code.toLowerCase())}>{t("Ko'rish")}</button>
                     </div>
                   </div>
                 ))}
@@ -2637,375 +3151,17 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           </Section>
         )}
 
-          {isBusiness && (
-            <div className="mb-5 flex gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-base-200/40 p-1.5">
-              {[
-                ['asosiy', t('Asosiy')],
-                ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog')],
-                ...(catalogModule === 'products' ? [['aksiyalar', `◆ ${t('Aksiyalar')}`]] : []),
-                ['galereya', t('Galereya')],
-                ['lokatsiya', t('Lokatsiya')],
-                ['sozlamalar', t('Sozlamalar')],
-              ].map(([id, label]) => (
-                <button key={id} type="button" onClick={() => setWsTab(id)}
-                  className={`shrink-0 cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition ${wsTab === id ? 'bg-accent text-accent-content' : 'text-base-content/60 hover:bg-white/5'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-          {((isBusiness && wsTab === 'asosiy') || (!isBusiness && wsTab === 'profil')) && (
-          <>
-          <Section
-            title={workspaceOnly ? t('Kompaniya yo‘nalishi') : t('Profil turi')}
-            subtitle={workspaceOnly ? t('Katalog moduli faoliyat sohasiga qarab avtomatik tanlanadi') : t('Katalog va qidiruvda qanday ko‘rinasiz')}
-            defaultOpen
-          >
-            {!workspaceOnly && (
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  ['personal', t('Shaxsiy'), t('Odam')],
-                  ['expert', t('Ekspert'), t('Mutaxassis')],
-                  ['business', t('Biznes'), t('Kompaniya')],
-                ].map(([id, label, sub]) => (
-                  <button key={id} type="button"
-                    onClick={() => setForm((f) => ({ ...f, profileType: id }))}
-                    className={`rounded-xl border p-3 text-left transition ${form.profileType === id ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/25'}`}>
-                    <div className={`text-sm font-bold ${form.profileType === id ? 'text-accent' : ''}`}>{label}</div>
-                    <div className="mt-0.5 text-[14px] text-base-content/45">{sub}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-            {cats.length > 0 && (() => {
-              const sel = findCat(cats, form.categorySlug);
-              const mainSlug = sel ? (sel.parentSlug || sel.slug) : '';
-              const subs = cats.filter((c) => c.parentSlug === mainSlug);
-              return (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <label className="form-control block">
-                    <span className="text-xs font-semibold text-base-content/70">{t('Faoliyat sohasi')}</span>
-                    <select
-                      value={mainSlug}
-                      onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value }))}
-                      className="select select-bordered select-sm mt-1 w-full bg-base-100"
-                    >
-                      <option value="">{t('— tanlanmagan —')}</option>
-                      {cats.filter((c) => !c.parentSlug).map((c) => (
-                        <option key={c.slug} value={c.slug}>{catName(c, lang)}</option>
-                      ))}
-                    </select>
-                  </label>
-                  {subs.length > 0 && (
-                    <label className="form-control block">
-                      <span className="text-xs font-semibold text-base-content/70">{t('Kichik soha')}</span>
-                      <select
-                        value={form.categorySlug === mainSlug ? '' : form.categorySlug}
-                        onChange={(e) => setForm((f) => ({ ...f, categorySlug: e.target.value || mainSlug }))}
-                        className="select select-bordered select-sm mt-1 w-full bg-base-100"
-                      >
-                        <option value="">{t('Umumiy')}</option>
-                        {subs.map((c) => (
-                          <option key={c.slug} value={c.slug}>{catName(c, lang)}</option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                </div>
-              );
-            })()}
-            <label className="form-control mt-3 block">
-              <span className="text-xs font-semibold text-base-content/70">{t('Shahar / viloyat (ixtiyoriy)')}</span>
-              <input value={form.city} onChange={set('city')} placeholder={t('masalan Toshkent')} className={inp} />
-            </label>
-            <p className="mt-1.5 text-xs text-base-content/40">{t('Soha ro‘yxatда yo‘qmi? "Kasb / sarlavha" maydoniga o‘zingiz yozing.')}</p>
-          </Section>
-          <Section title={t("Asosiy ma'lumot")} subtitle={t("Ism, kasb, bio va rasm")} defaultOpen>
-            <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-base-100 font-bold">
-                {form.avatarUrl
-                  ? <img src={form.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
-                  : <span>{initials(form.name)}</span>}
-              </div>
-              <div className="min-w-0 flex-1">
-                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
-                  {uploading ? <span className="loading loading-spinner loading-xs"></span> : t('Rasm tanlash')}
-                </button>
-                <p className="mt-2 text-xs text-base-content/45">{t("JPG/PNG. Avtomatik kichraytiriladi. Yoki quyida havola qoldiring.")}</p>
-                <input className={`${inp} font-mono text-xs`} value={form.avatarUrl} onChange={set('avatarUrl')} placeholder={t("https://... yoki /uploads/...")} />
-              </div>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">{t("Ism *")}</span><input value={form.name} onChange={set('name')} className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">{t("Kasb / sarlavha")}</span><input value={form.role} onChange={set('role')} className={inp} /></label>
-            </div>
-            <label className="form-control mt-3 block">
-              <span className="text-xs font-semibold text-base-content/70">{t("O'zingiz haqingizda (bio)")}</span>
-              <textarea rows={3} value={form.about} onChange={set('about')} placeholder={t("Qisqacha o'zingiz haqingizda...")} className="textarea textarea-bordered mt-1 w-full bg-base-100" />
-            </label>
-          </Section>
-
-          <Section title={t("Dizayn va fon")} subtitle={t("Tema, fon rasmi, naqsh")}>
-            <div className="font-mono text-[14px] uppercase tracking-widest text-base-content/45">{t("Tema")}</div>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {THEMES.map((th) => (
-                <button key={th.id} type="button"
-                  className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-all ${form.theme === th.id ? 'border-base-content/70 ring-2 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
-                  style={{ background: th.css }}
-                  onClick={() => setForm((f) => ({ ...f, theme: th.id, bgColor: '', bgUrl: '' }))}>
-                  <span style={{ color: th.accent }}>{th.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <Gate ok={allow('innerBackground')} onLock={() => setLocked(t('Maxsus profil foni'))}>
-            <div>
-            <div className="mt-5 font-mono text-[14px] uppercase tracking-widest text-base-content/45">{t("Fon rasmi")}</div>
-            <div className="mt-2 flex items-start gap-4">
-              <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-white/15 bg-base-100">
-                {form.bgUrl
-                  ? <img src={form.bgUrl} alt="fon" className="h-full w-full object-cover" />
-                  : <div className="flex h-full w-full items-center justify-center text-[13px] text-base-content/40">{t("Standart")}</div>}
-              </div>
-              <div className="min-w-0 flex-1">
-                <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBgFile} />
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current && bgFileRef.current.click()} disabled={uploadingBg}>
-                    {uploadingBg ? <span className="loading loading-spinner loading-xs"></span> : t('Fon rasmi tanlash')}
-                  </button>
-                  {form.bgUrl && (
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm((f) => ({ ...f, bgUrl: '' }))}>
-                      {t('Standart fonga qaytarish')}
-                    </button>
-                  )}
-                </div>
-                <p className="mt-2 text-xs text-base-content/45">{t("O'z rasmingizni qo'ysangiz, u tema fonining o'rniga ishlatiladi.")}</p>
-                <input className={`${inp} font-mono text-xs`} value={form.bgUrl} onChange={set('bgUrl')} placeholder={t("https://... yoki /uploads/...")} />
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center gap-3">
-              <input
-                type="color"
-                value={form.bgColor || '#1a1a1c'}
-                onChange={(e) => setForm((f) => ({ ...f, bgColor: e.target.value }))}
-                className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-base-content/70">{t("Profil fon rangi")}</div>
-                <p className="mt-0.5 text-xs text-base-content/45">{t("Aksent rangdan mustaqil — butun profil foni shu rangda (sekin qimirlab turadigan gradient bilan) chiqadi. Diqqat: bu tanlangan temaning o'z fonidan ustun turadi — yuqoridagi temalardan birini qayta bossangiz, bu rang avtomatik tozalanadi.")}</p>
-              </div>
-              {form.bgColor && (
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, bgColor: '' }))}>
-                  {t('Andozaga qaytarish')}
-                </button>
-              )}
-            </div>
-            {form.bgColor && (
-              <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
-                <input type="checkbox" className="checkbox checkbox-sm" checked={form.bgAnimated} onChange={(e) => setForm((f) => ({ ...f, bgAnimated: e.target.checked }))} />
-                <span>{t("Fon sekin qimirlab (animatsiyali) tursin")}</span>
-              </label>
-            )}
-            </div>
-            </Gate>
-
-            <Gate ok={allow('advancedColors')} onLock={() => setLocked(t('Maxsus ranglar'))}>
-            <div className="mt-5 flex items-center gap-3">
-              <input
-                type="color"
-                value={form.accentColor || '#f5a524'}
-                onChange={(e) => setForm((f) => ({ ...f, accentColor: e.target.value }))}
-                className="h-9 w-9 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold text-base-content/70">{t("Istalgan aksent rang")}</div>
-                <p className="mt-0.5 text-xs text-base-content/45">{t("Tugmalar va urg'u rangi shu bilan almashadi — tema tanlovidan mustaqil.")}</p>
-              </div>
-              {form.accentColor && (
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setForm((f) => ({ ...f, accentColor: '' }))}>
-                  {t('Andozaga qaytarish')}
-                </button>
-              )}
-            </div>
-            </Gate>
-
-            <Gate ok={allow('linkStyle')} onLock={() => setLocked(t('Havola tugmalari uslubi'))}>
-            <div className="mt-4">
-              <div className="text-xs font-semibold text-base-content/70">{t('Havola tugmalari uslubi')}</div>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {[
-                  ['standard', t('Standart')],
-                  ['transparent', t('Shaffof')],
-                  ['glass', t('Glass (shisha)')],
-                ].map(([id, label]) => (
-                  <button key={id} type="button"
-                    onClick={() => setForm((f) => ({ ...f, linkStyle: id }))}
-                    className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${form.linkStyle === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/10 text-base-content/60 hover:border-white/25'}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1.5 text-xs text-base-content/45">{t("Shaffof/Glass — tugmalar yarim shaffof bo'lib, orqa fon ular ostidan ko'rinadi (maxsus fon bilan chiroyli).")}</p>
-            </div>
-            </Gate>
-
-            <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
-            <label className="form-control mt-5 block">
-              <span className="text-xs font-semibold text-base-content/70">{'\u{1F3B5}'} {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/5)</span></span>
-              <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
-              <div className="mt-2 space-y-3">
-                {form.musicUrls.map((url, i) => (
-                  <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3">
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 text-xs font-semibold text-base-content/45">#{i + 1}</span>
-                      <input
-                        className={`${inp} !mt-0 flex-1 font-mono text-xs`}
-                        value={url}
-                        onChange={updateMusic(i)}
-                        placeholder={t("YouTube / Yandex Music havolasi yoki https://.../musiqa.mp3")}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm shrink-0"
-                        onClick={() => { setMusicUploadIndex(i); musicFileRef.current && musicFileRef.current.click(); }}
-                        disabled={uploadingMusic}
-                      >
-                        {uploadingMusic && musicUploadIndex === i ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl')}
-                      </button>
-                      <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeMusic(i)}>&times;</button>
-                    </div>
-                    {url && (
-                      isEmbedMusic(url)
-                        ? <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400"><span>{'▶'}</span> {t('Musiqa havolasi ulandi — iPhone/Android hammasida ishlaydi.')}</div>
-                        : <audio controls src={url} className="mt-2 h-9 w-full" />
-                    )}
-                  </div>
-                ))}
-              </div>
-              {form.musicUrls.length < 5 && (
-                <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={addMusic}>{t("+ Qo'shiq qo'shish")}</button>
-              )}
-              <p className="mt-2 text-xs text-base-content/45">{t("Ko'pi bilan 5 ta qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
-            </label>
-            </Gate>
-          </Section>
-          </>
-          )}
-
-          {((isBusiness && wsTab === 'sozlamalar') || (!isBusiness && wsTab === 'profil')) && (
-          <>
-          <Section title={t("Aloqa va ijtimoiy tarmoqlar")} subtitle={t("Telegram, Instagram, telefon va h.k.")}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Telegram</span><input value={form.tg} onChange={set('tg')} placeholder="@username" className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder="@username" className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder={t("username yoki havola")} className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">X (Twitter)</span><input value={form.twitter} onChange={set('twitter')} placeholder="@username" className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">{t("Veb-sayt")}</span><input value={form.website} onChange={set('website')} placeholder="https://sayt.uz" className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">LinkedIn</span><input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">{t("Telefon")}</span><input value={form.phone} onChange={set('phone')} className={inp} /></label>
-              <label className="form-control"><span className="text-xs font-semibold text-base-content/70">Email</span><input value={form.email} onChange={set('email')} className={inp} /></label>
-            </div>
-            {form.phone && (
-              <label className="mt-3 flex cursor-pointer items-center gap-2.5">
-                <input type="checkbox" className="checkbox checkbox-sm" checked={form.hidePhone} onChange={(e) => setForm((f) => ({ ...f, hidePhone: e.target.checked }))} />
-                <span className="text-xs text-base-content/60">{t("Telefon raqamini profilda hammadan yashirish (faqat menga ko'rinsin)")}</span>
-              </label>
-            )}
-          </Section>
-          </>
-          )}
-
-          {((isBusiness && wsTab === 'lokatsiya') || (!isBusiness && wsTab === 'profil')) && (
-            <Section title={t('Manzil va lokatsiya')} subtitle={t("Qo'ng'iroq va xaritada ko'rsatish uchun")}>
-              <Gate ok={allow('location')} onLock={() => setLocked(t('Manzil va lokatsiya'))}>
-                <label className="form-control block">
-                  <span className="text-xs font-semibold text-base-content/70">{t('Manzil')}</span>
-                  <input value={form.address} onChange={set('address')} placeholder={t('Ko‘cha, uy, mo‘ljal')} className={inp} />
-                </label>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="form-control">
-                    <span className="text-xs font-semibold text-base-content/70">{t('Kenglik (latitude)')}</span>
-                    <input value={form.latitude} onChange={set('latitude')} type="number" step="any" placeholder="41.311081" className={`${inp} font-mono`} />
-                  </label>
-                  <label className="form-control">
-                    <span className="text-xs font-semibold text-base-content/70">{t('Uzunlik (longitude)')}</span>
-                    <input value={form.longitude} onChange={set('longitude')} type="number" step="any" placeholder="69.240562" className={`${inp} font-mono`} />
-                  </label>
-                </div>
-                <p className="mt-2 text-[14px] text-base-content/40">
-                  {t('Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.')}
-                </p>
-              </Gate>
-            </Section>
-          )}
-
-          {((isBusiness && wsTab === 'sozlamalar') || (!isBusiness && wsTab === 'profil')) && (
-          <>
-          <Section title={t("To'lov kartalari")} subtitle={t("Profilda ko'rinadigan karta raqamlari")}>
-            <label className="form-control block">
-              <span className="text-xs font-semibold text-base-content/70">{t("Asosiy karta raqami")}</span>
-              <input value={form.cardNumber} onChange={set('cardNumber')} placeholder="8600 1234 5678 9012" className={`${inp} font-mono`} />
-            </label>
-            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t("Qo'shimcha karta raqamlari")}</div>
-              <div className="mt-3 space-y-2">
-                {form.cardNumbers.map((c, i) => (
-                  <div className="flex gap-2" key={i}>
-                    <input value={c.label} onChange={updateCardNum(i, 'label')} placeholder={t("Nomi (masalan: Humo)")} className={`${inp} !mt-0`} />
-                    <input value={c.number} onChange={updateCardNum(i, 'number')} placeholder="9860 1234 5678 9012" className={`${inp} !mt-0 font-mono`} />
-                    <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeCardNum(i)}>&times;</button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addCardNum}>{t("+ Karta qo'shish")}</button>
-            </div>
-          </Section>
-
-          <Section title={t("Qo'shimcha havolalar va hashtaglar")} subtitle={t("Portfolio, boshqa saytlar, teglar")}>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-base-content/55">{t("Qo'shimcha havolalar (istalgancha)")}</div>
-              <div className="mt-3 space-y-2">
-                {form.extraLinks.map((l, i) => (
-                  <div className="flex gap-2" key={i}>
-                    <input value={l.label} onChange={updateLink(i, 'label')} placeholder={t("Nomi (masalan: Portfolio)")} className={`${inp} !mt-0`} />
-                    <input value={l.url} onChange={updateLink(i, 'url')} placeholder="https://..." className={`${inp} !mt-0 font-mono`} />
-                    <button type="button" className="btn btn-ghost btn-square btn-sm shrink-0" onClick={() => removeLink(i)}>&times;</button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="btn btn-ghost btn-xs mt-3" onClick={addLink}>{t("+ Havola qo'shish")}</button>
-            </div>
-            <label className="form-control mt-4 block">
-              <span className="text-xs font-semibold text-base-content/70">{t("Hashtaglar (vergul bilan)")}</span>
-              <input value={form.hashtags} onChange={set('hashtags')} className={inp} />
-            </label>
-          </Section>
-
-          <div className="mt-4 rounded-2xl border border-white/10 bg-base-200/30 px-4 py-3.5 text-sm text-base-content/60">
-            {t('Statistika, lidlar, fayllar va video —')}{' '}
-            <button type="button" className="font-semibold text-accent underline underline-offset-2" onClick={() => navigate('/sozlamalar')}>
-              {t('Sozlamalar')}
-            </button>{' '}{t('sahifasida.')}
-          </div>
-          </>
-          )}
-
-          {!isBusiness && wsTab === 'sozlamalar' && (
-            <Section title={t('Sozlamalar')} subtitle={t("Ko'rinish va qo'shimcha maydonlar")} defaultOpen>
-              <div className="rounded-2xl border border-white/10 bg-base-200/30 px-4 py-3.5 text-sm text-base-content/60">
-                {t('Statistika, lidlar, fayllar va video —')}{' '}
-                <button type="button" className="font-semibold text-accent underline underline-offset-2" onClick={() => navigate('/sozlamalar')}>
-                  {t('Sozlamalar')}
-                </button>{' '}{t('sahifasida.')}
-              </div>
-            </Section>
-          )}
+          {/* ── Profil formasi: aniq bo'limlar (Asosiy / Aloqa / Ijtimoiy / Media / Ko'rinish) ── */}
+          {((isBusiness && wsTab === 'asosiy') || (!isBusiness && wsTab === 'profil')) && (<>{secType}{secBasic}</>)}
+          {!isBusiness && wsTab === 'profil' && (<>{secContact}{secSocial}</>)}
+          {((isBusiness && wsTab === 'asosiy') || (!isBusiness && wsTab === 'profil')) && (<>{secMedia}{secLook}</>)}
+          {((isBusiness && wsTab === 'lokatsiya') || (!isBusiness && wsTab === 'profil')) && secLocation}
+          {!isBusiness && wsTab === 'profil' && (<>{secCards}{noteTools}</>)}
+          {isBusiness && wsTab === 'sozlamalar' && (<>{secContact}{secSocial}{secCards}{noteTools}</>)}
 
           {isBusiness && wsTab === 'katalog' && !catalogReady && (
             <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-6 text-center text-sm text-base-content/70">
-              {'\u{1F4BE}'} {t('Katalog moduli profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.')}
+              {t('Katalog moduli profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.')}
             </div>
           )}
 
@@ -3056,7 +3212,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </Section>
             ) : (
               <div className="rounded-xl border border-dashed border-accent/40 bg-accent/5 px-4 py-6 text-center text-sm text-base-content/70">
-                {'\u{1F4BE}'} {t('Galereya profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.')}
+                {t('Galereya profil saqlangandan keyin ochiladi. Avval "Profilni saqlash" tugmasini bosing.')}
               </div>
             )
           )}
@@ -3079,8 +3235,8 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                   <p className="mt-1 text-xs leading-relaxed text-base-content/55">
                     {t('NFC ID tarifi, sovg‘a qilish, karta dizayni va IDni o‘chirish Mening profilim bo‘limida boshqariladi.')}
                   </p>
-                  <button type="button" className="btn btn-outline btn-sm mt-3" onClick={() => navigate('/account#mening-profilim')}>
-                    {t('NFC ID boshqaruviga o‘tish')} →
+                  <button type="button" className="btn btn-outline-gold btn-sm mt-3 min-h-11" onClick={() => navigate('/account#mening-profilim')}>
+                    {t('NFC ID boshqaruviga o‘tish')} &rarr;
                   </button>
                 </div>
               </Section>
@@ -3092,30 +3248,42 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             )
           )}
 
-          <button className="btn btn-primary mt-5 w-full sm:w-auto" onClick={submit} disabled={busy}>
-            {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Profilni saqlash')}
-          </button>
+          {/* Yagona asosiy CTA — .btn-gold. Hech narsa o'zgarmagan bo'lsa o'chiq;
+              mobil ekranda o'zgarish bo'lsa pastga yopishgan panel. */}
+          {(isFormTab || dirty) && (
+            <div className={dirty ? 'fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--vz-line)] bg-[color:var(--vz-bg)] p-3 lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0' : 'mt-5'}>
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="button" className="btn btn-gold min-h-11 w-full sm:w-auto" onClick={submit} disabled={busy || !dirty}>
+                  {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Profilni saqlash')}
+                </button>
+                {dirty
+                  ? <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning"><IconWarn width={14} height={14} /> {t("Saqlanmagan o'zgarishlar bor")}</span>
+                  : <span className="inline-flex items-center gap-1.5 text-xs text-base-content/40"><IconCheck width={14} height={14} /> {t("Barcha o'zgarishlar saqlangan")}</span>}
+              </div>
+            </div>
+          )}
+          {dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
-        </div>
-        </div>
         </div>
 
         {/* Katalog tabida modul o'zining ichki preview'iga ega (Menu/Product/
             ServiceManagerSection) — asosiy karta preview'ini takrorlamaslik
             uchun shu yerda yashiramiz. */}
-        {!(isBusiness && ['katalog', 'aksiyalar'].includes(wsTab)) && (
-          <div className="hidden lg:block">
+        {showPreview && (
+          <div className="hidden xl:block">
             <PhonePreview form={form} code={card.code} />
           </div>
         )}
-      </div>
-
-      {/* Mobil uchun preview forma tagida ko'rinadi */}
-      {!(isBusiness && ['katalog', 'aksiyalar'].includes(wsTab)) && (
-        <div className="mt-8 lg:hidden">
-          <PhonePreview form={form} code={card.code} />
         </div>
-      )}
+
+        {/* Mobil/planshet uchun preview forma tagida ko'rinadi */}
+        {showPreview && (
+          <div className="mt-8 xl:hidden">
+            <PhonePreview form={form} code={card.code} />
+          </div>
+        )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -3127,30 +3295,9 @@ const ORDER_STATUS_LABEL = {
   failed_code_taken: { text: "Kod band bo'lib qoldi — pul qaytariladi", cls: 'badge-error' },
 };
 
-// Shaxsiy/ekspert Workspace (EditCardForm) uchun ikonalar va yordamchilar —
-// biznes Workspace'ga tegishli emas, undan mustaqil.
-const WS_ICON = {
-  boshqaruv: '\u{1F3E0}', profil: '\u{1F464}', nfckarta: '\u{1F4B3}',
-  myids: '\u{1F194}', postlar: '\u{1F5BC}️', sozlamalar: '⚙️',
-};
-const PERSONAL_WS_TAB_LABEL = {
-  boshqaruv: 'Boshqaruv', profil: 'Profil', nfckarta: 'NFC karta',
-  myids: 'My IDs', postlar: 'Postlar / Media', sozlamalar: 'Sozlamalar',
-};
-
 // Account sahifasining yuqori "hero" qismi — profil kartalari uchun
 // mavjud profileType qiymatlariga mos ko'rsatiladigan nom.
 const CARD_TYPE_LABEL = { personal: 'Shaxsiy', expert: 'Ekspert', business: 'Biznes' };
-
-// Account hero'dagi ikonalar — JSX ichida takrorlanmasligi uchun bir joyda.
-const HERO_DOT = '●';
-const HERO_CROWN = '\u{1F451}';
-const HERO_EDIT = '✏️';
-const HERO_EYE = '\u{1F441}️';
-const HERO_PROFILES = '\u{1F464}';
-const HERO_SHIELD = '\u{1F6E1}️';
-const HERO_CART = '\u{1F6D2}';
-const HERO_CHECK = '✓';
 
 // Profil to'ldirilish foizi — faqat REAL form maydonlariga qarab hisoblanadi,
 // hech qanday soxta/qattiq-yozilgan qiymat yo'q.
@@ -3178,7 +3325,8 @@ function SupportModal({ onClose }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  const load = () => dbListMySupportMessages().then(setHistory).catch(() => setHistory([]));
+  const [histErr, setHistErr] = useState(false);
+  const load = () => { setHistErr(false); return dbListMySupportMessages().then((rows) => setHistory(Array.isArray(rows) ? rows : [])).catch(() => { setHistory([]); setHistErr(true); }); };
   useEffect(() => { load(); }, []);
 
   const send = async () => {
@@ -3201,13 +3349,14 @@ function SupportModal({ onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">{'\u2709\uFE0F'} {t('Adminga murojaat')}</h3>
-          <button className="btn btn-ghost btn-xs" onClick={onClose}>&times;</button>
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold"><IconSupport /> {t('Adminga murojaat')}</h3>
+          <button className="btn btn-ghost btn-xs min-h-11 min-w-11" onClick={onClose} aria-label={t('Yopish')}>&times;</button>
         </div>
 
         <div className="mt-4 max-h-64 space-y-2 overflow-y-auto">
-          {history === null && <div className="text-sm text-base-content/40">{t('Yuklanmoqda...')}</div>}
-          {history?.length === 0 && <div className="text-sm text-base-content/40">{t("Hozircha murojaatingiz yo'q.")}</div>}
+          {history === null && <SkeletonRows n={2} h={56} />}
+          {history !== null && histErr && <ErrorRetry onRetry={load} />}
+          {history?.length === 0 && !histErr && <div className="vz-empty !py-5"><span className="text-sm">{t("Hozircha murojaatingiz yo'q.")}</span></div>}
           {history?.map((m) => (
             <div key={m.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
               <p className="text-base-content/80">{m.message}</p>
@@ -3227,7 +3376,7 @@ function SupportModal({ onClose }) {
           rows={3}
           className="textarea textarea-bordered mt-4 w-full bg-base-100"
         />
-        <button className="btn btn-primary btn-sm mt-2 w-full" onClick={send} disabled={busy || !text.trim()}>
+        <button className="btn btn-gold btn-sm mt-2 min-h-11 w-full" onClick={send} disabled={busy || !text.trim()}>
           {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Yuborish')}
         </button>
         {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
@@ -3240,9 +3389,11 @@ function SupportModal({ onClose }) {
 // qilingan do'stlar ro'yxatini va kutilayotgan chegirmani ko'rsatadi.
 function ReferralPanel({ user }) {
   const { t } = useLanguage();
-  const [referrals, setReferrals] = useState([]);
+  const [referrals, setReferrals] = useState(null);
+  const [refErr, setRefErr] = useState(false);
   const [copied, setCopied] = useState(false);
-  useEffect(() => { dbListReferrals().then((rows) => setReferrals(Array.isArray(rows) ? rows : [])).catch(() => setReferrals([])); }, []);
+  const load = () => { setRefErr(false); dbListReferrals().then((rows) => setReferrals(Array.isArray(rows) ? rows : [])).catch(() => { setReferrals([]); setRefErr(true); }); };
+  useEffect(() => { load(); }, []);
 
   if (!user.promoCode) return null;
   const link = `${window.location.origin}/register?promo=${user.promoCode}`;
@@ -3253,29 +3404,32 @@ function ReferralPanel({ user }) {
   };
 
   return (
-    <section className="pt-8">
-      <h2 className="text-xl font-bold">{'\u{1F91D}'} {t("Do'st taklif qiling")}</h2>
-      <div className="mt-3 rounded-2xl border border-accent/25 bg-accent/5 p-5">
+    <section className="vz-card p-5">
+      <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconUsers /> {t("Do'st taklif qiling")}</h2>
+      <div className="mt-3">
         <p className="text-sm text-base-content/70">
           {t("Do'stingiz shu havola orqali ro'yxatdan o'tsa, siz keyingi bandlashda avtomatik ")}<b className="text-accent">{t('10% chegirma')}</b>{t(' olasiz.')}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <code className="rounded-lg bg-black/30 px-3 py-2 text-sm font-mono">{link}</code>
-          <button className="btn btn-accent btn-sm" onClick={copy}>{copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
+          <code className="min-w-0 max-w-full break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-sm">{link}</code>
+          <button className="btn btn-outline-gold btn-sm min-h-11" onClick={copy}><IconCopy width={14} height={14} /> {copied ? t('Nusxalandi!') : t('Nusxalash')}</button>
         </div>
         {user.pendingDiscountPct > 0 && (
-          <div className="mt-3 text-sm font-semibold text-success">
-            {'\u2728'} {t('Sizda {p}% chegirma kutilmoqda — keyingi bandlashda avtomatik qo\'llanadi!', { p: user.pendingDiscountPct })}
+          <div className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-success">
+            <IconCheck width={14} height={14} /> {t('Sizda {p}% chegirma kutilmoqda — keyingi bandlashda avtomatik qo\'llanadi!', { p: user.pendingDiscountPct })}
           </div>
         )}
-        {referrals.length > 0 && (
-          <div className="mt-4 border-t border-white/10 pt-3">
-            <div className="text-xs font-semibold text-base-content/50">{t('Taklif qilgan do\'stlaringiz')} ({referrals.length}):</div>
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <div className="text-xs font-semibold text-base-content/50">{t('Taklif qilgan do\'stlaringiz')}{referrals ? ` (${referrals.length})` : ''}:</div>
+          {referrals === null && <div className="mt-2"><SkeletonRows n={2} h={16} /></div>}
+          {referrals !== null && refErr && <div className="mt-2"><ErrorRetry onRetry={load} /></div>}
+          {referrals !== null && !refErr && referrals.length === 0 && <p className="mt-1.5 text-xs text-base-content/45">{t("Hali hech kim taklif qilinmagan.")}</p>}
+          {referrals && referrals.length > 0 && (
             <ul className="mt-1.5 space-y-1 text-xs text-base-content/60">
-              {referrals.map((r) => <li key={r.id}>{r.referredEmail} — {timeAgo(new Date(r.createdAt).getTime())}</li>)}
+              {referrals.map((r) => <li key={r.id} className="break-words">{r.referredEmail} — {timeAgo(new Date(r.createdAt).getTime())}</li>)}
             </ul>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
@@ -3299,31 +3453,43 @@ export default function AccountPage({ refreshCatalog }) {
   const openBusinessWorkspace = () => navigate(primaryBusinessCard
     ? '/company/create?from=' + primaryBusinessCard.code.toLowerCase()
     : '/company/create');
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(null);      // null = yuklanmoqda
+  const [ordersErr, setOrdersErr] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  // Sidebar'dagi "Sovg'a va buyurtmalar" bo'limi uchun hisoblagich (badge).
+  const [giftCount, setGiftCount] = useState(0);
+  const [wonCount, setWonCount] = useState(0);
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
   }, [user]);
 
+  const loadOrders = async () => {
+    try {
+      const list = await dbListMyOrders();
+      setOrders(list); setOrdersErr(false);
+    } catch {
+      setOrdersErr(true); setOrders((o) => o || []);
+    }
+  };
   useEffect(() => {
-    if (!user) return;
+    if (!user) return undefined;
     let stop = false;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/orders', { credentials: 'same-origin' });
-        const data = await res.json();
-        if (!stop) setOrders(Array.isArray(data.orders) ? data.orders : []);
-      } catch { /* jim tur — kritik emas */ }
-    };
-    load();
-    const timer = setInterval(load, 5000);
+    const tick = () => { if (!stop) loadOrders(); };
+    tick();
+    const timer = setInterval(tick, 5000);
     return () => { stop = true; clearInterval(timer); };
   }, [user]);
 
   if (user === undefined || user === null) {
     return (
-      <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 pb-16"><p className="text-base-content/60">{t('Yuklanmoqda...')}</p></main>
+      <main className="mx-auto w-full max-w-[1800px] px-5 sm:px-10 lg:px-14 pt-16 pb-16">
+        <div className="vz-skel h-6 w-40"></div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-[240px_1fr]">
+          <div className="vz-skel h-64 w-full"></div>
+          <div className="space-y-3"><div className="vz-skel h-24 w-full"></div><div className="vz-skel h-40 w-full"></div></div>
+        </div>
+      </main>
     );
   }
 
@@ -3332,9 +3498,9 @@ export default function AccountPage({ refreshCatalog }) {
   if (user.bannedUntil) {
     const until = new Date(user.bannedUntil);
     return (
-      <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 pb-16">
+      <main className="mx-auto w-full max-w-[1800px] px-5 sm:px-10 lg:px-14 pt-16 pb-16">
         <div className="mx-auto max-w-lg rounded-2xl border border-error/40 bg-error/10 p-7 text-center">
-          <div className="text-3xl">{'\u26D4'}</div>
+          <div className="flex justify-center text-error"><IconWarn width={32} height={32} /></div>
           <h1 className="mt-3 text-xl font-bold">{t('Akkauntingiz vaqtincha bloklangan')}</h1>
           <p className="mt-2 text-sm text-base-content/60">
             {t("Siz auksionda g'olib chiqib, 24 soat ichida to'lamadingiz. Shu sababli akkauntingiz ")}
@@ -3363,192 +3529,178 @@ export default function AccountPage({ refreshCatalog }) {
   // Hero'da ko'rsatiladigan ism — real ma'lumot: asosiy kartaning nomi,
   // bo'lmasa email'ning @ dan oldingi qismi (hardcode emas).
   const heroName = primaryCard?.name || user.email.split('@')[0];
+  const tierAccess = effectiveAccess(primaryCard || null, user);
+  const openOrders = (orders || []).filter((o) => o.status !== 'paid' && o.kind !== 'auction_payment');
+  const activityBadge = giftCount + wonCount + openOrders.length;
+
+  // "Buyurtmalarim" — 4 holat (yuklanmoqda / xato+qayta / bo'sh / ro'yxat).
+  const ordersBlock = (
+    <section className="vz-card p-5">
+      <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconWallet /> {t('Buyurtmalarim')}</h2>
+      {orders === null && <div className="mt-3"><SkeletonRows n={2} /></div>}
+      {orders !== null && ordersErr && <div className="mt-3"><ErrorRetry onRetry={loadOrders} /></div>}
+      {orders !== null && !ordersErr && openOrders.length === 0 && (
+        <div className="mt-3 vz-empty"><span className="text-sm">{t("Ochiq buyurtmalar yo'q.")}</span><button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => navigate('/tolovlar')}>{t("To'lovlar tarixi")}</button></div>
+      )}
+      {openOrders.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {openOrders.map((o) => {
+            const st = ORDER_STATUS_LABEL[o.status] || { text: o.status, cls: 'badge-ghost' };
+            return (
+              <div key={o.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm">
+                <span className="min-w-0 break-all font-mono">nfcstore.uz/{String(o.code || '').toLowerCase()}</span>
+                <span className="text-base-content/50">{t("{n} so'm", { n: fmt(o.price) })}</span>
+                <span className={`badge ${st.cls}`}>{t(st.text)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+
+  // Kabinetning qo'shimcha bo'limlari — EditCardForm sidebar'iga qo'shiladi
+  // (bitta navigatsiya). Kartasiz foydalanuvchi uchun pastda alohida chiqadi.
+  const extraSections = [
+    {
+      id: 'tarif', label: t('Tarif / Premium'), Icon: IconCrown,
+      content: (
+        <div id="premium-panel" className="space-y-5">
+          <PremiumPanel user={user} card={primaryCard} onBecamePremium={refresh} />
+          <ReferralPanel user={user} />
+        </div>
+      ),
+    },
+    {
+      id: 'faoliyat', label: t("Sovg'a va buyurtmalar"), Icon: IconGift, badge: activityBadge,
+      content: (
+        <div className="space-y-5">
+          <GiftOffersPanel onChanged={refresh} onCount={setGiftCount} />
+          <WonAuctionsPanel onCount={setWonCount} />
+          {ordersBlock}
+        </div>
+      ),
+    },
+  ];
+  const cabinetLinks = [
+    { id: 'bildirishnomalar', label: t('Bildirishnomalar'), Icon: IconBell, onClick: () => navigate('/bildirishnomalar') },
+    { id: 'tolovlar', label: t("To'lovlar"), Icon: IconWallet, onClick: () => navigate('/tolovlar') },
+    { id: 'xabarlar', label: t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada'), Icon: IconChat, onClick: () => MESSAGING_ENABLED && navigate('/xabarlar'), disabled: !MESSAGING_ENABLED },
+    { id: 'kompaniya', label: t('Kompaniya'), Icon: IconBriefcase, onClick: openBusinessWorkspace },
+    { id: 'sozlamalar', label: t('Akkaunt sozlamalari'), Icon: IconCog, onClick: () => navigate('/sozlamalar') },
+    { id: 'support', label: t('Adminga murojaat'), Icon: IconSupport, onClick: () => setSupportOpen(true) },
+  ];
 
   return (
-    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
-      <div className="pt-10 font-mono text-xs uppercase tracking-widest text-base-content/45">
+    <main className="mx-auto w-full max-w-[1800px] overflow-x-hidden px-5 sm:px-10 lg:px-14 pb-16">
+      <div className="pt-8 font-mono text-xs uppercase tracking-widest text-base-content/45">
         {t('Kabinet')} <span className="text-base-content/25">/</span> <span className="text-base-content/80">{t('Mening profilim')}</span>
       </div>
 
-      {/* Premium Account Hero — faqat real user/card/order state, hardcode yo'q */}
-      <section className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-base-200/70 via-base-200/35 to-base-100 p-6 sm:p-8">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-accent/40 bg-accent/10 text-2xl font-black text-accent">
-                {primaryCard?.avatarUrl
-                  ? <img src={primaryCard.avatarUrl} alt="" className="h-full w-full object-cover" />
-                  : heroName.charAt(0).toUpperCase()}
+      {/* Ixcham identifikatsiya paneli — faqat real user/card state. Navigatsiya
+          bu yerda EMAS: bitta sidebar (EditCardForm) hamma bo'limlarni beradi. */}
+      <section className="vz-card mt-4 p-5 sm:p-6">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-accent/40 bg-accent/10 text-2xl font-black text-accent">
+              {primaryCard?.avatarUrl
+                ? <img src={primaryCard.avatarUrl} alt="" className="h-full w-full object-cover" />
+                : heroName.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-2xl font-semibold">{heroName}</h1>
+              <p className="truncate text-sm text-base-content/55">{user.email}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="vz-badge vz-badge--ok"><span className="inline-block h-1.5 w-1.5 rounded-full bg-current"></span> {t('Faol')}</span>
+                <span className="vz-badge vz-badge--gold"><IconCrown width={12} height={12} /> {t(TIER_LABEL[tierAccess] || tierAccess)}</span>
+                {primaryCard && <span className="vz-badge vz-badge--muted font-mono">{primaryCard.code} · {t('ASOSIY ID')}</span>}
+                {primaryCard && <span className="vz-badge vz-badge--muted">{t(CARD_TYPE_LABEL[primaryCard.profileType] || 'Shaxsiy')}</span>}
+                <span className="vz-badge vz-badge--muted">{t("{n} ta raqamli tashrif qog'ozi", { n: myCards.length })}</span>
               </div>
-              <div className="min-w-0">
-                <h1 className="truncate text-2xl font-bold">{heroName}</h1>
-                <p className="truncate text-sm text-base-content/55">{user.email}</p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <span className="badge badge-success badge-sm gap-1">{HERO_DOT} {t('Faol')}</span>
-                  {user.isPremium && <span className="badge badge-warning badge-sm gap-1">{HERO_CROWN} {t('Premium')}</span>}
-                </div>
-              </div>
-            </div>
-
-            <p className="mt-3 text-sm text-base-content/50">
-              {t("{n} ta raqamli tashrif qog'ozi", { n: myCards.length })}
-            </p>
-
-            <div className="mt-3">
-              {primaryCard ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-xs font-bold text-accent">
-                  {primaryCard.code} · {t('ASOSIY ID')}
-                </span>
-              ) : (
-                <span className="text-xs text-base-content/40">{t('Asosiy ID belgilanmagan')}</span>
-              )}
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button
-                className="btn btn-accent btn-sm min-h-11"
-                disabled={!primaryCard}
-                onClick={() => {
-                  if (!primaryCard) return;
-                  setSelectedCode(primaryCard.code);
-                  document.getElementById('mening-profilim')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                {HERO_EDIT} {t('Profilni tahrirlash')}
-              </button>
-              <button
-                className="btn btn-outline btn-sm min-h-11"
-                disabled={!primaryCard}
-                onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())}
-              >
-                {HERO_EYE} {t("Profilni ko'rish")}
-              </button>
-              <button className="btn btn-outline btn-sm min-h-11" onClick={logout}>{t('Chiqish')}</button>
-            </div>
-            <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-              <button className="cursor-pointer text-base-content/50 hover:text-base-content hover:underline" onClick={() => navigate('/sozlamalar')}>{'⚙️'} {t('Sozlamalar')}</button>
-              <button className="cursor-pointer text-base-content/50 hover:text-base-content hover:underline" onClick={() => setSupportOpen(true)}>{'✉️'} {t('Adminga murojaat')}</button>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              [t('Profillar'), myCards.length, HERO_PROFILES],
-              [t('Primary ID'), primaryCard?.code || '—', HERO_SHIELD],
-              [t('Buyurtmalar'), orders.length, HERO_CART],
-              [t('Tarif'), user.isPremium ? t('Premium') : t('Bepul'), HERO_CROWN],
-            ].map(([label, value, icon]) => (
-              <div key={label} className="w-36 rounded-2xl border border-white/10 bg-base-100/40 p-4">
-                <div className="text-lg leading-none">{icon}</div>
-                <div className="mt-2 text-xs text-base-content/50">{label}</div>
-                <div className="mt-0.5 truncate font-mono text-lg font-bold">{value}</div>
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-2 md:shrink-0">
+            <button
+              className="btn btn-outline-gold btn-sm min-h-11"
+              disabled={!primaryCard}
+              onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())}
+            >
+              <IconEye width={14} height={14} /> {t("Profilni ko'rish")}
+            </button>
+            <button className="btn btn-ghost-vz btn-sm min-h-11" onClick={logout}>{t('Chiqish')}</button>
           </div>
         </div>
       </section>
-
-      <nav className="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-gradient-to-r from-base-200/70 via-base-200/50 to-base-200/70 p-2" aria-label={t('Kabinet bo‘limlari')}>
-        <div className="flex min-w-max gap-1.5">
-          <button className="btn btn-primary min-h-12 flex-1 gap-1.5 font-semibold">
-            <span className="text-base leading-none">{'\u{1F3E0}'}</span> {t('Boshqaruv')}
-          </button>
-          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => primaryCard && navigate('/' + primaryCard.code.toLowerCase())} disabled={!primaryCard}>
-            <span className="text-base leading-none">{'\u{1F464}'}</span> {t('Profil')}
-          </button>
-          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={openBusinessWorkspace}>
-            <span className="text-base leading-none">{'\u{1F3E2}'}</span> {t('Kompaniya')}
-          </button>
-          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => navigate('/bildirishnomalar')}>
-            <span className="text-base leading-none">{'\u{1F514}'}</span> {t('Bildirishnomalar')}
-          </button>
-          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => MESSAGING_ENABLED && navigate('/xabarlar')} disabled={!MESSAGING_ENABLED}>
-            <span className="text-base leading-none">{'\u{1F4AC}'}</span> {t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada')}
-          </button>
-          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => navigate('/tolovlar')}>
-            <span className="text-base leading-none">{'\u{1F4B3}'}</span> {t("To'lovlar")}
-          </button>
-          <button className="btn btn-ghost min-h-12 flex-1 gap-1.5 font-semibold" onClick={() => navigate('/sozlamalar')}>
-            <span className="text-base leading-none">{'⚙️'}</span> {t('Sozlamalar')}
-          </button>
-        </div>
-      </nav>
 
       {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
 
-      {/* Ixcham tarif/status strip — katta banner o'rniga */}
-      <section className="pt-6" id="premium-panel">
-        <PremiumPanel user={user} onBecamePremium={refresh} />
-      </section>
-
-      {/* "Mening raqamli tashrif qog'ozilarim" katta karta panjarasi olib
-          tashlandi — "My IDs" bo'limida (EditCardForm sidebar) xuddi shu
-          kartalar ixcham ro'yxatda bor. Bu yerda faqat tahrirlash formasi
-          (yoki bo'sh holat xabari) qoladi; "Profilni tahrirlash" tezkor
-          tugmasi (yuqorida) shu yerga ("mening-profilim") olib keladi. */}
-      <section className="pt-8" id="mening-profilim">
+      <section id="mening-profilim">
         {myCards.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
-            {t("Hozircha raqamli tashrif qog'ozingiz yo'q.")}{' '}
-            <button className="cursor-pointer underline underline-offset-2 hover:text-base-content" onClick={() => navigate('/')}>
-              {t('Bosh sahifada band qilish')} &rarr;
-            </button>
+          <div className="mt-6 space-y-6">
+            <div className="vz-empty">
+              <span className="text-base-content/40"><IconIdCard width={28} height={28} /></span>
+              <span className="text-sm">{t("Hozircha raqamli tashrif qog'ozingiz yo'q.")}</span>
+              <button className="btn btn-gold btn-sm min-h-11" onClick={() => navigate('/')}>{t('Bosh sahifada band qilish')} &rarr;</button>
+            </div>
+            <div id="premium-panel"><PremiumPanel user={user} card={null} onBecamePremium={refresh} /></div>
+            <GiftOffersPanel onChanged={refresh} onCount={setGiftCount} />
+            <WonAuctionsPanel onCount={setWonCount} />
+            {ordersBlock}
+            <ReferralPanel user={user} />
           </div>
         ) : (
           <div id="kartani-tahrirlash">
               {selectedCard && (
                 selectedCard.profileType === 'business' ? (
-                  <div className="mt-5 overflow-hidden rounded-3xl border border-amber-400/25 bg-gradient-to-br from-amber-400/10 via-base-200 to-base-100 p-6 shadow-xl">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">ESKI BUSINESS PROFIL · NFC ID {selectedCard.code}</div>
-                        <h3 className="mt-2 text-xl font-black">{selectedCard.name || selectedCard.code}</h3>
-                        <p className="mt-1 max-w-xl text-sm leading-relaxed text-base-content/60">
-                          {t('Bu NFC ID o‘z holicha qoladi. Kompaniya uchun faqat harflardan iborat alohida Company ID oching; admin tasdig‘idan keyin uning NFC va public profili mustaqil ishlaydi.')}
-                        </p>
+                  <div className="mt-6 space-y-6">
+                    <div className="vz-card border-accent/30 p-6">
+                      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="vz-kicker">{t('Eski biznes profil')} · NFC ID {selectedCard.code}</div>
+                          <h3 className="mt-2 font-display text-xl font-semibold">{selectedCard.name || selectedCard.code}</h3>
+                          <p className="mt-1 max-w-xl text-sm leading-relaxed text-base-content/60">
+                            {t('Bu NFC ID o‘z holicha qoladi. Kompaniya uchun faqat harflardan iborat alohida Company ID oching; admin tasdig‘idan keyin uning NFC va public profili mustaqil ishlaydi.')}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => navigate('/' + selectedCard.code)}>
+                            <IconEye width={14} height={14} /> {t('Profilni ko‘rish')}
+                          </button>
+                          <button type="button" className="btn btn-gold btn-sm min-h-11" onClick={() => navigate('/company/create?from=' + selectedCard.code.toLowerCase())}>
+                            {t('Company ID ochish')} &rarr;
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex shrink-0 flex-wrap gap-2">
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/' + selectedCard.code)}>
-                          {t('Profilni ko‘rish')}
-                        </button>
-                        <button type="button" className="btn btn-warning btn-sm" onClick={() => navigate('/company/create?from=' + selectedCard.code.toLowerCase())}>
-                          {t('Company ID ochish')} →
-                        </button>
-                      </div>
+                      {myCards.length > 1 && (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[color:var(--vz-line)] pt-4 text-sm">
+                          <span className="text-base-content/50">{t("Boshqa ID'ga o'tish:")}</span>
+                          {myCards.filter((c) => c.code !== selectedCard.code).map((c) => (
+                            <button key={c.code} type="button" className="btn btn-ghost-vz btn-xs min-h-9 font-mono" onClick={() => setSelectedCode(c.code)}>{c.code}</button>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                    <div id="premium-panel"><PremiumPanel user={user} card={selectedCard} onBecamePremium={refresh} /></div>
+                    <GiftOffersPanel onChanged={refresh} onCount={setGiftCount} />
+                    <WonAuctionsPanel onCount={setWonCount} />
+                    {ordersBlock}
+                    <ReferralPanel user={user} />
                   </div>
                 ) : (
-                  <EditCardForm key={selectedCard.code} card={selectedCard} onSaved={onSaved} myCards={myCards} onSelectCard={setSelectedCode} />
+                  <EditCardForm
+                    key={selectedCard.code}
+                    card={selectedCard}
+                    onSaved={onSaved}
+                    myCards={myCards}
+                    onSelectCard={setSelectedCode}
+                    extraSections={extraSections}
+                    cabinetLinks={cabinetLinks}
+                  />
                 )
               )}
             </div>
         )}
       </section>
-
-      <GiftOffersPanel onChanged={refresh} />
-
-      <ReferralPanel user={user} />
-
-      <WonAuctionsPanel />
-
-      {orders.filter((o) => o.status !== 'paid' && o.kind !== 'auction_payment').length > 0 && (
-        <section className="pt-8">
-          <h2 className="text-xl font-bold">{t('Buyurtmalarim')}</h2>
-          <div className="mt-3 space-y-2">
-            {orders.filter((o) => o.status !== 'paid' && o.kind !== 'auction_payment').map((o) => {
-              const st = ORDER_STATUS_LABEL[o.status] || { text: o.status, cls: 'badge-ghost' };
-              return (
-                <div key={o.id} className="flex items-center justify-between rounded-xl border border-white/10 px-4 py-3 text-sm">
-                  <span className="font-mono">nfcstore.uz/{o.code.toLowerCase()}</span>
-                  <span className="text-base-content/50">{t("{n} so'm", { n: fmt(o.price) })}</span>
-                  <span className={`badge ${st.cls}`}>{t(st.text)}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
     </main>
   );
 }

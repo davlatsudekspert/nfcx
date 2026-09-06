@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { dbRequestPasswordCode, dbChangePassword, dbRequestPhoneChangeCode, dbConfirmPhoneChange } from '../lib/db.js';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import CardTools from '../components/CardTools.jsx';
+import { IconUser, IconShield, IconPhone } from '../components/Icons.jsx';
 
 // Profildagi Sozlamalar sahifasi — o'z ma'lumotlarini ko'rish va
 // Telegram orqali kelgan bir martalik kod bilan parolni o'zgartirish.
@@ -30,7 +31,12 @@ export default function SettingsPage() {
   const [phoneMsg, setPhoneMsg] = useState(null);
 
   if (user === undefined) {
-    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 text-center text-base-content/45">{t('Yuklanmoqda...')}</main>;
+    return (
+      <main className="mx-auto w-full max-w-[1800px] px-5 sm:px-10 lg:px-14 pt-16" aria-busy="true">
+        <div className="vz-skel h-6 w-40"></div>
+        <div className="mt-6 max-w-lg space-y-3"><div className="vz-skel h-40 w-full"></div><div className="vz-skel h-28 w-full"></div></div>
+      </main>
+    );
   }
   if (user === null) {
     navigate('/login', { replace: true });
@@ -105,32 +111,29 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
+    <main className="mx-auto w-full max-w-[1800px] overflow-x-hidden px-5 sm:px-10 lg:px-14 pb-16">
       <BackToCabinet />
       <section className="pt-6">
-        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-          {t('Sozlamalar')}
-        </span>
-        <h1 className="mt-4 text-3xl font-extrabold tracking-tight">{t('Akkaunt sozlamalari')}</h1>
+        <span className="vz-kicker">{t('Sozlamalar')}</span>
+        <h1 className="vz-h2 mt-3">{t('Akkaunt sozlamalari')}</h1>
       </section>
 
       <section className="mt-8 max-w-lg">
-        <h2 className="text-lg font-bold">{t("Shaxsiy ma'lumotlar")}</h2>
-        <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-base-200/50 p-5">
-          <div className="flex items-center justify-between border-b border-white/5 pb-3 text-sm">
+        <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconUser /> {t("Shaxsiy ma'lumotlar")}</h2>
+        <div className="vz-card mt-4 space-y-3 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-white/5 pb-3 text-sm">
             <span className="text-base-content/55">{t('Email (login)')}</span>
-            <span className="font-semibold">{user.email}</span>
+            <span className="min-w-0 break-all font-semibold">{user.email}</span>
           </div>
-          <div className="flex items-center justify-between border-b border-white/5 pb-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-white/5 pb-3 text-sm">
             <span className="text-base-content/55">{t('Telefon raqamingiz')}</span>
             <span className="font-mono font-semibold">{user.phone || '—'}</span>
           </div>
-          <div className="flex items-center justify-between border-b border-white/5 pb-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-white/5 pb-3 text-sm">
             <span className="text-base-content/55">{t("Raqamli tashrif qog'ozlarim")}</span>
-            <span className="font-mono text-xs">{myCards.map((c) => c.code).join(', ') || '—'}</span>
+            <span className="min-w-0 break-words font-mono text-xs">{myCards.map((c) => c.code).join(', ') || '—'}</span>
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
             <span className="text-base-content/55">{t('Promokodim')}</span>
             <span className="font-mono">{user.promoCode || '—'}</span>
           </div>
@@ -140,16 +143,17 @@ export default function SettingsPage() {
 
       {myCards.length > 0 && (
         <section className="mt-10 max-w-xl">
-          <h2 className="text-lg font-bold">{t('Statistika, lidlar, fayllar va video')}</h2>
+          <h2 className="font-display text-lg font-semibold">{t('Statistika, lidlar, fayllar va video')}</h2>
           <p className="mt-1 text-sm text-base-content/50">{t('Profilingiz bo‘yicha hisobotlar va yuklangan kontent.')}</p>
           {myCards.length > 1 && (
             <select
               value={toolsCode || myCards[0].code}
               onChange={(e) => setToolsCode(e.target.value)}
-              className="select select-bordered select-sm mt-4 w-full max-w-xs bg-base-100 font-mono"
+              className="select select-bordered select-sm mt-4 min-h-11 w-full max-w-xs bg-base-100 font-mono"
+              aria-label={t('NFC ID tanlash')}
             >
               {myCards.map((c) => (
-                <option key={c.code} value={c.code}>{c.code}{c.isPrimary ? '  ★' : ''}</option>
+                <option key={c.code} value={c.code}>{c.code}{c.isPrimary ? ` — ${t('ASOSIY')}` : ''}</option>
               ))}
             </select>
           )}
@@ -160,12 +164,12 @@ export default function SettingsPage() {
       )}
 
       <section className="mt-10 max-w-lg">
-        <h2 className="text-lg font-bold">{t("Parolni o'zgartirish")}</h2>
+        <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconShield /> {t("Parolni o'zgartirish")}</h2>
         <p className="mt-1 text-sm text-base-content/50">{t('Xavfsizlik uchun parol Telegram botingizga yuboriladigan bir martalik kod bilan tasdiqlanadi.')}</p>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-base-200/50 p-5">
+        <div className="vz-card mt-4 p-5">
           {step === 'idle' ? (
-            <button className="btn btn-primary btn-sm" onClick={requestCode} disabled={busy}>
+            <button className="btn btn-gold btn-sm min-h-11" onClick={requestCode} disabled={busy}>
               {busy ? <span className="loading loading-spinner loading-xs"></span> : t("Telegram'ga kod yuborish")}
             </button>
           ) : (
@@ -174,7 +178,7 @@ export default function SettingsPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder={t("Telegram'dan kelgan 6 xonali kod")}
-                className="input input-bordered input-sm w-full bg-base-100 font-mono tracking-widest"
+                className="input input-bordered input-sm min-h-11 w-full bg-base-100 font-mono tracking-widest"
                 maxLength={6}
               />
               <input
@@ -182,20 +186,20 @@ export default function SettingsPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={t('Yangi parol (kamida 6 belgi)')}
-                className="input input-bordered input-sm w-full bg-base-100"
+                className="input input-bordered input-sm min-h-11 w-full bg-base-100"
               />
               <input
                 type="password"
                 value={newPassword2}
                 onChange={(e) => setNewPassword2(e.target.value)}
                 placeholder={t('Yangi parolni takrorlang')}
-                className="input input-bordered input-sm w-full bg-base-100"
+                className="input input-bordered input-sm min-h-11 w-full bg-base-100"
               />
-              <div className="flex gap-2">
-                <button className="btn btn-primary btn-sm flex-1" onClick={submitChange} disabled={busy}>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn btn-gold btn-sm min-h-11 flex-1" onClick={submitChange} disabled={busy}>
                   {busy ? <span className="loading loading-spinner loading-xs"></span> : t("Parolni o'zgartirish")}
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={requestCode} disabled={busy}>{t('Kodni qayta yuborish')}</button>
+                <button className="btn btn-ghost btn-sm min-h-11" onClick={requestCode} disabled={busy}>{t('Kodni qayta yuborish')}</button>
               </div>
             </div>
           )}
@@ -204,10 +208,10 @@ export default function SettingsPage() {
       </section>
 
       <section className="mt-10 max-w-lg">
-        <h2 className="text-lg font-bold">{t('Telefon raqamini o‘zgartirish')}</h2>
+        <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconPhone /> {t('Telefon raqamini o‘zgartirish')}</h2>
         <p className="mt-1 text-sm text-base-content/50">{t('Yangi raqamni kiriting, so‘ng shu raqam botga ulangan bo‘lishi kerak (avval botga "Kontaktni ulashish" orqali yozing).')}</p>
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-base-200/50 p-5">
+        <div className="vz-card mt-4 p-5">
           {phoneStep === 'idle' ? (
             <div className="space-y-3">
               <input
@@ -215,9 +219,9 @@ export default function SettingsPage() {
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
                 placeholder="+998901234567"
-                className="input input-bordered input-sm w-full bg-base-100"
+                className="input input-bordered input-sm min-h-11 w-full bg-base-100"
               />
-              <button className="btn btn-primary btn-sm" onClick={requestPhoneCode} disabled={phoneBusy}>
+              <button className="btn btn-gold btn-sm min-h-11" onClick={requestPhoneCode} disabled={phoneBusy}>
                 {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Telegram'ga kod yuborish")}
               </button>
             </div>
@@ -228,14 +232,14 @@ export default function SettingsPage() {
                 value={phoneCode}
                 onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder={t("Telegram'dan kelgan 6 xonali kod")}
-                className="input input-bordered input-sm w-full bg-base-100 font-mono tracking-widest"
+                className="input input-bordered input-sm min-h-11 w-full bg-base-100 font-mono tracking-widest"
                 maxLength={6}
               />
-              <div className="flex gap-2">
-                <button className="btn btn-primary btn-sm flex-1" onClick={submitPhoneChange} disabled={phoneBusy}>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn btn-gold btn-sm min-h-11 flex-1" onClick={submitPhoneChange} disabled={phoneBusy}>
                   {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Telefon raqamini o‘zgartirish')}
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={requestPhoneCode} disabled={phoneBusy}>{t('Kodni qayta yuborish')}</button>
+                <button className="btn btn-ghost btn-sm min-h-11" onClick={requestPhoneCode} disabled={phoneBusy}>{t('Kodni qayta yuborish')}</button>
               </div>
             </div>
           )}

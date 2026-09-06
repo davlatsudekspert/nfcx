@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { dbListPayments, dbListWonPendingAuctions } from '../lib/db.js';
+import { dbListPayments, dbListWonPendingAuctions, dbListMyOrders } from '../lib/db.js';
 import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { fmt, dateTime } from '../lib/format.js';
@@ -7,6 +7,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import BackToCabinet from '../components/BackToCabinet.jsx';
+import { IconBag } from '../components/Icons.jsx';
 
 const KIND_LABEL = {
   card_purchase: "Raqamli tashrif qog'ozi xaridi",
@@ -27,38 +28,55 @@ export default function PaymentsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const PAYMENTS_ENABLED = usePaymentsEnabled();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(null);       // null = yuklanmoqda
+  const [dataErr, setDataErr] = useState(false);
   const [orders, setOrders] = useState([]);
   const [wonAuctions, setWonAuctions] = useState([]);
+  const [pendingErr, setPendingErr] = useState(false);
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
   }, [user]);
 
+  const loadHistory = () => {
+    setDataErr(false); setData(null);
+    dbListPayments()
+      .then((d) => setData({ payments: Array.isArray(d?.payments) ? d.payments : [], pendingPayout: Number(d?.pendingPayout || 0) }))
+      .catch(() => { setData({ payments: [], pendingPayout: 0 }); setDataErr(true); });
+  };
+  const loadPending = () => {
+    setPendingErr(false);
+    dbListMyOrders().then(setOrders).catch(() => { setOrders([]); setPendingErr(true); });
+    dbListWonPendingAuctions().then((rows) => setWonAuctions(Array.isArray(rows) ? rows : [])).catch(() => { setWonAuctions([]); setPendingErr(true); });
+  };
   useEffect(() => {
     if (!user) return;
-    dbListPayments().then(setData).catch(() => setData({ payments: [], pendingPayout: 0 }));
-    fetch('/api/orders', { credentials: 'same-origin' })
-      .then((r) => r.json()).then((d) => setOrders(Array.isArray(d.orders) ? d.orders : []))
-      .catch(() => setOrders([]));
-    dbListWonPendingAuctions().then(setWonAuctions).catch(() => setWonAuctions([]));
+    loadHistory();
+    loadPending();
   }, [user]);
 
   if (user === undefined || user === null) {
-    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 text-center text-base-content/45">{t('Yuklanmoqda...')}</main>;
+    return (
+      <main className="mx-auto w-full max-w-[900px] px-5 sm:px-10 lg:px-14 pt-16" aria-busy="true">
+        <div className="vz-skel h-6 w-40"></div>
+        <div className="mt-6 grid grid-cols-2 gap-3"><div className="vz-skel h-20 w-full"></div><div className="vz-skel h-20 w-full"></div></div>
+        <div className="mt-6 vz-skel h-40 w-full"></div>
+      </main>
+    );
   }
 
   const pendingOrders = orders.filter((o) => o.status === 'pending');
   const hasPending = pendingOrders.length > 0 || wonAuctions.length > 0;
   const paidTotal = (data?.payments || []).filter((p) => p.status === 'paid').reduce((s, p) => s + Number(p.price || 0), 0);
 
-  const card = 'rounded-2xl border border-white/10 bg-base-200/40 p-5';
+  const card = 'vz-card min-w-0 p-5';
 
   return (
-    <main className="mx-auto w-full max-w-[900px] px-6 sm:px-10 lg:px-14 pb-16">
+    <main className="mx-auto w-full max-w-[900px] overflow-x-hidden px-5 sm:px-10 lg:px-14 pb-16">
       <BackToCabinet />
-      <h1 className="pt-4 text-2xl font-bold">{t("To'lov")}</h1>
-      <p className="mt-2 text-sm text-base-content/55">{t("To'lov usuli, kutilayotgan to'lovlar va barcha tranzaksiyalar tarixi.")}</p>
+      <span className="mt-4 block"><span className="vz-kicker">{t('Kabinet')}</span></span>
+      <h1 className="vz-h2 mt-3 flex items-center gap-2"><IconBag width={24} height={24} /> {t("To'lov")}</h1>
+      <p className="mt-3 text-sm text-base-content/55">{t("To'lov usuli, kutilayotgan to'lovlar va barcha tranzaksiyalar tarixi.")}</p>
 
       {/* ── To'lov usuli ── */}
       <section className="mt-6">
@@ -67,7 +85,8 @@ export default function PaymentsPage() {
           <div className={card}>
             <div className="flex items-center gap-2.5">
               <span className="rounded-lg bg-[#33c8b6] px-2.5 py-1 text-sm font-extrabold text-white">Payme</span>
-              <span className="badge badge-success badge-sm">{t('Faol')}</span>
+              <span className="vz-badge vz-badge--ok">{t('Faol')}</span>
+              <span className="vz-badge vz-badge--muted">{t('Sinov (sandbox)')}</span>
             </div>
             <p className="mt-2 text-sm text-base-content/55">{t("To'lovlar Payme orqali xavfsiz amalga oshiriladi.")}</p>
           </div>
@@ -102,6 +121,14 @@ export default function PaymentsPage() {
       )}
 
       {/* ── Kutilayotgan to'lovlar ── */}
+      {pendingErr && (
+        <section className="mt-6">
+          <div className="vz-empty !border-error/40">
+            <div className="text-sm text-base-content/70">{t("Kutilayotgan to'lovlarni yuklab bo'lmadi.")}</div>
+            <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={loadPending}>{t('Qayta urinish')}</button>
+          </div>
+        </section>
+      )}
       {hasPending && (
         <section className="mt-6">
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-base-content/45">{t("Kutilayotgan to'lovlar")}</h2>
@@ -113,8 +140,8 @@ export default function PaymentsPage() {
                   <div className="text-xs text-base-content/55">{t("{n} so'm", { n: fmt(a.currentPrice) })}</div>
                 </div>
                 {PAYMENTS_ENABLED
-                  ? <button className="btn btn-warning btn-xs" onClick={() => navigate('/auksion/' + a.id)}>{t("To'lash")}</button>
-                  : <button className="btn btn-xs btn-disabled !cursor-not-allowed opacity-60" disabled>{t("To'lash")}</button>}
+                  ? <button className="btn btn-gold btn-xs min-h-11" onClick={() => navigate('/auksion/' + a.id)}>{t("To'lash")}</button>
+                  : <button className="btn btn-xs min-h-11 btn-disabled !cursor-not-allowed opacity-60" disabled>{t("To'lash")}</button>}
               </div>
             ))}
             {pendingOrders.map((o) => (
@@ -134,16 +161,23 @@ export default function PaymentsPage() {
       {/* ── Tranzaksiya tarixi ── */}
       <section className="mt-6">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-base-content/45">{t('Tranzaksiya tarixi')}</h2>
-        <div className="overflow-x-auto rounded-2xl border border-white/10">
+        {!data && (
+          <div className="space-y-2" aria-busy="true"><div className="vz-skel h-10 w-full"></div><div className="vz-skel h-10 w-full"></div><div className="vz-skel h-10 w-full"></div></div>
+        )}
+        {data && dataErr && (
+          <div className="vz-empty !border-error/40">
+            <div className="text-sm text-base-content/70">{t("Tranzaksiya tarixini yuklab bo'lmadi.")}</div>
+            <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={loadHistory}>{t('Qayta urinish')}</button>
+          </div>
+        )}
+        {data && !dataErr && data.payments.length === 0 && (
+          <div className="vz-empty"><span className="text-sm">{t("Hozircha to'lovlar yo'q.")}</span></div>
+        )}
+        {data && !dataErr && data.payments.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-[color:var(--vz-line)]">
           <table className="table table-sm">
             <thead><tr><th>{t('Turi')}</th><th>{t('Kod')}</th><th>{t('Summa')}</th><th>{t('Holat')}</th><th>{t('Sana')}</th></tr></thead>
             <tbody>
-              {!data && (
-                <tr><td colSpan={5} className="py-8 text-center text-base-content/45">{t('Yuklanmoqda...')}</td></tr>
-              )}
-              {data && data.payments.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-base-content/45">{t("Hozircha to'lovlar yo'q.")}</td></tr>
-              )}
               {data && data.payments.map((p) => {
                 const st = STATUS_LABEL[p.status] || { text: p.status, cls: 'badge-ghost' };
                 return (
@@ -159,6 +193,7 @@ export default function PaymentsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </section>
     </main>
   );

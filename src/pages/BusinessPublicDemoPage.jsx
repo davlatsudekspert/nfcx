@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 
+// Namuna (demo) ma'lumotlari — matnlar t() orqali tarjima qilinadi, tuzilma
+// va data-flow o'zgarmaydi (BusinessPublicProfile bir xil record oladi).
 const record = {
   code: 'ELITE',
   name: 'ELITE QURILISH',
@@ -55,7 +58,20 @@ const gallery = [
   { id: 4, imageUrl: '/business-assets/construction-hero.jpg', caption: 'Tijorat arxitekturasi' },
 ];
 
+// Demo matnlarini joriy tilga o'giradi (foydalanuvchi kontenti emas — namuna).
+function localize(t) {
+  const rec = { ...record, role: t(record.role), about: t(record.about), address: t(record.address), city: t(record.city) };
+  const svc = services.map((group) => ({
+    ...group,
+    name: t(group.name),
+    items: group.items.map((item) => ({ ...item, name: t(item.name), description: t(item.description) })),
+  }));
+  const gal = gallery.map((g) => ({ ...g, caption: t(g.caption) }));
+  return { rec, svc, gal };
+}
+
 export default function BusinessPublicDemoPage() {
-  const { t } = useLanguage();
-  return <BusinessPublicProfile record={record} services={services} gallery={gallery} t={t} />;
+  const { t, lang } = useLanguage();
+  const { rec, svc, gal } = useMemo(() => localize(t), [t, lang]);
+  return <BusinessPublicProfile record={rec} services={svc} gallery={gal} t={t} />;
 }

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NFCSTORE — dizayn takliflari galereyasi</title>
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#0f0f10;color:#eee;padding:24px}
+h1{font-size:22px;margin:0 0 6px}p{color:#aaa;margin:0 0 20px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.v{background:#18181a;border:1px solid #2a2a2e;border-radius:12px;padding:16px}
+.v h2{font-size:16px;margin:0 0 8px}.v a{color:#f0cf7a;display:inline-block;margin:2px 10px 2px 0;font-size:14px}
+.v small{color:#888;display:block;margin-top:8px}
+.s{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.s a{font-size:12px;color:#9ad;margin:0}
+</style>
+</head>
+<body>
+<h1>NFCSTORE — 4 ta vizual dizayn taklifi</h1>
+<p>Har bir variant 9 ekranni ko'rsatadi. Til: <code>?lang=uz|ru|en</code>, bitta ekran: <code>?screen=home</code>. Screenshotlar <code>screenshots/</code> papkasida (tools/screenshot.mjs bilan qayta olinadi).</p>
+<div class="grid" id="g"></div>
+<script>
+const V=[['v1-black-gold','1 · Black & Gold Prestige','Serif, oltin, karta-birinchi hero, sidebar dashboard'],['v2-platinum-executive','2 · Platinum Executive','Korporativ, split hero, rail sidebar, mobil bottom-tab'],['v3-midnight-digital','3 · Midnight Digital','Grid+glow, pill nav, command-bar dashboard, mobil bottom-tab'],['v4-clean-luxury','4 · Clean Luxury','Yorug' sahifa, qorong'i hero paneli, top-tab dashboard']];
+const S=['home','profile','dashboard','company','company-public','admin','payme','news','components'];
+document.getElementById('g').innerHTML=V.map(([d,n,s])=>`<div class="v"><h2>${n}</h2><a href="${d}/index.html">UZ</a><a href="${d}/index.html?lang=ru">RU</a><a href="${d}/index.html?lang=en">EN</a><small>${s}</small><div class="s">${S.map(x=>`<a href="${d}/index.html?screen=${x}">${x}</a>`).join('')}</div></div>`).join('');
+</script>
+</body>
+</html>

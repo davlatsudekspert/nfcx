@@ -10,9 +10,19 @@ import PaymeReadyBadge from './PaymeReadyBadge.jsx';
 import TelegramChannelCTA from './TelegramChannelCTA.jsx';
 const CardDesignerPage = lazy(() => import('../pages/CardDesignerPage.jsx'));
 
-// Diqqat: haqiqiy bot username'ingizga almashtiring (masalan @NFCStoreBot).
-const BOT_USERNAME = 'nfcsalebot';
-const BOT_LINK = `https://t.me/${BOT_USERNAME}`;
+// Bot username backend'dan (GET /api/telegram/bot → env.TELEGRAM_BOT_USERNAME)
+// olinadi; javob kelmasa eski standart qiymat ishlatiladi.
+const DEFAULT_BOT_USERNAME = 'nfcsalebot';
+let botUsernameCache = null;
+async function fetchBotUsername() {
+  if (botUsernameCache) return botUsernameCache;
+  try {
+    const r = await fetch('/api/telegram/bot');
+    const d = r.ok ? await r.json() : null;
+    botUsernameCache = String(d?.username || '').replace(/^@/, '') || DEFAULT_BOT_USERNAME;
+  } catch { botUsernameCache = DEFAULT_BOT_USERNAME; }
+  return botUsernameCache;
+}
 
 const PHYSICAL_CARD_FEE = 200_000;
 
@@ -40,6 +50,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [shippingAddress, setShippingAddress] = useState('');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [botUsername, setBotUsername] = useState(botUsernameCache || DEFAULT_BOT_USERNAME);
+  useEffect(() => { let on = true; fetchBotUsername().then((u) => { if (on) setBotUsername(u); }); return () => { on = false; }; }, []);
+  const BOT_LINK = `https://t.me/${botUsername}`;
   // To'lov bosqichi: buyurtma yaratilgach shu yerga o'tamiz.
   const [order, setOrder] = useState(null); // { orderId, payLink, code, price }
   const pollRef = useRef(null);
@@ -157,24 +170,30 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   }, [order]);
 
   const field = 'form-control';
-  const inp = 'input input-bordered input-sm mt-1 w-full bg-base-100';
+  const inp = 'vz-input mt-1 w-full';
+  // Payme sandbox (test.paycom.uz) — foydalanuvchiga bu test rejimi ekani ko'rsatiladi.
+  const payIsSandbox = !!order?.payLink && /test\.paycom\.uz/i.test(order.payLink);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="flex min-h-full items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`relative my-8 w-full rounded-2xl border border-white/10 bg-base-200 shadow-2xl transition-all ${showDesigner ? 'max-w-3xl' : 'max-w-lg'}`}>
-        <button className="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" onClick={onClose}>&times;</button>
+      <div className={`vz-card relative my-8 w-full transition-all ${showDesigner ? 'max-w-3xl' : 'max-w-lg'}`}>
+        <button className="btn btn-ghost btn-circle absolute right-2 top-2 h-11 min-h-11 w-11 text-xl" onClick={onClose} aria-label={t('Yopish')}>&times;</button>
         {order ? (
           <div className="p-6">
-            <h3 className="text-lg font-bold">{t("To'lovni yakunlang")}</h3>
+            <span className="vz-kicker">{t('Payme')}</span>
+            <h3 className="font-display mt-1 text-2xl font-semibold">{t("To'lovni yakunlang")}</h3>
             <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
             <p className="mt-4 text-sm leading-relaxed text-base-content/70">
               {t("Raqamli tashrif qog'ozi {price} lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.", { price: fmt(order.price) + " so'm" })}
             </p>
             {PAYMENTS_ENABLED ? (
               <>
-                <div className="mt-4 flex justify-center"><PaymeReadyBadge /></div>
-                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary mt-4 w-full">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <PaymeReadyBadge />
+                  {payIsSandbox && <span className="vz-badge vz-badge--warn">{t('Test rejimi')}</span>}
+                </div>
+                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold mt-4 w-full">
                   {t("To'lash — {n} so'm", { n: fmt(order.price) })}
                 </a>
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
@@ -199,7 +218,8 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           </div>
         ) : (
         <div className="p-6">
-          <h3 className="text-lg font-bold">{t("Raqamli tashrif qog'ozini band qilish")}</h3>
+          <span className="vz-kicker">{t('NFC ID')}</span>
+          <h3 className="font-display mt-1 text-2xl font-semibold">{t("Raqamli tashrif qog'ozini band qilish")}</h3>
           <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
 
           <div className="mt-5 max-h-[52vh] space-y-3 overflow-y-auto pr-1">
@@ -215,7 +235,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
               <span className="text-xs font-semibold text-base-content/70">{t('Avatar rasm havolasi (ixtiyoriy)')}</span>
               <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." className={inp} />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={field}>
                 <span className="text-xs font-semibold text-base-content/70">Telegram</span>
                 <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username" className={inp} />
@@ -225,7 +245,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 XX XXX XX XX" className={inp} />
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={field}>
                 <span className="text-xs font-semibold text-base-content/70">Email</span>
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ism@gmail.com" className={inp} />
@@ -248,7 +268,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
               <>
                 <div className="divider my-2"></div>
                 <div className="text-[14px] font-bold uppercase tracking-wider text-base-content/60">{t("Akkaunt — raqamli tashrif qog'ozingizni boshqarish uchun shart *")}</div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className={field}>
                     <span className="text-xs font-semibold text-base-content/70">{t('Email (login) *')}</span>
                     <input type="email" value={acctEmail} onChange={(e) => setAcctEmail(e.target.value)} placeholder="ism@gmail.com" autoComplete="email" className={inp} />
@@ -307,7 +327,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder={t("To'liq manzil (shahar, tuman, ko'cha, uy) *")} rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
 
                 <button type="button" className="btn btn-ghost btn-xs w-full" onClick={() => setShowDesigner((v) => !v)}>
-                  {showDesigner ? t('Dizaynerni yopish') : t("\u{1F3A8} Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)")}
+                  {showDesigner ? t('Dizaynerni yopish') : t('Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)')}
                 </button>
                 {showDesigner && (
                   <div className="-mx-3 mt-1 max-h-[60vh] overflow-y-auto border-t border-white/10 px-3 pt-3">
@@ -327,7 +347,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
           {paymentBlocked && <TelegramChannelCTA />}
           {!paymentBlocked && <div className="mt-3 flex justify-center"><PaymeReadyBadge /></div>}
           <button
-            className={`btn btn-primary mt-3 w-full ${paymentBlocked ? 'btn-disabled !cursor-not-allowed opacity-60' : ''}`}
+            className={`btn btn-gold mt-3 w-full ${paymentBlocked ? 'btn-disabled !cursor-not-allowed opacity-60' : ''}`}
             onClick={submit}
             disabled={busy || paymentBlocked}
             aria-disabled={paymentBlocked}

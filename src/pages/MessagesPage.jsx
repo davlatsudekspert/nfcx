@@ -70,13 +70,14 @@ function ConversationList({ conversations, activeId, q, onSelect }) {
 }
 
 function MessageBubble({ m, mine }) {
+  const { t } = useLanguage();
   const isImage = IMAGE_URL_RE.test(m.body.trim());
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[75%] ${mine ? 'bg-gradient-to-br from-accent to-[#b3860f] text-black' : 'bg-base-300'}`}>
         {isImage ? (
           <a href={m.body} target="_blank" rel="noopener noreferrer">
-            <img src={m.body} alt="rasm" className="max-h-56 rounded-lg object-cover" />
+            <img src={m.body} alt={t('rasm')} className="max-h-56 max-w-full rounded-lg object-cover" />
           </a>
         ) : (
           <span className="whitespace-pre-wrap break-words">{m.body}</span>
@@ -85,12 +86,12 @@ function MessageBubble({ m, mine }) {
           {timeAgo(new Date(m.createdAt).getTime())}
           {mine && (
             m.isRead ? (
-              <svg width="15" height="11" viewBox="0 0 16 11" fill="none" aria-label="O'qilgan">
+              <svg width="15" height="11" viewBox="0 0 16 11" fill="none" role="img" aria-label={t("O'qilgan")}>
                 <path d="M1 5.5L4.5 9L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
-              <svg width="12" height="11" viewBox="0 0 13 11" fill="none" className="opacity-70" aria-label="Yuborildi">
+              <svg width="12" height="11" viewBox="0 0 13 11" fill="none" className="opacity-70" role="img" aria-label={t('Yuborildi')}>
                 <path d="M1 5.5L4.5 9L11.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )
@@ -103,19 +104,28 @@ function MessageBubble({ m, mine }) {
 
 function Thread({ conversation, myUserId, onBack }) {
   const { t } = useLanguage();
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(null); // null = hali yuklanmagan
+  const [loadError, setLoadError] = useState(false);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
   const fileRef = useRef(null);
+  const loadedRef = useRef(false);
 
   const load = async () => {
     try {
       const data = await dbListMessages(conversation.id);
+      loadedRef.current = true;
       setMessages(data.messages);
-    } catch { /* jim tur */ }
+      setLoadError(false);
+    } catch {
+      // Birinchi yuklash muvaffaqiyatsiz bo'lsa xato ko'rsatamiz; polling
+      // vaqtida esa eski xabarlar qoladi (jim).
+      if (!loadedRef.current) setLoadError(true);
+    }
   };
 
   useEffect(() => {
@@ -124,17 +134,20 @@ function Thread({ conversation, myUserId, onBack }) {
     return () => clearInterval(pollRef.current);
   }, [conversation.id]);
 
+  const messageCount = messages ? messages.length : 0;
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [messages.length]);
+  }, [messageCount]);
 
   const sendText = async (text) => {
     if (!text) return;
     try {
       const msg = await dbSendMessage(conversation.id, text);
-      setMessages((m) => [...m, msg]);
+      setMessages((m) => [...(m || []), msg]);
+      setSendError(false);
     } catch {
       setBody(text);
+      setSendError(true);
     }
   };
 
@@ -179,21 +192,39 @@ function Thread({ conversation, myUserId, onBack }) {
           <div className="truncate text-sm font-semibold">{conversation.otherEmail}</div>
           <div className="text-[14px] text-base-content/45">{isRecentlyActive(conversation.lastAt) ? t('Onlayn') : t('Oxirgi faollik:') + ' ' + (conversation.lastAt ? timeAgo(new Date(conversation.lastAt).getTime()) : '\u2014')}</div>
         </div>
-        <button className="btn btn-ghost btn-circle btn-sm hidden text-base-content/50 sm:inline-flex"><IconSearch width={16} height={16} /></button>
-        <button className="btn btn-ghost btn-circle btn-sm text-base-content/50"><IconPhone width={16} height={16} /></button>
+        <button type="button" className="btn btn-ghost btn-circle vz-tap hidden text-base-content/50 sm:inline-flex" aria-label={t('Qidirish')}><IconSearch width={16} height={16} /></button>
+        <button type="button" className="btn btn-ghost btn-circle vz-tap text-base-content/50" aria-label={t('Qo‘ng‘iroq')}><IconPhone width={16} height={16} /></button>
       </div>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:p-4">
-        {messages.length === 0 && (
+        {messages === null && !loadError && (
+          <div className="space-y-3" aria-busy="true" aria-label={t('Yuklanmoqda...')}>
+            <div className="vz-skel w-1/2" style={{ height: 36 }} />
+            <div className="vz-skel ml-auto w-2/3" style={{ height: 36 }} />
+            <div className="vz-skel w-2/5" style={{ height: 36 }} />
+          </div>
+        )}
+        {loadError && (
+          <div className="vz-empty" role="alert">
+            <b>{t("Server bilan aloqa yo'q")}</b>
+            <p className="text-sm">{t("Xabarlarni yuklab bo'lmadi.")}</p>
+            <button type="button" className="btn btn-outline-gold btn-sm mt-2" onClick={() => { setLoadError(false); load(); }}>{t('Qayta urinish')}</button>
+          </div>
+        )}
+        {messages !== null && messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-sm text-base-content/40">{t("Xabar yo'q — birinchi bo'lib yozing.")}</div>
         )}
-        {messages.map((m) => <MessageBubble key={m.id} m={m} mine={m.senderId === myUserId} />)}
+        {(messages || []).map((m) => <MessageBubble key={m.id} m={m} mine={m.senderId === myUserId} />)}
         <div ref={bottomRef}></div>
       </div>
 
+      {sendError && (
+        <div className="shrink-0 px-3 pb-1 text-xs text-error" role="alert">{t("Xabar yuborilmadi. Qayta urinib ko'ring.")}</div>
+      )}
+
       <div className="flex shrink-0 items-center gap-2 border-t border-white/10 p-2.5 sm:p-3" style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
-        <button className="btn btn-ghost btn-circle btn-sm shrink-0 text-base-content/50" onClick={() => fileRef.current?.click()} disabled={uploading}>
+        <button type="button" className="btn btn-ghost btn-circle vz-tap shrink-0 text-base-content/50" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label={t('Rasm yuborish')}>
           {uploading ? <span className="loading loading-spinner loading-xs"></span> : (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95L10.13 17.12a2 2 0 01-2.83-2.83l8.49-8.49" strokeLinecap="round" strokeLinejoin="round" /></svg>
           )}
@@ -203,9 +234,10 @@ function Thread({ conversation, myUserId, onBack }) {
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
           placeholder={t("Xabar yozing...")}
-          className="input input-bordered input-sm flex-1 bg-base-100"
+          className="input input-bordered min-h-11 min-w-0 flex-1 bg-base-100"
+          aria-label={t("Xabar yozing...")}
         />
-        <button className="btn btn-circle btn-sm shrink-0 border-none bg-gradient-to-br from-accent to-[#b3860f] text-black" onClick={send} disabled={sending || !body.trim()}>
+        <button type="button" className="btn btn-circle vz-tap shrink-0 border-none bg-gradient-to-br from-accent to-[#b3860f] text-black" onClick={send} disabled={sending || !body.trim()} aria-label={t('Yuborish')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z" /></svg>
         </button>
       </div>
@@ -214,21 +246,25 @@ function Thread({ conversation, myUserId, onBack }) {
 }
 
 const FEATURES = [
-  { icon: '\u{1F4AC}', title: 'Premium dizayn', text: "Qora fon va oltin rang uyg'unligi brendga mos premium ko'rinish." },
-  { icon: '\u2705', title: "O'qildi belgisi", text: '\u2713 yuborildi, \u2713\u2713 o\u2019qildi belgilar xabar holatini ko\u2019rsatadi.' },
-  { icon: '\u{1F4CE}', title: 'Fayl biriktirish', text: "Rasm yuklab, suhbatdoshingizga to'g'ridan-to'g'ri yuborishingiz mumkin." },
-  { icon: '\u{1F464}', title: 'Faollik holati', text: "So'nggi 5 daqiqada yozgan foydalanuvchi yashil nuqta bilan ko'rinadi." },
-  { icon: '\u{1F514}', title: 'Bildirishnomalar', text: "Yangi xabarlar soni yuqoridagi Xabarlar bo'limida ko'rsatiladi." },
+  { title: 'Premium dizayn', text: "Qora fon va oltin rang uyg'unligi brendga mos premium ko'rinish." },
+  { title: "O'qildi belgisi", text: '\u2713 yuborildi, \u2713\u2713 o\u2019qildi belgilar xabar holatini ko\u2019rsatadi.' },
+  { title: 'Fayl biriktirish', text: "Rasm yuklab, suhbatdoshingizga to'g'ridan-to'g'ri yuborishingiz mumkin." },
+  { title: 'Faollik holati', text: "So'nggi 5 daqiqada yozgan foydalanuvchi yashil nuqta bilan ko'rinadi." },
+  { title: 'Bildirishnomalar', text: "Yangi xabarlar soni yuqoridagi Xabarlar bo'limida ko'rsatiladi." },
 ];
 
 export default function MessagesPage({ id }) {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [conversations, setConversations] = useState(null);
+  const [convError, setConvError] = useState(false);
+  const convLoadedRef = useRef(false);
   const [q, setQ] = useState('');
   const activeId = id ? Number(id) : null;
 
-  const loadConversations = () => dbListConversations().then((d) => setConversations(d.conversations));
+  const loadConversations = () => dbListConversations()
+    .then((d) => { convLoadedRef.current = true; setConversations(d.conversations); setConvError(false); })
+    .catch(() => { if (!convLoadedRef.current) setConvError(true); });
 
   useEffect(() => {
     if (user === null) navigate('/login', { replace: true });
@@ -242,7 +278,14 @@ export default function MessagesPage({ id }) {
   }, [user]);
 
   if (user === undefined || user === null) {
-    return <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pt-16 text-center text-base-content/45">{t("Yuklanmoqda...")}</main>;
+    return (
+      <main className="mx-auto w-full max-w-[1800px] px-6 pt-16 sm:px-10 lg:px-14" aria-busy="true">
+        <div className="vz-skel w-40" style={{ height: 24 }} />
+        <div className="vz-skel mt-4 w-full" style={{ height: 44 }} />
+        <div className="vz-skel mt-3 w-full" style={{ height: 44 }} />
+        <span className="sr-only">{t('Yuklanmoqda...')}</span>
+      </main>
+    );
   }
 
   const active = conversations?.find((c) => c.id === activeId) || null;
@@ -259,7 +302,7 @@ export default function MessagesPage({ id }) {
         {/* Suhbatlar ro'yxati — mobilda thread ochiq bo'lsa yashiriladi */}
         <div className={`flex min-h-0 flex-col border-white/10 sm:border-r ${showThreadOnMobile ? 'hidden sm:flex' : 'flex'}`} style={{ height: 'calc(100dvh - 64px)' }}>
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 p-4">
-            <h1 className="text-lg font-bold">{t("Xabarlar")}</h1>
+            <h1 className="font-display text-lg font-bold">{t("Xabarlar")}</h1>
           </div>
           <div className="shrink-0 border-b border-white/10 p-3">
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
@@ -268,14 +311,30 @@ export default function MessagesPage({ id }) {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={t("Suhbat yoki foydalanuvchi qidirish...")}
-                className="w-full bg-transparent text-xs outline-none placeholder:text-base-content/35"
+                className="min-h-9 w-full bg-transparent text-sm outline-none placeholder:text-base-content/35"
+                aria-label={t("Suhbat yoki foydalanuvchi qidirish...")}
               />
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {conversations === null
-              ? <div className="p-6 text-center text-sm text-base-content/45">{t("Yuklanmoqda...")}</div>
-              : <ConversationList conversations={conversations} activeId={activeId} q={q} onSelect={(cid) => navigate('/xabarlar/' + cid)} />}
+            {convError && conversations === null ? (
+              <div className="vz-empty m-3" role="alert">
+                <b>{t("Server bilan aloqa yo'q")}</b>
+                <p className="text-sm">{t("Suhbatlarni yuklab bo'lmadi.")}</p>
+                <button type="button" className="btn btn-outline-gold btn-sm mt-2" onClick={() => { setConvError(false); loadConversations(); }}>{t('Qayta urinish')}</button>
+              </div>
+            ) : conversations === null ? (
+              <div className="space-y-3 p-4" aria-busy="true" aria-label={t('Yuklanmoqda...')}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="vz-skel h-11 w-11 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1"><div className="vz-skel w-2/3" /><div className="vz-skel mt-2 w-1/2" /></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ConversationList conversations={conversations} activeId={activeId} q={q} onSelect={(cid) => navigate('/xabarlar/' + cid)} />
+            )}
           </div>
         </div>
 
@@ -289,9 +348,9 @@ export default function MessagesPage({ id }) {
 
       {!showThreadOnMobile && (
         <section className="mt-10 hidden gap-3 px-6 sm:grid sm:grid-cols-3 sm:px-0 lg:grid-cols-5">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="rounded-2xl border border-white/10 bg-base-200/50 p-4">
-              <div className="text-xl">{f.icon}</div>
+          {FEATURES.map((f, i) => (
+            <div key={f.title} className="vz-card min-w-0 p-4">
+              <div className="vz-kicker">0{i + 1}</div>
               <div className="mt-2 text-sm font-semibold">{t(f.title)}</div>
               <p className="mt-1 text-xs leading-relaxed text-base-content/50">{t(f.text)}</p>
             </div>

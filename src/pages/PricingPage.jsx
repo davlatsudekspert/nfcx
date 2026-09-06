@@ -146,14 +146,11 @@ export default function PricingPage({ catalog, refreshCatalog }) {
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-24 bg-black">
       <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
-          <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-white/60">
-            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-            {t('Narxlar')}
-          </span>
-          <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-            {t('Narx qanday')} <span className="bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent">{t('hisoblanadi')}</span>?
+          <span className="vz-kicker">{t('Narxlar')}</span>
+          <h1 className="vz-h1 mt-4 max-w-xl">
+            {t('Narx qanday')} <span className="text-[var(--vz-gold-2)]">{t('hisoblanadi')}</span>?
           </h1>
-          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-white/50">
+          <p className="vz-lead mt-4">
             {t("Narx kod bandlangan soniga emas — faqat kodning o'zidagi naqshga bog'liq. Har daraja uchun narx qat'iy (o'zgarmas):")}
           </p>
 
@@ -167,8 +164,9 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 key={tier}
                 type="button"
                 onClick={() => setPickedTier(tier === pickedTier ? null : tier)}
-                className={`tier-shine flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-left transition-transform hover:-translate-y-0.5 ${pickedTier === tier ? 'ring-2 ring-white/30' : ''}`}
-                style={{ '--shine-delay': `${i * 0.5}s`, width, minWidth: '15rem', background: mix.background, border: mix.border }}
+                className={`tier-shine flex min-h-11 w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-left transition-transform hover:-translate-y-0.5 ${pickedTier === tier ? 'ring-2 ring-white/30' : ''}`}
+                style={{ '--shine-delay': `${i * 0.5}s`, maxWidth: width, minWidth: 'min(15rem, 100%)', background: mix.background, border: mix.border }}
+                aria-pressed={pickedTier === tier}
               >
                 <span
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
@@ -208,11 +206,11 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
       {/* ===== Kalkulyator — qutili, ikki ustunli ===== */}
       <section id="kalkulyator" className="mx-auto mt-24 max-w-4xl">
-        <span className="font-mono text-xs tracking-[0.25em] text-accent/70">{t('KALKULYATOR')}</span>
-        <h2 className="mt-3 text-2xl font-bold">{t("O'z NFC ID narxingizni hisoblang")}</h2>
-        <p className="mt-2 text-sm text-white/45">{t("NFC ID kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.")}</p>
+        <span className="vz-kicker">{t('KALKULYATOR')}</span>
+        <h2 className="vz-h2 mt-3">{t("O'z NFC ID narxingizni hisoblang")}</h2>
+        <p className="vz-lead mt-4 text-sm">{t("NFC ID kiriting va uning holati (bo'sh/band) hamda aniq narxini ko'ring.")}</p>
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-base-200/60 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
+        <div className="vz-card mt-6 p-6">
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <div className="flex items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-base-content/40">
@@ -223,7 +221,8 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                   maxLength={7}
                   placeholder="ABZ 007"
                   autoComplete="off"
-                  className="w-full bg-transparent px-2 py-3 font-mono text-sm uppercase tracking-wider outline-none placeholder:normal-case placeholder:tracking-normal"
+                  aria-label="NFC ID"
+                  className="min-h-11 w-full min-w-0 bg-transparent px-2 py-3 font-mono text-sm uppercase tracking-wider outline-none placeholder:normal-case placeholder:tracking-normal"
                 />
               </div>
               <div className="mt-5 space-y-2.5 text-sm">
@@ -239,7 +238,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-white/55">{t('Holati')}</span>
-                  <span>{calcParsed ? (calcTaken ? <span className="badge badge-error badge-sm">{t('Band')}</span> : <span className="badge badge-success badge-sm">{t("Bo'sh")}</span>) : '—'}</span>
+                  <span>{calcParsed ? (calcTaken ? <span className="vz-badge vz-badge--warn">{t('Band')}</span> : <span className="vz-badge vz-badge--ok">{t("Bo'sh")}</span>) : '—'}</span>
                 </div>
               </div>
             </div>
@@ -260,12 +259,13 @@ export default function PricingPage({ catalog, refreshCatalog }) {
               <div className="mt-1 text-xs uppercase tracking-widest text-white/45">{t('Jami narx')}</div>
 
               {calcInfo?.tier === 'exclusive' ? (
-                <button className="btn btn-accent mt-5 w-full" onClick={() => { window.location.href = '/auksion'; }}>
-                  {'\u{1F48E}'} {t("Auksion bo'limiga o'tish")}
+                <button type="button" className="btn btn-outline-gold mt-5 w-full" onClick={() => { window.location.href = '/auksion'; }}>
+                  {t("Auksion bo'limiga o'tish")}
                 </button>
               ) : (
                 <button
-                  className="btn btn-primary mt-5 w-full"
+                  type="button"
+                  className="btn btn-gold mt-5 w-full"
                   disabled={!calcParsed || calcTaken}
                   onClick={() => setModalCode(calcParsed.code)}
                 >
@@ -279,14 +279,14 @@ export default function PricingPage({ catalog, refreshCatalog }) {
 
       {/* ===== Misollar — qutili kartochkalar ===== */}
       <section className="mx-auto mt-16 max-w-4xl">
-        <span className="font-mono text-xs tracking-[0.25em] text-accent/70">{t('MISOLLAR')}</span>
-        <h2 className="mt-3 text-2xl font-bold">{t("Naqshlar narxga qanday ta'sir qiladi")}</h2>
-        <p className="mt-2 text-sm text-white/45">{t("Har bir NFC ID naqshiga qarab aniq bitta darajaga tushadi — bandlangan soniga bog'liq emas.")}</p>
+        <span className="vz-kicker">{t('MISOLLAR')}</span>
+        <h2 className="vz-h2 mt-3">{t("Naqshlar narxga qanday ta'sir qiladi")}</h2>
+        <p className="vz-lead mt-4 text-sm">{t("Har bir NFC ID naqshiga qarab aniq bitta darajaga tushadi — bandlangan soniga bog'liq emas.")}</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {examples.map((ex) => {
             const info = priceForCode(ex.code);
             return (
-              <div key={ex.code} className="rounded-2xl border border-white/10 bg-base-200/60 p-5 transition-colors hover:border-white/20">
+              <div key={ex.code} className="vz-card min-w-0 p-5 transition-colors hover:border-[var(--vz-gold)]">
                 <div className="font-mono text-lg font-bold tracking-widest">{ex.code}</div>
                 <div className="mt-1 text-[16px] text-white/55">{ex.note}</div>
                 <div className="mt-3 text-sm font-semibold" style={{ color: TIER_COLOR[info.tier] }}>

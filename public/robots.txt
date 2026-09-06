@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /hisob
+Disallow: /account
+Disallow: /api/
+
+Sitemap: https://nfcstore.uz/sitemap.xml

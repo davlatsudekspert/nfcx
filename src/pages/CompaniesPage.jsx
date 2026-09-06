@@ -45,16 +45,17 @@ function PhoneShell({ children, className = '' }) {
 }
 
 function RestaurantPhone() {
+  const { t } = useLanguage();
   return (
     <PhoneShell className="restaurant-phone">
-      <header className="co-r-head"><span>‹</span><div><i>♨</i><b>NFC Restaurant</b><small>PREMIUM MENYU</small></div><span>⌕</span></header>
-      <div className="co-phone-welcome"><span>Bugungi tavsiya</span><b>Chef tanlovi · −15%</b></div>
-      <div className="co-phone-tabs"><b>Nonushta</b><span>Issiq taomlar</span><span>Salatlar</span><span>Ichimliklar</span></div>
+      <header className="co-r-head"><span>‹</span><div><i>♨</i><b>NFC Restaurant</b><small>{t('PREMIUM MENYU')}</small></div><span>⌕</span></header>
+      <div className="co-phone-welcome"><span>{t('Bugungi tavsiya')}</span><b>{t('Chef tanlovi')} · −15%</b></div>
+      <div className="co-phone-tabs"><b>{t('Nonushta')}</b><span>{t('Issiq taomlar')}</span><span>{t('Salatlar')}</span><span>{t('Ichimliklar')}</span></div>
       <div className="co-menu-list">
         {RESTAURANT_ITEMS.map((item) => (
           <article key={item.name}>
             <img src={item.image} alt="" />
-            <div><b>{item.name}{item.badge && <em>{item.badge}</em>}</b><small>Yangi, mazali va mehr bilan</small><strong>{item.price} so‘m</strong></div>
+            <div><b>{item.name}{item.badge && <em>{item.badge}</em>}</b><small>{t('Yangi, mazali va mehr bilan')}</small><strong>{item.price} {t('so‘m')}</strong></div>
             <span>♡</span>
           </article>
         ))}
@@ -64,17 +65,18 @@ function RestaurantPhone() {
 }
 
 function MarketPhone() {
+  const { t } = useLanguage();
   return (
     <PhoneShell className="market-phone">
-      <header className="co-m-head"><span>‹</span><div><i>▣</i><b>NFC Market</b><small>PREMIUM KATALOG</small></div><span>♡</span></header>
-      <div className="co-phone-search"><span>⌕</span> Smartfon qidiring</div>
-      <div className="co-phone-tabs"><b>Barchasi</b><span>Telefonlar</span><span>Fold</span><span>Gaming</span></div>
+      <header className="co-m-head"><span>‹</span><div><i>▣</i><b>NFC Market</b><small>{t('PREMIUM KATALOG')}</small></div><span>♡</span></header>
+      <div className="co-phone-search"><span>⌕</span> {t('Smartfon qidiring')}</div>
+      <div className="co-phone-tabs"><b>{t('Barchasi')}</b><span>{t('Telefonlar')}</span><span>Fold</span><span>Gaming</span></div>
       <div className="co-product-grid">
         {MARKET_ITEMS.map((item) => (
           <article key={item.name}>
             <span className={`co-product-shot sprite-${item.sprite}`}>{item.badge && <em>{item.badge}</em>}</span>
             <b>{item.name}</b>
-            <strong>{item.price} so‘m</strong>
+            <strong>{item.price} {t('so‘m')}</strong>
           </article>
         ))}
       </div>
@@ -159,18 +161,23 @@ export default function CompaniesPage({ catalog = [] }) {
   const [q, setQ] = useState('');
   const [itemResults, setItemResults] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const debounceRef = useRef(null);
 
   useEffect(() => {
     const term = q.trim();
     clearTimeout(debounceRef.current);
+    setSearchError(false);
     if (!term) { setItemResults(null); setSearching(false); return; }
     setSearching(true);
     debounceRef.current = setTimeout(() => {
-      dbSearchCompanies(term).then((result) => { setItemResults(result); setSearching(false); });
+      dbSearchCompanies(term)
+        .then((result) => { setItemResults(result); setSearching(false); })
+        .catch(() => { setItemResults([]); setSearchError(true); setSearching(false); });
     }, 300);
     return () => clearTimeout(debounceRef.current);
-  }, [q]);
+  }, [q, retryTick]);
 
   const query = q.trim().toUpperCase();
   const localMatches = useMemo(() => [...catalog]
@@ -200,11 +207,11 @@ export default function CompaniesPage({ catalog = [] }) {
     <main className="companies-luxe">
       <section className="co-hero">
         <div className="co-hero-glow" />
-        <span className="co-eyebrow">NFCSTORE {t('Kompaniyalar katalogi')}</span>
+        <span className="co-eyebrow vz-kicker">NFCSTORE {t('Kompaniyalar katalogi')}</span>
         <h1>{t('Kompaniyalar va')}<br />{t('mutaxassislarni')} <strong>{t('toping')}</strong></h1>
         <p>{t('Kerakli kompaniya, xizmat yoki mutaxassisni NFCStore orqali toping.')}<br />{t('Ularning faoliyat sohasi, katalogi va ochiq aloqa ma’lumotlarini bitta joyda ko‘ring.')}</p>
         <form className="co-search" onSubmit={search}>
-          <span>⌕</span><input value={q} onChange={(event) => setQ(event.target.value)} placeholder={t('Kompaniya nomi, mahsulot, taom yoki xizmat')} /><button>{searching ? '•••' : t('Qidirish')}</button>
+          <span aria-hidden="true">⌕</span><input value={q} onChange={(event) => setQ(event.target.value)} placeholder={t('Kompaniya nomi, mahsulot, taom yoki xizmat')} aria-label={t('Qidirish')} /><button type="submit" className="vz-tap" aria-busy={searching}>{searching ? '•••' : t('Qidirish')}</button>
         </form>
 
         <div className="co-quick-row">
@@ -225,10 +232,20 @@ export default function CompaniesPage({ catalog = [] }) {
 
       <section id="kompaniyalar-royxati" className="co-directory">
         <header><div><h2>{t('Kompaniyalar va kataloglarni kashf eting')}</h2><p>{t('Restoranlar va kompaniyalarni qidiring, ularning profili va katalogini ko‘ring.')}</p></div>{companies.length > 0 && <span>{fmt(companies.length)} {t('ta natija')}</span>}</header>
-        {companies.length > 0 ? (
+        {searchError ? (
+          <div className="vz-empty mt-4" role="alert">
+            <b>{t("Server bilan aloqa yo'q")}</b>
+            <p className="text-sm">{t("Qidiruv natijalarini yuklab bo'lmadi.")}</p>
+            <button type="button" className="btn btn-outline-gold btn-sm mt-2" onClick={() => setRetryTick((n) => n + 1)}>{t('Qayta urinish')}</button>
+          </div>
+        ) : searching && companies.length === 0 ? (
+          <div className="co-real-grid" aria-busy="true">
+            {[0, 1].map((i) => <div key={i} className="vz-card--flat vz-card min-w-0 p-4"><div className="vz-skel" style={{ height: 96 }} /><div className="vz-skel mt-3 w-2/3" /><div className="vz-skel mt-2 w-1/2" /></div>)}
+          </div>
+        ) : companies.length > 0 ? (
           <div className="co-real-grid">{companies.map((item) => <RealCompanyCard key={item.code} item={item} categories={categories} lang={lang} t={t} />)}</div>
         ) : query ? (
-          <div className="co-empty"><span>⌕</span><b>{t('Mos kompaniya topilmadi')}</b><p>{t('Boshqa nom, xizmat yoki shahar bilan qidiring.')}</p></div>
+          <div className="co-empty vz-empty"><span aria-hidden="true">⌕</span><b>{t('Mos kompaniya topilmadi')}</b><p>{t('Boshqa nom, xizmat yoki shahar bilan qidiring.')}</p></div>
         ) : (
           <div className="co-demo-grid"><DemoCompanyCard type="restaurant" t={t} /><DemoCompanyCard type="market" t={t} /></div>
         )}
@@ -236,8 +253,8 @@ export default function CompaniesPage({ catalog = [] }) {
 
       <section className="co-business-cta">
         <i>♢</i><div><h2>{t('Sizning biznesingiz ham NFCStore’da bo‘lsin')}</h2><p>{t('Kompaniyangiz uchun rasmli raqamli profil yarating. Katalog boshqaruvi kompaniya profilingiz ichidagi Business Workspace’da ochiladi.')}</p></div>
-        <button type="button" onClick={() => navigate('/account')}>{t('Kompaniya profilini yaratish')} <span>→</span></button>
-        <button type="button" className="secondary" onClick={() => navigate('/narxlar')}>{t('NFC ID tanlash')}</button>
+        <button type="button" className="vz-tap" onClick={() => navigate('/account')}>{t('Kompaniya profilini yaratish')} <span>→</span></button>
+        <button type="button" className="secondary vz-tap" onClick={() => navigate('/narxlar')}>{t('NFC ID tanlash')}</button>
       </section>
     </main>
   );

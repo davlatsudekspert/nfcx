@@ -52,6 +52,30 @@ async function api(path, options) {
   return res.json();
 }
 
+// ---------- Umumiy API xato matnlari (o'zbekcha; UI t() orqali tarjima qiladi) ----------
+// 429 / 503 / tarmoq xatolari barcha fetch funksiyalarida bir xil ko'rinsin.
+export const API_ERROR_TEXT = {
+  too_many_requests: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.",
+  payments_disabled: "Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.",
+  payme_disabled: "Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.",
+  feature_locked: "Bu imkoniyat hozirgi tarifingizda yopiq.",
+  unauthorized: 'Avval tizimga kiring.',
+  forbidden: "Bu amal uchun ruxsatingiz yo'q.",
+  network: "Server bilan aloqa yo'q. Qayta urinib ko'ring.",
+  generic: 'Xatolik yuz berdi.',
+};
+
+// Javob kodi / xato kaliti bo'yicha matn. `extra` — funksiyaga xos qo'shimcha xarita.
+export function apiErrorText(status, key, extra) {
+  if (extra && key && extra[key]) return extra[key];
+  if (status === 429 || key === 'too_many_requests') return API_ERROR_TEXT.too_many_requests;
+  if (key && API_ERROR_TEXT[key]) return API_ERROR_TEXT[key];
+  if (status === 401) return API_ERROR_TEXT.unauthorized;
+  if (status === 403) return API_ERROR_TEXT.forbidden;
+  if (status === 0) return API_ERROR_TEXT.network;
+  return API_ERROR_TEXT.generic;
+}
+
 export async function dbGet(code) {
   try {
     return await api(`/records/${encodeURIComponent(code)}`);
@@ -449,7 +473,7 @@ export async function dbSendSupportMessage(message) {
     body: JSON.stringify({ message }),
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  if (!res.ok) throw new Error(apiErrorText(res.status, data && data.error, { message_required: 'Xabar matnini kiriting.' }));
   return data;
 }
 
@@ -473,7 +497,7 @@ export async function dbRequestPasswordCode() {
     if (key === 'no_phone') throw new Error("Akkauntingizda telefon raqami yo'q.");
     if (key === 'tg_not_linked') throw new Error("Telefon raqamingiz botda tasdiqlanmagan. Avval botda ro'yxatdan o'ting.");
     if (key === 'tg_send_failed') throw new Error("Telegram'ga xabar yuborib bo'lmadi. Botni ishga tushirganingizni tekshiring.");
-    throw new Error('Xatolik yuz berdi.');
+    throw new Error(apiErrorText(res.status, key));
   }
   return data;
 }
@@ -490,7 +514,8 @@ export async function dbChangePassword(code, newPassword) {
     const key = data && data.error;
     if (key === 'bad_code') throw new Error("Kod noto'g'ri yoki muddati o'tgan.");
     if (key === 'weak_password') throw new Error('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.');
-    throw new Error('Xatolik yuz berdi.');
+    if (key === 'code_required') throw new Error('Kodni kiriting.');
+    throw new Error(apiErrorText(res.status, key));
   }
   return data;
 }
@@ -510,7 +535,7 @@ export async function dbRequestPhoneChangeCode(newPhone) {
     if (key === 'bad_phone') throw new Error("Telefon raqamini to'g'ri kiriting.");
     if (key === 'phone_not_verified') throw new Error("Bu raqam botda tasdiqlanmagan. Avval shu raqamdan botga \"Kontaktni ulashish\" orqali yozing.");
     if (key === 'tg_send_failed') throw new Error("Telegram'ga xabar yuborib bo'lmadi.");
-    throw new Error('Xatolik yuz berdi.');
+    throw new Error(apiErrorText(res.status, key));
   }
   return data;
 }
@@ -527,7 +552,8 @@ export async function dbConfirmPhoneChange(newPhone, code) {
     const key = data && data.error;
     if (key === 'bad_code') throw new Error("Kod noto'g'ri yoki muddati o'tgan.");
     if (key === 'bad_phone') throw new Error("Telefon raqamini to'g'ri kiriting.");
-    throw new Error('Xatolik yuz berdi.');
+    if (key === 'code_required') throw new Error('Kodni kiriting.');
+    throw new Error(apiErrorText(res.status, key));
   }
   return data;
 }
@@ -538,7 +564,7 @@ export async function dbSetPrimary(code) {
     credentials: 'same-origin',
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error('Xatolik yuz berdi.');
+  if (!res.ok) throw new Error(apiErrorText(res.status, data && data.error, { forbidden: "Bu NFC ID sizga tegishli emas." }));
   return data;
 }
 
@@ -555,7 +581,7 @@ export async function dbDeleteOwnCard(code) {
       unauthorized: 'Avval tizimga kiring.',
       not_found: 'Bu NFC ID topilmadi yoki sizga tegishli emas.',
     };
-    throw new Error(map[data?.error] || 'O’chirib bo’lmadi.');
+    throw new Error(map[data?.error] || (res.status === 429 ? apiErrorText(429) : 'O’chirib bo’lmadi.'));
   }
   return data;
 }
@@ -571,9 +597,11 @@ export async function dbOrderPhysicalCard(code, shipping) {
   if (!res.ok) {
     const key = data && data.error;
     if (key === 'shipping_required') throw new Error("Ism, telefon va manzilni to'liq kiriting.");
-    if (key === 'payme_disabled') throw new Error("Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.");
+    if (key === 'payme_disabled' || key === 'payments_disabled') throw new Error("Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.");
+    if (key === 'feature_locked') throw new Error("Jismoniy karta dizayni hozirgi tarifingizda yopiq (Silver va undan yuqori).");
+    if (key === 'forbidden') throw new Error("Bu NFC ID sizga tegishli emas.");
     if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
-    throw new Error('Xatolik yuz berdi.');
+    throw new Error(apiErrorText(res.status, key));
   }
   return data;
 }
@@ -598,7 +626,7 @@ export async function dbGiftCard(code, toCode) {
     body: JSON.stringify({ toCode }),
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(GIFT_ERRORS[data && data.error] || 'Xatolik yuz berdi.');
+  if (!res.ok) throw new Error(GIFT_ERRORS[data && data.error] || apiErrorText(res.status, data && data.error));
   return data;
 }
 
@@ -639,13 +667,10 @@ export async function dbUploadCardVideo(file) {
 }
 
 // ---------- Public "Sovg'alar" ----------
+// Xato yutilmaydi — GiftsPage "xato" va "bo'sh" holatini ajratib ko'rsatadi.
 export async function dbPublicGifts(page = 1) {
-  try {
-    const data = await api(`/gifts/public?page=${page}`);
-    return { gifts: (data && data.gifts) || [], hasMore: !!(data && data.hasMore) };
-  } catch {
-    return { gifts: [], hasMore: false };
-  }
+  const data = await api(`/gifts/public?page=${page}`);
+  return { gifts: (data && data.gifts) || [], hasMore: !!(data && data.hasMore) };
 }
 
 export async function dbRejectGift(id) {
@@ -857,6 +882,8 @@ const PREMIUM_FOLLOW_ERRORS = {
   NOT_FOUND: 'Topilmadi.',
   NOT_PREMIUM: 'Bu profil premium emas.',
   payme_disabled: "Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.",
+  payments_disabled: "Payme orqali to'lov imkoniyati tez kunlarda ishga tushadi.",
+  too_many_requests: "Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.",
 };
 
 async function dbApi(path, options) {
@@ -996,11 +1023,73 @@ export async function dbGetPhysicalNfcPricing() {
 }
 
 // ---------- Kompaniyalar (Discovery) qidiruvi (Company System — Faz 12) ----------
+// Xato yutilmaydi — CompaniesPage qidiruv xatosini "topilmadi"dan ajratadi.
 export async function dbSearchCompanies(q) {
-  try {
-    const j = await api(`/companies/search?q=${encodeURIComponent(q)}`);
-    return (j && j.results) || [];
-  } catch {
-    return [];
+  const j = await api(`/companies/search?q=${encodeURIComponent(q)}`);
+  return (j && j.results) || [];
+}
+
+// ---------- Telegram bot username (AuthPage / Sozlamalar havolalari) ----------
+// GET /api/telegram/bot → { username } (bo'sh bo'lsa null). Modul darajasida
+// keshlanadi — sahifa ichida bir marta so'raladi.
+let _botUsernamePromise = null;
+export function dbGetTelegramBotUsername(fallback = 'nfcsalebot') {
+  if (!_botUsernamePromise) {
+    _botUsernamePromise = fetch('/api/telegram/bot', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => (d && typeof d.username === 'string' && d.username.trim()) ? d.username.trim().replace(/^@/, '') : fallback)
+      .catch(() => fallback);
   }
+  return _botUsernamePromise;
+}
+
+// ---------- Parolni tiklash (AuthPage "Parolni unutdingizmi?") ----------
+// POST /api/auth/request-password-reset {email} → doim {ok:true} (email
+// mavjudligi oshkor qilinmaydi) | 422 {error: matn}.
+export async function dbAuthRequestPasswordReset(email) {
+  let res;
+  try {
+    res = await fetch('/api/auth/request-password-reset', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+      body: JSON.stringify({ email }),
+    });
+  } catch { throw new Error(API_ERROR_TEXT.network); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (res.status === 422 && key && /email/i.test(key)) throw new Error("Email formati noto'g'ri.");
+    throw new Error(apiErrorText(res.status, key));
+  }
+  return data;
+}
+
+// POST /api/auth/reset-password {email, code, password} → {ok:true} | 422 {error:'bad_code'|matn}.
+export async function dbAuthResetPassword(email, code, password) {
+  let res;
+  try {
+    res = await fetch('/api/auth/reset-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+      body: JSON.stringify({ email, code, password }),
+    });
+  } catch { throw new Error(API_ERROR_TEXT.network); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const key = data && data.error;
+    if (key === 'bad_code') throw new Error("Kod noto'g'ri yoki muddati o'tgan. Qaytadan so'rang.");
+    if (res.status === 422 && key && /parol/i.test(key)) throw new Error('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.');
+    if (res.status === 422 && key && /email/i.test(key)) throw new Error("Email formati noto'g'ri.");
+    throw new Error(apiErrorText(res.status, key));
+  }
+  return data;
+}
+
+// ---------- Buyurtmalar ro'yxati (Kabinet "Buyurtmalarim") ----------
+// GET /api/orders → { orders: [...] }. Xato bo'lsa throw (UI "qayta urinish" ko'rsatadi).
+export async function dbListMyOrders() {
+  let res;
+  try { res = await fetch('/api/orders', { credentials: 'same-origin' }); }
+  catch { throw new Error(API_ERROR_TEXT.network); }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(apiErrorText(res.status, data && data.error));
+  return Array.isArray(data && data.orders) ? data.orders : [];
 }

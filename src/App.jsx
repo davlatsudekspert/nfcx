@@ -3,7 +3,8 @@ import { usePathRoute } from './lib/router.js';
 import { parseAnyCode } from './lib/pricing.js';
 import { dbList } from './lib/db.js';
 import { AuthProvider } from './lib/auth.jsx';
-import { LanguageProvider } from './lib/i18n.jsx';
+import { LanguageProvider, useLanguage } from './lib/i18n.jsx';
+import { applySeo, seoForRoute, seoForProfile } from './lib/seo.js';
 import { PaymentsEnabledProvider } from './lib/paymentsEnabled.jsx';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -78,6 +79,22 @@ const RESERVED = new Set([
 // bunday profillar shu URL orqali ochilishi SHART.
 const ROUTE_PROFILE_RE = /^(?:[A-Za-z]{3}[0-9]{3}|[0-9]{8}|[A-Za-z]{3,12})$/;
 
+// SEO — marshrut yoki til o'zgarganda <title>/meta/canonical yangilanadi.
+// LanguageProvider ichida turishi kerak (joriy tilni olish uchun), shuning
+// uchun alohida kichik komponent. Profil sahifasida sarlavha = karta nomi.
+function SeoSync({ route, profileCode, catalog }) {
+  const { lang } = useLanguage();
+  useEffect(() => {
+    if (profileCode) {
+      const rec = (catalog || []).find((r) => r && String(r.code || '').toUpperCase() === profileCode);
+      applySeo(seoForProfile(rec || { code: profileCode }, lang));
+      return;
+    }
+    applySeo(seoForRoute(route, lang));
+  }, [route, lang, profileCode, catalog]);
+  return null;
+}
+
 export default function App() {
   const route = usePathRoute();
   const cleanRoute = route.replace(/^\/+|\/+$/g, '');
@@ -110,7 +127,9 @@ export default function App() {
   // nfcstore.uz/aaa00 (harf katta-kichikligi farq qilmaydi).
   let page;
   let bare = false;
+  let profileCode = null;
   const isAuctionDetail = cleanRoute.startsWith('auksion/');
+  const isNewsDetail = cleanRoute.startsWith('yangiliklar/');
   const isMessagesDetail = cleanRoute.startsWith('xabarlar/');
   // Company System — Menyu/Mahsulotlar uchun alohida ulashiladigan URL:
   // nfcstore.uz/{code}/menyu, nfcstore.uz/{code}/mahsulotlar (Faz 9/10).
@@ -147,6 +166,7 @@ export default function App() {
     if (code) {
       page = <ProfilePage key={code} code={code} catalog={catalog} />;
       bare = true;
+      profileCode = code;
     }
   }
   if (!page && companySubMatch) {
@@ -182,6 +202,7 @@ export default function App() {
     else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
     else if (isAuctionDetail) page = <AuctionPage key={cleanRoute} id={cleanRoute.slice('auksion/'.length)} />;
+    else if (isNewsDetail) page = <NewsPage key={cleanRoute} newsId={cleanRoute.slice('yangiliklar/'.length)} />;
     else if (cleanRoute === 'xabarlar' && MESSAGING_ENABLED) page = <MessagesPage />;
     else if (isMessagesDetail && MESSAGING_ENABLED) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
@@ -195,6 +216,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
+      <SeoSync route={cleanRoute} profileCode={profileCode} catalog={catalog} />
       <PaymentsEnabledProvider>
         <AuthProvider>
           {bare ? renderedPage : (

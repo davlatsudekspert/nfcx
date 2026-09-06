@@ -1,0 +1,32 @@
+/* V2 — Platinum Executive: ko'mir + platina, korporativ, split hero (karta o'ngda ramkada), rail sidebar, mobil bottom-tab */
+:root{
+  --bg:#14161a;--bg2:#1a1d22;--card:#1b1e24;--card2:#242830;--field:#111317;--line:#2f343c;
+  --ink:#eef0f3;--ink2:#a3aab5;--accent:#d7dde6;--accent-soft:rgba(215,221,230,.12);--on-accent:#101216;--danger:#ef4444;
+  --gold:#c9a961;
+  --radius:8px;--radius-sm:6px;--radius-btn:8px;--track:-0.02em;
+  --font-display:Inter,"Segoe UI",system-ui,sans-serif;--font-body:Inter,"Segoe UI",system-ui,sans-serif;
+  --shadow:none;--shadow-btn:none;
+  --nav-bg:rgba(20,22,26,.92);--adm-nav:#111316;--cover:linear-gradient(120deg,#22262d,#14161a);--pub-bg:#15171b;
+  --nfc-bg:linear-gradient(135deg,#e6e9ee,#b9c0ca 55%,#dfe3e8);--nfc-ink:#15171b;--nfc-accent:#15171b;
+}
+.nfc-card{border-color:rgba(0,0,0,.15)}.nfc-card::after{background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.55) 45%,transparent 60%)}
+h1,h2,h3{font-weight:700}.hero h1{font-size:clamp(34px,4.6vw,58px);letter-spacing:-.03em}
+.kicker{color:var(--gold)}
+.btn--primary{background:#e9edf2;color:#101216}.btn--secondary{background:#242830;border-color:#3a404a}
+.badge--gold{background:var(--gold);color:#15130b}.plan.is-pop{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}.plan__pop{background:var(--gold);color:#15130b}
+.section .h2{border-left:3px solid var(--gold);padding-left:14px}
+/* TUZILMA: split hero, karta platina panelda */
+.hero__visual{background:linear-gradient(160deg,#1e2126,#14161a);border:1px solid var(--line);border-radius:12px;padding:40px 24px}
+.hero__visual .nfc-card{transform:none;max-width:400px}.hero__glow{display:none}.hero__tag{border-radius:6px}
+/* dashboards: rail — tor sidebar, ikon + yozuv; mobil: bottom tabs */
+@media(min-width:1024px){.dash{grid-template-columns:200px 1fr}.screen--dash .dash{grid-template-columns:200px 1fr 280px}.dash__nav nav a{border-radius:6px}.adm{grid-template-columns:220px 1fr}}
+.dash__nav nav a.is-on,.adm__nav nav a.is-on{background:#2a2f38;color:#fff;box-shadow:inset 3px 0 0 var(--gold)}
+.dash__head{border-bottom:1px solid var(--line);padding-bottom:14px}
+.stat{border-top:2px solid var(--gold)}.stat b{font-weight:800}
+.step{border-radius:6px}.step.is-cur{border-color:var(--gold)}
+.table th{background:#1f2329}.table td{border-bottom-color:#262a31}
+.pub{border-radius:10px}.pub__cover{background:linear-gradient(120deg,#2a2f38,#1b1e24)}.pub__avatar img{border-color:#d7dde6}.pub__avatar::before{display:none}
+.link{border-radius:8px;background:#22262d}
+.who__ic{border-radius:6px}.card{border-radius:8px}
+.pay__card{border-top:3px solid #00C2A8}
+.footer{background:#101216}

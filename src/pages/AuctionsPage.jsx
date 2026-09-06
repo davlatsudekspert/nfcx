@@ -84,22 +84,22 @@ function RequestAuctionForm() {
   };
 
   return (
-    <div className="mt-12 rounded-2xl border border-accent/25 bg-accent/5 p-5">
-      <button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setOpen((o) => !o)}>
-        <div>
-          <div className="text-sm font-bold">{'\u{1F451}'} {t("Noyob nomni auksionga qo'yishni so'rang")}</div>
+    <div className="vz-card mt-12 p-5">
+      <button type="button" className="flex min-h-11 w-full items-center justify-between gap-3 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <div className="min-w-0">
+          <div className="text-sm font-bold">{t("Noyob nomni auksionga qo'yishni so'rang")}</div>
           <p className="mt-0.5 text-xs text-base-content/50">{t("Sizga yoqqan bo'sh kod bormi? Adminga taklif qiling — u ko'rib chiqib, auksion ochadi.")}</p>
         </div>
         <span className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>&#9662;</span>
       </button>
       {open && (
         <div className="mt-4 space-y-2">
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('Kod (masalan VIP007)')} className="input input-bordered input-sm w-full bg-base-100 font-mono" />
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('Nega bu kod noyob deb hisoblaysiz? (ixtiyoriy)')} rows={2} className="textarea textarea-bordered textarea-sm w-full bg-base-100" />
-          <button className="btn btn-accent btn-sm" onClick={submit} disabled={busy}>
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('Kod (masalan VIP007)')} aria-label={t('Kod (masalan VIP007)')} className="vz-input font-mono" />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('Nega bu kod noyob deb hisoblaysiz? (ixtiyoriy)')} aria-label={t('Nega bu kod noyob deb hisoblaysiz? (ixtiyoriy)')} rows={2} className="vz-input" />
+          <button type="button" className="btn btn-outline-gold" onClick={submit} disabled={busy}>
             {busy ? <span className="loading loading-spinner loading-xs"></span> : t("So'rov yuborish")}
           </button>
-          {msg && <div className={`alert py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
+          {msg && <div role={msg.type === 'ok' ? 'status' : 'alert'} className={`alert py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
         </div>
       )}
     </div>
@@ -113,11 +113,11 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
   const pct = Math.min(100, Math.round((item.interestCount / threshold) * 100));
   return (
     <div
-      className={`auc-card tier-shine flex flex-col rounded-2xl p-5 ${ready ? 'is-ready' : ''}`}
+      className={`auc-card tier-shine flex min-w-0 flex-col rounded-2xl p-5 ${ready ? 'is-ready' : ''}`}
       style={{ '--shine-delay': `${(idx % 6) * 0.6}s` }}
     >
       {ready && (
-        <div className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-[14px] font-bold text-success">
+        <div className="vz-badge vz-badge--ok mb-2 w-fit">
           {t('AUKSIONNI BOSHLASH MUMKIN')}
         </div>
       )}
@@ -125,7 +125,6 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
         {item.code}
       </div>
       <div className="mt-1 flex items-center justify-center gap-1.5 text-sm text-base-content/70">
-        <span>{'\u{1F525}'}</span>
         <span>{t('{n} kishi qiziqmoqda', { n: item.interestCount })}</span>
       </div>
       <div className="mt-3">
@@ -138,7 +137,8 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
         </div>
       </div>
       <button
-        className={`btn btn-sm mt-4 w-full ${item.voted ? 'btn-ghost text-success' : 'btn-primary'}`}
+        type="button"
+        className={`btn mt-4 w-full ${item.voted ? 'btn-ghost-vz text-success' : 'btn-outline-gold'}`}
         disabled={item.voted || voteBusy}
         onClick={() => onVote(item)}
       >
@@ -146,7 +146,7 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
           ? <span className="loading loading-spinner loading-xs"></span>
           : item.voted
             ? t('✓ Siz qiziqyapsiz')
-            : <>{'\u{1F525}'} {t('Auksionda qatnashaman')}</>}
+            : t('Auksionda qatnashaman')}
       </button>
     </div>
   );
@@ -157,7 +157,8 @@ function AuctionMiniCard({ a, sold, idx = 0 }) {
   const { t } = useLanguage();
   return (
     <button
-      className="auc-card tier-shine flex flex-col rounded-2xl p-5 text-left"
+      type="button"
+      className="auc-card tier-shine flex min-w-0 flex-col rounded-2xl p-5 text-left"
       style={{ '--shine-delay': `${(idx % 6) * 0.6}s` }}
       onClick={() => navigate('/auksion/' + a.id)}
     >
@@ -247,14 +248,11 @@ export default function AuctionsPage() {
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
-          <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-            {t('Auksion')}
-          </span>
-          <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-            {t('Noyob kodlar uchun')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('ochiq savdo')}</span>
+          <span className="vz-kicker">{t('Auksion')}</span>
+          <h1 className="vz-h1 mt-4 max-w-xl">
+            {t('Noyob kodlar uchun')} <span className="text-[var(--vz-gold-2)]">{t('ochiq savdo')}</span>
           </h1>
-          <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
+          <p className="vz-lead mt-3">
             {t("Yoqqan kodga “Auksionda qatnashaman” bosing. {n} kishi qiziqsa, admin auksionni boshlaydi.", { n: threshold })}
           </p>
         </div>
@@ -268,8 +266,10 @@ export default function AuctionsPage() {
           {TABS.map((x) => (
             <button
               key={x.key}
+              type="button"
               onClick={() => setTab(x.key)}
-              className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+              aria-pressed={tab === x.key}
+              className={`min-h-11 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                 tab === x.key
                   ? 'border-accent bg-accent/10 text-base-content'
                   : 'border-white/10 text-base-content/55 hover:text-base-content'
@@ -281,14 +281,25 @@ export default function AuctionsPage() {
           ))}
         </div>
 
-        {demand === null && <div className="py-10 text-center text-base-content/45">{t('Yuklanmoqda...')}</div>}
+        {demand === null && (
+          <div className="auc-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" aria-busy="true" aria-label={t('Yuklanmoqda...')}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="vz-card min-w-0 p-5">
+                <div className="vz-skel mx-auto mt-3 w-2/3" style={{ height: 28 }} />
+                <div className="vz-skel mx-auto mt-3 w-1/2" />
+                <div className="vz-skel mt-4 w-full" style={{ height: 8 }} />
+                <div className="vz-skel mt-4 w-full" style={{ height: 40 }} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {demand !== null && gridItems.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
-            {tab === 'live' ? t("Hozircha faol auksion yo'q.")
+          <div className="vz-empty">
+            <b>{tab === 'live' ? t("Hozircha faol auksion yo'q.")
               : tab === 'sold' ? t("Hozircha sotilgan auksion yo'q.")
               : tab === 'ready' ? t("Hozircha auksionga tayyor kod yo'q.")
-              : t("Hozircha talab yig'ilayotgan kod yo'q.")}
+              : t("Hozircha talab yig'ilayotgan kod yo'q.")}</b>
           </div>
         )}
 
@@ -301,7 +312,7 @@ export default function AuctionsPage() {
         </div>
 
         {topDemand.length > 1 && (
-          <div className="mt-10 rounded-2xl border border-white/10 bg-base-200/40 p-5">
+          <div className="vz-card mt-10 p-5">
             <div className="text-sm font-bold">{t("Eng ko'p talab qilinayotgan NFC ID'lar")}</div>
             <ol className="mt-3 space-y-1.5">
               {topDemand.map((d, i) => (
@@ -310,7 +321,7 @@ export default function AuctionsPage() {
                     <span className="text-base-content/40">{i + 1}</span>
                     <span className="font-mono font-semibold">{d.code}</span>
                   </span>
-                  <span className="text-base-content/55">{'\u{1F525}'} {t('{n} kishi', { n: d.interestCount })}</span>
+                  <span className="text-base-content/55">{t('{n} kishi', { n: d.interestCount })}</span>
                 </li>
               ))}
             </ol>
