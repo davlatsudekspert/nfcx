@@ -2258,6 +2258,11 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // Qaysi qo'shiq qatoriga fayl yuklanayotgani (bitta umumiy fayl input
   // barcha qatorlar uchun ishlatiladi) — ko'pi bilan 5 ta qo'shiq.
   const [musicUploadIndex, setMusicUploadIndex] = useState(null);
+  // Musiqa xabari AYNAN o'sha qator ichida chiqadi. Avval u sahifaning
+  // eng pastidagi umumiy `msg` blokida chiqardi — foydalanuvchi 4-5-qatorda
+  // fayl tanlaganda xabar ekrandan tashqarida qolib, "hech narsa bo'lmadi"
+  // degan taassurot berardi. { idx, type: 'err' | 'ok', text }
+  const [musicMsg, setMusicMsg] = useState(null);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -2270,8 +2275,16 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     }
     setForm((f) => ({ ...f, musicUrls: [...f.musicUrls, ''] }));
   };
-  const updateMusic = (i) => (e) => setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, idx) => (idx === i ? e.target.value : u)) }));
-  const removeMusic = (i) => setForm((f) => ({ ...f, musicUrls: f.musicUrls.filter((_, idx) => idx !== i) }));
+  const updateMusic = (i) => (e) => {
+    setMusicMsg((m) => (m && m.idx === i ? null : m));
+    setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, idx) => (idx === i ? e.target.value : u)) }));
+  };
+  // Qator o'chirilsa keyingilarning indeksi siljiydi — xabar boshqa
+  // qatorga yopishib qolmasligi uchun tozalanadi.
+  const removeMusic = (i) => {
+    setMusicMsg(null);
+    setForm((f) => ({ ...f, musicUrls: f.musicUrls.filter((_, idx) => idx !== i) }));
+  };
 
   const addLink = () => setForm((f) => ({ ...f, extraLinks: [...f.extraLinks, { label: '', url: '' }] }));
   const updateLink = (i, key) => (e) => setForm((f) => {
@@ -2341,19 +2354,21 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     const idx = musicUploadIndex;
     if (!file || idx == null) return;
     if (file.size > MUSIC_MAX_MB * 1024 * 1024) {
-      setMsg({ type: 'err', text: t("Musiqa fayli juda katta (maksimal ~{n} MB).", { n: MUSIC_MAX_MB }) });
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      setMusicMsg({ idx, type: 'err', text: t("Fayl {size} MB — maksimal {n} MB. Kichikroq fayl tanlang.", { size: mb, n: MUSIC_MAX_MB }) });
       if (musicFileRef.current) musicFileRef.current.value = '';
+      setMusicUploadIndex(null);
       return;
     }
     setUploadingMusic(true);
-    setMsg(null);
+    setMusicMsg(null);
     try {
       const dataUrl = await audioFileToDataUrl(file);
       const url = await dbUploadAudio(dataUrl);
       setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, i) => (i === idx ? url : u)) }));
-      setMsg({ type: 'ok', text: t('Musiqa yuklandi. Saqlash tugmasini bosing.') });
+      setMusicMsg({ idx, type: 'ok', text: t('Musiqa yuklandi. Saqlash tugmasini bosing.') });
     } catch (err) {
-      setMsg({ type: 'err', text: err.message });
+      setMusicMsg({ idx, type: 'err', text: err.message });
     } finally {
       setUploadingMusic(false);
       setMusicUploadIndex(null);
@@ -2840,6 +2855,24 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 </button>
                 <button type="button" className="btn btn-ghost btn-square btn-sm min-h-11 min-w-11 shrink-0" aria-label={t("O'chirish")} onClick={() => removeMusic(i)}>&times;</button>
               </div>
+              {/* Yuklash natijasi SHU qatorning o'zida — pastdagi umumiy
+                  xabar blokida emas (u uzun ro'yxatda ekrandan chiqib
+                  ketardi). `role=status` + `aria-live` ekran o'quvchiga
+                  ham darhol o'qib beradi. */}
+              {musicMsg && musicMsg.idx === i && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-2 flex items-start gap-1.5 rounded-lg border px-2.5 py-2 text-xs leading-relaxed ${
+                    musicMsg.type === 'err'
+                      ? 'border-error/40 bg-error/10 text-error'
+                      : 'border-success/30 bg-success/10 text-success'
+                  }`}
+                >
+                  <span aria-hidden="true">{musicMsg.type === 'err' ? '\u26A0\uFE0F' : '\u2705'}</span>
+                  <span>{musicMsg.text}</span>
+                </div>
+              )}
               {/* 2026-09: YouTube havolasi qo'yilganda OGOHLANTIRISH — ijro
                   paytida rasmiy player ko'rinib turishi YouTube qoidasi
                   (eng kichigi 200x200 px). Video umuman kerak bo'lmaganlar
