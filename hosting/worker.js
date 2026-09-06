@@ -1,3 +1,12 @@
+import * as apiAuth from './api/auth.js';
+import * as apiAccount from './api/account.js';
+import * as apiCatalog from './api/catalog.js';
+import * as apiMedia from './api/media.js';
+import * as apiEngagement from './api/engagement.js';
+import * as apiAdminExtra from './api/admin-extra.js';
+import * as apiAdminFinance from './api/admin-finance.js';
+import * as apiTelegram from './api/telegram.js';
+
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8' },
@@ -659,6 +668,7 @@ async function companyAdminApi(request, env, url) {
   await ensureCompanySchema(env);
   const admin = await upstreamAdmin(request, env);
   if (!admin) return json({ error: 'unauthorized' }, 401);
+  if (!(await checkIpWhitelist(request, env, reqIp(request)))) return json({ error: 'ip_not_whitelisted' }, 403);
   const path = url.pathname;
   if (path === '/api/admin/company-requests' && request.method === 'GET') {
     const status = shortText(url.searchParams.get('status'), 30);
@@ -1128,6 +1138,7 @@ async function ensureCoreSchema(env) {
         FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "posts_code_idx" ON "posts" ("code", "created_at" DESC)`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "rate_limits" ("key" TEXT PRIMARY KEY NOT NULL, "hits" INTEGER DEFAULT 0 NOT NULL, "window_start" INTEGER NOT NULL)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "post_likes" (
         "id" INTEGER PRIMARY KEY NOT NULL, "post_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL,
         "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -1296,18 +1307,33 @@ function jsonWithCookie(body, status, cookie) {
 
 // ---------- current user / current admin ----------
 
+async function createUserSession(env, userId, request) {
+  const token = newToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_S * 1000).toISOString().replace('T', ' ').replace('Z', '+00');
+  await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)`)
+    .bind(await sha256Hex(token), userId, expiresAt).run();
+  return { token, cookie: sessionCookieHeader(token, isSecure(new URL(request.url))) };
+}
+
 async function getCurrentUser(request, env) {
   const token = parseCookies(request)[SESSION_COOKIE];
   if (!token) return null;
-  await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowTs()).run();
+  // Tozalash har so'rovda emas — ~1/50 so'rovda (sessions(expires_at) indeksi yo'q edi).
+  if (Math.random() < 0.02) await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowTs()).run().catch(() => {});
+  // Token SHA-256 bilan saqlanadi (admin_sessions kabi). O'tish davri: eski xom
+  // tokenli sessiyalar ham qabul qilinadi va darhol hash'ga ko'chiriladi.
+  const tokenHash = await sha256Hex(token);
   const row = await env.DB.prepare(
     `SELECT u.id, u.email, u.phone, u.is_premium AS isPremium, u.banned_until AS bannedUntil,
             u.strike_count AS strikeCount, u.promo_code AS promoCode, u.pending_discount_pct AS pendingDiscountPct,
-            u.suspended_until AS suspendedUntil, u.deleted_at AS deletedAt
+            u.suspended_until AS suspendedUntil, u.deleted_at AS deletedAt, s.token AS storedToken
      FROM sessions s JOIN users u ON u.id = s.user_id
-     WHERE s.token = ? AND s.expires_at > ?`
-  ).bind(token, nowTs()).first();
+     WHERE s.token IN (?, ?) AND s.expires_at > ?`
+  ).bind(tokenHash, token, nowTs()).first();
   if (!row) return null;
+  if (row.storedToken === token) {
+    await env.DB.prepare(`UPDATE sessions SET token = ? WHERE token = ?`).bind(tokenHash, token).run().catch(() => {});
+  }
   if (row.deletedAt) return null;
   if (row.suspendedUntil && parseDbDate(row.suspendedUntil) > new Date()) return null;
   const isBanned = row.bannedUntil && parseDbDate(row.bannedUntil) > new Date();
@@ -1872,6 +1898,25 @@ async function attachCardToUserD1(env, code, userId) {
 //            (idempotent, hech narsa qayta yaratilmaydi/o'zgartirilmaydi)
 //   CASE D — record bor, egasi BOSHQA (chinakam begona) user -> ownership
 //            HECH QACHON o'zgartirilmaydi, haqiqiy code_taken xatosi
+// Legacy createPhysicalCard porti: chip_token ~8 belgi URL-xavfsiz, UNIQUE
+// to'qnashuvda 5 marta qayta uriniladi.
+async function createPhysicalCardD1(env, { linkedCode, ownerUserId, shippingName, shippingPhone, shippingAddress }) {
+  for (let i = 0; i < 5; i++) {
+    const token = newToken(6);
+    try {
+      const row = await env.DB.prepare(
+        `INSERT INTO physical_cards (chip_token, linked_code, owner_user_id, shipping_name, shipping_phone, shipping_address)
+         VALUES (?, ?, ?, ?, ?, ?) RETURNING id, chip_token AS chipToken`
+      ).bind(token, linkedCode, ownerUserId, shippingName, shippingPhone, shippingAddress).first();
+      if (row) return row;
+    } catch (err) {
+      if (/UNIQUE/i.test(String(err?.message || err))) continue;
+      throw err;
+    }
+  }
+  throw new Error('chip_token_collision');
+}
+
 async function finalizePaidWebOrderD1(env, orderId) {
   const order = await getWebOrderD1(env, orderId);
   if (!order) return { alreadyProcessed: true };
@@ -1886,6 +1931,27 @@ async function finalizePaidWebOrderD1(env, orderId) {
       : { ok: false, reason: 'code_taken' };
   }
   if (order.status !== 'pending') return { alreadyProcessed: true };
+
+  // Legacy (server/db.js finalizePaidWebOrder) bilan bir xil: premium
+  // yangilash faqat users.is_premium ni yoqadi; jismoniy karta buyurtmasi
+  // physical_cards qatorini SHU YERDA (to'lovdan keyin) yaratadi.
+  if (order.kind === 'premium_upgrade') {
+    await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = ?`).bind(order.userId).run();
+    await setWebOrderStatusD1(env, order.id, 'paid');
+    return { ok: true };
+  }
+  if (order.kind === 'physical_card_order') {
+    const p = order.payload || {};
+    await createPhysicalCardD1(env, {
+      linkedCode: order.code,
+      ownerUserId: order.userId,
+      shippingName: p.shippingName || '',
+      shippingPhone: p.shippingPhone || '',
+      shippingAddress: p.shippingAddress || '',
+    });
+    await setWebOrderStatusD1(env, order.id, 'paid');
+    return { ok: true };
+  }
   if (order.kind !== 'card_purchase') return { ok: false, reason: 'unsupported_order_kind' };
 
   // CASE B/C/D uchun umumiy hal qiluvchi — mavjud record uchun egalik
@@ -2351,6 +2417,10 @@ async function authApi(request, env, url) {
     const password = typeof body.password === 'string' ? body.password : '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: "Email formati noto'g'ri." }, 422);
     if (password.length < 6) return json({ error: "Parol kamida 6 belgidan iborat bo'lishi kerak." }, 422);
+    // Brute-force / scrypt CPU-DoS himoyasi: IP bo'yicha 10, email bo'yicha 5 urinish / 15 daqiqa (D1).
+    if (await rateLimitD1(env, 'login:ip:' + reqIp(request), 10, 15 * 60_000) || await rateLimitD1(env, 'login:email:' + email, 5, 15 * 60_000)) {
+      return json({ error: 'too_many_requests' }, 429);
+    }
     const row = await env.DB.prepare(
       `SELECT id, email, password_hash, deleted_at, suspended_until, suspend_reason FROM users WHERE email = ?`
     ).bind(email).first();
@@ -2359,15 +2429,13 @@ async function authApi(request, env, url) {
     if (row.suspended_until && parseDbDate(row.suspended_until) > new Date()) {
       return json({ error: 'account_suspended', suspendedUntil: row.suspended_until, reason: row.suspend_reason }, 403);
     }
-    const token = newToken();
-    await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)`)
-      .bind(token, row.id, new Date(Date.now() + SESSION_TTL_S * 1000).toISOString().replace('T', ' ').replace('Z', '+00')).run();
-    return jsonWithCookie({ user: { id: row.id, email: row.email } }, 200, sessionCookieHeader(token, secure));
+    const session = await createUserSession(env, row.id, request);
+    return jsonWithCookie({ user: { id: row.id, email: row.email } }, 200, session.cookie);
   }
 
   if (path === '/api/auth/logout' && request.method === 'POST') {
     const token = parseCookies(request)[SESSION_COOKIE];
-    if (token) await env.DB.prepare(`DELETE FROM sessions WHERE token = ?`).bind(token).run();
+    if (token) await env.DB.prepare(`DELETE FROM sessions WHERE token IN (?, ?)`).bind(await sha256Hex(token), token).run();
     return jsonWithCookie({ ok: true }, 200, clearedSessionCookieHeader(secure));
   }
 
@@ -2431,9 +2499,26 @@ async function recordsApi(request, env, url) {
 
     // Ko'rishlar hisoblagichi — fire-and-forget (public profildan keladi).
     if (action === 'view' && request.method === 'POST') {
+      // Bitta tashrifchi (IP+UA hash) bitta profilni 6 soatda 1 marta hisoblaydi —
+      // reyting soxtalashtirishga qarshi (audit S10).
+      const visitor = await newsVisitorHash(request);
+      const limited = await rateLimitD1(env, `view:${code}:${visitor}`, 1, 6 * 60 * 60_000);
+      if (limited) {
+        const cur = await env.DB.prepare(`SELECT views FROM cards WHERE code = ?`).bind(code).first();
+        if (!cur) return json({ error: 'not_found' }, 404);
+        return json({ views: Number(cur.views) });
+      }
       const row = await env.DB.prepare(`UPDATE cards SET views = views + 1 WHERE code = ? RETURNING views`)
         .bind(code).first();
       if (!row) return json({ error: 'not_found' }, 404);
+      // Legacy incrementViews kabi analytics uchun profile_view hodisasi ham yoziladi
+      // (hosting/api/engagement.js analytics totalViews/byDay shu qatorlarga tayanadi).
+      try {
+        let ref = null;
+        try { ref = (await request.clone().json())?.ref ?? null; } catch { /* body yo'q */ }
+        await env.DB.prepare(`INSERT INTO card_events (code, event_type, ref, visitor_hash, created_at) VALUES (?, 'profile_view', ?, ?, ?)`)
+          .bind(code, ref ? String(ref).slice(0, 120) : null, visitor, nowTs()).run();
+      } catch { /* analytics yozuvi asosiy javobni buzmasin */ }
       return json({ views: Number(row.views) });
     }
 
@@ -2676,6 +2761,7 @@ async function uploadApi(request, env, pathname) {
   const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
   if (!auth) return json({ error: 'unauthorized' }, 401);
   const actor = isAdmin ? `admin:${auth.role || 'admin'}` : `user:${auth.id || auth.email || 'authenticated'}`;
+  if (!isAdmin && await rateLimitD1(env, 'upload:user:' + auth.id, 40, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
 
   if (pathname === '/api/upload-card-video') {
     const bytes = new Uint8Array(await request.arrayBuffer());
@@ -2913,6 +2999,27 @@ function reqIp(request) {
 // in-memory Map only limits bursts within a single warm isolate — the D1
 // admin_login_history table (bad_password/rate_limited rows) is the
 // durable record an operator can audit.
+// D1-ga asoslangan rate limit — izolyatga bog'liq emas (in-memory Map'dan farqli).
+// key: 'login:ip:1.2.3.4' kabi; limit ta urinish windowMs ichida.
+async function rateLimitD1(env, key, limit, windowMs) {
+  const now = Date.now();
+  try {
+    if (Math.random() < 0.01) await env.DB.prepare(`DELETE FROM rate_limits WHERE window_start < ?`).bind(now - 86400000).run();
+    const row = await env.DB.prepare(`SELECT hits, window_start FROM rate_limits WHERE key = ?`).bind(key).first();
+    if (!row || now - Number(row.window_start) > windowMs) {
+      await env.DB.prepare(`INSERT INTO rate_limits (key, hits, window_start) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET hits = 1, window_start = excluded.window_start`).bind(key, now).run();
+      return false;
+    }
+    if (Number(row.hits) >= limit) return true;
+    await env.DB.prepare(`UPDATE rate_limits SET hits = hits + 1 WHERE key = ?`).bind(key).run();
+    return false;
+  } catch (e) {
+    console.error('rateLimitD1', e); return false; // DB xatosida bloklamaymiz (login ishlashi ustun)
+  }
+}
+const ADMIN_ROLE_RANK = { content_manager: 1, manager: 2, super_admin: 3 };
+function roleAtLeast(admin, role) { return (ADMIN_ROLE_RANK[admin?.role] || 0) >= (ADMIN_ROLE_RANK[role] || 99); }
+
 const loginHits = new Map();
 function loginRateLimited(ip) {
   const now = Date.now();
@@ -2929,6 +3036,17 @@ function loginRateLimited(ip) {
 // explicitly clicks "Telegram orqali kod olish" on the 2FA screen; see
 // POST /api/admin/2fa/telegram/send below). TOTP stays the primary/
 // default method — this never disables or replaces it.
+async function sendTelegramTo(env, chatId, text) {
+  if (!env.TELEGRAM_BOT_TOKEN || !chatId) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    });
+    const data = await res.json().catch(() => null);
+    return !!data?.ok;
+  } catch { return false; }
+}
 async function sendTelegramMessage(env, text) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.ADMIN_CHAT_ID) return false;
   try {
@@ -2953,7 +3071,7 @@ async function adminAuthApi(request, env, url) {
   const ip = reqIp(request);
 
   if (path === '/api/admin/login' && request.method === 'POST') {
-    if (loginRateLimited(ip)) {
+    if (loginRateLimited(ip) || await rateLimitD1(env, 'admin-login:ip:' + ip, 5, 30 * 60_000)) {
       await logAdminLoginEvent(env, 'rate_limited', ip, request.headers.get('user-agent'));
       return json({ error: 'too_many_requests' }, 429);
     }
@@ -3085,7 +3203,12 @@ async function adminAuthApi(request, env, url) {
   if (path === '/api/admin/me' && request.method === 'GET') {
     const admin = await getCurrentAdmin(request, env);
     const authenticated = !!(admin && !admin.idleTimeout);
-    return json({ authenticated, role: authenticated ? admin.role : null });
+    let totpEnabled = null;
+    if (authenticated) {
+      const r = await env.DB.prepare(`SELECT totp_enabled FROM admins WHERE id = ?`).bind(admin.adminId).first().catch(() => null);
+      totpEnabled = !!(r && r.totp_enabled);
+    }
+    return json({ authenticated, role: authenticated ? admin.role : null, totpEnabled });
   }
 
   return null;
@@ -3217,6 +3340,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   const payoutClearMatch = path.match(/^\/api\/admin\/pending-payouts\/(\d+)\/clear$/);
   if (payoutClearMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'super_admin')) return json({ error: 'forbidden' }, 403);
     const body = await request.json().catch(() => ({}));
     const amount = Math.round(Number(body.amount));
     if (!amount || amount <= 0) return json({ error: 'bad_amount' }, 422);
@@ -3485,6 +3609,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   const setTestMatch = path.match(/^\/api\/admin\/users\/(\d+)\/set-test$/);
   if (setTestMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'super_admin')) return json({ error: 'forbidden' }, 403);
     const body = await request.json().catch(() => ({}));
     await env.DB.prepare(`UPDATE users SET is_test = ? WHERE id = ?`).bind(body.isTest !== false ? 1 : 0, Number(setTestMatch[1])).run();
     return json({ ok: true });
@@ -3492,6 +3617,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   const suspendMatch = path.match(/^\/api\/admin\/users\/(\d+)\/suspend$/);
   if (suspendMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'manager')) return json({ error: 'forbidden' }, 403);
     const body = await request.json().catch(() => ({}));
     const days = Math.max(1, Math.min(3650, Math.round(Number(body.days) || 7)));
     const reason = cleanStr(body.reason, 200);
@@ -3505,6 +3631,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   const unsuspendMatch = path.match(/^\/api\/admin\/users\/(\d+)\/unsuspend$/);
   if (unsuspendMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'manager')) return json({ error: 'forbidden' }, 403);
     const id = Number(unsuspendMatch[1]);
     await env.DB.prepare(`UPDATE users SET suspended_until = NULL, suspend_reason = NULL WHERE id = ?`).bind(id).run();
     await logAdminActivity(env, { action: 'user_unsuspended', details: `Foydalanuvchi #${id}`, ip });
@@ -3513,6 +3640,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   const adjustMatch = path.match(/^\/api\/admin\/users\/(\d+)\/adjust-balance$/);
   if (adjustMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'super_admin')) return json({ error: 'forbidden' }, 403);
     const body = await request.json().catch(() => ({}));
     const id = Number(adjustMatch[1]);
     const amount = Math.round(Number(body.amount));
@@ -3575,6 +3703,10 @@ async function adminCoreApi(request, env, url, admin) {
     return json({ ok: true });
   }
   if (path === '/api/admin/2fa/totp/disable' && request.method === 'POST') {
+    // Qayta tasdiqlash: joriy parol shart (sessiya o'g'irlanganda 2FA o'chirib bo'lmasin).
+    const body = await request.json().catch(() => ({}));
+    const me = await env.DB.prepare(`SELECT password_hash FROM admins WHERE id = ?`).bind(admin.adminId).first();
+    if (!me || !(await verifyPassword(String(body.password || ''), me.password_hash))) return json({ error: 'confirmation_required' }, 403);
     await env.DB.batch([
       env.DB.prepare(`UPDATE admins SET totp_enabled = 0, totp_secret = NULL, totp_last_counter = NULL WHERE id = ?`).bind(admin.adminId),
       env.DB.prepare(`DELETE FROM admin_totp_setup_pending WHERE admin_id = ?`).bind(admin.adminId),
@@ -4160,14 +4292,51 @@ async function coreApi(request, env, url) {
     // fall through to the dead Railway proxy for admin paths (that would
     // silently 503 with a confusing "upstream unavailable"); the ported
     // surface is intentionally partial (see task list), so say so plainly.
-    return json({ error: 'not_yet_migrated' }, 501);
+    return null; // modullar (hosting/api/*) tekshiradi; hech biri bo'lmasa fetch() 404 qaytaradi
   }
   return null;
+}
+
+// ---------- hosting/api/* modullari uchun yordamchilar (CONTRACT.md) ----------
+const H = {
+  json, getCurrentUser, getCurrentAdmin, requireAdmin, checkIpWhitelist,
+  getRecord, getRecordOwner, rowToRecord, RECORD_COLUMNS, updateRecord, validateRecordBody,
+  cleanStr, recSafeUrl, uploadOrSafeUrl, shortText, safeUrl, validCode, parseJsonArray, parseMusicUrls,
+  nowTs, parseDbDate, newToken, sha256Hex, hashPassword, verifyPassword,
+  reqIp, logAdminActivity, logAdminLoginEvent, sendTelegramMessage, sendTelegramTo,
+  personalIdTierD1, effectiveAccessD1, featureAllowedD1, paymentsEnabledD1, paymeCheckoutLinkD1,
+  createPendingWebOrderD1, getWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
+  finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
+  sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
+  rateLimitD1, roleAtLeast,
+  personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
+};
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram];
+
+// Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
+// framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
+// embed va Tailwind inline style buzilmasin).
+function withSecurityHeaders(res, url) {
+  const out = new Response(res.body, res);
+  const h = out.headers;
+  if (!h.has('x-content-type-options')) h.set('x-content-type-options', 'nosniff');
+  if (!h.has('referrer-policy')) h.set('referrer-policy', 'strict-origin-when-cross-origin');
+  if (!h.has('x-frame-options')) h.set('x-frame-options', 'DENY');
+  if (!h.has('permissions-policy')) h.set('permissions-policy', 'camera=(), microphone=(), geolocation=(self), payment=()');
+  if (!h.has('content-security-policy')) h.set('content-security-policy', "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self' https://checkout.paycom.uz https://*.payme.uz https://*.paycom.uz");
+  if (url.protocol === 'https:' && !h.has('strict-transport-security')) h.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
+  return out;
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const res = await handleRequest(request, env, url);
+    return withSecurityHeaders(res, url);
+  },
+};
+
+async function handleRequest(request, env, url) {
 
     const catalogMatch = url.pathname.match(/^\/api\/catalog-meta\/([^/]+)(?:\/items\/([^/]+)\/(view|reaction|promotion))?$/);
     if (catalogMatch) {
@@ -4265,14 +4434,27 @@ export default {
     // production), which would have been a dead/broken loop once the
     // Railway upstream it was written for went away; R2 above is now the
     // real source of truth for it.
+    // hosting/api/* modullari — core dispatch'dan keyin. Eski "o'ziga proxy"
+    // (https://nfcstore.uz ga fetch — Worker'ning O'Z domeni, 405/HTML/503 berardi)
+    // OLIB TASHLANDI: hech kim tanimasa aniq JSON 404.
+    // AI yordamchi (legacy server/assistant.js) Worker'ga portlanmagan —
+    // frontend vidjeti har sahifada holatni so'raydi; 404 o'rniga aniq
+    // "o'chirilgan" javobi (konsolda xato chiqmasin).
+    if (url.pathname === '/api/assistant/status' && request.method === 'GET') {
+      return json({ enabled: false });
+    }
     if (url.pathname.startsWith('/api/') || url.pathname === '/api') {
-      const upstreamUrl = new URL(url.pathname + url.search, 'https://nfcstore.uz');
-      const upstreamRequest = new Request(upstreamUrl, request);
       try {
-        return await fetch(upstreamRequest);
-      } catch {
-        return json({ error: 'api_upstream_unavailable' }, 503);
+        await ensureCoreSchema(env);
+        for (const mod of API_MODULES) {
+          const res = await mod.handle(request, env, url, H);
+          if (res) return res;
+        }
+      } catch (error) {
+        console.error('api module', url.pathname, error);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'api_unavailable' }, 503);
       }
+      return json({ error: 'not_found', path: url.pathname }, 404);
     }
 
     let response = await env.ASSETS.fetch(request);
@@ -4285,5 +4467,4 @@ export default {
       response = await env.ASSETS.fetch(new Request(shellUrl, request));
     }
     return response;
-  },
-};
+}

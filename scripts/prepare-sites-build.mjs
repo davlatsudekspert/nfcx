@@ -18,3 +18,25 @@ await copyFile(
   new URL('../hosting/worker.js', import.meta.url),
   new URL('../dist/server/index.js', import.meta.url),
 );
+
+// hosting/api/* modullari — worker.js ulardan import qiladi (wrangler bundle qiladi).
+await cp(new URL('../hosting/api/', import.meta.url), new URL('../dist/server/api/', import.meta.url), { recursive: true });
+
+// Himoya: hosting/ ichidagi hech bir modul '../../src/...' dan import qilmasin —
+// bunday yo'l dist/server/ ichida mavjud emas va wrangler bundle'da yiqiladi.
+{
+  const { readFile } = await import('node:fs/promises');
+  const apiDir = new URL('../hosting/api/', import.meta.url);
+  const offenders = [];
+  for (const f of await readdir(apiDir)) {
+    if (!f.endsWith('.js')) continue;
+    const src = await readFile(new URL(f, apiDir), 'utf8');
+    if (/^\s*import\b[^\n]*from\s+['"]\.\.\/\.\.\/src\//m.test(src)) offenders.push(f);
+  }
+  const workerSrc = await readFile(new URL('../hosting/worker.js', import.meta.url), 'utf8');
+  if (/^\s*import\b[^\n]*from\s+['"]\.\.\/src\//m.test(workerSrc)) offenders.push('worker.js');
+  if (offenders.length) {
+    console.error('prepare-sites-build: src/ import in worker modules (deploy bundle would fail):', offenders.join(', '));
+    process.exit(1);
+  }
+}

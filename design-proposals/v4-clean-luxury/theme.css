@@ -1,0 +1,46 @@
+/* V4 — Clean Luxury: yorug' sahifa + qorong'i hero paneli, minimalizm, keng bo'shliq, yumshoq soya, top-tab dashboard */
+:root{
+  --bg:#f6f4ef;--bg2:#efece5;--card:#ffffff;--card2:#f1eee7;--field:#faf9f6;--line:#e4dfd4;
+  --ink:#17140f;--ink2:#6d675b;--accent:#17140f;--accent-soft:rgba(23,20,15,.07);--on-accent:#ffffff;--danger:#d64545;
+  --gold:#b8933f;
+  --radius:24px;--radius-sm:14px;--radius-btn:999px;--track:-0.01em;
+  --font-display:"Cormorant Garamond",Georgia,"Times New Roman",serif;--font-body:"Segoe UI",system-ui,-apple-system,sans-serif;
+  --shadow:0 10px 30px -18px rgba(23,20,15,.25);--shadow-btn:0 10px 24px -12px rgba(23,20,15,.5);
+  --nav-bg:rgba(246,244,239,.9);--adm-nav:#ffffff;--cover:linear-gradient(135deg,#1c1813,#3a2f1c);--pub-bg:#1c1813;
+  --nfc-bg:linear-gradient(135deg,#1e1a14,#0d0b08 60%,#2a2216);--nfc-ink:#f4ecd8;--nfc-accent:#d9b56a;
+}
+.frame__label{background:#17140f}
+h1,h2{font-family:var(--font-display);font-weight:500;letter-spacing:0}
+.hero h1{font-size:clamp(40px,6vw,80px);line-height:1.02}
+.kicker{color:var(--gold);letter-spacing:.2em;font-size:11px}
+/* TUZILMA: qorong'i hero paneli yorug' sahifa ichida, markazlashgan minimal matn, karta pastda */
+.screen--home .hero{background:#17140f;color:#f6f4ef;border-radius:32px;margin:16px;max-width:none;grid-template-columns:1fr !important;text-align:center;justify-items:center;padding:56px 20px}
+.screen--home .hero .lead{color:#cfc8b8;margin:0 auto}.screen--home .hero .hero__bul{color:#cfc8b8;justify-content:center}.screen--home .hero__cta{justify-content:center}
+.screen--home .hero .btn--primary{background:#f6f4ef;color:#17140f}.screen--home .hero .btn--ghost{color:#f6f4ef;border-color:rgba(255,255,255,.25)}
+.screen--home .hero .idcheck{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#f6f4ef}.screen--home .hero .idcheck label{color:#cfc8b8}.screen--home .hero .idcheck__row{background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.14)}.screen--home .hero .idcheck input{color:#f6f4ef}.screen--home .hero .idcheck__prefix{color:#cfc8b8}
+.hero__visual{width:min(560px,100%)}.hero__visual .nfc-card{transform:rotate(-2deg)}.hero__glow{background:radial-gradient(circle,rgba(217,181,106,.35),transparent 70%)}.hero__tag{background:#f6f4ef;color:#17140f;border:0}
+@media(min-width:1024px){.screen--home .hero{margin:24px 40px;padding:80px 40px}}
+.section{padding-top:64px}.section .h2{font-size:clamp(30px,3.6vw,46px)}
+.card{border-color:var(--line)}.who__card{padding:34px}.who__ic{background:#17140f;color:#f6f4ef}.who__card--c .who__ic{background:var(--gold)}
+.btn--secondary{background:#fff;border-color:var(--line)}
+.badge--gold{background:var(--gold);color:#fff}.plan.is-pop{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),var(--shadow)}.plan__pop{background:var(--gold)}
+.plan li svg,.hero__bul svg,.link svg,.who__card .btn svg{color:var(--gold)}
+.topnav{border-bottom:0;background:var(--nav-bg)}.topnav__links a{color:var(--ink)}
+/* dashboard: sidebar yo'q, yuqori yorug' tab qatori */
+@media(min-width:1024px){.dash{grid-template-columns:1fr}.screen--dash .dash{grid-template-columns:1fr 320px}.dash__nav{grid-column:1/-1;position:static;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px}.dash__nav .dash__me{margin:0 auto 0 0}.dash__nav nav{display:flex;gap:2px}.dash__nav nav a{min-height:40px;padding:8px 14px;border-radius:999px}
+.adm{grid-template-columns:240px 1fr}}
+.dash__nav nav a.is-on{background:#17140f;color:#fff}.adm__nav nav a.is-on{background:#17140f;color:#fff}
+.stat b{font-family:var(--font-display);font-size:30px;font-weight:600}
+.step.is-done .step__n{background:var(--gold)}.step.is-done .step__st{color:var(--gold)}.step.is-cur{border-color:#17140f}
+.progress__bar i{background:var(--gold)}
+.phone{background:#17140f;border-color:#2a2216}
+.pub{border-radius:28px;padding-bottom:28px}.pub__cover{background:var(--cover);border-radius:0}.pub__avatar img{border-color:#fff}.pub__avatar::before{background:radial-gradient(circle,rgba(184,147,63,.3),transparent 70%)}
+.link{background:#fff;border-radius:999px;box-shadow:0 4px 14px -10px rgba(23,20,15,.3)}
+.cpub__hero{color:#f6f4ef;border-radius:0 0 32px 32px}.cpub__heroin p{color:#cfc8b8}.cpub__hero .btn--secondary{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)}.cpub__hero .btn--primary{background:#f6f4ef;color:#17140f}
+.adm__nav{border-right-color:var(--line)}.table th{background:var(--card2)}
+.pay__card{border-radius:24px}.btn--payme{box-shadow:0 12px 30px -12px rgba(0,194,168,.6)}
+.bottomnav{display:none}.dash{padding-bottom:24px}
+@media(max-width:1023px){.dash__nav{display:block}.dash__nav nav{display:flex;overflow-x:auto;gap:4px}.dash__nav nav a{white-space:nowrap;border-radius:999px}.dash__nav .dash__me{display:none}}
+.footer{border-top-color:var(--line)}
+.screen--home .hero__text{display:flex;flex-direction:column;align-items:center;width:100%}.screen--home .idcheck{width:100%}
+.card h3,.h3,.who__card h3,.plan h3{font-family:var(--font-body);font-weight:700}

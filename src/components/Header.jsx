@@ -6,6 +6,7 @@ import { MESSAGING_ENABLED } from '../lib/features.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { canInstall, onInstallableChange, promptInstall } from '../lib/pwa.js';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import { IconBell, IconChat, IconInstall } from './Icons.jsx';
 import logo from '../assets/logo-128.png';
 
 // Navbar jonli qidiruv — ID (kod) yoki ism bo'yicha. Yozilgan sari
@@ -143,7 +144,7 @@ export default function Header() {
   const go = (href) => { setOpen(false); navigate(href); };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-base-100/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(10,8,5,0.86)] backdrop-blur-md">
       {/* BETA e'lon lentasi — doimiy aylanuvchi marquee. Fon rangini bermaymiz —
           header'ning o'zidagi bg-base-100/80 dan meros oladi, aks holda ikki
           qavat shaffof fon ustma-ust tushib, marquee bilan navbar orasida
@@ -152,14 +153,14 @@ export default function Header() {
         <div className="flex w-max animate-[marqueeScroll_30s_linear_infinite] whitespace-nowrap py-1 will-change-transform">
           {Array.from({ length: 6 }).map((_, i) => (
             <span key={i} className="px-10 text-[14px] font-semibold uppercase tracking-[0.14em] text-accent">
-              {'✨'} NFCSTORE BETA — {t('Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.')}
+              NFCSTORE BETA — {t('Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.')}
             </span>
           ))}
         </div>
       </div>
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-8 2xl:px-14">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button onClick={() => go('/')} className="flex shrink-0 cursor-pointer items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
+          <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2.5 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)]">
             <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_rgba(201,162,39,0.35)]" />
             NFCSTORE
           </button>
@@ -184,37 +185,41 @@ export default function Header() {
 
         <div className="hidden items-center gap-2 xl:flex">
           {user && MESSAGING_ENABLED && (
-            <button className="btn btn-ghost btn-sm relative" onClick={() => go('/xabarlar')}>
-              {'\u{1F4AC}'} {t('Xabarlar')}
+            <button className="btn btn-ghost btn-sm relative gap-1.5" onClick={() => go('/xabarlar')}>
+              <IconChat /> {t('Xabarlar')}
               {unread > 0 && <span className="badge badge-accent badge-xs absolute -right-1 -top-1">{unread}</span>}
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')}>
-              {'\u{1F514}'}
+            <button className="btn btn-ghost btn-circle btn-sm" onClick={() => go('/bildirishnomalar')} title={t('Bildirishnomalar')} aria-label={t('Bildirishnomalar')}>
+              <IconBell />
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-sm" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
+            <button className="btn btn-ghost btn-sm hidden 2xl:inline-flex" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
           )}
           {installable && (
-            <button className="btn btn-ghost btn-sm" onClick={install} title={t('Ilovani o‘rnatish')}>{'\u{1F4F2}'}</button>
+            <button className="btn btn-ghost btn-circle btn-sm" onClick={install} title={t('Ilovani o‘rnatish')} aria-label={t('Ilovani o‘rnatish')}><IconInstall /></button>
           )}
           {user ? (
-            <button className="btn btn-ghost btn-sm gap-2 pl-1.5" onClick={() => go('/account')}>
+            <button className="btn btn-outline-gold h-10 min-h-10 gap-2 pl-1.5 pr-4 text-[13.5px]" onClick={() => go('/account')}>
               <MyProfileAvatar src={myAvatar} label={myLabel} />
               {t('Mening profilim')}
             </button>
           ) : (
             <button className="btn btn-ghost btn-sm" onClick={() => go('/login')}>{t('Kirish')}</button>
           )}
-          <button className="btn btn-primary btn-sm" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
+          {/* Kirgan foydalanuvchi uchun asosiy CTA "Mening profilim" — ro'yxatdan
+              o'tish tugmasi faqat mehmonlarga (xl kengligida navbar sig'ishi uchun ham). */}
+          {!user && (
+            <button className="btn btn-gold h-10 min-h-10 px-5 text-[13.5px]" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
+          )}
           <LanguageSwitcher />
         </div>
 
         <div className="flex items-center gap-1 xl:hidden">
           <LanguageSwitcher />
-          <button aria-label="Menyu" className="btn btn-ghost btn-sm btn-square" onClick={() => setOpen(!open)}>
+          <button aria-label={t('Menyu')} aria-expanded={open} className="btn btn-ghost btn-square h-11 min-h-11 w-11" onClick={() => setOpen(!open)}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={open ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
             </svg>
@@ -223,43 +228,43 @@ export default function Header() {
       </div>
 
       {open && (
-        <div className="border-t border-white/10 px-5 pb-4 xl:hidden">
+        <div className="max-h-[calc(100dvh-96px)] overflow-y-auto border-t border-[color:var(--vz-line)] px-5 pb-4 xl:hidden">
           <div className="py-3">
             <HeaderSearch onNavigate={go} />
           </div>
           <ul className="menu w-full gap-1 bg-transparent p-0">
             {NAV.map(([label, href]) => (
               <li key={href}>
-                <button onClick={() => go(href)} className="cursor-pointer">{t(label)}</button>
+                <button onClick={() => go(href)} className="min-h-11 cursor-pointer">{t(label)}</button>
               </li>
             ))}
             <li className="mt-2 border-t border-white/10 pt-2">
               {user && MESSAGING_ENABLED && (
-                <button onClick={() => go('/xabarlar')} className="cursor-pointer">
-                  {'\u{1F4AC}'} {t('Xabarlar')} {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
+                <button onClick={() => go('/xabarlar')} className="min-h-11 cursor-pointer">
+                  <IconChat /> {t('Xabarlar')} {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
                 </button>
               )}
               {user ? (
-                <button onClick={() => go('/account')} className="flex cursor-pointer items-center gap-2">
+                <button onClick={() => go('/account')} className="flex min-h-11 cursor-pointer items-center gap-2">
                   <MyProfileAvatar src={myAvatar} label={myLabel} size="h-7 w-7" />
                   {t('Mening profilim')}
                 </button>
               ) : (
-                <button onClick={() => go('/login')} className="cursor-pointer">{t('Kirish')}</button>
+                <button onClick={() => go('/login')} className="min-h-11 cursor-pointer">{t('Kirish')}</button>
               )}
             </li>
           </ul>
           {installable && (
-            <button className="btn btn-ghost btn-block mt-2" onClick={install}>{'\u{1F4F2}'} {t('Ilovani o‘rnatish')}</button>
+            <button className="btn btn-ghost-vz btn-block mt-2 gap-2" onClick={install}><IconInstall /> {t('Ilovani o‘rnatish')}</button>
           )}
-          <button className="btn btn-primary btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
+          <button className="btn btn-gold btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
         </div>
       )}
 
       {iosHint && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setIosHint(null)}>
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-base-200 p-5 text-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="text-base font-bold">{'\u{1F4F2}'} {t('Ilovani o‘rnatish')}</div>
+            <div className="flex items-center gap-2 text-base font-bold"><IconInstall /> {t('Ilovani o‘rnatish')}</div>
             {iosHint === 'open-safari' ? (
               <p className="mt-3 text-base-content/75">
                 {t('iPhone’da ilovani faqat Safari brauzeri orqali o‘rnatish mumkin. Bu sahifani Safari’da oching va yana urinib ko‘ring.')}
@@ -271,7 +276,7 @@ export default function Header() {
                 <li>{t('"Qo‘shish" ni bosing')}</li>
               </ol>
             )}
-            <button className="btn btn-primary btn-sm btn-block mt-4" onClick={() => setIosHint(null)}>{t('Tushundim')}</button>
+            <button className="btn btn-gold btn-block mt-4" onClick={() => setIosHint(null)}>{t('Tushundim')}</button>
           </div>
         </div>
       )}

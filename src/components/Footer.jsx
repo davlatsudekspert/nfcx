@@ -3,33 +3,34 @@ import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
 const COLS = [
-  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog']] },
-  { title: 'Kompaniya', links: [['Savollar', '/savollar'], ['Aloqa', '/aloqa']] },
+  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Auksion', '/auksion'], ['Kompaniyalar', '/kompaniyalar']] },
+  { title: 'Kompaniya', links: [['Yangiliklar', '/yangiliklar'], ['Savollar', '/savollar'], ['Qo‘llanma', '/qollanma'], ['Aloqa', '/aloqa']] },
   { title: 'Huquqiy', links: [['Foydalanish shartlari', '/shartlar'], ['Maxfiylik siyosati', '/maxfiylik']] },
 ];
 
 export default function Footer() {
   const { t } = useLanguage();
   return (
-    <footer className="border-t border-white/10 bg-base-100">
-      <div className="mx-auto w-full max-w-[1800px] px-6 py-10 sm:px-10 lg:px-14">
+    <footer className="border-t border-[color:var(--vz-line)] bg-[color:var(--vz-bg)]">
+      <div className="h-px bg-gradient-to-r from-transparent via-[rgba(212,175,90,0.45)] to-transparent"></div>
+      <div className="mx-auto w-full max-w-[1800px] px-6 py-12 sm:px-10 lg:px-14">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          <div>
-            <div className="mb-2 flex items-center gap-2.5 text-[15px] font-extrabold tracking-wide">
+          <div className="col-span-2 md:col-span-1">
+            <div className="mb-2 flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)]">
               <img src={logo} alt="NFCSTORE" className="h-8 w-8 object-contain" />
               NFCSTORE
             </div>
-            <p className="text-sm text-base-content/50">{t("Raqamli shaxsiy raqamli tashrif qog'ozi xizmati")}</p>
+            <p className="max-w-[28ch] text-sm text-[color:var(--vz-ink-2)]">{t('NFC karta + raqamli profil')}</p>
           </div>
           {COLS.map((col) => (
             <div key={col.title}>
-              <div className="mb-3 text-xs font-bold uppercase tracking-widest text-base-content/60">{t(col.title)}</div>
+              <div className="mb-3 text-xs font-bold uppercase tracking-widest text-[color:var(--vz-gold)]">{t(col.title)}</div>
               <ul className="flex flex-col gap-2">
                 {col.links.map(([label, href]) => (
                   <li key={href}>
                     <button
                       onClick={() => navigate(href)}
-                      className="cursor-pointer text-left text-[16px] text-base-content/40 transition-colors hover:text-base-content"
+                      className="min-h-8 cursor-pointer text-left text-[15px] text-[color:var(--vz-ink-2)] transition-colors hover:text-[color:var(--vz-ink)]"
                     >
                       {t(label)}
                     </button>
@@ -39,7 +40,10 @@ export default function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-8 border-t border-white/5 pt-5 text-xs text-base-content/35">© 2026 NFCSTORE</div>
+        <div className="mt-10 flex flex-col gap-2 border-t border-[color:var(--vz-line)] pt-5 text-xs text-[color:var(--vz-ink-3)] sm:flex-row sm:items-center sm:justify-between">
+          <span>© 2026 NFCSTORE.UZ</span>
+          <span>{t('Cloudflare tarmog‘ida ishlaydi · To‘lovlar Payme orqali')}</span>
+        </div>
       </div>
     </footer>
   );

@@ -6,7 +6,11 @@
 // qilinadi. Foydalanuvchi kiritgan kontent (ism, bio, link nomlari,
 // description) HECH QACHON bu yerga qo'shilmaydi.
 
-export const DICT = {
+import { DICT_SITE } from './translations.site.js';
+import { DICT_ACCOUNT } from './translations.account.js';
+import { DICT_ADMIN } from './translations.admin.js';
+
+const DICT_BASE = {
   // ─────────────────────────── Navigatsiya (Header) ───────────────────────────
   'Narxlar': { ru: 'Цены', en: 'Pricing' },
   'Qanday ishlaydi': { ru: 'Как это работает', en: 'How it works' },
@@ -539,8 +543,8 @@ export const DICT = {
 
   // ─────────────────────────── Bosh sahifa (HomePage) ───────────────────────────
   'Sizning raqamli profilingiz. Har doim yoningizda.': { ru: 'Ваш цифровой профиль. Всегда с вами.', en: 'Your digital profile. Always with you.' },
-  'Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va boshqa muhim ma’lumotlaringizni bitta profilda jamlang. Uni NFC karta yoki havola orqali qulay ulashing.':
-    { ru: 'Соберите номер телефона, социальные сети, сайт и другую важную информацию в одном профиле. Удобно делитесь им через NFC-карту или ссылку.', en: 'Bring your phone number, social profiles, website and other important details into one profile. Share it easily with an NFC card or link.' },
+  'Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va o‘ziga xos NFCSTORE ID’ingizni bitta profilda jamlang. NFC karta yoki havola orqali qulay ulashing.':
+    { ru: 'Объедините номер телефона, социальные сети, сайт и ваш уникальный NFCSTORE ID в одном профиле. Удобно делитесь им с помощью NFC-карты или ссылки.', en: 'Bring your phone number, social media profiles, website, and unique NFCSTORE ID together in one profile. Share it easily via an NFC card or link.' },
   'Tez ulashish': { ru: 'Быстрый обмен', en: 'Quick sharing' },
   'NFC yoki havola orqali': { ru: 'Через NFC или ссылку', en: 'Via NFC or link' },
   'Ulashish shunchalik oson.': { ru: 'Делиться так просто.', en: 'Sharing is this simple.' },
@@ -2333,3 +2337,41 @@ export const DICT = {
   "O'lchamini o'zgartirish": { ru: "Изменить размер", en: "Resize" },
   "To'liq ekrandan chiqish": { ru: "Выйти из полноэкранного режима", en: "Exit fullscreen" },
 };
+
+// Qo'shimcha lug'atlar (sohalar bo'yicha alohida fayllarda — parallel ish uchun).
+
+// Bosh sahifa (V1 Black & Gold) va Footer uchun yangi kalitlar.
+const DICT_HOME = {
+  'NFC karta + raqamli profil': { ru: 'NFC-карта + цифровой профиль', en: 'NFC card + digital profile' },
+  'Bitta teginish — barcha kontaktlaringiz.': { ru: 'Одно касание — все ваши контакты.', en: 'One tap — all your contacts.' },
+  'Kimlar uchun': { ru: 'Для кого', en: 'Who is it for' },
+  'Jismoniy shaxs': { ru: 'Частное лицо', en: 'Individual' },
+  'Mutaxassis, tadbirkor, ijodkor — o‘z brendingiz uchun bitta havola.': { ru: 'Специалист, предприниматель, творческая личность — одна ссылка для вашего бренда.', en: 'Professional, entrepreneur, creator — a single link for your personal brand.' },
+  'Shaxsiy profil ochish': { ru: 'Открыть личный профиль', en: 'Open a personal profile' },
+  'Menyu, katalog, xizmatlar, filiallar va jamoa — premium biznes profil.': { ru: 'Меню, каталог, услуги, филиалы и команда — премиальный бизнес-профиль.', en: 'Menu, catalog, services, branches and team — a premium business profile.' },
+  'Kompaniya profili ochish': { ru: 'Открыть профиль компании', en: 'Open a company profile' },
+  "NFC ID narxi faqat undagi harf/raqam naqshiga bog'liq — qat'iy va o'zgarmas.": { ru: 'Цена NFC ID зависит только от узора букв/цифр — фиксированная и неизменная.', en: 'An NFC ID price depends only on its letter/digit pattern — fixed and never changes.' },
+  'Raqamli profil (8 xonali avtomatik ID)': { ru: 'Цифровой профиль (автоматический 8-значный ID)', en: 'Digital profile (automatic 8-digit ID)' },
+  'Aloqa tugmalari': { ru: 'Кнопки связи', en: 'Contact buttons' },
+  'vCard (.VCF) saqlash': { ru: 'Сохранение vCard (.VCF)', en: 'Save vCard (.VCF)' },
+  'Mashhur': { ru: 'Популярный', en: 'Popular' },
+  'Oltin belgi': { ru: 'Золотой бейдж', en: 'Gold badge' },
+  'Fon rasm va musiqa': { ru: 'Фоновое изображение и музыка', en: 'Background image and music' },
+  'Kengaytirilgan statistika': { ru: 'Расширенная статистика', en: 'Advanced analytics' },
+  'Ishonch': { ru: 'Доверие', en: 'Trust' },
+  'Global tarmoq — sahifa dunyoning istalgan nuqtasidan tez ochiladi.': { ru: 'Глобальная сеть — страница быстро открывается из любой точки мира.', en: 'Global network — the page opens fast from anywhere in the world.' },
+  'Rasmiy to‘lov integratsiyasi.': { ru: 'Официальная интеграция оплаты.', en: 'Official payment integration.' },
+  'To‘lov integratsiyasi tayyorlanmoqda.': { ru: 'Интеграция оплаты готовится.', en: 'Payment integration is being prepared.' },
+  'Mahalliy qo‘llab-quvvatlash — savollaringizga o‘zbek tilida javob beramiz.': { ru: 'Локальная поддержка — отвечаем на ваши вопросы на узбекском и русском.', en: 'Local support — we answer your questions in Uzbek and Russian.' },
+  'Ko‘p so‘raladigan savollar': { ru: 'Часто задаваемые вопросы', en: 'Frequently asked questions' },
+  'Barcha savollar': { ru: 'Все вопросы', en: 'All questions' },
+  'Cloudflare tarmog‘ida ishlaydi · To‘lovlar Payme orqali': { ru: 'Работает в сети Cloudflare · Оплата через Payme', en: 'Runs on Cloudflare · Payments via Payme' },
+  'Ulashish shunchalik oson.': { ru: 'Делиться так просто.', en: 'Sharing is this easy.' },
+  'Juda ko‘p urinish. Birozdan so‘ng qayta urinib ko‘ring.': { ru: 'Слишком много попыток. Повторите чуть позже.', en: 'Too many attempts. Please try again shortly.' },
+  'Server bilan aloqa yo‘q. Qayta urinib ko‘ring.': { ru: 'Нет связи с сервером. Попробуйте ещё раз.', en: 'Cannot reach the server. Please try again.' },
+  'Qayta urinish': { ru: 'Повторить', en: 'Retry' },
+  'Test rejimi': { ru: 'Тестовый режим', en: 'Test mode' },
+  'Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)': { ru: 'Задать печатный дизайн карты сейчас (необязательно)', en: 'Set the card’s print design now (optional)' },
+};
+
+export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

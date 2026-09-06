@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { dbListNews, dbNewsView, dbNewsLike } from '../lib/db.js';
+import { dbNewsView, dbNewsLike } from '../lib/db.js';
 import { dateTime, fmt } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { navigate } from '../lib/router.js';
+import { IconArrowLeft } from '../components/Icons.jsx';
 
 // Tanlangan tildagi matnni oladi — tarjima bo'sh bo'lsa o'zbekchaga qaytadi.
 function pick(item, base, lang) {
@@ -10,95 +12,261 @@ function pick(item, base, lang) {
   return (item[base + suffix] || '').trim() || item[base] || '';
 }
 
+// Ro'yxatni to'g'ridan-to'g'ri olamiz — xatolik bilan bo'sh ro'yxatni ajratish
+// uchun (db.js dagi dbListNews xatoni yutib, [] qaytaradi).
+async function fetchNews() {
+  const res = await fetch('/api/news', { credentials: 'same-origin' });
+  if (!res.ok) { const e = new Error('api_error_' + res.status); e.status = res.status; throw e; }
+  const data = await res.json().catch(() => ({}));
+  return { news: Array.isArray(data?.news) ? data.news : [], liked: Array.isArray(data?.liked) ? data.liked : [] };
+}
+
+// Bir sessiyada har bir yangilik faqat bir marta "ko'rildi" deb hisoblanadi.
+function markSeen(id) {
+  try {
+    const k = 'nfcx:news-seen:' + id;
+    if (sessionStorage.getItem(k)) return false;
+    sessionStorage.setItem(k, '1');
+    return true;
+  } catch { return true; }
+}
+
+function IconEye(props) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function IconHeart({ filled, ...props }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
+
 // NFCSTORE yangiliklari — faqat admin joylaydi (Admin panel → Yangiliklar).
-export default function NewsPage() {
+// `newsId` berilsa (marshrut: /yangiliklar/:id) bitta yangilik batafsil ochiladi;
+// alohida GET /api/news/:id yo'q — ro'yxatdan topiladi.
+export default function NewsPage({ newsId = null }) {
   const { t, lang } = useLanguage();
   const [news, setNews] = useState(null);
+  const [err, setErr] = useState(null);
   const [liked, setLiked] = useState({}); // id -> bool
+  const [likeErr, setLikeErr] = useState(null);
 
-  useEffect(() => {
-    dbListNews().then(({ news: list, liked: likedIds }) => {
-      setNews(Array.isArray(list) ? list : []);
+  const load = () => {
+    setErr(null); setNews(null);
+    fetchNews().then(({ news: list, liked: likedIds }) => {
+      setNews(list);
       setLiked(Object.fromEntries((likedIds || []).map((id) => [id, true])));
-      // Ko'rilган har bir yangilikni bir marta hisoblaymiz (sessiya bo'yicha).
-      try {
-        for (const item of list || []) {
-          const k = 'nfcx:news-seen:' + item.id;
-          if (!sessionStorage.getItem(k)) { sessionStorage.setItem(k, '1'); dbNewsView(item.id); }
-        }
-      } catch { /* sessionStorage bloklangan */ }
-    });
-  }, []);
+    }).catch((e) => setErr(e));
+  };
+  useEffect(() => { load(); }, []);
+
+  // Ro'yxat ko'rinishida: barcha yangiliklar bir marta hisoblanadi (eski xatti-harakat).
+  // Batafsil ko'rinishda: faqat shu yangilik; server qaytargan `views` bilan yangilanadi.
+  useEffect(() => {
+    if (!news) return;
+    if (newsId) {
+      const id = Number(newsId);
+      if (!news.some((n) => n.id === id) || !markSeen(id)) return;
+      fetch(`/api/news/${id}/view`, { method: 'POST', credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && typeof d.views === 'number') setNews((list) => (list || []).map((n) => (n.id === id ? { ...n, views: d.views } : n))); })
+        .catch(() => {});
+    } else {
+      for (const item of news) if (markSeen(item.id)) dbNewsView(item.id);
+    }
+  }, [news === null, newsId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const detail = newsId && news ? news.find((n) => String(n.id) === String(newsId)) : null;
+
+  // Sahifa sarlavhasi
+  useEffect(() => {
+    const prev = document.title;
+    if (newsId && detail) document.title = `${pick(detail, 'title', lang)} — NFCSTORE`;
+    else if (!newsId) document.title = `${t('Yangiliklar')} — NFCSTORE`;
+    return () => { document.title = prev; };
+  }, [newsId, detail, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleLike = async (item) => {
     // optimistik
     const wasLiked = !!liked[item.id];
+    setLikeErr(null);
     setLiked((s) => ({ ...s, [item.id]: !wasLiked }));
     setNews((list) => (list || []).map((n) => (n.id === item.id
       ? { ...n, likeCount: Math.max(0, (n.likeCount || 0) + (wasLiked ? -1 : 1)) }
       : n)));
     try {
       const r = await dbNewsLike(item.id);
-      setLiked((s) => ({ ...s, [item.id]: r.liked }));
-      setNews((list) => (list || []).map((n) => (n.id === item.id ? { ...n, likeCount: r.count } : n)));
+      if (r && typeof r.liked === 'boolean') {
+        setLiked((s) => ({ ...s, [item.id]: r.liked }));
+        setNews((list) => (list || []).map((n) => (n.id === item.id ? { ...n, likeCount: Number(r.count ?? r.likes ?? n.likeCount ?? 0) } : n)));
+      } else throw new Error('bad_response');
     } catch {
       // xato bo'lsa qaytaramiz
       setLiked((s) => ({ ...s, [item.id]: wasLiked }));
+      setNews((list) => (list || []).map((n) => (n.id === item.id
+        ? { ...n, likeCount: Math.max(0, (n.likeCount || 0) + (wasLiked ? 1 : -1)) }
+        : n)));
+      setLikeErr(t("Server bilan aloqa yo'q. Qayta urinish"));
     }
   };
 
+  const go = (e, path) => { e.preventDefault(); navigate(path); };
+
+  const likeBtn = (item) => (
+    <button
+      type="button"
+      onClick={() => toggleLike(item)}
+      aria-pressed={!!liked[item.id]}
+      aria-label={liked[item.id] ? t('Yoqtirishni bekor qilish') : t('Yoqtirish')}
+      className="vz-tap inline-flex items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition"
+      style={liked[item.id]
+        ? { borderColor: 'rgba(229,72,77,.5)', color: '#ff7b81', background: 'rgba(229,72,77,.08)' }
+        : { borderColor: 'var(--vz-line)', color: 'var(--vz-ink-2)' }}
+    >
+      <IconHeart filled={!!liked[item.id]} />
+      <b>{fmt(item.likeCount || 0)}</b>
+    </button>
+  );
+
+  const meta = (item) => (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px]" style={{ color: 'var(--vz-ink-3)' }}>
+      <span className="font-mono text-xs">{dateTime(new Date(item.createdAt).getTime())}</span>
+      <span className="inline-flex items-center gap-1.5"><IconEye /> {t("{n} ko'rishlar", { n: fmt(item.views || 0) })}</span>
+    </div>
+  );
+
+  // ---------- Batafsil ----------
+  if (newsId) {
+    return (
+      <main className="mx-auto w-full max-w-3xl px-4 pb-20 sm:px-6 lg:px-10" style={{ color: 'var(--vz-ink)' }}>
+        <section className="pt-10 sm:pt-14">
+          <a href="/yangiliklar" onClick={(e) => go(e, '/yangiliklar')} className="vz-tap inline-flex items-center gap-2 rounded-full text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>
+            <IconArrowLeft /> {t('Barcha yangiliklar')}
+          </a>
+        </section>
+
+        <section className="mt-6">
+          {err && (
+            <div role="alert" className="flex flex-col items-center gap-3 rounded-[14px] border p-8 text-center" style={{ borderColor: 'rgba(229,72,77,.45)', background: 'rgba(229,72,77,.06)' }}>
+              <div className="text-sm font-semibold" style={{ color: '#ff7b81' }}>{t("Yangilikni yuklab bo'lmadi.")}</div>
+              <div className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t("Server bilan aloqa yo'q.")}</div>
+              <button type="button" className="btn btn-outline-gold btn-sm" onClick={load}>{t('Qayta urinish')}</button>
+            </div>
+          )}
+          {!err && news === null && (
+            <div className="vz-card p-6" aria-busy="true">
+              <div className="vz-skel h-3 w-24" />
+              <div className="vz-skel mt-4 h-7 w-3/4" />
+              <div className="vz-skel mt-6 h-3" />
+              <div className="vz-skel mt-2 h-3 w-11/12" />
+              <div className="vz-skel mt-2 h-3 w-4/5" />
+              <span className="sr-only">{t('Yuklanmoqda...')}</span>
+            </div>
+          )}
+          {!err && news !== null && !detail && (
+            <div className="vz-empty">
+              <div className="text-sm font-semibold" style={{ color: 'var(--vz-ink)' }}>{t('Yangilik topilmadi.')}</div>
+              <div className="text-xs">{t("Bu yangilik o'chirilgan yoki hali chop etilmagan bo'lishi mumkin.")}</div>
+              <a href="/yangiliklar" onClick={(e) => go(e, '/yangiliklar')} className="btn btn-outline-gold btn-sm mt-2">{t('Barcha yangiliklar')}</a>
+            </div>
+          )}
+          {detail && (
+            <article className="vz-card overflow-hidden">
+              {detail.imageUrl && (
+                <img src={detail.imageUrl} alt="" className="max-h-[420px] w-full object-cover" />
+              )}
+              <div className="p-5 sm:p-8">
+                <span className="vz-kicker">{t('Yangiliklar')}</span>
+                <h1 className="vz-h2 mt-2 break-words">{pick(detail, 'title', lang)}</h1>
+                <div className="mt-4">{meta(detail)}</div>
+                {pick(detail, 'body', lang) && (
+                  <p className="mt-6 whitespace-pre-wrap break-words text-[16px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{pick(detail, 'body', lang)}</p>
+                )}
+                <div className="vz-divider mt-8" />
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  {likeBtn(detail)}
+                  <a href="/yangiliklar" onClick={(e) => go(e, '/yangiliklar')} className="btn btn-ghost-vz btn-sm">{t('Orqaga')}</a>
+                </div>
+                {likeErr && <div role="alert" className="vz-err mt-3">{likeErr}</div>}
+              </div>
+            </article>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  // ---------- Ro'yxat ----------
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 pb-20 sm:px-10">
-      <section className="pt-14">
-        <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-          <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-          {t('Yangiliklar')}
-        </span>
-        <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight">
-          {t('NFCSTORE')} <span className="bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent">{t('yangiliklari')}</span>
-        </h1>
-        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-base-content/55">
+    <main className="mx-auto w-full max-w-3xl px-4 pb-20 sm:px-6 lg:px-10" style={{ color: 'var(--vz-ink)' }}>
+      <section className="pt-10 sm:pt-14">
+        <span className="vz-kicker">{t('Yangiliklar')}</span>
+        <h1 className="vz-h2 mt-3">{t('NFCSTORE')} {t('yangiliklari')}</h1>
+        <p className="vz-lead mt-4">
           {t("Ishga tushirish sanasi, yangi ID'lar, aksiyalar va platforma yangiliklari shu yerda e'lon qilinadi.")}
         </p>
       </section>
 
       <section className="mt-10 space-y-5">
-        {news === null && (
-          <div className="py-10 text-center text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>
-        )}
-        {news !== null && news.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-base-content/50">
-            {t('Hozircha yangiliklar yo‘q.')}
+        {err && (
+          <div role="alert" className="flex flex-col items-center gap-3 rounded-[14px] border p-8 text-center" style={{ borderColor: 'rgba(229,72,77,.45)', background: 'rgba(229,72,77,.06)' }}>
+            <div className="text-sm font-semibold" style={{ color: '#ff7b81' }}>{t("Yangiliklarni yuklab bo'lmadi.")}</div>
+            <div className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t("Server bilan aloqa yo'q.")}</div>
+            <button type="button" className="btn btn-outline-gold btn-sm" onClick={load}>{t('Qayta urinish')}</button>
           </div>
         )}
-        {(news || []).map((item) => (
-          <article key={item.id} className="overflow-hidden rounded-2xl border border-white/10 bg-base-200/60">
-            {item.imageUrl && (
-              <img src={item.imageUrl} alt="" className="max-h-[360px] w-full object-cover" loading="lazy" />
-            )}
-            <div className="p-5 sm:p-6">
-              <div className="font-mono text-xs text-base-content/40">{dateTime(new Date(item.createdAt).getTime())}</div>
-              <h2 className="mt-1.5 text-xl font-bold">{pick(item, 'title', lang)}</h2>
-              {pick(item, 'body', lang) && (
-                <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-base-content/70">{pick(item, 'body', lang)}</p>
-              )}
-              <div className="mt-4 flex items-center gap-4 text-[16px] text-base-content/55">
-                <button
-                  onClick={() => toggleLike(item)}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${
-                    liked[item.id] ? 'border-red-400/50 text-red-400' : 'border-white/12 hover:border-white/25'
-                  }`}
-                >
-                  <span>{liked[item.id] ? '❤️' : '🤍'}</span>
-                  <b>{fmt(item.likeCount || 0)}</b>
-                </button>
-                <span className="flex items-center gap-1.5">
-                  <span aria-hidden="true">👁</span> {t("{n} ko'rishlar", { n: fmt(item.views || 0) })}
-                </span>
+        {!err && news === null && (
+          <div className="space-y-5" aria-busy="true">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="vz-card p-6">
+                <div className="vz-skel h-3 w-24" />
+                <div className="vz-skel mt-4 h-5 w-2/3" />
+                <div className="vz-skel mt-4 h-3" />
+                <div className="vz-skel mt-2 h-3 w-5/6" />
               </div>
-            </div>
-          </article>
-        ))}
+            ))}
+            <span className="sr-only">{t('Yuklanmoqda...')}</span>
+          </div>
+        )}
+        {!err && news !== null && news.length === 0 && (
+          <div className="vz-empty">
+            <div className="text-sm font-semibold" style={{ color: 'var(--vz-ink)' }}>{t('Hozircha yangiliklar yo‘q.')}</div>
+            <div className="text-xs">{t("Yangi e'lonlar shu yerda paydo bo'ladi.")}</div>
+          </div>
+        )}
+        {likeErr && <div role="alert" className="vz-err">{likeErr}</div>}
+        {(news || []).map((item) => {
+          const href = `/yangiliklar/${item.id}`;
+          return (
+            <article key={item.id} className="vz-card min-w-0 overflow-hidden">
+              {item.imageUrl && (
+                <a href={href} onClick={(e) => go(e, href)} className="block">
+                  <img src={item.imageUrl} alt="" className="max-h-[360px] w-full object-cover" loading="lazy" />
+                </a>
+              )}
+              <div className="p-5 sm:p-6">
+                {meta(item)}
+                <h2 className="mt-2 break-words font-display text-xl font-semibold leading-snug sm:text-2xl">
+                  <a href={href} onClick={(e) => go(e, href)} className="hover:underline underline-offset-4">{pick(item, 'title', lang)}</a>
+                </h2>
+                {pick(item, 'body', lang) && (
+                  <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-[15px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{pick(item, 'body', lang)}</p>
+                )}
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {likeBtn(item)}
+                  <a href={href} onClick={(e) => go(e, href)} className="vz-tap inline-flex items-center rounded-full px-3 text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>
+                    {t("Batafsil o'qish")} →
+                  </a>
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </section>
     </main>
   );

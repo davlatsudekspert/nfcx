@@ -15,6 +15,17 @@ export const LANGUAGES = [
 
 const LanguageContext = createContext(null);
 
+// Dev rejimida lug'atda yo'q kalit haqida bir marta ogohlantiradi
+// (faqat harf bo'lgan matnlar — raqam/belgi kalitlar e'tiborga olinmaydi).
+const _warned = new Set();
+function warnMissing(text) {
+  if (!import.meta.env.DEV) return;
+  if (typeof text !== 'string' || !/\p{L}/u.test(text)) return;
+  if (_warned.has(text)) return;
+  _warned.add(text);
+  console.warn(`[i18n] tarjima yo'q: "${text}"`);
+}
+
 // {n}, {name} kabi placeholder'larni almashtiradi.
 function interpolate(str, vars) {
   if (!vars) return str;
@@ -26,8 +37,12 @@ export function LanguageProvider({ children }) {
     try { return localStorage.getItem('nfc_lang') || 'uz'; } catch { return 'uz'; }
   });
 
-  // format.js dagi timeAgo ham joriy tilda ishlashi uchun.
-  useEffect(() => { setTimeAgoLang(lang); }, [lang]);
+  // format.js dagi timeAgo/fmt/dateTime ham joriy tilda ishlashi uchun.
+  // <html lang> ham tilga mos bo'lsin (SEO, ekran o'quvchilar, tanlov).
+  useEffect(() => {
+    setTimeAgoLang(lang);
+    try { document.documentElement.lang = lang; } catch { /* SSR / test */ }
+  }, [lang]);
   // birinchi renderdan oldin ham to'g'ri bo'lsin
   setTimeAgoLang(lang);
 
@@ -40,6 +55,7 @@ export function LanguageProvider({ children }) {
     if (text == null) return text;
     if (lang === 'uz') return interpolate(text, vars);
     const entry = DICT[text];
+    if (!entry) warnMissing(text);
     const translated = (entry && entry[lang]) || text;
     return interpolate(translated, vars);
   }, [lang]);

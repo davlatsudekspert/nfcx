@@ -76,24 +76,24 @@ export default function CatalogPage({ catalog }) {
     <main className="mx-auto w-full max-w-[1800px] px-6 sm:px-10 lg:px-14 pb-16">
       <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
-          <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70"><span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>{t('Katalog')}</span>
-          <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">{t('Barcha band qilingan')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t("raqamli tashrif qog'ozlar")}</span></h1>
-          <p className="mt-3 text-[15px] text-base-content/60">{t("Jami {n} ta raqamli tashrif qog'ozi band qilingan. Kod yoki ism bo'yicha qidiring.", { n: fmt(catalog.length) })}</p>
-          <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-base-content/40">
+          <span className="vz-kicker">{t('Katalog')}</span>
+          <h1 className="vz-h1 mt-4 max-w-xl">{t('Barcha band qilingan')} <span className="text-[var(--vz-gold-2)]">{t("raqamli tashrif qog'ozlar")}</span></h1>
+          <p className="vz-lead mt-3">{t("Jami {n} ta raqamli tashrif qog'ozi band qilingan. Kod yoki ism bo'yicha qidiring.", { n: fmt(catalog.length) })}</p>
+          <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-[var(--vz-gold)]">
             <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">{t('qidirish')}</span>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ABZ007 yoki ism...')} autoComplete="off" className="w-full bg-transparent px-2 py-3 text-sm outline-none" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('ABZ007 yoki ism...')} autoComplete="off" aria-label={t('qidirish')} className="min-h-11 w-full min-w-0 bg-transparent px-2 py-3 text-sm outline-none" />
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {TYPE_TABS.map(([id, label]) => (
-              <button key={id} onClick={() => setType(id)}
-                className={`rounded-full border px-3.5 py-1.5 text-[16px] font-semibold transition ${type === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
+              <button key={id} type="button" onClick={() => setType(id)} aria-pressed={type === id}
+                className={`min-h-11 rounded-full border px-3.5 py-1.5 text-[16px] font-semibold transition ${type === id ? 'border-accent bg-accent/10 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
                 {t(label)}
               </button>
             ))}
             {cats.length > 0 && (
-              <button onClick={() => setShowFilters((s) => !s)}
-                className={`rounded-full border px-3.5 py-1.5 text-[16px] font-semibold transition ${activeCat || showFilters ? 'border-accent/60 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
+              <button type="button" onClick={() => setShowFilters((s) => !s)} aria-expanded={showFilters}
+                className={`min-h-11 rounded-full border px-3.5 py-1.5 text-[16px] font-semibold transition ${activeCat || showFilters ? 'border-accent/60 text-accent' : 'border-white/12 text-base-content/60 hover:border-white/25'}`}>
                 {activeCat ? catName(findCat(cats, activeCat), lang) : t('Faoliyat sohasi')} ▾
               </button>
             )}
@@ -116,8 +116,8 @@ export default function CatalogPage({ catalog }) {
                 </select>
               )}
               {anyFilter && (
-                <button onClick={() => { setType('all'); setMainCat(''); setSubCat(''); }}
-                  className="btn btn-ghost btn-xs sm:col-span-2">{t('Filtrlarni tozalash')}</button>
+                <button type="button" onClick={() => { setType('all'); setMainCat(''); setSubCat(''); }}
+                  className="btn btn-ghost-vz btn-sm sm:col-span-2">{t('Filtrlarni tozalash')}</button>
               )}
             </div>
           )}
@@ -127,10 +127,15 @@ export default function CatalogPage({ catalog }) {
         </div>
       </section>
       <section className="mt-16">
-        <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('Jonli')}</div>
-        <h2 className="mt-2 text-2xl font-bold">{t("Barcha raqamli tashrif qog'ozlar")} <span className="text-base font-normal text-base-content/40">({fmt(filtered.length)})</span></h2>
+        <div className="vz-kicker">{t('Jonli')}</div>
+        <h2 className="vz-h2 mt-2">{t("Barcha raqamli tashrif qog'ozlar")} <span className="text-base font-normal text-base-content/40">({fmt(filtered.length)})</span></h2>
         <div className="cat-grid mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.length === 0 && <div className="col-span-full py-10 text-center text-base-content/45">{t('Hech narsa topilmadi.')}</div>}
+          {filtered.length === 0 && (
+            <div className="vz-empty col-span-full">
+              <b>{t('Hech narsa topilmadi.')}</b>
+              {(query || anyFilter) && <button type="button" className="btn btn-outline-gold btn-sm mt-2" onClick={() => { setQ(''); setType('all'); setMainCat(''); setSubCat(''); }}>{t('Filtrlarni tozalash')}</button>}
+            </div>
+          )}
           {filtered.map((it, idx) => {
             const cp = catPath(cats, it.categorySlug, lang);
             const tier = tierOf(it);
@@ -138,7 +143,8 @@ export default function CatalogPage({ catalog }) {
             return (
               <button
                 key={it.code}
-                className="cat-card tier-shine cursor-pointer rounded-2xl p-5 text-left"
+                type="button"
+                className="cat-card tier-shine min-w-0 cursor-pointer rounded-2xl p-5 text-left"
                 style={{
                   '--tier': tc,
                   '--tier-line': tc + 'b3',
@@ -149,7 +155,7 @@ export default function CatalogPage({ catalog }) {
                 onClick={() => navigate('/' + it.code)}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
+                  <div className="min-w-0 truncate font-mono text-sm font-bold tracking-wide">nfcstore.uz/{it.code.toLowerCase()}</div>
                   <span
                     className="shrink-0 rounded-full px-2 py-0.5 text-[13px] font-bold uppercase tracking-wide"
                     style={{ color: tc, background: tc + '1f', border: `1px solid ${tc}44` }}
@@ -164,7 +170,7 @@ export default function CatalogPage({ catalog }) {
                 {(cp || it.city) && (
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[14px] text-base-content/45">
                     {cp && <span className="rounded-full border border-white/10 px-2 py-0.5">{cp}</span>}
-                    {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{'\u{1F4CD}'} {it.city}</span>}
+                    {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{it.city}</span>}
                   </div>
                 )}
                 <div className="mt-3 flex items-center gap-2 text-sm text-base-content/75">{t("{n} so'm", { n: fmt(it.price) })} · {timeAgo(it.ts)}</div>

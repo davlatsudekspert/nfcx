@@ -1,4 +1,5 @@
 import { fmt } from '../lib/format.js';
+import { IconStar } from './Icons.jsx';
 
 // Jonli telefon ko'rinishi (Company System — Live Phone Preview, Faz 6/8).
 // Owner Menu/Mahsulotlar tahrirlayotganda — nom yozsa, narx kiritsa, rasm
@@ -25,14 +26,14 @@ export function mergeDraftIntoCategories(categories, draft) {
 // telefondan farqli — bu YAKUNIY, egaga tegishli preview.
 export function PhoneFrame({ children, label }) {
   return (
-    <div className="mx-auto w-[280px] shrink-0 rounded-[2.2rem] border-[3px] border-white/15 bg-black/70 p-2.5 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.65)]">
+    <div className="mx-auto w-[280px] max-w-full shrink-0 rounded-[2.2rem] border-[3px] border-[color:var(--vz-line)] bg-gradient-to-b from-[#2a241a] to-[#0a0805] p-2.5 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.65)]">
       <div className="flex items-center justify-center py-1.5">
         <span className="h-1 w-10 rounded-full bg-white/20" />
       </div>
-      <div className="max-h-[560px] overflow-y-auto rounded-[1.6rem] bg-base-100 p-3 text-base-content">
+      <div className="max-h-[560px] overflow-y-auto rounded-[1.6rem] bg-[color:var(--vz-bg)] p-3 text-[color:var(--vz-ink)]">
         {label && (
-          <div className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-base-content/40">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" /> {label}
+          <div className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-[color:var(--vz-ink-3)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--vz-gold)]" /> {label}
           </div>
         )}
         {children}
@@ -59,7 +60,7 @@ export function MenuPreviewList({ categories, t }) {
                 {it.imageUrl && <img src={it.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-1.5">
-                    <div className="min-w-0 truncate text-[15px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                    <div className="flex min-w-0 items-center gap-1 truncate text-[15px] font-bold">{it.featured && <IconStar width={12} height={12} className="shrink-0 text-[color:var(--vz-gold)]" />} {it.name || t('Nomsiz')}</div>
                     {it.price != null && it.price !== '' && (
                       <div className="shrink-0 text-[14px] font-bold">
                         {it.discountPrice != null && it.discountPrice !== '' ? (
@@ -101,7 +102,7 @@ export function ProductsPreviewGrid({ categories, t }) {
                     : <span className="px-1 text-center text-[9px] text-base-content/35">{it.name || t('Nomsiz')}</span>}
                 </div>
                 <div className="p-1.5">
-                  <div className="truncate text-[13px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                  <div className="flex min-w-0 items-center gap-1 truncate text-[13px] font-bold">{it.featured && <IconStar width={12} height={12} className="shrink-0 text-[color:var(--vz-gold)]" />} {it.name || t('Nomsiz')}</div>
                   {it.price != null && it.price !== '' && (
                     <div className="mt-0.5 text-[13px] font-bold">
                       {it.discountPrice != null && it.discountPrice !== '' ? (
@@ -146,7 +147,7 @@ export function ServicesPreviewList({ categories, t }) {
                     : <span className="px-1 text-center text-[9px] text-base-content/35">{it.name || t('Nomsiz')}</span>}
                 </div>
                 <div className="p-1.5">
-                  <div className="truncate text-[13px] font-bold">{it.featured && '⭐'} {it.name || t('Nomsiz')}</div>
+                  <div className="flex min-w-0 items-center gap-1 truncate text-[13px] font-bold">{it.featured && <IconStar width={12} height={12} className="shrink-0 text-[color:var(--vz-gold)]" />} {it.name || t('Nomsiz')}</div>
                   {priceLabel(it) && <div className="mt-0.5 text-[13px] font-bold">{priceLabel(it)}</div>}
                 </div>
               </div>

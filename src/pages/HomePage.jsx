@@ -5,8 +5,12 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
 import NeonOrbitCard from '../components/NeonOrbitCard.jsx';
-import { IconSearch } from '../components/Icons.jsx';
+import NfcCard from '../components/NfcCard.jsx';
+import { IconSearch, IconCheck, IconUser, IconBag, IconShield, IconBolt, IconGlobe } from '../components/Icons.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
+import { TIER_PRICE, TIER_LABEL, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
+import { FAQ } from '../lib/faq.js';
 
 function useMaskedCode() {
   const [value, setValue] = useState('');
@@ -73,7 +77,7 @@ function Reveal({ children, delay = '', as: Tag = 'div', className = '' }) {
 function RevealSection({ id, children }) {
   const [ref, shown] = useReveal();
   return (
-    <section id={id} ref={ref} className={`mt-16 transition-all duration-700 ease-out ${shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
+    <section id={id} ref={ref} className={`mt-16 md:mt-20 transition-all duration-700 ease-out ${shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'}`}>
       {children}
     </section>
   );
@@ -88,6 +92,8 @@ const TEASERS = [
 
 export default function HomePage({ catalog, refreshCatalog }) {
   const { t, lang } = useLanguage();
+  const paymentsEnabled = usePaymentsEnabled();
+  const faqItems = (FAQ[lang] || FAQ.uz).slice(0, 4);
   const [checkVal, rawOnCheckChange] = useMaskedCode();
   const [checkResult, setCheckResult] = useState(null);
   const [modalCode, setModalCode] = useState(null);
@@ -113,134 +119,138 @@ export default function HomePage({ catalog, refreshCatalog }) {
   const marqueeItems = recent.length ? [...recent, ...recent] : [];
 
   return (
-    <main>
-      {/* ================= HERO ================= */}
-      <section className="relative overflow-hidden bg-black">
-        <div className="pointer-events-none absolute -inset-x-[18%] -inset-y-[12%] bg-[radial-gradient(640px_460px_at_74%_38%,rgba(201,162,39,0.16),transparent_65%),radial-gradient(420px_320px_at_16%_86%,rgba(180,140,50,0.09),transparent_60%)]"></div>
+    <main className="bg-[color:var(--vz-bg)]">
+      {/* ================= HERO (V1: markazlashgan, karta pastda) ================= */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,rgba(212,175,90,0.14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto grid w-full max-w-[1800px] items-center gap-11 px-6 pb-8 pt-14 sm:px-10 lg:grid-cols-[minmax(0,1fr)_460px] xl:grid-cols-[minmax(0,1fr)_560px] lg:px-14">
-          <div>
-            <Reveal>
-              <span className="inline-flex items-center gap-2 font-mono text-xs tracking-wider text-base-content/70">
-                <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent"></span>
-                {t("NFC karta + shaxsiy raqamli profil")}
-              </span>
-            </Reveal>
+        <div className="relative z-[1] mx-auto flex w-full max-w-[1100px] flex-col items-center px-6 pb-10 pt-14 text-center sm:px-10 md:pt-20">
+          <Reveal>
+            <span className="vz-kicker">{t('NFC karta + raqamli profil')}</span>
+          </Reveal>
 
-            <Reveal delay="[transition-delay:80ms]">
-              <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
-                {lang === 'uz' ? (
-                  <>Sizning <span className="text-[#e8c165]">raqamli profilingiz</span>. Har doim yoningizda.</>
-                ) : t('Sizning raqamli profilingiz. Har doim yoningizda.')}
-              </h1>
-            </Reveal>
+          <Reveal delay="[transition-delay:80ms]">
+            <h1 className="vz-h1 mt-5 max-w-[16ch] text-[color:var(--vz-ink)]">
+              {lang === 'uz' ? (
+                <>Bitta teginish — <span className="text-[color:var(--vz-gold-2)]">barcha kontaktlaringiz.</span></>
+              ) : t('Bitta teginish — barcha kontaktlaringiz.')}
+            </h1>
+          </Reveal>
 
-            <Reveal delay="[transition-delay:160ms]">
-              <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-base-content/60">
-                {t("Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va boshqa muhim ma’lumotlaringizni bitta profilda jamlang. Uni NFC karta yoki havola orqali qulay ulashing.")}
-              </p>
-            </Reveal>
+          <Reveal delay="[transition-delay:160ms]">
+            <p className="vz-lead mx-auto mt-5">
+              {t("Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va o‘ziga xos NFCSTORE ID’ingizni bitta profilda jamlang. NFC karta yoki havola orqali qulay ulashing.")}
+            </p>
+          </Reveal>
 
-            <Reveal delay="[transition-delay:220ms]">
-              <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-                <button onClick={() => navigate('/register')} className="btn btn-primary min-h-12 px-6">{t('Bepul profil yaratish')}</button>
-                <button onClick={() => navigate('/qanday-ishlaydi')} className="btn btn-ghost min-h-12 px-6">{t('Qanday ishlaydi')}</button>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-base-content/50">
-                <span>✓ {t('Bepul boshlash')}</span>
-                <span>✓ {t('Telefon ilovasi shart emas')}</span>
-                <span>✓ {t('Kontaktni .VCF formatida saqlash')}</span>
-              </div>
-            </Reveal>
+          <Reveal delay="[transition-delay:220ms]" className="w-full">
+            <div className="mt-7 flex flex-col justify-center gap-2.5 sm:flex-row">
+              <button onClick={() => navigate('/register')} className="btn btn-gold min-h-12 px-7 text-[15px]">{t('Bepul profil yaratish')}</button>
+              <button onClick={() => navigate('/qanday-ishlaydi')} className="btn btn-ghost-vz min-h-12 px-7 text-[15px]">{t('Qanday ishlaydi')}</button>
+            </div>
+            <ul className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm text-[color:var(--vz-ink-2)]">
+              {['Bepul boshlash', 'Telefon ilovasi shart emas', 'Kontaktni .VCF formatida saqlash'].map((b) => (
+                <li key={b} className="inline-flex items-center gap-1.5"><IconCheck width="14" height="14" className="text-[color:var(--vz-gold)]" /> {t(b)}</li>
+              ))}
+            </ul>
+          </Reveal>
 
-            {/* Ixtiyoriy maxsus NFC ID qidiruvi */}
-            <Reveal delay="[transition-delay:240ms]">
-              <div className="mt-7 max-w-xl rounded-[18px] border border-white/10 bg-white/[0.035] p-3 pl-[18px]">
-                <div className="mb-2 text-xs font-semibold text-base-content/55">{t('Maxsus NFC ID tekshirish (ixtiyoriy)')}</div>
-                <div className="flex items-center gap-2.5">
-                  <div className="flex min-w-0 flex-1 items-center rounded-lg border border-[rgba(201,162,39,0.20)] bg-black/45 focus-within:border-[rgba(212,175,90,0.6)] focus-within:shadow-[0_0_0_3px_rgba(201,162,39,0.18)]">
-                    <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">nfcstore.uz/</span>
-                    <input
-                      value={checkVal}
-                      onChange={onCheckChange}
-                      maxLength={7}
-                      placeholder="ABZ 007"
-                      autoComplete="off"
-                      onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }}
-                      className="w-full bg-transparent px-2 py-3 font-mono text-sm uppercase tracking-wider outline-none placeholder:normal-case placeholder:tracking-normal"
-                    />
-                  </div>
-                  <button
-                    onClick={doCheck}
-                    aria-label={t('Tekshirish')}
-                    className="btn btn-circle shrink-0 border-none bg-gradient-to-br from-[#e8c165] to-[#b3860f] text-[#17130a] shadow-[0_8px_24px_rgba(180,140,20,0.45)] hover:brightness-110"
-                  >
-                    <IconSearch />
-                  </button>
+          {/* Ixtiyoriy maxsus NFC ID qidiruvi */}
+          <Reveal delay="[transition-delay:240ms]" className="w-full">
+            <div className="vz-panel mx-auto mt-8 w-full max-w-xl p-3 text-left sm:p-4">
+              <div className="vz-label mb-2">{t('Maxsus NFC ID tekshirish (ixtiyoriy)')}</div>
+              <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[rgba(212,175,90,0.25)] bg-black/45 focus-within:border-[rgba(212,175,90,0.7)] focus-within:shadow-[0_0_0_3px_rgba(212,175,90,0.18)]">
+                  <span className="shrink-0 pl-3 font-mono text-xs text-[color:var(--vz-ink-3)]">nfcstore.uz/</span>
+                  <input
+                    value={checkVal}
+                    onChange={onCheckChange}
+                    maxLength={7}
+                    placeholder="ABZ 007"
+                    autoComplete="off"
+                    aria-label={t('Maxsus NFC ID tekshirish (ixtiyoriy)')}
+                    onKeyDown={(e) => { if (e.key === 'Enter') doCheck(); }}
+                    className="w-full min-w-0 bg-transparent px-2 py-3 font-mono text-sm uppercase tracking-wider text-[color:var(--vz-ink)] outline-none placeholder:normal-case placeholder:tracking-normal"
+                  />
                 </div>
-                {checkResult && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1 text-[16px]">
-                    {checkResult.bad && <>
-                      <span className="badge badge-error badge-outline">{t("Noto'g'ri format")}</span>
-                      <span className="text-base-content/60">{t('3 harf + 3 raqam kiriting, masalan ABZ007')}</span>
-                    </>}
-                    {!checkResult.bad && checkResult.taken && <>
-                      <span className="badge badge-error">{t('Band')}</span>
-                      <span className="text-base-content/60">
-                        {t('nfcstore.uz/{code} allaqachon olingan —', { code: checkResult.code.toLowerCase() })}{' '}
-                        <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-base-content">{t("sahifasini ko'rish")}</button>
-                      </span>
-                    </>}
-                    {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier === 'exclusive' && <>
-                      <span className="badge" style={{ background: '#ff5c8a22', color: '#ff5c8a', border: '1px solid #ff5c8a55' }}>{'\u{1F48E}'} {t('Ekslyuziv')}</span>
-                      <span className="text-base-content/60">{t('nfcstore.uz/{code} — faqat auksion orqali sotiladi', { code: checkResult.code.toLowerCase() })}</span>
-                      <button className="btn btn-accent btn-xs ml-1" onClick={() => navigate('/auksion')}>{t("Auksion bo'limi")}</button>
-                    </>}
-                    {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier !== 'exclusive' && <>
-                      <span className="badge badge-success">{t("Bo'sh")}</span>
-                      <span className="text-base-content/60">{t('nfcstore.uz/{code} hozircha bo‘sh — {price} so‘m', { code: checkResult.code.toLowerCase(), price: fmt(checkInfo.total) })}</span>
-                      <button className="btn btn-primary btn-xs ml-1" onClick={() => setModalCode(checkResult.code)}>{t('Bandlash')}</button>
-                    </>}
-                  </div>
-                )}
+                <button
+                  onClick={doCheck}
+                  aria-label={t('Tekshirish')}
+                  className="btn btn-gold btn-circle h-11 w-11 shrink-0 p-0"
+                >
+                  <IconSearch />
+                </button>
               </div>
-            </Reveal>
+              {checkResult && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1 text-[15px]">
+                  {checkResult.bad && <>
+                    <span className="vz-badge vz-badge--warn">{t("Noto'g'ri format")}</span>
+                    <span className="text-[color:var(--vz-ink-2)]">{t('3 harf + 3 raqam kiriting, masalan ABZ007')}</span>
+                  </>}
+                  {!checkResult.bad && checkResult.taken && <>
+                    <span className="vz-badge vz-badge--muted">{t('Band')}</span>
+                    <span className="text-[color:var(--vz-ink-2)]">
+                      {t('nfcstore.uz/{code} allaqachon olingan —', { code: checkResult.code.toLowerCase() })}{' '}
+                      <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-[color:var(--vz-ink)]">{t("sahifasini ko'rish")}</button>
+                    </span>
+                  </>}
+                  {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier === 'exclusive' && <>
+                    <span className="vz-badge vz-badge--gold">{t('Ekslyuziv')}</span>
+                    <span className="text-[color:var(--vz-ink-2)]">{t('nfcstore.uz/{code} — faqat auksion orqali sotiladi', { code: checkResult.code.toLowerCase() })}</span>
+                    <button className="btn btn-outline-gold btn-sm min-h-9" onClick={() => navigate('/auksion')}>{t("Auksion bo'limi")}</button>
+                  </>}
+                  {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier !== 'exclusive' && <>
+                    <span className="vz-badge vz-badge--ok">{t("Bo'sh")}</span>
+                    <span className="text-[color:var(--vz-ink-2)]">{t('nfcstore.uz/{code} hozircha bo‘sh — {price} so‘m', { code: checkResult.code.toLowerCase(), price: fmt(checkInfo.total) })}</span>
+                    <button className="btn btn-gold btn-sm min-h-9" onClick={() => setModalCode(checkResult.code)}>{t('Bandlash')}</button>
+                  </>}
+                </div>
+              )}
+            </div>
+          </Reveal>
 
-            {/* Stats */}
-            <Reveal delay="[transition-delay:320ms]">
-              <div className="mt-7 grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold"><CountUp value={catalog.length} /></div>
-                  <div className="text-xs text-base-content/50">{t('Band qilingan')}</div>
-                </div>
-                <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold">{t('Bitta havola')}</div>
-                  <div className="text-xs text-base-content/50">{t('Barcha kontaktlaringiz')}</div>
-                </div>
-                <div className="rounded-xl border border-white/[0.09] bg-gradient-to-br from-white/[0.055] to-white/[0.015] px-4 py-3 backdrop-blur-md">
-                  <div className="text-lg font-bold">{t('Tez ulashish')}</div>
-                  <div className="text-xs text-base-content/50">{t('NFC yoki havola orqali')}</div>
-                </div>
+          {/* ===== Karta — qahramon (V1) ===== */}
+          <Reveal delay="[transition-delay:160ms]" className="relative mt-10 flex w-full justify-center overflow-visible">
+            <div className="hidden lg:block">
+              <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} />
+            </div>
+            <div className="relative lg:hidden">
+              <div className="pointer-events-none absolute -inset-6 rounded-full bg-[radial-gradient(circle,rgba(212,175,90,0.22),transparent_68%)] blur-md"></div>
+              <div className="relative rotate-[-3deg]">
+                <NfcCard code="AAA000" name={t('SIZNING ISMINGIZ')} finish="showcase" size="md" />
               </div>
-            </Reveal>
-          </div>
+            </div>
+          </Reveal>
 
-          {/* ===== Neon orbit kompozitsiyasi ===== */}
-          <Reveal delay="[transition-delay:160ms]" className="hidden justify-self-center overflow-visible lg:block">
-            <NeonOrbitCard code="AAA000" name={t('SIZNING ISMINGIZ')} />
+          {/* Stats — faqat haqiqiy ko'rsatkichlar */}
+          <Reveal delay="[transition-delay:320ms]" className="w-full">
+            <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
+                <div className="font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><CountUp value={catalog.length} /></div>
+                <div className="text-xs text-[color:var(--vz-ink-2)]">{t('Band qilingan')}</div>
+              </div>
+              <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
+                <div className="text-lg font-bold text-[color:var(--vz-ink)]">{t('Bitta havola')}</div>
+                <div className="text-xs text-[color:var(--vz-ink-2)]">{t('Barcha kontaktlaringiz')}</div>
+              </div>
+              <div className="vz-card--flat vz-card min-w-0 px-4 py-3">
+                <div className="text-lg font-bold text-[color:var(--vz-ink)]">{t('Tez ulashish')}</div>
+                <div className="text-xs text-[color:var(--vz-ink-2)]">{t('NFC yoki havola orqali')}</div>
+              </div>
+            </div>
           </Reveal>
         </div>
 
-        {/* Marquee */}
+        {/* Marquee — so'nggi band qilingan ID'lar */}
         {recent.length > 0 && (
           <Reveal>
-            <div className="overflow-hidden border-y border-white/10 bg-white/[0.02] py-3.5 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
+            <div className="overflow-hidden border-y border-[color:var(--vz-line)] bg-white/[0.02] py-3.5 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]">
               <div className="flex w-max animate-[marqueeScroll_26s_linear_infinite] gap-[34px]">
                 {marqueeItems.map((it, i) => (
                   <span
                     key={it.code + i}
                     onClick={() => navigate('/' + it.code)}
-                    className="cursor-pointer whitespace-nowrap font-mono text-[15px] tracking-wide text-base-content/40 transition-colors hover:text-base-content"
+                    className="cursor-pointer whitespace-nowrap font-mono text-[14px] tracking-wide text-[color:var(--vz-ink-3)] transition-colors hover:text-[color:var(--vz-gold-2)]"
                   >
                     nfcstore.uz/{it.code.toLowerCase()} · {it.name}
                   </span>
@@ -251,41 +261,135 @@ export default function HomePage({ catalog, refreshCatalog }) {
         )}
       </section>
 
-      <div className="mx-auto w-full max-w-[1800px] px-6 pb-16 sm:px-10 lg:px-14">
-        <RevealSection id="qanday-ishlaydi-qisqa">
-          <div className="max-w-2xl">
-            <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('3 oddiy qadam')}</div>
-            <h2 className="mt-2 text-3xl font-bold">{t('Ulashish shunchalik oson.')}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-base-content/55">{t('NFCSTORE — tanishuv va aloqa almashishning zamonaviy usuli.')}</p>
+      <div className="mx-auto w-full max-w-[1200px] px-6 pb-20 sm:px-10">
+        {/* ================= KIMLAR UCHUN ================= */}
+        <RevealSection id="kimlar-uchun">
+          <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Kimlar uchun')}</h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <article className="vz-card flex min-w-0 flex-col p-6 sm:p-7">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(212,175,90,0.14)] text-[color:var(--vz-gold-2)]"><IconUser width="22" height="22" /></span>
+              <h3 className="mt-4 text-xl font-bold text-[color:var(--vz-ink)]">{t('Jismoniy shaxs')}</h3>
+              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Mutaxassis, tadbirkor, ijodkor — o‘z brendingiz uchun bitta havola.')}</p>
+              <button onClick={() => navigate('/register')} className="btn btn-gold mt-5 self-start">{t('Shaxsiy profil ochish')}</button>
+            </article>
+            <article className="vz-card flex min-w-0 flex-col p-6 sm:p-7">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(212,175,90,0.14)] text-[color:var(--vz-gold-2)]"><IconBag width="22" height="22" /></span>
+              <h3 className="mt-4 text-xl font-bold text-[color:var(--vz-ink)]">{t('Kompaniya')}</h3>
+              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Menyu, katalog, xizmatlar, filiallar va jamoa — premium biznes profil.')}</p>
+              <button onClick={() => navigate('/kompaniyalar')} className="btn btn-outline-gold mt-5 self-start">{t('Kompaniya profili ochish')}</button>
+            </article>
           </div>
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
+        </RevealSection>
+
+        {/* ================= QANDAY ISHLAYDI ================= */}
+        <RevealSection id="qanday-ishlaydi-qisqa">
+          <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Ulashish shunchalik oson.')}</h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('NFCSTORE — tanishuv va aloqa almashishning zamonaviy usuli.')}</p>
+          <ol className="mt-7 grid gap-4 md:grid-cols-3">
             {[
               ['01', 'Kartani yaqinlashtiring', 'NFC kartani telefonning orqa qismiga tuting.'],
               ['02', 'Profil ochiladi', 'Hech qanday ilova kerak emas — raqamli profil brauzerda ochiladi.'],
               ['03', 'Kontaktni saqlang', 'Ism, telefon va boshqa ma’lumotlar bir tugma orqali kontaktlarga qo‘shiladi.'],
             ].map(([n, title, desc]) => (
-              <article key={n} className="rounded-2xl border border-white/10 bg-base-200/60 p-5">
-                <div className="font-mono text-xs text-accent">{n}</div>
-                <h3 className="mt-3 text-lg font-bold">{t(title)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-base-content/55">{t(desc)}</p>
-              </article>
+              <li key={n} className="vz-card min-w-0 p-5 sm:p-6">
+                <div className="font-mono text-xs text-[color:var(--vz-gold-2)]">{n}</div>
+                <h3 className="mt-3 text-lg font-bold text-[color:var(--vz-ink)]">{t(title)}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t(desc)}</p>
+              </li>
+            ))}
+          </ol>
+        </RevealSection>
+
+        {/* ================= TARIFLAR (haqiqiy narxlar: src/lib/pricing.js) ================= */}
+        <RevealSection id="tariflar">
+          <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Tariflar')}</h2>
+          <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t("NFC ID narxi faqat undagi harf/raqam naqshiga bog'liq — qat'iy va o'zgarmas.")}</p>
+          <div className="mt-7 grid gap-4 md:grid-cols-3">
+            <article className="vz-card flex min-w-0 flex-col p-6">
+              <h3 className="text-lg font-bold text-[color:var(--vz-ink)]">{t('Bepul profil')}</h3>
+              <div className="mt-3 font-display text-3xl font-semibold text-[color:var(--vz-ink)]">0 <small className="font-sans text-sm font-normal text-[color:var(--vz-ink-2)]">{t("so'm")}</small></div>
+              <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[color:var(--vz-ink-2)]">
+                {['Raqamli profil (8 xonali avtomatik ID)', 'Aloqa tugmalari', 'vCard (.VCF) saqlash'].map((x) => (
+                  <li key={x} className="flex items-start gap-2"><IconCheck width="16" height="16" className="mt-0.5 shrink-0 text-[color:var(--vz-gold)]" />{t(x)}</li>
+                ))}
+              </ul>
+              <button onClick={() => navigate('/register')} className="btn btn-outline-gold mt-5">{t('Boshlash')}</button>
+            </article>
+            <article className="vz-card relative flex min-w-0 flex-col border-[rgba(212,175,90,0.45)] p-6">
+              <span className="vz-badge vz-badge--gold absolute -top-3 left-6">{t('Mashhur')}</span>
+              <h3 className="text-lg font-bold text-[color:var(--vz-ink)]">{t('Maxsus NFC ID')}</h3>
+              <div className="mt-3 font-display text-3xl font-semibold text-[color:var(--vz-gold-2)]">{fmt(TIER_PRICE.free)} <small className="font-sans text-sm font-normal text-[color:var(--vz-ink-2)]">{t("so'mdan")}</small></div>
+              <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[color:var(--vz-ink-2)]">
+                {['free', 'silver', 'gold', 'premium'].map((k) => (
+                  <li key={k} className="flex items-start justify-between gap-2"><span>{t(TIER_LABEL[k])}</span><span className="font-mono text-[color:var(--vz-ink)]">{fmt(TIER_PRICE[k])}</span></li>
+                ))}
+                <li className="flex items-start justify-between gap-2"><span>{t('Ekslyuziv')}</span><span className="text-[color:var(--vz-gold-2)]">{t('Auksion')}</span></li>
+              </ul>
+              <button onClick={() => navigate('/narxlar')} className="btn btn-gold mt-5">{t("Narxlarni ko'rish")}</button>
+            </article>
+            <article className="vz-card flex min-w-0 flex-col p-6">
+              <h3 className="text-lg font-bold text-[color:var(--vz-ink)]">{t('Premium profil')}</h3>
+              <div className="mt-3 font-display text-3xl font-semibold text-[color:var(--vz-ink)]">{fmt(PROFILE_PREMIUM_FEE)} <small className="font-sans text-sm font-normal text-[color:var(--vz-ink-2)]">{t("so'm")}</small></div>
+              <ul className="mt-4 flex-1 space-y-2 text-[15px] text-[color:var(--vz-ink-2)]">
+                {['Oltin belgi', 'Fon rasm va musiqa', 'Kengaytirilgan statistika'].map((x) => (
+                  <li key={x} className="flex items-start gap-2"><IconCheck width="16" height="16" className="mt-0.5 shrink-0 text-[color:var(--vz-gold)]" />{t(x)}</li>
+                ))}
+              </ul>
+              <button onClick={() => navigate('/narxlar')} className="btn btn-outline-gold mt-5">{t('Batafsil')}</button>
+            </article>
+          </div>
+        </RevealSection>
+
+        {/* ================= ISHONCH (faqat faktlar) ================= */}
+        <RevealSection id="ishonch">
+          <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Ishonch')}</h2>
+          <div className="mt-7 grid gap-4 sm:grid-cols-3">
+            {[
+              [IconGlobe, 'Cloudflare', 'Global tarmoq — sahifa dunyoning istalgan nuqtasidan tez ochiladi.'],
+              [IconBolt, 'Payme', paymentsEnabled ? 'Rasmiy to‘lov integratsiyasi.' : 'To‘lov integratsiyasi tayyorlanmoqda.'],
+              [IconShield, "O'zbekiston", 'Mahalliy qo‘llab-quvvatlash — savollaringizga o‘zbek tilida javob beramiz.'],
+            ].map(([Ic, h, p]) => (
+              <div key={h} className="vz-panel flex min-w-0 items-start gap-3 p-5">
+                <span className="mt-0.5 shrink-0 text-[color:var(--vz-gold-2)]"><Ic width="22" height="22" /></span>
+                <div className="min-w-0">
+                  <b className="block text-[color:var(--vz-ink)]">{h}</b>
+                  <span className="text-sm text-[color:var(--vz-ink-2)]">{t(p)}</span>
+                </div>
+              </div>
             ))}
           </div>
         </RevealSection>
 
+        {/* ================= FAQ ================= */}
+        <RevealSection id="faq">
+          <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Ko‘p so‘raladigan savollar')}</h2>
+          <div className="mt-7 flex flex-col gap-3">
+            {faqItems.map((item, i) => (
+              <details key={i} className="vz-card group p-0" open={i === 0}>
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3.5 text-[15px] font-bold text-[color:var(--vz-ink)] [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0 break-words">{item.q}</span>
+                  <span className="shrink-0 text-[color:var(--vz-gold-2)] transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+                </summary>
+                <p className="px-5 pb-5 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{item.a}</p>
+              </details>
+            ))}
+          </div>
+          <button onClick={() => navigate('/savollar')} className="btn btn-ghost-vz mt-5">{t('Barcha savollar')}</button>
+        </RevealSection>
+
+        {/* ================= SAYT BO'YLAB ================= */}
         <RevealSection id="sahifalar">
-          <div className="font-mono text-xs uppercase tracking-widest text-base-content/45">{t('Batafsil')}</div>
-          <h2 className="mt-2 text-2xl font-bold">{t("Sayt bo'ylab")}</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t("Sayt bo'ylab")}</h2>
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {TEASERS.map((item) => (
               <button
                 key={item.href}
                 onClick={() => navigate(item.href)}
-                className="group cursor-pointer rounded-2xl border border-white/10 bg-base-200/70 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-base-200"
+                className="vz-card group min-w-0 cursor-pointer p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[rgba(212,175,90,0.5)]"
               >
-                <h3 className="font-semibold">{t(item.title)}</h3>
-                <p className="mt-2 text-[16px] leading-relaxed text-base-content/55">{t(item.desc)}</p>
-                <span className="mt-4 inline-block text-sm text-base-content/80 transition-transform group-hover:translate-x-1">{t(item.go)}</span>
+                <h3 className="font-semibold text-[color:var(--vz-ink)]">{t(item.title)}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t(item.desc)}</p>
+                <span className="mt-4 inline-block text-sm text-[color:var(--vz-gold-2)] transition-transform group-hover:translate-x-1">{t(item.go)}</span>
               </button>
             ))}
           </div>

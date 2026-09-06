@@ -1,0 +1,36 @@
+/* V1 — Black & Gold Prestige: jiddiy, serif sarlavha, markazlashgan hero, karta birinchi o'rinda, sidebar dashboard */
+:root{
+  --bg:#0a0805;--bg2:#14100a;--card:#141009;--card2:#1e1810;--field:#0f0c07;--line:#2d2518;
+  --ink:#f6efe0;--ink2:#b5a78b;--accent:#d4af5a;--accent-soft:rgba(212,175,90,.14);--on-accent:#1a1206;--danger:#e5484d;
+  --radius:14px;--radius-sm:10px;--radius-btn:999px;--track:-0.015em;
+  --font-display:"Playfair Display",Georgia,"Times New Roman",serif;--font-body:Inter,"Segoe UI",system-ui,sans-serif;
+  --shadow:0 12px 30px -16px rgba(0,0,0,.7);--shadow-btn:0 10px 24px -10px rgba(212,175,90,.6);
+  --nav-bg:rgba(10,8,5,.86);--adm-nav:#0e0b07;--cover:linear-gradient(135deg,#2a1f0e,#0a0805 60%);--pub-bg:#100d08;
+  --nfc-bg:linear-gradient(135deg,#1c1710,#050403 60%,#1a140c);--nfc-ink:#f3e9d2;--nfc-accent:#e2bd6a;
+}
+.btn--primary{background:linear-gradient(135deg,#f0cf7a,#b3860f);color:#1a1206;font-weight:800;letter-spacing:.01em}
+.btn--secondary{border-color:rgba(212,175,90,.45);color:var(--accent);background:transparent}
+.kicker{color:#e2bd6a}.kicker::before{content:"— ";opacity:.6}
+.h2,.hero h1,.dash__head h1,.pub__name,.news h2,.plan__price b,.adm__main h1,.newsp h1,.cpub__heroin h1{font-family:var(--font-display);font-weight:600}
+.hero h1{font-size:clamp(38px,6vw,76px);line-height:1.05}
+.card{background:linear-gradient(180deg,#171209,#120e08);border-color:#2d2518}
+.card h3,.h3{font-family:var(--font-body)}
+.section .h2{position:relative;padding-bottom:14px}.section .h2::after{content:"";position:absolute;left:0;bottom:0;width:56px;height:2px;background:linear-gradient(90deg,#f0cf7a,transparent)}
+/* TUZILMA: markazlashgan topnav, hero bitta ustun — matn markazda, karta ostida katta */
+.topnav__links{margin:0 auto}.topnav__right{margin-left:0}
+.hero{grid-template-columns:1fr !important;text-align:center;justify-items:center;padding-top:56px}
+.hero__text{display:flex;flex-direction:column;align-items:center}.hero__cta{justify-content:center}.hero__bul{justify-content:center}.lead{margin:0 auto}
+.hero__visual{width:min(620px,100%);padding:24px 0 0}.hero__visual .nfc-card{max-width:560px;transform:rotate(-3deg) perspective(900px) rotateX(6deg)}
+.hero__tag--a{top:-4%;right:2%}.hero__tag--b{top:50%;left:-4%}
+.idcheck{width:100%}
+/* mobil: burger (bottomnav yo'q) */
+.bottomnav{display:none}.dash{padding-bottom:24px}
+@media(max-width:1023px){.dash__nav{display:block}.dash__nav nav{display:flex;overflow-x:auto;gap:4px;padding-bottom:4px}.dash__nav nav a{white-space:nowrap}.dash__nav .dash__me{display:none}}
+.dash__nav nav a.is-on{background:var(--accent-soft);color:#e2bd6a;border-left:2px solid #e2bd6a}
+.pub{border-color:rgba(212,175,90,.25);box-shadow:0 0 0 1px rgba(212,175,90,.12),0 40px 80px -30px rgba(0,0,0,.8)}.pub__cover{background:linear-gradient(135deg,#3a2a10,#120d06)}
+.link{background:#1b150d;border-color:#2d2518}.link:hover{border-color:#d4af5a}
+.plan.is-pop{background:linear-gradient(180deg,#221a0e,#140f08)}
+.adm__nav{background:#0d0a06}.adm__nav .brand{color:#e2bd6a}
+.badge--gold{box-shadow:0 4px 14px -6px rgba(212,175,90,.8)}
+.step.is-cur{box-shadow:inset 0 0 0 1px #d4af5a}
+.footer{border-top-color:#2d2518}
