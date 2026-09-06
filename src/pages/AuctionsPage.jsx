@@ -213,7 +213,7 @@ export default function AuctionsPage() {
       dbListAuctions(true).then((d) => { if (!stop) { setAuctions(d.auctions); setSold(d.sold); } });
     };
     load();
-    const timer = setInterval(load, 8000);
+    const timer = setInterval(load, 30000);
     return () => { stop = true; clearInterval(timer); };
   }, []);
 

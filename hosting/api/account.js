@@ -1,3 +1,4 @@
+import { cardContentCleanupStmts } from './card-cleanup.js';
 // hosting/api/account.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/index.js (Express) dagi quyidagi yo'llarning D1 porti — javob
@@ -429,7 +430,11 @@ export async function handle(request, env, url, H) {
       ).bind(email).first();
       if (user && user.deletedAt) {
         // server/db.js adminDeleteUser tartibi
+        // Kontent ham tozalanadi — aks holda kodlar bo'shab, keyin boshqa
+        // odamga o'tganda eski postlar/menyu o'sha profilda chiqib qolardi
+        // (hosting/api/card-cleanup.js izohiga qarang).
         await env.DB.batch([
+          ...cardContentCleanupStmts(env, `SELECT code FROM cards WHERE user_id = ?`, [user.id], H.nowTs()),
           env.DB.prepare(`DELETE FROM physical_cards WHERE owner_user_id = ?`).bind(user.id),
           env.DB.prepare(`DELETE FROM cards WHERE user_id = ?`).bind(user.id),
           env.DB.prepare(`UPDATE auctions SET highest_bidder_id = NULL WHERE highest_bidder_id = ?`).bind(user.id),
