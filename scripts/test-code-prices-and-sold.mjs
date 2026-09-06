@@ -135,4 +135,54 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('an ordinary paid card is not a gift', by.OTH222?.isGift, false);
 }
 
+// ═══ 7. RASMIY NARX ESKI AUKSION NATIJASIDAN USTUN (2026-09 hotfix) ═══
+// Muammo: OOO000 va VVV444 katalogda ESKI auksion g'olib taklifini
+// (200 000 / 300 000) ko'rsatardi, auksionning "Sotilgan" bo'limi esa
+// rasmiy narxni (8 700 000 / 2 900 000) — bitta ID, ikki xil narx.
+// Endi egasining ro'yxati (CODE_PRICES) ikkala joyda ham ustun turadi.
+{
+  const now = new Date().toISOString();
+  // Ishlab chiqarishdagi holat: auksion yozuvining narxi YANGILANGAN
+  // (8 700 000), lekin ESKI g'olib taklifi (bids.amount) 200 000 bo'lib
+  // qolgan — aynan shu eski taklif katalogga sizib chiqardi.
+  await env.DB.prepare(
+    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, highest_bidder_id, ends_at, status, min_increment, created_at)
+     VALUES (901, 'OOO000', NULL, 100000, 8700000, 1, ?, 'sold', 25000, ?)`
+  ).bind(now, now).run();
+  await env.DB.prepare(`INSERT INTO bids (id, auction_id, user_id, amount, created_at) VALUES (9001, 901, 1, 200000, ?)`).bind(now).run();
+
+  // Ro'yxatda BO'LMAGAN kod — auksion yakuniy narxi o'z kuchida qolishi kerak.
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('PPP777','Mashrabboy', 50000, 4400, 1, 'personal')`).run();
+  await env.DB.prepare(
+    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, highest_bidder_id, ends_at, status, min_increment, created_at)
+     VALUES (902, 'PPP777', NULL, 100000, 3960000, 1, ?, 'sold', 25000, ?)`
+  ).bind(now, now).run();
+  await env.DB.prepare(`INSERT INTO bids (id, auction_id, user_id, amount, created_at) VALUES (9002, 902, 1, 3960000, ?)`).bind(now).run();
+
+  const r = await j('/api/records');
+  const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
+  check('OOO000 katalogda RASMIY narx (eski 200 000 taklif emas)', by.OOO000?.price, 8_700_000);
+  check('VVV444 katalogda RASMIY narx', by.VVV444?.price, 2_900_000);
+  check("ro'yxatda yo'q ID auksion yakuniy narxini saqlaydi (PPP777)", by.PPP777?.price, 3_960_000);
+
+  // Katalog va auksion "Sotilgan" — AYNAN bir xil narx ko'rsatsin.
+  const a = await j('/api/auctions?withSold=1');
+  const sold = Object.fromEntries((a.body?.sold || []).map((x) => [x.code, x]));
+  check('katalog va Sotilgan bo\'limi bir xil narx (OOO000)', by.OOO000?.price, sold.OOO000?.currentPrice);
+  check('katalog va Sotilgan bo\'limi bir xil narx (VVV444)', by.VVV444?.price, sold.VVV444?.currentPrice);
+
+  // Qidiruv ham shu yagona manbadan.
+  const s2 = await j('/api/records/search?q=OOO');
+  check('qidiruvda ham rasmiy narx', (s2.body?.records || []).find((x) => x.code === 'OOO000')?.price, 8_700_000);
+
+  // Sovg'a bayrog'i narxdan MUSTAQIL — rasmiy narx uni bosib ketmasin.
+  check('sovg\'a kartasi hamon sovg\'a', by.GFT100?.isGift, true);
+
+  // Moliyaviy/auksion TARIXI tegilmagan: taklif summalari o'zgarmagan.
+  const bidRow = await env.DB.prepare(`SELECT amount FROM bids WHERE id = 9001`).first();
+  check('eski taklif summasi O\'ZGARTIRILMAGAN (tarix tegilmadi)', Number(bidRow.amount), 200000);
+  const aucRow = await env.DB.prepare(`SELECT current_price FROM auctions WHERE id = 901`).first();
+  check('auksion yozuvi O\'ZGARTIRILMAGAN', Number(aucRow.current_price), 8700000);
+}
+
 done();
