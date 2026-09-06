@@ -256,7 +256,7 @@ export function CatalogListScreen({ route, navigation }: Props) {
         </PremiumQueryState>
       </View>
 
-      <PremiumSheet ref={sheetRef} title={editing ? 'Tahrirlash' : "Yangi element"} snapPoints={['65%', '92%']}>
+      <PremiumSheet ref={sheetRef} title={editing ? 'Tahrirlash' : "Yangi element"} snapPoints={['92%']}>
         <View style={styles.imageRow}>
           {imageUrl ? (
             <Image source={{ uri: imageUrl }} style={styles.sheetThumb} resizeMode="cover" />
@@ -280,20 +280,26 @@ export function CatalogListScreen({ route, navigation }: Props) {
         </View>
 
         <PremiumInput label="Nomi" value={name} onChangeText={setName} error={nameError} />
-        <PremiumInput
-          label="Narxi (so'm)"
-          value={price}
-          onChangeText={setPrice}
-          keyboardType="number-pad"
-          error={priceError}
-        />
-        <PremiumInput
-          label="Chegirma narxi (ixtiyoriy)"
-          value={promotionPrice}
-          onChangeText={setPromotionPrice}
-          keyboardType="number-pad"
-          error={promoError}
-        />
+        <View style={styles.priceInputs}>
+          <View style={styles.priceInput}>
+            <PremiumInput
+              label="Narxi (so'm)"
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="number-pad"
+              error={priceError}
+            />
+          </View>
+          <View style={styles.priceInput}>
+            <PremiumInput
+              label="Chegirma (ixtiyoriy)"
+              value={promotionPrice}
+              onChangeText={setPromotionPrice}
+              keyboardType="number-pad"
+              error={promoError}
+            />
+          </View>
+        </View>
         <PremiumInput label="Bo'lim (ixtiyoriy)" value={category} onChangeText={setCategory} />
         <PremiumInput
           label="Tavsif (ixtiyoriy)"
@@ -455,6 +461,8 @@ const styles = StyleSheet.create({
   iconActionText: { ...typeTokens.caption, fontWeight: '600' },
 
   footerButton: { marginTop: space.sm },
+  priceInputs: { flexDirection: 'row', gap: space.md },
+  priceInput: { flex: 1 },
   imageRow: { flexDirection: 'row', gap: space.md, alignItems: 'center' },
   imageActions: { flex: 1, gap: space.sm },
   sheetThumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: color.surfaceHigh },
