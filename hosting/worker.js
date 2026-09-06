@@ -1110,6 +1110,11 @@ async function ensureCoreSchema(env) {
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "sessions" (
         "token" TEXT NOT NULL, "user_id" INTEGER NOT NULL, "expires_at" TEXT NOT NULL, PRIMARY KEY("token")
       )`),
+      // Muddati o'tgan sessiyalar vaqti-vaqti bilan tozalanadi (~2% so'rovda,
+      // getCurrentUser ichida). `expires_at` da indeks bo'lmagani uchun bu
+      // DELETE butun jadvalni skanerlardi — foydalanuvchilar ko'paygan sari
+      // sekinlashadigan operatsiya. Indeks buni arzon qiladi.
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires_at)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "cards" (
         "code" TEXT NOT NULL, "name" TEXT NOT NULL, "role" TEXT, "avatar_url" TEXT, "tg" TEXT, "phone" TEXT,
         "email" TEXT, "linkedin" TEXT, "instagram" TEXT, "hashtags" TEXT DEFAULT '[]' NOT NULL, "price" INTEGER NOT NULL,
@@ -1253,6 +1258,13 @@ async function ensureCoreSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "posts_code_idx" ON "posts" ("code", "created_at" DESC)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "rate_limits" ("key" TEXT PRIMARY KEY NOT NULL, "hits" INTEGER DEFAULT 0 NOT NULL, "window_start" INTEGER NOT NULL)`),
+      // Eski limit yozuvlari ~1% so'rovda tozalanadi (rateLimitD1). Jadval
+      // kaliti faqat `key` bo'lgani uchun `window_start` bo'yicha DELETE
+      // butun jadvalni skanerlardi. Bu jadval HAR BIR profil ko'rilishida
+      // to'ldiriladi (view:KOD:tashrifchi, 6 soatlik oyna), ya'ni reklama
+      // paytida tez o'sadi — indekssiz bu skanerlash sezilarli sekinlik
+      // manbaiga aylanardi.
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS rate_limits_window_idx ON rate_limits(window_start)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "post_likes" (
         "id" INTEGER PRIMARY KEY NOT NULL, "post_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL,
         "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
