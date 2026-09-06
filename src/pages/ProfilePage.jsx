@@ -7,7 +7,7 @@ import { menuEligible, productEligible, serviceEligible } from '../lib/access.js
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { parseMusicSource, yandexEmbedSrc } from '../lib/music.js';
+import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
@@ -365,30 +365,57 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
   const ytPlayerRef = useRef(null);
   const ytReadyRef = useRef(false);
   const wantPlayRef = useRef(false);
+  // Minimizatsiyada saqlangan ijro vaqti: videoId -> soniya. Qayta Play
+  // bosilganda shu joydan davom etadi.
+  const ytResumeRef = useRef(new Map());
   // Effekt ichidagi YT `onStateChange` yopilmasi (closure) eskirmasligi
   // uchun — har renderda eng so'nggi handler shu ref'ga yoziladi.
   const endedRef = useRef(() => {});
   const [playing, setPlaying] = useState(false);
-  // YouTube embed FAQAT foydalanuvchi Play bosgandan keyin ulanadi. Undan
-  // oldin ixcham preview (rasmiy thumbnail) ko'rsatiladi — bu YouTube
-  // qoidalarida ruxsat etilgan. Iframe hech qachon yashirilmaydi,
-  // 0x0 ga siqilmaydi va boshqa element ortiga qo'yilmaydi.
+  // ── OCHIQ/YOPIQ HOLAT ──────────────────────────────────────────────────
+  // `ytMounted === false` — YOPIQ (ixcham) holat: YouTube iframe umuman
+  // YUKLANMAYDI va katta video tasviri KO'RINMAYDI, faqat 64-76px lik
+  // musiqa qatori turadi. `true` — foydalanuvchi Play bosgan, rasmiy
+  // IFrame Player ixcham o'lchamda (desktopda eng ko'pi 356x200) ochilgan.
   const [ytMounted, setYtMounted] = useState(false);
+  // Yandex vidjeti ham xuddi shunday: doimiy emas, faqat Play bosilgach.
+  const [ydOpen, setYdOpen] = useState(false);
   const { t } = useLanguage();
   // Trek raqami. `urls` (qo'shiqlar ro'yxati) tashqaridan keladi; limit
   // (oddiy 5 / premium 10) kabinetda va backendda tekshiriladi.
   const [trackIndex, setTrackIndex] = useState(0);
+  const [title, setTitle] = useState('');
+  // Muqova rasmi yuklanmasa (tarmoq/blok) — nota belgisiga qaytamiz.
+  const [thumbFailed, setThumbFailed] = useState(false);
   const url = urls[trackIndex] || '';
   const source = parseMusicSource(url);
 
+  const ytId = source && source.kind === 'youtube' ? source.id : null;
+  const ydFrag = source && source.kind === 'yandex' ? source.frag : null;
+  // Yandex vidjeti: qo'shiq -> past panel, albom/pleylist -> balandroq.
+  const ydH = ydFrag && ydFrag.startsWith('track/') ? 180 : 220;
+
+  // Ijro paytida YouTube player'dan hozirgi vaqtni olib qo'yamiz — bu
+  // minimizatsiya (iframe DOM'dan chiqarilganda) uchun zaxira nusxa.
+  const rememberYtTime = () => {
+    const p = ytPlayerRef.current;
+    if (!ytId || !p || !ytReadyRef.current) return;
+    try {
+      const sec = Number(p.getCurrentTime());
+      if (Number.isFinite(sec) && sec > 1) ytResumeRef.current.set(ytId, Math.floor(sec));
+    } catch { /* ignore */ }
+  };
+
   // Trekni almashtirish. `keepPlaying` — avtomatik o'tishda (trek tugadi)
-  // ijro davom etadi; qo'lda ‹ › bosilganda ham foydalanuvchi allaqachon
+  // ijro davom etadi; qo'lda < > bosilganda ham foydalanuvchi allaqachon
   // ijro qilayotgan bo'lsa davom etadi (brauzer autoplay cheklovi
   // buzilmaydi: birinchi ijro har doim Play bosishi bilan boshlangan).
   const goToTrack = (nextIndex, keepPlaying) => {
+    rememberYtTime();
     wantPlayRef.current = !!keepPlaying;
     setPlaying(false);
     setYtMounted(!!keepPlaying);
+    setYdOpen(!!keepPlaying);
     setTrackIndex(nextIndex);
   };
   const switchTrack = (delta) => {
@@ -402,19 +429,50 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
     else { wantPlayRef.current = false; setPlaying(false); }
   };
   endedRef.current = handleTrackEnded;
-  const ytId = source && source.kind === 'youtube' ? source.id : null;
-  const ydFrag = source && source.kind === 'yandex' ? source.frag : null;
-  // Yandex vidjeti: qo'shiq → past panel, albom/pleylist → balandroq (ro'yxat).
-  const ydW = 300;
-  const ydH = ydFrag && ydFrag.startsWith('track/') ? 180 : 220;
+
+  // ── MINIMIZATSIYA ──────────────────────────────────────────────────────
+  // Tartib qat'iy: 1) ijro PAUZA qilinadi, 2) joriy vaqt saqlanadi,
+  // 3) iframe DOM'dan chiqariladi (effekt cleanup player.destroy() ni
+  // chaqiradi), 4) ixcham qator qoladi. Ko'rinmaydigan "fon pleeri"
+  // QOLMAYDI — ovoz ham to'xtaydi.
+  const minimize = () => {
+    const p = ytPlayerRef.current;
+    if (p) {
+      try { p.pauseVideo(); } catch { /* ignore */ }
+      rememberYtTime();
+    }
+    wantPlayRef.current = false;
+    setPlaying(false);
+    setYtMounted(false);
+    setYdOpen(false);
+  };
+
+  // Qo'shiq nomi: YouTube -> rasmiy oEmbed metadata; audio fayl -> fayl
+  // nomi; topilmasa "Musiqa N" zaxira nomi (pastda, `trackLabel`).
+  useEffect(() => {
+    let alive = true;
+    if (ytId) {
+      const cached = cachedYoutubeTitle(ytId);
+      setTitle(cached || '');
+      if (!cached) fetchYoutubeTitle(ytId).then((v) => { if (alive && v) setTitle(v); });
+    } else if (ydFrag) {
+      setTitle('Yandex Music');
+    } else {
+      setTitle(audioFileTitle(source && source.url) || '');
+    }
+    setThumbFailed(false);
+    return () => { alive = false; };
+  }, [ytId, ydFrag, source && source.url]);
 
   // YouTube pleeri FAQAT foydalanuvchi Play bosgandan keyin (ytMounted)
   // yaratiladi — brauzerning autoplay cheklovi chetlab o'tilmaydi.
-  // `controls: 1` — rasmiy player interaktiv bo'lishi shart.
+  // `controls: 1` + `playsinline: 1` — rasmiy player interaktiv va sahifa
+  // ichida ijro etiladi (yangi oyna OCHILMAYDI).
   useEffect(() => {
     if (!ytId || !ytMounted) return undefined;
     let cancelled = false;
     ytReadyRef.current = false;
+    const resumeAt = ytResumeRef.current.get(ytId) || 0;
     loadYouTubeApi().then((YT) => {
       if (cancelled || !YT || !ytHostRef.current) return;
       // React boshqaradigan div'ga tegmaymiz — ichiga o'z bolamizni qo'yamiz,
@@ -423,6 +481,10 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
       mount.className = 'h-full w-full';
       ytHostRef.current.appendChild(mount);
       ytPlayerRef.current = new YT.Player(mount, {
+        // Iframe atributlari: o'lcham tashqi quti bilan bir xil
+        // (356x200 gacha) — 100% qilib beramiz, aniq piksel qutida.
+        width: '100%',
+        height: '100%',
         videoId: ytId,
         playerVars: {
           playsinline: 1,
@@ -431,12 +493,15 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
           // `controls: 1` — rasmiy YouTube boshqaruvi ko'rinadi va
           // interaktiv bo'ladi (yashirilgan/o'chirilgan player emas).
           controls: 1,
+          // Minimizatsiyadan keyin saqlangan joydan davom etish.
+          start: resumeAt || undefined,
           // `loop`/`playlist` ATAYLAB olib tashlandi: trek tugaganda
           // takrorlanmasdan keyingi qo'shiqqa o'tishi kerak.
         },
         events: {
           onReady: () => {
             ytReadyRef.current = true;
+            if (resumeAt) { try { ytPlayerRef.current.seekTo(resumeAt, true); } catch { /* ignore */ } }
             if (wantPlayRef.current) {
               try { ytPlayerRef.current.playVideo(); } catch { /* ignore */ }
             }
@@ -470,6 +535,7 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
       if (playing) {
         wantPlayRef.current = false;
         try { p && p.pauseVideo(); } catch { /* ignore */ }
+        rememberYtTime();
         setPlaying(false);
         return;
       }
@@ -486,9 +552,11 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
       return;
     }
     if (ydFrag) {
-      // Yandex'da JS API yo'q — ijroni foydalanuvchi vidjet ichidagi
-      // tugmasi orqali boshlaydi. Vidjet yashirilmaydi.
-      setPlaying((p) => !p);
+      // Yandex'da JS API yo'q — vidjet Play bosilganda ochiladi, ijroni
+      // foydalanuvchi vidjet ichidagi tugmasi orqali boshlaydi.
+      if (ydOpen) { setYdOpen(false); setPlaying(false); return; }
+      setYdOpen(true);
+      setPlaying(true);
       return;
     }
     const el = audioRef.current;
@@ -512,132 +580,161 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
   if (!source) return null;
   const isYt = source.kind === 'youtube';
   const isYd = source.kind === 'yandex';
+  const trackLabel = urls.length > 1 ? `${t('Musiqa')} ${trackIndex + 1}/${urls.length}` : t('Musiqa');
+  // Zaxira nom: oEmbed metadata topilmasa shunchaki "Musiqa" — trek
+  // tartibi allaqachon pastdagi meta qatorida turadi (takrorlanmasin).
+  const displayTitle = title || t('Musiqa');
+
+  const ctrlBtn = 'flex h-11 w-9 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink)] transition hover:bg-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)] min-[380px]:w-11';
 
   return (
-    // 2026-09: player tashqi konteyneri endi pastdagi aloqa tugmalari bilan
-    // AYNAN BIR XIL kenglikda (avval `max-w-[300px]` bilan ancha qisqa edi)
-    // va bir xil design tokenlaridan foydalanadi: `rounded-xl`,
-    // `border border-transparent`, `bg-[color:var(--vz-pill)]` — aynan
-    // `linkBtn` dagi kabi. `linkStyleCls` ham uzatiladi, shuning uchun
-    // profil mavzusi yoki tugmalar uslubi (standard/glass/transparent)
-    // o'zgarsa, player AVTOMATIK moslashadi.
-    <div className={`mx-auto mt-4 flex w-full flex-col items-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-3 py-2.5${linkStyleCls}`}>
-      {/* ─── YOUTUBE: RASMIY, KO'RINADIGAN, INTERAKTIV EMBED ───
-          YouTube qoidalari talab qiladi: audio videodan ajratilmaydi,
-          yuklab olinmaydi va proxy qilinmaydi — faqat rasmiy IFrame
-          embed ishlatiladi. Player HECH QACHON yashirilmaydi:
-          `display:none`, `opacity:0`, 1x1 o'lcham, ekrandan tashqari
-          joylashuv yoki boshqa element ortiga qo'yish YO'Q.
-          O'lcham: kenglikka moslashadi, `minHeight:200` bilan birga
-          ikkala o'lcham ham kamida 200px (320px ekranda ham).
-          Ijro boshlanmaguncha ixcham rasmiy thumbnail preview ko'rsatiladi
-          (bu ruxsat etilgan); Play bosilganda shu yerning O'ZIDA embed
-          ochiladi — yangi oyna yoki YouTube sayti OCHILMAYDI. */}
-      {isYt && (
-        // minHeight 208 = talab qilingan 200px + 2x1px ramka + zaxira,
-        // shunda IFRAME'ning O'ZI ham har doim kamida 200x200 bo'ladi
-        // (320px kenglikdagi telefonda ham).
-        <div className="w-full overflow-hidden rounded-xl border border-white/15 bg-black" style={{ aspectRatio: '16 / 9', minHeight: 208 }}>
-          {ytMounted ? (
-            // YT.Player bu div ichidagi bolani <iframe> bilan almashtiradi
-            <div ref={ytHostRef} className="block h-full min-h-[200px] w-full" />
-          ) : (
-            <button
-              type="button"
-              onClick={toggle}
-              className="group relative block h-full w-full"
-              aria-label={t('Musiqani yoqish')}
-              title={t('Musiqani yoqish')}
-            >
-              <img
-                src={`https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`}
-                alt=""
-                loading="lazy"
-                className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
-              />
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/65 text-white ring-1 ring-white/30">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-                </span>
-              </span>
-            </button>
-          )}
-        </div>
-      )}
-      {isYd && (
-        <div className="w-full overflow-hidden rounded-xl border border-white/15 bg-black" style={{ minHeight: ydH }}>
-          <iframe
-            title="profil-musiqasi"
-            src={yandexEmbedSrc(ydFrag)}
-            frameBorder="0"
-            allow="autoplay; encrypted-media"
-            className="block w-full"
-            style={{ border: 'none', width: '100%', height: ydH }}
+    // 2026-09 hotfix: tashqi konteyner pastdagi aloqa tugmalari bilan AYNAN
+    // bir xil kenglikda va bir xil design tokenlarida (`rounded-xl`,
+    // `border border-transparent`, `bg-[color:var(--vz-pill)]`, `linkStyleCls`)
+    // — profil mavzusi o'zgarsa player avtomatik moslashadi.
+    <div className={`mx-auto mt-4 w-full rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-2.5 py-2.5${linkStyleCls}`}>
+      {/* ─── RASMIY YOUTUBE IFRAME — FAQAT PLAY BOSILGANDAN KEYIN ───
+          Yopiq holatda bu blok umuman RENDER QILINMAYDI: iframe yuklanmaydi
+          va katta video tasviri ko'rinmaydi.
+          Ochilganda: markazda, desktopda eng ko'pi 356x200 px (profil
+          kengligini EGALLAMAYDI), ikkala o'lcham ham kamida 200px.
+          Qutida RAMKA YO'Q — shuning uchun iframe'ning haqiqiy content
+          viewport'i 200px dan kichrayib (198px) qolmaydi.
+          Player yashirilmaydi (display:none / opacity:0 / 1x1 / ekran
+          tashqarisi YO'Q), ustiga hech qanday element qo'yilmaydi va
+          YouTube logosi/tugmalari/havolalari berkitilmaydi. */}
+      {isYt && ytMounted && (
+        <div className="mb-2.5 flex w-full flex-col items-center gap-2">
+          <div
+            ref={ytHostRef}
+            className="block overflow-hidden rounded-lg bg-black"
+            style={{ width: '100%', maxWidth: 356, minWidth: 200, height: 200 }}
           />
+          <button
+            type="button"
+            onClick={minimize}
+            className="flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:text-[color:var(--vz-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
+            aria-label={t('Videoni yig‘ish')}
+            title={t('Videoni yig‘ish')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+            {t('Videoni yig‘ish')}
+          </button>
         </div>
       )}
-      {/* Oddiy audio fayl (MP3/M4A/OGG ...) — custom NFCSTORE pleeri,
-          HECH QANDAY video ko'rsatilmaydi. `loop` olib tashlandi: trek
-          tugaganda keyingisiga o'tadi (oxirgisida to'xtaydi). */}
+      {isYd && ydOpen && (
+        <div className="mb-2.5 flex w-full flex-col items-center gap-2">
+          <div className="overflow-hidden rounded-lg bg-black" style={{ width: '100%', maxWidth: 356, minWidth: 200, height: ydH }}>
+            <iframe
+              title="profil-musiqasi"
+              src={yandexEmbedSrc(ydFrag)}
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              className="block w-full"
+              style={{ border: 'none', width: '100%', height: ydH }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={minimize}
+            className="flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--vz-ink-dim)] transition hover:text-[color:var(--vz-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
+            aria-label={t('Videoni yig‘ish')}
+            title={t('Videoni yig‘ish')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+            {t('Videoni yig‘ish')}
+          </button>
+        </div>
+      )}
+      {/* Oddiy audio fayl (MP3/M4A/OGG ...) — custom NFCSTORE pleeri, HECH
+          QANDAY video va katta thumbnail YO'Q. `loop` yo'q: trek tugaganda
+          keyingisiga o'tadi (oxirgisida to'xtaydi). */}
       {!isYt && !isYd && (
         <audio ref={audioRef} src={source.url} preload="none" onEnded={handleTrackEnded} />
       )}
 
-      {/* \u2500\u2500\u2500 MUSIQA BOSHQARUVI (2026-09 hotfix) \u2500\u2500\u2500
-          Oldingi/keyingi tugmalari 28x28 px edi \u2014 barmoq bilan bosish juda
-          qiyin (ikonka atigi 12px). Endi ular 44x44 px (Apple HIG / WCAG
-          2.5.8 minimal bosish maydoni), ikonkalar 20px va yuqori
-          kontrastli, o'z yumaloq foni bilan. Ijro/pauza esa ASOSIY tugma
-          bo'lib qoladi \u2014 u kattaroq (56px) va aksent rangda.
-          Uchala tugma bitta qatorda, markazda. Klaviatura fokusi
-          `focus-visible` halqasi bilan ko'rinadi. aria-label'lar t() orqali
-          UZ/RU/EN'da. Audio almashtirish (switchTrack) va toggle mantig'i
-          o'zgarmadi. */}
-      <div className="flex w-full flex-col items-center gap-2">
-        <div className="flex items-center justify-center gap-3">
+      {/* ─── IXCHAM MUSIQA QATORI (yopiq holatning O'ZI) ───
+          Balandligi ~74px (talab: 64-76px): 52px muqova + konteyner padding.
+          Tarkibi: kichik muqova, qo'shiq nomi (bir qatorda, ellipsis),
+          kichik YouTube belgisi, trek tartibi va oldingi / Play-Pause /
+          keyingi tugmalari. */}
+      <div className="flex items-center gap-2" style={{ minHeight: 52 }}>
+        {/* Kichik muqova — 52px. Yopiq holatda YouTube'ning rasmiy kichik
+            thumbnail'i (default.jpg, 120x90) ishlatiladi; audio faylda
+            umuman rasm yo'q, faqat nota belgisi. */}
+        <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-lg border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
+          {isYt && !thumbFailed ? (
+            <img
+              src={`https://i.ytimg.com/vi/${ytId}/default.jpg`}
+              alt=""
+              loading="lazy"
+              onError={() => setThumbFailed(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-[18px] text-[color:var(--vz-ink-dim)]" aria-hidden="true">{'\u{1F3B5}'}</span>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {/* Uzun nom bir qatorda ellipsis bilan qisqaradi. */}
+          <div className="truncate text-[13px] font-semibold leading-tight text-[color:var(--vz-ink)]" title={displayTitle}>
+            {displayTitle}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] leading-tight text-[color:var(--vz-ink-dim)]">
+            {isYt && (
+              // Kichik rasmiy YouTube belgisi (manba ko'rinib tursin).
+              <span className="inline-flex shrink-0 items-center" aria-label="YouTube" title="YouTube">
+                <svg width="16" height="12" viewBox="0 0 28 20" aria-hidden="true">
+                  <rect width="28" height="20" rx="5" fill="#FF0000" />
+                  <path d="M11.2 5.6v8.8L18.4 10z" fill="#fff" />
+                </svg>
+              </span>
+            )}
+            <span className="truncate">{trackLabel}</span>
+          </div>
+        </div>
+
+        {/* Boshqaruv: oldingi / Play-Pause / keyingi. Balandligi 44px
+            (bosish maydoni), 380px dan tor ekranlarda eni 36px — shunda
+            320px telefonda ham qator kesilmaydi va nom uchun joy qoladi. */}
+        <div className="flex shrink-0 items-center gap-0.5">
           {urls.length > 1 && (
             <button
               type="button"
               onClick={() => switchTrack(-1)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink)] transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
-              aria-label={t('Oldingi qo\u2018shiq')}
-              title={t('Oldingi qo\u2018shiq')}
+              className={ctrlBtn}
+              aria-label={t('Oldingi qo‘shiq')}
+              title={t('Oldingi qo‘shiq')}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.5 5.2v13.6c0 .8-.9 1.2-1.5.7l-7.6-6.1v5.4c0 .8-.9 1.2-1.5.7L7 18.4V5.6l.9-1.1c.6-.5 1.5-.1 1.5.7v5.4l7.6-6.1c.6-.5 1.5-.1 1.5.7z" /><rect x="5" y="4.5" width="2.2" height="15" rx="1" /></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.5 5.2v13.6c0 .8-.9 1.2-1.5.7l-7.6-6.1v5.4c0 .8-.9 1.2-1.5.7L7 18.4V5.6l.9-1.1c.6-.5 1.5-.1 1.5.7v5.4l7.6-6.1c.6-.5 1.5-.1 1.5.7z" /><rect x="5" y="4.5" width="2.2" height="15" rx="1" /></svg>
             </button>
           )}
           <button
             type="button"
             onClick={toggle}
-            className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${playing ? 'animate-[spinSlow_6s_linear_infinite]' : 'animate-[pulseRing_2s_ease-out_infinite]'}`}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             style={{ background: accentColor || 'var(--vz-pill, #232326)' }}
-            aria-label={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
-            title={playing ? t('Musiqani to\u2018xtatish') : t('Musiqani yoqish')}
+            aria-label={playing ? t('Musiqani to‘xtatish') : t('Musiqani yoqish')}
+            title={playing ? t('Musiqani to‘xtatish') : t('Musiqani yoqish')}
           >
             {playing ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
             ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             )}
           </button>
           {urls.length > 1 && (
             <button
               type="button"
               onClick={() => switchTrack(1)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink)] transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
-              aria-label={t('Keyingi qo\u2018shiq')}
-              title={t('Keyingi qo\u2018shiq')}
+              className={ctrlBtn}
+              aria-label={t('Keyingi qo‘shiq')}
+              title={t('Keyingi qo‘shiq')}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.5 5.2v13.6c0 .8.9 1.2 1.5.7l7.6-6.1v5.4c0 .8.9 1.2 1.5.7l.9-1.1V5.6L16.1 4.5c-.6-.5-1.5-.1-1.5.7v5.4L7 4.5c-.6-.5-1.5-.1-1.5.7z" /><rect x="16.8" y="4.5" width="2.2" height="15" rx="1" /></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.5 5.2v13.6c0 .8.9 1.2 1.5.7l7.6-6.1v5.4c0 .8.9 1.2 1.5.7l.9-1.1V5.6L16.1 4.5c-.6-.5-1.5-.1-1.5.7v5.4L7 4.5c-.6-.5-1.5-.1-1.5.7z" /><rect x="16.8" y="4.5" width="2.2" height="15" rx="1" /></svg>
             </button>
           )}
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          {/* Konteyner endi to'liq kenglikda — yozuv sun'iy 160px bilan
-              cheklanmaydi va kesilmaydi. */}
-          <span className="min-w-0 break-words text-center text-xs font-semibold text-[color:var(--vz-ink-dim)]">
-            {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
-          </span>
         </div>
       </div>
     </div>
