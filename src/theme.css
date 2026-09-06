@@ -33,6 +33,14 @@
 }
 
 @theme {
+  /* ═══ YAGONA SAHIFA FONI TOKENI (2026-09) ═══
+     Butun saytning ODDIY sahifa va KATTA SECTION fonlari uchun bitta
+     manba. Qiymat /narxlar sahifasining amaldagi computed rangidan
+     olingan: rgb(0,0,0) = #000000.
+     Tailwind 4 buni `:root{--color-page-bg}` sifatida chiqaradi va
+     `bg-page-bg` utilitasini beradi. */
+  --color-page-bg: #000000;
+
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, monospace;
   --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
@@ -466,6 +474,35 @@
 @media(max-width:760px){.bp-engagement{padding:7px}.bp-engagement button{padding:0 6px}.bp-promo-banner{grid-template-columns:1fr auto}.bp-promo-banner>span{grid-column:1/-1}.bp-catalog-copy{min-height:140px}.auction-hammer-stage{transform:scale(.67);transform-origin:center;margin:-56px -92px}}
 
 /* ═══════════ V1 — Black & Gold Prestige dizayn tizimi (docs/DESIGN_SYSTEM.md) ═══════════ */
+/* ═══════════════════════════════════════════════════════════════════════
+   YAGONA SAHIFA FONI TOKENI (2026-09)
+   Butun saytning ODDIY sahifa va KATTA SECTION fonlari uchun bitta manba.
+   Qiymat /narxlar sahifasining amaldagi computed rangidan olingan:
+   rgb(0,0,0) = #000000.
+
+   Nima uchun kerak edi: sahifa foni daisyUI temasining `--color-base-100`
+   (#0a0908) qiymatidan kelardi — bu JIGARRANG tus (R>G>B), shuning uchun
+   bosh sahifada jigarrang-qoramtir dog' ko'rinardi. Bundan tashqari
+   HomePage/Footer/Admin `--vz-bg` (#0a0805), Company Account/Workspace
+   esa #050505 ishlatardi — natijada bo'limlar orasida rang choklari
+   paydo bo'lardi.
+
+   MUHIM: `--color-base-100` O'ZGARTIRILMADI — u kartalar, inputlar,
+   modallar va boshqa komponentlarda ishlatiladi va o'z dizaynini
+   saqlaydi. Bu token FAQAT sahifa/section fonlariga qo'llaniladi.
+   Profil sahifalari (shaxsiy va kompaniya public profillari) o'zining
+   alohida `--vz-bg-a/--vz-bg-b` va `.cp-*/.cq-*` tizimidan foydalanadi —
+   ularga TEGILMAGAN.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Sahifa qobig'i — tekis, gradientsiz, chekkalarda boshqa tus yo'q.
+   Eslatma: `html`/`:root` fonini daisyUI o'zi `--root-bg` orqali
+   boshqaradi va Lightning CSS bu yerdagi `html{background}` qoidasini
+   o'sha qoidaga birlashtirib yuboradi. Shuning uchun canvas (hujjatdan
+   tashqaridagi maydon) foni index.html'dagi kichik inline `<style>`da
+   `--root-bg` bilan belgilangan — u build'da o'zgarmaydi. */
+body{ background:var(--color-page-bg); }
+#root{ background:var(--color-page-bg); }
+
 :root{
   --vz-gold:#d4af5a; --vz-gold-2:#f0cf7a; --vz-gold-3:#b3860f; --vz-gold-ink:#1a1206;
   --vz-bg:#0a0805; --vz-bg-2:#14100a; --vz-card:#141009; --vz-card-2:#1e1810; --vz-line:#2d2518;
@@ -632,14 +669,14 @@
    balandligi bo'ylab uzluksiz bo'ladi — chap-o'ng tashqi bo'shliqlarda
    boshqa kulrang tus qolmaydi va section chegarasi to'rtburchak bo'lib
    bilinmaydi. Kontent avvalgidek max-width konteyner ichida qoladi. */
-html:has(body.pricing-bg){background:#000;}
-body.pricing-bg{background:#000;}
+html:has(body.pricing-bg){background:var(--color-page-bg);}
+body.pricing-bg{background:var(--color-page-bg);}
 body.pricing-bg .pricing-page,
 body.pricing-bg header,
-body.pricing-bg footer{background:#000;}
+body.pricing-bg footer{background:var(--color-page-bg);}
 /* `:has()` qo'llab-quvvatlanmagan brauzerlar uchun zaxira: sahifa
    o'rami baribir to'liq kenglikda tekis qora bo'ladi. */
-.pricing-page{position:relative;width:100%;background:#000;}
+.pricing-page{position:relative;width:100%;background:var(--color-page-bg);}
 
 /* Kompaniya nomi uchun inline xato matni (taqiqlangan so'z) */
 .cc-name-err{

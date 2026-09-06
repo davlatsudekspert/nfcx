@@ -11,7 +11,7 @@ const COLS = [
 export default function Footer() {
   const { t } = useLanguage();
   return (
-    <footer className="border-t border-[color:var(--vz-line)] bg-[color:var(--vz-bg)]">
+    <footer className="border-t border-[color:var(--vz-line)] bg-page-bg">
       <div className="h-px bg-gradient-to-r from-transparent via-[rgba(212,175,90,0.45)] to-transparent"></div>
       <div className="mx-auto w-full max-w-[1800px] px-6 py-12 sm:px-10 lg:px-14">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">

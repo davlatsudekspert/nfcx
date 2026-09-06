@@ -81,8 +81,8 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--vz-bg)', color: 'var(--vz-ink)' }}>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r lg:flex" style={{ background: 'var(--vz-bg-2)', borderColor: 'var(--vz-line)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--color-page-bg)', color: 'var(--vz-ink)' }}>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r lg:flex" style={{ background: 'var(--color-page-bg)', borderColor: 'var(--vz-line)' }}>
         <div className="flex h-16 items-center gap-2.5 border-b px-5" style={{ borderColor: 'var(--vz-line)' }}>
           <img src={logo} alt="" className="h-8 w-8 object-contain" />
           <span className="font-display text-[15px] font-semibold tracking-[0.14em]">NFCSTORE</span>
@@ -96,7 +96,7 @@ export function AdminShell({ nav, activeIndex, onSelect, title, role, onLogout, 
       </aside>
 
       <div className="min-w-0 lg:pl-60">
-        <header className="sticky top-0 z-30 border-b backdrop-blur-md" style={{ background: 'rgba(10,8,5,.88)', borderColor: 'var(--vz-line)' }}>
+        <header className="sticky top-0 z-30 border-b backdrop-blur-md" style={{ background: 'rgba(0,0,0,.88)', borderColor: 'var(--vz-line)' }}>
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <img src={logo} alt="" className="h-7 w-7 shrink-0 object-contain lg:hidden" />

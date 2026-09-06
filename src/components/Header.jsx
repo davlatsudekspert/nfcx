@@ -144,7 +144,7 @@ export default function Header() {
   const go = (href) => { setOpen(false); navigate(href); };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(10,8,5,0.86)] backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(0,0,0,0.86)] backdrop-blur-md">
       {/* BETA e'lon lentasi — doimiy aylanuvchi marquee. Fon rangini bermaymiz —
           header'ning o'zidagi bg-base-100/80 dan meros oladi, aks holda ikki
           qavat shaffof fon ustma-ust tushib, marquee bilan navbar orasida

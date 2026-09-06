@@ -43,8 +43,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body class="overflow-x-hidden bg-base-100 font-sans leading-normal text-base-content antialiased [background-image:radial-gradient(1200px_600px_at_15%_-10%,rgba(255,255,255,0.05),transparent_60%),radial-gradient(1000px_500px_at_90%_10%,rgba(255,255,255,0.04),transparent_55%)]">
+<!-- Sahifa foni: avval `bg-base-100` (#0a0908 — JIGARRANG tus, R>G>B) va
+     ikkita radial "yorug'lik" gradienti shu yerda QATTIQ YOZILGAN edi —
+     aynan shu bosh sahifadagi jigarrang-qoramtir dog'ni va bo'limlar
+     orasidagi rang choklarini hosil qilardi. Endi yagona `bg-page-bg`
+     tokeni (src/theme.css: --color-page-bg = #000000, /narxlar sahifasidan
+     olingan). `--color-base-100` O'ZGARMADI — u kartalar, inputlar va
+     modallarda ishlatiladi. -->
+<body class="overflow-x-hidden bg-page-bg font-sans leading-normal text-base-content antialiased">
   <div id="root"></div>
+  <!-- Sahifa/canvas foni — YAGONA qora token (src/theme.css: --color-page-bg).
+       Bu yerda inline turibdi, chunki daisyUI hujjat (canvas) fonini o'zining
+       `--root-bg` o'zgaruvchisi orqali boshqaradi va CSS minifikatori
+       stylesheetdagi `html{background}` qoidasini o'sha qoidaga birlashtirib
+       yuboradi. Faqat SAHIFA foni — komponentlarning `--color-base-100`
+       rangiga tegilmagan. -->
+  <style>:root{--root-bg:#000000;background-color:#000000}</style>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
