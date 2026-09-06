@@ -359,7 +359,7 @@ function loadYouTubeApi() {
   return _ytApiPromise;
 }
 
-function MusicPlayer({ urls = [], accentColor }) {
+function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
   const audioRef = useRef(null);
   const ytHostRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -475,7 +475,14 @@ function MusicPlayer({ urls = [], accentColor }) {
   const isYd = source.kind === 'yandex';
 
   return (
-    <div className="mx-auto mt-4 flex w-full max-w-[300px] flex-col items-center gap-2 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+    // 2026-09: player tashqi konteyneri endi pastdagi aloqa tugmalari bilan
+    // AYNAN BIR XIL kenglikda (avval `max-w-[300px]` bilan ancha qisqa edi)
+    // va bir xil design tokenlaridan foydalanadi: `rounded-xl`,
+    // `border border-transparent`, `bg-[color:var(--vz-pill)]` — aynan
+    // `linkBtn` dagi kabi. `linkStyleCls` ham uzatiladi, shuning uchun
+    // profil mavzusi yoki tugmalar uslubi (standard/glass/transparent)
+    // o'zgarsa, player AVTOMATIK moslashadi.
+    <div className={`mx-auto mt-4 flex w-full flex-col items-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-3 py-2.5${linkStyleCls}`}>
       {isYt && (
         <div
           className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)] transition-all duration-200"
@@ -563,7 +570,9 @@ function MusicPlayer({ urls = [], accentColor }) {
           )}
         </div>
         <div className="flex items-center justify-center gap-2">
-          <span className="max-w-[160px] truncate text-xs font-semibold text-[color:var(--vz-ink-dim)]">
+          {/* Konteyner endi to'liq kenglikda — yozuv sun'iy 160px bilan
+              cheklanmaydi va kesilmaydi. */}
+          <span className="min-w-0 break-words text-center text-xs font-semibold text-[color:var(--vz-ink-dim)]">
             {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
           </span>
           {(isYt || isYd) && playing && (
@@ -1596,7 +1605,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               </div>
             )}
 
-            <MusicPlayer urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])} accentColor={record.accentColor} />
+            <MusicPlayer urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])} accentColor={record.accentColor} linkStyleCls={linkStyleCls} />
 
             <div className="mt-[22px] flex flex-col gap-2.5">
               {record.phone && (!record.hidePhone || isOwner) && (

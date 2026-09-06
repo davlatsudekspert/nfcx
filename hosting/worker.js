@@ -1657,10 +1657,37 @@ const RECORD_COLUMNS = `code, name, role, avatar_url, bg_url, bg_pattern, accent
   linkedin, instagram, about, facebook, twitter, website, card_number, extra_links, card_numbers,
   tier_override, card_design, verified, theme, for_sale, sale_price, hashtags, price, ts, views`;
 
+// ── HAR KODGA QO'LDA BELGILANGAN NARX (per-code price override) ──────────
+// DIQQAT: bu blok src/lib/codePrices.js bilan AYNAN bir xil bo'lishi shart
+// (Worker modullari `src/` dan import qila olmaydi — build guard taqiqlaydi).
+// scripts/test-code-prices-and-sold.mjs ikkalasini solishtirib turadi.
+//
+// BIRLIK: SO'M (tiyin EMAS) — `cards.price` va `web_orders.price` bilan bir xil.
+// Tiyinga o'girish faqat paymeCheckoutLinkD1() ichida (× 100) sodir bo'ladi.
+//
+// Bu narx katalog/qidiruv/profil belgisi/Admin/auksion ko'rinishida TARIF
+// narxidan USTUN turadi. Eski buyurtmalar va Payme tranzaksiyalari
+// (web_orders, payme_transactions) O'ZGARTIRILMAYDI.
+const CODE_PRICES_D1 = {
+  OOO000: 8700000,
+  VVV444: 2900000,
+  BMW007: 199000,
+  VIP001: 7600000,
+  VIP000: 9700000,
+};
+function codePriceOverrideD1(code) {
+  const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return Object.prototype.hasOwnProperty.call(CODE_PRICES_D1, c) ? CODE_PRICES_D1[c] : null;
+}
+
 function catalogCard(record) {
   return {
     code: record.code, name: record.name, role: record.role, avatarUrl: record.avatarUrl, tg: record.tg,
-    hashtags: record.hashtags, theme: record.theme, price: record.price, ts: record.ts, views: record.views,
+    hashtags: record.hashtags, theme: record.theme,
+    // Narx: qo'lda belgilangan per-code narx BO'LSA — u ustun (yagona
+    // manba: CODE_PRICES_D1). Aks holda kartaning saqlangan narxi.
+    price: codePriceOverrideD1(record.code) ?? record.price,
+    ts: record.ts, views: record.views,
     profileType: record.profileType, city: record.city, categorySlug: record.categorySlug,
     verified: record.verified, tierOverride: record.tierOverride || '',
     // 2026-09: katalogda admin sovg'a qilgan kartani "0 so'm" emas,
@@ -3341,6 +3368,54 @@ async function getPendingAuctionPaymentOrderD1(env, auctionId, userId) {
   return null;
 }
 
+// ── Katalogdagi EGASI BOR ekslyuziv ID'lar auksionning "Sotilgan"
+// bo'limida ham ko'rinadi (2026-09).
+//
+// Manba — FAQAT HAQIQIY ma'lumot: `cards` jadvalidagi kartaning egasi
+// (`user_id`) bor bo'lishi. Soxta auksion, g'olib, taklif (bid) yoki Payme
+// tranzaksiyasi YARATILMAYDI — bu yozuvlar `auctions` jadvaliga ham
+// yozilmaydi, ular faqat javobda hisoblab beriladi.
+//
+// Egasi yo'q (sotilmagan) yoki hali faol auksiondagi ekslyuziv ID bu
+// ro'yxatga TUSHMAYDI. Haqiqiy auksion orqali sotilgan kodlar bilan
+// takrorlanish kod bo'yicha filtrlanadi.
+//
+// Narx: avval per-code narx (CODE_PRICES_D1), bo'lmasa kartaning saqlangan
+// narxi. Ikkalasi ham bo'lmasa — narx O'YLAB TOPILMAYDI, karta ro'yxatga
+// qo'shilmaydi.
+async function ownedExclusiveSoldD1(env, alreadySold) {
+  try {
+    const taken = new Set((alreadySold || []).map((a) => String(a.code || '').toUpperCase()));
+    const rows = await env.DB.prepare(
+      `SELECT code, price, ts, user_id, tier_override,
+              EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
+         FROM cards
+        WHERE user_id IS NOT NULL AND hidden_from_directory = 0
+        ORDER BY ts DESC LIMIT 500`
+    ).all();
+    const out = [];
+    for (const r of rows.results || []) {
+      const code = String(r.code || '').toUpperCase();
+      if (taken.has(code)) continue;
+      const tier = personalIdTierD1({ code, tierOverride: r.tier_override || '', isGift: !!r.is_gift });
+      if (tier !== 'exclusive') continue;
+      const price = codePriceOverrideD1(code) ?? (Number(r.price) > 0 ? Number(r.price) : null);
+      if (price == null) continue; // narx yo'q -> o'ylab topmaymiz
+      out.push({
+        // `id` yo'q — bu auksion yozuvi EMAS. Frontend `profileCode` bo'lsa
+        // public profilga o'tadi (auksion sahifasiga emas).
+        id: null, code, tier, currentPrice: price, profileCode: code,
+        status: 'sold', ownedSale: true, ts: Number(r.ts) || null,
+      });
+    }
+    return out;
+  } catch (e) {
+    // Bu qo'shimcha ro'yxat auksion sahifasini yiqitmasligi kerak.
+    console.error('ownedExclusiveSoldD1', e && e.message);
+    return [];
+  }
+}
+
 async function auctionsPublicApi(request, env, url) {
   const path = url.pathname;
 
@@ -3350,7 +3425,8 @@ async function auctionsPublicApi(request, env, url) {
     const auctions = (active.results || []).map(auctionRow);
     if (url.searchParams.get('withSold') === '1') {
       const sold = await env.DB.prepare(`SELECT * FROM auctions WHERE status = 'sold' ORDER BY ends_at DESC LIMIT 40`).all();
-      return json({ auctions, sold: (sold.results || []).map(auctionRow) });
+      const soldRows = (sold.results || []).map(auctionRow);
+      return json({ auctions, sold: [...soldRows, ...(await ownedExclusiveSoldD1(env, soldRows))] });
     }
     return json({ auctions });
   }

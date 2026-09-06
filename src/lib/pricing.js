@@ -1,4 +1,5 @@
 import { codeTierOverride } from './codeTiers.js';
+import { codePriceOverride } from './codePrices.js';
 
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
@@ -302,13 +303,20 @@ export function priceFor(letters, digits, _sold) {
 
 export function priceForCode(code, _sold) {
   const c = String(code || '').toUpperCase();
-  // AVVAL — qo'lda belgilangan tarif (per-code override). Bo'lmasa naqsh mantig'i.
-  const ov = codeTierOverride(c);
-  if (ov) {
-    const total = TIER_PRICE[ov] ?? 0;
-    return { total, tier: ov, base: total, override: true };
+  // 1) AVVAL — qo'lda belgilangan NARX (per-code price override). U tarif
+  //    narxidan ustun turadi. Daraja o'z mantig'i bo'yicha aniqlanadi
+  //    (narx belgilanishi kodning tarifini o'zgartirmaydi).
+  const priceOv = codePriceOverride(c);
+  // 2) Keyin — qo'lda belgilangan tarif (per-code tier override). Bo'lmasa
+  //    naqsh mantig'i.
+  const tierOv = codeTierOverride(c);
+  const base = tierOv
+    ? { total: TIER_PRICE[tierOv] ?? 0, tier: tierOv, base: TIER_PRICE[tierOv] ?? 0, override: true }
+    : priceFor(c.slice(0, 3), c.slice(3, 6));
+  if (priceOv != null) {
+    return { ...base, total: priceOv, base: priceOv, priceOverride: true };
   }
-  return priceFor(c.slice(0, 3), c.slice(3, 6));
+  return base;
 }
 
 // ── Xavfsiz xarid entry-point (Payme fundamenti — Phase 2A safety fix) ──
