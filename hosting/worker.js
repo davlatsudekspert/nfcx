@@ -1942,8 +1942,8 @@ function isGiftCodeD1(code) {
 }
 
 const PERSONAL_AUCTION_CODES = [
-  // 2026-09: noyob ID — egasining qarori bilan ekslyuziv.
-  'SAV571',
+  // 2026-09: noyob ID'lar — egasining qarori bilan ekslyuziv.
+  'SAV571', 'XXX772',
   'AAA001', 'AAA007', 'OOO001', 'OOO007', 'JJJ007', 'DDD001', 'DDD007', 'FFF007',
   'BEK001', 'BEK007', 'BEK777', 'UZB000', 'UZB001', 'UZB007', 'UAE001', 'USD100',
   'ABC123', 'DEV001', 'GEM001', 'UNO000', 'WOW013', 'ASL777', 'AGA777', 'KHU777',
