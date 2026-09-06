@@ -119,7 +119,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
   const marqueeItems = recent.length ? [...recent, ...recent] : [];
 
   return (
-    <main className="bg-[color:var(--vz-bg)]">
+    <main className="bg-page-bg">
       {/* ================= HERO (V1: markazlashgan, karta pastda) ================= */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,rgba(212,175,90,0.14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
