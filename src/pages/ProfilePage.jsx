@@ -365,28 +365,54 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
   const ytPlayerRef = useRef(null);
   const ytReadyRef = useRef(false);
   const wantPlayRef = useRef(false);
+  // Effekt ichidagi YT `onStateChange` yopilmasi (closure) eskirmasligi
+  // uchun — har renderda eng so'nggi handler shu ref'ga yoziladi.
+  const endedRef = useRef(() => {});
   const [playing, setPlaying] = useState(false);
-  const [videoOpen, setVideoOpen] = useState(true);
-  // Ko'pi bilan 5 ta qo'shiq — pastdagi ‹ › tugmalari orasida almashtiradi.
-  const [trackIndex, setTrackIndex] = useState(0);
+  // YouTube embed FAQAT foydalanuvchi Play bosgandan keyin ulanadi. Undan
+  // oldin ixcham preview (rasmiy thumbnail) ko'rsatiladi — bu YouTube
+  // qoidalarida ruxsat etilgan. Iframe hech qachon yashirilmaydi,
+  // 0x0 ga siqilmaydi va boshqa element ortiga qo'yilmaydi.
+  const [ytMounted, setYtMounted] = useState(false);
   const { t } = useLanguage();
+  // Trek raqami. `urls` (qo'shiqlar ro'yxati) tashqaridan keladi; limit
+  // (oddiy 5 / premium 10) kabinetda va backendda tekshiriladi.
+  const [trackIndex, setTrackIndex] = useState(0);
   const url = urls[trackIndex] || '';
   const source = parseMusicSource(url);
-  const switchTrack = (delta) => {
-    wantPlayRef.current = false;
+
+  // Trekni almashtirish. `keepPlaying` — avtomatik o'tishda (trek tugadi)
+  // ijro davom etadi; qo'lda ‹ › bosilganda ham foydalanuvchi allaqachon
+  // ijro qilayotgan bo'lsa davom etadi (brauzer autoplay cheklovi
+  // buzilmaydi: birinchi ijro har doim Play bosishi bilan boshlangan).
+  const goToTrack = (nextIndex, keepPlaying) => {
+    wantPlayRef.current = !!keepPlaying;
     setPlaying(false);
-    setTrackIndex((i) => (i + delta + urls.length) % urls.length);
+    setYtMounted(!!keepPlaying);
+    setTrackIndex(nextIndex);
   };
+  const switchTrack = (delta) => {
+    const next = (trackIndex + delta + urls.length) % urls.length;
+    goToTrack(next, playing);
+  };
+  // Trek tugadi -> keyingisiga o'tamiz. Oxirgi trekda (alohida repeat
+  // sozlamasi yo'q) ijro TO'XTAYDI.
+  const handleTrackEnded = () => {
+    if (trackIndex < urls.length - 1) goToTrack(trackIndex + 1, true);
+    else { wantPlayRef.current = false; setPlaying(false); }
+  };
+  endedRef.current = handleTrackEnded;
   const ytId = source && source.kind === 'youtube' ? source.id : null;
   const ydFrag = source && source.kind === 'yandex' ? source.frag : null;
   // Yandex vidjeti: qo'shiq → past panel, albom/pleylist → balandroq (ro'yxat).
   const ydW = 300;
   const ydH = ydFrag && ydFrag.startsWith('track/') ? 180 : 220;
 
-  // YouTube pleerini oldindan yaratamiz (ijro emas) — shunda tugma
-  // bosilganda playVideo() darhol, imo-ishora ichida ishlaydi.
+  // YouTube pleeri FAQAT foydalanuvchi Play bosgandan keyin (ytMounted)
+  // yaratiladi — brauzerning autoplay cheklovi chetlab o'tilmaydi.
+  // `controls: 1` — rasmiy player interaktiv bo'lishi shart.
   useEffect(() => {
-    if (!ytId) return undefined;
+    if (!ytId || !ytMounted) return undefined;
     let cancelled = false;
     ytReadyRef.current = false;
     loadYouTubeApi().then((YT) => {
@@ -402,9 +428,11 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
           playsinline: 1,
           modestbranding: 1,
           rel: 0,
-          loop: 1,
-          playlist: ytId,
-          controls: 0,
+          // `controls: 1` — rasmiy YouTube boshqaruvi ko'rinadi va
+          // interaktiv bo'ladi (yashirilgan/o'chirilgan player emas).
+          controls: 1,
+          // `loop`/`playlist` ATAYLAB olib tashlandi: trek tugaganda
+          // takrorlanmasdan keyingi qo'shiqqa o'tishi kerak.
         },
         events: {
           onReady: () => {
@@ -418,8 +446,9 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
             if (e.data === 1) setPlaying(true);
             else if (e.data === 2) setPlaying(false);
             else if (e.data === 0) {
-              // Takrorlash (ba'zi hollarda loop param yetarli emas).
-              try { e.target.seekTo(0); e.target.playVideo(); } catch { /* ignore */ }
+              // ENDED — keyingi qo'shiqqa avtomatik o'tamiz (oxirgisida
+              // ijro to'xtaydi, handleTrackEnded ichida).
+              endedRef.current();
             }
           },
         },
@@ -433,30 +462,32 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
       wantPlayRef.current = false;
       if (ytHostRef.current) ytHostRef.current.innerHTML = '';
     };
-  }, [ytId]);
+  }, [ytId, ytMounted]);
 
   const toggle = () => {
     if (ytId) {
-      setVideoOpen(true);
       const p = ytPlayerRef.current;
       if (playing) {
         wantPlayRef.current = false;
         try { p && p.pauseVideo(); } catch { /* ignore */ }
         setPlaying(false);
-      } else {
-        // Ovoz aynan shu bosish (imo-ishora) ichida chiqishi kerak.
-        wantPlayRef.current = true;
-        setPlaying(true);
-        if (p && ytReadyRef.current) {
-          try { p.playVideo(); } catch { /* ignore */ }
-        }
+        return;
+      }
+      // Birinchi Play — aynan shu foydalanuvchi bosishi bilan embed
+      // ulanadi va ijro boshlanadi (autoplay cheklovi chetlab
+      // o'tilmaydi). Player allaqachon tayyor bo'lsa, playVideo() shu
+      // imo-ishora ichida chaqiriladi.
+      wantPlayRef.current = true;
+      if (!ytMounted) { setYtMounted(true); return; }
+      setPlaying(true);
+      if (p && ytReadyRef.current) {
+        try { p.playVideo(); } catch { /* ignore */ }
       }
       return;
     }
     if (ydFrag) {
-      // Yandex'da JS API yo'q — vidjetni ko'rsatamiz/yashiramiz, ijroni
-      // foydalanuvchi vidjet ichidagi ▶ tugmasi orqali boshlaydi.
-      setVideoOpen(true);
+      // Yandex'da JS API yo'q — ijroni foydalanuvchi vidjet ichidagi
+      // tugmasi orqali boshlaydi. Vidjet yashirilmaydi.
       setPlaying((p) => !p);
       return;
     }
@@ -469,6 +500,14 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
       el.play().then(() => setPlaying(true)).catch(() => {});
     }
   };
+
+  // Trek almashganda (yoki avtomatik o'tishda) audio ijroni davom ettirish.
+  useEffect(() => {
+    if (ytId || ydFrag) return;
+    const el = audioRef.current;
+    if (!el || !wantPlayRef.current) return;
+    el.play().then(() => setPlaying(true)).catch(() => { wantPlayRef.current = false; });
+  }, [url, ytId, ydFrag]);
 
   if (!source) return null;
   const isYt = source.kind === 'youtube';
@@ -483,41 +522,65 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
     // profil mavzusi yoki tugmalar uslubi (standard/glass/transparent)
     // o'zgarsa, player AVTOMATIK moslashadi.
     <div className={`mx-auto mt-4 flex w-full flex-col items-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-3 py-2.5${linkStyleCls}`}>
+      {/* ─── YOUTUBE: RASMIY, KO'RINADIGAN, INTERAKTIV EMBED ───
+          YouTube qoidalari talab qiladi: audio videodan ajratilmaydi,
+          yuklab olinmaydi va proxy qilinmaydi — faqat rasmiy IFrame
+          embed ishlatiladi. Player HECH QACHON yashirilmaydi:
+          `display:none`, `opacity:0`, 1x1 o'lcham, ekrandan tashqari
+          joylashuv yoki boshqa element ortiga qo'yish YO'Q.
+          O'lcham: kenglikka moslashadi, `minHeight:200` bilan birga
+          ikkala o'lcham ham kamida 200px (320px ekranda ham).
+          Ijro boshlanmaguncha ixcham rasmiy thumbnail preview ko'rsatiladi
+          (bu ruxsat etilgan); Play bosilganda shu yerning O'ZIDA embed
+          ochiladi — yangi oyna yoki YouTube sayti OCHILMAYDI. */}
       {isYt && (
-        <div
-          className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)] transition-all duration-200"
-          style={{
-            width: playing && videoOpen ? 190 : 0,
-            height: playing && videoOpen ? 107 : 0,
-            opacity: playing && videoOpen ? 1 : 0,
-          }}
-        >
-          {/* YT.Player bu div'ni <iframe> bilan almashtiradi */}
-          <div ref={ytHostRef} className="block h-[107px] w-[190px]" />
+        // minHeight 208 = talab qilingan 200px + 2x1px ramka + zaxira,
+        // shunda IFRAME'ning O'ZI ham har doim kamida 200x200 bo'ladi
+        // (320px kenglikdagi telefonda ham).
+        <div className="w-full overflow-hidden rounded-xl border border-white/15 bg-black" style={{ aspectRatio: '16 / 9', minHeight: 208 }}>
+          {ytMounted ? (
+            // YT.Player bu div ichidagi bolani <iframe> bilan almashtiradi
+            <div ref={ytHostRef} className="block h-full min-h-[200px] w-full" />
+          ) : (
+            <button
+              type="button"
+              onClick={toggle}
+              className="group relative block h-full w-full"
+              aria-label={t('Musiqani yoqish')}
+              title={t('Musiqani yoqish')}
+            >
+              <img
+                src={`https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover opacity-80 transition group-hover:opacity-100"
+              />
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/65 text-white ring-1 ring-white/30">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                </span>
+              </span>
+            </button>
+          )}
         </div>
       )}
       {isYd && (
-        <div
-          className="overflow-hidden rounded-xl border border-white/15 bg-black shadow-[0_12px_34px_rgba(0,0,0,0.55)] transition-all duration-200"
-          style={{
-            width: playing && videoOpen ? ydW : 0,
-            height: playing && videoOpen ? ydH : 0,
-            opacity: playing && videoOpen ? 1 : 0,
-          }}
-        >
+        <div className="w-full overflow-hidden rounded-xl border border-white/15 bg-black" style={{ minHeight: ydH }}>
           <iframe
             title="profil-musiqasi"
             src={yandexEmbedSrc(ydFrag)}
-            width={ydW}
-            height={ydH}
             frameBorder="0"
             allow="autoplay; encrypted-media"
-            style={{ border: 'none', width: ydW, height: ydH }}
+            className="block w-full"
+            style={{ border: 'none', width: '100%', height: ydH }}
           />
         </div>
       )}
+      {/* Oddiy audio fayl (MP3/M4A/OGG ...) — custom NFCSTORE pleeri,
+          HECH QANDAY video ko'rsatilmaydi. `loop` olib tashlandi: trek
+          tugaganda keyingisiga o'tadi (oxirgisida to'xtaydi). */}
       {!isYt && !isYd && (
-        <audio ref={audioRef} src={source.url} loop preload="none" onEnded={() => setPlaying(false)} />
+        <audio ref={audioRef} src={source.url} preload="none" onEnded={handleTrackEnded} />
       )}
 
       {/* \u2500\u2500\u2500 MUSIQA BOSHQARUVI (2026-09 hotfix) \u2500\u2500\u2500
@@ -575,17 +638,6 @@ function MusicPlayer({ urls = [], accentColor, linkStyleCls = '' }) {
           <span className="min-w-0 break-words text-center text-xs font-semibold text-[color:var(--vz-ink-dim)]">
             {'\u{1F3B5}'} {t('Musiqa')}{urls.length > 1 ? ` ${trackIndex + 1}/${urls.length}` : ''}
           </span>
-          {(isYt || isYd) && playing && (
-            <button
-              type="button"
-              onClick={() => setVideoOpen((v) => !v)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[color:var(--vz-ink-dim)] transition hover:bg-white/10 hover:text-[color:var(--vz-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-ink)]"
-              aria-label={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
-              title={videoOpen ? t('Videoni yashirish') : t('Videoni ko\u2018rsatish')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: videoOpen ? 'none' : 'rotate(180deg)' }}><path d="M6 9l6 6 6-6" /></svg>
-            </button>
-          )}
         </div>
       </div>
     </div>

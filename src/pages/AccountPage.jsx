@@ -9,6 +9,7 @@ import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import PaymeBlock from '../components/PaymeBlock.jsx';
+import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, musicLimit } from '../lib/musicLimits.js';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -2185,6 +2186,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // Bu kartaning effective access darajasi (NFC ID tarifi + Profile Premium).
   const access = effectiveAccess(card, user);
   const allow = (feature) => featureAllowed(feature, access);
+  // Musiqa limiti FOYDALANUVCHINING premium holatiga bog'liq: oddiy 5,
+  // Premium 10. Backend AYNAN shu qoidani qo'llaydi (hosting/worker.js
+  // musicLimitD1(user.isPremium)) — ikkalasi bir manbadan
+  // (src/lib/musicLimits.js) hisoblanadi.
+  const isPremiumUser = !!user?.isPremium;
+  const musicMax = musicLimit(isPremiumUser);
   const [locked, setLocked] = useState(null); // yopiq funksiya nomi (modal uchun)
   // Business Workspace navigatsiyasi: 'asosiy' | 'katalog' | 'lokatsiya' | 'sozlamalar'.
   // Shaxsiy/expert profillar uchun ishlatilmaydi (ular eski flat accordion'da qoladi).
@@ -2210,7 +2217,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       : (card.linksTransparent ? 'glass' : 'standard'),
     // Ko'pi bilan 5 ta qo'shiq (eski bitta-URL kartalar bilan moslik uchun
     // `card.musicUrl` ham qabul qilinadi, agar `musicUrls` bo'lmasa).
-    musicUrls: Array.isArray(card.musicUrls) ? card.musicUrls.slice(0, 5) : (card.musicUrl ? [card.musicUrl] : []),
+    musicUrls: Array.isArray(card.musicUrls) ? card.musicUrls.slice(0, MUSIC_LIMIT_PREMIUM) : (card.musicUrl ? [card.musicUrl] : []),
     tg: card.tg || '',
     phone: card.phone || '',
     hidePhone: !!card.hidePhone,
@@ -2254,7 +2261,15 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const addMusic = () => setForm((f) => (f.musicUrls.length >= 5 ? f : { ...f, musicUrls: [...f.musicUrls, ''] }));
+  // Oddiy foydalanuvchi limitga yetganda (6-qo'shiq) — Premium taklif
+  // oynasi ochiladi. Premium foydalanuvchi 10 tagacha qo'sha oladi.
+  const addMusic = () => {
+    if (form.musicUrls.length >= musicMax) {
+      if (!isPremiumUser) setLocked(t('5 tadan ortiq qo‘shiq'));
+      return;
+    }
+    setForm((f) => ({ ...f, musicUrls: [...f.musicUrls, ''] }));
+  };
   const updateMusic = (i) => (e) => setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, idx) => (idx === i ? e.target.value : u)) }));
   const removeMusic = (i) => setForm((f) => ({ ...f, musicUrls: f.musicUrls.filter((_, idx) => idx !== i) }));
 
@@ -2421,7 +2436,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         bgColor: form.bgColor,
         bgAnimated: form.bgAnimated,
         linkStyle: form.linkStyle,
-        musicUrls: form.musicUrls.map((u) => u.trim()).filter(Boolean).slice(0, 5),
+        musicUrls: form.musicUrls.map((u) => u.trim()).filter(Boolean).slice(0, musicMax),
         tg: form.tg.trim(),
         phone: form.phone.trim(),
         hidePhone: form.hidePhone,
@@ -2802,7 +2817,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
       <Gate ok={allow('music')} onLock={() => setLocked(t('Profil musiqasi'))}>
       <label className="form-control mt-5 block">
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconMusic width={12} height={12} /> {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/5)</span></span>
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconMusic width={12} height={12} /> {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/{musicMax})</span></span>
         <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
         <div className="mt-2 space-y-3">
           {form.musicUrls.map((url, i) => (
@@ -2833,10 +2848,14 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             </div>
           ))}
         </div>
-        {form.musicUrls.length < 5 && (
-          <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={addMusic}>{t("+ Qo'shiq qo'shish")}</button>
+        {/* Limitga yetganda tugma yo'qolmaydi — oddiy foydalanuvchida u
+            Premium taklif oynasini ochadi (addMusic ichida). */}
+        {(form.musicUrls.length < musicMax || !isPremiumUser) && (
+          <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={addMusic}>
+            {form.musicUrls.length >= musicMax ? t("Premium bilan 10 tagacha qo‘shiq") : t("+ Qo'shiq qo'shish")}
+          </button>
         )}
-        <p className="mt-2 text-xs text-base-content/45">{t("Ko'pi bilan 5 ta qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
+        <p className="mt-2 text-xs text-base-content/45">{t("Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
       </label>
       </Gate>
     </Section>
