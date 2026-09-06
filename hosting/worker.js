@@ -1663,6 +1663,13 @@ function catalogCard(record) {
     hashtags: record.hashtags, theme: record.theme, price: record.price, ts: record.ts, views: record.views,
     profileType: record.profileType, city: record.city, categorySlug: record.categorySlug,
     verified: record.verified, tierOverride: record.tierOverride || '',
+    // 2026-09: katalogda admin sovg'a qilgan kartani "0 so'm" emas,
+    // "Sovg'a" deb ko'rsatish uchun. MUHIM: bu bayroq narxdan EMAS,
+    // `nfc_gifts` jadvalidagi HAQIQIY sovg'a yozuvidan olinadi
+    // (status='activated' — ya'ni admin rezerv qilgan va oluvchi
+    // faollashtirgan karta). Narxi 0 bo'lgan har qanday karta sovg'a
+    // deb hisoblanmaydi.
+    isGift: !!record.isGift,
   };
 }
 
@@ -2690,8 +2697,13 @@ async function recordsApi(request, env, url) {
   const path = url.pathname;
 
   if (path === '/api/records' && request.method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT ${RECORD_COLUMNS} FROM cards WHERE hidden_from_directory = 0 ORDER BY ts DESC LIMIT 500`).all();
-    return json((rows.results || []).map(rowToRecord).map(catalogCard));
+    // is_gift — admin sovg'asi belgisi (catalogCard izohiga qarang).
+    const rows = await env.DB.prepare(
+      `SELECT ${RECORD_COLUMNS},
+              EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
+         FROM cards WHERE hidden_from_directory = 0 ORDER BY ts DESC LIMIT 500`
+    ).all();
+    return json((rows.results || []).map((r) => catalogCard({ ...rowToRecord(r), isGift: !!r.is_gift })));
   }
 
   if (path === '/api/records/search' && request.method === 'GET') {
@@ -2700,7 +2712,8 @@ async function recordsApi(request, env, url) {
     const like = `%${q.toLowerCase()}%`;
     const rows = await env.DB.prepare(
       `SELECT c.code, c.name, c.role, c.avatar_url, c.tg, c.hashtags, c.theme, c.price, c.ts, c.views,
-              c.profile_type, c.city, c.category_slug, c.verified, c.tier_override
+              c.profile_type, c.city, c.category_slug, c.verified, c.tier_override,
+              EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
        FROM cards c LEFT JOIN users u ON u.id = c.user_id
        WHERE c.hidden_from_directory = 0 AND (
          LOWER(c.code) LIKE ? OR LOWER(c.name) LIKE ? OR LOWER(COALESCE(c.role,'')) LIKE ? OR
@@ -2713,7 +2726,7 @@ async function recordsApi(request, env, url) {
       code: r.code, name: r.name, role: r.role || '', avatarUrl: r.avatar_url || '', tg: r.tg || '',
       hashtags: parseJsonArray(r.hashtags), theme: r.theme, price: Number(r.price), ts: Number(r.ts), views: Number(r.views),
       profileType: r.profile_type, city: r.city || '', categorySlug: r.category_slug || '', verified: !!r.verified,
-      tierOverride: r.tier_override || '',
+      tierOverride: r.tier_override || '', isGift: !!r.is_gift,
     }));
     return json({ records });
   }
@@ -2985,13 +2998,73 @@ async function putUploadR2(env, filename, bytes, contentType, actor = '') {
   return `/uploads/${filename}`;
 }
 
-// POST /api/upload, /api/upload-audio, /api/upload-card-video, /api/admin/upload
+// Profil foni uchun GIF/video maksimal hajmi — AYNAN 50 MB.
+// 50 * 1024 * 1024 = 52 428 800 bayt. Bu chegara faqat profil foni
+// media'siga tegishli (avatar/post/logo/musiqa limitlari o'zgarmagan).
+const PROFILE_BG_MAX_BYTES = 50 * 1024 * 1024;
+// Mijoz yuborishi mumkin bo'lgan, lekin bir xil turni bildiruvchi MIME
+// nomlari (masalan iOS ba'zan video/quicktime deb yuboradi, ichida esa
+// ftyp/mp4 bo'ladi).
+const PROFILE_BG_ALIASES = {
+  'application/octet-stream': ['image/gif', 'video/mp4', 'video/webm'],
+  'video/quicktime': ['video/mp4'],
+  'video/x-m4v': ['video/mp4'],
+  'video/x-matroska': ['video/webm'],
+};
+
+// POST /api/upload, /api/upload-audio, /api/upload-card-video,
+//      /api/upload-profile-bg, /api/admin/upload
 async function uploadApi(request, env, pathname) {
   const isAdmin = pathname === '/api/admin/upload';
   const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
   if (!auth) return json({ error: 'unauthorized' }, 401);
   const actor = isAdmin ? `admin:${auth.role || 'admin'}` : `user:${auth.id || auth.email || 'authenticated'}`;
   if (!isAdmin && await rateLimitD1(env, 'upload:user:' + auth.id, 40, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
+
+  // ─── PROFIL FONI UCHUN MEDIA (GIF / video) — 50 MB ───────────────────
+  // 2026-09. Nima uchun ALOHIDA endpoint (mavjud /api/upload emas):
+  // /api/upload base64 dataURL qabul qiladi, base64 esa hajmni ~33% ga
+  // oshiradi — 50 MB fayl ~67 MB satrga aylanadi va uni dekodlash uchun
+  // yana 50 MB kerak. Workers izolyati 128 MB xotira bilan cheklangan,
+  // ya'ni base64 yo'li bilan 50 MB ni ko'tarib bo'lmaydi. Bu yerda tana
+  // XOM BINAR sifatida o'qiladi, shuning uchun 50 MB xavfsiz sig'adi.
+  // (Cloudflare tomonidan 50 MB dan KICHIK qat'iy limit yo'q: Workers
+  // so'rov tanasi >= 100 MB, R2 bitta PUT esa GB darajasida.)
+  //
+  // Boshqa yuklash limitlari (avatar, post, logo, musiqa, admin) BU
+  // O'ZGARISHDAN TASHQARIDA — ular avvalgidek qoladi.
+  if (pathname === '/api/upload-profile-bg') {
+    // 1) Avval content-length bo'yicha ERTA rad etamiz — 50 MB dan katta
+    //    tana umuman o'qilmaydi va saqlanmaydi.
+    const declared = Number(request.headers.get('content-length') || 0);
+    if (declared > PROFILE_BG_MAX_BYTES) return json({ error: 'too_large', limitMb: 50 }, 413);
+
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.length) return json({ error: 'bad_file' }, 422);
+    // 2) Haqiqiy hajm bo'yicha qayta tekshiruv (content-length yolg'on
+    //    bo'lishi yoki umuman kelmasligi mumkin).
+    if (bytes.length > PROFILE_BG_MAX_BYTES) return json({ error: 'too_large', limitMb: 50 }, 413);
+
+    // 3) Tur — MIME sarlavhasi VA sehrli baytlar bo'yicha. Ikkalasi mos
+    //    kelmasa rad etiladi (kengaytma serverda sniff natijasidan
+    //    olinadi, mijoz yuborgan nomdan emas).
+    const declaredType = String(request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const head = String.fromCharCode(...bytes.slice(0, 40));
+    const isGif = bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38;
+    const isWebm = bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3;
+    const isMp4 = head.includes('ftyp');
+    const sniffed = isGif ? { ext: 'gif', type: 'image/gif' }
+      : isWebm ? { ext: 'webm', type: 'video/webm' }
+      : isMp4 ? { ext: 'mp4', type: 'video/mp4' }
+      : null;
+    if (!sniffed) return json({ error: 'bad_file' }, 422);
+    if (declaredType && declaredType !== sniffed.type && !PROFILE_BG_ALIASES[declaredType]?.includes(sniffed.type)) {
+      return json({ error: 'bad_file' }, 422);
+    }
+
+    const filename = `profilebg_${uploadRandomHex(12)}.${sniffed.ext}`;
+    return json({ url: await putUploadR2(env, filename, bytes, sniffed.type, actor) });
+  }
 
   if (pathname === '/api/upload-card-video') {
     const bytes = new Uint8Array(await request.arrayBuffer());
@@ -4907,7 +4980,7 @@ async function handleRequest(request, env, url) {
     }
 
     if (request.method === 'POST'
-      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/admin/upload'].includes(url.pathname)) {
+      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/admin/upload'].includes(url.pathname)) {
       try {
         return await uploadApi(request, env, url.pathname);
       } catch (error) {

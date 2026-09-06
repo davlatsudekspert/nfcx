@@ -113,7 +113,83 @@ export function outerPageStyle(theme, record, tier, opts = {}) {
 //   • ustidan qora gradient qatlam — matn, tugmalar, tablar va musiqa
 //     paneli kontrasti saqlanadi
 // bgColor → sekin gradient; aks holda tema kartasi rangi.
+// Fon URL'i video (MP4/WebM) mi? Video CSS `background-image` bilan
+// chizilmaydi — u alohida <video> elementi sifatida panelning ichida
+// render qilinadi (pastdagi ProfileBgVideo).
+export function isVideoBg(url) {
+  return /\.(mp4|webm)(\?|$)/i.test(String(url || ''));
+}
+
+// Profil bo'limi ichidagi VIDEO fon.
+//  • panel `overflow-hidden` + `rounded-[22px]` -> video bo'limdan chiqmaydi
+//  • `object-cover` + `object-center` -> cho'zilmaydi, markazlashadi
+//  • muted + loop + playsInline -> iOS/Android'da avtomatik ijro bo'ladi
+//  • `preload="none"` va IntersectionObserver -> mobil internetda sahifa
+//    qotib qolmasligi uchun video FAQAT ko'rinishga kirganda yuklanadi
+//  • listener va manba sahifadan chiqishda tozalanadi
+function ProfileBgVideo({ src }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let io = null;
+    const start = () => {
+      if (el.dataset.loaded === '1') return;
+      el.dataset.loaded = '1';
+      el.src = src;
+      el.load();
+      const p = el.play();
+      if (p && p.catch) p.catch(() => { /* avtomatik ijro bloklandi — jim */ });
+    };
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver((entries) => {
+        for (const e of entries) if (e.isIntersecting) { start(); io.disconnect(); io = null; }
+      }, { rootMargin: '200px' });
+      io.observe(el);
+    } else {
+      start();
+    }
+    return () => {
+      if (io) io.disconnect();
+      // Media resursini bo'shatamiz — sahifadan chiqqach fonda yuklanib
+      // yoki ijro bo'lib qolmasin.
+      try { el.pause(); el.removeAttribute('src'); el.load(); } catch { /* ignore */ }
+    };
+  }, [src]);
+
+  return (
+    <>
+      <video
+        ref={ref}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="none"
+        aria-hidden="true"
+        tabIndex={-1}
+        className="profile-bg-layer pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+      />
+      {/* Matn kontrasti uchun qoraytiruvchi qatlam (rasm fonidagi bilan bir xil) */}
+      <div className="profile-bg-layer pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 to-black/65" />
+    </>
+  );
+}
+
 export function innerPanelStyle(record) {
+  if (record && record.bgUrl && isVideoBg(record.bgUrl)) {
+    // Video holatida faqat qoraytiruvchi qatlam va matn ranglari — rasm
+    // yo'q, chunki videoning o'zi panel ichida alohida chiziladi.
+    return {
+      backgroundColor: 'var(--vz-bg-a)',
+      '--vz-ink': '#ffffff',
+      '--vz-ink-dim': 'rgba(255,255,255,0.86)',
+      '--vz-ink-faint': 'rgba(255,255,255,0.62)',
+      '--vz-card': 'rgba(255,255,255,0.10)',
+      '--vz-line': 'rgba(255,255,255,0.22)',
+      '--vz-pill': 'rgba(255,255,255,0.16)',
+    };
+  }
   if (record && record.bgUrl) {
     return {
       backgroundColor: 'var(--vz-bg-a)',
@@ -1326,6 +1402,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
       <div
         className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] ${
+          hasBg && isVideoBg(record.bgUrl) ? 'profile-panel--video ' : ''}${
           (record.theme === 'glass' && !hasBg && !record.bgColor)
             ? 'border border-white/15 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.35)]'
             : (hasBg || record.bgColor)
@@ -1334,6 +1411,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         }`}
         style={innerPanelStyle(record)}
       >
+        {hasBg && isVideoBg(record.bgUrl) && <ProfileBgVideo src={record.bgUrl} />}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
           <div className="flex flex-wrap gap-2">
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}

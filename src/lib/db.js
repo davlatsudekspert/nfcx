@@ -648,6 +648,32 @@ export async function dbAcceptGift(id) {
 }
 
 // Karta dizayni foni uchun video (max 10 MB) — /uploads/x.mp4 manzilini qaytaradi.
+// Profil foni uchun GIF/video — 50 MB gacha, XOM BINAR sifatida
+// (base64 emas: u hajmni ~33% oshirib, Workers xotira chegarasiga urardi).
+// Limit backend'da ham AYNAN shunday tekshiriladi — bu yerdagi tekshiruv
+// faqat foydalanuvchiga tez javob berish uchun.
+export const PROFILE_BG_MAX_BYTES = 50 * 1024 * 1024; // 52 428 800
+
+export async function dbUploadProfileBgMedia(file) {
+  if (file.size > PROFILE_BG_MAX_BYTES) throw new Error('Maksimal hajm \u2014 50 MB.');
+  const res = await fetch('/api/upload-profile-bg', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    credentials: 'same-origin',
+    body: file,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const k = data && data.error;
+    if (k === 'too_large') throw new Error('Maksimal hajm \u2014 50 MB.');
+    if (k === 'bad_file') throw new Error('Faqat GIF, MP4 yoki WebM fayl.');
+    if (k === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    if (k === 'too_many_requests') throw new Error("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.");
+    throw new Error('Faylni yuklab bo\u2018lmadi.');
+  }
+  return data.url;
+}
+
 export async function dbUploadCardVideo(file) {
   const res = await fetch('/api/upload-card-video', {
     method: 'POST',

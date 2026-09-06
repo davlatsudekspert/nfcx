@@ -130,4 +130,17 @@ export const DICT_ACCOUNT = {
     { ru: '\u042d\u0442\u043e \u0441\u043b\u043e\u0432\u043e \u043d\u0435\u043b\u044c\u0437\u044f \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u0432 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0438 \u043a\u043e\u043c\u043f\u0430\u043d\u0438\u0438.',
       en: 'This word cannot be used in a company name.' },
   'Kutilmoqda...': { ru: '\u041e\u0436\u0438\u0434\u0430\u043d\u0438\u0435...', en: 'Please wait...' },
+
+  // 2026-09: profil foni uchun GIF/video (50 MB)
+  'Maksimal hajm \u2014 50 MB.':
+    { ru: '\u041c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 \u0440\u0430\u0437\u043c\u0435\u0440 \u2014 50 \u041c\u0411.', en: 'Maximum size \u2014 50 MB.' },
+  'GIF va video (MP4/WebM) ham mumkin. Maksimal hajm \u2014 50 MB.':
+    { ru: 'GIF \u0438 \u0432\u0438\u0434\u0435\u043e (MP4/WebM) \u0442\u043e\u0436\u0435 \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0442. \u041c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 \u0440\u0430\u0437\u043c\u0435\u0440 \u2014 50 \u041c\u0411.',
+      en: 'GIF and video (MP4/WebM) are supported too. Maximum size \u2014 50 MB.' },
+  'Fon yuklandi. Saqlash tugmasini bosing.':
+    { ru: '\u0424\u043e\u043d \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d. \u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u00ab\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c\u00bb.', en: 'Background uploaded. Press Save.' },
+  'Faqat GIF, MP4 yoki WebM fayl.':
+    { ru: '\u0422\u043e\u043b\u044c\u043a\u043e \u0444\u0430\u0439\u043b GIF, MP4 \u0438\u043b\u0438 WebM.', en: 'Only GIF, MP4 or WebM files.' },
+  'Fayl formati qo\u2018llab-quvvatlanmaydi.':
+    { ru: '\u0424\u043e\u0440\u043c\u0430\u0442 \u0444\u0430\u0439\u043b\u0430 \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f.', en: 'This file format is not supported.' },
 };

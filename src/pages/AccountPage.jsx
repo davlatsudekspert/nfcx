@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -2290,16 +2290,29 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     }
   };
 
+  // Profil foni: oddiy rasm (JPG/PNG) avvalgidek siqiladi va /api/upload
+  // orqali ketadi — uning limiti O'ZGARMAGAN. GIF va video esa 50 MB gacha
+  // XOM BINAR sifatida /api/upload-profile-bg ga yuboriladi (siqilsa GIF
+  // animatsiyasi yo'qolardi, base64 esa 50 MB ni ko'tara olmasdi).
   const onPickBgFile = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     setUploadingBg(true);
     setMsg(null);
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
-      const url = await dbUploadImage(dataUrl);
+      const type = String(file.type || '').toLowerCase();
+      const isGif = type === 'image/gif' || /\.gif$/i.test(file.name || '');
+      const isVideo = type.startsWith('video/') || /\.(mp4|webm|m4v|mov)$/i.test(file.name || '');
+      let url;
+      if (isGif || isVideo) {
+        if (file.size > PROFILE_BG_MAX_BYTES) throw new Error(t('Maksimal hajm — 50 MB.'));
+        url = await dbUploadProfileBgMedia(file);
+      } else {
+        const dataUrl = await fileToCompressedDataUrl(file);
+        url = await dbUploadImage(dataUrl);
+      }
       setForm((f) => ({ ...f, bgUrl: url }));
-      setMsg({ type: 'ok', text: t('Fon rasmi yuklandi. Saqlash tugmasini bosing.') });
+      setMsg({ type: 'ok', text: t('Fon yuklandi. Saqlash tugmasini bosing.') });
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
@@ -2763,11 +2776,13 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       <div className="mt-2 flex items-start gap-4">
         <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-white/15 bg-base-100">
           {form.bgUrl
-            ? <img src={form.bgUrl} alt="fon" className="h-full w-full object-cover" />
+            ? (/\.(mp4|webm)(\?|$)/i.test(form.bgUrl)
+                ? <video src={form.bgUrl} muted loop playsInline autoPlay preload="metadata" className="h-full w-full object-cover" />
+                : <img src={form.bgUrl} alt="fon" loading="lazy" className="h-full w-full object-cover" />)
             : <div className="flex h-full w-full items-center justify-center text-[13px] text-base-content/40">{t("Standart")}</div>}
         </div>
         <div className="min-w-0 flex-1">
-          <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickBgFile} />
+          <input ref={bgFileRef} type="file" accept="image/*,video/mp4,video/webm" style={{ display: 'none' }} onChange={onPickBgFile} />
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => bgFileRef.current && bgFileRef.current.click()} disabled={uploadingBg}>
               {uploadingBg ? <span className="loading loading-spinner loading-xs"></span> : t('Fon rasmi tanlash')}
@@ -2778,7 +2793,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </button>
             )}
           </div>
-          <p className="mt-2 text-xs text-base-content/45">{t("O'z rasmingizni qo'ysangiz, u tema fonining o'rniga ishlatiladi.")}</p>
+          <p className="mt-2 text-xs text-base-content/45">{t("O'z rasmingizni qo'ysangiz, u tema fonining o'rniga ishlatiladi.")} {t('GIF va video (MP4/WebM) ham mumkin. Maksimal hajm — 50 MB.')}</p>
           <input className={`${inp} font-mono text-xs`} value={form.bgUrl} onChange={set('bgUrl')} placeholder={t("https://... yoki /uploads/...")} />
         </div>
       </div>
