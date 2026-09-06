@@ -20,6 +20,16 @@ function isTierTone(tone: PremiumBadgeProps['tone']): tone is TierKey {
 
 /** Status tints, as a dark chip rather than a saturated pill: the colour is
  * carried by a hairline and the label, never by a filled block. */
+/** Tier lettering colours — ported 1:1 from the web app's TIER_COLOR so a
+ * tier badge means the same thing on both platforms. */
+const TIER_TINT: Record<TierKey, string> = {
+  exclusive: color.tierExclusive,
+  premium: color.tierPremium,
+  gold: color.tierGold,
+  silver: color.tierSilver,
+  free: color.tierFree,
+};
+
 const STATUS_TINT: Record<'live' | 'success' | 'warning' | 'neutral', string> = {
   live: color.danger,
   success: color.success,
@@ -62,8 +72,16 @@ export function PremiumBadge({ label, tone = 'neutral', pulse = false }: Premium
 
   if (isTierTone(tone)) {
     const m = metal[tone];
+    // The chip stays black like the card it sits on; the TIER is told apart
+    // by the metal it is lettered in — the same tier colours the web app
+    // uses (src/lib/pricing.js TIER_COLOR), so GOLD reads gold, SILVER
+    // reads silver and BRONZA reads bronze instead of five identical
+    // black chips.
+    const tierTint = TIER_TINT[tone];
     return (
-      <Animated.View style={[styles.base, styles.metal, { borderColor: m.hairline }, pulseStyle]}>
+      <Animated.View
+        style={[styles.base, styles.metal, { borderColor: withAlpha(tierTint, 0.55) }, pulseStyle]}
+      >
         <LinearGradient
           colors={m.base as unknown as readonly [string, string, ...string[]]}
           locations={[0, 0.38, 0.62, 1]}
@@ -73,13 +91,13 @@ export function PremiumBadge({ label, tone = 'neutral', pulse = false }: Premium
           pointerEvents="none"
         />
         <LinearGradient
-          colors={['rgba(255,255,255,0.18)', 'transparent'] as const}
+          colors={[withAlpha(tierTint, 0.16), 'transparent'] as const}
           start={{ x: 0, y: 0 }}
           end={{ x: 0.6, y: 1 }}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-        <Text style={[styles.text, { color: m.text }]} numberOfLines={1}>
+        <Text style={[styles.text, { color: tierTint }]} numberOfLines={1}>
           {label}
         </Text>
       </Animated.View>
@@ -116,6 +134,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm + 2,
     paddingVertical: 3,
   },
-  metal: { overflow: 'hidden', backgroundColor: '#101010' },
+  metal: { overflow: 'hidden', backgroundColor: '#0A0A0A' },
   text: { ...typeTokens.caption, fontWeight: '700', letterSpacing: 0.6 },
 });
