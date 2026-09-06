@@ -10,6 +10,7 @@ import { PremiumButton } from '../../design-system/components/PremiumButton';
 import { PremiumSheet } from '../../design-system/components/PremiumSheet';
 import { PremiumEmptyState } from '../../design-system/components/PremiumEmptyState';
 import { PremiumQueryState } from '../../design-system/components/PremiumQueryState';
+import { NfcIdCard } from '../../composites/NfcIdCard';
 import { ProfileView } from '../../composites/ProfileView';
 import { recordsApi } from '../../api/records';
 import { socialApi } from '../../api/social';
@@ -186,6 +187,21 @@ export function PublicProfileBody({ code, mode = 'public', onBack }: PublicProfi
             <Text style={styles.previewBannerText}>{t('owner.publicPreviewHint')}</Text>
           </View>
         )}
+        {/* Identity hero — the ID as the physical metal card it is, the same
+            object the owner sees in their wallet and in the workspace. */}
+        <View style={styles.identityCard}>
+          <NfcIdCard
+            code={record.data.code}
+            name={record.data.name}
+            state="owned"
+            layout="hero"
+            verified={record.data.verified === true}
+            isPrimary={record.data.isPrimary === true}
+            onPress={() => shareProfile(code, record.data?.name)}
+            accessibilityHint={t('common.share')}
+          />
+        </View>
+
         <ProfileView record={record.data} followStats={stats.data} />
       </ScrollView>
 
@@ -227,7 +243,7 @@ export function PublicProfileScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.bg },
+  safe: { flex: 1, backgroundColor: color.bgDeep },
   stateWrap: { paddingHorizontal: space.lg },
   scrollContent: { paddingHorizontal: space.lg, paddingBottom: touchTarget + space.xxl },
   previewBanner: {
@@ -241,13 +257,14 @@ const styles = StyleSheet.create({
     backgroundColor: color.goldWash,
   },
   previewBannerText: { ...typeTokens.caption, color: color.textSecondary, flex: 1 },
+  identityCard: { marginTop: space.lg },
   stickyBar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     padding: space.lg,
-    backgroundColor: color.bg,
+    backgroundColor: color.bgDeep,
     borderTopWidth: 1,
     borderTopColor: color.border,
   },

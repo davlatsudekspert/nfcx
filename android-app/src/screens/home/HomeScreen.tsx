@@ -10,17 +10,16 @@ import type { HomeStackParamList, MainTabParamList } from '../../navigation/type
 import { ScreenContainer } from '../shared/ScreenContainer';
 import { PremiumButton } from '../../design-system/components/PremiumButton';
 import { PremiumCard } from '../../design-system/components/PremiumCard';
-import { PremiumBadge, TierBadge } from '../../design-system/components/PremiumBadge';
 import { PremiumEmptyState } from '../../design-system/components/PremiumEmptyState';
 import { PremiumLoadingSkeleton } from '../../design-system/components/PremiumLoadingSkeleton';
 import { NfcIdCard } from '../../composites/NfcIdCard';
+import { NfcCardStack, type NfcCardStackItem } from '../../composites/NfcCardStack';
 import { AuctionPreviewCard } from '../../composites/AuctionPreviewCard';
 import { useAuthStore } from '../../state/authStore';
 import { useAuctionsPreview } from '../../hooks/useAuctions';
 import { useMyCompanies } from '../../hooks/useMyCompanies';
 import { ordersApi } from '../../api/orders';
-import { tierForCode } from '../../lib/pricing';
-import { formatCount, safeText } from '../../lib/format';
+import { formatCount, safeText, toFiniteNumber } from '../../lib/format';
 import { haptics } from '../../native/haptics';
 import { useT } from '../../i18n';
 import { color, gradient, radius, space, type as typeTokens } from '../../design-system/tokens';
@@ -30,10 +29,11 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 /**
  * The personal NFC dashboard (brief §6) — not a list of links.
  *
- * Order is deliberate and fixed: identity first (the primary NFC ID the user
- * actually hands to people), then the four actions they perform most, then
- * the three data sections. Everything below the hero is real API data or an
- * honest empty state; nothing here is seeded or illustrative.
+ * Order is deliberate and fixed: identity first — and identity here is the
+ * user's actual deck of metal cards, stacked the way it would sit in a
+ * wallet — then the numbers behind it, the four actions they perform most,
+ * and finally the data sections. Everything below the deck is real API data
+ * or an honest empty state; nothing here is seeded or illustrative.
  */
 export function HomeScreen({ navigation }: Props) {
   const t = useT();
@@ -56,15 +56,36 @@ export function HomeScreen({ navigation }: Props) {
   const goToNfcRead = () => tabNavigation?.navigate('ProfileTab', { screen: 'NfcRead' });
   const goToMyIds = () => tabNavigation?.navigate('ProfileTab', { screen: 'MyProfile' });
 
-  // The card the user actually hands to people. `isPrimary` is a real field on
-  // the record (GET /api/auth/me); with none set, the first owned card is the
-  // de-facto primary — the same fallback the web app uses.
-  const primary = cards.find((c) => c.isPrimary) ?? cards[0];
+  // The card the user actually hands to people leads the deck. `isPrimary` is
+  // a real field on the record (GET /api/auth/me); with none set, the first
+  // owned card is the de-facto primary — the same fallback the web app uses.
+  const deck = React.useMemo<NfcCardStackItem[]>(
+    () =>
+      [...cards]
+        .sort((a, b) => Number(b.isPrimary === true) - Number(a.isPrimary === true))
+        .map((card) => ({
+          key: card.code,
+          code: card.code,
+          name: card.name,
+          state: 'owned' as const,
+          isPrimary: card.isPrimary === true,
+          verified: card.verified === true,
+          views: toFiniteNumber(card.views) ?? undefined,
+          onPress: () => navigation.navigate('PublicProfile', { code: card.code }),
+        })),
+    [cards, navigation],
+  );
+
   const pendingCount = pendingOrders.data?.length ?? 0;
+  const totalViews = cards.reduce((sum, c) => sum + (toFiniteNumber(c.views) ?? 0), 0);
 
   return (
-    <ScreenContainer scroll={false} padded={false}>
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+    <ScreenContainer scroll={false} padded={false} style={styles.floor}>
+      <ScrollView
+        style={styles.floor}
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+      >
         <LinearGradient
           colors={gradient.screenAmbient}
           start={{ x: 0.1, y: 0 }}
@@ -90,43 +111,52 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Hero — the primary NFC identity, or the first-purchase CTA. */}
-        {primary ? (
-          <Pressable
-            onPress={() => {
-              haptics.selection();
-              navigation.navigate('PublicProfile', { code: primary.code });
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`${primary.code} profilini ochish`}
-          >
-            <PremiumCard variant="featured" style={styles.hero} contentStyle={styles.heroContent}>
-              <View style={styles.heroTopRow}>
-                <PremiumBadge label={t('owner.primary')} tone="gold" />
-                <TierBadge tier={tierForCode(primary.code)} />
-              </View>
-              <Text style={styles.heroCode}>#{primary.code}</Text>
-              <Text style={styles.heroName} numberOfLines={1}>
-                {safeText(primary.name, '—')}
-              </Text>
-              {!!primary.role && (
-                <Text style={styles.heroRole} numberOfLines={1}>
-                  {primary.role}
-                </Text>
-              )}
-              <View style={styles.heroMetaRow}>
-                <HeroMeta label={t('owner.views')} value={formatCount(primary.views)} />
-                <HeroMeta label={t('home.stats.ids')} value={formatCount(cards.length)} />
-                <HeroMeta label={t('home.stats.pending')} value={formatCount(pendingCount)} />
-              </View>
-            </PremiumCard>
-          </Pressable>
+        {/* A. Mening ID'larim — the deck itself is the hero. */}
+        {deck.length > 0 ? (
+          <>
+            <SectionHeader title={t('home.myIds')} onSeeAll={goToMyIds} seeAllLabel={t('common.all')} />
+            <View style={styles.sectionBody}>
+              <NfcCardStack items={deck} />
+            </View>
+
+            <View style={styles.statsRow}>
+              <Stat label={t('owner.views')} value={formatCount(totalViews)} />
+              <Stat label={t('home.stats.ids')} value={formatCount(cards.length)} />
+              <Stat label={t('home.stats.pending')} value={formatCount(pendingCount)} />
+            </View>
+          </>
         ) : (
-          <PremiumCard variant="featured" style={styles.hero}>
-            <Text style={styles.heroEmptyTitle}>{t('home.emptyIds')}</Text>
-            <Text style={styles.heroEmptyText}>{t('home.emptyIdsHint')}</Text>
-            <PremiumButton label={t('home.chooseId')} onPress={goToIdTab} style={styles.heroCta} />
-          </PremiumCard>
+          <View style={styles.sectionBody}>
+            <PremiumCard variant="featured">
+              <Text style={styles.heroEmptyTitle}>{t('home.emptyIds')}</Text>
+              <Text style={styles.heroEmptyText}>{t('home.emptyIdsHint')}</Text>
+              <PremiumButton label={t('home.chooseId')} onPress={goToIdTab} style={styles.heroCta} />
+            </PremiumCard>
+          </View>
+        )}
+
+        {/* Pending purchases are NOT owned cards, so they never join the deck. */}
+        {pendingCount > 0 && (
+          <>
+            <SectionHeader title={t('home.stats.pending')} />
+            <View style={[styles.sectionBody, styles.pendingList]}>
+              {pendingOrders.data?.map((order, i) => (
+                <NfcIdCard
+                  key={`order-${order.id}`}
+                  code={order.code}
+                  state="pending"
+                  layout="row"
+                  index={i}
+                  onPress={() =>
+                    tabNavigation?.navigate('IdTab', {
+                      screen: 'PurchaseResult',
+                      params: { code: order.code, orderId: order.id },
+                    })
+                  }
+                />
+              ))}
+            </View>
+          </>
         )}
 
         {/* The four actions performed most often, one tap from anywhere. */}
@@ -136,39 +166,6 @@ export function HomeScreen({ navigation }: Props) {
           <QuickAction icon="trending-up" label={t('tab.auction')} onPress={goToAuctionTab} />
           <QuickAction icon="briefcase" label={t('tab.company')} onPress={goToCompanyTab} />
         </View>
-
-        {/* A. Mening ID'larim */}
-        {cards.length > 0 && (
-          <>
-            <SectionHeader title={t('home.myIds')} onSeeAll={goToMyIds} seeAllLabel={t('common.all')} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carousel}>
-              {cards.map((card, i) => (
-                <NfcIdCard
-                  key={card.code}
-                  code={card.code}
-                  name={card.name}
-                  state="owned"
-                  index={i}
-                  onPress={() => navigation.navigate('PublicProfile', { code: card.code })}
-                />
-              ))}
-              {pendingOrders.data?.map((order, i) => (
-                <NfcIdCard
-                  key={`order-${order.id}`}
-                  code={order.code}
-                  state="pending"
-                  index={cards.length + i}
-                  onPress={() =>
-                    tabNavigation?.navigate('IdTab', {
-                      screen: 'PurchaseResult',
-                      params: { code: order.code, orderId: order.id },
-                    })
-                  }
-                />
-              ))}
-            </ScrollView>
-          </>
-        )}
 
         {/* B. Auksion */}
         <SectionHeader title={t('home.auctions')} onSeeAll={goToAuctionTab} seeAllLabel={t('common.all')} />
@@ -261,11 +258,15 @@ function SectionHeader({
   );
 }
 
-function HeroMeta({ label, value }: { label: string; value: string }) {
+/** A number that belongs to the deck, printed on the black floor rather than
+ * on the metal — the cards themselves stay clean. */
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.heroMeta}>
-      <Text style={styles.heroMetaValue}>{value}</Text>
-      <Text style={styles.heroMetaLabel} numberOfLines={1}>
+    <View style={styles.stat}>
+      <Text style={styles.statValue} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={styles.statLabel} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -323,6 +324,8 @@ function IconAction({
 }
 
 const styles = StyleSheet.create({
+  // Near-black floor: the metal only reads as metal against it.
+  floor: { backgroundColor: color.bgDeep },
   body: { paddingBottom: space.xxxl, gap: space.md },
   ambient: { position: 'absolute', top: 0, left: 0, right: 0 },
 
@@ -348,19 +351,16 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
 
-  hero: { marginHorizontal: space.lg },
-  heroContent: { padding: space.xl },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  heroCode: { ...typeTokens.monoLarge, color: color.textPrimary, marginTop: space.md },
-  heroName: { ...typeTokens.h2, color: color.textPrimary, marginTop: space.xs },
-  heroRole: { ...typeTokens.body, color: color.textSecondary, marginTop: 2 },
-  heroMetaRow: { flexDirection: 'row', gap: space.xl, marginTop: space.lg },
-  heroMeta: {},
-  heroMetaValue: { ...typeTokens.h2, color: color.gold },
-  heroMetaLabel: { ...typeTokens.caption, color: color.textSecondary, marginTop: 2 },
   heroEmptyTitle: { ...typeTokens.h2, color: color.textPrimary },
   heroEmptyText: { ...typeTokens.body, color: color.textSecondary, marginTop: space.xs },
   heroCta: { marginTop: space.lg },
+
+  statsRow: { flexDirection: 'row', gap: space.xl, paddingHorizontal: space.lg, marginTop: space.xs },
+  stat: {},
+  statValue: { ...typeTokens.h2, color: color.gold },
+  statLabel: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
+
+  pendingList: { gap: space.sm },
 
   quickRow: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg },
   quickAction: {

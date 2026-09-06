@@ -30,6 +30,11 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'MyProfile'>;
  * GET /api/orders and are shown as a *separate* section, because a pending
  * `web_orders` row is not an owned card — conflating the two is exactly the
  * kind of fake-success this product must not ship.
+ *
+ * Presentation: a flat list of metal cards, deliberately NOT the Home
+ * screen's stacked deck. This is the management screen — every ID here is a
+ * door into its own workspace, so all of them stay visible and one tap away;
+ * a deck would trade that for depth the user did not ask for.
  */
 export function MyProfileScreen({ navigation }: Props) {
   const t = useT();
@@ -44,6 +49,11 @@ export function MyProfileScreen({ navigation }: Props) {
   });
 
   const ownedCodes = React.useMemo(() => new Set(cards.map((c) => c.code)), [cards]);
+  // The primary ID leads the list, matching the deck on the Home dashboard.
+  const orderedCards = React.useMemo(
+    () => [...cards].sort((a, b) => Number(b.isPrimary === true) - Number(a.isPrimary === true)),
+    [cards],
+  );
   const pendingOrders = React.useMemo(
     () => (orders.data?.orders ?? []).filter((o) => orderStatus(o) === 'pending' && !ownedCodes.has(o.code)),
     [orders.data, ownedCodes],
@@ -103,7 +113,7 @@ export function MyProfileScreen({ navigation }: Props) {
           <>
             <SectionTitle title={t('profile.myIds')} />
             <View style={styles.list}>
-              {cards.map((card, i) => (
+              {orderedCards.map((card, i) => (
                 <NfcIdCard
                   key={card.code}
                   code={card.code}
@@ -200,13 +210,13 @@ function SummaryTile({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.bg },
+  safe: { flex: 1, backgroundColor: color.bgDeep },
   content: { padding: space.lg, paddingBottom: space.xxxl, gap: space.md },
   summaryRow: { flexDirection: 'row', gap: space.sm },
   summaryTile: {
     flex: 1,
     borderRadius: radius.md,
-    backgroundColor: color.surface,
+    backgroundColor: color.surfaceSunken,
     borderWidth: 1,
     borderColor: color.border,
     padding: space.md,
@@ -215,7 +225,7 @@ const styles = StyleSheet.create({
   summaryValue: { ...typeTokens.h2, color: color.textPrimary, marginTop: space.xs },
   summaryLabel: { ...typeTokens.caption, color: color.textTertiary },
   sectionTitle: { ...typeTokens.overline, color: color.textTertiary, marginTop: space.md },
-  list: { gap: space.md },
+  list: { gap: space.sm },
   ctaCard: { marginTop: space.lg },
   ctaTitle: { ...typeTokens.h3, color: color.textPrimary },
   ctaText: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.xs },

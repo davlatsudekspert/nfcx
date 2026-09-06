@@ -10,10 +10,11 @@ import { PremiumHeader } from '../../design-system/components/PremiumHeader';
 import { PremiumCard } from '../../design-system/components/PremiumCard';
 import { PremiumInput } from '../../design-system/components/PremiumInput';
 import { PremiumButton } from '../../design-system/components/PremiumButton';
-import { PremiumBadge, TierBadge } from '../../design-system/components/PremiumBadge';
+import { PremiumBadge } from '../../design-system/components/PremiumBadge';
 import { PremiumModal } from '../../design-system/components/PremiumModal';
 import { PremiumQueryState } from '../../design-system/components/PremiumQueryState';
 import { useToast } from '../../design-system/components/PremiumToast';
+import { NfcIdCard } from '../../composites/NfcIdCard';
 import { resolveMediaUrl } from '../../composites/mediaUrl';
 import { PROFILE_TYPES, PROFILE_TYPE_LABEL, isProfileType, type ProfileType } from '../../composites/recordMeta';
 import {
@@ -27,7 +28,7 @@ import { ApiError } from '../../api/client';
 import { useAuthStore } from '../../state/authStore';
 import { effectiveAccess, featureAllowed } from '../../lib/access';
 import { tierForCode, TIER_LABEL } from '../../lib/pricing';
-import { formatCount, formatDateTime, safeText } from '../../lib/format';
+import { formatCount, formatDateTime } from '../../lib/format';
 import { haptics } from '../../native/haptics';
 import { pickAndUploadImage } from '../../native/imageUpload';
 import { useT } from '../../i18n';
@@ -287,17 +288,21 @@ export function IdOwnerWorkspaceScreen({ route, navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Hero: which ID am I editing ---------- */}
-        <PremiumCard variant="featured" style={styles.hero}>
-          <View style={styles.heroTop}>
-            <TierBadge tier={tier} />
-            {isPrimary && <PremiumBadge label="ASOSIY" tone="gold" />}
-            {record.data.verified === true && <PremiumBadge label="TASDIQLANGAN" tone="success" />}
-          </View>
-          <Text style={styles.heroCode}>{safeText(code, '—')}</Text>
-          <Text style={styles.heroName} numberOfLines={1}>
-            {safeText(draft.name, 'Nomsiz profil')}
-          </Text>
+        {/* ---------- Hero: which ID am I editing ----------
+            The card itself, in its own metal — the same object the owner
+            sees in the wallet and a visitor sees on an NFC tap. The numbers
+            around it stay on the black floor so the card stays clean. */}
+        <View style={styles.hero}>
+          <NfcIdCard
+            code={code}
+            name={draft.name}
+            state="owned"
+            layout="hero"
+            isPrimary={isPrimary}
+            verified={record.data.verified === true}
+            onPress={goPreview}
+            accessibilityHint={t('owner.publicPreviewHint')}
+          />
 
           <View style={styles.heroStats}>
             <HeroStat label={t('owner.views')} value={formatCount(record.data.views ?? 0)} />
@@ -307,7 +312,7 @@ export function IdOwnerWorkspaceScreen({ route, navigation }: Props) {
 
           <PremiumButton label={t('owner.publicPreview')} onPress={goPreview} style={styles.heroCta} />
           <Text style={styles.heroHint}>{t('owner.publicPreviewHint')}</Text>
-        </PremiumCard>
+        </View>
 
         {/* ---------- a) Asosiy profil ---------- */}
         <SectionTitle icon="user" title={t('owner.profile')} />
@@ -653,15 +658,12 @@ function ToggleRow({ icon, label, description, value, onChange }: ToggleRowProps
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.bg },
+  safe: { flex: 1, backgroundColor: color.bgDeep },
   flex: { flex: 1 },
   stateWrap: { paddingHorizontal: space.lg },
   content: { paddingHorizontal: space.lg, gap: space.md },
 
   hero: { marginTop: space.xs },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: space.xs, flexWrap: 'wrap' },
-  heroCode: { ...typeTokens.monoLarge, color: color.gold, marginTop: space.md },
-  heroName: { ...typeTokens.h3, color: color.textPrimary, marginTop: 2 },
   heroStats: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
   heroStat: {
     flex: 1,
