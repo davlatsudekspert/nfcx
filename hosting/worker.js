@@ -281,6 +281,92 @@ function companyId(value) {
   return /^[A-Z]{3,15}$/.test(id) ? id : '';
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// KOMPANIYA NOMI TAQIQLANGAN SO'ZLAR FILTRI (2026-09)
+//
+// DIQQAT: bu blok src/lib/nameGuard.js bilan AYNAN bir xil bo'lishi shart
+// (Worker modullari `src/` dan import qila olmaydi — build guard taqiqlaydi).
+// scripts/test-company-name-guard.mjs ikkalasini bir xil kirishlarda
+// solishtirib, ular ajralib ketmasligini kafolatlaydi.
+//
+// Chetlab o'tishga qarshi qatlamlar:
+//  1. Unicode NFKC normalizatsiya (ﬁ, ％, to'liq kenglikdagi Ｇｏｄ v.h.)
+//  2. Nol-kenglikdagi belgilar va birlashtiruvchi diakritiklar olib
+//     tashlanadi (G​o​d, ĝöd)
+//  3. Homoglif (o'xshash ko'rinishdagi) harflar lotinchaga qaytariladi —
+//     kirill о/О, grek ο/Ο, raqam 0, kirill ԁ, ԍ va h.k.
+//  4. Katta-kichik harf farqi yo'q
+//
+// TOPISH QOIDASI — ataylab ikki xil:
+//  A) SO'Z ICHIDA: har bir so'zdan harf/raqam bo'lmagan belgilar olib
+//     tashlanadi va "god" qism satr sifatida qidiriladi.
+//     Bu "God", "GOD", "g.o.d", "G-O-D", "G0D", "Godiva", shuningdek
+//     foydalanuvchi "go" yozib ustiga "d" bosgan holatni ham tutadi.
+//  B) BOSH HARFLAR: ketma-ket kelgan BITTA harfli so'zlar birlashtiriladi
+//     ("G O D" -> "god").
+//
+// NIMA UCHUN butun nomdan bo'shliqlar olib tashlanmaydi: unda "Chicago
+// Doner" yoki "Mango Delivery" kabi mutlaqo begunoh nomlar ham
+// ("chicago"+"doner" -> ...g-o-d...) noto'g'ri bloklanardi. Yuqoridagi
+// ikki qoida real chetlab o'tish usullarini tutadi, lekin bunday yolg'on
+// ijobiy natijalarni bermaydi.
+// ═══════════════════════════════════════════════════════════════════════
+
+const BLOCKED_NAME_WORDS = ['god'];
+
+const HOMOGLYPHS = {
+  // "o" ko'rinishidagilar
+  '\u043e': 'o', '\u041e': 'o', // kirill o, O
+  '\u03bf': 'o', '\u039f': 'o', // grek omikron
+  '\u0585': 'o', '\u00f8': 'o', '\u00d8': 'o',
+  '0': 'o',
+  '\u1d0f': 'o', // kichik bosh harf O
+  // "d" ko'rinishidagilar
+  '\u0501': 'd', '\u0257': 'd', '\u1d05': 'd',
+  // "g" ko'rinishidagilar
+  '\u050d': 'g', '\u0261': 'g', '\u0581': 'g', '\u0262': 'g',
+};
+function foldName(value) {
+  let s = String(value == null ? '' : value);
+  // 1) NFKC — to'liq kenglikdagi va moslik (compatibility) shakllarini yig'adi
+  try { s = s.normalize('NFKC'); } catch { /* normalize yo'q bo'lsa davom etamiz */ }
+  // 2) NFD orqali diakritiklarni ajratib tashlaymiz (g-circumflex -> g)
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch { /* ignore */ }
+  // 3) Nol-kenglikdagi va ko'rinmas belgilar (ZWSP/ZWNJ/ZWJ, LRM/RLM,
+  //    yo'nalish belgilari, word-joiner, BOM, soft hyphen)
+  s = s.replace(/[\u200b-\u200f\u202a-\u202e\u2060\ufeff\u00ad]/g, '');
+  // 4) Homogliflar
+  s = s.replace(/./gu, (ch) => HOMOGLYPHS[ch] || ch);
+  return s.toLowerCase();
+}
+
+// Nom taqiqlangan so'zni o'z ichiga oladimi?
+function companyNameBlockedD1(value) {
+  const folded = foldName(value);
+  if (!folded) return false;
+  // Bo'shliq va shunga o'xshash ajratgichlar bo'yicha so'zlarga ajratamiz
+  const words = folded.split(/[\s\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/).filter(Boolean);
+
+  // A) So'z ICHIDA (so'z ichidagi tinish belgilari olib tashlanadi)
+  for (const w of words) {
+    const letters = w.replace(/[^a-z0-9]/g, '');
+    for (const bad of BLOCKED_NAME_WORDS) if (letters.includes(bad)) return true;
+  }
+
+  // B) Ketma-ket kelgan BITTA harfli so'zlar ("G O D")
+  let acc = '';
+  for (const w of words) {
+    const letters = w.replace(/[^a-z0-9]/g, '');
+    if (letters.length === 1) {
+      acc += letters;
+      for (const bad of BLOCKED_NAME_WORDS) if (acc.includes(bad)) return true;
+    } else {
+      acc = '';
+    }
+  }
+  return false;
+}
+
 function shortText(value, max = 200) {
   return String(value || '').trim().replace(/[\u0000-\u001f]/g, ' ').slice(0, max);
 }
@@ -555,6 +641,10 @@ async function companyApi(request, env, url) {
     const phone = shortText(body.phone, 40);
     const description = shortText(body.description, 1200);
     if (!displayName || !city || !phone || description.length < 20) return json({ error: 'required_fields' }, 422);
+    // Taqiqlangan so'z (companyNameBlockedD1) — frontend tekshiruvi
+    // chetlab o'tilgan (paste/autofill/to'g'ridan-to'g'ri API) holatda ham
+    // nom bazaga TUSHMAYDI.
+    if (companyNameBlockedD1(displayName)) return json({ error: 'name_not_allowed' }, 422);
     const category = COMPANY_CATEGORIES.has(body.category) ? body.category : 'other';
     const sourceCode = shortText(body.sourceCardCode, 32).toUpperCase();
     const source = sourceCode && auth.cards.find((card) => String(card.code || '').toUpperCase() === sourceCode);
@@ -606,6 +696,8 @@ async function companyApi(request, env, url) {
     const current = rowCompany(owned.row);
     const now = new Date().toISOString();
     const value = (key, max) => body[key] == null ? current[key] : shortText(body[key], max);
+    // Tahrirlashda ham bir xil tekshiruv (yaratishdagi bilan aynan bir xil).
+    if (companyNameBlockedD1(value('displayName', 120))) return json({ error: 'name_not_allowed' }, 422);
     await env.DB.prepare(`UPDATE companies SET display_name=?, subcategory=?, city=?, address=?, description=?, phone=?, telegram=?, whatsapp=?, website=?, logo_url=?, cover_url=?, gallery_json=?, updated_at=? WHERE company_id=?`).bind(
       value('displayName', 120), value('subcategory', 100), value('city', 100), value('address', 300), value('description', 1200),
       value('phone', 40), value('telegram', 100), value('whatsapp', 100), safeUrl(body.website == null ? current.website : body.website),
@@ -2208,7 +2300,13 @@ function paymentsEnabledD1(env) {
 // Shuning uchun bu yozuvni faqat operator ATAYLAB `PAYME_SANDBOX=true`
 // qo'ygandagina ko'rsatamiz.
 function paymeSandboxD1(env) {
+  // ANIQ qo'yilgan qiymat HAR DOIM ustun. Bu muhim: ertaga real Merchant
+  // ma'lumotlari qo'yilib PAYME_SANDBOX="false" bo'lsa, checkout domeni
+  // hali test.paycom.uz bo'lib qolgan bo'lsa ham "TEST REJIMI" va
+  // "Real pul yechilmaydi" izohlari DARHOL yo'qolishi kerak.
+  if (env.PAYME_SANDBOX === 'false') return false;
   if (env.PAYME_SANDBOX === 'true') return true;
+  // Aniq qo'yilmagan bo'lsa — checkout domeni bo'yicha taxmin.
   return /(^|\.)test\./i.test(String(env.PAYME_CHECKOUT_DOMAIN || ''));
 }
 

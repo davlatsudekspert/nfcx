@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { checkCompanyId, companyIdLocalInfo, COMPANY_STATUS, createCompany, listMyCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
+import { companyNameBlocked } from '../lib/nameGuard.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import logo from '../assets/logo-128.png';
@@ -21,6 +22,9 @@ export default function CompanyCreatePage() {
   const [check, setCheck] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Taqiqlangan so'z tekshiruvi — yozayotgan paytda darhol ko'rinadi
+  // (klaviatura, paste va autofill — hammasi `value` orqali o'tadi).
+  const nameBlocked = companyNameBlocked(form.displayName);
   const [mineState, setMineState] = useState('idle'); // idle | loading | error | ready
   const [mineTick, setMineTick] = useState(0);
 
@@ -58,12 +62,16 @@ export default function CompanyCreatePage() {
   const submit = async (event) => {
     event.preventDefault();
     if (!check?.valid || !check?.available) return;
+    if (companyNameBlocked(form.displayName)) {
+      setError(t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.'));
+      return;
+    }
     setBusy(true); setError('');
     try {
       const data = await createCompany(form);
       navigate(`/workspace/${data.company.companyId.toLowerCase()}`);
     } catch (err) {
-      setError(({ company_id_taken: t('Bu Company ID hozirgina band qilindi.'), company_id_reserved: t('Bu Company ID admin rezervida.'), bad_company_id: t('Company ID faqat 3–15 ta lotin harfidan iborat bo‘ladi.') })[err.message] || t('So‘rovni yuborib bo‘lmadi. Qayta urinib ko‘ring.'));
+      setError(({ company_id_taken: t('Bu Company ID hozirgina band qilindi.'), company_id_reserved: t('Bu Company ID admin rezervida.'), bad_company_id: t('Company ID faqat 3–15 ta lotin harfidan iborat bo‘ladi.'), name_not_allowed: t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.') })[err.message] || t('So‘rovni yuborib bo‘lmadi. Qayta urinib ko‘ring.'));
     } finally { setBusy(false); }
   };
 
@@ -84,7 +92,7 @@ export default function CompanyCreatePage() {
           {check?.alternatives?.length > 0 && <div className="cc-alternatives flex-wrap">{check.alternatives.map((id) => <button type="button" key={id} className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: id }))}>{id}</button>)}</div>}
         </div>
         <div className="cc-grid">
-          <label><span>{t('Kompaniya nomi')} *</span><input required value={form.displayName} onChange={(e) => setForm((old) => ({ ...old, displayName: e.target.value }))} placeholder={t('Masalan, NFC Dorixona')} /></label>
+          <label><span>{t('Kompaniya nomi')} *</span><input required value={form.displayName} onChange={(e) => setForm((old) => ({ ...old, displayName: e.target.value }))} placeholder={t('Masalan, NFC Dorixona')} aria-invalid={nameBlocked || undefined} aria-describedby={nameBlocked ? 'cc-name-err' : undefined} />{nameBlocked && <small id="cc-name-err" role="alert" className="cc-name-err">{t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.')}</small>}</label>
           <label><span>{t('Yo‘nalish')} *</span><select value={form.category} onChange={(e) => setForm((old) => ({ ...old, category: e.target.value }))}>{categories.map(([value,label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
           <label><span>{t('Kichik soha')}</span><input value={form.subcategory} onChange={(e) => setForm((old) => ({ ...old, subcategory: e.target.value }))} placeholder={t('Masalan, 24/7 dorixona')} /></label>
           <label><span>{t('Shahar')} *</span><input required value={form.city} onChange={(e) => setForm((old) => ({ ...old, city: e.target.value }))} placeholder={t('Toshkent')} /></label>
@@ -94,7 +102,7 @@ export default function CompanyCreatePage() {
           {form.sourceCardCode && <label className="wide cc-copy"><input type="checkbox" checked onChange={(e) => setForm((old) => ({ ...old, sourceCardCode: e.target.checked ? form.sourceCardCode : '' }))} /><div><b>{t('{code} dagi eski biznes ma’lumotini qoralamaga nusxalash', { code: form.sourceCardCode })}</b><span>{t('Asl NFC ID va uning profili o‘zgarmaydi.')}</span></div></label>}
         </div>
         {error && <p className="cc-error" role="alert">{error}</p>}
-        <button type="submit" className="cc-submit vz-tap" disabled={busy || !check?.available}>{busy ? t('Yuborilmoqda…') : t('Admin tekshiruviga yuborish →')}</button>
+        <button type="submit" className="cc-submit vz-tap" disabled={busy || !check?.available || nameBlocked}>{busy ? t('Yuborilmoqda…') : t('Admin tekshiruviga yuborish →')}</button>
         <p className="cc-legal">{t('ID qidirish uni band qilmaydi. Ariza serverda yaratilgandan keyingina ID rezervlanadi.')}</p>
       </form>
     </div>

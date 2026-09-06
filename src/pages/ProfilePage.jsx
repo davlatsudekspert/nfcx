@@ -1234,7 +1234,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     ? record.linkStyle
     : (record.linksTransparent ? 'glass' : 'standard');
   const linkStyleCls = linkStyleName === 'glass' ? ' vz-link--glass' : linkStyleName === 'transparent' ? ' vz-link--transparent' : '';
-  const linkBtn = `vz-link${linkStyleCls} flex items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-[16px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
+  // 2026-09: `text-center` + `min-h-[52px]` qo'shildi — yorliq ikki qatorga
+  // o'tganda ham matn tugma ichida gorizontal VA vertikal markazda qoladi,
+  // barcha aloqa tugmalari bir xil tekislikda turadi (touch maydoni >=44px).
+  const linkBtn = `vz-link${linkStyleCls} flex min-h-[52px] items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-center text-[16px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
   const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[14px] font-extrabold uppercase tracking-wide';
 
   return (
@@ -1518,7 +1521,27 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             <MusicPlayer urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])} accentColor={record.accentColor} />
 
             <div className="mt-[22px] flex flex-col gap-2.5">
-              {record.phone && (!record.hidePhone || isOwner) && <a className={linkBtn} href={`tel:${record.phone}`} onClick={() => track('phone_click')}><IconPhone /> {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}</a>}
+              {record.phone && (!record.hidePhone || isOwner) && (
+                // Ikonka `shrink-0`, matn esa alohida markazlashgan blok —
+                // avval ikkalasi ham to'g'ridan-to'g'ri flex bola edi, shu
+                // sababli uzun yorliq ("QO'NG'IROQ QILISH (YASHIRINGAN)")
+                // ikki qatorga o'tganda ikonka matnni chetga surib,
+                // kompozitsiya markazdan chiqib ketardi.
+                <a className={`${linkBtn} relative !gap-0`} href={`tel:${record.phone}`} onClick={() => track('phone_click')}>
+                  {/* Ikonka ABSOLYUT joylashgan — u tugmaning oqim (flow)
+                      kengligini EGALLAMAYDI, shuning uchun matnni o'ngga
+                      surib yubormaydi. Matn esa tugmaning TO'LIQ kengligi
+                      bo'ylab markazlashadi va ikki qatorga o'tsa ham
+                      markazda qoladi. Matnga simmetrik `px-9` berilgan —
+                      shu sababli u chapdagi ikonka ustiga ham chiqmaydi,
+                      o'ngda ham bir xil bo'shliq qoladi. Ikonka vertikal
+                      markazda (`top-1/2 -translate-y-1/2`). */}
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 leading-none" aria-hidden="true"><IconPhone /></span>
+                  <span className="block w-full px-9 text-center leading-tight">
+                    {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}
+                  </span>
+                </a>
+              )}
               {hasLocation && (
                 <a className={linkBtn} href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}>
                   {'\u{1F4CD}'} {t('Xaritada ochish')}

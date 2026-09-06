@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
@@ -141,6 +141,15 @@ export default function PricingPage({ catalog, refreshCatalog }) {
   const calcParsed = parseAnyCode(calcVal);
   const calcInfo = calcParsed ? priceForCode(calcParsed.code) : null;
   const calcTaken = calcParsed ? !!takenMap[calcParsed.code] : false;
+
+  // Narxlar sahifasida butun sahifa foni (header ostidan footer'gacha,
+  // to'liq browser kengligi) AYNAN bitta tekis qora bo'lishi kerak.
+  // Klass faqat shu sahifa ochiq turganda qo'yiladi va chiqishda darhol
+  // olib tashlanadi — boshqa sahifalar foniga ta'sir qilmaydi.
+  useEffect(() => {
+    document.body.classList.add('pricing-bg');
+    return () => document.body.classList.remove('pricing-bg');
+  }, []);
 
   return (
     // 2026-09 hotfix — NARXLAR SAHIFASI FONI.

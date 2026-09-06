@@ -531,11 +531,55 @@
 }
 .payme-block__head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
 /* Payme rasmiy so'z belgisi — turkuaz gradient + oq matn. */
+/* Payme so'z belgisi — RASMIY turquoise fon + oq yozuv. Oltinga
+   bo'yalmaydi. Kattaroq va mutanosib qilindi (avval 19px/6px edi):
+   bir qarashda aniq ko'rinadi, lekin blokni bosib ketmaydi. */
 .payme-block__logo{
-  display:inline-flex;align-items:center;border-radius:10px;
-  padding:6px 14px;line-height:1;color:#fff;
-  font-family:'Space Grotesk',system-ui,sans-serif;font-size:19px;font-weight:800;letter-spacing:-.01em;
+  position:relative;overflow:hidden;
+  display:inline-flex;align-items:center;border-radius:12px;
+  min-height:44px;padding:9px 20px;line-height:1;color:#fff;
+  font-family:'Space Grotesk',system-ui,sans-serif;font-size:24px;font-weight:800;letter-spacing:-.01em;
   background:linear-gradient(135deg,#33c8b6,#1fae9c);
+}
+.payme-block__logo-text{position:relative;z-index:1;}
+/* Juda sekin, nozik yaltiroq — 5 soniyada bir marta o'tadi (~1s davom
+   etadi, qolgan ~4s tanaffus). Neon/miltillash YO'Q: eng yorqin nuqta
+   atigi 28% oq. */
+.payme-block__sheen{
+  position:absolute;top:-60%;left:-45%;width:38%;height:220%;z-index:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.10) 42%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.10) 58%,transparent);
+  animation:paymeSheen 5s ease-in-out infinite;
+}
+@keyframes paymeSheen{
+  0%{transform:translateX(0) rotate(18deg);}
+  20%,100%{transform:translateX(420%) rotate(18deg);}
+}
+
+/* ASOSIY TO'LOV TUGMASI — Payme turquoise rangida (tashqi karta esa
+   NFCSTORE qora-oltin uslubida qoladi). Touch maydoni >= 44px. */
+.payme-block__pay{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;min-height:52px;padding:12px 18px;border:0;border-radius:999px;
+  background:linear-gradient(135deg,#39d3c0,#159887);
+  color:#fff;font-weight:800;font-size:16px;line-height:1.2;text-align:center;text-decoration:none;
+  cursor:pointer;transition:filter .15s,transform .12s;
+  box-shadow:0 10px 26px -12px rgba(31,174,156,.75);
+}
+.payme-block__pay:hover{filter:brightness(1.07);}
+.payme-block__pay:active{transform:translateY(1px);}
+.payme-block__pay:focus-visible{outline:2px solid #7ff0e0;outline-offset:2px;}
+.payme-block__pay svg{flex:0 0 auto;}
+.payme-block__pay.is-busy,.payme-block__pay.is-off{
+  cursor:not-allowed;filter:none;transform:none;box-shadow:none;opacity:.6;
+}
+.payme-block__pay.is-off{background:linear-gradient(135deg,#2f4a47,#233a37);}
+.payme-block__pay:disabled{cursor:not-allowed;opacity:.55;filter:grayscale(.25);box-shadow:none;}
+.payme-block__pay-wait{font-size:14px;font-weight:700;}
+
+/* Harakatni kamaytirish rejimi — yaltiroq butunlay o'chadi. */
+@media (prefers-reduced-motion:reduce){
+  .payme-block__sheen{animation:none;opacity:0;}
+  .payme-block__pay{transition:none;}
 }
 .payme-block__badge{
   display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
@@ -562,6 +606,11 @@
 .payme-block__note{font-size:12px;line-height:1.5;color:var(--vz-ink-3);}
 @media (max-width:420px){
   .payme-block{padding:15px;}
+  /* Mobil ekranda logo va tugma yozuvi KESILMASIN */
+  .payme-block__logo{font-size:21px;padding:9px 16px;}
+  .payme-block__head{gap:8px;}
+  .payme-block__badge{white-space:normal;}
+  .payme-block__pay{font-size:15px;padding:12px 14px;}
   .payme-block__order{flex-direction:column;align-items:flex-start;}
   .payme-block__amount{align-items:flex-start;margin-left:0;text-align:left;}
 }
@@ -573,21 +622,26 @@
    butun brauzer kengligi bo'ylab, hech qanday qattiq chegarasiz.
    Kontent kengligi O'ZGARMAYDI — u avvalgi max-width konteynerida qoladi.
    ═══════════════════════════════════════════════════════════════════════ */
-.pricing-page{
-  position:relative;
-  /* Butun brauzer kengligi — ota konteynerning padding'idan qat'i nazar.
-     `100vw` ATAYLAB ISHLATILMAYDI: u vertikal scrollbar kengligini ham
-     qo'shib, gorizontal scroll hosil qilardi. */
-  width:100%;
-  background:
-    radial-gradient(1100px 620px at 12% -8%, rgba(212,175,90,.10), transparent 62%),
-    radial-gradient(900px 520px at 88% 6%, rgba(212,175,90,.06), transparent 58%),
-    linear-gradient(180deg, #000 0%, #050402 42%, #000 100%);
-}
-/* Sahifa kontenti tugagandan keyin ham fon pastgacha davom etsin — pastda
-   body foniga o'tadigan qattiq chok qolmasligi uchun. */
-.pricing-page::after{
-  content:''; position:absolute; left:0; right:0; top:100%; height:220px;
-  background:linear-gradient(180deg, #000, rgba(0,0,0,0));
-  pointer-events:none;
+/* Narxlar sahifasi — AYNAN BITTA tekis qora fon, hech qanday gradient,
+   radial tus yoki chok yo'q. `body.pricing-bg` PricingPage o'zi
+   yoqadi/o'chiradi (useEffect), shuning uchun BOSHQA sahifalar foni
+   umuman o'zgarmaydi.
+
+   Nima uchun body/html darajasida: fon shu yerda bo'lgandagina u
+   header ostidan footer'gacha, browser'ning TO'LIQ kengligi va
+   balandligi bo'ylab uzluksiz bo'ladi — chap-o'ng tashqi bo'shliqlarda
+   boshqa kulrang tus qolmaydi va section chegarasi to'rtburchak bo'lib
+   bilinmaydi. Kontent avvalgidek max-width konteyner ichida qoladi. */
+html:has(body.pricing-bg){background:#000;}
+body.pricing-bg{background:#000;}
+body.pricing-bg .pricing-page,
+body.pricing-bg header,
+body.pricing-bg footer{background:#000;}
+/* `:has()` qo'llab-quvvatlanmagan brauzerlar uchun zaxira: sahifa
+   o'rami baribir to'liq kenglikda tekis qora bo'ladi. */
+.pricing-page{position:relative;width:100%;background:#000;}
+
+/* Kompaniya nomi uchun inline xato matni (taqiqlangan so'z) */
+.cc-name-err{
+  display:block;margin-top:6px;font-size:12.5px;line-height:1.45;font-weight:600;color:#ff7b81;
 }

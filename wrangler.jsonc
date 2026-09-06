@@ -58,7 +58,26 @@
   // repo'da ochiq saqlanishi xavfsiz. Real (production) Payme kalitlariga
   // o'tish yoki to'lovni yoqish/o'chirish qarori BU FAYLDA emas — u to'liq
   // Dashboard'dagi PAYME_MERCHANT_ID/PAYME_KEY qiymatlariga bog'liq.
+  //
+  // PAYME_SANDBOX — Payme test (sandbox) rejimi. Bu MAXFIY EMAS, oddiy
+  // feature-flag: u FAQAT interfeysdagi "TEST REJIMI" va "Real pul
+  // yechilmaydi" izohlarini ko'rsatadi. To'lov mantig'i, Merchant API
+  // metodlari va idempotentlik unga bog'liq emas.
+  // Ertaga real Merchant ma'lumotlari qo'yilganda shu yerda "false" qilinsa
+  // (yoki Dashboard'da), o'sha ikki izoh AVTOMATIK yo'qoladi; Payme logosi
+  // va to'lov tugmasi joyida qoladi.
+  //
+  // PAYME_CHECKOUT_DOMAIN — sandbox checkout domeni (https://test.paycom.uz).
+  // Payme tugmasi bosilganda foydalanuvchi aynan shu domendagi sandbox
+  // to'lov sahifasiga o'tadi. Production'ga o'tishda bu qiymat
+  // checkout.paycom.uz ga almashtiriladi (yoki butunlay olib tashlanadi —
+  // kod standart sifatida checkout.paycom.uz ni ishlatadi).
+  //
+  // Merchant API endpoint (Payme kabinetida ko'rsatiladi):
+  //   https://nfcstore.uz/api/pay/payme
   "vars": {
-    "PAYMENTS_ENABLED": "true"
+    "PAYMENTS_ENABLED": "true",
+    "PAYME_SANDBOX": "true",
+    "PAYME_CHECKOUT_DOMAIN": "test.paycom.uz"
   }
 }
