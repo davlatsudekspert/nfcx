@@ -312,11 +312,21 @@ for (const [route, key] of [
   check('GET /api/admin/records/:code -> 200 for an existing record', { status: res.status, code: data.code, verified: data.verified }, { status: 200, code: 'BIZTOP1', verified: true });
 }
 
-// Group B/C must remain untouched (still 501) — this task explicitly does
-// NOT port write/finance endpoints yet.
-for (const route of ['/api/admin/companies/BIZTOP1/status', '/api/admin/finance/transactions']) {
-  const res = await worker.fetch(req(route, adminCookie), env);
-  check(`${route} is still 501 (write/finance — intentionally NOT ported this task)`, res.status, 501);
+// 2026-09: bu yerda avval ikkala endpoint ham "hali ko'chirilmagan (501)"
+// deb kutilardi — o'sha vaqtdagi holat shunday edi. Ikkalasi ham
+// ALLAQACHON yozilgan, shuning uchun test yiqilib turardi. Endi ularning
+// HAQIQIY xulqi tekshiriladi.
+{
+  // Moliya tranzaksiyalari — GET, admin uchun ochiq.
+  const fin = await worker.fetch(req('/api/admin/finance/transactions', adminCookie), env);
+  check('GET /api/admin/finance/transactions -> 200 (implemented)', fin.status, 200);
+  const finBody = await fin.json().catch(() => null);
+  checkTrue('finance/transactions returns a payload object', !!finBody && typeof finBody === 'object');
+
+  // Kompaniya statusi — FAQAT POST (hosting/api/admin-extra.js). GET uchun
+  // 404 to'g'ri javob; muhimi — endi 501 emas, ya'ni endpoint mavjud.
+  const st = await worker.fetch(req('/api/admin/companies/BIZTOP1/status', adminCookie), env);
+  checkTrue('POST-only /api/admin/companies/:code/status is no longer 501', st.status !== 501);
 }
 
 // =====================================================================

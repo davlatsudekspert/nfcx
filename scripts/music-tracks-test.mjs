@@ -63,7 +63,15 @@ await ensureCoreSchema(env);
 check('parseMusicUrls: null/empty -> []', parseMusicUrls(null), []);
 check('parseMusicUrls: legacy single URL string -> [url]', parseMusicUrls('https://a.test/x.mp3'), ['https://a.test/x.mp3']);
 check('parseMusicUrls: JSON array passthrough', parseMusicUrls(JSON.stringify(['https://a.test/1.mp3', 'https://a.test/2.mp3'])), ['https://a.test/1.mp3', 'https://a.test/2.mp3']);
-check('parseMusicUrls: caps at 5', parseMusicUrls(JSON.stringify(['1', '2', '3', '4', '5', '6', '7'])), ['1', '2', '3', '4', '5']);
+// parseMusicUrls — SAQLASH chegarasi (Premium maksimumi = 10). Foydalanuvchi
+// darajasidagi 5/10 chegarasi alohida, validateRecordBody'da qo'llanadi —
+// quyidagi testlar aynan shuni tekshiradi. 2026-09: bu tekshiruv avval
+// 5 ni kutardi (chegara hamma uchun 5 bo'lgan davrdan qolgan) va Premium
+// 10 taga chiqarilgach yiqilib turardi.
+check('parseMusicUrls: 10 tagacha saqlaydi (Premium maksimumi)',
+  parseMusicUrls(JSON.stringify(Array.from({ length: 14 }, (_, i) => String(i + 1)))).length, 10);
+check('parseMusicUrls: 10 tadan kami to\'liq qoladi',
+  parseMusicUrls(JSON.stringify(['1', '2', '3', '4', '5', '6', '7'])), ['1', '2', '3', '4', '5', '6', '7']);
 check('parseMusicUrls: drops non-string entries', parseMusicUrls(JSON.stringify(['ok', 5, null, ''])), ['ok']);
 
 // ---------- validateRecordBody: caps + validates + accepts legacy field ----------

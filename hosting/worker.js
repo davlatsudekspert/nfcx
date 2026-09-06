@@ -2071,16 +2071,30 @@ function isPersonalCodePurchasable(rawCode) {
 // shaklida emas).
 function personalPriceForCode(rawCode) {
   const c = String(rawCode || '').toUpperCase();
-  const ov = personalCodeTierOverride(c);
-  if (ov) {
-    const total = PERSONAL_TIER_PRICE[ov] ?? 0;
-    return { total, tier: ov, base: total, override: true };
-  }
-  const letters = c.slice(0, 3);
-  const digits = c.slice(3, 6);
-  const tier = personalTierFromCode(letters, digits);
-  const total = PERSONAL_TIER_PRICE[tier] ?? 0;
-  return { total, tier, base: total };
+  // 2026-09 TUZATISH: bu funksiya src/lib/pricing.js `priceForCode()` bilan
+  // BIR XIL bo'lishi kerak edi (izohda ham shunday yozilgan), lekin u
+  // faqat TARIF override'ini (personalCodeTierOverride) qo'llardi va
+  // egasining PER-CODE NARX ro'yxatini (CODE_PRICES_D1) umuman
+  // tekshirmasdi. Natijada OOO000 kabi ekslyuziv ID uchun frontend
+  // 8 700 000 ni, worker esa 0 ni qaytarardi va
+  // scripts/payme-pricing-parity-test.mjs qizil turardi.
+  //
+  // PUL YO'LIGA TA'SIRI YO'Q: `personalPurchaseQuote()` bu funksiyadan
+  // FAQAT `tier` ni oladi va summani PERSONAL_TIER_PRICE dan mustaqil
+  // hisoblaydi (ekslyuzivni esa umuman sotmaydi). O'lchab tekshirildi:
+  // ro'yxatdagi 5 ta kodning hammasida sotib olish summasi ikkala
+  // tomonda aynan bir xil.
+  const priceOv = codePriceOverrideD1(c);
+  const tierOv = personalCodeTierOverride(c);
+  const base = tierOv
+    ? { total: PERSONAL_TIER_PRICE[tierOv] ?? 0, tier: tierOv, base: PERSONAL_TIER_PRICE[tierOv] ?? 0, override: true }
+    : (() => {
+        const tier = personalTierFromCode(c.slice(0, 3), c.slice(3, 6));
+        const total = PERSONAL_TIER_PRICE[tier] ?? 0;
+        return { total, tier, base: total };
+      })();
+  if (priceOv != null) return { ...base, total: priceOv, base: priceOv, priceOverride: true };
+  return base;
 }
 
 // ── Xavfsiz xarid entry-point (Payme fundamenti — Phase 2A safety fix) ──
