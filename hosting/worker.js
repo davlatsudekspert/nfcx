@@ -1620,7 +1620,10 @@ function parseMusicUrls(text) {
   if (!text) return [];
   try {
     const v = JSON.parse(text);
-    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x).slice(0, 5);
+    // O'QISH chegarasi eng yuqori limit bo'yicha (Premium 10) — aks holda
+    // premium foydalanuvchining 6-10 treklari profilda ko'rinmasdi.
+    // Yozishdagi haqiqiy limit validateRecordBody() da aniqlanadi.
+    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' && x).slice(0, MUSIC_LIMIT_PREMIUM_D1);
   } catch { /* eski (bitta URL) format — pastda */ }
   return typeof text === 'string' && text.trim() ? [text.trim()] : [];
 }
@@ -1647,7 +1650,12 @@ function rowToRecord(row) {
     cardNumbers: parseJsonArray(row.card_numbers), tierOverride: row.tier_override || '', verified: !!row.verified,
     cardDesign: parseJsonObjectOrNull(row.card_design), theme: row.theme || 'classic', forSale: !!row.for_sale,
     salePrice: row.sale_price != null ? Number(row.sale_price) : null, hashtags: parseJsonArray(row.hashtags),
-    price: Number(row.price), ts: Number(row.ts), views: Number(row.views),
+    // Narx yagona manbadan: qo'lda belgilangan per-code narx bo'lsa u
+    // ustun (CODE_PRICES_D1) — shunda katalog, qidiruv, PROFIL BELGISI,
+    // Admin va auksion bir xil qiymatni ko'rsatadi. Bu faqat KO'RSATISH
+    // narxi; haqiqiy xarid summasi alohida quote orqali hisoblanadi va
+    // web_orders/Payme tarixi bunga bog'liq emas.
+    price: codePriceOverrideD1(row.code) ?? Number(row.price), ts: Number(row.ts), views: Number(row.views),
   };
 }
 
@@ -2101,7 +2109,7 @@ async function createRecordD1(env, record) {
   `).bind(
     record.code, record.name, record.role || '', record.avatarUrl || '', record.bgUrl || '',
     record.bgPattern === false ? 0 : 1, record.accentColor || null, record.bgColor || null,
-    record.bgAnimated === false ? 0 : 1, JSON.stringify(Array.isArray(record.musicUrls) ? record.musicUrls.slice(0, 5) : []),
+    record.bgAnimated === false ? 0 : 1, JSON.stringify(Array.isArray(record.musicUrls) ? record.musicUrls.slice(0, MUSIC_LIMIT_PREMIUM_D1) : []),
     record.tg || '', record.phone || '', record.email || '', record.linkedin || '', record.instagram || '',
     record.about || '', record.facebook || '', record.twitter || '', record.website || '',
     record.cardNumber || '', JSON.stringify(record.extraLinks || []), JSON.stringify(record.cardNumbers || []),
@@ -2600,7 +2608,15 @@ const RESERVED_CODES = new Set([
   'LOGIN', 'REGISTER', 'ACCOUNT', 'API', 'ADMIN', 'STATIC', 'UPLOADS', 'AUKSION', 'XABARLAR', 'TOLOVLAR',
 ]);
 
-function validateRecordBody(body) {
+// ── PROFIL MUSIQASI LIMITI ─────────────────────────────────────────────
+// Oddiy foydalanuvchi 5 ta, Premium 10 ta qo'shiq. AYNAN shu qiymatlar
+// frontendda ham ishlatiladi (src/lib/musicLimits.js) — ikkalasi
+// scripts/test-music-limits.mjs bilan solishtiriladi.
+const MUSIC_LIMIT_FREE_D1 = 5;
+const MUSIC_LIMIT_PREMIUM_D1 = 10;
+function musicLimitD1(isPremium) { return isPremium ? MUSIC_LIMIT_PREMIUM_D1 : MUSIC_LIMIT_FREE_D1; }
+
+function validateRecordBody(body, opts = {}) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
   const hashtags = Array.isArray(body.hashtags)
@@ -2613,8 +2629,11 @@ function validateRecordBody(body) {
   const linkStyle = ['standard', 'transparent', 'glass'].includes(body.linkStyle) ? body.linkStyle : 'standard';
   // Ko'pi bilan 5 ta qo'shiq — `musicUrls` (yangi, ro'yxat) yoki eski
   // `musicUrl` (bitta URL, orqaga moslik uchun) qabul qilinadi.
+  // Limit foydalanuvchining premium holatiga qarab (oddiy 5 / premium 10).
+  // Chaqiruvchi bermasa — eng qat'iy (oddiy) limit qo'llanadi.
+  const musicMax = Number.isFinite(opts.musicMax) ? opts.musicMax : MUSIC_LIMIT_FREE_D1;
   const musicUrls = (Array.isArray(body.musicUrls) ? body.musicUrls : (body.musicUrl ? [body.musicUrl] : []))
-    .map((u) => uploadOrSafeUrl(u)).filter(Boolean).slice(0, 5);
+    .map((u) => uploadOrSafeUrl(u)).filter(Boolean).slice(0, musicMax);
   const record = {
     name, role: cleanStr(body.role, 100), avatarUrl: uploadOrSafeUrl(body.avatarUrl), bgUrl: uploadOrSafeUrl(body.bgUrl),
     bgPattern: body.bgPattern !== false, accentColor: /^#[0-9a-fA-F]{6}$/.test(String(body.accentColor || '').trim()) ? body.accentColor.trim() : '',
@@ -2661,7 +2680,9 @@ async function updateRecord(env, code, fields) {
   }
   if ('hashtags' in fields) { sets.push('hashtags = ?'); vals.push(JSON.stringify(fields.hashtags)); }
   if ('extraLinks' in fields) { sets.push('extra_links = ?'); vals.push(JSON.stringify(fields.extraLinks)); }
-  if ('musicUrls' in fields) { sets.push('music_url = ?'); vals.push(JSON.stringify(fields.musicUrls.slice(0, 5))); }
+  // Limit allaqachon validateRecordBody() da premium holatiga qarab
+  // qo'llangan; bu yerda faqat eng yuqori chegara (xavfsizlik uchun).
+  if ('musicUrls' in fields) { sets.push('music_url = ?'); vals.push(JSON.stringify(fields.musicUrls.slice(0, MUSIC_LIMIT_PREMIUM_D1))); }
   if ('cardNumbers' in fields) { sets.push('card_numbers = ?'); vals.push(JSON.stringify(fields.cardNumbers)); }
   if ('cardDesign' in fields) { sets.push('card_design = ?'); vals.push(fields.cardDesign ? JSON.stringify(fields.cardDesign) : null); }
   if (!sets.length) return getRecord(env, code);
@@ -2874,7 +2895,9 @@ async function recordsApi(request, env, url) {
       if (!owner) return json({ error: 'not_found' }, 404);
       if (String(owner) !== String(user.id)) return json({ error: 'forbidden' }, 403);
       const body = await request.json().catch(() => ({}));
-      const { record, error } = validateRecordBody(body);
+      // Musiqa limiti FOYDALANUVCHINING premium holatiga bog'liq:
+      // oddiy 5 ta, Premium 10 ta (NFC ID darajasiga bog'liq emas).
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
       if (error) return json({ error }, 422);
       // NOTE: tier/feature-gating (e.g. music/animated background require a
       // paid tier) from src/lib/access.js is NOT enforced here yet — the
@@ -2895,7 +2918,7 @@ async function recordsApi(request, env, url) {
       if (RESERVED_CODES.has(code)) return json({ error: 'reserved' }, 400);
 
       const body = await request.json().catch(() => ({}));
-      const { record, error } = validateRecordBody(body);
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
       if (error) return json({ error }, 422);
 
       // Jismoniy karta qo'shimchasi hali D1'da portlanmagan
