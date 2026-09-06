@@ -11,7 +11,7 @@ export default function LanguageSwitcher({ className = '', menuClassName = '' })
   const current = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
   return (
     <div className={`relative ${className}`}>
-      <button className="btn btn-ghost btn-sm px-2" onClick={() => setOpen((o) => !o)} aria-label={current.label}>
+      <button className="btn btn-ghost btn-sm min-h-11 px-2" onClick={() => setOpen((o) => !o)} aria-label={current.label}>
         <FlagIcon code={current.code} className="text-base" />
       </button>
       {open && (
@@ -22,7 +22,7 @@ export default function LanguageSwitcher({ className = '', menuClassName = '' })
               <button
                 key={l.code}
                 onClick={() => { setLang(l.code); setOpen(false); }}
-                className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 ${lang === l.code ? 'text-accent' : ''}`}
+                className={`flex min-h-11 w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 ${lang === l.code ? 'text-accent' : ''}`}
               >
                 <FlagIcon code={l.code} /> {l.label}
               </button>

@@ -25,12 +25,16 @@ export default function Footer() {
           {COLS.map((col) => (
             <div key={col.title}>
               <div className="mb-3 text-xs font-bold uppercase tracking-widest text-[color:var(--vz-gold)]">{t(col.title)}</div>
-              <ul className="flex flex-col gap-2">
+              {/* Bosish maydoni 44px — saytdagi qolgan tugmalar bilan bir xil
+                  (telefonda barmoq bilan aniq tegish uchun minimal o'lcham).
+                  Avval 32px edi. Oraliq `gap` kichraytirildi, shuning uchun
+                  ustunning umumiy balandligi deyarli o'zgarmaydi. */}
+              <ul className="flex flex-col gap-0.5">
                 {col.links.map(([label, href]) => (
                   <li key={href}>
                     <button
                       onClick={() => navigate(href)}
-                      className="min-h-8 cursor-pointer text-left text-[15px] text-[color:var(--vz-ink-2)] transition-colors hover:text-[color:var(--vz-ink)]"
+                      className="flex min-h-11 cursor-pointer items-center text-left text-[15px] text-[color:var(--vz-ink-2)] transition-colors hover:text-[color:var(--vz-ink)]"
                     >
                       {t(label)}
                     </button>
