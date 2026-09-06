@@ -1663,12 +1663,18 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
             </div>
           </div>
-          <div className="font-display mt-4 flex items-center justify-center gap-1.5 text-[23px] font-bold">
+          {/* Ism — sahifaning ASOSIY sarlavhasi (h1). Avval oddiy div edi:
+              ko'rinishi to'g'ri, lekin qidiruv tizimlari uchun public
+              profilda h1 umuman yo'q hisoblanardi. Global `h1` qoidasi
+              (src/index.css: 44px, margin 0 0 18px, max-width 640px)
+              ko'rinishni buzmasligi uchun mb-0 va max-w-none ochiq
+              berilgan; o'lcham/vazn/shrift avvalgidek utilitalardan. */}
+          <h1 className="font-display mb-0 mt-4 flex max-w-none items-center justify-center gap-1.5 text-[23px] font-bold">
             {record.name}
             {record.verified && (
               <span title={t('Tasdiqlangan profil')} className="inline-flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[15px] font-black text-white">✓</span>
             )}
-          </div>
+          </h1>
           <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[16px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
             {tierEmoji && <span>{tierEmoji}</span>}
             nfcstore.uz/{record.code.toLowerCase()}

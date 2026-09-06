@@ -209,7 +209,11 @@ export default function CompaniesPage({ catalog = [] }) {
         <div className="co-hero-glow" />
         <span className="co-eyebrow vz-kicker">NFCSTORE {t('Kompaniyalar katalogi')}</span>
         <h1>{t('Kompaniyalar va')}<br />{t('mutaxassislarni')} <strong>{t('toping')}</strong></h1>
-        <p>{t('Kerakli kompaniya, xizmat yoki mutaxassisni NFCStore orqali toping.')}<br />{t('Ularning faoliyat sohasi, katalogi va ochiq aloqa ma’lumotlarini bitta joyda ko‘ring.')}</p>
+        {/* Probel <br /> DAN OLDIN turishi shart: telefonda `.co-hero>p br`
+            display:none bo'ladi va probelsiz ikki jumla "toping.Ularning"
+            bo'lib yopishib qolardi. Katta ekranda bu probel qator oxirida
+            qolib, ko'rinmaydi. */}
+        <p>{t('Kerakli kompaniya, xizmat yoki mutaxassisni NFCStore orqali toping.')}{' '}<br />{t('Ularning faoliyat sohasi, katalogi va ochiq aloqa ma’lumotlarini bitta joyda ko‘ring.')}</p>
         <form className="co-search" onSubmit={search}>
           <span aria-hidden="true">⌕</span><input value={q} onChange={(event) => setQ(event.target.value)} placeholder={t('Kompaniya nomi, mahsulot, taom yoki xizmat')} aria-label={t('Qidirish')} /><button type="submit" className="vz-tap" aria-busy={searching}>{searching ? '•••' : t('Qidirish')}</button>
         </form>
