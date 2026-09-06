@@ -2,7 +2,7 @@
 //   node scripts/test-code-prices-and-sold.mjs
 import worker from '../hosting/worker.js';
 import { codePriceOverride, CODE_PRICES } from '../src/lib/codePrices.js';
-import { priceForCode, TIER_PRICE } from '../src/lib/pricing.js';
+import { priceForCode, TIER_PRICE, tierForCode, getPersonalPurchaseQuote } from '../src/lib/pricing.js';
 import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { env } = makeEnv();
@@ -183,6 +183,36 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('eski taklif summasi O\'ZGARTIRILMAGAN (tarix tegilmadi)', Number(bidRow.amount), 200000);
   const aucRow = await env.DB.prepare(`SELECT current_price FROM auctions WHERE id = 901`).first();
   check('auksion yozuvi O\'ZGARTIRILMAGAN', Number(aucRow.current_price), 8700000);
+}
+
+// ═══ 8. XXX772 — EKSLYUZIV, auksionda qo'yilgan narx saqlanadi ═══
+// Egasining topshirig'i (2026-09): XXX772 katalogda Gold ko'rinardi.
+// U ekslyuziv bo'lishi, narx esa (auksiondagi yakuniy 2 490 000)
+// O'ZGARMASDAN qolishi kerak. Auksion sahifasi ham shu tarifni oladi
+// (AuctionsPage: `a.tier || tierForCode(a.code)`).
+{
+  const now = new Date().toISOString();
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('XXX772','Ali', 2490000, 4300, 1, 'personal')`).run();
+  await env.DB.prepare(
+    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, highest_bidder_id, ends_at, status, min_increment, created_at)
+     VALUES (903, 'XXX772', NULL, 100000, 2490000, 1, ?, 'sold', 25000, ?)`
+  ).bind(now, now).run();
+  await env.DB.prepare(`INSERT INTO bids (id, auction_id, user_id, amount, created_at) VALUES (9003, 903, 1, 2490000, ?)`).bind(now).run();
+
+  check('XXX772 tarifi EKSLYUZIV (Gold emas)', tierForCode('XXX772'), 'exclusive');
+  const r = await j('/api/records');
+  const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
+  check('XXX772 narxi O\'ZGARMAGAN (2 490 000)', by.XXX772?.price, 2_490_000);
+  check('XXX772 Gold tarifi narxiga TUSHIB QOLMAGAN', by.XXX772?.price === TIER_PRICE.gold, false);
+
+  // Auksion sahifasi tarifni kod bo'yicha hisoblaydi — u yerda ham ekslyuziv.
+  const a = await j('/api/auctions?withSold=1');
+  const sold = (a.body?.sold || []).find((x) => x.code === 'XXX772');
+  check('auksionda ham narx bir xil', sold?.currentPrice, 2_490_000);
+  check('auksionda ko\'rsatiladigan tarif ekslyuziv', sold?.tier || tierForCode('XXX772'), 'exclusive');
+
+  // Ekslyuziv ID to'g'ridan-to'g'ri sotilmaydi (faqat auksion orqali).
+  check('XXX772 to\'g\'ridan-to\'g\'ri sotib olinmaydi', getPersonalPurchaseQuote('XXX772').purchasable, false);
 }
 
 done();
