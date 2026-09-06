@@ -549,6 +549,9 @@ async function publicContentApi(request, env, url) {
   }
 
   if (path === '/api/categories' && request.method === 'GET') {
+    // Kategoriyalar deyarli o'zgarmaydi, lekin HAR BIR sahifada so'raladi —
+    // chekkada keshlanadi (edgeCached izohiga qarang).
+    return edgeCached(request, url, async () => {
     const rows = await env.DB.prepare(`SELECT * FROM categories WHERE enabled = 1 ORDER BY sort, name_uz`).all();
     return json({
       categories: (rows.results || []).map((r) => ({
@@ -556,6 +559,7 @@ async function publicContentApi(request, env, url) {
         nameUz: r.name_uz || '', nameRu: r.name_ru || '', nameEn: r.name_en || '',
         sort: Number(r.sort || 0), enabled: !!r.enabled,
       })),
+    });
     });
   }
 
@@ -2924,10 +2928,52 @@ async function authApi(request, env, url) {
 
 // ---------- records (NFC profile cards) ----------
 
+
+// ── PUBLIC JAVOBLARNI CHEKKADA KESHLASH (2026-09) ────────────────────────
+// Katalog HAR BIR mehmon uchun qaytadan hisoblanardi: 500 qatorlik
+// so'rov + har qatorga qo'shimcha `EXISTS` tekshiruvlari + auksion
+// narxlari. Reklama'dan keyin bir vaqtda yuzlab odam kirsa, bu D1 ga
+// eng katta yuk manbai edi. Endi javob Cloudflare chekkasida 60 soniya
+// saqlanadi: bir daqiqada bir marta hisoblanadi, qolganlar keshdan
+// oladi. 60 soniya — admin o'zgartirish kiritgach katalog yangilanishi
+// uchun yetarlicha qisqa.
+//
+// FAQAT foydalanuvchiga BOG'LIQ BO'LMAGAN javoblar uchun. Bu yerda
+// ishlatilgan endpointlar cookie ham, sessiya ham o'qimaydi — javob
+// hamma uchun bir xil. Sessiya cookie'si bor so'rov keshlanmaydi ham,
+// keshdan o'qilmaydi ham (admin/egasi doim yangi ma'lumot ko'radi).
+//
+// `caches` faqat Workers runtime'ida bor — Node'dagi testlarda yo'q,
+// shuning uchun har joyda mavjudligi tekshiriladi va bo'lmasa oddiy
+// (keshsiz) yo'l ishlaydi.
+const EDGE_CACHE_SECONDS = 60;
+function edgeCacheAvailable(request) {
+  if (typeof caches === 'undefined' || !caches.default) return false;
+  // Kirgan foydalanuvchi — keshga umuman tegmaymiz.
+  return !String(request.headers.get('cookie') || '').includes('nfc_session=');
+}
+async function edgeCached(request, url, build) {
+  if (!edgeCacheAvailable(request)) return build();
+  const key = new Request(url.origin + url.pathname, { method: 'GET' });
+  try {
+    const hit = await caches.default.match(key);
+    if (hit) return hit;
+  } catch { /* kesh o'qilmasa — oddiy yo'l */ }
+  const res = await build();
+  if (res.status === 200) {
+    const cacheable = new Response(res.body, res);
+    cacheable.headers.set('cache-control', `public, max-age=${EDGE_CACHE_SECONDS}`);
+    try { await caches.default.put(key, cacheable.clone()); } catch { /* jim */ }
+    return cacheable;
+  }
+  return res;
+}
+
 async function recordsApi(request, env, url) {
   const path = url.pathname;
 
   if (path === '/api/records' && request.method === 'GET') {
+    return edgeCached(request, url, async () => {
     // is_gift — admin sovg'asi belgisi (catalogCard izohiga qarang).
     // catalogVisibleSql — ro'yxatdan o'tishdagi avtomatik ID'lar butunlay
     // chiqarib tashlanadi (ro'yxat, filtr, sanoq va pagination ham shu
@@ -2943,6 +2989,7 @@ async function recordsApi(request, env, url) {
       { ...rowToRecord(r), isGift: !!r.is_gift },
       finals.get(String(r.code || '').toUpperCase()) ?? null,
     )));
+    });
   }
 
   if (path === '/api/records/search' && request.method === 'GET') {

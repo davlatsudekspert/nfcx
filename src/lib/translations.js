@@ -11,6 +11,23 @@ import { DICT_ACCOUNT } from './translations.account.js';
 import { DICT_ADMIN } from './translations.admin.js';
 
 const DICT_BASE = {
+  // ── Qo'llanma sahifasi (2026-09 qayta dizayn) ──
+  'Darslar': { ru: 'Уроки', en: 'Lessons' },
+  'Barcha darslar': { ru: 'Все уроки', en: 'All lessons' },
+  '{n} ta dars': { ru: '{n} уроков', en: '{n} lessons' },
+  'jami ~{n} daqiqa': { ru: 'всего ~{n} минут', en: '~{n} minutes total' },
+  'Darsni tanlang': { ru: 'Выберите урок', en: 'Pick a lesson' },
+  'Har bir dars — bitta aniq vazifa. Boshidan boshlang yoki kerakligini qidiring.':
+    { ru: 'Каждый урок — одна конкретная задача. Начните с начала или найдите нужный.',
+      en: 'Each lesson covers one specific task. Start from the beginning, or search for what you need.' },
+  'Qadamma-qadam ko‘ring': { ru: 'Смотрите шаг за шагом', en: 'Watch it step by step' },
+  'Har bir qadam haqiqiy ekran rasmi bilan ko‘rsatiladi. To‘xtatish, orqaga qaytish va sekin ko‘rish mumkin.':
+    { ru: 'Каждый шаг показан на реальном снимке экрана. Можно поставить на паузу, вернуться назад и смотреть медленно.',
+      en: 'Every step is shown on a real screenshot. You can pause, go back, and take it slowly.' },
+  'O‘zingiz takrorlang': { ru: 'Повторите сами', en: 'Try it yourself' },
+  'Darsni yoningizda ochiq qoldiring va xuddi shu qadamlarni o‘z profilingizda bajaring.':
+    { ru: 'Держите урок открытым рядом и повторите те же шаги в своём профиле.',
+      en: 'Keep the lesson open beside you and repeat the same steps on your own profile.' },
   // ─────────────────────────── Navigatsiya (Header) ───────────────────────────
   'Narxlar': { ru: 'Цены', en: 'Pricing' },
   'Qanday ishlaydi': { ru: 'Как это работает', en: 'How it works' },
