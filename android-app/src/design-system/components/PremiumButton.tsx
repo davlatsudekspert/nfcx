@@ -8,7 +8,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { color, motion, radius, touchTarget, type as typeTokens } from '../tokens';
+import { color, depth, gradient, motion, radius, touchTarget, type as typeTokens } from '../tokens';
+import { GoldSheen } from './GoldSheen';
 import { haptics } from '../../native/haptics';
 
 export type PremiumButtonVariant = 'filled' | 'ghost' | 'danger';
@@ -27,44 +28,33 @@ export interface PremiumButtonProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-/** Solid gold billet, lit from the top-left: highlight, body, shadowed edge,
- * then a bounced light along the bottom. Four stops is what stops it reading
- * as a flat yellow rectangle. */
-const GOLD_BILLET = ['#EFD79A', '#D7B65D', '#A2802F', '#DCC077'] as const;
-/** Brushed micro-texture across the short axis — the same trick MetalSurface
- * uses, at half strength because a button is small and must stay legible. */
-const GOLD_BRUSH = [
-  'rgba(255,255,255,0.00)',
-  'rgba(255,255,255,0.05)',
-  'rgba(0,0,0,0.05)',
-  'rgba(255,255,255,0.04)',
-  'rgba(0,0,0,0.04)',
-] as const;
-/** Specular corner where the light source sits. */
+/** Specular corner where the light source sits — the cue that the gold is a
+ * curved metal surface rather than a flat colour fill. */
 const SPECULAR = ['rgba(255,255,255,0.30)', 'rgba(255,255,255,0.06)', 'transparent'] as const;
 /** Weight along the bottom edge so the billet has thickness. */
-const UNDERSHADE = ['transparent', 'rgba(60,40,0,0.22)'] as const;
-/** Dark machined metal used by ghost/danger — never a transparent hole. */
-const DARK_METAL = ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.015)'] as const;
-const SHEEN = ['transparent', 'rgba(255,252,235,0.55)', 'transparent'] as const;
+const UNDERSHADE = ['transparent', 'rgba(60,40,0,0.26)'] as const;
+/** Danger keeps the card material with a faint red breath in one corner. */
+const DANGER_BREATH = ['rgba(229,72,77,0.14)', 'transparent'] as const;
 
-const SWEEP_MS = 520;
+const GLOW_IN_MS = 120;
+const GLOW_OUT_MS = 560;
+/** The material clip sits inside the shell's 1px border. */
+const INNER_RADIUS = radius.md - 1;
 
 /**
  * The app's primary CTA.
  *
- * `filled` is a real gold metal surface — billet gradient, brushed texture,
- * one specular corner, a machined hairline and a top lip — and a single
- * reflection sweeps across it *on press only*. Nothing moves at rest, which
- * is the line between "premium" and "casino".
+ * `filled` is the 135° champagne-to-antique gold gradient with a slow looping
+ * light sweep, resting on `depth.button`. Pressing it sinks the billet:
+ * scale 0.97 plus `depth.buttonPressed` (an inner shadow); releasing it lets
+ * a soft gold glow breathe out once. No Material ripple anywhere.
  *
- * `ghost` / `danger` are hairline-edged dark metal, so a secondary action
- * still reads as a machined part rather than an empty outline.
+ * `ghost` / `danger` are gold- / red-outlined on the card gradient, so a
+ * secondary action is still a machined part rather than an empty outline.
  *
  * `disabled` is deliberately inert: a flat, unlit slab with muted text — not
  * a dimmed gold button, which reads as broken rather than unavailable.
- *
- * See android/docs/05-DESIGN_SYSTEM.md §5.2.
+ * `loading` keeps the material (the action is live, just busy).
  */
 export function PremiumButton({
   label,
@@ -78,32 +68,40 @@ export function PremiumButton({
   testID,
 }: PremiumButtonProps) {
   const scale = useSharedValue(1);
-  const sweep = useSharedValue(-1);
+  const pressed = useSharedValue(0);
+  const glow = useSharedValue(0);
   const isDisabled = disabled || loading;
-  /** Loading keeps the material (the action is still live, just busy); only a
-   * truly disabled button loses it. */
   const inert = disabled;
+  const filled = variant === 'filled' && !inert;
 
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const sweepStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: `${sweep.value * 130}%` }, { rotate: '16deg' }],
-  }));
+  const shellStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const pressedStyle = useAnimatedStyle(() => ({ opacity: pressed.value }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value }));
 
   const handlePressIn = () => {
     if (isDisabled) return;
     scale.value = withTiming(motion.pressScale, { duration: motion.pressDurationMs });
-    sweep.value = withSequence(
-      withTiming(1.4, { duration: SWEEP_MS, easing: Easing.out(Easing.cubic) }),
-      withTiming(-1, { duration: 0 }),
-    );
+    pressed.value = withTiming(1, { duration: motion.pressDurationMs });
     haptics.light();
   };
   const handlePressOut = () => {
-    scale.value = withTiming(1, { duration: motion.pressDurationMs });
+    scale.value = withTiming(1, { duration: motion.pressDurationMs * 2, easing: Easing.out(Easing.cubic) });
+    pressed.value = withTiming(0, { duration: motion.pressDurationMs * 2 });
+    if (filled) {
+      glow.value = withSequence(
+        withTiming(1, { duration: GLOW_IN_MS }),
+        withTiming(0, { duration: GLOW_OUT_MS, easing: Easing.out(Easing.quad) }),
+      );
+    }
   };
 
-  const filled = variant === 'filled' && !inert;
-  const spinnerColor = inert ? color.textTertiary : variant === 'filled' ? color.textOnGold : color.gold;
+  const spinnerColor = inert
+    ? color.textTertiary
+    : filled
+      ? color.textOnGold
+      : variant === 'danger'
+        ? color.danger
+        : color.gold;
 
   return (
     <AnimatedPressable
@@ -116,81 +114,66 @@ export function PremiumButton({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
       style={[
-        animatedStyle,
-        styles.base,
+        shellStyle,
+        styles.shell,
         fullWidth && styles.fullWidth,
-        filled && styles.filled,
-        variant === 'ghost' && !inert && styles.ghost,
-        variant === 'danger' && !inert && styles.danger,
-        inert && styles.inert,
+        filled && styles.shellFilled,
+        variant === 'ghost' && !inert && styles.shellGhost,
+        variant === 'danger' && !inert && styles.shellDanger,
+        inert && styles.shellInert,
         style,
       ]}
     >
-      {filled ? (
-        <>
-          <LinearGradient
-            colors={GOLD_BILLET}
-            locations={[0, 0.42, 0.78, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={GOLD_BRUSH}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0.08 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <LinearGradient
-            colors={SPECULAR}
-            locations={[0, 0.4, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0.75, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <LinearGradient
-            colors={UNDERSHADE}
-            start={{ x: 0, y: 0.55 }}
-            end={{ x: 0, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-        </>
-      ) : null}
+      {/* Release glow — a sibling of the clip, so the halo can spill past the edge. */}
+      {filled ? <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none" /> : null}
 
-      {!inert && variant !== 'filled' ? (
-        <LinearGradient
-          colors={DARK_METAL}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.7, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-      ) : null}
+      <View style={styles.material} pointerEvents="none">
+        {filled ? (
+          <>
+            <LinearGradient
+              colors={gradient.goldButton}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <LinearGradient
+              colors={SPECULAR}
+              locations={[0, 0.4, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0.75, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <LinearGradient
+              colors={UNDERSHADE}
+              start={{ x: 0, y: 0.55 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <GoldSheen loop band={0.36} intensity={0.55} />
+          </>
+        ) : null}
 
-      {!inert ? (
-        <Animated.View style={[styles.sheenTrack, sweepStyle]} pointerEvents="none">
+        {!inert && !filled ? (
           <LinearGradient
-            colors={variant === 'filled' ? SHEEN : (['transparent', 'rgba(255,255,255,0.16)', 'transparent'] as const)}
-            locations={[0, 0.5, 1]}
+            colors={gradient.cardSurface}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-        </Animated.View>
-      ) : null}
+        ) : null}
+        {variant === 'danger' && !inert ? (
+          <LinearGradient
+            colors={DANGER_BREATH}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.7, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
 
-      {!inert ? (
-        <View
-          style={[
-            styles.topLip,
-            variant === 'filled' ? styles.topLipGold : styles.topLipDark,
-          ]}
-          pointerEvents="none"
-        />
-      ) : null}
+        {!inert ? <View style={[styles.topLip, filled ? styles.topLipGold : styles.topLipDark]} /> : null}
+        {!inert ? <Animated.View style={[styles.pressedShade, pressedStyle]} /> : null}
+      </View>
 
       <View style={styles.contentRow}>
         {loading ? (
@@ -199,9 +182,9 @@ export function PremiumButton({
           <Text
             style={[
               styles.label,
-              variant === 'filled' && styles.labelOnFilled,
-              variant === 'ghost' && styles.labelGhost,
-              variant === 'danger' && styles.labelDanger,
+              filled && styles.labelOnGold,
+              variant === 'ghost' && !inert && styles.labelGhost,
+              variant === 'danger' && !inert && styles.labelDanger,
               inert && styles.labelInert,
             ]}
             numberOfLines={1}
@@ -215,48 +198,53 @@ export function PremiumButton({
 }
 
 const styles = StyleSheet.create({
-  base: {
+  shell: {
     minHeight: touchTarget,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'transparent',
     backgroundColor: color.surfaceRaised,
   },
   fullWidth: { width: '100%' },
-  filled: {
-    backgroundColor: '#C9A54F',
-    borderColor: 'rgba(255,244,214,0.42)',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+  shellFilled: {
+    backgroundColor: color.goldDark,
+    borderColor: 'rgba(255,244,214,0.40)',
+    ...depth.button,
   },
-  ghost: {
-    backgroundColor: '#111010',
+  shellGhost: {
+    backgroundColor: color.surface,
     borderColor: color.borderGold,
+    ...depth.chip,
   },
-  danger: {
-    backgroundColor: '#120E0E',
+  shellDanger: {
+    backgroundColor: color.surface,
     borderColor: 'rgba(229,72,77,0.45)',
+    ...depth.chip,
   },
   /** Unlit slab: reads as "not available yet", not as "the button failed". */
-  inert: {
-    backgroundColor: '#141414',
+  shellInert: {
+    backgroundColor: '#15110a',
     borderColor: 'rgba(255,255,255,0.06)',
   },
-  sheenTrack: { position: 'absolute', top: '-60%', bottom: '-60%', left: 0, width: '42%' },
+  material: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: INNER_RADIUS, overflow: 'hidden' },
+  glow: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1, borderRadius: radius.md, ...depth.glow },
   topLip: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
-  topLipGold: { backgroundColor: 'rgba(255,248,225,0.5)' },
-  topLipDark: { backgroundColor: 'rgba(255,255,255,0.09)' },
+  topLipGold: { backgroundColor: 'rgba(255,248,225,0.55)' },
+  topLipDark: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  /** Pressed: the billet sinks — an inner shadow plus a whisper of shade. */
+  pressedShade: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: INNER_RADIUS,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    ...depth.buttonPressed,
+  },
   contentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  label: { ...typeTokens.h2, textAlign: 'center', letterSpacing: 0.2 },
-  labelOnFilled: { color: color.textOnGold },
+  label: { ...typeTokens.h3, textAlign: 'center', letterSpacing: 0.3, color: color.textPrimary },
+  labelOnGold: { color: color.textOnGold },
   labelGhost: { color: color.gold },
   labelDanger: { color: color.danger },
   labelInert: { color: color.textTertiary },

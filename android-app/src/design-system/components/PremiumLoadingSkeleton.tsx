@@ -9,7 +9,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { motion, radius } from '../tokens';
+import { color, motion, radius } from '../tokens';
 
 export interface PremiumLoadingSkeletonProps {
   height?: number;
@@ -18,10 +18,11 @@ export interface PremiumLoadingSkeletonProps {
 }
 
 /** A reflection travelling across brushed metal, not a grey block blinking. */
-const SWEEP = ['transparent', 'rgba(255,255,255,0.05)', 'rgba(245,215,122,0.16)', 'rgba(255,255,255,0.04)', 'transparent'] as const;
+const SWEEP = ['transparent', 'rgba(255,244,214,0.05)', 'rgba(240,207,122,0.18)', 'rgba(255,244,214,0.04)', 'transparent'] as const;
 
-/** Placeholder bar with a gold-tinted reflection sweep — disabled under the OS
- * reduced-motion setting (brief §4/§5 accessibility + motion budget). */
+/** Placeholder bar — a warm raised slab with a gold-tinted reflection sweep,
+ * disabled under the OS reduced-motion setting (brief §4/§5 accessibility +
+ * motion budget). */
 export function PremiumLoadingSkeleton({ height = 16, width = '100%', borderRadius = radius.sm }: PremiumLoadingSkeletonProps) {
   const translateX = useSharedValue(-1);
   const [reduceMotion, setReduceMotion] = React.useState(false);
@@ -72,9 +73,9 @@ export function PremiumLoadingSkeleton({ height = 16, width = '100%', borderRadi
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: '#1A1918',
+    backgroundColor: color.surfaceRaised,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(212,175,90,0.10)',
     overflow: 'hidden',
   },
   sweep: { position: 'absolute', top: 0, bottom: 0, width: 110 },

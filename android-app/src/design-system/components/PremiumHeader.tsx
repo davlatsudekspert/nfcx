@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { color, radius, space, touchTarget, type as typeTokens } from '../tokens';
+import { color, depth, gradient, radius, space, touchTarget, type as typeTokens } from '../tokens';
 
 export interface PremiumHeaderAction {
   icon: React.ComponentProps<typeof Feather>['name'];
@@ -19,13 +20,17 @@ export interface PremiumHeaderProps {
   actions?: PremiumHeaderAction[];
 }
 
+/** The seam under the header: a gold hairline that fades out at both ends. */
+const SEAM = ['rgba(212,175,90,0)', 'rgba(212,175,90,0.38)', 'rgba(212,175,90,0)'] as const;
+
 /**
- * Screen chrome. The bar itself is transparent so the screen's ambient gold
+ * Screen chrome. The bar itself is transparent so the screen's warm ambient
  * wash reads through it (see ScreenWithHeader) — a painted-black header on a
  * black screen is exactly the flat rectangle the brief argues against.
  *
- * Controls are 40dp machined discs centred inside 48dp touch targets, so the
- * hit area stays Android-legal while the visible chrome stays small.
+ * The title is serif (`type.h2`). Controls are 40dp card-material discs
+ * centred inside 48dp touch targets, so the hit area stays Android-legal
+ * while the visible chrome stays small; pressing one lights its gold rim.
  */
 export function PremiumHeader({ title, onBack, actions = [] }: PremiumHeaderProps) {
   const insets = useSafeAreaInsets();
@@ -56,7 +61,14 @@ export function PremiumHeader({ title, onBack, actions = [] }: PremiumHeaderProp
           ))}
         </View>
       </View>
-      <View style={styles.hairline} pointerEvents="none" />
+      <LinearGradient
+        colors={SEAM}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.seam}
+        pointerEvents="none"
+      />
     </View>
   );
 }
@@ -85,7 +97,15 @@ function IconControl({
       style={styles.hit}
     >
       <View style={[styles.disc, pressed && styles.discPressed]}>
-        <Feather name={icon} size={size} color={color.textPrimary} />
+        <LinearGradient
+          colors={gradient.cardSurface}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        {pressed ? <View style={styles.discWash} pointerEvents="none" /> : null}
+        <Feather name={icon} size={size} color={pressed ? color.goldHighlight : color.textPrimary} />
         <View style={styles.discLip} pointerEvents="none" />
       </View>
       {showDot && <View style={styles.dot} />}
@@ -111,15 +131,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
     overflow: 'hidden',
+    ...depth.chip,
   },
-  discPressed: { backgroundColor: 'rgba(215,182,93,0.12)', borderColor: color.borderGold },
+  discPressed: { borderColor: color.borderGoldStrong, ...depth.glow },
+  discWash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.goldMuted },
   discLip: { position: 'absolute', top: 0, left: 8, right: 8, height: 1, backgroundColor: 'rgba(255,255,255,0.10)' },
-  /** One faint machined edge under the header instead of a drawn divider. */
-  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.06)', marginTop: space.xs },
+  seam: { height: 1, marginTop: space.xs },
   dot: {
     position: 'absolute',
     top: 8,
@@ -127,8 +148,9 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: radius.pill,
-    backgroundColor: color.gold,
+    backgroundColor: color.goldHighlight,
     borderWidth: 2,
-    borderColor: color.bgDeep,
+    borderColor: color.bg,
+    boxShadow: '0 0 8px rgba(240,207,122,0.6)',
   },
 });

@@ -21,6 +21,8 @@ export interface PremiumQueryStateProps {
   emptyIcon?: React.ComponentProps<typeof PremiumEmptyState>['icon'];
   emptyCtaLabel?: string;
   onPressEmptyCta?: () => void;
+  /** Floating 3D medallion for the empty state (see PremiumEmptyState.floating). */
+  emptyFloating?: boolean;
   /** How many skeleton rows to show while loading. */
   skeletonRows?: number;
   skeletonHeight?: number;
@@ -47,6 +49,7 @@ export function PremiumQueryState({
   emptyIcon = 'inbox',
   emptyCtaLabel,
   onPressEmptyCta,
+  emptyFloating = false,
   skeletonRows = 3,
   skeletonHeight = 96,
   children,
@@ -93,6 +96,7 @@ export function PremiumQueryState({
         description={emptyDescription}
         ctaLabel={emptyCtaLabel}
         onPressCta={onPressEmptyCta}
+        floating={emptyFloating}
       />
     );
   }

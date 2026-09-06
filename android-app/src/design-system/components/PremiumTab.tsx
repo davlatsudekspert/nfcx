@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { color, radius, space, touchTarget, type as typeTokens } from '../tokens';
+import { color, depth, font, gradient, radius, space } from '../tokens';
 import { haptics } from '../../native/haptics';
 
 export interface PremiumTabItem {
@@ -16,15 +16,18 @@ export interface PremiumTabProps {
   onChange: (key: string) => void;
 }
 
-/** The rail is a machined groove; the indicator is a lit filament sliding in it. */
-const INDICATOR = ['rgba(142,111,46,0.35)', color.gold, color.goldHighlight, 'rgba(142,111,46,0.35)'] as const;
+/** Specular corner on the gold pill — the light source is top-left. */
+const SPECULAR = ['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.05)', 'transparent'] as const;
 const SPRING = { damping: 20, stiffness: 220 };
+const RAIL_PAD = 3;
+/** ≥ 44dp hit target inside the rail. */
+const ITEM_MIN_HEIGHT = 44;
 
 /**
- * Segmented control with a gold filament that slides between tabs. Used for
- * Auction's tabs, the company public profile's tabs, etc. A tab is never
- * hidden when empty (avoids layout shift) — its content renders an empty
- * state instead.
+ * Segmented control: a sunken rail milled into the surface, with a gold
+ * billet that slides under the selected tab. Used for Auction's tabs, the
+ * NFC read/write switch, etc. A tab is never hidden when empty (avoids
+ * layout shift) — its content renders an empty state instead.
  */
 export function PremiumTab({ items, activeKey, onChange }: PremiumTabProps) {
   const [widths, setWidths] = useState<Record<string, number>>({});
@@ -33,7 +36,7 @@ export function PremiumTab({ items, activeKey, onChange }: PremiumTabProps) {
   const activeWidth = widths[activeKey] ?? 0;
   const activeOffset = offsets[activeKey] ?? 0;
 
-  const indicatorStyle = useAnimatedStyle(() => ({
+  const pillStyle = useAnimatedStyle(() => ({
     width: withSpring(activeWidth, SPRING),
     transform: [{ translateX: withSpring(activeOffset, SPRING) }],
   }));
@@ -45,7 +48,27 @@ export function PremiumTab({ items, activeKey, onChange }: PremiumTabProps) {
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={styles.rail}>
+      <View style={styles.railWell} pointerEvents="none" />
+      {activeWidth > 0 && (
+        <Animated.View style={[styles.pill, pillStyle]} pointerEvents="none">
+          <LinearGradient
+            colors={gradient.goldButton}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={SPECULAR}
+            locations={[0, 0.4, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.8, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.pillLip} />
+        </Animated.View>
+      )}
       {items.map((item) => {
         const active = item.key === activeKey;
         return (
@@ -60,42 +83,57 @@ export function PremiumTab({ items, activeKey, onChange }: PremiumTabProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
           >
-            <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
+            <Text
+              style={[styles.label, active && styles.labelActive]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {item.label}
             </Text>
           </Pressable>
         );
       })}
-      {activeWidth > 0 && (
-        <Animated.View style={[styles.indicator, indicatorStyle]} pointerEvents="none">
-          <LinearGradient
-            colors={INDICATOR}
-            locations={[0, 0.25, 0.75, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.indicatorFill}
-          />
-        </Animated.View>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  rail: {
     flexDirection: 'row',
     position: 'relative',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.07)',
+    padding: RAIL_PAD,
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceSunken,
+  },
+  /** The groove: a hairline and an inner shadow, drawn above the floor but
+   * beneath the pill and the labels. */
+  railWell: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: color.border,
+    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.45)',
   },
   item: {
-    minHeight: touchTarget,
+    flex: 1,
+    minHeight: ITEM_MIN_HEIGHT,
+    alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: space.sm,
     paddingHorizontal: space.md,
   },
-  label: { ...typeTokens.body, color: color.textSecondary, fontWeight: '600', letterSpacing: 0.2 },
-  labelActive: { color: color.gold },
-  indicator: { position: 'absolute', bottom: 0, height: 2, borderRadius: radius.pill, overflow: 'hidden' },
-  indicatorFill: { flex: 1 },
+  label: { fontFamily: font.sansSemi, fontSize: 14, lineHeight: 18, letterSpacing: 0.2, color: color.textSecondary },
+  labelActive: { color: color.textOnGold },
+  pill: {
+    position: 'absolute',
+    top: RAIL_PAD,
+    bottom: RAIL_PAD,
+    left: 0,
+    borderRadius: radius.md - RAIL_PAD,
+    overflow: 'hidden',
+    backgroundColor: color.goldDark,
+    ...depth.chip,
+  },
+  pillLip: { position: 'absolute', top: 0, left: 8, right: 8, height: 1, backgroundColor: 'rgba(255,252,235,0.55)' },
 });

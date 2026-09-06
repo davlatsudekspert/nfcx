@@ -3,14 +3,7 @@ import { PixelRatio, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import type { MainTabParamList } from './types';
 import { HomeNavigator } from './HomeNavigator';
@@ -20,7 +13,8 @@ import { CompanyNavigator } from './CompanyNavigator';
 import { ProfileNavigator } from './ProfileNavigator';
 import { useT } from '../i18n';
 import type { StringKey } from '../i18n';
-import { color, radius, space, type as typeTokens } from '../design-system/tokens';
+import { color, depth, gradient, radius, space, type as typeTokens } from '../design-system/tokens';
+import { GoldSheen } from '../design-system/components/GoldSheen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -40,23 +34,22 @@ const LABEL_KEYS: Record<keyof MainTabParamList, StringKey> = {
   ProfileTab: 'tab.profile',
 };
 
-/** The bar floor: a deep, slightly warm black that separates the furniture
- * from the screen above it without a drawn divider. */
-const BAR = ['#0B0A09', '#050505'] as const;
-/** The selected pill is a milled gold billet — light, body, shadowed edge,
- * bounced light — the one piece of real metal that is always on screen. */
-const PILL = ['#F0DAA2', '#D7B65D', '#A8873A'] as const;
+/** The bar floor: the warm near-black, settling slightly deeper at the
+ * bottom so it separates from the screen above without a drawn divider. */
+const BAR = [color.bgWarm, color.bg] as const;
+/** Specular corner on the selected pill — the light source is top-left. */
+const SPECULAR = ['rgba(255,255,255,0.30)', 'rgba(255,255,255,0.06)', 'transparent'] as const;
 
 const PILL_MS = 220;
-const PILL_SHEEN_MS = 460;
 
 /**
  * Bottom nav — hard-capped at 5 tabs (brief §14).
  *
- * The selected tab sits on a polished gold billet that catches a single sweep
- * of light as it lands; the other four stay quiet, near-black and unlit. That
- * contrast is the whole point: on a deep-black bar, one lit metal element
- * reads as prestige, five would read as a slot machine.
+ * The selected tab sits on a gold gradient pill that catches a single sweep
+ * of light as it lands and rests in a soft gold glow; the other four stay
+ * quiet, near-black and unlit. That contrast is the whole point: on a warm
+ * black bar, one lit metal element reads as prestige, five would read as a
+ * slot machine.
  *
  * `tabBarHideOnKeyboard` keeps the bar from being shoved up over a focused
  * input (brief §23), and each tab keeps its own stack state because every tab
@@ -116,8 +109,8 @@ export function MainTabs() {
 
 /**
  * The pill only animates when selection changes — one 220ms settle plus one
- * sheen sweep. Nothing loops, so the bar costs nothing while the user reads
- * the screen above it.
+ * `GoldSheen` sweep (mounted per selection, never looping). Nothing runs
+ * while the user reads the screen above it.
  */
 function TabIcon({
   name,
@@ -129,50 +122,39 @@ function TabIcon({
   focused: boolean;
 }) {
   const on = useSharedValue(focused ? 1 : 0);
-  const sweep = useSharedValue(1.6);
 
   useEffect(() => {
     on.value = withTiming(focused ? 1 : 0, { duration: PILL_MS, easing: Easing.out(Easing.cubic) });
-    if (focused) {
-      sweep.value = withDelay(
-        90,
-        withSequence(
-          withTiming(1.6, { duration: 0 }),
-          withTiming(-1.6, { duration: 0 }),
-          withTiming(1.6, { duration: PILL_SHEEN_MS, easing: Easing.out(Easing.cubic) }),
-        ),
-      );
-    }
-  }, [focused, on, sweep]);
+  }, [focused, on]);
 
   const pillStyle = useAnimatedStyle(() => ({
     opacity: on.value,
     transform: [{ scaleX: 0.72 + on.value * 0.28 }],
   }));
-
-  const sweepStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: `${sweep.value * 100}%` }, { rotate: '18deg' }],
-  }));
+  const glowStyle = useAnimatedStyle(() => ({ opacity: on.value }));
 
   return (
     <View style={styles.iconWrap}>
+      <Animated.View style={[styles.pillGlow, glowStyle]} pointerEvents="none" />
       <Animated.View style={[styles.pill, pillStyle]} pointerEvents="none">
         <LinearGradient
-          colors={PILL}
-          locations={[0, 0.55, 1]}
+          colors={gradient.goldButton}
+          locations={[0, 0.5, 1]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={SPECULAR}
+          locations={[0, 0.4, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.8, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.pillLip} />
-        <Animated.View style={[styles.pillSheen, sweepStyle]}>
-          <LinearGradient
-            colors={['transparent', 'rgba(255,253,240,0.7)', 'transparent'] as const}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
+        {/* Mounted only while selected: GoldSheen sweeps once on mount, so
+            every new selection gets exactly one sweep and nothing loops. */}
+        {focused ? <GoldSheen loop={false} band={0.4} intensity={0.8} /> : null}
       </Animated.View>
       <Feather name={name} size={19} color={focused ? color.textOnGold : tint} />
     </View>
@@ -194,7 +176,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(215,182,93,0.20)',
+    backgroundColor: 'rgba(212,175,90,0.28)',
   },
   item: { paddingVertical: 2 },
   label: { ...typeTokens.caption, fontSize: 11, marginTop: 2, letterSpacing: 0.2 },
@@ -205,16 +187,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  /** The glow is a sibling of the clipped pill so it can bloom past the edge. */
+  pillGlow: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: radius.pill,
+    ...depth.glow,
+  },
   pill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     borderRadius: radius.pill,
     overflow: 'hidden',
+    backgroundColor: color.goldDark,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,246,214,0.55)',
+    ...depth.chip,
   },
   pillLip: {
     position: 'absolute',
@@ -224,5 +210,4 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(255,252,235,0.6)',
   },
-  pillSheen: { position: 'absolute', top: '-60%', bottom: '-60%', left: 0, width: '40%' },
 });

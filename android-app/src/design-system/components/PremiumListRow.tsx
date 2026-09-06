@@ -22,7 +22,7 @@ export interface PremiumListRowProps {
  *
  * Deliberately flat-cost: no gradients and no shadows, because these render
  * dozens at a time inside scrollers. The material cue is the small machined
- * icon disc plus a hairline-lit pressed state — cheap to draw, still reads as
+ * icon disc plus a gold-lit pressed state — cheap to draw, still reads as
  * the same metal as everything around it.
  */
 export function PremiumListRow({
@@ -49,8 +49,13 @@ export function PremiumListRow({
       testID={testID}
     >
       {icon && (
-        <View style={[styles.iconDisc, destructive && styles.iconDiscDestructive]}>
-          <Feather name={icon} size={16} color={destructive ? color.danger : color.textSecondary} />
+        <View style={[styles.iconDisc, destructive && styles.iconDiscDestructive, pressed && !destructive && styles.iconDiscPressed]}>
+          <Feather
+            name={icon}
+            size={16}
+            color={destructive ? color.danger : pressed ? color.goldHighlight : color.textSecondary}
+          />
+          <View style={styles.iconLip} pointerEvents="none" />
         </View>
       )}
       <View style={styles.labelWrap}>
@@ -68,7 +73,7 @@ export function PremiumListRow({
           {value}
         </Text>
       )}
-      {right ?? (onPress && showChevron ? <Feather name="chevron-right" size={18} color={color.textTertiary} /> : null)}
+      {right ?? (onPress && showChevron ? <Feather name="chevron-right" size={18} color={pressed ? color.gold : color.textTertiary} /> : null)}
     </Pressable>
   );
 }
@@ -85,18 +90,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  rowPressed: { backgroundColor: 'rgba(255,255,255,0.045)', borderColor: color.border },
+  rowPressed: { backgroundColor: color.goldWash, borderColor: color.borderGold },
   iconDisc: {
     width: 32,
     height: 32,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: color.surfaceRaised,
     borderWidth: 1,
     borderColor: color.border,
+    overflow: 'hidden',
   },
+  iconDiscPressed: { borderColor: color.borderGold, backgroundColor: color.goldMuted },
   iconDiscDestructive: { backgroundColor: 'rgba(229,72,77,0.08)', borderColor: 'rgba(229,72,77,0.28)' },
+  iconLip: { position: 'absolute', top: 0, left: 7, right: 7, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
   labelWrap: { flex: 1, paddingVertical: space.xs },
   label: { ...typeTokens.body, color: color.textPrimary },
   labelDestructive: { color: color.danger },
