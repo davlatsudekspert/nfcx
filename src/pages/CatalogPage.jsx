@@ -164,7 +164,13 @@ export default function CatalogPage({ catalog }) {
                   </span>
                 </div>
                 <div className="mt-1 flex items-center gap-1 truncate text-[16px] text-base-content/55">
-                  <span className="truncate">{it.name}{it.tg ? ' · ' + it.tg : ''}</span>
+                  {/* 2026-09: katalog kartasida FAQAT foydalanuvchining
+                      asosiy ko'rinadigan ismi qoladi. Avval yonida
+                      Telegram username ham chiqardi ("Ali · davlatsudekspert").
+                      Bu o'zgarish FAQAT katalog kartasiga tegishli — public
+                      profil, Admin Panel va kabinetdagi ism/username
+                      ma'lumotlari o'z holicha qoladi. */}
+                  <span className="truncate">{it.name}</span>
                   {it.verified && <span title={t('Tasdiqlangan')} className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[9px] font-black text-white">✓</span>}
                 </div>
                 {(cp || it.city) && (
@@ -173,7 +179,17 @@ export default function CatalogPage({ catalog }) {
                     {it.city && <span className="rounded-full border border-white/10 px-2 py-0.5">{it.city}</span>}
                   </div>
                 )}
-                <div className="mt-3 flex items-center gap-2 text-sm text-base-content/75">{t("{n} so'm", { n: fmt(it.price) })} · {timeAgo(it.ts)}</div>
+                {/* Admin sovg'asi -> narx o'rniga "Sovg'a" (sotuvga
+                    qo'yilgandek ko'rinmasin). `isGift` backend'dan keladi va
+                    `nfc_gifts` jadvalidagi HAQIQIY sovg'a yozuvidan
+                    hisoblanadi (status='activated') — narxi 0 bo'lgani uchun
+                    EMAS. Oddiy xarid qilingan kartalar narxi o'zgarmaydi. */}
+                <div className="mt-3 flex items-center gap-2 text-sm text-base-content/75">
+                  {it.isGift
+                    ? <span className="rounded-full bg-[color:var(--vz-gold,#d4af5a)]/15 px-2 py-0.5 font-bold text-[color:var(--vz-gold-2,#f0cf7a)]">{t("Sovg'a")}</span>
+                    : t("{n} so'm", { n: fmt(it.price) })}
+                  {' · '}{timeAgo(it.ts)}
+                </div>
               </button>
             );
           })}

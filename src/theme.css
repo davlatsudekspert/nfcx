@@ -645,3 +645,11 @@ body.pricing-bg footer{background:#000;}
 .cc-name-err{
   display:block;margin-top:6px;font-size:12.5px;line-height:1.45;font-weight:600;color:#ff7b81;
 }
+
+/* Profil bo'limidagi VIDEO fon (src/pages/ProfilePage.jsx ProfileBgVideo).
+   Absolyut joylashgan <video> chizish tartibida oddiy (pozitsiyalanmagan)
+   kontentdan YUQORIDA turadi — shu sababli panelning bevosita bolalariga
+   z-index beriladi, aks holda video butun matnni yopib qo'yardi.
+   Video qatlamlarining o'zi eng pastda (z-index:0) qoladi. */
+.profile-panel--video > *:not(.profile-bg-layer){position:relative;z-index:1;}
+.profile-panel--video > .profile-bg-layer{z-index:0;}
