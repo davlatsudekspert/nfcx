@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
 import { fmt } from '../lib/format.js';
@@ -40,9 +41,25 @@ import { fmt } from '../lib/format.js';
 // ═══════════════════════════════════════════════════════════════════════
 
 function PaymeLogo() {
-  // Rasmiy Payme firma rangi va so'z belgisi — o'zgartirilmaydi.
+  // Rasmiy Payme firma rangi (turquoise fon, oq yozuv) va so'z belgisi —
+  // o'zgartirilmaydi, oltin rangga bo'yalmaydi. Ichidagi `__sheen` — 5
+  // soniyada bir marta o'tadigan juda nozik yaltiroq (neon/miltillash
+  // emas); prefers-reduced-motion'da butunlay o'chadi (CSS'da).
   return (
-    <span className="payme-block__logo" aria-label="Payme">Payme</span>
+    <span className="payme-block__logo" aria-label="Payme">
+      <span className="payme-block__sheen" aria-hidden="true"></span>
+      <span className="payme-block__logo-text">Payme</span>
+    </span>
+  );
+}
+
+// Tugma ichidagi ixcham Payme belgisi — oq, turquoise fon ustida.
+function PaymeMark() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="3" />
+      <path d="M2 10h20" />
+    </svg>
   );
 }
 
@@ -72,6 +89,19 @@ export default function PaymeBlock({
 
   const amountText = Number.isFinite(Number(amount)) ? t("{n} so'm", { n: fmt(Number(amount)) }) : null;
   const label = payLabel || t("Payme orqali to'lash");
+
+  // TAKRORIY TRANZAKSIYA HIMOYASI. `busy` prop React holati orqali keladi,
+  // ya'ni u yangilanguncha (bir render kadri) foydalanuvchi tugmani yana
+  // bosib ulgurishi mumkin edi — bu ikkinchi buyurtma/tranzaksiya yaratardi.
+  // `lockRef` sinxron (renderni kutmaydi): bitta bosish = bitta so'rov.
+  // Qulf onPay tugagach ochiladi, shunda xatolikdan keyin qayta urinish
+  // mumkin bo'ladi.
+  const lockRef = useRef(false);
+  const handlePay = async () => {
+    if (lockRef.current || !onPay) return;
+    lockRef.current = true;
+    try { await onPay(); } finally { lockRef.current = false; }
+  };
 
   return (
     <div className="payme-block">
@@ -104,13 +134,13 @@ export default function PaymeBlock({
 
       <div className="payme-block__cta">
         {!loaded ? (
-          <button type="button" className="btn btn-gold w-full" disabled aria-busy="true">
+          <button type="button" className="payme-block__pay is-busy" disabled aria-busy="true">
             <span className="loading loading-spinner loading-sm"></span>
           </button>
         ) : !enabled ? (
           <button
             type="button"
-            className="btn btn-gold w-full btn-disabled !cursor-not-allowed opacity-60"
+            className="payme-block__pay is-off"
             disabled
             aria-disabled="true"
             title={t("To'lov tizimi vaqtincha o'chirilgan.")}
@@ -118,16 +148,21 @@ export default function PaymeBlock({
             {label}
           </button>
         ) : busy ? (
-          <button type="button" className="btn btn-gold w-full" disabled aria-busy="true">
+          // Yuklanish paytida tugma BLOKLANADI — takroriy bosish yangi
+          // tranzaksiya yaratmaydi.
+          <button type="button" className="payme-block__pay is-busy" disabled aria-busy="true">
             <span className="loading loading-spinner loading-sm"></span>
+            <span className="payme-block__pay-wait">{t('Kutilmoqda...')}</span>
           </button>
         ) : payLink ? (
-          <a href={payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold w-full">
-            {label} &rarr;
+          <a href={payLink} target="_blank" rel="noopener noreferrer" className="payme-block__pay">
+            <PaymeMark />
+            <span>{label}</span>
           </a>
         ) : (
-          <button type="button" className="btn btn-gold w-full" onClick={onPay} disabled={disabled}>
-            {label}
+          <button type="button" className="payme-block__pay" onClick={handlePay} disabled={disabled}>
+            <PaymeMark />
+            <span>{label}</span>
           </button>
         )}
       </div>
