@@ -2778,6 +2778,10 @@ const RESERVED_CODES = new Set([
 // scripts/test-music-limits.mjs bilan solishtiriladi.
 const MUSIC_LIMIT_FREE_D1 = 5;
 const MUSIC_LIMIT_PREMIUM_D1 = 10;
+// Bitta musiqa faylining maksimal hajmi (MB) — src/lib/musicLimits.js
+// MUSIC_MAX_MB bilan AYNAN bir xil (parity testda tekshiriladi).
+// DIQQAT: bu FAQAT audio uchun. Admin rasm yuklashi 10 MB bo'lib qoladi.
+const MUSIC_MAX_MB_D1 = 20;
 function musicLimitD1(isPremium) { return isPremium ? MUSIC_LIMIT_PREMIUM_D1 : MUSIC_LIMIT_FREE_D1; }
 
 function validateRecordBody(body, opts = {}) {
@@ -3307,7 +3311,9 @@ async function uploadApi(request, env, pathname) {
   const bytes = uploadBase64ToBytes(match[3]);
   if (!bytes?.length) return json({ error: isAudio ? 'bad_audio' : 'bad_image' }, 422);
   const imageLimit = match[2] === 'gif' ? 3 * 1024 * 1024 : 700 * 1024;
-  const limit = (isAdmin || isAudio) ? 10 * 1024 * 1024 : imageLimit;
+  // Audio o'z chegarasiga ega (MUSIC_MAX_MB_D1). Admin rasm yuklashi
+  // avvalgidek 10 MB — musiqa limiti ko'tarilgani unga ta'sir qilmaydi.
+  const limit = isAudio ? MUSIC_MAX_MB_D1 * 1024 * 1024 : (isAdmin ? 10 * 1024 * 1024 : imageLimit);
   if (bytes.length > limit) return json({ error: 'too_large' }, 413);
   const ext = isAudio
     ? ({ mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' })[match[2]]

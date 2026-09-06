@@ -9,7 +9,7 @@ import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import PaymeBlock from '../components/PaymeBlock.jsx';
-import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, musicLimit } from '../lib/musicLimits.js';
+import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, MUSIC_MAX_MB, musicLimit } from '../lib/musicLimits.js';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
@@ -2340,8 +2340,8 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     const file = e.target.files && e.target.files[0];
     const idx = musicUploadIndex;
     if (!file || idx == null) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setMsg({ type: 'err', text: t("Musiqa fayli juda katta (maksimal ~10 MB).") });
+    if (file.size > MUSIC_MAX_MB * 1024 * 1024) {
+      setMsg({ type: 'err', text: t("Musiqa fayli juda katta (maksimal ~{n} MB).", { n: MUSIC_MAX_MB }) });
       if (musicFileRef.current) musicFileRef.current.value = '';
       return;
     }
@@ -2880,7 +2880,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           </button>
         )}
         <p className="mt-2 text-xs text-base-content/45">{t("Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
-        <p className="mt-1.5 text-xs text-base-content/40">{t("iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~10 MB.")}</p>
+        <p className="mt-1.5 text-xs text-base-content/40">{t("iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~{n} MB.", { n: MUSIC_MAX_MB })}</p>
       </label>
       </Gate>
     </Section>
