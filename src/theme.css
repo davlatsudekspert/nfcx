@@ -41,9 +41,9 @@
      `bg-page-bg` utilitasini beradi. */
   --color-page-bg: #000000;
 
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, monospace;
-  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-display: "Playfair Display Variable", "Playfair Display", Georgia, "Times New Roman", serif;
 
   /* O'qilishni yaxshilash uchun kattalashtirilgan matn shkalasi —
      Tailwind'ning standart text-xs (12px)/text-sm (14px) o'lchamlari
