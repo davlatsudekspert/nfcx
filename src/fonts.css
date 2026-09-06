@@ -1,0 +1,27 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   SHRIFTLAR — O'Z SERVERIMIZDAN (Fontsource), Google CDN'dan EMAS
+   ─────────────────────────────────────────────────────────────────────────────
+   2026-09. Avval index.html'da `fonts.googleapis.com` ga <link> bor edi:
+   sahifa ochilishida uchinchi tomon domeniga DNS + TLS + ikkita so'rov
+   ketardi va O'zbekistonda Google Fonts sekin/beqaror bo'lishi mumkin.
+   Endi shrift fayllari npm paketlaridan kelib, bizning domendan
+   Cloudflare orqali beriladi — tashqi bog'liqlik yo'q.
+
+   Har bir paket subset'larga bo'lingan (`unicode-range` bilan), shuning
+   uchun brauzer FAQAT kerakli qismini yuklaydi: o'zbek/ingliz uchun
+   latin, rus uchun cyrillic. Barchasida `font-display: swap` — shrift
+   kelguncha matn ko'rinib turadi.
+
+   Variable paketlar oila nomini "... Variable" deb e'lon qiladi, shuning
+   uchun theme.css'dagi tokenlarda u BIRINCHI, eski nom esa zaxira
+   sifatida turadi. */
+
+/* Sarlavhalar — Playfair Display (vazn 400-900, kerak: 500/600/700) */
+@import '@fontsource-variable/playfair-display';
+
+/* Asosiy matn — Manrope (vazn 200-800, kerak: 400-800) */
+@import '@fontsource-variable/manrope';
+
+/* ID va kodlar — Space Mono (variable yo'q, faqat kerakli 2 ta vazn) */
+@import '@fontsource/space-mono/400.css';
+@import '@fontsource/space-mono/700.css';

@@ -15,6 +15,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/playfair-display": "^5.3.0",
+    "@fontsource/space-mono": "^5.3.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "otplib": "^13.5.0",
