@@ -2127,7 +2127,11 @@ const DICT_BASE = {
   "Ko'p ko'rilgan": { ru: 'Популярные', en: 'Most viewed' },
   'Yangilar': { ru: 'Новые', en: 'Newest' },
   'Qimmatlar': { ru: 'Дорогие', en: 'Most expensive' },
-  "Ko'rishlar": { ru: 'Просмотры', en: 'Views' },
+  // 2026-09: Reyting sahifasi — akkordeon va motivatsion blok.
+  "Yana {n} ta ishtirokchini ko'rish": { ru: 'Показать ещё {n} участников', en: 'Show {n} more' },
+  "Sizning ID'ingiz hali reytingda yo'qmi?": { ru: 'Вашего ID ещё нет в рейтинге?', en: 'Your ID is not in the ranking yet?' },
+  "Profilingizni ulashing va TOP-10'ga kiring.": { ru: 'Поделитесь профилем и попадите в ТОП-10.', en: 'Share your profile and get into the TOP 10.' },
+  "O'z reytingimni tekshirish": { ru: 'Проверить свой рейтинг', en: 'Check my ranking' },
   "YouTube havolasi — video ko‘rinadi.": { ru: "Ссылка YouTube — видео будет видно.", en: "YouTube link — the video will be visible." },
   "YouTube qoidasiga ko'ra ijro paytida rasmiy player ko'rinib turishi shart (eng kichigi 200×200 px). U profilingizning o'ng-pastki burchagida kichkina oynada chiqadi.":
     { ru: "По правилам YouTube во время воспроизведения официальный плеер должен быть виден (минимум 200×200 px). Он появится в небольшом окне в правом нижнем углу вашего профиля.",

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { useAuth } from '../lib/auth.jsx';
 import { tierForCode, TIER_LABEL, TIER_COLOR } from '../lib/pricing.js';
 import { initials } from '../lib/format.js';
 
@@ -38,10 +40,52 @@ function TopCard({ rank, item }) {
   );
 }
 
+// 4-o'rindan boshlab — jadval EMAS, alohida kartochka qatori.
+// Chapda o'rin raqami (doira), ism va ID (oltin, monospace); o'ngda
+// ko'rishlar soni katta raqamda va uning ostida eng yuqori natijaga
+// nisbatan to'ldirilgan yupqa progress-bar; eng chetda tarif chipi.
+function RankRow({ rank, item, maxViews }) {
+  const { t } = useLanguage();
+  const tier = item.tierOverride || tierForCode(item.code);
+  const tc = TIER_COLOR[tier] || '#8a8a8a';
+  const views = Number(item.views) || 0;
+  // Eng kam 2% — 0 ga yaqin natijalarda ham chiziq ko'rinib tursin.
+  const pct = maxViews > 0 ? Math.max(2, Math.round((views / maxViews) * 100)) : 0;
+  return (
+    <button type="button" className="rank-row" onClick={() => navigate('/' + item.code)}>
+      <span className="rank-no">{rank}</span>
+      <span className="rank-who">
+        <span className="rank-name block">{item.name}</span>
+        <span className="rank-id block">{item.code}</span>
+      </span>
+      <span className="rank-views">
+        <span className="rank-num block">{fmt(views)}</span>
+        <span className="rank-cap block">{t("ko'rish")}</span>
+        <span className="rank-bar block" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
+      </span>
+      <span className="rank-chip" style={{ color: tc, background: tc + '1f', border: `1px solid ${tc}44` }}>
+        {t(TIER_LABEL[tier] || tier)}
+      </span>
+    </button>
+  );
+}
+
 export default function RankingPage({ catalog }) {
   const { t } = useLanguage();
+  const { user, myCards } = useAuth();
+  // 11-o'rindan keyingilar yashirin turadi (akkordeon).
+  const [expanded, setExpanded] = useState(false);
   const top = [...catalog].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 30);
   const [first, second, third, ...rest] = top;
+  const maxViews = Number(first?.views) || 0;
+  // 4-10 o'rinlar ochiq, qolganlari akkordeon ichida.
+  const visible = rest.slice(0, 7);
+  const hidden = rest.slice(7);
+  // "O'z reytingimni tekshirish" — kirgan foydalanuvchini o'z profiliga
+  // (u yerda ko'rishlar soni turadi), mehmonni ro'yxatdan o'tishga olib
+  // boradi.
+  const myCode = Array.isArray(myCards) && myCards.length ? myCards[0].code : null;
+  const checkMine = () => navigate(user && myCode ? '/' + myCode : '/register');
 
   return (
     <main className="mx-auto w-full max-w-[1800px] px-6 pb-16 pt-14 sm:px-10 lg:px-14">
@@ -65,30 +109,51 @@ export default function RankingPage({ catalog }) {
             {third && <TopCard rank={3} item={third} />}
           </div>
 
-          {/* Qolganlari — oddiy jadval */}
-          {rest.length > 0 && (
-            <div className="mt-12 overflow-x-auto rounded-2xl border border-white/10">
-              <table className="table table-sm">
-                <thead>
-                  <tr><th>{t("O'rni")}</th><th>{t('Ismi')}</th><th>ID</th><th>{t("Ko'rishlar")}</th><th>{t('Tarifi')}</th></tr>
-                </thead>
-                <tbody>
-                  {rest.map((it, i) => {
-                    const tier = it.tierOverride || tierForCode(it.code);
-                    return (
-                      <tr key={it.code} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => navigate('/' + it.code)}>
-                        <td className="font-mono text-base-content/50">{i + 4}</td>
-                        <td className="max-w-[160px] truncate">{it.name}</td>
-                        <td className="font-mono">{it.code}</td>
-                        <td className="font-semibold">{fmt(it.views || 0)}</td>
-                        <td><span className="font-semibold" style={{ color: TIER_COLOR[tier] }}>{t(TIER_LABEL[tier])}</span></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* 4-10 o'rinlar — kartochka qatorlari (jadval o'rniga). */}
+          {visible.length > 0 && (
+            <div className="mt-12 flex flex-col gap-2.5">
+              {visible.map((it, i) => (
+                <RankRow key={it.code} rank={i + 4} item={it} maxViews={maxViews} />
+              ))}
             </div>
           )}
+
+          {/* 11-o'rindan keyingilar — akkordeon. */}
+          {hidden.length > 0 && (
+            <>
+              <div className="rank-more mt-2.5" data-open={expanded ? '1' : '0'}>
+                <div>
+                  <div className="flex flex-col gap-2.5 pt-0.5">
+                    {hidden.map((it, i) => (
+                      <RankRow key={it.code} rank={i + 11} item={it} maxViews={maxViews} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  aria-expanded={expanded}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--vz-gold,#d4af5a)]/45 bg-transparent px-5 py-2 text-[15px] font-semibold text-[color:var(--vz-gold-2,#f0cf7a)] transition hover:border-[color:var(--vz-gold,#d4af5a)] hover:bg-[color:var(--vz-gold,#d4af5a)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--vz-gold,#d4af5a)]"
+                >
+                  {expanded ? t('Yashirish') : t("Yana {n} ta ishtirokchini ko'rish", { n: fmt(hidden.length) })}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }}>
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Motivatsion CTA — reyting ro'yxatidan keyin alohida blok. */}
+          <div className="rank-cta mt-14">
+            <h2 className="vz-h2 mx-auto max-w-xl !text-[clamp(22px,3vw,32px)]">{t("Sizning ID'ingiz hali reytingda yo'qmi?")}</h2>
+            <p className="mx-auto mt-3 max-w-md text-[15px] text-base-content/60">{t("Profilingizni ulashing va TOP-10'ga kiring.")}</p>
+            <button type="button" className="btn btn-gold mt-6 px-7" onClick={checkMine}>
+              {t("O'z reytingimni tekshirish")}
+            </button>
+          </div>
         </>
       )}
     </main>
