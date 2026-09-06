@@ -274,7 +274,7 @@
     0 0 26px var(--tier-glow, transparent);
 }
 .cat-card > * { position: relative; z-index: 3; }
-.cat-grid > * { content-visibility: auto; contain-intrinsic-size: auto 190px; }
+.cat-grid > * { content-visibility: auto; contain-intrinsic-size: auto 240px; }
 
 /* Katalogdagi begushiy yaltiroq — kartadagi tarif urg'usi uchun biroz kuchliroq. */
 .cat-card.tier-shine::after {
@@ -765,4 +765,83 @@ body.pricing-bg footer{background:var(--color-page-bg);}
    qolardi. Desktopda joy yetarli, shuning uchun tegilmaydi. */
 @media (max-width: 767px) {
   .vz-music-open { padding-bottom: 330px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KATALOG KARTASI — 2026-09 qayta ishlangan
+   ═══════════════════════════════════════════════════════════════════════
+   Avval karta juda cho'zilgan edi (~3.7:1) va faqat matndan iborat edi.
+   Endi:
+     • nisbat 1.85:1 — NFC kartaga yaqin, balandroq, cho'zilmagan;
+     • chapda 68px dumaloq PROFIL RASMI (avtomatik: profilga rasm qo'yilgan
+       bo'lsa katalogda ham chiqadi; bo'lmasa ismning bosh harfi);
+     • ID katta va tarif rangida (nfcstore.uz/ prefiksi olib tashlandi —
+       kartaning istalgan joyi bosilsa profil ochilaveradi);
+     • o'ngda tarif belgisi, uning ostida ko'rishlar soni;
+     • pastda nozik oltin chiziq, undan keyin narx va vaqt;
+     • kartalar bir xil balandlikda — qator "tishli" bo'lmaydi.
+   Ranglar JSX'dan `--tier` / `--tier-line` orqali keladi (o'zgarmagan). */
+.cat-card--v2 { aspect-ratio: 1.85; display: flex; flex-direction: column; }
+.cat-head { display: flex; align-items: flex-start; gap: 14px; min-width: 0; }
+.cat-av {
+  position: relative; z-index: 4; flex: none;
+  width: 68px; height: 68px; border-radius: 50%;
+  border: 1.5px solid var(--tier-line, rgba(255,255,255,.18));
+  background: linear-gradient(150deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  object-fit: cover; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display, Georgia), serif; font-size: 28px; line-height: 1;
+  color: color-mix(in srgb, var(--tier, #fff) 78%, #fff);
+  transform-origin: center;
+  transition: transform .26s cubic-bezier(.2,.8,.2,1), box-shadow .26s ease, border-color .26s ease;
+}
+.cat-idwrap { min-width: 0; flex: 1; }
+.cat-id {
+  display: block; font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: clamp(20px, 1.7vw, 25px); font-weight: 700; letter-spacing: .11em; line-height: 1.05;
+  color: var(--tier, #f7f2e8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cat-name {
+  display: flex; align-items: center; gap: 5px; margin-top: 7px;
+  font-size: 14.5px; color: rgba(247,242,232,.66); min-width: 0;
+}
+.cat-name > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; flex: none; }
+.cat-views {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 700; color: rgba(247,242,232,.5); white-space: nowrap;
+}
+.cat-role {
+  margin-top: 11px; font-size: 12.5px; line-height: 1.5; color: rgba(247,242,232,.44);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cat-rule { margin-top: auto; height: 1px; background: linear-gradient(90deg, var(--tier-line, rgba(255,255,255,.2)), transparent); }
+.cat-foot { padding-top: 11px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.cat-price { font-size: 15px; font-weight: 800; color: rgba(247,242,232,.88); white-space: nowrap; }
+.cat-when { font-size: 11.5px; color: rgba(247,242,232,.38); white-space: nowrap; }
+
+/* Hover — rasm 1.75 barobar kattalashadi va kartadan tashqariga chiqadi,
+   shuning uchun ID va ismni TO'SMAYDI. Kartaning `overflow` i shu paytda
+   ochiladi, begushiy yaltiroq esa vaqtincha to'xtaydi (aks holda u ham
+   kartadan tashqariga chiqib ketardi). */
+.cat-card--v2:hover { overflow: visible; }
+.cat-card--v2:hover.tier-shine::after { display: none; }
+.cat-card--v2:hover .cat-av {
+  transform: translate(-20px, -14px) scale(1.75);
+  border-color: var(--tier, #f0cf7a);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tier, #f0cf7a) 55%, transparent), 0 16px 34px rgba(0,0,0,.65);
+}
+@media (prefers-reduced-motion: reduce) { .cat-av { transition: none; } }
+/* Telefon: sichqoncha yo'q — rasm o'z holicha turadi, karta biroz pastroq.
+   Bundan tashqari tarif belgisi va ko'rishlar soni ALOHIDA qatorga
+   tushadi: aks holda ular ID uchun joyni yeb, "VIP001" kesilib qolardi
+   (320px ekranda o'lchandi). */
+@media (max-width: 639px) {
+  .cat-card--v2 { aspect-ratio: auto; min-height: 190px; }
+  .cat-card--v2:hover .cat-av { transform: none; box-shadow: none; }
+  .cat-head { flex-wrap: wrap; }
+  .cat-idwrap { flex: 1 1 calc(100% - 82px); }
+  .cat-meta { order: 3; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .cat-id { font-size: 21px; letter-spacing: .09em; }
 }
