@@ -307,7 +307,7 @@ export async function handle(request, env, url, H) {
     const updated = await env.DB.prepare(`UPDATE bot_orders SET status = 'paid' WHERE id = ? AND status = 'pending' RETURNING *`).bind(id).first();
     if (!updated) return H.json({ error: 'already_processed' }, 409);
     if (!(await H.getRecord(env, order.code))) {
-      await H.createRecordD1(env, { code: order.code, name: 'TELEGRAM MIJOZ', price: Number(order.price) });
+      await H.createRecordD1(env, { code: order.code, name: 'TELEGRAM MIJOZ', price: Number(order.price), source: 'admin_order' });
       if (order.user_id) await H.attachCardToUserD1(env, order.code, order.user_id);
     }
     await H.logAdminActivity(env, { action: 'payment_confirmed_manually', details: `bot_orders #${id} (${order.code})`, oldValue: 'pending', newValue: 'paid', ip });

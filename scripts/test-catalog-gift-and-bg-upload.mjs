@@ -37,7 +37,9 @@ const j = async (pathname, init) => {
 
   check('activated gift card -> isGift true', by.GIFT01?.isGift, true);
   check('purchased card -> isGift false', by.PAID01?.isGift, false);
-  check('purchased card keeps its real price', by.PAID01?.price, 149000);
+  // 2026-09: narx TARIF jadvalidan keladi (catalogPriceD1) — PAID01 ->
+  // Bronza -> 49 000. Muhimi shundaki, u "Sovg'a" bo'lib QOLMAYDI.
+  check('purchased card is priced from its TARIFF (PAID01 -> Bronza 49 000)', by.PAID01?.price, 49000);
   check('price 0 alone does NOT mark a card as a gift', by.ZERO01?.isGift, false);
   check('reserved (not activated) gift is not shown as a gift yet', by.PAID01?.isGift, false);
 

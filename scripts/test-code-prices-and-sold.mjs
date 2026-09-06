@@ -62,7 +62,10 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   }
   check('catalog API serves the override price for every listed id present', bad, 0);
   check('VIP001 stored price (199 000) is overridden by the source of truth', by.VIP001?.price, 7_600_000);
-  check('a normal paid card keeps its stored price', by.OTH222?.price, 49_000);
+  // 2026-09: katalog narxining yagona manbai TARIF jadvaliga o'tdi
+  // (hosting/worker.js catalogPriceD1). OTH222 -> Gold tarifi -> 149 000.
+  // Saqlangan `cards.price` (49 000) endi faqat zaxira qiymat.
+  check('an ordinary card is priced from its TARIFF (OTH222 -> Gold 149 000)', by.OTH222?.price, 149_000);
 
   const s = await j('/api/records/search?q=OOO');
   const hit = (s.body?.records || []).find((x) => x.code === 'OOO000');

@@ -74,6 +74,7 @@ const DICT_BASE = {
   'Kirish': { ru: 'Войти', en: 'Login' },
   'Chiqish': { ru: 'Выйти', en: 'Logout' },
   'Menyu': { ru: 'Меню', en: 'Menu' },
+  'Asosiy menyu': { ru: 'Главное меню', en: 'Main menu' },
 
   // ─────────────────────────── Footer ───────────────────────────
   'Mahsulot': { ru: 'Продукт', en: 'Product' },

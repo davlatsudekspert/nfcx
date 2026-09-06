@@ -1119,7 +1119,12 @@ async function ensureCoreSchema(env) {
         "links_transparent" INTEGER DEFAULT 0 NOT NULL, "card_design" TEXT, "link_style" TEXT DEFAULT 'standard' NOT NULL,
         "profile_type" TEXT DEFAULT 'personal' NOT NULL, "city" TEXT, "hidden_from_directory" INTEGER DEFAULT 0 NOT NULL,
         "category_slug" TEXT, "lead_capture" INTEGER DEFAULT 0 NOT NULL, "verified" INTEGER DEFAULT 0 NOT NULL,
-        "address" TEXT, "latitude" REAL, "longitude" REAL, PRIMARY KEY("code")
+        "address" TEXT, "latitude" REAL, "longitude" REAL,
+        -- Karta QAYERDAN paydo bo'lgani (ishonchli manba belgisi, 2026-09).
+        -- Qiymatlar: 'registration_auto' | 'gift_activation' | 'web_order'
+        -- | 'admin_order'. Eski qatorlarda NULL bo'ladi (qo'shimcha ustun,
+        -- hech narsa o'chirilmaydi) — ensureCardSourceColumn() ga qarang.
+        "source" TEXT, PRIMARY KEY("code")
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "cards_ts_idx" ON "cards" ("ts" DESC)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admins" (
@@ -1259,6 +1264,25 @@ async function ensureCoreSchema(env) {
   // target a table that doesn't exist yet on a fresh DB and silently
   // no-op (swallowed by its own .catch), leaving the columns missing.
   await ensureWebOrderTimestampColumns(env);
+  await ensureCardSourceColumn(env);
+}
+
+// ── cards.source — kartaning ISHONCHLI manba belgisi (2026-09) ───────────
+// Ilgari `cards` jadvalida karta qaysi oqimdan paydo bo'lganini ko'rsatuvchi
+// hech qanday ustun yo'q edi. Ro'yxatdan o'tishda avtomatik beriladigan
+// bepul ID'ni katalogdan chiqarish uchun aynan shu ma'lumot kerak —
+// narx (`price = 0`) YARAMAYDI, chunki admin sovg'asi ham 0 narxda bo'ladi,
+// lekin u katalogda "Sovg'a" bo'lib KO'RINISHI kerak.
+//
+// Qo'shimcha (additive) va nullable: mavjud qatorlar tegilmaydi, hech narsa
+// o'chirilmaydi, taxminiy backfill QILINMAYDI. Eski qatorlar uchun
+// catalogVisibleSql() dagi tor, ehtiyotkor qoida ishlaydi.
+let cardSourceColumnReady;
+async function ensureCardSourceColumn(env) {
+  if (!cardSourceColumnReady) {
+    cardSourceColumnReady = env.DB.prepare(`ALTER TABLE cards ADD COLUMN source TEXT`).run().catch(() => {});
+  }
+  await cardSourceColumnReady;
 }
 
 // admin_sessions / admin_2fa_pending / admin_totp_setup_pending — pulled
@@ -1650,12 +1674,14 @@ function rowToRecord(row) {
     cardNumbers: parseJsonArray(row.card_numbers), tierOverride: row.tier_override || '', verified: !!row.verified,
     cardDesign: parseJsonObjectOrNull(row.card_design), theme: row.theme || 'classic', forSale: !!row.for_sale,
     salePrice: row.sale_price != null ? Number(row.sale_price) : null, hashtags: parseJsonArray(row.hashtags),
-    // Narx yagona manbadan: qo'lda belgilangan per-code narx bo'lsa u
-    // ustun (CODE_PRICES_D1) — shunda katalog, qidiruv, PROFIL BELGISI,
-    // Admin va auksion bir xil qiymatni ko'rsatadi. Bu faqat KO'RSATISH
-    // narxi; haqiqiy xarid summasi alohida quote orqali hisoblanadi va
-    // web_orders/Payme tarixi bunga bog'liq emas.
-    price: codePriceOverrideD1(row.code) ?? Number(row.price), ts: Number(row.ts), views: Number(row.views),
+    // Narx yagona manbadan — katalogdagi bilan AYNAN bir xil qoida
+    // (catalogPriceD1: tarif narxi -> per-code rasmiy narx -> saqlangan
+    // narx), shunda katalog, qidiruv, PROFIL BELGISI, Admin va auksion bir
+    // xil qiymatni ko'rsatadi. Bu faqat KO'RSATISH narxi; haqiqiy xarid
+    // summasi alohida quote orqali hisoblanadi va web_orders/Payme tarixi
+    // bunga bog'liq emas.
+    price: catalogPriceD1({ code: row.code, tierOverride: row.tier_override || '', price: Number(row.price) }, null),
+    ts: Number(row.ts), views: Number(row.views),
   };
 }
 
@@ -1688,13 +1714,131 @@ function codePriceOverrideD1(code) {
   return Object.prototype.hasOwnProperty.call(CODE_PRICES_D1, c) ? CODE_PRICES_D1[c] : null;
 }
 
-function catalogCard(record) {
+// ── KATALOGDA KO'RINMAYDIGAN KARTALAR: ro'yxatdan o'tishdagi avtomatik ID ──
+//
+// Ro'yxatdan o'tganda har foydalanuvchiga avtomatik, bepul ID beriladi
+// (hosting/api/auth.js `createFreeAutoId`). Bu ID SOTUVDA emas — u
+// katalogda umuman ko'rinmasligi kerak: ro'yxatda ham, qidiruvda ham,
+// filtrda ham, umumiy sanoqda ham.
+//
+// MANBA — TAXMIN EMAS:
+//   1) BIRLAMCHI: `cards.source = 'registration_auto'`. Bu belgi endi
+//      registratsiya oqimining O'ZIDA yoziladi, shuning uchun bundan
+//      keyingi barcha avtomatik ID'lar 100% aniq belgilangan bo'ladi.
+//   2) ESKI QATORLAR (source IS NULL, migratsiyagacha yaratilgan): kod
+//      "8 xonali raqam" NAMESPACE'ida bo'lishi. Bu narx yoki ism bo'yicha
+//      taxmin EMAS — 8 xonali shakl kod bazasida REZERV qilingan:
+//      `isPersonalCodePurchasable()`/`personalPurchaseQuote()` uni sotib
+//      olish oqimida rad etadi, sovg'a va auksion kodlari esa 6 belgili
+//      (AAA000) formatda. Ya'ni bu shakldagi kartani `createFreeAutoId`
+//      dan boshqa hech qaysi oqim yarata olmaydi.
+//   3) Va shunga qaramay QO'SHIMCHA xavfsizlik: eski qator faqat unda
+//      HECH QANDAY sotuv izi bo'lmasa yashiriladi — sovg'a yozuvi
+//      (nfc_gifts), buyurtma (web_orders) yoki auksion (auctions) bo'lsa,
+//      karta katalogda QOLADI.
+//
+// Ma'lumot O'CHIRILMAYDI va o'zgartirilmaydi: bu faqat KO'RINISH filtri.
+// Egasining kabineti (/api/auth/me), public profili (/:code) va Admin
+// Panel bu filtrdan mutlaqo ta'sirlanmaydi.
+const CARD_SOURCE_REGISTRATION_AUTO = 'registration_auto';
+const FREE_AUTO_ID_GLOB = '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+
+// `alias` — SQL'dagi cards jadvali taxallusi ('cards' yoki 'c').
+// Natija: katalogda KO'RINISHI kerak bo'lgan qatorlar uchun TRUE.
+function catalogVisibleSql(alias) {
+  const a = alias;
+  return `(
+    COALESCE(${a}.source, '') <> '${CARD_SOURCE_REGISTRATION_AUTO}'
+    AND NOT (
+      ${a}.source IS NULL
+      AND ${a}.code GLOB '${FREE_AUTO_ID_GLOB}'
+      AND NOT EXISTS (SELECT 1 FROM nfc_gifts g2 WHERE g2.code = ${a}.code)
+      AND NOT EXISTS (SELECT 1 FROM web_orders w2 WHERE w2.code = ${a}.code)
+      AND NOT EXISTS (SELECT 1 FROM auctions a2 WHERE a2.code = ${a}.code)
+    )
+  )`;
+}
+
+// ── AUKSIONDA SOTILGAN ID'NING YAKUNIY (G'OLIB) NARXI ────────────────────
+//
+// Katalogda auksion narxi FAQAT haqiqatda auksion orqali sotilgan ID uchun
+// ko'rsatiladi. Talab qilinadigan BARCHA shartlar (bittasi ham yetishmasa —
+// narx QO'LLANMAYDI):
+//   • shu kod uchun `auctions` jadvalida haqiqiy yozuv bor;
+//   • auksion holati 'sold' yoki 'completed';
+//   • haqiqiy g'olib bor (`highest_bidder_id IS NOT NULL`);
+//   • yakuniy yutuq taklifi BAZADA saqlangan (`bids` jadvalida g'olibning
+//     shu auksiondagi eng katta taklifi) — narx aynan SHU yozuvdan olinadi,
+//     `current_price` dan emas;
+//   • ID g'olibga biriktirilgan (`cards.user_id = highest_bidder_id`).
+//
+// Tarif, kod nomi, boshlang'ich narx, `price = 0` yoki shunchaki "egasi bor"
+// belgisi auksion narxini ANIQLAMAYDI. Soxta auksion/g'olib/taklif
+// yaratilmaydi, tarixiy summalar o'zgartirilmaydi.
+//
+// Kelajakda yangi auksion tugab, ID g'olibga faollashtirilsa — narx shu
+// yerdan AVTOMATIK chiqadi, qo'lda hech narsa yozish kerak emas.
+async function auctionFinalPricesD1(env) {
+  const out = new Map();
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT a.code AS code, MAX(b.amount) AS final_amount
+         FROM auctions a
+         JOIN cards c ON c.code = a.code AND c.user_id = a.highest_bidder_id
+         JOIN bids b ON b.auction_id = a.id AND b.user_id = a.highest_bidder_id
+        WHERE a.status IN ('sold', 'completed') AND a.highest_bidder_id IS NOT NULL
+        GROUP BY a.code`
+    ).all();
+    for (const r of rows.results || []) {
+      const amount = Number(r.final_amount);
+      if (Number.isFinite(amount) && amount > 0) out.set(String(r.code || '').toUpperCase(), amount);
+    }
+  } catch (e) {
+    // Auksion narxi topilmasa katalog yiqilmaydi — oddiy tarif narxiga
+    // qaytamiz (o'ylab topilgan narx YO'Q).
+    console.error('auctionFinalPricesD1', e && e.message);
+  }
+  return out;
+}
+
+// ── KATALOG NARXINING YAGONA MANBAI ──────────────────────────────────────
+// Ustuvorlik (foydalanuvchi topshirig'idagi tartib):
+//   1. Faollashtirilgan admin sovg'asi -> narx emas, "Sovg'a" (isGift).
+//   2. Haqiqiy sotilgan auksion ID -> yakuniy yutuq narxi.
+//   3. Oddiy tarif narxi — Gold/Premium/Silver/Bronza uchun YAGONA markaziy
+//      jadvaldan (PERSONAL_TIER_PRICE = src/lib/pricing.js TIER_PRICE):
+//      Gold 149 000, Premium 199 000, Silver 99 000, Bronza 49 000.
+//   4. Alohida rasmiy narxi saqlangan ID (CODE_PRICES_D1) — ekslyuziv
+//      darajada tarif narxi yo'q (null), shuning uchun shu yerga tushadi.
+//   5. Kartaning bazadagi saqlangan narxi (> 0 bo'lsa).
+//   6. Aks holda 0 — narx O'YLAB TOPILMAYDI.
+function catalogPriceD1(record, auctionFinal) {
+  const code = String(record.code || '').toUpperCase();
+  if (auctionFinal != null && Number(auctionFinal) > 0) return Number(auctionFinal);
+  // Sotib olinmaydigan kod (ro'yxatdan o'tishdagi 8 xonali bepul ID yoki
+  // bloklangan prefiks) — unga TARIF narxi QO'LLANMAYDI, aks holda bepul
+  // ID kabinetda "49 000 so'm" bo'lib ko'rinardi. Saqlangan qiymat
+  // (odatda 0) o'z holicha qoladi.
+  if (!isPersonalCodePurchasable(code)) {
+    const raw = Number(record.price);
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  }
+  const tier = personalIdTierD1({ code, tierOverride: record.tierOverride || '', isGift: false });
+  const tierPrice = PERSONAL_TIER_PRICE[tier];
+  if (tierPrice != null && tierPrice > 0) return tierPrice;
+  const ov = codePriceOverrideD1(code);
+  if (ov != null) return ov;
+  const stored = Number(record.price);
+  return Number.isFinite(stored) && stored > 0 ? stored : 0;
+}
+
+function catalogCard(record, auctionFinal = null) {
   return {
     code: record.code, name: record.name, role: record.role, avatarUrl: record.avatarUrl, tg: record.tg,
     hashtags: record.hashtags, theme: record.theme,
-    // Narx: qo'lda belgilangan per-code narx BO'LSA — u ustun (yagona
-    // manba: CODE_PRICES_D1). Aks holda kartaning saqlangan narxi.
-    price: codePriceOverrideD1(record.code) ?? record.price,
+    // Narx: catalogPriceD1() — yagona manba (sovg'a -> auksion yakuniy
+    // narxi -> tarif narxi -> per-code rasmiy narx -> saqlangan narx).
+    price: catalogPriceD1(record, auctionFinal),
     ts: record.ts, views: record.views,
     profileType: record.profileType, city: record.city, categorySlug: record.categorySlug,
     verified: record.verified, tierOverride: record.tierOverride || '',
@@ -2102,8 +2246,9 @@ async function createRecordD1(env, record) {
     INSERT INTO cards
       (code, name, role, avatar_url, bg_url, bg_pattern, accent_color, bg_color, bg_animated, music_url,
        tg, phone, email, linkedin, instagram,
-       about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       about, facebook, twitter, website, card_number, extra_links, card_numbers, theme, hashtags, price, ts,
+       source)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT("code") DO NOTHING
     RETURNING ${RECORD_COLUMNS}
   `).bind(
@@ -2114,6 +2259,10 @@ async function createRecordD1(env, record) {
     record.about || '', record.facebook || '', record.twitter || '', record.website || '',
     record.cardNumber || '', JSON.stringify(record.extraLinks || []), JSON.stringify(record.cardNumbers || []),
     record.theme || 'classic', JSON.stringify(record.hashtags || []), record.price, Date.now(),
+    // Manba belgisi: bu yo'l HECH QACHON registratsiyaning avtomatik ID'si
+    // emas (to'langan buyurtma yoki admin buyurtmasi) — shuning uchun
+    // karta katalogda ko'rinishda qoladi.
+    record.source || 'web_order',
   ).first();
   return row ? rowToRecord(row) : null;
 }
@@ -2746,12 +2895,20 @@ async function recordsApi(request, env, url) {
 
   if (path === '/api/records' && request.method === 'GET') {
     // is_gift — admin sovg'asi belgisi (catalogCard izohiga qarang).
+    // catalogVisibleSql — ro'yxatdan o'tishdagi avtomatik ID'lar butunlay
+    // chiqarib tashlanadi (ro'yxat, filtr, sanoq va pagination ham shu
+    // javobdan hisoblanadi, shuning uchun ular hech qayerda ko'rinmaydi).
     const rows = await env.DB.prepare(
       `SELECT ${RECORD_COLUMNS},
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
-         FROM cards WHERE hidden_from_directory = 0 ORDER BY ts DESC LIMIT 500`
+         FROM cards WHERE hidden_from_directory = 0 AND ${catalogVisibleSql('cards')}
+         ORDER BY ts DESC LIMIT 500`
     ).all();
-    return json((rows.results || []).map((r) => catalogCard({ ...rowToRecord(r), isGift: !!r.is_gift })));
+    const finals = await auctionFinalPricesD1(env);
+    return json((rows.results || []).map((r) => catalogCard(
+      { ...rowToRecord(r), isGift: !!r.is_gift },
+      finals.get(String(r.code || '').toUpperCase()) ?? null,
+    )));
   }
 
   if (path === '/api/records/search' && request.method === 'GET') {
@@ -2763,19 +2920,20 @@ async function recordsApi(request, env, url) {
               c.profile_type, c.city, c.category_slug, c.verified, c.tier_override,
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
        FROM cards c LEFT JOIN users u ON u.id = c.user_id
-       WHERE c.hidden_from_directory = 0 AND (
+       WHERE c.hidden_from_directory = 0 AND ${catalogVisibleSql('c')} AND (
          LOWER(c.code) LIKE ? OR LOWER(c.name) LIKE ? OR LOWER(COALESCE(c.role,'')) LIKE ? OR
          LOWER(COALESCE(c.city,'')) LIKE ? OR LOWER(COALESCE(c.email,'')) LIKE ? OR
          LOWER(COALESCE(c.phone,'')) LIKE ? OR LOWER(COALESCE(c.tg,'')) LIKE ? OR
          LOWER(c.hashtags) LIKE ? OR LOWER(COALESCE(u.email,'')) LIKE ? OR LOWER(COALESCE(u.phone,'')) LIKE ?
        ) ORDER BY c.ts DESC LIMIT 60`
     ).bind(like, like, like, like, like, like, like, like, like, like).all();
+    const finals = await auctionFinalPricesD1(env);
     const records = (rows.results || []).map((r) => catalogCard({
       code: r.code, name: r.name, role: r.role || '', avatarUrl: r.avatar_url || '', tg: r.tg || '',
       hashtags: parseJsonArray(r.hashtags), theme: r.theme, price: Number(r.price), ts: Number(r.ts), views: Number(r.views),
       profileType: r.profile_type, city: r.city || '', categorySlug: r.category_slug || '', verified: !!r.verified,
       tierOverride: r.tier_override || '', isGift: !!r.is_gift,
-    }));
+    }, finals.get(String(r.code || '').toUpperCase()) ?? null));
     return json({ records });
   }
 
