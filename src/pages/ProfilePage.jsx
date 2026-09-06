@@ -1501,12 +1501,16 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       style={outerPageStyle(record.theme || 'classic', record, tier)}
     >
       <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
-        <button onClick={() => navigate('/')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
-          <IconArrowLeft /> {t('Bosh sahifaga')}
+        {/* Tor ekranda FAQAT strelka qoladi: "Bosh sahifaga" matni ~130px
+            egallab, yonidagi havola maydonini nolga siqib qo'yardi (320px
+            ekranda havola umuman ko'rinmasdi). aria-label ekran o'quvchi
+            uchun matnni saqlaydi. */}
+        <button onClick={() => navigate('/')} aria-label={t('Bosh sahifaga')} title={t('Bosh sahifaga')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
+          <IconArrowLeft /> <span className="hidden sm:inline">{t('Bosh sahifaga')}</span>
         </button>
         <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5">
           <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[16px] text-[color:var(--vz-ink)] outline-none" />
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
+          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
         </div>
         <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
           <LanguageSwitcher />
@@ -1545,8 +1549,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           )}
         </div>
         <div className="flex gap-1">
-          <button title={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          <button title={t('Ulashish')} onClick={() => shareProfile(`${window.location.origin}/${record.code.toLowerCase()}`)} className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
+          <button title={t('Nusxalash')} aria-label={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
+          <button title={t('Ulashish')} aria-label={t('Ulashish')} onClick={() => shareProfile(`${window.location.origin}/${record.code.toLowerCase()}`)} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
         </div>
       </div>
 
@@ -1732,23 +1736,29 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           <div className="text-center"><b className="font-display block text-[19px] font-bold">{dateTime(record.ts)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t('Band qilingan')}</span></div>
         </div>
 
-        <div className="mt-6 flex justify-center gap-[26px] border-b border-[color:var(--vz-line)]">
+        {/* Tor ekranda tab qatori SIG'MAY qolardi: 4-5 ta tabli biznes
+              profilida (Menyu, Mahsulotlar, Xizmatlar) qator ~450px bo'lib,
+              ota-blokning `overflow-hidden`i chetdagi tablarni KESIB
+              tashlardi va ularga umuman yetib bo'lmasdi. Endi tor ekranda
+              qator chapdan boshlanadi va yon tomonga suriladi; keng ekranda
+              avvalgidek markazda turadi. */}
+        <div className="vz-tabrow mt-6 flex justify-start gap-5 overflow-x-auto border-b border-[color:var(--vz-line)] sm:justify-center sm:gap-[26px] sm:overflow-visible">
           <button
             onClick={() => setTab('vizitka')}
-            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+            className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
           >
             {t("Raqamli tashrif qog'ozi")}
           </button>
           <button
             onClick={() => setTab('postlar')}
-            className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+            className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
           >
             {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
           </button>
           {menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('menyu')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
             >
               {t('Menyu')}
             </button>
@@ -1756,7 +1766,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           {products.length > 0 && productEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('mahsulotlar')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'mahsulotlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'mahsulotlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
             >
               {t('Mahsulotlar')}
             </button>
@@ -1764,7 +1774,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           {services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && (
             <button
               onClick={() => setTab('xizmatlar')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent pb-3 pr-0.5 pl-0.5 text-[16.5px] font-semibold transition ${tab === 'xizmatlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
+              className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'xizmatlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
             >
               {t('Xizmatlar')}
             </button>

@@ -939,3 +939,8 @@ body.pricing-bg footer{background:var(--color-page-bg);}
   left: 50%; transform: translateX(-50%);
   background: linear-gradient(90deg, transparent, var(--vz-gold-2, #f0cf7a), transparent);
 }
+
+/* Profil tab qatori — tor ekranda suriladi, lekin scrollbar ko'rinmasin
+   (2026-09). Tablar `whitespace-nowrap`, shuning uchun matn sinmaydi. */
+.vz-tabrow{scrollbar-width:none;-ms-overflow-style:none}
+.vz-tabrow::-webkit-scrollbar{display:none}
