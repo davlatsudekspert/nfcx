@@ -1,10 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
-import { NfcIdCard, NFC_CARD_HEIGHT } from './NfcIdCard';
-import { haptics } from '../native/haptics';
-import { color, motion, radius, space, type as typeTokens } from '../design-system/tokens';
+import React from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
+import { NfcIdCard } from './NfcIdCard';
+import { color, space } from '../design-system/tokens';
 
 export interface NfcCardStackItem {
   /** Stable React key — the code for an owned card, `order-<id>` for a
@@ -22,181 +27,136 @@ export interface NfcCardStackItem {
 
 export interface NfcCardStackProps {
   items: NfcCardStackItem[];
-  /** Start expanded — for screens where scanning beats depth. */
+  /** Kept for call-site compatibility; the wallet is always browsable. */
   initiallyExpanded?: boolean;
 }
 
-const CARD_H = NFC_CARD_HEIGHT.stack;
-/** Vertical peek of each card behind the front one. */
-const PEEK = 22;
-/** How many cards behind the front one are actually drawn while collapsed. */
-const MAX_PEEK = 3;
-const GAP = space.md;
-const SCALE_STEP = 0.035;
-const OPACITY_STEP = 0.14;
-
-const SPRING = { damping: motion.sheetSpring.damping, stiffness: motion.sheetSpring.stiffness, mass: 0.9 };
-
-function collapsedDepth(i: number) {
-  return Math.min(i, MAX_PEEK);
-}
+/** How far each card behind the front one peeks out to the right. */
+const STEP = 52;
+/** Space the last card needs on its right so it can still snap to the front. */
+const EDGE = space.lg;
 
 /**
- * The user's NFC IDs as a physical deck (design brief §2): cards stacked
- * with a small vertical offset and a scale/opacity falloff, so the edges of
- * the ones behind are visible and the front card stays fully readable.
+ * The user's NFC IDs as a horizontal wallet with parallax depth: the front
+ * card is sharp and full-size, the cards behind it peek out to the right,
+ * each one smaller, dimmer and turned slightly away, the way a fanned deck
+ * sits in the hand. Swiping slides the front card away and brings the next
+ * one forward; snapping keeps a card always in the front position.
  *
- * Interaction mirrors a real wallet: the front card acts (opens its ID), a
- * card behind fans the deck out, and every card — collapsed or expanded —
- * stays a real, labelled button. Only the front card sweeps its sheen, so a
- * deck reads as one object catching the light rather than five blinking
- * rectangles.
- *
- * Cheap by construction: one shared value drives every card's transform on
- * the UI thread, and while collapsed only the visible layers are mounted, so
- * a 20-ID deck costs the same as a 4-ID one until it is opened.
+ * Cheap by construction: a single shared value (`scrollX`) written by the
+ * scroll handler on the UI thread drives every card's transform and the
+ * page dots — no per-frame JS, no measuring. Each card sweeps its sheen
+ * once on mount, staggered, and never again.
  */
-export function NfcCardStack({ items, initiallyExpanded = false }: NfcCardStackProps) {
-  const [fanned, setFanned] = useState(initiallyExpanded);
+export function NfcCardStack({ items }: NfcCardStackProps) {
+  const { width: screenW } = useWindowDimensions();
+  const cardW = Math.min(320, screenW - EDGE * 2 - STEP);
+  const scrollX = useSharedValue(0);
+
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollX.value = e.contentOffset.x;
+  });
+
   const count = items.length;
-  const stackable = count > 1;
-  // A single card has nothing to fan out, so the expanded state is derived
-  // rather than stored — a deck that shrinks to one card cannot get stuck.
-  const expanded = fanned && stackable;
-  const progress = useSharedValue(expanded ? 1 : 0);
-
-  useEffect(() => {
-    progress.value = withSpring(expanded ? 1 : 0, SPRING);
-  }, [expanded, progress]);
-
-  const collapsedHeight = CARD_H + Math.min(count - 1, MAX_PEEK) * PEEK;
-  const expandedHeight = count * CARD_H + Math.max(count - 1, 0) * GAP;
-
-  const containerStyle = useAnimatedStyle(() => ({
-    height: collapsedHeight + (expandedHeight - collapsedHeight) * progress.value,
-  }));
-
-  const toggle = useCallback(() => {
-    haptics.selection();
-    setFanned((v) => !v);
-  }, []);
-
-  // While collapsed, cards past the visible layers are not mounted at all.
-  const rendered = useMemo(
-    () => (expanded ? items : items.slice(0, MAX_PEEK + 1)),
-    [expanded, items],
-  );
-
   if (count === 0) return null;
+
+  const paddingRight = Math.max(EDGE, screenW - EDGE - cardW);
 
   return (
     <View>
-      <Animated.View style={[styles.stack, stackable ? containerStyle : { height: CARD_H }]}>
-        {rendered.map((item, i) => (
-          <StackedCard
-            key={item.key}
-            item={item}
-            index={i}
-            expanded={expanded}
-            stackable={stackable}
-            progress={progress}
-            onExpand={toggle}
-          />
+      <Animated.ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        snapToInterval={STEP}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        contentContainerStyle={[styles.track, { paddingLeft: EDGE, paddingRight }]}
+      >
+        {items.map((item, i) => (
+          <WalletCard key={item.key} item={item} index={i} count={count} cardW={cardW} scrollX={scrollX} />
         ))}
-      </Animated.View>
+      </Animated.ScrollView>
 
-      {stackable && (
-        <Pressable
-          onPress={toggle}
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          accessibilityLabel={expanded ? "ID'lar to'plamini yig'ish" : `Barcha ID'lar, ${count} ta`}
-          style={({ pressed }) => [styles.toggle, pressed && styles.togglePressed]}
-        >
-          <Text style={styles.toggleText}>
-            {expanded ? "Yig'ish" : `Barcha ID'lar (${count})`}
-          </Text>
-          <Feather name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={color.gold} />
-        </Pressable>
+      {count > 1 && (
+        <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {items.map((item, i) => (
+            <Dot key={item.key} index={i} scrollX={scrollX} />
+          ))}
+        </View>
       )}
     </View>
   );
 }
 
-function StackedCard({
+function WalletCard({
   item,
   index,
-  expanded,
-  stackable,
-  progress,
-  onExpand,
+  count,
+  cardW,
+  scrollX,
 }: {
   item: NfcCardStackItem;
   index: number;
-  expanded: boolean;
-  stackable: boolean;
-  progress: SharedValue<number>;
-  onExpand: () => void;
+  count: number;
+  cardW: number;
+  scrollX: SharedValue<number>;
 }) {
-  const depth = collapsedDepth(index);
-  const collapsedY = depth * PEEK;
-  const collapsedScale = 1 - depth * SCALE_STEP;
-  const collapsedOpacity = 1 - depth * OPACITY_STEP;
-  const expandedY = index * (CARD_H + GAP);
+  const overhang = cardW - STEP;
 
   const style = useAnimatedStyle(() => {
-    const p = progress.value;
+    // p = 0: this card is at the front. p < 0: it sits behind, to the
+    // right. p > 0: it has been swiped past and slides fully off the left.
+    const p = scrollX.value / STEP - index;
+    const behind = Math.max(0, -p);
+    const passed = Math.max(0, p);
     return {
       transform: [
-        { translateY: collapsedY + (expandedY - collapsedY) * p },
-        { scale: collapsedScale + (1 - collapsedScale) * p },
+        { perspective: 800 },
+        { translateX: -passed * overhang },
+        { translateY: interpolate(behind, [0, 3], [0, 14], Extrapolation.CLAMP) },
+        { scale: interpolate(behind, [0, 1, 3], [1, 0.94, 0.84], Extrapolation.CLAMP) - passed * 0.04 },
+        { rotateY: `${interpolate(behind, [0, 2], [0, -12], Extrapolation.CLAMP)}deg` },
       ],
-      opacity: collapsedOpacity + (1 - collapsedOpacity) * p,
+      opacity: interpolate(behind, [0, 1, 3], [1, 0.62, 0.3], Extrapolation.CLAMP),
     };
   });
 
-  // A card behind the front one fans the deck out instead of navigating —
-  // you cannot read what you are tapping until it is on top.
-  const actsOnPress = expanded || index === 0 || !stackable;
-
   return (
-    <Animated.View
-      style={[styles.card, { zIndex: 100 - index, elevation: Math.max(1, 12 - index) }, stackable ? style : undefined]}
-      pointerEvents="box-none"
-    >
+    <Animated.View style={[styles.slot, { width: index === count - 1 ? cardW : STEP, zIndex: count - index }, style]}>
       <NfcIdCard
         code={item.code}
         name={item.name}
         state={item.state}
-        layout="stack"
+        layout="carousel"
+        width={cardW}
         index={index}
         isPrimary={item.isPrimary}
         verified={item.verified}
         statusLabel={item.statusLabel}
         views={item.views}
-        sheen={index === 0}
-        onPress={actsOnPress ? item.onPress : onExpand}
-        accessibilityHint={actsOnPress ? undefined : "To'plamni ochish uchun bosing"}
+        sheen={index < 4}
+        onPress={item.onPress}
       />
     </Animated.View>
   );
 }
 
+function Dot({ index, scrollX }: { index: number; scrollX: SharedValue<number> }) {
+  const style = useAnimatedStyle(() => {
+    const d = Math.abs(scrollX.value / STEP - index);
+    return {
+      opacity: interpolate(d, [0, 1], [1, 0.28], Extrapolation.CLAMP),
+      transform: [{ scaleX: interpolate(d, [0, 1], [2.2, 1], Extrapolation.CLAMP) }],
+    };
+  });
+  return <Animated.View style={[styles.dot, style]} />;
+}
+
 const styles = StyleSheet.create({
-  stack: { width: '100%' },
-  card: { position: 'absolute', top: 0, left: 0, right: 0 },
-  toggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.xs,
-    marginTop: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surfaceSunken,
-  },
-  togglePressed: { opacity: 0.7 },
-  toggleText: { ...typeTokens.caption, color: color.gold },
+  track: { paddingVertical: space.md, alignItems: 'flex-start' },
+  slot: { overflow: 'visible' },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: space.xs },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.gold },
 });

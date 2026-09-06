@@ -15,6 +15,7 @@ import { PremiumModal } from '../../design-system/components/PremiumModal';
 import { PremiumQueryState } from '../../design-system/components/PremiumQueryState';
 import { useToast } from '../../design-system/components/PremiumToast';
 import { NfcIdCard } from '../../composites/NfcIdCard';
+import { HeroStatChip } from '../../composites/HeroStatChip';
 import { resolveMediaUrl } from '../../composites/mediaUrl';
 import { PROFILE_TYPES, PROFILE_TYPE_LABEL, isProfileType, type ProfileType } from '../../composites/recordMeta';
 import {
@@ -305,9 +306,9 @@ export function IdOwnerWorkspaceScreen({ route, navigation }: Props) {
           />
 
           <View style={styles.heroStats}>
-            <HeroStat label={t('owner.views')} value={formatCount(record.data.views ?? 0)} />
-            <HeroStat label="Daraja" value={TIER_LABEL[tier]} />
-            <HeroStat label="Yaratilgan" value={formatDateTime(record.data.ts)} small />
+            <HeroStatChip icon="eye" tone="blue" label={t('owner.views')} value={formatCount(record.data.views ?? 0)} />
+            <HeroStatChip icon="award" tone="gold" label="Daraja" value={TIER_LABEL[tier]} small />
+            <HeroStatChip icon="calendar" tone="amber" label="Yaratilgan" value={formatDateTime(record.data.ts)} small />
           </View>
 
           <PremiumButton label={t('owner.publicPreview')} onPress={goPreview} style={styles.heroCta} />
@@ -602,19 +603,6 @@ function SectionTitle({ icon, title }: { icon: React.ComponentProps<typeof Feath
   );
 }
 
-function HeroStat({ label, value, small }: { label: string; value: string; small?: boolean }) {
-  return (
-    <View style={styles.heroStat}>
-      <Text style={[styles.heroStatValue, small && styles.heroStatValueSmall]} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={styles.heroStatLabel} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 interface ToggleRowProps {
   icon: React.ComponentProps<typeof Feather>['name'];
   label: string;
@@ -663,21 +651,11 @@ const styles = StyleSheet.create({
   stateWrap: { paddingHorizontal: space.lg },
   content: { paddingHorizontal: space.lg, gap: space.md },
 
-  hero: { marginTop: space.xs },
-  heroStats: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
-  heroStat: {
-    flex: 1,
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
-    borderWidth: 1,
-    borderColor: color.border,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.sm,
-  },
-  heroStatValue: { ...typeTokens.h3, color: color.textPrimary },
-  heroStatValueSmall: { ...typeTokens.caption, color: color.textPrimary, marginTop: 4 },
-  heroStatLabel: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
-  heroCta: { marginTop: space.lg },
+  /** The hero card pads its own 3D stage by `space.xs`; pull that back so
+   * its face spans the content width like every card below it. */
+  hero: { marginTop: space.xs, marginHorizontal: -space.xs },
+  heroStats: { flexDirection: 'row', gap: space.sm, marginTop: space.sm, marginHorizontal: space.xs },
+  heroCta: { marginTop: space.lg, marginHorizontal: space.xs },
   heroHint: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.sm, textAlign: 'center' },
 
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.lg },

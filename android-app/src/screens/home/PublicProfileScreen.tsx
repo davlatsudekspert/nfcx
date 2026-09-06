@@ -257,7 +257,10 @@ const styles = StyleSheet.create({
     backgroundColor: color.goldWash,
   },
   previewBannerText: { ...typeTokens.caption, color: color.textSecondary, flex: 1 },
-  identityCard: { marginTop: space.lg },
+  /** The hero stands in its own 3D stage (see NfcIdCard `hero`), which pads
+   * itself by `space.xs` so its glow can bleed; pull that back so the card's
+   * face still spans the content width. */
+  identityCard: { marginTop: space.md, marginHorizontal: -space.xs },
   stickyBar: {
     position: 'absolute',
     left: 0,

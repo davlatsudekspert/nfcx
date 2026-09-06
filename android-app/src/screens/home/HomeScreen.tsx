@@ -14,6 +14,11 @@ import { PremiumEmptyState } from '../../design-system/components/PremiumEmptySt
 import { PremiumLoadingSkeleton } from '../../design-system/components/PremiumLoadingSkeleton';
 import { NfcIdCard } from '../../composites/NfcIdCard';
 import { NfcCardStack, type NfcCardStackItem } from '../../composites/NfcCardStack';
+import { NfcCardVisual } from '../../composites/NfcCardVisual';
+import { NfcChip } from '../../composites/NfcChip';
+import { NfcInfoCard } from '../../composites/NfcInfoCard';
+import { NfcPressable } from '../../composites/NfcPressable';
+import { HeroStatChip } from '../../composites/HeroStatChip';
 import { AuctionPreviewCard } from '../../composites/AuctionPreviewCard';
 import { useAuthStore } from '../../state/authStore';
 import { useAuctionsPreview } from '../../hooks/useAuctions';
@@ -22,18 +27,18 @@ import { ordersApi } from '../../api/orders';
 import { formatCount, safeText, toFiniteNumber } from '../../lib/format';
 import { haptics } from '../../native/haptics';
 import { useT } from '../../i18n';
-import { color, gradient, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, depth, gradient, radius, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 
 /**
  * The personal NFC dashboard (brief §6) — not a list of links.
  *
- * Order is deliberate and fixed: identity first — and identity here is the
- * user's actual deck of metal cards, stacked the way it would sit in a
- * wallet — then the numbers behind it, the four actions they perform most,
- * and finally the data sections. Everything below the deck is real API data
- * or an honest empty state; nothing here is seeded or illustrative.
+ * Order is deliberate and fixed: identity first — the user's primary card,
+ * held up in 3D as the hero — then the numbers behind it, the four actions
+ * they perform most, the rest of the wallet, and finally the data
+ * sections. Everything below the hero is real API data or an honest empty
+ * state; nothing here is seeded or illustrative.
  */
 export function HomeScreen({ navigation }: Props) {
   const t = useT();
@@ -75,6 +80,13 @@ export function HomeScreen({ navigation }: Props) {
         })),
     [cards, navigation],
   );
+  const primary = deck[0];
+  // The greeting avatar is the primary record's real photo, or the
+  // placeholder — never a stock face.
+  const primaryRecord = React.useMemo(
+    () => (primary ? cards.find((c) => c.code === primary.code) : undefined),
+    [cards, primary],
+  );
 
   const pendingCount = pendingOrders.data?.length ?? 0;
   const totalViews = cards.reduce((sum, c) => sum + (toFiniteNumber(c.views) ?? 0), 0);
@@ -90,44 +102,69 @@ export function HomeScreen({ navigation }: Props) {
           colors={gradient.screenAmbient}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.ambient, { height: 220 + insets.top }]}
+          style={[styles.ambient, { height: 260 + insets.top }]}
           pointerEvents="none"
         />
 
         <View style={[styles.headerRow, { paddingTop: insets.top + space.md }]}>
+          <NfcPressable
+            radius={radius.pill}
+            onPress={() => {
+              haptics.selection();
+              goToMyIds();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t('tab.profile')}
+          >
+            <NfcCardVisual avatarUrl={primaryRecord?.avatarUrl} size={40} pulse={false} />
+          </NfcPressable>
           <View style={styles.headerText}>
             <Text style={styles.brand}>NFCSTORE</Text>
             <Text style={styles.greeting} numberOfLines={1}>
               {user?.email ? safeText(user.email) : 'Xush kelibsiz'}
             </Text>
           </View>
-          <View style={styles.headerActions}>
-            <IconAction
-              icon="bell"
-              label={t('profile.notifications')}
-              onPress={() => tabNavigation?.navigate('ProfileTab', { screen: 'Notifications' })}
-            />
-            <IconAction icon="user" label={t('tab.profile')} onPress={goToMyIds} />
-          </View>
+          <IconAction
+            icon="bell"
+            label={t('profile.notifications')}
+            onPress={() => tabNavigation?.navigate('ProfileTab', { screen: 'Notifications' })}
+          />
         </View>
 
-        {/* A. Mening ID'larim — the deck itself is the hero. */}
-        {deck.length > 0 ? (
+        {/* A. The hero — the primary ID as the physical card it is. */}
+        {primary ? (
           <>
-            <SectionHeader title={t('home.myIds')} onSeeAll={goToMyIds} seeAllLabel={t('common.all')} />
-            <View style={styles.sectionBody}>
-              <NfcCardStack items={deck} />
+            {deck.length === 1 ? (
+              <SectionHeader title={t('home.myIds')} onSeeAll={goToMyIds} seeAllLabel={t('common.all')} />
+            ) : (
+              <Text style={styles.heroOverline}>ASOSIY ID</Text>
+            )}
+            <View style={styles.heroBody}>
+              <NfcIdCard
+                code={primary.code}
+                name={primary.name}
+                state="owned"
+                layout="hero"
+                index={0}
+                isPrimary
+                verified={primary.verified}
+                views={primary.views}
+                onPress={primary.onPress}
+              />
             </View>
 
             <View style={styles.statsRow}>
-              <Stat label={t('owner.views')} value={formatCount(totalViews)} />
-              <Stat label={t('home.stats.ids')} value={formatCount(cards.length)} />
-              <Stat label={t('home.stats.pending')} value={formatCount(pendingCount)} />
+              <HeroStatChip icon="eye" tone="blue" label={t('owner.views')} value={formatCount(totalViews)} />
+              <HeroStatChip icon="hash" tone="gold" label={t('home.stats.ids')} value={formatCount(cards.length)} />
+              <HeroStatChip icon="clock" tone="amber" label={t('home.stats.pending')} value={formatCount(pendingCount)} />
             </View>
           </>
         ) : (
           <View style={styles.sectionBody}>
-            <PremiumCard variant="featured">
+            <PremiumCard variant="featured" style={depth.card}>
+              <View style={styles.heroEmptyChip}>
+                <NfcChip width={40} />
+              </View>
               <Text style={styles.heroEmptyTitle}>{t('home.emptyIds')}</Text>
               <Text style={styles.heroEmptyText}>{t('home.emptyIdsHint')}</Text>
               <PremiumButton label={t('home.chooseId')} onPress={goToIdTab} style={styles.heroCta} />
@@ -167,7 +204,17 @@ export function HomeScreen({ navigation }: Props) {
           <QuickAction icon="briefcase" label={t('tab.company')} onPress={goToCompanyTab} />
         </View>
 
-        {/* B. Auksion */}
+        {/* B. Mening ID'larim — the rest of the wallet, fanned. */}
+        {deck.length > 1 && (
+          <>
+            <SectionHeader title={t('home.myIds')} onSeeAll={goToMyIds} seeAllLabel={t('common.all')} />
+            <NfcCardStack items={deck} />
+          </>
+        )}
+
+        <NfcInfoCard style={styles.infoCard} />
+
+        {/* C. Auksion */}
         <SectionHeader title={t('home.auctions')} onSeeAll={goToAuctionTab} seeAllLabel={t('common.all')} />
         {auctions.isLoading ? (
           <View style={styles.sectionBody}>
@@ -198,13 +245,13 @@ export function HomeScreen({ navigation }: Props) {
           </ScrollView>
         )}
 
-        {/* C. Kompaniya */}
+        {/* D. Kompaniya */}
         <SectionHeader title={t('home.company')} />
         <View style={styles.sectionBody}>
           {companies.isLoading ? (
             <PremiumLoadingSkeleton height={96} />
           ) : companies.data?.length ? (
-            <PremiumCard>
+            <PremiumCard style={depth.card}>
               <Text style={styles.companyName} numberOfLines={1}>
                 {safeText(companies.data[0].displayName)}
               </Text>
@@ -258,21 +305,8 @@ function SectionHeader({
   );
 }
 
-/** A number that belongs to the deck, printed on the black floor rather than
- * on the metal — the cards themselves stay clean. */
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={styles.statLabel} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
+/** An icon tile: glass over the floor, the icon in a lit well. The primary
+ * action carries its own gold glow so the eye lands there first. */
 function QuickAction({
   icon,
   label,
@@ -285,20 +319,42 @@ function QuickAction({
   highlight?: boolean;
 }) {
   return (
-    <Pressable
+    <NfcPressable
+      radius={radius.md}
       onPress={() => {
         haptics.selection();
         onPress();
       }}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.quickAction, highlight && styles.quickActionHighlight, pressed && styles.pressed]}
+      style={styles.quickSlot}
     >
-      <Feather name={icon} size={18} color={highlight ? color.gold : color.textPrimary} />
-      <Text style={[styles.quickLabel, highlight && styles.quickLabelHighlight]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
+      <View style={[styles.quickShadow, highlight && styles.quickShadowHighlight]}>
+        <View style={[styles.quickAction, highlight && styles.quickActionHighlight]}>
+          <LinearGradient
+            colors={gradient.cardSurface}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.7, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={gradient.cardGlass}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <LinearGradient colors={highlight ? QUICK_LIP_GOLD : QUICK_LIP} style={styles.quickLip} pointerEvents="none" />
+          <View style={[styles.quickWell, highlight && styles.quickWellHighlight]}>
+            <Feather name={icon} size={18} color={highlight ? color.goldHighlight : color.textPrimary} />
+          </View>
+          <Text style={[styles.quickLabel, highlight && styles.quickLabelHighlight]} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+      </View>
+    </NfcPressable>
   );
 }
 
@@ -312,16 +368,16 @@ function IconAction({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.iconAction, pressed && styles.pressed]}
-    >
-      <Feather name={icon} size={18} color={color.textPrimary} />
-    </Pressable>
+    <NfcPressable radius={radius.pill} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      <View style={styles.iconAction}>
+        <Feather name={icon} size={18} color={color.textPrimary} />
+      </View>
+    </NfcPressable>
   );
 }
+
+const QUICK_LIP = ['rgba(255,255,255,0.12)', 'transparent'] as const;
+const QUICK_LIP_GOLD = ['rgba(255,238,196,0.32)', 'transparent'] as const;
 
 const styles = StyleSheet.create({
   // Near-black floor: the metal only reads as metal against it.
@@ -331,14 +387,13 @@ const styles = StyleSheet.create({
 
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: space.md,
     paddingHorizontal: space.lg,
   },
   headerText: { flex: 1 },
   brand: { ...typeTokens.overline, color: color.gold },
   greeting: { ...typeTokens.h2, color: color.textPrimary, marginTop: 2 },
-  headerActions: { flexDirection: 'row', gap: space.sm },
   iconAction: {
     width: 40,
     height: 40,
@@ -348,35 +403,57 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
+    ...depth.chip,
   },
-  pressed: { opacity: 0.7 },
 
+  heroOverline: { ...typeTokens.overline, color: color.gold, paddingHorizontal: space.lg, marginTop: space.sm },
+  heroBody: { paddingHorizontal: space.md },
+
+  heroEmptyChip: { marginBottom: space.md },
   heroEmptyTitle: { ...typeTokens.h2, color: color.textPrimary },
   heroEmptyText: { ...typeTokens.body, color: color.textSecondary, marginTop: space.xs },
   heroCta: { marginTop: space.lg },
 
-  statsRow: { flexDirection: 'row', gap: space.xl, paddingHorizontal: space.lg, marginTop: space.xs },
-  stat: {},
-  statValue: { ...typeTokens.h2, color: color.gold },
-  statLabel: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
+  statsRow: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg },
 
   pendingList: { gap: space.sm },
 
   quickRow: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg },
+  quickSlot: { flex: 1 },
+  quickShadow: { borderRadius: radius.md, ...depth.chip },
+  quickShadowHighlight: { boxShadow: '0 2px 6px rgba(0,0,0,0.5), 0 0 22px rgba(212,175,90,0.30), 0 0 0 1px rgba(212,175,90,0.35)' },
   quickAction: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: space.md,
     borderRadius: radius.md,
+    overflow: 'hidden',
     backgroundColor: color.surface,
     borderWidth: 1,
-    borderColor: color.border,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  quickActionHighlight: { borderColor: color.borderGold, backgroundColor: color.goldWash },
+  quickActionHighlight: { borderColor: color.borderGold },
+  quickLip: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
+  quickWell: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  quickWellHighlight: {
+    backgroundColor: color.goldMuted,
+    borderColor: color.borderGold,
+    boxShadow: '0 0 16px rgba(212,175,90,0.55)',
+  },
   quickLabel: { ...typeTokens.caption, color: color.textSecondary },
   quickLabelHighlight: { color: color.gold },
+
+  infoCard: { marginHorizontal: space.lg },
 
   sectionHeader: {
     flexDirection: 'row',

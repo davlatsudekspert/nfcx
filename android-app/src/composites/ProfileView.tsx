@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { NfcCardVisual } from './NfcCardVisual';
 import { MusicPlayer } from './MusicPlayer';
@@ -11,7 +12,7 @@ import { tierForCode } from '../lib/pricing';
 import { formatCount, parseTimestampMs, safeText } from '../lib/format';
 import type { FullNfcRecord } from '../api/records';
 import type { FollowStats } from '../api/types';
-import { color, radius, space, type as typeTokens } from '../design-system/tokens';
+import { color, depth, gradient, radius, space, type as typeTokens } from '../design-system/tokens';
 
 export interface ProfileViewProps {
   record: FullNfcRecord;
@@ -85,6 +86,14 @@ export function ProfileView({ record, followStats, viewCount, hideIdentityRow = 
 
       {!!about && (
         <View style={styles.aboutCard}>
+          <LinearGradient
+            colors={gradient.cardSurface}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <LinearGradient colors={ABOUT_LIP} style={styles.aboutLip} pointerEvents="none" />
           <Text style={styles.aboutText}>{about}</Text>
         </View>
       )}
@@ -123,9 +132,11 @@ export function ProfileView({ record, followStats, viewCount, hideIdentityRow = 
   );
 }
 
+const ABOUT_LIP = ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.02)', 'transparent'] as const;
+
 const styles = StyleSheet.create({
   wrapper: { alignItems: 'center', paddingBottom: space.xl },
-  avatarRow: { marginTop: space.lg },
+  avatarRow: { marginTop: space.xl },
   idRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.lg, flexWrap: 'wrap', justifyContent: 'center' },
   code: { ...typeTokens.monoLarge, color: color.gold },
   name: { ...typeTokens.h1, color: color.textPrimary, marginTop: space.sm, textAlign: 'center' },
@@ -134,22 +145,26 @@ const styles = StyleSheet.create({
   metaChip: {
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surfaceRaised,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: space.md,
     paddingVertical: 4,
     maxWidth: 180,
+    ...depth.chip,
   },
   metaText: { ...typeTokens.caption, color: color.textSecondary },
   aboutCard: {
     width: '100%',
     marginTop: space.lg,
     padding: space.lg,
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
+    ...depth.card,
   },
+  aboutLip: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
   aboutText: { ...typeTokens.body, color: color.textSecondary, textAlign: 'center' },
   hashtags: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.md, textAlign: 'center' },
   statsRow: { flexDirection: 'row', gap: space.sm, marginTop: space.lg, width: '100%' },

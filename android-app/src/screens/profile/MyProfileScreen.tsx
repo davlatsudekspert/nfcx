@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
-import { Feather } from '@expo/vector-icons';
 import type { ProfileStackParamList, MainTabParamList } from '../../navigation/types';
 import { PremiumHeader } from '../../design-system/components/PremiumHeader';
 import { PremiumCard } from '../../design-system/components/PremiumCard';
@@ -12,12 +11,13 @@ import { PremiumButton } from '../../design-system/components/PremiumButton';
 import { PremiumEmptyState } from '../../design-system/components/PremiumEmptyState';
 import { PremiumQueryState } from '../../design-system/components/PremiumQueryState';
 import { NfcIdCard } from '../../composites/NfcIdCard';
+import { HeroStatChip } from '../../composites/HeroStatChip';
 import { useAuthStore } from '../../state/authStore';
 import { ordersApi } from '../../api/orders';
 import { ORDER_STATUS_LABEL, orderStatus } from '../id/orderStatus';
 import { formatCount, formatSom, safeText } from '../../lib/format';
 import { useT } from '../../i18n';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, depth, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'MyProfile'>;
 
@@ -32,9 +32,11 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'MyProfile'>;
  * kind of fake-success this product must not ship.
  *
  * Presentation: a flat list of metal cards, deliberately NOT the Home
- * screen's stacked deck. This is the management screen — every ID here is a
- * door into its own workspace, so all of them stay visible and one tap away;
- * a deck would trade that for depth the user did not ask for.
+ * screen's fanned wallet. This is the management screen — every ID here is
+ * a door into its own workspace, so all of them stay visible and one tap
+ * away, each with its tier medallion, serif code, owner name and the small
+ * numbers that matter; a deck would trade that for depth the user did not
+ * ask for.
  */
 export function MyProfileScreen({ navigation }: Props) {
   const t = useT();
@@ -99,13 +101,13 @@ export function MyProfileScreen({ navigation }: Props) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.gold} />}
       >
         <View style={styles.summaryRow}>
-          <SummaryTile icon="hash" value={formatCount(cards.length)} label={t('home.stats.ids')} />
-          <SummaryTile icon="eye" value={formatCount(totalViews)} label={t('owner.views')} />
-          <SummaryTile
+          <HeroStatChip icon="hash" tone="gold" value={formatCount(cards.length)} label={t('home.stats.ids')} />
+          <HeroStatChip icon="eye" tone="blue" value={formatCount(totalViews)} label={t('owner.views')} />
+          <HeroStatChip
             icon="clock"
+            tone="amber"
             value={formatCount(pendingOrders.length)}
             label={t('home.stats.pending')}
-            tone={pendingOrders.length > 0 ? color.warning : undefined}
           />
         </View>
 
@@ -119,7 +121,7 @@ export function MyProfileScreen({ navigation }: Props) {
                   code={card.code}
                   name={card.name}
                   state="owned"
-                  layout="row"
+                  layout="list"
                   index={i}
                   isPrimary={card.isPrimary === true}
                   profileType={card.profileType}
@@ -185,48 +187,13 @@ function SectionTitle({ title }: { title: string }) {
   return <Text style={styles.sectionTitle}>{safeText(title).toUpperCase()}</Text>;
 }
 
-function SummaryTile({
-  icon,
-  value,
-  label,
-  tone,
-}: {
-  icon: React.ComponentProps<typeof Feather>['name'];
-  value: string;
-  label: string;
-  tone?: string;
-}) {
-  return (
-    <View style={styles.summaryTile}>
-      <Feather name={icon} size={14} color={tone ?? color.gold} />
-      <Text style={[styles.summaryValue, !!tone && { color: tone }]} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={styles.summaryLabel} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: color.bgDeep },
   content: { padding: space.lg, paddingBottom: space.xxxl, gap: space.md },
   summaryRow: { flexDirection: 'row', gap: space.sm },
-  summaryTile: {
-    flex: 1,
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceSunken,
-    borderWidth: 1,
-    borderColor: color.border,
-    padding: space.md,
-    gap: 2,
-  },
-  summaryValue: { ...typeTokens.h2, color: color.textPrimary, marginTop: space.xs },
-  summaryLabel: { ...typeTokens.caption, color: color.textTertiary },
-  sectionTitle: { ...typeTokens.overline, color: color.textTertiary, marginTop: space.md },
-  list: { gap: space.sm },
-  ctaCard: { marginTop: space.lg },
+  sectionTitle: { ...typeTokens.overline, color: color.gold, marginTop: space.md },
+  list: { gap: space.md },
+  ctaCard: { marginTop: space.lg, ...depth.card },
   ctaTitle: { ...typeTokens.h3, color: color.textPrimary },
   ctaText: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.xs },
   ctaButton: { marginTop: space.md },
