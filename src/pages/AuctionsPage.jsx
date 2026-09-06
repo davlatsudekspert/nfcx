@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
+import { tierForCode, TIER_COLOR, TIER_LABEL } from '../lib/pricing.js';
 
 function timeLeft(endsAt, t) {
   const ms = new Date(endsAt).getTime() - Date.now();
@@ -155,24 +156,40 @@ function DemandCard({ item, threshold, voteBusy, onVote, idx = 0 }) {
 // Faol / sotilgan auksion kartasi.
 function AuctionMiniCard({ a, sold, idx = 0 }) {
   const { t } = useLanguage();
+  // `ownedSale` — katalogdagi egasi bor ekslyuziv ID. Bu auksion yozuvi
+  // EMAS, shuning uchun auksion sahifasiga emas, public profilga o'tadi.
+  const owned = !!a.ownedSale;
+  const tier = a.tier || (a.code ? tierForCode(a.code) : null);
   return (
     <button
       type="button"
       className="auc-card tier-shine flex min-w-0 flex-col rounded-2xl p-5 text-left"
       style={{ '--shine-delay': `${(idx % 6) * 0.6}s` }}
-      onClick={() => navigate('/auksion/' + a.id)}
+      onClick={() => navigate(owned ? '/' + String(a.profileCode || a.code).toLowerCase() : '/auksion/' + a.id)}
     >
       <div className="py-3 text-center font-mono text-2xl font-extrabold tracking-[0.14em] text-[#f2d9a0]">
         {a.code}
       </div>
-      <div className="mt-1 flex items-baseline justify-between text-sm">
-        <span className="text-base-content/50">{sold ? t('Sotildi') : t('Joriy narx')}</span>
-        <b className="text-base">{t("{n} so'm", { n: fmt(a.currentPrice) })}</b>
+      {tier && (
+        <div className="flex justify-center">
+          <span
+            className="rounded-full px-2.5 py-0.5 text-[13px] font-bold uppercase tracking-wide"
+            style={{ color: TIER_COLOR[tier], background: TIER_COLOR[tier] + '1f', border: `1px solid ${TIER_COLOR[tier]}44` }}
+          >
+            {t(TIER_LABEL[tier] || tier)}
+          </span>
+        </div>
+      )}
+      <div className="mt-2 flex items-baseline justify-between gap-2 text-sm">
+        <span className="shrink-0 text-base-content/50">{sold ? t('Sotildi') : t('Joriy narx')}</span>
+        <b className="break-words text-right text-base">{t("{n} so'm", { n: fmt(a.currentPrice) })}</b>
       </div>
       {!sold && (
         <div className="mt-3 text-xs font-semibold text-accent">{timeLeft(a.endsAt, t)}</div>
       )}
-      <div className="mt-3 text-xs text-base-content/45">{sold ? t('Auksion yakunlandi') : t('Batafsil va taklif berish →')}</div>
+      <div className="mt-3 truncate text-xs text-base-content/45">
+        {owned ? `nfcstore.uz/${String(a.profileCode || a.code).toLowerCase()} →` : sold ? t('Auksion yakunlandi') : t('Batafsil va taklif berish →')}
+      </div>
     </button>
   );
 }
@@ -308,7 +325,8 @@ export default function AuctionsPage() {
             <DemandCard key={d.id} idx={i} item={d} threshold={threshold} voteBusy={voteBusy === d.id} onVote={vote} />
           ))}
           {tab === 'live' && gridItems.map((a, i) => <AuctionMiniCard key={a.id} idx={i} a={a} />)}
-          {tab === 'sold' && gridItems.map((a, i) => <AuctionMiniCard key={a.id} idx={i} a={a} sold />)}
+          {/* `id` egasi bor ekslyuziv kartalarda null (u auksion yozuvi emas) — kalit kod bo'yicha */}
+          {tab === 'sold' && gridItems.map((a, i) => <AuctionMiniCard key={a.id ?? 'owned-' + a.code} idx={i} a={a} sold />)}
         </div>
 
         {topDemand.length > 1 && (
