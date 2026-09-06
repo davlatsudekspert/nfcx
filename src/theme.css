@@ -845,3 +845,84 @@ body.pricing-bg footer{background:var(--color-page-bg);}
   .cat-meta { order: 3; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 10px; }
   .cat-id { font-size: 21px; letter-spacing: .09em; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REYTING — 4-o'rindan keyingi kartochka qatorlari (2026-09)
+   ═══════════════════════════════════════════════════════════════════════
+   Avval bu joyda oddiy HTML jadval turardi (chiziqlar, gorizontal scroll,
+   telefonda siqilib qolardi). Endi har bir ishtirokchi alohida yumaloq
+   burchakli qator. Top-3 podium bloki O'ZGARMAGAN.
+   Ranglar sayt sxemasidan: qora fon + metall oltin (--vz-gold-2). */
+.rank-row {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 13px 16px; border-radius: 16px; text-align: left;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(160deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease, background-color .2s ease;
+  cursor: pointer;
+}
+.rank-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(212,175,90,.42);
+  background: linear-gradient(160deg, rgba(212,175,90,.07), rgba(255,255,255,.015));
+  box-shadow: 0 10px 30px rgba(0,0,0,.45), 0 0 22px rgba(212,175,90,.10);
+}
+.rank-row:focus-visible { outline: 2px solid var(--vz-gold, #d4af5a); outline-offset: 2px; }
+.rank-no {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04);
+  font-family: 'Space Mono', ui-monospace, monospace; font-size: 13px; font-weight: 700;
+  color: rgba(247,242,232,.45);
+}
+.rank-who { min-width: 0; flex: 1 1 160px; }
+.rank-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-id {
+  margin-top: 2px; font-family: 'Space Mono', ui-monospace, monospace;
+  font-size: 12.5px; letter-spacing: .05em; color: var(--vz-gold-2, #f0cf7a);
+}
+.rank-views { flex: none; width: 104px; text-align: right; }
+.rank-num { font-size: 20px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.rank-cap { margin-top: 1px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: rgba(247,242,232,.34); }
+.rank-bar { margin-top: 7px; height: 3px; border-radius: 999px; background: rgba(255,255,255,.10); overflow: hidden; }
+.rank-bar > span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--vz-gold-3, #b3860f), var(--vz-gold-2, #f0cf7a));
+}
+.rank-chip {
+  flex: none; border-radius: 999px; padding: 3px 10px;
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
+/* Telefon: ism qatori tepada, ko'rishlar va tarif pastki qatorda. */
+@media (max-width: 519px) {
+  .rank-row { flex-wrap: wrap; gap: 10px 12px; }
+  .rank-who { flex: 1 1 calc(100% - 48px); }
+  .rank-views { order: 3; width: auto; flex: 1 1 auto; text-align: left; }
+  .rank-chip { order: 4; align-self: center; }
+}
+
+/* Akkordeon — 11-o'rindan keyingilar. `grid-template-rows` 0fr -> 1fr
+   silliq ochiladi (max-height taxminisiz, kontent balandligi qanday
+   bo'lsa shunday). */
+.rank-more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .32s cubic-bezier(.2,.8,.2,1); }
+.rank-more[data-open="1"] { grid-template-rows: 1fr; }
+.rank-more > div { overflow: hidden; min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .rank-more { transition: none; } }
+
+/* Pastdagi motivatsion blok — hero'dagi nur uslubiga mos yengil oltin
+   gradient. */
+.rank-cta {
+  position: relative; overflow: hidden; text-align: center;
+  border-radius: 24px; padding: 44px 28px;
+  border: 1px solid rgba(212,175,90,.28);
+  background:
+    radial-gradient(120% 140% at 50% -20%, rgba(212,175,90,.16), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+}
+
+/* Markazlashgan blok ichida sarlavha ostidagi oltin chiziq ham markazda
+   turishi kerak (standart holatda u chapga yopishadi). */
+.rank-cta .vz-h2::after {
+  left: 50%; transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--vz-gold-2, #f0cf7a), transparent);
+}
