@@ -2008,7 +2008,7 @@ const DICT_BASE = {
   "To'lov kutilmoqda...": { ru: "Ожидание оплаты...", en: "Awaiting payment..." },
   "Avval rasm yoki video yuklang.": { ru: "Сначала загрузите фото или видео.", en: "Upload a photo or video first." },
   "Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.": { ru: "Фото или видео (MP4/WebM, макс. 10 МБ). На iPhone для GIF/видео выбирайте через «Файлы».", en: "Photo or video (MP4/WebM, max. 10 MB). On iPhone, pick GIF/video via \"Files\"." },
-  "Musiqa fayli juda katta (maksimal ~10 MB).": { ru: "Музыкальный файл слишком большой (максимум ~10 МБ).", en: "The music file is too large (max ~10 MB)." },
+  "Musiqa fayli juda katta (maksimal ~{n} MB).": { ru: "Музыкальный файл слишком большой (максимум ~{n} МБ).", en: "The music file is too large (max ~{n} MB)." },
   "{n} ko'rish": { ru: "{n} просмотров", en: "{n} views" },
   "NFC ID'ni o'chirish": { ru: "Удалить NFC ID", en: "Delete NFC ID" },
   "butunlay o'chiriladi. Bu amalni QAYTARIB BO'LMAYDI — barcha postlar, menyu, fayllar va sozlamalar yo'qoladi.": { ru: "будет полностью удалён. Это действие НЕЛЬЗЯ ОТМЕНИТЬ — все посты, меню, файлы и настройки будут потеряны.", en: "will be permanently deleted. This action CANNOT BE UNDONE — all posts, menu, files and settings will be lost." },
@@ -2143,9 +2143,9 @@ const DICT_BASE = {
   "Faqat NFCSTORE pleeri: muqova, nom va oldingi / ijro / keyingi tugmalari.":
     { ru: "Только плеер NFCSTORE: обложка, название и кнопки назад / play / вперёд.",
       en: "Just the NFCSTORE player: cover art, title and previous / play / next buttons." },
-  "iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~10 MB.":
-    { ru: "Где взять MP3 на iPhone: откройте трек в Telegram → Поделиться → «Сохранить в Файлы», затем выберите его кнопкой «Файл» здесь. На Android файл выбирается прямо из файлового менеджера. Максимальный размер ~10 МБ.",
-      en: "Where to get an MP3 on iPhone: open the track in Telegram → Share → \"Save to Files\", then pick it with the \"File\" button here. On Android you choose it straight from the file manager. Max size ~10 MB." },
+  "iPhone'da MP3 qayerdan olinadi: Telegramda qo'shiqni oching → Ulashish → «Fayllarga saqlash», keyin shu yerdagi «Fayl» tugmasi orqali tanlang. Android'da fayl menejeridan to'g'ridan-to'g'ri tanlanadi. Maksimal hajm ~{n} MB.":
+    { ru: "Где взять MP3 на iPhone: откройте трек в Telegram → Поделиться → «Сохранить в Файлы», затем выберите его кнопкой «Файл» здесь. На Android файл выбирается прямо из файлового менеджера. Максимальный размер ~{n} МБ.",
+      en: "Where to get an MP3 on iPhone: open the track in Telegram → Share → \"Save to Files\", then pick it with the \"File\" button here. On Android you choose it straight from the file manager. Max size ~{n} MB." },
   "Videoni ko‘rsatish": { ru: "Показать видео", en: "Show video" },
   "Havola": { ru: "Ссылка", en: "Link" },
   "Yangi telefon raqamini kiriting.": { ru: "Введите новый номер телефона.", en: "Enter your new phone number." },

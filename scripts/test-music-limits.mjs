@@ -2,7 +2,7 @@
 // va HAQIQIY backend endpointi.
 //   node scripts/test-music-limits.mjs
 import worker from '../hosting/worker.js';
-import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, musicLimit } from '../src/lib/musicLimits.js';
+import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, MUSIC_MAX_MB, musicLimit } from '../src/lib/musicLimits.js';
 import { makeEnv, seedBasic, cookie, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { env } = makeEnv();
@@ -66,6 +66,63 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
 {
   const r = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.other, json: { name: 'X', musicUrls: tracks(3) } });
   check("another user cannot change someone else's tracks -> 403", [r.status, r.body?.error], [403, 'forbidden']);
+}
+
+// ═══ 7. FAYL HAJMI LIMITI — 20 MB (2026-09: 10 -> 20) ═══
+// HAQIQIY /api/upload-audio endpointi orqali: fayl base64 data-URL
+// bo'lib boradi, shuning uchun aynan shu yo'l tekshiriladi.
+{
+  check('frontend konstanta = 20 MB', MUSIC_MAX_MB, 20);
+
+  // `n` MB lik audio uchun data-URL (mp3 sarlavhasi bilan).
+  const audioDataUrl = (bytes) => {
+    const buf = Buffer.alloc(bytes);
+    buf[0] = 0xff; buf[1] = 0xfb; // mp3 frame sync
+    return 'data:audio/mpeg;base64,' + buf.toString('base64');
+  };
+  const upload = (bytes) => j('/api/upload-audio', {
+    method: 'POST', cookie: cookie.user, json: { dataUrl: audioDataUrl(bytes) },
+  });
+
+  // Avval RAD ETILGAN hajm (12 MB) endi o'tishi kerak.
+  const r12 = await upload(12 * 1024 * 1024);
+  checkTrue('12 MB (avval rad etilardi) endi qabul qilinadi', r12.status < 400);
+  checkTrue('12 MB fayl uchun /uploads/ havolasi qaytadi', String(r12.body?.url || '').startsWith('/uploads/'));
+
+  // AYNAN chegara — 20 MB o'tadi.
+  const rMax = await upload(MUSIC_MAX_MB * 1024 * 1024);
+  checkTrue(`aynan ${MUSIC_MAX_MB} MB qabul qilinadi`, rMax.status < 400);
+
+  // Chegaradan oshgani RAD etiladi (o'ylab topilgan qisqartirish yo'q).
+  const rOver = await upload(MUSIC_MAX_MB * 1024 * 1024 + 64 * 1024);
+  check(`${MUSIC_MAX_MB} MB dan kattasi -> 413 too_large`, [rOver.status, rOver.body?.error], [413, 'too_large']);
+
+  // Fayl R2 ga HAQIQATAN yozildi (mock bucket) va hajmi to'g'ri.
+  const key = 'uploads/' + String(rMax.body.url).split('/').pop();
+  const stored = await env.UPLOADS.get(key);
+  checkTrue('20 MB fayl R2 ga yozildi', !!stored);
+
+  // Autentifikatsiya talab qilinadi — limit ko'tarilgani bilan
+  // endpoint ochilib qolmadi.
+  const anon = await j('/api/upload-audio', { method: 'POST', json: { dataUrl: audioDataUrl(1024) } });
+  check('audio yuklash hamon login talab qiladi -> 401', [anon.status, anon.body?.error], [401, 'unauthorized']);
+
+  // Audio BO'LMAGAN data-URL qabul qilinmaydi.
+  const bad = await j('/api/upload-audio', {
+    method: 'POST', cookie: cookie.user,
+    json: { dataUrl: 'data:image/png;base64,' + Buffer.alloc(1024).toString('base64') },
+  });
+  check('audio bo\'lmagan fayl -> 422 bad_audio', [bad.status, bad.body?.error], [422, 'bad_audio']);
+}
+
+// ═══ 8. ADMIN RASM LIMITI O'ZGARMAGAN (10 MB) ═══
+// Musiqa limiti ko'tarilgani admin rasm yuklashiga TA'SIR QILMASIN.
+{
+  const png = (bytes) => 'data:image/png;base64,' + Buffer.alloc(bytes).toString('base64');
+  const r = await j('/api/admin/upload', {
+    method: 'POST', cookie: cookie.admin, json: { dataUrl: png(11 * 1024 * 1024) },
+  });
+  check('admin rasm 11 MB -> hamon 413 too_large', [r.status, r.body?.error], [413, 'too_large']);
 }
 
 done();
