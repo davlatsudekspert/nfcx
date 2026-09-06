@@ -458,7 +458,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
               {t('Jonli ko‘rinish')}
-              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+              <button aria-label="Yopish" className="btn btn-ghost btn-square min-h-11 w-11 text-white" onClick={() => setMobilePreview(false)}>✕</button>
             </div>
             <PhoneFrame>
               <MenuPreviewList categories={previewCategories} t={t} />
@@ -733,7 +733,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
               {t('Jonli ko‘rinish')}
-              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+              <button aria-label="Yopish" className="btn btn-ghost btn-square min-h-11 w-11 text-white" onClick={() => setMobilePreview(false)}>✕</button>
             </div>
             <PhoneFrame>
               <ProductsPreviewGrid categories={previewCategories} t={t} />
@@ -1112,7 +1112,7 @@ function ServiceManagerSection({ code, allowed, onLock }) {
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
               {t('Jonli ko‘rinish')}
-              <button className="btn btn-ghost btn-xs btn-square text-white" onClick={() => setMobilePreview(false)}>✕</button>
+              <button aria-label="Yopish" className="btn btn-ghost btn-square min-h-11 w-11 text-white" onClick={() => setMobilePreview(false)}>✕</button>
             </div>
             <PhoneFrame>
               <ServicesPreviewList categories={previewCategories} t={t} />
@@ -2605,9 +2605,13 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         </div>
       </div>
 
+      {/* Qisqa ekranda (iPhone SE va h.k.) matn uzun bo'lsa tasdiqlash
+          tugmasi ostda qolib ketardi va unga yetib bo'lmasdi — na fon,
+          na quti scroll bo'lardi. Sayt bo'ylab to'g'ri naqsh shu:
+          fon scroll bo'ladi + quti balandligi cheklanadi. */}
       {delOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => !delBusy && setDelOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl border border-error/30 bg-base-200 p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/70 p-4" onClick={() => !delBusy && setDelOpen(false)}>
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-error/30 bg-base-200 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 text-base font-bold text-error"><IconWarn /> {t("NFC ID'ni o'chirish")}</div>
             <p className="mt-2 text-sm leading-relaxed text-base-content/70">
               <b className="font-mono">nfcstore.uz/{card.code.toLowerCase()}</b> {t("butunlay o'chiriladi. Bu amalni QAYTARIB BO'LMAYDI — barcha postlar, menyu, fayllar va sozlamalar yo'qoladi.")}
@@ -3489,9 +3493,12 @@ function SupportModal({ onClose }) {
     }
   };
 
+  // Sarlavha + murojaatlar tarixi + matn maydoni + tugma ~480px joy
+  // egallaydi; qisqa ekranda yuborish tugmasiga yetib bo'lmasdi —
+  // shuning uchun fon ham, quti ham scroll bo'ladi.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold"><IconSupport /> {t('Adminga murojaat')}</h3>
           <button className="btn btn-ghost btn-xs min-h-11 min-w-11" onClick={onClose} aria-label={t('Yopish')}>&times;</button>
