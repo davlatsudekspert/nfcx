@@ -148,19 +148,10 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(0,0,0,0.86)] backdrop-blur-md">
-      {/* BETA e'lon lentasi — doimiy aylanuvchi marquee. Fon rangini bermaymiz —
-          header'ning o'zidagi bg-base-100/80 dan meros oladi, aks holda ikki
-          qavat shaffof fon ustma-ust tushib, marquee bilan navbar orasida
-          chok (rang farqi) hosil bo'ladi. */}
-      <div className="overflow-hidden border-b border-white/10">
-        <div className="flex w-max animate-[marqueeScroll_30s_linear_infinite] whitespace-nowrap py-1 will-change-transform">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <span key={i} className="px-10 text-[14px] font-semibold uppercase tracking-[0.14em] text-accent">
-              NFCSTORE BETA — {t('Platforma rivojlanish bosqichida. Ayrim imkoniyatlar tez orada ishga tushadi.')}
-            </span>
-          ))}
-        </div>
-      </div>
+      {/* 2026-09: BETA e'lon lentasi olib tashlandi — sayt rasman ishga
+          tushdi. Matn kaliti src/lib/translations.js da qoldirildi (kelajakda
+          shunday e'lon kerak bo'lsa qaytarish oson). `marqueeScroll`
+          animatsiyasi HomePage'da ishlatilgani uchun saqlanadi. */}
       <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
         <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={() => go('/')} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--vz-gold-2)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">

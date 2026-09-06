@@ -88,7 +88,7 @@ export default function CatalogPage({ catalog }) {
       <section className="grid items-center gap-10 pt-14 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
           <span className="vz-kicker">{t('Katalog')}</span>
-          <h1 className="vz-h1 mt-4 max-w-xl">{t('Barcha band qilingan')} <span className="text-[var(--vz-gold-2)]">{t("raqamli tashrif qog'ozlar")}</span></h1>
+          <h1 className="vz-h1 mt-4 max-w-3xl">{t('Barcha band qilingan')} <span className="text-[var(--vz-gold-2)]">{t("raqamli tashrif qog'ozlar")}</span></h1>
           <p className="vz-lead mt-3">{t("Jami {n} ta raqamli tashrif qog'ozi band qilingan. Kod yoki ism bo'yicha qidiring.", { n: fmt(catalog.length) })}</p>
           <div className="mt-6 flex max-w-md items-center rounded-lg border border-white/15 bg-black/40 focus-within:border-[var(--vz-gold)]">
             <span className="shrink-0 pl-3 font-mono text-xs text-base-content/40">{t('qidirish')}</span>
@@ -137,7 +137,7 @@ export default function CatalogPage({ catalog }) {
           <Interactive3DCard><NfcCard code={filtered[0]?.code || 'AAA000'} name={filtered[0]?.name?.toUpperCase() || t('SIZNING ISMINGIZ')} finish="showcase" size="lg" /></Interactive3DCard>
         </div>
       </section>
-      <section className="mt-16">
+      <section className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="vz-kicker">{t('Jonli')}</div>
