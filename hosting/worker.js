@@ -1804,16 +1804,33 @@ async function auctionFinalPricesD1(env) {
 // ── KATALOG NARXINING YAGONA MANBAI ──────────────────────────────────────
 // Ustuvorlik (foydalanuvchi topshirig'idagi tartib):
 //   1. Faollashtirilgan admin sovg'asi -> narx emas, "Sovg'a" (isGift).
-//   2. Haqiqiy sotilgan auksion ID -> yakuniy yutuq narxi.
-//   3. Oddiy tarif narxi — Gold/Premium/Silver/Bronza uchun YAGONA markaziy
+//   2. Egasi QO'LDA belgilagan rasmiy narx (CODE_PRICES_D1). Bu ro'yxat —
+//      sayt egasining joriy, amaldagi narxi; u hisoblanadigan tarif
+//      narxidan HAM, TARIXIY auksion natijasidan HAM ustun turadi.
+//      2026-09 hotfix: avval bu qoida 4-o'rinda edi va OOO000/VVV444 kabi
+//      ID'lar katalogda ESKI auksion g'olib taklifini (200 000 / 300 000)
+//      ko'rsatib turardi, auksionning "Sotilgan" bo'limi esa o'sha paytda
+//      rasmiy narxni (8 700 000 / 2 900 000) ko'rsatardi — bir sahifada
+//      ikki xil narx. Endi ikkalasi ham SHU yagona ro'yxatdan oladi.
+//      src/lib/pricing.js `priceForCode()` ham aynan shu tartibda ishlaydi
+//      (avval per-code narx, keyin tarif) — parity shu bilan tiklandi.
+//   3. Haqiqiy sotilgan auksion ID -> yakuniy yutuq narxi (ro'yxatda
+//      BO'LMAGAN kodlar uchun o'zgarishsiz qoladi).
+//   4. Oddiy tarif narxi — Gold/Premium/Silver/Bronza uchun YAGONA markaziy
 //      jadvaldan (PERSONAL_TIER_PRICE = src/lib/pricing.js TIER_PRICE):
 //      Gold 149 000, Premium 199 000, Silver 99 000, Bronza 49 000.
-//   4. Alohida rasmiy narxi saqlangan ID (CODE_PRICES_D1) — ekslyuziv
-//      darajada tarif narxi yo'q (null), shuning uchun shu yerga tushadi.
 //   5. Kartaning bazadagi saqlangan narxi (> 0 bo'lsa).
 //   6. Aks holda 0 — narx O'YLAB TOPILMAYDI.
+//
+// MUHIM: bu FAQAT ko'rsatiladigan narx. Auksion yozuvlari, taklif (bids)
+// summalari, web_orders va Payme tranzaksiyalari TEGILMAYDI — moliyaviy
+// va auksion tarixi o'z holicha qoladi.
 function catalogPriceD1(record, auctionFinal) {
   const code = String(record.code || '').toUpperCase();
+  // Egasining rasmiy narx ro'yxati — eng yuqori ustuvorlik (yuqoridagi
+  // izohga qarang). Ro'yxatda yo'q kodlar uchun hech narsa o'zgarmaydi.
+  const ov = codePriceOverrideD1(code);
+  if (ov != null) return ov;
   if (auctionFinal != null && Number(auctionFinal) > 0) return Number(auctionFinal);
   // Sotib olinmaydigan kod (ro'yxatdan o'tishdagi 8 xonali bepul ID yoki
   // bloklangan prefiks) — unga TARIF narxi QO'LLANMAYDI, aks holda bepul
@@ -1826,8 +1843,6 @@ function catalogPriceD1(record, auctionFinal) {
   const tier = personalIdTierD1({ code, tierOverride: record.tierOverride || '', isGift: false });
   const tierPrice = PERSONAL_TIER_PRICE[tier];
   if (tierPrice != null && tierPrice > 0) return tierPrice;
-  const ov = codePriceOverrideD1(code);
-  if (ov != null) return ov;
   const stored = Number(record.price);
   return Number.isFinite(stored) && stored > 0 ? stored : 0;
 }
