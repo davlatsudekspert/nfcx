@@ -138,69 +138,71 @@ export const motion = {
 /**
  * METALL KARTA TIZIMI — physical-material palettes for the NFC ID cards.
  *
- * Each tier is a real metal, lit from the top-left on a deep-black floor:
+ * Every tier is BLACK — the brand's floor — differentiated only by how
+ * brightly gold catches the light on it. Never a grey or brown card:
  * a diagonal base gradient (the metal itself), a brushed micro-texture, a
  * specular corner, one hairline edge, and a single sheen sweep. Nothing
  * glitters on its own — light only moves when the card enters or is
  * touched, which is what separates "premium" from "casino".
  *
- * `iridescent` exists only for the exclusive tier: a slow, Apple-Card-style
- * hue drift layered at low opacity over the gold base.
+ * `iridescent` exists only for the exclusive tier: a slow shimmer that
+ * drifts through gold -> champagne -> warm white over the black base.
+ * Card text is always white; gold is the accent, black is the material.
  */
 export const metal = {
   exclusive: {
-    base: ['#4A3A18', '#7A6229', '#C9A24A', '#3A2E14'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.06)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.05)'],
-    sheen: 'rgba(255,240,205,0.42)',
-    hairline: 'rgba(245,215,122,0.55)',
-    edgeTop: 'rgba(255,242,210,0.30)',
-    text: '#FFF6E2',
-    subtext: 'rgba(255,246,226,0.62)',
+    base: ['#12100B', '#0B0A07', '#141109', '#080706'],
+    brush: ['rgba(255,255,255,0.00)', 'rgba(245,215,122,0.05)', 'rgba(0,0,0,0.10)', 'rgba(245,215,122,0.04)', 'rgba(0,0,0,0.08)'],
+    sheen: 'rgba(245,215,122,0.45)',
+    hairline: 'rgba(245,215,122,0.62)',
+    edgeTop: 'rgba(245,215,122,0.42)',
+    text: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.62)',
     glow: 'rgba(215,182,93,0.45)',
-    iridescent: ['rgba(215,182,93,0.30)', 'rgba(126,96,200,0.20)', 'rgba(72,170,182,0.18)', 'rgba(224,120,86,0.22)'],
+    iridescent: ['rgba(215,182,93,0.24)', 'rgba(245,215,122,0.16)', 'rgba(255,244,214,0.12)', 'rgba(142,111,46,0.18)'],
   },
   premium: {
-    base: ['#2B2E32', '#454A50', '#6A7078', '#292B2F'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.06)', 'rgba(0,0,0,0.07)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.06)'],
-    sheen: 'rgba(255,255,255,0.40)',
-    hairline: 'rgba(215,182,93,0.50)',
-    edgeTop: 'rgba(255,255,255,0.26)',
-    text: '#F4F6F8',
-    subtext: 'rgba(244,246,248,0.60)',
-    glow: 'rgba(190,200,212,0.35)',
+    base: ['#100F0C', '#0A0A09', '#121110', '#080808'],
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.045)', 'rgba(0,0,0,0.09)', 'rgba(245,215,122,0.03)', 'rgba(0,0,0,0.07)'],
+    sheen: 'rgba(245,215,122,0.34)',
+    hairline: 'rgba(215,182,93,0.48)',
+    edgeTop: 'rgba(245,215,122,0.30)',
+    text: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.60)',
+    glow: 'rgba(215,182,93,0.32)',
     iridescent: null,
   },
   gold: {
-    base: ['#3E3014', '#6E5622', '#A8853A', '#3A2D13'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.06)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.05)'],
-    sheen: 'rgba(255,236,190,0.38)',
-    hairline: 'rgba(240,196,25,0.45)',
-    edgeTop: 'rgba(255,238,196,0.26)',
-    text: '#FFF3DA',
-    subtext: 'rgba(255,243,218,0.60)',
-    glow: 'rgba(240,196,25,0.32)',
+    base: ['#0F0E0A', '#0A0908', '#110F0B', '#070706'],
+    brush: ['rgba(255,255,255,0.00)', 'rgba(240,196,25,0.04)', 'rgba(0,0,0,0.09)', 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.07)'],
+    sheen: 'rgba(240,205,120,0.30)',
+    hairline: 'rgba(215,182,93,0.40)',
+    edgeTop: 'rgba(240,205,120,0.26)',
+    text: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.58)',
+    glow: 'rgba(240,196,25,0.26)',
     iridescent: null,
   },
   silver: {
-    base: ['#26292C', '#3B4045', '#575D64', '#24272A'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.06)', 'rgba(0,0,0,0.07)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.06)'],
-    sheen: 'rgba(255,255,255,0.34)',
-    hairline: 'rgba(154,163,173,0.45)',
-    edgeTop: 'rgba(255,255,255,0.22)',
-    text: '#EFF2F5',
-    subtext: 'rgba(239,242,245,0.58)',
-    glow: 'rgba(154,163,173,0.28)',
+    base: ['#0E0E0F', '#090909', '#101011', '#070707'],
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.045)', 'rgba(0,0,0,0.09)', 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.07)'],
+    sheen: 'rgba(255,255,255,0.26)',
+    hairline: 'rgba(215,182,93,0.28)',
+    edgeTop: 'rgba(255,255,255,0.20)',
+    text: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.56)',
+    glow: 'rgba(215,182,93,0.18)',
     iridescent: null,
   },
   free: {
-    base: ['#2E2117', '#4E3626', '#6E4E33', '#2A1E15'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.06)', 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.05)'],
-    sheen: 'rgba(255,222,190,0.30)',
-    hairline: 'rgba(197,138,85,0.45)',
-    edgeTop: 'rgba(255,225,196,0.20)',
-    text: '#F6E7DA',
-    subtext: 'rgba(246,231,218,0.58)',
-    glow: 'rgba(197,138,85,0.26)',
+    base: ['#0D0C0B', '#080808', '#0F0E0D', '#070606'],
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.035)', 'rgba(0,0,0,0.09)', 'rgba(215,182,93,0.02)', 'rgba(0,0,0,0.07)'],
+    sheen: 'rgba(255,240,210,0.20)',
+    hairline: 'rgba(215,182,93,0.22)',
+    edgeTop: 'rgba(255,240,210,0.16)',
+    text: '#FFFFFF',
+    subtext: 'rgba(255,255,255,0.54)',
+    glow: 'rgba(215,182,93,0.14)',
     iridescent: null,
   },
 } as const;

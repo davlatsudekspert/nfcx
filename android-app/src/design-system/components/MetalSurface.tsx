@@ -119,7 +119,7 @@ export function MetalSurface({
       )}
 
       <LinearGradient
-        colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.04)', 'transparent']}
+        colors={['rgba(245,215,122,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
         locations={[0, 0.35, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.85, y: 0.9 }}
@@ -157,7 +157,7 @@ export function MetalSurface({
 }
 
 const styles = StyleSheet.create({
-  root: { overflow: 'hidden', backgroundColor: '#101010' },
+  root: { overflow: 'hidden', backgroundColor: '#0A0A0A' },
   wide: { left: '-15%', right: '-15%' },
   sheenTrack: { position: 'absolute', top: '-30%', bottom: '-30%', left: 0, width: '45%' },
   hairline: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 1 },
