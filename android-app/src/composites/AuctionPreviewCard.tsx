@@ -1,15 +1,15 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { PremiumCard } from '../design-system/components/PremiumCard';
 import { PremiumBadge, TierBadge } from '../design-system/components/PremiumBadge';
 import { AuctionCountdown } from './AuctionCountdown';
+import { TactilePressable } from '../screens/auction/AuctionUi';
 import { auctionCurrentPrice, auctionStatusLabel, isAuctionLive } from '../screens/auction/auctionModel';
 import { formatDateTime, formatSom } from '../lib/format';
 import { tierForCode } from '../lib/pricing';
-import { haptics } from '../native/haptics';
 import type { Auction } from '../api/types';
-import { color, space, type as typeTokens } from '../design-system/tokens';
+import { color, depth, radius, space, type as typeTokens } from '../design-system/tokens';
 
 export interface AuctionPreviewCardProps {
   auction: Auction;
@@ -24,16 +24,13 @@ export function AuctionPreviewCard({ auction, onPress, index }: AuctionPreviewCa
   const status = auctionStatusLabel(auction);
 
   return (
-    <Pressable
-      onPress={() => {
-        haptics.selection();
-        onPress();
-      }}
-      accessibilityRole="button"
+    <TactilePressable
+      onPress={onPress}
       accessibilityLabel={`${auction.code} auksioni`}
-      style={({ pressed }) => [pressed && styles.pressed]}
+      cornerRadius={radius.lg}
+      style={styles.wrap}
     >
-      <PremiumCard index={index} variant={live ? 'featured' : 'default'} style={styles.card}>
+      <PremiumCard index={index} variant={live ? 'featured' : 'default'} style={live ? styles.cardLive : styles.card}>
         <View style={styles.topRow}>
           <Text style={styles.code} numberOfLines={1}>
             #{auction.code}
@@ -61,19 +58,20 @@ export function AuctionPreviewCard({ auction, onPress, index }: AuctionPreviewCa
           )}
         </View>
       </PremiumCard>
-    </Pressable>
+    </TactilePressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { width: 232, marginRight: space.md },
-  pressed: { opacity: 0.85 },
+  wrap: { width: 232, marginRight: space.md },
+  card: { ...depth.card },
+  cardLive: { ...depth.cardHero },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-  code: { ...typeTokens.mono, color: color.textPrimary, fontSize: 16, flexShrink: 1 },
+  code: { ...typeTokens.monoLarge, fontSize: 18, lineHeight: 24, color: color.textPrimary, flexShrink: 1 },
   tierRow: { flexDirection: 'row', marginTop: space.sm },
   overline: { ...typeTokens.overline, color: color.textTertiary, marginTop: space.md },
-  price: { ...typeTokens.h2, color: color.gold, marginTop: 2 },
+  price: { ...typeTokens.stat, fontSize: 20, lineHeight: 26, color: color.gold, marginTop: 2 },
   footer: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.md },
-  countdown: { fontSize: 14 },
+  countdown: { ...typeTokens.stat, fontSize: 15, lineHeight: 20 },
   endedAt: { ...typeTokens.caption, color: color.textSecondary },
 });

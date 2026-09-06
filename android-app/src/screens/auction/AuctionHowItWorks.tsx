@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../../design-system/components/PremiumCard';
+import { GoldMedallion, medallionNumeral } from './AuctionUi';
 import { formatCount } from '../../lib/format';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, depth, radius, space, type as typeTokens } from '../../design-system/tokens';
 
 export interface AuctionHowItWorksProps {
   /** Vote threshold from `GET /api/auction-demand`. When it hasn't loaded (or
@@ -12,6 +14,11 @@ export interface AuctionHowItWorksProps {
   /** Payments are known to be off — the last step says so plainly. */
   paymentsOff?: boolean;
 }
+
+const MEDALLION = 30;
+/** The connector fades in from the disc above and out into the disc below,
+ * so it reads as light running along a rail, not a ruled line. */
+const RAIL = ['rgba(212,175,90,0.05)', 'rgba(212,175,90,0.7)', 'rgba(240,207,122,0.9)', 'rgba(212,175,90,0.7)', 'rgba(212,175,90,0.05)'] as const;
 
 /**
  * The explainer that carries the auction tabs when there is little or no
@@ -40,42 +47,60 @@ export function AuctionHowItWorks({ threshold, paymentsOff = false }: AuctionHow
   ];
 
   return (
-    <PremiumCard variant="sunken" animate={false} style={styles.card}>
+    <PremiumCard variant="default" animate={false} style={styles.card}>
+      <Text style={styles.overline}>QOIDALAR</Text>
       <Text style={styles.title}>Auksion qanday ishlaydi</Text>
       <View style={styles.steps}>
-        {steps.map((step, i) => (
-          <View key={step.title} style={styles.step}>
-            <View style={styles.bullet}>
-              <Text style={styles.bulletText}>{i + 1}</Text>
+        {steps.map((step, i) => {
+          const last = i === steps.length - 1;
+          return (
+            <View key={step.title} style={styles.step}>
+              <View style={styles.rail}>
+                <GoldMedallion size={MEDALLION}>
+                  <Text style={styles.numeral}>{i + 1}</Text>
+                </GoldMedallion>
+                {!last && (
+                  <View style={styles.lineWrap} pointerEvents="none">
+                    <LinearGradient
+                      colors={RAIL}
+                      locations={[0, 0.2, 0.5, 0.8, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={styles.line}
+                    />
+                  </View>
+                )}
+              </View>
+              <View style={[styles.stepBody, !last && styles.stepBodySpaced]}>
+                <Text style={styles.stepTitle}>{step.title}</Text>
+                <Text style={styles.stepText}>{step.text}</Text>
+              </View>
             </View>
-            <View style={styles.stepBody}>
-              <Text style={styles.stepTitle}>{step.title}</Text>
-              <Text style={styles.stepText}>{step.text}</Text>
-            </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </PremiumCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginTop: space.lg },
-  title: { ...typeTokens.h3, color: color.textPrimary },
-  steps: { marginTop: space.md, gap: space.md },
-  step: { flexDirection: 'row', gap: space.md },
-  bullet: {
-    width: 24,
-    height: 24,
+  card: { marginTop: space.lg, ...depth.card },
+  overline: { ...typeTokens.overline, color: color.gold },
+  title: { ...typeTokens.h2, color: color.textPrimary, marginTop: space.xs },
+  steps: { marginTop: space.lg },
+  step: { flexDirection: 'row', gap: space.md, alignItems: 'stretch' },
+  rail: { width: MEDALLION, alignItems: 'center' },
+  numeral: { ...medallionNumeral },
+  lineWrap: {
+    flex: 1,
+    width: 2,
+    marginVertical: 3,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.borderGold,
-    backgroundColor: color.goldMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
+    boxShadow: '0 0 8px rgba(212,175,90,0.55)',
   },
-  bulletText: { ...typeTokens.caption, color: color.gold, fontWeight: '700' },
-  stepBody: { flex: 1, gap: 2 },
+  line: { flex: 1, borderRadius: radius.pill },
+  stepBody: { flex: 1, gap: 2, paddingTop: 4 },
+  stepBodySpaced: { paddingBottom: space.lg },
   stepTitle: { ...typeTokens.bodyStrong, color: color.textPrimary },
   stepText: { ...typeTokens.caption, color: color.textSecondary, lineHeight: 18 },
 });

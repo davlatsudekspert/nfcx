@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import type { IdStackParamList, MainTabParamList } from '../../navigation/types';
 import { PremiumHeader } from '../../design-system/components/PremiumHeader';
@@ -13,6 +14,8 @@ import { PremiumCard } from '../../design-system/components/PremiumCard';
 import { PremiumBadge, TierBadge } from '../../design-system/components/PremiumBadge';
 import { PremiumLoadingSkeleton } from '../../design-system/components/PremiumLoadingSkeleton';
 import { PremiumQueryState } from '../../design-system/components/PremiumQueryState';
+import { MetalSurface } from '../../design-system/components/MetalSurface';
+import { GoldMedallion, TactilePressable } from '../auction/AuctionUi';
 import { recordsApi } from '../../api/records';
 import { ordersApi } from '../../api/orders';
 import { ApiError } from '../../api/client';
@@ -31,7 +34,7 @@ import { formatDateTime, formatSom, safeText } from '../../lib/format';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { haptics } from '../../native/haptics';
 import { useT } from '../../i18n';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, depth, font, gradient, radius, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<IdStackParamList, 'IdSearch'>;
 
@@ -110,6 +113,7 @@ export function IdSearchScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+      <LinearGradient colors={gradient.screenAmbient} style={styles.ambient} pointerEvents="none" />
       <PremiumHeader title={t('id.searchTitle')} onBack={navigation.canGoBack() ? navigation.goBack : undefined} />
 
       <ScrollView
@@ -118,19 +122,23 @@ export function IdSearchScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* ---------- Search ---------- */}
-        <PremiumCard variant="featured">
+        <PremiumCard variant="featured" style={styles.searchCard} contentStyle={styles.searchContent}>
           <Text style={styles.heroOverline}>NFC ID TANLASH</Text>
           <Text style={styles.heroTitle}>Kerakli ID bandligini tekshiring</Text>
-          <PremiumInput
-            label={t('id.searchLabel')}
-            value={raw}
-            onChangeText={(v) => setRaw(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={12}
-            style={styles.searchInput}
-            returnKeyType="search"
-          />
+          {/* Breathing room on every side so the field's focus ring can glow
+              without being clipped by the card. */}
+          <View style={styles.searchWell}>
+            <PremiumInput
+              label={t('id.searchLabel')}
+              value={raw}
+              onChangeText={(v) => setRaw(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={12}
+              style={styles.searchInput}
+              returnKeyType="search"
+            />
+          </View>
           <Text style={styles.formatHint}>{t('id.formatHint')}</Text>
         </PremiumCard>
 
@@ -250,29 +258,40 @@ export function IdSearchScreen({ navigation }: Props) {
         <SectionTitle title={t('id.examples')} />
         <View style={styles.examplesRow}>
           {EXAMPLES.map((example) => (
-            <Pressable
+            <TactilePressable
               key={example}
-              onPress={() => {
-                haptics.selection();
-                setRaw(example);
-              }}
-              accessibilityRole="button"
+              onPress={() => setRaw(example)}
               accessibilityLabel={`${example} namunasini kiritish`}
-              style={styles.exampleChip}
+              cornerRadius={radius.pill}
             >
-              <Feather name="corner-down-left" size={12} color={color.textTertiary} />
-              <Text style={styles.exampleText}>{example}</Text>
-            </Pressable>
+              <View style={styles.exampleChip}>
+                <LinearGradient
+                  colors={gradient.cardSurface}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0.8, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                  pointerEvents="none"
+                />
+                <View style={styles.exampleLip} pointerEvents="none" />
+                <Feather name="corner-down-left" size={12} color={color.gold} />
+                <Text style={styles.exampleText}>{example}</Text>
+              </View>
+            </TactilePressable>
           ))}
         </View>
 
         {/* ---------- How tiers/pricing work (real, from src/lib/pricing) ---------- */}
         <SectionTitle title="Darajalar va narxlar" />
-        <PremiumCard variant="sunken">
+        <PremiumCard variant="default" style={styles.tierCard} contentStyle={styles.tierContent}>
           {TIER_ORDER.map((tier, i) => (
             <View key={tier} style={[styles.tierRow, i > 0 && styles.tierRowDivided]}>
-              <TierBadge tier={tier} />
-              <Text style={styles.tierPrice}>
+              <GoldMedallion size={26} tier={tier}>
+                <Text style={styles.tierCoin}>{TIER_LABEL[tier].charAt(0)}</Text>
+              </GoldMedallion>
+              <View style={styles.tierBadge}>
+                <TierBadge tier={tier} />
+              </View>
+              <Text style={[styles.tierPrice, TIER_PRICE[tier] == null && styles.tierPriceAuction]} numberOfLines={1}>
                 {TIER_PRICE[tier] == null ? 'Auksion orqali' : formatSom(TIER_PRICE[tier])}
               </Text>
             </View>
@@ -301,25 +320,31 @@ export function IdSearchScreen({ navigation }: Props) {
             {recentOrders.map((order) => {
               const status = orderStatus(order);
               return (
-                <Pressable
+                <TactilePressable
                   key={order.id}
-                  onPress={() => {
-                    haptics.selection();
-                    navigation.navigate('PurchaseResult', { code: order.code, orderId: order.id });
-                  }}
-                  accessibilityRole="button"
+                  onPress={() => navigation.navigate('PurchaseResult', { code: order.code, orderId: order.id })}
                   accessibilityLabel={`${order.code} buyurtmasi`}
-                  style={styles.orderRow}
+                  cornerRadius={radius.md}
                 >
-                  <View style={styles.orderMain}>
-                    <Text style={styles.orderCode}>{safeText(order.code, '—')}</Text>
-                    <Text style={styles.orderMeta} numberOfLines={1}>
-                      {formatSom(order.price)} · {formatDateTime(order.createdAt)}
-                    </Text>
+                  <View style={styles.orderRow}>
+                    <LinearGradient
+                      colors={gradient.cardSurface}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0.7, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                      pointerEvents="none"
+                    />
+                    <View style={styles.orderLip} pointerEvents="none" />
+                    <View style={styles.orderMain}>
+                      <Text style={styles.orderCode}>{safeText(order.code, '—')}</Text>
+                      <Text style={styles.orderMeta} numberOfLines={1}>
+                        {formatSom(order.price)} · {formatDateTime(order.createdAt)}
+                      </Text>
+                    </View>
+                    <PremiumBadge label={ORDER_STATUS_LABEL[status]} tone={ORDER_STATUS_TONE[status]} />
+                    <Feather name="chevron-right" size={18} color={color.gold} />
                   </View>
-                  <PremiumBadge label={ORDER_STATUS_LABEL[status]} tone={ORDER_STATUS_TONE[status]} />
-                  <Feather name="chevron-right" size={18} color={color.textTertiary} />
-                </Pressable>
+                </TactilePressable>
               );
             })}
           </View>
@@ -329,6 +354,12 @@ export function IdSearchScreen({ navigation }: Props) {
   );
 }
 
+/**
+ * The result card. With a tier it is struck from that tier's metal
+ * (`MetalSurface`, the same material as the NFC card the user would own) and
+ * lifted with the hero shadow; the neutral "not an ID" case stays a plain
+ * card so a format error never looks like a product.
+ */
 function ResultShell({
   code,
   tier,
@@ -340,17 +371,37 @@ function ResultShell({
   tone?: 'neutral';
   children: React.ReactNode;
 }) {
-  return (
-    <PremiumCard variant={tone === 'neutral' ? 'default' : 'featured'} style={styles.resultCard}>
+  const head = (
+    <>
       <View style={styles.resultTop}>
-        <Text style={styles.resultCode} numberOfLines={1}>
+        <Text style={styles.resultCode} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {safeText(code, '—')}
         </Text>
         {tier ? <TierBadge tier={tier} /> : null}
       </View>
       {tier ? <Text style={styles.resultTier}>{TIER_LABEL[tier]} daraja</Text> : null}
-      <View style={styles.resultBodyWrap}>{children}</View>
-    </PremiumCard>
+    </>
+  );
+
+  if (tone === 'neutral' || !tier) {
+    return (
+      <PremiumCard variant="default" style={styles.resultCardPlain}>
+        {head}
+        <View style={styles.resultBodyWrap}>{children}</View>
+      </PremiumCard>
+    );
+  }
+
+  return (
+    <View style={styles.resultCard}>
+      <MetalSurface tier={tier} cornerRadius={radius.lg} style={styles.resultMetal}>
+        <View style={styles.resultInner}>
+          {head}
+          <View style={styles.resultDivider} />
+          <View style={styles.resultBodyWrap}>{children}</View>
+        </View>
+      </MetalSurface>
+    </View>
   );
 }
 
@@ -377,17 +428,25 @@ function SectionTitle({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: color.bg },
+  ambient: { position: 'absolute', top: 0, left: 0, right: 0, height: 240 },
   content: { padding: space.lg, paddingBottom: space.xxxl, gap: space.md },
 
+  searchCard: { ...depth.cardHero },
+  searchContent: { padding: space.lg, paddingBottom: space.lg },
   heroOverline: { ...typeTokens.overline, color: color.gold },
   heroTitle: { ...typeTokens.h2, color: color.textPrimary, marginTop: space.xs, marginBottom: space.lg },
+  searchWell: { paddingHorizontal: 2, paddingTop: 2 },
   searchInput: { ...typeTokens.monoLarge, color: color.textPrimary, letterSpacing: 3, minHeight: 58 },
   formatHint: { ...typeTokens.caption, color: color.textTertiary },
 
-  resultCard: { marginTop: space.xs },
-  resultTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.sm },
-  resultCode: { ...typeTokens.monoLarge, color: color.textPrimary, flex: 1 },
-  resultTier: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
+  resultCard: { marginTop: space.xs, borderRadius: radius.lg, ...depth.cardHero },
+  resultCardPlain: { marginTop: space.xs, ...depth.card },
+  resultMetal: { borderRadius: radius.lg },
+  resultInner: { padding: space.lg },
+  resultTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
+  resultCode: { ...typeTokens.display, fontSize: 28, lineHeight: 34, letterSpacing: 2, color: color.textPrimary, flex: 1 },
+  resultTier: { ...typeTokens.caption, color: color.textSecondary, marginTop: 2, letterSpacing: 0.3 },
+  resultDivider: { height: 1, backgroundColor: 'rgba(212,175,90,0.16)', marginTop: space.md },
   resultBodyWrap: { marginTop: space.md, gap: space.sm },
   resultBody: { ...typeTokens.caption, color: color.textSecondary },
   resultCta: { marginTop: space.xs },
@@ -396,7 +455,7 @@ const styles = StyleSheet.create({
   statusText: { ...typeTokens.bodyStrong, flex: 1 },
 
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
-  priceValue: { ...typeTokens.h1, color: color.gold },
+  priceValue: { ...typeTokens.stat, fontSize: 26, lineHeight: 32, color: color.gold },
   priceNote: { ...typeTokens.caption, color: color.textTertiary },
 
   inlineWarn: {
@@ -406,9 +465,9 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     paddingHorizontal: space.md,
     borderRadius: radius.sm,
-    backgroundColor: color.surfaceSunken,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     borderWidth: 1,
-    borderColor: color.border,
+    borderColor: 'rgba(224,179,74,0.35)',
   },
   inlineWarnText: { ...typeTokens.caption, color: color.warning, flex: 1 },
 
@@ -417,20 +476,33 @@ const styles = StyleSheet.create({
   exampleChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xs,
+    gap: space.xs + 2,
     minHeight: 40,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surfaceRaised,
+    borderColor: color.borderGold,
+    backgroundColor: color.surface,
+    overflow: 'hidden',
+    ...depth.chip,
   },
-  exampleText: { ...typeTokens.mono, fontSize: 13, color: color.textSecondary },
+  exampleLip: { position: 'absolute', top: 0, left: 12, right: 12, height: 1, backgroundColor: 'rgba(255,238,196,0.22)' },
+  exampleText: { ...typeTokens.mono, fontSize: 13, color: color.textPrimary },
 
-  tierRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: space.sm },
-  tierRowDivided: { borderTopWidth: 1, borderTopColor: color.border },
-  tierPrice: { ...typeTokens.bodyStrong, color: color.textSecondary },
-  tierNote: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.md },
+  tierCard: { ...depth.card },
+  tierContent: { paddingVertical: space.sm },
+  tierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.md,
+  },
+  tierRowDivided: { borderTopWidth: 1, borderTopColor: 'rgba(212,175,90,0.12)' },
+  tierCoin: { fontFamily: font.serif, fontSize: 12, lineHeight: 14, color: color.textOnGold },
+  tierBadge: { flex: 1, flexDirection: 'row' },
+  tierPrice: { ...typeTokens.stat, fontSize: 16, lineHeight: 22, color: color.textPrimary },
+  tierPriceAuction: { ...typeTokens.caption, fontSize: 13, color: color.gold, letterSpacing: 0.3 },
+  tierNote: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.sm, paddingBottom: space.xs },
 
   ordersList: { gap: space.sm },
   orderRow: {
@@ -442,8 +514,11 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.border,
+    overflow: 'hidden',
+    ...depth.chip,
   },
+  orderLip: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.09)' },
   orderMain: { flex: 1 },
-  orderCode: { ...typeTokens.mono, color: color.textPrimary },
+  orderCode: { ...typeTokens.monoLarge, fontSize: 17, lineHeight: 22, color: color.textPrimary },
   orderMeta: { ...typeTokens.caption, color: color.textTertiary, marginTop: 2 },
 });

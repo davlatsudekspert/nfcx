@@ -16,7 +16,7 @@ import { AuctionDemandCard } from '../../composites/AuctionDemandCard';
 import { AuctionCountdown } from '../../composites/AuctionCountdown';
 import { AuctionHowItWorks } from './AuctionHowItWorks';
 import { AuctionRequestSheet } from './AuctionRequestSheet';
-import { InfoBanner, MetricTile, PaymentsClosedNotice } from './AuctionUi';
+import { AuctionEmptyState, InfoBanner, MetricTile, PaymentsClosedNotice } from './AuctionUi';
 import { apiErrorMessage, summarizeAuctions } from './auctionModel';
 import { recoverSession } from './sessionRecovery';
 import { useManualRefresh } from './useManualRefresh';
@@ -27,7 +27,7 @@ import { usePaymentsEnabledStore } from '../../state/paymentsEnabledStore';
 import { formatCount, formatDateTime, formatSom, toFiniteNumber } from '../../lib/format';
 import { tierForCode } from '../../lib/pricing';
 import { useT } from '../../i18n';
-import { color, space, type as typeTokens } from '../../design-system/tokens';
+import { color, depth, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<AuctionStackParamList, 'AuctionList'>;
 type Navigation = Props['navigation'];
@@ -91,26 +91,34 @@ interface StateFallbackProps {
   aside?: React.ReactNode;
 }
 
-/** Loading / error / offline / session-expired / empty — all via the shared
- * `PremiumQueryState`, never re-implemented per tab. */
+/** Loading / error / offline / session-expired — all via the shared
+ * `PremiumQueryState`, never re-implemented per tab. A genuinely empty tab
+ * gets the section's own emblem (a floating gold medallion) with the same
+ * title / description / CTA contract. */
 function StateFallback({ aside, ...state }: StateFallbackProps) {
+  const showEmpty = !state.isLoading && !state.isError && state.isEmpty;
   return (
     <ScrollView contentContainerStyle={styles.stateScroll} showsVerticalScrollIndicator={false}>
-      <PremiumQueryState
-        isLoading={state.isLoading}
-        isError={state.isError}
-        error={state.error}
-        isEmpty={state.isEmpty}
-        onRetry={state.onRetry}
-        onUnauthorized={recoverSession}
-        emptyIcon={state.emptyIcon}
-        emptyTitle={state.emptyTitle}
-        emptyDescription={state.emptyDescription}
-        emptyCtaLabel={state.emptyCtaLabel}
-        onPressEmptyCta={state.onPressEmptyCta}
-        skeletonRows={3}
-        skeletonHeight={132}
-      />
+      {showEmpty ? (
+        <AuctionEmptyState
+          icon={state.emptyIcon}
+          title={state.emptyTitle}
+          description={state.emptyDescription}
+          ctaLabel={state.emptyCtaLabel}
+          onPressCta={state.onPressEmptyCta}
+        />
+      ) : (
+        <PremiumQueryState
+          isLoading={state.isLoading}
+          isError={state.isError}
+          error={state.error}
+          isEmpty={false}
+          onRetry={state.onRetry}
+          onUnauthorized={recoverSession}
+          skeletonRows={3}
+          skeletonHeight={132}
+        />
+      )}
       {aside}
     </ScrollView>
   );
@@ -151,7 +159,7 @@ function LiveTab({
         error={auctions.error}
         isEmpty={rows.length === 0}
         onRetry={() => void auctions.refetch()}
-        emptyIcon="trending-up"
+        emptyIcon="award"
         emptyTitle="Hozircha faol auksion yo'q"
         emptyDescription="Yangi auksionlar talab taxtasidan chiqadi — ovoz bering yoki o'zingiz ID so'rang."
         emptyCtaLabel="Talab taxtasi"
@@ -513,13 +521,13 @@ const styles = StyleSheet.create({
   headerBlock: { marginBottom: space.lg },
   headerBannerFirst: { marginTop: 0, marginBottom: space.md },
   metricsRow: { flexDirection: 'row', gap: space.sm },
-  tileCountdown: { fontSize: 15 },
+  tileCountdown: { ...typeTokens.stat, fontSize: 17, lineHeight: 22 },
   bannerAction: { marginTop: space.sm },
 
-  wonCard: { marginBottom: space.md },
+  wonCard: { marginBottom: space.md, ...depth.cardHero },
   wonTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, marginBottom: space.lg },
   wonIdentity: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexShrink: 1 },
-  wonCode: { ...typeTokens.mono, color: color.textPrimary, fontSize: 18, flexShrink: 1 },
+  wonCode: { ...typeTokens.monoLarge, fontSize: 20, lineHeight: 26, color: color.textPrimary, flexShrink: 1 },
   wonDeadline: { ...typeTokens.caption, color: color.textSecondary, marginTop: space.md },
   wonPrimary: { marginTop: space.lg },
   wonSecondary: { marginTop: space.sm },

@@ -2,7 +2,17 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { color, gradient, radius, space, touchTarget, type as typeTokens } from '../../design-system/tokens';
+import {
+  color,
+  depth,
+  font,
+  gradient,
+  medallion,
+  radius,
+  space,
+  touchTarget,
+  type as typeTokens,
+} from '../../design-system/tokens';
 import { safeText } from '../../lib/format';
 import { LIFECYCLE_STEPS, statusColor, statusLabel, statusStep } from './statusLabels';
 
@@ -12,12 +22,30 @@ import { LIFECYCLE_STEPS, statusColor, statusLabel, statusStep } from './statusL
  * never drift into three slightly different visual languages.
  */
 
-/** Status pill: a semantic dot + label. Colour comes from `STATUS_COLOR`. */
+/** `#RRGGBB` -> `rgba(...)`; a non-hex value is returned untouched so a bad
+ * colour can never render as `NaN` inside a style. */
+function withAlpha(hex: string, alpha: number): string {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+/** Status pill: a semantic dot + label. Colour comes from `STATUS_COLOR`.
+ * A live ("Faol") company glows softly — the one status that deserves light. */
 export function CompanyStatusChip({ status, compact = false }: { status: string | undefined; compact?: boolean }) {
   const tint = statusColor(status);
+  const lit = status === 'active';
   return (
-    <View style={[styles.chip, compact && styles.chipCompact, { borderColor: tint }]}>
-      <View style={[styles.chipDot, { backgroundColor: tint }]} />
+    <View
+      style={[
+        styles.chip,
+        compact && styles.chipCompact,
+        { borderColor: withAlpha(tint, lit ? 0.7 : 0.55), backgroundColor: withAlpha(tint, lit ? 0.14 : 0.08) },
+        lit && { boxShadow: `0 0 14px ${withAlpha(tint, 0.35)}, 0 2px 6px rgba(0,0,0,0.5)` },
+      ]}
+    >
+      <View style={[styles.chipDot, { backgroundColor: tint }, lit && { boxShadow: `0 0 6px ${withAlpha(tint, 0.9)}` }]} />
       <Text style={[styles.chipText, { color: tint }]} numberOfLines={1}>
         {statusLabel(status)}
       </Text>
@@ -25,18 +53,73 @@ export function CompanyStatusChip({ status, compact = false }: { status: string 
   );
 }
 
-/** Logo, or a gold monogram built from the company name when there is none. */
+/** Specular corner on the medallion rim, where the light source sits. */
+const RIM_SPECULAR = ['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.06)', 'transparent'] as const;
+
+/**
+ * Logo, or a gold monogram built from the company name when there is none.
+ *
+ * `variant="medallion"` sets the mark inside an embossed circular gold frame
+ * — a struck coin rather than a rounded square — for the workspace card.
+ */
 export function CompanyLogo({
   logoUrl,
   displayName,
   size = 48,
   style,
+  variant = 'rounded',
 }: {
   logoUrl?: string;
   displayName?: string;
   size?: number;
   style?: StyleProp<ViewStyle>;
+  variant?: 'rounded' | 'medallion';
 }) {
+  if (variant === 'medallion') {
+    const rim = 3;
+    const inner = size - rim * 2;
+    const initial = (displayName ?? '').trim().charAt(0).toUpperCase();
+    return (
+      <View style={[styles.medallion, { width: size, height: size, borderRadius: size / 2 }, style]}>
+        <View style={[styles.medallionClip, { borderRadius: size / 2 }]}>
+          <LinearGradient
+            colors={medallion.gold as unknown as readonly [string, string, string]}
+            locations={[0, 0.55, 1]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={RIM_SPECULAR}
+            locations={[0, 0.45, 1]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.7, y: 0.9 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View style={[styles.medallionFace, { width: inner, height: inner, borderRadius: inner / 2 }]}>
+            <LinearGradient
+              colors={gradient.cardSurface}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            ) : (
+              <Text style={[styles.medallionMonogram, { fontSize: Math.round(inner / 2.1), lineHeight: Math.round(inner / 1.6) }]}>
+                {initial || '#'}
+              </Text>
+            )}
+          </View>
+          <View style={[styles.medallionEmboss, { borderRadius: size / 2 }]} pointerEvents="none" />
+        </View>
+      </View>
+    );
+  }
+
   const box = { width: size, height: size, borderRadius: Math.round(size / 3.2) };
   if (logoUrl) {
     // The image lives inside the styled box (rather than being styled itself)
@@ -260,7 +343,7 @@ const styles = StyleSheet.create({
   },
   chipCompact: { paddingVertical: 2 },
   chipDot: { width: 6, height: 6, borderRadius: 3 },
-  chipText: { ...typeTokens.caption, fontWeight: '700' },
+  chipText: { ...typeTokens.caption, fontFamily: font.sansBold, letterSpacing: 0.3 },
 
   logo: { backgroundColor: color.surfaceHigh, overflow: 'hidden' },
   logoFallback: {
@@ -269,7 +352,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: color.borderGold,
   },
-  monogram: { color: color.gold, fontWeight: '800' },
+  monogram: { color: color.gold, fontFamily: font.serif },
+
+  medallion: { backgroundColor: color.goldDark, ...depth.emboss },
+  medallionClip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medallionFace: {
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.55)',
+  },
+  medallionMonogram: { color: color.goldHighlight, fontFamily: font.serif, includeFontPadding: false },
+  medallionEmboss: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(255,244,214,0.5)',
+    ...depth.emboss,
+  },
 
   cover: { width: '100%', backgroundColor: color.surfaceSunken, overflow: 'hidden' },
 
@@ -301,7 +415,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...typeTokens.overline, color: color.textTertiary, flex: 1 },
   sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24 },
-  sectionActionText: { ...typeTokens.caption, color: color.gold, fontWeight: '700' },
+  sectionActionText: { ...typeTokens.caption, color: color.gold, fontFamily: font.sansBold },
 
   infoRow: {
     flexDirection: 'row',
@@ -327,7 +441,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.surfaceRaised,
   },
   choiceChipSelected: { borderColor: color.borderGoldStrong, backgroundColor: color.goldMuted },
-  choiceChipText: { ...typeTokens.caption, color: color.textSecondary, fontWeight: '600' },
+  choiceChipText: { ...typeTokens.caption, color: color.textSecondary, fontFamily: font.sansSemi },
   choiceChipTextSelected: { color: color.gold },
 
   notice: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },

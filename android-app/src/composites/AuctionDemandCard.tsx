@@ -9,7 +9,7 @@ import { demandProgress } from '../screens/auction/auctionModel';
 import { formatCount, formatSom, toFiniteNumber } from '../lib/format';
 import { tierForCode } from '../lib/pricing';
 import type { AuctionDemand } from '../api/types';
-import { color, space, type as typeTokens } from '../design-system/tokens';
+import { color, depth, space, type as typeTokens } from '../design-system/tokens';
 
 export interface AuctionDemandCardProps {
   demand: AuctionDemand;
@@ -53,7 +53,11 @@ export function AuctionDemandCard({
       : `${formatCount(votes)} ovoz`;
 
   return (
-    <PremiumCard index={index} variant={isLiveAuction ? 'featured' : 'default'} style={styles.card}>
+    <PremiumCard
+      index={index}
+      variant={isLiveAuction ? 'featured' : 'default'}
+      style={isLiveAuction ? styles.cardLive : styles.card}
+    >
       <View style={styles.topRow}>
         <View style={styles.identity}>
           <Text style={styles.code} numberOfLines={1}>
@@ -108,13 +112,14 @@ export function AuctionDemandCard({
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: space.md },
+  card: { marginBottom: space.md, ...depth.card },
+  cardLive: { marginBottom: space.md, ...depth.cardHero },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexShrink: 1 },
-  code: { ...typeTokens.mono, color: color.textPrimary, fontSize: 18, flexShrink: 1 },
+  code: { ...typeTokens.monoLarge, fontSize: 20, lineHeight: 26, color: color.textPrimary, flexShrink: 1 },
   overline: { ...typeTokens.overline, color: color.textTertiary },
   alignRight: { textAlign: 'right' },
-  price: { ...typeTokens.h2, color: color.gold, marginTop: 2 },
+  price: { ...typeTokens.stat, fontSize: 22, lineHeight: 28, color: color.gold, marginTop: 2 },
   liveBlock: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -123,9 +128,9 @@ const styles = StyleSheet.create({
     marginTop: space.lg,
   },
   timeBlock: { alignItems: 'flex-end' },
-  countdown: { fontSize: 16, marginTop: 2 },
+  countdown: { ...typeTokens.stat, fontSize: 18, lineHeight: 24, marginTop: 2 },
   progressBlock: { marginTop: space.lg, gap: space.sm },
   progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-  votes: { ...typeTokens.bodyStrong, color: color.textPrimary },
+  votes: { ...typeTokens.stat, fontSize: 16, lineHeight: 22, color: color.textPrimary },
   action: { marginTop: space.lg },
 });

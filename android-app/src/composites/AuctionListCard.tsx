@@ -1,9 +1,9 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { PremiumCard } from '../design-system/components/PremiumCard';
 import { PremiumBadge, TierBadge } from '../design-system/components/PremiumBadge';
 import { AuctionCountdown } from './AuctionCountdown';
-import { MetaChip } from '../screens/auction/AuctionUi';
+import { MetaChip, TactilePressable } from '../screens/auction/AuctionUi';
 import {
   auctionCurrentPrice,
   auctionMinIncrement,
@@ -14,9 +14,8 @@ import {
 } from '../screens/auction/auctionModel';
 import { formatDateTime, formatSom } from '../lib/format';
 import { tierForCode } from '../lib/pricing';
-import { haptics } from '../native/haptics';
 import type { Auction } from '../api/types';
-import { color, space, type as typeTokens } from '../design-system/tokens';
+import { color, depth, radius, space, type as typeTokens } from '../design-system/tokens';
 
 export interface AuctionListCardProps {
   auction: Auction;
@@ -49,16 +48,13 @@ export function AuctionListCard({ auction, onPress, index, viewerId }: AuctionLi
   const hasIncrement = auction.minIncrement != null;
 
   return (
-    <Pressable
-      onPress={() => {
-        haptics.selection();
-        onPress();
-      }}
-      accessibilityRole="button"
+    <TactilePressable
+      onPress={onPress}
       accessibilityLabel={`${auction.code} auksioni, ${formatSom(price)}`}
-      style={({ pressed }) => [pressed && styles.pressed]}
+      cornerRadius={radius.lg}
+      style={styles.wrap}
     >
-      <PremiumCard index={index} variant={live ? 'featured' : 'default'} style={styles.card}>
+      <PremiumCard index={index} variant={live ? 'featured' : 'default'} style={live ? styles.cardLive : styles.card}>
         <View style={styles.topRow}>
           <View style={styles.identity}>
             <Text style={styles.code} numberOfLines={1}>
@@ -94,16 +90,17 @@ export function AuctionListCard({ auction, onPress, index, viewerId }: AuctionLi
           {hasIncrement && <MetaChip icon="chevrons-up" label={`Qadam ${formatSom(auctionMinIncrement(auction))}`} />}
         </View>
       </PremiumCard>
-    </Pressable>
+    </TactilePressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: space.md },
-  pressed: { opacity: 0.85 },
+  wrap: { marginBottom: space.md },
+  card: { ...depth.card },
+  cardLive: { ...depth.cardHero },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexShrink: 1 },
-  code: { ...typeTokens.mono, color: color.textPrimary, fontSize: 18, flexShrink: 1 },
+  code: { ...typeTokens.monoLarge, fontSize: 20, lineHeight: 26, color: color.textPrimary, flexShrink: 1 },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -115,8 +112,8 @@ const styles = StyleSheet.create({
   timeBlock: { alignItems: 'flex-end' },
   overline: { ...typeTokens.overline, color: color.textTertiary },
   alignRight: { textAlign: 'right' },
-  price: { ...typeTokens.h1, color: color.gold, marginTop: 2 },
-  countdown: { fontSize: 16, marginTop: 2 },
+  price: { ...typeTokens.stat, fontSize: 24, lineHeight: 30, color: color.gold, marginTop: 2 },
+  countdown: { ...typeTokens.stat, fontSize: 18, lineHeight: 24, marginTop: 2 },
   endedAt: { ...typeTokens.caption, color: color.textSecondary, marginTop: 4 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.md },
 });
