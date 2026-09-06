@@ -46,6 +46,22 @@ const MIN_W = 380;
 const MIN_H = 420;
 const FRAME_RATIO = 16 / 10; // GuideFrame/GuideMockFrame/GuideRealFrame'dagi aspect-[16/10] bilan bir xil bo'lishi shart
 
+// Bitta qadam ekranda QANCHA turishi.
+//
+// Avval bu faqat `durationMs` (2200-3200ms) edi va bu juda TEZ edi:
+// ayrim izohlar 200+ belgi, ularni o'qishga ~8-10 soniya kerak, ya'ni
+// tomoshabin matnni o'qib ulgurmasdan keyingi qadamga o'tib ketardi.
+// Endi vaqt izoh uzunligiga moslashadi — o'rtacha o'qish tezligi
+// (~13 belgi/soniya) bo'yicha, lekin darsning o'z `durationMs`idan
+// kam emas va 11 soniyadan oshmaydi (juda uzun izohda ham kutib
+// qolmaslik uchun; istalgan payt to'xtatish va qo'lda o'tish mumkin).
+function frameDuration(frame) {
+  const base = frame?.durationMs || 2600;
+  const chars = String(frame?.caption || '').length;
+  const readMs = 900 + chars * 76;
+  return Math.min(11000, Math.max(base, readMs));
+}
+
 export default function GuideViewer({ guide, onClose }) {
   const { t } = useLanguage();
   const frames = guide.frames || [];
@@ -94,7 +110,7 @@ export default function GuideViewer({ guide, onClose }) {
         if (cur >= frames.length - 1) { setPlaying(false); return cur; }
         return cur + 1;
       });
-    }, frame?.durationMs || 2200);
+    }, frameDuration(frame));
     return () => clearTimeout(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, i, frames.length]);
