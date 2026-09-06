@@ -1863,7 +1863,10 @@ function catalogCard(record, auctionFinal = null) {
     // (status='activated' — ya'ni admin rezerv qilgan va oluvchi
     // faollashtirgan karta). Narxi 0 bo'lgan har qanday karta sovg'a
     // deb hisoblanmaydi.
-    isGift: !!record.isGift,
+    // Haqiqiy `nfc_gifts` yozuvi YOKI egasining qo'lda belgilagan ro'yxati
+    // (GIFT_CODES_D1). Ikkinchisi kerak, chunki admin panel egasi bor
+    // kartaga sovg'a yozuvi yarata olmaydi (CODE_TAKEN).
+    isGift: !!record.isGift || isGiftCodeD1(record.code),
   };
 }
 
@@ -1928,7 +1931,19 @@ function validCode(code) {
 
 // Qo'lda belgilangan tarif (src/lib/codeTiers.js bilan bir xil, 2026-08
 // holati). O'zgartirish: shu ikkala faylni BIRGA yangilang.
+// Egasi SOVG'A deb belgilagan ID'lar — src/lib/giftCodes.js GIFT_CODES bilan
+// AYNAN bir xil (paritet testda tekshiriladi). Katalogda narx o'rniga
+// "Sovg'a" chiqadi. `nfc_gifts` jadvaliga hech narsa yozmaydi va haqiqiy
+// sovg'a yozuvlari ustidan ishlaydi — batafsil izoh src/lib/giftCodes.js da.
+const GIFT_CODES_D1 = ['SAV571'];
+function isGiftCodeD1(code) {
+  const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return GIFT_CODES_D1.includes(c);
+}
+
 const PERSONAL_AUCTION_CODES = [
+  // 2026-09: noyob ID — egasining qarori bilan ekslyuziv.
+  'SAV571',
   'AAA001', 'AAA007', 'OOO001', 'OOO007', 'JJJ007', 'DDD001', 'DDD007', 'FFF007',
   'BEK001', 'BEK007', 'BEK777', 'UZB000', 'UZB001', 'UZB007', 'UAE001', 'USD100',
   'ABC123', 'DEV001', 'GEM001', 'UNO000', 'WOW013', 'ASL777', 'AGA777', 'KHU777',
