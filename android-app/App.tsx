@@ -10,6 +10,7 @@ import { PremiumToastProvider } from './src/design-system/components/PremiumToas
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/state/authStore';
 import { usePaymentsEnabledStore } from './src/state/paymentsEnabledStore';
+import { useLocaleStore } from './src/i18n';
 import { color } from './src/design-system/tokens';
 
 export default function App() {
@@ -20,6 +21,8 @@ export default function App() {
     // read the resulting store state; they never fetch these themselves.
     useAuthStore.getState().bootstrap();
     usePaymentsEnabledStore.getState().refresh();
+    // Restores the saved UZ/RU/EN choice before the first screen paints.
+    useLocaleStore.getState().hydrate();
 
     const onAppStateChange = (next: AppStateStatus) => {
       if (next === 'active') {
