@@ -64,3 +64,44 @@ export function isEmbedMusic(url) {
   const p = parseMusicSource(url);
   return !!p && (p.kind === 'youtube' || p.kind === 'yandex');
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QO'SHIQ NOMI (ixcham musiqa qatorida ko'rsatiladi)
+// ─────────────────────────────────────────────────────────────────────────────
+// YouTube uchun — RASMIY oEmbed metama'lumoti (https://www.youtube.com/oembed).
+// Bu faqat sarlavha/thumbnail metadata; audio OQIMI ajratilmaydi, yuklab
+// olinmaydi va proxy qilinmaydi (ijro har doim rasmiy IFrame Player orqali).
+// Tarmoq bloklansa yoki xato bo'lsa — jimgina null qaytadi va chaqiruvchi
+// zaxira nom ("Musiqa N") ishlatadi.
+const _ytTitleCache = new Map();
+
+export function cachedYoutubeTitle(id) {
+  return _ytTitleCache.get(id) || null;
+}
+
+export function fetchYoutubeTitle(id) {
+  if (!id) return Promise.resolve(null);
+  if (_ytTitleCache.has(id)) return Promise.resolve(_ytTitleCache.get(id));
+  const p = fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      const title = d && typeof d.title === 'string' ? d.title.trim() : null;
+      if (title) _ytTitleCache.set(id, title);
+      return title;
+    })
+    .catch(() => null);
+  return p;
+}
+
+// Yuklangan/tashqi audio fayl uchun nom — havoladagi fayl nomidan
+// (kengaytmasiz, `%20` kabi kodlar ochilgan holda).
+export function audioFileTitle(url) {
+  try {
+    const path = String(url || '').split('?')[0].split('#')[0];
+    const base = path.split('/').filter(Boolean).pop() || '';
+    const name = decodeURIComponent(base).replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_-]+/g, ' ').trim();
+    return name || null;
+  } catch {
+    return null;
+  }
+}

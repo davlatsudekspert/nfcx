@@ -2119,6 +2119,8 @@ const DICT_BASE = {
   "NFCSTORE": { ru: "NFCSTORE", en: "NFCSTORE" },
   "Surish": { ru: "Перетащить", en: "Drag" },
   "Videoni yashirish": { ru: "Скрыть видео", en: "Hide video" },
+  // 2026-09: ixcham YouTube pleeri — minimizatsiya tugmasi.
+  "Videoni yig‘ish": { ru: "Свернуть видео", en: "Collapse video" },
   "Videoni ko‘rsatish": { ru: "Показать видео", en: "Show video" },
   "Havola": { ru: "Ссылка", en: "Link" },
   "Yangi telefon raqamini kiriting.": { ru: "Введите новый номер телефона.", en: "Enter your new phone number." },
