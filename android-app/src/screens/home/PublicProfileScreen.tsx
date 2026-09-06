@@ -202,7 +202,7 @@ export function PublicProfileBody({ code, mode = 'public', onBack }: PublicProfi
           />
         </View>
 
-        <ProfileView record={record.data} followStats={stats.data} />
+        <ProfileView record={record.data} followStats={stats.data} hideIdentityRow />
       </ScrollView>
 
       <View style={[styles.stickyBar, { paddingBottom: space.lg + insets.bottom }]}>

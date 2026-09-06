@@ -17,6 +17,13 @@ export interface ProfileViewProps {
   record: FullNfcRecord;
   followStats?: FollowStats;
   viewCount?: number;
+  /**
+   * Set when the screen already renders the ID as a metal hero card above
+   * this body (public profile / owner preview). The code and tier are then
+   * printed on the card itself, so repeating them here would say the same
+   * thing twice in a row — Wallet-style, the card owns the identity.
+   */
+  hideIdentityRow?: boolean;
 }
 
 /**
@@ -30,7 +37,7 @@ export interface ProfileViewProps {
  * literally what an NFC tap renders, not a local draft that only looks
  * like it.
  */
-export function ProfileView({ record, followStats, viewCount }: ProfileViewProps) {
+export function ProfileView({ record, followStats, viewCount, hideIdentityRow = false }: ProfileViewProps) {
   const tier = tierForCode(record.code);
   const contactButtons = buildContactButtons(record);
   const memberSinceMs = parseTimestampMs(record.ts);
@@ -49,11 +56,19 @@ export function ProfileView({ record, followStats, viewCount }: ProfileViewProps
         <NfcCardVisual avatarUrl={record.avatarUrl} verified={record.verified === true} />
       </View>
 
-      <View style={styles.idRow}>
-        <Text style={styles.code}>#{safeText(record.code, '—')}</Text>
-        <TierBadge tier={tier} />
-        {record.verified === true && <PremiumBadge label="TASDIQLANGAN" tone="success" />}
-      </View>
+      {hideIdentityRow ? (
+        record.verified === true && (
+          <View style={styles.idRow}>
+            <PremiumBadge label="TASDIQLANGAN" tone="success" />
+          </View>
+        )
+      ) : (
+        <View style={styles.idRow}>
+          <Text style={styles.code}>#{safeText(record.code, '—')}</Text>
+          <TierBadge tier={tier} />
+          {record.verified === true && <PremiumBadge label="TASDIQLANGAN" tone="success" />}
+        </View>
+      )}
 
       <Text style={styles.name}>{safeText(record.name, 'Nomsiz profil')}</Text>
       {!!record.role && <Text style={styles.role}>{record.role}</Text>}
