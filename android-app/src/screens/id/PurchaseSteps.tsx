@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 export interface PurchaseStepsProps {
   /** 1-based. */
@@ -40,6 +40,6 @@ const styles = StyleSheet.create({
   bar: { height: 3, borderRadius: radius.pill, backgroundColor: color.surfaceHigh },
   barActive: { backgroundColor: color.gold },
   label: { ...typeTokens.caption, color: color.textTertiary },
-  labelActive: { color: color.gold, fontWeight: '700' },
+  labelActive: { color: color.gold, fontFamily: font.sansBold },
   labelDone: { color: color.textSecondary },
 });

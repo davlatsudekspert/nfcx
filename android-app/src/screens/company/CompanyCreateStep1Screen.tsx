@@ -16,7 +16,7 @@ import { companyKeys } from '../../hooks/useMyCompanies';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { formatSom, safeText } from '../../lib/format';
 import { COMPANY_ID_MAX, COMPANY_ID_MIN, asTierKey, companyIdError, normalizeCompanyId } from './companyForm';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<CompanyStackParamList, 'CompanyCreate1'>;
 
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   tableRowActive: { backgroundColor: color.goldWash },
   tableRange: { ...typeTokens.caption, color: color.textSecondary, width: 68 },
-  tableTier: { ...typeTokens.caption, color: color.textTertiary, flex: 1, fontWeight: '700' },
+  tableTier: { ...typeTokens.caption, color: color.textTertiary, flex: 1, fontFamily: font.sansBold },
   tablePrice: { ...typeTokens.caption, color: color.textSecondary },
   tableTextActive: { color: color.gold },
 });

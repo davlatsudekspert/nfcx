@@ -8,7 +8,7 @@ import { InfoBanner, MetricTile, PaymentsClosedNotice } from './AuctionUi';
 import { auctionCurrentPrice, auctionMinIncrement, sanitizeAmountInput } from './auctionModel';
 import { formatSom } from '../../lib/format';
 import type { Auction } from '../../api/types';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 /** Module-level so the sheet's snap points keep a stable identity across the
  * screen's 4s poll re-renders (a new array each render re-measures the sheet). */
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   quickChipPressed: { opacity: 0.8 },
   quickLabel: { ...typeTokens.overline, color: color.textTertiary },
   quickLabelActive: { color: color.gold },
-  quickValue: { ...typeTokens.caption, color: color.textPrimary, fontWeight: '700' },
+  quickValue: { ...typeTokens.caption, color: color.textPrimary, fontFamily: font.sansBold },
   preview: { ...typeTokens.bodyStrong, color: color.gold, marginTop: -space.sm },
   bannerAction: { marginTop: space.sm },
   submit: { marginTop: space.xs },

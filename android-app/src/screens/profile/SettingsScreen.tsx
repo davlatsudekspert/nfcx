@@ -21,7 +21,7 @@ import { getPushReadiness, requestNotificationPermission, type PushReadiness } f
 import { LOCALE_LABEL, useLocale, useLocaleStore, useT, type LocaleCode } from '../../i18n';
 import { formatCount, safeText } from '../../lib/format';
 import { useProfileCopy, profileText, type ProfileCopyKey } from './profileCopy';
-import { color, elevation, radius, space, touchTarget, type as typeTokens } from '../../design-system/tokens';
+import { color, elevation, radius, space, touchTarget, type as typeTokens, font } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Settings'>;
 
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   },
   localeRowActive: { backgroundColor: color.goldWash, borderColor: color.borderGold },
   localeLabel: { ...typeTokens.body, color: color.textPrimary },
-  localeLabelActive: { color: color.gold, fontWeight: '600' },
+  localeLabelActive: { color: color.gold, fontFamily: font.sansSemi },
   modalBody: { gap: space.sm },
   modalText: { ...typeTokens.body, color: color.textSecondary },
   modalMeta: { ...typeTokens.caption, color: color.textTertiary },

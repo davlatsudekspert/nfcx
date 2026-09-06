@@ -19,7 +19,7 @@ import { formatDateTime, timeAgo } from '../../lib/format';
 import { useT } from '../../i18n';
 import { useProfileCopy } from './profileCopy';
 import { buildInboxItems, loadSeenIds, saveSeenIds, type InboxItem } from './notificationInbox';
-import { color, elevation, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, elevation, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'Notifications'>;
 
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   warnCard: { borderColor: color.borderStrong },
   warnContent: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md },
   warnText: { ...typeTokens.caption, color: color.textSecondary, flex: 1 },
-  warnAction: { ...typeTokens.caption, color: color.gold, fontWeight: '700' },
+  warnAction: { ...typeTokens.caption, color: color.gold, fontFamily: font.sansBold },
   list: { gap: space.md },
   card: { overflow: 'hidden' },
   cardContent: { padding: space.lg, gap: space.md },

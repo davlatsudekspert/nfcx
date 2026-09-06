@@ -33,7 +33,7 @@ import { formatCount, formatDateTime } from '../../lib/format';
 import { haptics } from '../../native/haptics';
 import { pickAndUploadImage } from '../../native/imageUpload';
 import { useT } from '../../i18n';
-import { color, elevation, radius, space, touchTarget, type as typeTokens } from '../../design-system/tokens';
+import { color, elevation, radius, space, touchTarget, type as typeTokens, font } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'IdOwnerWorkspace'>;
 
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
   },
   chipActive: { borderColor: color.borderGoldStrong, backgroundColor: color.goldMuted },
   chipText: { ...typeTokens.caption, color: color.textSecondary },
-  chipTextActive: { color: color.gold, fontWeight: '700' },
+  chipTextActive: { color: color.gold, fontFamily: font.sansBold },
 
   divider: { height: 1, backgroundColor: color.border, marginVertical: space.md },
   extraLinkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },

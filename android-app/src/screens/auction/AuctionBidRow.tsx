@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { MetaChip } from './AuctionUi';
 import { formatDateTime, formatSom, safeText, timeAgo } from '../../lib/format';
 import type { Bid } from '../../api/types';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 export interface AuctionBidRowProps {
   bid: Bid;
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.surfaceHigh,
   },
   rankTop: { backgroundColor: color.goldMuted },
-  rankText: { ...typeTokens.caption, color: color.textTertiary, fontWeight: '700' },
+  rankText: { ...typeTokens.caption, color: color.textTertiary, fontFamily: font.sansBold },
   rankTextTop: { color: color.gold },
   body: { flex: 1, gap: 2 },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

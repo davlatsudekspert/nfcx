@@ -10,7 +10,7 @@ import { useToast } from '../../design-system/components/PremiumToast';
 import { NoticeLine, SectionHeader } from './CompanyVisuals';
 import { absoluteUploadUrl } from './companyForm';
 import { pickAndUploadImage } from '../../native/imageUpload';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<CompanyStackParamList, 'CompanyCreate3'>;
 
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   slotPress: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 96 },
   slotPlaceholder: { alignItems: 'center', gap: space.xs },
-  slotAction: { ...typeTokens.caption, color: color.gold, fontWeight: '700' },
+  slotAction: { ...typeTokens.caption, color: color.gold, fontFamily: font.sansBold },
   logoRow: { flexDirection: 'row', gap: space.md, alignItems: 'center' },
   logoSlot: { width: 96, height: 96 },
   logoCopy: { flex: 1 },

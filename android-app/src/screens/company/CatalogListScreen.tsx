@@ -24,7 +24,7 @@ import { useAuthStore } from '../../state/authStore';
 import { businessModule, menuLimitsFor, productLimitsFor, serviceLimitsFor } from '../../lib/access';
 import { formatCount, formatSom, safeText, toFiniteNumber } from '../../lib/format';
 import type { Company, CompanyCatalogItem } from '../../api/types';
-import { color, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, radius, space, type as typeTokens, font } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<CompanyStackParamList, 'CatalogList'>;
 
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.surfaceRaised,
   },
   iconActionDisabled: { opacity: 0.4 },
-  iconActionText: { ...typeTokens.caption, fontWeight: '600' },
+  iconActionText: { ...typeTokens.caption, fontFamily: font.sansSemi },
 
   footerButton: { marginTop: space.sm },
   priceInputs: { flexDirection: 'row', gap: space.md },
