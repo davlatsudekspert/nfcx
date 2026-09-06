@@ -48,7 +48,7 @@ export function SplashScreen({ navigation }: Props) {
         <Text style={styles.markText}>N</Text>
       </Animated.View>
       <Text style={styles.logo}>NFCSTORE</Text>
-      <Text style={styles.tagline}>Premium NFC identity</Text>
+      <Text style={styles.tagline}>RAQAMLI TASHRIFNOMA</Text>
     </View>
   );
 }
