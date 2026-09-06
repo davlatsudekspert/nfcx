@@ -759,3 +759,10 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 @media (prefers-reduced-motion:reduce){
   .vz-nav__link,.vz-nav__link::after,.vz-nav-m__link{transition:none;}
 }
+
+/* Suzuvchi mini-pleer ochilganda — FAQAT tor ekranlarda kontent oxiriga
+   qo'shimcha bo'sh joy. Aks holda pleer pastdagi aloqa tugmalarini to'sib
+   qolardi. Desktopda joy yetarli, shuning uchun tegilmaydi. */
+@media (max-width: 767px) {
+  .vz-music-open { padding-bottom: 330px !important; }
+}
