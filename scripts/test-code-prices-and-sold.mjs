@@ -215,4 +215,37 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('XXX772 to\'g\'ridan-to\'g\'ri sotib olinmaydi', getPersonalPurchaseQuote('XXX772').purchasable, false);
 }
 
+// ═══ 9. O'CHIRILGAN ID "Sotilgan" bo'limida QOLMASIN ═══
+// Egasi katalogdan kartani o'chirsa, uning eski auksion yozuvi `auctions`
+// jadvalida qolib ketadi va avval "Sotilgan"da "Auksion yakunlandi" bo'lib
+// osilib turardi — bosib bo'lmaydigan, katalogda topilmaydigan ID.
+{
+  const now = new Date().toISOString();
+  // Kartasi BOR sotilgan auksion — ko'rinishi KERAK
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('III777','Bor', 100000, 4200, 1, 'personal')`).run();
+  await env.DB.prepare(
+    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, ends_at, status, min_increment, created_at)
+     VALUES (904, 'III777', NULL, 100000, 7300000, ?, 'sold', 25000, ?)`
+  ).bind(now, now).run();
+  // Kartasi O'CHIRILGAN sotilgan auksion — ko'rinmasligi kerak
+  await env.DB.prepare(
+    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, ends_at, status, min_increment, created_at)
+     VALUES (905, 'DEL999', NULL, 100000, 5000000, ?, 'sold', 25000, ?)`
+  ).bind(now, now).run();
+
+  const r = await j('/api/auctions?withSold=1');
+  const codes = (r.body?.sold || []).map((x) => x.code);
+  checkTrue('kartasi bor sotilgan ID ko\'rinadi (III777)', codes.includes('III777'));
+  check('kartasi O\'CHIRILGAN ID ko\'rinmaydi (DEL999)', codes.includes('DEL999'), false);
+
+  // Auksion yozuvining O'ZI o'chirilmagan — tarix saqlanadi.
+  const row = await env.DB.prepare(`SELECT status, current_price FROM auctions WHERE id = 905`).first();
+  check('auksion yozuvi bazada SAQLANIB QOLGAN', [row?.status, Number(row?.current_price)], ['sold', 5000000]);
+
+  // Kartani o'chirsak, u ham ro'yxatdan tushadi.
+  await env.DB.prepare(`DELETE FROM cards WHERE code = 'III777'`).run();
+  const r2 = await j('/api/auctions?withSold=1');
+  check('karta o\'chirilgach ro\'yxatdan tushadi', (r2.body?.sold || []).map((x) => x.code).includes('III777'), false);
+}
+
 done();

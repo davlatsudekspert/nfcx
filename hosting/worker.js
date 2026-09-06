@@ -3641,7 +3641,18 @@ async function auctionsPublicApi(request, env, url) {
     const active = await env.DB.prepare(`SELECT * FROM auctions WHERE status = 'active' ORDER BY ends_at ASC LIMIT 200`).all();
     const auctions = (active.results || []).map(auctionRow);
     if (url.searchParams.get('withSold') === '1') {
-      const sold = await env.DB.prepare(`SELECT * FROM auctions WHERE status = 'sold' ORDER BY ends_at DESC LIMIT 40`).all();
+      // "Sotilgan" bo'limi FAQAT hali mavjud ID'larni ko'rsatadi. Karta
+      // katalogdan o'chirilgan bo'lsa (admin o'chirgan), uning eski auksion
+      // yozuvi `auctions` jadvalida qolib ketadi va avval shu yerda "Auksion
+      // yakunlandi" bo'lib osilib turardi — foydalanuvchi bosolmaydigan,
+      // katalogda topib bo'lmaydigan ID. Yozuvning O'ZI o'chirilmaydi
+      // (auksion tarixi saqlanadi), faqat ko'rsatilmaydi.
+      const sold = await env.DB.prepare(
+        `SELECT a.* FROM auctions a
+          WHERE a.status = 'sold'
+            AND EXISTS (SELECT 1 FROM cards c WHERE c.code = a.code)
+          ORDER BY a.ends_at DESC LIMIT 40`
+      ).all();
       const soldRows = (sold.results || []).map(auctionRow);
       return json({ auctions, sold: [...soldRows, ...(await ownedExclusiveSoldD1(env, soldRows))] });
     }
