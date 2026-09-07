@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
-import { checkCompanyId, companyIdLocalInfo, COMPANY_STATUS, createCompany, listMyCompanies } from '../lib/company.js';
+import { checkCompanyId, companyIdLocalInfo, normalizeCompanyId, COMPANY_STATUS, createCompany, listMyCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { companyNameBlocked } from '../lib/nameGuard.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -85,8 +85,8 @@ export default function CompanyCreatePage() {
       </section>
 
       <form className="cc-form" onSubmit={submit}>
-        <div className="cc-form-title"><span>{t('ARIZA')}</span><h2>{t('Company ID yarating')}</h2><p>{t('Faqat lotin harflari. Raqam, probel va belgi qabul qilinmaydi.')}</p></div>
-        <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 15) }))} placeholder={t('KOMPANIYA')} /></div></label>
+        <div className="cc-form-title"><span>{t('ARIZA')}</span><h2>{t('Company ID yarating')}</h2><p>{t('Lotin harflari, shuningdek o‘zbekcha O‘ va G‘ (masalan g‘oya). Raqam, probel va boshqa belgilar qabul qilinmaydi.')}</p></div>
+        <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: normalizeCompanyId(e.target.value) }))} placeholder={t('KOMPANIYA')} spellCheck={false} autoCapitalize="characters" autoCorrect="off" /></div></label>
         <div className={`cc-id-result ${check?.available ? 'available' : check?.valid ? 'unavailable' : ''}`}>
           <div><b>{check?.valid ? `${(check.tier || '').toUpperCase()} · ${fmt(check.price)} ${t('so‘m')}` : t('3–15 ta harf')}</b><span>{check?.available === true ? `✓ ${t('Bo‘sh — ariza yuborish mumkin')}` : check?.available === false ? `✕ ${check.reason ? t(check.reason) : t('Band yoki sotuvda emas')}` : (check?.reason ? t(check.reason) : t('ID yozishni boshlang'))}</span></div>
           {check?.alternatives?.length > 0 && <div className="cc-alternatives flex-wrap">{check.alternatives.map((id) => <button type="button" key={id} className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: id }))}>{id}</button>)}</div>}

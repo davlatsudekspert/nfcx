@@ -31,15 +31,76 @@ export const COMPANY_CTA = {
 
 export const companyCta = (category) => COMPANY_CTA[category] || COMPANY_CTA.other;
 
+// ═══════════════════════════════════════════════════════════════════════
+// KOMPANIYA ID — O‘ZBEK ALIFBOSI (2026-09)
+//
+// A–Z dan tashqari o‘zbekchaning ikkita qo‘shma harfi ham qabul qilinadi:
+// O‘ va G‘ — ya'ni nfcstore.uz/c/g'oya. Ular BITTA harf hisoblanadi.
+//
+// KANONIK SHAKL — oddiy ASCII apostrof ('). Sababi: u URL yo‘lida
+// kodlanmasdan turaveradi, telefon klaviaturasida ham, kompyuterda ham
+// oson teriladi. Foydalanuvchi qaysi belgini yozishidan qat'i nazar
+// (ʻ ʼ ‘ ’ ` ´ ′) hammasi shu bitta belgiga keltiriladi — aks holda
+// "gʻoya" va "g'oya" ikkita BOSHQA kompaniya bo‘lib qolardi.
+//
+// Apostrof faqat O yoki G dan keyin ma'noga ega. Boshida, oxirida yoki
+// boshqa harfdan keyin kelgani shunchaki tashlab yuboriladi — "A'B"
+// kabi ID yaratib bo‘lmaydi.
+//
+// NARX HARFLAR BO‘YICHA: "G'OYA" — 4 harf (G‘,O,Y,A), 5 ta belgi emas.
+// Belgilar sanalsa, apostrofli nomlar uzunroq ko‘rinib ARZONROQ tarifga
+// tushib qolardi (8 harfdan boshlab silver) — bu ham noto‘g‘ri, ham
+// adolatsiz bo‘lardi.
+//
+// DIQQAT: hosting/worker.js'dagi companyId()/companyIdLetters()/
+// companyPricing() bilan AYNAN bir xil bo‘lishi shart (Worker modullari
+// `src/` dan import qila olmaydi). scripts/test-company-id.mjs ikkalasini
+// bir xil kirishlarda solishtiradi.
+// ═══════════════════════════════════════════════════════════════════════
+const APOSTROPHES = /[\u2018\u2019\u02BB\u02BC\u0060\u00B4\u2032]/g;
+
 export function normalizeCompanyId(value) {
-  return String(value || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 15);
+  // Apostrof variantlari NFKC'dan OLDIN ham, KEYIN ham almashtiriladi.
+  // Sababi: NFKC ba'zi belgilarni apostrof BO'LMAGAN narsaga yoyadi —
+  // masalan ´ (U+00B4) "bo'sh joy + qo'shiluvchi urg'u" ga aylanadi va
+  // keyin butunlay yo'qolib ketardi ("g´oya" -> "GOYA", ya'ni boshqa
+  // kompaniya). Oldindan almashtirilsa, u to'g'ri G'OYA bo'ladi.
+  const raw = String(value || '')
+    .replace(APOSTROPHES, "'")
+    .normalize('NFKC')
+    .replace(APOSTROPHES, "'")
+    .toUpperCase()
+    .replace(/[^A-Z']/g, '');
+  let out = '';
+  let letters = 0;
+  for (const ch of raw) {
+    if (ch === "'") {
+      // Faqat O/G dan keyin. Bu bir vaqtning o‘zida ikkilangan
+      // apostrofni ham to‘xtatadi (oldingi belgi ' bo‘lib qoladi).
+      const prev = out[out.length - 1];
+      if (prev === 'O' || prev === 'G') out += "'";
+      continue;
+    }
+    if (letters >= 15) break;
+    out += ch;
+    letters += 1;
+  }
+  return out;
+}
+
+// O‘ va G‘ — bitta harf.
+export function companyIdLetters(id) {
+  return String(id || '').replace(/'/g, '').length;
 }
 
 export function companyIdLocalInfo(value) {
   const companyId = normalizeCompanyId(value);
-  if (!companyId || companyId.length < 3) return { companyId, valid: false, reason: 'Kamida 3 ta harf kiriting' };
-  if (!/^[A-Z]{3,15}$/.test(companyId)) return { companyId, valid: false, reason: 'Faqat A–Z harflari mumkin' };
-  const tier = companyId.length === 3 ? 'exclusive' : companyId.length <= 5 ? 'premium' : companyId.length <= 7 ? 'gold' : 'silver';
+  const letters = companyIdLetters(companyId);
+  if (!companyId || letters < 3) return { companyId, valid: false, reason: 'Kamida 3 ta harf kiriting' };
+  if (letters > 15 || !/^(?:[OG]'|[A-Z])+$/.test(companyId)) {
+    return { companyId, valid: false, reason: "Faqat A–Z harflari, shuningdek O‘ va G‘ mumkin" };
+  }
+  const tier = letters === 3 ? 'exclusive' : letters <= 5 ? 'premium' : letters <= 7 ? 'gold' : 'silver';
   return { companyId, valid: true, tier, price: COMPANY_TIERS[tier].price };
 }
 

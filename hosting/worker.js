@@ -297,9 +297,73 @@ async function ensureCompanySchema(env) {
   await companySchemaReady;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// KOMPANIYA ID — O'ZBEK ALIFBOSI (2026-09)
+//
+// DIQQAT: bu uchlik src/lib/company.js dagi normalizeCompanyId() /
+// companyIdLetters() / companyIdLocalInfo() bilan AYNAN bir xil bo'lishi
+// shart (Worker modullari `src/` dan import qila olmaydi — build guard
+// taqiqlaydi). scripts/test-company-id.mjs ikkalasini bir xil kirishlarda
+// solishtirib, ular ajralib ketmasligini kafolatlaydi.
+//
+// A-Z dan tashqari o'zbekchaning ikkita qo'shma harfi qabul qilinadi:
+// O' va G' (nfcstore.uz/c/g'oya). Ular BITTA harf hisoblanadi.
+//
+// KANONIK SHAKL — oddiy ASCII apostrof ('): URL yo'lida kodlanmasdan
+// turaveradi va istalgan klaviaturada oson teriladi. Foydalanuvchi
+// qaysi belgini yozishidan qat'i nazar (ʻ ʼ ‘ ’ ` ´ ′) hammasi shunga
+// keltiriladi — aks holda "gʻoya" va "g'oya" IKKITA boshqa kompaniya
+// bo'lib qolardi.
+//
+// Apostrof faqat O yoki G dan keyin ma'noga ega; boshqa joyda kelgani
+// tashlab yuboriladi.
+// ═══════════════════════════════════════════════════════════════════════
+const COMPANY_APOSTROPHES = /[\u2018\u2019\u02BB\u02BC\u0060\u00B4\u2032]/g;
+
+// URL yo'lidagi bo'lakni xavfsiz ochadi. Apostrof odatda kodlanmaydi,
+// lekin ba'zi mijozlar %27 yuboradi; buzuq foizli ketma-ketlik
+// decodeURIComponent'ni ISTISNO bilan yiqitadi, shuning uchun try.
+function decodeCompanySeg(value) {
+  try { return decodeURIComponent(String(value || '')); } catch { return String(value || ''); }
+}
+
+function normalizeCompanyIdD1(value) {
+  // Apostrof variantlari NFKC'dan OLDIN ham, KEYIN ham almashtiriladi.
+  // Sababi: NFKC ba'zi belgilarni apostrof BO'LMAGAN narsaga yoyadi —
+  // masalan ´ (U+00B4) "bo'sh joy + qo'shiluvchi urg'u" ga aylanadi va
+  // keyin butunlay yo'qolib ketardi ("g´oya" -> "GOYA", ya'ni boshqa
+  // kompaniya). Oldindan almashtirilsa, u to'g'ri G'OYA bo'ladi.
+  const raw = String(value || '')
+    .replace(COMPANY_APOSTROPHES, "'")
+    .normalize('NFKC')
+    .replace(COMPANY_APOSTROPHES, "'")
+    .toUpperCase()
+    .replace(/[^A-Z']/g, '');
+  let out = '';
+  let letters = 0;
+  for (const ch of raw) {
+    if (ch === "'") {
+      const prev = out[out.length - 1];
+      if (prev === 'O' || prev === 'G') out += "'";
+      continue;
+    }
+    if (letters >= 15) break;
+    out += ch;
+    letters += 1;
+  }
+  return out;
+}
+
+// O' va G' — bitta harf.
+function companyIdLettersD1(id) {
+  return String(id || '').replace(/'/g, '').length;
+}
+
 function companyId(value) {
-  const id = String(value || '').trim().toUpperCase();
-  return /^[A-Z]{3,15}$/.test(id) ? id : '';
+  const id = normalizeCompanyIdD1(value);
+  const letters = companyIdLettersD1(id);
+  if (letters < 3 || letters > 15) return '';
+  return /^(?:[OG]'|[A-Z])+$/.test(id) ? id : '';
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -400,7 +464,10 @@ function safeUrl(value) {
 }
 
 function companyPricing(id, rule) {
-  const length = id.length;
+  // HARFLAR soni, belgilar soni EMAS: "G'OYA" — 4 harf. Belgilar
+  // sanalganda apostrofli nomlar sun'iy ravishda uzunroq ko'rinib
+  // ARZONROQ tarifga tushib qolardi.
+  const length = companyIdLettersD1(id);
   let tier = length === 3 ? 'exclusive' : length <= 5 ? 'premium' : length <= 7 ? 'gold' : 'silver';
   let price = { silver: 349000, gold: 549000, premium: 749000, exclusive: 990000 }[tier];
   if (['silver', 'gold', 'premium', 'exclusive'].includes(rule?.tier_override)) tier = rule.tier_override;
@@ -481,17 +548,21 @@ async function companyWithItems(env, id) {
 
 async function companyAvailability(env, rawId) {
   const id = companyId(rawId);
-  if (!id) return { companyId: String(rawId || '').toUpperCase(), valid: false, available: false, reason: 'Faqat 3–15 ta lotin harfi mumkin' };
+  if (!id) return { companyId: normalizeCompanyIdD1(rawId), valid: false, available: false, reason: "Faqat 3–15 ta lotin harfi, shuningdek O' va G' mumkin" };
   const [taken, rule] = await Promise.all([
     env.DB.prepare(`SELECT status FROM companies WHERE company_id = ? AND status <> 'rejected'`).bind(id).first(),
     env.DB.prepare('SELECT * FROM company_id_rules WHERE company_id = ?').bind(id).first(),
   ]);
   const pricing = companyPricing(id, rule);
   const blocked = BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
+  // Taklif qilinadigan muqobillar HAM companyId() dan o'tkaziladi:
+  // apostrofli ID kesilganda oxirida yolg'iz ' qolib, yaroqsiz taklif
+  // chiqib ketishi mumkin edi (masalan "...G'" + "UZ" emas, balki
+  // kesish nuqtasi apostrofga tushganda). Yaroqsizi tashlanadi.
   const alternatives = [];
   for (const suffix of ['UZ', 'PRO', 'GROUP', 'TEAM']) {
-    const candidate = (id.slice(0, 15 - suffix.length) + suffix).slice(0, 15);
-    if (candidate !== id && !alternatives.includes(candidate)) alternatives.push(candidate);
+    const candidate = companyId(id.slice(0, 15 - suffix.length) + suffix);
+    if (candidate && candidate !== id && !alternatives.includes(candidate)) alternatives.push(candidate);
     if (alternatives.length === 3) break;
   }
   return {
@@ -707,9 +778,13 @@ async function companyApi(request, env, url) {
     return json({ company: await companyWithItems(env, id) }, 201);
   }
 
-  const match = path.match(/^\/api\/companies\/([A-Za-z]{3,15})(?:\/(submit|payment|catalog)(?:\/([A-Za-z0-9_-]+))?)?$/);
+  // Bo'lak `[^/]` bilan keng olinadi va companyId() qat'iy tekshiradi:
+  // o'zbekcha O'/G' apostrofi (yoki uning %27 ko'rinishi) regexga
+  // qo'shimcha belgi qo'shishni talab qilmasin uchun.
+  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog)(?:\/([A-Za-z0-9_-]+))?)?$/);
   if (!match) return json({ error: 'not_found' }, 404);
-  const id = companyId(match[1]);
+  const id = companyId(decodeCompanySeg(match[1]));
+  if (!id) return json({ error: 'not_found' }, 404);
   const action = match[2] || '';
   const itemId = match[3] || '';
 
@@ -818,9 +893,10 @@ async function companyAdminApi(request, env, url) {
     const counts = await env.DB.prepare('SELECT status, COUNT(*) AS count FROM companies GROUP BY status').all();
     return json({ companies: (rows.results || []).map((row) => rowCompany(row)), counts: counts.results || [] });
   }
-  const requestMatch = path.match(/^\/api\/admin\/company-requests\/([A-Za-z]{3,15})\/status$/);
+  const requestMatch = path.match(/^\/api\/admin\/company-requests\/([^/]{3,40})\/status$/);
   if (requestMatch && request.method === 'PATCH') {
-    const id = companyId(requestMatch[1]);
+    const id = companyId(decodeCompanySeg(requestMatch[1]));
+    if (!id) return json({ error: 'not_found' }, 404);
     const body = await request.json().catch(() => ({}));
     const status = shortText(body.status, 30);
     if (!COMPANY_STATUSES.has(status)) return json({ error: 'bad_status' }, 422);
@@ -2975,6 +3051,8 @@ export {
   finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1,
   paymeCheckoutLinkD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
   validateRecordBody, updateRecord, parseMusicUrls,
+  // scripts/test-company-id.mjs — src/lib/company.js bilan parite.
+  companyId, normalizeCompanyIdD1, companyIdLettersD1, companyPricing,
 };
 
 // production-drift integration: exposed for scripts/production-worker-parity-test.mjs.

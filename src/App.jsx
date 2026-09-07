@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { usePathRoute } from './lib/router.js';
 import { parseAnyCode } from './lib/pricing.js';
+import { companyIdLocalInfo } from './lib/company.js';
 import { dbList } from './lib/db.js';
 import { AuthProvider } from './lib/auth.jsx';
 import { LanguageProvider, useLanguage } from './lib/i18n.jsx';
@@ -95,6 +96,17 @@ function SeoSync({ route, profileCode, catalog }) {
   return null;
 }
 
+// URL bo'lagidan kanonik kompaniya ID'si. Yaroqsiz bo'lsa `null` —
+// shunda sahifa umuman ochilmaydi va 404 mantig'i ishlaydi.
+function companyIdFromRoute(route, pattern) {
+  const m = route.match(pattern);
+  if (!m) return null;
+  let raw = m[1];
+  try { raw = decodeURIComponent(raw); } catch { /* buzuq %-ketma-ketlik: xom holicha */ }
+  const info = companyIdLocalInfo(raw);
+  return info.valid ? info.companyId : null;
+}
+
 export default function App() {
   const route = usePathRoute();
   const cleanRoute = route.replace(/^\/+|\/+$/g, '');
@@ -136,24 +148,28 @@ export default function App() {
   // Yangi NFC ID talab qilinmaydi — bir xil ProfilePage, faqat boshlang'ich
   // tab oldindan belgilanadi.
   const businessWorkspaceMatch = cleanRoute.match(/^business\/([^/]+)$/);
-  const companyQuickMatch = cleanRoute.match(/^c\/([A-Za-z]{3,15})$/);
-  const companyPublicMatch = cleanRoute.match(/^company\/([A-Za-z]{3,15})$/);
-  const companyWorkspaceMatch = cleanRoute.match(/^workspace\/([A-Za-z]{3,15})$/);
+  // Kompaniya ID'sida o'zbekcha O'/G' bo'lishi mumkin (nfcstore.uz/c/g'oya),
+  // shuningdek turli apostrof belgilari va %27. Shuning uchun bo'lak keng
+  // olinadi, `companyIdFromRoute()` esa uni kanonik shaklga keltirib
+  // TEKSHIRADI — yaroqsiz bo'lsa `null` qaytadi va sahifa ochilmaydi.
+  const companyQuickMatch = companyIdFromRoute(cleanRoute, /^c\/([^/]{1,40})$/);
+  const companyPublicMatch = companyIdFromRoute(cleanRoute, /^company\/([^/]{1,40})$/);
+  const companyWorkspaceMatch = companyIdFromRoute(cleanRoute, /^workspace\/([^/]{1,40})$/);
   const companySubMatch = cleanRoute.match(/^([^/]+)\/(menu|products|services|menyu|mahsulotlar|xizmatlar|aksiyalar)$/);
   if (!page && cleanRoute === 'company/create') {
     page = <CompanyCreatePage />;
     bare = true;
   }
   if (!page && companyQuickMatch) {
-    page = <CompanyQuickProfilePage key={cleanRoute} companyId={companyQuickMatch[1].toUpperCase()} />;
+    page = <CompanyQuickProfilePage key={cleanRoute} companyId={companyQuickMatch} />;
     bare = true;
   }
   if (!page && companyPublicMatch) {
-    page = <CompanyPublicPage key={cleanRoute} companyId={companyPublicMatch[1].toUpperCase()} />;
+    page = <CompanyPublicPage key={cleanRoute} companyId={companyPublicMatch} />;
     bare = true;
   }
   if (!page && companyWorkspaceMatch) {
-    page = <CompanyWorkspacePage key={cleanRoute} companyId={companyWorkspaceMatch[1].toUpperCase()} />;
+    page = <CompanyWorkspacePage key={cleanRoute} companyId={companyWorkspaceMatch} />;
     bare = true;
   }
   if (!page && businessWorkspaceMatch) {
