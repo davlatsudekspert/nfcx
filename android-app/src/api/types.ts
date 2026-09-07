@@ -171,6 +171,8 @@ export const ERROR_COPY: Record<string, string> = {
   already_taken: 'Bu ID hozir band.',
   reserved_pending_payment: 'Bu ID hozir band (to‘lov kutilmoqda).',
   code_taken: 'Bu ID hozir band.',
+  reserved: 'Bu ID zaxiralangan va sotilmaydi.',
+  network_error: 'Internet aloqasi yo‘q. Ulanishni tekshiring.',
   company_id_taken: 'Bu Company ID band.',
   company_id_reserved: 'Bu Company ID zaxirada.',
   not_purchasable: 'Bu ID sotib olinmaydi.',

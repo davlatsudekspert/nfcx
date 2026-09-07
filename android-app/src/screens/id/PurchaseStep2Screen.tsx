@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,8 +10,11 @@ import { PremiumCard } from '../../design-system/components/PremiumCard';
 import { TierBadge } from '../../design-system/components/PremiumBadge';
 import { PurchaseSteps } from './PurchaseSteps';
 import { recordsApi } from '../../api/records';
-import type { PurchaseResponse } from '../../api/types';
+import { ordersApi } from '../../api/orders';
+import type { Order, PurchaseResponse } from '../../api/types';
 import { ApiError } from '../../api/client';
+import { orderKeys, useMyOrders } from '../../hooks/useMyOrders';
+import { canConfirmPurchase, findOwnPendingOrder, purchaseBlockerFromError, type PurchaseBlocker } from './purchaseFlow';
 import { getPersonalPurchaseQuote, tierForCode, TIER_LABEL } from '../../lib/pricing';
 import { formatSom, safeText } from '../../lib/format';
 import { usePaymentsEnabledStore } from '../../state/paymentsEnabledStore';
@@ -22,22 +25,17 @@ import { color, radius, space, type as typeTokens } from '../../design-system/to
 
 type Props = NativeStackScreenProps<IdStackParamList, 'PurchaseStep2'>;
 
-type Blocker =
-  | { kind: 'none' }
-  | { kind: 'paymentsOff' }
-  | { kind: 'taken'; message: string }
-  | { kind: 'session' }
-  | { kind: 'error'; message: string };
-
 /**
  * Step 2/3 — review and confirm.
  *
- * Payments are switched off server-side today: `POST /api/records/:code`
- * answers `503 payments_disabled`, and `GET /api/settings/payments-enabled`
- * says so up front. That is rendered as an honest, explained, disabled CTA
- * with a real re-check action — never as a spinner that fakes progress, and
- * never as a success screen. The moment the backend flips the flag, the same
- * button becomes live with no code change.
+ * `POST /api/records/:code` is the one reservation call; every answer it can
+ * give (hosting/worker.js) is mapped in `purchaseFlow.ts` and rendered as an
+ * explicit state — `503 payments_disabled` is an honest closed panel with a
+ * real re-check, never a spinner and never a success screen.
+ *
+ * On a 202 the ID stack is reset to [IdSearch, PurchaseStep3]: the order now
+ * exists server-side, so there is nothing to go "back" to in the form — back
+ * lands on the search screen, where the order is listed as pending.
  */
 export function PurchaseStep2Screen({ route, navigation }: Props) {
   const { code, profile } = route.params;
@@ -46,13 +44,14 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
   const refreshAuth = useAuthStore((s) => s.refresh);
   const paymentsStatus = usePaymentsEnabledStore((s) => s.status);
   const refreshPayments = usePaymentsEnabledStore((s) => s.refresh);
+  const { pendingOrders } = useMyOrders();
 
   const tier = tierForCode(code);
   const quote = getPersonalPurchaseQuote(code);
 
   const [submitting, setSubmitting] = useState(false);
   const [rechecking, setRechecking] = useState(false);
-  const [blocker, setBlocker] = useState<Blocker>({ kind: 'none' });
+  const [blocker, setBlocker] = useState<PurchaseBlocker>({ kind: 'none' });
 
   // The flag is cached app-wide; re-read it here so a user who reached this
   // screen minutes after launch sees the current state, not a stale one.
@@ -60,15 +59,42 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
     void refreshPayments();
   }, [refreshPayments]);
 
+  // The user may already hold a live reservation for this very code (a
+  // retry after the first 202 was lost, or a second device). The server
+  // would answer 409 — say so up front and offer the existing order.
+  const ownPending = useMemo(() => findOwnPendingOrder(pendingOrders, code), [pendingOrders, code]);
+
   const paymentsOff = paymentsStatus === 'disabled';
   const paymentsUnknown = paymentsStatus === 'unknown';
-  const canConfirm = quote.purchasable && paymentsStatus === 'enabled' && !submitting;
+  const canConfirm = canConfirmPurchase({
+    purchasable: quote.purchasable,
+    paymentsStatus,
+    submitting,
+    hasOwnPending: !!ownPending,
+  });
+
+  const openOwnOrder = (order: Order) =>
+    navigation.reset({
+      index: 1,
+      routes: [{ name: 'IdSearch' }, { name: 'PurchaseResult', params: { code: order.code, orderId: order.id } }],
+    });
 
   const onRecheck = async () => {
     setRechecking(true);
     setBlocker({ kind: 'none' });
     await refreshPayments();
     setRechecking(false);
+  };
+
+  /** Re-reads `GET /api/orders` bypassing the cache — used after a 409 to
+   * tell "my own reservation" from "someone else's". */
+  const refetchOwnPending = async (): Promise<Order | null> => {
+    try {
+      const data = await queryClient.fetchQuery({ queryKey: orderKeys.mine, queryFn: () => ordersApi.list(), staleTime: 0 });
+      return findOwnPendingOrder(Array.isArray(data?.orders) ? data.orders : [], code);
+    } catch {
+      return null;
+    }
   };
 
   const onConfirm = async () => {
@@ -84,33 +110,41 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
         city: profile.city ?? '',
       })) as PurchaseResponse;
       haptics.success();
-      queryClient.invalidateQueries({ queryKey: ['orders', 'mine'] });
-      navigation.replace('PurchaseStep3', {
-        code,
-        orderId: result.orderId,
-        price: result.price,
-        payLink: result.payLink,
+      queryClient.invalidateQueries({ queryKey: orderKeys.mine });
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: 'IdSearch' },
+          {
+            name: 'PurchaseStep3',
+            params: {
+              code,
+              orderId: result.orderId,
+              // The server's quote is the price — never the local preview.
+              price: result.price,
+              payLink: typeof result.payLink === 'string' && result.payLink ? result.payLink : null,
+            },
+          },
+        ],
       });
     } catch (e) {
       haptics.error();
-      if (e instanceof ApiError) {
-        if (e.code === 'payments_disabled' || e.code === 'payments_backend_pending') {
-          await refreshPayments();
-          setBlocker({ kind: 'paymentsOff' });
-        } else if (e.code === 'already_taken' || e.code === 'reserved_pending_payment' || e.code === 'code_taken') {
-          setBlocker({ kind: 'taken', message: e.message });
-        } else if (e.status === 401) {
-          setBlocker({ kind: 'session' });
-        } else {
-          setBlocker({ kind: 'error', message: e.message });
+      if (e instanceof ApiError && e.code === 'reserved_pending_payment') {
+        const own = await refetchOwnPending();
+        if (own) {
+          openOwnOrder(own);
+          return;
         }
-      } else {
-        setBlocker({ kind: 'error', message: t('common.errorService') });
       }
+      const next = purchaseBlockerFromError(e, t('common.errorService'));
+      if (next.kind === 'paymentsOff') await refreshPayments();
+      setBlocker(next);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const goSearch = () => navigation.navigate('IdSearch');
 
   return (
     <ScreenWithHeader title="Xarid" onBack={navigation.canGoBack() ? navigation.goBack : undefined}>
@@ -148,6 +182,19 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
           tone={color.warning}
           title={quote.reason === 'exclusive_auction_only' ? t('id.auctionOnly') : t('id.notPurchasable')}
           text="Bu ID uchun to'g'ridan-to'g'ri xarid oqimi mavjud emas."
+          ctaLabel="Boshqa ID qidirish"
+          onPressCta={goSearch}
+        />
+      )}
+
+      {ownPending && quote.purchasable && (
+        <Notice
+          icon="clock"
+          tone={color.warning}
+          title="Bu ID allaqachon siz uchun band qilingan"
+          text="To'lov kutilayotgan buyurtmangiz bor. Yangi buyurtma o'rniga o'shani davom ettiring."
+          ctaLabel="Buyurtmani ochish"
+          onPressCta={() => openOwnOrder(ownPending)}
         />
       )}
 
@@ -155,7 +202,7 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
         <Notice icon="loader" tone={color.textSecondary} title={t('common.loading')} text="To'lov tizimi holati tekshirilmoqda." />
       )}
 
-      {paymentsOff && quote.purchasable && (
+      {(paymentsOff || blocker.kind === 'paymentsOff') && quote.purchasable && (
         <Notice
           icon="pause-circle"
           tone={color.warning}
@@ -169,9 +216,31 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
           icon="user-x"
           tone={color.danger}
           title={blocker.message}
-          text="Boshqa ID tanlab ko'ring."
+          text="Bu ID boshqa foydalanuvchiga biriktirilgan. Boshqa ID tanlab ko'ring."
           ctaLabel="Boshqa ID qidirish"
-          onPressCta={() => navigation.navigate('IdSearch')}
+          onPressCta={goSearch}
+        />
+      )}
+
+      {blocker.kind === 'reserved' && (
+        <Notice
+          icon="clock"
+          tone={color.warning}
+          title={blocker.message}
+          text="Boshqa foydalanuvchi bu ID ni band qilgan. 24 soat ichida to'lamasa, ID avtomatik bo'shaydi — keyinroq qayta urinib ko'ring."
+          ctaLabel="Boshqa ID qidirish"
+          onPressCta={goSearch}
+        />
+      )}
+
+      {blocker.kind === 'notPurchasable' && (
+        <Notice
+          icon="slash"
+          tone={color.warning}
+          title={blocker.message}
+          text="Server bu ID ni to'g'ridan-to'g'ri sotishga ruxsat bermadi."
+          ctaLabel="Boshqa ID qidirish"
+          onPressCta={goSearch}
         />
       )}
 
@@ -198,7 +267,7 @@ export function PurchaseStep2Screen({ route, navigation }: Props) {
         style={styles.cta}
       />
 
-      {(paymentsOff || paymentsUnknown) && quote.purchasable && (
+      {(paymentsOff || paymentsUnknown || blocker.kind === 'paymentsOff') && quote.purchasable && (
         <PremiumButton
           label="Holatni qayta tekshirish"
           variant="ghost"
