@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { MetalSurface } from '../../design-system/components/MetalSurface';
+import { BrandLogo } from '../../design-system/components/BrandLogo';
 import { PremiumCard } from '../../design-system/components/PremiumCard';
 import { ContactButtons, type ContactButtonSpec } from '../../composites/ContactButtons';
 import {
@@ -81,9 +82,7 @@ export function EntryHero({ onGoToForm }: { onGoToForm: () => void }) {
   const m = metal.exclusive;
   return (
     <View style={styles.hero}>
-      <View style={styles.mark}>
-        <Text style={styles.markText}>N</Text>
-      </View>
+      <BrandLogo size={132} />
       <Text style={styles.wordmark}>NFCSTORE</Text>
       <Text style={styles.promise}>Sizning raqamli profilingiz. Har doim yoningizda.</Text>
       <Text style={styles.promiseSub}>
@@ -262,17 +261,6 @@ const styles = StyleSheet.create({
 
   /* hero */
   hero: { alignItems: 'center' },
-  mark: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: color.borderGoldStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.goldWash,
-  },
-  markText: { ...typeTokens.h1, fontSize: 28, color: color.gold },
   wordmark: {
     ...typeTokens.h1,
     color: color.textPrimary,

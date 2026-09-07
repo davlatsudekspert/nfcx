@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BrandLogo } from '../../design-system/components/BrandLogo';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../state/authStore';
-import { color, gradient, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, gradient, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Splash'>;
 
@@ -45,7 +46,7 @@ export function SplashScreen({ navigation }: Props) {
         pointerEvents="none"
       />
       <Animated.View style={[styles.mark, breathStyle]}>
-        <Text style={styles.markText}>N</Text>
+        <BrandLogo size={148} />
       </Animated.View>
       <Text style={styles.logo}>NFCSTORE</Text>
       <Text style={styles.tagline}>RAQAMLI TASHRIFNOMA</Text>
@@ -55,17 +56,7 @@ export function SplashScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: color.bgDeep, alignItems: 'center', justifyContent: 'center' },
-  mark: {
-    width: 84,
-    height: 84,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: color.borderGoldStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.goldWash,
-  },
-  markText: { ...typeTokens.display, color: color.gold },
+  mark: { alignItems: 'center', justifyContent: 'center' },
   logo: { ...typeTokens.h1, color: color.textPrimary, letterSpacing: 4, marginTop: space.xl },
   tagline: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.xs, letterSpacing: 1 },
 });
