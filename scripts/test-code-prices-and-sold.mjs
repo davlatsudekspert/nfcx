@@ -139,8 +139,8 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
 
   // (b) PUL TO'LANGACH -> ko'rinadi, o'z auksion yozuvi bilan
   await env.DB.prepare(
-    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
-     VALUES (1, 'VIP000', 'auction_payment', 9700000, '{}', 'paid')`
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status, payme_transaction_id)
+     VALUES (1, 'VIP000', 'auction_payment', 9700000, '{}', 'paid', 'pt-vip000')`
   ).run();
   r = await j('/api/auctions?withSold=1');
   const entry = (r.body?.sold || []).find((x) => x.code === 'VIP000');
@@ -286,12 +286,12 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (904, 1, 7300000, ?)`).bind(now).run();
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (905, 1, 5000000, ?)`).bind(now).run();
   await env.DB.prepare(
-    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
-     VALUES (1, 'III777', 'auction_payment', 7300000, '{}', 'paid')`
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status, payme_transaction_id)
+     VALUES (1, 'III777', 'auction_payment', 7300000, '{}', 'paid', 'pt-iii777')`
   ).run();
   await env.DB.prepare(
-    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
-     VALUES (1, 'DEL999', 'auction_payment', 5000000, '{}', 'paid')`
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status, payme_transaction_id)
+     VALUES (1, 'DEL999', 'auction_payment', 5000000, '{}', 'paid', 'pt-del999')`
   ).run();
 
   const r = await j('/api/auctions?withSold=1');
