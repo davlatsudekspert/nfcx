@@ -126,3 +126,17 @@ export function safeText(value: unknown, fallback = '—'): string {
   if (typeof value === 'boolean') return value ? 'Ha' : "Yo'q";
   return fallback;
 }
+
+/** Player clock — `m:ss` (or `h:mm:ss` past an hour) from a millisecond
+ * position. Anything unparseable, negative or infinite renders as `0:00`,
+ * so a not-yet-loaded track never shows `NaN:NaN`. */
+export function formatClock(ms: unknown): string {
+  const n = toFiniteNumber(ms);
+  if (n == null || n <= 0) return '0:00';
+  const totalSec = Math.floor(n / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}

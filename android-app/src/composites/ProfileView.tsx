@@ -9,6 +9,7 @@ import { profileTypeLabel } from './recordMeta';
 import { PremiumBadge, TierBadge } from '../design-system/components/PremiumBadge';
 import { PremiumStatCard } from '../design-system/components/PremiumStatCard';
 import { tierForCode } from '../lib/pricing';
+import { parseMusicSource } from '../lib/music';
 import { formatCount, parseTimestampMs, safeText } from '../lib/format';
 import type { FullNfcRecord } from '../api/records';
 import type { FollowStats } from '../api/types';
@@ -44,6 +45,7 @@ export function ProfileView({ record, followStats, viewCount, hideIdentityRow = 
   const memberSinceMs = parseTimestampMs(record.ts);
   const memberSince = memberSinceMs != null ? new Date(memberSinceMs).getFullYear() : null;
   const about = typeof record.about === 'string' ? record.about.trim() : '';
+  const hasMusic = parseMusicSource(record.musicUrl) != null;
   const hashtags = (record.hashtags ?? []).map((h) => String(h).replace(/^#/, '').trim()).filter(Boolean);
 
   const meta: string[] = [];
@@ -116,11 +118,15 @@ export function ProfileView({ record, followStats, viewCount, hideIdentityRow = 
         </View>
       </View>
 
-      {!!record.musicUrl && <MusicPlayer url={record.musicUrl} />}
-
-      {contactButtons.length > 0 ? (
+      {/* Contact/link rows, then the music bar as the list's last row in the
+          same rhythm. The record has no music-position field (see
+          `validateRecordBody` in hosting/worker.js — `musicUrl` is the only
+          music column), so the slot is fixed here rather than invented
+          client-side. */}
+      {contactButtons.length > 0 || hasMusic ? (
         <View style={styles.contactSection}>
-          <ContactButtons items={contactButtons} />
+          {contactButtons.length > 0 && <ContactButtons items={contactButtons} />}
+          {hasMusic && <MusicPlayer url={record.musicUrl} index={contactButtons.length} />}
         </View>
       ) : (
         <View style={styles.noContacts}>
@@ -169,7 +175,7 @@ const styles = StyleSheet.create({
   hashtags: { ...typeTokens.caption, color: color.textTertiary, marginTop: space.md, textAlign: 'center' },
   statsRow: { flexDirection: 'row', gap: space.sm, marginTop: space.lg, width: '100%' },
   statCell: { flex: 1 },
-  contactSection: { width: '100%', marginTop: space.xl },
+  contactSection: { width: '100%', marginTop: space.xl, gap: space.sm },
   noContacts: {
     width: '100%',
     marginTop: space.xl,
