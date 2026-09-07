@@ -8,9 +8,29 @@ import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL } from './api/order-window
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 
+// API javoblari standart holda KESHLANMAYDI.
+//
+// NIMA UCHUN (2026-09): bu yerda `cache-control` umuman yo'q edi. HTTP
+// qoidasiga ko'ra, `cache-control` ham, `expires` ham bo'lmagan javobni
+// brauzer O'ZI xohlaganicha keshlashi mumkin ("heuristic caching"), va
+// iOS Safari buni juda qattiq qo'llaydi. Natijada foydalanuvchi telefonda
+// eski auksion/narx/buyurtma ma'lumotini ko'rib turishi mumkin edi —
+// server allaqachon yangisini bersa ham.
+//
+// Bu ayniqsa xavfli joylar: /api/auctions (sotilgan lotlar), /api/orders
+// (to'lov holati va taymer), /api/auth/me. Ular DOIM jonli bo'lishi kerak.
+//
+// `edgeCached()` ataylab keshlanadigan yo'llarda (/api/records,
+// /api/categories) bu sarlavhani O'ZI qayta yozadi
+// (`headers.set('cache-control', 'public, max-age=60')`), shuning uchun
+// katalog keshi avvalgidek ishlayveradi.
 const json = (body, status = 200, extraHeaders) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders },
+  headers: {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    ...extraHeaders,
+  },
 });
 
 let catalogSchemaReady;
