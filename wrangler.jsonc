@@ -10,6 +10,20 @@
   // hosting/worker.js'dagi /api/* logikasi HECH QACHON ishga tushmasdi.
   "main": "./dist/server/index.js",
   "compatibility_date": "2026-08-31",
+  // Worker loglari. Dashboard'dagi tugmachani yoqish YETARLI EMAS: bu
+  // fayl deploy'da sozlamalarning yagona manbai bo'lgani uchun, bu yerda
+  // yozilmasa har bir deploy loglarni QAYTA O'CHIRIB qo'yadi (Cloudflare
+  // paneli ham aynan shundan ogohlantiradi).
+  //
+  // 2026-09-07: Payme ulanishida -32504 xatosini soatlab ko'r-ko'rona
+  // qidirishga to'g'ri keldi, chunki loglar o'chiq edi va serverimiz
+  // Payme'ga nima javob berayotganini ko'rishning iloji yo'q edi.
+  // Endi doimiy yoqilgan. Loglarga maxfiy qiymatlar yozilmaydi —
+  // paymeAuthReasonD1() faqat rad etish sababini va uzunliklarni beradi.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
   // wrangler'ning standart xatti-harakati: bu fayl "vars" uchun yagona
   // haqiqat manbai hisoblanadi va HAR BIR deploy'da Dashboard'da qo'lda
   // qo'yilgan, lekin shu yerda yozilmagan istalgan boshqa vars'ni
