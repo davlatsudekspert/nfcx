@@ -10,12 +10,10 @@ name: Android Standalone Test APK
 # variants by default — a plain `assembleDebug` APK expects a live Metro
 # dev server and crashes standalone with "Unable to load script". The
 # `release` build type always bundles JS, and since this repo has no
-# keystore.properties at the project root (no real keystore was generated,
-# per the project's own non-negotiables), plugins/withReleaseSigning.js
-# no-ops and the generated build.gradle falls back to Android's own
-# automatic debug-keystore signing for the release build type too — so
-# this is an internal-test-only APK, not a Play-Store-signed artifact. No
-# release keystore, no Play Store step, no app code changes.
+# real release keystore in the repo, the workflow signs with the committed
+# TEST-ONLY key in android-app/signing/ (stable signature so builds install
+# over each other) — an internal-test artifact, not a Play-Store-signed one.
+# No Play Store step, no app code changes.
 on:
   push:
     branches:
@@ -62,6 +60,21 @@ jobs:
       - name: Install dependencies (npm ci, lockfile-exact)
         run: npm ci
 
+      # Stable signature across builds. Each hosted runner would otherwise
+      # mint its own random debug keystore, so a newer APK could not be
+      # installed over an older one ("package conflicts with an existing
+      # package"). This is the committed TEST-ONLY key (android-app/signing/
+      # README.md) — never a Play Store key. plugins/withReleaseSigning.js
+      # picks up keystore.properties at the project root during prebuild.
+      - name: Use the committed test-only signing key
+        run: |
+          cat > keystore.properties <<'EOF'
+          storeFile=../../signing/nfcstore-test-only.jks
+          storePassword=nfcstore-test-only
+          keyAlias=nfcstore-test
+          keyPassword=nfcstore-test-only
+          EOF
+
       - name: Expo prebuild (Android)
         run: npx expo prebuild -p android --no-install
 
@@ -93,7 +106,7 @@ jobs:
       # release build type: bundles JS into the APK by default and (with no
       # keystore.properties present) falls back to Android's own automatic
       # debug-keystore signing — see the top-of-file comment.
-      - name: Build standalone test APK (release build type, debug-keystore signing)
+      - name: Build standalone test APK (release build type, test-only key signing)
         working-directory: android-app/android
         run: ./gradlew assembleRelease --stacktrace --init-script /tmp/jcenter-compat-init.gradle
 

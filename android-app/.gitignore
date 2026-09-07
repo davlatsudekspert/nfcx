@@ -41,3 +41,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Test-only signing key for internal APK builds (NOT a Play Store key) — see signing/README.md
+!signing/nfcstore-test-only.jks
