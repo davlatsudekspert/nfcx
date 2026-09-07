@@ -592,6 +592,56 @@ body{ background:var(--color-page-bg); }
   20%,100%{transform:translateX(420%) rotate(18deg);}
 }
 
+/* ───────────────────────────────────────────────────────────────────────
+   CLICK — ikkinchi to'lov tizimi (2026-09).
+   Payme bilan AYNAN bir xil premium ishlov: bir xil o'lcham, bir xil
+   radius, bir xil nozik yaltiroq. Farq faqat firma rangida — Click ko'k,
+   Payme turkuaz. Ikkalasi ham oltinga bo'yalmaydi: oltin faqat NFCSTORE
+   ramkasi va tanlangan holat halqasi uchun.
+   ─────────────────────────────────────────────────────────────────────── */
+.payme-block__logo--click{
+  background:linear-gradient(135deg,#2bb0f7,#0d76c8);
+}
+
+/* TO'LOV TIZIMINI TANLASH — ikki brend yonma-yon.
+   Ishga tushmagan tizim yashirilmaydi, "tez kunlarda" bo'lib turadi:
+   mijoz kelajakda qaysi imkoniyat bo'lishini oldindan ko'radi. */
+.pay-methods{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;
+}
+.pay-method{
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  min-height:76px;padding:12px 10px;
+  border-radius:14px;border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+  cursor:pointer;transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+.pay-method:hover:not(.is-soon){transform:translateY(-1px);border-color:rgba(212,175,90,.42);}
+.pay-method.is-active{
+  border-color:var(--vz-gold,#d4af5a);
+  box-shadow:0 0 0 1px rgba(212,175,90,.45), 0 10px 26px -18px rgba(212,175,90,.7);
+  background:linear-gradient(180deg,rgba(212,175,90,.10),rgba(212,175,90,.02));
+}
+/* Ishga tushmagan tizim — bosilmaydi, lekin BRENDI o'chib ketmaydi
+   (kulrang qilib tashlansa "buzuq" taassurot qoldirardi). */
+.pay-method.is-soon{cursor:not-allowed;}
+.pay-method.is-soon .pay-method__mark{opacity:.45;filter:saturate(.75);}
+.pay-method__mark{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:30px;padding:6px 15px;border-radius:9px;line-height:1;color:#fff;
+  font-family:'Space Grotesk',system-ui,sans-serif;font-size:16px;font-weight:800;letter-spacing:-.01em;
+}
+.pay-method__mark--payme{background:linear-gradient(135deg,#33c8b6,#1fae9c);}
+.pay-method__mark--click{background:linear-gradient(135deg,#2bb0f7,#0d76c8);}
+.pay-method__state{
+  font-size:11px;font-weight:600;letter-spacing:.02em;color:rgba(255,255,255,.48);
+}
+.pay-method.is-active .pay-method__state{color:var(--vz-gold-2,#f0cf7a);}
+@media (max-width:380px){
+  .pay-methods{grid-template-columns:1fr;}
+}
+
 /* ASOSIY TO'LOV TUGMASI — Payme turquoise rangida (tashqi karta esa
    NFCSTORE qora-oltin uslubida qoladi). Touch maydoni >= 44px. */
 .payme-block__pay{
@@ -602,6 +652,14 @@ body{ background:var(--color-page-bg); }
   cursor:pointer;transition:filter .15s,transform .12s;
   box-shadow:0 10px 26px -12px rgba(31,174,156,.75);
 }
+/* Click tanlanganda tugma ham Click ko'kida bo'ladi — tanlangan tizim
+   bilan tugma rangi mos kelmasa, mijoz qaysi tizimga o'tayotganini
+   noaniq his qiladi. */
+.payme-block__pay--click{
+  background:linear-gradient(135deg,#3cb9fa,#0b6fc4);
+  box-shadow:0 10px 26px -12px rgba(13,118,200,.75);
+}
+.payme-block__pay--click:focus-visible{outline-color:#8fd8ff;}
 .payme-block__pay:hover{filter:brightness(1.07);}
 .payme-block__pay:active{transform:translateY(1px);}
 .payme-block__pay:focus-visible{outline:2px solid #7ff0e0;outline-offset:2px;}

@@ -29,7 +29,7 @@ export default function PayButton({
           className={`${base} btn-disabled !cursor-not-allowed opacity-60`}
           disabled
           aria-disabled="true"
-          title={t('Payme orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
+          title={t('Payme va Click orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
         >
           {label}
         </button>

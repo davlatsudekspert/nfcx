@@ -2253,6 +2253,20 @@ const DICT_BASE = {
   "Arizani admin tekshiruviga yuboring.": { ru: "Отправьте заявку на проверку администратору.", en: "Submit the application for admin review." },
   "Tekshiruvga yuborish": { ru: "Отправить на проверку", en: "Submit for review" },
   "Payme orqali to‘lash": { ru: "Оплатить через Payme", en: "Pay via Payme" },
+  // Ikki to'lov tizimi (Payme / Click) — brend nomi {brand} orqali qo'yiladi.
+  "Payme va Click orqali to‘lov imkoniyati tez kunlarda ishga tushadi.": {
+    ru: "Оплата через Payme и Click будет доступна в ближайшее время.",
+    en: "Payment via Payme and Click will be available shortly.",
+  },
+  "{brand} orqali to‘lash": { ru: "Оплатить через {brand}", en: "Pay via {brand}" },
+  "To'lov tizimi": { ru: "Платёжная система", en: "Payment system" },
+  "Tanlandi": { ru: "Выбрано", en: "Selected" },
+  "Tanlash": { ru: "Выбрать", en: "Select" },
+  "{brand} SANDBOX · TEST REJIMI": { ru: "{brand} SANDBOX · ТЕСТОВЫЙ РЕЖИМ", en: "{brand} SANDBOX · TEST MODE" },
+  "To'lov {brand}ning himoyalangan sahifasida amalga oshiriladi — karta ma'lumotlaringiz saytda saqlanmaydi.": {
+    ru: "Оплата проходит на защищённой странице {brand} — данные карты на сайте не сохраняются.",
+    en: "Payment happens on {brand}'s secure page — your card details are never stored on this site.",
+  },
   "NFC KARTAGA YOZILADI": { ru: "ЗАПИСЫВАЕТСЯ НА NFC-КАРТУ", en: "WRITTEN TO THE NFC CARD" },
   "Tezkor NFC profil": { ru: "Быстрый NFC-профиль", en: "Quick NFC profile" },
   "Bir tegishda aloqa, yo‘nalish va asosiy takliflar.": { ru: "Одним касанием — контакты, маршрут и основные предложения.", en: "One tap for contacts, directions and key offers." },
