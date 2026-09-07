@@ -219,7 +219,11 @@ export const GUIDES = [
       realFrame(3, 'guide6-auction', 3, "Kerakli miqdordagi kishi (20) qiziqish bildirsa, kod «Auksionga tayyor» bo'limiga o'tadi — «Auksionni boshlash mumkin» belgisi chiqadi va admin savdoni ochadi.", { cursorX: 12, cursorY: 40, highlightBox: { xPct: 3, yPct: 22, wPct: 18, hPct: 24 } }),
       realFrame(4, 'guide6-auction', 4, "«Faol auksion» bo'limida hozir savdodagi NFC ID'lar turadi — har birida joriy narx, daraja va qolgan vaqt ko'rinadi. Batafsil ko'rish uchun lotni bosing.", { cursorX: 30, cursorY: 40, clickEffect: true, highlightBox: { xPct: 3, yPct: 22, wPct: 56, hPct: 22 } }),
       realFrame(5, 'guide6-auction', 5, "Lot sahifasida joriy narx, qolgan vaqt va «Darhol sotib olish» narxi bor. Hozircha Payme to'lov tizimi tayyorlanayotgani sababli taklif berish vaqtincha yopiq — bu haqiqiy joriy holat.", { cursorX: 50, cursorY: 54, highlightBox: { xPct: 3, yPct: 44, wPct: 94, hPct: 20 } }),
-      realFrame(6, 'guide6-auction', 6, "«Sotilgan» bo'limida allaqachon egasi topilgan ekslyuziv ID'lar va ular qanday narxda ketgani ko'rinadi — bozor darajasini shu yerdan baholaysiz.", { cursorX: 30, cursorY: 30, highlightBox: { xPct: 3, yPct: 21, wPct: 56, hPct: 21 } }),
+      // 2026-09: "Sotilgan" kadri OLIB TASHLANDI. Hali birorta lot
+      // haqiqatan sotilmagani uchun o'sha bo'lim saytda umuman
+      // ko'rsatilmaydi (AuctionsPage: sold.length > 0 bo'lsagina yorliq
+      // chiqadi). Bo'lmagan ekranni qo'llanmada ko'rsatish mumkin emas —
+      // birinchi haqiqiy auksion o'tgach kadr qayta olinadi.
       mockFrame(7, 'form', 'DEMO: to‘lov tizimi ishga tushgach, shu yerga taklif summangizni kiritib, «Taklif qilish»ni bosasiz.', { cursorX: 50, cursorY: 55 }),
       mockFrame(8, 'card', 'DEMO: taklifingiz qabul qilindi — hozircha eng yuqori tariflovchisiz. Boshqa foydalanuvchi yuqoriroq taklif bersa, sizga darhol bildirishnoma keladi.', { highlight: 'price' }),
       mockFrame(9, 'card', "DEMO: auksion vaqti tugagach, eng yuqori taklif g‘olib deb e’lon qilinadi — g‘olib bo‘lgan ID endi uning profiliga NFC ID sifatida biriktiriladi.", { durationMs: 2900 }),
