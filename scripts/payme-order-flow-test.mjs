@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderStatusD1,
   activeWebOrderByCodeD1, finalizePaidWebOrderD1, handlePaymeRequestD1,
-  verifyPaymeAuthD1, paymentsEnabledD1, paymeCheckoutLinkD1,
+  verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1, paymeCheckoutLinkD1,
   getRecord, getRecordOwner, attachCardToUserD1, createRecordD1, PAYME_ERR, ensureCoreSchema,
   personalPurchaseQuote,
 } from '../hosting/worker.js';
@@ -347,6 +347,25 @@ let createOrder;
     verifyPaymeAuthD1(makeAuthedRequest('', { authorization: badAuth }), paddedEnv));
   checkFalse('19g) faqat bo\'sh joydan iborat kalit hech qachon qabul qilinmaydi',
     verifyPaymeAuthD1(makeAuthedRequest('', { authorization: 'Basic ' + Buffer.from('Paycom:').toString('base64') }), { ...env, PAYME_KEY: '   ' }));
+
+  // Rad etish sababi aniq aytilishi kerak — aks holda ishlab chiqarishda
+  // -32504 ni ko'r-ko'rona qidirishga to'g'ri keladi. Kalitning O'ZI hech
+  // qachon sababda ko'rinmasligi shart.
+  const reason = (headers, e = env) => paymeAuthReasonD1(makeAuthedRequest('', headers), e);
+  check('19h) sarlavha yo\'q sababi', reason({}), 'authorization_sarlavhasi_yoq');
+  check('19i) sxema noto\'g\'ri sababi', reason({ authorization: 'Bearer x' }), 'sxema_notogri:Bearer');
+  check('19j) login noto\'g\'ri sababi',
+    reason({ authorization: 'Basic ' + Buffer.from('Merchant:test_payme_key_local_only').toString('base64') }),
+    'login_notogri:Merchant');
+  check('19k) kalit sozlanmagan sababi', reason({ authorization: goodAuth }, { ...env, PAYME_KEY: '' }), 'kalit_sozlanmagan');
+  check('19l) to\'g\'ri kalitda sabab bo\'sh (ruxsat berilgan)', reason({ authorization: goodAuth }), '');
+  checkTrue('19m) mos kelmagan kalit sababida faqat uzunliklar bor, kalitning o\'zi yo\'q', (() => {
+    const r = reason({ authorization: badAuth });
+    return r.startsWith('kalit_mos_emas:')
+      && r.includes('kutilgan_uzunlik=' + 'test_payme_key_local_only'.length)
+      && !r.includes('test_payme_key_local_only')
+      && !r.includes('wrong_key');
+  })());
 }
 
 // ============================================================

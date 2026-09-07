@@ -2648,24 +2648,36 @@ function timingSafeEqualStr(a, b) {
   return diff === 0;
 }
 
-function verifyPaymeAuthD1(request, env) {
-  // `.trim()` — kalit Cloudflare paneliga telefondan qo‘yilganda nusxa
-  // olishda oxiriga bo‘sh joy yoki qator tashlash qo‘shilib qolishi juda
-  // keng tarqalgan. Payme kalitida bo‘sh joy bo‘lmaydi, shuning uchun uni
-  // olib tashlash xavfsiz — lekin busiz har bir so‘rov -32504 ("Ruxsat
-  // yo‘q") bilan rad etilardi va Payme to‘lov oynasini ocholmasdi.
+// Nima uchun avtorizatsiya rad etilganini AYTIB beradi — Payme bilan
+// ulanishda -32504 ("Ruxsat yo'q") xatosini ko'r-ko'rona qidirmaslik
+// uchun. Qaytarilgan sabab logga yoziladi; kalitning O'ZI hech qachon
+// logga tushmaydi, faqat uzunliklar solishtiriladi.
+function paymeAuthReasonD1(request, env) {
   const key = (env.PAYME_KEY || '').trim();
-  if (!key) return false;
+  if (!key) return 'kalit_sozlanmagan';
   const header = request.headers.get('authorization') || request.headers.get('Authorization') || '';
+  if (!header) return 'authorization_sarlavhasi_yoq';
   const [scheme, b64] = header.split(' ');
-  if (scheme !== 'Basic' || !b64) return false;
+  if (scheme !== 'Basic') return `sxema_notogri:${scheme}`;
+  if (!b64) return 'base64_qismi_yoq';
   let decoded;
-  try { decoded = atob(b64); } catch { return false; }
+  try { decoded = atob(b64); } catch { return 'base64_ochilmadi'; }
   const sep = decoded.indexOf(':');
-  if (sep < 0) return false;
+  if (sep < 0) return 'ikki_nuqta_yoq';
   const login = decoded.slice(0, sep);
   const pass = decoded.slice(sep + 1);
-  return login === 'Paycom' && timingSafeEqualStr(pass, key);
+  if (login !== 'Paycom') return `login_notogri:${login}`;
+  if (!timingSafeEqualStr(pass, key)) {
+    // Uzunliklar — kalitning o'zi emas. Mos kelmasa: butunlay boshqa
+    // kalit qo'yilgan. Mos kelsa-yu tenglik bo'lmasa: bitta-ikkita belgi
+    // farq qilyapti (nusxa olishda kesilgan yoki almashib ketgan).
+    return `kalit_mos_emas:kutilgan_uzunlik=${key.length},kelgan_uzunlik=${pass.length}`;
+  }
+  return '';
+}
+
+function verifyPaymeAuthD1(request, env) {
+  return paymeAuthReasonD1(request, env) === '';
 }
 
 // Ikkala gate ham rost bo'lishi kerak — xuddi legacy paymentsEnabled()
@@ -2960,7 +2972,7 @@ async function handlePaymeRequestD1(env, body) {
 export {
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
   setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
-  finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymentsEnabledD1,
+  finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1,
   paymeCheckoutLinkD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
   validateRecordBody, updateRecord, parseMusicUrls,
 };
@@ -5448,7 +5460,10 @@ async function coreApi(request, env, url) {
     if (!paymentsEnabledD1(env)) {
       return json({ jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32601, message: 'payme disabled' } });
     }
-    if (!verifyPaymeAuthD1(request, env)) {
+    const authReason = paymeAuthReasonD1(request, env);
+    if (authReason) {
+      // Cloudflare loglarida ko'rinadi. Kalitning o'zi emas, faqat sabab.
+      console.warn(`payme auth rad etildi: ${authReason}`);
       return json({ jsonrpc: '2.0', id: body?.id ?? null, error: { code: -32504, message: "Ruxsat yo'q" } });
     }
     // -32700 (JSON parse error) — Payme's own documented code for a
