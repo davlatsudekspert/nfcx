@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import CloseButton from './CloseButton.jsx';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
@@ -37,7 +38,7 @@ export default function LockedFeatureModal({ featureLabel, onClose, onGoPremium 
               ? t('«{f}» — hozirgi profilingizda yopiq', { f: featureLabel })
               : t('Bu funksiya hozirgi profilingizda yopiq.')}</span>
           </div>
-          <button className="btn btn-ghost btn-circle h-10 min-h-10 w-10 shrink-0" onClick={onClose} aria-label={t('Yopish')}>&times;</button>
+          <CloseButton onClick={onClose} />
         </div>
 
         <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-4">

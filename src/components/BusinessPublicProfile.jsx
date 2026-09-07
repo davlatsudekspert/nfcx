@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import CloseButton from './CloseButton.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { businessModule } from '../lib/access.js';
 import { dbAddCatalogItemView, dbGetCatalogMeta, dbSetCatalogReaction } from '../lib/db.js';
@@ -334,7 +335,7 @@ export default function BusinessPublicProfile({
       {selected && (
         <div className="bp-modal-backdrop" role="presentation" onClick={() => setSelected(null)}>
           <article className="bp-modal" role="dialog" aria-modal="true" aria-label={selected.name} onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="bp-modal-close" onClick={() => setSelected(null)} aria-label={t('Yopish')}>×</button>
+            <CloseButton onClick={() => setSelected(null)} className="bp-modal-close" />
             {selected.imageUrl && <img src={selected.imageUrl} alt={selected.name} />}
             <span className="bp-section-label">{selected.categoryName}</span>
             <h2>{selected.name}</h2>

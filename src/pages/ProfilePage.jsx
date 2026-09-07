@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import CloseButton from '../components/CloseButton.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
 import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
@@ -834,7 +835,7 @@ function FollowListModal({ code, dir, onClose, t }) {
       <div className="flex max-h-[80vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
           <span className="text-sm font-bold text-[color:var(--vz-ink)]">{dir === 'following' ? t('Obunalar') : t('Obunachilar')}</span>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)]">✕</button>
+          <CloseButton onClick={onClose} />
         </div>
         <div className="overflow-y-auto p-2">
           {list === null && !error && (
@@ -1914,7 +1915,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={() => setLeadOpen(false)}>
           <div className="flex max-h-[90vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] p-1 sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex shrink-0 justify-end px-3 pt-2">
-              <button onClick={() => setLeadOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]">✕</button>
+              <CloseButton onClick={() => setLeadOpen(false)} />
             </div>
             <div className="overflow-y-auto px-4 pb-5">
               <LeadForm code={record.code} linkBtn={linkBtn} onDone={() => setTimeout(() => setLeadOpen(false), 1400)} />

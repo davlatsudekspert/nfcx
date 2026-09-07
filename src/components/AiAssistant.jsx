@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import CloseButton from './CloseButton.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 
 // O'ng past burchakdagi AI yordamchi. Server ANTHROPIC_API_KEY bilan
@@ -72,7 +73,7 @@ export default function AiAssistant() {
             <div className="flex items-center gap-2 text-sm font-bold">
               <span className="text-lg">{'\u{1F4AC}'}</span> {t('AI yordamchi')}
             </div>
-            <button onClick={() => setOpen(false)} className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-base-content/60 hover:text-base-content">✕</button>
+            <CloseButton onClick={() => setOpen(false)} />
           </div>
 
           <div ref={bodyRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-4">

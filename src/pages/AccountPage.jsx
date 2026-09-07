@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import CloseButton from '../components/CloseButton.jsx';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
 import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
@@ -460,7 +461,7 @@ function MenuManagerSection({ code, allowed, onLock }) {
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
               {t('Jonli ko‘rinish')}
-              <button aria-label="Yopish" className="btn btn-ghost btn-square min-h-11 w-11 text-white" onClick={() => setMobilePreview(false)}>✕</button>
+              <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
             <PhoneFrame>
               <MenuPreviewList categories={previewCategories} t={t} />
@@ -735,7 +736,7 @@ function ProductManagerSection({ code, allowed, onLock }) {
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
               {t('Jonli ko‘rinish')}
-              <button aria-label="Yopish" className="btn btn-ghost btn-square min-h-11 w-11 text-white" onClick={() => setMobilePreview(false)}>✕</button>
+              <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
             <PhoneFrame>
               <ProductsPreviewGrid categories={previewCategories} t={t} />
@@ -1114,7 +1115,7 @@ function ServiceManagerSection({ code, allowed, onLock }) {
           <div className="mx-auto mt-6 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between text-sm font-bold text-white">
               {t('Jonli ko‘rinish')}
-              <button aria-label="Yopish" className="btn btn-ghost btn-square min-h-11 w-11 text-white" onClick={() => setMobilePreview(false)}>✕</button>
+              <CloseButton onClick={() => setMobilePreview(false)} />
             </div>
             <PhoneFrame>
               <ServicesPreviewList categories={previewCategories} t={t} />
@@ -1885,7 +1886,7 @@ function Modal({ title, onClose, children, wide }) {
       <div className={`my-6 w-full rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl ${wide ? 'max-w-4xl' : 'max-w-lg'}`}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold">{title}</h3>
-          <button className="btn btn-ghost btn-xs" onClick={onClose}>&times;</button>
+          <CloseButton onClick={onClose} />
         </div>
         <div className="mt-4">{children}</div>
       </div>
@@ -3575,7 +3576,7 @@ function SupportModal({ onClose }) {
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold"><IconSupport /> {t('Adminga murojaat')}</h3>
-          <button className="btn btn-ghost btn-xs min-h-11 min-w-11" onClick={onClose} aria-label={t('Yopish')}>&times;</button>
+          <CloseButton onClick={onClose} />
         </div>
 
         <div className="mt-4 max-h-64 space-y-2 overflow-y-auto">

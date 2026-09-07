@@ -1,4 +1,5 @@
 import { Fragment, createContext, useContext, useEffect, useRef, useState } from 'react';
+import CloseButton from '../components/CloseButton.jsx';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -3294,7 +3295,7 @@ function CompanyDetailModal({ code, onClose, onChanged }) {
             <div className="font-display text-lg font-semibold">{row.name} {row.verified && <span className="vz-badge vz-badge--ok align-middle">{t('Tasdiqlangan')}</span>}</div>
             <div className="font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>nfcstore.uz/{row.code.toLowerCase()}</div>
           </div>
-          <button className="btn btn-ghost-vz btn-sm min-h-11 min-w-11" onClick={onClose} aria-label={t('Yopish')}>✕</button>
+          <CloseButton onClick={onClose} />
         </div>
         {actErr && <div role="alert" className="vz-err mt-3">{actErr}</div>}
 
