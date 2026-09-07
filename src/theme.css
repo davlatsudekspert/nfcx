@@ -567,29 +567,15 @@ body{ background:var(--color-page-bg); }
   box-shadow:0 18px 44px -26px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03);
 }
 .payme-block__head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
-/* Payme rasmiy so'z belgisi — turkuaz gradient + oq matn. */
-/* Payme so'z belgisi — RASMIY turquoise fon + oq yozuv. Oltinga
-   bo'yalmaydi. Kattaroq va mutanosib qilindi (avval 19px/6px edi):
-   bir qarashda aniq ko'rinadi, lekin blokni bosib ketmaydi. */
-.payme-block__logo{
-  position:relative;overflow:hidden;
-  display:inline-flex;align-items:center;border-radius:12px;
-  min-height:44px;padding:9px 20px;line-height:1;color:#fff;
-  font-family:'Space Grotesk',system-ui,sans-serif;font-size:24px;font-weight:800;letter-spacing:-.01em;
-  background:linear-gradient(135deg,#33c8b6,#1fae9c);
-}
-.payme-block__logo-text{position:relative;z-index:1;}
-/* Juda sekin, nozik yaltiroq — 5 soniyada bir marta o'tadi (~1s davom
-   etadi, qolgan ~4s tanaffus). Neon/miltillash YO'Q: eng yorqin nuqta
-   atigi 28% oq. */
-.payme-block__sheen{
-  position:absolute;top:-60%;left:-45%;width:38%;height:220%;z-index:0;pointer-events:none;
-  background:linear-gradient(100deg,transparent,rgba(255,255,255,.10) 42%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.10) 58%,transparent);
-  animation:paymeSheen 5s ease-in-out infinite;
-}
-@keyframes paymeSheen{
-  0%{transform:translateX(0) rotate(18deg);}
-  20%,100%{transform:translateX(420%) rotate(18deg);}
+/* Blok sarlavhasi — NFCSTORE'ning o'z oltin kickeri. Avval bu yerda
+   katta turkuaz Payme logotipi turardi; u pastdagi tanlash kartalarida
+   BIR XIL belgi bilan takrorlanardi va blok reklama bannerига o'xshab
+   qolgandi. Brend endi faqat kerak joyda: tanlash kartasi va to'lov
+   tugmasi. */
+.payme-block__kicker{
+  font-family:'Space Mono',ui-monospace,monospace;
+  font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--vz-gold-2,#f0cf7a);
 }
 
 /* ───────────────────────────────────────────────────────────────────────
@@ -599,10 +585,6 @@ body{ background:var(--color-page-bg); }
    Payme turkuaz. Ikkalasi ham oltinga bo'yalmaydi: oltin faqat NFCSTORE
    ramkasi va tanlangan holat halqasi uchun.
    ─────────────────────────────────────────────────────────────────────── */
-.payme-block__logo--click{
-  background:linear-gradient(135deg,#2bb0f7,#0d76c8);
-}
-
 /* TO'LOV TIZIMINI TANLASH — ikki brend yonma-yon.
    Ishga tushmagan tizim yashirilmaydi, "tez kunlarda" bo'lib turadi:
    mijoz kelajakda qaysi imkoniyat bo'lishini oldindan ko'radi. */
@@ -669,6 +651,13 @@ body{ background:var(--color-page-bg); }
 }
 .payme-block__pay.is-off{background:linear-gradient(135deg,#2f4a47,#233a37);}
 .payme-block__pay:disabled{cursor:not-allowed;opacity:.55;filter:grayscale(.25);box-shadow:none;}
+/* `is-blocked` — forma to'ldirilmagan holat. Ko'rinishi `:disabled` bilan
+   AYNAN bir xil, lekin tugma haqiqatan bosiladi va nimasi yetishmayotganini
+   aytadi. Avval u haqiqiy `disabled` edi va bosilganda hech narsa
+   bo'lmasdi — "tugma ishlamayapti" degan taassurot qolardi. */
+.payme-block__pay.is-blocked{cursor:not-allowed;opacity:.55;filter:grayscale(.25);box-shadow:none;}
+.payme-block__pay.is-blocked:hover{filter:grayscale(.25);}
+.payme-block__pay.is-blocked:active{transform:none;}
 .payme-block__pay-wait{font-size:14px;font-weight:700;}
 
 /* Harakatni kamaytirish rejimi — yaltiroq butunlay o'chadi. */
@@ -701,8 +690,7 @@ body{ background:var(--color-page-bg); }
 .payme-block__note{font-size:12px;line-height:1.5;color:var(--vz-ink-3);}
 @media (max-width:420px){
   .payme-block{padding:15px;}
-  /* Mobil ekranda logo va tugma yozuvi KESILMASIN */
-  .payme-block__logo{font-size:21px;padding:9px 16px;}
+  /* Mobil ekranda tugma yozuvi KESILMASIN */
   .payme-block__head{gap:8px;}
   .payme-block__badge{white-space:normal;}
   .payme-block__pay{font-size:15px;padding:12px 14px;}

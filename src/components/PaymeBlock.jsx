@@ -38,6 +38,8 @@ import BrandMark from './BrandMark.jsx';
 //   payLabel  — tugma matni (standart: brend belgisi + "bilan to'lov")
 //   busy      — spinner
 //   disabled  — tashqi sabab bilan o'chirilgan (masalan forma to'ldirilmagan)
+//   onBlocked — `disabled` bo'lganda bosilganda chaqiriladi: tugma
+//               "o'lik" bo'lib qolmasin, sababini aytsin
 //   note      — tugma ostidagi qo'shimcha izoh (ixtiyoriy)
 //   children  — tugma ustida ko'rsatiladigan qo'shimcha maydonlar (ism/telefon v.h.)
 // ═══════════════════════════════════════════════════════════════════════
@@ -53,23 +55,6 @@ const PROVIDERS = [
 // o'lchamda va bir xil ishlovda (firma ranglari o'zgartirilmaydi).
 function ProviderMark({ id, label }) {
   return <span className={`pay-method__mark pay-method__mark--${id}`}>{label}</span>;
-}
-
-function PaymeLogo({ provider = 'payme' }) {
-  // Tanlangan to'lov tizimining RASMIY firma rangidagi so'z belgisi —
-  // o'zgartirilmaydi, oltin rangga bo'yalmaydi. Ichidagi `__sheen` — 5
-  // soniyada bir marta o'tadigan juda nozik yaltiroq (neon/miltillash
-  // emas); prefers-reduced-motion'da butunlay o'chadi (CSS'da).
-  const meta = PROVIDERS.find((x) => x.id === provider) || PROVIDERS[0];
-  return (
-    <span
-      className={`payme-block__logo${provider === 'click' ? ' payme-block__logo--click' : ''}`}
-      aria-label={meta.label}
-    >
-      <span className="payme-block__sheen" aria-hidden="true"></span>
-      <span className="payme-block__logo-text">{meta.label}</span>
-    </span>
-  );
 }
 
 function LockIcon() {
@@ -90,6 +75,7 @@ export default function PaymeBlock({
   payLabel,
   busy = false,
   disabled = false,
+  onBlocked,
   note,
   children,
 }) {
@@ -137,8 +123,14 @@ export default function PaymeBlock({
 
   return (
     <div className="payme-block">
+      {/* Tepada avval katta Payme logotipi turardi. U pastdagi tanlash
+          kartalarida BIR XIL brend belgisi bilan takrorlanardi — bitta
+          ekranda uchta Payme yozuvi ko'zni charchatardi va blok reklama
+          bannerига o'xshab qolgandi. Endi tepada NFCSTORE'ning o'z
+          oltin sarlavhasi turadi, brend esa tanlash kartalarida va
+          to'lov tugmasida — ya'ni aynan kerak joyda. */}
       <div className="payme-block__head">
-        <PaymeLogo provider={provider} />
+        <span className="payme-block__kicker">{t('XAVFSIZ TO‘LOV')}</span>
         {enabled && sandbox && (
           <span className="payme-block__badge payme-block__badge--test">{t('{brand} SANDBOX · TEST REJIMI', { brand: brand.toUpperCase() })}</span>
         )}
@@ -219,6 +211,24 @@ export default function PaymeBlock({
             <BrandMark provider={provider} />
             <span>{label}</span>
           </a>
+        ) : disabled && onBlocked ? (
+          // MUHIM: bu yerda HTML `disabled` ATAYLAB qo'yilmaydi.
+          // Avval tugma haqiqiy `disabled` edi va bosilganda MUTLAQO
+          // hech narsa bo'lmasdi — foydalanuvchi "tugma ishlamayapti"
+          // deb o'ylardi, sababi esa pastdagi kichkina kulrang izohda
+          // yozib qo'yilgandi. Endi tugma bosiladi va nimasi
+          // yetishmayotganini aniq aytadi (`onBlocked` bo'sh maydonga
+          // fokus ham beradi). Ko'rinishi baribir "faol emas" —
+          // foydalanuvchi to'lov ketayotganini o'ylamaydi.
+          <button
+            type="button"
+            className={`${payClass} is-blocked`}
+            aria-disabled="true"
+            onClick={onBlocked}
+          >
+            <BrandMark provider={provider} />
+            <span>{label}</span>
+          </button>
         ) : (
           <button type="button" className={payClass} onClick={handlePay} disabled={disabled}>
             <BrandMark provider={provider} />

@@ -1954,6 +1954,29 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const [cardOrder, setCardOrder] = useState(null);
   const shippingFilled = !!(shipName.trim() && shipPhone.trim() && shipAddress.trim());
 
+  // To'lov tugmasi bosilgan, lekin yetkazib berish ma'lumotlari to'liq
+  // emas. Avval tugma shunchaki `disabled` edi: bosilganda MUTLAQO hech
+  // narsa bo'lmasdi va "tugma ishlamayapti" degan taassurot qolardi.
+  // Endi qaysi maydon bo'sh ekani aytiladi va aynan o'shanga fokus
+  // beriladi — telefonda bu maydonni ekranga ham suradi.
+  const shipNameRef = useRef(null);
+  const shipPhoneRef = useRef(null);
+  const shipAddressRef = useRef(null);
+  const [shipErr, setShipErr] = useState('');
+
+  const focusMissingShipping = () => {
+    const missing = !shipName.trim()
+      ? [t('Qabul qiluvchi ismini kiriting.'), shipNameRef]
+      : !shipPhone.trim()
+        ? [t('Telefon raqamingizni kiriting.'), shipPhoneRef]
+        : !shipAddress.trim()
+          ? [t('Yetkazib berish manzilini kiriting.'), shipAddressRef]
+          : null;
+    if (!missing) return;
+    setShipErr(missing[0]);
+    missing[1].current?.focus();
+  };
+
   const orderPhysicalCard = async () => {
     if (!shippingFilled) {
       setMsg({ type: 'err', text: t("Ism, telefon va manzilni to'liq kiriting.") });
@@ -2151,6 +2174,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               payLabel={cardOrder ? t("To'lovga o'tish") : t("Buyurtma berish va to'lash")}
               busy={busy}
               disabled={!cardOrder && !shippingFilled}
+              onBlocked={focusMissingShipping}
               note={cardOrder
                 ? t("Buyurtma yaratildi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.")
                 : (!shippingFilled ? t('Davom etish uchun yetkazib berish maʼlumotlarini toʻldiring.') : null)}
@@ -2158,17 +2182,28 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               {!cardOrder && (
                 <div className="mt-3 grid gap-2">
                   <input
-                    className="vz-input" value={shipName} onChange={(e) => setShipName(e.target.value)}
+                    ref={shipNameRef}
+                    className="vz-input" value={shipName}
+                    onChange={(e) => { setShipName(e.target.value); if (shipErr) setShipErr(''); }}
                     placeholder={t('Qabul qiluvchi ismi')} aria-label={t('Qabul qiluvchi ismi')}
+                    aria-invalid={shipErr && !shipName.trim() ? true : undefined}
                   />
                   <input
-                    className="vz-input" value={shipPhone} onChange={(e) => setShipPhone(e.target.value)}
+                    ref={shipPhoneRef}
+                    className="vz-input" value={shipPhone}
+                    onChange={(e) => { setShipPhone(e.target.value); if (shipErr) setShipErr(''); }}
                     placeholder={t('Telefon raqamingiz (+998...)')} aria-label={t('Telefon raqamingiz (+998...)')}
+                    aria-invalid={shipErr && !shipPhone.trim() ? true : undefined}
+                    inputMode="tel"
                   />
                   <textarea
-                    className="vz-input" rows={2} value={shipAddress} onChange={(e) => setShipAddress(e.target.value)}
+                    ref={shipAddressRef}
+                    className="vz-input" rows={2} value={shipAddress}
+                    onChange={(e) => { setShipAddress(e.target.value); if (shipErr) setShipErr(''); }}
                     placeholder={t('Yetkazib berish manzili')} aria-label={t('Yetkazib berish manzili')}
+                    aria-invalid={shipErr && !shipAddress.trim() ? true : undefined}
                   />
+                  {shipErr && <div role="alert" className="vz-err">{shipErr}</div>}
                 </div>
               )}
             </PaymeBlock>
