@@ -122,8 +122,8 @@ const byCode = (rows, code) => (rows || []).find((r) => r.code === code) || null
   // uchun bu fixture endi to'lovni ham o'z ichiga oladi — ya'ni u
   // HAQIQIY savdoni to'liq tasvirlaydi.
   await env.DB.prepare(
-    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
-     VALUES (2, 'ZXC454', 'auction_payment', 7600000, '{}', 'paid')`
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status, payme_transaction_id)
+     VALUES (2, 'ZXC454', 'auction_payment', 7600000, '{}', 'paid', 'pt-zxc454')`
   ).run();
 
   const rows = await catalog();

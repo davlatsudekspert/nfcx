@@ -1803,8 +1803,9 @@ function catalogVisibleSql(alias) {
 // narx QO'LLANMAYDI):
 //   • shu kod uchun `auctions` jadvalida haqiqiy yozuv bor;
 //   • auksion holati 'sold' yoki 'completed';
-//   • VA shu kod uchun TO'LANGAN auksion buyurtmasi bor
-//     (web_orders.kind='auction_payment', status='paid');
+//   • VA shu kod uchun HAQIQIY PAYME TO'LOVI o'tgan
+//     (web_orders: kind='auction_payment', status='paid' VA
+//      payme_transaction_id IS NOT NULL);
 //   • haqiqiy g'olib bor (`highest_bidder_id IS NOT NULL`);
 //   • yakuniy yutuq taklifi BAZADA saqlangan (`bids` jadvalida g'olibning
 //     shu auksiondagi eng katta taklifi) — narx aynan SHU yozuvdan olinadi,
@@ -1828,7 +1829,8 @@ async function auctionFinalPricesD1(env) {
         WHERE a.status IN ('sold', 'completed') AND a.highest_bidder_id IS NOT NULL
           AND EXISTS (SELECT 1 FROM web_orders w
                        WHERE w.code = a.code AND w.kind = 'auction_payment'
-                         AND w.status = 'paid')
+                         AND w.status = 'paid'
+                         AND w.payme_transaction_id IS NOT NULL)
         GROUP BY a.code`
     ).all();
     for (const r of rows.results || []) {
@@ -2031,10 +2033,11 @@ function isGiftCodeD1(code) {
 // (auctionFinalPricesD1: g'olib aniqlangan, karta unga o'tgan VA
 // to'lov amalga oshirilgan). Bunday ID sovg'a emas — u rostdan sotilgan.
 //
-// NIMA UCHUN "to'langan" sharti muhim: bazada admin sinov uchun ochgan,
-// taklif ham berilgan, lekin hech kim pul to'lamagan lotlar bor edi.
-// Ular "Sotildi 5 000 000 so'm" bo'lib chiqardi — bo'lmagan savdo.
-// Pul o'tmagan bo'lsa, savdo ham bo'lmagan.
+// NIMA UCHUN Payme tranzaksiyasi sharti muhim: bazada sinov davridan
+// qolgan, hatto 'paid' deb belgilangan buyurtmalar bor ekan. Ular
+// "Sotildi 5 000 000 so'm" bo'lib chiqardi — bo'lmagan savdo.
+// `payme_transaction_id` faqat haqiqiy Payme oqimida yoziladi, shuning
+// uchun eski yozuvlar bu shartdan o'tolmaydi.
 function isOwnedExclusiveGiftD1(record, auctionFinal) {
   if (auctionFinal != null && Number(auctionFinal) > 0) return false;
   const code = String(record?.code || '').toUpperCase();
@@ -3777,16 +3780,24 @@ async function auctionsPublicApi(request, env, url) {
       // Ikkita shart qo'shildi (2026-09):
       //   1. Kod hali katalogda mavjud bo'lsin (o'chirilgan ID osilib
       //      qolmasin) — avvaldan bor edi.
-      //   2. Lot uchun PUL TO'LANGAN bo'lsin (web_orders'da
-      //      kind='auction_payment', status='paid'). Bu — savdoning
-      //      yagona ishonchli belgisi. Avval bu yerda "kamida bitta
-      //      taklif bor" deb tekshirilardi, lekin bazada admin sinov
-      //      uchun ochgan va taklif ham berilgan, ammo hech kim pul
-      //      to'lamagan lotlar bor edi (NEOMSONGS, VVV444, XXX772) —
-      //      ular "Sotildi 5 000 000 so'm" bo'lib chiqardi.
-      //      Pul o'tmagan bo'lsa, savdo ham bo'lmagan.
-      //      Qoida qo'lda yuritilmaydi: birinchi haqiqiy to'langan
-      //      auksion o'tishi bilan lot bu yerda o'zi paydo bo'ladi.
+      //   2. Lot uchun HAQIQIY PAYME TO'LOVI o'tgan bo'lsin.
+      //
+      //      Bu mezon ikki marta aniqlashtirildi:
+      //        a) avval "kamida bitta taklif bor" edi — yetarli emas,
+      //           chunki sinov lotlarida taklif yozuvi ham bor edi;
+      //        b) keyin "status='paid' buyurtma bor" edi — bu ham
+      //           yetarli emasligi ishlab chiqarishda ko'rindi:
+      //           NEOMSONGS, VVV444 va XXX772 da eski (legacy) sinov
+      //           davridan qolgan 'paid' yozuvlar bor ekan.
+      //
+      //      `payme_transaction_id` esa FAQAT haqiqiy Payme oqimida
+      //      yoziladi (setWebOrderPaymeIdD1, CreateTransaction paytida).
+      //      Payme hech qachon ishga tushirilmagani uchun eski sinov
+      //      yozuvlarida u NULL. Ya'ni bu ustun "pul rostdan o'tdimi?"
+      //      degan savolga yagona ishonchli javob.
+      //
+      //      Qoida qo'lda yuritilmaydi: Payme ulangach, birinchi haqiqiy
+      //      to'lov o'tishi bilan lot bu yerda o'zi paydo bo'ladi.
       // Yozuvlarning O'ZI o'chirilmaydi — auksion tarixi saqlanadi,
       // faqat ko'rsatilmaydi.
       const sold = await env.DB.prepare(
@@ -3795,7 +3806,8 @@ async function auctionsPublicApi(request, env, url) {
             AND EXISTS (SELECT 1 FROM cards c WHERE c.code = a.code)
             AND EXISTS (SELECT 1 FROM web_orders w
                          WHERE w.code = a.code AND w.kind = 'auction_payment'
-                           AND w.status = 'paid')
+                           AND w.status = 'paid'
+                           AND w.payme_transaction_id IS NOT NULL)
           ORDER BY a.ends_at DESC LIMIT 40`
       ).all();
       // `ownedExclusiveSoldD1()` BU YERDAN OLIB TASHLANDI. U katalogdagi
