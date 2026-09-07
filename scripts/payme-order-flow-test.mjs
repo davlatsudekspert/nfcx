@@ -333,6 +333,20 @@ let createOrder;
   checkFalse('19b) wrong Basic Auth rejected', verifyPaymeAuthD1(makeAuthedRequest('', { authorization: badAuth }), env));
   checkFalse('19c) missing Basic Auth rejected', verifyPaymeAuthD1(makeAuthedRequest('', {}), env));
   checkFalse('19d) wrong scheme rejected', verifyPaymeAuthD1(makeAuthedRequest('', { authorization: 'Bearer sometoken' }), env));
+
+  // 2026-09-07: ishlab chiqarishda aynan shu narsa to'lovni to'sib qo'ygan
+  // edi. Kalit Cloudflare paneliga telefondan qo'yilganda nusxa olishda
+  // oxiriga bo'sh joy/qator tashlash qo'shilib qolgan, natijada har bir
+  // Payme so'rovi -32504 ("Ruxsat yo'q") bilan rad etilgan va Payme ilovasi
+  // to'lov oynasi o'rniga bosh sahifani ochgan. Kalitning o'zida bo'sh joy
+  // bo'lmaydi, shuning uchun uni kesish xavfsiz.
+  const paddedEnv = { ...env, PAYME_KEY: '  test_payme_key_local_only\n' };
+  checkTrue('19e) kalit atrofidagi bo\'sh joy avtorizatsiyani buzmaydi',
+    verifyPaymeAuthD1(makeAuthedRequest('', { authorization: goodAuth }), paddedEnv));
+  checkFalse('19f) bo\'sh joy kesilgandan keyin ham noto\'g\'ri kalit rad etiladi',
+    verifyPaymeAuthD1(makeAuthedRequest('', { authorization: badAuth }), paddedEnv));
+  checkFalse('19g) faqat bo\'sh joydan iborat kalit hech qachon qabul qilinmaydi',
+    verifyPaymeAuthD1(makeAuthedRequest('', { authorization: 'Basic ' + Buffer.from('Paycom:').toString('base64') }), { ...env, PAYME_KEY: '   ' }));
 }
 
 // ============================================================

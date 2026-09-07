@@ -2649,7 +2649,12 @@ function timingSafeEqualStr(a, b) {
 }
 
 function verifyPaymeAuthD1(request, env) {
-  const key = env.PAYME_KEY || '';
+  // `.trim()` — kalit Cloudflare paneliga telefondan qo‘yilganda nusxa
+  // olishda oxiriga bo‘sh joy yoki qator tashlash qo‘shilib qolishi juda
+  // keng tarqalgan. Payme kalitida bo‘sh joy bo‘lmaydi, shuning uchun uni
+  // olib tashlash xavfsiz — lekin busiz har bir so‘rov -32504 ("Ruxsat
+  // yo‘q") bilan rad etilardi va Payme to‘lov oynasini ocholmasdi.
+  const key = (env.PAYME_KEY || '').trim();
   if (!key) return false;
   const header = request.headers.get('authorization') || request.headers.get('Authorization') || '';
   const [scheme, b64] = header.split(' ');
@@ -2722,7 +2727,10 @@ function paymeSandboxD1(env) {
 // o'zgartirmasdan/qayta deploy qilmasdan shu o'zgaruvchini almashtirish
 // kifoya. Sozlanmagan bo'lsa production domeniga tushadi.
 function paymeCheckoutLinkD1(env, orderId, amountSom) {
-  const merchantId = env.PAYME_MERCHANT_ID || '';
+  // `.trim()` — verifyPaymeAuthD1() dagi bilan bir xil sabab: panelga
+  // qo‘yilgan qiymat oxiridagi bo‘sh joy base64 ichiga tushib, checkout
+  // havolasini yaroqsiz qilardi.
+  const merchantId = (env.PAYME_MERCHANT_ID || '').trim();
   if (!merchantId || !orderId) return '';
   const tiyin = Math.round(Number(amountSom) * 100);
   const params = `m=${merchantId};ac.order_id=${orderId};a=${tiyin}`;
