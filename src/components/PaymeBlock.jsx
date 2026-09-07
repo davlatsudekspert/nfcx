@@ -3,6 +3,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsInfo, usePaymentProviders } from '../lib/paymentsEnabled.jsx';
 import { fmt } from '../lib/format.js';
 import PayQr from './PayQr.jsx';
+import BrandMark from './BrandMark.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
 // YAGONA PAYME TO'LOV BLOKI (2026-09)
@@ -34,7 +35,7 @@ import PayQr from './PayQr.jsx';
 //   amount    — to'lov summasi (so'mda, raqam)
 //   payLink   — Payme checkout havolasi (bo'lsa <a> sifatida ochiladi)
 //   onPay     — payLink bo'lmasa bosilganda chaqiriladi (buyurtma yaratish)
-//   payLabel  — tugma matni (standart: "Payme orqali to'lash")
+//   payLabel  — tugma matni (standart: brend belgisi + "bilan to'lov")
 //   busy      — spinner
 //   disabled  — tashqi sabab bilan o'chirilgan (masalan forma to'ldirilmagan)
 //   note      — tugma ostidagi qo'shimcha izoh (ixtiyoriy)
@@ -68,16 +69,6 @@ function PaymeLogo({ provider = 'payme' }) {
       <span className="payme-block__sheen" aria-hidden="true"></span>
       <span className="payme-block__logo-text">{meta.label}</span>
     </span>
-  );
-}
-
-// Tugma ichidagi ixcham Payme belgisi — oq, turquoise fon ustida.
-function PaymeMark() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="5" width="20" height="14" rx="3" />
-      <path d="M2 10h20" />
-    </svg>
   );
 }
 
@@ -126,7 +117,10 @@ export default function PaymeBlock({
   const payClass = `payme-block__pay${provider === 'click' ? ' payme-block__pay--click' : ''}`;
   const amountText = Number.isFinite(Number(amount)) ? t("{n} so'm", { n: fmt(Number(amount)) }) : null;
   const brand = (PROVIDERS.find((x) => x.id === provider) || PROVIDERS[0]).label;
-  const label = payLabel || t('{brand} orqali to‘lash', { brand });
+  // Belgi brend nomini O'ZI ko'rsatgani uchun matnda nomni takrorlash
+  // shart emas: tugma "[Payme] bilan to'lov" bo'lib o'qiladi — Payme
+  // o'z merchantlariga beradigan tugma matnining aynan o'zi.
+  const label = payLabel || t('bilan to‘lov');
 
   // TAKRORIY TRANZAKSIYA HIMOYASI. `busy` prop React holati orqali keladi,
   // ya'ni u yangilanguncha (bir render kadri) foydalanuvchi tugmani yana
@@ -222,12 +216,12 @@ export default function PaymeBlock({
           </button>
         ) : payLink ? (
           <a href={payLink} target="_blank" rel="noopener noreferrer" className={payClass}>
-            <PaymeMark />
+            <BrandMark provider={provider} />
             <span>{label}</span>
           </a>
         ) : (
           <button type="button" className={payClass} onClick={handlePay} disabled={disabled}>
-            <PaymeMark />
+            <BrandMark provider={provider} />
             <span>{label}</span>
           </button>
         )}

@@ -5,6 +5,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import PayQr from './PayQr.jsx';
+import BrandMark from './BrandMark.jsx';
 import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 import PaymeReadyBadge from './PaymeReadyBadge.jsx';
@@ -219,8 +220,15 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                   <PaymeReadyBadge />
                   {payIsSandbox && <span className="vz-badge vz-badge--warn">{t('PAYME SANDBOX \u00b7 TEST REJIMI')}</span>}
                 </div>
-                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold mt-4 w-full">
-                  {t("To'lash — {n} so'm", { n: fmt(order.price) })}
+                {/* RASMIY PAYME TUGMASI. Avval bu oltin tugma edi va
+                    Payme belgisi umuman yo'q edi — mijoz qaysi tizimga
+                    o'tayotganini faqat matndan bilardi. Endi tugmaning
+                    o'zi Payme firma rangida va so'z belgisi bilan:
+                    to'lov sahifasi ochilganda ko'rinish bir xil bo'ladi,
+                    "boshqa saytga tashladi" degan shubha qolmaydi. */}
+                <a href={order.payLink} target="_blank" rel="noopener noreferrer" className="payme-block__pay mt-4">
+                  <BrandMark />
+                  <span>{t("bilan to‘lov · {n} so'm", { n: fmt(order.price) })}</span>
                 </a>
                 {payIsSandbox && (
                   <p className="mt-2 text-center text-xs font-bold text-[#5fd9ca]">{t('Real pul yechilmaydi \u2014 bu test to\u2019lovi.')}</p>
