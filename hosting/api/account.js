@@ -296,10 +296,36 @@ export async function handle(request, env, url, H) {
       const shippingAddress = H.cleanStr(body.shippingAddress, 300);
       if (!shippingName || !shippingPhone || !shippingAddress) return H.json({ error: 'shipping_required' }, 422);
 
+      // ─── BOSMA MAKET ─────────────────────────────────────────────────
+      // 2026-09. Avval buyurtma bilan FAQAT yetkazib berish ma'lumotlari
+      // kelardi — dizayn foydalanuvchining brauzerida qolib ketardi va
+      // admin nima chop etishni bilmasdi. Endi mijoz "buyurtma berish"
+      // ni bosganda old va orqa tomon 600 DPI PNG sifatida yuklanadi va
+      // havolalari shu yerda saqlanadi.
+      //
+      // FAQAT O'ZIMIZNING FAYL: mijoz istalgan tashqi manzilni yubora
+      // olmasin — admin paneli uni ochadi, ya'ni bu SSRF/fishing yo'li
+      // bo'lardi. Shuning uchun havola aynan `/uploads/cardprint_...png`
+      // shaklida bo'lishi shart (bu faylni /api/upload-card-print
+      // yaratadi va u ham faqat PNG qabul qiladi).
+      const printUrl = (value) => {
+        const url = H.cleanStr(value, 300);
+        return /^\/uploads\/cardprint_[0-9a-f]{24}\.png$/.test(url) ? url : '';
+      };
+      const designFrontUrl = printUrl(body.designFrontUrl);
+      const designBackUrl = printUrl(body.designBackUrl);
+
       const order = await env.DB.prepare(
         `INSERT INTO web_orders (user_id, code, kind, price, payload, status, created_at)
          VALUES (?, ?, 'physical_card_order', ?, ?, 'pending', ?) RETURNING id`
-      ).bind(user.id, code, PHYSICAL_CARD_FEE, JSON.stringify({ shippingName, shippingPhone, shippingAddress }), H.nowTs()).first();
+      ).bind(user.id, code, PHYSICAL_CARD_FEE, JSON.stringify({
+        shippingName, shippingPhone, shippingAddress,
+        designFrontUrl, designBackUrl,
+        // Bosmaxona uchun aniq o'lcham — maket qanday chiqarilgani
+        // buyurtmaning o'zida yozib qolsin, keyinchalik format o'zgarsa
+        // eski buyurtmalar qaysi o'lchamda ekani ma'lum bo'ladi.
+        printSpec: designFrontUrl ? 'CR80 85.6x54mm · 600 DPI · 2022x1276 PNG' : '',
+      }), H.nowTs()).first();
       const payLink = H.paymeCheckoutLinkD1(env, order.id, PHYSICAL_CARD_FEE);
       return H.json({ orderId: order.id, amount: PHYSICAL_CARD_FEE, payLink }, 202);
     }

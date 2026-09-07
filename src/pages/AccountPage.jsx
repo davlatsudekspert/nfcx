@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -1977,15 +1977,41 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
     missing[1].current?.focus();
   };
 
+  // Dizayner o'zining joriy maketini shu ref orqali beradi (pastdagi
+  // <CardDesignerPage printApi={printApiRef} />).
+  const printApiRef = useRef(null);
+
   const orderPhysicalCard = async () => {
     if (!shippingFilled) {
-      setMsg({ type: 'err', text: t("Ism, telefon va manzilni to'liq kiriting.") });
+      focusMissingShipping();
       return;
     }
-    setBusy(true); setMsg(null);
+    setBusy(true); setMsg(null); setShipErr('');
     try {
+      // ─── MAKETNI BUYURTMAGA BIRIKTIRISH ─────────────────────────────
+      // Avval buyurtma bilan faqat manzil ketardi — dizayn brauzerda
+      // qolib ketar va admin nima chop etishni bilmasdi. Endi mijoz
+      // ko'rib turgan maket AYNAN shu daqiqada ikkala tomon uchun
+      // 600 DPI PNG qilib chiqariladi va yuklanadi.
+      //
+      // Yuklash muvaffaqiyatsiz bo'lsa BUYURTMA YARATILMAYDI: maketsiz
+      // buyurtma admin uchun foydasiz — pul olinib, nima chop etishni
+      // bilmay qolgandan ko'ra, mijozdan qayta urinishni so'ragan
+      // yaxshiroq.
+      let designFrontUrl = '';
+      let designBackUrl = '';
+      const api = printApiRef.current;
+      if (api) {
+        const pair = api.getPrintPair();
+        [designFrontUrl, designBackUrl] = await Promise.all([
+          dbUploadCardPrint(pair.front),
+          dbUploadCardPrint(pair.back),
+        ]);
+      }
+
       const res = await dbOrderPhysicalCard(card.code, {
         shippingName: shipName.trim(), shippingPhone: shipPhone.trim(), shippingAddress: shipAddress.trim(),
+        designFrontUrl, designBackUrl,
       });
       setCardOrder(res);
     } catch (err) {
@@ -2209,7 +2235,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
             </PaymeBlock>
           </div>
           <Suspense fallback={<div className="py-10 text-center text-sm text-base-content/45">{t('Yuklanmoqda...')}</div>}>
-            <CardDesignerPage embedded code={card.code} />
+            <CardDesignerPage embedded code={card.code} printApi={printApiRef} />
           </Suspense>
         </div>
       )}

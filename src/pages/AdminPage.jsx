@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Fragment, createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -793,6 +793,60 @@ function PaymeTestOrder() {
   );
 }
 
+// Jismoniy karta buyurtmasining bosma maketi — admin uchun.
+//
+// Maket mijoz "buyurtma berish" ni bosgan daqiqada saqlangan, ya'ni
+// keyin u dizaynini o'zgartirsa ham bu yerda AYNAN to'langan variant
+// turadi.
+function PhysicalCardDesign({ order }) {
+  const { t } = useLanguage();
+  const sides = [
+    ['Old tomon', order.designFrontUrl],
+    ['Orqa tomon', order.designBackUrl],
+  ].filter(([, url]) => !!url);
+
+  return (
+    <div className="flex flex-wrap items-start gap-5 py-3">
+      <div className="min-w-[220px] text-xs leading-relaxed text-base-content/70">
+        <div className="vz-kicker mb-1">{t('Yetkazib berish')}</div>
+        <div className="font-semibold text-base-content/90">{order.shippingName || '—'}</div>
+        <div>{order.shippingPhone || '—'}</div>
+        <div className="max-w-[280px]">{order.shippingAddress || '—'}</div>
+        {order.printSpec && (
+          <div className="mt-2 font-mono text-[11px] text-base-content/45">{order.printSpec}</div>
+        )}
+      </div>
+
+      {sides.length === 0 ? (
+        // Eski (2026-09 dan oldingi) buyurtmalarda maket yo'q — o'shanda
+        // dizayn umuman saqlanmasdi. Buni yashirmaymiz.
+        <div className="vz-err self-center text-xs">
+          {t('Bu buyurtmada bosma maket yo‘q — mijozdan dizaynni so‘rang.')}
+        </div>
+      ) : sides.map(([label, url]) => (
+        <div key={label} className="flex flex-col items-start gap-2">
+          <div className="vz-kicker">{t(label)}</div>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            <img
+              src={url} alt={t(label)} loading="lazy"
+              className="h-[104px] w-[165px] rounded-lg border border-white/15 bg-black object-cover"
+            />
+          </a>
+          {/* `download` — bir bosishda tipografiyaga beriladigan fayl.
+              Nomi buyurtma raqami bilan: papkada aralashib ketmasin. */}
+          <a
+            href={url}
+            download={`nfcstore_${order.code || 'karta'}_${order.id}_${label === 'Old tomon' ? 'old' : 'orqa'}.png`}
+            className="btn btn-outline-gold btn-xs min-h-9"
+          >
+            {t('Yuklab olish')}
+          </a>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function OrdersTab() {
   const { t } = useLanguage();
   const { isSuper } = useAdmin();
@@ -860,7 +914,8 @@ function OrdersTab() {
         <thead><tr><th>{t('Manba')}</th><th>{t('Kod')}</th><th>{t('Foydalanuvchi')}</th><th>{t('Narx')}</th><th>{t('Holat')}</th><th>{t('Vaqt')}</th><th></th></tr></thead>
         <tbody>
           {visible.map((o) => (
-            <tr key={o.source + o.id}>
+            <Fragment key={o.source + o.id}>
+            <tr>
               <td><span className="badge badge-ghost badge-sm">{o.source === 'web' ? t('Sayt') : t('Bot')}</span></td>
               <td className="font-mono">{o.code}</td>
               <td className="text-xs">{o.source === 'bot' ? (o.tgUsername ? '@' + o.tgUsername : o.tgName) : ('#' + o.userId)}</td>
@@ -882,6 +937,19 @@ function OrdersTab() {
                 )}
               </td>
             </tr>
+            {/* JISMONIY KARTA — bosma maket. Admin nima chop etishi
+                kerakligini shu yerda ko'radi va tipografiyaga
+                to'g'ridan-to'g'ri yuklab oladi. Maket buyurtma bosilgan
+                DAQIQADA saqlangan: mijoz keyin dizaynini o'zgartirsa
+                ham, bu yerda to'langan variant turadi. */}
+            {o.kind === 'physical_card_order' && (
+              <tr>
+                <td colSpan={7} className="bg-black/20">
+                  <PhysicalCardDesign order={o} />
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
         </tbody>
       </table>

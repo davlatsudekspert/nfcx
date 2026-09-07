@@ -244,7 +244,13 @@ let premiumOrderId;
   const ok = await callPay('/api/records/VIP001/order-physical-card', { method: 'POST', cookie: cookie.user, json: shipping });
   check('order-physical-card -> 202 {orderId, amount, payLink}', [ok.status, typeof ok.body.orderId, ok.body.amount, ok.body.payLink.startsWith('https://checkout.paycom.uz/')], [202, 'number', 200000, true]);
   const row = sqlite.prepare(`SELECT user_id, code, kind, price, status, payload FROM web_orders WHERE id = ?`).get(ok.body.orderId);
-  check('web_orders physical row', { ...row, payload: JSON.parse(row.payload) }, { user_id: 1, code: 'VIP001', kind: 'physical_card_order', price: 200000, status: 'pending', payload: shipping });
+  // 2026-09: payload'ga bosma maket maydonlari qo'shildi. Bu chaqiruvda
+  // maket yuborilmagan, shuning uchun ular BO'SH bo'lishi kerak —
+  // to'ldirilgan holat scripts/test-card-print-order.mjs da tekshiriladi.
+  check('web_orders physical row', { ...row, payload: JSON.parse(row.payload) }, {
+    user_id: 1, code: 'VIP001', kind: 'physical_card_order', price: 200000, status: 'pending',
+    payload: { ...shipping, designFrontUrl: '', designBackUrl: '', printSpec: '' },
+  });
   // free-tier kod uchun feature_locked (physicalCardDesigner min silver)
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('12345678', 'Free', 0, 2000, 1)`).run();
   const locked = await callPay('/api/records/12345678/order-physical-card', { method: 'POST', cookie: cookie.user, json: shipping });

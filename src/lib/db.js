@@ -586,6 +586,29 @@ export async function dbDeleteOwnCard(code) {
   return data;
 }
 
+// Bosma maketni (PNG dataURL) R2 ga yuklaydi va `/uploads/...` havolasini
+// qaytaradi. XOM BINAR yuboriladi: base64 hajmni ~33% ga oshiradi va
+// 600 DPI maket (bir necha MB) uchun bu bekorga sarflangan trafik.
+export async function dbUploadCardPrint(dataUrl) {
+  const comma = String(dataUrl || '').indexOf(',');
+  if (comma < 0) throw new Error('Maketni tayyorlab bo‘lmadi.');
+  const bin = atob(dataUrl.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const res = await fetch('/api/upload-card-print', {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png' },
+    credentials: 'same-origin',
+    body: bytes,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.url) {
+    if (data?.error === 'too_large') throw new Error('Maket juda katta — fon rasmini kichikroq qiling.');
+    throw new Error('Maketni yuklab bo‘lmadi.');
+  }
+  return data.url;
+}
+
 export async function dbOrderPhysicalCard(code, shipping) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/order-physical-card`, {
     method: 'POST',

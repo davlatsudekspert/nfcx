@@ -3588,6 +3588,9 @@ async function putUploadR2(env, filename, bytes, contentType, actor = '') {
 // 50 * 1024 * 1024 = 52 428 800 bayt. Bu chegara faqat profil foni
 // media'siga tegishli (avatar/post/logo/musiqa limitlari o'zgarmagan).
 const PROFILE_BG_MAX_BYTES = 50 * 1024 * 1024;
+// Bosma maket: 600 DPI, 2022x1276 PNG odatda 1-4 MB. 8 MB — fon rasmi
+// juda batafsil bo'lgan holatlar uchun ham yetarli zaxira.
+const CARD_PRINT_MAX_BYTES = 8 * 1024 * 1024;
 // Mijoz yuborishi mumkin bo'lgan, lekin bir xil turni bildiruvchi MIME
 // nomlari (masalan iOS ba'zan video/quicktime deb yuboradi, ichida esa
 // ftyp/mp4 bo'ladi).
@@ -3599,7 +3602,7 @@ const PROFILE_BG_ALIASES = {
 };
 
 // POST /api/upload, /api/upload-audio, /api/upload-card-video,
-//      /api/upload-profile-bg, /api/admin/upload
+//      /api/upload-profile-bg, /api/upload-card-print, /api/admin/upload
 async function uploadApi(request, env, pathname) {
   const isAdmin = pathname === '/api/admin/upload';
   const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
@@ -3650,6 +3653,29 @@ async function uploadApi(request, env, pathname) {
 
     const filename = `profilebg_${uploadRandomHex(12)}.${sniffed.ext}`;
     return json({ url: await putUploadR2(env, filename, bytes, sniffed.type, actor) });
+  }
+
+  // ─── JISMONIY KARTA BOSMA DIZAYNI (PNG) ──────────────────────────────
+  // 2026-09. Nima uchun ALOHIDA endpoint (mavjud /api/upload emas):
+  //   1) /api/upload foydalanuvchi rasmlarini 700 KB bilan cheklaydi —
+  //      bu profil avatari uchun to'g'ri, lekin 600 DPI bosma maket
+  //      (2022x1276) undan bir necha barobar katta bo'ladi va rad
+  //      etilardi;
+  //   2) /api/upload base64 dataURL kutadi, base64 esa hajmni ~33% ga
+  //      oshiradi. Bu yerda tana XOM BINAR o'qiladi.
+  // Faqat PNG: bosmaxona uchun yo'qotishsiz format kerak, JPEG matn
+  // chekkalarini "iflos" qiladi.
+  if (pathname === '/api/upload-card-print') {
+    const declared = Number(request.headers.get('content-length') || 0);
+    if (declared > CARD_PRINT_MAX_BYTES) return json({ error: 'too_large', limitMb: 8 }, 413);
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.length) return json({ error: 'bad_file' }, 422);
+    if (bytes.length > CARD_PRINT_MAX_BYTES) return json({ error: 'too_large', limitMb: 8 }, 413);
+    // Tur MIJOZ AYTGANIGA emas, sehrli baytlarga qarab aniqlanadi.
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    if (!isPng) return json({ error: 'bad_file' }, 422);
+    const filename = `cardprint_${uploadRandomHex(12)}.png`;
+    return json({ url: await putUploadR2(env, filename, bytes, 'image/png', actor) });
   }
 
   if (pathname === '/api/upload-card-video') {
@@ -4536,12 +4562,29 @@ async function adminCoreApi(request, env, url, admin) {
 
   if (path === '/api/admin/orders' && request.method === 'GET') {
     const [web, bot] = await Promise.all([
-      env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at FROM web_orders ORDER BY created_at DESC LIMIT 100`).all(),
+      env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at, kind, payload FROM web_orders ORDER BY created_at DESC LIMIT 100`).all(),
       env.DB.prepare(`SELECT id, 'bot' AS source, tg_user_id AS user_id, code, price AS amount, status, created_at, tg_username, tg_name FROM bot_orders ORDER BY created_at DESC LIMIT 100`).all(),
     ]);
     const orders = [...(web.results || []), ...(bot.results || [])]
       .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 100)
-      .map((r) => ({ id: r.id, source: r.source, userId: r.user_id, code: r.code, amount: Number(r.amount), status: r.status, createdAt: r.created_at, tgUsername: r.tg_username, tgName: r.tg_name }));
+      .map((r) => {
+        const base = { id: r.id, source: r.source, userId: r.user_id, code: r.code, amount: Number(r.amount), status: r.status, createdAt: r.created_at, kind: r.kind || '', tgUsername: r.tg_username, tgName: r.tg_name };
+        // Jismoniy karta buyurtmasi — admin nima chop etishi kerakligini
+        // AYNAN shu yerdan ko'radi: bosma maket (old/orqa) va manzil.
+        // Butun `payload` qaytarilmaydi — faqat kerakli maydonlar.
+        if (r.kind !== 'physical_card_order') return base;
+        let p = {};
+        try { p = JSON.parse(r.payload || '{}') || {}; } catch { p = {}; }
+        return {
+          ...base,
+          designFrontUrl: typeof p.designFrontUrl === 'string' ? p.designFrontUrl : '',
+          designBackUrl: typeof p.designBackUrl === 'string' ? p.designBackUrl : '',
+          printSpec: typeof p.printSpec === 'string' ? p.printSpec : '',
+          shippingName: typeof p.shippingName === 'string' ? p.shippingName : '',
+          shippingPhone: typeof p.shippingPhone === 'string' ? p.shippingPhone : '',
+          shippingAddress: typeof p.shippingAddress === 'string' ? p.shippingAddress : '',
+        };
+      });
     return json({ orders });
   }
 
@@ -5641,7 +5684,7 @@ async function handleRequest(request, env, url) {
     }
 
     if (request.method === 'POST'
-      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/admin/upload'].includes(url.pathname)) {
+      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-card-print', '/api/admin/upload'].includes(url.pathname)) {
       try {
         return await uploadApi(request, env, url.pathname);
       } catch (error) {

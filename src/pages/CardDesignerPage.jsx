@@ -215,7 +215,11 @@ function renderCard(ctx, w, h, state) {
   ctx.clearRect(0, 0, w, h);
   const colorSet = TEXT_COLORS[state.textColor];
 
-  roundRectPath(ctx, 0, 0, w, h, 42);
+  // Ekranda burchaklar yumaloq — karta shundoq ko'rinadi. BOSMA uchun
+  // esa 0: NFC kartaning bo'sh zagotovkasi allaqachon yumaloq qirqilgan
+  // bo'ladi, maketga yana yumaloq burchak chizilsa chekkalarda oq
+  // "quloqlar" chiqib qoladi.
+  roundRectPath(ctx, 0, 0, w, h, state.cornerRadius ?? 42);
   ctx.save();
   ctx.clip();
 
@@ -368,7 +372,44 @@ function FieldGroup({ title, children }) {
   );
 }
 
-export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
+// ═══════════════════════════════════════════════════════════════════════
+// BOSMA MAKET O'LCHAMI (2026-09)
+//
+// CR80 — plastik kartaning xalqaro standarti: 85.6 x 54 mm. NFC
+// kartalar aynan shu o'lchamda ishlab chiqariladi.
+//
+//   600 DPI: 85.6/25.4*600 = 2022 px,  54/25.4*600 = 1276 px
+//
+// Nima uchun 600 DPI, 300 emas: kartadagi matn juda mayda (ism, kod,
+// nfcstore.uz yozuvi) — 300 DPI da harf chekkalari "tishli" chiqadi.
+// Fayl hajmi esa baribir bir necha MB.
+//
+// Nima uchun PNG, JPEG emas: JPEG siqilishi qora fon ustidagi oltin
+// matn atrofida iflos "aura" qoldiradi.
+//
+// TAHRIRLASH MAYDONI ham shu nisbatda (1280 x 807): avval 1280x800 edi
+// — nisbati 1.600, kartaniki esa 1.585. Ya'ni chiqarilgan fayl bir oz
+// CHO'ZILGAN bo'lardi va bosmaxonada karta chetlari kesilib ketardi.
+export const PRINT_W = 2022;
+export const PRINT_H = 1276;
+export const EDIT_W = 1280;
+export const EDIT_H = 807;
+
+// Joriy dizaynni bosma sifatida PNG dataURL qilib qaytaradi.
+// Ekran uchun chizilgan bir xil `renderCard()` ishlatiladi, faqat
+// kattaroq masshtabda — shuning uchun natija ekrandagidan FARQ QILMAYDI
+// (matn qaytadan, vektor sifatida chiziladi, cho'zilmaydi).
+export function renderPrintDataUrl(state) {
+  const canvas = document.createElement('canvas');
+  canvas.width = PRINT_W;
+  canvas.height = PRINT_H;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(PRINT_W / EDIT_W, PRINT_H / EDIT_H);
+  renderCard(ctx, EDIT_W, EDIT_H, { ...state, cornerRadius: 0 });
+  return canvas.toDataURL('image/png');
+}
+
+export default function CardDesignerPage({ embedded = false, code = '', printApi = null } = {}) {
   const { t } = useLanguage();
   const canvasRef = useRef(null);
   const bgFileRef = useRef(null);
@@ -452,7 +493,23 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
     hitboxesRef.current = renderCard(canvas.getContext('2d'), canvas.width, canvas.height, buildState()) || {};
   }, [buildState]);
 
-  // Ko'rsatilgan (CSS) o'lcham bilan haqiqiy canvas piksellari (1280x800)
+  // Ota komponent (buyurtma oynasi) joriy maketni bosma sifatida olishi
+  // uchun. Ref orqali — chunki dizayn har bosishda o'zgaradi va uni
+  // props sifatida yuqoriga ko'tarish butun formani qayta chizardi.
+  useEffect(() => {
+    if (!printApi) return undefined;
+    printApi.current = {
+      // Ikkala tomon ham chiqariladi: mijoz qaysi tomonda turgani muhim
+      // emas, bosmaxonaga ikkalasi ham kerak.
+      getPrintPair: () => ({
+        front: renderPrintDataUrl(buildState({ side: 'front' })),
+        back: renderPrintDataUrl(buildState({ side: 'back' })),
+      }),
+    };
+    return () => { printApi.current = null; };
+  }, [printApi, buildState]);
+
+  // Ko'rsatilgan (CSS) o'lcham bilan haqiqiy canvas piksellari (EDIT_W x EDIT_H)
   // orasidagi nisbatni hisoblab, sichqoncha koordinatasini canvas
   // koordinatasiga aylantiradi.
   const pointerToCanvasXY = (e) => {
@@ -533,7 +590,12 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
   // Ichki (profil/bandlash oqimiga joylashtirilgan) holatda sahifa
   // sarlavhasi va tashqi <main> qobig'i kerak emas — faqat vosita o'zi.
   const toolBody = (
-    <div className="mt-10 grid gap-8 lg:grid-cols-[380px_1fr]">
+    // Ish stoli: chapda sozlamalar, o'ngda maket. Avval maket 520px
+    // bilan cheklangan edi va katta ekranda ham kichkina bo'lib turardi
+    // — logotip/QR ni aniq joylashtirish qiyin edi. Endi u qolgan
+    // kenglikni to'liq egallaydi (820px gacha), sozlamalar ustuni esa
+    // o'z balandligida alohida suriladi.
+    <div className="mt-10 grid items-start gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div className="max-h-[calc(100vh-140px)] overflow-y-auto rounded-2xl border border-white/10 bg-base-200/40 p-5 lg:sticky lg:top-6 lg:self-start">
           <FieldGroup title={t("Tomon")}>
             <ToggleGroup
@@ -725,19 +787,19 @@ export default function CardDesignerPage({ embedded = false, code = '' } = {}) {
           </FieldGroup>
         </div>
 
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 lg:sticky lg:top-6">
           <canvas
             ref={canvasRef}
-            width={1280}
-            height={800}
+            width={EDIT_W}
+            height={EDIT_H}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
             onPointerUp={onCanvasPointerUp}
             onPointerLeave={onCanvasPointerUp}
-            className="w-full max-w-[520px] touch-none rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+            className="w-full max-w-[820px] touch-none rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
           />
           <p className="max-w-[420px] text-center text-xs text-base-content/50">
-            {t("Chop etish uchun 1280×800px, yuqori sifat. Logotip va QR-kodni sichqoncha bilan sudrab, joyini o'zgartiring.")}
+            {t("Buyurtma berilganda maket avtomatik 2022×1276px (CR80 · 600 DPI) qilib chiqariladi. Logotip, QR-kod va matnni sichqoncha bilan sudrab joylashtiring.")}
           </p>
         </div>
       </div>
