@@ -9,6 +9,7 @@ import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import PaymeBlock from '../components/PaymeBlock.jsx';
+import { openPayWindow } from '../lib/payWindow.js';
 import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, MUSIC_MAX_MB, musicLimit } from '../lib/musicLimits.js';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
@@ -1634,14 +1635,21 @@ function PremiumPanel({ user, card, onBecamePremium }) {
   }, [order]);
 
   const submit = async () => {
+    // To'lov oynasi BOSILGAN ZAHOTI ochiladi (hali await bo'lmasdan) —
+    // aks holda brauzer uni bloklaydi va mijoz "To'lash" ni bosganda
+    // hech narsa ochilmaydi. Batafsil: src/lib/payWindow.js izohi.
+    const payWin = openPayWindow();
     setBusy(true);
     setMsg(null);
     try {
       const res = await dbRequestPremium();
       setOrder(res);
-      // Payme (SANDBOX) checkout — yangi oynada; bloklansa pastdagi havola qoladi.
-      if (res && res.payLink) { try { window.open(res.payLink, '_blank', 'noopener'); } catch { /* popup bloklangan */ } }
+      // Havola kelmasa oyna yopiladi — mijoz osilib qolgan bo'sh
+      // oynani ko'rmaydi.
+      if (res && res.payLink) payWin.go(res.payLink);
+      else payWin.close();
     } catch (err) {
+      payWin.close();
       // 503 payments_disabled → to'lov vaqtincha o'chiq (PaymentUnavailableNotice);
       // 409 ALREADY_PREMIUM / ALREADY_PENDING → matn (db.js xaritasi); 429 → matn.
       if (err.code === 'payments_disabled' || err.code === 'payme_disabled') setDisabledByServer(true);

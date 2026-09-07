@@ -8,7 +8,7 @@
 //      ID ham ro'yxatda ko'rinadi. Bu eng muhim tekshiruv: mezon faqat
 //      `payme_transaction_id` ga bog'langan bo'lsa, Click ulangan kuni
 //      sotuvlar jimgina ko'rinmay qolardi.
-import worker from '../hosting/worker.js';
+import worker, { paymeCheckoutLinkD1 } from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { env } = makeEnv();
@@ -80,6 +80,31 @@ const j = async (pathname, e = env) => {
   const card = (cat.body || []).find((x) => x.code === 'CLK777');
   check('katalogda sovg\'a deb belgilanmaydi', card?.isGift, false);
   check('katalogda yakuniy narx', card?.price, 3000000);
+}
+
+// ═══ 3. SUMMA BIRLIGI — eng xavfli joy ═══
+// Payme summani TIYINDA (x100), Click esa SO'MDA kutadi. Bu yerda
+// adashish mijozdan 100 BAROBAR ko'p yoki kam yechilishiga olib keladi.
+// Checkout havolasidagi summa shu sababli aniq qulflanadi.
+{
+  const e = { PAYME_MERCHANT_ID: 'M1', PAYME_CHECKOUT_DOMAIN: 'checkout.paycom.uz' };
+  const decode = (link) => Buffer.from(link.split('/').pop(), 'base64').toString();
+
+  check("149 000 so'm -> 14 900 000 tiyin", decode(paymeCheckoutLinkD1(e, 7, 149000)), 'm=M1;ac.order_id=7;a=14900000');
+  check("20 000 so'm -> 2 000 000 tiyin", decode(paymeCheckoutLinkD1(e, 7, 20000)), 'm=M1;ac.order_id=7;a=2000000');
+  check("8 700 000 so'm -> 870 000 000 tiyin", decode(paymeCheckoutLinkD1(e, 7, 8700000)), 'm=M1;ac.order_id=7;a=870000000');
+
+  // Teskari xatolar: summa 100 barobar kichik yoki katta bo'lib qolmasin.
+  const d = decode(paymeCheckoutLinkD1(e, 7, 149000));
+  checkTrue('summa so\'mda qolib ketmagan (a=149000 EMAS)', !/;a=149000$/.test(d));
+  checkTrue('summa ikki marta ko\'paytirilmagan (a=1490000000 EMAS)', !/;a=1490000000$/.test(d));
+
+  // Kasrli so'm butun tiyinga yaxlitlanadi (kasr tiyin bo'lmaydi).
+  check('kasrli summa yaxlitlanadi', decode(paymeCheckoutLinkD1(e, 7, 149000.4)), 'm=M1;ac.order_id=7;a=14900040');
+
+  // Merchant ID yo'q bo'lsa havola YARATILMAYDI (bo'sh satr) — noto'g'ri
+  // havola bilan mijozni Payme ga yubormaslik uchun.
+  check('merchant ID siz havola yaratilmaydi', paymeCheckoutLinkD1({}, 7, 149000), '');
 }
 
 done();
