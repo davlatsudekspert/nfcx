@@ -12,20 +12,24 @@ export default function PaymentUnavailableNotice({ compact = false }) {
     return (
       <p className="mt-2 flex items-center gap-1.5 text-xs text-base-content/50">
         <span aria-hidden className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-warning"></span>
-        {t('Payme orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
+        {t('Payme va Click orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
       </p>
     );
   }
 
   return (
     <div className="rounded-2xl border border-white/10 bg-base-200/40 p-5">
+      {/* Ikkala to'lov tizimi ham ko'rsatiladi — mijoz kelajakda qaysi
+          imkoniyat bo'lishini oldindan biladi. Firma ranglari asl
+          holida: Payme turkuaz, Click ko'k. */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <span className="rounded-lg bg-[#33c8b6] px-2.5 py-1 text-sm font-extrabold tracking-tight text-white">Payme</span>
+        <span className="pay-method__mark pay-method__mark--payme">Payme</span>
+        <span className="pay-method__mark pay-method__mark--click">Click</span>
         <span className="badge badge-warning badge-sm font-semibold">{t('Tez kunlarda')}</span>
       </div>
       <div className="mt-3 text-sm font-bold">{t('To‘lov tizimi tayyorlanmoqda')}</div>
       <p className="mt-1 text-sm leading-relaxed text-base-content/60">
-        {t('Payme orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
+        {t('Payme va Click orqali to‘lov imkoniyati tez kunlarda ishga tushadi.')}
       </p>
     </div>
   );

@@ -632,7 +632,17 @@ async function publicContentApi(request, env, url) {
   if (path === '/api/settings/payments-enabled' && request.method === 'GET') {
     // `sandbox` — faqat interfeysdagi "TEST REJIMI" belgisini boshqaradi
     // (paymeSandboxD1 izohiga qarang). Maxfiy qiymatlar qaytarilmaydi.
-    return json({ enabled: paymentsEnabledD1(env), sandbox: paymeSandboxD1(env) });
+    // `enabled`/`sandbox` — ESKI shakl, o'zgarishsiz qoladi (mavjud
+    // sahifalar shu ikkitasiga tayanadi). `providers` — yangi, har bir
+    // to'lov tizimi alohida. Maxfiy qiymatlar qaytarilmaydi.
+    return json({
+      enabled: paymentsEnabledD1(env),
+      sandbox: paymeSandboxD1(env),
+      providers: {
+        payme: { enabled: paymeEnabledD1(env), sandbox: paymeSandboxD1(env) },
+        click: { enabled: clickEnabledD1(env), sandbox: false },
+      },
+    });
   }
 
   return null;
@@ -1214,7 +1224,13 @@ async function ensureCoreSchema(env) {
         "id" INTEGER PRIMARY KEY NOT NULL, "user_id" INTEGER NOT NULL, "code" TEXT (40) NOT NULL,
         "price" INTEGER NOT NULL, "payload" TEXT NOT NULL, "status" TEXT (20) DEFAULT 'pending' NOT NULL,
         "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL, "kind" TEXT (24) DEFAULT 'card_purchase' NOT NULL,
-        "payme_transaction_id" TEXT, UNIQUE ("payme_transaction_id"),
+        -- MUHIM: SQLite da USTUN ta'riflari jadval CHEKLOVLARIDAN
+        -- (UNIQUE / FOREIGN KEY) OLDIN turishi shart. click_transaction_id
+        -- ni UNIQUE("payme_transaction_id") dan keyin qo'yganda
+        -- "syntax error" bo'lgan edi — shuning uchun ikkala ustun ham
+        -- shu yerda, cheklovlar esa pastda.
+        "payme_transaction_id" TEXT, "click_transaction_id" TEXT,
+        UNIQUE ("payme_transaction_id"), UNIQUE ("click_transaction_id"),
         FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS "web_orders_user_idx" ON "web_orders" ("user_id")`),
@@ -1425,6 +1441,11 @@ async function ensureWebOrderTimestampColumns(env) {
       // GetStatement — order.created_at (when "Band qilish" happened,
       // possibly long before Payme was ever involved) is the wrong value.
       await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN payme_create_time TEXT`).run().catch(() => {});
+      // Click tranzaksiya identifikatori — Payme'dagi
+      // `payme_transaction_id` ning aynan hamkasbi. Click ulanganda
+      // shu ustun to'ldiriladi. `catch` — ustun allaqachon bo'lsa jim
+      // o'tadi (boshqa ALTER'lar bilan bir xil naqsh).
+      await env.DB.prepare(`ALTER TABLE web_orders ADD COLUMN click_transaction_id TEXT`).run().catch(() => {});
     })();
   }
   await webOrderTimestampColumnsReady;
@@ -1803,9 +1824,9 @@ function catalogVisibleSql(alias) {
 // narx QO'LLANMAYDI):
 //   • shu kod uchun `auctions` jadvalida haqiqiy yozuv bor;
 //   • auksion holati 'sold' yoki 'completed';
-//   • VA shu kod uchun HAQIQIY PAYME TO'LOVI o'tgan
+//   • VA shu kod uchun HAQIQIY TO'LOV o'tgan — Payme YOKI Click orqali
 //     (web_orders: kind='auction_payment', status='paid' VA
-//      payme_transaction_id IS NOT NULL);
+//      payme_transaction_id yoki click_transaction_id to'ldirilgan);
 //   • haqiqiy g'olib bor (`highest_bidder_id IS NOT NULL`);
 //   • yakuniy yutuq taklifi BAZADA saqlangan (`bids` jadvalida g'olibning
 //     shu auksiondagi eng katta taklifi) — narx aynan SHU yozuvdan olinadi,
@@ -1830,7 +1851,7 @@ async function auctionFinalPricesD1(env) {
           AND EXISTS (SELECT 1 FROM web_orders w
                        WHERE w.code = a.code AND w.kind = 'auction_payment'
                          AND w.status = 'paid'
-                         AND w.payme_transaction_id IS NOT NULL)
+                         AND COALESCE(w.payme_transaction_id, w.click_transaction_id) IS NOT NULL)
         GROUP BY a.code`
     ).all();
     for (const r of rows.results || []) {
@@ -2033,11 +2054,11 @@ function isGiftCodeD1(code) {
 // (auctionFinalPricesD1: g'olib aniqlangan, karta unga o'tgan VA
 // to'lov amalga oshirilgan). Bunday ID sovg'a emas — u rostdan sotilgan.
 //
-// NIMA UCHUN Payme tranzaksiyasi sharti muhim: bazada sinov davridan
+// NIMA UCHUN provayder tranzaksiyasi sharti muhim: bazada sinov davridan
 // qolgan, hatto 'paid' deb belgilangan buyurtmalar bor ekan. Ular
 // "Sotildi 5 000 000 so'm" bo'lib chiqardi — bo'lmagan savdo.
-// `payme_transaction_id` faqat haqiqiy Payme oqimida yoziladi, shuning
-// uchun eski yozuvlar bu shartdan o'tolmaydi.
+// Tranzaksiya identifikatori faqat haqiqiy to'lov oqimida yoziladi
+// (Payme yoki Click), shuning uchun eski yozuvlar bu shartdan o'tolmaydi.
 function isOwnedExclusiveGiftD1(record, auctionFinal) {
   if (auctionFinal != null && Number(auctionFinal) > 0) return false;
   const code = String(record?.code || '').toUpperCase();
@@ -2628,7 +2649,24 @@ function verifyPaymeAuthD1(request, env) {
 // Hozircha ikkalasi ham sozlanmagan — bu funksiya har doim `false`
 // qaytaradi, hech qanday real to'lov qabul qilinmaydi.
 function paymentsEnabledD1(env) {
+  return paymeEnabledD1(env) || clickEnabledD1(env);
+}
+
+// Payme yoqilganmi — avvalgi `paymentsEnabledD1()` mantig'i o'zgarishsiz.
+function paymeEnabledD1(env) {
   return env.PAYMENTS_ENABLED === 'true' && !!(env.PAYME_MERCHANT_ID && env.PAYME_KEY);
+}
+
+// Click yoqilganmi. Payme bilan BIR XIL naqsh: umumiy `PAYMENTS_ENABLED`
+// bayrog'i + shu provayderning kalitlari mavjudligi. Kalitlarning O'ZI
+// hech qachon o'qilmaydi/qaytarilmaydi — faqat mavjudligi tekshiriladi.
+//
+// Click hali shartnoma bosqichida: kalitlar qo'yilmaguncha bu false
+// qaytaradi va interfeysda Click "tez kunlarda" bo'lib turadi. Kalitlar
+// Cloudflare secrets'ga qo'yilishi bilan o'zi yoqiladi — kodni qayta
+// deploy qilish shart emas.
+function clickEnabledD1(env) {
+  return env.PAYMENTS_ENABLED === 'true' && !!(env.CLICK_SERVICE_ID && env.CLICK_SECRET_KEY);
 }
 
 // Payme test/sandbox rejimi — FAQAT oshkora (maxfiy bo'lmagan) sozlamadan
@@ -3790,11 +3828,18 @@ async function auctionsPublicApi(request, env, url) {
       //           NEOMSONGS, VVV444 va XXX772 da eski (legacy) sinov
       //           davridan qolgan 'paid' yozuvlar bor ekan.
       //
-      //      `payme_transaction_id` esa FAQAT haqiqiy Payme oqimida
-      //      yoziladi (setWebOrderPaymeIdD1, CreateTransaction paytida).
-      //      Payme hech qachon ishga tushirilmagani uchun eski sinov
-      //      yozuvlarida u NULL. Ya'ni bu ustun "pul rostdan o'tdimi?"
-      //      degan savolga yagona ishonchli javob.
+      //      Provayder tranzaksiya identifikatori esa FAQAT haqiqiy to'lov
+      //      oqimida yoziladi (Payme: setWebOrderPaymeIdD1,
+      //      CreateTransaction paytida; Click: xuddi shunday).
+      //      To'lov tizimlari hech qachon ishga tushirilmagani uchun eski
+      //      sinov yozuvlarida ikkalasi ham NULL. Ya'ni bu "pul rostdan
+      //      o'tdimi?" degan savolga yagona ishonchli javob.
+      //
+      //      MUHIM: shart PROVAYDERDAN MUSTAQIL (COALESCE). Agar faqat
+      //      `payme_transaction_id` tekshirilsa, Click orqali sotilgan
+      //      ID bu ro'yxatda KO'RINMAY qolardi va katalogda "Sovg'a"
+      //      bo'lib turaverardi — Click ulangan kuni jimgina buziladigan
+      //      xato. Shu sababli ikkala ustun ham hisobga olinadi.
       //
       //      Qoida qo'lda yuritilmaydi: Payme ulangach, birinchi haqiqiy
       //      to'lov o'tishi bilan lot bu yerda o'zi paydo bo'ladi.
@@ -3807,7 +3852,7 @@ async function auctionsPublicApi(request, env, url) {
             AND EXISTS (SELECT 1 FROM web_orders w
                          WHERE w.code = a.code AND w.kind = 'auction_payment'
                            AND w.status = 'paid'
-                           AND w.payme_transaction_id IS NOT NULL)
+                           AND COALESCE(w.payme_transaction_id, w.click_transaction_id) IS NOT NULL)
           ORDER BY a.ends_at DESC LIMIT 40`
       ).all();
       // `ownedExclusiveSoldD1()` BU YERDAN OLIB TASHLANDI. U katalogdagi

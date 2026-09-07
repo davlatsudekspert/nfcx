@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
-import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
+import { usePaymentsInfo, usePaymentProviders } from '../lib/paymentsEnabled.jsx';
 import { fmt } from '../lib/format.js';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -40,15 +40,32 @@ import { fmt } from '../lib/format.js';
 //   children  — tugma ustida ko'rsatiladigan qo'shimcha maydonlar (ism/telefon v.h.)
 // ═══════════════════════════════════════════════════════════════════════
 
-function PaymeLogo() {
-  // Rasmiy Payme firma rangi (turquoise fon, oq yozuv) va so'z belgisi —
+// To'lov tizimlari — YAGONA ro'yxat. Yangi tizim qo'shilsa faqat shu
+// yerga qatoq qo'shiladi, qolgan hamma joy o'zi moslashadi.
+const PROVIDERS = [
+  { id: 'payme', label: 'Payme' },
+  { id: 'click', label: 'Click' },
+];
+
+// Bitta brend belgisi — Payme turkuaz, Click ko'k. Ikkalasi bir xil
+// o'lchamda va bir xil ishlovda (firma ranglari o'zgartirilmaydi).
+function ProviderMark({ id, label }) {
+  return <span className={`pay-method__mark pay-method__mark--${id}`}>{label}</span>;
+}
+
+function PaymeLogo({ provider = 'payme' }) {
+  // Tanlangan to'lov tizimining RASMIY firma rangidagi so'z belgisi —
   // o'zgartirilmaydi, oltin rangga bo'yalmaydi. Ichidagi `__sheen` — 5
   // soniyada bir marta o'tadigan juda nozik yaltiroq (neon/miltillash
   // emas); prefers-reduced-motion'da butunlay o'chadi (CSS'da).
+  const meta = PROVIDERS.find((x) => x.id === provider) || PROVIDERS[0];
   return (
-    <span className="payme-block__logo" aria-label="Payme">
+    <span
+      className={`payme-block__logo${provider === 'click' ? ' payme-block__logo--click' : ''}`}
+      aria-label={meta.label}
+    >
       <span className="payme-block__sheen" aria-hidden="true"></span>
-      <span className="payme-block__logo-text">Payme</span>
+      <span className="payme-block__logo-text">{meta.label}</span>
     </span>
   );
 }
@@ -85,10 +102,30 @@ export default function PaymeBlock({
   children,
 }) {
   const { t } = useLanguage();
-  const { enabled, sandbox, loaded } = usePaymentsInfo();
+  const { enabled, loaded } = usePaymentsInfo();
+  const providers = usePaymentProviders();
 
+  // Tanlangan to'lov tizimi. Standart — ishlaydiganlarning birinchisi.
+  // Hech biri ishlamasa Payme ko'rsatiladi (blok baribir "o'chiq"
+  // holatida chiqadi, foydalanuvchi nima kutayotganini biladi).
+  const firstReady = PROVIDERS.find((x) => providers[x.id]?.enabled)?.id || 'payme';
+  const [provider, setProvider] = useState(firstReady);
+  // Holat backend'dan kechroq kelsa, tanlovni bir marta moslaymiz —
+  // foydalanuvchi o'zi tanlaganidan keyin bu o'zgartirmaydi.
+  const autoPicked = useRef(false);
+  useEffect(() => {
+    if (autoPicked.current || !loaded) return;
+    autoPicked.current = true;
+    setProvider(firstReady);
+  }, [loaded, firstReady]);
+
+  const active = providers[provider] || { enabled: false, sandbox: false };
+  const sandbox = !!active.sandbox;
+
+  const payClass = `payme-block__pay${provider === 'click' ? ' payme-block__pay--click' : ''}`;
   const amountText = Number.isFinite(Number(amount)) ? t("{n} so'm", { n: fmt(Number(amount)) }) : null;
-  const label = payLabel || t("Payme orqali to'lash");
+  const brand = (PROVIDERS.find((x) => x.id === provider) || PROVIDERS[0]).label;
+  const label = payLabel || t('{brand} orqali to‘lash', { brand });
 
   // TAKRORIY TRANZAKSIYA HIMOYASI. `busy` prop React holati orqali keladi,
   // ya'ni u yangilanguncha (bir render kadri) foydalanuvchi tugmani yana
@@ -106,9 +143,9 @@ export default function PaymeBlock({
   return (
     <div className="payme-block">
       <div className="payme-block__head">
-        <PaymeLogo />
+        <PaymeLogo provider={provider} />
         {enabled && sandbox && (
-          <span className="payme-block__badge payme-block__badge--test">{t('PAYME SANDBOX · TEST REJIMI')}</span>
+          <span className="payme-block__badge payme-block__badge--test">{t('{brand} SANDBOX · TEST REJIMI', { brand: brand.toUpperCase() })}</span>
         )}
         {loaded && !enabled && (
           <span className="payme-block__badge payme-block__badge--off">{t('Vaqtincha mavjud emas')}</span>
@@ -130,6 +167,34 @@ export default function PaymeBlock({
         </div>
       )}
 
+      {/* TO'LOV TIZIMINI TANLASH. Ikkala brend ham DOIM ko'rinadi —
+          ishga tushmagani "tez kunlarda" bo'lib turadi, yashirilmaydi.
+          Shunda mijoz kelajakda qaysi imkoniyat bo'lishini biladi va
+          Click ulangan kuni interfeys o'zgarmaydi — faqat holati
+          "tez kunlarda" dan "tayyor" ga o'tadi. */}
+      <div className="pay-methods" role="radiogroup" aria-label={t("To'lov tizimi")}>
+        {PROVIDERS.map((x) => {
+          const on = !!providers[x.id]?.enabled;
+          const isActive = provider === x.id && on;
+          return (
+            <button
+              key={x.id}
+              type="button"
+              role="radio"
+              aria-checked={isActive}
+              disabled={!on}
+              onClick={() => on && setProvider(x.id)}
+              className={`pay-method${isActive ? ' is-active' : ''}${on ? '' : ' is-soon'}`}
+            >
+              <ProviderMark id={x.id} label={x.label} />
+              <span className="pay-method__state">
+                {on ? (isActive ? t('Tanlandi') : t('Tanlash')) : t('Tez kunlarda')}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {enabled && children}
 
       <div className="payme-block__cta">
@@ -137,7 +202,7 @@ export default function PaymeBlock({
           <button type="button" className="payme-block__pay is-busy" disabled aria-busy="true">
             <span className="loading loading-spinner loading-sm"></span>
           </button>
-        ) : !enabled ? (
+        ) : !active.enabled ? (
           <button
             type="button"
             className="payme-block__pay is-off"
@@ -155,12 +220,12 @@ export default function PaymeBlock({
             <span className="payme-block__pay-wait">{t('Kutilmoqda...')}</span>
           </button>
         ) : payLink ? (
-          <a href={payLink} target="_blank" rel="noopener noreferrer" className="payme-block__pay">
+          <a href={payLink} target="_blank" rel="noopener noreferrer" className={payClass}>
             <PaymeMark />
             <span>{label}</span>
           </a>
         ) : (
-          <button type="button" className="payme-block__pay" onClick={handlePay} disabled={disabled}>
+          <button type="button" className={payClass} onClick={handlePay} disabled={disabled}>
             <PaymeMark />
             <span>{label}</span>
           </button>
@@ -170,7 +235,7 @@ export default function PaymeBlock({
       <div className="payme-block__foot">
         <p className="payme-block__secure">
           <LockIcon />
-          <span>{t("To'lov Payme'ning himoyalangan sahifasida amalga oshiriladi — karta ma'lumotlaringiz saytda saqlanmaydi.")}</span>
+          <span>{t("To'lov {brand}ning himoyalangan sahifasida amalga oshiriladi — karta ma'lumotlaringiz saytda saqlanmaydi.", { brand })}</span>
         </p>
         {enabled && sandbox && (
           <p className="payme-block__sandbox-note">{t('Real pul yechilmaydi — bu test to’lovi.')}</p>
