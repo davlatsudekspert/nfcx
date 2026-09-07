@@ -4,6 +4,7 @@ import * as apiCatalog from './api/catalog.js';
 import * as apiMedia from './api/media.js';
 import * as apiEngagement from './api/engagement.js';
 import * as apiAdminExtra from './api/admin-extra.js';
+import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL } from './api/order-window.js';
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 
@@ -2278,8 +2279,6 @@ async function stampWebOrderCancelD1(env, id, reason) {
 // tegmasdan yotib qolar edi (Payme o'zi CancelTransaction bilan faqat
 // HAQIQIY boshlangan tranzaksiyalarni timeout qiladi, umuman
 // boshlanmagan buyurtmani emas).
-const PENDING_ORDER_TTL_MS = 24 * 60 * 60 * 1000;
-
 async function activeWebOrderByCodeD1(env, code) {
   const row = await env.DB.prepare(`SELECT ${WEB_ORDER_SELECT} FROM web_orders WHERE code = ? AND status = 'pending' LIMIT 1`)
     .bind(code).first();
@@ -3254,9 +3253,19 @@ async function ordersApi(request, env, url) {
     const user = await getCurrentUser(request, env);
     if (!user) return json({ orders: [] });
     const rows = await env.DB.prepare(
-      `SELECT id, code, kind, price, status, created_at AS createdAt FROM web_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`
+      `SELECT id, code, kind, price, status, created_at AS createdAt,
+              ${PENDING_EXPIRES_MS_SQL} AS expiresAtMs
+         FROM web_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`
     ).bind(user.id).all();
-    return json({ orders: (rows.results || []).map((r) => ({ ...r, price: Number(r.price) })) });
+    // `expiresAtMs` FAQAT kutilayotgan buyurtma uchun ma'noga ega —
+    // kabinetda shu bo'yicha teskari hisob ko'rsatiladi.
+    return json({
+      orders: (rows.results || []).map((r) => ({
+        ...r,
+        price: Number(r.price),
+        expiresAtMs: r.status === 'pending' && r.expiresAtMs != null ? Number(r.expiresAtMs) : null,
+      })),
+    });
   }
 
   return null;

@@ -11,6 +11,21 @@ import { DICT_ACCOUNT } from './translations.account.js';
 import { DICT_ADMIN } from './translations.admin.js';
 
 const DICT_BASE = {
+  // ── Buyurtma muddati taymeri (2026-09) ──
+  "To'lovga": { ru: 'На оплату', en: 'To pay' },
+  'Muddati tugadi — kod qayta sotuvda': { ru: 'Срок истёк — код снова в продаже', en: 'Expired — the code is on sale again' },
+  "Shu vaqt ichida to'lanmasa, kod qayta sotuvga chiqadi": {
+    ru: 'Если не оплатить за это время, код снова поступит в продажу',
+    en: 'If it is not paid within this time, the code goes back on sale' },
+  'Buyurtmani bekor qilish': { ru: 'Отменить заказ', en: 'Cancel order' },
+  "«{code}» uchun kutilayotgan buyurtma bekor qilinadi va kod qayta sotuvga chiqadi. To'langan buyurtmalarga ta'sir qilmaydi.": {
+    ru: 'Ожидающий заказ для «{code}» будет отменён, и код снова поступит в продажу. Оплаченные заказы не затрагиваются.',
+    en: 'The pending order for "{code}" will be cancelled and the code goes back on sale. Paid orders are not affected.' },
+  "Bu buyurtmada faol Payme tranzaksiyasi bor — 24 soat o'tgach bekor qilish mumkin.": {
+    ru: 'По этому заказу есть активная транзакция Payme — отменить можно через 24 часа.',
+    en: 'This order has an active Payme transaction — it can be cancelled after 24 hours.' },
+  "Bekor qilib bo'lmadi — buyurtma allaqachon ishlangan.": {
+    ru: 'Не удалось отменить — заказ уже обработан.', en: 'Could not cancel — the order has already been processed.' },
   // ── Qo'llanma sahifasi (2026-09 qayta dizayn) ──
   'Darslar': { ru: 'Уроки', en: 'Lessons' },
   'Barcha darslar': { ru: 'Все уроки', en: 'All lessons' },

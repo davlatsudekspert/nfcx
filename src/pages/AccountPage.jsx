@@ -3684,6 +3684,42 @@ export default function AccountPage({ refreshCatalog }) {
   const openOrders = (orders || []).filter((o) => o.status !== 'paid' && o.kind !== 'auction_payment');
   const activityBadge = giftCount + wonCount + openOrders.length;
 
+  // Kutilayotgan buyurtma uchun teskari hisob. Buyurtma yaratilgandan
+  // 12 soat o'tgach kod avtomatik qayta sotuvga chiqadi (backend:
+  // hosting/api/order-window.js) — foydalanuvchi qancha vaqti qolganini
+  // ko'rib tursin, "To'lov kutilmoqda" degan yozuv oldida cheksiz
+  // turgandek tuyulmasin.
+  const OrderCountdown = ({ expiresAtMs }) => {
+    const [left, setLeft] = useState(() => expiresAtMs - Date.now());
+    useEffect(() => {
+      setLeft(expiresAtMs - Date.now());
+      const id = setInterval(() => setLeft(expiresAtMs - Date.now()), 1000);
+      return () => clearInterval(id);
+    }, [expiresAtMs]);
+    if (left <= 0) {
+      return (
+        <span className="whitespace-nowrap text-[13px] font-semibold text-base-content/45">
+          {t('Muddati tugadi — kod qayta sotuvda')}
+        </span>
+      );
+    }
+    const totalSec = Math.floor(left / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const sec = totalSec % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    // Oxirgi soatda diqqatni tortadi (oltin rang), aks holda xotirjam.
+    const urgent = left < 60 * 60 * 1000;
+    return (
+      <span
+        className={`whitespace-nowrap font-mono text-[13px] ${urgent ? 'font-bold text-[color:var(--vz-gold-2)]' : 'text-base-content/55'}`}
+        title={t("Shu vaqt ichida to'lanmasa, kod qayta sotuvga chiqadi")}
+      >
+        {t("To'lovga")} {h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`}
+      </span>
+    );
+  };
+
   // "Buyurtmalarim" — 4 holat (yuklanmoqda / xato+qayta / bo'sh / ro'yxat).
   const ordersBlock = (
     <section className="vz-card p-5">
@@ -3702,6 +3738,7 @@ export default function AccountPage({ refreshCatalog }) {
                 <span className="min-w-0 break-all font-mono">nfcstore.uz/{String(o.code || '').toLowerCase()}</span>
                 <span className="text-base-content/50">{t("{n} so'm", { n: fmt(o.price) })}</span>
                 <span className={`badge ${st.cls}`}>{t(st.text)}</span>
+                {o.status === 'pending' && o.expiresAtMs != null && <OrderCountdown expiresAtMs={o.expiresAtMs} />}
               </div>
             );
           })}

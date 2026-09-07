@@ -781,7 +781,7 @@ function OrdersTab() {
       setActErr(
         e.status === 403 ? t("Ruxsat yo'q")
           : e.status === 409 && e.body?.error === 'payme_active'
-            ? t("Bu buyurtmada faol Payme tranzaksiyasi bor — 12 soat o'tgach bekor qilish mumkin.")
+            ? t("Bu buyurtmada faol Payme tranzaksiyasi bor — 24 soat o'tgach bekor qilish mumkin.")
             : e.status === 409 ? t("Bekor qilib bo'lmadi — buyurtma allaqachon ishlangan.")
               : apiErrText(e, t),
       );

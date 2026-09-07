@@ -1,3 +1,4 @@
+import { PENDING_ORDER_TTL_MS } from './order-window.js';
 // hosting/api/admin-extra.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/admin.js (Express) dagi quyidagi admin route'larning D1 porti.
@@ -131,7 +132,6 @@ async function exportStats(env, days, opts) {
   return { rows, summary };
 }
 
-const PAYME_TX_LIFETIME_MS = 12 * 60 * 60 * 1000;
 
 export async function handle(request, env, url, H) {
   const path = url.pathname;
@@ -315,7 +315,7 @@ export async function handle(request, env, url, H) {
   // buyurtmani 'pending' emas deb ko'rib, `alreadyProcessed` qaytaradi —
   // pul o'tadi, karta berilmaydi. Shuning uchun `payme_transaction_id`
   // qo'yilgan buyurtma faqat Payme tranzaksiyasining amal qilish muddati
-  // (12 soat) o'tgandan keyin bekor qilinadi; undan oldin Payme'ning O'Z
+  // (24 soat) o'tgandan keyin bekor qilinadi; undan oldin Payme'ning O'Z
   // CancelTransaction oqimi ishlashi kerak.
   if (webCancel && method === 'POST') {
     if (!isSuper) return forbidden();
@@ -325,7 +325,7 @@ export async function handle(request, env, url, H) {
     if (before.status !== 'pending') return H.json({ error: 'not_pending', status: before.status }, 409);
     if (before.paymeTransactionId) {
       const createdMs = Date.parse(before.createdAt || '') || 0;
-      if (!createdMs || Date.now() - createdMs < PAYME_TX_LIFETIME_MS) {
+      if (!createdMs || Date.now() - createdMs < PENDING_ORDER_TTL_MS) {
         return H.json({ error: 'payme_active' }, 409);
       }
     }
