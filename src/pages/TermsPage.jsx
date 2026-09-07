@@ -21,7 +21,11 @@ const CONTENT = {
         p: [
           "2.1. NFCSTORE platformasidagi xizmatlar, jumladan auksiondagi eksklyuziv darajadagi kodlar uchun to'lovlar O'zbekiston Respublikasi hududida faoliyat yurituvchi litsenziyalangan to'lov tizimlari operatorlari va to'lov tashkilotlari orqali onlayn tarzda amalga oshiriladi.",
           "2.2. Auksion orqali xarid qilingan noyob kodlar uchun to'lov g'olib aniqlangandan so'ng 24 soat ichida to'liq hajmda amalga oshirilishi shart.",
-          "2.3. Xizmat xususiyatidan kelib chiqib (raqamli mulk huquqining avtomatik o'tishi sababli), to'lov muvaffaqiyatli tasdiqlangach, xarid bekor qilinmaydi va pul mablag'lari qaytarilmaydi.",
+          "2.3. Raqamli mahsulot (NFC ID, raqamli tashrif qog'ozi). To'lov muvaffaqiyatli tasdiqlangan zahoti kod Mijozning profiliga biriktiriladi va raqamli mulk huquqi Mijozga o'tadi, ya'ni xizmat to'liq ko'rsatilgan hisoblanadi. Shu sababli to'lov tasdiqlangandan keyin xarid bekor qilinmaydi va pul mablag'lari qaytarilmaydi.",
+          "2.4. Jismoniy NFC karta. Jismoniy karta har bir Mijozning ismi va shaxsiy ma'lumotlari bilan yakka tartibda (buyurtmaga muvofiq) tayyorlanadi. Shu sababli tegishli sifatdagi (nuqsonsiz) jismoniy karta almashtirilmaydi va qaytarilmaydi.",
+          "2.5. Pul qaytariladigan hollar. Quyidagi hollarda Mijoz to'langan summani to'liq qaytarishni yoki xizmatni qayta ko'rsatishni talab qilish huquqiga ega: (a) Platforma texnik sabab bilan xizmatni umuman ko'rsata olmasa yoki band qilingan kodni Mijozga bera olmasa; (b) summa xato yoki takroran yechilgan bo'lsa; (c) jismoniy karta nuqsonli bo'lsa, ishlamasa yoki buyurtmadan farq qilsa. 2.3 va 2.4-bandlar bu huquqni cheklamaydi.",
+          "2.6. Pul qaytarish tartibi. Ariza nfcstore.uz saytidagi «Aloqa» bo'limi yoki rasmiy Telegram bot orqali beriladi. Ariza kelib tushgan kundan boshlab 10 (o'n) ish kuni ichida ko'rib chiqiladi. Tasdiqlangan summa faqat to'lov amalga oshirilgan usul va o'sha karta hisobiga qaytariladi; qaytarish muddati to'lov tizimi va bank qoidalariga bog'liq.",
+          "2.7. To'lanmagan buyurtma. Band qilingan, lekin to'lovi amalga oshirilmagan buyurtma 24 soatdan keyin avtomatik bekor qilinadi va kod qayta sotuvga chiqadi. Bu holda Mijozdan hech qanday summa yechilmaydi.",
         ],
       },
       {
@@ -72,7 +76,11 @@ const CONTENT = {
         p: [
           '2.1. Оплата услуг платформы NFCSTORE, включая коды эксклюзивного уровня на аукционе, производится онлайн через лицензированных операторов платёжных систем и платёжные организации, действующие на территории Республики Узбекистан.',
           '2.2. Оплата за уникальные коды, приобретённые на аукционе, должна быть произведена в полном объёме в течение 24 часов после определения победителя.',
-          '2.3. В силу характера услуги (автоматический переход прав на цифровую собственность) после успешного подтверждения платежа покупка не отменяется и денежные средства не возвращаются.',
+          '2.3. Цифровой продукт (NFC ID, цифровая визитка). Сразу после успешного подтверждения платежа код закрепляется за профилем Клиента и права на цифровую собственность переходят к Клиенту, то есть услуга считается оказанной в полном объёме. Поэтому после подтверждения платежа покупка не отменяется и денежные средства не возвращаются.',
+          '2.4. Физическая NFC-карта. Физическая карта изготавливается индивидуально по заказу — с именем и персональными данными Клиента. Поэтому физическая карта надлежащего качества (без дефектов) обмену и возврату не подлежит.',
+          '2.5. Случаи возврата денежных средств. Клиент вправе требовать полного возврата уплаченной суммы или повторного оказания услуги в следующих случаях: (a) Платформа по техническим причинам не может оказать услугу или передать Клиенту забронированный код; (b) сумма списана ошибочно или повторно; (c) физическая карта имеет дефект, не работает или не соответствует заказу. Пункты 2.3 и 2.4 не ограничивают это право.',
+          '2.6. Порядок возврата. Заявление подаётся через раздел «Контакты» на сайте nfcstore.uz или официальный Telegram-бот. Заявление рассматривается в течение 10 (десяти) рабочих дней с даты поступления. Подтверждённая сумма возвращается исключительно тем же способом оплаты и на тот же карточный счёт; срок зачисления зависит от правил платёжной системы и банка.',
+          '2.7. Неоплаченный заказ. Забронированный, но не оплаченный заказ автоматически отменяется через 24 часа, и код возвращается в продажу. В этом случае с Клиента не списывается никакая сумма.',
         ],
       },
       {
@@ -123,7 +131,11 @@ const CONTENT = {
         p: [
           '2.1. Payment for the services of the NFCSTORE platform, including exclusive-tier codes at auction, is made online through licensed payment system operators and payment organizations operating in the territory of the Republic of Uzbekistan.',
           '2.2. Payment for unique codes purchased at auction must be made in full within 24 hours after the winner is determined.',
-          '2.3. Due to the nature of the service (automatic transfer of digital property rights), once a payment is successfully confirmed the purchase cannot be cancelled and funds are not refunded.',
+          '2.3. Digital product (NFC ID, digital business card). As soon as the payment is successfully confirmed, the code is attached to the Client\u2019s profile and digital property rights pass to the Client, meaning the service is deemed fully rendered. Therefore, once a payment is confirmed the purchase cannot be cancelled and funds are not refunded.',
+          '2.4. Physical NFC card. A physical card is produced individually to order, bearing the Client\u2019s name and personal details. Therefore a physical card of proper quality (free of defects) is not subject to exchange or return.',
+          '2.5. Cases in which funds are refunded. The Client is entitled to a full refund of the amount paid, or to have the service performed again, where: (a) the Platform is unable, for technical reasons, to render the service or to deliver the reserved code to the Client; (b) an amount was charged in error or charged twice; (c) a physical card is defective, does not work, or does not match the order. Clauses 2.3 and 2.4 do not limit this right.',
+          '2.6. Refund procedure. A request is submitted through the \u201cContact\u201d section of nfcstore.uz or the official Telegram bot. It is reviewed within 10 (ten) business days of receipt. An approved amount is refunded solely via the original payment method and to the same card account; crediting times depend on the payment system and bank rules.',
+          '2.7. Unpaid order. An order that is reserved but not paid is cancelled automatically after 24 hours and the code returns to sale. No amount is charged to the Client in that case.',
         ],
       },
       {

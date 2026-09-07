@@ -26,6 +26,21 @@ async function fetchBotUsername() {
 
 const PHYSICAL_CARD_FEE = 200_000;
 
+// JISMONIY KARTA — BACKEND'DA HALI YO'Q.
+// hosting/worker.js (POST /api/records/:code) `physicalCard === true` ni
+// ATAYLAB 501 `physical_card_not_supported_yet` bilan rad etadi: pul olib,
+// keyin kartani yetkazib bera olmaydigan holatga yo'l qo'ymaslik uchun.
+// Avval bu katakcha `disabled={!PAYMENTS_ENABLED}` edi — ya'ni Payme
+// yoqilishi bilanoq bosiladigan bo'lardi va belgilagan mijozning BUTUN
+// xaridi 501 bilan yiqilardi (faqat qo'shimcha emas). Shu sababli
+// backend porti tayyor bo'lguncha alohida bayroq bilan yopiq turadi.
+const PHYSICAL_CARD_ENABLED = false;
+
+// Ommaviy oferta tahriri — rozilik yozuvi qaysi matnga berilganini
+// keyinchalik aniqlash uchun buyurtma bilan birga saqlanadi.
+// TermsPage.jsx o'zgarganda shu qiymat ham yangilanishi kerak.
+export const OFFER_VERSION = '2026-09';
+
 export default function ReserveModal({ code, price, onClose, onDone }) {
   const { user, refresh: refreshAuth } = useAuth();
   const { t } = useLanguage();
@@ -48,6 +63,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const [shippingName, setShippingName] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [refundAck, setRefundAck] = useState(false);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [botUsername, setBotUsername] = useState(botUsernameCache || DEFAULT_BOT_USERNAME);
@@ -97,6 +113,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         return;
       }
     }
+    if (!refundAck) { setMsg({ type: 'err', text: t("To'lov shartlari va pul qaytarish tartibiga rozilik bering.") }); return; }
     setBusy(true);
     try {
       await ensureAccount();
@@ -111,6 +128,11 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
         instagram: instagram.trim(),
         hashtags: hashtags.split(',').map((h) => h.trim()).filter(Boolean),
         price,
+        // Nizo chiqqanda "rozilik bergan" degan gap emas, YOZUV kerak:
+        // qaysi oferta tahririga va qachon rozilik berilgani buyurtma
+        // payload'i bilan birga web_orders'da saqlanadi.
+        offerVersion: OFFER_VERSION,
+        refundAckAt: new Date().toISOString(),
         physicalCard: wantPhysicalCard,
         ...(wantPhysicalCard ? {
           shippingName: shippingName.trim(),
@@ -321,9 +343,9 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
 
             <div className="divider my-2"></div>
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 p-3">
-              <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" disabled={!PAYMENTS_ENABLED} />
+              <input type="checkbox" checked={wantPhysicalCard} onChange={(e) => setWantPhysicalCard(e.target.checked)} className="checkbox checkbox-sm mt-0.5" disabled={!PHYSICAL_CARD_ENABLED} />
               <span className="text-xs leading-relaxed text-base-content/75">
-              <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t(PAYMENTS_ENABLED ? "— profilingizni jismoniy karta orqali ulashasiz. Qo‘shimcha {fee}." : "— Payme orqali buyurtma tez kunlarda ishga tushadi.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
+              <b>{t('Jismoniy NFC karta ham buyurtma qilish')}</b> {t(PHYSICAL_CARD_ENABLED ? "— profilingizni jismoniy karta orqali ulashasiz. Qo‘shimcha {fee}." : "— jismoniy karta buyurtmasi tez kunlarda ishga tushadi.", { fee: fmt(PHYSICAL_CARD_FEE) + " so'm" })}
               </span>
             </label>
             {wantPhysicalCard && (
@@ -350,12 +372,42 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <span className="text-sm text-base-content/60">{t('Jami')}</span>
             <b className="text-lg">{t("{n} so'm", { n: fmt(totalPrice) })}</b>
           </div>
+
+          {/* PUL QAYTARISH TARTIBI — to'lovdan OLDIN, o'qilishi shart joyda.
+              Avval bu ma'lumot faqat /shartlar sahifasida edi: mijoz uni
+              ko'rmasdan to'lardi. Matn Oferta 2.3-2.6 bandlarining qisqa
+              bayoni; to'liq shartlar havola orqali. */}
+          <div className="mt-4 rounded-xl border border-warning/25 bg-warning/5 p-3">
+            <p className="text-xs font-semibold text-warning">{t("To'lov va pul qaytarish shartlari")}</p>
+            <ul className="mt-1.5 space-y-1 text-xs leading-relaxed text-base-content/70">
+              <li>{t("NFC ID — raqamli mahsulot. To'lov tasdiqlangan zahoti kod profilingizga biriktiriladi, shundan keyin xarid bekor qilinmaydi va pul qaytarilmaydi.")}</li>
+              <li>{t("Band qilingan, lekin to'lanmagan buyurtma 24 soatdan keyin o'zi bekor bo'ladi — bu holda hech qanday summa yechilmaydi.")}</li>
+              <li>{t("Agar xizmat texnik sabab bilan ko'rsatilmasa yoki summa xato yechilsa — to'langan pul to'liq qaytariladi. Bu huquqni Oferta cheklamaydi.")}</li>
+            </ul>
+          </div>
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={refundAck}
+              onChange={(e) => setRefundAck(e.target.checked)}
+              className="checkbox checkbox-sm mt-0.5"
+              aria-describedby="reserve-refund-ack"
+            />
+            <span id="reserve-refund-ack" className="text-xs leading-relaxed text-base-content/75">
+              {t("Men yuqoridagi to'lov va pul qaytarish shartlari hamda")}{' '}
+              <a href="/shartlar" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">
+                {t('ommaviy oferta')}
+              </a>{' '}
+              {t("bilan tanishdim va roziman.")}
+            </span>
+          </label>
+
           {paymentBlocked && <TelegramChannelCTA />}
           {!paymentBlocked && <div className="mt-3 flex justify-center"><PaymeReadyBadge /></div>}
           <button
             className={`btn btn-gold mt-3 w-full ${paymentBlocked ? 'btn-disabled !cursor-not-allowed opacity-60' : ''}`}
             onClick={submit}
-            disabled={busy || paymentBlocked}
+            disabled={busy || paymentBlocked || !refundAck}
             aria-disabled={paymentBlocked}
             title={paymentBlocked ? t('Payme orqali to‘lov imkoniyati tez kunlarda ishga tushadi.') : undefined}
           >
