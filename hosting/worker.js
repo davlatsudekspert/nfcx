@@ -4829,17 +4829,37 @@ async function adminAuctionsApi(request, env, url, admin) {
     const id = Number(cancelMatch[1]);
     const body = await request.json().catch(() => ({}));
     const auction = await env.DB.prepare(`SELECT id, status FROM auctions WHERE id = ?`).bind(id).first();
-    if (!auction || auction.status !== 'active') return json({ error: 'cannot_cancel' }, 409);
+    // 2026-09: avval FAQAT 'active' auksionni bekor qilish mumkin edi va
+    // "To'lov kutilmoqda" (awaiting_payment) holatidagisi uchun tugma
+    // ko'rinsa ham, backend uni DOIM 409 bilan rad etardi — ya'ni eng
+    // ko'p bekor qilish kerak bo'ladigan holat ishlamasdi.
+    //
+    // Bunday auksion butunlay tirik qolib ketishi mumkin: g'olib
+    // foydalanuvchi o'chirilsa `highest_bidder_id` NULL qilinadi
+    // (hosting/api/auth.js hardDeleteUser), lekin holat 'awaiting_payment'
+    // bo'lib qoladi — to'lov oqimi ham (g'olib yo'q), bekor qilish ham
+    // ishlamaydi. Endi admin uni bekor qila oladi va kod qayta sotuvga
+    // chiqadi.
+    const CANCELLABLE = ['active', 'awaiting_payment'];
+    if (!auction || !CANCELLABLE.includes(auction.status)) return json({ error: 'cannot_cancel' }, 409);
+
+    // Avval SHARTLI o'zgartirish — parallel so'rov yoki qayta bosish
+    // mablag'ni IKKI MARTA bo'shatib yubormasligi uchun. Faqat holat
+    // haqiqatan o'zgargan bo'lsagina takliflar bo'shatiladi.
+    const changed = await env.DB.prepare(
+      `UPDATE auctions SET status = 'cancelled' WHERE id = ? AND status IN ('active','awaiting_payment') RETURNING id`
+    ).bind(id).first();
+    if (!changed) return json({ error: 'cannot_cancel' }, 409);
+
     const bids = await env.DB.prepare(`SELECT user_id, MAX(amount) AS amount FROM bids WHERE auction_id = ? GROUP BY user_id`).bind(id).all();
-    const writes = [
-      env.DB.prepare(`UPDATE auctions SET status = 'cancelled' WHERE id = ? AND status = 'active'`).bind(id),
-    ];
+    const writes = [];
     for (const b of bids.results || []) {
+      // O'chirilgan foydalanuvchi uchun bu UPDATE hech qatorga tegmaydi.
       writes.push(env.DB.prepare(`UPDATE users SET held_balance = held_balance - ? WHERE id = ?`).bind(Number(b.amount), b.user_id));
       writes.push(env.DB.prepare(`INSERT INTO transactions (user_id, amount, kind, ref_table, ref_id, note, created_at) VALUES (?, 0, 'bid_release', 'auctions', ?, ?, ?)`)
         .bind(b.user_id, id, body.note || "Admin auksionni bekor qildi — mablag' bo'shatildi", nowTs()));
     }
-    await env.DB.batch(writes);
+    if (writes.length) await env.DB.batch(writes);
     await logAdminActivity(env, { action: 'auction_cancelled', details: `Auksion #${id}`, ip });
     return json({ ok: true });
   }
