@@ -135,12 +135,6 @@ export const SEO_ROUTES = {
     ru: { title: 'Вопросы', description: 'Частые вопросы о профиле, NFC-карте, ценах, сохранении контактов и безопасности.' },
     en: { title: 'FAQ', description: 'Frequently asked questions about profiles, NFC cards, pricing, saving contacts and security.' },
   },
-  qollanma: {
-    path: '/qollanma',
-    uz: { title: "Qo'llanma", description: "NFCSTORE'dan foydalanish bo'yicha qadam-baqadam qo'llanma." },
-    ru: { title: 'Руководство', description: 'Пошаговое руководство по использованию NFCSTORE.' },
-    en: { title: 'Guide', description: 'Step-by-step guide to using NFCSTORE.' },
-  },
   'qanday-ishlaydi': {
     path: '/qanday-ishlaydi',
     uz: { title: 'Qanday ishlaydi', description: 'NFC karta va raqamli profil qanday ishlaydi — 3 oddiy qadam.' },

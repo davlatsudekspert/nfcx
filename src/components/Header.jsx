@@ -93,7 +93,6 @@ const NAV = [
   ['Auksion', '/auksion'],
   ['Sovg‘alar', '/gifts'],
   ['Savollar', '/savollar'],
-  ['Qo‘llanma', '/qollanma'],
 ];
 
 const DESKTOP_NAV = [
@@ -105,7 +104,6 @@ const DESKTOP_NAV = [
   ['Auksion', '/auksion'],
   ['Sovg‘alar', '/gifts'],
   ['Savollar', '/savollar'],
-  ['Qo‘llanma', '/qollanma'],
 ];
 
 // "Mening profilim" tugmasi yonidagi kichik avatar — asosiy profil rasmi

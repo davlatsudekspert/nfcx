@@ -11,7 +11,6 @@
   <url><loc>https://nfcstore.uz/reyting</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
   <url><loc>https://nfcstore.uz/savollar</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://nfcstore.uz/aloqa</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://nfcstore.uz/qollanma</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://nfcstore.uz/shartlar</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://nfcstore.uz/maxfiylik</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

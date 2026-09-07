@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { usePathRoute } from './lib/router.js';
+import { usePathRoute, navigate } from './lib/router.js';
 import { parseAnyCode } from './lib/pricing.js';
 import { companyIdLocalInfo } from './lib/company.js';
 import { dbList } from './lib/db.js';
@@ -41,7 +41,6 @@ const CompanyCreatePage = lazy(() => import('./pages/CompanyCreatePage.jsx'));
 const CompanyWorkspacePage = lazy(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazy(() => import('./pages/CompanyQuickProfilePage.jsx'));
 const CompanyPublicPage = lazy(() => import('./pages/CompanyPublicPage.jsx'));
-const GuidePage = lazy(() => import('./pages/GuidePage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -58,7 +57,7 @@ const STATIC_ROUTES = {
   maxfiylik: PrivacyPage,
   auksion: AuctionsPage,
   gifts: GiftsPage,
-  qollanma: GuidePage,
+  qollanma: GuideRedirect,
   admin: AdminPage,
   xabarlar: MessagesPage,
   tolovlar: PaymentsPage,
@@ -105,6 +104,17 @@ function companyIdFromRoute(route, pattern) {
   try { raw = decodeURIComponent(raw); } catch { /* buzuq %-ketma-ketlik: xom holicha */ }
   const info = companyIdLocalInfo(raw);
   return info.valid ? info.companyId : null;
+}
+
+// /qollanma — qo'llanma bo'limi VIDEO darslarga qayta ishlanmoqda
+// (2026-09). Eski rasmli darslar olib tashlandi; havolalar menyudan ham
+// chiqarildi, lekin manzilning O'ZI band bo'lib qoladi va bosh sahifaga
+// yo'naltiradi. Sababi: `qollanma` STATIC_ROUTES'dan olib tashlansa, u
+// NFC ID kodi deb talqin qilinib "profil topilmadi" chiqardi — eski
+// havolani bosgan odam uchun bu 404'dan ham yomonroq.
+function GuideRedirect() {
+  useEffect(() => { navigate('/', { replace: true }); }, []);
+  return null;
 }
 
 export default function App() {
@@ -212,7 +222,7 @@ export default function App() {
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
     else if (cleanRoute === 'auksion') page = <AuctionsPage />;
     else if (cleanRoute === 'gifts') page = <GiftsPage catalog={catalog} />;
-    else if (cleanRoute === 'qollanma') page = <GuidePage />;
+    else if (cleanRoute === 'qollanma') page = <GuideRedirect />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
     else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
