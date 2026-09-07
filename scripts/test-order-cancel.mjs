@@ -24,6 +24,10 @@ const mkOrder = async (code, extra = '') => {
   const row = await env.DB.prepare(`SELECT id FROM web_orders WHERE code = ? AND status = 'pending'`).bind(code).first();
   return Number(row.id);
 };
+// Haqiqiy himoya funksiyasi orqali tekshirish (to'g'ridan-to'g'ri INSERT
+// uni chetlab o'tadi, shuning uchun test hech narsa isbotlamasdi).
+const { activeWebOrderByCodeD1 } = await import('../hosting/worker.js');
+const H_activeOrder = (code) => activeWebOrderByCodeD1(env, code);
 const pendingCount = async (code) =>
   Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders WHERE code = ? AND status = 'pending'`).bind(code).first()).n);
 
@@ -58,13 +62,13 @@ const pendingCount = async (code) =>
   check('buyurtma hamon kutilmoqda', await pendingCount('TST077'), 1);
 }
 
-// ═══ 4. Payme tranzaksiyasi ESKI (12 soatdan oshgan) -> bekor qilinadi ═══
+// ═══ 4. Payme tranzaksiyasi ESKI (muddatdan oshgan) -> bekor qilinadi ═══
 {
-  const old = new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString();
+  const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
   await env.DB.prepare(`UPDATE web_orders SET created_at = ? WHERE code = 'TST077' AND status = 'pending'`).bind(old).run();
   const row = await env.DB.prepare(`SELECT id FROM web_orders WHERE code = 'TST077' AND status = 'pending'`).first();
   const r = await call(`/api/admin/orders/${row.id}/cancel`, { method: 'POST', cookie: cookie.admin });
-  check('12 soatdan eski tranzaksiya -> bekor qilinadi', r.status, 200);
+  check('muddatdan eski tranzaksiya -> bekor qilinadi', r.status, 200);
   check('kod bo\'shadi', await pendingCount('TST077'), 0);
 }
 
@@ -93,6 +97,52 @@ const pendingCount = async (code) =>
 {
   const r = await call('/api/admin/orders/999999/cancel', { method: 'POST', cookie: cookie.admin });
   check('topilmadi -> 404', [r.status, r.body?.error], [404, 'not_found']);
+}
+
+// ═══ 8. MUDDAT AVTOMATIK TUGAYDI — bu mexanizm AVVALDAN bor ═══
+// `activeWebOrderByCodeD1()` muddati o'tgan kutilayotgan buyurtmani
+// avtomatik 'cancelled' qiladi va kod qayta sotuvga chiqadi.
+// Bu yerda o'sha xulq QO'RIQLANADI (24 soat — order-window.js).
+{
+  await mkOrder('EXP111');
+  // 23 soatlik — hali bloklaydi (mijoz to'layotgan bo'lishi mumkin).
+  await env.DB.prepare(`UPDATE web_orders SET created_at = ? WHERE code = 'EXP111' AND status = 'pending'`)
+    .bind(new Date(Date.now() - 23 * 3600_000).toISOString()).run();
+  const active23 = await H_activeOrder('EXP111');
+  checkTrue('23 soatlik buyurtma kodni HALI bloklaydi', !!active23);
+
+  // 25 soatlik — avtomatik bekor qilinadi, kod bo'shaydi.
+  await env.DB.prepare(`UPDATE web_orders SET created_at = ? WHERE code = 'EXP111' AND status = 'pending'`)
+    .bind(new Date(Date.now() - 25 * 3600_000).toISOString()).run();
+  const active25 = await H_activeOrder('EXP111');
+  check('25 soatlik buyurtma kodni BLOKLAMAYDI', active25, null);
+  check('u avtomatik bekor qilingan', await pendingCount('EXP111'), 0);
+}
+
+// ═══ 9. Kabinet API taymer uchun muddat vaqtini qaytaradi ═══
+{
+  await env.DB.prepare(`DELETE FROM web_orders WHERE code = 'TMR001'`).run();
+  await mkOrder('TMR001');
+  const r = await call('/api/orders', { cookie: cookie.user });
+  const o = (r.body?.orders || []).find((x) => x.code === 'TMR001');
+  checkTrue('kutilayotgan buyurtmada expiresAtMs bor', typeof o?.expiresAtMs === 'number');
+  const hoursLeft = (o.expiresAtMs - Date.now()) / 3600_000;
+  checkTrue('muddat ~24 soatdan keyin (23.5-24.5 oralig\'ida)', hoursLeft > 23.5 && hoursLeft < 24.5);
+  const paid = (r.body?.orders || []).find((x) => x.code === 'TST075');
+  check('to\'langan buyurtmada taymer yo\'q', paid?.expiresAtMs ?? null, null);
+}
+
+// ═══ 10. VAQTNI O'QIB BO'LMASA — taymer KO'RSATILMAYDI (noto'g'ri emas) ═══
+// worker.js `nowTs()` formati ("...+00") SQLite sana funksiyalarini buzadi
+// va strftime NULL qaytaradi. Bunday holatda noto'g'ri vaqt ko'rsatgandan
+// ko'ra, umuman ko'rsatmagan afzal.
+{
+  await mkOrder('BADTS1');
+  await env.DB.prepare(`UPDATE web_orders SET created_at = ? WHERE code = 'BADTS1' AND status = 'pending'`)
+    .bind('2020-01-01 00:00:00.000+00').run();
+  const r = await call('/api/orders', { cookie: cookie.user });
+  const o = (r.body?.orders || []).find((x) => x.code === 'BADTS1');
+  check('o\'qib bo\'lmaydigan vaqt -> taymer yo\'q (null)', o?.expiresAtMs ?? null, null);
 }
 
 done();
