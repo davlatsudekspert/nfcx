@@ -116,6 +116,15 @@ const byCode = (rows, code) => (rows || []).find((r) => r.code === code) || null
   ).run();
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount) VALUES (901, 2, 4000000)`).run();
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount) VALUES (901, 2, 7600000)`).run();
+  // 2026-09: savdo TO'LANGAN bo'lsagina haqiqiy hisoblanadi. Bazada admin
+  // sinov uchun ochgan, taklif ham berilgan, lekin hech kim pul to'lamagan
+  // lotlar bor edi va ular "Sotildi ... so'm" bo'lib chiqardi. Shuning
+  // uchun bu fixture endi to'lovni ham o'z ichiga oladi — ya'ni u
+  // HAQIQIY savdoni to'liq tasvirlaydi.
+  await env.DB.prepare(
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
+     VALUES (2, 'ZXC454', 'auction_payment', 7600000, '{}', 'paid')`
+  ).run();
 
   const rows = await catalog();
   check('haqiqiy sotilgan auksion ID katalogda YAKUNIY yutuq narxida (7 600 000)',
