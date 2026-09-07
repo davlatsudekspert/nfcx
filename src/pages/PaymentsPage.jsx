@@ -154,7 +154,17 @@ export default function PaymentsPage() {
                   <div className="text-sm font-semibold">{t(KIND_LABEL[o.kind] || o.kind)}{o.code ? <> · <span className="font-mono">{o.code}</span></> : null}</div>
                   <div className="text-xs text-base-content/55">{t("{n} so'm", { n: fmt(o.price) })}</div>
                 </div>
-                <span className="badge badge-warning badge-sm">{t('Kutilmoqda')}</span>
+                {/* To'lovni DAVOM ETTIRISH. Avval bu yerda faqat
+                    "Kutilmoqda" yozuvi turardi va mijoz to'lovni
+                    tugatishning hech qanday yo'lini topolmasdi — kod esa
+                    uning o'z buyurtmasi tufayli 24 soat band qolardi. */}
+                {PAYMENTS_ENABLED && o.payLink ? (
+                  <a href={o.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-xs min-h-11">
+                    {t("To'lash")}
+                  </a>
+                ) : (
+                  <span className="badge badge-warning badge-sm">{t('Kutilmoqda')}</span>
+                )}
               </div>
             ))}
           </div>

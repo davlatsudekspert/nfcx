@@ -3602,6 +3602,8 @@ function ReferralPanel({ user }) {
 export default function AccountPage({ refreshCatalog }) {
   const { user, myCards, refresh } = useAuth();
   const { t } = useLanguage();
+  // "Buyurtmalarim" ro'yxatidagi "To'lash" tugmasi uchun.
+  const PAYMENTS_ENABLED = usePaymentsEnabled();
   const [selectedCode, setSelectedCode] = useState(null);
   useEffect(() => {
     if (myCards.length && !myCards.some((c) => c.code === selectedCode)) {
@@ -3752,6 +3754,13 @@ export default function AccountPage({ refreshCatalog }) {
                 <span className="text-base-content/50">{t("{n} so'm", { n: fmt(o.price) })}</span>
                 <span className={`badge ${st.cls}`}>{t(st.text)}</span>
                 {o.status === 'pending' && o.expiresAtMs != null && <OrderCountdown expiresAtMs={o.expiresAtMs} />}
+                {/* To'lovni DAVOM ETTIRISH — avval bu yerda ham faqat
+                    holat va taymer turardi, to'lashning yo'li yo'q edi. */}
+                {o.status === 'pending' && o.payLink && PAYMENTS_ENABLED && (
+                  <a href={o.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-xs min-h-11">
+                    {t("To'lash")}
+                  </a>
+                )}
               </div>
             );
           })}

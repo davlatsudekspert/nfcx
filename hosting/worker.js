@@ -3411,11 +3411,23 @@ async function ordersApi(request, env, url) {
     ).bind(user.id).all();
     // `expiresAtMs` FAQAT kutilayotgan buyurtma uchun ma'noga ega —
     // kabinetda shu bo'yicha teskari hisob ko'rsatiladi.
+    //
+    // `payLink` (2026-09) — kutilayotgan buyurtmani DAVOM ETTIRISH uchun.
+    // Avval "To'lovlar" sahifasida kutilayotgan buyurtma yonida faqat
+    // "Kutilmoqda" yozuvi turardi va uni to'lashning HECH QANDAY yo'li
+    // yo'q edi: mijoz band qilib, to'lovni tugatmasa, kod 24 soat band
+    // qolib ketardi va u qaytadan urinolmasdi ham (o'zining kutilayotgan
+    // buyurtmasi to'sqinlik qilardi).
+    //
+    // Havolada maxfiy narsa yo'q: merchant ID har bir checkout manzilida
+    // ochiq turadi, buyurtma esa allaqachon shu foydalanuvchiniki
+    // (so'rov user_id bo'yicha filtrlangan).
     return json({
       orders: (rows.results || []).map((r) => ({
         ...r,
         price: Number(r.price),
         expiresAtMs: r.status === 'pending' && r.expiresAtMs != null ? Number(r.expiresAtMs) : null,
+        payLink: r.status === 'pending' ? paymeCheckoutLinkD1(env, r.id, Number(r.price)) : null,
       })),
     });
   }
