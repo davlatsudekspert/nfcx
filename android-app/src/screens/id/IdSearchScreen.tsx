@@ -34,7 +34,7 @@ import { formatDateTime, formatSom, safeText } from '../../lib/format';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { haptics } from '../../native/haptics';
 import { useT } from '../../i18n';
-import { color, depth, font, gradient, radius, space, type as typeTokens } from '../../design-system/tokens';
+import { color, depth, font, gradient, metal, radius, space, type as typeTokens } from '../../design-system/tokens';
 
 type Props = NativeStackScreenProps<IdStackParamList, 'IdSearch'>;
 
@@ -375,15 +375,27 @@ function ResultShell({
   tone?: 'neutral';
   children: React.ReactNode;
 }) {
+  // On a metal card the lettering takes that tier's ink — gold and silver
+  // are light alloys with DARK text on the website, so textPrimary would
+  // vanish on them.
+  const onMetal = !!tier && tone !== 'neutral';
+  const ink = onMetal ? metal[tier as TierKey] : null;
   const head = (
     <>
       <View style={styles.resultTop}>
-        <Text style={styles.resultCode} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        <Text
+          style={[styles.resultCode, ink ? { color: ink.code } : null]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
           {safeText(code, '—')}
         </Text>
         {tier ? <TierBadge tier={tier} /> : null}
       </View>
-      {tier ? <Text style={styles.resultTier}>{TIER_LABEL[tier]} daraja</Text> : null}
+      {tier ? (
+        <Text style={[styles.resultTier, ink ? { color: ink.subtext } : null]}>{TIER_LABEL[tier]} daraja</Text>
+      ) : null}
     </>
   );
 
@@ -401,8 +413,11 @@ function ResultShell({
       <MetalSurface tier={tier} cornerRadius={radius.lg} style={styles.resultMetal}>
         <View style={styles.resultInner}>
           {head}
-          <View style={styles.resultDivider} />
-          <View style={styles.resultBodyWrap}>{children}</View>
+          <View style={[styles.resultDivider, ink ? { backgroundColor: ink.hairline } : null]} />
+          {/* The body (price, availability, CTA) keeps the app's dark palette,
+              so it sits on a dark glass panel inset into the metal — legible
+              on every alloy, including light gold and chrome. */}
+          <View style={[styles.resultBodyWrap, styles.resultBodyOnMetal]}>{children}</View>
         </View>
       </MetalSurface>
     </View>
@@ -451,6 +466,14 @@ const styles = StyleSheet.create({
   resultCode: { ...typeTokens.display, fontSize: 28, lineHeight: 34, letterSpacing: 2, color: color.textPrimary, flex: 1 },
   resultTier: { ...typeTokens.caption, color: color.textSecondary, marginTop: 2, letterSpacing: 0.3 },
   resultDivider: { height: 1, backgroundColor: 'rgba(212,175,90,0.16)', marginTop: space.md },
+  resultBodyOnMetal: {
+    marginTop: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(10,8,5,0.74)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
   resultBodyWrap: { marginTop: space.md, gap: space.sm },
   resultBody: { ...typeTokens.caption, color: color.textSecondary },
   resultCta: { marginTop: space.xs },

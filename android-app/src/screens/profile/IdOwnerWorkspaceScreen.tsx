@@ -299,6 +299,7 @@ export function IdOwnerWorkspaceScreen({ route, navigation }: Props) {
             name={draft.name}
             state="owned"
             layout="hero"
+            actionLabel="Ko'rish"
             isPrimary={isPrimary}
             verified={record.data.verified === true}
             onPress={goPreview}

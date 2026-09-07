@@ -195,6 +195,7 @@ export function PublicProfileBody({ code, mode = 'public', onBack }: PublicProfi
             name={record.data.name}
             state="owned"
             layout="hero"
+            actionLabel="Ulashish"
             verified={record.data.verified === true}
             isPrimary={record.data.isPrimary === true}
             onPress={() => shareProfile(code, record.data?.name)}
