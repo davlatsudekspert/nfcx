@@ -131,6 +131,8 @@ async function exportStats(env, days, opts) {
   return { rows, summary };
 }
 
+const PAYME_TX_LIFETIME_MS = 12 * 60 * 60 * 1000;
+
 export async function handle(request, env, url, H) {
   const path = url.pathname;
   if (!path.startsWith('/api/admin/')) return null;
@@ -142,12 +144,13 @@ export async function handle(request, env, url, H) {
   const recViews = path.match(/^\/api\/admin\/records\/([A-Za-z0-9]+)\/views$/);
   const userDelete = path.match(/^\/api\/admin\/users\/(\d+)\/delete$/);
   const webConfirm = path.match(/^\/api\/admin\/orders\/(\d+)\/confirm-payment$/);
+  const webCancel = path.match(/^\/api\/admin\/orders\/(\d+)\/cancel$/);
   const botConfirm = path.match(/^\/api\/admin\/bot-orders\/(\d+)\/confirm-payment$/);
   const companyStatus = path.match(/^\/api\/admin\/companies\/([A-Za-z0-9]+)\/status$/);
   const companyTier = path.match(/^\/api\/admin\/companies\/([A-Za-z0-9]+)\/tier$/);
   const limitsDelete = path.match(/^\/api\/admin\/company-settings\/limits\/([a-z]+)\/([a-z]+)$/);
   const known = path === '/api/admin/categories' || catId || recVerify || recViews || userDelete
-    || (path === '/api/admin/nfc-gifts' && method === 'POST') || webConfirm || botConfirm
+    || (path === '/api/admin/nfc-gifts' && method === 'POST') || webConfirm || webCancel || botConfirm
     || path === '/api/admin/export-stats' || companyStatus || companyTier
     || path === '/api/admin/company-settings/limits' || limitsDelete
     || path === '/api/admin/company-settings/physical-pricing' || path === '/api/admin/company-settings/delivery';
@@ -298,6 +301,50 @@ export async function handle(request, env, url, H) {
     }
     return H.json(result);
   }
+  // ---------- Kutilayotgan buyurtmani BEKOR QILISH — super_admin ----------
+  //
+  // NIMA UCHUN KERAK: `createPendingWebOrderD1()` bitta kod uchun ikkinchi
+  // kutilayotgan buyurtma yaratishga RUXSAT BERMAYDI:
+  //   WHERE NOT EXISTS (SELECT 1 FROM web_orders WHERE code = ? AND status='pending')
+  // Ya'ni kimdir to'lovni boshlab, yarim yo'lda tashlab ketsa, o'sha kodni
+  // BOSHQA HECH KIM sotib ololmaydi — va uni bekor qilishning biror yo'li
+  // butun saytda yo'q edi. Kod abadiy bloklanib qolardi.
+  //
+  // XAVFSIZLIK: faol Payme tranzaksiyasi bor buyurtmaga TEGILMAYDI.
+  // Aks holda mijoz to'lovni yakunlaganda `finalizePaidWebOrderD1()`
+  // buyurtmani 'pending' emas deb ko'rib, `alreadyProcessed` qaytaradi —
+  // pul o'tadi, karta berilmaydi. Shuning uchun `payme_transaction_id`
+  // qo'yilgan buyurtma faqat Payme tranzaksiyasining amal qilish muddati
+  // (12 soat) o'tgandan keyin bekor qilinadi; undan oldin Payme'ning O'Z
+  // CancelTransaction oqimi ishlashi kerak.
+  if (webCancel && method === 'POST') {
+    if (!isSuper) return forbidden();
+    const id = Number(webCancel[1]);
+    const before = await H.getWebOrderD1(env, id);
+    if (!before) return H.json({ error: 'not_found' }, 404);
+    if (before.status !== 'pending') return H.json({ error: 'not_pending', status: before.status }, 409);
+    if (before.paymeTransactionId) {
+      const createdMs = Date.parse(before.createdAt || '') || 0;
+      if (!createdMs || Date.now() - createdMs < PAYME_TX_LIFETIME_MS) {
+        return H.json({ error: 'payme_active' }, 409);
+      }
+    }
+    // Shartli UPDATE — ayni paytda to'lov o'tib ketgan bo'lsa tegmaydi.
+    // cancel_time COALESCE bilan: Payme allaqachon qo'ygan bo'lsa
+    // o'zgartirilmaydi. `cancel_reason` ATAYLAB tegilmaydi — u Payme
+    // protokolining kodi, uni o'zimiz o'ylab topmaymiz.
+    const row = await env.DB.prepare(
+      `UPDATE web_orders SET status = 'cancelled', cancel_time = COALESCE(cancel_time, ?)
+        WHERE id = ? AND status = 'pending' RETURNING id, code, status`
+    ).bind(H.nowTs(), id).first();
+    if (!row) return H.json({ error: 'not_pending' }, 409);
+    await H.logAdminActivity(env, {
+      action: 'order_cancelled', details: `web_orders #${id} (${before.code}) — kod qayta sotuvga chiqdi`,
+      oldValue: 'pending', newValue: 'cancelled', ip,
+    });
+    return H.json({ ok: true, id: Number(row.id), code: row.code, status: row.status });
+  }
+
   if (botConfirm && method === 'POST') {
     if (!isSuper) return forbidden();
     const id = Number(botConfirm[1]);
