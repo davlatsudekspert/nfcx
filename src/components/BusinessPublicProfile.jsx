@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { socialUrl } from '../lib/socialLinks.js';
 import { businessModule } from '../lib/access.js';
 import { dbAddCatalogItemView, dbGetCatalogMeta, dbSetCatalogReaction } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
@@ -14,7 +15,7 @@ function telegramUrl(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
   if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://t.me/${raw.replace(/^@/, '')}`;
+  return socialUrl('tg', raw);
 }
 
 function websiteUrl(value) {

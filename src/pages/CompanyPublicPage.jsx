@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -35,7 +36,7 @@ export default function CompanyPublicPage({ companyId }) {
         {tab === 'main' && <><section className="cp-about"><div><span>{t('BIZ HAQIMIZDA')}</span><h2>{company.displayName}</h2><p>{company.description}</p><div className="cp-facts"><b>● {t('Admin tasdiqlagan')}</b><b>⌖ {company.city || t('O‘zbekiston')}</b><b>◇ ID {company.companyId}</b></div></div><aside><small>{t('KATALOG')}</small><strong>{company.catalog?.length || 0}</strong><p>{t('{noun} bitta ishonchli manbadan boshqariladi.', { noun: t(cta.noun) })}</p></aside></section>{items.length > 0 && <Catalog items={items.slice(0, 4)} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} />}</>}
         {tab === 'catalog' && <Catalog items={items} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} />}
         {tab === 'gallery' && <section className="cp-gallery"><div className="cp-section-title"><span>{t('GALEREYA')}</span><h2>{t('Kompaniya muhiti')}</h2></div><div>{(company.gallery || [company.coverUrl]).filter(Boolean).map((image, index) => <img key={`${image}-${index}`} src={image} alt="" />)}</div></section>}
-        {tab === 'contact' && <section className="cp-contact"><div><span>{t('ALOQA')}</span><h2>{t('Biz bilan bog‘laning')}</h2><p>{company.address || company.city || t('Manzil kiritilmagan')}</p></div><div className="cp-contact-list">{company.phone && <a href={`tel:${company.phone}`}>📞 {company.phone}</a>}{company.telegram && <a href={`https://t.me/${company.telegram.replace(/^@/,'')}`}>✈ {company.telegram}</a>}{company.website && <a href={company.website}>◎ {company.website}</a>}</div></section>}
+        {tab === 'contact' && <section className="cp-contact"><div><span>{t('ALOQA')}</span><h2>{t('Biz bilan bog‘laning')}</h2><p>{company.address || company.city || t('Manzil kiritilmagan')}</p></div><div className="cp-contact-list">{company.phone && <a href={`tel:${company.phone}`}>📞 {company.phone}</a>}{company.telegram && <a href={socialUrl('tg', company.telegram)}>✈ {company.telegram}</a>}{company.website && <a href={company.website}>◎ {company.website}</a>}</div></section>}
       </div>
       <footer className="cp-footer"><b>NFCSTORE BUSINESS</b><span>{t('Company ID')}: {company.companyId}</span></footer>
     </main>

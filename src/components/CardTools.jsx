@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { socialUrl } from '../lib/socialLinks.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt, timeAgo } from '../lib/format.js';
@@ -201,7 +202,7 @@ function LeadsSection({ code, name, allowed, initialEnabled }) {
                     <div className="font-semibold">{l.name}{l.company ? ` · ${l.company}` : ''}</div>
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[15px] text-base-content/70">
                       {l.phone && <a className="link" href={`tel:${l.phone}`}>{l.phone}</a>}
-                      {l.telegram && <a className="link" href={`https://t.me/${l.telegram}`} target="_blank" rel="noreferrer">@{l.telegram}</a>}
+                      {l.telegram && <a className="link" href={socialUrl('tg', l.telegram)} target="_blank" rel="noreferrer">@{l.telegram}</a>}
                       {l.whatsapp && <a className="link" href={`https://wa.me/${l.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>}
                       {l.email && <a className="link" href={`mailto:${l.email}`}>{l.email}</a>}
                     </div>

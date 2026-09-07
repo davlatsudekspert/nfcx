@@ -10,6 +10,7 @@ import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import PaymeBlock from '../components/PaymeBlock.jsx';
 import { openPayWindow } from '../lib/payWindow.js';
+import { socialHandle } from '../lib/socialLinks.js';
 import { MUSIC_LIMIT_FREE, MUSIC_LIMIT_PREMIUM, MUSIC_MAX_MB, musicLimit } from '../lib/musicLimits.js';
 import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
@@ -2460,14 +2461,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         bgAnimated: form.bgAnimated,
         linkStyle: form.linkStyle,
         musicUrls: form.musicUrls.map((u) => u.trim()).filter(Boolean).slice(0, musicMax),
-        tg: form.tg.trim(),
+        tg: socialHandle('tg', form.tg),
         phone: form.phone.trim(),
         hidePhone: form.hidePhone,
         email: form.email.trim(),
         linkedin: form.linkedin.trim(),
-        instagram: form.instagram.trim(),
+        // SAQLASHDA TOZALANADI: odam Instagram/Telegram'dagi "Havoladan
+        // nusxa olish" tugmasi bergan TO'LIQ manzilni qo'yishi tabiiy.
+        // Undan faqat username ajratib olinadi, kuzatuv parametrlari
+        // (stkn, utm_*) tashlanadi — batafsil src/lib/socialLinks.js.
+        instagram: socialHandle('ig', form.instagram),
         facebook: form.facebook.trim(),
-        twitter: form.twitter.trim(),
+        twitter: socialHandle('x', form.twitter),
         website: form.website.trim(),
         about: form.about,
         cardNumber: form.cardNumber.trim(),
@@ -2765,7 +2770,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const secSocial = (
     <Section title={t('Ijtimoiy tarmoqlar')} subtitle={t('Instagram, Facebook, X, LinkedIn, veb-sayt, havolalar, hashtaglar')}>
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconInstagram width={12} height={12} /> Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder="@username" className={inp} /></label>
+        <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconInstagram width={12} height={12} /> Instagram</span><input value={form.instagram} onChange={set('instagram')} placeholder={t('@username yoki to‘liq havola')} className={inp} /></label>
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconFacebook width={12} height={12} /> Facebook</span><input value={form.facebook} onChange={set('facebook')} placeholder={t("username yoki havola")} className={inp} /></label>
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconX width={12} height={12} /> X (Twitter)</span><input value={form.twitter} onChange={set('twitter')} placeholder="@username" className={inp} /></label>
         <label className="form-control min-w-0"><span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconLinkedIn width={12} height={12} /> LinkedIn</span><input value={form.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/..." className={inp} /></label>

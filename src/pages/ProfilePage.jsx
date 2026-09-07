@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
 import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
@@ -281,7 +282,7 @@ function buildVcf(record) {
     record.about ? `NOTE:${record.about.replace(/\n/g, ' ')}` : '',
     (record.phone && !record.hidePhone) ? `TEL;TYPE=CELL:${record.phone}` : '',
     record.email ? `EMAIL:${record.email}` : '',
-    record.tg ? `URL:https://t.me/${record.tg.replace('@', '')}` : '',
+    record.tg ? `URL:${socialUrl('tg', record.tg)}` : '',
     record.website ? `URL:${record.website}` : '',
     `NOTE2:nfcstore.uz/${record.code.toLowerCase()}`,
     'END:VCARD',
@@ -299,18 +300,10 @@ function downloadVcf(record) {
   URL.revokeObjectURL(url);
 }
 
-function socialUrl(kind, handle) {
-  const h = String(handle || '').replace('@', '');
-  if (!h) return '';
-  switch (kind) {
-    case 'tg': return `https://t.me/${h}`;
-    case 'ig': return `https://instagram.com/${h}`;
-    case 'fb': return /^https?:/.test(h) ? h : `https://facebook.com/${h}`;
-    case 'x': return `https://x.com/${h}`;
-    case 'li': return /^https?:/.test(h) ? h : `https://${h}`;
-    default: return '';
-  }
-}
+// Havola yasash YAGONA manbadan — src/lib/socialLinks.js.
+// Avval bu yerda `https://instagram.com/${qiymat}` deb to'g'ridan-to'g'ri
+// yopishtirilardi va odam to'liq manzil qo'ysa havola buzilardi
+// (batafsil izoh o'sha faylda).
 
 // Kod naqshi nodirmi (bir xil harflar, ketma-ketlik, "000" va h.k.)
 function rarity(code) {

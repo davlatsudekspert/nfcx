@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -13,7 +14,7 @@ function contactUrl(kind, value) {
   const clean = String(value || '').trim();
   if (!clean) return '';
   if (kind === 'phone') return `tel:${clean.replace(/[^+\d]/g, '')}`;
-  if (kind === 'telegram') return clean.startsWith('http') ? clean : `https://t.me/${clean.replace(/^@/, '')}`;
+  if (kind === 'telegram') return socialUrl('tg', clean);
   if (kind === 'whatsapp') return clean.startsWith('http') ? clean : `https://wa.me/${clean.replace(/\D/g, '')}`;
   return clean.startsWith('http') ? clean : `https://${clean}`;
 }

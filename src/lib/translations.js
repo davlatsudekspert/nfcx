@@ -2259,6 +2259,7 @@ const DICT_BASE = {
     en: "Payment via Payme and Click will be available shortly.",
   },
   "{brand} orqali to‘lash": { ru: "Оплатить через {brand}", en: "Pay via {brand}" },
+  "@username yoki to‘liq havola": { ru: "@username или полная ссылка", en: "@username or full link" },
   "To'lov tizimi": { ru: "Платёжная система", en: "Payment system" },
   "Tanlandi": { ru: "Выбрано", en: "Selected" },
   "Tanlash": { ru: "Выбрать", en: "Select" },
