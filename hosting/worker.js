@@ -1846,8 +1846,16 @@ function catalogPriceD1(record, auctionFinal) {
   const code = String(record.code || '').toUpperCase();
   // Egasining rasmiy narx ro'yxati — eng yuqori ustuvorlik (yuqoridagi
   // izohga qarang). Ro'yxatda yo'q kodlar uchun hech narsa o'zgarmaydi.
+  // 1) SOVG'A (haqiqiy sovg'a yozuvi, egasining ro'yxati yoki egasi bor
+  //    ekslyuziv ID) — summa UMUMAN ko'rsatilmaydi. Bu tekshiruv eng
+  //    birinchi turadi: quyidagi `codePriceOverrideD1` ham, auksion
+  //    yakuniy narxi ham uni bosib o'tolmaydi.
+  if (isGiftCardD1(record)) return 0;
+  // 2) Egasining rasmiy narx ro'yxati — eski/eskirgan auksion taklifidan
+  //    USTUN (2026-09 hotfix: OOO000 katalogda 200 000 bo'lib chiqardi).
   const ov = codePriceOverrideD1(code);
   if (ov != null) return ov;
+  // 3) Haqiqiy auksion yakuniy narxi (ekslyuziv bo'lmagan ID uchun).
   if (auctionFinal != null && Number(auctionFinal) > 0) return Number(auctionFinal);
   // Sotib olinmaydigan kod (ro'yxatdan o'tishdagi 8 xonali bepul ID yoki
   // bloklangan prefiks) — unga TARIF narxi QO'LLANMAYDI, aks holda bepul
@@ -1883,7 +1891,9 @@ function catalogCard(record, auctionFinal = null) {
     // Haqiqiy `nfc_gifts` yozuvi YOKI egasining qo'lda belgilagan ro'yxati
     // (GIFT_CODES_D1). Ikkinchisi kerak, chunki admin panel egasi bor
     // kartaga sovg'a yozuvi yarata olmaydi (CODE_TAKEN).
-    isGift: !!record.isGift || isGiftCodeD1(record.code),
+    // Narx bilan AYNAN bir xil qoidadan (isGiftCardD1) — belgi va summa
+    // hech qachon bir-biriga zid bo'lmaydi.
+    isGift: isGiftCardD1(record),
   };
 }
 
@@ -1894,7 +1904,17 @@ async function getRecord(env, code) {
      FROM cards c LEFT JOIN users u ON u.id = c.user_id WHERE c.code = ?`
   ).bind(code).first();
   if (!row) return null;
-  return { ...rowToRecord(row), isPremium: !!row.owner_is_premium, isGift: !!row.is_gift };
+  const rec = { ...rowToRecord(row), isPremium: !!row.owner_is_premium, isGift: !!row.is_gift };
+  // `rowToRecord()` narxni auksion natijasini BILMASDAN hisoblaydi
+  // (u sinxron). Shuning uchun bu yerda haqiqiy auksion yakuniy narxi
+  // bilan qayta hisoblaymiz — aks holda profil belgisi katalogdan farq
+  // qilardi: auksionda sotilgan ekslyuziv ID katalogda yutuq narxida,
+  // profilda esa 0 ("Sovg'a") bo'lib ko'rinardi.
+  const finals = await auctionFinalPricesD1(env);
+  const finalPrice = finals.get(String(code || '').toUpperCase()) ?? null;
+  rec.price = catalogPriceD1(rec, finalPrice);
+  rec.isGift = isGiftCardD1(rec);
+  return rec;
 }
 
 async function getRecordOwner(env, code) {
@@ -1956,6 +1976,52 @@ const GIFT_CODES_D1 = ['SAV571'];
 function isGiftCodeD1(code) {
   const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   return GIFT_CODES_D1.includes(c);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EGASI BOR EKSLYUZIV ID = SOVG'A, "SOTILGAN" EMAS (2026-09).
+// ─────────────────────────────────────────────────────────────────────────
+// Ekslyuziv daraja to'g'ridan-to'g'ri sotilmaydi — `PERSONAL_TIER_PRICE`
+// da uning narxi `null`, `personalPurchaseQuote()` esa uni umuman sotmaydi.
+// Ya'ni katalogdagi egasi bor ekslyuziv ID hech qachon sotuvdan o'tmagan:
+// u sovg'a qilingan yoki egasi tomonidan biriktirilgan.
+//
+// Shunga qaramay katalogda ularning yonida summa turardi (saqlangan narx
+// yoki CODE_PRICES_D1 dagi qiymat), auksionning "Sotilgan" bo'limida esa
+// ular "Sotildi ... so'm" bo'lib chiqardi — garchi bunday auksion umuman
+// bo'lmagan bo'lsa ham. Bu foydalanuvchiga to'g'ri kelmaydigan ma'lumot.
+//
+// Endi qoida: egasi bor ekslyuziv ID -> katalogda summa YO'Q, "Sovg'a".
+// Bu qo'lda yozilgan ro'yxat emas, DARAJADAN kelib chiqadigan qoida —
+// yangi ekslyuziv ID qo'shilganda o'zi to'g'ri ishlaydi.
+//
+// NIMAGA TEGMAYDI: haqiqiy auksion orqali sotilgan ID (taklif berilgan va
+// g'olib aniqlangan) `auctions`/`bids` jadvallaridan keladi va o'z narxini
+// saqlaydi. Xarid summasi ham bunga bog'liq emas — u `personalPurchaseQuote()`
+// orqali alohida hisoblanadi.
+// MUHIM — `auctionFinal` bu yerda ATAYLAB HISOBGA OLINMAYDI.
+// Ekslyuziv ID katalogda HECH QACHON summa ko'rsatmaydi. Sabab: eski
+// auksion yozuvlari ishonchli emas (admin ochib, taklifsiz yopilgan yoki
+// eskirgan `bids` qiymati qolgan lotlar bor), shuning uchun ulardan
+// kelgan raqamni katalogga chiqarish "bo'lmagan savdo"ni ko'rsatish
+// bo'lardi. Haqiqiy auksion natijasi o'z joyida — auksionning "Sotilgan"
+// bo'limida ko'rinadi (u yerda taklif borligi alohida tekshiriladi).
+//
+// Ekslyuziv BO'LMAGAN (Bronza/Silver/Gold/Premium) ID auksionda sotilgan
+// bo'lsa, yakuniy yutuq narxini avvalgidek saqlaydi — bu qoida ularga
+// tegmaydi.
+function isOwnedExclusiveGiftD1(record) {
+  const code = String(record?.code || '').toUpperCase();
+  if (!code) return false;
+  const tier = personalIdTierD1({ code, tierOverride: record?.tierOverride || '', isGift: false });
+  return tier === 'exclusive';
+}
+
+// Katalogdagi "Sovg'a" belgisining YAGONA manbasi — narx ham, belgi ham
+// shundan hisoblanadi, shuning uchun ular hech qachon bir-biriga zid
+// bo'lmaydi (avval SAV571 katalogda "Sovg'a", auksionda "Sotildi" edi).
+function isGiftCardD1(record) {
+  return !!record?.isGift || isGiftCodeD1(record?.code) || isOwnedExclusiveGiftD1(record);
 }
 
 const PERSONAL_AUCTION_CODES = [
@@ -3667,62 +3733,6 @@ async function getPendingAuctionPaymentOrderD1(env, auctionId, userId) {
   return null;
 }
 
-// ── Katalogdagi EGASI BOR ekslyuziv ID'lar auksionning "Sotilgan"
-// bo'limida ham ko'rinadi (2026-09).
-//
-// Manba — FAQAT HAQIQIY ma'lumot: `cards` jadvalidagi kartaning egasi
-// (`user_id`) bor bo'lishi. Soxta auksion, g'olib, taklif (bid) yoki Payme
-// tranzaksiyasi YARATILMAYDI — bu yozuvlar `auctions` jadvaliga ham
-// yozilmaydi, ular faqat javobda hisoblab beriladi.
-//
-// Egasi yo'q (sotilmagan) yoki hali faol auksiondagi ekslyuziv ID bu
-// ro'yxatga TUSHMAYDI. Haqiqiy auksion orqali sotilgan kodlar bilan
-// takrorlanish kod bo'yicha filtrlanadi.
-//
-// Narx: avval per-code narx (CODE_PRICES_D1), bo'lmasa kartaning saqlangan
-// narxi. Ikkalasi ham bo'lmasa — narx O'YLAB TOPILMAYDI, karta ro'yxatga
-// qo'shilmaydi.
-async function ownedExclusiveSoldD1(env, alreadySold) {
-  try {
-    const taken = new Set((alreadySold || []).map((a) => String(a.code || '').toUpperCase()));
-    const rows = await env.DB.prepare(
-      `SELECT code, price, ts, user_id, tier_override,
-              EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
-         FROM cards
-        WHERE user_id IS NOT NULL AND hidden_from_directory = 0
-        ORDER BY ts DESC LIMIT 500`
-    ).all();
-    const out = [];
-    for (const r of rows.results || []) {
-      const code = String(r.code || '').toUpperCase();
-      if (taken.has(code)) continue;
-      // SOVG'A "Sotilgan" EMAS. Sovg'a qilingan karta hech qachon sotuvdan
-      // o'tmagan — uni "Sotildi ... so'm" deb ko'rsatish noto'g'ri
-      // (2026-09: SAV571 katalogda "Sovg'a", auksionda esa "Sotildi
-      // 210 000 so'm" bo'lib chiqib qolgan edi). Bu haqiqiy `nfc_gifts`
-      // yozuvi bo'lgan kartalarga ham, egasi qo'lda belgilagan
-      // ro'yxatga (GIFT_CODES_D1) ham tegishli.
-      const isGift = !!r.is_gift || isGiftCodeD1(code);
-      if (isGift) continue;
-      const tier = personalIdTierD1({ code, tierOverride: r.tier_override || '', isGift });
-      if (tier !== 'exclusive') continue;
-      const price = codePriceOverrideD1(code) ?? (Number(r.price) > 0 ? Number(r.price) : null);
-      if (price == null) continue; // narx yo'q -> o'ylab topmaymiz
-      out.push({
-        // `id` yo'q — bu auksion yozuvi EMAS. Frontend `profileCode` bo'lsa
-        // public profilga o'tadi (auksion sahifasiga emas).
-        id: null, code, tier, currentPrice: price, profileCode: code,
-        status: 'sold', ownedSale: true, ts: Number(r.ts) || null,
-      });
-    }
-    return out;
-  } catch (e) {
-    // Bu qo'shimcha ro'yxat auksion sahifasini yiqitmasligi kerak.
-    console.error('ownedExclusiveSoldD1', e && e.message);
-    return [];
-  }
-}
-
 async function auctionsPublicApi(request, env, url) {
   const path = url.pathname;
 
@@ -3737,14 +3747,29 @@ async function auctionsPublicApi(request, env, url) {
       // yakunlandi" bo'lib osilib turardi — foydalanuvchi bosolmaydigan,
       // katalogda topib bo'lmaydigan ID. Yozuvning O'ZI o'chirilmaydi
       // (auksion tarixi saqlanadi), faqat ko'rsatilmaydi.
+      // "Sotilgan" bo'limi FAQAT HAQIQATAN sotilgan lotni ko'rsatadi.
+      // Ikkita shart qo'shildi (2026-09):
+      //   1. Kod hali katalogda mavjud bo'lsin (o'chirilgan ID osilib
+      //      qolmasin) — avvaldan bor edi.
+      //   2. Lotga KAMIDA BITTA TAKLIF berilgan bo'lsin. Admin ochib,
+      //      hech kim taklif bermay yopilgan lot hech kimga SOTILMAGAN —
+      //      uni "Sotildi ... so'm" deb ko'rsatish bo'lmagan savdoni
+      //      bo'lgandek ko'rsatish bo'lardi. Bu qoida haqiqiy auksion
+      //      o'tgach o'zi to'g'ri ishlaydi — ro'yxat qo'lda yuritilmaydi.
+      // Yozuvlarning O'ZI o'chirilmaydi — auksion tarixi saqlanadi,
+      // faqat ko'rsatilmaydi.
       const sold = await env.DB.prepare(
         `SELECT a.* FROM auctions a
           WHERE a.status = 'sold'
             AND EXISTS (SELECT 1 FROM cards c WHERE c.code = a.code)
+            AND EXISTS (SELECT 1 FROM bids b WHERE b.auction_id = a.id)
           ORDER BY a.ends_at DESC LIMIT 40`
       ).all();
-      const soldRows = (sold.results || []).map(auctionRow);
-      return json({ auctions, sold: [...soldRows, ...(await ownedExclusiveSoldD1(env, soldRows))] });
+      // `ownedExclusiveSoldD1()` BU YERDAN OLIB TASHLANDI. U katalogdagi
+      // egasi bor ekslyuziv kartalarni "Sotildi" deb ko'rsatardi, holbuki
+      // ular auksiondan umuman o'tmagan — ular sovg'a. Endi ular faqat
+      // katalogda, "Sovg'a" yozuvi bilan chiqadi.
+      return json({ auctions, sold: (sold.results || []).map(auctionRow) });
     }
     return json({ auctions });
   }
