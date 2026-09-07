@@ -4,12 +4,22 @@ import { dateTime, fmt } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
 import { IconArrowLeft } from '../components/Icons.jsx';
+import ShareButton from '../components/ShareButton.jsx';
+import Linkify from '../components/Linkify.jsx';
 
 // Tanlangan tildagi matnni oladi — tarjima bo'sh bo'lsa o'zbekchaga qaytadi.
 function pick(item, base, lang) {
   const suffix = lang === 'ru' ? 'Ru' : lang === 'en' ? 'En' : '';
   if (!suffix) return item[base] || '';
   return (item[base + suffix] || '').trim() || item[base] || '';
+}
+
+// Ulashiladigan to'liq havola. `window.location.origin` — sayt qaysi
+// domenda ochilgan bo'lsa o'sha (nfcstore.uz yoki www bilan), shuning
+// uchun havola qattiq yozilmaydi.
+function newsUrl(id) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://nfcstore.uz';
+  return `${origin}/yangiliklar/${id}`;
 }
 
 // Ro'yxatni to'g'ridan-to'g'ri olamiz — xatolik bilan bo'sh ro'yxatni ajratish
@@ -190,11 +200,23 @@ export default function NewsPage({ newsId = null }) {
                 <h1 className="vz-h2 mt-2 break-words">{pick(detail, 'title', lang)}</h1>
                 <div className="mt-4">{meta(detail)}</div>
                 {pick(detail, 'body', lang) && (
-                  <p className="mt-6 whitespace-pre-wrap break-words text-[16px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{pick(detail, 'body', lang)}</p>
+                  // <Linkify> — matn admin panelidan ODDIY MATN sifatida
+                  // keladi, shu sabab https://... havolalari bosilmas edi.
+                  // HTML yaratilmaydi, faqat bo'laklarga ajratiladi.
+                  <p className="mt-6 whitespace-pre-wrap break-words text-[16px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>
+                    <Linkify text={pick(detail, 'body', lang)} />
+                  </p>
                 )}
                 <div className="vz-divider mt-8" />
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   {likeBtn(detail)}
+                  <ShareButton
+                    url={newsUrl(detail.id)}
+                    title={pick(detail, 'title', lang)}
+                    text={t('NFCSTORE yangiligi')}
+                    label={t('Ulashish')}
+                    className="btn btn-outline-gold btn-sm"
+                  />
                   <a href="/yangiliklar" onClick={(e) => go(e, '/yangiliklar')} className="btn btn-ghost-vz btn-sm">{t('Orqaga')}</a>
                 </div>
                 {likeErr && <div role="alert" className="vz-err mt-3">{likeErr}</div>}
@@ -294,7 +316,17 @@ export default function NewsPage({ newsId = null }) {
                     <div className="mt-auto pt-4">
                       {meta(item)}
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                        {likeBtn(item)}
+                        <span className="flex items-center gap-1">
+                          {likeBtn(item)}
+                          {/* Har bir yangilikda avtomatik — alohida sozlash
+                              talab qilmaydi. Ixcham holat: faqat belgi. */}
+                          <ShareButton
+                            url={newsUrl(item.id)}
+                            title={pick(item, 'title', lang)}
+                            text={t('NFCSTORE yangiligi')}
+                            className="btn btn-ghost-vz btn-sm px-2"
+                          />
+                        </span>
                         <a href={href} onClick={(e) => go(e, href)} className="vz-tap inline-flex items-center rounded-full text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>
                           {t("Batafsil o'qish")} →
                         </a>
