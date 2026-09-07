@@ -176,13 +176,15 @@ export const depth = {
   },
 } as const;
 
-/** Tier medallion fills — copper, chrome and gold. */
+/** Tier medallion fills — struck in the same alloy as each tier's card
+ * (src/components/NfcCard.jsx FINISHES): bronze, chrome, gold, premium gold,
+ * and the titanium-gold of the exclusive tier. */
 export const medallion = {
-  free: ['#d09265', '#8a5a34', '#5e3a1f'] as const,
-  silver: ['#e8ecef', '#9aa3ad', '#5f6870'] as const,
-  gold: ['#f0cf7a', '#d4af5a', '#b3860f'] as const,
-  premium: ['#f6dc8f', '#d4af5a', '#a77c0c'] as const,
-  exclusive: ['#fff0bf', '#e2bd60', '#9c7208'] as const,
+  free: ['#d09265', '#C58A55', '#5e3a1f'] as const,
+  silver: ['#e2e6eb', '#c4cad2', '#8f97a3'] as const,
+  gold: ['#f6d24a', '#f0c419', '#a9840f'] as const,
+  premium: ['#f0c98a', '#d8a34a', '#a06a1c'] as const,
+  exclusive: ['#f3dd8f', '#d4af37', '#8f7218'] as const,
 } as const;
 
 /** Standard motion timings/springs reused across every animated component
@@ -203,72 +205,87 @@ export const motion = {
 /**
  * METALL KARTA TIZIMI — physical-material palettes for the NFC ID cards.
  *
- * Every tier is BLACK — the brand's floor — differentiated only by how
- * brightly gold catches the light on it. Never a grey or brown card:
- * a diagonal base gradient (the metal itself), a brushed micro-texture, a
- * specular corner, one hairline edge, and a single sheen sweep. Nothing
- * glitters on its own — light only moves when the card enters or is
- * touched, which is what separates "premium" from "casino".
- *
- * `iridescent` exists only for the exclusive tier: a slow shimmer that
- * drifts through gold -> champagne -> warm white over the black base.
- * Card text is always white; gold is the accent, black is the material.
+ * Ported 1:1 from the website's card finishes (src/components/NfcCard.jsx,
+ * `FINISHES['tier-*']`) so a code renders in the same metal on Android as
+ * on nfcstore.uz: `base` + `baseAngle` + `baseLocations` are the CSS
+ * `linear-gradient(<angle>, …)`, `text` is `fg`, `subtext` is `sub`, `code`
+ * is `code` and `hairline` is `border`. Gold and Silver are LIGHT metals
+ * with DARK lettering (`darkText`); the other tiers are dark metals with
+ * light lettering. Everything else on top — brushed grain, specular
+ * corner, one sheen sweep, the machined edge — is a gradient, so a screen
+ * full of these still scrolls at full frame rate. Nothing glitters on its
+ * own: light only moves when the card enters or is touched.
  */
 export const metal = {
   exclusive: {
-    base: ['#1c150a', '#171209', '#140f08', '#120e08'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(245,215,122,0.05)', 'rgba(0,0,0,0.10)', 'rgba(245,215,122,0.04)', 'rgba(0,0,0,0.08)'],
-    sheen: 'rgba(245,215,122,0.45)',
-    hairline: 'rgba(245,215,122,0.62)',
-    edgeTop: 'rgba(245,215,122,0.42)',
-    text: '#f3ece0',
-    subtext: 'rgba(255,255,255,0.62)',
-    glow: 'rgba(215,182,93,0.45)',
-    iridescent: ['rgba(215,182,93,0.24)', 'rgba(245,215,122,0.16)', 'rgba(255,244,214,0.12)', 'rgba(142,111,46,0.18)'],
+    base: ['#2b2926', '#3a3834', '#1f1e1c'] as const,
+    baseAngle: 145,
+    baseLocations: [0, 0.5, 1] as const,
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.10)', 'rgba(212,175,55,0.04)', 'rgba(0,0,0,0.08)'] as const,
+    sheen: 'rgba(255,255,255,0.30)',
+    hairline: 'rgba(212,175,55,0.5)',
+    edgeTop: 'rgba(255,255,255,0.16)',
+    text: '#f2ead0',
+    subtext: 'rgba(212,175,55,0.7)',
+    code: '#d4af37',
+    darkText: false,
+    glow: 'rgba(212,175,55,0.42)',
   },
   premium: {
-    base: ['#1a1409', '#171209', '#130f08', '#120e08'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.045)', 'rgba(0,0,0,0.09)', 'rgba(245,215,122,0.03)', 'rgba(0,0,0,0.07)'],
-    sheen: 'rgba(245,215,122,0.34)',
-    hairline: 'rgba(215,182,93,0.48)',
-    edgeTop: 'rgba(245,215,122,0.30)',
-    text: '#f3ece0',
-    subtext: 'rgba(255,255,255,0.60)',
-    glow: 'rgba(215,182,93,0.32)',
-    iridescent: null,
+    base: ['#4a2f0c', '#c78e34', '#2c1c06'] as const,
+    baseAngle: 145,
+    baseLocations: [0, 0.45, 1] as const,
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.10)', 'rgba(251,236,205,0.04)', 'rgba(0,0,0,0.08)'] as const,
+    sheen: 'rgba(255,255,255,0.32)',
+    hairline: 'rgba(216,163,74,0.6)',
+    edgeTop: 'rgba(255,244,214,0.22)',
+    text: '#fbeccd',
+    subtext: 'rgba(251,236,205,0.62)',
+    code: '#f0c98a',
+    darkText: false,
+    glow: 'rgba(216,163,74,0.40)',
   },
   gold: {
-    base: ['#191309', '#171209', '#130f08', '#120e08'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(240,196,25,0.04)', 'rgba(0,0,0,0.09)', 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.07)'],
-    sheen: 'rgba(240,205,120,0.30)',
-    hairline: 'rgba(215,182,93,0.40)',
-    edgeTop: 'rgba(240,205,120,0.26)',
-    text: '#f3ece0',
-    subtext: 'rgba(255,255,255,0.58)',
-    glow: 'rgba(240,196,25,0.26)',
-    iridescent: null,
+    base: ['#f0c419', '#a9840f', '#f0c419'] as const,
+    baseAngle: 135,
+    baseLocations: [0, 0.45, 1] as const,
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.07)', 'rgba(0,0,0,0.07)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)'] as const,
+    sheen: 'rgba(255,255,255,0.35)',
+    hairline: 'rgba(255,241,170,0.55)',
+    edgeTop: 'rgba(255,248,210,0.55)',
+    text: '#1a1206',
+    subtext: 'rgba(26,18,6,0.6)',
+    code: '#1a1206',
+    darkText: true,
+    glow: 'rgba(240,196,25,0.34)',
   },
   silver: {
-    base: ['#18130a', '#161109', '#130f08', '#120e08'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.045)', 'rgba(0,0,0,0.09)', 'rgba(255,255,255,0.03)', 'rgba(0,0,0,0.07)'],
-    sheen: 'rgba(255,255,255,0.26)',
-    hairline: 'rgba(215,182,93,0.28)',
-    edgeTop: 'rgba(255,255,255,0.20)',
-    text: '#f3ece0',
-    subtext: 'rgba(255,255,255,0.56)',
-    glow: 'rgba(215,182,93,0.18)',
-    iridescent: null,
+    base: ['#c4cad2', '#8f97a3', '#c4cad2'] as const,
+    baseAngle: 135,
+    baseLocations: [0, 0.45, 1] as const,
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.08)', 'rgba(0,0,0,0.06)', 'rgba(255,255,255,0.05)', 'rgba(0,0,0,0.05)'] as const,
+    sheen: 'rgba(255,255,255,0.35)',
+    hairline: 'rgba(255,255,255,0.5)',
+    edgeTop: 'rgba(255,255,255,0.6)',
+    text: '#15181c',
+    subtext: 'rgba(21,24,28,0.55)',
+    code: '#15181c',
+    darkText: true,
+    glow: 'rgba(196,202,210,0.30)',
   },
   free: {
-    base: ['#17120a', '#151009', '#120e08', '#110d07'],
-    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.035)', 'rgba(0,0,0,0.09)', 'rgba(215,182,93,0.02)', 'rgba(0,0,0,0.07)'],
-    sheen: 'rgba(255,240,210,0.20)',
-    hairline: 'rgba(215,182,93,0.22)',
+    base: ['#3f2c16', '#1c2e1a', '#3f2c16'] as const,
+    baseAngle: 135,
+    baseLocations: [0, 0.55, 1] as const,
+    brush: ['rgba(255,255,255,0.00)', 'rgba(255,255,255,0.04)', 'rgba(0,0,0,0.10)', 'rgba(197,138,85,0.04)', 'rgba(0,0,0,0.08)'] as const,
+    sheen: 'rgba(255,255,255,0.26)',
+    hairline: 'rgba(197,138,85,0.45)',
     edgeTop: 'rgba(255,240,210,0.16)',
-    text: '#f3ece0',
-    subtext: 'rgba(255,255,255,0.54)',
-    glow: 'rgba(215,182,93,0.14)',
-    iridescent: null,
+    text: '#f3ecd8',
+    subtext: 'rgba(197,138,85,0.62)',
+    code: '#C58A55',
+    darkText: false,
+    glow: 'rgba(197,138,85,0.30)',
   },
 } as const;
 

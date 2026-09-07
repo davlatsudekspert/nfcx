@@ -50,7 +50,9 @@ const EDGE = space.lg;
  */
 export function NfcCardStack({ items }: NfcCardStackProps) {
   const { width: screenW } = useWindowDimensions();
-  const cardW = Math.min(320, screenW - EDGE * 2 - STEP);
+  // Capped so a wide phone still shows a card, not a billboard (300 dp is
+  // 189 dp tall at the ISO proportion; a 360 dp phone gets 276 x 174).
+  const cardW = Math.min(300, screenW - EDGE * 2 - STEP);
   const scrollX = useSharedValue(0);
 
   const onScroll = useAnimatedScrollHandler((e) => {

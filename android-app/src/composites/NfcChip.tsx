@@ -44,6 +44,9 @@ export interface NfcChipProps {
   width?: number;
   /** Draw the contactless waves to the right of the chip. */
   contactless?: boolean;
+  /** Solid stroke for the waves instead of the gold gradient — on a light
+   * metal (gold, silver) gold-on-gold would vanish. */
+  waveTint?: string;
 }
 
 /**
@@ -52,7 +55,7 @@ export interface NfcChipProps {
  * `depth.emboss` — a bright top lip and a dark lower lip — so it sits
  * *proud* of the card surface instead of being printed on it.
  */
-export function NfcChip({ width = 42, contactless = true }: NfcChipProps) {
+export function NfcChip({ width = 42, contactless = true, waveTint }: NfcChipProps) {
   const height = Math.round(width * 0.74);
   const r = Math.round(width * 0.16);
   return (
@@ -90,7 +93,7 @@ export function NfcChip({ width = 42, contactless = true }: NfcChipProps) {
       </View>
       {contactless && (
         <View style={styles.waves}>
-          <NfcContactlessIcon size={Math.round(height * 0.78)} />
+          <NfcContactlessIcon size={Math.round(height * 0.78)} tint={waveTint} />
         </View>
       )}
     </View>
