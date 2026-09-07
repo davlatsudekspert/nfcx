@@ -2493,6 +2493,25 @@ async function finalizePaidWebOrderD1(env, orderId) {
   const order = await getWebOrderD1(env, orderId);
   if (!order) return { alreadyProcessed: true };
 
+  // ── PAYME SERTIFIKATSIYA SINOVI (kind='payme_test') ──────────────────
+  // To'lov tizimini ulashda Payme kichik summali (masalan 1 so'm) haqiqiy
+  // to'lov o'tkazib tekshirishni so'raydi. Saytdagi eng arzon mahsulot
+  // 49 000 so'm, shuning uchun shunday buyurtma yaratishning yo'li yo'q edi.
+  //
+  // Bu tur HECH NARSA BERMAYDI: karta yaratmaydi, biriktirmaydi, premium
+  // yoqmaydi, jismoniy karta buyurtmasi ochmaydi. U faqat to'lov YO'LINI
+  // (CheckPerform -> Create -> Perform) uchdan-uchgacha tekshiradi va
+  // o'zini 'paid' deb belgilaydi. Shu sababli u quyidagi umumiy
+  // mantiqdan OLDIN, alohida hal qilinadi — aks holda "allaqachon
+  // to'langan" tarmog'i mavjud bo'lmagan kartaning egasini qidirib
+  // `code_taken` qaytarardi va takroriy PerformTransaction yiqilardi.
+  if (order.kind === 'payme_test') {
+    if (order.status === 'paid') return { ok: true, alreadyPaid: true };
+    if (order.status !== 'pending') return { alreadyProcessed: true };
+    await setWebOrderStatusD1(env, order.id, 'paid');
+    return { ok: true };
+  }
+
   if (order.status === 'paid') {
     // Idempotent qayta-chaqiruv (masalan duplicate PerformTransaction):
     // DB holatini haqiqatan tasdiqlab, mos javob beramiz — hech qanday
@@ -5466,7 +5485,7 @@ const H = {
   nowTs, parseDbDate, newToken, sha256Hex, hashPassword, verifyPassword,
   reqIp, logAdminActivity, logAdminLoginEvent, sendTelegramMessage, sendTelegramTo,
   personalIdTierD1, effectiveAccessD1, featureAllowedD1, paymentsEnabledD1, paymeCheckoutLinkD1,
-  createPendingWebOrderD1, getWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
+  createPendingWebOrderD1, getWebOrderD1, createWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
   finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
   sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
   rateLimitD1, roleAtLeast,
