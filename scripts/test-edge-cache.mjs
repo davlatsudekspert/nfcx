@@ -58,7 +58,12 @@ const call = async (pathname, init) => {
   check('kirgan foydalanuvchi javobi 200', first.status, 200);
   check('kirgan foydalanuvchi keshdan O\'QIMADI', hits, 0);
   check('kirgan foydalanuvchi keshga YOZMADI', puts, 0);
-  check('unga cache-control qo\'yilmadi', first.cc, null);
+  // 2026-09: avval bu yerda `null` kutilardi — ya'ni javobda cache-control
+  // UMUMAN yo'q edi. Aynan shu teshik: sarlavhasiz javobni brauzer o'zi
+  // xohlaganicha keshlaydi (iOS Safari buni qattiq qo'llaydi), va kirgan
+  // foydalanuvchining SHAXSIY javobi telefonda qotib qolishi mumkin edi.
+  // Endi aniq `no-store` qaytadi — bu keshlanmaslikning kuchliroq kafolati.
+  check('kirgan foydalanuvchi javobi keshlanmaydi (no-store)', first.cc, 'no-store');
 
   // Mehmon keshi to'lgan bo'lsa ham, kirgan odam yangi ma'lumot oladi.
   await call('/api/records');
@@ -87,6 +92,22 @@ const call = async (pathname, init) => {
   check('ikkita alohida kesh kaliti', store.size, 2);
   const recs = await call('/api/records');
   checkTrue('katalog javobi hamon massiv (kategoriyalar bilan almashmagan)', Array.isArray(JSON.parse(recs.text)));
+}
+
+// ═══ JONLI YO'LLAR BRAUZERDA KESHLANMAYDI ═══
+// 2026-09: `json()` da `cache-control` UMUMAN yo'q edi. HTTP qoidasiga
+// ko'ra bunday javobni brauzer o'zi xohlaganicha keshlashi mumkin
+// ("heuristic caching"), iOS Safari esa buni juda qattiq qo'llaydi.
+// Natijada telefonda eski auksion/narx/buyurtma ma'lumoti ko'rinib
+// qolishi mumkin edi. Endi jonli yo'llar `no-store` qaytaradi.
+{
+  for (const path of ['/api/auctions?withSold=1', '/api/auction-demand']) {
+    const r = await worker.fetch(req(path), env);
+    check(`${path} -> no-store`, r.headers.get('cache-control'), 'no-store');
+  }
+  // Katalog ataylab keshlanadi — bu o'zgarish unga TEGMAYDI.
+  // (Node testida `caches` yo'q, shuning uchun edgeCached oddiy yo'ldan
+  // ketadi; keshlanadigan xulq yuqoridagi bo'limlarda tekshiriladi.)
 }
 
 done();
