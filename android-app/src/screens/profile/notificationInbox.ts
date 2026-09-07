@@ -22,7 +22,6 @@ import * as SecureStore from 'expo-secure-store';
 import type { GiftOffer, Order } from '../../api/types';
 import { NOTIFICATION_CATEGORY_ICON, type NotificationCategory, type NotificationIcon } from '../../native/push';
 import { formatSom, parseTimestampMs, safeText } from '../../lib/format';
-import { isPayableOrder } from '../id/orderStatus';
 import { fill, type ProfileCopyKey } from './profileCopy';
 import type { StringKey } from '../../i18n';
 
@@ -113,7 +112,7 @@ export function buildInboxItems({ gifts, wonAuctions, orders, nowMs = Date.now()
   for (const order of orders) {
     if (!order || order.id == null) continue;
     const createdMs = parseTimestampMs(order.createdAt);
-    const isPending = isPayableOrder(order);
+    const isPending = order.status === 'pending';
     if (!isPending && createdMs != null && nowMs - createdMs > FINISHED_ORDER_MAX_AGE_MS) continue;
 
     const code = safeText(order.code, '—');
