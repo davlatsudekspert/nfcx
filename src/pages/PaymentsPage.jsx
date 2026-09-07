@@ -6,6 +6,7 @@ import { fmt, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
+import PayQr from '../components/PayQr.jsx';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import { IconBag } from '../components/Icons.jsx';
 
@@ -165,6 +166,9 @@ export default function PaymentsPage() {
                 ) : (
                   <span className="badge badge-warning badge-sm">{t('Kutilmoqda')}</span>
                 )}
+                {/* `basis-full` — QR yon tomonda emas, qatorning ostida
+                    to'liq kenglikda ochiladi (ota element `flex-wrap`). */}
+                {PAYMENTS_ENABLED && o.payLink && <PayQr payLink={o.payLink} className="basis-full" />}
               </div>
             ))}
           </div>

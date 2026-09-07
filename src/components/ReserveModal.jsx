@@ -4,6 +4,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth, authRegister, authLogin } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import PayQr from './PayQr.jsx';
 import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 import PaymeReadyBadge from './PaymeReadyBadge.jsx';
@@ -224,6 +225,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
                 {payIsSandbox && (
                   <p className="mt-2 text-center text-xs font-bold text-[#5fd9ca]">{t('Real pul yechilmaydi \u2014 bu test to\u2019lovi.')}</p>
                 )}
+                <PayQr payLink={order.payLink} className="mt-3" />
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
                   <span className="loading loading-spinner loading-xs"></span>
                   {t("To'lov tasdiqlanishini kutmoqdamiz...")}

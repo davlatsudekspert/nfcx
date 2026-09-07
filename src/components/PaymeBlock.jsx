@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsInfo, usePaymentProviders } from '../lib/paymentsEnabled.jsx';
 import { fmt } from '../lib/format.js';
+import PayQr from './PayQr.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
 // YAGONA PAYME TO'LOV BLOKI (2026-09)
@@ -231,6 +232,10 @@ export default function PaymeBlock({
           </button>
         )}
       </div>
+
+      {/* QR — faqat havola tayyor bo'lganda. Buyurtma hali yaratilmagan
+          bo'lsa kodlash uchun narsa yo'q. */}
+      {active.enabled && payLink && <PayQr payLink={payLink} className="mt-2" />}
 
       <div className="payme-block__foot">
         <p className="payme-block__secure">
