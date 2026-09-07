@@ -87,7 +87,13 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
   check('Premium 199 000 (BIZ777)', by.BIZ777?.price, 199000);
   check('faollashtirilgan sovg‘a -> isGift (0 so‘m emas)', by.XYZ131?.isGift, true);
   check('katalog kartasida username qo‘shilmagan', by.QWE121?.name, 'Silver ID');
-  check('profil narx belgisi katalog bilan bir xil manbadan', (await j('/api/records/VIP001')).body?.price, 7600000);
+  // 2026-09: VIP001 — egasi bor EKSLYUZIV ID. Ekslyuziv daraja
+  // to'g'ridan-to'g'ri sotilmaydi, demak u sotuvdan o'tmagan — sovg'a.
+  // Katalogda ham, profilda ham summa ko'rsatilmaydi. Muhimi shu ikkalasi
+  // BIR XIL bo'lsin (avval profil belgisi katalogdan farq qilardi).
+  const vip = (await j('/api/records/VIP001')).body;
+  check('profil narx belgisi katalog bilan bir xil manbadan', vip?.price, by.VIP001?.price ?? 0);
+  check("ekslyuziv ID profilda ham sovg'a", [vip?.price, vip?.isGift], [0, true]);
 }
 
 done();

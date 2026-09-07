@@ -173,11 +173,34 @@ const byCode = (rows, code) => (rows || []).find((r) => r.code === code) || null
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// 5. PER-CODE RASMIY NARX — REGRESSIYA (oldingi vazifa)
+// 5. EGASI BOR EKSLYUZIV ID = SOVG'A (2026-09 qoidasi)
 // ═══════════════════════════════════════════════════════════════════════
+// Avval bu blok "VIP001 rasmiy narxi (7 600 000) saqlanib qoldi" deb
+// tekshirardi. Qoida ataylab o'zgartirildi: ekslyuziv daraja
+// to'g'ridan-to'g'ri SOTILMAYDI (PERSONAL_TIER_PRICE.exclusive === null,
+// personalPurchaseQuote() uni rad etadi), demak katalogdagi egasi bor
+// ekslyuziv ID hech qachon sotuvdan o'tmagan — u sovg'a. Uning yoniga
+// summa qo'yish bo'lmagan savdoni bo'lgandek ko'rsatish edi.
+//
+// Yuqoridagi 2-bo'lim HAQIQIY auksion sotuvini alohida tekshiradi va u
+// hamon yakuniy yutuq narxini ko'rsatadi — bu qoida faqat auksiondan
+// O'TMAGAN ekslyuziv ID'ga tegishli.
 {
   const r = await j('/api/records/VIP001');
-  check('VIP001 (ekslyuziv) rasmiy narxi saqlanib qoldi', r.body?.price, 7600000);
+  check("auksiondan o'tmagan ekslyuziv ID -> summa yo'q", r.body?.price, 0);
+  check('...va u sovg\'a deb belgilanadi', r.body?.isGift, true);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 6. PULLIK DARAJALAR TEGILMAGAN — regressiya qo'riqchisi
+// ═══════════════════════════════════════════════════════════════════════
+// Sovg'a qoidasi FAQAT ekslyuzivga tegishli. Bronza/Silver/Gold/Premium
+// narxlari avvalgidek ko'rinishi shart, aks holda katalog butunlay
+// narxsiz bo'lib qolardi.
+{
+  const rows = await catalog();
+  check('Silver narxi o\'zgarmagan', byCode(rows, 'QWE121')?.price, 99000);
+  check('Silver sovg\'a deb belgilanmagan', byCode(rows, 'QWE121')?.isGift, false);
 }
 
 done();

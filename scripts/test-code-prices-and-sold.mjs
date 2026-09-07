@@ -52,6 +52,9 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('OOO000','Owner A', 1, 5000, 1, 'personal')`).run();
   await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('VVV444','Owner B', 1, 4900, 1, 'personal')`).run();
   await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('VIP000','Owner C', 1, 4800, 1, 'personal')`).run();
+  // BMW007 — ro'yxatdagi YAGONA ekslyuziv bo'lmagan kod (Premium).
+  // Sovg'a qoidasi unga tegmasligini shu yerda tekshiramiz.
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('BMW007','Owner D', 5, 4750, 1, 'personal')`).run();
   // VIP001 fixture'da allaqachon bor (price 199000) — override uni ustidan bosishi kerak
   const r = await j('/api/records');
   const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
@@ -60,8 +63,21 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
     if (!by[code]) continue;
     if (by[code].price !== want) { console.log('   API price mismatch:', code, by[code].price, 'want', want); bad++; }
   }
-  check('catalog API serves the override price for every listed id present', bad, 0);
-  check('VIP001 stored price (199 000) is overridden by the source of truth', by.VIP001?.price, 7_600_000);
+  // 2026-09 QOIDA O'ZGARDI. Avval bu yerda ro'yxatdagi HAR BIR kod o'zining
+  // rasmiy narxini ko'rsatishi tekshirilardi. Endi egasi bor EKSLYUZIV ID
+  // katalogda summa ko'rsatmaydi — u sotuvdan o'tmagan, u sovg'a
+  // (hosting/worker.js isOwnedExclusiveGiftD1 izohiga qarang).
+  // Ro'yxatdagi kodlardan faqat BMW007 ekslyuziv emas (Premium), shuning
+  // uchun narxini saqlaydi.
+  const exclusiveListed = ['OOO000', 'VVV444', 'VIP001', 'VIP000'];
+  check('ekslyuziv ro\'yxat kodlari katalogda summasiz',
+    exclusiveListed.filter((c) => by[c]).map((c) => by[c].price), [0, 0, 0, 0]);
+  check('...va hammasi sovg\'a deb belgilangan',
+    exclusiveListed.filter((c) => by[c]).map((c) => by[c].isGift), [true, true, true, true]);
+  check('ekslyuziv BO\'LMAGAN ro\'yxat kodi narxini saqlaydi (BMW007 Premium)', by.BMW007?.price, 199_000);
+  checkTrue('BMW007 sovg\'a emas', by.BMW007?.isGift === false);
+  // Narx ro'yxatining O'ZI tegilmagan — frontend hisobi avvalgidek.
+  check('CODE_PRICES ro\'yxati o\'zgarmagan (frontend hisobi)', bad >= 0 && priceForCode('BMW007').total, 199_000);
   // 2026-09: katalog narxining yagona manbai TARIF jadvaliga o'tdi
   // (hosting/worker.js catalogPriceD1). OTH222 -> Gold tarifi -> 149 000.
   // Saqlangan `cards.price` (49 000) endi faqat zaxira qiymat.
@@ -69,14 +85,18 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
 
   const s = await j('/api/records/search?q=OOO');
   const hit = (s.body?.records || []).find((x) => x.code === 'OOO000');
-  check('search results use the same price source', hit?.price, 8_700_000);
+  // Qidiruv katalog bilan AYNAN bir xil manbadan — ekslyuziv -> summasiz.
+  check('search results use the same price source', hit?.price, 0);
+  check('...va qidiruvda ham sovg\'a belgisi', hit?.isGift, true);
 }
 
-// ═══ 4. AUKSION "SOTILGAN" — egasi bor ekslyuziv ID'lar ═══
+// ═══ 4. AUKSION "SOTILGAN" — KATALOGDAN HISOBLANGAN YOZUV YO'Q ═══
+// 2026-09: avval bu bo'lim katalogdagi egasi bor ekslyuziv kartalarni
+// "Sotildi ... so'm" deb ko'rsatardi (`ownedExclusiveSoldD1`). Ular
+// auksiondan UMUMAN o'tmagan — bo'lmagan savdoni bo'lgandek ko'rsatish
+// edi. O'sha funksiya butunlay olib tashlandi.
 {
-  // Egasi YO'Q ekslyuziv karta — "Sotilgan"ga TUSHMASLIGI kerak
   await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('CEO999','Egasiz', 500000, 4700, NULL, 'personal')`).run();
-  // Ekslyuziv, egasi bor, LEKIN narxi yo'q -> o'ylab topilmaydi
   await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('ACE321','Narxsiz', 0, 4600, 1, 'personal')`).run();
 
   const r = await j('/api/auctions?withSold=1');
@@ -84,22 +104,12 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   const codes = sold.map((x) => x.code);
 
   for (const code of ['OOO000', 'VVV444', 'VIP001', 'VIP000']) {
-    checkTrue(`${code} appears in the Sold section`, codes.includes(code));
+    check(`${code} "Sotilgan" bo'limida KO'RINMAYDI (auksiondan o'tmagan)`, codes.includes(code), false);
   }
-  check('BMW007 (Premium) is NOT added as Exclusive-sold', codes.includes('BMW007'), false);
-  check('an Exclusive id with NO owner is not shown as sold', codes.includes('CEO999'), false);
-  check('an Exclusive id with no known price is not shown (no invented price)', codes.includes('ACE321'), false);
-  check('a non-exclusive owned card is not shown as sold', codes.includes('OTH222'), false);
-  check('no duplicate codes in the sold list', codes.length, new Set(codes).size);
-
-  const byCode = Object.fromEntries(sold.map((x) => [x.code, x]));
-  check('sold card carries the exact price', [
-    byCode.OOO000?.currentPrice, byCode.VVV444?.currentPrice,
-    byCode.VIP001?.currentPrice, byCode.VIP000?.currentPrice,
-  ], [8_700_000, 2_900_000, 7_600_000, 9_700_000]);
-  check('sold card carries the tier', byCode.OOO000?.tier, 'exclusive');
-  check('sold card carries a public profile link code', byCode.VIP001?.profileCode, 'VIP001');
-  checkTrue('owned sale is flagged and has no auction id', byCode.VIP001?.ownedSale === true && byCode.VIP001?.id === null);
+  check('BMW007 ham qo\'shilmagan', codes.includes('BMW007'), false);
+  check('egasi yo\'q ekslyuziv ID sotilgan deb ko\'rsatilmaydi', codes.includes('CEO999'), false);
+  check('ekslyuziv bo\'lmagan karta sotilgan deb ko\'rsatilmaydi', codes.includes('OTH222'), false);
+  check('hech qanday haqiqiy auksion yo\'q -> ro\'yxat bo\'sh', sold.length, 0);
 
   // HECH QANDAY soxta auksion/taklif/tranzaksiya yozuvi yaratilmasin
   const a = await env.DB.prepare(`SELECT COUNT(*) AS n FROM auctions`).first();
@@ -108,17 +118,32 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('no fake auction / bid / order rows were created', [Number(a.n), Number(b.n), Number(w.n)], [0, 0, 0]);
 }
 
-// ═══ 5. Haqiqiy auksion-sotilgan bilan takrorlanmaslik ═══
+// ═══ 5. "SOTILGAN" FAQAT TAKLIF BERILGAN LOTNI KO'RSATADI ═══
+// Admin lot ochib, hech kim taklif bermay yopilsa — u hech kimga
+// SOTILMAGAN. Shunday lot "Sotildi" bo'lib chiqmasligi kerak.
+// Bu qoida ro'yxat bilan emas, `bids` yozuvi bilan ishlaydi — haqiqiy
+// auksion o'tgach o'zi to'g'ri ishlaydi.
 {
+  const now = new Date().toISOString();
+  // (a) TAKLIFSIZ yopilgan lot -> ko'rinmaydi
   await env.DB.prepare(
     `INSERT INTO auctions (id, code, seller_id, start_price, current_price, ends_at, status, min_increment, created_at)
      VALUES (700, 'VIP000', NULL, 100000, 9700000, ?, 'sold', 25000, ?)`
-  ).bind(new Date().toISOString(), new Date().toISOString()).run();
-  const r = await j('/api/auctions?withSold=1');
-  const codes = (r.body?.sold || []).map((x) => x.code);
-  check('VIP000 appears exactly once when a real sold auction exists', codes.filter((c) => c === 'VIP000').length, 1);
+  ).bind(now, now).run();
+  let r = await j('/api/auctions?withSold=1');
+  check('taklifsiz yopilgan lot "Sotilgan"da YO\'Q', (r.body?.sold || []).map((x) => x.code).includes('VIP000'), false);
+
+  // (b) HAQIQIY taklif qo'shilsa -> ko'rinadi, o'z yozuvi bilan
+  await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (700, 1, 9700000, ?)`).bind(now).run();
+  r = await j('/api/auctions?withSold=1');
   const entry = (r.body?.sold || []).find((x) => x.code === 'VIP000');
-  checkTrue('the REAL auction row wins over the computed one', entry.id === 700 && !entry.ownedSale);
+  checkTrue('taklif berilgan lot "Sotilgan"da CHIQADI', !!entry);
+  check('u haqiqiy auksion yozuvi (hisoblangan emas)', [entry?.id, entry?.ownedSale], [700, undefined]);
+  check('kod bir marta chiqadi', (r.body?.sold || []).filter((x) => x.code === 'VIP000').length, 1);
+
+  // Tozalab qo'yamiz — quyidagi bo'limlar bo'sh holatdan boshlansin.
+  await env.DB.prepare(`DELETE FROM bids WHERE auction_id = 700`).run();
+  await env.DB.prepare(`DELETE FROM auctions WHERE id = 700`).run();
 }
 
 // ═══ 6. Sovg'a / pullik / ekslyuziv kartalar aralashmaydi ═══
@@ -131,7 +156,9 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   const r = await j('/api/records');
   const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
   check('gift card is flagged as a gift', by.GFT100?.isGift, true);
-  check('a listed-price exclusive card is NOT flagged as a gift', by.OOO000?.isGift, false);
+  // 2026-09: egasi bor EKSLYUZIV ID endi sovg'a deb belgilanadi — u
+  // sotuvdan o'tmagan. Avval bu qator teskarisini tekshirardi.
+  check('egasi bor ekslyuziv ID sovg\'a deb belgilanadi', by.OOO000?.isGift, true);
   check('an ordinary paid card is not a gift', by.OTH222?.isGift, false);
 }
 
@@ -161,19 +188,28 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
 
   const r = await j('/api/records');
   const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
-  check('OOO000 katalogda RASMIY narx (eski 200 000 taklif emas)', by.OOO000?.price, 8_700_000);
-  check('VVV444 katalogda RASMIY narx', by.VVV444?.price, 2_900_000);
-  check("ro'yxatda yo'q ID auksion yakuniy narxini saqlaydi (PPP777)", by.PPP777?.price, 3_960_000);
+  // 2026-09: OOO000, VVV444 va PPP777 — hammasi EKSLYUZIV. Ular endi
+  // katalogda summa ko'rsatmaydi. Bu asl muammoni ham hal qiladi: eski
+  // 200 000 lik taklif katalogga umuman chiqmaydi (avval bu bo'lim
+  // rasmiy narx eski taklifni bosishini tekshirardi — endi ikkalasi ham
+  // ko'rsatilmaydi).
+  check('ekslyuziv ID katalogda summasiz (eski 200 000 taklif ham chiqmaydi)', by.OOO000?.price, 0);
+  check('VVV444 ham summasiz', by.VVV444?.price, 0);
+  check('PPP777 ham summasiz (ekslyuziv)', by.PPP777?.price, 0);
+  check('uchalasi ham sovg\'a belgisi bilan',
+    [by.OOO000?.isGift, by.VVV444?.isGift, by.PPP777?.isGift], [true, true, true]);
 
-  // Katalog va auksion "Sotilgan" — AYNAN bir xil narx ko'rsatsin.
+  // "Sotilgan" bo'limi: taklif bor, karta g'olibga biriktirilgan -> bu
+  // HAQIQIY auksion yozuvi va u o'z narxini saqlaydi. Katalogdagi
+  // "Sovg'a" belgisi bu yozuvga ta'sir qilmaydi — ikkisi boshqa narsa.
   const a = await j('/api/auctions?withSold=1');
   const sold = Object.fromEntries((a.body?.sold || []).map((x) => [x.code, x]));
-  check('katalog va Sotilgan bo\'limi bir xil narx (OOO000)', by.OOO000?.price, sold.OOO000?.currentPrice);
-  check('katalog va Sotilgan bo\'limi bir xil narx (VVV444)', by.VVV444?.price, sold.VVV444?.currentPrice);
+  check('haqiqiy auksion yozuvi o\'z narxini saqlaydi (OOO000)', sold.OOO000?.currentPrice, 8_700_000);
+  check('...va PPP777 ham', sold.PPP777?.currentPrice, 3_960_000);
 
-  // Qidiruv ham shu yagona manbadan.
+  // Qidiruv ham katalog bilan bir xil manbadan.
   const s2 = await j('/api/records/search?q=OOO');
-  check('qidiruvda ham rasmiy narx', (s2.body?.records || []).find((x) => x.code === 'OOO000')?.price, 8_700_000);
+  check('qidiruvda ham summasiz', (s2.body?.records || []).find((x) => x.code === 'OOO000')?.price, 0);
 
   // Sovg'a bayrog'i narxdan MUSTAQIL — rasmiy narx uni bosib ketmasin.
   check('sovg\'a kartasi hamon sovg\'a', by.GFT100?.isGift, true);
@@ -202,7 +238,9 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('XXX772 tarifi EKSLYUZIV (Gold emas)', tierForCode('XXX772'), 'exclusive');
   const r = await j('/api/records');
   const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
-  check('XXX772 narxi O\'ZGARMAGAN (2 490 000)', by.XXX772?.price, 2_490_000);
+  // 2026-09: XXX772 ekslyuziv, demak katalogda summasiz ("Sovg'a").
+  // Muhimi u Gold tarifiga TUSHIB QOLMASLIGI — bu asl talab edi.
+  check('XXX772 katalogda summasiz (ekslyuziv)', by.XXX772?.price, 0);
   check('XXX772 Gold tarifi narxiga TUSHIB QOLMAGAN', by.XXX772?.price === TIER_PRICE.gold, false);
 
   // Auksion sahifasi tarifni kod bo'yicha hisoblaydi — u yerda ham ekslyuziv.
@@ -232,6 +270,10 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
     `INSERT INTO auctions (id, code, seller_id, start_price, current_price, ends_at, status, min_increment, created_at)
      VALUES (905, 'DEL999', NULL, 100000, 5000000, ?, 'sold', 25000, ?)`
   ).bind(now, now).run();
+  // Ikkalasiga ham HAQIQIY taklif — shunda bu bo'lim aynan "karta bormi"
+  // qoidasini tekshiradi, taklif qoidasini emas (u 5-bo'limda alohida).
+  await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (904, 1, 7300000, ?)`).bind(now).run();
+  await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (905, 1, 5000000, ?)`).bind(now).run();
 
   const r = await j('/api/auctions?withSold=1');
   const codes = (r.body?.sold || []).map((x) => x.code);
@@ -246,6 +288,29 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   await env.DB.prepare(`DELETE FROM cards WHERE code = 'III777'`).run();
   const r2 = await j('/api/auctions?withSold=1');
   check('karta o\'chirilgach ro\'yxatdan tushadi', (r2.body?.sold || []).map((x) => x.code).includes('III777'), false);
+}
+
+// ═══ 9. ADMIN QO'LDA "EKSLYUZIV" QILGAN KARTA HAM SOVG'A ═══
+// Ishlab chiqarishdagi ko'pchilik ekslyuziv ID kodning naqshidan emas,
+// admin panelidagi `tier_override` dan keladi. Sovg'a qoidasi ularni ham
+// qamrab olishi shart — aks holda katalogda yarmi "Sovg'a", yarmi summa
+// bilan chiqib, ziddiyatli ko'rinardi.
+{
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type, tier_override) VALUES ('QWE121','Silver->Eks', 99000, 4100, 1, 'personal', 'exclusive')`).run();
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('QWE131','Oddiy', 99000, 4090, 1, 'personal')`).run();
+  const r = await j('/api/records');
+  const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
+  check("tier_override='exclusive' -> sovg'a, summasiz", [by.QWE121?.price, by.QWE121?.isGift], [0, true]);
+  checkTrue('override yo\'q karta narxini saqlaydi', by.QWE131?.price > 0 && by.QWE131?.isGift === false);
+}
+
+// ═══ 10. KATALOG va SOVG'A BELGISI hech qachon ZID EMAS ═══
+// Yagona helper (isGiftCardD1) narx va belgi uchun ham ishlatiladi,
+// shuning uchun "narxi bor, lekin sovg'a" holati bo'lishi mumkin emas.
+{
+  const r = await j('/api/records');
+  const bad = (r.body || []).filter((x) => x.isGift && Number(x.price) > 0);
+  check("hech bir kartada 'sovg'a + summa' ziddiyati yo'q", bad.map((x) => x.code), []);
 }
 
 done();

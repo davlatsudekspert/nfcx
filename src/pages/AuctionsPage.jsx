@@ -249,16 +249,25 @@ export default function AuctionsPage() {
     [collecting, ready]
   );
 
+  // "Sotilgan" yorlig'i HALI BIRORTA lot sotilmagan bo'lsa umuman
+  // ko'rsatilmaydi. Avval u doim turardi va bosilganda bo'sh ro'yxat
+  // chiqardi — sayt tugallanmagandek ko'rinardi. Backend endi bu ro'yxatga
+  // faqat HAQIQATAN sotilgan lotni qo'shadi (taklif berilgan), shuning
+  // uchun bo'sh bo'lishi normal holat.
   const TABS = [
     { key: 'collecting', label: t("Talab yig’ilmoqda") },
     { key: 'ready', label: t('Auksionga tayyor') },
     { key: 'live', label: t('Faol auksion') },
-    { key: 'sold', label: t('Sotilgan') },
+    ...(sold.length > 0 ? [{ key: 'sold', label: t('Sotilgan') }] : []),
   ];
 
-  const gridItems = tab === 'collecting' ? collecting
-    : tab === 'ready' ? ready
-    : tab === 'live' ? auctions
+  // Yorliq yo'qolib qolsa (masalan oxirgi lot ro'yxatdan chiqsa),
+  // bo'sh ekranda qolib ketmaslik uchun birinchi yorliqqa qaytamiz.
+  const activeTab = TABS.some((x) => x.key === tab) ? tab : TABS[0].key;
+
+  const gridItems = activeTab === 'collecting' ? collecting
+    : activeTab === 'ready' ? ready
+    : activeTab === 'live' ? auctions
     : sold;
 
   return (
@@ -285,9 +294,9 @@ export default function AuctionsPage() {
               key={x.key}
               type="button"
               onClick={() => setTab(x.key)}
-              aria-pressed={tab === x.key}
+              aria-pressed={activeTab === x.key}
               className={`min-h-11 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-                tab === x.key
+                activeTab === x.key
                   ? 'border-accent bg-accent/10 text-base-content'
                   : 'border-white/10 text-base-content/55 hover:text-base-content'
               }`}
@@ -313,20 +322,20 @@ export default function AuctionsPage() {
 
         {demand !== null && gridItems.length === 0 && (
           <div className="vz-empty">
-            <b>{tab === 'live' ? t("Hozircha faol auksion yo'q.")
-              : tab === 'sold' ? t("Hozircha sotilgan auksion yo'q.")
-              : tab === 'ready' ? t("Hozircha auksionga tayyor kod yo'q.")
+            <b>{activeTab === 'live' ? t("Hozircha faol auksion yo'q.")
+              : activeTab === 'sold' ? t("Hozircha sotilgan auksion yo'q.")
+              : activeTab === 'ready' ? t("Hozircha auksionga tayyor kod yo'q.")
               : t("Hozircha talab yig'ilayotgan kod yo'q.")}</b>
           </div>
         )}
 
         <div className="auc-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {(tab === 'collecting' || tab === 'ready') && gridItems.map((d, i) => (
+          {(activeTab === 'collecting' || activeTab === 'ready') && gridItems.map((d, i) => (
             <DemandCard key={d.id} idx={i} item={d} threshold={threshold} voteBusy={voteBusy === d.id} onVote={vote} />
           ))}
-          {tab === 'live' && gridItems.map((a, i) => <AuctionMiniCard key={a.id} idx={i} a={a} />)}
+          {activeTab === 'live' && gridItems.map((a, i) => <AuctionMiniCard key={a.id} idx={i} a={a} />)}
           {/* `id` egasi bor ekslyuziv kartalarda null (u auksion yozuvi emas) — kalit kod bo'yicha */}
-          {tab === 'sold' && gridItems.map((a, i) => <AuctionMiniCard key={a.id ?? 'owned-' + a.code} idx={i} a={a} sold />)}
+          {activeTab === 'sold' && gridItems.map((a, i) => <AuctionMiniCard key={a.id ?? 'owned-' + a.code} idx={i} a={a} sold />)}
         </div>
 
         {topDemand.length > 1 && (
