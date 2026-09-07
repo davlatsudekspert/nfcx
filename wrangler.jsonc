@@ -75,9 +75,14 @@
   //
   // Merchant API endpoint (Payme kabinetida ko'rsatiladi):
   //   https://nfcstore.uz/api/pay/payme
+  // 2026-09-07: Payme kassa FAOL — ishlab chiqarishga o'tildi.
+  // Sandbox bayrog'i o'chirildi ("TEST REJIMI" va "Real pul yechilmaydi"
+  // izohlari avtomatik yo'qoladi) va checkout domeni haqiqiysiga
+  // almashtirildi. Bu ikkovi BIRGA o'zgarishi shart: biri sinovda,
+  // ikkinchisi ishlab chiqarishda qolsa, mijoz noto'g'ri sahifaga tushadi.
   "vars": {
     "PAYMENTS_ENABLED": "true",
-    "PAYME_SANDBOX": "true",
-    "PAYME_CHECKOUT_DOMAIN": "test.paycom.uz"
+    "PAYME_SANDBOX": "false",
+    "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz"
   }
 }

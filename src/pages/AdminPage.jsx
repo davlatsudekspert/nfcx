@@ -734,6 +734,65 @@ const ORDER_STATUS_LABEL = {
   failed_code_taken: { text: 'Xato: kod band qilingan', cls: 'badge-error' },
 };
 
+// ═══ PAYME SERTIFIKATSIYA SINOVI ═══
+// To'lov tizimini ulashda Payme kichik summali HAQIQIY to'lov o'tkazib
+// tekshirishni so'raydi. Saytdagi eng arzon mahsulot 49 000 so'm, ya'ni
+// bunday buyurtmani boshqa yo'l bilan yaratib bo'lmaydi.
+//
+// Bu buyurtma HECH NARSA BERMAYDI — karta yaratmaydi, biriktirmaydi,
+// premium yoqmaydi (hosting/worker.js `payme_test` izohiga qarang).
+function PaymeTestOrder() {
+  const { t } = useLanguage();
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null);
+  const [err, setErr] = useState('');
+  const [som, setSom] = useState(1);
+
+  const create = async () => {
+    setBusy(true); setErr(''); setRes(null);
+    try {
+      const d = await adminApi('/payme-test-order', { method: 'POST', body: JSON.stringify({ amount: Number(som) || 1 }) });
+      setRes(d);
+    } catch (e) {
+      setErr(e?.body?.error || e?.message || t('Xatolik'));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="vz-card mb-4 p-4">
+      <div className="vz-kicker">{t('PAYME SINOVI')}</div>
+      <h3 className="mt-1 text-base font-bold">{t('Sertifikatsiya uchun kichik to‘lov')}</h3>
+      <p className="mt-1 text-xs leading-relaxed text-base-content/55">
+        {t('Payme ulanishni tekshirish uchun kichik summali haqiqiy to‘lov so‘raydi. Bu buyurtma HECH NARSA BERMAYDI — karta yaratmaydi va biriktirmaydi, faqat to‘lov yo‘lini tekshiradi.')}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="number" min={1} max={10000} value={som}
+          onChange={(e) => setSom(e.target.value)}
+          className="input input-bordered input-sm w-28 bg-base-100"
+          aria-label={t('Summa (so‘m)')}
+        />
+        <span className="text-xs text-base-content/50">{t('so‘m')}</span>
+        <button className="btn btn-gold btn-sm min-h-11" onClick={create} disabled={busy}>
+          {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Sinov to‘lovini yaratish')}
+        </button>
+      </div>
+      {err && <div role="alert" className="vz-err mt-3">{String(err)}</div>}
+      {res && (
+        <div className="mt-3 rounded-xl border border-accent/30 bg-accent/5 p-3">
+          <div className="text-xs text-base-content/60">
+            {t('Buyurtma')} #{res.orderId} · {res.amount} {t('so‘m')}
+          </div>
+          <a href={res.payLink} target="_blank" rel="noopener noreferrer" className="btn btn-gold btn-sm mt-2 min-h-11 w-full">
+            {t('To‘lovga o‘tish')} &rarr;
+          </a>
+          <p className="mt-2 break-all font-mono text-[11px] text-base-content/40">{res.payLink}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OrdersTab() {
   const { t } = useLanguage();
   const { isSuper } = useAdmin();
@@ -788,12 +847,13 @@ function OrdersTab() {
     } finally { setBusy(null); }
   };
 
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Buyurtmalarni yuklab bo'lmadi.")} />;
-  if (!orders) return <AdminLoading rows={8} />;
-  if (orders.length === 0) return <EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} />;
+  if (loadErr) return <><PaymeTestOrder /><LoadError err={loadErr} onRetry={load} title={t("Buyurtmalarni yuklab bo'lmadi.")} /></>;
+  if (!orders) return <><PaymeTestOrder /><AdminLoading rows={8} /></>;
+  if (orders.length === 0) return <><PaymeTestOrder /><EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} /></>;
   const visible = orders.slice(0, shown);
   return (
     <div className="overflow-x-auto">
+      <PaymeTestOrder />
       {dialog}
       {actErr && <div role="alert" className="vz-err mb-3">{actErr}</div>}
       <table className="table table-sm">

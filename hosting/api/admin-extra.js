@@ -149,11 +149,13 @@ export async function handle(request, env, url, H) {
   const companyStatus = path.match(/^\/api\/admin\/companies\/([A-Za-z0-9]+)\/status$/);
   const companyTier = path.match(/^\/api\/admin\/companies\/([A-Za-z0-9]+)\/tier$/);
   const limitsDelete = path.match(/^\/api\/admin\/company-settings\/limits\/([a-z]+)\/([a-z]+)$/);
+  const paymeTest = path === '/api/admin/payme-test-order';
   const known = path === '/api/admin/categories' || catId || recVerify || recViews || userDelete
     || (path === '/api/admin/nfc-gifts' && method === 'POST') || webConfirm || webCancel || botConfirm
     || path === '/api/admin/export-stats' || companyStatus || companyTier
     || path === '/api/admin/company-settings/limits' || limitsDelete
-    || path === '/api/admin/company-settings/physical-pricing' || path === '/api/admin/company-settings/delivery';
+    || path === '/api/admin/company-settings/physical-pricing' || path === '/api/admin/company-settings/delivery'
+    || paymeTest;
   if (!known) return null;
 
   const admin = await H.requireAdmin(request, env);
@@ -317,6 +319,51 @@ export async function handle(request, env, url, H) {
   // qo'yilgan buyurtma faqat Payme tranzaksiyasining amal qilish muddati
   // (24 soat) o'tgandan keyin bekor qilinadi; undan oldin Payme'ning O'Z
   // CancelTransaction oqimi ishlashi kerak.
+  // ═══ PAYME SERTIFIKATSIYA SINOVI — 1 so'mlik buyurtma ═══
+  // To'lov tizimini ulashda Payme kichik summali HAQIQIY to'lov o'tkazib
+  // tekshirishni so'raydi. Saytdagi eng arzon mahsulot 49 000 so'm, ya'ni
+  // bunday buyurtma yaratishning yo'li yo'q edi.
+  //
+  // XAVFSIZLIK: bu buyurtma HECH NARSA BERMAYDI (worker.js
+  // finalizePaidWebOrderD1 -> kind='payme_test' izohiga qarang) — karta
+  // yaratmaydi, biriktirmaydi, premium yoqmaydi. Shuning uchun undan
+  // "arzon xarid" qilib bo'lmaydi. Qo'shimcha cheklovlar:
+  //   * faqat super_admin;
+  //   * summa 1..10 000 so'm oralig'ida (sinov uchun yetarli, undan
+  //     ortig'iga ehtiyoj yo'q).
+  if (paymeTest && method === 'POST') {
+    if (!isSuper) return forbidden();
+    const body = await request.json().catch(() => ({}));
+    const som = Math.round(Number(body?.amount ?? 1));
+    if (!Number.isFinite(som) || som < 1 || som > 10000) {
+      return H.json({ error: 'bad_amount', hint: '1..10000 so\'m' }, 422);
+    }
+    // MUHIM: `web_orders.user_id` -> `users(id)` ga FOREIGN KEY bilan
+    // bog'langan, adminlar esa ALOHIDA jadvalda. Admin ID sini qo'ysak
+    // FK cheklovi buzilardi. Shu sababli mavjud haqiqiy foydalanuvchi
+    // olinadi (odatda sayt egasining hisobi).
+    const owner = await env.DB.prepare(`SELECT id FROM users ORDER BY id LIMIT 1`).first();
+    if (!owner) return H.json({ error: 'no_user' }, 409);
+    const order = await H.createWebOrderD1(env, {
+      userId: Number(owner.id),
+      code: 'PAYMETEST',
+      kind: 'payme_test',
+      price: som,
+      payload: { note: 'Payme sertifikatsiya sinovi — hech narsa bermaydi' },
+    });
+    if (!order) return H.json({ error: 'create_failed' }, 500);
+    await H.logAdminActivity(env, {
+      action: 'payme_test_order',
+      details: `Buyurtma #${order.id} — ${som} so'm`,
+      ip: H.reqIp(request),
+    });
+    return H.json({
+      orderId: order.id,
+      amount: som,
+      payLink: H.paymeCheckoutLinkD1(env, order.id, som),
+    }, 201);
+  }
+
   if (webCancel && method === 'POST') {
     if (!isSuper) return forbidden();
     const id = Number(webCancel[1]);
