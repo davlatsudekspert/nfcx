@@ -103,9 +103,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # release build type: bundles JS into the APK by default and (with no
-      # keystore.properties present) falls back to Android's own automatic
-      # debug-keystore signing — see the top-of-file comment.
+      # release build type: bundles JS into the APK by default; signed with
+      # the committed test-only key written above — see the top-of-file comment.
       - name: Build standalone test APK (release build type, test-only key signing)
         working-directory: android-app/android
         run: ./gradlew assembleRelease --stacktrace --init-script /tmp/jcenter-compat-init.gradle
