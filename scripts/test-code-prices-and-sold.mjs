@@ -125,23 +125,31 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
 // auksion o'tgach o'zi to'g'ri ishlaydi.
 {
   const now = new Date().toISOString();
-  // (a) TAKLIFSIZ yopilgan lot -> ko'rinmaydi
+  // (a) Taklif berilgan, LEKIN pul to'lanmagan lot -> ko'rinmaydi.
+  // Aynan shu holat ishlab chiqarishda uchradi: NEOMSONGS, VVV444 va
+  // XXX772 lotlarida taklif bor edi, lekin hech kim to'lamagan —
+  // shunga qaramay ular "Sotildi 5 000 000 so'm" bo'lib chiqardi.
   await env.DB.prepare(
-    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, ends_at, status, min_increment, created_at)
-     VALUES (700, 'VIP000', NULL, 100000, 9700000, ?, 'sold', 25000, ?)`
+    `INSERT INTO auctions (id, code, seller_id, start_price, current_price, highest_bidder_id, ends_at, status, min_increment, created_at)
+     VALUES (700, 'VIP000', NULL, 100000, 9700000, 1, ?, 'sold', 25000, ?)`
   ).bind(now, now).run();
-  let r = await j('/api/auctions?withSold=1');
-  check('taklifsiz yopilgan lot "Sotilgan"da YO\'Q', (r.body?.sold || []).map((x) => x.code).includes('VIP000'), false);
-
-  // (b) HAQIQIY taklif qo'shilsa -> ko'rinadi, o'z yozuvi bilan
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (700, 1, 9700000, ?)`).bind(now).run();
+  let r = await j('/api/auctions?withSold=1');
+  check("to'lanmagan lot \"Sotilgan\"da YO'Q (taklif bo'lsa ham)", (r.body?.sold || []).map((x) => x.code).includes('VIP000'), false);
+
+  // (b) PUL TO'LANGACH -> ko'rinadi, o'z auksion yozuvi bilan
+  await env.DB.prepare(
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
+     VALUES (1, 'VIP000', 'auction_payment', 9700000, '{}', 'paid')`
+  ).run();
   r = await j('/api/auctions?withSold=1');
   const entry = (r.body?.sold || []).find((x) => x.code === 'VIP000');
-  checkTrue('taklif berilgan lot "Sotilgan"da CHIQADI', !!entry);
+  checkTrue("to'langan lot \"Sotilgan\"da CHIQADI", !!entry);
   check('u haqiqiy auksion yozuvi (hisoblangan emas)', [entry?.id, entry?.ownedSale], [700, undefined]);
   check('kod bir marta chiqadi', (r.body?.sold || []).filter((x) => x.code === 'VIP000').length, 1);
 
   // Tozalab qo'yamiz — quyidagi bo'limlar bo'sh holatdan boshlansin.
+  await env.DB.prepare(`DELETE FROM web_orders WHERE code = 'VIP000'`).run();
   await env.DB.prepare(`DELETE FROM bids WHERE auction_id = 700`).run();
   await env.DB.prepare(`DELETE FROM auctions WHERE id = 700`).run();
 }
@@ -199,13 +207,13 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('uchalasi ham sovg\'a belgisi bilan',
     [by.OOO000?.isGift, by.VVV444?.isGift, by.PPP777?.isGift], [true, true, true]);
 
-  // "Sotilgan" bo'limi: taklif bor, karta g'olibga biriktirilgan -> bu
-  // HAQIQIY auksion yozuvi va u o'z narxini saqlaydi. Katalogdagi
-  // "Sovg'a" belgisi bu yozuvga ta'sir qilmaydi — ikkisi boshqa narsa.
+  // "Sotilgan" bo'limi: bu lotlarda taklif bor, lekin PUL TO'LANMAGAN —
+  // demak savdo bo'lmagan va ular ro'yxatda chiqmaydi. Aynan shu holat
+  // ishlab chiqarishda "Sotildi ... so'm" bo'lib turgan edi.
   const a = await j('/api/auctions?withSold=1');
   const sold = Object.fromEntries((a.body?.sold || []).map((x) => [x.code, x]));
-  check('haqiqiy auksion yozuvi o\'z narxini saqlaydi (OOO000)', sold.OOO000?.currentPrice, 8_700_000);
-  check('...va PPP777 ham', sold.PPP777?.currentPrice, 3_960_000);
+  check("to'lanmagan lot \"Sotilgan\"da yo'q (OOO000)", sold.OOO000, undefined);
+  check("...va PPP777 ham yo'q", sold.PPP777, undefined);
 
   // Qidiruv ham katalog bilan bir xil manbadan.
   const s2 = await j('/api/records/search?q=OOO');
@@ -243,11 +251,13 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('XXX772 katalogda summasiz (ekslyuziv)', by.XXX772?.price, 0);
   check('XXX772 Gold tarifi narxiga TUSHIB QOLMAGAN', by.XXX772?.price === TIER_PRICE.gold, false);
 
-  // Auksion sahifasi tarifni kod bo'yicha hisoblaydi — u yerda ham ekslyuziv.
+  // XXX772 — ishlab chiqarishdagi haqiqiy holat: lot ochilgan, taklif
+  // ham berilgan, lekin hech kim pul to'lamagan. Shuning uchun u
+  // "Sotilgan"da chiqmaydi. Tarifi esa avvalgidek ekslyuziv.
   const a = await j('/api/auctions?withSold=1');
   const sold = (a.body?.sold || []).find((x) => x.code === 'XXX772');
-  check('auksionda ham narx bir xil', sold?.currentPrice, 2_490_000);
-  check('auksionda ko\'rsatiladigan tarif ekslyuziv', sold?.tier || tierForCode('XXX772'), 'exclusive');
+  check("to'lanmagan XXX772 \"Sotilgan\"da yo'q", sold, undefined);
+  check('tarifi baribir ekslyuziv', tierForCode('XXX772'), 'exclusive');
 
   // Ekslyuziv ID to'g'ridan-to'g'ri sotilmaydi (faqat auksion orqali).
   check('XXX772 to\'g\'ridan-to\'g\'ri sotib olinmaydi', getPersonalPurchaseQuote('XXX772').purchasable, false);
@@ -270,10 +280,19 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
     `INSERT INTO auctions (id, code, seller_id, start_price, current_price, ends_at, status, min_increment, created_at)
      VALUES (905, 'DEL999', NULL, 100000, 5000000, ?, 'sold', 25000, ?)`
   ).bind(now, now).run();
-  // Ikkalasiga ham HAQIQIY taklif — shunda bu bo'lim aynan "karta bormi"
-  // qoidasini tekshiradi, taklif qoidasini emas (u 5-bo'limda alohida).
+  // Ikkalasi ham TO'LIQ haqiqiy savdo (taklif + to'lov) — shunda bu bo'lim
+  // aynan "karta bormi" qoidasini tekshiradi, to'lov qoidasini emas
+  // (u 5-bo'limda alohida tekshiriladi).
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (904, 1, 7300000, ?)`).bind(now).run();
   await env.DB.prepare(`INSERT INTO bids (auction_id, user_id, amount, created_at) VALUES (905, 1, 5000000, ?)`).bind(now).run();
+  await env.DB.prepare(
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
+     VALUES (1, 'III777', 'auction_payment', 7300000, '{}', 'paid')`
+  ).run();
+  await env.DB.prepare(
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, status)
+     VALUES (1, 'DEL999', 'auction_payment', 5000000, '{}', 'paid')`
+  ).run();
 
   const r = await j('/api/auctions?withSold=1');
   const codes = (r.body?.sold || []).map((x) => x.code);
