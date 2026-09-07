@@ -46,12 +46,21 @@ export interface NfcRecord {
   musicUrl?: string;
 }
 
+/**
+ * A `web_orders` row as `GET /api/orders` returns it (hosting/worker.js
+ * `ordersApi`). `status` is the raw column: `pending | paid | cancelled |
+ * failed_code_taken | …` — interpret it only through
+ * src/screens/id/orderStatus.ts, which also applies the server's 24h
+ * reservation deadline to `pending` rows. `GET /api/orders/:id` returns the
+ * same shape minus `kind` / `createdAt`.
+ */
 export interface Order {
   id: number;
   code: string;
+  /** `card_purchase` for an ID, `auction_payment` for a won auction, … */
   kind?: string;
   price: number;
-  status: 'pending' | 'paid' | 'cancelled' | 'expired' | string;
+  status: 'pending' | 'paid' | 'cancelled' | 'expired' | 'failed_code_taken' | string;
   createdAt?: string;
 }
 

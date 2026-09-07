@@ -17,7 +17,7 @@ import { PremiumQueryState } from '../../design-system/components/PremiumQuerySt
 import { MetalSurface } from '../../design-system/components/MetalSurface';
 import { GoldMedallion, TactilePressable } from '../auction/AuctionUi';
 import { recordsApi } from '../../api/records';
-import { ordersApi } from '../../api/orders';
+import { useMyOrders } from '../../hooks/useMyOrders';
 import { ApiError } from '../../api/client';
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, orderStatus } from './orderStatus';
 import { usePaymentsEnabledStore } from '../../state/paymentsEnabledStore';
@@ -99,8 +99,12 @@ export function IdSearchScreen({ navigation }: Props) {
     enabled: !!lookupCode,
   });
 
-  const orders = useQuery({ queryKey: ['orders', 'mine'], queryFn: () => ordersApi.list() });
-  const recentOrders = (orders.data?.orders ?? []).slice(0, 5);
+  // Order history (every status, newest first) from the shared hook — the
+  // badge on each row comes from `orderStatus`, which also applies the
+  // server's 24h reservation deadline, so a dead reservation never reads as
+  // "To'lov kutilmoqda" here.
+  const { query: orders, orders: myOrders } = useMyOrders();
+  const recentOrders = myOrders.slice(0, 5);
 
   const availabilityError = availability.error instanceof ApiError ? availability.error : null;
   const isChecking = !!lookupCode && (availability.isLoading || typing);

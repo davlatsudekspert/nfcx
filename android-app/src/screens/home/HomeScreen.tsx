@@ -5,7 +5,6 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useQuery } from '@tanstack/react-query';
 import type { HomeStackParamList, MainTabParamList } from '../../navigation/types';
 import { ScreenContainer } from '../shared/ScreenContainer';
 import { PremiumButton } from '../../design-system/components/PremiumButton';
@@ -23,7 +22,7 @@ import { AuctionPreviewCard } from '../../composites/AuctionPreviewCard';
 import { useAuthStore } from '../../state/authStore';
 import { useAuctionsPreview } from '../../hooks/useAuctions';
 import { useMyCompanies } from '../../hooks/useMyCompanies';
-import { ordersApi } from '../../api/orders';
+import { useMyOrders } from '../../hooks/useMyOrders';
 import { formatCount, safeText, toFiniteNumber } from '../../lib/format';
 import { haptics } from '../../native/haptics';
 import { useT } from '../../i18n';
@@ -47,11 +46,9 @@ export function HomeScreen({ navigation }: Props) {
   const cards = useAuthStore((s) => s.cards);
   const tabNavigation = navigation.getParent<BottomTabNavigationProp<MainTabParamList>>();
 
-  const pendingOrders = useQuery({
-    queryKey: ['orders', 'mine'],
-    queryFn: () => ordersApi.list(),
-    select: (d) => d.orders.filter((o) => o.status === 'pending'),
-  });
+  // Payable orders only (`isPayableOrder`), refreshed on focus/foreground —
+  // the same rows and the same count the ID screens show.
+  const { pendingOrders } = useMyOrders();
   const auctions = useAuctionsPreview();
   const companies = useMyCompanies();
 
@@ -88,7 +85,7 @@ export function HomeScreen({ navigation }: Props) {
     [cards, primary],
   );
 
-  const pendingCount = pendingOrders.data?.length ?? 0;
+  const pendingCount = pendingOrders.length;
   const totalViews = cards.reduce((sum, c) => sum + (toFiniteNumber(c.views) ?? 0), 0);
 
   return (
@@ -177,7 +174,7 @@ export function HomeScreen({ navigation }: Props) {
           <>
             <SectionHeader title={t('home.stats.pending')} />
             <View style={[styles.sectionBody, styles.pendingList]}>
-              {pendingOrders.data?.map((order, i) => (
+              {pendingOrders.map((order, i) => (
                 <NfcIdCard
                   key={`order-${order.id}`}
                   code={order.code}

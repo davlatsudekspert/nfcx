@@ -3,7 +3,6 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useQuery } from '@tanstack/react-query';
 import type { ProfileStackParamList, MainTabParamList } from '../../navigation/types';
 import { PremiumHeader } from '../../design-system/components/PremiumHeader';
 import { PremiumCard } from '../../design-system/components/PremiumCard';
@@ -13,7 +12,7 @@ import { PremiumQueryState } from '../../design-system/components/PremiumQuerySt
 import { NfcIdCard } from '../../composites/NfcIdCard';
 import { HeroStatChip } from '../../composites/HeroStatChip';
 import { useAuthStore } from '../../state/authStore';
-import { ordersApi } from '../../api/orders';
+import { useMyOrders } from '../../hooks/useMyOrders';
 import { ORDER_STATUS_LABEL, orderStatus } from '../id/orderStatus';
 import { formatCount, formatSom, safeText } from '../../lib/format';
 import { useT } from '../../i18n';
@@ -45,10 +44,9 @@ export function MyProfileScreen({ navigation }: Props) {
   const tabNavigation = navigation.getParent<BottomTabNavigationProp<MainTabParamList>>();
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const orders = useQuery({
-    queryKey: ['orders', 'mine'],
-    queryFn: () => ordersApi.list(),
-  });
+  // Payable orders only (`isPayableOrder`), re-checked on every focus and
+  // foreground so a cancellation made on the website is not shown as pending.
+  const { query: orders, pendingOrders: payableOrders } = useMyOrders();
 
   const ownedCodes = React.useMemo(() => new Set(cards.map((c) => c.code)), [cards]);
   // The primary ID leads the list, matching the deck on the Home dashboard.
@@ -56,9 +54,11 @@ export function MyProfileScreen({ navigation }: Props) {
     () => [...cards].sort((a, b) => Number(b.isPrimary === true) - Number(a.isPrimary === true)),
     [cards],
   );
+  // A code the user already owns is a card, not a pending order, whatever
+  // the order row says.
   const pendingOrders = React.useMemo(
-    () => (orders.data?.orders ?? []).filter((o) => orderStatus(o) === 'pending' && !ownedCodes.has(o.code)),
-    [orders.data, ownedCodes],
+    () => payableOrders.filter((o) => !ownedCodes.has(o.code)),
+    [payableOrders, ownedCodes],
   );
 
   const onRefresh = async () => {

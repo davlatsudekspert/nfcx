@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Feather } from '@expo/vector-icons';
 import type { IdStackParamList, MainTabParamList } from '../../navigation/types';
 import { PremiumHeader } from '../../design-system/components/PremiumHeader';
@@ -13,6 +13,7 @@ import { PremiumQueryState } from '../../design-system/components/PremiumQuerySt
 import { SuccessCheck } from '../../composites/SuccessCheck';
 import { ORDER_STATUS_HINT, ORDER_STATUS_LABEL, ORDER_STATUS_TONE, orderStatus } from './orderStatus';
 import { ordersApi } from '../../api/orders';
+import { orderKeys } from '../../hooks/useMyOrders';
 import { tierForCode } from '../../lib/pricing';
 import { formatSom, safeText } from '../../lib/format';
 import { useAuthStore } from '../../state/authStore';
@@ -34,15 +35,24 @@ export function PurchaseResultScreen({ route, navigation }: Props) {
   const { code, orderId } = route.params;
   const tabNavigation = navigation.getParent<BottomTabNavigationProp<MainTabParamList>>();
   const refreshAuth = useAuthStore((s) => s.refresh);
+  const queryClient = useQueryClient();
 
   const order = useQuery({
-    queryKey: ['orders', orderId],
+    queryKey: orderKeys.detail(orderId),
     queryFn: () => ordersApi.get(orderId),
     refetchInterval: (query) => (orderStatus(query.state.data) === 'pending' ? 5000 : false),
   });
 
   const status = orderStatus(order.data);
   const paid = status === 'paid';
+  const settled = order.isSuccess && status !== 'pending';
+
+  useEffect(() => {
+    // Once this order stops being payable (paid, cancelled, …), the shared
+    // list behind Home's pending count and "Kutilayotgan buyurtmalar" is
+    // out of date — drop it so the next screen shows the server's answer.
+    if (settled) queryClient.invalidateQueries({ queryKey: orderKeys.mine });
+  }, [settled, queryClient]);
 
   useEffect(() => {
     if (!paid) return;

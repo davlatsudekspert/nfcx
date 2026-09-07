@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type BottomSheet from '@gorhom/bottom-sheet';
 import type { AuctionStackParamList } from '../../navigation/types';
@@ -44,6 +43,18 @@ const PAYMENT_URGENT_MS = 24 * 60 * 60 * 1000;
  * won/pending auctions. Every tab renders the same five states through
  * `PremiumQueryState`, and every tab keeps real explanatory content on screen
  * when the list itself is thin — no fabricated listings, no dead space.
+ *
+ * Each tab's list is a `FlatList` that is the tab's single scrollable
+ * element, inside a `flex: 1` wrapper. These lists are small and bounded by
+ * the API itself (`GET /api/auctions` caps at 200 live / 40 sold rows;
+ * won/pending is a handful), and every row mounts with a Reanimated entrance
+ * (`PremiumCard` → `FadeInUp`) inside a `TactilePressable`. FlashList v2 sizes
+ * rows with a synchronous `measureLayout` pass and holds scrolling/recycling
+ * behind its progressive first paint until every visible row has measured;
+ * with these rows that gate never opened on device — the "Tugagan" tab drew
+ * the first viewport (3 of 7 cards) and stopped. `FlatList` measures cells
+ * via `onLayout` and renders `initialNumToRender` regardless, so every row
+ * is reachable.
  */
 export function AuctionListScreen({ navigation }: Props) {
   const t = useT();
@@ -201,23 +212,26 @@ function LiveTab({
   );
 
   return (
-    <FlashList
-      data={rows}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.listContent}
-      ListHeaderComponent={header}
-      ListFooterComponent={explainer}
-      refreshing={refresh.refreshing}
-      onRefresh={refresh.onRefresh}
-      renderItem={({ item, index }) => (
-        <AuctionListCard
-          auction={item}
-          index={index}
-          viewerId={viewerId}
-          onPress={() => navigation.navigate('AuctionDetail', { auctionId: item.id })}
-        />
-      )}
-    />
+    <View style={styles.tabRoot}>
+      <FlatList
+        data={rows}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={header}
+        ListFooterComponent={explainer}
+        refreshing={refresh.refreshing}
+        onRefresh={refresh.onRefresh}
+        renderItem={({ item, index }) => (
+          <AuctionListCard
+            auction={item}
+            index={index}
+            viewerId={viewerId}
+            onPress={() => navigation.navigate('AuctionDetail', { auctionId: item.id })}
+          />
+        )}
+      />
+    </View>
   );
 }
 
@@ -307,10 +321,11 @@ function DemandTab({ navigation }: { navigation: Navigation }) {
 
   return (
     <View style={styles.tabRoot}>
-      <FlashList
+      <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         ListHeaderComponent={<View style={styles.headerBlock}>{intro}</View>}
         ListFooterComponent={<AuctionHowItWorks threshold={threshold} paymentsOff={paymentsOff} />}
         refreshing={refresh.refreshing}
@@ -366,30 +381,33 @@ function EndedTab({ navigation }: { navigation: Navigation }) {
   }
 
   return (
-    <FlashList
-      data={rows}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.listContent}
-      ListHeaderComponent={
-        <View style={styles.headerBlock}>
-          <View style={styles.metricsRow}>
-            <MetricTile label="Yakunlangan" value={formatCount(rows.length)} />
-            <MetricTile label="Eng yuqori yakuniy narx" value={formatSom(summarizeAuctions(rows).highestPrice)} tone="gold" />
+    <View style={styles.tabRoot}>
+      <FlatList
+        data={rows}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.headerBlock}>
+            <View style={styles.metricsRow}>
+              <MetricTile label="Yakunlangan" value={formatCount(rows.length)} />
+              <MetricTile label="Eng yuqori yakuniy narx" value={formatSom(summarizeAuctions(rows).highestPrice)} tone="gold" />
+            </View>
           </View>
-        </View>
-      }
-      ListFooterComponent={archiveNote}
-      refreshing={refresh.refreshing}
-      onRefresh={refresh.onRefresh}
-      renderItem={({ item, index }) => (
-        <AuctionListCard
-          auction={item}
-          index={index}
-          viewerId={viewerId}
-          onPress={() => navigation.navigate('AuctionDetail', { auctionId: item.id })}
-        />
-      )}
-    />
+        }
+        ListFooterComponent={archiveNote}
+        refreshing={refresh.refreshing}
+        onRefresh={refresh.onRefresh}
+        renderItem={({ item, index }) => (
+          <AuctionListCard
+            auction={item}
+            index={index}
+            viewerId={viewerId}
+            onPress={() => navigation.navigate('AuctionDetail', { auctionId: item.id })}
+          />
+        )}
+      />
+    </View>
   );
 }
 
@@ -443,31 +461,34 @@ function MineTab({ navigation, onSeeLive }: { navigation: Navigation; onSeeLive:
   }
 
   return (
-    <FlashList
-      data={rows}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.listContent}
-      ListHeaderComponent={
-        paymentsOff ? (
-          <View style={styles.headerBlock}>
-            <PaymentsClosedNotice style={styles.headerBannerFirst} />
-          </View>
-        ) : null
-      }
-      ListFooterComponent={deadlineNote}
-      refreshing={refresh.refreshing}
-      onRefresh={refresh.onRefresh}
-      renderItem={({ item, index }) => (
-        <WonAuctionCard
-          code={item.code}
-          currentPrice={item.currentPrice}
-          paymentDeadline={item.paymentDeadline}
-          index={index}
-          onPay={() => navigation.navigate('AuctionPayment', { auctionId: item.id })}
-          onOpen={() => navigation.navigate('AuctionDetail', { auctionId: item.id })}
-        />
-      )}
-    />
+    <View style={styles.tabRoot}>
+      <FlatList
+        data={rows}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          paymentsOff ? (
+            <View style={styles.headerBlock}>
+              <PaymentsClosedNotice style={styles.headerBannerFirst} />
+            </View>
+          ) : null
+        }
+        ListFooterComponent={deadlineNote}
+        refreshing={refresh.refreshing}
+        onRefresh={refresh.onRefresh}
+        renderItem={({ item, index }) => (
+          <WonAuctionCard
+            code={item.code}
+            currentPrice={item.currentPrice}
+            paymentDeadline={item.paymentDeadline}
+            index={index}
+            onPay={() => navigation.navigate('AuctionPayment', { auctionId: item.id })}
+            onOpen={() => navigation.navigate('AuctionDetail', { auctionId: item.id })}
+          />
+        )}
+      />
+    </View>
   );
 }
 
