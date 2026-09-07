@@ -763,6 +763,31 @@ function OrdersTab() {
     finally { setBusy(null); }
   };
 
+  // Kutilayotgan buyurtmani bekor qilish — kodni qayta sotuvga chiqaradi.
+  // Backend faol Payme tranzaksiyasi bor buyurtmani rad etadi (409
+  // payme_active) — hosting/api/admin-extra.js izohiga qarang.
+  const cancelOrder = async (o) => {
+    const ok = await confirm({
+      title: t('Buyurtmani bekor qilish'),
+      text: t("«{code}» uchun kutilayotgan buyurtma bekor qilinadi va kod qayta sotuvga chiqadi. To'langan buyurtmalarga ta'sir qilmaydi.", { code: o.code }),
+      confirmText: t('Bekor qilish'),
+    });
+    if (!ok) return;
+    setBusy(o.id); setActErr(null);
+    try {
+      await adminApi(`/orders/${o.id}/cancel`, { method: 'POST' });
+      await load();
+    } catch (e) {
+      setActErr(
+        e.status === 403 ? t("Ruxsat yo'q")
+          : e.status === 409 && e.body?.error === 'payme_active'
+            ? t("Bu buyurtmada faol Payme tranzaksiyasi bor — 12 soat o'tgach bekor qilish mumkin.")
+            : e.status === 409 ? t("Bekor qilib bo'lmadi — buyurtma allaqachon ishlangan.")
+              : apiErrText(e, t),
+      );
+    } finally { setBusy(null); }
+  };
+
   if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Buyurtmalarni yuklab bo'lmadi.")} />;
   if (!orders) return <AdminLoading rows={8} />;
   if (orders.length === 0) return <EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} />;
@@ -784,9 +809,16 @@ function OrdersTab() {
               <td className="whitespace-nowrap text-xs text-base-content/50">{timeAgo(new Date(o.createdAt).getTime())}</td>
               <td>
                 {o.status === 'pending' && isSuper && (
-                  <button className="btn btn-outline-gold btn-xs min-h-9" disabled={busy === o.id} onClick={() => confirmPayment(o)}>
-                    {busy === o.id ? <span className="loading loading-spinner loading-xs"></span> : t("Qo'lda tasdiqlash")}
-                  </button>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button className="btn btn-outline-gold btn-xs min-h-9" disabled={busy === o.id} onClick={() => confirmPayment(o)}>
+                      {busy === o.id ? <span className="loading loading-spinner loading-xs"></span> : t("Qo'lda tasdiqlash")}
+                    </button>
+                    {o.source === 'web' && (
+                      <button className="btn btn-ghost btn-xs min-h-9 text-error" disabled={busy === o.id} onClick={() => cancelOrder(o)}>
+                        {t('Bekor qilish')}
+                      </button>
+                    )}
+                  </div>
                 )}
               </td>
             </tr>
