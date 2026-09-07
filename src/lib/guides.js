@@ -97,33 +97,34 @@ export const GUIDES = [
   // ═══════════════════════ 1. Ro'yxatdan o'tish va shaxsiy profil yaratish ═══════════════════════
   guide(1, 'register-profile', "Ro'yxatdan o'tish va shaxsiy profil yaratish",
     "Noldan hisob ochish, tasdiqlash va birinchi profilingizni ko'rish — boshidan oxirigacha.", 'profil', 'shaxsiy', 3, [
-      realFrame(1, 'guide1-register', 1, "Bosh sahifada «Bepul profil yaratish» tugmasini bosing.", { cursorX: 13, cursorY: 63, highlightBox: { xPct: 4, yPct: 59, wPct: 17, hPct: 6 } }),
-      realFrame(2, 'guide1-register', 2, 'Ro‘yxatdan o‘tish formasi ochiladi: email, parol va telefon raqamingizni kiriting.', { cursorX: 60, cursorY: 30, highlightBox: { xPct: 52, yPct: 27, wPct: 30, hPct: 22 } }),
-      realFrame(3, 'guide1-register', 3, 'Botga yozganingizni tasdiqlab, «Kod yuborish»ni bosing — tasdiqlash kodi Telegram botga yuboriladi.', { cursorX: 65, cursorY: 30, clickEffect: true }),
-      realFrame(4, 'guide1-register', 4, 'Kod yuborilgach, pastda 6 xonali kod maydoni chiqadi.', { cursorX: 60, cursorY: 71 }),
-      realFrame(5, 'guide1-register', 5, 'Kelgan kodni kiriting, shartlarga rozilik bildiring va «Akkaunt yaratish»ni bosing.', { cursorX: 60, cursorY: 85, clickEffect: true }),
-      realFrame(6, 'guide1-register', 6, "Tabriklaymiz — hisobingiz tayyor! Sizga avtomatik 8 xonali profil ID berildi. MUHIM: bu ID — 0 so'm, mutlaqo BEPUL. Bu 6 belgili PULLIK NFC ID (masalan AZK007) bilan bir narsa emas — buni 3-darsda ko'ramiz.", { zoomTarget: 'top', durationMs: 3200 }),
+      realFrame(1, 'guide1-register', 1, "Bosh sahifadagi «Bepul profil yaratish» tugmasini bosing — ro'yxatdan o'tish shu yerdan boshlanadi.", { cursorX: 15, cursorY: 53, clickEffect: true, highlightBox: { xPct: 8.5, yPct: 50.5, wPct: 13, hPct: 4.5 } }),
+      realFrame(2, 'guide1-register', 2, "Avval profil turini tanlang — «Shaxsiy profil» (odam, mutaxassis) yoki «Kompaniya profili» (biznes, do'kon, restoran). Keyin email, parol va telefon raqamingizni kiriting.", { cursorX: 66, cursorY: 62, highlightBox: { xPct: 53.5, yPct: 47.5, wPct: 24.5, hPct: 28 } }),
+      realFrame(3, 'guide1-register', 3, "Telegram botimizga ism-familyangiz va telefon raqamingizni yozib qoldiring — jismoniy NFC kartani to'g'ri manzilga yetkazish uchun kerak. Bajargach, katakchani belgilang va «Kod yuborish»ni bosing.", { cursorX: 74, cursorY: 61, clickEffect: true, highlightBox: { xPct: 53.5, yPct: 40.5, wPct: 24.5, hPct: 17 } }),
+      realFrame(4, 'guide1-register', 4, "«Kod Telegram botga yuborildi» degan xabar chiqadi, tugma esa «Qayta yuborish»ga o'zgaradi. Kod kelmasa — shu tugma orqali qayta so'raysiz.", { cursorX: 66, cursorY: 64, highlightBox: { xPct: 53.5, yPct: 58.5, wPct: 24.5, hPct: 17 } }),
+      realFrame(5, 'guide1-register', 5, "Botdan kelgan 6 xonali kodni kiriting, ommaviy oferta shartlariga rozilik katakchasini belgilang va «Akkaunt yaratish»ni bosing.", { cursorX: 66, cursorY: 80, clickEffect: true, highlightBox: { xPct: 53.5, yPct: 77.8, wPct: 24.5, hPct: 4.5 } }),
+      realFrame(6, 'guide1-register', 6, "Tayyor — kabinetingiz ochildi va sizga avtomatik 8 xonali profil ID berildi (rasmda 48213906). MUHIM: bu ID mutlaqo BEPUL, 0 so'm. U 6 belgili PULLIK NFC ID (masalan AZK007) bilan bir narsa emas — buni 3-darsda ko'ramiz.", { highlightBox: { xPct: 49, yPct: 41, wPct: 28.5, hPct: 11 }, durationMs: 3400 }),
     ]),
 
   // ═══════════════════════ 2. Shaxsiy profilni to'liq sozlash ═══════════════════════
   guide(2, 'profile-setup', 'Shaxsiy profilni to‘liq sozlash',
-    'Rasm, ism, bio, kontaktlar va ijtimoiy tarmoqlar — profilingizni professional ko‘rinishga keltiring.', 'profil', 'shaxsiy', 3, [
-      realFrame(1, 'guide2-profile', 1, 'Hisobingizda profilingiz avtomatik ochilgan holda turadi — «Profil turi» bo‘limidan boshlanadi (standart: Shaxsiy).', { cursorX: 20, cursorY: 32, highlightBox: { xPct: 10, yPct: 27, wPct: 22, hPct: 9 } }),
-      realFrame(2, 'guide2-profile', 2, '«Asosiy ma’lumot» bo‘limida rasm tanlang (yoki havola qoldiring), ism, kasb va bio yozing — o‘ngdagi jonli ko‘rinish darhol yangilanadi.', { cursorX: 16, cursorY: 65, zoomTarget: 'right center' }),
-      realFrame(3, 'guide2-profile', 3, '«Dizayn va fon» bo‘limini oching — tema tanlang. Ayrim maxsus imkoniyatlar (fon rasmi, maxsus ranglar) yuqori darajadagi NFC ID uchun ochiladi.', { cursorX: 30, cursorY: 15 }),
-      realFrame(4, 'guide2-profile', 4, '«Aloqa va ijtimoiy tarmoqlar» bo‘limida Telegram va Instagram foydalanuvchi nomingizni kiriting.', { cursorX: 20, cursorY: 20, highlightBox: { xPct: 10, yPct: 17, wPct: 32, hPct: 8 } }),
-      realFrame(5, 'guide2-profile', 5, '«Profilni saqlash»ni bosing — muvaffaqiyatli saqlangani haqida xabar chiqadi.', { cursorX: 13, cursorY: 74, clickEffect: true, highlightBox: { xPct: 9, yPct: 71, wPct: 8, hPct: 4 } }),
-      realFrame(6, 'guide2-profile', 6, 'Tayyor — profilingiz shunday ko‘rinadi: rasm, ism, bio va ijtimoiy tarmoq tugmalari.', { zoomTarget: 'top', durationMs: 2800 }),
+    'Rasm, ism, bio, kontaktlar va ijtimoiy tarmoqlar — profilingizni professional ko‘rinishga keltiring.', 'profil', 'shaxsiy', 4, [
+      realFrame(1, 'guide2-profile', 1, "Kabinetdagi «Profil» yorlig'ini oching. Birinchi bo'lim — «Profil turi va soha»: katalog va qidiruvda qanday ko'rinishingizni belgilaydi (Shaxsiy, Ekspert yoki Biznes) hamda shahringiz.", { cursorX: 30, cursorY: 42, highlightBox: { xPct: 20, yPct: 29.5, wPct: 57.5, hPct: 28.5 } }),
+      realFrame(2, 'guide2-profile', 2, "«Asosiy ma'lumot» — ism, kasb/sarlavha va o'zingiz haqingizda (bio). O'ngdagi telefon ko'rinishi siz yozgan zahoti yangilanadi, ya'ni natijani darhol ko'rasiz.", { cursorX: 35, cursorY: 55, highlightBox: { xPct: 20, yPct: 39, wPct: 57.5, hPct: 33 } }),
+      realFrame(3, 'guide2-profile', 3, "«Media (rasm/fon/musiqa)» — profil rasmini yuklang yoki havola qoldiring, fon rasmini tanlang va xohlasangiz profil musiqasini qo'shing (MP3, ~20 MB gacha).", { cursorX: 30, cursorY: 80, highlightBox: { xPct: 20, yPct: 66, wPct: 57.5, hPct: 33 } }),
+      realFrame(4, 'guide2-profile', 4, "«Aloqa» — Telegram, telefon va email. Telefon raqamingiz hammaga ko'rinmasin desangiz, shu bo'limdagi yashirish katakchasini belgilang.", { cursorX: 35, cursorY: 58, highlightBox: { xPct: 20, yPct: 48, wPct: 57.5, hPct: 29 } }),
+      realFrame(5, 'guide2-profile', 5, "«Ijtimoiy tarmoqlar» — Instagram, Facebook, X, LinkedIn va veb-sayt. Ro'yxatda yo'q havolalarni «Qo'shimcha havolalar» orqali xohlagancha qo'shasiz.", { cursorX: 35, cursorY: 70, highlightBox: { xPct: 20, yPct: 57, wPct: 57.5, hPct: 40 } }),
+      realFrame(6, 'guide2-profile', 6, "Oxirida «Profilni saqlash»ni bosing — «Saqlandi! Profilingiz yangilandi» degan yashil xabar chiqadi. Saqlanmagan o'zgarish qolsa, tugma yonida ogohlantirish turadi.", { cursorX: 24, cursorY: 72, clickEffect: true, highlightBox: { xPct: 20, yPct: 69.5, wPct: 8.8, hPct: 4.6 } }),
+      realFrame(7, 'guide2-profile', 7, "Tayyor — profilingiz odamlarga shunday ko'rinadi: rasm, ism, kasb, bio va aloqa tugmalari. Havolani ulashsangiz yoki NFC kartani teksangiz, aynan shu sahifa ochiladi.", { durationMs: 3000 }),
     ]),
 
   // ═══════════════════════ 3. NFC ID tanlash va sotib olish ═══════════════════════
   guide(3, 'nfc-id-purchase', 'NFC ID tanlash va sotib olish',
     "Bepul avtomatik ID bilan pullik 6 belgili NFC ID orasidagi farq, narxlar va buyurtma jarayoni.", 'nfc', 'shaxsiy', 3, [
-      realFrame(1, 'guide3-nfcid', 1, "Narxlar sahifasida Bronza (49 000), Silver (99 000), Gold (149 000), Premium (199 000) va Ekslyuziv (faqat auksion) tariflarini solishtiring.", { cursorX: 22, cursorY: 45, highlightBox: { xPct: 8, yPct: 20, wPct: 30, hPct: 55 } }),
-      realFrame(2, 'guide3-nfcid', 2, "Kalkulyatorga xohlagan NFC ID’ni kiriting — daraja, sabab va aniq narx darhol ko‘rinadi (masalan AZK007 → Gold → 149 000 so‘m).", { cursorX: 40, cursorY: 82, highlightBox: { xPct: 28, yPct: 79, wPct: 22, hPct: 6 } }),
-      realFrame(3, 'guide3-nfcid', 3, "Ro‘yxatdan o‘tganda avtomatik BEPUL 8 xonali ID berilgan edi — bu yerda esa yuqoriroq darajadagi PULLIK ID tanlaysiz. «Bandlash»ni bosing.", { cursorX: 60, cursorY: 90, clickEffect: true }),
-      realFrame(4, 'guide3-nfcid', 4, "Ochilgan oynada ismingiz, kasbingiz va ijtimoiy tarmoqlaringizni kiriting — bular yangi NFC ID profilida ko‘rinadi.", { cursorX: 50, cursorY: 35 }),
-      realFrame(5, 'guide3-nfcid', 5, "Hozircha Payme integratsiyasi ishga tushirilmoqda, shu sabab «Band qilish» tugmasi vaqtincha yopiq — bu haqiqiy joriy holat.", { cursorX: 50, cursorY: 85, zoomTarget: 'bottom' }),
+      realFrame(1, 'guide3-nfcid', 1, "«Narxlar» sahifasida beshta daraja bor: Bronza (49 000), Silver (99 000), Gold (149 000), Premium (199 000) va Ekslyuziv (faqat auksion orqali). Narx kodning naqshiga qarab belgilanadi — bandlangan soniga emas.", { cursorX: 17, cursorY: 60, highlightBox: { xPct: 3.5, yPct: 39, wPct: 36.5, hPct: 44.5 } }),
+      realFrame(2, 'guide3-nfcid', 2, "Kalkulyatorga xohlagan NFC ID'ni yozing — daraja, sabab, holati (bo'sh yoki band) va aniq narx darhol ko'rinadi. Masalan AZK007 → Gold → 149 000 so'm.", { cursorX: 65, cursorY: 48, highlightBox: { xPct: 53.5, yPct: 25.5, wPct: 23, hPct: 34 } }),
+      realFrame(3, 'guide3-nfcid', 3, "Ro'yxatdan o'tganda avtomatik BEPUL 8 xonali ID olgan edingiz. Bu yerda esa yuqoriroq darajadagi PULLIK, qisqa NFC ID tanlaysiz — narx yozilgan tugmani bosing.", { cursorX: 65, cursorY: 64, clickEffect: true, highlightBox: { xPct: 55, yPct: 61.8, wPct: 20, hPct: 4.5 } }),
+      realFrame(4, 'guide3-nfcid', 4, "Ochilgan oynada ismingiz, kasbingiz, telefon, email va ijtimoiy tarmoqlaringizni kiriting — bular yangi NFC ID profilida ko'rinadi. Keyinchalik kabinetdan tahrirlash mumkin.", { cursorX: 50, cursorY: 30, highlightBox: { xPct: 35.5, yPct: 18, wPct: 29, hPct: 52 } }),
+      realFrame(5, 'guide3-nfcid', 5, "Oynaning pastida jami summa turadi. Hozircha Payme integratsiyasi ishga tushirilmoqda, shu sabab «Band qilish» tugmasi vaqtincha yopiq — bu haqiqiy joriy holat.", { cursorX: 50, cursorY: 75, highlightBox: { xPct: 35.5, yPct: 72, wPct: 29, hPct: 19.5 } }),
       mockFrame(6, 'card', "DEMO: Payme ishga tushgach, to‘lovni yakunlaysiz va yangi NFC ID’ingiz («Gold» darajali AZK007 kabi) profilingizga avtomatik biriktiriladi.", { highlight: 'price', durationMs: 2900 }),
     ]),
 
@@ -213,12 +214,12 @@ export const GUIDES = [
   // ═══════════════════════ 6. Auksionda qatnashish ═══════════════════════
   guide(6, 'auction-join', 'Auksionda qatnashish',
     'Ekslyuziv NFC ID’lar uchun talab yig‘ish, faol auksionni topish va taklif berish jarayoni.', 'auksion', 'both', 4, [
-      realFrame(1, 'guide6-auction', 1, '«Auksion» sahifasida «Talab yig‘ilmoqda» ro‘yxatini ko‘rasiz — yoqqan kodga qiziqish bildirilgan foydalanuvchilar soni ko‘rinadi.', { cursorX: 25, cursorY: 60, highlightBox: { xPct: 8, yPct: 46, wPct: 16, hPct: 22 } }),
-      realFrame(2, 'guide6-auction', 2, '«Auksionda qatnashaman»ni bosib, yoqqan kodingizga qiziqish bildirasiz — bu haqiqiy, bepul amal.', { cursorX: 25, cursorY: 92, clickEffect: true }),
-      realFrame(3, 'guide6-auction', 3, 'Yetarli kishi qiziqish bildirsa (masalan 20 kishi), kod «Auksionga tayyor» bo‘limiga o‘tadi — admin auksionni boshlaydi.', { cursorX: 25, cursorY: 45 }),
-      realFrame(4, 'guide6-auction', 4, '«Faol auksion» bo‘limida hozir savdoga qo‘yilgan NFC ID’larni ko‘rasiz — joriy narx va qolgan vaqt bilan.', { cursorX: 25, cursorY: 45, clickEffect: true }),
-      realFrame(5, 'guide6-auction', 5, 'Lot sahifasida joriy narx, qolgan vaqt va «Darhol sotib olish» narxi ko‘rinadi.', { cursorX: 25, cursorY: 29 }),
-      realFrame(6, 'guide6-auction', 6, "Hozircha Payme to‘lov tizimi o‘chirilgani sababli taklif berish vaqtincha yopiq — bu haqiqiy joriy holat.", { cursorX: 50, cursorY: 40, zoomTarget: 'center' }),
+      realFrame(1, 'guide6-auction', 1, "«Auksion» sahifasidagi «Talab yig'ilmoqda» ro'yxatida har bir kod uchun nechta kishi qiziqish bildirgani ko'rinadi — masalan AZK007 uchun 12 kishi, kerakli miqdor 20.", { cursorX: 17, cursorY: 40, highlightBox: { xPct: 3, yPct: 21, wPct: 56, hPct: 23 } }),
+      realFrame(2, 'guide6-auction', 2, "Yoqqan kodga «Auksionda qatnashaman»ni bosing — bu bepul va hech narsaga majbur qilmaydi. Tugma «✓ Siz qiziqyapsiz»ga o'zgaradi, hisob esa bittaga oshadi (12 → 13).", { cursorX: 31, cursorY: 40, clickEffect: true, highlightBox: { xPct: 22, yPct: 21, wPct: 18, hPct: 23 } }),
+      realFrame(3, 'guide6-auction', 3, "Kerakli miqdordagi kishi (20) qiziqish bildirsa, kod «Auksionga tayyor» bo'limiga o'tadi — «Auksionni boshlash mumkin» belgisi chiqadi va admin savdoni ochadi.", { cursorX: 12, cursorY: 40, highlightBox: { xPct: 3, yPct: 22, wPct: 18, hPct: 24 } }),
+      realFrame(4, 'guide6-auction', 4, "«Faol auksion» bo'limida hozir savdodagi NFC ID'lar turadi — har birida joriy narx, daraja va qolgan vaqt ko'rinadi. Batafsil ko'rish uchun lotni bosing.", { cursorX: 30, cursorY: 40, clickEffect: true, highlightBox: { xPct: 3, yPct: 22, wPct: 56, hPct: 22 } }),
+      realFrame(5, 'guide6-auction', 5, "Lot sahifasida joriy narx, qolgan vaqt va «Darhol sotib olish» narxi bor. Hozircha Payme to'lov tizimi tayyorlanayotgani sababli taklif berish vaqtincha yopiq — bu haqiqiy joriy holat.", { cursorX: 50, cursorY: 54, highlightBox: { xPct: 3, yPct: 44, wPct: 94, hPct: 20 } }),
+      realFrame(6, 'guide6-auction', 6, "«Sotilgan» bo'limida allaqachon egasi topilgan ekslyuziv ID'lar va ular qanday narxda ketgani ko'rinadi — bozor darajasini shu yerdan baholaysiz.", { cursorX: 30, cursorY: 30, highlightBox: { xPct: 3, yPct: 21, wPct: 56, hPct: 21 } }),
       mockFrame(7, 'form', 'DEMO: to‘lov tizimi ishga tushgach, shu yerga taklif summangizni kiritib, «Taklif qilish»ni bosasiz.', { cursorX: 50, cursorY: 55 }),
       mockFrame(8, 'card', 'DEMO: taklifingiz qabul qilindi — hozircha eng yuqori tariflovchisiz. Boshqa foydalanuvchi yuqoriroq taklif bersa, sizga darhol bildirishnoma keladi.', { highlight: 'price' }),
       mockFrame(9, 'card', "DEMO: auksion vaqti tugagach, eng yuqori taklif g‘olib deb e’lon qilinadi — g‘olib bo‘lgan ID endi uning profiliga NFC ID sifatida biriktiriladi.", { durationMs: 2900 }),
