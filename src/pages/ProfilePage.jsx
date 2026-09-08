@@ -1847,8 +1847,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               ))}
             </div>
 
-            {(tgUrl || igUrl) && <div className="mt-3.5 text-center text-[16px] text-[color:var(--vz-ink-faint)]">#{(record.tg || record.instagram).replace('@', '')}</div>}
-
             <ProfileTeam team={team} t={t} />
             <ProfileGallery gallery={gallery} t={t} />
 
@@ -1873,6 +1871,19 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               <button type="button" onClick={() => setLeadOpen(true)} className={`${linkBtn} mt-5 w-full cursor-pointer`}>
                 {'✉️'} {t('Kontakt qoldirish')}
               </button>
+            )}
+
+            {/* Telegram/Instagram nomi — RO'YXAT TUGAGANDAN KEYIN.
+                Avval u tugmalar orasida, "Kontakt qoldirish" dan yuqorida
+                turardi: ya'ni ro'yxat ikkiga bo'linib, kimda "Kontakt
+                qoldirish" yoqilgan bo'lsa nom o'rtada, kimda yo'q bo'lsa
+                oxirida chiqardi. Bir sahifada ikki xil tartib bo'lardi.
+                Endi u har bir profilda BITTA joyda — butun ro'yxatdan
+                keyin, rasmiy kanallar chizig'idan oldin. */}
+            {(tgUrl || igUrl) && (
+              <div className="mt-5 text-center text-[16px] text-[color:var(--vz-ink-faint)]">
+                #{String(record.tg || record.instagram).replace('@', '')}
+              </div>
             )}
 
             {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
