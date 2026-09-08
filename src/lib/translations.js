@@ -817,6 +817,20 @@ const DICT_BASE = {
   'Nusxalash': { ru: 'Копировать', en: 'Copy' },
   'Nusxalandi!': { ru: 'Скопировано!', en: 'Copied!' },
   'Havolani nusxalash': { ru: 'Скопировать ссылку', en: 'Copy link' },
+  // Rasm yuklash maydoni (ImageUploadField) va kompaniya workspace.
+  'Faqat rasm fayli tanlanadi.': { ru: 'Можно выбрать только файл изображения.', en: 'Only an image file can be selected.' },
+  'Havolani qo‘lda kiritish': { ru: 'Ввести ссылку вручную', en: 'Enter a link manually' },
+  'Biznes kabinetga qaytish': { ru: 'Вернуться в бизнес-кабинет', en: 'Back to the business account' },
+  'Arizangiz qabul qilindi — admin tasdig‘i kutilmoqda.': { ru: 'Заявка принята — ожидается подтверждение администратора.', en: 'Your application was received — awaiting admin approval.' },
+  'Logo': { ru: 'Логотип', en: 'Logo' },
+  'Kvadrat rasm eng yaxshi ko‘rinadi.': { ru: 'Лучше всего смотрится квадратное изображение.', en: 'A square image looks best.' },
+  'Muqova rasmi': { ru: 'Обложка', en: 'Cover image' },
+  'Kompaniya sahifasi va NFC profil foni.': { ru: 'Фон страницы компании и NFC-профиля.', en: 'Background for the company page and NFC profile.' },
+  'Rasmi': { ru: 'Изображение', en: 'Image' },
+  'Fayl tanlash': { ru: 'Выбрать файл', en: 'Choose a file' },
+  'Rasmni almashtirish': { ru: 'Заменить изображение', en: 'Replace image' },
+  'Faylni o‘qib bo‘lmadi.': { ru: 'Не удалось прочитать файл.', en: 'Could not read the file.' },
+  'Rasmni yuklab bo‘lmadi.': { ru: 'Не удалось загрузить изображение.', en: 'Could not upload the image.' },
   // Jismoniy karta kartochkasi — bu satrlar lug'atda yo'q edi va
   // rus/ingliz tiliga o'tilganda o'zbekcha bo'lib qolardi (egasi buni
   // 2026-09 da ko'rsatdi).
