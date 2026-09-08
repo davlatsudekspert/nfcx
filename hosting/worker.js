@@ -3154,6 +3154,276 @@ function paymeCheckoutLinkD1(env, orderId, amountSom) {
   return `https://${domain}/${btoa(params)}`;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// CLICK MERCHANT API (SHOP-API: Prepare / Complete)
+//
+// Payme'dan FARQLARI (shuning uchun alohida yozilgan):
+//   1. Click summani SO'MDA yuboradi ("199000.00"), Payme esa tiyinda.
+//   2. Imzo — Basic Auth emas, har so'rovda MD5 `sign_string`.
+//   3. So'rov tanasi JSON emas, form-encoded (application/x-www-form-urlencoded).
+//   4. Ikki bosqich: Prepare (action=0) — buyurtmani band qilish,
+//      Complete (action=1) — pul o'tgach yakunlash.
+//
+// Yakunlash MANTIG'I QAYTA YOZILMAGAN: Complete aynan Payme ishlatadigan
+// finalizePaidWebOrderD1() ni chaqiradi. Shu sabab karta yaratish,
+// biriktirish, premium yoqish va idempotentlik ikkala to'lov tizimida
+// bir xil — bittasida tuzatilgan xato ikkinchisida qolib ketmaydi.
+//
+// DIQQAT (kalitlar): CLICK_SECRET_KEY faqat Cloudflare secret sifatida
+// saqlanadi, bu faylda yoki repo'da HECH QACHON yozilmaydi. Kalit
+// qo'yilmaguncha clickEnabledD1() false qaytaradi va bu yo'llar xato
+// bilan javob beradi — ya'ni kod deploy qilingani bilan hech narsa
+// ochilib qolmaydi.
+//
+// TEKSHIRISH KERAK: sign_string formulasi va summa formati Click
+// kabinetidagi hujjatga (docs.click.uz) muvofiq bo'lishi shart. Quyidagi
+// formula Click SHOP-API standarti bo'yicha yozilgan; ulanish sinovida
+// birinchi so'rov -1 (SIGN CHECK FAILED) bersa, o'zgartirish kerak
+// bo'lgan yagona joy — clickSignD1().
+
+// MD5 — Workers'ning crypto.subtle'ida yo'q (u faqat SHA oilasini
+// biladi), Click esa imzo uchun aynan MD5 talab qiladi. Shu sabab sof
+// JS'da. To'g'riligi scripts/test-click.mjs'da node:crypto bilan
+// solishtirib tekshiriladi (bo'sh satr, ko'p bloklik matn, o'zbekcha
+// harflar, 55/56/63/64/65 bayt chegaralari).
+const MD5_S_D1 = [
+  7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+  5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+  4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+  6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+];
+const MD5_K_D1 = new Uint32Array(64);
+for (let i = 0; i < 64; i++) MD5_K_D1[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296);
+
+export function md5Hex(text) {
+  const msg = new TextEncoder().encode(String(text));
+  const len = msg.length;
+  const total = ((len + 8) >> 6 << 6) + 64;
+  const buf = new Uint8Array(total);
+  buf.set(msg);
+  buf[len] = 0x80;
+  const dv = new DataView(buf.buffer);
+  const bits = len * 8;
+  dv.setUint32(total - 8, bits >>> 0, true);
+  dv.setUint32(total - 4, Math.floor(bits / 4294967296), true);
+
+  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  const M = new Uint32Array(16);
+  for (let off = 0; off < total; off += 64) {
+    for (let j = 0; j < 16; j++) M[j] = dv.getUint32(off + j * 4, true);
+    let A = a0, B = b0, C = c0, D = d0;
+    for (let i = 0; i < 64; i++) {
+      let F, g;
+      if (i < 16) { F = (B & C) | (~B & D); g = i; }
+      else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+      else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+      else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+      F = (F + A + MD5_K_D1[i] + M[g]) >>> 0;
+      A = D; D = C; C = B;
+      const s = MD5_S_D1[i];
+      B = (B + (((F << s) | (F >>> (32 - s))) >>> 0)) >>> 0;
+    }
+    a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
+  }
+  const out = new Uint8Array(16);
+  const odv = new DataView(out.buffer);
+  odv.setUint32(0, a0, true); odv.setUint32(4, b0, true);
+  odv.setUint32(8, c0, true); odv.setUint32(12, d0, true);
+  return Array.from(out, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Click xato kodlari (rasmiy ro'yxat). Javobda `error` maydoni shu
+// qiymatlardan biri bo'ladi; 0 — muvaffaqiyat.
+const CLICK_ERR = {
+  OK: 0,
+  SIGN: -1,           // imzo mos kelmadi
+  AMOUNT: -2,         // summa noto'g'ri
+  ACTION: -3,         // bunday action yo'q
+  ALREADY_PAID: -4,   // allaqachon to'langan
+  NO_ORDER: -5,       // buyurtma/foydalanuvchi topilmadi
+  NO_TRANS: -6,       // tranzaksiya topilmadi
+  UPDATE_FAILED: -7,  // yakunlab bo'lmadi
+  BAD_REQUEST: -8,    // so'rovda xato
+  CANCELLED: -9,      // tranzaksiya bekor qilingan
+};
+
+// Imzo. Prepare'da merchant_prepare_id QATNASHMAYDI, Complete'da esa
+// merchant_trans_id dan KEYIN qo'shiladi — tartib muhim.
+function clickSignD1(env, p, { withPrepareId }) {
+  const secret = String(env.CLICK_SECRET_KEY || '');
+  const parts = [
+    p.click_trans_id, p.service_id, secret, p.merchant_trans_id,
+    ...(withPrepareId ? [p.merchant_prepare_id] : []),
+    p.amount, p.action, p.sign_time,
+  ];
+  return md5Hex(parts.map((v) => (v == null ? '' : String(v))).join(''));
+}
+
+// Doimiy vaqtli taqqoslash — imzoni belgima-belgi taxmin qilib
+// topishga (timing attack) yo'l qoldirmaslik uchun.
+function clickSignMatchesD1(env, p, opts) {
+  const want = clickSignD1(env, p, opts);
+  const got = String(p.sign_string || '').toLowerCase();
+  if (got.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ got.charCodeAt(i);
+  return diff === 0;
+}
+
+// Click summani so'mda ("199000.00") yuboradi. Tiyinga o'tkazib
+// solishtiramiz — "199000" ham, "199000.00" ham, "199000.0" ham
+// bir xil qabul qilinadi, lekin 199000.5 emas.
+function clickAmountMatchesD1(received, priceSom) {
+  const got = Number(String(received == null ? '' : received).trim());
+  if (!Number.isFinite(got)) return false;
+  return Math.round(got * 100) === Math.round(Number(priceSom) * 100);
+}
+
+// To'lov havolasi. return_url ixtiyoriy (CLICK_RETURN_URL).
+function clickCheckoutLinkD1(env, orderId, amountSom) {
+  const serviceId = String(env.CLICK_SERVICE_ID || '').trim();
+  const merchantId = String(env.CLICK_MERCHANT_ID || '').trim();
+  const amount = Number(amountSom);
+  if (!serviceId || !merchantId || !orderId || !Number.isFinite(amount) || amount <= 0) return '';
+  const q = new URLSearchParams({
+    service_id: serviceId,
+    merchant_id: merchantId,
+    amount: String(amount),
+    transaction_param: String(orderId),
+  });
+  const ret = String(env.CLICK_RETURN_URL || '').trim();
+  if (ret) q.set('return_url', ret);
+  return `https://my.click.uz/services/pay?${q.toString()}`;
+}
+
+// Click so'rovi form-encoded keladi; ba'zi sinov vositalari JSON yuboradi —
+// ikkalasi ham qabul qilinadi.
+async function clickParamsD1(request) {
+  const ctype = String(request.headers.get('content-type') || '').toLowerCase();
+  try {
+    if (ctype.includes('application/json')) return await request.json();
+    const form = await request.formData();
+    const out = {};
+    for (const [k, v] of form.entries()) out[k] = typeof v === 'string' ? v : '';
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+const clickFail = (p, code, note) => ({
+  click_trans_id: p?.click_trans_id ?? null,
+  merchant_trans_id: p?.merchant_trans_id ?? null,
+  error: code,
+  error_note: note,
+});
+
+async function handleClickPrepareD1(env, p) {
+  if (!clickSignMatchesD1(env, p, { withPrepareId: false })) return clickFail(p, CLICK_ERR.SIGN, 'SIGN CHECK FAILED');
+
+  const orderId = Number(p.merchant_trans_id);
+  if (!Number.isInteger(orderId) || orderId <= 0) return clickFail(p, CLICK_ERR.NO_ORDER, 'Order not found');
+  const order = await getWebOrderD1(env, orderId);
+  if (!order) return clickFail(p, CLICK_ERR.NO_ORDER, 'Order not found');
+  if (!clickAmountMatchesD1(p.amount, order.price)) return clickFail(p, CLICK_ERR.AMOUNT, 'Incorrect parameter amount');
+  if (order.status === 'paid') return clickFail(p, CLICK_ERR.ALREADY_PAID, 'Already paid');
+  if (order.status !== 'pending') return clickFail(p, CLICK_ERR.CANCELLED, 'Transaction cancelled');
+
+  const now = nowTs();
+  // Takroriy Prepare (Click qayta yuborsa) — YANGI qator yaratilmaydi,
+  // o'sha merchant_prepare_id qaytadi. Aks holda bitta buyurtma uchun
+  // bir nechta tranzaksiya paydo bo'lardi.
+  const existing = await env.DB.prepare(
+    `SELECT id, order_id, status FROM click_transactions WHERE click_trans_id = ?`,
+  ).bind(String(p.click_trans_id)).first();
+  if (existing) {
+    if (existing.status === 'paid') return clickFail(p, CLICK_ERR.ALREADY_PAID, 'Already paid');
+    if (existing.status === 'cancelled') return clickFail(p, CLICK_ERR.CANCELLED, 'Transaction cancelled');
+    return {
+      click_trans_id: p.click_trans_id,
+      merchant_trans_id: String(orderId),
+      merchant_prepare_id: Number(existing.id),
+      error: CLICK_ERR.OK,
+      error_note: 'Success',
+    };
+  }
+
+  const row = await env.DB.prepare(
+    `INSERT INTO click_transactions (click_trans_id, order_id, amount, click_paydoc_id, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'prepared', ?, ?) RETURNING id`,
+  ).bind(String(p.click_trans_id), orderId, String(p.amount ?? ''), String(p.click_paydoc_id ?? ''), now, now).first();
+  if (!row) return clickFail(p, CLICK_ERR.UPDATE_FAILED, 'Failed to prepare');
+
+  return {
+    click_trans_id: p.click_trans_id,
+    merchant_trans_id: String(orderId),
+    merchant_prepare_id: Number(row.id),
+    error: CLICK_ERR.OK,
+    error_note: 'Success',
+  };
+}
+
+async function handleClickCompleteD1(env, p) {
+  if (!clickSignMatchesD1(env, p, { withPrepareId: true })) return clickFail(p, CLICK_ERR.SIGN, 'SIGN CHECK FAILED');
+
+  const tx = await env.DB.prepare(
+    `SELECT id, order_id, status FROM click_transactions WHERE click_trans_id = ?`,
+  ).bind(String(p.click_trans_id)).first();
+  if (!tx) return clickFail(p, CLICK_ERR.NO_TRANS, 'Transaction does not exist');
+  if (String(tx.id) !== String(p.merchant_prepare_id)) return clickFail(p, CLICK_ERR.NO_TRANS, 'Transaction does not exist');
+
+  const now = nowTs();
+  // Click o'zi manfiy `error` yuborsa — to'lov o'tmagan/bekor qilingan.
+  // Bunda buyurtmaga UMUMAN tegilmaydi (u 'pending' qoladi va odam qayta
+  // urinishi mumkin), faqat shu tranzaksiya bekor deb belgilanadi.
+  if (Number(p.error) < 0) {
+    if (tx.status !== 'paid') {
+      await env.DB.prepare(`UPDATE click_transactions SET status = 'cancelled', updated_at = ? WHERE id = ?`)
+        .bind(now, tx.id).run();
+    }
+    return clickFail(p, CLICK_ERR.CANCELLED, 'Transaction cancelled');
+  }
+
+  if (tx.status === 'paid') return clickFail(p, CLICK_ERR.ALREADY_PAID, 'Already paid');
+  if (tx.status === 'cancelled') return clickFail(p, CLICK_ERR.CANCELLED, 'Transaction cancelled');
+
+  const order = await getWebOrderD1(env, Number(tx.order_id));
+  if (!order) return clickFail(p, CLICK_ERR.NO_ORDER, 'Order not found');
+  if (!clickAmountMatchesD1(p.amount, order.price)) return clickFail(p, CLICK_ERR.AMOUNT, 'Incorrect parameter amount');
+
+  // Payme bilan AYNAN bir xil yakunlash yo'li.
+  const result = await finalizePaidWebOrderD1(env, order.id);
+  if (!result?.ok) {
+    // Buyurtma 'pending' qoladi — admin ko'rib chiqishi mumkin.
+    console.error('click complete', order.id, JSON.stringify(result));
+    return clickFail(p, CLICK_ERR.UPDATE_FAILED, 'Failed to update user');
+  }
+  await env.DB.prepare(`UPDATE click_transactions SET status = 'paid', updated_at = ? WHERE id = ?`)
+    .bind(now, tx.id).run();
+
+  return {
+    click_trans_id: p.click_trans_id,
+    merchant_trans_id: String(order.id),
+    merchant_confirm_id: Number(tx.id),
+    error: CLICK_ERR.OK,
+    error_note: 'Success',
+  };
+}
+
+// Yagona kirish nuqtasi. Click kabinetida Prepare va Complete uchun
+// alohida manzil so'ralsa — /api/pay/click/prepare va /.../complete;
+// bitta manzil so'ralsa — /api/pay/click (action bo'yicha ajratadi).
+async function handleClickRequestD1(env, request, forced) {
+  const p = await clickParamsD1(request);
+  if (!p) return { error: CLICK_ERR.BAD_REQUEST, error_note: 'Error in request from click' };
+  if (!clickEnabledD1(env)) return clickFail(p, CLICK_ERR.BAD_REQUEST, 'Service is not available');
+
+  const action = forced != null ? forced : Number(p.action);
+  if (action === 0) return handleClickPrepareD1(env, { ...p, action: p.action ?? '0' });
+  if (action === 1) return handleClickCompleteD1(env, { ...p, action: p.action ?? '1' });
+  return clickFail(p, CLICK_ERR.ACTION, 'Action not found');
+}
+
 async function handlePaymeRequestD1(env, body) {
   const { method, params, id } = body || {};
   const orderId = Number(params?.account?.order_id);
@@ -3374,6 +3644,7 @@ async function handlePaymeRequestD1(env, body) {
 // Node'dagi test (scripts/payme-order-flow-test.mjs) uchun nomlangan
 // export — Workers runtime faqat `export default { fetch }`ni ishlatadi.
 export {
+  clickEnabledD1, clickCheckoutLinkD1, clickSignD1, handleClickRequestD1,
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
   setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
   finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1,
