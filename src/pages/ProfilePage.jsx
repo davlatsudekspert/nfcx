@@ -377,7 +377,8 @@ function loadYouTubeApi() {
 // proxy qilinmaydi; ijro paytida rasmiy player KO'RINIB turadi (>= 200x200,
 // display:none / opacity:0 / 1x1 / ekran tashqarisi YO'Q, ustiga element
 // qo'yilmaydi); birinchi ijro faqat foydalanuvchining Play bosishi bilan.
-function MusicPlayer({ urls = [], accentColor, onOpenChange }) {
+// `ownerName` va `coverUrl` — qulf ekranidagi kartochka uchun (MediaSession).
+function MusicPlayer({ urls = [], accentColor, onOpenChange, ownerName = '', coverUrl = '' }) {
   const audioRef = useRef(null);
   const ytHostRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -537,6 +538,64 @@ function MusicPlayer({ urls = [], accentColor, onOpenChange }) {
     if (playing) { el.pause(); setPlaying(false); }
     else el.play().then(() => setPlaying(true)).catch(() => {});
   };
+
+  // ─── EKRAN O'CHGANDA HAM IJRO (MediaSession) ────────────────────────
+  //
+  // MUAMMO: telefonda ekran o'chsa yoki brauzer fonga o'tsa, o'zimiz
+  // yuklagan qo'shiq to'xtab qolardi. Sabab — sahifa oddiy <audio> chalsa,
+  // tizim uni "haqiqiy musiqa" deb tanimaydi va fonda ovozni to'xtatadi.
+  //
+  // YECHIM: MediaSession orqali tizimga trekning nomi, rasmi va boshqaruv
+  // tugmalari beriladi. Shunda Android/iOS uni musiqa ilovasidek qabul
+  // qiladi: ijro fonda davom etadi va QULF EKRANIDA Play/Pauza/keyingi
+  // tugmalari chiqadi.
+  //
+  // FAQAT O'ZIMIZNING FAYLLAR uchun. YouTube'ni bu yo'l bilan fonda
+  // chaldirib bo'lmaydi — YouTube o'z qoidasi bilan mobil brauzerda buni
+  // bloklaydi, va uni chetlab o'tish ularning shartlarini buzadi.
+  useEffect(() => {
+    if (ytId || ydFrag) return undefined;
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return undefined;
+    const ms = navigator.mediaSession;
+    try {
+      ms.metadata = new window.MediaMetadata({
+        title: title || t('Musiqa'),
+        artist: ownerName || 'NFCSTORE',
+        album: 'NFCSTORE',
+        // Qulf ekranidagi rasm — profil rasmi bo'lsa o'sha, bo'lmasa logotip.
+        artwork: [{ src: coverUrl || '/logo-512.png', sizes: '512x512', type: 'image/png' }],
+      });
+    } catch { /* eski brauzer — metadata bo'lmasa ham ijro ishlaydi */ }
+
+    const el = () => audioRef.current;
+    const handlers = [
+      ['play', () => { const a = el(); if (a) a.play().then(() => setPlaying(true)).catch(() => {}); }],
+      ['pause', () => { const a = el(); if (a) { a.pause(); setPlaying(false); } }],
+      ['previoustrack', urls.length > 1 ? () => switchTrack(-1) : null],
+      ['nexttrack', urls.length > 1 ? () => switchTrack(1) : null],
+      ['seekto', (d) => { const a = el(); if (a && d && d.seekTime != null) a.currentTime = d.seekTime; }],
+    ];
+    for (const [name, fn] of handlers) {
+      // Brauzer qo'llab-quvvatlamaydigan amal `setActionHandler` da
+      // xato beradi — qolganlari baribir o'rnatilishi kerak.
+      try { ms.setActionHandler(name, fn); } catch { /* qo'llab-quvvatlanmaydi */ }
+    }
+    return () => {
+      for (const [name] of handlers) {
+        try { ms.setActionHandler(name, null); } catch { /* ignore */ }
+      }
+    };
+    // `trackIndex` va `playing` ham bog'liqliklarda: ularsiz qulf
+    // ekranidagi "keyingi trek" tugmasi ESKI trek raqamini eslab qolib,
+    // bir necha trekdan keyin noto'g'ri joyga sakrardi.
+  }, [ytId, ydFrag, title, urls.length, ownerName, coverUrl, t, trackIndex, playing]);
+
+  // Tizim qulf ekranida to'g'ri holatni ko'rsatishi uchun.
+  useEffect(() => {
+    if (ytId || ydFrag) return;
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'; } catch { /* ignore */ }
+  }, [playing, ytId, ydFrag]);
 
   // Audio: trek almashganda ijroni davom ettirish.
   useEffect(() => {
@@ -1804,6 +1863,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])}
               accentColor={record.accentColor}
               onOpenChange={setMusicOpen}
+              ownerName={record.name || ''}
+              coverUrl={record.avatarUrl || ''}
             />
 
             <div className="mt-[22px] flex flex-col gap-2.5">
