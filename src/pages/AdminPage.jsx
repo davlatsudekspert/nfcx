@@ -809,18 +809,36 @@ function PaymeTestOrder() {
 //     yoki umuman yo'q. Bu ochiq aytiladi.
 const PRINT_PX = [2022, 1276];
 
+// Maket `/uploads/...` da yotadi, lekin u yerdan OLINMAYDI.
+//
+// `/uploads/*` so'rovi Worker'ga yetib borishi Cloudflare marshrutiga
+// bog'liq. Marshrut yo'q (yoki boshqa Worker'ga qo'yilgan) bo'lsa,
+// so'rovni saytning o'zi ushlab qoladi va PNG o'rniga `index.html`
+// qaytaradi. Brauzer uni jimgina ".png" nomi bilan saqlaydi — natijada
+// ~4 KB "rasm" chiqadi va hech qayerda ochilmaydi. Xuddi shu bo'ldi:
+// har xil buyurtmalarning ham old, ham orqa tomoni bir xil 4 KB edi
+// (haqiqiy PNG'lar hech qachon bir xil hajmda bo'lmaydi).
+//
+// `/api/*` esa aniq ishlaydi — butun admin paneli shu orqali yuradi.
+// Shuning uchun tipografiyaga ketadigan fayl shu yo'ldan olinadi.
+const printSrc = (url) => {
+  const m = /\/(cardprint_[0-9a-f]{24}\.png)$/.exec(String(url || ''));
+  return m ? `/api/admin/card-print/${m[1]}` : url;
+};
+
 function PrintSide({ order, label, url, slug }) {
   const { t } = useLanguage();
   const [size, setSize] = useState(null);   // [w, h]
   const [broken, setBroken] = useState(false);
   const exact = size && size[0] === PRINT_PX[0] && size[1] === PRINT_PX[1];
+  const src = printSrc(url);
 
   return (
     <div className="flex flex-col items-start gap-2">
       <div className="vz-kicker">{t(label)}</div>
-      <a href={url} target="_blank" rel="noopener noreferrer">
+      <a href={src} target="_blank" rel="noopener noreferrer">
         <img
-          src={url} alt={t(label)} loading="lazy"
+          src={src} alt={t(label)} loading="lazy"
           onLoad={(e) => setSize([e.currentTarget.naturalWidth, e.currentTarget.naturalHeight])}
           onError={() => setBroken(true)}
           className="h-[104px] w-[165px] rounded-lg border border-white/15 bg-black object-cover"
@@ -841,7 +859,7 @@ function PrintSide({ order, label, url, slug }) {
       {/* `download` — bir bosishda tipografiyaga beriladigan fayl.
           Nomi buyurtma raqami bilan: papkada aralashib ketmasin. */}
       <a
-        href={url}
+        href={src}
         download={`nfcstore_${order.code || 'karta'}_${order.id}_${slug}.png`}
         className="btn btn-outline-gold btn-xs min-h-9"
       >

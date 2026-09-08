@@ -191,4 +191,41 @@ let goodBack = '';
   }
 }
 
+// ── 5) Maketni ADMIN API orqali olish ──────────────────────────────────
+// `/uploads/*` so'rovi Worker'ga yetib borishi Cloudflare marshrutiga
+// bog'liq edi: marshrut bo'lmasa saytning o'zi javob berib, PNG o'rniga
+// `index.html` qaytarardi — admin ~4 KB "rasm" yuklab olardi va u
+// ochilmasdi. Shuning uchun tipografiyaga ketadigan fayl endi aniq
+// ishlaydigan `/api/*` yo'lidan ham beriladi.
+{
+  const name = goodFront.split('/').pop();
+  const raw = async (pathname, init) => {
+    const res = await worker.fetch(req(pathname, init), env);
+    return { res, bytes: Buffer.from(await res.arrayBuffer()) };
+  };
+
+  const anon = await raw(`/api/admin/card-print/${name}`);
+  check('5) sessiyasiz -> ochilmaydi', anon.res.status === 200, false);
+
+  const ok = await raw(`/api/admin/card-print/${name}`, { cookie: cookie.admin });
+  check('5b) admin uchun ochiladi', ok.res.status, 200);
+  check('5c) turi qat\'iy image/png', ok.res.headers.get('content-type'), 'image/png');
+  // Eng muhimi: javob HTML emas, AYNAN yuklangan PNG baytlari.
+  checkTrue('5d) baytlar asl PNG bilan bir xil', ok.bytes.equals(PNG));
+  checkTrue('5e) HTML emas', !ok.bytes.subarray(0, 64).toString('latin1').toLowerCase().includes('<!doctype'));
+
+  // Yo'l nomi qat'iy shaklda: boshqa kalitga o'tib bo'lmaydi.
+  for (const bad of ['cardprint_zzz.png', '../uploads/secret.png', 'avatar_1.png', 'cardprint_0123456789abcdef01234567.png']) {
+    const r = await raw(`/api/admin/card-print/${bad}`, { cookie: cookie.admin });
+    check(`5f) rad etiladi: ${bad}`, r.res.status === 200, false);
+  }
+
+  // Admin ro'yxatidagi havola shu fayl nomini saqlaydi — interfeys uni
+  // `/api/admin/card-print/...` ga aylantiradi.
+  const list = await call('/api/admin/orders', { cookie: cookie.admin });
+  const row = (list.body.orders || []).find((o) => o.designFrontUrl);
+  checkTrue('5g) ro\'yxatdagi havola cardprint fayliga ishora qiladi',
+    /\/cardprint_[0-9a-f]{24}\.png$/.test(row?.designFrontUrl || ''));
+}
+
 done();

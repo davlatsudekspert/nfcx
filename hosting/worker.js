@@ -4643,6 +4643,43 @@ async function adminCoreApi(request, env, url, admin) {
     return json({ ok: true });
   }
 
+  // GET /api/admin/card-print/cardprint_<24hex>.png — bosma maketni
+  // ADMIN API yo'li orqali berish.
+  //
+  // NEGA IKKINCHI YO'L. Maket R2'da `/uploads/cardprint_*.png` bo'lib
+  // yotibdi va uni `/uploads/*` yo'li ham beradi. Lekin `/uploads/*`
+  // Worker'ga YETIB KELISHI Cloudflare marshrutiga bog'liq: marshrut
+  // yo'q yoki noto'g'ri Worker'ga qo'yilgan bo'lsa, so'rovni sayt
+  // (SPA) ushlab qoladi va PNG o'rniga `index.html` qaytaradi —
+  // brauzer uni ~4 KB "png" qilib yuklab oladi, fayl esa ochilmaydi.
+  // Aynan shu bo'ldi: har xil buyurtmalarning har ikki tomoni ham
+  // bir xil 4 KB chiqdi (PNG'lar hech qachon bir xil hajmda bo'lmaydi).
+  //
+  // `/api/*` marshruti esa aniq ishlayapti — butun sayt shu orqali
+  // yuradi. Shuning uchun tipografiyaga ketadigan FAYL endi shu
+  // ishonchli yo'ldan beriladi.
+  //
+  // XAVFSIZLIK: fayl nomi qat'iy shaklda tekshiriladi (`..` yoki
+  // boshqa kalit yo'lga tushmasin) va javob faqat admin sessiyasi
+  // bilan keladi — bu funksiya allaqachon admin tekshiruvidan keyin
+  // chaqiriladi.
+  const cardPrintMatch = /^\/api\/admin\/card-print\/(cardprint_[0-9a-f]{24}\.png)$/.exec(path);
+  if (cardPrintMatch && ['GET', 'HEAD'].includes(request.method)) {
+    if (!env.UPLOADS) return json({ error: 'r2_unavailable' }, 503);
+    const key = `uploads/${cardPrintMatch[1]}`;
+    const obj = await env.UPLOADS.get(key);
+    if (!obj) return json({ error: 'not_found' }, 404);
+    const headers = new Headers();
+    // Turi QAT'IY belgilanadi: R2'dagi metama'lumot yo'qolgan bo'lsa ham
+    // brauzer buni HTML deb o'ylab qolmasin.
+    headers.set('content-type', 'image/png');
+    headers.set('cache-control', 'private, max-age=300');
+    headers.set('x-content-type-options', 'nosniff');
+    if (obj.size != null) headers.set('content-length', String(obj.size));
+    if (request.method === 'HEAD') return new Response(null, { status: 200, headers });
+    return new Response(obj.body, { status: 200, headers });
+  }
+
   if (path === '/api/admin/physical-cards' && request.method === 'GET') {
     const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT 100`).all();
     return json({ cards: (rows.results || []).map((r) => ({ id: r.id, chipToken: r.chip_token, linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: r.shipping_phone, shippingAddress: r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
