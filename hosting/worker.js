@@ -1133,6 +1133,7 @@ async function companyAdminApi(request, env, url) {
     const ruleBy = new Map((rules.results || []).map((r) => [String(r.company_id).toUpperCase(), r]));
     const out = [];
     for (const [level, names] of [
+      ['level_top', COMPANY_PREMIUM_NAMES.level_top],
       ['level_0', COMPANY_PREMIUM_NAMES.level_0], ['level_1', COMPANY_PREMIUM_NAMES.level_1],
       ['level_2', COMPANY_PREMIUM_NAMES.level_2], ['level_3', COMPANY_PREMIUM_NAMES.level_3],
       ['level_4', COMPANY_PREMIUM_NAMES.level_4],

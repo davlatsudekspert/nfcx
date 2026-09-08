@@ -9,10 +9,20 @@ const j = async (p, init = {}) => { const r = await worker.fetch(req(p, { cookie
 
 const r = await j('/api/admin/premium-company-names');
 check('1) 200', r.status, 200);
-check('2) 223 ta nom', (r.body?.names || []).length, 223);
+check('2) 235 ta nom (KING Level 2 dan level_top ga ko‘chdi)', (r.body?.names || []).length, 235);
 const by = Object.fromEntries((r.body?.names || []).map((x) => [x.name, x]));
 check('3) BANK level_0 4 990 000 AVAILABLE', [by.BANK?.level, by.BANK?.price, by.BANK?.status], ['level_0', 4990000, 'AVAILABLE']);
 check('3) PIZZA level_4 990 000', [by.PIZZA?.level, by.PIZZA?.price], ['level_4', 990000]);
+
+// Eng yuqori daraja (egasining ro'yxati) — 9 990 000. Admin ro'yxatida
+// ham, ochiq qidiruvda ham AYNAN shu narx chiqishi kerak: ikkalasi bir
+// manbadan (src/lib/exclusivePricing.js) o'qiydi, lekin qidiruv yo'li
+// boshqa (companyAvailability) — shuning uchun ikkalasi tekshiriladi.
+for (const name of ['KING', 'ONE', 'UZB', 'USD', 'EURO', 'UFC', 'AMG', 'GTR', 'BIR', 'ONA', 'OTA', 'OYI', 'ADA']) {
+  check(`3t) ${name} level_top 9 990 000`, [by[name]?.level, by[name]?.price], ['level_top', 9990000]);
+  const q = await j(`/api/companies/check?id=${name}`);
+  check(`3t) ${name} qidiruvda ham`, [q.body?.available, q.body?.price, q.body?.premiumName], [true, 9990000, true]);
+}
 
 // Admin qo'lda narx qo'ysa — u avtomatik narxdan USTUN.
 await j('/api/admin/company-id-rules', { method: 'PUT', json: { companyId: 'BANK', rule: 'allow', priceOverride: 7000000, note: 'maxsus' } });

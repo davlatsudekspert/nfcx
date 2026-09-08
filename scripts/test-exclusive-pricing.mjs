@@ -107,6 +107,14 @@ check('4) XYZ412 avvalgidek Bronza', getPersonalPurchaseQuote('XYZ412'), { purch
 
 // ── 5) Kompaniya premium nomlari ──────────────────────────────────────
 const COMPANY = [
+  // Eng yuqori daraja (egasining ro'yxati) — 9 990 000
+  ['KING', 'level_top', 9990000], ['ONE', 'level_top', 9990000],
+  ['UZB', 'level_top', 9990000], ['USD', 'level_top', 9990000],
+  ['EURO', 'level_top', 9990000], ['UFC', 'level_top', 9990000],
+  ['AMG', 'level_top', 9990000], ['GTR', 'level_top', 9990000],
+  ['BIR', 'level_top', 9990000], ['ONA', 'level_top', 9990000],
+  ['OTA', 'level_top', 9990000], ['OYI', 'level_top', 9990000],
+  ['ADA', 'level_top', 9990000],
   ['BANK', 'level_0', 4990000], ['MARKET', 'level_0', 4990000], ['VIP', 'level_0', 4990000],
   ['AERO', 'level_1', 3990000], ['META', 'level_1', 3990000],
   ['CAFE', 'level_2', 2990000], ['TAXI', 'level_2', 2990000],
@@ -123,13 +131,22 @@ check('5) "co ca"/tire/kichik harf ham topiladi', SRC.companyPremiumLevel('re-al
 
 // ── 6) Bitta nom ikki darajada bo'lib qolmasin ────────────────────────
 const seen = new Map();
-for (const key of ['COMPANY_LEVEL_0', 'COMPANY_LEVEL_1', 'COMPANY_LEVEL_2', 'COMPANY_LEVEL_3', 'COMPANY_LEVEL_4']) {
+for (const key of ['COMPANY_LEVEL_TOP', 'COMPANY_LEVEL_0', 'COMPANY_LEVEL_1', 'COMPANY_LEVEL_2', 'COMPANY_LEVEL_3', 'COMPANY_LEVEL_4']) {
   for (const n of SRC.ALL_LISTS[key]) {
     if (seen.has(n)) fail += (console.log('FAIL - 6) takror:', n, seen.get(n), key), 1);
     else seen.set(n, key);
   }
 }
-check('6) kompaniya nomlarida takror yo‘q', seen.size, 30 + 45 + 82 + 20 + 46);
+// KING Level 2 dan CHIQARILDI (endi level_top) — shuning uchun 82 emas 81.
+check('6) kompaniya nomlarida takror yo‘q', seen.size, 13 + 30 + 45 + 81 + 20 + 46);
+
+// ── 7) Eng yuqori daraja ro'yxati AYNAN egasi bergan nomlar ───────────
+// Ro'yxatga tasodifan nom qo'shilib qolsa (yoki tushib qolsa) — 9 990 000
+// lik nom jimgina ko'payib/kamayib ketardi. Shuning uchun aniq solishtiriladi.
+check('7) level_top ro‘yxati', [...SRC.ALL_LISTS.COMPANY_LEVEL_TOP].sort(),
+  ['ADA', 'AMG', 'BIR', 'EURO', 'GTR', 'KING', 'ONA', 'ONE', 'OTA', 'OYI', 'UFC', 'USD', 'UZB']);
+check('7) KING endi Level 2 da emas', SRC.ALL_LISTS.COMPANY_LEVEL_2.includes('KING'), false);
+check('7) Worker nusxasida ham narx bir xil', GEN.COMPANY_PREMIUM_PRICE.level_top, 9990000);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

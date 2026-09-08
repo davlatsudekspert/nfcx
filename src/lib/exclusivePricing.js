@@ -200,12 +200,21 @@ export function exclusiveLevel(rawCode) {
 // ─── KOMPANIYA PREMIUM NOMLARI ────────────────────────────────────────
 
 export const COMPANY_PREMIUM_PRICE = {
+  // ENG YUQORI DARAJA (2026-09, egasining qarori). Bu nomlar qisqa,
+  // xalqaro va O'zbekistonda hammaga tanish — shuning uchun Level 0 dan
+  // ham yuqorida turadi.
+  level_top: 9990000,
   level_0: 4990000,
   level_1: 3990000,
   level_2: 2990000,
   level_3: 1990000,
   level_4: 990000,
 };
+
+const COMPANY_LEVEL_TOP = [
+  'ADA', 'AMG', 'BIR', 'EURO', 'GTR', 'KING', 'ONA', 'ONE', 'OTA', 'OYI',
+  'UFC', 'USD', 'UZB',
+];
 
 const COMPANY_LEVEL_0 = [
   'AUTO', 'BANK', 'BRAND', 'BUSINESS', 'CAPITAL', 'COMPANY', 'CREDIT', 'DIGITAL',
@@ -228,7 +237,7 @@ const COMPANY_LEVEL_2 = [
   'CASH', 'CHECKOUT', 'CITY', 'CLUB', 'CODE', 'COFFEE', 'CONNECT', 'CREATE',
   'DELIVERY', 'DEPOSIT', 'DESIGN', 'DIGIT', 'DISCOUNT', 'EVENTS', 'EXPO', 'FAST',
   'FITNESS', 'FOOD', 'FOOTBALL', 'FORECAST', 'GAME', 'GAMES', 'GEMS', 'GENIUS',
-  'GIFT', 'GIFTS', 'GRAND', 'HOME', 'HOST', 'HOTELS', 'INTERIOR', 'KING', 'LAND',
+  'GIFT', 'GIFTS', 'GRAND', 'HOME', 'HOST', 'HOTELS', 'INTERIOR', 'LAND',
   'LEGEND', 'LINK', 'LIVE', 'LOCAL', 'LOGO', 'MALL', 'MASTER', 'MEDIA', 'NEWS',
   'OFFICE', 'ORDER', 'PLANE', 'PLAYER', 'PLUS', 'PORT', 'PRICE', 'PROMO', 'QRCODE',
   'SALE', 'SCHOOL', 'SERVER', 'SERVICE', 'STAR', 'STARS', 'STUDIO', 'SUPER',
@@ -252,6 +261,7 @@ const COMPANY_LEVEL_4 = [
 ];
 
 const COMPANY_SETS = [
+  ['level_top', new Set(COMPANY_LEVEL_TOP)],
   ['level_0', new Set(COMPANY_LEVEL_0)],
   ['level_1', new Set(COMPANY_LEVEL_1)],
   ['level_2', new Set(COMPANY_LEVEL_2)],
@@ -272,6 +282,7 @@ export function companyPremiumLevel(rawName) {
 
 // Admin paneli uchun — daraja bo'yicha kompaniya nomlari.
 export const COMPANY_PREMIUM_NAMES = {
+  level_top: COMPANY_LEVEL_TOP,
   level_0: COMPANY_LEVEL_0, level_1: COMPANY_LEVEL_1, level_2: COMPANY_LEVEL_2,
   level_3: COMPANY_LEVEL_3, level_4: COMPANY_LEVEL_4,
 };
@@ -279,5 +290,5 @@ export const COMPANY_PREMIUM_NAMES = {
 // Testlar va admin paneli uchun — barcha ro'yxatlar bir joyda.
 export const ALL_LISTS = {
   SPECIAL_4490, SPECIAL_3490, LEVEL_0_EXTRA, LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4,
-  COMPANY_LEVEL_0, COMPANY_LEVEL_1, COMPANY_LEVEL_2, COMPANY_LEVEL_3, COMPANY_LEVEL_4,
+  COMPANY_LEVEL_TOP, COMPANY_LEVEL_0, COMPANY_LEVEL_1, COMPANY_LEVEL_2, COMPANY_LEVEL_3, COMPANY_LEVEL_4,
 };

@@ -3793,6 +3793,7 @@ function CompanyIdRequests() {
         />
         <select value={premiumLevel} onChange={(e) => setPremiumLevel(e.target.value)} className="vz-input min-w-0 max-w-44" aria-label={t('Daraja')}>
           <option value="">{t('Barcha darajalar')}</option>
+          <option value="level_top">Level TOP — 9 990 000</option>
           <option value="level_0">Level 0 — 4 990 000</option>
           <option value="level_1">Level 1 — 3 990 000</option>
           <option value="level_2">Level 2 — 2 990 000</option>

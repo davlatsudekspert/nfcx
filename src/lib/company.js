@@ -1,3 +1,5 @@
+import { companyPremiumLevel } from './exclusivePricing.js';
+
 export const COMPANY_STATUS = {
   draft: 'Qoralama',
   pending_review: 'Admin tekshiruvida',
@@ -101,7 +103,21 @@ export function companyIdLocalInfo(value) {
     return { companyId, valid: false, reason: "Faqat A–Z harflari, shuningdek O‘ va G‘ mumkin" };
   }
   const tier = letters === 3 ? 'exclusive' : letters <= 5 ? 'premium' : letters <= 7 ? 'gold' : 'silver';
-  return { companyId, valid: true, tier, price: COMPANY_TIERS[tier].price };
+  // PREMIUM NOM narxi uzunlik tarifidan USTUN — serverdagi bilan bir xil
+  // qoida (hosting/worker.js `companyAvailability`). Bu yerda ham
+  // hisoblanadi, chunki server javobi kelguncha (~320 ms) forma shu
+  // qiymatni ko'rsatadi: aks holda KING uchun avval "990 000", keyin
+  // "9 990 000" chiqib, narx tushayotgandek ko'rinardi.
+  //
+  // Bu BAHO, hakam emas: admin qo'lda narx qo'ygan bo'lsa (price_override)
+  // yoki nom band bo'lsa — server javobi bu qiymatning ustidan yoziladi.
+  const premium = companyPremiumLevel(companyId);
+  return {
+    companyId, valid: true, tier,
+    price: premium ? premium.price : COMPANY_TIERS[tier].price,
+    premiumName: !!premium,
+    premiumLevel: premium ? premium.level : null,
+  };
 }
 
 async function companyApi(path, options) {
