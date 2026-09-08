@@ -88,12 +88,15 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
   check('faollashtirilgan sovg‘a -> isGift (0 so‘m emas)', by.XYZ131?.isGift, true);
   check('katalog kartasida username qo‘shilmagan', by.QWE121?.name, 'Silver ID');
   // 2026-09: VIP001 — egasi bor EKSLYUZIV ID. Ekslyuziv daraja
-  // to'g'ridan-to'g'ri sotilmaydi, demak u sotuvdan o'tmagan — sovg'a.
-  // Katalogda ham, profilda ham summa ko'rsatilmaydi. Muhimi shu ikkalasi
-  // BIR XIL bo'lsin (avval profil belgisi katalogdan farq qilardi).
+  // to'g'ridan-to'g'ri sotilmaydi, demak u sotuvdan o'tmagan — summa
+  // ko'rsatilmaydi. Lekin u SOVG'A ham emas: hech kim uni sovg'a
+  // qilmagan. Ikki belgi ajratilgan — "Sovg'a" va "Sotuvda emas".
+  // Muhimi katalog va profil BIR XIL bo'lsin (avval ular farq qilardi).
   const vip = (await j('/api/records/VIP001')).body;
   check('profil narx belgisi katalog bilan bir xil manbadan', vip?.price, by.VIP001?.price ?? 0);
-  check("ekslyuziv ID profilda ham sovg'a", [vip?.price, vip?.isGift], [0, true]);
+  check("ekslyuziv ID profilda ham \"sotuvda emas\"", [vip?.price, vip?.notForSale, vip?.isGift], [0, true, false]);
+  check('...va katalogdagi belgi bilan bir xil',
+    [by.VIP001?.notForSale, by.VIP001?.isGift], [vip?.notForSale, vip?.isGift]);
 }
 
 done();

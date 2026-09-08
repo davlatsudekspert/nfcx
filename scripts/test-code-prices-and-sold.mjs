@@ -72,8 +72,14 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   const exclusiveListed = ['OOO000', 'VVV444', 'VIP001', 'VIP000'];
   check('ekslyuziv ro\'yxat kodlari katalogda summasiz',
     exclusiveListed.filter((c) => by[c]).map((c) => by[c].price), [0, 0, 0, 0]);
-  check('...va hammasi sovg\'a deb belgilangan',
-    exclusiveListed.filter((c) => by[c]).map((c) => by[c].isGift), [true, true, true, true]);
+  // 2026-09: BELGI AJRATILDI. Egasi bor ekslyuziv ID "Sovg'a" emas —
+  // uni hech kim sovg'a qilmagan, u shunchaki sotilmaydi. Aks holda
+  // Sovg'alar sahifasida "hozircha sovg'a qilingan ID yo'q" xabari
+  // yonida "Sovg'a" belgili kartalar turardi.
+  check('...va hammasi "sotuvda emas" deb belgilangan',
+    exclusiveListed.filter((c) => by[c]).map((c) => by[c].notForSale), [true, true, true, true]);
+  check('...lekin ular SOVG\'A emas',
+    exclusiveListed.filter((c) => by[c]).map((c) => by[c].isGift), [false, false, false, false]);
   check('ekslyuziv BO\'LMAGAN ro\'yxat kodi narxini saqlaydi (BMW007 Premium)', by.BMW007?.price, 199_000);
   checkTrue('BMW007 sovg\'a emas', by.BMW007?.isGift === false);
   // Narx ro'yxatining O'ZI tegilmagan — frontend hisobi avvalgidek.
@@ -87,7 +93,7 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   const hit = (s.body?.records || []).find((x) => x.code === 'OOO000');
   // Qidiruv katalog bilan AYNAN bir xil manbadan — ekslyuziv -> summasiz.
   check('search results use the same price source', hit?.price, 0);
-  check('...va qidiruvda ham sovg\'a belgisi', hit?.isGift, true);
+  check('...va qidiruvda ham "sotuvda emas" belgisi', [hit?.notForSale, hit?.isGift], [true, false]);
 }
 
 // ═══ 4. AUKSION "SOTILGAN" — KATALOGDAN HISOBLANGAN YOZUV YO'Q ═══
@@ -164,9 +170,9 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   const r = await j('/api/records');
   const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
   check('gift card is flagged as a gift', by.GFT100?.isGift, true);
-  // 2026-09: egasi bor EKSLYUZIV ID endi sovg'a deb belgilanadi — u
-  // sotuvdan o'tmagan. Avval bu qator teskarisini tekshirardi.
-  check('egasi bor ekslyuziv ID sovg\'a deb belgilanadi', by.OOO000?.isGift, true);
+  // Egasi bor EKSLYUZIV ID: summasiz, lekin SOVG'A emas — "sotuvda emas".
+  check('egasi bor ekslyuziv ID: sotuvda emas, sovg\'a emas',
+    [by.OOO000?.notForSale, by.OOO000?.isGift], [true, false]);
   check('an ordinary paid card is not a gift', by.OTH222?.isGift, false);
 }
 
@@ -204,8 +210,8 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check('ekslyuziv ID katalogda summasiz (eski 200 000 taklif ham chiqmaydi)', by.OOO000?.price, 0);
   check('VVV444 ham summasiz', by.VVV444?.price, 0);
   check('PPP777 ham summasiz (ekslyuziv)', by.PPP777?.price, 0);
-  check('uchalasi ham sovg\'a belgisi bilan',
-    [by.OOO000?.isGift, by.VVV444?.isGift, by.PPP777?.isGift], [true, true, true]);
+  check('uchalasi ham "sotuvda emas" belgisi bilan',
+    [by.OOO000?.notForSale, by.VVV444?.notForSale, by.PPP777?.notForSale], [true, true, true]);
 
   // "Sotilgan" bo'limi: bu lotlarda taklif bor, lekin PUL TO'LANMAGAN —
   // demak savdo bo'lmagan va ular ro'yxatda chiqmaydi. Aynan shu holat
@@ -319,7 +325,8 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   await env.DB.prepare(`INSERT INTO cards (code, name, price, ts, user_id, profile_type) VALUES ('QWE131','Oddiy', 99000, 4090, 1, 'personal')`).run();
   const r = await j('/api/records');
   const by = Object.fromEntries((r.body || []).map((x) => [x.code, x]));
-  check("tier_override='exclusive' -> sovg'a, summasiz", [by.QWE121?.price, by.QWE121?.isGift], [0, true]);
+  check("tier_override='exclusive' -> summasiz va \"sotuvda emas\"",
+    [by.QWE121?.price, by.QWE121?.notForSale, by.QWE121?.isGift], [0, true, false]);
   checkTrue('override yo\'q karta narxini saqlaydi', by.QWE131?.price > 0 && by.QWE131?.isGift === false);
 }
 

@@ -197,7 +197,9 @@ const byCode = (rows, code) => (rows || []).find((r) => r.code === code) || null
 {
   const r = await j('/api/records/VIP001');
   check("auksiondan o'tmagan ekslyuziv ID -> summa yo'q", r.body?.price, 0);
-  check('...va u sovg\'a deb belgilanadi', r.body?.isGift, true);
+  // 2026-09: belgi ajratildi — u SOVG'A emas, "sotuvda emas"
+  // (hech kim uni sovg'a qilmagan, u shunchaki sotilmaydi).
+  check('...va u "sotuvda emas" deb belgilanadi', [r.body?.notForSale, r.body?.isGift], [true, false]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

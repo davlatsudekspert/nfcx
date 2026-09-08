@@ -86,9 +86,19 @@ export default function CatalogCard({ item: it, idx = 0 }) {
           hisoblanadi (status='activated') — narxi 0 bo'lgani uchun
           EMAS. Oddiy xarid qilingan kartalar narxi o'zgarmaydi. */}
       <div className="cat-foot">
+        {/* Uch xil holat, uchtasi ham ANIQ nomlanadi:
+              «Sovg'a»      — rostdan sovg'a qilingan ID;
+              «Sotuvda emas» — egasi bor ekslyuziv ID (sovg'a emas,
+                               shunchaki sotilmaydi);
+              summa          — qolgan hammasi.
+            Avval birinchi ikkalasi ham "Sovg'a" deb yozilardi va
+            Sovg'alar sahifasida "hozircha sovg'a qilingan ID yo'q"
+            xabari yonida "Sovg'a" belgili kartalar turardi. */}
         {it.isGift
           ? <span className="rounded-full bg-[color:var(--vz-gold,#d4af5a)]/15 px-2.5 py-0.5 text-[13px] font-bold text-[color:var(--vz-gold-2,#f0cf7a)]">{t("Sovg'a")}</span>
-          : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
+          : it.notForSale
+            ? <span className="rounded-full border border-white/12 px-2.5 py-0.5 text-[13px] font-semibold text-base-content/50">{t('Sotuvda emas')}</span>
+            : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
         <span className="cat-when">{timeAgo(it.ts)}</span>
       </div>
     </button>

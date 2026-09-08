@@ -1534,9 +1534,17 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               ))}
             </select>
           )}
+          {/* «Sovg'a» — faqat ROSTDAN sovg'a qilingan ID'da. Egasi bor
+              ekslyuziv ID sovg'a emas: u shunchaki sotilmaydi, narxi ham
+              yo'q — shuning uchun «Sotuvda emas». Avval ikkalasi ham
+              "Sovg'a" deb yozilardi. */}
           {record.isGift ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[15px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
               {'\u{1F381}'} {t("Sovg'a")}
+            </span>
+          ) : record.notForSale ? (
+            <span className="rounded-full border border-[color:var(--vz-line)] px-3 py-1 text-[14px] font-semibold text-[color:var(--vz-ink-faint)]">
+              {t('Sotuvda emas')}
             </span>
           ) : (
             <span className="text-[16px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>

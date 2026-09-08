@@ -2044,7 +2044,11 @@ function catalogCard(record, auctionFinal = null) {
     // kartaga sovg'a yozuvi yarata olmaydi (CODE_TAKEN).
     // Narx bilan AYNAN bir xil qoidadan (isGiftCardD1) — belgi va summa
     // hech qachon bir-biriga zid bo'lmaydi.
-    isGift: isGiftCardD1(record, auctionFinal),
+    // Belgi ikkiga bo'lingan (isRealGiftD1 izohiga qarang): "Sovg'a"
+    // faqat rostdan sovg'a qilingan ID'da, egasi bor ekslyuziv ID esa
+    // "Sotuvda emas". Narx ikkalasida ham ko'rsatilmaydi.
+    isGift: isRealGiftD1(record),
+    notForSale: !isRealGiftD1(record) && isOwnedExclusiveGiftD1(record, auctionFinal),
   };
 }
 
@@ -2064,7 +2068,8 @@ async function getRecord(env, code) {
   const finals = await auctionFinalPricesD1(env);
   const finalPrice = finals.get(String(code || '').toUpperCase()) ?? null;
   rec.price = catalogPriceD1(rec, finalPrice);
-  rec.isGift = isGiftCardD1(rec, finalPrice);
+  rec.notForSale = !isRealGiftD1(rec) && isOwnedExclusiveGiftD1(rec, finalPrice);
+  rec.isGift = isRealGiftD1(rec);
   return rec;
 }
 
@@ -2171,7 +2176,28 @@ function isOwnedExclusiveGiftD1(record, auctionFinal) {
 // shundan hisoblanadi, shuning uchun ular hech qachon bir-biriga zid
 // bo'lmaydi (avval SAV571 katalogda "Sovg'a", auksionda "Sotildi" edi).
 function isGiftCardD1(record, auctionFinal) {
-  return !!record?.isGift || isGiftCodeD1(record?.code) || isOwnedExclusiveGiftD1(record, auctionFinal);
+  return isRealGiftD1(record) || isOwnedExclusiveGiftD1(record, auctionFinal);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// "SOVG'A" va "SOTUVDA EMAS" — IKKI XIL NARSA (2026-09).
+// ─────────────────────────────────────────────────────────────────────────
+// Katalogda summa o'rniga har ikkalasida ham "Sovg'a" yozuvi chiqardi.
+// Natijada Sovg'alar sahifasida bir vaqtning o'zida "Hozircha sovg'a
+// qilingan NFC ID yo'q" degan xabar VA yonida "Sovg'a" belgili kartalar
+// turardi. Ikkalasi ham to'g'ri edi — shunchaki "sovg'a" so'zi ikki xil
+// ma'noda ishlatilgan:
+//
+//   HAQIQIY SOVG'A — kimdir kimgadir sovg'a qilgan ID: admin sovg'asi
+//   (`nfc_gifts`, faollashtirilgan) yoki egasi qo'lda belgilagani.
+//
+//   SOTUVDA EMAS — egasi bor EKSLYUZIV ID. U sovg'a qilinmagan; u
+//   shunchaki to'g'ridan-to'g'ri sotilmaydi, shuning uchun narx yo'q.
+//
+// Narx qoidasi (ikkalasida ham summa ko'rsatilmaydi) O'ZGARMADI —
+// faqat YOZUV ajratildi.
+function isRealGiftD1(record) {
+  return !!record?.isGift || isGiftCodeD1(record?.code);
 }
 
 const PERSONAL_AUCTION_CODES = [
