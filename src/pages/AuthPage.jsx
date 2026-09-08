@@ -273,7 +273,12 @@ export default function AuthPage({ mode }) {
                 odam formani to'ldirib, tugmani topa olmasdi. Ikki ustun
                 to'rt qatorni yo'q qiladi. Telefonda avvalgidek bitta
                 ustun (`sm:` dan boshlanadi). */}
-            {isRegister && <div className="grid gap-3 sm:grid-cols-2">
+            {/* O'rovchi <div> HAR DOIM render bo'ladi. Avval u
+                `{isRegister && <div ...>` ichida edi — kirishda esa bu
+                butun blokni, ya'ni PAROL MAYDONINI ham yo'q qilardi va
+                akkauntga kirib bo'lmasdi. Ikki ustun faqat ro'yxatdan
+                o'tishda kerak, shuning uchun farq endi faqat SINFDA. */}
+            <div className={isRegister ? 'grid gap-3 sm:grid-cols-2' : 'space-y-2.5'}>
             {isRegister && (
               <label className="form-control">
                 <span className="text-xs font-semibold text-base-content/70">{t('Telefon raqamingiz')}</span>
@@ -345,7 +350,7 @@ export default function AuthPage({ mode }) {
                   className="input input-bordered mt-1 w-full bg-base-100 font-mono uppercase" />
               </label>
             )}
-            </div>}
+            </div>
             {isRegister && (
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" checked={tosAccepted} onChange={(e) => setTosAccepted(e.target.checked)}
