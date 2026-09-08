@@ -5,10 +5,14 @@ import { cardContentCleanupStmts } from './card-cleanup.js';
 // Javob shakllari server/index.js (Express) bilan BIR XIL — frontend
 // src/pages/AuthPage.jsx + src/lib/auth.jsx shunga bog'langan:
 //   POST /api/auth/request-register-code {phone}        → {ok:true} | 422 {error:'bad_phone'|'phone_not_verified'} | 429 | 503 {error:'tg_send_failed'}
-//   POST /api/auth/register {email,password,phone,code,botAck,tosAccepted,promoCode}
+//   POST /api/auth/tg-link/start                        → {token,url} | 429 | 503 {error:'bot_not_configured'}
+//   GET  /api/auth/tg-link/status?token=                → {status:'pending'|'linked'|'expired', phone?}
+//   POST /api/auth/register {email,password,phone,tosAccepted,promoCode,
+//                            linkToken}  ← yangi, tugmali oqim
+//                           {…,code,botAck}  ← eski, kodli oqim (hali qabul qilinadi)
 //                                                        → 201 {user:{id,email}} + Set-Cookie | 422 | 409 {error:'email_taken'}
 //   POST /api/auth/request-password-reset {email}        → doim {ok:true} (foydalanuvchi bor-yo'qligi oshkor qilinmaydi)
-//   POST /api/auth/reset-password {email,code,password}  → {ok:true} | 422 {error:'bad_code'|matn}
+//   POST /api/auth/reset-password {email,password, linkToken | code}  → {ok:true} | 422 {error:'bad_code'|matn}
 //
 // Kodlar (OTP) bazada SHA-256 hash sifatida saqlanadi (worker.js'dagi admin 2FA
 // kabi) — D1 backup sizib chiqsa ham xom kod chiqmaydi.
@@ -59,11 +63,16 @@ function validateRegisterExtra(body, H) {
   const botAck = body.botAck === true;
   const tosAccepted = body.tosAccepted === true;
   const code = H.cleanStr(body.code, 6);
+  const linkToken = H.cleanStr(body.linkToken, 64);
   if (!PHONE_RE.test(phone)) return { error: 'Telefon raqamini to’g’ri kiriting (masalan +998901234567).' };
-  if (!botAck) return { error: 'Avval Telegram botimizga yozib, tasdiqlash katagini belgilang.' };
   if (!tosAccepted) return { error: 'Davom etish uchun ommaviy oferta shartlariga rozilik bering.' };
+  // Yangi oqimda "botga yozdim" katakchasi YO'Q: botga o'tganini
+  // katakcha emas, tokenning O'ZI isbotlaydi. Eski oqim (kod) uchun
+  // katakcha va kod avvalgidek talab qilinadi.
+  if (linkToken) return { phone, botAck: true, tosAccepted, linkToken, code: '' };
+  if (!botAck) return { error: 'Avval Telegram botimizga yozib, tasdiqlash katagini belgilang.' };
   if (!code) return { error: 'code_required' };
-  return { phone, botAck, tosAccepted, code };
+  return { phone, botAck, tosAccepted, code, linkToken: '' };
 }
 
 // ---------- bot_verifications ----------
@@ -222,6 +231,70 @@ async function applyReferral(env, referrerId, referredId) {
   return true;
 }
 
+// ---------- tg_link_tokens: BIR BOSISHDA bog'lanish ----------
+//
+// Eski oqim: bot 6 xonali kod yuborardi, odam uni SAYTGA YOZARDI.
+// Bu firibgarlik sxemasining aynan ko'rinishi — odamlarga "Telegramga
+// kelgan kodni hech kimga bermang" deb to'g'ri o'rgatilgan, biz esa
+// xuddi shuni so'rar edik. Natijada odamlar qo'rqib ketardi.
+//
+// Yangi oqim TESKARI yo'nalishda:
+//   1. sayt bir martalik token yaratadi va t.me/<bot>?start=<token>
+//      havolasini beradi;
+//   2. odam botga o'tadi, "Boshlash" va "Kontaktni ulashish" tugmasini
+//      bosadi — bot tokenni telefon raqamiga bog'laydi;
+//   3. sayt holatni so'rab turadi va o'zi davom etadi.
+//
+// Telegramdan saytga HECH QANDAY sir ko'chmaydi. Ya'ni bizdan "kod
+// ayting" degan so'rov chiqmaydi va odamga shuni ochiq aytish mumkin.
+const TG_LINK_TTL_MS = 15 * 60 * 1000;   // 15 daqiqa — botga o'tib qaytishga yetadi
+const TG_LINK_IP_MAX = 10;               // bitta IP 15 daqiqada 10 ta token
+const TG_LINK_WINDOW_MS = 15 * 60 * 1000;
+
+// Token bazada XESH holida yotadi (kod/parol kabi): bazani o'qigan odam
+// tayyor havolani yig'a olmasin.
+async function createTgLinkToken(env, H) {
+  const token = H.newToken(16);
+  const now = Date.now();
+  // Eski yozuvlar vaqti-vaqti bilan tozalanadi — jadval o'smasin.
+  if (Math.random() < 0.05) {
+    await env.DB.prepare(`DELETE FROM tg_link_tokens WHERE expires_at < ?`).bind(now).run().catch(() => {});
+  }
+  await env.DB.prepare(
+    `INSERT INTO tg_link_tokens (token, status, expires_at, created_at) VALUES (?, 'pending', ?, ?)`
+  ).bind(await H.sha256Hex(token), now + TG_LINK_TTL_MS, now).run();
+  return token;
+}
+
+async function getTgLinkRow(env, H, token) {
+  const clean = H.cleanStr(token, 64);
+  if (!/^[0-9a-f]{32}$/.test(clean)) return null;
+  const row = await env.DB.prepare(
+    `SELECT token, status, phone, tg_user_id FROM tg_link_tokens WHERE token = ? AND expires_at > ?`
+  ).bind(await H.sha256Hex(clean), Date.now()).first();
+  return row || null;
+}
+
+async function startTgLink(request, env, H) {
+  if (await H.rateLimitD1(env, 'tglink:ip:' + H.reqIp(request), TG_LINK_IP_MAX, TG_LINK_WINDOW_MS)) {
+    return H.json({ error: 'too_many_requests' }, 429);
+  }
+  const username = env.TELEGRAM_BOT_USERNAME || '';
+  if (!username) return H.json({ error: 'bot_not_configured' }, 503);
+  const token = await createTgLinkToken(env, H);
+  return H.json({ token, url: `https://t.me/${username}?start=${token}` });
+}
+
+// Sayt shu manzilni so'rab turadi. Javob ATAYLAB kam narsa aytadi:
+// bog'langan bo'lsa — raqam (odam uni ko'rib, o'ziniki ekaniga ishonch
+// hosil qilsin), aks holda faqat "kutilmoqda".
+async function tgLinkStatus(request, env, H, url) {
+  const row = await getTgLinkRow(env, H, url.searchParams.get('token'));
+  if (!row) return H.json({ status: 'expired' });
+  if (row.status !== 'linked') return H.json({ status: 'pending' });
+  return H.json({ status: 'linked', phone: row.phone || '' });
+}
+
 // ---------- route'lar ----------
 
 async function requestRegisterCode(request, env, H) {
@@ -249,6 +322,21 @@ async function register(request, env, H) {
   const extra = validateRegisterExtra(body || {}, H);
   if (extra.error) return H.json({ error: extra.error }, 422);
 
+  // YANGI OQIM: token bilan. Raqam FORMDAN emas, TOKENDAN olinadi —
+  // mijoz boshqa birovning raqamini yozib yubora olmasin. Token bir
+  // martalik: ishlatilgach darhol o'chiriladi.
+  if (extra.linkToken) {
+    const link = await getTgLinkRow(env, H, extra.linkToken);
+    if (!link || link.status !== 'linked' || !link.phone) return H.json({ error: 'link_not_confirmed' }, 422);
+    if (link.phone !== extra.phone) return H.json({ error: 'link_phone_mismatch' }, 422);
+    const existingEmail = await env.DB.prepare(`SELECT id, deleted_at FROM users WHERE email = ?`).bind(email).first();
+    if (existingEmail && !existingEmail.deleted_at) return H.json({ error: 'email_taken' }, 409);
+    const burned = await env.DB.prepare(`DELETE FROM tg_link_tokens WHERE token = ?`)
+      .bind(await H.sha256Hex(extra.linkToken)).run();
+    if (!burned?.meta?.changes) return H.json({ error: 'link_not_confirmed' }, 422);
+    return finishRegistration(request, env, H, { email, password, extra, existing: existingEmail, body });
+  }
+
   // Haqiqiy tekshiruv: raqam botga "Kontaktni ulashish" orqali yuborilgan
   // bo'lishi shart — checkbox o'zi hech narsani isbotlamaydi.
   if (!(await getTgUserIdForPhone(env, extra.phone))) return H.json({ error: 'phone_not_verified' }, 422);
@@ -263,6 +351,13 @@ async function register(request, env, H) {
     return H.json({ error: 'bad_code' }, 422);
   }
 
+  return finishRegistration(request, env, H, { email, password, extra, existing, body });
+}
+
+// Ro'yxatdan o'tishning OXIRGI qismi — tasdiqlash usuli (token yoki kod)
+// tekshirilgandan KEYIN bajariladi. Ikki yo'l uchun bitta joyda turadi:
+// nusxa bo'lsa, vaqt o'tib biri o'zgarib, ikkinchisi eskirib qolardi.
+async function finishRegistration(request, env, H, { email, password, extra, existing, body }) {
   if (existing?.deleted_at) {
     // Admin o'chirgan akkaunt emaili — eski qator butunlay tozalanadi, jurnalga yoziladi.
     await hardDeleteUser(env, existing.id);
@@ -321,11 +416,31 @@ async function resetPassword(request, env, H) {
   const { email, password, error } = validateAuthBody(body || {}, H);
   if (error) return H.json({ error }, 422);
   const code = H.cleanStr(body?.code, 6);
-  if (!/^\d{6}$/.test(code)) return H.json({ error: 'bad_code' }, 422);
+  const linkToken = H.cleanStr(body?.linkToken, 64);
+  if (!linkToken && !/^\d{6}$/.test(code)) return H.json({ error: 'bad_code' }, 422);
 
-  const user = await env.DB.prepare(`SELECT id FROM users WHERE email = ? AND deleted_at IS NULL`).bind(email).first();
+  const user = await env.DB.prepare(
+    `SELECT id, phone FROM users WHERE email = ? AND deleted_at IS NULL`
+  ).bind(email).first();
   if (!user) return H.json({ error: 'bad_code' }, 422);
-  if (!(await verifyAndConsumePasswordResetCode(env, H, user.id, code))) return H.json({ error: 'bad_code' }, 422);
+
+  if (linkToken) {
+    // YANGI YO'L: kod yozilmaydi. Odam botda "Kontaktni ulashish" ni
+    // bosadi va Telegram raqamni O'ZI tasdiqlaydi. Shu raqam akkauntdagi
+    // raqam bilan mos kelsa — parolni yangilashga haqli.
+    //
+    // Nega bu xavfsiz: raqam mijozdan emas, Telegramdan keladi; token
+    // bir martalik va 15 daqiqada kuyadi; akkauntda raqam yo'q bo'lsa
+    // bu yo'l umuman ochilmaydi.
+    const link = await getTgLinkRow(env, H, linkToken);
+    if (!link || link.status !== 'linked' || !link.phone) return H.json({ error: 'link_not_confirmed' }, 422);
+    if (!user.phone || normPhone(user.phone, H) !== link.phone) return H.json({ error: 'link_phone_mismatch' }, 422);
+    const burned = await env.DB.prepare(`DELETE FROM tg_link_tokens WHERE token = ?`)
+      .bind(await H.sha256Hex(linkToken)).run();
+    if (!burned?.meta?.changes) return H.json({ error: 'link_not_confirmed' }, 422);
+  } else if (!(await verifyAndConsumePasswordResetCode(env, H, user.id, code))) {
+    return H.json({ error: 'bad_code' }, 422);
+  }
 
   // Parol yangilanadi va BARCHA sessiyalar bekor qilinadi (o'g'irlangan cookie ham).
   await env.DB.batch([
@@ -336,8 +451,12 @@ async function resetPassword(request, env, H) {
 }
 
 export async function handle(request, env, url, H) {
+  if (url.pathname === '/api/auth/tg-link/status' && request.method === 'GET') {
+    return tgLinkStatus(request, env, H, url);
+  }
   if (request.method !== 'POST') return null;
   switch (url.pathname) {
+    case '/api/auth/tg-link/start': return startTgLink(request, env, H);
     case '/api/auth/request-register-code': return requestRegisterCode(request, env, H);
     case '/api/auth/register': return register(request, env, H);
     case '/api/auth/request-password-reset': return requestPasswordReset(request, env, H);

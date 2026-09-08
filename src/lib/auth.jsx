@@ -54,9 +54,19 @@ export const authRegister = (email, password, extra = {}) =>
   api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, ...extra }) });
 
 // Ro'yxatdan o'tishdan oldin — botga ulangan telefon raqamiga tasdiqlash
-// kodi yuborishni so'raydi (Telegram orqali).
+// kodi yuborishni so'raydi (Telegram orqali). ESKI oqim; yangi oqim
+// quyidagi tugmali `authTgLinkStart`/`authTgLinkStatus`.
 export const authRequestRegisterCode = (phone) =>
   api('/auth/request-register-code', { method: 'POST', body: JSON.stringify({ phone }) });
+
+// ── Telegram bilan BIR BOSISHDA bog'lanish ────────────────────────────
+// Sayt bir martalik token oladi va odamni botga yuboradi. Odam botda
+// bitta tugma bosadi, sayt esa holatni so'rab turadi va o'zi davom
+// etadi. Foydalanuvchi HECH QANDAY kod ko'chirmaydi — shuning uchun
+// "kodni hech kimga bermang" qoidasi buzilmaydi.
+export const authTgLinkStart = () => api('/auth/tg-link/start', { method: 'POST' });
+export const authTgLinkStatus = (token) =>
+  api(`/auth/tg-link/status?token=${encodeURIComponent(token)}`);
 
 export const authLogout = () => api('/auth/logout', { method: 'POST' });
 

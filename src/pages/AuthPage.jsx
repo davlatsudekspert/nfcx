@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { authLogin, authRegister, authRequestRegisterCode, useAuth } from '../lib/auth.jsx';
+import { authLogin, authRegister, useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { dbGetTelegramBotUsername, dbAuthRequestPasswordReset, dbAuthResetPassword } from '../lib/db.js';
+import { dbGetTelegramBotUsername, dbAuthResetPassword } from '../lib/db.js';
+import TgLinkBox from '../components/TgLinkBox.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 import { IconUser, IconShield, IconTelegram } from '../components/Icons.jsx';
@@ -33,6 +34,9 @@ function errText(err, t, botLink) {
     return t('Bu telefon raqami botda tasdiqlanmagan. Avval {link} ga o‘ting, "Kontaktni ulashish" tugmasini bosing, so‘ng shu raqamni qayta kiriting.', { link: BOT_LINK });
   }
   if (key === 'bad_code' || key === 'code_required') return t("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan. Qaytadan yuboring.");
+  if (key === 'link_not_confirmed') return t('Telegram tasdig‘i topilmadi yoki muddati o‘tgan. «Telegramda tasdiqlash» tugmasini qayta bosing.');
+  if (key === 'link_phone_mismatch') return t('Botda tasdiqlangan raqam bu akkauntdagi raqamga mos kelmadi.');
+  if (key === 'bot_not_configured') return t('Telegram bot hozir sozlanmagan. Birozdan so‘ng urinib ko‘ring.');
   if (key === 'bad_phone') return t("Telefon raqamini to'g'ri kiriting.");
   if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
   // Backend validatsiya xabarlari — t() orqali (topilsa) tarjima qilinadi.
@@ -48,17 +52,16 @@ export default function AuthPage({ mode }) {
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [phone, setPhone] = useState('');
-  const [botAck, setBotAck] = useState(false);
   const [tosAccepted, setTosAccepted] = useState(false);
+  // Telegram tasdig'i — raqam ham, token ham BOTDAN keladi.
+  const [linkToken, setLinkToken] = useState('');
+  // Ketma-ket noto'g'ri parol. 3 tadan keyin odamga parolni tiklash
+  // yo'li ochiq taklif qilinadi: u yerda ham kod yozilmaydi, botda
+  // bitta tugma bosiladi.
+  const [failCount, setFailCount] = useState(0);
   const [promoCode, setPromoCode] = useState(() => new URLSearchParams(window.location.search).get('promo') || '');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  // Telegram OTP — ro'yxatdan o'tishdan oldin telefon raqamini tasdiqlash
-  // (bot orqali kelgan bir martalik kod).
-  const [code, setCode] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
-  const [codeSending, setCodeSending] = useState(false);
-  const [codeMsg, setCodeMsg] = useState(null);
   // Shaxsiy profil / Kompaniya profili — ro'yxatdan o'tishda aniq tanlov.
   const [profileKind, setProfileKind] = useState(() => {
     try { return sessionStorage.getItem(REG_TYPE_KEY) === 'company' ? 'company' : 'personal'; } catch { return 'personal'; }
@@ -74,64 +77,37 @@ export default function AuthPage({ mode }) {
 
   // "Parolni unutdingizmi?" — 2 qadam: email → kod + yangi parol.
   const [forgot, setForgot] = useState(false);
-  const [resetStep, setResetStep] = useState('email'); // 'email' | 'code'
-  const [resetCode, setResetCode] = useState('');
   const [resetPass, setResetPass] = useState('');
   const [resetPass2, setResetPass2] = useState('');
 
-  const requestCode = async () => {
-    setCodeMsg(null);
-    if (!botAck) { setCodeMsg({ type: 'err', text: t('Avval botga yozganingizni tasdiqlovchi katakchani belgilang.') }); return; }
-    setCodeSending(true);
-    try {
-      await authRequestRegisterCode(phone.trim());
-      setCodeSent(true);
-      setCodeMsg({ type: 'ok', text: t("Kod Telegram botga yuborildi.") });
-    } catch (err) {
-      setCodeMsg({ type: 'err', text: errText(err, t, BOT_LINK) });
-    } finally {
-      setCodeSending(false);
-    }
-  };
-
-  const requestReset = async () => {
-    setMsg(null);
-    if (!email.trim()) { setMsg({ type: 'err', text: t('Email manzilingizni kiriting.') }); return; }
-    setBusy(true);
-    try {
-      await dbAuthRequestPasswordReset(email.trim());
-      setResetStep('code');
-      setMsg({ type: 'ok', text: t("Agar bu email ro'yxatda bo'lsa va telefoningiz botga ulangan bo'lsa, kod Telegram'ga yuborildi.") });
-    } catch (err) {
-      setMsg({ type: 'err', text: err.message });
-    } finally {
-      setBusy(false);
-    }
-  };
-
+  // Parolni tiklash — endi ham KODSIZ. Odam botda "Kontaktni ulashish"
+  // ni bosadi, Telegram raqamni o'zi tasdiqlaydi va server o'sha raqam
+  // akkauntdagi raqam bilan mos kelishini tekshiradi.
   const submitReset = async (e) => {
     e.preventDefault();
     setMsg(null);
-    if (resetCode.trim().length !== 6) { setMsg({ type: 'err', text: t('6 xonali kodni kiriting.') }); return; }
+    if (!email.trim()) { setMsg({ type: 'err', text: t('Email manzilingizni kiriting.') }); return; }
+    if (!linkToken) { setMsg({ type: 'err', text: t('Avval Telegram orqali tasdiqlang.') }); return; }
     if (resetPass.length < 6) { setMsg({ type: 'err', text: t('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.') }); return; }
     if (resetPass !== resetPass2) { setMsg({ type: 'err', text: t('Parollar bir xil emas.') }); return; }
     setBusy(true);
     try {
-      await dbAuthResetPassword(email.trim(), resetCode.trim(), resetPass);
+      await dbAuthResetPassword(email.trim(), { linkToken }, resetPass);
       setPassword('');
       setForgot(false);
-      setResetStep('email');
-      setResetCode(''); setResetPass(''); setResetPass2('');
+      setLinkToken(''); setPhone('');
+      setResetPass(''); setResetPass2('');
+      setFailCount(0);
       setMsg({ type: 'ok', text: t("Parol yangilandi. Endi yangi parol bilan kiring.") });
     } catch (err) {
-      setMsg({ type: 'err', text: err.message });
+      setMsg({ type: 'err', text: errText(err, t, BOT_LINK) });
     } finally {
       setBusy(false);
     }
   };
 
-  const openForgot = () => { setForgot(true); setResetStep('email'); setMsg(null); };
-  const closeForgot = () => { setForgot(false); setResetStep('email'); setMsg(null); };
+  const openForgot = () => { setForgot(true); setMsg(null); setLinkToken(''); setPhone(''); };
+  const closeForgot = () => { setForgot(false); setMsg(null); setLinkToken(''); setPhone(''); };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -140,22 +116,19 @@ export default function AuthPage({ mode }) {
       setMsg({ type: 'err', text: t('Parollar bir xil emas.') });
       return;
     }
-    if (isRegister && !botAck) {
-      setMsg({ type: 'err', text: t('Avval botga yozganingizni tasdiqlovchi katakchani belgilang.') });
-      return;
-    }
     if (isRegister && !tosAccepted) {
       setMsg({ type: 'err', text: t('Davom etish uchun ommaviy oferta shartlariga rozilik bering.') });
       return;
     }
-    if (isRegister && !code.trim()) {
-      setMsg({ type: 'err', text: t("Telegram botga yuborilgan tasdiqlash kodini kiriting.") });
+    if (isRegister && !linkToken) {
+      setMsg({ type: 'err', text: t('Avval Telegram orqali tasdiqlang.') });
       return;
     }
     setBusy(true);
     try {
-      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), botAck, tosAccepted, promoCode: promoCode.trim(), code: code.trim() });
+      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), tosAccepted, promoCode: promoCode.trim(), linkToken });
       else await authLogin(email.trim(), password);
+      setFailCount(0);
       await refresh();
       if (isRegister && profileKind === 'company') {
         try { sessionStorage.removeItem(REG_TYPE_KEY); } catch { /* jim */ }
@@ -164,6 +137,7 @@ export default function AuthPage({ mode }) {
         navigate('/account');
       }
     } catch (err) {
+      if (!isRegister && err?.message === 'bad_credentials') setFailCount((n) => n + 1);
       setMsg({ type: 'err', text: errText(err, t, BOT_LINK) });
       setBusy(false);
     }
@@ -194,25 +168,27 @@ export default function AuthPage({ mode }) {
             <>
               <h2 className="vz-h2 mt-2 !text-2xl">{t('Parolni tiklash')}</h2>
               <p className="mt-3 text-[15px] leading-relaxed text-base-content/55">
-                {resetStep === 'email'
-                  ? t("Email manzilingizni kiriting — tasdiqlash kodi akkauntingizga ulangan Telegram botga yuboriladi.")
-                  : t("Telegram'ga kelgan 6 xonali kodni va yangi parolni kiriting.")}
+                {t("Email manzilingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.")}
               </p>
-              <form onSubmit={resetStep === 'email' ? (e) => { e.preventDefault(); requestReset(); } : submitReset} className="mt-6 space-y-3">
+              <form onSubmit={submitReset} className="mt-6 space-y-3">
                 <label className="form-control">
                   <span className="vz-label !mb-0">Email</span>
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ism@gmail.com" autoComplete="email" required disabled={resetStep === 'code'}
+                    placeholder="ism@gmail.com" autoComplete="email" required
                     className="input input-bordered mt-1 w-full bg-base-100" />
                 </label>
-                {resetStep === 'code' && (
+
+                {/* Tasdiqlash — ro'yxatdan o'tishdagi bilan AYNAN bir xil
+                    oqim. Odam ikki joyda ikki xil narsa o'rganmasin. */}
+                <TgLinkBox
+                  botUsername={botUsername}
+                  linkedPhone={phone}
+                  title={t('Akkauntingizga ulangan Telegram orqali tasdiqlang')}
+                  onLinked={(p, token) => { setPhone(p); setLinkToken(token); }}
+                />
+
+                {linkToken && (
                   <>
-                    <label className="form-control">
-                      <span className="vz-label !mb-0">{t('Telegram orqali tasdiqlash kodi')}</span>
-                      <input type="text" inputMode="numeric" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder={t('6 xonali kod')} maxLength={6} required
-                        className="input input-bordered mt-1 w-full bg-base-100 font-mono tracking-widest" />
-                    </label>
                     <label className="form-control">
                       <span className="vz-label !mb-0">{t('Yangi parol')}</span>
                       <input type="password" value={resetPass} onChange={(e) => setResetPass(e.target.value)}
@@ -227,16 +203,14 @@ export default function AuthPage({ mode }) {
                     </label>
                   </>
                 )}
-                <button className="btn btn-gold w-full" disabled={busy}>
-                  {busy ? <span className="loading loading-spinner loading-sm"></span> : resetStep === 'email' ? t('Kod yuborish') : t('Parolni yangilash')}
+
+                <button className="btn btn-gold w-full" disabled={busy || !linkToken}>
+                  {busy ? <span className="loading loading-spinner loading-sm"></span> : t('Parolni yangilash')}
                 </button>
-                {resetStep === 'code' && (
-                  <button type="button" className="btn btn-ghost-vz w-full" disabled={busy} onClick={requestReset}>{t('Kodni qayta yuborish')}</button>
-                )}
               </form>
               {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
               <p className="mt-3 text-xs leading-relaxed text-base-content/45">
-                {t('Kod kelmadimi? Telefoningiz botga ulanganini tekshiring:')}{' '}
+                {t('Telefon raqamingiz akkauntdagi raqam bilan mos kelishi kerak. Bot:')}{' '}
                 <a href={BOT_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent underline underline-offset-2"><IconTelegram width={12} height={12} /> @{botUsername}</a>
               </p>
               <div className="mt-5 text-center text-sm text-base-content/55">
@@ -300,43 +274,17 @@ export default function AuthPage({ mode }) {
                   className="input input-bordered mt-1 w-full bg-base-100" />
               </label>
             )}
+            {/* Telefon raqami endi QO'LDA yozilmaydi — u Telegramning
+                o'zidan keladi. Shu sababli birov boshqa odamning
+                raqamini kiritib yubora olmaydi, xato terish ham
+                yo'qoladi (karta shu raqam bo'yicha yetkaziladi). */}
             {isRegister && (
-              <label className="form-control">
-                <span className="text-xs font-semibold text-base-content/70">{t('Telefon raqamingiz')}</span>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+998901234567" autoComplete="tel" required
-                  className="input input-bordered mt-1 w-full bg-base-100" />
-              </label>
-            )}
-            {isRegister && (
-              <div className="rounded-xl border border-accent/30 bg-accent/5 p-3">
-                <label className="flex cursor-pointer items-start gap-2.5">
-                  <input type="checkbox" checked={botAck} onChange={(e) => setBotAck(e.target.checked)}
-                    className="checkbox checkbox-sm mt-0.5" required />
-                  <span className="text-xs leading-relaxed text-base-content/75">
-                    <b>{t("Ro'yxatdan o'tishdan oldin")}</b>, {' '}
-                    <a href={BOT_LINK} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">
-                      {t('shu Telegram botimizga')} (@{botUsername})
-                    </a>{' '}
-                    {t("o'ting va u yerga ism-familyangiz hamda telefon raqamingizni yozib qoldiring. Bu — jismoniy NFC kartangizni to'g'ri manzilga yetkazib berishimiz uchun kerak. Buni bajargan bo'lsangiz, shu katakchani belgilang.")}
-                  </span>
-                </label>
-              </div>
-            )}
-            {isRegister && (
-              <div className="rounded-xl border border-white/10 bg-base-100/40 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-base-content/70">{t('Telegram orqali tasdiqlash kodi')}</span>
-                  <button type="button" className="btn btn-outline btn-xs" disabled={codeSending || !phone.trim()} onClick={requestCode}>
-                    {codeSending ? <span className="loading loading-spinner loading-xs"></span> : codeSent ? t('Qayta yuborish') : t('Kod yuborish')}
-                  </button>
-                </div>
-                {codeMsg && <p className={`mt-2 text-xs ${codeMsg.type === 'ok' ? 'text-accent' : 'text-error'}`}>{codeMsg.text}</p>}
-                <input type="text" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder={t('6 xonali kod')} maxLength={6}
-                  className="input input-bordered input-sm mt-2 w-full bg-base-100 font-mono tracking-widest" />
-                <p className="mt-1.5 text-[14px] text-base-content/45">{t("Kod botga yuboriladi — botga hali yozmagan bo'lsangiz, avval yuqoridagi katakchani belgilang.")}</p>
-              </div>
+              <TgLinkBox
+                botUsername={botUsername}
+                linkedPhone={phone}
+                title={t('Telefon raqamingizni Telegram orqali tasdiqlang')}
+                onLinked={(p, token) => { setPhone(p); setLinkToken(token); }}
+              />
             )}
             {isRegister && (
               <label className="form-control">
@@ -359,6 +307,23 @@ export default function AuthPage({ mode }) {
               {busy ? <span className="loading loading-spinner loading-sm"></span> : isRegister ? t('Akkaunt yaratish') : t('Kirish')}
             </button>
           </form>
+
+          {/* Uch marta xato parol — odam parolini eslay olmayapti.
+              Kichkina "Parolni unutdingizmi?" havolasini qidirib
+              o'tirmasin: yo'lni o'zimiz ochiq taklif qilamiz. */}
+          {!isRegister && failCount >= 3 && (
+            <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-3.5">
+              <div className="text-sm font-semibold text-base-content/85">
+                {t('Parol {n} marta xato kiritildi.', { n: failCount })}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-base-content/60">
+                {t('Parolni Telegram orqali tiklashingiz mumkin: botda bitta tugma bosasiz va yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.')}
+              </p>
+              <button type="button" onClick={openForgot} className="btn btn-gold mt-2.5 min-h-11 w-full">
+                <IconTelegram width={16} height={16} /> {t('Telegram orqali parolni tiklash')}
+              </button>
+            </div>
+          )}
 
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
 

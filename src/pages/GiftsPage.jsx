@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { dateTime } from '../lib/format.js';
 import { IconCheck } from '../components/Icons.jsx';
 import NfcCard from '../components/NfcCard.jsx';
+import CatalogCard from '../components/CatalogCard.jsx';
 
 // Faqat sana (vaqtsiz) — dateTime() joriy tilga mos formatlaydi.
 function giftDate(ts) {
@@ -166,13 +167,13 @@ export default function GiftsPage({ catalog = [] }) {
             </div>
             <button type="button" className="vz-tap" onClick={() => navigate('/katalog')}>{t('Barchasini ko‘rish')} →</button>
           </header>
-          <div>
-            {catalog.slice(0, 6).map((item) => (
-              <button type="button" key={item.code} onClick={() => navigate('/' + item.code.toLowerCase())}>
-                <NfcCard code={item.code} name={(item.name || item.code).toUpperCase()} finish="showcase" size="sm" rim />
-                <span><b>{item.name || item.code}</b><small>{item.city || item.role || `nfcstore.uz/${item.code.toLowerCase()}`}</small></span>
-              </button>
-            ))}
+          {/* Avval bu yerda kartaning `scale(.54)` bilan qisqartirilgan
+              mayda nusxasi turardi — matni deyarli o'qilmasdi va
+              katalogdagi kartaga o'xshamasdi. Endi AYNAN katalogdagi
+              karta (`CatalogCard`) ishlatiladi: bitta ta'rif, ikki joyda
+              bir xil ko'rinish. */}
+          <div className="cat-grid mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {catalog.slice(0, 6).map((item, i) => <CatalogCard key={item.code} item={item} idx={i} />)}
           </div>
         </section>
       )}

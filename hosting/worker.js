@@ -1378,6 +1378,30 @@ async function ensureCoreSchema(env) {
       // paytida tez o'sadi — indekssiz bu skanerlash sezilarli sekinlik
       // manbaiga aylanardi.
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS rate_limits_window_idx ON rate_limits(window_start)`),
+      // ── Telegram bilan bir bosishda bog'lanish (2026-09) ─────────────
+      //
+      // Avval ro'yxatdan o'tish shunday edi: odam botga o'zi boradi,
+      // raqamini beradi, sayt unga 6 xonali kod yuboradi va odam O'SHA
+      // KODNI SAYTGA YOZADI.
+      //
+      // Bu firibgarlik sxemasining AYNAN o'zi ko'rinishida edi. Odamlarga
+      // "Telegramga kelgan kodni hech kimga bermang" deb o'rgatilgan va bu
+      // TO'G'RI o'rgatish. Biz esa xuddi shuni so'rayotgan edik — natijada
+      // odamlar qo'rqib, ro'yxatdan o'tmay ketardi.
+      //
+      // Endi yo'nalish TESKARI: sayt bir martalik token yaratadi, odam
+      // botga o'tib bitta tugma bosadi, bot tokenni tasdiqlaydi va sayt
+      // o'zi davom etadi. Telegramdan saytga HECH QANDAY sir ko'chmaydi,
+      // ya'ni bizdan "kod ayting" degan so'rov hech qachon chiqmaydi.
+      //
+      // Token JADVALDA XESH holida saqlanadi (kod/parol kabi): bazani
+      // o'qigan odam ham tayyor havolani yig'a olmasin.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "tg_link_tokens" (
+        "token" TEXT PRIMARY KEY NOT NULL, "status" TEXT DEFAULT 'pending' NOT NULL,
+        "phone" TEXT, "tg_user_id" INTEGER, "tg_name" TEXT,
+        "expires_at" INTEGER NOT NULL, "created_at" INTEGER NOT NULL
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS tg_link_tokens_exp_idx ON tg_link_tokens(expires_at)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "post_likes" (
         "id" INTEGER PRIMARY KEY NOT NULL, "post_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL,
         "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,

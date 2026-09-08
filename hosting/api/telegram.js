@@ -19,10 +19,20 @@ const CONTACT_KB = {
 const WELCOME_TEXT = [
   '👋 <b>NFCSTORE</b> botiga xush kelibsiz!',
   '',
-  '<b>Saytda ro’yxatdan o’tishdan oldin:</b>',
   '📇 Pastdagi <b>"Kontaktni ulashish"</b> tugmasini bosing — shu orqali ism va telefon raqamingiz tasdiqlanadi. Bu jismoniy NFC kartangizni to’g’ri manzilga yetkazib berishimiz uchun kerak.',
   '',
-  'So’ng nfcstore.uz saytida aynan shu raqamni kiriting — tasdiqlash kodi shu chatga keladi.',
+  '🔒 <b>Biz sizdan hech qachon kod so’ramaymiz.</b> Kim bo’lishidan qat’i nazar, Telegramga kelgan kodni hech kimga bermang.',
+].join('\n');
+
+// Saytdan kelgan bir martalik token bilan kirganda ko'rsatiladigan matn.
+// Bu yerda odam saytga HECH NARSA ko'chirmasligini alohida aytamiz —
+// aynan shu qo'rquv oldingi oqimda odamlarni to'xtatib turardi.
+const LINK_TEXT = [
+  '👋 <b>NFCSTORE</b> — raqamni tasdiqlash.',
+  '',
+  '📇 Pastdagi <b>"Kontaktni ulashish"</b> tugmasini bosing — tamom. Sayt o’zi davom etadi.',
+  '',
+  '🔒 <b>Sizdan kod so’ralmaydi</b> va saytga hech narsa ko’chirmaysiz.',
 ].join('\n');
 
 // Telegram'ga javob — reply_markup kerak bo'lgani uchun H.sendTelegramTo emas,
@@ -54,6 +64,32 @@ async function upsertBotVerification(env, H, { phone, tgUserId, tgName }) {
   ).bind(phone, tgUserId, tgName || null, H.nowTs()).run();
 }
 
+// ---------- saytdan kelgan bir martalik token ----------
+//
+// Token bazada XESH holida yotadi. Bot uni shu odamga biriktiradi
+// (`status` hali 'pending'), raqam esa "Kontaktni ulashish" bosilganda
+// yoziladi va status 'linked' bo'ladi. Faqat shundan keyin sayt davom
+// etadi.
+async function claimLinkToken(env, H, token, tgUserId) {
+  const res = await env.DB.prepare(
+    `UPDATE tg_link_tokens SET tg_user_id = ? WHERE token = ? AND status = 'pending' AND expires_at > ?`
+  ).bind(tgUserId, await H.sha256Hex(String(token).toLowerCase()), Date.now()).run().catch(() => null);
+  return !!res?.meta?.changes;
+}
+
+// Shu odamning eng so'nggi kutayotgan tokenini tasdiqlaydi. Raqam
+// TELEGRAM tomonidan tasdiqlangan kontaktdan olinadi — ya'ni saytga
+// boshqa birovning raqamini yozib bo'lmaydi.
+async function confirmPendingLink(env, tgUserId, phone, name) {
+  const res = await env.DB.prepare(
+    `UPDATE tg_link_tokens SET status = 'linked', phone = ?, tg_name = ?
+      WHERE token = (SELECT token FROM tg_link_tokens
+                      WHERE tg_user_id = ? AND status = 'pending' AND expires_at > ?
+                      ORDER BY created_at DESC LIMIT 1)`
+  ).bind(phone, name || null, tgUserId, Date.now()).run().catch(() => null);
+  return !!res?.meta?.changes;
+}
+
 async function handleMessage(env, H, msg) {
   const chatId = msg?.chat?.id;
   const from = msg?.from || {};
@@ -74,13 +110,30 @@ async function handleMessage(env, H, msg) {
       console.error('[telegram] bot_verifications upsert', err);
       return reply(env, chatId, "Xatolik yuz berdi, birozdan keyin qayta urinib ko'ring.", { reply_markup: CONTACT_KB });
     }
+    // Odam saytdagi havola orqali kelgan bo'lsa, o'sha kutayotgan token
+    // shu yerda TASDIQLANADI va sayt o'zi davom etadi. Odam saytga
+    // hech narsa ko'chirmaydi.
+    const linked = await confirmPendingLink(env, from.id, phone, name);
+    if (linked) {
+      return reply(env, chatId,
+        `✅ Raqam tasdiqlandi ✅\n\nRahmat, <b>${name}</b>! Endi saytga qayting — ro'yxatdan o'tish o'zi davom etadi.`,
+        { reply_markup: { remove_keyboard: true } });
+    }
     return reply(env, chatId,
-      `✅ Raqam tasdiqlandi ✅\n\nRahmat, <b>${name}</b>! Endi saytda ro'yxatdan o'tishda aynan shu raqamni (<code>${phone}</code>) kiriting — tasdiqlash kodi shu chatga keladi.`,
+      `✅ Raqam tasdiqlandi ✅\n\nRahmat, <b>${name}</b>! Endi saytda shu raqam (<code>${phone}</code>) bilan davom eting.`,
       { reply_markup: { remove_keyboard: true } });
   }
 
-  const text = String(msg.text || '').trim().toLowerCase();
-  if (text.startsWith('/start')) return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
+  const raw = String(msg.text || '').trim();
+  const startMatch = /^\/start(?:@\S+)?(?:\s+([0-9a-fA-F]{32}))?$/.exec(raw);
+  if (startMatch) {
+    // Token bo'lsa — uni shu odamga biriktiramiz. Raqam hali yo'q:
+    // u "Kontaktni ulashish" bosilganda keladi.
+    if (startMatch[1] && await claimLinkToken(env, H, startMatch[1], from.id)) {
+      return reply(env, chatId, LINK_TEXT, { reply_markup: CONTACT_KB });
+    }
+    return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
+  }
   // Boshqa har qanday matn — yana yo'riqnoma (bot faqat raqam tasdiqlaydi).
   return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
 }

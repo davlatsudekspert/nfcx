@@ -1127,23 +1127,24 @@ export async function dbAuthRequestPasswordReset(email) {
   return data;
 }
 
-// POST /api/auth/reset-password {email, code, password} → {ok:true} | 422 {error:'bad_code'|matn}.
-export async function dbAuthResetPassword(email, code, password) {
+// POST /api/auth/reset-password {email, password, linkToken | code}
+//   → {ok:true} | 422 {error:'bad_code'|'link_not_confirmed'|'link_phone_mismatch'|matn}.
+//
+// `proof` — yo `{ linkToken }` (yangi, tugmali oqim: odam botda bitta
+// tugma bosadi va saytga hech narsa ko'chirmaydi), yo eski 6 xonali kod
+// (satr sifatida). Xato KALITI o'zgartirilmay uzatiladi — chaqiruvchi
+// uni foydalanuvchi tiliga o'giradi.
+export async function dbAuthResetPassword(email, proof, password) {
+  const payload = typeof proof === 'string' ? { code: proof } : { linkToken: proof?.linkToken || '' };
   let res;
   try {
     res = await fetch('/api/auth/reset-password', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-      body: JSON.stringify({ email, code, password }),
+      body: JSON.stringify({ email, ...payload, password }),
     });
   } catch { throw new Error(API_ERROR_TEXT.network); }
   const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const key = data && data.error;
-    if (key === 'bad_code') throw new Error("Kod noto'g'ri yoki muddati o'tgan. Qaytadan so'rang.");
-    if (res.status === 422 && key && /parol/i.test(key)) throw new Error('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.');
-    if (res.status === 422 && key && /email/i.test(key)) throw new Error("Email formati noto'g'ri.");
-    throw new Error(apiErrorText(res.status, key));
-  }
+  if (!res.ok) throw new Error((data && data.error) || apiErrorText(res.status, null));
   return data;
 }
 
