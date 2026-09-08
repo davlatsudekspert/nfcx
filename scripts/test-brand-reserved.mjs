@@ -13,7 +13,8 @@
 //   node scripts/test-brand-reserved.mjs
 import { readFileSync } from 'node:fs';
 import worker from '../hosting/worker.js';
-import { BRAND_RESERVED, isBrandReserved, normalizeBrand } from '../src/lib/brandReserved.js';
+import { BRAND_RESERVED, BLOCKED_NAMES, CRYPTO_RESERVED, GLOBAL_AUCTION_RESERVED,
+  isBrandReserved, reservedStatus, normalizeBrand } from '../src/lib/brandReserved.js';
 import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
@@ -23,15 +24,26 @@ await seedBasic(env);
 // ── 1) Paritet: ikkala ro'yxat aynan bir xil ──────────────────────────
 {
   const src = readFileSync(new URL('../hosting/worker.js', import.meta.url), 'utf8');
-  const from = src.indexOf('const BRAND_RESERVED_D1 = [');
-  const list = src.slice(from, src.indexOf('];', from) + 2);
-  // eslint-disable-next-line no-eval
-  const workerList = eval(list.replace('const BRAND_RESERVED_D1 =', '') + ';');
-  check('1) ikkala ro\'yxatda bir xil son', workerList.length, BRAND_RESERVED.length);
-  check('1b) ro\'yxatlar AYNAN bir xil', workerList.join('|'), BRAND_RESERVED.join('|'));
-  checkTrue('1c) hamma yozuv normallashtirilgan holda (faqat A-Z)',
-    BRAND_RESERVED.every((v) => v === normalizeBrand(v)));
-  checkTrue('1d) takror yozuv yo\'q', new Set(BRAND_RESERVED).size === BRAND_RESERVED.length);
+  const grab = (name) => {
+    const from = src.indexOf(`const ${name}_D1 = [`);
+    const list = src.slice(from, src.indexOf('];', from) + 2);
+    // eslint-disable-next-line no-eval
+    return eval(list.replace(`const ${name}_D1 =`, '') + ';');
+  };
+  const PAIRS = [
+    ['BLOCKED_NAMES', BLOCKED_NAMES], ['BRAND_RESERVED', BRAND_RESERVED],
+    ['CRYPTO_RESERVED', CRYPTO_RESERVED], ['GLOBAL_AUCTION_RESERVED', GLOBAL_AUCTION_RESERVED],
+  ];
+  const all = [];
+  for (const [name, list] of PAIRS) {
+    check(`1) ${name}: server nusxasi AYNAN bir xil`, grab(name).join('|'), list.join('|'));
+    checkTrue(`1b) ${name}: hamma yozuv normallashtirilgan`, list.every((v) => v === normalizeBrand(v)));
+    checkTrue(`1c) ${name}: 3 harfdan qisqa yozuv yo'q`, list.every((v) => v.length >= 3));
+    all.push(...list);
+  }
+  // Bir nom IKKI guruhda bo'lmasligi shart — aks holda qaysi xabar
+  // chiqishi ro'yxat tartibiga bog'lanib qolardi.
+  check('1d) guruhlar orasida takror yo\'q', all.length - new Set(all).size, 0);
 }
 
 // ── 2) Yozilish variantlari bitta brend deb tanilishi ─────────────────
@@ -59,14 +71,20 @@ await seedBasic(env);
   }
 }
 
-// ── 2f) ATAYLAB himoyalangan ODDIY SO'ZLAR ────────────────────────────
-// Bular kundalik so'z ham, brend ham. Egasi ataylab ro'yxatga qo'shgan.
-// Test buni YOZIB QO'YADI — kelajakda "nega MANGO bloklangan?" degan
+// ── 2f) ODDIY SO'Z HAM, BREND HAM bo'lgan nomlar ──────────────────────
+// Bular kundalik so'z ham, brend ham (MANGO — meva va kiyim brendi,
+// ALEXA — ayol ismi va Amazon xizmati). Egasi ularni ataylab BREND
+// guruhidan AUKSION guruhiga ko'chirdi: ular tovar belgisi sifatida
+// himoyalanmaydi, aksincha qimmatli umumiy nom sifatida auksionga
+// chiqariladi.
+//
+// Test buni YOZIB QO'YADI — kelajakda "nega MANGO sotilmayapti?" degan
 // savol chiqsa, javob shu yerda: bu xato emas, qaror.
 {
-  for (const v of ['MANGO', 'POLO', 'OPERA', 'TOTAL', 'HONOR', 'MARS', 'ALEXA', 'META', 'HUGO']) {
-    check(`2f) "${v}" ataylab himoyalangan`, isBrandReserved(v), true);
+  for (const v of ['MANGO', 'POLO', 'OPERA', 'TOTAL', 'HONOR', 'MARS', 'ALEXA', 'META', 'HUGO', 'IDEA']) {
+    check(`2f) "${v}" -> auksion guruhida`, reservedStatus(v), 'auction');
   }
+  checkTrue('2f) ...ya\'ni brend guruhida EMAS', !isBrandReserved('MANGO') && !isBrandReserved('ALEXA'));
 }
 
 // ── 3) YOLG'ON IJOBIY BO'LMASIN — eng muhim tekshiruv ─────────────────
@@ -80,6 +98,19 @@ await seedBasic(env);
     'MANGOSTON', 'POLOTNO', 'MARSEL', 'HUGOBEK', 'ALEXANDRA', 'OPERATOR',
     'TOTALLIK', 'HONORIY', 'METALL', 'FORDOB', 'VISAM', 'IKEALIK'];
   for (const v of innocent) check(`3) "${v}" ochiq qolishi shart`, isBrandReserved(v), false);
+}
+
+// ── 3b) TO'RT GURUH TO'G'RI AJRATILGAN ────────────────────────────────
+{
+  const cases = [
+    ['UZUM', 'brand'], ['APPLE', 'brand'], ['COCA-COLA', 'brand'],
+    ['BANK', 'auction'], ['GOLD', 'auction'], ['CHAT', 'auction'],
+    ['MANGO', 'auction'], ['META', 'auction'], ['ALEXA', 'auction'],
+    ['USDT', 'crypto'], ['NFT', 'crypto'], ['METAVERSE', 'crypto'],
+    ['POKER', 'blocked'], ['CASINO', 'blocked'], ['FONBET', 'blocked'],
+    ['ALI', ''], ['BONU', ''], ['GULNORA', ''],
+  ];
+  for (const [v, want] of cases) check(`3b) "${v}" -> ${want || 'ochiq'}`, reservedStatus(v), want);
 }
 
 // ── 4) Server: brend nomi SOTILMAYDI ──────────────────────────────────
@@ -96,6 +127,17 @@ await seedBasic(env);
   const free = await j('/api/companies/check?id=GOYAX');
   check('4d) oddiy nom ochiq qolgan', free.body?.available, true);
   check('4e) ...va brend bayrog\'i yo\'q', free.body?.brandReserved, false);
+
+  // Har bir guruh serverdan O'Z sababi bilan qaytadi — interfeys shunga
+  // qarab boshqa-boshqa matn va tugma ko'rsatadi.
+  for (const [id, status] of [['BANK', 'auction'], ['USDT', 'crypto'], ['POKER', 'blocked']]) {
+    const r = await j(`/api/companies/check?id=${id}`);
+    check(`4f) ${id} -> ${status}`, [r.body?.available, r.body?.reserved], [false, status]);
+  }
+  const bank = await j('/api/companies/check?id=BANK');
+  check('4g) auksion nomida boshlang\'ich narx qaytadi', bank.body?.auctionStartPrice, 2000000);
+  const poker = await j('/api/companies/check?id=POKER');
+  check('4h) taqiqlangan nomda narx yo\'q', poker.body?.auctionStartPrice, null);
 }
 
 done();

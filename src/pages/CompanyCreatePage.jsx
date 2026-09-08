@@ -5,6 +5,7 @@ import { navigate } from '../lib/router.js';
 import { companyNameBlocked } from '../lib/nameGuard.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
+import { AUCTION_START_PRICE, AUCTION_HOURS } from '../lib/brandReserved.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
@@ -92,14 +93,26 @@ export default function CompanyCreatePage() {
             emas, qoida. Narx ham ko'rsatilmaydi (sotilmaydi), lekin
             rasmiy vakil uchun murojaat yo'li ochiq qoladi — bu bizga
             kompaniya mijozi ham keltiradi. */}
-        {check?.brandReserved ? (
+        {check?.reserved ? (
           <div className="cc-id-result unavailable">
             <div>
-              <b>{t('Bu NFC ID himoyalangan')}</b>
-              <span>{t('Ushbu nom kompaniya yoki brend nomiga mos kelgani sababli ochiq sotuvga qo‘yilmagan. Agar siz brendning rasmiy egasi yoki vakili bo‘lsangiz, tasdiqlash uchun admin bilan bog‘laning.')}</span>
+              <b>{check.reserved === 'blocked' ? t('Bu nom taqiqlangan')
+                : check.reserved === 'brand' ? t('Bu NFC ID himoyalangan')
+                  : check.reserved === 'auction' ? t('Global premium NFC ID')
+                    : t('Bu nom alohida toifaga saqlangan')}</b>
+              <span>{check.reserved === 'blocked'
+                ? t('Bu NFC ID’dan foydalanish taqiqlangan. Boshqa nom tanlang.')
+                : check.reserved === 'brand'
+                  ? t('Ushbu nom kompaniya yoki brend nomiga mos kelgani sababli ochiq sotuvga qo‘yilmagan. Agar siz brendning rasmiy egasi yoki vakili bo‘lsangiz, tasdiqlash uchun admin bilan bog‘laning.')
+                  : check.reserved === 'auction'
+                    ? t('Ushbu noyob nom faqat NFCSTORE auksioni orqali sotiladi. Boshlang‘ich narx {price} so‘m, auksion {hours} soat davom etadi va eng baland taklif bergan g‘olib bo‘ladi.', { price: fmt(AUCTION_START_PRICE), hours: AUCTION_HOURS })
+                    : t('Bu nom kripto toifasiga saqlangan va hozircha sotuvda emas.')}</span>
             </div>
+            {/* TAQIQLANGAN nomda admin bilan bog'lanish TAKLIF
+                QILINMAYDI — bunday nomlar muhokama qilinmaydi. */}
             <div className="cc-alternatives flex-wrap">
-              <button type="button" className="vz-tap" onClick={() => navigate('/aloqa')}>{t('Admin bilan bog‘lanish')}</button>
+              {check.reserved === 'brand' && <button type="button" className="vz-tap" onClick={() => navigate('/aloqa')}>{t('Admin bilan bog‘lanish')}</button>}
+              {check.reserved === 'auction' && <button type="button" className="vz-tap" onClick={() => navigate('/auksion')}>{t('Auksionga o‘tish')}</button>}
               <button type="button" className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: '' }))}>{t('Boshqa ID tanlash')}</button>
             </div>
           </div>

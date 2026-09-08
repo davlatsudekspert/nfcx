@@ -360,110 +360,128 @@ function companyIdLettersD1(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// BREND UCHUN HIMOYALANGAN NOMLAR (2026-09)
+// BAND QILINGAN NOMLAR — TO'RT GURUH (2026-09)
 //
-// DIQQAT: bu ro'yxat va mantiq src/lib/brandReserved.js bilan AYNAN bir
+// DIQQAT: ro'yxatlar va mantiq src/lib/brandReserved.js bilan AYNAN bir
 // xil bo'lishi shart (Worker modullari `src/` dan import qila olmaydi).
-// scripts/test-brand-reserved.mjs ikkalasini solishtirib turadi — biri
-// o'zgarib, ikkinchisi eskirib qolsa, forma bir narsani ko'rsatib server
-// boshqasini qilardi.
+// scripts/test-brand-reserved.mjs ikkalasini solishtirib turadi.
 //
-// Batafsil izoh (nega aynan tenglik, nega "band qilingan" emas) —
+// Guruhlar, ustuvorlik va taqqoslash qoidasi haqida to'liq izoh —
 // src/lib/brandReserved.js faylida.
+const AUCTION_START_PRICE_D1 = 2000000;
+const AUCTION_HOURS_D1 = 72;
+const BLOCKED_NAMES_D1 = [
+  'FUCK', 'PORN', 'NUDE', 'EROTIC', 'COCAINE', 'DRUG', 'POISON', 'HITLER',
+  'NIGGA', 'NIGGER', 'PSYCHOPATH', 'CASINO', 'CASINOBOT', 'POKER', 'BETTING',
+  'BETS', 'GAMBLE', 'GAMBLING', 'LOTTERY', 'ROULETTE', 'BLACKJACK', 'SLOT',
+  'SLOTS', 'JACKPOT', 'HIGHROLLER', 'BETWINNER', 'BETMOBILE', 'FONBET',
+];
 const BRAND_RESERVED_D1 = [
-  // ── IT, to'lov va internet xizmatlari ──
-  'UZUM', 'UZUMMARKET', 'UZUMBANK', 'UZUMNASIYA', 'UZUMTEZKOR',
-  'PAYME', 'CLICK', 'PAYNET', 'OSON', 'ALIF', 'ALIFNASIYA',
-  'HUMANS', 'ZOOD', 'ZOODMALL', 'ASAXIY', 'OLCHA',
-  'MYUZCARD', 'UZCARD', 'HUMO',
-  // ── Banklar ──
-  'ANOR', 'ANORBANK', 'KAPITALBANK', 'HAMKORBANK',
-  'IPAKYULI', 'IPAKYULIBANK', 'TBC', 'TBCBANK',
-  'SQB', 'SANOATQURILISHBANK', 'NBU', 'ALOQABANK', 'AGROBANK',
+  'UZUM', 'UZUMMARKET', 'UZUMBANK', 'UZUMNASIYA', 'UZUMTEZKOR', 'PAYME',
+  'CLICK', 'PAYNET', 'OSON', 'ALIF', 'ALIFNASIYA', 'HUMANS', 'ZOOD',
+  'ZOODMALL', 'ASAXIY', 'OLCHA', 'MYUZCARD', 'UZCARD', 'HUMO', 'ANOR',
+  'ANORBANK', 'KAPITALBANK', 'HAMKORBANK', 'IPAKYULI', 'IPAKYULIBANK', 'TBC',
+  'TBCBANK', 'SQB', 'SANOATQURILISHBANK', 'NBU', 'ALOQABANK', 'AGROBANK',
   'ASAKABANK', 'IPOTEKABANK', 'INFINBANK', 'TRASTBANK', 'DAVRBANK',
   'OCTOBANK', 'TENGEBANK', 'ZIRAATBANK', 'POYTAXTBANK', 'GARANTBANK',
-  'ORIENTFINANS', 'OFB',
-  // ── Telekommunikatsiya ──
-  'UZTELECOM', 'UZMOBILE', 'UCELL', 'BEELINE', 'MOBIUZ', 'PERFECTUM',
-  'EVO', 'TPS', 'SARKOR', 'EASTTELECOM',
-  // ── Savdo va texnika ──
-  'KORZINKA', 'HAVAS', 'MAKRO', 'MAGNUM', 'BARAKA', 'TEXNOMART',
-  'MEDIAPARK', 'IDEA', 'GOODZONE', 'ELMAKON', 'ARTEL', 'AKFA',
-  'IMZO', 'AVALON', 'SHIVAKI', 'ROISON',
-  // ── Restoran va oziq-ovqat ──
-  'EVOS', 'OQTEPA', 'OQTEPALAVASH', 'BELLISSIMO', 'MAXWAY',
-  'LESAILES', 'FEEDUP', 'SAFIA', 'CRAFERS', 'BON', 'YAPONAMAMA',
-  'BASRIBABA', 'CHOPAR', 'DODOPIZZA', 'KFC',
-  // ── Transport va avtomobil ──
-  'UZAUTO', 'UZAUTOMOTORS', 'CHEVROLET', 'BYD', 'ADM', 'KIA',
-  'CHERY', 'HAVAL', 'MYTAXI', 'YANDEXGO',
-  'UZBEKISTANAIRWAYS', 'UZRAILWAYS',
-  // ── Qurilish va ko'chmas mulk ──
-  'MURADBUILDINGS', 'GOLDENHOUSE', 'NRG', 'DREAMCITY', 'AKAYCITY',
-  'XONSAROY', 'BIGROUP',
-  // ── Ta'lim va media ──
-  'NAJOTTALIM', 'PDP', 'MOHIRDEV', 'REGISTAN', 'CAMBRIDGE',
-  'INTERNATION', 'MARSIT', 'THOMPSON', 'KUNUZ', 'DARYOUZ',
-  'GAZETAUZ', 'SEVIMLI', 'ZORTV', 'MILLIYTV', 'OLX',
-  // ── Yetkazib berish va logistika ──
-  'BTS', 'BTSEXPRESS', 'FARGO', 'EMU', 'UZPOST',
-
-  // ═══ XORIJIY BRENDLAR (2026-09) ═══
-  // ── Telefon, texnika va maishiy texnika ──
-  'APPLE', 'IPHONE', 'IPAD', 'MACBOOK', 'SAMSUNG', 'XIAOMI', 'REDMI',
-  'HUAWEI', 'HONOR', 'OPPO', 'VIVO', 'NOKIA', 'SONY', 'PHILIPS',
-  'PANASONIC', 'LENOVO', 'ASUS', 'ACER', 'DELL', 'CANON', 'EPSON', 'DYSON',
-  'BOSCH', 'SIEMENS', 'TEFAL', 'BEKO', 'HAIER', 'MIDEA', 'HISENSE', 'GREE',
-  // ── Internet va ijtimoiy tarmoqlar ──
-  'GOOGLE', 'YOUTUBE', 'MICROSOFT', 'WINDOWS', 'OPENAI', 'CHATGPT', 'META',
-  'FACEBOOK', 'INSTAGRAM', 'WHATSAPP', 'TELEGRAM', 'TIKTOK', 'SNAPCHAT',
-  'LINKEDIN', 'PINTEREST', 'SPOTIFY', 'NETFLIX', 'YANDEX', 'GMAIL',
-  'BAIDU', 'YAHOO', 'GROK', 'DZEN', 'OPERA', 'ORACLE', 'GITLAB', 'XBOX',
-  // ── Avtomobil brendlari ──
+  'ORIENTFINANS', 'OFB', 'UZTELECOM', 'UZMOBILE', 'UCELL', 'BEELINE',
+  'MOBIUZ', 'PERFECTUM', 'EVO', 'TPS', 'SARKOR', 'EASTTELECOM', 'KORZINKA',
+  'HAVAS', 'MAKRO', 'MAGNUM', 'BARAKA', 'TEXNOMART', 'MEDIAPARK', 'GOODZONE',
+  'ELMAKON', 'ARTEL', 'AKFA', 'IMZO', 'AVALON', 'SHIVAKI', 'ROISON', 'EVOS',
+  'OQTEPA', 'OQTEPALAVASH', 'BELLISSIMO', 'MAXWAY', 'LESAILES', 'FEEDUP',
+  'SAFIA', 'CRAFERS', 'BON', 'YAPONAMAMA', 'BASRIBABA', 'CHOPAR',
+  'DODOPIZZA', 'KFC', 'UZAUTO', 'UZAUTOMOTORS', 'CHEVROLET', 'BYD', 'ADM',
+  'KIA', 'CHERY', 'HAVAL', 'MYTAXI', 'YANDEXGO', 'UZBEKISTANAIRWAYS',
+  'UZRAILWAYS', 'MURADBUILDINGS', 'GOLDENHOUSE', 'NRG', 'DREAMCITY',
+  'AKAYCITY', 'XONSAROY', 'BIGROUP', 'NAJOTTALIM', 'PDP', 'MOHIRDEV',
+  'REGISTAN', 'CAMBRIDGE', 'INTERNATION', 'MARSIT', 'THOMPSON', 'KUNUZ',
+  'DARYOUZ', 'GAZETAUZ', 'SEVIMLI', 'ZORTV', 'MILLIYTV', 'OLX', 'BTS',
+  'BTSEXPRESS', 'FARGO', 'EMU', 'UZPOST', 'APPLE', 'IPHONE', 'IPAD',
+  'MACBOOK', 'SAMSUNG', 'XIAOMI', 'REDMI', 'HUAWEI', 'OPPO', 'VIVO', 'NOKIA',
+  'SONY', 'PHILIPS', 'PANASONIC', 'LENOVO', 'ASUS', 'ACER', 'DELL', 'CANON',
+  'EPSON', 'DYSON', 'BOSCH', 'SIEMENS', 'TEFAL', 'BEKO', 'HAIER', 'MIDEA',
+  'HISENSE', 'GREE', 'GOOGLE', 'YOUTUBE', 'MICROSOFT', 'WINDOWS', 'OPENAI',
+  'CHATGPT', 'FACEBOOK', 'INSTAGRAM', 'WHATSAPP', 'TELEGRAM', 'TIKTOK',
+  'SNAPCHAT', 'LINKEDIN', 'PINTEREST', 'SPOTIFY', 'NETFLIX', 'YANDEX',
+  'GMAIL', 'BAIDU', 'YAHOO', 'GROK', 'DZEN', 'ORACLE', 'GITLAB', 'XBOX',
   'MERCEDES', 'MERCEDESBENZ', 'BMW', 'AUDI', 'TOYOTA', 'LEXUS', 'HYUNDAI',
   'HONDA', 'NISSAN', 'INFINITI', 'MAZDA', 'MITSUBISHI', 'VOLKSWAGEN',
   'PORSCHE', 'LANDROVER', 'RANGEROVER', 'VOLVO', 'FORD', 'RENAULT',
   'PEUGEOT', 'TESLA', 'GEELY', 'ZEEKR', 'JETOUR', 'AVATR', 'HONGQI',
-  'LIAUTO', 'LIXIANG', 'GAC', 'JAC', 'ISUZU', 'MAN', 'KAMAZ',
-  // ── Kiyim, sport va hashamat ──
-  'NIKE', 'ADIDAS', 'PUMA', 'REEBOK', 'NEWBALANCE', 'SKECHERS',
-  'UNDERARMOUR', 'ZARA', 'LCWAIKIKI', 'DEFACTO', 'MANGO', 'BERSHKA',
-  'GUCCI', 'CHANEL', 'DIOR', 'PRADA', 'VERSACE', 'ARMANI', 'BURBERRY',
-  'HERMES', 'LOUISVUITTON', 'BALENCIAGA', 'LACOSTE', 'TOMMYHILFIGER',
-  'CALVINKLEIN', 'POLO', 'ROLEX', 'CARTIER', 'FENDI', 'HUGO', 'HUGOBOSS',
-  'PANDORA', 'PLAYBOY',
-  // ── Oziq-ovqat va ichimliklar ──
-  'COCACOLA', 'COKE', 'PEPSI', 'FANTA', 'SPRITE', 'REDBULL', 'LIPTON',
-  'NESTLE', 'NESCAFE', 'KINDER', 'FERRERO', 'NUTELLA', 'SNICKERS', 'MARS',
-  'TWIX', 'BOUNTY', 'KITKAT', 'MILKA', 'OREO', 'DANONE', 'ACTIVIA',
-  'HEINZ', 'BURGERKING', 'MCDONALDS', 'DOMINOS', 'STARBUCKS', 'PAPAJOHNS',
-  'IQOS',
-  // ── Savdo va internet-do'konlar ──
-  'AMAZON', 'ALIBABA', 'ALIEXPRESS', 'TEMU', 'WILDBERRIES', 'OZON',
-  'TRENDYOL', 'EBAY', 'SHEIN', 'IKEA', 'MINISO', 'LEGOLAND',
-  // ── To'lov va moliya ──
-  'VISA', 'MASTERCARD', 'MAESTRO', 'UNIONPAY', 'WESTERNUNION', 'MONEYGRAM',
-  'BINANCE', 'COINMARKETCAP', 'COINBASE', 'PAYPAL', 'REVOLUT', 'SWIFT',
-  'PAYBOX', 'QIWI', 'EXMO', 'SBER', 'JPMORGAN', 'HSBC',
-  // ── Aviakompaniya va mehmonxonalar ──
-  'TURKISHAIRLINES', 'EMIRATES', 'FLYDUBAI', 'QATARAIRWAYS', 'AIRASTANA',
-  'WIZZAIR', 'HILTON', 'HYATT', 'MARRIOTT', 'RADISSON', 'WYNDHAM',
-  'BOOKING', 'AIRBNB',
-  // ── Yetkazib berish (xalqaro) ──
-  'DHL', 'FEDEX', 'UPS', 'GLOVO', 'WOLT', 'GETT', 'TINDER',
-  // ── Sport, media va boshqalar ──
-  'FIFA', 'MANCITY', 'MANCHESTERCITY', 'ARSENAL', 'MSNBC', 'FORBES',
-  'POLYMARKET', 'XBET', 'ALEXA', 'TOTAL', 'NAKHEEL', 'NEOM', 'EMAAR',
-  'DAMAC',
+  'LIAUTO', 'LIXIANG', 'GAC', 'JAC', 'ISUZU', 'MAN', 'KAMAZ', 'NIKE',
+  'ADIDAS', 'PUMA', 'REEBOK', 'NEWBALANCE', 'SKECHERS', 'UNDERARMOUR',
+  'ZARA', 'LCWAIKIKI', 'DEFACTO', 'BERSHKA', 'GUCCI', 'CHANEL', 'DIOR',
+  'PRADA', 'VERSACE', 'ARMANI', 'BURBERRY', 'HERMES', 'LOUISVUITTON',
+  'BALENCIAGA', 'LACOSTE', 'TOMMYHILFIGER', 'CALVINKLEIN', 'ROLEX',
+  'CARTIER', 'FENDI', 'HUGOBOSS', 'PANDORA', 'PLAYBOY', 'COCACOLA', 'COKE',
+  'PEPSI', 'FANTA', 'SPRITE', 'REDBULL', 'LIPTON', 'NESTLE', 'NESCAFE',
+  'KINDER', 'FERRERO', 'NUTELLA', 'SNICKERS', 'TWIX', 'BOUNTY', 'KITKAT',
+  'MILKA', 'OREO', 'DANONE', 'ACTIVIA', 'HEINZ', 'BURGERKING', 'MCDONALDS',
+  'DOMINOS', 'STARBUCKS', 'PAPAJOHNS', 'IQOS', 'AMAZON', 'ALIBABA',
+  'ALIEXPRESS', 'TEMU', 'WILDBERRIES', 'OZON', 'TRENDYOL', 'EBAY', 'SHEIN',
+  'IKEA', 'MINISO', 'LEGOLAND', 'VISA', 'MASTERCARD', 'MAESTRO', 'UNIONPAY',
+  'WESTERNUNION', 'MONEYGRAM', 'BINANCE', 'COINMARKETCAP', 'COINBASE',
+  'PAYPAL', 'REVOLUT', 'SWIFT', 'PAYBOX', 'QIWI', 'EXMO', 'SBER', 'JPMORGAN',
+  'HSBC', 'TURKISHAIRLINES', 'EMIRATES', 'FLYDUBAI', 'QATARAIRWAYS',
+  'AIRASTANA', 'WIZZAIR', 'HILTON', 'HYATT', 'MARRIOTT', 'RADISSON',
+  'WYNDHAM', 'BOOKING', 'AIRBNB', 'DHL', 'FEDEX', 'UPS', 'GLOVO', 'WOLT',
+  'GETT', 'TINDER', 'FIFA', 'MANCITY', 'MANCHESTERCITY', 'ARSENAL', 'MSNBC',
+  'FORBES', 'POLYMARKET', 'XBET', 'NAKHEEL', 'NEOM', 'EMAAR', 'DAMAC',
 ];
-const BRAND_RESERVED_SET_D1 = new Set(BRAND_RESERVED_D1);
+const CRYPTO_RESERVED_D1 = [
+  'DOGE', 'DOGECOIN', 'USDT', 'USDC', 'BUSD', 'TRON', 'SHIB', 'DEFI', 'DAPP',
+  'WEB', 'TOKEN', 'TOKENS', 'CRYPTO', 'CRYPTOFUND', 'CRYPTOCARD',
+  'CRYPTOHOLDER', 'HUOBI', 'OKEX', 'ZCASH', 'MEMECOIN', 'NFT', 'NFTS',
+  'METAVERSE', 'ETHER',
+];
+const GLOBAL_AUCTION_RESERVED_D1 = [
+  'AERO', 'AIR', 'AIRPORT', 'ALEXA', 'APP', 'ARENA', 'ASIA', 'ASSET',
+  'ATLAS', 'AURA', 'AUTO', 'AVIA', 'BALANCE', 'BANK', 'BAR', 'BEST', 'BLACK',
+  'BOND', 'BOOK', 'BOSS', 'BOT', 'BRAND', 'BRIDGE', 'BUILD', 'BUILDING',
+  'BURGER', 'BUSINESS', 'CAFE', 'CALENDAR', 'CAPITAL', 'CAR', 'CARS', 'CASH',
+  'CAST', 'CHART', 'CHAT', 'CHECKOUT', 'CHEF', 'CHESS', 'CHIEF', 'CITY',
+  'CLOUD', 'CLUB', 'CODE', 'COFFEE', 'COIN', 'COMPANY', 'CONCIERGE',
+  'CONNECT', 'CREATE', 'CREDIT', 'CURRENCY', 'DATA', 'DEAL', 'DECOR',
+  'DELIVERY', 'DEPOSIT', 'DESIGN', 'DIGIT', 'DIGITAL', 'DISCOUNT', 'DOMAIN',
+  'DOMAINS', 'DRAGON', 'DREAM', 'EARN', 'EASY', 'EBANK', 'ECOM', 'ELITE',
+  'EMPIRE', 'ENGLISH', 'ESPORT', 'ESTATE', 'EVENTS', 'EXCHANGE', 'EXPO',
+  'FAMILY', 'FANS', 'FAST', 'FINANCE', 'FITNESS', 'FOOD', 'FOOTBALL',
+  'FORECAST', 'FOREX', 'FUND', 'GAME', 'GAMES', 'GEMS', 'GENIUS', 'GIFT',
+  'GIFTS', 'GLOBAL', 'GOAL', 'GOLD', 'GOOD', 'GRAM', 'GRAND', 'GULF', 'HERO',
+  'HOME', 'HONEST', 'HONOR', 'HOST', 'HOTEL', 'HOTELS', 'HOUSE', 'HUGO',
+  'IDEA', 'INSURANCE', 'INTERIOR', 'INTERNET', 'INVEST', 'INVESTOR', 'KIDS',
+  'KING', 'LAND', 'LEGEND', 'LESSONS', 'LIFE', 'LINK', 'LION', 'LIVE',
+  'LOCAL', 'LOGO', 'LORD', 'LOVE', 'MAIL', 'MALL', 'MANGO', 'MARKET',
+  'MARKETPLACE', 'MARS', 'MASTER', 'MEDIA', 'MEET', 'MESSAGE', 'META',
+  'MONEY', 'MOON', 'MOVE', 'MUSIC', 'NEOBANK', 'NEWS', 'OFFER', 'OFFICE',
+  'ONLINE', 'OPERA', 'ORDER', 'PAYMENT', 'PETS', 'PIZZA', 'PLANE', 'PLAY',
+  'PLAYER', 'PLUS', 'POINT', 'POLO', 'PORT', 'PREMIUM', 'PRESTIGE', 'PRICE',
+  'PRIDE', 'PROFIT', 'PROMO', 'PROPERTY', 'QRCODE', 'QUEEN', 'REALESTATE',
+  'RESTAURANT', 'RICH', 'SALE', 'SALES', 'SCHOOL', 'SCORE', 'SCORES',
+  'SECRET', 'SERVER', 'SERVICE', 'SHOP', 'SMART', 'SPORT', 'SPORTS', 'STAR',
+  'STARS', 'STOCK', 'STORE', 'STORY', 'STUDIO', 'SUPER', 'SUPERIOR', 'SWEET',
+  'SYSTEM', 'TAXI', 'TEA', 'TECH', 'TECHNOLOGY', 'TICKET', 'TICKETS',
+  'TIGER', 'TOTAL', 'TOUR', 'TOURIST', 'TRADE', 'TRADING', 'TRAVEL',
+  'TRAVELS', 'TRIP', 'TRUST', 'UNION', 'VEHICLE', 'VENTURE', 'VERIFY',
+  'VIDEO', 'VIDEOS', 'VIP', 'VLOG', 'WALLSTREET', 'WATCH', 'WEALTH', 'WIFI',
+  'WORLD',
+];
+const RESERVED_SETS_D1 = [
+  ['blocked', new Set(BLOCKED_NAMES_D1)],
+  ['brand', new Set(BRAND_RESERVED_D1)],
+  ['crypto', new Set(CRYPTO_RESERVED_D1)],
+  ['auction', new Set(GLOBAL_AUCTION_RESERVED_D1)],
+];
 function normalizeBrandD1(value) {
   return String(value || '').normalize('NFKC').toUpperCase().replace(/[^A-Z]/g, '');
 }
-function isBrandReservedD1(value) {
+function reservedStatusD1(value) {
   const v = normalizeBrandD1(value);
-  return !!v && BRAND_RESERVED_SET_D1.has(v);
+  if (!v) return '';
+  for (const [status, set] of RESERVED_SETS_D1) if (set.has(v)) return status;
+  return '';
 }
+function isBrandReservedD1(value) { return reservedStatusD1(value) === 'brand'; }
 
 function companyId(value) {
   const id = normalizeCompanyIdD1(value);
@@ -664,8 +682,9 @@ async function companyAvailability(env, rawId) {
   // Bu bloklashning boshqa turlaridan AJRATILADI: interfeys "band" emas,
   // "brend uchun himoyalangan" deb ko'rsatadi va rasmiy vakilga admin
   // bilan bog'lanish yo'lini beradi.
-  const brandReserved = isBrandReservedD1(id);
-  const blocked = brandReserved || BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
+  const reserved = reservedStatusD1(id);
+  const brandReserved = reserved === 'brand';
+  const blocked = !!reserved || BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
   // Taklif qilinadigan muqobillar HAM companyId() dan o'tkaziladi:
   // apostrofli ID kesilganda oxirida yolg'iz ' qolib, yaroqsiz taklif
   // chiqib ketishi mumkin edi (masalan "...G'" + "UZ" emas, balki
@@ -682,9 +701,16 @@ async function companyAvailability(env, rawId) {
     // "brend uchun himoyalangan" deb ko'rsatishi va rasmiy vakilga
     // murojaat yo'lini berishi uchun.
     brandReserved,
+    // `reserved` — sabab: 'blocked' | 'brand' | 'crypto' | 'auction'.
+    // Interfeys shu bo'yicha boshqa-boshqa matn va tugma ko'rsatadi.
+    reserved,
+    auctionStartPrice: reserved === 'auction' ? AUCTION_START_PRICE_D1 : null,
     reason: taken ? 'Bu ID band'
-      : brandReserved ? 'Bu nom brend uchun himoyalangan'
-        : blocked ? (rule?.note || 'Bu ID rezervlangan yoki sotuvda emas') : '',
+      : reserved === 'blocked' ? 'Bu nomdan foydalanish taqiqlangan'
+        : reserved === 'brand' ? 'Bu nom brend uchun himoyalangan'
+          : reserved === 'crypto' ? 'Bu nom alohida toifaga saqlangan'
+            : reserved === 'auction' ? 'Bu nom faqat NFCSTORE auksioni orqali sotiladi'
+              : blocked ? (rule?.note || 'Bu ID rezervlangan yoki sotuvda emas') : '',
     alternatives, ...pricing, rule: rule?.rule || null,
   };
 }
@@ -2522,11 +2548,11 @@ function isPersonalCodePurchasable(rawCode) {
   const c = String(rawCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!c) return false;
   if (isBlockedCode(c)) return false;
-  // Brend uchun himoyalangan nom (UZUM, PAYME, KFC ...) — sotilmaydi.
-  // Tovar belgisi egasining huquqi qonun bilan himoyalangan; begona
-  // odamga `nfcstore.uz/uzum` ni sotib qo'yish bizni ham, xaridorni ham
-  // javobgarlikka qo'yadi.
-  if (isBrandReservedD1(c)) return false;
+  // Band qilingan nomlarning HECH BIRI oddiy tartibda sotilmaydi:
+  // taqiqlangan (POKER), brend (UZUM), kripto (USDT) va auksionga
+  // ajratilgan umumiy nomlar (BANK, GOLD). Oxirgisi auksion orqali
+  // egasini topadi — lekin "Sotib olish" tugmasi bilan emas.
+  if (reservedStatusD1(c)) return false;
   if (FREE_ID_RE.test(c)) return false;
   return true;
 }
