@@ -18,7 +18,7 @@ import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
-import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL } from '../lib/pricing.js';
+import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
@@ -1663,7 +1663,7 @@ function PremiumPanel({ user, card, onBecamePremium }) {
   };
 
   const paymentsOn = PAYMENTS_ENABLED && !disabledByServer;
-  const tierLabel = t(TIER_LABEL[access] || access);
+  const tierLabel = t(tierLabelFor(card?.code, access));
 
   return (
     <div className="vz-card p-5">
@@ -3337,7 +3337,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="vz-panel min-w-0 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Tarif')}</div>
-                <div className="mt-1 flex items-center gap-1.5 text-lg font-black text-accent"><IconCrown width={16} height={16} /> {t(TIER_LABEL[access] || access)}</div>
+                <div className="mt-1 flex items-center gap-1.5 text-lg font-black text-accent"><IconCrown width={16} height={16} /> {t(tierLabelFor(card?.code, access))}</div>
                 <div className="mt-0.5 text-xs text-base-content/45">{user?.isPremium ? t('Jami imkoniyatlar ochiq') : t("Premium'ga o'tish mumkin")}</div>
               </div>
               <div className="vz-panel min-w-0 p-4">
@@ -3946,10 +3946,12 @@ export default function AccountPage({ refreshCatalog }) {
             </div>
             <div className="min-w-0">
               <h1 className="truncate font-display text-2xl font-semibold">{heroName}</h1>
-              <p className="truncate text-sm text-base-content/55">{user.email}</p>
+              {/* Email endi ixtiyoriy — bo'lmasa telefon ko'rsatiladi, aks
+                  holda bu qator bo'm-bo'sh turardi. */}
+              <p className="truncate text-sm text-base-content/55">{user.email || user.phone || ''}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span className="vz-badge vz-badge--ok"><span className="inline-block h-1.5 w-1.5 rounded-full bg-current"></span> {t('Faol')}</span>
-                <span className="vz-badge vz-badge--gold"><IconCrown width={12} height={12} /> {t(TIER_LABEL[tierAccess] || tierAccess)}</span>
+                <span className="vz-badge vz-badge--gold"><IconCrown width={12} height={12} /> {t(tierLabelFor(primaryCard?.code, tierAccess))}</span>
                 {primaryCard && <span className="vz-badge vz-badge--muted font-mono">{primaryCard.code} · {t('ASOSIY ID')}</span>}
                 {primaryCard && <span className="vz-badge vz-badge--muted">{t(CARD_TYPE_LABEL[primaryCard.profileType] || 'Shaxsiy')}</span>}
                 <span className="vz-badge vz-badge--muted">{t("{n} ta raqamli tashrif qog'ozi", { n: myCards.length })}</span>

@@ -308,10 +308,36 @@ export async function handle(request, env, url, H) {
     // Legacy requestPremium: kutilayotgan tekshiruv FOYDALANUVCHI bo'yicha
     // (code='PREMIUM' hamma uchun umumiy — createPendingWebOrderD1'ning
     // faqat code bo'yicha dedup'i bu yerda boshqa userlarni bloklab qo'yardi).
+    // KUTAYOTGAN BUYURTMA — XATO EMAS, O'SHA HAVOLANING O'ZI.
+    //
+    // Avval bu yerda 409 ALREADY_PENDING qaytarardi. Natijada odam bir
+    // marta "To'lash" ni bossa (yoki brauzer to'lov oynasini bloklasa,
+    // yoki u oynani yopib yuborsa) buyurtma "pending" bo'lib qolardi va
+    // undan KEYINGI HAR BIR urinish xato berardi. Ya'ni odam premiumni
+    // umuman sotib ololmasdi — birinchi urinishdan keyin yo'l yopilardi.
+    //
+    // To'g'ri xatti-harakat: odam to'lamoqchi, biz unga O'SHA
+    // buyurtmaning havolasini qaytaramiz. Yangi buyurtma yaratilmaydi,
+    // ya'ni ikki marta pul yechilishi ham mumkin emas.
     const pending = await env.DB.prepare(
-      `SELECT id FROM web_orders WHERE user_id = ? AND kind = 'premium_upgrade' AND status = 'pending' LIMIT 1`
+      `SELECT id, price FROM web_orders WHERE user_id = ? AND kind = 'premium_upgrade' AND status = 'pending'
+        ORDER BY id DESC LIMIT 1`
     ).bind(user.id).first();
-    if (pending) return H.json({ error: 'ALREADY_PENDING' }, 409);
+    if (pending) {
+      // Narx o'zgargan bo'lsa, kutayotgan buyurtma ham joriy narxga
+      // keltiriladi — aks holda odam eski summani to'lab, premium
+      // ochilmay qolardi.
+      if (Number(pending.price) !== PROFILE_PREMIUM_FEE) {
+        await env.DB.prepare(`UPDATE web_orders SET price = ? WHERE id = ?`)
+          .bind(PROFILE_PREMIUM_FEE, pending.id).run();
+      }
+      return H.json({
+        orderId: pending.id,
+        amount: PROFILE_PREMIUM_FEE,
+        payLink: H.paymeCheckoutLinkD1(env, pending.id, PROFILE_PREMIUM_FEE),
+        reused: true,
+      }, 200);
+    }
 
     const order = await env.DB.prepare(
       `INSERT INTO web_orders (user_id, code, kind, price, payload, status, created_at)

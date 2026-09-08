@@ -263,6 +263,22 @@ export const PHYSICAL_CARD_MAX_QTY = 50;
 // Manba: src/lib/access.js FEATURE_MIN.physicalCardDesigner.
 export const PHYSICAL_CARD_MIN_TIER = 'silver';
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Bronza' };
+
+// Ro'yxatdan o'tishda beriladigan BEPUL ID — 8 xonali raqamli kod
+// (hosting/api/auth.js `createFreeAutoId`). `tierForCode` unga ichki
+// 'free' kalitini beradi, uning tijoriy nomi esa "Bronza".
+//
+// Natijada endigina ro'yxatdan o'tgan odam kabinetida "BRONZA" degan
+// yozuvni ko'rardi — go'yo u 49 000 so'mlik darajaga ega bo'lgandek.
+// Bu chalkash: Bronza — SOTIB OLINADIGAN daraja, bepul ID esa emas.
+//
+// Shuning uchun YOZUV ajratildi. Daraja (`access`) va imkoniyatlar
+// tizimiga TEGILMAGAN — 49 000 so'mga Bronza ID olgan odam avvalgidek
+// "Bronza" ko'radi, faqat bepul avtomatik ID "Bepul" deb yoziladi.
+export const isFreeAutoId = (code) => /^\d{8}$/.test(String(code || ''));
+export function tierLabelFor(code, tier) {
+  return isFreeAutoId(code) ? 'Bepul' : (TIER_LABEL[tier] || tier);
+}
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
 // Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Bronza+yashil.
 export const TIER_COLOR = {

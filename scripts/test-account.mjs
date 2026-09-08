@@ -159,8 +159,10 @@ let premiumOrderId;
   premiumOrderId = r.body.orderId;
   const row = sqlite.prepare(`SELECT user_id, code, kind, price, status FROM web_orders WHERE id = ?`).get(premiumOrderId);
   check('web_orders premium row', row, { user_id: 1, code: 'PREMIUM', kind: 'premium_upgrade', price: 20000, status: 'pending' });
+  // 2026-09: takroriy so'rov XATO EMAS — o'sha buyurtmaning havolasi
+  // qaytariladi (batafsil: pastdagi "PREMIUM (20 000)" bo'limi).
   const dup = await callPay('/api/premium/request', { method: 'POST', cookie: cookie.user });
-  check('second premium request -> 409 ALREADY_PENDING', [dup.status, dup.body], [409, { error: 'ALREADY_PENDING' }]);
+  check('takroriy premium so\'rovi -> o\'sha buyurtma', [dup.status, dup.body.orderId, dup.body.reused], [200, premiumOrderId, true]);
   const other = await callPay('/api/premium/request', { method: 'POST', cookie: cookie.other });
   check('other user can still request premium (per-user pending check) -> 201', other.status, 201);
   sqlite.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE id = ?`).run(other.body.orderId);
@@ -374,4 +376,38 @@ check('unrelated path -> module returns null (404)', (await call('/api/account-n
   const m = readFileSync(new URL('../hosting/api/account.js', import.meta.url), 'utf8').match(/const PROFILE_PREMIUM_FEE = (\d+);/);
   check('PROFILE_PREMIUM_FEE sync (account.js == pricing.js)', Number(m?.[1]), PROFILE_PREMIUM_FEE);
 }
+
+// ═══ PREMIUM (20 000) — KUTAYOTGAN BUYURTMA XATO EMAS ═══
+// Odam bir marta "To'lash" ni bossa (yoki brauzer to'lov oynasini
+// bloklasa, yoki u oynani yopib yuborsa) buyurtma "pending" bo'lib
+// qolardi va undan KEYINGI HAR BIR urinish 409 ALREADY_PENDING
+// berardi — ya'ni odam premiumni umuman sotib ololmasdi.
+{
+  env.PAYMENTS_ENABLED = 'true';
+  env.PAYME_MERCHANT_ID = '6a9a5ff90a7dc281fc7e03e2';
+  env.PAYME_KEY = 'test_key_local_only';
+  const prem = () => call('/api/premium/request', { method: 'POST', cookie: cookie.user });
+  // Yuqoridagi bo'lim allaqachon kutayotgan buyurtma qoldirgan — toza
+  // holatdan boshlaymiz.
+  await env.DB.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE kind = 'premium_upgrade' AND status = 'pending'`).run();
+
+  const first = await prem();
+  check('premium: birinchi urinish -> 201', [first.status, first.body.amount], [201, 20000]);
+  checkTrue('premium: to\'lov havolasi bor', /^https:\/\/checkout\.paycom\.uz\//.test(first.body.payLink || ''));
+
+  const again = await prem();
+  check('premium: ikkinchi urinish ham ISHLAYDI (xato emas)', again.status, 200);
+  check('premium: o\'sha buyurtma qaytariladi, yangisi emas',
+    [again.body.orderId, again.body.reused], [first.body.orderId, true]);
+  check('premium: havola ham o\'sha', again.body.payLink, first.body.payLink);
+  check('premium: bitta buyurtma qoladi (ikki marta pul yechilmaydi)',
+    sqlite.prepare(`SELECT COUNT(*) AS n FROM web_orders WHERE kind = 'premium_upgrade' AND status = 'pending'`).get().n, 1);
+
+  // Allaqachon premium bo'lsa — buyurtma umuman yaratilmaydi.
+  await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = 1`).run();
+  const done2 = await prem();
+  check('premium: allaqachon premium -> 409', [done2.status, done2.body.error], [409, 'ALREADY_PREMIUM']);
+  await env.DB.prepare(`UPDATE users SET is_premium = 0 WHERE id = 1`).run();
+}
+
 done();
