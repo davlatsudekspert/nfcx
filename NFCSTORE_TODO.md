@@ -64,3 +64,54 @@ Payments must stay disabled until every item is complete:
 - [ ] Monitoring, reconciliation and admin audit trail verified.
 - [ ] Set backend `PAYMENTS_ENABLED=true` only after approval.
 - [ ] Change frontend `PAYMENTS_ENABLED` only in the same reviewed release.
+
+## Ismlar auksioni — KEYINGA QOLDIRILDI (qaror: 2026-09-08)
+
+Qaror: hozir qurilmaydi. Sabab — hisob-kitob:
+
+| | Nechta bo'lishi mumkin | Qanday sotiladi |
+|---|---|---|
+| `ABC123` kod | 26³ × 10³ = 17 576 000 | darhol, qat'iy narxda, o'z-o'zidan |
+| 3 harfli ism | jami 17 576, ismga o'xshagani ~100-200 | auksion, har biri qo'lda ish |
+
+Kod biznesi o'sadi, ism biznesi o'smaydi. Ismlar avtomatlashtirishga
+arzimaydigan darajada kam, lekin PRESTIJ qatlami sifatida qoladi.
+
+MUHIM: imkoniyat yo'qolmagan — admin bugun ham istalgan ismga qo'lda
+auksion ocha oladi (`POST /api/admin/auctions`). Faqat avtomatlashtirish
+qoldirildi.
+
+Qachon qaytamiz: Instagram/Telegram orqali haqiqiy so'rovlar kelganda.
+Signal allaqachon yig'ilyapti — "Talab" taxtasi ishlab turibdi
+(so'rov -> admin tasdiqlaydi -> ovoz yig'iladi -> 20 tada `ready`).
+Nol ovozli ism — qurishga arzimaydi degani.
+
+O'shanda qilinadigan ish (kelishilgan dizayn):
+
+- [ ] Alohida «Ismlar» sahifasi: ism yoziladi -> band emasligi va
+      boshlang'ich auksion narxi darhol ko'rinadi.
+- [ ] Boshlang'ich narx HARFLAR SONIDAN hisoblanadi. Naqsh saytda
+      allaqachon bor — `companyPricing()` (3 -> 990 000, 4-5 -> 749 000,
+      6-7 -> 549 000, 8+ -> 349 000). Ismlar uchun taklif:
+      3 -> 2 000 000, 4 -> 1 500 000, 5 -> 1 000 000, 6-7 -> 700 000,
+      8-9 -> 500 000, 10-12 -> 350 000. Raqamlar TASDIQLANMAGAN.
+- [ ] Ikki kirish yo'li: (a) ochish to'lovi bilan darhol; (b) 20 ta
+      ovozdan keyin avtomatik. Ikkalasida ham muddat 72 soat.
+- [ ] Ochish to'lovi QAYTARILMAYDIGAN kichik summa bo'lsin (~50 000,
+      g'olib bo'lsa hisobga o'tadi). Boshlang'ich narxni oldindan
+      to'latish YO'Q — ustidan oshirilsa pul qaytarish kerak bo'ladi va
+      bu har safar qo'lda ish va nizo demakdir.
+- [ ] Band qilingan ro'yxat: mashhur brend va shaxs ismlari sotuvga
+      chiqmasin (hozir faqat `GOD*` bloklangan). Shartlarga "asosli
+      shikoyat kelsa olib tashlaymiz" bandi.
+- [ ] Admin panelda shaxsiy ID'lar uchun narx jadvali — hozir per-code
+      narx `CODE_PRICES_D1` da, kod ichida yozilgan (5 ta kod) va
+      o'zgartirish uchun deploy kerak. Company ID'da bunday panel bor.
+
+Ochiq nomuvofiqlik (hozir zarari yo'q, yakunlash qo'lda):
+- [ ] Admin auksion ochishda kod uchun `[A-Z0-9]{3,16}` qabul qilinadi,
+      lekin ishlaydigan profil kodi faqat `[A-Z]{3,12}` / `[A-Z]{3}[0-9]{3}` /
+      `[0-9]{8}`. Ya'ni profilga aylanmaydigan kodga auksion ochib
+      yuborish mumkin. Auksion ochishda ham `validCode` tekshirilsin.
+- [ ] Auksion to'lovi (`auction_payment`) D1'ga ko'chirilmagan — g'olib
+      aniqlangach kartani admin qo'lda biriktiradi.
