@@ -794,6 +794,63 @@ function PaymeTestOrder() {
   );
 }
 
+// Bosma maketning BITTA tomoni — ko'rinishi va TEKSHIRUVI.
+//
+// Nega tekshiruv kerak: maket to'g'ridan-to'g'ri tipografiyaga ketadi.
+// Agar fayl buzilgan bo'lsa yoki o'lchami noto'g'ri chiqsa, buni
+// bosmaxona emas, BIZ birinchi bo'lib bilishimiz kerak. Ilgari admin
+// faqat kichik rasmni ko'rardi va fayl ochilmasa ham sababi noma'lum
+// qolardi.
+//
+// Tekshiruv brauzerning O'ZI qiladi — qo'shimcha so'rov yo'q:
+//   * rasm yuklandi -> haqiqiy piksel o'lchami olinadi va kutilgan
+//     2022x1276 bilan solishtiriladi;
+//   * yuklanmadi -> fayl PNG emas (masalan xato sabab HTML qaytgan)
+//     yoki umuman yo'q. Bu ochiq aytiladi.
+const PRINT_PX = [2022, 1276];
+
+function PrintSide({ order, label, url, slug }) {
+  const { t } = useLanguage();
+  const [size, setSize] = useState(null);   // [w, h]
+  const [broken, setBroken] = useState(false);
+  const exact = size && size[0] === PRINT_PX[0] && size[1] === PRINT_PX[1];
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <div className="vz-kicker">{t(label)}</div>
+      <a href={url} target="_blank" rel="noopener noreferrer">
+        <img
+          src={url} alt={t(label)} loading="lazy"
+          onLoad={(e) => setSize([e.currentTarget.naturalWidth, e.currentTarget.naturalHeight])}
+          onError={() => setBroken(true)}
+          className="h-[104px] w-[165px] rounded-lg border border-white/15 bg-black object-cover"
+        />
+      </a>
+
+      {broken ? (
+        <div className="vz-err max-w-[190px] text-[11px] leading-snug">
+          {t('Fayl ochilmadi — bu yaroqli PNG emas. Tipografiyaga bermang.')}
+        </div>
+      ) : size ? (
+        <div className={`font-mono text-[11px] ${exact ? 'text-base-content/45' : 'text-warning'}`}>
+          {size[0]}&times;{size[1]}
+          {!exact && ` — ${t('o‘lcham mos emas')}`}
+        </div>
+      ) : null}
+
+      {/* `download` — bir bosishda tipografiyaga beriladigan fayl.
+          Nomi buyurtma raqami bilan: papkada aralashib ketmasin. */}
+      <a
+        href={url}
+        download={`nfcstore_${order.code || 'karta'}_${order.id}_${slug}.png`}
+        className="btn btn-outline-gold btn-xs min-h-9"
+      >
+        {t('Yuklab olish')}
+      </a>
+    </div>
+  );
+}
+
 // Jismoniy karta buyurtmasining bosma maketi — admin uchun.
 //
 // Maket mijoz "buyurtma berish" ni bosgan daqiqada saqlangan, ya'ni
@@ -802,8 +859,8 @@ function PaymeTestOrder() {
 function PhysicalCardDesign({ order }) {
   const { t } = useLanguage();
   const sides = [
-    ['Old tomon', order.designFrontUrl],
-    ['Orqa tomon', order.designBackUrl],
+    ['Old tomon', order.designFrontUrl, 'old'],
+    ['Orqa tomon', order.designBackUrl, 'orqa'],
   ].filter(([, url]) => !!url);
 
   return (
@@ -827,25 +884,8 @@ function PhysicalCardDesign({ order }) {
         <div className="vz-err self-center text-xs">
           {t('Bu buyurtmada bosma maket yo‘q — mijozdan dizaynni so‘rang.')}
         </div>
-      ) : sides.map(([label, url]) => (
-        <div key={label} className="flex flex-col items-start gap-2">
-          <div className="vz-kicker">{t(label)}</div>
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            <img
-              src={url} alt={t(label)} loading="lazy"
-              className="h-[104px] w-[165px] rounded-lg border border-white/15 bg-black object-cover"
-            />
-          </a>
-          {/* `download` — bir bosishda tipografiyaga beriladigan fayl.
-              Nomi buyurtma raqami bilan: papkada aralashib ketmasin. */}
-          <a
-            href={url}
-            download={`nfcstore_${order.code || 'karta'}_${order.id}_${label === 'Old tomon' ? 'old' : 'orqa'}.png`}
-            className="btn btn-outline-gold btn-xs min-h-9"
-          >
-            {t('Yuklab olish')}
-          </a>
-        </div>
+      ) : sides.map(([label, url, slug]) => (
+        <PrintSide key={label} order={order} label={label} url={url} slug={slug} />
       ))}
     </div>
   );
