@@ -45,6 +45,28 @@ await seedBasic(env);
   }
   check('2c) "OQTEPA LAVASH" bitta brend', isBrandReserved('OQTEPA LAVASH'), true);
   check('2d) "IPAK YULI" bitta brend', isBrandReserved('IPAK YULI'), true);
+
+  // Xorijiy brendlarning ko'p so'zli yozilishlari
+  for (const [v, label] of [
+    ['MERCEDES-BENZ', 'Mercedes'], ['Mercedes Benz', 'Mercedes'],
+    ['COCA-COLA', 'Coca-Cola'], ['coca cola', 'Coca-Cola'],
+    ['LAND ROVER', 'Land Rover'], ['RANGE ROVER', 'Range Rover'],
+    ['Louis Vuitton', 'Louis Vuitton'], ['TURKISH AIRLINES', 'Turkish Airlines'],
+    ['New Balance', 'New Balance'], ['Manchester City', 'Man City'],
+    ['Hugo Boss', 'Hugo Boss'], ['Burger King', 'Burger King'],
+  ]) {
+    checkTrue(`2e) "${v}" -> ${label}`, isBrandReserved(v));
+  }
+}
+
+// ── 2f) ATAYLAB himoyalangan ODDIY SO'ZLAR ────────────────────────────
+// Bular kundalik so'z ham, brend ham. Egasi ataylab ro'yxatga qo'shgan.
+// Test buni YOZIB QO'YADI — kelajakda "nega MANGO bloklangan?" degan
+// savol chiqsa, javob shu yerda: bu xato emas, qaror.
+{
+  for (const v of ['MANGO', 'POLO', 'OPERA', 'TOTAL', 'HONOR', 'MARS', 'ALEXA', 'META', 'HUGO']) {
+    check(`2f) "${v}" ataylab himoyalangan`, isBrandReserved(v), true);
+  }
 }
 
 // ── 3) YOLG'ON IJOBIY BO'LMASIN — eng muhim tekshiruv ─────────────────
@@ -53,7 +75,10 @@ await seedBasic(env);
 // yo'qotiladi va buni hech kim sezmaydi.
 {
   const innocent = ['BONU', 'ANORA', 'ALI', 'NUR', 'GULNORA', 'IDEAL', 'HUMOYUN',
-    'KIARA', 'EVOSIYA', 'BARAKAT', 'OSONBEK', 'CLICKER', 'ARTELIYA'];
+    'KIARA', 'EVOSIYA', 'BARAKAT', 'OSONBEK', 'CLICKER', 'ARTELIYA',
+    // Xorijiy ro'yxat qo'shilgach paydo bo'lishi mumkin bo'lgan xavflar
+    'MANGOSTON', 'POLOTNO', 'MARSEL', 'HUGOBEK', 'ALEXANDRA', 'OPERATOR',
+    'TOTALLIK', 'HONORIY', 'METALL', 'FORDOB', 'VISAM', 'IKEALIK'];
   for (const v of innocent) check(`3) "${v}" ochiq qolishi shart`, isBrandReserved(v), false);
 }
 

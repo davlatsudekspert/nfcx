@@ -72,6 +72,54 @@ export const BRAND_RESERVED = [
   'GAZETAUZ', 'SEVIMLI', 'ZORTV', 'MILLIYTV', 'OLX',
   // ── Yetkazib berish va logistika ──
   'BTS', 'BTSEXPRESS', 'FARGO', 'EMU', 'UZPOST',
+
+  // ═══ XORIJIY BRENDLAR (2026-09) ═══
+  // ── Telefon, texnika va maishiy texnika ──
+  'APPLE', 'IPHONE', 'IPAD', 'MACBOOK', 'SAMSUNG', 'XIAOMI', 'REDMI',
+  'HUAWEI', 'HONOR', 'OPPO', 'VIVO', 'NOKIA', 'SONY', 'PHILIPS',
+  'PANASONIC', 'LENOVO', 'ASUS', 'ACER', 'DELL', 'CANON', 'EPSON', 'DYSON',
+  'BOSCH', 'SIEMENS', 'TEFAL', 'BEKO', 'HAIER', 'MIDEA', 'HISENSE', 'GREE',
+  // ── Internet va ijtimoiy tarmoqlar ──
+  'GOOGLE', 'YOUTUBE', 'MICROSOFT', 'WINDOWS', 'OPENAI', 'CHATGPT', 'META',
+  'FACEBOOK', 'INSTAGRAM', 'WHATSAPP', 'TELEGRAM', 'TIKTOK', 'SNAPCHAT',
+  'LINKEDIN', 'PINTEREST', 'SPOTIFY', 'NETFLIX', 'YANDEX', 'GMAIL',
+  'BAIDU', 'YAHOO', 'GROK', 'DZEN', 'OPERA', 'ORACLE', 'GITLAB', 'XBOX',
+  // ── Avtomobil brendlari ──
+  'MERCEDES', 'MERCEDESBENZ', 'BMW', 'AUDI', 'TOYOTA', 'LEXUS', 'HYUNDAI',
+  'HONDA', 'NISSAN', 'INFINITI', 'MAZDA', 'MITSUBISHI', 'VOLKSWAGEN',
+  'PORSCHE', 'LANDROVER', 'RANGEROVER', 'VOLVO', 'FORD', 'RENAULT',
+  'PEUGEOT', 'TESLA', 'GEELY', 'ZEEKR', 'JETOUR', 'AVATR', 'HONGQI',
+  'LIAUTO', 'LIXIANG', 'GAC', 'JAC', 'ISUZU', 'MAN', 'KAMAZ',
+  // ── Kiyim, sport va hashamat ──
+  'NIKE', 'ADIDAS', 'PUMA', 'REEBOK', 'NEWBALANCE', 'SKECHERS',
+  'UNDERARMOUR', 'ZARA', 'LCWAIKIKI', 'DEFACTO', 'MANGO', 'BERSHKA',
+  'GUCCI', 'CHANEL', 'DIOR', 'PRADA', 'VERSACE', 'ARMANI', 'BURBERRY',
+  'HERMES', 'LOUISVUITTON', 'BALENCIAGA', 'LACOSTE', 'TOMMYHILFIGER',
+  'CALVINKLEIN', 'POLO', 'ROLEX', 'CARTIER', 'FENDI', 'HUGO', 'HUGOBOSS',
+  'PANDORA', 'PLAYBOY',
+  // ── Oziq-ovqat va ichimliklar ──
+  'COCACOLA', 'COKE', 'PEPSI', 'FANTA', 'SPRITE', 'REDBULL', 'LIPTON',
+  'NESTLE', 'NESCAFE', 'KINDER', 'FERRERO', 'NUTELLA', 'SNICKERS', 'MARS',
+  'TWIX', 'BOUNTY', 'KITKAT', 'MILKA', 'OREO', 'DANONE', 'ACTIVIA',
+  'HEINZ', 'BURGERKING', 'MCDONALDS', 'DOMINOS', 'STARBUCKS', 'PAPAJOHNS',
+  'IQOS',
+  // ── Savdo va internet-do'konlar ──
+  'AMAZON', 'ALIBABA', 'ALIEXPRESS', 'TEMU', 'WILDBERRIES', 'OZON',
+  'TRENDYOL', 'EBAY', 'SHEIN', 'IKEA', 'MINISO', 'LEGOLAND',
+  // ── To'lov va moliya ──
+  'VISA', 'MASTERCARD', 'MAESTRO', 'UNIONPAY', 'WESTERNUNION', 'MONEYGRAM',
+  'BINANCE', 'COINMARKETCAP', 'COINBASE', 'PAYPAL', 'REVOLUT', 'SWIFT',
+  'PAYBOX', 'QIWI', 'EXMO', 'SBER', 'JPMORGAN', 'HSBC',
+  // ── Aviakompaniya va mehmonxonalar ──
+  'TURKISHAIRLINES', 'EMIRATES', 'FLYDUBAI', 'QATARAIRWAYS', 'AIRASTANA',
+  'WIZZAIR', 'HILTON', 'HYATT', 'MARRIOTT', 'RADISSON', 'WYNDHAM',
+  'BOOKING', 'AIRBNB',
+  // ── Yetkazib berish (xalqaro) ──
+  'DHL', 'FEDEX', 'UPS', 'GLOVO', 'WOLT', 'GETT', 'TINDER',
+  // ── Sport, media va boshqalar ──
+  'FIFA', 'MANCITY', 'MANCHESTERCITY', 'ARSENAL', 'MSNBC', 'FORBES',
+  'POLYMARKET', 'XBET', 'ALEXA', 'TOTAL', 'NAKHEEL', 'NEOM', 'EMAAR',
+  'DAMAC',
 ];
 
 const RESERVED_SET = new Set(BRAND_RESERVED);
