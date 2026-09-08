@@ -237,8 +237,12 @@ export default function NewsPage({ newsId = null }) {
   const items = news || [];
   const single = items.length === 1;
 
+  // Kenglik butun sayt bilan bir xil (2026-09): menyu, footer va qolgan
+  // sahifalar 1800px. Bu sahifa 1200px edi va katta ekranda menyudan tor
+  // bo'lib, ikki yoni bo'sh qolardi. Kartalar allaqachon `xl:grid-cols-3`
+  // — keng ekranda uchtadan joylashadi va bo'shliq to'ladi.
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-4 pb-20 sm:px-6 lg:px-10" style={{ color: 'var(--vz-ink)' }}>
+    <main className="mx-auto w-full max-w-[1800px] px-4 pb-20 sm:px-6 lg:px-14" style={{ color: 'var(--vz-ink)' }}>
       <section className="pt-10 sm:pt-14">
         <span className="vz-kicker">{t('Yangiliklar')}</span>
         <h1 className="vz-h2 mt-3">{t('NFCSTORE')} {t('yangiliklari')}</h1>
