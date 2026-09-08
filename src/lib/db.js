@@ -589,12 +589,24 @@ export async function dbDeleteOwnCard(code) {
 // Bosma maketni (PNG dataURL) R2 ga yuklaydi va `/uploads/...` havolasini
 // qaytaradi. XOM BINAR yuboriladi: base64 hajmni ~33% ga oshiradi va
 // 600 DPI maket (bir necha MB) uchun bu bekorga sarflangan trafik.
+// 2022x1276 o'lchamdagi PNG hech qachon bundan kichik bo'lmaydi: shu
+// o'lchamdagi MUTLAQO BO'SH (shaffof) rasm ham ~53 KB, haqiqiy maket esa
+// 1.4-1.9 MB (o'lchab ko'rildi). Undan kichigi — chizish umuman
+// bo'lmagani (canvas bo'sh qolgan) degani.
+const CARD_PRINT_MIN_BYTES = 20 * 1024;
+
 export async function dbUploadCardPrint(dataUrl) {
   const comma = String(dataUrl || '').indexOf(',');
   if (comma < 0) throw new Error('Maketni tayyorlab bo‘lmadi.');
   const bin = atob(dataUrl.slice(comma + 1));
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  // Bo'sh maket yuklanmaydi. Aks holda buyurtma yaratilar, pul olinar,
+  // admin esa bosmaxonaga beradigan narsasi yo'qligini faqat faylni
+  // ochganda bilardi.
+  if (bytes.length < CARD_PRINT_MIN_BYTES) {
+    throw new Error('Maket bo‘sh chiqdi. Dizayn oynasini oching, kartani ko‘rib turganingizga ishonch hosil qiling va qayta urinib ko‘ring.');
+  }
   const res = await fetch('/api/upload-card-print', {
     method: 'POST',
     headers: { 'Content-Type': 'image/png' },

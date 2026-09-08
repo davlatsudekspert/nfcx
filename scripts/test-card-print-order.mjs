@@ -59,6 +59,22 @@ const upload = (bytes, init = {}) => call('/api/upload-card-print', {
 
   const big = await upload(Buffer.alloc(9 * 1024 * 1024, 1), { cookie: cookie.user });
   check('1f) 8 MB dan katta fayl rad etiladi', big.status, 413);
+
+  // BAYTMA-BAYT BUTUNLIK. Maket bir necha megabayt bo'ladi; yo'lda bir
+  // bayt o'zgarsa yoki fayl kesilsa, PNG umuman ochilmaydi va bosmaxona
+  // uni qaytaradi. Shuning uchun katta, "haqiqiy" hajmdagi faylni
+  // yuklab, R2'ga TUSHGAN baytlarni asl nusxa bilan solishtiramiz.
+  const bigPng = Buffer.concat([
+    PNG.subarray(0, 8),                       // PNG imzosi
+    Buffer.alloc(1_500_000, 0),               // "og'ir" tana
+    PNG.subarray(8),
+  ]);
+  const stored = await upload(bigPng, { cookie: cookie.user });
+  check('1g) 1.5 MB maket qabul qilinadi', stored.status, 200);
+  const saved = env.UPLOADS._store.get(String(stored.body.url).slice(1));
+  const savedBytes = Buffer.from(saved?.bytes || new Uint8Array());
+  check('1h) saqlangan hajm asl nusxaga teng', savedBytes.length, bigPng.length);
+  checkTrue('1i) saqlangan baytlar AYNAN bir xil', savedBytes.equals(bigPng));
 }
 
 // ── 2) Buyurtmaga faqat O'ZIMIZNING havola yoziladi ────────────────────

@@ -478,14 +478,24 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
     return () => { cancelled = true; };
   }, [showQr, code, frontText, qrMode, qrManualLink, qrColor]);
 
-  const buildState = useCallback((overrides) => ({
-    side, frontText, frontSubText, backText, backSubText, showNfc,
-    textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
-    logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY,
-    wmXY, wmSize, wmColor, ...overrides,
-  }), [side, frontText, frontSubText, backText, backSubText, showNfc,
-    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize, textXY,
-    wmXY, wmSize, wmColor]);
+  const buildState = useCallback((overrides) => {
+    // MUHIM: matn joyi TOMONGA bog'liq va u `overrides` bilan
+    // almashtirilishi mumkin. Avval `textXY` tashqaridan, JORIY tomon
+    // bo'yicha olinardi — ya'ni `buildState({ side: 'back' })` orqa
+    // tomonni ustiga OLD tomonning matn joyi bilan chizardi. Buyurtma
+    // paytida ikkala tomon ham shu yo'l bilan chiqariladi, demak
+    // bosmaxonaga ketadigan faylda orqa matn noto'g'ri joyda turardi.
+    const effectiveSide = overrides?.side || side;
+    return {
+      side, frontText, frontSubText, backText, backSubText, showNfc,
+      textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
+      logoImage, logoXY, showQr, qrImage, qrXY, qrSize,
+      textXY: effectiveSide === 'front' ? frontTextXY : backTextXY,
+      wmXY, wmSize, wmColor, ...overrides,
+    };
+  }, [side, frontText, frontSubText, backText, backSubText, showNfc,
+    textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize,
+    frontTextXY, backTextXY, wmXY, wmSize, wmColor]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
