@@ -125,7 +125,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_0%,rgba(212,175,90,0.14),transparent_70%),radial-gradient(420px_320px_at_10%_90%,rgba(180,140,50,0.08),transparent_60%)]"></div>
 
-        <div className="relative z-[1] mx-auto w-full max-w-[1400px] px-6 pb-10 pt-14 sm:px-10 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-8 lg:pt-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-12">
+        <div className="relative z-[1] mx-auto w-full max-w-[1800px] px-6 pb-10 pt-14 sm:px-10 lg:px-14 md:pt-20 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:gap-10 lg:pb-8 lg:pt-8 xl:grid-cols-[minmax(0,1fr)_560px] xl:gap-16 xl:pt-12">
           {/* ===== CHAP USTUN: sarlavha, CTA, afzalliklar, NFC ID qidiruvi ===== */}
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <Reveal>
@@ -268,7 +268,13 @@ export default function HomePage({ catalog, refreshCatalog }) {
         )}
       </section>
 
-      <div className="mx-auto w-full max-w-[1200px] px-6 pb-20 sm:px-10">
+      {/* SAHIFA KENGLIGI — butun sayt bilan BIR XIL (2026-09).
+          Ilgari asosiy sahifa yolg'iz o'zi tor edi: hero 1400px, tanasi
+          1200px, ustidagi menyu va pastdagi footer esa 1800px. Katta
+          ekranda kontent o'rtada qisilib, ikki yoni bo'sh qolardi va
+          menyu bilan chetlari to'g'ri kelmasdi. Qolgan 20 ta sahifa
+          allaqachon 1800px ishlatadi — endi bu ham shunday. */}
+      <div className="mx-auto w-full max-w-[1800px] px-6 pb-20 sm:px-10 lg:px-14">
         {/* ================= KIMLAR UCHUN ================= */}
         <RevealSection id="kimlar-uchun">
           <h2 className="vz-h2 text-[color:var(--vz-ink)]">{t('Kimlar uchun')}</h2>
@@ -276,13 +282,13 @@ export default function HomePage({ catalog, refreshCatalog }) {
             <article className="vz-card flex min-w-0 flex-col p-6 sm:p-7">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(212,175,90,0.14)] text-[color:var(--vz-gold-2)]"><IconUser width="22" height="22" /></span>
               <h3 className="mt-4 text-xl font-bold text-[color:var(--vz-ink)]">{t('Jismoniy shaxs')}</h3>
-              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Mutaxassis, tadbirkor, ijodkor — o‘z brendingiz uchun bitta havola.')}</p>
+              <p className="mt-2 max-w-[52ch] flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Mutaxassis, tadbirkor, ijodkor — o‘z brendingiz uchun bitta havola.')}</p>
               <button onClick={() => navigate('/register')} className="btn btn-gold mt-5 self-start">{t('Shaxsiy profil ochish')}</button>
             </article>
             <article className="vz-card flex min-w-0 flex-col p-6 sm:p-7">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(212,175,90,0.14)] text-[color:var(--vz-gold-2)]"><IconBag width="22" height="22" /></span>
               <h3 className="mt-4 text-xl font-bold text-[color:var(--vz-ink)]">{t('Kompaniya')}</h3>
-              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Menyu, katalog, xizmatlar, filiallar va jamoa — premium biznes profil.')}</p>
+              <p className="mt-2 max-w-[52ch] flex-1 text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">{t('Menyu, katalog, xizmatlar, filiallar va jamoa — premium biznes profil.')}</p>
               <button onClick={() => navigate('/kompaniyalar')} className="btn btn-outline-gold mt-5 self-start">{t('Kompaniya profili ochish')}</button>
             </article>
           </div>
