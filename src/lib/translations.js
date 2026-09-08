@@ -817,6 +817,8 @@ const DICT_BASE = {
   'Nusxalash': { ru: 'Копировать', en: 'Copy' },
   'Nusxalandi!': { ru: 'Скопировано!', en: 'Copied!' },
   'Havolani nusxalash': { ru: 'Скопировать ссылку', en: 'Copy link' },
+  'Cloudflare tarmog‘ida ishlaydi · To‘lovlar rasmiy to‘lov tizimlari orqali': { ru: 'Работает в сети Cloudflare · Оплата через официальные платёжные системы', en: 'Runs on Cloudflare · Payments via official payment systems' },
+  'Auksion qoidalari': { ru: 'Правила аукциона', en: 'Auction rules' },
   "Sizda {p}% chegirma kutilmoqda — keyingi bandlashda avtomatik qo'llanadi!": { ru: 'Вас ждёт скидка {p}% — она применится автоматически при следующем бронировании!', en: 'You have a {p}% discount waiting — it applies automatically on your next reservation!' },
   "Taklif qilgan do'stlaringiz": { ru: 'Приглашённые вами друзья', en: 'Friends you invited' },
   'Akkauntingiz vaqtincha bloklangan': { ru: 'Ваш аккаунт временно заблокирован', en: 'Your account is temporarily blocked' },
