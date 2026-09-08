@@ -110,6 +110,16 @@
   // izohlari avtomatik yo'qoladi) va checkout domeni haqiqiysiga
   // almashtirildi. Bu ikkovi BIRGA o'zgarishi shart: biri sinovda,
   // ikkinchisi ishlab chiqarishda qolsa, mijoz noto'g'ri sahifaga tushadi.
+  //
+  // AI YORDAMCHI (2026-09). Kalit BU YERDA YOZILMAYDI — PAYME_KEY bilan
+  // bir xil qoida: Dashboard'da secret sifatida qo'yiladi va `wrangler
+  // deploy` unga tegmaydi.
+  //   Workers & Pages -> nfcstore-api -> Settings -> Variables and Secrets
+  //   -> Add -> turi "Secret" -> nomi GEMINI_API_KEY
+  // Kalit bo'lmasa /api/assistant/status `{enabled:false}` beradi va
+  // vidjet o'zini umuman ko'rsatmaydi — sayt "buzuq" ko'rinmaydi.
+  // Ixtiyoriy: ASSISTANT_MODEL (standart gemini-3.6-flash),
+  // ASSISTANT_OFF="1" — kalit turgan holda vidjetni vaqtincha o'chirish.
   "vars": {
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",

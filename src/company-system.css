@@ -99,3 +99,17 @@
   background: transparent; color: #e9e6df; font-size: 18px; cursor: pointer;
 }
 .cp-music-nav button:hover { border-color: rgba(201, 162, 75, 0.6); }
+
+/* NFC tezkor profil: karta raqami tugmasi havola emas (bosilganda
+   nusxalanadi) — shuning uchun `a` uslubi unga tushmasdi va tugma
+   ro'yxatdan ajralib, "buzuq" ko'rinardi. */
+.cq-actions button{display:flex;align-items:center;justify-content:center;border:1px solid #2c2923;border-radius:11px;background:#0b0b0a;color:#e4dfd5;font-size:var(--fs-xs);padding:11px;cursor:pointer;font-family:inherit}
+.cq-actions button:hover{border-color:#5a451c;color:#f0c65d}
+.cq-page .cp-music{margin-top:14px}
+
+/* Workspace preview tugmalari — endi haqiqiy havolalar, soni ham
+   o'zgaruvchan (Aloqa bo'limi nimaga to'ldirilganiga qarab). Shuning
+   uchun qat'iy 2 ustun emas, o'ralib ketadigan ro'yxat. */
+.cw-phone-buttons a,.cw-phone-buttons span{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(0,0,0,.62);color:#fff;font-size:8px;padding:8px 2px;min-width:0;overflow:hidden}
+.cw-phone-buttons a.primary{background:#eab32d;color:#0a0803;font-weight:800;border-color:transparent}
+.cw-phone-buttons .cw-phone-empty,.cw-phone-buttons .cw-phone-music{grid-column:1/-1;color:#c8c0b0;background:rgba(0,0,0,.5);border-style:dashed}

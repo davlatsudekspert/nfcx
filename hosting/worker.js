@@ -12,6 +12,7 @@ import * as apiAdminExtra from './api/admin-extra.js';
 import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL } from './api/order-window.js';
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
+import * as apiAssistant from './api/assistant.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -6845,7 +6846,7 @@ const H = {
   emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -6973,12 +6974,9 @@ async function handleRequest(request, env, url) {
     // hosting/api/* modullari — core dispatch'dan keyin. Eski "o'ziga proxy"
     // (https://nfcstore.uz ga fetch — Worker'ning O'Z domeni, 405/HTML/503 berardi)
     // OLIB TASHLANDI: hech kim tanimasa aniq JSON 404.
-    // AI yordamchi (legacy server/assistant.js) Worker'ga portlanmagan —
-    // frontend vidjeti har sahifada holatni so'raydi; 404 o'rniga aniq
-    // "o'chirilgan" javobi (konsolda xato chiqmasin).
-    if (url.pathname === '/api/assistant/status' && request.method === 'GET') {
-      return json({ enabled: false });
-    }
+    // AI yordamchi endi hosting/api/assistant.js da (Gemini). Avval shu
+    // yerda qattiq `{enabled:false}` turardi — shuning uchun vidjet
+    // saytda umuman ko'rinmasdi.
     if (url.pathname.startsWith('/api/') || url.pathname === '/api') {
       try {
         await ensureCoreSchema(env);

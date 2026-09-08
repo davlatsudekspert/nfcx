@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
+import { directionsUrl, hasCoords, yandexDirectionsUrl } from '../lib/mapLink.js';
+import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -29,6 +30,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const { t } = useLanguage();
   const [company, setCompany] = useState(undefined);
   const [error, setError] = useState(null);
+  // Karta raqami nusxalangani haqidagi qisqa bildirish.
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(() => {
     let live = true;
@@ -82,9 +85,13 @@ export default function CompanyQuickProfilePage({ companyId }) {
     );
   }
 
-  const mapUrl = company.latitude && company.longitude
+  // `company.latitude && ...` EMAS: 0 — bu haqiqiy koordinata, lekin
+  // JS uchun "yolg'on". hasCoords() aynan shuni to'g'ri tekshiradi.
+  const geo = hasCoords(company.latitude, company.longitude);
+  const mapUrl = geo
     ? directionsUrl(company)
     : company.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}` : '';
+  const extraLinks = (company.extraLinks || []).filter((l) => l && l.label && l.url);
 
   return (
     <main className="cq-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
@@ -102,8 +109,29 @@ export default function CompanyQuickProfilePage({ companyId }) {
           {company.phone && <a className="primary vz-tap" href={contactUrl('phone', company.phone)}><IconPhone width={14} height={14} aria-hidden="true" />&nbsp;{t('Qo‘ng‘iroq')}</a>}
           {company.telegram && <a className="vz-tap" href={contactUrl('telegram', company.telegram)} target="_blank" rel="noreferrer"><IconTelegram width={14} height={14} aria-hidden="true" />&nbsp;Telegram</a>}
           {company.whatsapp && <a className="vz-tap" href={contactUrl('whatsapp', company.whatsapp)} target="_blank" rel="noreferrer">WhatsApp</a>}
-          {mapUrl && <a className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Manzil')}</a>}
+          {company.instagram && <a className="vz-tap" href={socialUrl('ig', company.instagram)} target="_blank" rel="noreferrer">Instagram</a>}
+          {company.facebook && <a className="vz-tap" href={socialUrl('fb', company.facebook)} target="_blank" rel="noreferrer">Facebook</a>}
+          {company.website && <a className="vz-tap" href={contactUrl('website', company.website)} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Veb-sayt')}</a>}
+          {mapUrl && <a className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Yo‘nalish olish')}</a>}
+          {geo && <a className="vz-tap" href={yandexDirectionsUrl(company)} target="_blank" rel="noreferrer">{t('Yandex Karta')}</a>}
+          {/* KARTA RAQAMI — havola emas, bosilganda nusxalanadi. */}
+          {company.cardNumber && (
+            <button
+              type="button" className="vz-tap"
+              onClick={() => { try { navigator.clipboard.writeText(company.cardNumber); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ruxsat yo'q */ } }}
+            >
+              {copied ? t('Nusxalandi!') : `▤ ${company.cardNumber}`}
+            </button>
+          )}
+          {/* Egasi o'zi qo'shgan havolalar. */}
+          {extraLinks.map((l, i) => (
+            <a key={`x${i}`} className="vz-tap" href={l.url} target="_blank" rel="noreferrer">{l.label}</a>
+          ))}
         </section>
+
+        {/* Musiqa — NFC profilda ham ijro etiladi va telefon ekrani
+            o'chsa ham to'xtamaydi (MediaSession). */}
+        <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
 
         {items.length > 0 && (
           <section className="cq-offers" id="catalog">

@@ -2569,6 +2569,9 @@ const DICT_HOME = {
   '{n} tadan {max} tagacha': { ru: '{n} из {max}', en: '{n} of {max}' },
   'Ijro etish': { ru: 'Воспроизвести', en: 'Play' },
   '{n} / {total}': { ru: '{n} / {total}', en: '{n} / {total}' },
+  'Aloqa bo‘limini to‘ldiring — tugmalar shu yerda chiqadi': {
+    ru: 'Заполните раздел «Контакты» — кнопки появятся здесь',
+    en: 'Fill in the Contact section — the buttons appear here' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

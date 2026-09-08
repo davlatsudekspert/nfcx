@@ -3,6 +3,8 @@ import ImageUploadField from '../components/ImageUploadField.jsx';
 import { addCompanyItem, beginCompanyPayment, companyCta, COMPANY_STATUS, deleteCompanyItem, getCompany, submitCompany, updateCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { dbUploadAudio } from '../lib/db.js';
+import { directionsUrl, hasCoords } from '../lib/mapLink.js';
+import { socialUrl } from '../lib/socialLinks.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { companyNameBlocked } from '../lib/nameGuard.js';
 import logo from '../assets/logo-128.png';
@@ -68,7 +70,7 @@ export default function CompanyWorkspacePage({ companyId }) {
         {tab === 'settings' && <div className="cw-settings"><section><small>{t('COMPANY ID')}</small><h2>{company.companyId}</h2><p>{t('ID o‘zgarmaydi va shaxsiy NFC ID bilan aralashmaydi.')}</p></section><section><small>{t('NFC KARTAGA YOZILADIGAN URL')}</small><code>{window.location.origin}/c/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/c/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('KOMPANIYA PUBLIC URL')}</small><code>{window.location.origin}/company/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/company/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section className="warning"><small>{t('ESKI NFC ID')}</small><p>{company.sourceCardCode ? t('{code} dan ma’lumot nusxalangan. Asl profil o‘zgarmagan.', { code: company.sourceCardCode }) : t('Bu kompaniya hech bir shaxsiy NFC IDga bog‘lanmagan.')}</p></section></div>}
       </section>
 
-      <aside className="cw-preview"><div className="cw-preview-head"><div><span>{t('JONLI KO‘RISH')}</span><b>{t('Tezkor NFC profil')}</b></div><i>● {t('REAL VAQTDA')}</i></div><div className="cw-iphone"><div className="cw-phone-side left"/><div className="cw-phone-side right"/><div className="cw-phone-screen" style={{ backgroundImage:`linear-gradient(rgba(2,2,2,.42),rgba(2,2,2,.92)),url("${form.coverUrl || '/business-assets/market-interior.jpg'}")` }}><div className="cw-dynamic"><span/><i/></div><div className="cw-phone-status"><b>9:41</b><span>⌁ ▰</span></div><div className="cw-phone-id">◆ {company.companyId}</div><div className="cw-phone-logo">{form.logoUrl ? <img src={form.logoUrl} alt=""/> : form.displayName.slice(0,2).toUpperCase()}</div><h3>{form.displayName}</h3><p>{form.subcategory || form.category} · {form.city}</p><div className="cw-phone-buttons"><button>📞 {t('Qo‘ng‘iroq')}</button><button>✈ Telegram</button></div><div className="cw-phone-items">{topItems.length ? topItems.map((entry) => <div key={entry.id}><img src={entry.imageUrl || form.coverUrl || '/business-assets/market-phone.jpg'} alt=""/><span><b>{entry.name}</b><small>{Number(entry.price).toLocaleString('uz-UZ')} {t('so‘m')}</small></span></div>) : <div className="empty"><span><b>{t(cta.label)}</b><small>{t('Katalog elementlari shu yerda chiqadi')}</small></span></div>}</div><div className="cw-home-indicator"/></div></div><p>{t('Bu preview shaxsiy NFC kontakt kartasi emas. Kompaniya NFC kartasiga aynan shu quick profil yoziladi.')}</p></aside>
+      <aside className="cw-preview"><div className="cw-preview-head"><div><span>{t('JONLI KO‘RISH')}</span><b>{t('Tezkor NFC profil')}</b></div><i>● {t('REAL VAQTDA')}</i></div><div className="cw-iphone"><div className="cw-phone-side left"/><div className="cw-phone-side right"/><div className="cw-phone-screen" style={{ backgroundImage:`linear-gradient(rgba(2,2,2,.42),rgba(2,2,2,.92)),url("${form.coverUrl || '/business-assets/market-interior.jpg'}")` }}><div className="cw-dynamic"><span/><i/></div><div className="cw-phone-status"><b>9:41</b><span>⌁ ▰</span></div><div className="cw-phone-id">◆ {company.companyId}</div><div className="cw-phone-logo">{form.logoUrl ? <img src={form.logoUrl} alt=""/> : form.displayName.slice(0,2).toUpperCase()}</div><h3>{form.displayName}</h3><p>{form.subcategory || form.category} · {form.city}</p><PhoneButtons form={form} t={t} /><div className="cw-phone-items">{topItems.length ? topItems.map((entry) => <div key={entry.id}><img src={entry.imageUrl || form.coverUrl || '/business-assets/market-phone.jpg'} alt=""/><span><b>{entry.name}</b><small>{Number(entry.price).toLocaleString('uz-UZ')} {t('so‘m')}</small></span></div>) : <div className="empty"><span><b>{t(cta.label)}</b><small>{t('Katalog elementlari shu yerda chiqadi')}</small></span></div>}</div><div className="cw-home-indicator"/></div></div><p>{t('Bu preview shaxsiy NFC kontakt kartasi emas. Kompaniya NFC kartasiga aynan shu quick profil yoziladi.')}</p></aside>
     </div>{notice && <div className="cw-toast">{notice}</div>}
   </main>;
 }
@@ -197,6 +199,43 @@ function CompanyMusic({ form, setForm, t }) {
       <input ref={fileRef} type="file" accept="audio/*" hidden onChange={pick} />
       {err && <small role="alert" className="cw-upload-err">{err}</small>}
       <small className="cw-upload-hint">{t('{n} tadan {max} tagacha', { n: tracks.length, max: MAX })}</small>
+    </div>
+  );
+}
+
+// ── PREVIEW TUGMALARI ────────────────────────────────────────────────
+// Avval bu yerda IKKITA o'lik tugma turardi: "Qo'ng'iroq" va "Telegram",
+// ikkalasi ham `<button>` — bosilganda hech narsa qilmasdi va Aloqa
+// bo'limiga nima yozilsa ham o'zgarmasdi. Ya'ni preview haqiqiy NFC
+// profilni ko'rsatmasdi.
+//
+// Endi bu ro'yxat AYNAN /c/<id> sahifasidagi tugmalarni takrorlaydi:
+// faqat to'ldirilgan maydonlar chiqadi va har biri haqiqiy havola —
+// egasi preview'dan turib tekshirib ko'rishi mumkin.
+function PhoneButtons({ form, t }) {
+  const tel = String(form.phone || '').replace(/[^+\d]/g, '');
+  const geo = hasCoords(form.latitude, form.longitude);
+  const links = [
+    form.phone && { key: 'tel', label: `📞 ${t('Qo‘ng‘iroq')}`, href: `tel:${tel}`, primary: true },
+    form.telegram && { key: 'tg', label: '✈ Telegram', href: socialUrl('tg', form.telegram) },
+    form.whatsapp && { key: 'wa', label: '✆ WhatsApp', href: socialUrl('wa', form.whatsapp) },
+    form.instagram && { key: 'ig', label: '◉ Instagram', href: socialUrl('ig', form.instagram) },
+    form.facebook && { key: 'fb', label: 'f Facebook', href: socialUrl('fb', form.facebook) },
+    form.website && { key: 'web', label: `◎ ${t('Veb-sayt')}`, href: form.website },
+    geo && { key: 'map', label: `⌖ ${t('Yo‘nalish olish')}`, href: directionsUrl(form) },
+    form.cardNumber && { key: 'card', label: `▤ ${form.cardNumber}`, href: '' },
+    ...(form.extraLinks || []).filter((l) => l && l.label && l.url).map((l, i) => ({ key: `x${i}`, label: `→ ${l.label}`, href: l.url })),
+  ].filter(Boolean);
+
+  if (!links.length) {
+    return <div className="cw-phone-buttons"><span className="cw-phone-empty">{t('Aloqa bo‘limini to‘ldiring — tugmalar shu yerda chiqadi')}</span></div>;
+  }
+  return (
+    <div className="cw-phone-buttons">
+      {links.map((l) => (l.href
+        ? <a key={l.key} href={l.href} target="_blank" rel="noopener noreferrer" className={l.primary ? 'primary' : ''}>{l.label}</a>
+        : <span key={l.key}>{l.label}</span>))}
+      {(form.music || []).length > 0 && <span className="cw-phone-music">♪ {t('Musiqa')} · {(form.music || []).length}</span>}
     </div>
   );
 }
