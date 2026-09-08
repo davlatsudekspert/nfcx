@@ -35,6 +35,12 @@ export default function CompanyCreatePage() {
       .then((data) => { setMine(data.companies || []); setMineState('ready'); })
       .catch(() => setMineState('error'));
   }, [user, mineTick]);
+  // Kompaniyalar sahifasidagi narx tekshirgichidan kelgan ID (?id=BANK)
+  // formaga oldindan yoziladi — odam uni qaytadan terib o'tirmasin.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get('id');
+    if (wanted) setForm((old) => ({ ...old, companyId: normalizeCompanyId(wanted).slice(0, 15) }));
+  }, []);
   useEffect(() => {
     const source = new URLSearchParams(window.location.search).get('from');
     if (source && myCards.some((card) => card.code.toLowerCase() === source.toLowerCase())) setForm((old) => ({ ...old, sourceCardCode: source.toUpperCase() }));

@@ -4556,7 +4556,15 @@ async function uploadApi(request, env, pathname) {
   if (!match) return json({ error: isAudio ? 'bad_audio' : 'bad_image' }, 422);
   const bytes = uploadBase64ToBytes(match[3]);
   if (!bytes?.length) return json({ error: isAudio ? 'bad_audio' : 'bad_image' }, 422);
-  const imageLimit = match[2] === 'gif' ? 3 * 1024 * 1024 : 700 * 1024;
+  // MUQOVA RASMI ALOHIDA CHEGARADA (2026-09, egasining qarori: "fonga
+  // jpg emas gif ham, 20 MB dan oshmasin"). Faqat `kind: 'cover'` bilan
+  // kelgan so'rovga tegishli — xabarlar, avatar, katalog rasmlari
+  // avvalgi chegarada qoladi, aks holda 20 MB har joyda ochilib
+  // ketardi va R2 xarajati bilinmay o'sardi.
+  const isCover = body.kind === 'cover';
+  const imageLimit = isCover
+    ? 20 * 1024 * 1024
+    : (match[2] === 'gif' ? 3 * 1024 * 1024 : 700 * 1024);
   // Audio o'z chegarasiga ega (MUSIC_MAX_MB_D1). Admin rasm yuklashi
   // avvalgidek 10 MB — musiqa limiti ko'tarilgani unga ta'sir qilmaydi.
   const limit = isAudio ? MUSIC_MAX_MB_D1 * 1024 * 1024 : (isAdmin ? 10 * 1024 * 1024 : imageLimit);

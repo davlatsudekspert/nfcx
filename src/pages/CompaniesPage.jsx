@@ -4,6 +4,8 @@ import { navigate } from '../lib/router.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import { fmt } from '../lib/format.js';
 import { dbSearchCompanies } from '../lib/db.js';
+import { checkCompanyId, companyIdLocalInfo, normalizeCompanyId } from '../lib/company.js';
+import NfcCard from '../components/NfcCard.jsx';
 
 const QUICK_EXAMPLES = [
   { query: 'Restoran', title: 'NFC Restaurant', meta: 'Restoran · Menyu', icon: '♨', tone: 'gold' },
@@ -84,6 +86,102 @@ function MarketPhone() {
   );
 }
 
+// Company ID NARX TEKSHIRGICHI (2026-09).
+//
+// Egasining talabi: "kompaniya bo'limida kompaniyalar ID sini narxlarini
+// bilish joyi bo'lsin ... o'sha yerning o'zidan ham sotib olish/band
+// qilishga o'ta olsin".
+//
+// Narx SERVERDAN olinadi (checkCompanyId) — sahifaga hech qanday narx
+// qo'lda yozilmagan. Premium nomlar (BANK, MARKET...) o'z qat'iy
+// narxida, qolganlari harflar soniga qarab.
+function CompanyIdPriceCard({ t }) {
+  const [value, setValue] = useState('');
+  const [check, setCheck] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  // Yozilayotganda o'zi tekshiradi (450 ms kutib) — alohida tugma
+  // bosish shart emas, lekin tugma ham bor (klaviaturasiz qulay bo'lsin).
+  useEffect(() => {
+    const local = companyIdLocalInfo(value);
+    setCheck(local);
+    if (!local.valid) { setBusy(false); return undefined; }
+    setBusy(true);
+    const timer = setTimeout(() => {
+      checkCompanyId(local.companyId)
+        .then((r) => { setCheck(r); setBusy(false); })
+        .catch(() => { setCheck({ ...local, available: null }); setBusy(false); });
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  const ready = check?.valid && check?.available === true;
+
+  return (
+    <article className="co-price-card">
+      <div className="co-price-head">
+        <span className="co-price-kicker">{t('COMPANY ID')}</span>
+        <h2>{t('Nomingiz bo‘shmi? Narxini shu yerda bilib oling')}</h2>
+        <p>{t('Kompaniya nomini yozing — bo‘sh yoki bandligi va aniq narxi darhol ko‘rinadi.')}</p>
+      </div>
+
+      <label className="co-price-input">
+        <span className="co-price-prefix">nfcstore.uz/c/</span>
+        <input
+          value={value}
+          onChange={(e) => setValue(normalizeCompanyId(e.target.value).slice(0, 15))}
+          placeholder="KOMPANIYA"
+          aria-label={t('Company ID')}
+          autoComplete="off"
+          spellCheck="false"
+        />
+      </label>
+
+      <div className={`co-price-result ${ready ? 'is-ok' : check?.valid && check?.available === false ? 'is-no' : ''}`}>
+        {!check?.valid && <b>{t('3–15 ta harf')}</b>}
+        {check?.valid && busy && <b>{t('Tekshirilmoqda…')}</b>}
+        {check?.valid && !busy && check.available === true && (
+          <>
+            <b>{check.premiumName ? t('PREMIUM NOM') : String(check.tier || '').toUpperCase()}</b>
+            <strong>{fmt(check.price)} {t('so‘m')}</strong>
+            <span>{t('Bo‘sh — hoziroq band qilish mumkin')}</span>
+          </>
+        )}
+        {check?.valid && !busy && check.available === false && (
+          <>
+            <b>{t('Band')}</b>
+            <span>{check.reason ? t(check.reason) : t('Bu nom sotuvda emas')}</span>
+          </>
+        )}
+        {check?.valid && !busy && check.available == null && <b>{t('Server bilan aloqa yo‘q')}</b>}
+      </div>
+
+      {/* Band qilishga o'tish — ID formaga oldindan yozilib ochiladi. */}
+      <button
+        type="button"
+        className="co-price-cta"
+        disabled={!ready}
+        onClick={() => navigate(`/kompaniyalar/yaratish?id=${encodeURIComponent(check.companyId)}`)}
+      >
+        {ready ? t('Band qilish') : t('Avval nom yozing')} <span>→</span>
+      </button>
+
+      {check?.valid && !busy && check.available === false && check.alternatives?.length > 0 && (
+        <div className="co-price-alts">
+          <span>{t('Bo‘sh variantlar:')}</span>
+          {check.alternatives.map((id) => (
+            <button key={id} type="button" onClick={() => setValue(id)}>{id}</button>
+          ))}
+        </div>
+      )}
+
+      <p className="co-price-note">
+        {t('Narx nomdagi harflar soniga bog‘liq: qanchalik qisqa bo‘lsa, shunchalik qimmat. Ba’zi nomlar premium toifada.')}
+      </p>
+    </article>
+  );
+}
+
 function ShowcaseCard({ type, t }) {
   const restaurant = type === 'restaurant';
   const title = restaurant ? 'NFC Restaurant' : 'NFC Market';
@@ -111,10 +209,21 @@ function ShowcaseCard({ type, t }) {
           {t('Kompaniya profilini ochish')} <span>→</span>
         </button>
       </div>
+      {/* TELEFON MAKETI OLIB TASHLANDI (2026-09, egasining qarori).
+          O'rniga kompaniyaga mos premium ko'rinish: kompaniya NFC
+          kartasi va undan tarqaladigan oltin signal to'lqinlari —
+          biznes kabinetdagi bilan bir uslubda. */}
       <div className="co-showcase-visual">
         <div className="co-orbit one" /><div className="co-orbit two" />
         <img className="co-backdrop-image" src={restaurant ? '/business-assets/restaurant-food.jpg' : '/business-assets/market-interior.jpg'} alt="" />
-        {restaurant ? <RestaurantPhone /> : <MarketPhone />}
+        <div className="co-nfc-waves" aria-hidden="true">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <span key={i} style={{ animationDelay: `${(i * 0.5).toFixed(2)}s` }} />
+          ))}
+        </div>
+        <div className="co-nfc-card">
+          <NfcCard code="BIZ001" name={t('KOMPANIYANGIZ')} finish="black" size="md" rim />
+        </div>
       </div>
     </article>
   );
@@ -232,9 +341,13 @@ export default function CompaniesPage({ catalog = [] }) {
         </div>
       </section>
 
+      {/* Avval bu yerda IKKITA bir xil kartochka (telefon maketi bilan)
+          turardi va ular bir-birini takrorlardi. Endi chapda BITTA
+          namuna, o'ngda esa Company ID narxini bilish va darhol band
+          qilish joyi — egasining talabi. */}
       <section className="co-showcase-grid">
         <ShowcaseCard type="restaurant" t={t} />
-        <ShowcaseCard type="market" t={t} />
+        <CompanyIdPriceCard t={t} />
       </section>
 
       <section id="kompaniyalar-royxati" className="co-directory">

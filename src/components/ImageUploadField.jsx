@@ -19,7 +19,8 @@ import { useLanguage } from '../lib/i18n.jsx';
 //   value    — joriy manzil ('' bo'lishi mumkin)
 //   onChange — yangi manzil (yoki '' — o'chirilganda)
 //   hint     — maydon ostidagi izoh
-export default function ImageUploadField({ label, value, onChange, hint = '' }) {
+// `kind='cover'` — muqova rasmi: 20 MB gacha va GIF ham mumkin.
+export default function ImageUploadField({ label, value, onChange, hint = '', kind = '' }) {
   const { t } = useLanguage();
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +42,7 @@ export default function ImageUploadField({ label, value, onChange, hint = '' }) 
         reader.onload = () => resolve(reader.result);
         reader.readAsDataURL(file);
       });
-      onChange(await dbUploadImage(dataUrl));
+      onChange(await dbUploadImage(dataUrl, { kind }));
     } catch (error) {
       setErr(error?.message === 'read' ? t('Faylni o‘qib bo‘lmadi.') : (error?.message || t('Rasmni yuklab bo‘lmadi.')));
     } finally {

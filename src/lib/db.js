@@ -747,17 +747,20 @@ export async function dbCancelGift(id) {
 }
 
 // Rasm yuklash: dataUrl (base64) -> /uploads/... manzil.
-export async function dbUploadImage(dataUrl) {
+//
+// `kind: 'cover'` — muqova rasmi: chegara 20 MB va GIF ham mumkin.
+// Boshqa hamma joyda (avatar, xabar, katalog) avvalgi chegara.
+export async function dbUploadImage(dataUrl, { kind = '' } = {}) {
   const res = await fetch('/api/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ dataUrl }),
+    body: JSON.stringify({ dataUrl, ...(kind ? { kind } : {}) }),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const key = data && data.error;
-    if (key === 'too_large') throw new Error('Rasm hajmi juda katta.');
+    if (key === 'too_large') throw new Error(kind === 'cover' ? 'Rasm 20 MB dan katta.' : 'Rasm hajmi juda katta.');
     if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
     throw new Error('Rasmni yuklab bo\u2019lmadi.');
   }
