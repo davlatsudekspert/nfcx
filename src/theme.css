@@ -433,7 +433,12 @@
 @media(prefers-reduced-motion:reduce){.business-showcase-track,.business-showcase::after,.bw-live-pill i{animation:none!important}}
 
 /* ===== Companies — rich visual business directory ======================= */
-.companies-luxe{--co-gold:#f0b83f;--co-violet:#8b5cf6;position:relative;width:min(1460px,100%);margin:0 auto;padding:0 34px 70px;color:#f7f4ed}
+/* Kenglik butun sayt bilan bir xil (2026-09): menyu, footer va qolgan
+   sahifalar 1800px ishlatadi. Bu sahifa 1460px edi va katta ekranda
+   ustidagi menyudan tor bo'lib, chetlari to'g'ri kelmasdi. Yon
+   bo'shliq ham boshqa sahifalardagi lg:px-14 (56px) ga tenglashtirildi
+   (avval 34px edi). Telefon uchun quyidagi media qoidasi o'z holicha. */
+.companies-luxe{--co-gold:#f0b83f;--co-violet:#8b5cf6;position:relative;width:min(1800px,100%);margin:0 auto;padding:0 56px 70px;color:#f7f4ed}
 .co-hero{position:relative;isolation:isolate;padding:26px 0 10px;text-align:center}.co-hero-glow{position:absolute;z-index:-1;top:-110px;left:50%;width:720px;max-width:100%;height:380px;transform:translateX(-50%);background:radial-gradient(circle,rgba(225,175,56,.12),transparent 68%);filter:blur(16px);pointer-events:none}.co-eyebrow{font:700 9px/1.2 'Space Mono',monospace;letter-spacing:.24em;color:rgba(240,184,63,.72)}
 .co-hero h1{margin:10px auto 0;font-size:clamp(30px,3.4vw,48px);line-height:1.02;letter-spacing:-.045em;font-weight:900;overflow-wrap:break-word}.co-hero h1 strong{color:var(--co-gold);font-weight:900;text-shadow:0 0 34px rgba(240,184,63,.18)}.co-hero>p{margin:9px auto 0;color:rgba(255,255,255,.58);font-size:var(--fs-md);line-height:1.55;max-width:62ch}
 .co-search{display:flex;align-items:center;width:min(650px,100%);margin:14px auto 0;padding:4px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(18,18,18,.84);box-shadow:0 18px 50px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.025)}.co-search>span{padding-left:12px;color:rgba(255,255,255,.45);font-size:21px}.co-search input{min-width:0;flex:1;border:0;background:transparent;padding:10px 12px;color:#fff;font-size:var(--fs-base);outline:none}.co-search input::placeholder{color:rgba(255,255,255,.35)}.co-search button{min-width:112px;height:39px;border:0;border-radius:9px;background:linear-gradient(135deg,#ffd05f,#e8a61f);color:#171006;font-size:var(--fs-sm);font-weight:900;cursor:pointer;box-shadow:0 7px 24px rgba(236,174,39,.25)}
