@@ -238,6 +238,20 @@ export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silv
 // NFC ID kodini/tarifini o'zgartirmaydi. Frontend ham, backend ham SHU
 // yagona konstantani ishlatadi.
 export const PROFILE_PREMIUM_FEE = 20000;
+
+// JISMONIY NFC KARTA narxi — chop etilgan haqiqiy karta + yetkazib berish.
+// Bu ham NFC ID darajasidan ALOHIDA: ID raqamli, bu esa qo'ldagi mahsulot.
+//
+// Avval bu qiymat uch joyda alohida yozilgan edi (AccountPage, ReserveModal
+// va yangi bosh sahifa bloki) — narx o'zgarganda biri unutilib, saytda ikki
+// xil narx ko'rinib qolish xavfi bor edi. Endi yagona manba.
+// Backend nusxasi: hosting/api/account.js PHYSICAL_CARD_FEE.
+export const PHYSICAL_CARD_FEE = 200000;
+
+// Jismoniy karta dizayneri qaysi tarifdan boshlab ochiladi — matnlarda
+// (bosh sahifadagi izoh) va tekshiruvda BIR XIL qiymat ishlatilsin uchun.
+// Manba: src/lib/access.js FEATURE_MIN.physicalCardDesigner.
+export const PHYSICAL_CARD_MIN_TIER = 'silver';
 export const TIER_LABEL = { exclusive: 'Ekslyuziv', premium: 'Premium', gold: 'Gold', silver: 'Silver', free: 'Bronza' };
 // Har bir daraja o'z rangida — profilda ID matni va belgi shu rangda chiqadi.
 // Yangi vizual tizim: Titanium Gold / Platinum / Pure Gold / Chrome Silver / Bronza+yashil.

@@ -18,7 +18,7 @@ import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
-import { tierForCode, PROFILE_PREMIUM_FEE, TIER_LABEL } from '../lib/pricing.js';
+import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, TIER_LABEL } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
@@ -1894,7 +1894,9 @@ function Modal({ title, onClose, children, wide }) {
   );
 }
 
-const PHYSICAL_CARD_FEE_UZS = 200_000;
+// Narx yagona manbadan — src/lib/pricing.js (backend nusxasi:
+// hosting/api/account.js PHYSICAL_CARD_FEE).
+const PHYSICAL_CARD_FEE_UZS = PHYSICAL_CARD_FEE;
 
 // Curated profil kartasi ranglari — NfcCard FINISHES kalitlari.
 const CARD_FINISHES = [
@@ -2453,6 +2455,30 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const [giftMsg, setGiftMsg] = useState(null);
   const [postModal, setPostModal] = useState(false);
   const [designModal, setDesignModal] = useState(null); // null | 'profile' | 'print'
+
+  // Bosh sahifa yoki katalogdagi "NFC ID karta buyurtma berish" taklifidan
+  // kelgan bo'lsa — dizayn oynasi O'ZI ochiladi, odam kabinetdan uni
+  // qaytadan qidirmasin. Niyat ikki joyda: manzildagi `?open=` va
+  // sessiyada (ro'yxatdan o'tish oqimi manzilni yo'qotib yuborishi
+  // mumkin). Bir marta ishlaydi va darhol tozalanadi — sahifa
+  // yangilanganda oyna qayta ochilib qolmasin.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current || !card?.isPrimary) return;
+    let wanted = '';
+    try {
+      wanted = new URLSearchParams(window.location.search).get('open') || '';
+      if (!wanted) wanted = sessionStorage.getItem('nfcx:open-after-auth') || '';
+    } catch { /* jim */ }
+    if (wanted !== 'nfc-karta') return;
+    autoOpened.current = true;
+    try { sessionStorage.removeItem('nfcx:open-after-auth'); } catch { /* jim */ }
+    if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
+    // Tarif tekshiruvi tugmadagi bilan AYNAN bir xil: yetmasa "yopiq
+    // funksiya" oynasi chiqadi va nima kerakligini aytadi.
+    if (allow('physicalCardDesigner')) setDesignModal('print');
+    else setLocked(t('Jismoniy NFC karta dizayni'));
+  }, [card, allow, t]);
   const sendGift = async () => {
     if (!giftToCode.trim()) { setGiftMsg({ type: 'err', text: t("Qabul qiluvchining NFC ID'sini kiriting.") }); return; }
     setGiftBusy(true);

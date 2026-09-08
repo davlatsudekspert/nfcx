@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+// Narx yagona manbadan — src/lib/pricing.js.
+import { PHYSICAL_CARD_FEE } from '../lib/pricing.js';
 import CloseButton from './CloseButton.jsx';
 import { dbCreate, dbGetOrder } from '../lib/db.js';
 import { fmt } from '../lib/format.js';
@@ -27,7 +29,7 @@ async function fetchBotUsername() {
   return botUsernameCache;
 }
 
-const PHYSICAL_CARD_FEE = 200_000;
+
 
 // JISMONIY KARTA — BACKEND'DA HALI YO'Q.
 // hosting/worker.js (POST /api/records/:code) `physicalCard === true` ni

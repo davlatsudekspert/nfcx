@@ -5,6 +5,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { dbSearchRecords } from '../lib/db.js';
 import { useCategories, catName, findCat, catPath } from '../lib/categories.js';
 import NfcCard from '../components/NfcCard.jsx';
+import PhysicalCardPromoCard from '../components/PhysicalCardPromoCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 import { IconEye } from '../components/Icons.jsx';
 import { tierForCode, TIER_COLOR, TIER_LABEL, TIER_EMOJI } from '../lib/pricing.js';
@@ -134,7 +135,15 @@ export default function CatalogPage({ catalog }) {
           )}
         </div>
         <div className="hidden justify-self-center lg:flex">
-          <Interactive3DCard><NfcCard code={filtered[0]?.code || 'AAA000'} name={filtered[0]?.name?.toUpperCase() || t('SIZNING ISMINGIZ')} finish="showcase" size="lg" /></Interactive3DCard>
+          {/* Avval bu yerda aylanadigan namoyish kartasi turardi —
+              bosilganda faqat orqa tomonini ko'rsatar, hech qayerga olib
+              bormasdi. Endi bu bosiladigan taklif: jismoniy karta
+              buyurtmasiga olib boradi (PhysicalCardPromoCard izohiga
+              qarang). */}
+          <PhysicalCardPromoCard
+            code={filtered[0]?.code || 'AAA000'}
+            name={filtered[0]?.name?.toUpperCase() || t('SIZNING ISMINGIZ')}
+          />
         </div>
       </section>
       <section className="mt-10">

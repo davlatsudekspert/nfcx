@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import PhysicalCardCta from '../components/PhysicalCardCta.jsx';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode } from '../lib/pricing.js';
 import { fmt } from '../lib/format.js';
@@ -304,6 +305,11 @@ export default function HomePage({ catalog, refreshCatalog }) {
               </li>
             ))}
           </ol>
+        </RevealSection>
+
+        {/* ============ JISMONIY NFC KARTA — dizayn va buyurtma ============ */}
+        <RevealSection id="nfc-karta">
+          <PhysicalCardCta />
         </RevealSection>
 
         {/* ================= TARIFLAR (haqiqiy narxlar: src/lib/pricing.js) ================= */}
