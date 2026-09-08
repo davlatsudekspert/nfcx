@@ -359,6 +359,64 @@ function companyIdLettersD1(id) {
   return String(id || '').replace(/'/g, '').length;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// BREND UCHUN HIMOYALANGAN NOMLAR (2026-09)
+//
+// DIQQAT: bu ro'yxat va mantiq src/lib/brandReserved.js bilan AYNAN bir
+// xil bo'lishi shart (Worker modullari `src/` dan import qila olmaydi).
+// scripts/test-brand-reserved.mjs ikkalasini solishtirib turadi — biri
+// o'zgarib, ikkinchisi eskirib qolsa, forma bir narsani ko'rsatib server
+// boshqasini qilardi.
+//
+// Batafsil izoh (nega aynan tenglik, nega "band qilingan" emas) —
+// src/lib/brandReserved.js faylida.
+const BRAND_RESERVED_D1 = [
+  // ── IT, to'lov va internet xizmatlari ──
+  'UZUM', 'UZUMMARKET', 'UZUMBANK', 'UZUMNASIYA', 'UZUMTEZKOR',
+  'PAYME', 'CLICK', 'PAYNET', 'OSON', 'ALIF', 'ALIFNASIYA',
+  'HUMANS', 'ZOOD', 'ZOODMALL', 'ASAXIY', 'OLCHA',
+  'MYUZCARD', 'UZCARD', 'HUMO',
+  // ── Banklar ──
+  'ANOR', 'ANORBANK', 'KAPITALBANK', 'HAMKORBANK',
+  'IPAKYULI', 'IPAKYULIBANK', 'TBC', 'TBCBANK',
+  'SQB', 'SANOATQURILISHBANK', 'NBU', 'ALOQABANK', 'AGROBANK',
+  'ASAKABANK', 'IPOTEKABANK', 'INFINBANK', 'TRASTBANK', 'DAVRBANK',
+  'OCTOBANK', 'TENGEBANK', 'ZIRAATBANK', 'POYTAXTBANK', 'GARANTBANK',
+  'ORIENTFINANS', 'OFB',
+  // ── Telekommunikatsiya ──
+  'UZTELECOM', 'UZMOBILE', 'UCELL', 'BEELINE', 'MOBIUZ', 'PERFECTUM',
+  'EVO', 'TPS', 'SARKOR', 'EASTTELECOM',
+  // ── Savdo va texnika ──
+  'KORZINKA', 'HAVAS', 'MAKRO', 'MAGNUM', 'BARAKA', 'TEXNOMART',
+  'MEDIAPARK', 'IDEA', 'GOODZONE', 'ELMAKON', 'ARTEL', 'AKFA',
+  'IMZO', 'AVALON', 'SHIVAKI', 'ROISON',
+  // ── Restoran va oziq-ovqat ──
+  'EVOS', 'OQTEPA', 'OQTEPALAVASH', 'BELLISSIMO', 'MAXWAY',
+  'LESAILES', 'FEEDUP', 'SAFIA', 'CRAFERS', 'BON', 'YAPONAMAMA',
+  'BASRIBABA', 'CHOPAR', 'DODOPIZZA', 'KFC',
+  // ── Transport va avtomobil ──
+  'UZAUTO', 'UZAUTOMOTORS', 'CHEVROLET', 'BYD', 'ADM', 'KIA',
+  'CHERY', 'HAVAL', 'MYTAXI', 'YANDEXGO',
+  'UZBEKISTANAIRWAYS', 'UZRAILWAYS',
+  // ── Qurilish va ko'chmas mulk ──
+  'MURADBUILDINGS', 'GOLDENHOUSE', 'NRG', 'DREAMCITY', 'AKAYCITY',
+  'XONSAROY', 'BIGROUP',
+  // ── Ta'lim va media ──
+  'NAJOTTALIM', 'PDP', 'MOHIRDEV', 'REGISTAN', 'CAMBRIDGE',
+  'INTERNATION', 'MARSIT', 'THOMPSON', 'KUNUZ', 'DARYOUZ',
+  'GAZETAUZ', 'SEVIMLI', 'ZORTV', 'MILLIYTV', 'OLX',
+  // ── Yetkazib berish va logistika ──
+  'BTS', 'BTSEXPRESS', 'FARGO', 'EMU', 'UZPOST',
+];
+const BRAND_RESERVED_SET_D1 = new Set(BRAND_RESERVED_D1);
+function normalizeBrandD1(value) {
+  return String(value || '').normalize('NFKC').toUpperCase().replace(/[^A-Z]/g, '');
+}
+function isBrandReservedD1(value) {
+  const v = normalizeBrandD1(value);
+  return !!v && BRAND_RESERVED_SET_D1.has(v);
+}
+
 function companyId(value) {
   const id = normalizeCompanyIdD1(value);
   const letters = companyIdLettersD1(id);
@@ -554,7 +612,12 @@ async function companyAvailability(env, rawId) {
     env.DB.prepare('SELECT * FROM company_id_rules WHERE company_id = ?').bind(id).first(),
   ]);
   const pricing = companyPricing(id, rule);
-  const blocked = BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
+  // Brend uchun himoyalangan nom — narx ham, sotib olish ham yo'q.
+  // Bu bloklashning boshqa turlaridan AJRATILADI: interfeys "band" emas,
+  // "brend uchun himoyalangan" deb ko'rsatadi va rasmiy vakilga admin
+  // bilan bog'lanish yo'lini beradi.
+  const brandReserved = isBrandReservedD1(id);
+  const blocked = brandReserved || BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
   // Taklif qilinadigan muqobillar HAM companyId() dan o'tkaziladi:
   // apostrofli ID kesilganda oxirida yolg'iz ' qolib, yaroqsiz taklif
   // chiqib ketishi mumkin edi (masalan "...G'" + "UZ" emas, balki
@@ -567,7 +630,13 @@ async function companyAvailability(env, rawId) {
   }
   return {
     companyId: id, valid: true, available: !taken && !blocked,
-    reason: taken ? 'Bu ID band' : blocked ? (rule?.note || 'Bu ID rezervlangan yoki sotuvda emas') : '',
+    // `brandReserved` ALOHIDA bayroq: interfeys "band qilingan" emas,
+    // "brend uchun himoyalangan" deb ko'rsatishi va rasmiy vakilga
+    // murojaat yo'lini berishi uchun.
+    brandReserved,
+    reason: taken ? 'Bu ID band'
+      : brandReserved ? 'Bu nom brend uchun himoyalangan'
+        : blocked ? (rule?.note || 'Bu ID rezervlangan yoki sotuvda emas') : '',
     alternatives, ...pricing, rule: rule?.rule || null,
   };
 }
@@ -2405,6 +2474,11 @@ function isPersonalCodePurchasable(rawCode) {
   const c = String(rawCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!c) return false;
   if (isBlockedCode(c)) return false;
+  // Brend uchun himoyalangan nom (UZUM, PAYME, KFC ...) — sotilmaydi.
+  // Tovar belgisi egasining huquqi qonun bilan himoyalangan; begona
+  // odamga `nfcstore.uz/uzum` ni sotib qo'yish bizni ham, xaridorni ham
+  // javobgarlikka qo'yadi.
+  if (isBrandReservedD1(c)) return false;
   if (FREE_ID_RE.test(c)) return false;
   return true;
 }

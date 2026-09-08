@@ -87,10 +87,28 @@ export default function CompanyCreatePage() {
       <form className="cc-form" onSubmit={submit}>
         <div className="cc-form-title"><span>{t('ARIZA')}</span><h2>{t('Company ID yarating')}</h2><p>{t('Lotin harflari, shuningdek o‘zbekcha O‘ va G‘ (masalan g‘oya). Raqam, probel va boshqa belgilar qabul qilinmaydi.')}</p></div>
         <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: normalizeCompanyId(e.target.value) }))} placeholder={t('KOMPANIYA')} spellCheck={false} autoCapitalize="characters" autoCorrect="off" /></div></label>
+        {/* BREND UCHUN HIMOYALANGAN — alohida blok.
+            "Band" deb yozish noto'g'ri bo'lardi: bu tugab qolgan narsa
+            emas, qoida. Narx ham ko'rsatilmaydi (sotilmaydi), lekin
+            rasmiy vakil uchun murojaat yo'li ochiq qoladi — bu bizga
+            kompaniya mijozi ham keltiradi. */}
+        {check?.brandReserved ? (
+          <div className="cc-id-result unavailable">
+            <div>
+              <b>{t('Bu NFC ID himoyalangan')}</b>
+              <span>{t('Ushbu nom kompaniya yoki brend nomiga mos kelgani sababli ochiq sotuvga qo‘yilmagan. Agar siz brendning rasmiy egasi yoki vakili bo‘lsangiz, tasdiqlash uchun admin bilan bog‘laning.')}</span>
+            </div>
+            <div className="cc-alternatives flex-wrap">
+              <button type="button" className="vz-tap" onClick={() => navigate('/aloqa')}>{t('Admin bilan bog‘lanish')}</button>
+              <button type="button" className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: '' }))}>{t('Boshqa ID tanlash')}</button>
+            </div>
+          </div>
+        ) : (
         <div className={`cc-id-result ${check?.available ? 'available' : check?.valid ? 'unavailable' : ''}`}>
           <div><b>{check?.valid ? `${(check.tier || '').toUpperCase()} · ${fmt(check.price)} ${t('so‘m')}` : t('3–15 ta harf')}</b><span>{check?.available === true ? `✓ ${t('Bo‘sh — ariza yuborish mumkin')}` : check?.available === false ? `✕ ${check.reason ? t(check.reason) : t('Band yoki sotuvda emas')}` : (check?.reason ? t(check.reason) : t('ID yozishni boshlang'))}</span></div>
           {check?.alternatives?.length > 0 && <div className="cc-alternatives flex-wrap">{check.alternatives.map((id) => <button type="button" key={id} className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: id }))}>{id}</button>)}</div>}
         </div>
+        )}
         <div className="cc-grid">
           <label><span>{t('Kompaniya nomi')} *</span><input required value={form.displayName} onChange={(e) => setForm((old) => ({ ...old, displayName: e.target.value }))} placeholder={t('Masalan, NFC Dorixona')} aria-invalid={nameBlocked || undefined} aria-describedby={nameBlocked ? 'cc-name-err' : undefined} />{nameBlocked && <small id="cc-name-err" role="alert" className="cc-name-err">{t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.')}</small>}</label>
           <label><span>{t('Yo‘nalish')} *</span><select value={form.category} onChange={(e) => setForm((old) => ({ ...old, category: e.target.value }))}>{categories.map(([value,label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>

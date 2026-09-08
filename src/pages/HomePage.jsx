@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import PhysicalCardCta from '../components/PhysicalCardCta.jsx';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode } from '../lib/pricing.js';
+import { isBrandReserved } from '../lib/brandReserved.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
@@ -109,6 +110,11 @@ export default function HomePage({ catalog, refreshCatalog }) {
   const doCheck = async () => {
     const parsed = parseAnyCode(checkVal);
     if (!parsed) { setCheckResult({ bad: true }); return; }
+    // Brend uchun himoyalangan nom — bazaga umuman bormaymiz: javob
+    // "band" emas, "himoyalangan". Server ham xuddi shu qoidani
+    // qo'llaydi (hosting/worker.js isBrandReservedD1), bu yerdagisi
+    // faqat darhol javob berish uchun.
+    if (isBrandReserved(parsed.code)) { setCheckResult({ code: parsed.code, brandReserved: true }); return; }
     const rec = takenMap[parsed.code] || await dbGet(parsed.code);
     setCheckResult({ code: parsed.code, taken: !!rec });
   };
@@ -190,6 +196,17 @@ export default function HomePage({ catalog, refreshCatalog }) {
                     <span className="vz-badge vz-badge--warn">{t("Noto'g'ri format")}</span>
                     <span className="text-[color:var(--vz-ink-2)]">{t('3 harf + 3 raqam kiriting, masalan ABZ007')}</span>
                   </>}
+                  {/* BREND UCHUN HIMOYALANGAN. "Band" deb yozish
+                      noto'g'ri bo'lardi — bu tugab qolgan narsa emas,
+                      qoida. Rasmiy vakil uchun murojaat yo'li ochiq
+                      qoladi: bu bizga kompaniya mijozi ham keltiradi. */}
+                  {!checkResult.bad && checkResult.brandReserved && <>
+                    <span className="vz-badge vz-badge--gold">{t('Brend uchun himoyalangan')}</span>
+                    <span className="text-[color:var(--vz-ink-2)]">
+                      {t('Bu nom kompaniya yoki brend nomiga mos kelgani uchun ochiq sotuvga qo‘yilmagan. Brendning rasmiy egasi yoki vakili bo‘lsangiz, admin bilan bog‘laning.')}
+                    </span>
+                    <button className="btn btn-outline-gold btn-sm min-h-9" onClick={() => navigate('/aloqa')}>{t('Admin bilan bog‘lanish')}</button>
+                  </>}
                   {!checkResult.bad && checkResult.taken && <>
                     <span className="vz-badge vz-badge--muted">{t('Band')}</span>
                     <span className="text-[color:var(--vz-ink-2)]">
@@ -197,12 +214,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
                       <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-[color:var(--vz-ink)]">{t("sahifasini ko'rish")}</button>
                     </span>
                   </>}
-                  {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier === 'exclusive' && <>
+                  {!checkResult.bad && !checkResult.brandReserved && !checkResult.taken && checkInfo && checkInfo.tier === 'exclusive' && <>
                     <span className="vz-badge vz-badge--gold">{t('Ekslyuziv')}</span>
                     <span className="text-[color:var(--vz-ink-2)]">{t('nfcstore.uz/{code} — faqat auksion orqali sotiladi', { code: checkResult.code.toLowerCase() })}</span>
                     <button className="btn btn-outline-gold btn-sm min-h-9" onClick={() => navigate('/auksion')}>{t("Auksion bo'limi")}</button>
                   </>}
-                  {!checkResult.bad && !checkResult.taken && checkInfo && checkInfo.tier !== 'exclusive' && <>
+                  {!checkResult.bad && !checkResult.brandReserved && !checkResult.taken && checkInfo && checkInfo.tier !== 'exclusive' && <>
                     <span className="vz-badge vz-badge--ok">{t("Bo'sh")}</span>
                     <span className="text-[color:var(--vz-ink-2)]">{t('nfcstore.uz/{code} hozircha bo‘sh — {price} so‘m', { code: checkResult.code.toLowerCase(), price: fmt(checkInfo.total) })}</span>
                     <button className="btn btn-gold btn-sm min-h-9" onClick={() => setModalCode(checkResult.code)}>{t('Bandlash')}</button>
