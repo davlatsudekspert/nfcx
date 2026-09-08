@@ -2,7 +2,7 @@
 // nusxa (scripts/gen-exclusive-pricing.mjs). Fayl `hosting/` ichida
 // bo'lgani uchun import qilish mumkin: build qoidasi faqat `src/` dan
 // importni taqiqlaydi. Narx ro'yxatlari shu sabab bir marta yoziladi.
-import { exclusiveLevel, companyPremiumLevel, EXCLUSIVE_PRICE, COMPANY_PREMIUM_PRICE } from './exclusive-pricing.generated.js';
+import { exclusiveLevel, companyPremiumLevel, EXCLUSIVE_PRICE, COMPANY_PREMIUM_PRICE, COMPANY_PREMIUM_NAMES } from './exclusive-pricing.generated.js';
 import * as apiAuth from './api/auth.js';
 import * as apiAccount from './api/account.js';
 import * as apiCatalog from './api/catalog.js';
@@ -701,7 +701,14 @@ async function companyAvailability(env, rawId) {
   // bilan bog'lanish yo'lini beradi.
   const reserved = reservedStatusD1(id);
   const brandReserved = reserved === 'brand';
-  const blocked = !!reserved || BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
+  // PREMIUM KOMPANIYA NOMI (2026-09). Bu nomlar ilgari 'auction'
+  // guruhida edi va SOTILMASDI — faqat auksion orqali. Auksion bekor
+  // qilingach ularning har birida qat'iy narx bor (4 990 000 dan
+  // 990 000 gacha, src/lib/exclusivePricing.js), shuning uchun ular
+  // BLOKLANMAYDI: oddiy tartibda, o'z narxida sotiladi.
+  const premium = companyPremiumLevel(id);
+  const blocked = (!!reserved && reserved !== 'auction')
+    || BUILTIN_COMPANY_IDS.has(id) || ['reserved', 'off_sale', 'blocked'].includes(rule?.rule);
   // Taklif qilinadigan muqobillar HAM companyId() dan o'tkaziladi:
   // apostrofli ID kesilganda oxirida yolg'iz ' qolib, yaroqsiz taklif
   // chiqib ketishi mumkin edi (masalan "...G'" + "UZ" emas, balki
@@ -720,15 +727,29 @@ async function companyAvailability(env, rawId) {
     brandReserved,
     // `reserved` — sabab: 'blocked' | 'brand' | 'crypto' | 'auction'.
     // Interfeys shu bo'yicha boshqa-boshqa matn va tugma ko'rsatadi.
+    // `reserved` — sabab: 'blocked' | 'brand' | 'crypto'. 'auction'
+    // endi bloklamaydi (premium nom), lekin interfeys uni ajratib
+    // ko'rsatishi uchun qiymat baribir qaytariladi.
     reserved,
-    auctionStartPrice: reserved === 'auction' ? AUCTION_START_PRICE_D1 : null,
+    // Premium nom: qat'iy narx. `premiumPrice` uzunlik bo'yicha
+    // hisoblangan odatdagi narxdan USTUN.
+    premiumName: !!premium,
+    premiumLevel: premium ? premium.level : null,
+    premiumPrice: premium ? premium.price : null,
     reason: taken ? 'Bu ID band'
       : reserved === 'blocked' ? 'Bu nomdan foydalanish taqiqlangan'
         : reserved === 'brand' ? 'Bu nom brend uchun himoyalangan'
           : reserved === 'crypto' ? 'Bu nom alohida toifaga saqlangan'
-            : reserved === 'auction' ? 'Bu nom faqat NFCSTORE auksioni orqali sotiladi'
-              : blocked ? (rule?.note || 'Bu ID rezervlangan yoki sotuvda emas') : '',
-    alternatives, ...pricing, rule: rule?.rule || null,
+            : blocked ? (rule?.note || 'Bu ID rezervlangan yoki sotuvda emas') : '',
+    alternatives,
+    ...pricing,
+    // Qat'iy narx uzunlik tarifining ustidan yoziladi — LEKIN admin
+    // qo'lda narx qo'ygan bo'lsa (price_override) o'sha ustun turadi:
+    // "Admin override har doim avtomatik pricing'dan ustun".
+    // `tier` O'ZGARMAYDI — mavjud interfeys uni kutadi; premium nom
+    // alohida `premiumName`/`premiumLevel` bayroqlari bilan bilinadi.
+    ...(premium && !(Number(rule?.price_override) >= 0) ? { price: premium.price } : {}),
+    rule: rule?.rule || null,
   };
 }
 
@@ -1063,6 +1084,50 @@ async function companyAdminApi(request, env, url) {
     const company = await setCompanyStatus(env, id, status, `admin:${admin.role || 'admin'}`, body.note);
     if (!company) return json({ error: 'not_found' }, 404);
     return json({ company });
+  }
+  // PREMIUM KOMPANIYA NOMLARI (2026-09) — auksion o'rniga qat'iy narx.
+  //
+  // YANGI JADVAL YARATILMADI: nomlar va darajalar koddagi ro'yxatda
+  // (src/lib/exclusivePricing.js), egalik `companies` da, admin qo'lda
+  // qo'ygan narx/holat esa mavjud `company_id_rules` da turadi. Egasi
+  // "mavjud schema bilan qilish mumkin bo'lsa, ortiqcha ustun yaratma"
+  // dedi — shuning uchun bu yo'l tanlandi.
+  if (path === '/api/admin/premium-company-names' && request.method === 'GET') {
+    const [owned, rules] = await Promise.all([
+      env.DB.prepare(`SELECT company_id, status FROM companies WHERE status <> 'rejected'`).all(),
+      env.DB.prepare('SELECT * FROM company_id_rules').all(),
+    ]);
+    const ownerBy = new Map((owned.results || []).map((r) => [String(r.company_id).toUpperCase(), r.status]));
+    const ruleBy = new Map((rules.results || []).map((r) => [String(r.company_id).toUpperCase(), r]));
+    const out = [];
+    for (const [level, names] of [
+      ['level_0', COMPANY_PREMIUM_NAMES.level_0], ['level_1', COMPANY_PREMIUM_NAMES.level_1],
+      ['level_2', COMPANY_PREMIUM_NAMES.level_2], ['level_3', COMPANY_PREMIUM_NAMES.level_3],
+      ['level_4', COMPANY_PREMIUM_NAMES.level_4],
+    ]) {
+      for (const name of names) {
+        const rule = ruleBy.get(name) || null;
+        const ownerStatus = ownerBy.get(name) || null;
+        const override = rule && Number(rule.price_override) >= 0 ? Number(rule.price_override) : null;
+        out.push({
+          name,
+          level,
+          price: override != null ? override : COMPANY_PREMIUM_PRICE[level],
+          autoPrice: COMPANY_PREMIUM_PRICE[level],
+          priceOverride: override,
+          // Holat: OWNED (kompaniyaniki) > RESERVED/UNAVAILABLE (admin
+          // qoidasi) > AVAILABLE. Egalik HAR DOIM ustun — sotilgan nom
+          // hech qachon avtomatik qayta sotuvga chiqmaydi.
+          status: ownerStatus ? 'OWNED'
+            : rule && rule.rule === 'reserved' ? 'RESERVED'
+              : rule && ['off_sale', 'blocked'].includes(rule.rule) ? 'UNAVAILABLE'
+                : 'AVAILABLE',
+          ownerStatus,
+          note: rule?.note || '',
+        });
+      }
+    }
+    return json({ names: out, prices: COMPANY_PREMIUM_PRICE });
   }
   if (path === '/api/admin/company-id-rules' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT * FROM company_id_rules ORDER BY updated_at DESC').all();
@@ -6612,7 +6677,8 @@ async function handleRequest(request, env, url) {
       }
     }
 
-    if (url.pathname === '/api/admin/company-requests' || url.pathname.startsWith('/api/admin/company-requests/') || url.pathname === '/api/admin/company-id-rules') {
+    if (url.pathname === '/api/admin/company-requests' || url.pathname.startsWith('/api/admin/company-requests/')
+      || url.pathname === '/api/admin/company-id-rules' || url.pathname === '/api/admin/premium-company-names') {
       try { return await companyAdminApi(request, env, url); }
       catch (error) {
         console.error('company admin api', error);

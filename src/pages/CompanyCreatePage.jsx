@@ -5,7 +5,6 @@ import { navigate } from '../lib/router.js';
 import { companyNameBlocked } from '../lib/nameGuard.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
-import { AUCTION_START_PRICE, AUCTION_HOURS } from '../lib/brandReserved.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
@@ -93,32 +92,33 @@ export default function CompanyCreatePage() {
             emas, qoida. Narx ham ko'rsatilmaydi (sotilmaydi), lekin
             rasmiy vakil uchun murojaat yo'li ochiq qoladi — bu bizga
             kompaniya mijozi ham keltiradi. */}
-        {check?.reserved ? (
+        {/* AUKSION BEKOR QILINDI (2026-09): 'auction' guruhidagi nomlar
+            endi PREMIUM NOM — qat'iy narxda, oddiy oqim bilan sotiladi,
+            shuning uchun bu "sotuvda emas" tarmog'iga TUSHMAYDI. */}
+        {check?.reserved && check.reserved !== 'auction' ? (
           <div className="cc-id-result unavailable">
             <div>
               <b>{check.reserved === 'blocked' ? t('Bu nom taqiqlangan')
                 : check.reserved === 'brand' ? t('Bu NFC ID himoyalangan')
-                  : check.reserved === 'auction' ? t('Global premium NFC ID')
-                    : t('Bu nom alohida toifaga saqlangan')}</b>
+                  : t('Bu nom alohida toifaga saqlangan')}</b>
               <span>{check.reserved === 'blocked'
                 ? t('Bu NFC ID’dan foydalanish taqiqlangan. Boshqa nom tanlang.')
                 : check.reserved === 'brand'
                   ? t('Ushbu nom kompaniya yoki brend nomiga mos kelgani sababli ochiq sotuvga qo‘yilmagan. Agar siz brendning rasmiy egasi yoki vakili bo‘lsangiz, tasdiqlash uchun admin bilan bog‘laning.')
-                  : check.reserved === 'auction'
-                    ? t('Ushbu noyob nom faqat NFCSTORE auksioni orqali sotiladi. Boshlang‘ich narx {price} so‘m, auksion {hours} soat davom etadi va eng baland taklif bergan g‘olib bo‘ladi.', { price: fmt(AUCTION_START_PRICE), hours: AUCTION_HOURS })
-                    : t('Bu nom kripto toifasiga saqlangan va hozircha sotuvda emas.')}</span>
+                  : t('Bu nom kripto toifasiga saqlangan va hozircha sotuvda emas.')}</span>
             </div>
             {/* TAQIQLANGAN nomda admin bilan bog'lanish TAKLIF
                 QILINMAYDI — bunday nomlar muhokama qilinmaydi. */}
             <div className="cc-alternatives flex-wrap">
               {check.reserved === 'brand' && <button type="button" className="vz-tap" onClick={() => navigate('/aloqa')}>{t('Admin bilan bog‘lanish')}</button>}
-              {check.reserved === 'auction' && <button type="button" className="vz-tap" onClick={() => navigate('/auksion')}>{t('Auksionga o‘tish')}</button>}
               <button type="button" className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: '' }))}>{t('Boshqa ID tanlash')}</button>
             </div>
           </div>
         ) : (
         <div className={`cc-id-result ${check?.available ? 'available' : check?.valid ? 'unavailable' : ''}`}>
-          <div><b>{check?.valid ? `${(check.tier || '').toUpperCase()} · ${fmt(check.price)} ${t('so‘m')}` : t('3–15 ta harf')}</b><span>{check?.available === true ? `✓ ${t('Bo‘sh — ariza yuborish mumkin')}` : check?.available === false ? `✕ ${check.reason ? t(check.reason) : t('Band yoki sotuvda emas')}` : (check?.reason ? t(check.reason) : t('ID yozishni boshlang'))}</span></div>
+          <div><b>{check?.valid
+            ? `${check.premiumName ? t('PREMIUM NOM') : (check.tier || '').toUpperCase()} · ${fmt(check.price)} ${t('so‘m')}`
+            : t('3–15 ta harf')}</b><span>{check?.available === true ? `✓ ${t('Bo‘sh — ariza yuborish mumkin')}` : check?.available === false ? `✕ ${check.reason ? t(check.reason) : t('Band yoki sotuvda emas')}` : (check?.reason ? t(check.reason) : t('ID yozishni boshlang'))}</span></div>
           {check?.alternatives?.length > 0 && <div className="cc-alternatives flex-wrap">{check.alternatives.map((id) => <button type="button" key={id} className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: id }))}>{id}</button>)}</div>}
         </div>
         )}

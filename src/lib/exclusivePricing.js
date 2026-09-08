@@ -253,6 +253,12 @@ export function companyPremiumLevel(rawName) {
   return null;
 }
 
+// Admin paneli uchun — daraja bo'yicha kompaniya nomlari.
+export const COMPANY_PREMIUM_NAMES = {
+  level_0: COMPANY_LEVEL_0, level_1: COMPANY_LEVEL_1, level_2: COMPANY_LEVEL_2,
+  level_3: COMPANY_LEVEL_3, level_4: COMPANY_LEVEL_4,
+};
+
 // Testlar va admin paneli uchun — barcha ro'yxatlar bir joyda.
 export const ALL_LISTS = {
   SPECIAL_4490, SPECIAL_3490, LEVEL_0_EXTRA, LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4,

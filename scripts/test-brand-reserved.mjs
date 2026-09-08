@@ -152,14 +152,24 @@ await seedBasic(env);
 
   // Har bir guruh serverdan O'Z sababi bilan qaytadi — interfeys shunga
   // qarab boshqa-boshqa matn va tugma ko'rsatadi.
-  for (const [id, status] of [['BANK', 'auction'], ['USDT', 'crypto'], ['POKER', 'blocked']]) {
+  // 2026-09: AUKSION BEKOR QILINDI. 'auction' guruhidagi nomlar endi
+  // PREMIUM NOM — qat'iy narxda SOTILADI, ya'ni `available: true`.
+  // Taqiqlangan va kripto nomlar avvalgidek yopiq.
+  for (const [id, status] of [['USDT', 'crypto'], ['POKER', 'blocked']]) {
     const r = await j(`/api/companies/check?id=${id}`);
     check(`4f) ${id} -> ${status}`, [r.body?.available, r.body?.reserved], [false, status]);
   }
   const bank = await j('/api/companies/check?id=BANK');
-  check('4g) auksion nomida boshlang\'ich narx qaytadi', bank.body?.auctionStartPrice, 2000000);
+  check('4g) BANK endi sotiladi', bank.body?.available, true);
+  check('4g) ...premium nom bayrog\'i bilan', [bank.body?.premiumName, bank.body?.premiumLevel], [true, 'level_0']);
+  check('4g) ...qat\'iy narxda', bank.body?.price, 4990000);
+  // Har bir daraja serverdan to'g'ri narx bilan qaytadi.
+  for (const [id, price] of [['AERO', 3990000], ['CAFE', 2990000], ['BAR', 1990000], ['PIZZA', 990000]]) {
+    const r = await j(`/api/companies/check?id=${id}`);
+    check(`4g) ${id} -> ${price}`, [r.body?.available, r.body?.price], [true, price]);
+  }
   const poker = await j('/api/companies/check?id=POKER');
-  check('4h) taqiqlangan nomda narx yo\'q', poker.body?.auctionStartPrice, null);
+  check('4h) taqiqlangan nom premium emas', poker.body?.premiumName, false);
 
   // Raqam qoidasini chetlab o'tishga urinish: kompaniya ID'sida raqam
   // umuman qabul qilinmaydi, ya'ni "BMW1" deb yozib brend nomini olib

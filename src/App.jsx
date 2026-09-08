@@ -66,8 +66,10 @@ const FaqPage = lazyPage(() => import('./pages/FaqPage.jsx'));
 const ContactPage = lazyPage(() => import('./pages/ContactPage.jsx'));
 const TermsPage = lazyPage(() => import('./pages/TermsPage.jsx'));
 const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage.jsx'));
-const AuctionsPage = lazyPage(() => import('./pages/AuctionsPage.jsx'));
-const AuctionPage = lazyPage(() => import('./pages/AuctionPage.jsx'));
+// AUKSION BEKOR QILINDI (2026-09): AuctionsPage/AuctionPage/AuctionRulesPage
+// fayllari O'CHIRILMADI (admin va backend hali ularga bog'liq bo'lishi
+// mumkin), lekin ILOVAGA UMUMAN YUKLANMAYDI — yo'llar narxlar sahifasiga
+// yo'naltiriladi. Shu bilan birga ular asosiy to'plamdan ham chiqadi.
 const AdminPage = lazyPage(() => import('./pages/AdminPage.jsx'));
 const MessagesPage = lazyPage(() => import('./pages/MessagesPage.jsx'));
 const PaymentsPage = lazyPage(() => import('./pages/PaymentsPage.jsx'));
@@ -78,7 +80,6 @@ const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx')
 const CompanyWorkspacePage = lazyPage(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfilePage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
-const AuctionRulesPage = lazyPage(() => import('./pages/AuctionRulesPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -268,14 +269,14 @@ export default function App() {
     else if (cleanRoute === 'aloqa') page = <ContactPage />;
     else if (cleanRoute === 'shartlar') page = <TermsPage />;
     else if (cleanRoute === 'maxfiylik') page = <PrivacyPage />;
-    else if (cleanRoute === 'auksion') page = <AuctionsPage />;
+    // AUKSION BEKOR QILINDI (2026-09) — sahifa o'rniga yo'naltirish.
+    else if (cleanRoute === 'auksion' || isAuctionDetail) page = <PricingRedirect />;
     else if (cleanRoute === 'gifts') page = <GiftsPage catalog={catalog} />;
     else if (cleanRoute === 'qollanma') page = <GuideRedirect />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
     else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
-    else if (isAuctionDetail) page = <AuctionPage key={cleanRoute} id={cleanRoute.slice('auksion/'.length)} />;
     else if (isNewsDetail) page = <NewsPage key={cleanRoute} newsId={cleanRoute.slice('yangiliklar/'.length)} />;
     else if (cleanRoute === 'xabarlar' && MESSAGING_ENABLED) page = <MessagesPage />;
     else if (isMessagesDetail && MESSAGING_ENABLED) page = <MessagesPage key={cleanRoute} id={cleanRoute.slice('xabarlar/'.length)} />;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import PhysicalCardCta from '../components/PhysicalCardCta.jsx';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode } from '../lib/pricing.js';
-import { reservedStatus, AUCTION_START_PRICE, AUCTION_DEMAND_THRESHOLD } from '../lib/brandReserved.js';
+import { reservedStatus } from '../lib/brandReserved.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import ReserveModal from '../components/ReserveModal.jsx';
@@ -222,16 +222,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
                   </>}
                   {/* GLOBAL AUKSION — brend emas, kuchli umumiy nom.
                       Narx va shartlar darhol ko'rinadi. */}
-                  {!checkResult.bad && checkResult.reserved === 'auction' && <>
-                    <span className="vz-badge vz-badge--gold">{t('Global premium NFC ID')}</span>
-                    <span className="text-[color:var(--vz-ink-2)]">
-                      {t('Ushbu noyob nom faqat NFCSTORE auksioni orqali sotiladi. Boshlang‘ich narx {price} so‘m, auksion {hours} soat davom etadi va eng baland taklif bergan g‘olib bo‘ladi.', { price: fmt(AUCTION_START_PRICE), hours: 72 })}
-                    </span>
-                    <button className="btn btn-gold btn-sm min-h-9" onClick={() => navigate('/auksion')}>{t('Auksionga o‘tish')}</button>
-                    <span className="text-[13px] text-[color:var(--vz-ink-3,rgba(255,255,255,0.45))]">
-                      {t('{n} ta talab to‘planganda auksion boshlanadi.', { n: AUCTION_DEMAND_THRESHOLD })}
-                    </span>
-                  </>}
+                  {/* AUKSION BEKOR QILINDI (2026-09): 'auction' guruhidagi
+                      nomlar endi PREMIUM NOM — bloklanmaydi, qat'iy narxda
+                      sotiladi, shuning uchun bu yerda alohida tarmoq yo'q. */}
                   {!checkResult.bad && !checkResult.reserved && checkResult.taken && <>
                     <span className="vz-badge vz-badge--muted">{t('Band')}</span>
                     <span className="text-[color:var(--vz-ink-2)]">
@@ -239,10 +232,12 @@ export default function HomePage({ catalog, refreshCatalog }) {
                       <button onClick={() => navigate('/' + checkResult.code)} className="cursor-pointer underline decoration-[#c9a227] underline-offset-2 hover:text-[color:var(--vz-ink)]">{t("sahifasini ko'rish")}</button>
                     </span>
                   </>}
+                  {/* AUKSION BEKOR QILINDI (2026-09): ekslyuziv kod endi
+                      qat'iy narxda, oddiy bandlash bilan sotiladi. */}
                   {!checkResult.bad && !checkResult.reserved && !checkResult.taken && checkInfo && checkInfo.tier === 'exclusive' && <>
                     <span className="vz-badge vz-badge--gold">{t('Ekslyuziv')}</span>
-                    <span className="text-[color:var(--vz-ink-2)]">{t('nfcstore.uz/{code} — faqat auksion orqali sotiladi', { code: checkResult.code.toLowerCase() })}</span>
-                    <button className="btn btn-outline-gold btn-sm min-h-9" onClick={() => navigate('/auksion')}>{t("Auksion bo'limi")}</button>
+                    <span className="text-[color:var(--vz-ink-2)]">{t('nfcstore.uz/{code} — {price} so‘m', { code: checkResult.code.toLowerCase(), price: fmt(checkInfo.total) })}</span>
+                    <button className="btn btn-gold btn-sm min-h-9" onClick={() => setModalCode(checkResult.code)}>{t('Bandlash')}</button>
                   </>}
                   {!checkResult.bad && !checkResult.reserved && !checkResult.taken && checkInfo && checkInfo.tier !== 'exclusive' && <>
                     <span className="vz-badge vz-badge--ok">{t("Bo'sh")}</span>
@@ -383,7 +378,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
                 {['free', 'silver', 'gold', 'premium'].map((k) => (
                   <li key={k} className="flex items-start justify-between gap-2"><span>{t(TIER_LABEL[k])}</span><span className="font-mono text-[color:var(--vz-ink)]">{fmt(TIER_PRICE[k])}</span></li>
                 ))}
-                <li className="flex items-start justify-between gap-2"><span>{t('Ekslyuziv')}</span><span className="text-[color:var(--vz-gold-2)]">{t('Auksion')}</span></li>
+                <li className="flex items-start justify-between gap-2"><span>{t('Ekslyuziv')}</span><span className="text-[color:var(--vz-gold-2)]">{t('490 000 dan')}</span></li>
               </ul>
               <button onClick={() => navigate('/narxlar')} className="btn btn-gold mt-5">{t("Narxlarni ko'rish")}</button>
             </article>

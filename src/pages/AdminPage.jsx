@@ -3676,11 +3676,16 @@ function CompanyIdRequests() {
   const [busy, setBusy] = useState('');
   const [rule, setRule] = useState({ companyId: '', rule: 'reserved', tierOverride: '', priceOverride: '', note: '' });
   const [rules, setRules] = useState([]);
+  const [premium, setPremium] = useState([]);
+  const [premiumQ, setPremiumQ] = useState('');
+  const [premiumLevel, setPremiumLevel] = useState('');
   const load = () => {
     setErr(null);
     return Promise.all([
       adminApi(`/company-requests${filter === 'all' ? '' : `?status=${filter}`}`).then(setData),
       adminApi('/company-id-rules').then((d) => setRules(d.rules || [])).catch(() => setRules([])),
+      // Premium kompaniya nomlari — daraja, narx, holat, egasi.
+      adminApi('/premium-company-names').then((d) => setPremium(d.names || [])).catch(() => setPremium([])),
     ]).catch((e) => { setData(null); setErr(e); });
   };
   useEffect(() => { setData(null); load(); }, [filter]);
@@ -3740,6 +3745,62 @@ function CompanyIdRequests() {
     <AdminCard title={t('Company ID rezerv va narx override')}>
       <form className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6" onSubmit={saveRule}><input required pattern="[A-Za-z]{3,15}" value={rule.companyId} onChange={(e) => setRule((old) => ({ ...old, companyId:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,15) }))} placeholder="COMPANYID" className="vz-input min-w-0 font-mono" aria-label="Company ID"/><select value={rule.rule} onChange={(e) => setRule((old) => ({ ...old, rule:e.target.value }))} className="vz-input min-w-0" aria-label={t('Qoida')}><option value="reserved">Reserved</option><option value="off_sale">Off sale</option><option value="blocked">Blocked</option><option value="exclusive">Exclusive</option><option value="allow">Allow</option></select><select value={rule.tierOverride} onChange={(e) => setRule((old) => ({ ...old, tierOverride:e.target.value }))} className="vz-input min-w-0" aria-label={t('Tarif')}><option value="">Auto tier</option><option value="silver">Silver</option><option value="gold">Gold</option><option value="premium">Premium</option><option value="exclusive">Exclusive</option></select><input type="number" min="0" value={rule.priceOverride} onChange={(e) => setRule((old) => ({ ...old, priceOverride:e.target.value }))} placeholder={t('Maxsus narx')} className="vz-input min-w-0" aria-label={t('Maxsus narx')}/><input value={rule.note} onChange={(e) => setRule((old) => ({ ...old, note:e.target.value }))} placeholder={t('Admin izohi')} className="vz-input min-w-0" aria-label={t('Admin izohi')}/><button className="btn btn-gold min-h-11" disabled={busy === 'rule'}>{t('Saqlash')}</button></form>
       {rules.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{rules.slice(0,20).map((entry) => { const id = entry.company_id || entry.companyId; const price = entry.price_override ?? entry.priceOverride; return <span key={id} className="vz-badge vz-badge--muted font-mono">{id} · {entry.rule}{price != null ? ` · ${fmt(price)}` : ''}</span>; })}</div>}
+    </AdminCard>
+    {/* PREMIUM KOMPANIYA NOMLARI (2026-09) — auksion o'rniga qat'iy narx.
+        Narx/holat o'zgartirish yuqoridagi "rezerv va narx override"
+        formasi orqali: nomni yozib, Maxsus narx yoki Reserved qo'yiladi.
+        Admin qo'ygan qiymat avtomatik narxdan har doim ustun. */}
+    <AdminCard title={t('Premium kompaniya nomlari')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={premiumQ}
+          onChange={(e) => setPremiumQ(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
+          placeholder={t('Nom bo‘yicha qidirish')}
+          className="vz-input min-w-0 max-w-52 font-mono"
+          aria-label={t('Nom bo‘yicha qidirish')}
+        />
+        <select value={premiumLevel} onChange={(e) => setPremiumLevel(e.target.value)} className="vz-input min-w-0 max-w-44" aria-label={t('Daraja')}>
+          <option value="">{t('Barcha darajalar')}</option>
+          <option value="level_0">Level 0 — 4 990 000</option>
+          <option value="level_1">Level 1 — 3 990 000</option>
+          <option value="level_2">Level 2 — 2 990 000</option>
+          <option value="level_3">Level 3 — 1 990 000</option>
+          <option value="level_4">Level 4 — 990 000</option>
+        </select>
+        <span className="text-xs text-base-content/45">
+          {t('{n} ta nom', { n: premium.filter((x) => (!premiumQ || x.name.includes(premiumQ)) && (!premiumLevel || x.level === premiumLevel)).length })}
+        </span>
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="table table-sm">
+          <thead><tr><th>{t('Nom')}</th><th>{t('Daraja')}</th><th>{t('Narx')}</th><th>{t('Holat')}</th><th>{t('Izoh')}</th></tr></thead>
+          <tbody>
+            {premium
+              .filter((x) => (!premiumQ || x.name.includes(premiumQ)) && (!premiumLevel || x.level === premiumLevel))
+              .slice(0, 120)
+              .map((x) => (
+                <tr key={x.name}>
+                  <td><b className="font-mono" style={{ color: 'var(--vz-gold-2)' }}>{x.name}</b></td>
+                  <td className="text-xs uppercase text-base-content/50">{x.level.replace('_', ' ')}</td>
+                  <td className="font-mono">
+                    {fmt(x.price)}
+                    {/* Admin qo'lda narx qo'ygan bo'lsa — avtomatik narx
+                        ham ko'rsatiladi, farq ko'rinib tursin. */}
+                    {x.priceOverride != null && (
+                      <span className="ml-1 text-xs text-base-content/40">({t('avto')}: {fmt(x.autoPrice)})</span>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`vz-badge ${x.status === 'AVAILABLE' ? 'vz-badge--ok' : x.status === 'OWNED' ? 'vz-badge--muted' : 'vz-badge--warn'}`}>
+                      {x.status}
+                    </span>
+                  </td>
+                  <td className="text-xs text-base-content/45">{x.note}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
     </AdminCard>
   </div>;
 }
