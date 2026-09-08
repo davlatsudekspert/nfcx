@@ -36,6 +36,11 @@ const CASES = [
   ['CEO909', 'level_3', 1490000], ['VIP606', 'level_3', 1490000],
   ['VIP789', 'level_4', 990000], ['BBB222', 'level_4', 990000],
   ['KKK333', 'level_5', 490000], ['FFF555', 'level_5', 490000], ['NNN888', 'level_5', 490000],
+  // Ekskluziv SO'ZLI kod, ro'yxatlarning birortasiga tushmagani (2026-09,
+  // egasining qarori: 1 190 000). Bu Level 5 dan FARQ QILADI — Level 5
+  // faqat "uchala harf bir xil + uchala raqam bir xil" shakli uchun.
+  ['VIP002', 'word_default', 1190000], ['CEO004', 'word_default', 1190000],
+  ['KNG050', 'word_default', 1190000], ['LUX246', 'word_default', 1190000],
 ];
 for (const [code, level, price] of CASES) {
   check(`1) ${code} -> ${level}`, SRC.exclusiveLevel(code), { level, price });
@@ -70,6 +75,26 @@ for (const c of all) {
 }
 check(`3) generatsiya eskirmagan (${all.length} ta kod)`, genDiff, 0);
 check(`3) sayt va Worker narxi bir xil${firstQuote ? ' — ' + JSON.stringify(firstQuote) : ''}`, quoteDiff, 0);
+
+// ── 3b) Ikki zaxira daraja ARALASHIB KETMASIN ────────────────────────
+// AAA222 shakli 490 000, VIP002 shakli 1 190 000 — ikkalasi ham
+// "ro'yxatda yo'q" bo'lsa ham narxi boshqa.
+{
+  let mixed = [];
+  for (const a of L) for (let d = 0; d < 1000; d++) {
+    const c = a + a + a + String(d).padStart(3, '0');
+    const r = SRC.exclusiveLevel(c);
+    if (r && r.level === 'word_default') mixed.push(c);
+  }
+  check('3b) harf-raqam bir xil kod hech qachon "so‘z" darajasiga tushmaydi', mixed, []);
+  const wordFallback = [];
+  for (const w of SRC.EXCLUSIVE_WORDS) for (let d = 0; d < 1000; d++) {
+    const c = w + String(d).padStart(3, '0');
+    const r = SRC.exclusiveLevel(c);
+    if (r && r.level === 'level_5') wordFallback.push(c);
+  }
+  check('3b) so‘zli kod hech qachon Level 5 (490 000) ga tushmaydi', wordFallback, []);
+}
 
 // ── 4) Ekskluziv kod endi SOTILADI (auksion emas) ─────────────────────
 for (const c of ['AAA777', 'VIP555', 'UZB000', 'KKK333']) {

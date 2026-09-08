@@ -33,6 +33,14 @@ export const EXCLUSIVE_PRICE = {
   level_3: 1490000,
   level_4: 990000,
   level_5: 490000,
+  // Ekskluziv SO'ZLI kod (VIP/CEO/KNG/LEG/ROY/ACE/WIN/UZB/LUX + istalgan
+  // raqam), ro'yxatlarning birortasiga tushmagani. Masalan VIP002,
+  // CEO004. Egasining qarori (2026-09): 1 190 000.
+  //
+  // Level 5 (490 000) BUNDAN FARQ QILADI: u faqat "uchala harf bir xil +
+  // uchala raqam bir xil" shakli uchun (AAA222, BBB444) — egasi Level 5
+  // ni aynan shunday ta'riflagan.
+  word_default: 1190000,
 };
 
 export const EXCLUSIVE_LEVEL_LABEL = {
@@ -44,6 +52,7 @@ export const EXCLUSIVE_LEVEL_LABEL = {
   level_3: 'Level 3',
   level_4: 'Level 4',
   level_5: 'Level 5',
+  word_default: 'Ekskluziv so\u2019z',
 };
 
 // 1) MAXSUS — 4 490 000
@@ -180,8 +189,16 @@ export function exclusiveLevel(rawCode) {
     if (key.startsWith('special_')) continue;
     if (set.has(c)) return { level: key, price: EXCLUSIVE_PRICE[key] };
   }
-  // 9) LEVEL 5 — ekskluziv, lekin yuqoridagilarga kirmagan hammasi.
-  if (isExclusiveCode(c)) return { level: 'level_5', price: EXCLUSIVE_PRICE.level_5 };
+  // 9) Zaxira darajalar — ekskluziv, lekin yuqoridagilarga kirmagan.
+  //    Ikkiga bo'linadi (egasining qarori):
+  //      "uchala harf bir xil + uchala raqam bir xil"  -> Level 5, 490 000
+  //      ekskluziv SO'Z + istalgan raqam (VIP002...)   -> 1 190 000
+  if (same3(c.slice(0, 3)) && same3(c.slice(3))) {
+    return { level: 'level_5', price: EXCLUSIVE_PRICE.level_5 };
+  }
+  if (EXCLUSIVE_WORDS.includes(c.slice(0, 3))) {
+    return { level: 'word_default', price: EXCLUSIVE_PRICE.word_default };
+  }
   return null;
 }
 
