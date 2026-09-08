@@ -113,6 +113,28 @@ await seedBasic(env);
   for (const [v, want] of cases) check(`3b) "${v}" -> ${want || 'ochiq'}`, reservedStatus(v), want);
 }
 
+// ── 3c) RAQAM QOIDASI: himoya faqat SOF NOMGA ─────────────────────────
+// Egasining qarori (2026-09): "BMW" band bo'lsin (keyinchalik auksionga
+// qo'yiladi), lekin "BMW112", "BMW007" kabi raqamli NFC ID'lar oddiy
+// tartibda sotilaversin. Shu sabab ichida bitta raqam bo'lsa ham nom
+// band hisoblanmaydi.
+//
+// Chetlab o'tish xavfi yo'q: kompaniya ID'sida raqam umuman ishlatilmaydi
+// (companyId() faqat harflarni qabul qiladi) — quyida 4i) shuni ham
+// serverda tekshiradi.
+{
+  for (const name of ['BMW', 'UZUM', 'USDT', 'POKER', 'VIP', 'BANK']) {
+    checkTrue(`3c) sof "${name}" band`, reservedStatus(name) !== '');
+  }
+  for (const code of ['BMW112', 'BMW007', 'UZUM1', 'USDT9', 'POKER1', 'VIP555', 'BANK01']) {
+    check(`3c) raqamli "${code}" ochiq`, reservedStatus(code), '');
+  }
+  // Bo'shliq/tire bilan yozilgan variant HAMON band — raqam qoidasi
+  // faqat raqamga tegishli, boshqa ajratgichlarga emas.
+  check('3c) "B M W" hamon band', reservedStatus('B M W'), 'brand');
+  check('3c) "COCA COLA" hamon band', reservedStatus('COCA COLA'), 'brand');
+}
+
 // ── 4) Server: brend nomi SOTILMAYDI ──────────────────────────────────
 {
   const j = async (p) => {
@@ -138,6 +160,12 @@ await seedBasic(env);
   check('4g) auksion nomida boshlang\'ich narx qaytadi', bank.body?.auctionStartPrice, 2000000);
   const poker = await j('/api/companies/check?id=POKER');
   check('4h) taqiqlangan nomda narx yo\'q', poker.body?.auctionStartPrice, null);
+
+  // Raqam qoidasini chetlab o'tishga urinish: kompaniya ID'sida raqam
+  // umuman qabul qilinmaydi, ya'ni "BMW1" deb yozib brend nomini olib
+  // bo'lmaydi (raqam qoidasi faqat shaxsiy NFC ID'ga tegishli).
+  const bmw1 = await j('/api/companies/check?id=BMW1');
+  check('4i) raqamli kompaniya ID qabul qilinmaydi', bmw1.body?.available, false);
 }
 
 done();

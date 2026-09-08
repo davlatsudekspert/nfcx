@@ -102,11 +102,11 @@ check('1) 8-digit purchase BLOCK', personalPurchaseQuote('12345678').purchasable
 check('2) Exclusive BLOCK (auction-only)', personalPurchaseQuote('AAA777'), { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' });
 check('3) Bronze 49000', personalPurchaseQuote('XYZ412'), { purchasable: true, tier: 'free', amount: 49000 });
 check('4) Silver 99000', personalPurchaseQuote('ABB770'), { purchasable: true, tier: 'silver', amount: 99000 });
-// 2026-09: namunalar BMW412/BMW007 edi — BMW brend nomlar ro'yxatiga
-// kirgach ular umuman sotilmaydi (quyida alohida tekshiriladi).
-check('5) Gold 149000', personalPurchaseQuote('ZQX007'), { purchasable: true, tier: 'gold', amount: 149000 });
-check('6) Premium 199000', personalPurchaseQuote('ZQX000'), { purchasable: true, tier: 'premium', amount: 199000 });
-check('6b) Brend nomi (BMW) sotilmaydi', personalPurchaseQuote('BMW007'), { purchasable: false, reason: 'not_purchasable' });
+check('5) Gold 149000', personalPurchaseQuote('BMW412'), { purchasable: true, tier: 'gold', amount: 149000 });
+check('6) Premium 199000', personalPurchaseQuote('BMW007'), { purchasable: true, tier: 'premium', amount: 199000 });
+// Band qilingan nomlar faqat SOF holda himoyalanadi: "BMW" sotilmaydi,
+// "BMW007" esa oddiy premium NFC ID sifatida sotilaveradi (yuqoridagi 6-qator).
+check('6b) Sof brend nomi (BMW) sotilmaydi', personalPurchaseQuote('BMW'), { purchasable: false, reason: 'not_purchasable' });
 
 // ============================================================
 // 7) client forged amount ignored — order creation always uses the

@@ -62,16 +62,27 @@ for (const code of FREE_ID_SAMPLES) {
   check(`FREE_AUTO_ID_RE matches ${code}`, FREE_AUTO_ID_RE.test(code), true);
 }
 // A normal 6-char code must remain purchasable through both guards.
-// 2026-09: BMW007 used to be one of these samples. Band qilingan nomlar
-// ro'yxati kiritilgach (BMW — brend) u endi sotilmaydi, shu sabab namuna
-// kod band bo'lmagan ZQX007 ga almashtirildi.
-for (const code of ['XYZ412', 'ZQX007', 'AAA777']) {
+for (const code of ['XYZ412', 'BMW007', 'AAA777']) {
   check(`isPurchasableCode allows normal code ${code}`, isPurchasableCode(code), true);
   check(`isPersonalCodePurchasable allows normal code ${code}`, isPersonalCodePurchasable(code), true);
 }
 // Blocked prefix (GOD...) must never be purchasable either.
 check('isPurchasableCode blocks GOD-prefixed code', isPurchasableCode('GOD123'), false);
 check('isPersonalCodePurchasable blocks GOD-prefixed code', isPersonalCodePurchasable('GOD123'), false);
+
+// ---------- 2b) band qilingan nomlar: RAQAM QOIDASI (2026-09) ----------
+// Himoya faqat SOF NOMGA tegishli: "BMW" band (keyin auksionga qo'yiladi),
+// "BMW112"/"BMW007" kabi raqamli NFC ID'lar esa oddiy tartibda sotiladi.
+// Bu qoida sayt (src/lib/brandReserved.js) va Worker nusxasida BIR XIL
+// bo'lishi shart — aks holda sayt narx ko'rsatib, server to'lovni rad etadi.
+for (const name of ['BMW', 'UZUM', 'USDT', 'POKER', 'VIP']) {
+  check(`isPurchasableCode blocks reserved name ${name}`, isPurchasableCode(name), false);
+  check(`isPersonalCodePurchasable blocks reserved name ${name} (worker copy)`, isPersonalCodePurchasable(name), false);
+}
+for (const code of ['BMW112', 'BMW007', 'UZUM01', 'VIP555']) {
+  check(`isPurchasableCode allows numbered ID ${code}`, isPurchasableCode(code), true);
+  check(`isPersonalCodePurchasable allows numbered ID ${code} (worker copy)`, isPersonalCodePurchasable(code), true);
+}
 
 // ---------- 3) exclusive tier is priced as auction-only (never a direct-buy amount) ----------
 // TIER_PRICE.exclusive is `null` (see src/lib/pricing.js), but priceForCode()
@@ -111,20 +122,12 @@ const QUOTE_CASES = [
   // exclusive -> blocked with a named reason, NEVER a 0 amount
   ['AAA777', { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }],
   ['CEO001', { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }],
-  // band qilingan nomlar (2026-09) -> umuman sotilmaydi. VIP/BMW ilgari
-  // shu ro'yxatda yo'q edi: VIP555 "exclusive" (auksion), BMW412/BMW007 esa
-  // oddiy sotiladigan kodlar hisoblanardi. Endi ikkalasi ham ro'yxatda —
-  // VIP auksionga ajratilgan, BMW brend — va "sotib olish" oqimiga
-  // umuman kirmaydi. Bu tekshiruv aynan shuni qulflaydi.
-  ['VIP555', { purchasable: false, reason: 'not_purchasable' }],
-  ['BMW412', { purchasable: false, reason: 'not_purchasable' }],
-  ['BMW007', { purchasable: false, reason: 'not_purchasable' }],
-  ['USDT01', { purchasable: false, reason: 'not_purchasable' }],
+  ['VIP555', { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }],
   // the four purchasable tiers -> exact prices, amount always > 0
   ['XYZ412', { purchasable: true, tier: 'free', amount: 49000 }],
   ['ABB770', { purchasable: true, tier: 'silver', amount: 99000 }],
-  ['ZQX007', { purchasable: true, tier: 'gold', amount: 149000 }],
-  ['ZQX000', { purchasable: true, tier: 'premium', amount: 199000 }],
+  ['BMW412', { purchasable: true, tier: 'gold', amount: 149000 }],
+  ['BMW007', { purchasable: true, tier: 'premium', amount: 199000 }],
 ];
 for (const [code, expected] of QUOTE_CASES) {
   const real = getPersonalPurchaseQuote(code);

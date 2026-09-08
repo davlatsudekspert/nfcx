@@ -171,8 +171,18 @@ export function normalizeBrand(value) {
 
 // Nomning holati: 'blocked' | 'brand' | 'crypto' | 'auction' | ''.
 // Bo'sh satr — nom ochiq, oddiy tartibda sotiladi.
+//
+// RAQAM QOIDASI (2026-09, egasining qarori): himoya faqat SOF NOMGA
+// tegishli. "BMW" — band (keyinchalik auksionga qo'yiladi), "BMW112",
+// "BMW007" kabi raqamli NFC ID'lar esa oddiy tartibda sotilaveradi.
+// Shu sabab ichida bitta raqam bo'lsa ham nom band hisoblanmaydi.
+// Chetlab o'tish xavfi yo'q: kompaniya ID'sida raqam umuman ishlatilmaydi
+// (companyId() faqat harflarni qabul qiladi), ya'ni "BMW1" deb yozib
+// brend nomini olib bo'lmaydi.
 export function reservedStatus(value) {
-  const v = normalizeBrand(value);
+  const raw = String(value || '');
+  if (/[0-9]/.test(raw)) return '';
+  const v = normalizeBrand(raw);
   if (!v) return '';
   for (const [status, set] of SETS) if (set.has(v)) return status;
   return '';
