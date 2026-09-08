@@ -294,6 +294,12 @@ export async function handle(request, env, url, H) {
       const shippingName = H.cleanStr(body.shippingName, 100);
       const shippingPhone = H.cleanStr(body.shippingPhone, 30);
       const shippingAddress = H.cleanStr(body.shippingAddress, 300);
+      // Yetkazib berish xizmatini MIJOZ tanlaydi. Ro'yxat qat'iy: erkin
+      // matn bo'lsa admin har xil yozuvlarni ("bts", "BTS ekspress")
+      // saralashga majbur bo'lardi.
+      const CARRIERS = ['BTS Express', 'Fargo‘', 'O‘zbekiston Pochtasi'];
+      const rawCarrier = H.cleanStr(body.shippingCarrier, 60);
+      const shippingCarrier = CARRIERS.includes(rawCarrier) ? rawCarrier : '';
       if (!shippingName || !shippingPhone || !shippingAddress) return H.json({ error: 'shipping_required' }, 422);
 
       // ─── BOSMA MAKET ─────────────────────────────────────────────────
@@ -319,7 +325,7 @@ export async function handle(request, env, url, H) {
         `INSERT INTO web_orders (user_id, code, kind, price, payload, status, created_at)
          VALUES (?, ?, 'physical_card_order', ?, ?, 'pending', ?) RETURNING id`
       ).bind(user.id, code, PHYSICAL_CARD_FEE, JSON.stringify({
-        shippingName, shippingPhone, shippingAddress,
+        shippingName, shippingPhone, shippingAddress, shippingCarrier,
         designFrontUrl, designBackUrl,
         // Bosmaxona uchun aniq o'lcham — maket qanday chiqarilgani
         // buyurtmaning o'zida yozib qolsin, keyinchalik format o'zgarsa

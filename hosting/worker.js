@@ -2617,6 +2617,25 @@ async function finalizePaidWebOrderD1(env, orderId) {
       shippingAddress: p.shippingAddress || '',
     });
     await setWebOrderStatusD1(env, order.id, 'paid');
+    // Mijozga tasdiq. Xabar AYNAN shu yerda — to'lov tasdiqlangandan
+    // keyin: "buyurtmangiz qabul qilindi" degan xabar to'lovdan OLDIN
+    // ketsa, to'lamagan odam ham uni olardi va kutib qolardi.
+    // Fire-and-forget: Telegram javob bermasa ham buyurtma yakunlangan
+    // holicha qoladi — pul olindi, karta yaratildi.
+    try {
+      const info = await env.DB.prepare(
+        `SELECT bv.tg_user_id AS tgUserId FROM users u
+           LEFT JOIN bot_verifications bv ON bv.phone = u.phone WHERE u.id = ?`
+      ).bind(order.userId).first();
+      if (info?.tgUserId) {
+        await sendTelegramTo(env, info.tgUserId, [
+          `\u2705 <b>Buyurtmangiz qabul qilindi</b>`,
+          `\n\uD83C\uDD94 NFC ID: <b>${order.code}</b>`,
+          `\n\nKartangiz <b>2-3 ish kunida</b> tayyorlanadi va jo'natiladi.`,
+          `\nJo'natilgach kuzatuv raqamini shu yerga yuboramiz.`,
+        ].join(''));
+      }
+    } catch { /* xabar ketmadi — buyurtma baribir yakunlandi */ }
     return { ok: true };
   }
   if (order.kind !== 'card_purchase') return { ok: false, reason: 'unsupported_order_kind' };
@@ -4583,6 +4602,7 @@ async function adminCoreApi(request, env, url, admin) {
           shippingName: typeof p.shippingName === 'string' ? p.shippingName : '',
           shippingPhone: typeof p.shippingPhone === 'string' ? p.shippingPhone : '',
           shippingAddress: typeof p.shippingAddress === 'string' ? p.shippingAddress : '',
+          shippingCarrier: typeof p.shippingCarrier === 'string' ? p.shippingCarrier : '',
         };
       });
     return json({ orders });
@@ -4616,18 +4636,67 @@ async function adminCoreApi(request, env, url, admin) {
 
   if (path === '/api/admin/physical-cards' && request.method === 'GET') {
     const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT 100`).all();
-    return json({ cards: (rows.results || []).map((r) => ({ id: r.id, chipToken: r.chip_token, linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: r.shipping_phone, shippingAddress: r.shipping_address, createdAt: r.created_at })) });
+    return json({ cards: (rows.results || []).map((r) => ({ id: r.id, chipToken: r.chip_token, linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: r.shipping_phone, shippingAddress: r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
   }
+
+  // Kuzatuv raqami uchun ustunlar. `physical_cards` jadvali D1'da
+  // allaqachon mavjud va uning sxemasi bu faylda yaratilmaydi, shuning
+  // uchun ustunlar KERAK BO'LGANDA qo'shiladi. `ALTER TABLE ... ADD
+  // COLUMN` — buzmaydigan amal: mavjud qatorlarda qiymat NULL bo'ladi.
+  // Ustun allaqachon bor bo'lsa D1 "duplicate column" xatosini beradi,
+  // uni jim yutamiz (har bir so'rovda tekshirib o'tirmaslik uchun).
+  const ensurePhysicalTrackingColumns = async () => {
+    for (const sql of [
+      `ALTER TABLE physical_cards ADD COLUMN tracking_number TEXT`,
+      `ALTER TABLE physical_cards ADD COLUMN carrier TEXT`,
+    ]) {
+      try { await env.DB.prepare(sql).run(); } catch { /* allaqachon bor */ }
+    }
+  };
 
   const physicalStatusMatch = path.match(/^\/api\/admin\/physical-cards\/(\d+)\/status$/);
   if (physicalStatusMatch && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const status = String(body.status || '');
     if (!['pending', 'printing', 'shipped', 'delivered'].includes(status)) return json({ error: 'bad_status' }, 422);
-    const row = await env.DB.prepare(`UPDATE physical_cards SET status = ? WHERE id = ? RETURNING id, status`)
-      .bind(status, Number(physicalStatusMatch[1])).first();
+    await ensurePhysicalTrackingColumns();
+    // Kuzatuv raqami va xizmat nomi — ixtiyoriy, faqat "jo'natildi" da
+    // ma'noga ega. Bo'sh yuborilsa eskisi SAQLANADI (COALESCE bilan):
+    // admin statusni "yetkazildi" ga o'zgartirganda raqam o'chib
+    // ketmasin.
+    const tracking = shortText(body.trackingNumber, 60);
+    const carrier = shortText(body.carrier, 60);
+    const row = await env.DB.prepare(
+      `UPDATE physical_cards
+          SET status = ?,
+              tracking_number = COALESCE(NULLIF(?, ''), tracking_number),
+              carrier = COALESCE(NULLIF(?, ''), carrier)
+        WHERE id = ?
+    RETURNING id, status, linked_code, owner_user_id, tracking_number, carrier`
+    ).bind(status, tracking, carrier, Number(physicalStatusMatch[1])).first();
     if (!row) return json({ error: 'not_found' }, 404);
-    return json(row);
+
+    // Mijozga Telegram xabari. Fire-and-forget: xabar ketmasa ham status
+    // o'zgarishi BEKOR QILINMAYDI — admin ishi to'xtab qolmasin.
+    if (status === 'shipped' || status === 'delivered') {
+      try {
+        const info = await env.DB.prepare(
+          `SELECT bv.tg_user_id AS tgUserId FROM users u
+             LEFT JOIN bot_verifications bv ON bv.phone = u.phone WHERE u.id = ?`
+        ).bind(row.owner_user_id).first();
+        if (info?.tgUserId) {
+          const code = row.linked_code ? `\n\uD83C\uDD94 NFC ID: <b>${row.linked_code}</b>` : '';
+          const text = status === 'shipped'
+            ? [`\uD83D\uDCE6 <b>Kartangiz jo'natildi</b>`, code,
+               row.carrier ? `\n\uD83D\uDE9A Xizmat: <b>${row.carrier}</b>` : '',
+               row.tracking_number ? `\n\uD83D\uDD0E Kuzatuv raqami: <code>${row.tracking_number}</code>` : '',
+              ].join('')
+            : `\u2705 <b>Kartangiz yetkazildi</b>${code}\n\nXaridingiz uchun rahmat!`;
+          await sendTelegramTo(env, info.tgUserId, text);
+        }
+      } catch { /* xabar ketmadi — status baribir o'zgardi */ }
+    }
+    return json({ id: row.id, status: row.status, trackingNumber: row.tracking_number || '', carrier: row.carrier || '' });
   }
 
   const physicalActiveMatch = path.match(/^\/api\/admin\/physical-cards\/(\d+)\/active$/);

@@ -813,6 +813,9 @@ function PhysicalCardDesign({ order }) {
         <div className="font-semibold text-base-content/90">{order.shippingName || '—'}</div>
         <div>{order.shippingPhone || '—'}</div>
         <div className="max-w-[280px]">{order.shippingAddress || '—'}</div>
+        {order.shippingCarrier && (
+          <div className="mt-1 text-[color:var(--vz-gold-2)]">{order.shippingCarrier}</div>
+        )}
         {order.printSpec && (
           <div className="mt-2 font-mono text-[11px] text-base-content/45">{order.printSpec}</div>
         )}
@@ -1356,6 +1359,8 @@ function AuctionsTab() {
 
 const CARD_STATUS = ['pending', 'printing', 'shipped', 'delivered'];
 const CARD_STATUS_LABEL = { pending: 'Kutilmoqda', printing: 'Bosilmoqda', shipped: "Jo'natildi", delivered: 'Yetkazildi' };
+// Mijoz tanlaydigan yetkazib berish xizmatlari (2026-09).
+const CARRIERS = ['BTS Express', 'Fargo‘', 'O‘zbekiston Pochtasi'];
 
 // Foydalanuvchilardan kelgan "Adminga murojaat" xabarlari — javob
 // yozish shu yerdan.
@@ -1892,10 +1897,24 @@ function PhysicalCardsTab() {
   const load = () => { setLoadErr(null); setCards(null); return adminApi('/physical-cards').then((d) => setCards(Array.isArray(d?.cards) ? d.cards : [])).catch((e) => setLoadErr(e)); };
   useEffect(() => { load(); }, []);
 
-  const setStatus = async (id, status) => {
+  // Kuzatuv raqami — har bir qator uchun alohida (id -> {carrier, tracking}).
+  const [ship, setShip] = useState({});
+  const shipOf = (c) => ship[c.id] || { carrier: c.carrier || '', tracking: c.trackingNumber || '' };
+  const setShipField = (id, field, value) => setShip((old) => ({ ...old, [id]: { ...(old[id] || {}), [field]: value } }));
+
+  // `status` o'zgarganda kuzatuv ma'lumotlari ham birga ketadi: backend
+  // bo'sh qiymatni SAQLAB QOLADI, ya'ni "yetkazildi" ga o'tkazganda
+  // raqam o'chib ketmaydi.
+  const setStatus = async (c, status) => {
     setActErr(null);
-    try { await adminApi(`/physical-cards/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }); await load(); }
-    catch (e) { setActErr(apiErrText(e, t)); }
+    const cur = shipOf(c);
+    try {
+      await adminApi(`/physical-cards/${c.id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status, carrier: cur.carrier, trackingNumber: cur.tracking }),
+      });
+      await load();
+    } catch (e) { setActErr(apiErrText(e, t)); }
   };
 
   const toggleActive = async (c) => {
@@ -1928,9 +1947,31 @@ function PhysicalCardsTab() {
               <td className="max-w-xs break-words text-xs">{c.shippingAddress}</td>
               <td>{c.active ? <span className="vz-badge vz-badge--ok">{t('Faol')}</span> : <span className="vz-badge vz-badge--muted">{t('bloklangan')}</span>}</td>
               <td>
-                <select className="vz-input w-auto py-1" value={c.status} onChange={(e) => setStatus(c.id, e.target.value)} aria-label={t('Holat')}>
+                <select className="vz-input w-auto py-1" value={c.status} onChange={(e) => setStatus(c, e.target.value)} aria-label={t('Holat')}>
                   {CARD_STATUS.map((cs) => <option key={cs} value={cs}>{t(CARD_STATUS_LABEL[cs])}</option>)}
                 </select>
+                {/* Xizmat va kuzatuv raqami — "Jo'natildi" ga o'tkazishdan
+                    OLDIN to'ldiriladi: holat o'zgarganda ular birga
+                    yuboriladi va mijozga Telegram xabari shu ma'lumot
+                    bilan ketadi. */}
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <select
+                    className="vz-input w-auto py-1 text-xs"
+                    value={shipOf(c).carrier}
+                    onChange={(e) => setShipField(c.id, 'carrier', e.target.value)}
+                    aria-label={t('Yetkazib berish xizmati')}
+                  >
+                    <option value="">{t('Xizmat...')}</option>
+                    {CARRIERS.map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                  <input
+                    className="vz-input w-32 py-1 text-xs"
+                    value={shipOf(c).tracking}
+                    onChange={(e) => setShipField(c.id, 'tracking', e.target.value)}
+                    placeholder={t('Kuzatuv raqami')}
+                    aria-label={t('Kuzatuv raqami')}
+                  />
+                </div>
               </td>
               <td>
                 <button

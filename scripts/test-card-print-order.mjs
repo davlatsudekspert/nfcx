@@ -87,7 +87,23 @@ let goodBack = '';
   check('2b) old tomon saqlandi', p.designFrontUrl, goodFront);
   check('2c) orqa tomon saqlandi', p.designBackUrl, goodBack);
   check('2d) bosma o\'lchami yozib qo\'yildi', p.printSpec, 'CR80 85.6x54mm · 600 DPI · 2022x1276 PNG');
-  check('2e) manzil ham joyida', [p.shippingName, p.shippingPhone], ['Aziz', 'Toshkent, 1-uy'.slice(0, 0) + '+998901112233']);
+  check('2e) manzil ham joyida', [p.shippingName, p.shippingPhone], ['Aziz', '+998901112233']);
+}
+
+// ── 2f) Yetkazib berish xizmati — faqat ro'yxatdagilardan ──────────────
+// Erkin matn qabul qilinsa, admin har xil yozuvlarni ("bts", "BTS
+// ekspress", "<script>") saralashga majbur bo'lardi.
+{
+  await env.DB.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE status = 'pending'`).run();
+  const good = await orderWith({ shippingCarrier: 'BTS Express' });
+  check('2f) ro\'yxatdagi xizmat saqlanadi', (await payloadOf(good.body.orderId)).shippingCarrier, 'BTS Express');
+
+  for (const bad of ['bts', 'Boshqa xizmat', '<script>alert(1)</script>', '']) {
+    await env.DB.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE status = 'pending'`).run();
+    const r = await orderWith({ shippingCarrier: bad });
+    check(`2g) ro'yxatda yo'q xizmat rad etiladi: ${JSON.stringify(bad).slice(0, 24)}`,
+      (await payloadOf(r.body.orderId)).shippingCarrier, '');
+  }
 }
 
 // Xavfsizlik: tashqi va aldamchi havolalarning HECH BIRI saqlanmaydi.

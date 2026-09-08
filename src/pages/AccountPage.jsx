@@ -1954,6 +1954,8 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const [shipName, setShipName] = useState('');
   const [shipPhone, setShipPhone] = useState('');
   const [shipAddress, setShipAddress] = useState('');
+  // Yetkazib berish xizmatini mijozning o'zi tanlaydi.
+  const [shipCarrier, setShipCarrier] = useState('');
   const [cardOrder, setCardOrder] = useState(null);
   const shippingFilled = !!(shipName.trim() && shipPhone.trim() && shipAddress.trim());
 
@@ -2014,6 +2016,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 
       const res = await dbOrderPhysicalCard(card.code, {
         shippingName: shipName.trim(), shippingPhone: shipPhone.trim(), shippingAddress: shipAddress.trim(),
+        shippingCarrier: shipCarrier,
         designFrontUrl, designBackUrl,
       });
       setCardOrder(res);
@@ -2232,7 +2235,19 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                     placeholder={t('Yetkazib berish manzili')} aria-label={t('Yetkazib berish manzili')}
                     aria-invalid={shipErr && !shipAddress.trim() ? true : undefined}
                   />
+                  <select
+                    className="vz-input" value={shipCarrier} onChange={(e) => setShipCarrier(e.target.value)}
+                    aria-label={t('Yetkazib berish xizmati')}
+                  >
+                    <option value="">{t('Yetkazib berish xizmatini tanlang')}</option>
+                    {['BTS Express', 'Fargo‘', 'O‘zbekiston Pochtasi'].map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
                   {shipErr && <div role="alert" className="vz-err">{shipErr}</div>}
+                  {/* Yetkazib berish sharti to'lovdan OLDIN ko'rinadi —
+                      mijoz kuryerga qancha to'lashini keyin bilmasin. */}
+                  <p className="text-xs leading-relaxed text-base-content/50">
+                    {t('Toshkent shahri bo‘ylab yetkazib berish bepul. Viloyatlarga: bir buyurtmada 5 tadan ortiq karta bo‘lsa bepul, 5 tagacha bo‘lsa yetkazib berish haqini qabul qilishda kuryerga o‘zingiz to‘laysiz.')}
+                  </p>
                 </div>
               )}
             </PaymeBlock>
