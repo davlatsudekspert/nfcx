@@ -140,10 +140,7 @@ export default function CatalogPage({ catalog }) {
               bormasdi. Endi bu bosiladigan taklif: jismoniy karta
               buyurtmasiga olib boradi (PhysicalCardPromoCard izohiga
               qarang). */}
-          <PhysicalCardPromoCard
-            code={filtered[0]?.code || 'AAA000'}
-            name={filtered[0]?.name?.toUpperCase() || t('SIZNING ISMINGIZ')}
-          />
+          <PhysicalCardPromoCard />
         </div>
       </section>
       <section className="mt-10">

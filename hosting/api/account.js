@@ -20,6 +20,8 @@ const PROFILE_PREMIUM_FEE = 20000;
 
 const PHONE_RE = /^\+?\d{9,15}$/;                 // server/index.js PHONE_RE
 const PHYSICAL_CARD_FEE = 200_000;               // server/index.js PHYSICAL_CARD_FEE
+// src/lib/pricing.js PHYSICAL_CARD_MAX_QTY bilan bir xil.
+const PHYSICAL_CARD_MAX_QTY = 50;
 const OTP_TTL_MS = 10 * 60 * 1000;               // kod 10 daqiqa amal qiladi
 const OTP_RATE_WINDOW_MS = 10 * 60 * 1000;       // 10 daqiqada ko'pi bilan 3 ta kod
 const OTP_RATE_MAX = 3;
@@ -300,6 +302,18 @@ export async function handle(request, env, url, H) {
       const CARRIERS = ['BTS Express', 'Fargo‘', 'O‘zbekiston Pochtasi'];
       const rawCarrier = H.cleanStr(body.shippingCarrier, 60);
       const shippingCarrier = CARRIERS.includes(rawCarrier) ? rawCarrier : '';
+
+      // Soni. Narx SERVERDA hisoblanadi — mijoz yuborgan summaga
+      // ishonilmaydi, aks holda 1 so'mga 50 ta karta buyurtma qilish
+      // mumkin bo'lardi.
+      // `Math.round` ATAYLAB ishlatilmaydi: 2.5 ni 3 ga yaxlitlash
+      // mijoz so'ramagan kartani sotish bo'lardi. Butun son bo'lmasa
+      // buyurtma umuman yaratilmaydi.
+      const quantity = Number(body.quantity ?? 1);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > PHYSICAL_CARD_MAX_QTY) {
+        return H.json({ error: 'bad_quantity', max: PHYSICAL_CARD_MAX_QTY }, 422);
+      }
+      const amount = PHYSICAL_CARD_FEE * quantity;
       if (!shippingName || !shippingPhone || !shippingAddress) return H.json({ error: 'shipping_required' }, 422);
 
       // ─── BOSMA MAKET ─────────────────────────────────────────────────
@@ -324,16 +338,16 @@ export async function handle(request, env, url, H) {
       const order = await env.DB.prepare(
         `INSERT INTO web_orders (user_id, code, kind, price, payload, status, created_at)
          VALUES (?, ?, 'physical_card_order', ?, ?, 'pending', ?) RETURNING id`
-      ).bind(user.id, code, PHYSICAL_CARD_FEE, JSON.stringify({
-        shippingName, shippingPhone, shippingAddress, shippingCarrier,
+      ).bind(user.id, code, amount, JSON.stringify({
+        shippingName, shippingPhone, shippingAddress, shippingCarrier, quantity,
         designFrontUrl, designBackUrl,
         // Bosmaxona uchun aniq o'lcham — maket qanday chiqarilgani
         // buyurtmaning o'zida yozib qolsin, keyinchalik format o'zgarsa
         // eski buyurtmalar qaysi o'lchamda ekani ma'lum bo'ladi.
         printSpec: designFrontUrl ? 'CR80 85.6x54mm · 600 DPI · 2022x1276 PNG' : '',
       }), H.nowTs()).first();
-      const payLink = H.paymeCheckoutLinkD1(env, order.id, PHYSICAL_CARD_FEE);
-      return H.json({ orderId: order.id, amount: PHYSICAL_CARD_FEE, payLink }, 202);
+      const payLink = H.paymeCheckoutLinkD1(env, order.id, amount);
+      return H.json({ orderId: order.id, amount, quantity, payLink }, 202);
     }
 
     if (action === 'gift') {

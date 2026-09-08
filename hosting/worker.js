@@ -2609,13 +2609,20 @@ async function finalizePaidWebOrderD1(env, orderId) {
   }
   if (order.kind === 'physical_card_order') {
     const p = order.payload || {};
-    await createPhysicalCardD1(env, {
-      linkedCode: order.code,
-      ownerUserId: order.userId,
-      shippingName: p.shippingName || '',
-      shippingPhone: p.shippingPhone || '',
-      shippingAddress: p.shippingAddress || '',
-    });
+    // Nechta karta buyurtma qilingan bo'lsa, shuncha JISMONIY karta
+    // yoziladi: har birining o'z chip_token'i bo'ladi (bir necha karta
+    // bitta profilga ishora qilishi mumkin — masalan jamoa uchun).
+    // Eski buyurtmalarda `quantity` yo'q — ular 1 ta deb qabul qilinadi.
+    const qty = Math.min(Math.max(Math.round(Number(p.quantity ?? 1)) || 1, 1), 50);
+    for (let i = 0; i < qty; i++) {
+      await createPhysicalCardD1(env, {
+        linkedCode: order.code,
+        ownerUserId: order.userId,
+        shippingName: p.shippingName || '',
+        shippingPhone: p.shippingPhone || '',
+        shippingAddress: p.shippingAddress || '',
+      });
+    }
     await setWebOrderStatusD1(env, order.id, 'paid');
     // Mijozga tasdiq. Xabar AYNAN shu yerda — to'lov tasdiqlangandan
     // keyin: "buyurtmangiz qabul qilindi" degan xabar to'lovdan OLDIN
@@ -2631,6 +2638,7 @@ async function finalizePaidWebOrderD1(env, orderId) {
         await sendTelegramTo(env, info.tgUserId, [
           `\u2705 <b>Buyurtmangiz qabul qilindi</b>`,
           `\n\uD83C\uDD94 NFC ID: <b>${order.code}</b>`,
+          qty > 1 ? `\n\uD83D\uDCE6 Soni: <b>${qty} ta</b>` : '',
           `\n\nKartangiz <b>2-3 ish kunida</b> tayyorlanadi va jo'natiladi.`,
           `\nJo'natilgach kuzatuv raqamini shu yerga yuboramiz.`,
         ].join(''));
@@ -4603,6 +4611,7 @@ async function adminCoreApi(request, env, url, admin) {
           shippingPhone: typeof p.shippingPhone === 'string' ? p.shippingPhone : '',
           shippingAddress: typeof p.shippingAddress === 'string' ? p.shippingAddress : '',
           shippingCarrier: typeof p.shippingCarrier === 'string' ? p.shippingCarrier : '',
+          quantity: Number(p.quantity) > 0 ? Math.round(Number(p.quantity)) : 1,
         };
       });
     return json({ orders });

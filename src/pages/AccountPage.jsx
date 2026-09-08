@@ -18,7 +18,7 @@ import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
-import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, TIER_LABEL } from '../lib/pricing.js';
+import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
@@ -1956,6 +1956,11 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const [shipAddress, setShipAddress] = useState('');
   // Yetkazib berish xizmatini mijozning o'zi tanlaydi.
   const [shipCarrier, setShipCarrier] = useState('');
+  // Soni. Narx SERVERDA qayta hisoblanadi — bu yerdagi son faqat
+  // ko'rsatish uchun.
+  const [shipQty, setShipQty] = useState(1);
+  const qty = Math.min(Math.max(Math.round(Number(shipQty)) || 1, 1), PHYSICAL_CARD_MAX_QTY);
+  const freeDelivery = qty > PHYSICAL_CARD_FREE_DELIVERY_QTY;
   const [cardOrder, setCardOrder] = useState(null);
   const shippingFilled = !!(shipName.trim() && shipPhone.trim() && shipAddress.trim());
 
@@ -2016,7 +2021,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
 
       const res = await dbOrderPhysicalCard(card.code, {
         shippingName: shipName.trim(), shippingPhone: shipPhone.trim(), shippingAddress: shipAddress.trim(),
-        shippingCarrier: shipCarrier,
+        shippingCarrier: shipCarrier, quantity: qty,
         designFrontUrl, designBackUrl,
       });
       setCardOrder(res);
@@ -2200,7 +2205,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
             <PaymeBlock
               title={t('Jismoniy NFC karta buyurtma berish')}
               subtitle={t('Dizaynni tayyorlab, chop etilgan haqiqiy NFC kartani pochta orqali olasiz.')}
-              amount={PHYSICAL_CARD_FEE_UZS}
+              amount={PHYSICAL_CARD_FEE_UZS * qty}
               payLink={cardOrder ? cardOrder.payLink : null}
               onPay={orderPhysicalCard}
               payLabel={cardOrder ? t("To'lovga o'tish") : t("Buyurtma berish va to'lash")}
@@ -2235,6 +2240,17 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                     placeholder={t('Yetkazib berish manzili')} aria-label={t('Yetkazib berish manzili')}
                     aria-invalid={shipErr && !shipAddress.trim() ? true : undefined}
                   />
+                  <label className="flex items-center gap-3">
+                    <span className="shrink-0 text-sm text-base-content/70">{t('Nechta karta?')}</span>
+                    <input
+                      type="number" min={1} max={PHYSICAL_CARD_MAX_QTY} value={shipQty}
+                      onChange={(e) => setShipQty(e.target.value)}
+                      className="vz-input w-24" aria-label={t('Nechta karta?')}
+                    />
+                    <span className="text-sm text-base-content/50">
+                      {qty} &times; {fmt(PHYSICAL_CARD_FEE)} = <b className="text-base-content/80">{fmt(PHYSICAL_CARD_FEE * qty)}</b> {t("so'm")}
+                    </span>
+                  </label>
                   <select
                     className="vz-input" value={shipCarrier} onChange={(e) => setShipCarrier(e.target.value)}
                     aria-label={t('Yetkazib berish xizmati')}
@@ -2246,8 +2262,16 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                   {/* Yetkazib berish sharti to'lovdan OLDIN ko'rinadi —
                       mijoz kuryerga qancha to'lashini keyin bilmasin. */}
                   <p className="text-xs leading-relaxed text-base-content/50">
-                    {t('Toshkent shahri bo‘ylab yetkazib berish bepul. Viloyatlarga: bir buyurtmada 5 tadan ortiq karta bo‘lsa bepul, 5 tagacha bo‘lsa yetkazib berish haqini qabul qilishda kuryerga o‘zingiz to‘laysiz.')}
+                    {t('Toshkent shahri bo‘ylab yetkazib berish bepul. Viloyatlarga: bir buyurtmada {n} tadan ortiq karta bo‘lsa bepul, {n} tagacha bo‘lsa yetkazib berish haqini qabul qilishda kuryerga o‘zingiz to‘laysiz.', { n: PHYSICAL_CARD_FREE_DELIVERY_QTY })}
                   </p>
+                  {/* Bepul yetkazish chegarasi bosib o'tilganini DARHOL
+                      ko'rsatamiz — mijoz "yana bittasini qo'shsam bepul
+                      bo'larkan" deb bilsin. */}
+                  {freeDelivery && (
+                    <p className="text-xs font-semibold text-[color:var(--vz-gold-2)]">
+                      {t('✓ Yetkazib berish bepul — {n} tadan ortiq buyurtma.', { n: PHYSICAL_CARD_FREE_DELIVERY_QTY })}
+                    </p>
+                  )}
                 </div>
               )}
             </PaymeBlock>

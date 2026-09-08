@@ -248,6 +248,16 @@ export const PROFILE_PREMIUM_FEE = 20000;
 // Backend nusxasi: hosting/api/account.js PHYSICAL_CARD_FEE.
 export const PHYSICAL_CARD_FEE = 200000;
 
+// Bir buyurtmada shu sondan KO'P karta bo'lsa, viloyatlarga yetkazib
+// berish ham bepul (Toshkent shahri bo'ylab har doim bepul).
+// Egasining qarori, 2026-09.
+export const PHYSICAL_CARD_FREE_DELIVERY_QTY = 5;
+
+// Bir buyurtmadagi maksimal soni. Undan ko'pi — korporativ buyurtma,
+// u alohida kelishiladi (aks holda bitta bosishda o'nlab million so'mlik
+// buyurtma yaratilib qolishi mumkin).
+export const PHYSICAL_CARD_MAX_QTY = 50;
+
 // Jismoniy karta dizayneri qaysi tarifdan boshlab ochiladi — matnlarda
 // (bosh sahifadagi izoh) va tekshiruvda BIR XIL qiymat ishlatilsin uchun.
 // Manba: src/lib/access.js FEATURE_MIN.physicalCardDesigner.

@@ -127,6 +127,30 @@ let goodBack = '';
   }
 }
 
+// ── 3b) SONI — narx SERVERDA hisoblanadi ───────────────────────────────
+// Mijoz yuborgan summaga ishonilsa, 1 so'mga 50 ta karta buyurtma qilish
+// mumkin bo'lardi. Shu sabab `amount` faqat serverdan keladi.
+{
+  const FEE = 200000;
+  for (const [n, expected] of [[1, FEE], [3, FEE * 3], [50, FEE * 50]]) {
+    await env.DB.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE status = 'pending'`).run();
+    const r = await orderWith({ quantity: n });
+    check(`3b) ${n} ta -> ${expected} so'm`, [r.body.amount, r.body.quantity], [expected, n]);
+    check(`3b) ${n} ta payload'da saqlandi`, (await payloadOf(r.body.orderId)).quantity, n);
+  }
+
+  // Chegaradan tashqari va yaroqsiz qiymatlar — buyurtma UMUMAN
+  // yaratilmaydi (422), jim tuzatilib qo'yilmaydi.
+  for (const bad of [0, -1, 51, 1000, 2.5, 'ko\'p', null]) {
+    await env.DB.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE status = 'pending'`).run();
+    const r = await orderWith({ quantity: bad });
+    // `null` -> `?? 1` bo'yicha 1 ta deb qabul qilinadi (eski mijozlar
+    // uchun moslik), qolganlari rad etiladi.
+    if (bad === null) check('3b) quantity null -> 1 ta', r.body.quantity, 1);
+    else check(`3b) yaroqsiz soni rad etiladi: ${JSON.stringify(bad)}`, r.status, 422);
+  }
+}
+
 // ── 4) Admin ro'yxati ──────────────────────────────────────────────────
 {
   await env.DB.prepare(`UPDATE web_orders SET status = 'cancelled' WHERE status = 'pending'`).run();
