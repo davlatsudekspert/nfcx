@@ -149,7 +149,7 @@ export default function AuthPage({ mode }) {
 
   return (
     <main className="mx-auto w-full max-w-[1800px] overflow-x-hidden px-5 sm:px-10 lg:px-14 pb-16">
-      <section className="grid items-center gap-10 pt-10 sm:pt-16 lg:grid-cols-2 lg:gap-14">
+      <section className="grid items-center gap-8 pt-6 sm:pt-10 lg:grid-cols-2 lg:gap-12">
         <div className="hidden justify-self-center lg:flex">
           <div className="flex flex-col items-center gap-6">
             <div className="animate-[floatY_5.5s_ease-in-out_infinite]">
@@ -161,12 +161,16 @@ export default function AuthPage({ mode }) {
           </div>
         </div>
         <div className="flex min-w-0 justify-center lg:justify-start">
-        <div className="vz-card w-full max-w-md min-w-0 p-6 sm:p-7">
+        {/* Ro'yxatda maydonlar ikki ustunda joylashadi, shuning uchun
+            karta kengroq. 100% masshtabda butun forma — tugmasi bilan —
+            ekranga sig'ishi kerak edi; avval pastki qismi kesilib
+            qolardi va odam "Akkaunt yaratish" ni ko'rmasdi. */}
+        <div className={`vz-card w-full min-w-0 p-5 sm:p-6 ${isRegister ? 'max-w-2xl' : 'max-w-md'}`}>
           <div className="vz-kicker">NFCSTORE</div>
           {forgot ? (
             <>
               <h2 className="vz-h2 mt-2 !text-2xl">{t('Parolni tiklash')}</h2>
-              <p className="mt-3 text-[15px] leading-relaxed text-base-content/55">
+              <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
                 {t("Telefon raqamingiz yoki emailingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.")}
               </p>
               <form onSubmit={submitReset} className="mt-6 space-y-3">
@@ -214,20 +218,20 @@ export default function AuthPage({ mode }) {
                 {t('Telefon raqamingiz akkauntdagi raqam bilan mos kelishi kerak. Bot:')}{' '}
                 <a href={BOT_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent underline underline-offset-2"><IconTelegram width={12} height={12} /> @{botUsername}</a>
               </p>
-              <div className="mt-5 text-center text-sm text-base-content/55">
+              <div className="mt-4 text-center text-sm text-base-content/55">
                 <button type="button" onClick={closeForgot} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Kirish sahifasiga qaytish')}</button>
               </div>
             </>
           ) : (
           <>
           <h2 className="vz-h2 mt-2 !text-2xl">{isRegister ? t('Ro\u2019yxatdan o\u2019tish') : t('Kirish')}</h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-base-content/55">
+          <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
             {isRegister
               ? t("Akkaunt yarating — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
               : t("Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring.")}
           </p>
 
-          <form onSubmit={submit} className="mt-6 space-y-3">
+          <form onSubmit={submit} className="mt-4 space-y-2.5">
             {isRegister && (
               <div>
                 <span className="vz-label">{t('Profil turi')}</span>
@@ -263,9 +267,13 @@ export default function AuthPage({ mode }) {
               </label>
             )}
 
-            {/* RO'YXAT: TELEFON birinchi va majburiy — u yetkazib berish
-                va akkauntni tiklash uchun asosiy bog'lanish. Email esa
-                pastda, IXTIYORIY. */}
+            {/* RO'YXAT MAYDONLARI IKKI USTUNDA (keng ekranda).
+                Sakkiz qatorli forma 100% masshtabda ekranga sig'masdi va
+                "Akkaunt yaratish" tugmasi pastda ko'rinmay qolardi —
+                odam formani to'ldirib, tugmani topa olmasdi. Ikki ustun
+                to'rt qatorni yo'q qiladi. Telefonda avvalgidek bitta
+                ustun (`sm:` dan boshlanadi). */}
+            {isRegister && <div className="grid gap-3 sm:grid-cols-2">
             {isRegister && (
               <label className="form-control">
                 <span className="text-xs font-semibold text-base-content/70">{t('Telefon raqamingiz')}</span>
@@ -290,7 +298,7 @@ export default function AuthPage({ mode }) {
                   )
                 ) : (
                   <span className="mt-1 block text-xs text-base-content/40">
-                    {t('Shu raqam bilan kirasiz. Boshqa davlat raqami bo‘lsa, davlat kodi bilan yozing: +7, +996…')}
+                    {t('Shu raqam bilan kirasiz. Chet el raqami ham mumkin: +7, +996…')}
                   </span>
                 )}
               </label>
@@ -337,6 +345,7 @@ export default function AuthPage({ mode }) {
                   className="input input-bordered mt-1 w-full bg-base-100 font-mono uppercase" />
               </label>
             )}
+            </div>}
             {isRegister && (
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" checked={tosAccepted} onChange={(e) => setTosAccepted(e.target.checked)}
@@ -370,7 +379,7 @@ export default function AuthPage({ mode }) {
 
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
 
-          <div className="mt-5 text-center text-sm text-base-content/55">
+          <div className="mt-4 text-center text-sm text-base-content/55">
             {isRegister ? (
               <>{t('Akkauntingiz bormi?')}{' '}
                 <button onClick={() => navigate('/login')} className="min-h-11 cursor-pointer underline underline-offset-2 hover:text-base-content">{t('Kirish')}</button>
