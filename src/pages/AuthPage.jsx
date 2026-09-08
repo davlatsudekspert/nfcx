@@ -181,7 +181,7 @@ export default function AuthPage({ mode }) {
         {/* Ro'yxatda maydonlar ikki ustunda joylashadi, shuning uchun
             karta kengroq. 100% masshtabda butun forma — tugmasi bilan —
             ekranga sig'ishi kerak edi; avval pastki qismi kesilib
-            qolardi va odam "Akkaunt yaratish" ni ko'rmasdi. */}
+            qolardi va odam "Akkaunt ochish" ni ko'rmasdi. */}
         <div className={`vz-card w-full min-w-0 p-5 sm:p-6 ${isRegister ? 'max-w-2xl' : 'max-w-md'}`}>
           <div className="vz-kicker">NFCSTORE</div>
           {forgot ? (
@@ -254,10 +254,10 @@ export default function AuthPage({ mode }) {
           <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
             {isBusiness
               ? (isRegister
-                ? t('Akkaunt yarating — so\u2019ng Company ID ochasiz. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')
+                ? t('Akkaunt oching — so\u2019ng Company ID ochasiz. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')
                 : t('Kompaniyalaringizni boshqarish uchun kiring. Akkaunt shu telefon/parol \u2014 alohida raqam kerak emas.'))
               : (isRegister
-                ? t("Akkaunt yarating — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
+                ? t("Akkaunt oching — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
                 : t("Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring."))}
           </p>
 
@@ -299,7 +299,7 @@ export default function AuthPage({ mode }) {
 
             {/* RO'YXAT MAYDONLARI IKKI USTUNDA (keng ekranda).
                 Sakkiz qatorli forma 100% masshtabda ekranga sig'masdi va
-                "Akkaunt yaratish" tugmasi pastda ko'rinmay qolardi —
+                "Akkaunt ochish" tugmasi pastda ko'rinmay qolardi —
                 odam formani to'ldirib, tugmani topa olmasdi. Ikki ustun
                 to'rt qatorni yo'q qiladi. Telefonda avvalgidek bitta
                 ustun (`sm:` dan boshlanadi). */}
@@ -391,7 +391,7 @@ export default function AuthPage({ mode }) {
               </label>
             )}
             <button className="btn btn-gold w-full" disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-sm"></span> : isRegister ? t('Akkaunt yaratish') : t('Kirish')}
+              {busy ? <span className="loading loading-spinner loading-sm"></span> : isRegister ? t('Akkaunt ochish') : t('Kirish')}
             </button>
           </form>
 

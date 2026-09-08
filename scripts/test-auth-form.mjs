@@ -75,7 +75,8 @@ checkTrue('parol maydoni topildi', pwIdx > 0);
 check('parol maydoni `isRegister` shartidan TASHQARIDA', registerOnlyDepthAt(src, pwIdx), 0);
 
 // ── 2) Login/email maydoni va yuborish tugmasi ham ────────────────────
-const submitIdx = src.indexOf("isRegister ? t('Akkaunt yaratish') : t('Kirish')");
+// 2026-09: "yaratish" so'zi diniy sabab bilan "ochish" ga almashtirildi.
+const submitIdx = src.indexOf("isRegister ? t('Akkaunt ochish') : t('Kirish')");
 checkTrue('yuborish tugmasi topildi', submitIdx > 0);
 check('yuborish tugmasi shartdan tashqarida', registerOnlyDepthAt(src, submitIdx), 0);
 

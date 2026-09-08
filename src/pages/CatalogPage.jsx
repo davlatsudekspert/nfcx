@@ -25,7 +25,7 @@ export default function CatalogPage({ catalog }) {
   const [showFilters, setShowFilters] = useState(false);
   // Saralash. Sahifa ochilganda BIRINCHI bo'lib eng ko'p ko'rilganlar
   // turadi; foydalanuvchi bir bosishda "Yangilar" yoki "Qimmatlar" ga
-  // o'tishi mumkin (aks holda yangi qo'shilgan profillar 0 ko'rish bilan
+  // o'tishi mumkin (aks holda yangi qo‘shilgan profillar 0 ko'rish bilan
   // doim pastda qolib ketardi).
   const [sort, setSort] = useState('views');
   const [serverHits, setServerHits] = useState([]);

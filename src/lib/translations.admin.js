@@ -120,7 +120,7 @@ export const DICT_ADMIN = {
   "Murojaatlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить обращения.', en: 'Could not load support messages.' },
   'Kartani bloklash': { ru: 'Заблокировать карту', en: 'Block card' },
   "Jismoniy kartalarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить физические карты.', en: 'Could not load physical cards.' },
-  "Sovg'a yaratish faqat Manager va Super Admin uchun.": { ru: 'Создавать подарки могут только Manager и Super Admin.', en: 'Only Manager and Super Admin can create gifts.' },
+  "Sovg'a qo‘shish faqat Manager va Super Admin uchun.": { ru: 'Создавать подарки могут только Manager и Super Admin.', en: 'Only Manager and Super Admin can create gifts.' },
   "Sovg'alarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить подарки.', en: 'Could not load gifts.' },
   "Promokodlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить промокоды.', en: 'Could not load promo codes.' },
 

@@ -47,7 +47,7 @@ export default function Footer() {
         <div className="mt-10 flex flex-col gap-2 border-t border-[color:var(--vz-line)] pt-5 text-xs text-[color:var(--vz-ink-3)] sm:flex-row sm:items-center sm:justify-between">
           <span>© 2026 NFCSTORE.UZ</span>
           {/* To'lov tizimi ATAYLAB nomlanmagan: Click yoki boshqa tizim
-              qo'shilganda bu yozuvni qidirib yurish shart bo'lmasin. */}
+              qo‘shilganda bu yozuvni qidirib yurish shart bo'lmasin. */}
           <span>{t('Cloudflare tarmog‘ida ishlaydi · To‘lovlar rasmiy to‘lov tizimlari orqali')}</span>
         </div>
       </div>

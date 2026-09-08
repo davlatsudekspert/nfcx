@@ -68,13 +68,13 @@ export const FEATURE_MIN = {
 
 // ── Tarif bo'yicha post limiti ─────────────────────────────────────────
 // Keyinchalik admin config. Mavjud postlar HECH QACHON o'chirilmaydi —
-// limit faqat YANGI post qo'shishga ta'sir qiladi (grandfathering).
+// limit faqat YANGI post qo‘shishga ta'sir qiladi (grandfathering).
 export const POST_LIMIT = { free: 0, silver: 5, gold: 30, premium: 60, exclusive: 999 };
 
 // ── Restoran menyusi limiti (Band 3.3) ─────────────────────────────────
 // { cat: kategoriyalar soni, item: taomlar soni, images: rasm ruxsati }.
 // Free — menyu yopiq. Mavjud yozuvlar hech qachon o'chirilmaydi — limit
-// faqat YANGI qo'shishga ta'sir qiladi (grandfathering).
+// faqat YANGI qo‘shishga ta'sir qiladi (grandfathering).
 export const MENU_LIMITS = {
   free:      { cat: 0,   item: 0,    images: false },
   silver:    { cat: 1,   item: 15,   images: false },

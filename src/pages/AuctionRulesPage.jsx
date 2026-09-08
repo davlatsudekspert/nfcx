@@ -11,7 +11,7 @@ import { IconArrowLeft } from '../components/Icons.jsx';
 //
 // TO'LOV TIZIMI ATAYLAB NOMLANMAGAN: matnda "Payme orqali" emas,
 // "mavjud rasmiy to'lov usullari orqali" deyiladi. Shunda Click yoki
-// boshqa tizim qo'shilganda qoidalarni qayta yozish shart bo'lmaydi.
+// boshqa tizim qo‘shilganda qoidalarni qayta yozish shart bo'lmaydi.
 
 const SECTIONS = [
   {
@@ -48,7 +48,7 @@ const SECTIONS = [
     ],
     list: [
       'boshqa shaxs akkauntidan foydalanish;',
-      'soxta akkauntlar yaratish;',
+      'soxta akkauntlar ochish;',
       "narxni sun'iy oshirish;",
       'tizimdagi texnik kamchiliklardan ataylab foydalanish;',
       'avtomatlashtirilgan bot yoki skriptlar orqali noqonuniy ustunlik olish;',

@@ -740,7 +740,7 @@ const ORDER_STATUS_LABEL = {
 // tekshirishni so'raydi. Saytdagi eng arzon mahsulot 49 000 so'm, ya'ni
 // bunday buyurtmani boshqa yo'l bilan yaratib bo'lmaydi.
 //
-// Bu buyurtma HECH NARSA BERMAYDI — karta yaratmaydi, biriktirmaydi,
+// Bu buyurtma HECH NARSA BERMAYDI — karta ochmaydi, biriktirmaydi,
 // premium yoqmaydi (hosting/worker.js `payme_test` izohiga qarang).
 function PaymeTestOrder() {
   const { t } = useLanguage();
@@ -764,7 +764,7 @@ function PaymeTestOrder() {
       <div className="vz-kicker">{t('PAYME SINOVI')}</div>
       <h3 className="mt-1 text-base font-bold">{t('Sertifikatsiya uchun kichik to‘lov')}</h3>
       <p className="mt-1 text-xs leading-relaxed text-base-content/55">
-        {t('Payme ulanishni tekshirish uchun kichik summali haqiqiy to‘lov so‘raydi. Bu buyurtma HECH NARSA BERMAYDI — karta yaratmaydi va biriktirmaydi, faqat to‘lov yo‘lini tekshiradi.')}
+        {t('Payme ulanishni tekshirish uchun kichik summali haqiqiy to‘lov so‘raydi. Bu buyurtma HECH NARSA BERMAYDI — karta ochmaydi va biriktirmaydi, faqat to‘lov yo‘lini tekshiradi.')}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <input
@@ -775,7 +775,7 @@ function PaymeTestOrder() {
         />
         <span className="text-xs text-base-content/50">{t('so‘m')}</span>
         <button className="btn btn-gold btn-sm min-h-11" onClick={create} disabled={busy}>
-          {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Sinov to‘lovini yaratish')}
+          {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Sinov to‘lovini ochish')}
         </button>
       </div>
       {err && <div role="alert" className="vz-err mt-3">{String(err)}</div>}
@@ -1118,7 +1118,7 @@ function AuctionRequestsTab() {
             </div>
             <div className="flex flex-wrap gap-1">
               <button className="btn btn-success btn-xs min-h-9" disabled={busy === r.id} onClick={() => approve(r.id)}>
-                {busy === r.id ? <span className="loading loading-spinner loading-xs"></span> : t("Tasdiqlab, Talab'ga qo'shish")}
+                {busy === r.id ? <span className="loading loading-spinner loading-xs"></span> : t("Tasdiqlab, Talab'ga qo‘shish")}
               </button>
               <button className="btn btn-ghost btn-xs min-h-9 text-error" disabled={busy === r.id} onClick={() => reject(r.id)}>{t('Rad etish')}</button>
             </div>
@@ -1182,7 +1182,7 @@ function PendingPayoutsTab() {
   );
 }
 
-// Auksion yaratishning YAGONA yo'li — faqat admin, faqat hali hech
+// Auksion ochishning YAGONA yo'li — faqat admin, faqat hali hech
 // kimga tegishli bo'lmagan (band qilinmagan) YANGI kodlar uchun.
 function CreateAuctionForm({ onCreated }) {
   const { t } = useLanguage();
@@ -1624,7 +1624,7 @@ function SecurityTab({ initialSub }) {
       setNewLabel('');
       await loadIp();
     } catch (e) {
-      setIpMsg(e.message === 'MAX_2' ? t("Faqat 2 ta IP qo'shish mumkin.") : e.message === 'ALREADY_EXISTS' ? t('Bu IP allaqachon ro\u2019yxatda.') : apiErrText(e, t));
+      setIpMsg(e.message === 'MAX_2' ? t("Faqat 2 ta IP qo‘shish mumkin.") : e.message === 'ALREADY_EXISTS' ? t('Bu IP allaqachon ro\u2019yxatda.') : apiErrText(e, t));
     } finally {
       setIpBusy(false);
     }
@@ -1662,7 +1662,7 @@ function SecurityTab({ initialSub }) {
     user_unsuspended: t('Blokdan chiqarildi'),
     user_deleted: t("Foydalanuvchi o'chirildi"),
     balance_adjusted: t('Balans tuzatildi'),
-    auction_created: t('Auksion yaratildi'),
+    auction_created: t('Auksion ochildi'),
     nfc_card_blocked: t('NFC karta bloklandi'),
     nfc_card_unblocked: t('NFC karta blokdan chiqarildi'),
   };
@@ -1744,7 +1744,7 @@ function SecurityTab({ initialSub }) {
             </div>
 
             <div className="mt-4 space-y-2">
-              {ipData.ips.length === 0 && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t("Hali IP qo'shilmagan.")}</p>}
+              {ipData.ips.length === 0 && <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t("Hali IP qo‘shilmagan.")}</p>}
               {ipData.ips.map((r) => (
                 <div key={r.id} className="vz-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                   <span className="min-w-0 break-words"><code className="font-mono">{r.ip}</code> {r.label && <span className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>— {r.label}</span>}</span>
@@ -1824,13 +1824,13 @@ function SecurityTab({ initialSub }) {
       )}
 
       <div className="vz-empty mt-6 text-xs">
-        {t("Rejalashtirilgan (hali qo'shilmagan): Avtomatik backup.")}
+        {t("Rejalashtirilgan (hali qo‘shilmagan): Avtomatik backup.")}
       </div>
     </div>
   );
 }
 
-// Adminlar boshqaruvi (faqat Super Admin) — yangi admin qo'shish, rol
+// Adminlar boshqaruvi (faqat Super Admin) — yangi admin qo‘shish, rol
 // belgilash, o'chirish.
 function AdminsTab() {
   const { t } = useLanguage();
@@ -1878,7 +1878,7 @@ function AdminsTab() {
   return (
     <div>
       {dialog}
-      <button className="btn btn-gold btn-sm min-h-11" onClick={() => setOpen((o) => !o)}>{t("Yangi admin qo'shish")}</button>
+      <button className="btn btn-gold btn-sm min-h-11" onClick={() => setOpen((o) => !o)}>{t("Yangi admin qo‘shish")}</button>
       {open && (
         <div className="vz-card mt-3 grid max-w-lg gap-2 p-3 sm:grid-cols-2">
           <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567" className="vz-input min-w-0" aria-label={t('Telefon')} />
@@ -2120,7 +2120,7 @@ function GiftNfcIdTab() {
       setCode(''); setRecipientName(''); setNote(''); setValue('');
       await load();
     } catch (e) {
-      setMsg({ type: 'err', text: e.message === 'CODE_TAKEN' ? t('Bu NFC ID allaqachon band.') : e.message === 'ALREADY_RESERVED' ? t('Bu ID uchun sovg\u2019a allaqachon yaratilgan.') : e.message === 'bad_code' ? t("NFC ID formati noto'g'ri.") : apiErrText(e, t) });
+      setMsg({ type: 'err', text: e.message === 'CODE_TAKEN' ? t('Bu NFC ID allaqachon band.') : e.message === 'ALREADY_RESERVED' ? t('Bu ID uchun sovg\u2019a allaqachon qo\u2018shilgan.') : e.message === 'bad_code' ? t("NFC ID formati noto'g'ri.") : apiErrText(e, t) });
     } finally {
       setBusy(false);
     }
@@ -2132,7 +2132,7 @@ function GiftNfcIdTab() {
     <div>
       {isManager ? (
       <div className="vz-card max-w-lg p-5">
-        <span className="vz-kicker">{t('Yangi "Gift NFC ID" yaratish')}</span>
+        <span className="vz-kicker">{t('Yangi "Gift NFC ID" qo‘shish')}</span>
         <p className="mt-1 text-xs" style={{ color: 'var(--vz-ink-2)' }}>{t("Bo'sh (hech kimga tegishli bo'lmagan) NFC ID'ni tanlang — kod hech qanday profilga ulanmaydi, faqat konvert uchun aktivatsiya kodi generatsiya qilinadi.")}</p>
         <div className="mt-3 space-y-2">
           <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t("NFC ID (masalan DDD333)")} className="vz-input font-mono uppercase" aria-label={t("NFC ID (masalan DDD333)")} />
@@ -2140,7 +2140,7 @@ function GiftNfcIdTab() {
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("Izoh (ixtiyoriy)")} className="vz-input" aria-label={t("Izoh (ixtiyoriy)")} />
           <input value={value} onChange={(e) => setValue(e.target.value)} type="number" min="0" placeholder={t("Sovg'a qiymati, so'm (ixtiyoriy \u2014 'sovg'a' so'zi o'rniga)")} className="vz-input" aria-label={t("Sovg'a qiymati, so'm (ixtiyoriy \u2014 'sovg'a' so'zi o'rniga)")} />
           <button className="btn btn-gold w-full" disabled={busy} onClick={create}>
-            {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Sovg\u2019a yaratish')}
+            {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Sovg\u2019a qo\u2018shish')}
           </button>
         </div>
         {msg && <div role="alert" className={`alert mt-3 py-2 text-xs ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
@@ -2154,12 +2154,12 @@ function GiftNfcIdTab() {
         )}
       </div>
       ) : (
-        <ForbiddenState hint={t("Sovg'a yaratish faqat Manager va Super Admin uchun.")} />
+        <ForbiddenState hint={t("Sovg'a qo‘shish faqat Manager va Super Admin uchun.")} />
       )}
 
       {loadErr ? <div className="mt-6"><LoadError err={loadErr} onRetry={load} title={t("Sovg'alarni yuklab bo'lmadi.")} /></div>
         : !gifts ? <div className="mt-6"><AdminLoading /></div>
-        : gifts.length === 0 ? <div className="mt-6"><EmptyState icon="gift" title={t("Hozircha sovg'a yaratilmagan.")} /></div>
+        : gifts.length === 0 ? <div className="mt-6"><EmptyState icon="gift" title={t("Hozircha sovg'a qo‘shilmagan.")} /></div>
         : (
       <div className="vz-card mt-6 overflow-x-auto">
         <table className="table table-sm">
@@ -2189,7 +2189,7 @@ function GiftNfcIdTab() {
   );
 }
 
-// Promokodlar — har bir promokod bilan qo'shilgan odamlar ro'yxati va hisobi.
+// Promokodlar — har bir promokod bilan qo‘shilgan odamlar ro'yxati va hisobi.
 function PromoCodesTab() {
   const { t } = useLanguage();
   const [rows, setRows] = useState(null);
@@ -2203,7 +2203,7 @@ function PromoCodesTab() {
   if (!rows) return <AdminLoading />;
   if (rows.length === 0) return <EmptyState icon="tag" title={t('Hozircha promokod orqali hech kim qo‘shilmagan.')} />;
 
-  // Har bir promokod egasi bo'yicha nechta odam qo'shilganini hisoblaymiz.
+  // Har bir promokod egasi bo'yicha nechta odam qo‘shilganini hisoblaymiz.
   const byReferrer = {};
   for (const r of rows) {
     const key = r.referrerEmail;

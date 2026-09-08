@@ -79,7 +79,7 @@ export default function AiAssistant() {
           <div ref={bodyRef} className="flex-1 space-y-3 overflow-y-auto px-3 py-4">
             {msgs.length === 0 && (
               <div className="rounded-xl bg-base-100/60 px-3 py-2.5 text-[16px] leading-relaxed text-base-content/70">
-                {t('Salom! Men NFCSTORE yordamchisiman. Profil yaratish, NFC karta, narxlar yoki sozlamalar bo‘yicha savol bering.')}
+                {t('Salom! Men NFCSTORE yordamchisiman. Profil ochish, NFC karta, narxlar yoki sozlamalar bo‘yicha savol bering.')}
               </div>
             )}
             {msgs.map((m, i) => (

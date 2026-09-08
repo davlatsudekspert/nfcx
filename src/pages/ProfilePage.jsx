@@ -1857,7 +1857,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 sahifaning o'ng-pastki burchagida suzib turadi (yuqoridagi
                 MusicPlayer izohiga qarang). Shu sababli bu yerda hech
                 narsa render qilinmaydi; `musicOpen` esa mobil ekranda
-                kontent oxiriga bo'sh joy qo'shish uchun kerak — pleer
+                kontent oxiriga bo'sh joy qo‘shish uchun kerak — pleer
                 aloqa tugmalarini to'sib qolmasin. */}
             <MusicPlayer
               urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])}
@@ -2072,7 +2072,7 @@ function GiftActivationScreen({ code, recipientName }) {
             <div className="text-5xl">{'\u{1F381}'}</div>
             <h2 className="font-display mt-3 mb-2 text-2xl font-bold text-[color:var(--vz-ink)]">{t("Sizga maxsus NFC ID sovg'a qilingan")}</h2>
             <div className="mb-4 font-mono text-3xl font-extrabold text-[color:var(--vz-ink)]">#{code}</div>
-            <p className="text-[16.5px]">{t("Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni yarating.")}</p>
+            <p className="text-[16.5px]">{t("Konvert ichidagi bir martalik aktivatsiya kodini kiritib, o'z profilingizni to‘ldiring.")}</p>
             <button onClick={() => setStep('code')} className="mt-6 cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-7 py-3 text-[16.5px] font-bold text-white transition hover:brightness-125">
               {t("Sovg'ani faollashtirish")}
             </button>
@@ -2099,7 +2099,7 @@ function GiftActivationScreen({ code, recipientName }) {
         {step === 'form' && (
           <div>
             <div className="mb-4 rounded-xl bg-green-500/10 px-4 py-3 text-center text-[16px] text-green-400">
-              {t('NFC ID #{code} muvaffaqiyatli tasdiqlandi! Endi profilingizni yarating.', { code })}
+              {t('NFC ID #{code} muvaffaqiyatli tasdiqlandi! Endi profilingizni to‘ldiring.', { code })}
             </div>
             <div className="space-y-2.5">
               <input value={form.name} onChange={set('name')} placeholder={t('Ism Familiya *')} className="w-full rounded-lg border border-[color:var(--vz-line)] bg-transparent px-3 py-2.5 text-sm text-[color:var(--vz-ink)] outline-none" />
@@ -2116,7 +2116,7 @@ function GiftActivationScreen({ code, recipientName }) {
             </div>
             {err && <p className="mt-2 text-center text-[16px] text-red-400">{t(err)}</p>}
             <button onClick={submit} disabled={busy} className="mt-4 w-full cursor-pointer rounded-full bg-[color:var(--vz-pill)] py-3 text-[16.5px] font-bold text-white transition hover:brightness-125 disabled:opacity-50">
-              {busy ? '...' : t('Profil yaratish')}
+              {busy ? '...' : t('Profil ochish')}
             </button>
           </div>
         )}
@@ -2124,7 +2124,7 @@ function GiftActivationScreen({ code, recipientName }) {
         {step === 'done' && (
           <div className="text-center">
             <div className="text-5xl">{'\u2705'}</div>
-            <h2 className="font-display mt-3 text-xl font-bold text-[color:var(--vz-ink)]">{t('Tayyor! Profilingiz yaratildi.')}</h2>
+            <h2 className="font-display mt-3 text-xl font-bold text-[color:var(--vz-ink)]">{t('Tayyor! Profilingiz ochildi.')}</h2>
             <p className="mt-2 text-[16px]">{t("Hozir yo'naltirilasiz...")}</p>
           </div>
         )}

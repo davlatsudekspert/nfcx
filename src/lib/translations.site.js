@@ -33,7 +33,7 @@ export const DICT_SITE = {
   'Smartfon qidiring': { ru: 'Найти смартфон', en: 'Search smartphones' },
   "Qidiruv natijalarini yuklab bo'lmadi.": { ru: 'Не удалось загрузить результаты поиска.', en: 'Could not load search results.' },
 
-  // ─────────────────────────── Kompaniya yaratish ───────────────────────────
+  // ─────────────────────────── Kompaniya ochish ───────────────────────────
   'Qoralama': { ru: 'Черновик', en: 'Draft' },
   'Admin tekshiruvida': { ru: 'На проверке у админа', en: 'Under admin review' },
   'To‘lov kutilmoqda': { ru: 'Ожидается оплата', en: 'Awaiting payment' },

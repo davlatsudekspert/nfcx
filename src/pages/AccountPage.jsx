@@ -2215,7 +2215,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               disabled={!cardOrder && !shippingFilled}
               onBlocked={focusMissingShipping}
               note={cardOrder
-                ? t("Buyurtma yaratildi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.")
+                ? t("Buyurtma qabul qilindi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.")
                 : (!shippingFilled ? t('Davom etish uchun yetkazib berish maʼlumotlarini toʻldiring.') : null)}
             >
               {!cardOrder && (
@@ -2921,7 +2921,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             </div>
           ))}
         </div>
-        <button type="button" className="btn btn-ghost btn-xs mt-3 min-h-9" onClick={addLink}>{t("+ Havola qo'shish")}</button>
+        <button type="button" className="btn btn-ghost btn-xs mt-3 min-h-9" onClick={addLink}>{t("+ Havola qo‘shish")}</button>
       </div>
       <label className="form-control mt-4 block">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconTag width={12} height={12} /> {t("Hashtaglar (vergul bilan)")}</span>
@@ -3058,7 +3058,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             Premium taklif oynasini ochadi (addMusic ichida). */}
         {(form.musicUrls.length < musicMax || !isPremiumUser) && (
           <button type="button" className="btn btn-ghost btn-sm mt-3 min-h-11" onClick={addMusic}>
-            {form.musicUrls.length >= musicMax ? t("Premium bilan 10 tagacha qo‘shiq") : t("+ Qo'shiq qo'shish")}
+            {form.musicUrls.length >= musicMax ? t("Premium bilan 10 tagacha qo‘shiq") : t("+ Qo'shiq qo‘shish")}
           </button>
         )}
         <p className="mt-2 text-xs text-base-content/45">{t("Oddiy profilda 5 ta, Premium'da 10 tagacha qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.")}</p>
@@ -3257,7 +3257,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             </div>
           ))}
         </div>
-        <button type="button" className="btn btn-ghost btn-xs mt-3 min-h-9" onClick={addCardNum}>{t("+ Karta qo'shish")}</button>
+        <button type="button" className="btn btn-ghost btn-xs mt-3 min-h-9" onClick={addCardNum}>{t("+ Karta qo‘shish")}</button>
       </div>
     </Section>
   );
@@ -3806,7 +3806,7 @@ export default function AccountPage({ refreshCatalog }) {
   const primaryCard = myCards.find((c) => c.isPrimary) || myCards[0];
   // `openBusinessWorkspace` va `businessCards` OLIB TASHLANDI (2026-09):
   // kompaniya bo'limi shaxsiy kabinetdan chiqarilgach, u yerdan Company
-  // ID yaratishga to'g'ridan-to'g'ri o'tish yo'li ham kerak emas —
+  // ID ochishga to'g'ridan-to'g'ri o'tish yo'li ham kerak emas —
   // hammasi /business dagi biznes kabinetdan boshlanadi.
   const [orders, setOrders] = useState(null);      // null = yuklanmoqda
   const [ordersErr, setOrdersErr] = useState(false);

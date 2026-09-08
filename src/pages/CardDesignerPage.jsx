@@ -706,7 +706,7 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
           <FieldGroup title={t("QR-kod")}>
             <label className="flex cursor-pointer items-center gap-2.5">
               <input type="checkbox" className="checkbox checkbox-sm" checked={showQr} onChange={(e) => setShowQr(e.target.checked)} />
-              <span className="text-sm">{t("Profilga havola qiluvchi QR-kod qo'shish")}</span>
+              <span className="text-sm">{t("Profilga havola qiluvchi QR-kod qo‘shish")}</span>
             </label>
             <p className="mt-2 text-xs text-base-content/45">{t("Faqat ORQA tomonda chiqadi, joyini sichqoncha bilan suring.")}</p>
 
@@ -825,10 +825,10 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
           {t('Karta dizayni')}
         </span>
         <h1 className="mt-4 max-w-xl text-4xl font-extrabold leading-tight tracking-tight">
-          {t('NFC karta')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('dizaynini yarating')}</span>
+          {t('NFC karta')} <span className="bg-gradient-to-br from-white to-base-content/50 bg-clip-text text-transparent">{t('dizaynini tayyorlang')}</span>
         </h1>
         <p className="mt-3 max-w-xl text-sm text-base-content/60">
-          {t('Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda yarating va tayyor rasmni PNG holida yuklab oling.')}
+          {t('Matn, rang, fon va logotipni tanlab, jismoniy NFC kartangiz uchun bosma dizaynni shu yerda tayyorlang va tayyor rasmni PNG holida yuklab oling.')}
         </p>
       </section>
       {toolBody}

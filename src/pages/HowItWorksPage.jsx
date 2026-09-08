@@ -4,7 +4,7 @@ import NfcCard from '../components/NfcCard.jsx';
 
 const STEPS = {
   uz: [
-    { n: '01', title: 'Profil yarating', text: 'Ism, kasb, telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni kiriting.' },
+    { n: '01', title: 'Profil oching', text: 'Ism, kasb, telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni kiriting.' },
     { n: '02', title: 'Kartani yaqinlashtiring', text: 'NFC kartani telefonning orqa qismiga tuting. Hech qanday ilova o‘rnatish shart emas.' },
     { n: '03', title: 'Profil ochiladi', text: 'Raqamli profilingiz telefon brauzerida avtomatik ochiladi.' },
     { n: '04', title: 'Kontaktni saqlang', text: 'Suhbatdoshingiz aloqa ma’lumotlaringizni bir tugma orqali telefoniga saqlaydi.' },
@@ -33,7 +33,7 @@ const HEADER = {
     title: 'Barcha kontaktlaringiz — bitta profilda.',
     sub: 'Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni jamlang. NFC karta orqali ulashish esa bir necha soniya vaqt oladi.',
     demoName: 'SIZNING ISMINGIZ',
-    cta: 'Bepul profil yaratish',
+    cta: 'Bepul profil ochish',
   },
   ru: {
     kicker: 'Как это работает',

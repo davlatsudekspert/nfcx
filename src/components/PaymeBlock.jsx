@@ -34,7 +34,7 @@ import BrandMark from './BrandMark.jsx';
 //   subtitle  — qo'shimcha tavsif (ixtiyoriy)
 //   amount    — to'lov summasi (so'mda, raqam)
 //   payLink   — Payme checkout havolasi (bo'lsa <a> sifatida ochiladi)
-//   onPay     — payLink bo'lmasa bosilganda chaqiriladi (buyurtma yaratish)
+//   onPay     — payLink bo'lmasa bosilganda chaqiriladi (buyurtma ochish)
 //   payLabel  — tugma matni (standart: brend belgisi + "bilan to'lov")
 //   busy      — spinner
 //   disabled  — tashqi sabab bilan o'chirilgan (masalan forma to'ldirilmagan)
@@ -237,7 +237,7 @@ export default function PaymeBlock({
         )}
       </div>
 
-      {/* QR — faqat havola tayyor bo'lganda. Buyurtma hali yaratilmagan
+      {/* QR — faqat havola tayyor bo'lganda. Buyurtma hali qo‘shilmagan
           bo'lsa kodlash uchun narsa yo'q. */}
       {active.enabled && payLink && <PayQr payLink={payLink} className="mt-2" />}
 

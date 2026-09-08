@@ -21,7 +21,7 @@ import CloseButton from './CloseButton.jsx';
 // "bor" deb noto'g'ri taxmin qilinmaydi.
 //
 // TO'LOV TIZIMI ATAYLAB NOMLANMAGAN ("mavjud rasmiy to'lov usullaridan
-// biri"): Click yoki boshqa tizim qo'shilganda bu matn o'zgarmaydi.
+// biri"): Click yoki boshqa tizim qo‘shilganda bu matn o'zgarmaydi.
 
 const ACCEPT_KEY = 'nfcx:auction-rules-accepted';
 

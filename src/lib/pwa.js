@@ -33,9 +33,9 @@ export function registerServiceWorker() {
   });
 }
 
-// "Bosh ekranga qo'shish" — Chrome/Android'да beforeinstallprompt hodisasi;
+// "Bosh ekranga qo‘shish" — Chrome/Android'да beforeinstallprompt hodisasi;
 // iOS Safari'да esa bunday API YO'Q, foydalanuvchi qo'lda "Ulashish → Bosh
-// ekranga qo'shish" qiladi (bu holатда tugma qo'llanma ko'rsatadi).
+// ekranga qo‘shish" qiladi (bu holатда tugma qo'llanma ko'rsatadi).
 let deferredPrompt = null;
 const listeners = new Set();
 
@@ -53,7 +53,7 @@ function isIOSDevice() {
 
 // iOS'да PWA o'rnatish FAQAT Safari'да ishlaydi (Apple cheklovi). Boshqa
 // brauzerlar (Chrome/CriOS, Firefox/FxiOS, Yandex/YaBrowser, Opera, Edge,
-// Google App) "Bosh ekranga qo'shish" ni umumaн qo'llab-quvvatlamaydi yoki
+// Google App) "Bosh ekranga qo‘shish" ni umumaн qo'llab-quvvatlamaydi yoki
 // oddiy zakladka qiladi.
 function iosNonSafari() {
   const ua = navigator.userAgent || '';

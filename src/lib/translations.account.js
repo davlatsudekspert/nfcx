@@ -50,7 +50,7 @@ export const DICT_ACCOUNT = {
   'Media (rasm/fon/musiqa)': { ru: 'Медиа (фото/фон/музыка)', en: 'Media (photo/background/music)' },
   'Profil rasmi, fon rasmi va musiqa': { ru: 'Фото профиля, фон и музыка', en: 'Profile photo, background and music' },
   'Fayl': { ru: 'Файл', en: 'File' },
-  "+ Qo'shiq qo'shish": { ru: '+ Добавить трек', en: '+ Add track' },
+  "+ Qo'shiq qo‘shish": { ru: '+ Добавить трек', en: '+ Add track' },
   "Ko'pi bilan 5 ta qo'shiq. YouTube yoki Yandex Music havolasini qo'ysangiz — fayl yuklamasdan, iPhone'da ham ishlaydi. Yoki to'g'ridan-to'g'ri .mp3 havolasi / fayl. Profilingizga kirgan odam pastdagi tugma orqali yoqib-o'chiradi va qo'shiqlar orasida almashtiradi.": { ru: 'До 5 треков. Ссылка на YouTube или Яндекс Музыку работает без загрузки файла, в том числе на iPhone. Либо прямая ссылка на .mp3 / файл. Посетитель включает и переключает треки кнопкой внизу профиля.', en: 'Up to 5 tracks. A YouTube or Yandex Music link works without uploading a file, iPhone included. Or a direct .mp3 link / file. Visitors play and switch tracks with the button at the bottom of the profile.' },
   "Ko'rinish": { ru: 'Внешний вид', en: 'Appearance' },
   'Tema, ranglar va havola tugmalari uslubi': { ru: 'Тема, цвета и стиль кнопок-ссылок', en: 'Theme, colors and link button style' },
@@ -116,7 +116,7 @@ export const DICT_ACCOUNT = {
   'Yetkazib berish manzili': { ru: 'Адрес доставки', en: 'Delivery address' },
   'Davom etish uchun yetkazib berish ma\u02bclumotlarini to\u02bcldiring.':
     { ru: 'Для продолжения заполните данные доставки.', en: 'Fill in the delivery details to continue.' },
-  "Buyurtma yaratildi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.":
+  "Buyurtma qabul qilindi. To'lov tasdiqlangach kartani tayyorlashni boshlaymiz.":
     { ru: 'Заказ создан. Как только оплата подтвердится, мы начнём изготовление карты.', en: 'Order created. Once the payment is confirmed we start producing the card.' },
   "Ism, telefon va manzilni to'liq kiriting.": { ru: 'Укажите имя, телефон и адрес полностью.', en: 'Fill in the name, phone and address completely.' },
   'Arizangiz qabul qilindi \u2014 kompaniya tarifi tasdiqlangach faollashadi.':

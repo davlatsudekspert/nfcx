@@ -13,7 +13,7 @@ const CONTENT = {
         h: '1. Umumiy qoidalar va Shartnoma predmeti',
         p: [
           "1.1. Mazkur Oferta O'zbekiston Respublikasi Fuqarolik kodeksiga muvofiq ochiq shartnoma hisoblanadi. Mijoz platformada ro'yxatdan o'tish va/yoki xizmatlar uchun to'lovni amalga oshirish orqali ushbu Oferta shartlarini to'liq va so'zsiz qabul qilgan (akseptlagan) hisoblanadi.",
-          "1.2. Platforma Mijozga NFC texnologiyasi asosidagi aqlli vizitkalar yaratish, noyob foydalanuvchi kodlarini band qilish va ularga texnik xizmat ko'rsatish imkoniyatini taqdim etadi.",
+          "1.2. Platforma Mijozga NFC texnologiyasi asosidagi aqlli vizitkalar ochish, noyob foydalanuvchi kodlarini band qilish va ularga texnik xizmat ko'rsatish imkoniyatini taqdim etadi.",
         ],
       },
       {

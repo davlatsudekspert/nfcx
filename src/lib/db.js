@@ -646,7 +646,7 @@ export async function dbOrderPhysicalCard(code, shipping) {
 const GIFT_ERRORS = {
   NOT_OWNER: 'Bu kod sizga tegishli emas.',
   NOT_GIFTABLE: "Bu avtomatik berilgan bepul ID sovg'a qilinmaydi.",
-  RECIPIENT_NOT_FOUND: "Bunday NFC ID topilmadi — qabul qiluvchi avval o'z profilini yaratgan bo'lishi kerak.",
+  RECIPIENT_NOT_FOUND: "Bunday NFC ID topilmadi — qabul qiluvchi avval o'z profilini ochgan bo'lishi kerak.",
   CANNOT_GIFT_SELF: "O'zingizga sovg'a qila olmaysiz.",
   ALREADY_PENDING: "Bu kod uchun sovg'a taklifi allaqachon kutilmoqda.",
   to_code_required: "Qabul qiluvchining NFC ID'sini kiriting.",

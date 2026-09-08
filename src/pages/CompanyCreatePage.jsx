@@ -85,7 +85,7 @@ export default function CompanyCreatePage() {
       </section>
 
       <form className="cc-form" onSubmit={submit}>
-        <div className="cc-form-title"><span>{t('ARIZA')}</span><h2>{t('Company ID yarating')}</h2><p>{t('Lotin harflari, shuningdek o‘zbekcha O‘ va G‘ (masalan g‘oya). Raqam, probel va boshqa belgilar qabul qilinmaydi.')}</p></div>
+        <div className="cc-form-title"><span>{t('ARIZA')}</span><h2>{t('Company ID oching')}</h2><p>{t('Lotin harflari, shuningdek o‘zbekcha O‘ va G‘ (masalan g‘oya). Raqam, probel va boshqa belgilar qabul qilinmaydi.')}</p></div>
         <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: normalizeCompanyId(e.target.value) }))} placeholder={t('KOMPANIYA')} spellCheck={false} autoCapitalize="characters" autoCorrect="off" /></div></label>
         {/* BREND UCHUN HIMOYALANGAN — alohida blok.
             "Band" deb yozish noto'g'ri bo'lardi: bu tugab qolgan narsa
@@ -134,7 +134,7 @@ export default function CompanyCreatePage() {
         </div>
         {error && <p className="cc-error" role="alert">{error}</p>}
         <button type="submit" className="cc-submit vz-tap" disabled={busy || !check?.available || nameBlocked}>{busy ? t('Yuborilmoqda…') : t('Admin tekshiruviga yuborish →')}</button>
-        <p className="cc-legal">{t('ID qidirish uni band qilmaydi. Ariza serverda yaratilgandan keyingina ID rezervlanadi.')}</p>
+        <p className="cc-legal">{t('ID qidirish uni band qilmaydi. Ariza serverda saqlangandan keyingina ID rezervlanadi.')}</p>
       </form>
     </div>
   </main>;

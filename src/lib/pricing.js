@@ -16,9 +16,9 @@ export function isBlockedCode(raw) {
 
 // ── Avtomatik-bepul 8 xonali profil ID (createFreeAutoId, server/db.js) ──
 // Ro'yxatdan o'tishda avtomatik beriladi, HECH QACHON pullik NFC ID sotib
-// olish oqimi (POST /api/records, Payme order yaratish) orqali
+// olish oqimi (POST /api/records, Payme order ochish) orqali
 // yaratilmaydi/sotilmaydi — bu qat'iy biznes qoidasi (Payme integratsiyasi
-// audit qismida topilgan bo'shliqni yopish uchun qo'shilgan).
+// audit qismida topilgan bo'shliqni yopish uchun qo‘shilgan).
 export const FREE_AUTO_ID_RE = /^[0-9]{8}$/;
 
 // Kod pullik NFC ID sifatida sotib olinishi mumkinmi? (bloklangan prefiks
@@ -390,7 +390,7 @@ export function priceForCode(code, _sold) {
 // `priceForCode()`ning bu UI xulqi ATAYLAB o'zgartirilmagan (kalkulyator/
 // checker sahifalarida hozirgidek ishlashda davom etadi).
 //
-// KELAJAKDAGI Payme order-yaratish kodi (hali yozilmagan — Phase 2A/2B)
+// KELAJAKDAGI Payme order-ochish kodi (hali yozilmagan — Phase 2A/2B)
 // HECH QACHON `priceForCode()`ni to'g'ridan-to'g'ri ishlatmasin — FAQAT
 // shu funksiyani chaqirsin. Bu — real pul undirish uchun YAGONA xavfsiz
 // kirish nuqtasi (single entrypoint), uchta holatni sonli `0` bilan hech

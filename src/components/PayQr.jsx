@@ -77,7 +77,7 @@ export default function PayQr({ payLink, className = '' }) {
         <div className="mt-2 flex flex-col items-center gap-2 rounded-xl border border-base-content/10 bg-base-content/5 p-4">
           {failed ? (
             <p className="text-center text-xs text-base-content/60">
-              {t("QR kod yaratilmadi. Yuqoridagi tugma orqali to'layvering.")}
+              {t("QR kod chiqmadi. Yuqoridagi tugma orqali to'layvering.")}
             </p>
           ) : src ? (
             <>

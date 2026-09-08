@@ -9,7 +9,7 @@ import PaymentUnavailableNotice from './PaymentUnavailableNotice.jsx';
 // props:
 //   label      — tugma matni
 //   payLink    — to'lov havolasi (Payme checkout). Bo'lsa <a target=_blank>.
-//   onClick    — payLink bo'lmasa bosilganda chaqiriladi (buyurtma yaratish v.h.)
+//   onClick    — payLink bo'lmasa bosilganda chaqiriladi (buyurtma ochish v.h.)
 //   className  — qo'shimcha klasslar (masalan "btn-accent btn-sm")
 //   disabled   — tashqi disabled (busy holati v.h.)
 //   busy       — spinner ko'rsatish

@@ -155,7 +155,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
           <Reveal delay="[transition-delay:220ms]" className="w-full">
             <div className="mt-7 flex flex-col justify-center gap-2.5 sm:flex-row lg:justify-start">
-              <button onClick={() => navigate('/register')} className="btn btn-gold min-h-12 px-7 text-[15px]">{t('Bepul profil yaratish')}</button>
+              <button onClick={() => navigate('/register')} className="btn btn-gold min-h-12 px-7 text-[15px]">{t('Bepul profil ochish')}</button>
               <button onClick={() => navigate('/qanday-ishlaydi')} className="btn btn-ghost-vz min-h-12 px-7 text-[15px]">{t('Qanday ishlaydi')}</button>
             </div>
             <ul className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm text-[color:var(--vz-ink-2)] lg:justify-start">

@@ -30,7 +30,7 @@ const DEMO_PRESETS = {
     address: 'Yunusobod tumani, Amir Temur shoh ko‘chasi 108',
     phone: '+998 90 777 70 70',
     telegram: '@yaqeen_restaurant',
-    about: 'Mehr bilan tayyorlangan taomlar, iliq muhit va oilaviy kechalar uchun did bilan yaratilgan restoran.',
+    about: 'Mehr bilan tayyorlangan taomlar, iliq muhit va oilaviy kechalar uchun did bilan bezatilgan restoran.',
     cover: '/business-assets/restaurant-interior.jpg',
     items: [
       { name: 'Chef pizza', category: 'Issiq taomlar', price: '72 000', unit: "so‘m", description: 'Tovuq, ananas, mozzarella va maxsus sous.', image: '/business-assets/restaurant-food.jpg', available: true },

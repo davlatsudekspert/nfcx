@@ -1,7 +1,7 @@
 // Ko'p so'raladigan savollar — FaqPage va HomePage bir xil manbadan o'qiydi.
 export const FAQ = {
   uz: [
-    { q: "Raqamli tashrif qog'ozini sotib olgach o'zgartirsa bo'ladimi?", a: "Ha! Akkaunt yaratsangiz, raqamli tashrif qog'ozingiz profilingizga biriktiriladi va uni /account sahifasidan istalgan vaqt tahrirlaysiz: ism, kasb, rasm, ijtimoiy tarmoqlar, profil mavzusi va boshqalar." },
+    { q: "Raqamli tashrif qog'ozini sotib olgach o'zgartirsa bo'ladimi?", a: "Ha! Akkaunt ochsangiz, raqamli tashrif qog'ozingiz profilingizga biriktiriladi va uni /account sahifasidan istalgan vaqt tahrirlaysiz: ism, kasb, rasm, ijtimoiy tarmoqlar, profil mavzusi va boshqalar." },
     { q: 'Narx qanday hisoblanadi?', a: "NFC ID'ning narxi bandlangan soniga emas, faqat undagi harf/raqam naqshiga bog'liq: Bronza (49 000 so'm), Silver (99 000 so'm), Gold (149 000 so'm), Premium (199 000 so'm) va Ekslyuziv (490 000 so'mdan boshlanadi) — narx doim qat'iy, o'zgarmaydi." },
     { q: "Raqamli tashrif qog'ozimni boshqa odamga bera olamanmi?", a: "Ha — endi «Sovg'a qilish» funksiyasi orqali, hech qanday to'lovsiz, qabul qiluvchining roziligi bilan egalikni o'tkazishingiz mumkin." },
     { q: "Profilim qanday ko'rinadi?", a: "Har bir raqamli tashrif qog'ozining o'z shaxsiy sahifasi bor: rasmingiz, kasbingiz, bio, kontaktlar, ijtimoiy tarmoqlar (Telegram, Instagram, Facebook, X) va tanlagan dizayn mavzuingiz bilan." },

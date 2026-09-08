@@ -6,7 +6,7 @@
 // NIMA UCHUN ALOHIDA RO'YXAT KERAK BO'LDI (2026-09):
 // Katalogdagi "Sovg'a" belgisi odatda `nfc_gifts` jadvalidagi HAQIQIY sovg'a
 // yozuvidan hisoblanadi (status='activated'). Lekin Admin Panel'dagi sovg'a
-// yaratish EGASI BOR kartaga ruxsat bermaydi — `hosting/api/admin-extra.js`
+// ochish EGASI BOR kartaga ruxsat bermaydi — `hosting/api/admin-extra.js`
 // dagi tekshiruv `CODE_TAKEN` (409) qaytaradi. Ya'ni allaqachon kimgadir
 // tegishli bo'lgan noyob ID'ni admin panel orqali "sovg'a" deb belgilashning
 // yo'li YO'Q. Shu bo'shliqni to'ldirish uchun sayt egasi qo'lda belgilaydigan

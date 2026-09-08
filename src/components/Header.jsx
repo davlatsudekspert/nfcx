@@ -225,7 +225,7 @@ export default function Header() {
                O'ZGARMAYDI — faqat yorlig'i qisqaradi. */
             <button className="btn btn-gold h-10 min-h-10 px-4 text-[13.5px] 2xl:px-5" onClick={() => go('/register')}>
               <span className="2xl:hidden">{t("Ro'yxatdan o'tish")}</span>
-              <span className="hidden 2xl:inline">{t('Bepul profil yaratish')}</span>
+              <span className="hidden 2xl:inline">{t('Bepul profil ochish')}</span>
             </button>
           )}
           <LanguageSwitcher />
@@ -278,7 +278,7 @@ export default function Header() {
           {installable && (
             <button className="btn btn-ghost-vz btn-block mt-2 gap-2" onClick={install}><IconInstall /> {t('Ilovani o‘rnatish')}</button>
           )}
-          <button className="btn btn-gold btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil yaratish')}</button>
+          <button className="btn btn-gold btn-block mt-2" onClick={() => go('/register')}>{t('Bepul profil ochish')}</button>
         </div>
       )}
 

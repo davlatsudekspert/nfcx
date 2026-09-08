@@ -216,7 +216,7 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
             <h3 className="font-display mt-1 text-2xl font-semibold">{t("To'lovni yakunlang")}</h3>
             <div className="mt-1 font-mono text-sm text-base-content/50">nfcstore.uz/{code.toLowerCase()}</div>
             <p className="mt-4 text-sm leading-relaxed text-base-content/70">
-              {t("Raqamli tashrif qog'ozi {price} lik to'lov tasdiqlangach avtomatik yaratiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.", { price: fmt(order.price) + " so'm" })}
+              {t("Raqamli tashrif qog'ozi {price} lik to'lov tasdiqlangach avtomatik ochiladi va profilingizga biriktiriladi. Quyidagi tugma orqali to'lovni amalga oshiring — bu oyna o'zi holatni kuzatib turadi.", { price: fmt(order.price) + " so'm" })}
             </p>
             {PAYMENTS_ENABLED ? (
               <>

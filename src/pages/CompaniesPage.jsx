@@ -105,7 +105,7 @@ function ShowcaseCard({ type, t }) {
           {features.map(([label, pro]) => <li key={label}><span>✓</span>{t(label)}{pro && <em>♙ PRO</em>}</li>)}
         </ul>
         <button type="button" className="co-create-profile" onClick={() => navigate('/account')}>
-          {t('Kompaniya profilini yaratish')} <span>→</span>
+          {t('Kompaniya profilini ochish')} <span>→</span>
         </button>
       </div>
       <div className="co-showcase-visual">
@@ -256,8 +256,8 @@ export default function CompaniesPage({ catalog = [] }) {
       </section>
 
       <section className="co-business-cta">
-        <i>♢</i><div><h2>{t('Sizning biznesingiz ham NFCStore’da bo‘lsin')}</h2><p>{t('Kompaniyangiz uchun rasmli raqamli profil yarating. Katalog boshqaruvi kompaniya profilingiz ichidagi Business Workspace’da ochiladi.')}</p></div>
-        <button type="button" className="vz-tap" onClick={() => navigate('/account')}>{t('Kompaniya profilini yaratish')} <span>→</span></button>
+        <i>♢</i><div><h2>{t('Sizning biznesingiz ham NFCStore’da bo‘lsin')}</h2><p>{t('Kompaniyangiz uchun rasmli raqamli profil oching. Katalog boshqaruvi kompaniya profilingiz ichidagi Business Workspace’da ochiladi.')}</p></div>
+        <button type="button" className="vz-tap" onClick={() => navigate('/account')}>{t('Kompaniya profilini ochish')} <span>→</span></button>
         <button type="button" className="secondary vz-tap" onClick={() => navigate('/narxlar')}>{t('NFC ID tanlash')}</button>
       </section>
     </main>

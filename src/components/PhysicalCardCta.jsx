@@ -61,7 +61,7 @@ export default function PhysicalCardCta() {
       <div className="min-w-0">
         <span className="vz-kicker">{t('O‘zingiz xohlagan uslubda')}</span>
         <h2 className="vz-h2 mt-3 text-[color:var(--vz-ink)]">
-          {t('NFC ID kartangizni o‘zingizga mos')} <span className="text-[color:var(--vz-gold-2)]">{t('dizaynda yarating')}</span>
+          {t('NFC ID kartangizni o‘zingizga mos')} <span className="text-[color:var(--vz-gold-2)]">{t('dizaynda tayyorlang')}</span>
         </h2>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
           {t('Rang, dizayn va uslubni o‘zingiz tanlaysiz — keyin buyurtma berasiz. Tayyor karta pochta orqali qo‘lingizga yetib boradi.')}
