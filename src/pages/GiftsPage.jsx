@@ -138,11 +138,17 @@ export default function GiftsPage({ catalog = [] }) {
           </div>
         )}
 
-        {!error && gifts !== null && gifts.length === 0 && (
-          <div className="vz-empty">
-            <b>{t("Hozircha sovg'a qilingan NFC ID yo'q.")}</b>
-          </div>
-        )}
+        {/* Ro'yxat BO'SH bo'lsa — hech narsa ko'rsatilmaydi.
+            Avval bu yerda «Hozircha sovg'a qilingan NFC ID yo'q» degan
+            katta quti turardi. Bo'sh holat xabari odamning O'Z kabineti
+            uchun foydali (u o'z ma'lumotini kutadi), bu esa ochiq
+            reklama sahifasi: tashqaridan kelgan odamga u hech qanday
+            amal bermaydi, ekranning yarmini egallaydi va "bu yerda hech
+            narsa yo'q" degan taassurot qoldiradi. Pastda esa allaqachon
+            to'ldirilgan "Yangi egasini topgan NFC ID'lar" bo'limi bor.
+
+            XATO holati (yuqorida) SAQLANADI — u boshqa narsa: ro'yxat
+            bo'sh emas, YUKLANMAGAN. Buni jim o'tkazib bo'lmaydi. */}
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {(gifts || []).map((g, i) => <GiftCard key={g.code + i} gift={g} />)}
