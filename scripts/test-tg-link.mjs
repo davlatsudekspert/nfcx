@@ -221,4 +221,66 @@ const startToken = async () => (await jsonOf(await post('/api/auth/tg-link/start
   check('7l) sessiyasiz Telegram ulab bo\'lmaydi', r.status, 401);
 }
 
+// ── 8) RAQAMNI BAND QILIB QO'YISH ──────────────────────────────────────
+// Ro'yxatdan o'tishda raqam endi tasdiqlanmaydi, ya'ni kimdir BOSHQA
+// odamning raqamini yozib akkaunt ochishi mumkin. Shunda raqamning
+// HAQIQIY egasi o'z raqamini ishlatolmay qolmasligi kerak.
+//
+// Qoida: TASDIQLANGAN da'vo TASDIQLANMAGANIDAN ustun.
+{
+  sqlite.prepare(`DELETE FROM rate_limits`).run();
+  const call = async (path, json, init = {}) => {
+    const r = await worker.fetch(req(path, { method: 'POST', json, ...init }), env);
+    return { status: r.status, body: await r.json().catch(() => null), res: r };
+  };
+  const cookieFor = async (phone, password) => {
+    const r = await worker.fetch(req('/api/auth/login', { method: 'POST', json: { email: phone, password } }), env);
+    return 'nfc_session=' + (r.headers.get('set-cookie') || '').match(/nfc_session=([0-9a-f]+)/)[1];
+  };
+
+  // Begona odam VICTIM ning raqamini yozib akkaunt ochadi.
+  const squat = await call('/api/auth/register', {
+    password: 'begona123', phone: '+998908880001', tosAccepted: true, email: 'squatter@test.local',
+  });
+  check('8) begona odam raqamni band qildi', squat.status, 201);
+
+  // Haqiqiy egasi boshqa raqam bilan ro'yxatdan o'tadi va Telegramda
+  // O'ZINING raqamini tasdiqlaydi.
+  sqlite.prepare(`DELETE FROM rate_limits`).run();
+  const owner = await call('/api/auth/register', {
+    password: 'egasi123', phone: '+998908889999', tosAccepted: true, email: 'owner@test.local',
+  });
+  const ownerCookie = await cookieFor('+998908889999', 'egasi123');
+  const token = await startToken();
+  await update({ chat: { id: 801 }, from: { id: 801 }, text: `/start ${token}` });
+  await update({ chat: { id: 801 }, from: { id: 801 }, contact: { user_id: 801, phone_number: '998908880001', first_name: 'Haqiqiy' } });
+
+  const r = await call('/api/settings/link-telegram', { linkToken: token }, { cookie: ownerCookie });
+  check('8b) tasdiqlangan egasi raqamni qaytarib oldi', [r.status, r.body.phone], [200, '+998908880001']);
+  check('8c) band qilgan akkauntdan raqam olindi',
+    sqlite.prepare(`SELECT phone FROM users WHERE id = ?`).get(squat.body.user.id).phone, null);
+  check('8d) band qilgan akkauntning O\'ZI o\'chirilmagan',
+    sqlite.prepare(`SELECT email FROM users WHERE id = ?`).get(squat.body.user.id).email, 'squatter@test.local');
+  check('8e) amal jurnalga yozildi',
+    sqlite.prepare(`SELECT action FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get()?.action, 'phone_reclaimed');
+  check('8f) egasining raqami yangilandi',
+    sqlite.prepare(`SELECT phone FROM users WHERE id = ?`).get(owner.body.user.id).phone, '+998908880001');
+
+  // TASDIQLANGAN akkauntning raqami esa TORTIB OLINMAYDI — bu allaqachon
+  // uning haqiqiy raqami.
+  sqlite.prepare(`DELETE FROM rate_limits`).run();
+  const other = await call('/api/auth/register', {
+    password: 'boshqa123', phone: '+998908887777', tosAccepted: true, email: 'other2@test.local',
+  });
+  const otherCookie = await cookieFor('+998908887777', 'boshqa123');
+  const t2 = await startToken();
+  await update({ chat: { id: 802 }, from: { id: 802 }, text: `/start ${t2}` });
+  await update({ chat: { id: 802 }, from: { id: 802 }, contact: { user_id: 802, phone_number: '998908880001', first_name: 'Uchinchi' } });
+  const r2 = await call('/api/settings/link-telegram', { linkToken: t2 }, { cookie: otherCookie });
+  check('8g) tasdiqlangan egadan raqam tortib olinmaydi', [r2.status, r2.body.error], [409, 'phone_taken']);
+  check('8h) egasining raqami joyida qoldi',
+    sqlite.prepare(`SELECT phone FROM users WHERE id = ?`).get(owner.body.user.id).phone, '+998908880001');
+  void other;
+}
+
 done();

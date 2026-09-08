@@ -110,12 +110,49 @@ export async function handle(request, env, url, H) {
     ).bind(await H.sha256Hex(token), Date.now()).first();
     if (!link || link.status !== 'linked' || !link.phone) return H.json({ error: 'link_not_confirmed' }, 422);
 
-    // Raqam BOSHQA akkauntda ishlatilayotgan bo'lsa — biriktirmaymiz.
-    // Aks holda bitta Telegram ikki akkauntni tiklay olardi.
+    // RAQAM BOSHQA AKKAUNTDA BO'LSA.
+    //
+    // Ro'yxatdan o'tishda raqam endi tasdiqlanmaydi, ya'ni kimdir
+    // BOSHQA ODAMNING raqamini yozib akkaunt ochishi mumkin. Agar buni
+    // shunchaki rad etsak, raqamning HAQIQIY egasi o'z raqamini
+    // ishlatolmay qoladi — begona odam uni band qilib qo'ygan bo'ladi.
+    //
+    // Qoida: TASDIQLANGAN da'vo TASDIQLANMAGANIDAN ustun. Bu yerda
+    // raqam Telegramning O'ZI tomonidan tasdiqlangan (odam botda
+    // "Kontaktni ulashish" bosgan), qarshi tomon esa uni shunchaki
+    // yozib qo'ygan. Shuning uchun tasdiqlanmagan akkauntdan raqam
+    // olinadi.
+    //
+    // Qarshi tomon ham Telegramni ulagan bo'lsa — bu allaqachon uning
+    // haqiqiy raqami, tegmaymiz va rad etamiz.
+    // "Tasdiqlangan" belgisi sifatida `users.bot_ack` ishlatiladi — u
+    // aynan SHU AKKAUNT Telegramni ulaganda 1 bo'ladi.
+    //
+    // `bot_verifications` jadvaliga qarash MUMKIN EMAS: u raqamga
+    // tegishli, akkauntga emas. Haqiqiy egasi botda kontaktini
+    // ulashishi bilan o'sha raqam uchun qator paydo bo'ladi va band
+    // qilib olgan akkaunt ham "tasdiqlangan" bo'lib ko'rinib qolardi —
+    // ya'ni himoya aynan kerak bo'lgan paytda ishlamasdi.
+    //
+    // Eski (2026-09 dan oldingi) akkauntlarda `bot_ack` doim 1: o'shanda
+    // ro'yxatdan o'tish Telegramsiz umuman mumkin emas edi. Demak ular
+    // avtomatik himoyalangan.
     const taken = await env.DB.prepare(
-      `SELECT id FROM users WHERE phone = ? AND deleted_at IS NULL AND id <> ? LIMIT 1`
+      `SELECT id, bot_ack AS botAck FROM users
+        WHERE phone = ? AND deleted_at IS NULL AND id <> ? LIMIT 1`
     ).bind(link.phone, user.id).first();
-    if (taken) return H.json({ error: 'phone_taken' }, 409);
+    if (taken && taken.botAck) return H.json({ error: 'phone_taken' }, 409);
+    if (taken) {
+      // Raqam bo'shatiladi. O'sha akkaunt o'chirilmaydi — profili,
+      // kartalari va emaili joyida qoladi; faqat unga tegishli
+      // bo'lmagan raqam olib qo'yiladi. Bu amal jurnalga yoziladi.
+      await env.DB.prepare(`UPDATE users SET phone = NULL WHERE id = ?`).bind(taken.id).run();
+      await H.logAdminActivity(env, {
+        action: 'phone_reclaimed',
+        details: `Tasdiqlanmagan #${taken.id} akkauntidan raqam olindi va tasdiqlangan #${user.id} ga berildi`,
+        ip: H.reqIp(request),
+      });
+    }
 
     // Token bir martalik.
     const burned = await env.DB.prepare(`DELETE FROM tg_link_tokens WHERE token = ?`)
