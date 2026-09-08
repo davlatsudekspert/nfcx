@@ -1955,7 +1955,6 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   // to'liq buyurtma oqimi ishlaydi.
   const [shipName, setShipName] = useState('');
   const [shipPhone, setShipPhone] = useState('');
-  const [shipAddress, setShipAddress] = useState('');
   // Yetkazib berish xizmatini mijozning o'zi tanlaydi.
   const [shipCarrier, setShipCarrier] = useState('');
   // Soni. Narx SERVERDA qayta hisoblanadi — bu yerdagi son faqat
@@ -1964,7 +1963,8 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   const qty = Math.min(Math.max(Math.round(Number(shipQty)) || 1, 1), PHYSICAL_CARD_MAX_QTY);
   const freeDelivery = qty > PHYSICAL_CARD_FREE_DELIVERY_QTY;
   const [cardOrder, setCardOrder] = useState(null);
-  const shippingFilled = !!(shipName.trim() && shipPhone.trim() && shipAddress.trim());
+  // Manzil endi so'ralmaydi — ism va telefon yetarli.
+  const shippingFilled = !!(shipName.trim() && shipPhone.trim());
 
   // To'lov tugmasi bosilgan, lekin yetkazib berish ma'lumotlari to'liq
   // emas. Avval tugma shunchaki `disabled` edi: bosilganda MUTLAQO hech
@@ -1973,7 +1973,6 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
   // beriladi — telefonda bu maydonni ekranga ham suradi.
   const shipNameRef = useRef(null);
   const shipPhoneRef = useRef(null);
-  const shipAddressRef = useRef(null);
   const [shipErr, setShipErr] = useState('');
 
   const focusMissingShipping = () => {
@@ -1981,9 +1980,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
       ? [t('Qabul qiluvchi ismini kiriting.'), shipNameRef]
       : !shipPhone.trim()
         ? [t('Telefon raqamingizni kiriting.'), shipPhoneRef]
-        : !shipAddress.trim()
-          ? [t('Yetkazib berish manzilini kiriting.'), shipAddressRef]
-          : null;
+        : null;
     if (!missing) return;
     setShipErr(missing[0]);
     missing[1].current?.focus();
@@ -2022,7 +2019,8 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
       }
 
       const res = await dbOrderPhysicalCard(card.code, {
-        shippingName: shipName.trim(), shippingPhone: shipPhone.trim(), shippingAddress: shipAddress.trim(),
+        // `shippingAddress` YUBORILMAYDI — manzil so'ralmaydi.
+        shippingName: shipName.trim(), shippingPhone: shipPhone.trim(),
         shippingCarrier: shipCarrier, quantity: qty,
         designFrontUrl, designBackUrl,
       });
@@ -2235,13 +2233,10 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                     aria-invalid={shipErr && !shipPhone.trim() ? true : undefined}
                     inputMode="tel"
                   />
-                  <textarea
-                    ref={shipAddressRef}
-                    className="vz-input" rows={2} value={shipAddress}
-                    onChange={(e) => { setShipAddress(e.target.value); if (shipErr) setShipErr(''); }}
-                    placeholder={t('Yetkazib berish manzili')} aria-label={t('Yetkazib berish manzili')}
-                    aria-invalid={shipErr && !shipAddress.trim() ? true : undefined}
-                  />
+                  {/* MANZIL SO'RALMAYDI (2026-09, egasining qarori):
+                      yetkazib berish sayt orqali emas, to'lovdan keyin
+                      to'g'ridan-to'g'ri kelishiladi. Shuning uchun ism va
+                      telefon yetarli. */}
                   <label className="flex items-center gap-3">
                     <span className="shrink-0 text-sm text-base-content/70">{t('Nechta karta?')}</span>
                     <input

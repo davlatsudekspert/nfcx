@@ -3052,6 +3052,9 @@ async function finalizePaidWebOrderD1(env, orderId) {
         ownerUserId: order.userId,
         shippingName: p.shippingName || '',
         shippingPhone: p.shippingPhone || '',
+        // Manzil endi so'ralmaydi (2026-09). Ustun O'CHIRILMADI va
+        // eski buyurtmalardagi manzillar joyida qoladi — yangi
+        // buyurtmalarda u shunchaki bo'sh bo'ladi.
         shippingAddress: p.shippingAddress || '',
       });
     }
@@ -3067,15 +3070,34 @@ async function finalizePaidWebOrderD1(env, orderId) {
            LEFT JOIN bot_verifications bv ON bv.phone = u.phone WHERE u.id = ?`
       ).bind(order.userId).first();
       if (info?.tgUserId) {
+        // YETKAZIB BERISH SAYT ORQALI EMAS (2026-09, egasining qarori):
+        // manzil so'ralmaydi va "2-3 kunda jo'natamiz, kuzatuv raqamini
+        // yuboramiz" degan VA'DA BERILMAYDI — uni bajarish tizimi yo'q.
+        // Buning o'rniga aniq va bajariladigan gap: bog'lanamiz.
         await sendTelegramTo(env, info.tgUserId, [
-          `\u2705 <b>Buyurtmangiz qabul qilindi</b>`,
+          `\u2705 <b>To'lovingiz qabul qilindi</b>`,
           `\n\uD83C\uDD94 NFC ID: <b>${order.code}</b>`,
           qty > 1 ? `\n\uD83D\uDCE6 Soni: <b>${qty} ta</b>` : '',
-          `\n\nKartangiz <b>2-3 ish kunida</b> tayyorlanadi va jo'natiladi.`,
-          `\nJo'natilgach kuzatuv raqamini shu yerga yuboramiz.`,
+          `\n\nKartangiz tayyorlanadi. Yetkazib berishni kelishish uchun`,
+          `\n<b>tez orada siz bilan bog'lanamiz</b>.`,
         ].join(''));
       }
     } catch { /* xabar ketmadi — buyurtma baribir yakunlandi */ }
+
+    // ADMINGA XABAR: "to'lov qilindi". Egasi yetkazib berishni o'zi
+    // tashkil qiladi, shuning uchun yangi to'lovni DARHOL bilishi kerak.
+    // Fire-and-forget: xabar ketmasa ham buyurtma yakunlangan holicha
+    // qoladi (pul olindi, karta yozildi).
+    try {
+      await sendTelegramMessage(env, [
+        `\uD83D\uDCB3 <b>To'lov qilindi \u2014 jismoniy karta</b>`,
+        `\n\uD83C\uDD94 NFC ID: <b>${order.code}</b>`,
+        `\n\uD83D\uDCE6 Soni: <b>${qty} ta</b>`,
+        `\n\uD83D\uDC64 ${p.shippingName || '\u2014'}`,
+        `\n\uD83D\uDCDE ${p.shippingPhone || '\u2014'}`,
+        `\n\n\u26A0\uFE0F Yetkazib berishni kelishish uchun bog'laning.`,
+      ].join(''));
+    } catch { /* jim tur */ }
     return { ok: true };
   }
   if (order.kind !== 'card_purchase') return { ok: false, reason: 'unsupported_order_kind' };

@@ -458,7 +458,11 @@ export async function handle(request, env, url, H) {
         return H.json({ error: 'bad_quantity', max: PHYSICAL_CARD_MAX_QTY }, 422);
       }
       const amount = PHYSICAL_CARD_FEE * quantity;
-      if (!shippingName || !shippingPhone || !shippingAddress) return H.json({ error: 'shipping_required' }, 422);
+      // MANZIL MAJBURIY EMAS (2026-09, egasining qarori): yetkazib
+      // berish sayt orqali emas, to'lovdan keyin telefon orqali
+      // kelishiladi. Maydon O'CHIRILMADI — eski mijoz ilovasi yoki
+      // tayyor manzili bor odam uni yuborsa, avvalgidek saqlanadi.
+      if (!shippingName || !shippingPhone) return H.json({ error: 'shipping_required' }, 422);
 
       // ─── BOSMA MAKET ─────────────────────────────────────────────────
       // 2026-09. Avval buyurtma bilan FAQAT yetkazib berish ma'lumotlari

@@ -236,6 +236,23 @@ let premiumOrderId;
 // =====================================================================
 {
   const shipping = { shippingName: 'Ali', shippingPhone: '+998901234567', shippingAddress: 'Toshkent, Chilonzor 1' };
+  // 2026-09: MANZIL MAJBURIY EMAS — yetkazib berish sayt orqali emas,
+  // to'lovdan keyin telefon orqali kelishiladi. Ism va telefon yetarli.
+  {
+    const r = await callPay('/api/records/VIP001/order-physical-card', {
+      method: 'POST', cookie: cookie.user,
+      json: { shippingName: 'Ali', shippingPhone: '+998901234567' },
+    });
+    // Manzil yo'qligi uchun RAD ETILMAYDI (boshqa sababga tushishi
+    // mumkin — masalan takroriy buyurtma — lekin shipping_required emas).
+    check('manzilsiz buyurtma qabul qilinadi', r.body?.error === 'shipping_required', false);
+  }
+  {
+    const r = await callPay('/api/records/VIP001/order-physical-card', {
+      method: 'POST', cookie: cookie.user, json: { shippingName: 'Ali', shippingPhone: '' },
+    });
+    check('telefonsiz — avvalgidek rad etiladi', [r.status, r.body?.error], [422, 'shipping_required']);
+  }
   const d = await call('/api/records/VIP001/order-physical-card', { method: 'POST', cookie: cookie.user, json: shipping });
   check('order-physical-card payments disabled -> 503', [d.status, d.body], [503, { error: 'payments_disabled' }]);
   check('order-physical-card no cookie -> 401', (await callPay('/api/records/VIP001/order-physical-card', { method: 'POST', json: shipping })).status, 401);
