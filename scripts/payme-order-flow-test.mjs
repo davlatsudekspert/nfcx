@@ -99,7 +99,9 @@ const PAYLOAD = { name: 'Test User', theme: 'classic' };
 // the exact context Phase 2B's order-creation code actually calls it in)
 // ============================================================
 check('1) 8-digit purchase BLOCK', personalPurchaseQuote('12345678').purchasable, false);
-check('2) Exclusive BLOCK (auction-only)', personalPurchaseQuote('AAA777'), { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' });
+// 2026-09: AUKSION BEKOR QILINDI — ekslyuziv endi qat'iy narxda sotiladi.
+// AAA777: uchala harf bir xil + 777 -> Level 0 -> 2 990 000.
+check('2) Exclusive endi sotiladi (Level 0)', personalPurchaseQuote('AAA777'), { purchasable: true, tier: 'exclusive', amount: 2990000, level: 'level_0' });
 check('3) Bronze 49000', personalPurchaseQuote('XYZ412'), { purchasable: true, tier: 'free', amount: 49000 });
 check('4) Silver 99000', personalPurchaseQuote('ABB770'), { purchasable: true, tier: 'silver', amount: 99000 });
 check('5) Gold 149000', personalPurchaseQuote('BMW412'), { purchasable: true, tier: 'gold', amount: 149000 });

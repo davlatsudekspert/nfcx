@@ -1,6 +1,7 @@
 import { codeTierOverride } from './codeTiers.js';
 import { codePriceOverride } from './codePrices.js';
 import { reservedStatus } from './brandReserved.js';
+import { EXCLUSIVE_WORDS, exclusiveLevel } from './exclusivePricing.js';
 
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
@@ -85,9 +86,11 @@ export const LETTER_MULT = 3;
 // ── Chiroyli 3-harfli so'zlar ────────────────────────────────────────────
 // EKSKLYUZIV so'zlar — eng yuqori status. Bu so'z bilan boshlangan HAR
 // QANDAY kod (raqamidan qat'i nazar) Ekslyuziv darajaga tushadi (auksion).
-const EXCLUSIVE_WORDS = [
-  'VIP', 'CEO', 'KNG', 'LEG', 'ROY', 'ACE', 'WIN', 'UZB', 'LUX',
-];
+// Ro'yxatning O'ZI endi src/lib/exclusivePricing.js da — narx qoidalari
+// bilan bitta joyda tursin (auksion bekor qilingandan keyin bu so'zlar
+// "auksionga tushadi" degani emas, "ekskluziv narxda sotiladi" degani).
+// Qayta eksport — bu faylni import qilayotgan eski kod buzilmasin.
+export { EXCLUSIVE_WORDS };
 
 // PREMIUM so'zlar — taniqli brendlar, ismlar, shaharlar. Bu so'z + "super"
 // raqam → Premium; bu so'z + oddiy raqam → Gold.
@@ -239,7 +242,11 @@ export function tierForCode(code) {
 // "free" (ichki kalit, o'zgartirilmagan — access.js'dagi feature-limit
 // tizimi ham shu kalitni ishlatadi, u butunlay boshqa tushuncha) — endi
 // tijoriy nomi "Bronza", narxi 49 000 so'm (avval 0 edi).
-export const TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 49000 };
+// exclusive: null EMAS — auksion bekor qilindi, endi qat'iy narx bor.
+// Bu yerdagi 490 000 — eng past ekskluziv daraja ("...dan boshlanadi").
+// ANIQ narx har doim exclusiveLevel(kod) dan olinadi.
+export const TIER_PRICE = { exclusive: 490000, premium: 199000, gold: 149000, silver: 99000, free: 49000 };
+export const EXCLUSIVE_FROM_PRICE = 490000;
 
 // PROFILE PREMIUM narxi — NFC ID darajasidan ALOHIDA. Bir martalik to'lov;
 // profil funksiyalarini (post, musiqa, maxsus fon, analitika va h.k.) ochadi,
@@ -364,6 +371,13 @@ export function priceForCode(code, _sold) {
   if (priceOv != null) {
     return { ...base, total: priceOv, base: priceOv, priceOverride: true };
   }
+  // EKSKLYUZIV — aniq narx darajalar jadvalidan (490 000 dan 4 490 000
+  // gacha). TIER_PRICE.exclusive faqat "dan boshlanadi" ko'rsatkichi,
+  // shuning uchun uni yakuniy narx sifatida ishlatib bo'lmaydi.
+  if (base.tier === 'exclusive') {
+    const lvl = exclusiveLevel(c);
+    if (lvl) return { ...base, total: lvl.price, base: lvl.price, level: lvl.level };
+  }
   return base;
 }
 
@@ -404,7 +418,14 @@ export function getPersonalPurchaseQuote(rawCode) {
   if (!parsed) return { purchasable: false, reason: 'not_purchasable' };
   if (!isPurchasableCode(parsed.code)) return { purchasable: false, reason: 'not_purchasable' };
   const { tier } = priceForCode(parsed.code);
-  if (tier === 'exclusive') return { purchasable: false, reason: 'exclusive_auction_only', tier };
+  if (tier === 'exclusive') {
+    // AUKSION BEKOR QILINDI (2026-09). Avval bu yerda
+    // `exclusive_auction_only` qaytardi va kod umuman sotilmasdi.
+    // Endi har bir ekskluziv kodning qat'iy narxi bor.
+    const lvl = exclusiveLevel(parsed.code);
+    const amount = lvl ? lvl.price : TIER_PRICE.exclusive;
+    return { purchasable: true, tier, amount, level: lvl ? lvl.level : 'level_5' };
+  }
   const amount = TIER_PRICE[tier];
   return { purchasable: true, tier, amount };
 }

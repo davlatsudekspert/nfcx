@@ -265,8 +265,12 @@ const EXPECT = { OOO000: 8_700_000, VVV444: 2_900_000, BMW007: 199_000, VIP001: 
   check("to'lanmagan XXX772 \"Sotilgan\"da yo'q", sold, undefined);
   check('tarifi baribir ekslyuziv', tierForCode('XXX772'), 'exclusive');
 
-  // Ekslyuziv ID to'g'ridan-to'g'ri sotilmaydi (faqat auksion orqali).
-  check('XXX772 to\'g\'ridan-to\'g\'ri sotib olinmaydi', getPersonalPurchaseQuote('XXX772').purchasable, false);
+  // 2026-09: AUKSION BEKOR QILINDI. Avval bu yerda "ekslyuziv ID
+  // to'g'ridan-to'g'ri sotilmaydi" deb tekshirilardi — endi aksincha:
+  // har bir ekslyuziv kodning qat'iy narxi bor va u sotiladi.
+  // XXX772 maxsus ro'yxatda -> 3 490 000.
+  check('XXX772 endi qat\'iy narxda sotiladi', getPersonalPurchaseQuote('XXX772'),
+    { purchasable: true, tier: 'exclusive', amount: 3490000, level: 'special_3490' });
 }
 
 // ═══ 9. O'CHIRILGAN ID "Sotilgan" bo'limida QOLMASIN ═══

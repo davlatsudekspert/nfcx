@@ -3,9 +3,9 @@ import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
 const COLS = [
-  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Auksion', '/auksion'], ['Kompaniyalar', '/kompaniyalar']] },
+  { title: 'Mahsulot', links: [['Narxlar', '/narxlar'], ['Qanday ishlaydi', '/qanday-ishlaydi'], ['Katalog', '/katalog'], ['Kompaniyalar', '/kompaniyalar']] },
   { title: 'Kompaniya', links: [['Yangiliklar', '/yangiliklar'], ['Savollar', '/savollar'], ['Aloqa', '/aloqa']] },
-  { title: 'Huquqiy', links: [['Foydalanish shartlari', '/shartlar'], ['Maxfiylik siyosati', '/maxfiylik'], ['Auksion qoidalari', '/auksion-qoidalari']] },
+  { title: 'Huquqiy', links: [['Foydalanish shartlari', '/shartlar'], ['Maxfiylik siyosati', '/maxfiylik']] },
 ];
 
 export default function Footer() {

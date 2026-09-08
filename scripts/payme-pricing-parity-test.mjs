@@ -52,7 +52,9 @@ for (const code of SAMPLE_CODES) {
 }
 
 // TIER_PRICE table parity (the constant itself, not just derived results).
-check('TIER_PRICE table parity', PERSONAL_TIER_PRICE, { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 49000 });
+// 2026-09: auksion bekor qilindi. `exclusive: null` o'rniga 490 000 —
+// eng past ekskluziv daraja ("...dan boshlanadi").
+check('TIER_PRICE table parity', PERSONAL_TIER_PRICE, { exclusive: 490000, premium: 199000, gold: 149000, silver: 99000, free: 49000 });
 
 // ---------- 2) 8-digit free-auto-ID guard ----------
 const FREE_ID_SAMPLES = ['12345678', '87654321', '00000001', '99999999'];
@@ -91,9 +93,15 @@ for (const code of ['BMW112', 'BMW007', 'UZUM01', 'VIP555']) {
 // checks `tier === 'exclusive'` and returns 409 BEFORE this value is ever
 // used as a real amount. This assertion just documents/locks in that shape
 // so it stays consistent between the real source and the Worker copy.
-for (const code of ['AAA777', 'VIP555', 'CEO001']) {
+// 2026-09: ekslyuziv `.total` endi HAQIQIY narx. Avval u 0 edi va
+// "hech qachon ishlatilmaydigan o'rin egallovchi" deb izohlanardi, chunki
+// ekslyuziv kod faqat auksion orqali sotilardi. Auksion bekor qilingach
+// har bir ekslyuziv kodning qat'iy narxi bor (scripts/test-exclusive-pricing.mjs
+// darajalarni to'liq tekshiradi), shuning uchun 0 KUTIB BO'LMAYDI:
+// aksincha, narx musbat ekani tekshiriladi.
+for (const [code, want] of [['AAA777', 2990000], ['VIP555', 2490000], ['CEO001', 2990000]]) {
   check(`${code} is 'exclusive' tier`, priceForCode(code).tier, 'exclusive');
-  check(`${code} exclusive tier's raw .total is the unused placeholder 0 (route must 409 before ever using it)`, priceForCode(code).total, 0);
+  check(`${code} exclusive .total is a real price`, priceForCode(code).total, want);
 }
 
 // ---------- 4) companyPricing() must never collide with personal pricing ----------
@@ -120,9 +128,10 @@ const QUOTE_CASES = [
   ['AB12', { purchasable: false, reason: 'not_purchasable' }],
   ['TOOLONGCODE', { purchasable: false, reason: 'not_purchasable' }],
   // exclusive -> blocked with a named reason, NEVER a 0 amount
-  ['AAA777', { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }],
-  ['CEO001', { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }],
-  ['VIP555', { purchasable: false, reason: 'exclusive_auction_only', tier: 'exclusive' }],
+  // 2026-09: ekslyuziv endi SOTILADI (auksion bekor qilindi).
+  ['AAA777', { purchasable: true, tier: 'exclusive', amount: 2990000, level: 'level_0' }],
+  ['CEO001', { purchasable: true, tier: 'exclusive', amount: 2990000, level: 'level_0' }],
+  ['VIP555', { purchasable: true, tier: 'exclusive', amount: 2490000, level: 'level_1' }],
   // the four purchasable tiers -> exact prices, amount always > 0
   ['XYZ412', { purchasable: true, tier: 'free', amount: 49000 }],
   ['ABB770', { purchasable: true, tier: 'silver', amount: 99000 }],

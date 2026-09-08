@@ -93,8 +93,12 @@ const STATIC_ROUTES = {
   aloqa: ContactPage,
   shartlar: TermsPage,
   maxfiylik: PrivacyPage,
-  auksion: AuctionsPage,
-  'auksion-qoidalari': AuctionRulesPage,
+  // AUKSION BEKOR QILINDI (2026-09). Sahifa fayllari o'chirilmadi (backend
+  // hali ularga bog'liq), lekin interfeysdan butunlay olib tashlandi:
+  // eski havolalar narxlar sahifasiga yo'naltiriladi — shunda tashqarida
+  // tarqalgan yoki qidiruvda qolgan manzil "sahifa topilmadi" bermaydi.
+  auksion: PricingRedirect,
+  'auksion-qoidalari': PricingRedirect,
   gifts: GiftsPage,
   qollanma: GuideRedirect,
   admin: AdminPage,
@@ -151,6 +155,11 @@ function companyIdFromRoute(route, pattern) {
 // yo'naltiradi. Sababi: `qollanma` STATIC_ROUTES'dan olib tashlansa, u
 // NFC ID kodi deb talqin qilinib "profil topilmadi" chiqardi — eski
 // havolani bosgan odam uchun bu 404'dan ham yomonroq.
+function PricingRedirect() {
+  useEffect(() => { navigate('/narxlar', { replace: true }); }, []);
+  return null;
+}
+
 function GuideRedirect() {
   useEffect(() => { navigate('/', { replace: true }); }, []);
   return null;

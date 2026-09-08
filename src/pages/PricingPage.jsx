@@ -26,7 +26,7 @@ function useMaskedCode() {
 
 const TIER_HINT = {
   uz: {
-    exclusive: 'Noyob ID’lar uchun auksion',
+    exclusive: 'Eng noyob ID’lar — qat’iy narxda',
     premium: 'Eng noyob va maxsus kombinatsiyalar',
     gold: 'Chiroyli va tanilgan kombinatsiyalar',
     silver: 'Esda qoladigan raqamlar',
@@ -48,7 +48,7 @@ const TIER_HINT = {
   },
 };
 const TIER_PRICE_TEXT = {
-  uz: { exclusive: 'Auksionda', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
+  uz: { exclusive: '490 000 dan', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
   ru: { exclusive: 'На аукционе', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
   en: { exclusive: 'At auction', premium: '199,000', gold: '149,000', silver: '99,000', free: '49,000' },
 };
@@ -271,25 +271,23 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 />
               </Interactive3DCard>
               <div className="text-3xl font-extrabold tracking-tight">
-                {calcInfo?.tier === 'exclusive' ? t('Auksionda') : (calcInfo ? fmt(calcInfo.total) : '—')}
-                {calcInfo && calcInfo.tier !== 'exclusive' && <span className="text-base font-medium text-white/60"> {t("so'm")}</span>}
+                {calcInfo ? fmt(calcInfo.total) : '—'}
+                {calcInfo && <span className="text-base font-medium text-white/60"> {t("so'm")}</span>}
               </div>
               <div className="mt-1 text-xs uppercase tracking-widest text-white/45">{t('Jami narx')}</div>
 
-              {calcInfo?.tier === 'exclusive' ? (
-                <button type="button" className="btn btn-outline-gold mt-5 w-full" onClick={() => { window.location.href = '/auksion'; }}>
-                  {t("Auksion bo'limiga o'tish")}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-gold mt-5 w-full"
-                  disabled={!calcParsed || calcTaken}
-                  onClick={() => setModalCode(calcParsed.code)}
-                >
-                  {!calcParsed ? t('Avval NFC ID kiriting') : calcTaken ? t('Bu NFC ID band') : t("Bandlash — {n} so'm", { n: fmt(calcInfo.total) })}
-                </button>
-              )}
+              {/* AUKSION BEKOR QILINDI (2026-09): ilgari ekskluziv kod
+                  uchun bu yerda "Auksion bo'limiga o'tish" tugmasi
+                  chiqardi. Endi ekskluziv ham qat'iy narxda, oddiy
+                  bandlash oqimi bilan sotiladi. */}
+              <button
+                type="button"
+                className="btn btn-gold mt-5 w-full"
+                disabled={!calcParsed || calcTaken}
+                onClick={() => setModalCode(calcParsed.code)}
+              >
+                {!calcParsed ? t('Avval NFC ID kiriting') : calcTaken ? t('Bu NFC ID band') : t("Bandlash — {n} so'm", { n: fmt(calcInfo.total) })}
+              </button>
             </div>
           </div>
         </div>
@@ -308,7 +306,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                 <div className="font-mono text-lg font-bold tracking-widest">{ex.code}</div>
                 <div className="mt-1 text-[16px] text-white/55">{ex.note}</div>
                 <div className="mt-3 text-sm font-semibold" style={{ color: TIER_COLOR[info.tier] }}>
-                  {info.tier === 'exclusive' ? t('Faqat auksion') : t("{n} so'm", { n: fmt(info.total) })}
+                  {t("{n} so'm", { n: fmt(info.total) })}
                 </div>
               </div>
             );

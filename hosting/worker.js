@@ -1,3 +1,8 @@
+// Ekskluziv narxlar — src/lib/exclusivePricing.js dan GENERATSIYA qilingan
+// nusxa (scripts/gen-exclusive-pricing.mjs). Fayl `hosting/` ichida
+// bo'lgani uchun import qilish mumkin: build qoidasi faqat `src/` dan
+// importni taqiqlaydi. Narx ro'yxatlari shu sabab bir marta yoziladi.
+import { exclusiveLevel, companyPremiumLevel, EXCLUSIVE_PRICE, COMPANY_PREMIUM_PRICE } from './exclusive-pricing.generated.js';
 import * as apiAuth from './api/auth.js';
 import * as apiAccount from './api/account.js';
 import * as apiCatalog from './api/catalog.js';
@@ -2560,7 +2565,9 @@ function personalTierFromCode(letters, digits) {
 // bo'lishi shart — Bronza(free)=49000, Silver=99000, Gold=149000,
 // Premium=199000, Exclusive=null (to'g'ridan-to'g'ri sotilmaydi, faqat
 // auksion orqali).
-const PERSONAL_TIER_PRICE = { exclusive: null, premium: 199000, gold: 149000, silver: 99000, free: 49000 };
+// exclusive: null EMAS — auksion bekor qilindi. 490 000 — eng past
+// ekskluziv daraja ("...dan boshlanadi"); aniq narx exclusiveLevel()dan.
+const PERSONAL_TIER_PRICE = { exclusive: 490000, premium: 199000, gold: 149000, silver: 99000, free: 49000 };
 
 // Kod pullik shaxsiy NFC ID sifatida sotib olinishi mumkinmi? Bloklangan
 // prefiks (GOD...) yoki avtomatik-bepul 8 xonali profil ID shakli
@@ -2612,6 +2619,13 @@ function personalPriceForCode(rawCode) {
         return { total, tier, base: total };
       })();
   if (priceOv != null) return { ...base, total: priceOv, base: priceOv, priceOverride: true };
+  // EKSKLYUZIV — aniq narx darajalar jadvalidan (src/lib/pricing.js
+  // priceForCode() bilan AYNAN bir xil tartib). PERSONAL_TIER_PRICE dagi
+  // 490 000 faqat "dan boshlanadi" ko'rsatkichi.
+  if (base.tier === 'exclusive') {
+    const lvl = exclusiveLevel(c);
+    if (lvl) return { ...base, total: lvl.price, base: lvl.price, level: lvl.level };
+  }
   return base;
 }
 
@@ -2644,7 +2658,13 @@ function personalPurchaseQuote(rawCode) {
   if (c.length !== 6 || !STD_CODE_RE.test(c)) return { purchasable: false, reason: 'not_purchasable' };
   if (!isPersonalCodePurchasable(c)) return { purchasable: false, reason: 'not_purchasable' };
   const { tier } = personalPriceForCode(c);
-  if (tier === 'exclusive') return { purchasable: false, reason: 'exclusive_auction_only', tier };
+  if (tier === 'exclusive') {
+    // AUKSION BEKOR QILINDI (2026-09). Avval bu yerda
+    // `exclusive_auction_only` qaytardi va kod sotilmasdi; endi har bir
+    // ekskluziv kodning qat'iy narxi bor (490 000 dan 4 490 000 gacha).
+    const lvl = exclusiveLevel(c);
+    return { purchasable: true, tier, amount: lvl ? lvl.price : EXCLUSIVE_PRICE.level_5, level: lvl ? lvl.level : 'level_5' };
+  }
   const amount = PERSONAL_TIER_PRICE[tier];
   return { purchasable: true, tier, amount };
 }
