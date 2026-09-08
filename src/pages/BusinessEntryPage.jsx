@@ -4,6 +4,14 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
 import { listMyCompanies, COMPANY_STATUS } from '../lib/company.js';
 import logo from '../assets/logo-128.png';
+import NfcCard from '../components/NfcCard.jsx';
+import Interactive3DCard from '../components/Interactive3DCard.jsx';
+// `.cw-page` / `.cw-header` uslublari SHU FAYLDA. Import qilinmasa
+// sarlavha uslubsiz — logotip ulkan, yozuvlar bir-birining ostiga
+// tushib qolgan holda chiqadi (egasi 2026-09 da aynan shuni ko'rsatdi):
+// avval bu CSS faqat boshqa kompaniya sahifalari bilan yuklanardi.
+import '../company-system.css';
+import './business-entry.css';
 
 // NFCSTORE BUSINESS — kompaniyalar uchun ALOHIDA KIRISH ESHIGI (/business).
 //
@@ -52,38 +60,58 @@ export default function BusinessEntryPage() {
     return (
       <main className="cw-page">
         {head}
-        <section className="mx-auto w-full max-w-3xl px-4 pb-20 pt-10 sm:px-6">
-          <span className="vz-kicker">{t('NFCSTORE BUSINESS')}</span>
-          <h1 className="font-display mt-3 text-4xl font-semibold leading-tight sm:text-5xl">
-            {t('Kompaniyangiz uchun')}<br />
-            <span style={{ color: 'var(--vz-gold)' }}>{t('alohida kabinet')}</span>
-          </h1>
-          <p className="mt-4 max-w-xl text-[15px] leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>
-            {t('Company ID, kompaniya NFC profili, katalog va jamoa — hammasi bitta joyda. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')}
-          </p>
+        <section className="be-hero">
+          <div className="min-w-0">
+            <span className="be-kicker">{t('NFCSTORE BUSINESS')}</span>
+            <h1 className="be-title">
+              {t('Kompaniyangiz uchun')}
+              <span>{t('alohida kabinet')}</span>
+            </h1>
+            <p className="be-lead">
+              {t('Company ID, kompaniya NFC profili, katalog va jamoa — hammasi bitta joyda. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')}
+            </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            {/* `next` — kirgandan keyin BIZNES kabinetga qaytadi, shaxsiy
-                kabinetga emas. AuthPage shu parametrni o'qiydi. */}
-            <button type="button" className="btn btn-gold min-h-12 px-6" onClick={() => navigate('/register?next=/business')}>
-              {t('Kompaniya ochish')}
-            </button>
-            <button type="button" className="btn btn-ghost-vz min-h-12 px-6" onClick={() => navigate('/login?next=/business')}>
-              {t('Kirish')}
-            </button>
+            <div className="be-actions">
+              {/* `next` — kirgandan keyin BIZNES kabinetga qaytadi, shaxsiy
+                  kabinetga emas. AuthPage shu parametrni o'qiydi. */}
+              <button type="button" className="btn btn-gold min-h-12 px-7" onClick={() => navigate('/register?next=/business')}>
+                {t('Kompaniya ochish')}
+              </button>
+              <button type="button" className="btn btn-ghost-vz min-h-12 px-7" onClick={() => navigate('/login?next=/business')}>
+                {t('Kirish')}
+              </button>
+            </div>
+
+            <ol className="be-steps">
+              {[
+                ['01', t('ID tanlash')], ['02', t('Admin tekshiruvi')],
+                ['03', t("To'lov")], ['04', t('Faollashadi')],
+              ].map(([n, label]) => (
+                <li key={n}><b>{n}</b><span>{label}</span></li>
+              ))}
+            </ol>
           </div>
 
-          <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ['01', t('ID tanlash')], ['02', t('Admin tekshiruvi')],
-              ['03', t("To'lov")], ['04', t('Faollashadi')],
-            ].map(([n, label]) => (
-              <li key={n} className="vz-card p-4">
-                <div className="font-mono text-xs" style={{ color: 'var(--vz-gold-2)' }}>{n}</div>
-                <div className="mt-1 text-sm font-semibold">{label}</div>
-              </li>
-            ))}
-          </ol>
+          {/* O'NG USTUN — kompaniya NFC kartasi va NFC signali.
+              Avval bu yerda hech narsa yo'q edi va sahifa katta ekranda
+              o'rtada kichkina bo'lib qolardi. */}
+          <div className="be-visual" aria-hidden="true">
+            <div className="be-waves">
+              {/* 10 ta to'lqin: bir xil halqa, faqat kechikishi boshqa —
+                  shundan uzluksiz signal tuyg'usi hosil bo'ladi. */}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <span key={i} className="be-wave" style={{ animationDelay: `${(i * 0.5).toFixed(2)}s` }} />
+              ))}
+            </div>
+            <div className="be-card">
+              <Interactive3DCard>
+                {/* Namunaviy kompaniya kartasi. Kod haqiqiy Company ID
+                    shakliga o'xshasin — "NFCSTORE" uzun bo'lib, karta
+                    ustidagi brend yozuvi bilan takrorlanib ketardi. */}
+                <NfcCard code="BIZ001" name={t('KOMPANIYANGIZ')} finish="black" size="lg" rim />
+              </Interactive3DCard>
+            </div>
+          </div>
         </section>
       </main>
     );
@@ -93,11 +121,11 @@ export default function BusinessEntryPage() {
   return (
     <main className="cw-page">
       {head}
-      <section className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 sm:px-6">
-        <span className="vz-kicker">{t('BIZNES KABINET')}</span>
-        <h1 className="font-display mt-2 text-3xl font-semibold">{t('Kompaniyalaringiz')}</h1>
+      <section className="be-panel">
+        <span className="be-kicker">{t('BIZNES KABINET')}</span>
+        <h1 className="be-title" style={{ fontSize: 'clamp(30px, 3.4vw, 44px)' }}>{t('Kompaniyalaringiz')}</h1>
 
-        {companies === null && <div className="mt-6 vz-skel h-20 w-full" />}
+        {companies === null && <div className="be-list"><div className="vz-skel h-16 w-full" /><div className="vz-skel h-16 w-full" /></div>}
         {err && <div role="alert" className="alert alert-error mt-6 py-2 text-sm"><span>{t("Ro'yxatni yuklab bo'lmadi. Qayta urinib ko'ring.")}</span></div>}
 
         {companies !== null && companies.length === 0 && !err && (
@@ -110,27 +138,25 @@ export default function BusinessEntryPage() {
         )}
 
         {companies !== null && companies.length > 0 && (
-          <div className="mt-6 space-y-2.5">
+          <div className="be-list">
             {companies.map((c) => (
               <button
                 key={c.companyId}
                 type="button"
                 onClick={() => navigate(`/workspace/${String(c.companyId).toLowerCase()}`)}
-                className="vz-card vz-tap flex w-full items-center justify-between gap-3 p-4 text-left"
+                className="be-item vz-tap"
               >
                 <span className="min-w-0">
-                  <b className="block truncate">{c.displayName || c.companyId}</b>
-                  <span className="block font-mono text-xs" style={{ color: 'var(--vz-ink-2)' }}>{c.companyId}</span>
+                  <b className="truncate">{c.displayName || c.companyId}</b>
+                  <small>{c.companyId}</small>
                 </span>
-                <span className="shrink-0 text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>
-                  {t(COMPANY_STATUS[c.status]) || c.status} →
-                </span>
+                <i>{t(COMPANY_STATUS[c.status]) || c.status} →</i>
               </button>
             ))}
           </div>
         )}
 
-        <button type="button" className="btn btn-gold mt-6 min-h-12 px-6" onClick={() => navigate('/company/create')}>
+        <button type="button" className="btn btn-gold mt-7 min-h-12 px-7" onClick={() => navigate('/company/create')}>
           {t('Yangi Company ID')}
         </button>
       </section>
