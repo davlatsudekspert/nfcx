@@ -403,7 +403,7 @@ export function renderPrintDataUrl(state) {
   const canvas = document.createElement('canvas');
   canvas.width = PRINT_W;
   canvas.height = PRINT_H;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.scale(PRINT_W / EDIT_W, PRINT_H / EDIT_H);
   renderCard(ctx, EDIT_W, EDIT_H, { ...state, cornerRadius: 0 });
   return canvas.toDataURL('image/png');
@@ -500,7 +500,7 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    hitboxesRef.current = renderCard(canvas.getContext('2d'), canvas.width, canvas.height, buildState()) || {};
+    hitboxesRef.current = renderCard(canvas.getContext('2d', { willReadFrequently: true }), canvas.width, canvas.height, buildState()) || {};
   }, [buildState]);
 
   // Ota komponent (buyurtma oynasi) joriy maketni bosma sifatida olishi
@@ -577,7 +577,7 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const downloadBoth = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     renderCard(ctx, canvas.width, canvas.height, buildState({ side: 'front' }));
     let link = document.createElement('a');

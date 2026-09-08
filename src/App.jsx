@@ -14,33 +14,70 @@ import HomePage from './pages/HomePage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import { MESSAGING_ENABLED } from './lib/features.js';
 
-const AuthPage = lazy(() => import('./pages/AuthPage.jsx'));
-const AccountPage = lazy(() => import('./pages/AccountPage.jsx'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'));
-const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
-const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage.jsx'));
-const NewsPage = lazy(() => import('./pages/NewsPage.jsx'));
-const CatalogPage = lazy(() => import('./pages/CatalogPage.jsx'));
-const RankingPage = lazy(() => import('./pages/RankingPage.jsx'));
-const CompaniesPage = lazy(() => import('./pages/CompaniesPage.jsx'));
-const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
-const GiftsPage = lazy(() => import('./pages/GiftsPage.jsx'));
-const FaqPage = lazy(() => import('./pages/FaqPage.jsx'));
-const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
-const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
-const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
-const AuctionsPage = lazy(() => import('./pages/AuctionsPage.jsx'));
-const AuctionPage = lazy(() => import('./pages/AuctionPage.jsx'));
-const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
-const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx'));
-const PaymentsPage = lazy(() => import('./pages/PaymentsPage.jsx'));
-const CardDesignerPage = lazy(() => import('./pages/CardDesignerPage.jsx'));
-const BusinessWorkspacePage = lazy(() => import('./pages/BusinessWorkspacePage.jsx'));
-const BusinessPublicDemoPage = lazy(() => import('./pages/BusinessPublicDemoPage.jsx'));
-const CompanyCreatePage = lazy(() => import('./pages/CompanyCreatePage.jsx'));
-const CompanyWorkspacePage = lazy(() => import('./pages/CompanyWorkspacePage.jsx'));
-const CompanyQuickProfilePage = lazy(() => import('./pages/CompanyQuickProfilePage.jsx'));
-const CompanyPublicPage = lazy(() => import('./pages/CompanyPublicPage.jsx'));
+// ═══════════════════════════════════════════════════════════════════════
+// SAHIFA BO'LAGI YUKLANMAGANDA — SAYT O'ZINI TIKLAYDI (2026-09)
+//
+// Sayt bo'laklarga bo'lib yuklanadi va har bir bo'lak nomida uning
+// mazmuni bo'yicha hisoblangan belgi turadi (`CatalogPage-DKJ-QXX4.js`).
+// Sayt yangilanganda bu belgilar o'zgaradi va ESKI bo'laklar o'chadi.
+//
+// Muammo shu yerda: brauzerda ochiq turgan tab hali ESKI `index.html`
+// ni ushlab turadi. Odam "Katalog" ni bosganda u endi mavjud bo'lmagan
+// eski bo'lakni so'raydi, javob 404/500 keladi va React'ning
+// `lazy()` si xato beradi. Ekran esa oq bo'lib qoladi — konsolda
+// "Failed to fetch dynamically imported module" yozuvi bilan.
+//
+// Yechim: bunday xatoda sahifa BIR MARTA o'zi qayta yuklanadi va yangi
+// `index.html` ni oladi. Odam uchun bu shunchaki sahifa ochilgandek
+// ko'rinadi.
+//
+// Nega vaqt bo'yicha cheklov: agar bo'lak boshqa sabab bilan (internet
+// uzilgan, server ishlamayapti) yuklanmasa, cheksiz qayta yuklanish
+// halqasi hosil bo'lardi. Shuning uchun oxirgi urinishdan keyin 30
+// soniya ichida ikkinchi marta qayta yuklanmaydi — o'shanda xato
+// odatdagidek yuqoriga uzatiladi.
+const CHUNK_RELOAD_KEY = 'nfcx:chunk-reload';
+
+function lazyPage(load) {
+  return lazy(() => load().catch((err) => {
+    let last = 0;
+    try { last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0); } catch { /* jim */ }
+    if (Date.now() - last < 30000) throw err;
+    try { sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now())); } catch { /* jim */ }
+    window.location.reload();
+    // Sahifa qayta yuklanguncha React'ga hech narsa bermaymiz: aks
+    // holda u bir lahzaga xato ekranini ko'rsatib ulgurardi.
+    return new Promise(() => {});
+  }));
+}
+
+const AuthPage = lazyPage(() => import('./pages/AuthPage.jsx'));
+const AccountPage = lazyPage(() => import('./pages/AccountPage.jsx'));
+const SettingsPage = lazyPage(() => import('./pages/SettingsPage.jsx'));
+const PricingPage = lazyPage(() => import('./pages/PricingPage.jsx'));
+const HowItWorksPage = lazyPage(() => import('./pages/HowItWorksPage.jsx'));
+const NewsPage = lazyPage(() => import('./pages/NewsPage.jsx'));
+const CatalogPage = lazyPage(() => import('./pages/CatalogPage.jsx'));
+const RankingPage = lazyPage(() => import('./pages/RankingPage.jsx'));
+const CompaniesPage = lazyPage(() => import('./pages/CompaniesPage.jsx'));
+const NotificationsPage = lazyPage(() => import('./pages/NotificationsPage.jsx'));
+const GiftsPage = lazyPage(() => import('./pages/GiftsPage.jsx'));
+const FaqPage = lazyPage(() => import('./pages/FaqPage.jsx'));
+const ContactPage = lazyPage(() => import('./pages/ContactPage.jsx'));
+const TermsPage = lazyPage(() => import('./pages/TermsPage.jsx'));
+const PrivacyPage = lazyPage(() => import('./pages/PrivacyPage.jsx'));
+const AuctionsPage = lazyPage(() => import('./pages/AuctionsPage.jsx'));
+const AuctionPage = lazyPage(() => import('./pages/AuctionPage.jsx'));
+const AdminPage = lazyPage(() => import('./pages/AdminPage.jsx'));
+const MessagesPage = lazyPage(() => import('./pages/MessagesPage.jsx'));
+const PaymentsPage = lazyPage(() => import('./pages/PaymentsPage.jsx'));
+const CardDesignerPage = lazyPage(() => import('./pages/CardDesignerPage.jsx'));
+const BusinessWorkspacePage = lazyPage(() => import('./pages/BusinessWorkspacePage.jsx'));
+const BusinessPublicDemoPage = lazyPage(() => import('./pages/BusinessPublicDemoPage.jsx'));
+const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx'));
+const CompanyWorkspacePage = lazyPage(() => import('./pages/CompanyWorkspacePage.jsx'));
+const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfilePage.jsx'));
+const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
