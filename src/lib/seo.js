@@ -4,7 +4,9 @@
 
 export const SITE_NAME = 'NFCSTORE.UZ';
 export const SITE_ORIGIN = 'https://nfcstore.uz';
-export const DEFAULT_IMAGE = `${SITE_ORIGIN}/logo-512.png`;
+// Ulashish rasmi — 1200x630 keng banner (index.html izohiga qarang).
+// Profil sahifalarida u foydalanuvchining avatariga almashadi.
+export const DEFAULT_IMAGE = `${SITE_ORIGIN}/og-cover.png`;
 
 function ensureMeta(attr, key) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
