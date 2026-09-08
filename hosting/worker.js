@@ -4847,6 +4847,137 @@ async function adminAuthApi(request, env, url) {
 
 // ---------- admin: everything past this point requires a session ----------
 
+// ---------- Ulashilgan yangilik havolasi uchun "oldindan ko'rinish" ----------
+//
+// MUAMMO: Telegram, WhatsApp, Facebook, Yandex kabi xizmatlar havolani
+// ko'rsatishdan oldin sahifani O'ZI yuklab oladi, lekin JavaScript'ni
+// ISHGA TUSHIRMAYDI. Sayt esa SPA — /yangiliklar/12 uchun ham xuddi shu
+// bo'sh index.html qaytadi va undagi meta teglar umumiy (bosh sahifaniki).
+// Shu sabab har qanday yangilik havolasi bir xil sarlavha bilan, maqola
+// matnisiz va maqola rasmisiz ulashilardi. src/lib/seo.js brauzerda meta
+// teglarni yangilaydi — ammo robotlar buni ko'rmaydi.
+//
+// YECHIM: /yangiliklar/:id uchun Worker'ning O'ZI index.html'ni olib,
+// meta teglarni shu yangilikning sarlavhasi, qisqa matni va rasmi bilan
+// almashtirib beradi. Brauzer uchun hech narsa o'zgarmaydi (o'sha SPA
+// yuklanadi), robot esa to'g'ri kartochkani ko'radi.
+
+const OG_FALLBACK_IMAGE = '/og-cover.png';
+
+function ogAttrEscape(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function ogTextEscape(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Maqola matnidan kartochkaga sig'adigan qisqa parcha. Havolalar va ortiqcha
+// bo'sh qatorlar olib tashlanadi, so'zning o'rtasidan kesilmaydi.
+function ogExcerpt(body, limit = 200) {
+  const flat = String(body || '').replace(/\s+/g, ' ').trim();
+  if (flat.length <= limit) return flat;
+  const cut = flat.slice(0, limit);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > limit * 0.6 ? cut.slice(0, sp) : cut).trim() + '…';
+}
+
+function ogAbsolute(value, origin) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  return origin + (s.startsWith('/') ? s : '/' + s);
+}
+
+// index.html ichidagi ma'lum meta teglarni almashtiradi. Tegi topilmasa
+// </head> oldiga qo'shiladi — index.html kelajakda o'zgarsa ham ishlaydi.
+function ogReplaceMeta(html, attr, key, value) {
+  const tag = `<meta ${attr}="${key}" content="${ogAttrEscape(value)}" />`;
+  const re = new RegExp(`<meta[^>]*\\s${attr}="${key}"[^>]*>`, 'i');
+  if (re.test(html)) return html.replace(re, tag);
+  return html.replace(/<\/head>/i, `  ${tag}\n</head>`);
+}
+
+function ogRemoveMeta(html, attr, key) {
+  return html.replace(new RegExp(`[ \\t]*<meta[^>]*\\s${attr}="${key}"[^>]*>\\s*\\n?`, 'ig'), '');
+}
+
+// Tashqi eksport — testlar shu funksiyani to'g'ridan-to'g'ri chaqiradi.
+export function injectNewsOg(html, meta) {
+  let out = String(html || '');
+  const pageTitle = `${meta.title} — NFCSTORE`;
+  out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(pageTitle)}</title>`);
+  out = ogReplaceMeta(out, 'name', 'description', meta.description);
+  out = ogReplaceMeta(out, 'property', 'og:title', pageTitle);
+  out = ogReplaceMeta(out, 'property', 'og:description', meta.description);
+  out = ogReplaceMeta(out, 'property', 'og:type', 'article');
+  out = ogReplaceMeta(out, 'property', 'og:url', meta.url);
+  out = ogReplaceMeta(out, 'property', 'og:image', meta.image);
+  out = ogReplaceMeta(out, 'property', 'og:image:alt', meta.title);
+  out = ogReplaceMeta(out, 'name', 'twitter:card', 'summary_large_image');
+  out = ogReplaceMeta(out, 'name', 'twitter:title', pageTitle);
+  out = ogReplaceMeta(out, 'name', 'twitter:description', meta.description);
+  out = ogReplaceMeta(out, 'name', 'twitter:image', meta.image);
+  // Kanonik havola — ulashilgan manzil qidiruvda ham shu bo'lsin.
+  if (/<link[^>]*\srel="canonical"[^>]*>/i.test(out)) {
+    out = out.replace(/<link[^>]*\srel="canonical"[^>]*>/i, `<link rel="canonical" href="${ogAttrEscape(meta.url)}" />`);
+  } else {
+    out = out.replace(/<\/head>/i, `  <link rel="canonical" href="${ogAttrEscape(meta.url)}" />\n</head>`);
+  }
+  // O'lchamlar faqat umumiy og-cover.png uchun to'g'ri (1200x630). Maqola
+  // rasmi boshqa o'lchamda — noto'g'ri raqam kartochkani buzadi, shuning
+  // uchun teglar olib tashlanadi.
+  if (!meta.usesFallbackImage) {
+    out = ogRemoveMeta(out, 'property', 'og:image:width');
+    out = ogRemoveMeta(out, 'property', 'og:image:height');
+  }
+  return out;
+}
+
+// /yangiliklar/:id — SPA qobig'ini shu yangilikning meta teglari bilan
+// qaytaradi. Yangilik topilmasa yoki baza javob bermasa `null` qaytadi va
+// odatdagi statik yo'l ishlaydi (sahifa baribir ochiladi).
+async function newsShellResponse(env, url, id) {
+  let row = null;
+  try {
+    row = await env.DB.prepare(
+      `SELECT id, title, body, image_url FROM news WHERE id = ? AND published = 1`,
+    ).bind(Number(id)).first();
+  } catch (error) {
+    console.error('news og', id, error);
+    return null;
+  }
+  if (!row) return null;
+
+  const shellUrl = new URL('/', url);
+  // Sarlavhalar UZATILMAYDI: robot `if-none-match` yuborsa, ASSETS 304
+  // qaytarardi va tanasi bo'sh javobga meta teglarni qo'yib bo'lmasdi —
+  // takroriy so'rovda kartochka yana umumiy holiga qaytib qolardi.
+  const shell = await env.ASSETS.fetch(new Request(shellUrl, { method: 'GET' }));
+  if (!shell.ok) return null;
+  const html = await shell.text();
+  if (!/<\/head>/i.test(html)) return null;
+
+  const origin = url.origin;
+  const image = ogAbsolute(row.image_url, origin) || origin + OG_FALLBACK_IMAGE;
+  const out = injectNewsOg(html, {
+    title: String(row.title || 'Yangilik').trim() || 'Yangilik',
+    description: ogExcerpt(row.body) || 'NFCSTORE yangiliklari.',
+    url: `${origin}/yangiliklar/${Number(row.id)}`,
+    image,
+    usesFallbackImage: !row.image_url,
+  });
+
+  const headers = new Headers(shell.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('cache-control', 'public, max-age=300');
+  headers.delete('content-length');
+  headers.delete('etag');
+  return new Response(out, { status: 200, headers });
+}
+
 function newsRow(r) {
   return {
     id: Number(r.id), title: r.title, body: r.body || '',
@@ -6214,6 +6345,20 @@ async function handleRequest(request, env, url) {
         return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'api_unavailable' }, 503);
       }
       return json({ error: 'not_found', path: url.pathname }, 404);
+    }
+
+    // Ulashilgan yangilik havolasi (/yangiliklar/12) — Telegram/WhatsApp/
+    // Facebook botlari uchun meta teglar shu maqolaniki bo'lsin. Brauzer
+    // uchun farq yo'q: aynan o'sha SPA qobig'i qaytadi.
+    const newsShellMatch = url.pathname.match(/^\/yangiliklar\/(\d{1,12})\/?$/);
+    if (newsShellMatch && request.method === 'GET') {
+      try {
+        await ensureCoreSchema(env);
+        const shell = await newsShellResponse(env, url, newsShellMatch[1]);
+        if (shell) return shell;
+      } catch (error) {
+        console.error('news shell', url.pathname, error);
+      }
     }
 
     let response = await env.ASSETS.fetch(request);

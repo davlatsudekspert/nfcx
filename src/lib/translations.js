@@ -816,6 +816,7 @@ const DICT_BASE = {
   ' olasiz.': { ru: ' на следующее бронирование.', en: ' on your next reservation.' },
   'Nusxalash': { ru: 'Копировать', en: 'Copy' },
   'Nusxalandi!': { ru: 'Скопировано!', en: 'Copied!' },
+  'Havolani nusxalash': { ru: 'Скопировать ссылку', en: 'Copy link' },
   "Sizda {p}% chegirma kutilmoqda — keyingi bandlashda avtomatik qo'llanadi!": { ru: 'Вас ждёт скидка {p}% — она применится автоматически при следующем бронировании!', en: 'You have a {p}% discount waiting — it applies automatically on your next reservation!' },
   "Taklif qilgan do'stlaringiz": { ru: 'Приглашённые вами друзья', en: 'Friends you invited' },
   'Akkauntingiz vaqtincha bloklangan': { ru: 'Ваш аккаунт временно заблокирован', en: 'Your account is temporarily blocked' },

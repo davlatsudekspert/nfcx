@@ -1,5 +1,6 @@
 import { codeTierOverride } from './codeTiers.js';
 import { codePriceOverride } from './codePrices.js';
+import { reservedStatus } from './brandReserved.js';
 
 export const TOTAL_COMBOS = 26 * 26 * 26 * 1000;
 
@@ -27,6 +28,13 @@ export function isPurchasableCode(raw) {
   const c = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!c) return false;
   if (isBlockedCode(c)) return false;
+  // Band qilingan nomlar (taqiqlangan / brend / kripto / auksionga
+  // ajratilgan) oddiy "Sotib olish" tugmasi bilan sotilmaydi. Bu tekshiruv
+  // Worker'dagi isPersonalCodePurchasable() bilan AYNAN bir xil bo'lishi
+  // shart: aks holda sayt narx ko'rsatib turadi, server esa to'lovni rad
+  // etadi — foydalanuvchi uchun tushunarsiz xato.
+  // scripts/payme-pricing-parity-test.mjs ikkalasini solishtiradi.
+  if (reservedStatus(c)) return false;
   if (FREE_AUTO_ID_RE.test(c)) return false;
   return true;
 }

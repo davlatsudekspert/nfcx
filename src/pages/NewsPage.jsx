@@ -22,6 +22,17 @@ function newsUrl(id) {
   return `${origin}/yangiliklar/${id}`;
 }
 
+// Ulashish oynasida havola ostida ko'rinadigan qisqa parcha. Avval bu yerda
+// har doim "NFCSTORE yangiligi" turardi — qaysi yangilik ekani bilinmasdi.
+// So'zning o'rtasidan kesilmaydi.
+function shareExcerpt(text, limit = 160) {
+  const flat = String(text || '').replace(/\s+/g, ' ').trim();
+  if (flat.length <= limit) return flat;
+  const cut = flat.slice(0, limit);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > limit * 0.6 ? cut.slice(0, sp) : cut).trim() + '\u2026';
+}
+
 // Ro'yxatni to'g'ridan-to'g'ri olamiz — xatolik bilan bo'sh ro'yxatni ajratish
 // uchun (db.js dagi dbListNews xatoni yutib, [] qaytaradi).
 async function fetchNews() {
@@ -213,9 +224,19 @@ export default function NewsPage({ newsId = null }) {
                   <ShareButton
                     url={newsUrl(detail.id)}
                     title={pick(detail, 'title', lang)}
-                    text={t('NFCSTORE yangiligi')}
+                    text={shareExcerpt(pick(detail, 'body', lang)) || t('NFCSTORE yangiligi')}
                     label={t('Ulashish')}
                     className="btn btn-outline-gold btn-sm"
+                  />
+                  {/* Ba'zi brauzerlarda (masalan Yandex ish stoli) tizimning
+                      ulashish oynasi bo'sh ochiladi. Shu sabab havolani
+                      to'g'ridan-to'g'ri nusxalaydigan zaxira tugma ham bor —
+                      u har qanday brauzerda ishlaydi. */}
+                  <ShareButton
+                    url={newsUrl(detail.id)}
+                    forceCopy
+                    label={t('Havolani nusxalash')}
+                    className="btn btn-ghost-vz btn-sm"
                   />
                   <a href="/yangiliklar" onClick={(e) => go(e, '/yangiliklar')} className="btn btn-ghost-vz btn-sm">{t('Orqaga')}</a>
                 </div>
@@ -327,7 +348,7 @@ export default function NewsPage({ newsId = null }) {
                           <ShareButton
                             url={newsUrl(item.id)}
                             title={pick(item, 'title', lang)}
-                            text={t('NFCSTORE yangiligi')}
+                            text={shareExcerpt(body) || t('NFCSTORE yangiligi')}
                             className="btn btn-ghost-vz btn-sm px-2"
                           />
                         </span>

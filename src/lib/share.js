@@ -14,11 +14,15 @@
 //                 hech qanday xabar chiqarilmasligi kerak;
 //   'failed'    — nusxalash ham ishlamadi (masalan HTTPS bo'lmagan yoki
 //                 ruxsat berilmagan muhit).
-export async function shareLink({ url, title, text } = {}) {
+// `forceCopy` — tizim ulashish oynasi ochilmaydigan yoki bo'sh ochiladigan
+// brauzerlar bor (Yandex ish stoli varianti shulardan biri). Shunday holat
+// uchun "Havolani nusxalash" tugmasi kerak: u har doim ishlaydi va
+// foydalanuvchi havolani xohlagan joyiga o'zi qo'yadi.
+export async function shareLink({ url, title, text, forceCopy = false } = {}) {
   const href = String(url || '');
   if (!href) return 'failed';
 
-  if (typeof navigator !== 'undefined' && navigator.share) {
+  if (!forceCopy && typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({ url: href, ...(title ? { title } : {}), ...(text ? { text } : {}) });
       return 'shared';

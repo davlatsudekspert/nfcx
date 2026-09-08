@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { shareLink } from '../lib/share.js';
-import { IconShare, IconCheck } from './Icons.jsx';
+import { IconShare, IconCheck, IconLink } from './Icons.jsx';
 
 // "Ulashish" tugmasi.
 //
@@ -16,7 +16,9 @@ import { IconShare, IconCheck } from './Icons.jsx';
 //   text  — ulashish oynasidagi qisqa tavsif
 //   label — tugma matni; berilmasa faqat belgi chiqadi (ixcham holat)
 //   className — tashqi uslub (btn o'lchami v.h.)
-export default function ShareButton({ url, title, text, label, className = 'btn btn-ghost-vz btn-sm' }) {
+//   forceCopy — tizim oynasini chetlab o'tib to'g'ridan-to'g'ri nusxalash
+//               (ulashish oynasi ishlamaydigan brauzerlar uchun zaxira tugma)
+export default function ShareButton({ url, title, text, label, forceCopy = false, className = 'btn btn-ghost-vz btn-sm' }) {
   const { t } = useLanguage();
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -25,7 +27,7 @@ export default function ShareButton({ url, title, text, label, className = 'btn 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
   const onClick = async () => {
-    const result = await shareLink({ url, title, text });
+    const result = await shareLink({ url, title, text, forceCopy });
     // 'shared' — foydalanuvchi natijani o'zi ko'rdi;
     // 'cancelled' — o'zi bekor qildi, xabar chiqarish noto'g'ri bo'lardi.
     if (result !== 'copied' && result !== 'failed') return;
@@ -43,10 +45,10 @@ export default function ShareButton({ url, title, text, label, className = 'btn 
       type="button"
       onClick={onClick}
       className={`${className} min-h-11 gap-2`}
-      aria-label={label ? undefined : t('Ulashish')}
-      title={t('Ulashish')}
+      aria-label={label ? undefined : t(forceCopy ? 'Havolani nusxalash' : 'Ulashish')}
+      title={t(forceCopy ? 'Havolani nusxalash' : 'Ulashish')}
     >
-      {done ? <IconCheck /> : <IconShare />}
+      {done ? <IconCheck /> : forceCopy ? <IconLink /> : <IconShare />}
       {caption && <span>{caption}</span>}
     </button>
   );
