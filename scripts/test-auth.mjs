@@ -198,6 +198,37 @@ const noLimit = () => sqlite.prepare(`DELETE FROM rate_limits`).run();
   check('register: admin activity logged', sqlite.prepare(`SELECT action FROM admin_activity_log ORDER BY id DESC LIMIT 1`).get()?.action, 'user_deleted');
 }
 
+// ===== telefon ko'rinishi (xalqaro) =====
+// Bepul profil ochish uchun DAVLAT ahamiyatsiz: Rossiya, Qozog'iston,
+// Qirg'iziston va boshqa raqamlar ham qabul qilinadi. Lekin qo'lda
+// yozilgan mahalliy ko'rinishlar TO'G'RILANISHI yoki RAD ETILISHI
+// shart — aks holda akkaunt yaratiladi-yu, egasi hech qachon kira
+// olmaydi (Telegram mos kelmaydi, tiklash ishlamaydi).
+{
+  const phoneOf = (id) => sqlite.prepare(`SELECT phone FROM users WHERE id = ?`).get(id).phone;
+  const tryReg = async (input, email) => {
+    sqlite.prepare(`DELETE FROM rate_limits`).run();
+    const r = await post('/api/auth/register', { password: 'secret123', phone: input, email, tosAccepted: true });
+    const b = await r.json();
+    return { status: r.status, phone: r.status === 201 ? phoneOf(b.user.id) : null };
+  };
+
+  // Davlat kodisiz 9 xona — O'zbekiston. Eng ko'p uchraydigan yozuv.
+  check("9 xonali raqam -> +998 qo'shiladi", (await tryReg('90 111 22 33', 'uz1@t.local')).phone, '+998901112233');
+  // Xalqaro raqamlar — o'z holicha.
+  check('Rossiya +7', (await tryReg('+7 916 111 22 33', 'ru@t.local')).phone, '+79161112233');
+  check("Qozog'iston 8 prefiksi -> +7", (await tryReg('8 705 111 22 33', 'kz@t.local')).phone, '+77051112233');
+  check("Qirg'iziston +996", (await tryReg('+996 700 111 222', 'kg@t.local')).phone, '+996700111222');
+  check('"00" xalqaro chiqish kodi -> "+"', (await tryReg('00 49 30 1112233', 'de@t.local')).phone, '+49301112233');
+  check('998 bilan, plyussiz', (await tryReg('998 90 444 55 66', 'uz2@t.local')).phone, '+998904445566');
+
+  // Noldan boshlangan mahalliy yozuv — RAD ETILADI. Hech bir davlat
+  // kodi noldan boshlanmaydi, ya'ni buni taxmin bilan tuzatib bo'lmaydi.
+  check('nol bilan boshlangan raqam rad etiladi', (await tryReg('0700 111 222', 'bad1@t.local')).status, 422);
+  check('juda qisqa raqam rad etiladi', (await tryReg('12345', 'bad2@t.local')).status, 422);
+  check('harf aralashgan raqam rad etiladi', (await tryReg('+998abc12345', 'bad3@t.local')).status, 422);
+}
+
 // ===== password reset =====
 {
   const before = tgSends.length;

@@ -271,7 +271,7 @@ export default function AuthPage({ mode }) {
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                   placeholder="+998901234567" autoComplete="tel" required
                   className="input input-bordered mt-1 w-full bg-base-100" />
-                <span className="mt-1 block text-xs text-base-content/40">{t('Shu raqam bilan kirasiz.')}</span>
+                <span className="mt-1 block text-xs text-base-content/40">{t('Shu raqam bilan kirasiz. Boshqa davlat raqami bo‘lsa, davlat kodi bilan yozing: +7, +996…')}</span>
               </label>
             )}
             <label className="form-control">

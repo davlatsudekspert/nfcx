@@ -2087,12 +2087,6 @@ async function getRecordOwner(env, code) {
 
 function cleanStr(v, max) { return typeof v === 'string' ? v.trim().slice(0, max) : ''; }
 
-// Telefon raqamini yagona ko'rinishga keltiradi ("+998901234567").
-// Bo'shliq/chiziq/qavs olib tashlanadi, "+" qo'shiladi. Raqam
-// tanilmasa — bo'sh satr (chaqiruvchi buni "telefon emas" deb biladi).
-//
-// Kirish maydoni endi email VA telefonni qabul qiladi, shuning uchun bu
-// funksiya "bu telefonmi?" degan savolga ham javob beradi.
 // ═══════════════════════════════════════════════════════════════════════
 // EMAILSIZ AKKAUNT — ICHKI (KO'RINMAS) MANZIL (2026-09)
 //
@@ -2120,11 +2114,49 @@ function publicEmailD1(email) {
   return isPlaceholderEmailD1(email) ? '' : String(email || '');
 }
 
+// Telefon raqamini YAGONA xalqaro ko'rinishga keltiradi ("+998901234567").
+// Raqam tanilmasa — bo'sh satr (chaqiruvchi buni "telefon emas" deb
+// biladi). Kirish maydoni email VA telefonni qabul qilgani uchun bu
+// funksiya "bu telefonmi?" degan savolga ham javob beradi.
+//
+// BOSHQA DAVLATLAR OCHIQ: +7 (Rossiya/Qozog'iston), +996 (Qirg'iziston)
+// va boshqa har qanday davlat kodi qabul qilinadi. Bepul profil ochish
+// uchun davlatning ahamiyati yo'q. (To'lov va jismoniy karta yetkazish
+// tabiiy ravishda O'zbekiston bilan cheklangan, lekin bu ro'yxatdan
+// o'tishga to'sqinlik qilmasligi kerak.)
+//
+// QO'LDA YOZILGAN RAQAMLAR — asosiy xavf shu yerda edi:
+//
+//   "901234567"  -> avval "+901234567" bo'lardi. Bu HECH KIMNING raqami
+//                   emas: o'zbek odam raqamini odatda aynan shunday,
+//                   davlat kodisiz yozadi. Akkaunt yaratilardi, lekin
+//                   Telegram hech qachon mos kelmasdi va odam parolini
+//                   unutsa butunlay qamalib qolardi.
+//   "0049..."    -> "+0049..." bo'lardi ("00" — xalqaro chiqish kodi,
+//                   ya'ni "+" ning o'zi).
+//   "8705..."    -> "+8705..." bo'lardi; "8" — Rossiya/Qozog'istondagi
+//                   shaharlararo prefiks, ya'ni bu "+7705...".
+//   "0700..."    -> "+0700..." bo'lardi. HECH BIR davlat kodi noldan
+//                   boshlanmaydi. Buni taxmin bilan tuzatib bo'lmaydi
+//                   (0 prefiksi o'nlab davlatda bor), shuning uchun RAD
+//                   ETILADI va odam o'zi to'g'rilaydi.
 function normalizePhoneD1(v) {
-  let phone = cleanStr(v, 24).replace(/[\s\-()]/g, '');
-  if (!phone) return '';
-  if (!phone.startsWith('+')) phone = '+' + phone;
-  return /^\+\d{9,15}$/.test(phone) ? phone : '';
+  let digits = cleanStr(v, 28).replace(/[\s\-().]/g, '');
+  if (!digits) return '';
+  const hadPlus = digits.startsWith('+');
+  if (hadPlus) digits = digits.slice(1);
+  if (!/^\d+$/.test(digits)) return '';
+
+  if (!hadPlus) {
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    else if (digits.length === 9) digits = '998' + digits;
+    else if (digits.length === 11 && digits.startsWith('8')) digits = '7' + digits.slice(1);
+  }
+
+  // Birinchi raqam 0 bo'la olmaydi — hech bir davlat kodi noldan
+  // boshlanmaydi. Shu shart mahalliy yozuvlarni jimgina qabul qilib,
+  // keyin akkauntni yo'qotib qo'yishdan saqlaydi.
+  return /^[1-9]\d{8,14}$/.test(digits) ? '+' + digits : '';
 }
 function recSafeUrl(v) {
   const s = cleanStr(v, 500);
