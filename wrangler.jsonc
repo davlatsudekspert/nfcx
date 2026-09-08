@@ -10,6 +10,22 @@
   // hosting/worker.js'dagi /api/* logikasi HECH QACHON ishga tushmasdi.
   "main": "./dist/server/index.js",
   "compatibility_date": "2026-08-31",
+  // SMART PLACEMENT (2026-09, tezlik).
+  //
+  // Muammo: Worker odatda FOYDALANUVCHIGA eng yaqin serverda ishlaydi,
+  // D1 bazasi esa bitta mintaqada turadi. Toshkentdan qaralganda har bir
+  // baza so'rovi uzoq masofaga borib keladi (~100-300 ms). Bitta sahifa
+  // 5-6 ta so'rov qilsa, shuncha marta shu yo'l bosib o'tiladi va sayt
+  // "ochilishi qiyin" bo'lib qoladi.
+  //
+  // "smart" rejimida Cloudflare Worker'ni BAZAGA yaqin joyda ishga
+  // tushiradi: uzoq yo'l foydalanuvchi bilan bir marta bosib o'tiladi,
+  // baza so'rovlari esa qisqa masofada qoladi.
+  //
+  // Bu XAVFSIZ: Cloudflare o'zi o'lchaydi va foyda bo'lmasa avvalgidek
+  // chekkada qoldiradi. Statik fayllar (rasm, JS, CSS) bunga umuman
+  // bog'liq emas — ular avvalgidek eng yaqin serverdan beriladi.
+  "placement": { "mode": "smart" },
   // Worker loglari. Dashboard'dagi tugmachani yoqish YETARLI EMAS: bu
   // fayl deploy'da sozlamalarning yagona manbai bo'lgani uchun, bu yerda
   // yozilmasa har bir deploy loglarni QAYTA O'CHIRIB qo'yadi (Cloudflare

@@ -1355,8 +1355,12 @@ async function ensureCoreSchema(env) {
   // order matters: if these ran after `await coreSchemaReady`, a rejected
   // batch would throw right there and they'd never be reached at all,
   // defeating the whole point of decoupling them.
-  await ensureAdminAuthTables(env);
-  await ensureTotpReplayColumn(env);
+  // Uchalasi BIR VAQTDA boshlanadi (2026-09, tezlik): ular bir-biriga
+  // bog'liq emas (har biri boshqa jadvalga tegadi), avval esa ketma-ket
+  // kutilardi. Xatolarning ajratilganligi saqlanadi — har biri o'z
+  // promise'ida, biri yiqilsa ikkinchisi baribir bajariladi.
+  const adminTables = ensureAdminAuthTables(env);
+  const totpColumn = ensureTotpReplayColumn(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -1566,7 +1570,9 @@ async function ensureCoreSchema(env) {
       )`),
     ]).catch((error) => { coreSchemaReady = null; throw error; });
   }
-  await coreSchemaReady;
+  // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
+  // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
+  await Promise.all([adminTables, totpColumn, coreSchemaReady]);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -1639,7 +1645,15 @@ async function ensureAdminAuthTables(env) {
       await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "admin_totp_setup_pending" (
         "admin_id" INTEGER PRIMARY KEY NOT NULL, "secret" TEXT NOT NULL, "created_at" TEXT NOT NULL
       )`).run().catch(() => {});
-      for (const stmt of [
+      // ALTER'lar BIR VAQTDA yuboriladi (2026-09, tezlik). Avval ular
+      // ketma-ket edi: har biri bazaga borib-kelardi va yangi Worker
+      // nusxasining BIRINCHI so'rovi 11 ta borib-kelishni kutardi.
+      // Toshkentdan bu bir necha soniyaga cho'zilardi. Ular bir-biriga
+      // bog'liq emas (har biri boshqa ustun, xatosi yutiladi), shuning
+      // uchun birga yuborilishi mumkin — endi 11 emas, 1 ta kutish.
+      // `batch()` ishlatilmaydi: u atomik, ya'ni allaqachon mavjud
+      // ustun uchun chiqqan bitta xato butun to'plamni yiqitardi.
+      await Promise.all([
         `ALTER TABLE admin_sessions ADD COLUMN admin_id INTEGER`,
         `ALTER TABLE admin_sessions ADD COLUMN role TEXT`,
         `ALTER TABLE admin_sessions ADD COLUMN abs_exp TEXT`,
@@ -1651,9 +1665,7 @@ async function ensureAdminAuthTables(env) {
         `ALTER TABLE admin_2fa_pending ADD COLUMN expires_at TEXT`,
         `ALTER TABLE admin_totp_setup_pending ADD COLUMN secret TEXT`,
         `ALTER TABLE admin_totp_setup_pending ADD COLUMN created_at TEXT`,
-      ]) {
-        await env.DB.prepare(stmt).run().catch(() => {});
-      }
+      ].map((stmt) => env.DB.prepare(stmt).run().catch(() => {})));
     })();
   }
   await adminAuthTablesReady;
