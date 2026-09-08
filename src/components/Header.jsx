@@ -205,6 +205,13 @@ export default function Header() {
           {user && (
             <button className="btn btn-ghost btn-sm hidden 2xl:inline-flex" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
           )}
+          {/* BIZNES KABINETGA O'TISH (2026-09). Kompaniya bo'limi shaxsiy
+              profildan ajratilgach, unga kirish yo'li ko'rinib turishi
+              kerak — aks holda odam "kompaniyamga qanday kiraman?" deb
+              qoladi (egasining aynan shu shikoyati). */}
+          {user && (
+            <button className="btn btn-ghost btn-sm hidden lg:inline-flex" onClick={() => go('/business')}>{t('Biznes kabinet')}</button>
+          )}
           {installable && (
             <button className="btn btn-ghost btn-circle btn-sm" onClick={install} title={t('Ilovani o‘rnatish')} aria-label={t('Ilovani o‘rnatish')}><IconInstall /></button>
           )}
@@ -263,6 +270,12 @@ export default function Header() {
               {user && MESSAGING_ENABLED && (
                 <button onClick={() => go('/xabarlar')} className="min-h-11 cursor-pointer">
                   <IconChat /> {t('Xabarlar')} {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
+                </button>
+              )}
+              {/* Telefondagi menyuda ham biznes kabinet ko'rinsin. */}
+              {user && (
+                <button onClick={() => go('/business')} className="min-h-11 cursor-pointer">
+                  {t('Biznes kabinet')}
                 </button>
               )}
               {user ? (

@@ -817,6 +817,26 @@ const DICT_BASE = {
   'Nusxalash': { ru: 'Копировать', en: 'Copy' },
   'Nusxalandi!': { ru: 'Скопировано!', en: 'Copied!' },
   'Havolani nusxalash': { ru: 'Скопировать ссылку', en: 'Copy link' },
+  // Jismoniy karta kartochkasi — bu satrlar lug'atda yo'q edi va
+  // rus/ingliz tiliga o'tilganda o'zbekcha bo'lib qolardi (egasi buni
+  // 2026-09 da ko'rsatdi).
+  'O‘zingiz xohlagan uslubda': { ru: 'В вашем собственном стиле', en: 'In your own style' },
+  'Rang, dizayn va uslubni o‘zingiz tanlang': { ru: 'Выберите цвет, дизайн и стиль сами', en: 'Pick the colour, design and style yourself' },
+  'Buyurtma berish': { ru: 'Заказать', en: 'Order' },
+  'NFC ID kartangizni o‘zingizga mos': { ru: 'Свою NFC ID карту — на свой вкус', en: 'Your NFC ID card, your way' },
+  'dizaynda tayyorlang': { ru: 'оформите в своём дизайне', en: 'design it your way' },
+  'Rang, dizayn va uslubni o‘zingiz tanlaysiz — keyin buyurtma berasiz. Tayyor karta pochta orqali qo‘lingizga yetib boradi.': { ru: 'Вы сами выбираете цвет, дизайн и стиль, затем оформляете заказ. Готовая карта придёт почтой.', en: 'You choose the colour, design and style, then place the order. The finished card arrives by post.' },
+  'Buning uchun {tier} yoki undan yuqori NFC ID kerak. ID’ni «Narxlar» bo‘limidan tanlaysiz — dizayner shundan keyin ochiladi.': { ru: 'Для этого нужен NFC ID уровня {tier} или выше. ID выбирается в разделе «Цены» — дизайнер откроется после этого.', en: 'This needs an NFC ID of {tier} or higher. Choose an ID under “Pricing” — the designer opens after that.' },
+  'Narxlarni ko‘rish': { ru: 'Посмотреть цены', en: 'See pricing' },
+  // Biznes kabinet (/business).
+  'Asosiy sayt': { ru: 'Основной сайт', en: 'Main site' },
+  'NFCSTORE BUSINESS': { ru: 'NFCSTORE BUSINESS', en: 'NFCSTORE BUSINESS' },
+  'alohida kabinet': { ru: 'отдельный кабинет', en: 'a separate workspace' },
+  'Company ID, kompaniya NFC profili, katalog va jamoa — hammasi bitta joyda. Shaxsiy NFC kartalaringiz bunga aralashmaydi.': { ru: 'Company ID, NFC-профиль компании, каталог и команда — всё в одном месте. Ваши личные NFC-карты сюда не входят.', en: 'Company ID, the company NFC profile, catalogue and team — all in one place. Your personal NFC cards stay separate.' },
+  'BIZNES KABINET': { ru: 'БИЗНЕС-КАБИНЕТ', en: 'BUSINESS ACCOUNT' },
+  "Ro'yxatni yuklab bo'lmadi. Qayta urinib ko'ring.": { ru: 'Не удалось загрузить список. Попробуйте ещё раз.', en: 'Could not load the list. Please try again.' },
+  'Hali kompaniya yo‘q': { ru: 'Компаний пока нет', en: 'No companies yet' },
+  'Company ID oching — kompaniyangizning NFC profili, public sahifasi va boshqaruv markazi shu ID bilan bog‘lanadi.': { ru: 'Откройте Company ID — с ним связаны NFC-профиль компании, публичная страница и центр управления.', en: 'Open a Company ID — the company NFC profile, public page and control centre are all tied to it.' },
   'Biznes kabinet': { ru: 'Бизнес-кабинет', en: 'Business account' },
   'Biznes kabinet ↗': { ru: 'Бизнес-кабинет ↗', en: 'Business account ↗' },
   'Kompaniya ochish': { ru: 'Создать компанию', en: 'Create a company' },
