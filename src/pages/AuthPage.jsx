@@ -88,7 +88,7 @@ export default function AuthPage({ mode }) {
   const submitReset = async (e) => {
     e.preventDefault();
     setMsg(null);
-    if (!email.trim()) { setMsg({ type: 'err', text: t('Email manzilingizni kiriting.') }); return; }
+    if (!email.trim()) { setMsg({ type: 'err', text: t('Telefon raqami yoki emailingizni kiriting.') }); return; }
     if (!linkToken) { setMsg({ type: 'err', text: t('Avval Telegram orqali tasdiqlang.') }); return; }
     if (resetPass.length < 6) { setMsg({ type: 'err', text: t('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.') }); return; }
     if (resetPass !== resetPass2) { setMsg({ type: 'err', text: t('Parollar bir xil emas.') }); return; }
@@ -166,13 +166,15 @@ export default function AuthPage({ mode }) {
             <>
               <h2 className="vz-h2 mt-2 !text-2xl">{t('Parolni tiklash')}</h2>
               <p className="mt-3 text-[15px] leading-relaxed text-base-content/55">
-                {t("Email manzilingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.")}
+                {t("Telefon raqamingiz yoki emailingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.")}
               </p>
               <form onSubmit={submitReset} className="mt-6 space-y-3">
+                {/* Server ikkalasini ham qabul qiladi — emailsiz odam
+                    faqat raqamini biladi. */}
                 <label className="form-control">
-                  <span className="vz-label !mb-0">Email</span>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ism@gmail.com" autoComplete="email" required
+                  <span className="vz-label !mb-0">{t('Telefon yoki email')}</span>
+                  <input type="text" value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="+998901234567" autoComplete="username" required
                     className="input input-bordered mt-1 w-full bg-base-100" />
                 </label>
 

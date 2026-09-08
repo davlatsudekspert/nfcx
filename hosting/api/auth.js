@@ -40,7 +40,14 @@ const OTP_TEXT = {
 const tsAt = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');
 
 // Telefon: legacy kabi bo'sh joy/chiziq/qavs olib tashlanadi.
-const normPhone = (v, H) => H.cleanStr(v, 20).replace(/[\s\-()]/g, '');
+// Telefon YAGONA ko'rinishga keltiriladi: "+998901234567".
+//
+// Avval bu funksiya faqat bo'shliq/chiziq/qavsni olib tashlardi va "+"
+// qo'shmasdi. Natijada odam "998901234567" deb yozsa, baza shu holda
+// saqlardi; kirishda esa raqam "+998..." ga keltirilardi va qator
+// TOPILMASDI - odam o'z akkauntiga kira olmay qolardi. Bot ham raqamni
+// doim "+" bilan yozadi, ya'ni Telegram ulash ham mos kelmasdi.
+const normPhone = (v, H) => H.normalizePhoneD1(v);
 
 // 6 xonali kod — crypto tasodifiy (Math.random emas).
 function sixDigitCode() {
@@ -350,6 +357,13 @@ async function register(request, env, H) {
   const extra = validateRegisterExtra(body || {}, H);
   if (extra.error) return H.json({ error: extra.error }, 422);
 
+  // TEZLIK CHEKLOVI. Ilgari ro'yxatdan o'tishda Telegram tasdig'i to'siq
+  // bo'lib turardi; endi u yo'q, ya'ni bitta skript minglab akkaunt ochib
+  // tashlashi mumkin edi. Bitta IP - soatiga 5 ta akkaunt.
+  if (await H.rateLimitD1(env, 'register:ip:' + H.reqIp(request), 5, 60 * 60_000)) {
+    return H.json({ error: 'too_many_requests' }, 429);
+  }
+
   // Email BO'SH bo'lishi mumkin. Yozilgan bo'lsa — formati tekshiriladi
   // (xato yozilgan email jim qabul qilinsa, odam keyin parolini tiklay
   // olmay qolardi).
@@ -409,7 +423,10 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   });
   if (!user) return H.json({ error: 'email_taken' }, 409);
 
-  await createFreeAutoId(env, user.id, email.split('@')[0]);
+  // Karta nomi HAQIQIY emaildan olinadi. Ichki (ko'rinmas) manzil bo'lsa
+  // undan nom yasash mumkin emas - aks holda kartada
+  // "p998907770001" degan yozuv turardi.
+  await createFreeAutoId(env, user.id, H.isPlaceholderEmailD1(email) ? '' : email.split('@')[0]);
   await assignPromoCode(env, user.id);
 
   const promoInput = H.cleanStr(body?.promoCode, 12).toUpperCase();

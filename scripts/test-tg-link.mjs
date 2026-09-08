@@ -172,6 +172,9 @@ const startToken = async () => (await jsonOf(await post('/api/auth/tg-link/start
     const r = await raw(path, { method: 'POST', json, ...init });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
+  // Ro'yxatdan o'tish IP bo'yicha cheklangan (soatiga 5 ta) — bu yerda
+  // yuqoridagi bo'limlar hisoblagichni to'ldirib qo'ygan.
+  sqlite.prepare(`DELETE FROM rate_limits`).run();
   const reg = await call('/api/auth/register', {
     password: 'birinchi123', phone: '+998905551212', tosAccepted: true, email: 'settings@test.local',
   });

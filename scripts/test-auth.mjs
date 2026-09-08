@@ -62,7 +62,12 @@ const regBody = (over = {}) => ({
   email: 'New.User@Test.local', password: 'secret123', phone: '+998901234567',
   tosAccepted: true, promoCode: '', ...over,
 });
+// Ro'yxatdan o'tish IP bo'yicha cheklangan (soatiga 5 ta). Testda hamma
+// so'rov bitta "IP" dan keladi, shuning uchun tekshiruvlar orasida
+// hisoblagichni bo'shatamiz. Cheklovning O'ZI pastda alohida sinaladi.
+const noLimit = () => sqlite.prepare(`DELETE FROM rate_limits`).run();
 {
+  noLimit();
   let res = await post('/api/auth/register', regBody({ email: 'bad' }));
   check('register: bad email -> 422', res.status, 422);
   res = await post('/api/auth/register', regBody({ password: '123' }));
@@ -73,18 +78,22 @@ const regBody = (over = {}) => ({
   check('register: oferta rad etilsa -> 422', res.status, 422);
 
   // Telegram BO'LMASA HAM ro'yxatdan o'tiladi — bu asosiy o'zgarish.
+  noLimit();
   res = await post('/api/auth/register', regBody({ phone: '+998909999999', email: 'no.tg@test.local' }));
   const noTg = await res.json();
   check('register: Telegramsiz ham 201', [res.status, noTg.user?.email], [201, 'no.tg@test.local']);
 
+  noLimit();
   res = await post('/api/auth/register', regBody({ email: 'user@test.local' }));
   check('register: duplicate email -> 409', [res.status, (await res.json()).error], [409, 'email_taken']);
 
   // TELEFON YAGONALIGI — ustunda UNIQUE yo'q, tekshiruv kodda.
+  noLimit();
   res = await post('/api/auth/register', regBody({ phone: '+998909999999', email: 'other.person@test.local' }));
   check('register: band telefon -> 409 phone_taken', [res.status, (await res.json()).error], [409, 'phone_taken']);
 
   sqlite.prepare(`UPDATE users SET promo_code = 'FRIEND1' WHERE id = 1`).run();
+  noLimit();
   res = await post('/api/auth/register', regBody({ promoCode: 'friend1' }));
   const body = await res.json();
   check('register: happy path -> 201 {user:{id,email}}', [res.status, body.user?.email, typeof body.user?.id], [201, 'new.user@test.local', 'number']);
@@ -106,6 +115,7 @@ const regBody = (over = {}) => ({
   const me = await res.json();
   check('register: session cookie works on /api/auth/me', [me.user?.id, me.cards?.length], [body.user.id, 1]);
 
+  noLimit();
   res = await post('/api/auth/register', regBody({ phone: '+998901230000' }));
   check('register: same email again -> 409', res.status, 409);
 
@@ -114,6 +124,7 @@ const regBody = (over = {}) => ({
   // akkauntga tashqariga chiqmaydigan ICHKI manzil yoziladi. U odamga
   // hech qachon ko'rsatilmasligi shart — aks holda profilida
   // "p998...@nfcstore.local" degan tushunarsiz narsa turardi.
+  noLimit();
   res = await post('/api/auth/register', { password: 'secret123', phone: '+998907770001', tosAccepted: true });
   const noMail = await res.json();
   check('register: emailsiz -> 201', res.status, 201);
@@ -126,8 +137,29 @@ const regBody = (over = {}) => ({
   check('register: /api/auth/me da ham email bo\'sh', meNoMail.user?.email, '');
 
   // Xuddi shu raqam bilan ikkinchi emailsiz akkaunt ochib bo'lmaydi.
+  noLimit();
   res = await post('/api/auth/register', { password: 'secret123', phone: '+998907770001', tosAccepted: true });
   check('register: emailsiz takror telefon -> 409 phone_taken', [res.status, (await res.json()).error], [409, 'phone_taken']);
+
+  // ── "+" SIZ YOZILGAN RAQAM ──────────────────────────────────────────
+  // Odam raqamini "998901234567" (plyussiz) yozishi juda ehtimolli.
+  // Avval u shu ko'rinishda saqlanardi, kirishda esa raqam "+998..." ga
+  // keltirilardi va QATOR TOPILMASDI — odam o'z akkauntiga kira olmay
+  // qolardi. Endi raqam yozilishidan qat'i nazar bitta ko'rinishga
+  // keltiriladi.
+  noLimit();
+  res = await post('/api/auth/register', { password: 'secret123', phone: '998 90 555-00-02', tosAccepted: true });
+  const noPlus = await res.json();
+  check('register: "+" siz raqam qabul qilinadi', res.status, 201);
+  check('register: bazada "+" bilan saqlanadi',
+    sqlite.prepare(`SELECT phone FROM users WHERE id = ?`).get(noPlus.user.id).phone, '+998905550002');
+  res = await post('/api/auth/login', { email: '998905550002', password: 'secret123' });
+  check('login: "+" siz kiritilgan raqam bilan kirish ishlaydi', res.status, 200);
+  res = await post('/api/auth/login', { email: '+998905550002', password: 'secret123' });
+  check('login: "+" bilan ham ishlaydi', res.status, 200);
+  // Bepul ID kartaning nomi ICHKI manzildan olinmasligi kerak.
+  check('register: emailsiz kartaning nomi ichki manzil EMAS',
+    sqlite.prepare(`SELECT name FROM cards WHERE user_id = ?`).get(noPlus.user.id).name, 'Yangi foydalanuvchi');
 
   // ── TELEFON BILAN KIRISH ────────────────────────────────────────────
   // Emailsiz odam boshqa yo'l bilan kira olmaydi, shuning uchun kirish
@@ -142,9 +174,22 @@ const regBody = (over = {}) => ({
   res = await post('/api/auth/login', { email: 'user@test.local', password: 'secret123' });
   checkTrue('login: eski email yo\'li hali ham ishlaydi (401/200, 422 EMAS)', res.status !== 422);
 
+  // ── IP BO'YICHA CHEKLOV ─────────────────────────────────────────────
+  // Ilgari Telegram tasdig'i to'siq bo'lardi; endi u yo'q, ya'ni bitta
+  // skript minglab akkaunt ochib tashlashi mumkin edi.
+  noLimit();
+  let made = 0;
+  for (let i = 0; i < 7; i++) {
+    const rr = await post('/api/auth/register', regBody({ email: `flood${i}@test.local`, phone: `+9989012400${10 + i}` }));
+    if (rr.status === 201) made++;
+    else check(`ro'yxat cheklovi: ${i + 1}-urinish -> 429`, [rr.status, (await rr.json()).error], [429, 'too_many_requests']);
+  }
+  check('ro\'yxat: bitta IP dan soatiga 5 ta akkaunt', made, 5);
+
   // Admin o'chirgan akkaunt emaili qayta ro'yxatdan o'tadi (eski qator tozalanadi)
   sqlite.prepare(`INSERT INTO users (id, email, password_hash, deleted_at) VALUES (50, 'gone@test.local', 'x', '2026-01-01 00:00:00+00')`).run();
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('GON001', 'Old', 0, 1, 50)`).run();
+  noLimit();
   res = await post('/api/auth/register', regBody({ email: 'gone@test.local', phone: '+998901231111' }));
   const gone = await res.json();
   check('register: deleted account email re-registers -> 201', [res.status, gone.user?.email], [201, 'gone@test.local']);
