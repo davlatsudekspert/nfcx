@@ -3948,8 +3948,11 @@ const ADMIN_NAV = [
   { index: 3, label: 'Buyurtmalar', icon: 'bag' },
   { index: 4, label: "To'lanishi kerak pullar", icon: 'wallet' },
   { index: 18, label: 'Moliya', icon: 'bank', superOnly: true },
-  { index: 5, label: 'Auksionlar', icon: 'hammer' },
-  { index: 6, label: "Auksion so'rovlari", icon: 'clipboard' },
+  // AUKSION BEKOR QILINDI (2026-09) — yon menyudan olib tashlandi.
+  // Bo'limlarning O'ZI (AuctionsTab / AuctionRequestsTab) o'chirilmadi
+  // va indekslar (5, 6) ham o'zgartirilmadi: eski auksionlar tarixi
+  // kerak bo'lsa, /admin?tab=5 orqali baribir ochiladi. Indekslarni
+  // siljitish esa qolgan hamma bo'limning manzilini buzardi.
   { index: 17, label: 'Talab', icon: 'flame' },
   { index: 7, label: 'Jismoniy kartalar', icon: 'idcard' },
   { index: 8, label: 'Bildirishnomalar', icon: 'bell' },

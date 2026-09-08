@@ -118,47 +118,74 @@ export default function BusinessEntryPage() {
   }
 
   // ── KIRGAN: biznes kabinet (shaxsiy profil bo'limlari YO'Q) ──────────
+  //
+  // Kirmagan holat bilan BIR XIL joylashuv: matn chapda, karta o'ngda.
+  // Avval ro'yxat sahifaning o'rtasida tor ustun bo'lib turardi va
+  // katta ekranda ikki yoni bo'sh qolardi.
   return (
     <main className="cw-page">
       {head}
-      <section className="be-panel">
-        <span className="be-kicker">{t('BIZNES KABINET')}</span>
-        <h1 className="be-title" style={{ fontSize: 'clamp(30px, 3.4vw, 44px)' }}>{t('Kompaniyalaringiz')}</h1>
+      <section className="be-hero">
+        <div className="min-w-0">
+          <span className="be-kicker">{t('BIZNES KABINET')}</span>
+          <h1 className="be-title" style={{ fontSize: 'clamp(32px, 3.6vw, 50px)' }}>{t('Kompaniyalaringiz')}</h1>
 
-        {companies === null && <div className="be-list"><div className="vz-skel h-16 w-full" /><div className="vz-skel h-16 w-full" /></div>}
-        {err && <div role="alert" className="alert alert-error mt-6 py-2 text-sm"><span>{t("Ro'yxatni yuklab bo'lmadi. Qayta urinib ko'ring.")}</span></div>}
+          {companies === null && <div className="be-list"><div className="vz-skel h-16 w-full" /><div className="vz-skel h-16 w-full" /></div>}
+          {err && <div role="alert" className="alert alert-error mt-6 py-2 text-sm"><span>{t("Ro'yxatni yuklab bo'lmadi. Qayta urinib ko'ring.")}</span></div>}
 
-        {companies !== null && companies.length === 0 && !err && (
-          <div className="vz-empty mt-6">
-            <b>{t('Hali kompaniya yo‘q')}</b>
-            <p className="mt-1 text-sm" style={{ color: 'var(--vz-ink-2)' }}>
-              {t('Company ID oching — kompaniyangizning NFC profili, public sahifasi va boshqaruv markazi shu ID bilan bog‘lanadi.')}
-            </p>
-          </div>
-        )}
+          {companies !== null && companies.length === 0 && !err && (
+            <div className="vz-empty mt-6">
+              <b>{t('Hali kompaniya yo‘q')}</b>
+              <p className="mt-1 text-sm" style={{ color: 'var(--vz-ink-2)' }}>
+                {t('Company ID oching — kompaniyangizning NFC profili, public sahifasi va boshqaruv markazi shu ID bilan bog‘lanadi.')}
+              </p>
+            </div>
+          )}
 
-        {companies !== null && companies.length > 0 && (
-          <div className="be-list">
-            {companies.map((c) => (
-              <button
-                key={c.companyId}
-                type="button"
-                onClick={() => navigate(`/workspace/${String(c.companyId).toLowerCase()}`)}
-                className="be-item vz-tap"
-              >
-                <span className="min-w-0">
-                  <b className="truncate">{c.displayName || c.companyId}</b>
-                  <small>{c.companyId}</small>
-                </span>
-                <i>{t(COMPANY_STATUS[c.status]) || c.status} →</i>
-              </button>
+          {companies !== null && companies.length > 0 && (
+            <div className="be-list">
+              {companies.map((c) => (
+                <button
+                  key={c.companyId}
+                  type="button"
+                  onClick={() => navigate(`/workspace/${String(c.companyId).toLowerCase()}`)}
+                  className="be-item vz-tap"
+                >
+                  <span className="min-w-0">
+                    <b className="truncate">{c.displayName || c.companyId}</b>
+                    <small>{c.companyId}</small>
+                  </span>
+                  <i>{t(COMPANY_STATUS[c.status]) || c.status} →</i>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button type="button" className="btn btn-gold mt-7 min-h-12 px-7" onClick={() => navigate('/company/create')}>
+            {t('Yangi Company ID')}
+          </button>
+        </div>
+
+        {/* O'ng ustun — kirmagan holatdagi bilan bir xil karta va NFC
+            signali. Sahifaning ikki yoni bo'sh qolmaydi. */}
+        <div className="be-visual" aria-hidden="true">
+          <div className="be-waves">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <span key={i} className="be-wave" style={{ animationDelay: `${(i * 0.5).toFixed(2)}s` }} />
             ))}
           </div>
-        )}
-
-        <button type="button" className="btn btn-gold mt-7 min-h-12 px-7" onClick={() => navigate('/company/create')}>
-          {t('Yangi Company ID')}
-        </button>
+          <div className="be-card">
+            <Interactive3DCard>
+              <NfcCard
+                code={companies?.[0]?.companyId || 'BIZ001'}
+                name={companies?.[0]?.displayName?.toUpperCase() || t('KOMPANIYANGIZ')}
+                finish="black"
+                size="lg"
+                rim
+              />
+            </Interactive3DCard>
+          </div>
+        </div>
       </section>
     </main>
   );
