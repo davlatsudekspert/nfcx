@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -82,7 +83,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
   }
 
   const mapUrl = company.latitude && company.longitude
-    ? `https://www.google.com/maps/search/?api=1&query=${company.latitude},${company.longitude}`
+    ? directionsUrl(company)
     : company.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}` : '';
 
   return (

@@ -3723,7 +3723,16 @@ function validateRecordBody(body, opts = {}) {
   if ('city' in body) record.city = cleanStr(body.city, 60);
   if ('categorySlug' in body) record.categorySlug = String(body.categorySlug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
   if ('address' in body) record.address = cleanStr(body.address, 200);
-  const geoNum = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null; };
+  // BO'SH QIYMAT 0 EMAS. Avval bu yerda faqat `Number(v)` bor edi va
+  // `Number(null)` — bu 0. Ya'ni lokatsiya maydoni bo'sh qoldirilsa,
+  // profil Gvineya ko'rfazidagi 0,0 nuqtaga "joylashardi". Endi bo'sh
+  // qiymat bo'sh bo'lib qoladi; haqiqiy 0 (masalan ekvator) esa
+  // avvalgidek qabul qilinaveradi.
+  const geoNum = (v, lo, hi) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
+  };
   if ('latitude' in body) record.latitude = geoNum(body.latitude, -90, 90);
   if ('longitude' in body) record.longitude = geoNum(body.longitude, -180, 180);
   if ('hiddenFromDirectory' in body) record.hiddenFromDirectory = body.hiddenFromDirectory === true;
@@ -4027,8 +4036,15 @@ async function recordsApi(request, env, url) {
       const owner = await getRecordOwner(env, code);
       const isOwner = !!user && String(owner) === String(user.id);
       if (rec.hidePhone && !isOwner) rec.phone = '';
-      rec.cardNumber = '';
-      rec.cardNumbers = [];
+      // KARTA RAQAMI ENDI PROFILDA KO'RINADI (2026-09, egasining qarori).
+      //
+      // Avval bu yerda `rec.cardNumber = ''` turardi — ya'ni odam
+      // profilini tahrirlab karta raqamini yozsa ham, u NFC ID sahifasida
+      // hech qachon chiqmasdi. Sahifada esa "Karta raqam" tugmasi bor:
+      // xususiyat yarim qolgan edi.
+      //
+      // Raqamni odamning O'ZI, ataylab, ko'rinsin deb kiritadi (unga pul
+      // o'tkazish uchun). Yashirish kerak bo'lsa — maydonni bo'shatadi.
       return json(rec);
     }
 

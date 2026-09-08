@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { googleDirectionsUrl } from '../lib/mapLink.js';
+import { backdropProps } from '../lib/backdrop.js';
 import CloseButton from '../components/CloseButton.jsx';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
 import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
@@ -1882,7 +1884,7 @@ function Modal({ title, onClose, children, wide }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" {...backdropProps(onClose)}>
       <div className={`my-6 w-full rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl ${wide ? 'max-w-4xl' : 'max-w-lg'}`}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold">{title}</h3>
@@ -2305,6 +2307,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const isPremiumUser = !!user?.isPremium;
   const musicMax = musicLimit(isPremiumUser);
   const [locked, setLocked] = useState(null); // yopiq funksiya nomi (modal uchun)
+  // "Joriy joylashuvimni olish" tugmasining holati.
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoMsg, setGeoMsg] = useState('');
   // Business Workspace navigatsiyasi: 'asosiy' | 'katalog' | 'lokatsiya' | 'sozlamalar'.
   // Shaxsiy/expert profillar uchun ishlatilmaydi (ular eski flat accordion'da qoladi).
   const [wsTab, setWsTab] = useState(() => (card.profileType === 'business' ? 'asosiy' : 'boshqaruv'));
@@ -3166,8 +3171,68 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <input value={form.longitude} onChange={set('longitude')} type="number" step="any" placeholder="69.240562" className={`${inp} font-mono`} />
           </label>
         </div>
+        {/* KOORDINATANI QO'LDA YOZISH SHART EMAS (2026-09). Avval odam
+            Google Maps'ga borib, raqamlarni topib, ikkita maydonga
+            ko'chirishi kerak edi — ko'pchilik buni qilmasdi yoki xato
+            qilardi. Endi bitta tugma: brauzer joylashuvni o'zi beradi. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-ghost-vz btn-sm min-h-11"
+            disabled={geoBusy}
+            onClick={() => {
+              if (typeof navigator === 'undefined' || !navigator.geolocation) {
+                setGeoMsg(t('Brauzeringiz joylashuvni aniqlay olmadi. Koordinatalarni qo‘lda kiriting.'));
+                return;
+              }
+              setGeoBusy(true);
+              setGeoMsg('');
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  // 6 xona ~ 10 sm aniqlik; ortiqchasi keraksiz.
+                  setForm((f) => ({
+                    ...f,
+                    latitude: pos.coords.latitude.toFixed(6),
+                    longitude: pos.coords.longitude.toFixed(6),
+                  }));
+                  setGeoBusy(false);
+                  setGeoMsg(t('Joylashuv aniqlandi. Saqlashni unutmang.'));
+                },
+                () => {
+                  setGeoBusy(false);
+                  // Eng ko'p uchraydigan sabab — ruxsat berilmagani.
+                  setGeoMsg(t('Joylashuvga ruxsat berilmadi. Brauzer sozlamalaridan ruxsat bering yoki koordinatalarni qo‘lda kiriting.'));
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+              );
+            }}
+          >
+            {geoBusy ? <span className="loading loading-spinner loading-xs"></span> : <IconPin width={14} height={14} />}
+            {t('Joriy joylashuvimni olish')}
+          </button>
+          {(form.latitude || form.longitude) && (
+            <button
+              type="button"
+              className="btn btn-ghost-vz btn-sm min-h-11"
+              onClick={() => { setForm((f) => ({ ...f, latitude: '', longitude: '' })); setGeoMsg(''); }}
+            >
+              {t('Koordinatani tozalash')}
+            </button>
+          )}
+          {form.latitude && form.longitude && (
+            <a
+              href={googleDirectionsUrl({ latitude: form.latitude, longitude: form.longitude })}
+              target="_blank" rel="noopener noreferrer"
+              className="vz-tap text-sm font-semibold underline-offset-4 hover:underline"
+              style={{ color: 'var(--vz-gold)' }}
+            >
+              {t('Xaritada tekshirish')}
+            </a>
+          )}
+        </div>
+        {geoMsg && <p className="mt-2 text-[13px] text-base-content/60">{geoMsg}</p>}
         <p className="mt-2 text-[13px] text-base-content/40">
-          {t('Koordinatalarni Google Maps’da joyni bosib, chiqqan raqamlardan nusxalab olishingiz mumkin. Kiritilsa, profilda "Xaritada ochish" tugmasi ko‘rinadi.')}
+          {t('Tugmani bosing yoki koordinatalarni Google Maps’dan nusxalang. Kiritilsa, profilda "Yo‘nalish" tugmasi ko‘rinadi va telefonning o‘z xarita ilovasida ochiladi.')}
         </p>
       </Gate>
     </Section>
@@ -3637,7 +3702,7 @@ function SupportModal({ onClose }) {
   // egallaydi; qisqa ekranda yuborish tugmasiga yetib bo'lmasdi —
   // shuning uchun fon ham, quti ham scroll bo'ladi.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" {...backdropProps(onClose)}>
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-base-200 p-6 shadow-2xl">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold"><IconSupport /> {t('Adminga murojaat')}</h3>

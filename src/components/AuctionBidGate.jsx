@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { backdropProps } from '../lib/backdrop.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
@@ -84,9 +85,9 @@ export default function AuctionBidGate({ open, amount, userId, busy, onCancel, o
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      {...backdropProps(onCancel)}
     >
-      <div className="flex min-h-full items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className="flex min-h-full items-center justify-center" {...backdropProps(onCancel)}>
         <div className="vz-card relative my-8 w-full max-w-lg p-6" role="dialog" aria-modal="true" aria-label={t('Auksion qoidalarini tasdiqlang')}>
           <CloseButton onClick={onCancel} className="absolute right-3 top-3 z-10" />
 

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { backdropProps } from '../lib/backdrop.js';
 // Narx yagona manbadan — src/lib/pricing.js.
 import { PHYSICAL_CARD_FEE } from '../lib/pricing.js';
 import CloseButton from './CloseButton.jsx';
@@ -205,8 +206,8 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
   const payIsSandbox = paymentsSandbox || (!!order?.payLink && /test\.paycom\.uz/i.test(order.payLink));
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="flex min-h-full items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" {...backdropProps(onClose)}>
+      <div className="flex min-h-full items-center justify-center" {...backdropProps(onClose)}>
       <div className={`vz-card relative my-8 w-full transition-all ${showDesigner ? 'max-w-3xl' : 'max-w-lg'}`}>
         <CloseButton onClick={onClose} className="absolute right-3 top-3 z-10" />
         {order ? (

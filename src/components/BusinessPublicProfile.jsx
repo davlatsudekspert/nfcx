@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import CloseButton from './CloseButton.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { businessModule } from '../lib/access.js';
@@ -143,9 +144,12 @@ export default function BusinessPublicProfile({
   const heroImage = record.bgUrl || gallery[0]?.imageUrl || items.find((item) => item.imageUrl)?.imageUrl || '';
   const tgUrl = telegramUrl(record.tg);
   const hasLocation = Boolean(record.address || (record.latitude != null && record.longitude != null));
-  const mapsUrl = record.latitude != null && record.longitude != null
-    ? `https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address || '')}`;
+  // Yo'nalish havolasi — qurilmaga mos xarita ilovasida (iPhone'da
+  // Apple Maps, qolganlarida Google Maps). Avval hamma joyda Google
+  // Maps'ning QIDIRUV havolasi edi: nuqtani ko'rsatardi, lekin yo'nalish
+  // bermasdi. Yandex alohida tugma — O'zbekistonda ko'p ishlatiladi.
+  const mapsUrl = directionsUrl(record);
+  const yandexUrl = yandexDirectionsUrl(record);
   const osmUrl = record.latitude != null && record.longitude != null
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(record.longitude) - 0.018}%2C${Number(record.latitude) - 0.01}%2C${Number(record.longitude) + 0.018}%2C${Number(record.latitude) + 0.01}&layer=mapnik&marker=${record.latitude}%2C${record.longitude}`
     : '';
@@ -312,7 +316,7 @@ export default function BusinessPublicProfile({
 
         {active === 'location' && (
           <section className="bp-location-grid">
-            <div className="bp-panel bp-location-copy"><span className="bp-section-label">{t('LOKATSIYA')}</span><h2>{record.city || t('Bizning manzil')}</h2><p>{record.address || t('Aniq manzil xaritada ko‘rsatilgan.')}</p><a className="bp-gold-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">⌖ {t('Yo‘nalishni ochish')}</a></div>
+            <div className="bp-panel bp-location-copy"><span className="bp-section-label">{t('LOKATSIYA')}</span><h2>{record.city || t('Bizning manzil')}</h2><p>{record.address || t('Aniq manzil xaritada ko‘rsatilgan.')}</p><a className="bp-gold-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">⌖ {t('Yo‘nalishni ochish')}</a>{yandexUrl && <a className="bp-dark-btn" href={yandexUrl} target="_blank" rel="noopener noreferrer" style={{ marginTop: 10 }}>{t('Yandex Karta')}</a>}</div>
             <div className="bp-map">{osmUrl ? <iframe title={t('Kompaniya lokatsiyasi')} src={osmUrl} loading="lazy" /> : <div><span>⌖</span><p>{record.address}</p></div>}</div>
           </section>
         )}

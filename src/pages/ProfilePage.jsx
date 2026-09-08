@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import CloseButton from '../components/CloseButton.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
@@ -1426,9 +1427,12 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const tgUrl = socialUrl('tg', record.tg);
   const igUrl = socialUrl('ig', record.instagram);
   const hasLocation = (record.latitude != null && record.longitude != null) || !!record.address;
-  const mapsUrl = record.latitude != null && record.longitude != null
-    ? `https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address || '')}`;
+  // Yo'nalish havolasi — qurilmaga mos xarita ilovasida (iPhone'da
+  // Apple Maps, qolganlarida Google Maps). Avval hamma joyda Google
+  // Maps'ning QIDIRUV havolasi edi: nuqtani ko'rsatardi, lekin yo'nalish
+  // bermasdi. Yandex alohida tugma — O'zbekistonda ko'p ishlatiladi.
+  const mapsUrl = directionsUrl(record);
+  const yandexUrl = yandexDirectionsUrl(record);
   const fbUrl = socialUrl('fb', record.facebook);
   const xUrl = socialUrl('x', record.twitter);
   const liUrl = record.linkedin ? socialUrl('li', record.linkedin) : '';
@@ -1824,9 +1828,18 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                   </span>
                 </a>
               )}
+              {/* Ikkita tugma: birinchisi qurilmaning O'Z xaritasi
+                  (iPhone'da Apple Maps, Android'da Google Maps), ikkinchisi
+                  Yandex — O'zbekistonda ko'p ishlatiladi va ba'zi ko'chalar
+                  faqat unda aniq. Ikkalasi ham YO'NALISH rejimida ochiladi. */}
               {hasLocation && (
                 <a className={linkBtn} href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}>
-                  {'\u{1F4CD}'} {t('Xaritada ochish')}
+                  {'\u{1F4CD}'} {t('Yo‘nalish olish')}
+                </a>
+              )}
+              {hasLocation && yandexUrl && (
+                <a className={linkBtn} href={yandexUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location_yandex')}>
+                  {'\u{1F5FA}'} {t('Yandex Karta')}
                 </a>
               )}
               {record.email && <a className={linkBtn} href={`mailto:${record.email}`} onClick={() => track('email_click')}><IconMail /> {record.email}</a>}

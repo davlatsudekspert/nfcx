@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { backdropProps } from '../lib/backdrop.js';
 import CloseButton from './CloseButton.jsx';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -29,7 +30,7 @@ export default function LockedFeatureModal({ featureLabel, onClose, onGoPremium 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      {...backdropProps(onClose)}
     >
       <div className="vz-card my-8 w-full max-w-md p-6">
         <div className="flex items-start justify-between gap-3">
