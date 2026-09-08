@@ -34,6 +34,8 @@ function errText(err, t, botLink) {
     return t('Bu telefon raqami botda tasdiqlanmagan. Avval {link} ga o‘ting, "Kontaktni ulashish" tugmasini bosing, so‘ng shu raqamni qayta kiriting.', { link: BOT_LINK });
   }
   if (key === 'bad_code' || key === 'code_required') return t("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan. Qaytadan yuboring.");
+  if (key === 'phone_taken') return t('Bu telefon raqami bilan allaqachon akkaunt ochilgan. Kirishga urinib ko‘ring yoki parolni tiklang.');
+  if (key === 'bad_login') return t('Telefon raqami yoki email formati noto‘g‘ri.');
   if (key === 'link_not_confirmed') return t('Telegram tasdig‘i topilmadi yoki muddati o‘tgan. «Telegramda tasdiqlash» tugmasini qayta bosing.');
   if (key === 'link_phone_mismatch') return t('Botda tasdiqlangan raqam bu akkauntdagi raqamga mos kelmadi.');
   if (key === 'bot_not_configured') return t('Telegram bot hozir sozlanmagan. Birozdan so‘ng urinib ko‘ring.');
@@ -120,13 +122,9 @@ export default function AuthPage({ mode }) {
       setMsg({ type: 'err', text: t('Davom etish uchun ommaviy oferta shartlariga rozilik bering.') });
       return;
     }
-    if (isRegister && !linkToken) {
-      setMsg({ type: 'err', text: t('Avval Telegram orqali tasdiqlang.') });
-      return;
-    }
     setBusy(true);
     try {
-      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), tosAccepted, promoCode: promoCode.trim(), linkToken });
+      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), tosAccepted, promoCode: promoCode.trim() });
       else await authLogin(email.trim(), password);
       setFailCount(0);
       await refresh();
@@ -249,12 +247,31 @@ export default function AuthPage({ mode }) {
                 </p>
               </div>
             )}
-            <label className="form-control">
-              <span className="text-xs font-semibold text-base-content/70">Email</span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="ism@gmail.com" autoComplete="email" required
-                className="input input-bordered mt-1 w-full bg-base-100" />
-            </label>
+            {/* KIRISH: bitta maydon, ikkalasini ham qabul qiladi.
+                Emailsiz ro'yxatdan o'tgan odam faqat raqamini biladi;
+                eski foydalanuvchilar esa email bilan kirishda davom
+                etadi. Qaysi biri yozilganini server o'zi aniqlaydi. */}
+            {!isRegister && (
+              <label className="form-control">
+                <span className="text-xs font-semibold text-base-content/70">{t('Telefon yoki email')}</span>
+                <input type="text" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="+998901234567" autoComplete="username" required
+                  className="input input-bordered mt-1 w-full bg-base-100" />
+              </label>
+            )}
+
+            {/* RO'YXAT: TELEFON birinchi va majburiy — u yetkazib berish
+                va akkauntni tiklash uchun asosiy bog'lanish. Email esa
+                pastda, IXTIYORIY. */}
+            {isRegister && (
+              <label className="form-control">
+                <span className="text-xs font-semibold text-base-content/70">{t('Telefon raqamingiz')}</span>
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+998901234567" autoComplete="tel" required
+                  className="input input-bordered mt-1 w-full bg-base-100" />
+                <span className="mt-1 block text-xs text-base-content/40">{t('Shu raqam bilan kirasiz.')}</span>
+              </label>
+            )}
             <label className="form-control">
               <span className="flex items-center justify-between text-xs font-semibold text-base-content/70">
                 {t('Parol')}
@@ -274,17 +291,20 @@ export default function AuthPage({ mode }) {
                   className="input input-bordered mt-1 w-full bg-base-100" />
               </label>
             )}
-            {/* Telefon raqami endi QO'LDA yozilmaydi — u Telegramning
-                o'zidan keladi. Shu sababli birov boshqa odamning
-                raqamini kiritib yubora olmaydi, xato terish ham
-                yo'qoladi (karta shu raqam bo'yicha yetkaziladi). */}
+            {/* EMAIL — IXTIYORIY. Ko'p odam email ishlatmaydi va uni
+                majburlash bekorga to'siq bo'lardi. Lekin u parolni
+                tiklashda kerak bo'ladi, shuning uchun buni shu yerda
+                ochiq aytamiz — keyin emas. */}
             {isRegister && (
-              <TgLinkBox
-                botUsername={botUsername}
-                linkedPhone={phone}
-                title={t('Telefon raqamingizni Telegram orqali tasdiqlang')}
-                onLinked={(p, token) => { setPhone(p); setLinkToken(token); }}
-              />
+              <label className="form-control">
+                <span className="text-xs font-semibold text-base-content/70">{t('Email (ixtiyoriy)')}</span>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ism@gmail.com" autoComplete="email"
+                  className="input input-bordered mt-1 w-full bg-base-100" />
+                <span className="mt-1 block text-xs text-base-content/40">
+                  {t('Parolni unutsangiz tiklash uchun kerak bo‘ladi.')}
+                </span>
+              </label>
             )}
             {isRegister && (
               <label className="form-control">

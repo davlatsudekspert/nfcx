@@ -1625,7 +1625,7 @@ async function getCurrentUser(request, env) {
   if (row.suspendedUntil && parseDbDate(row.suspendedUntil) > new Date()) return null;
   const isBanned = row.bannedUntil && parseDbDate(row.bannedUntil) > new Date();
   return {
-    id: row.id, email: row.email, phone: row.phone || null, isPremium: !!row.isPremium,
+    id: row.id, email: publicEmailD1(row.email), phone: row.phone || null, isPremium: !!row.isPremium,
     bannedUntil: isBanned ? row.bannedUntil : null, strikeCount: row.strikeCount || 0,
     promoCode: row.promoCode || null, pendingDiscountPct: row.pendingDiscountPct || 0,
   };
@@ -2081,6 +2081,46 @@ async function getRecordOwner(env, code) {
 // ---------- input cleaning (mirrors server/index.js validateBody, trimmed) ----------
 
 function cleanStr(v, max) { return typeof v === 'string' ? v.trim().slice(0, max) : ''; }
+
+// Telefon raqamini yagona ko'rinishga keltiradi ("+998901234567").
+// Bo'shliq/chiziq/qavs olib tashlanadi, "+" qo'shiladi. Raqam
+// tanilmasa — bo'sh satr (chaqiruvchi buni "telefon emas" deb biladi).
+//
+// Kirish maydoni endi email VA telefonni qabul qiladi, shuning uchun bu
+// funksiya "bu telefonmi?" degan savolga ham javob beradi.
+// ═══════════════════════════════════════════════════════════════════════
+// EMAILSIZ AKKAUNT — ICHKI (KO'RINMAS) MANZIL (2026-09)
+//
+// Ro'yxatdan o'tishda email IXTIYORIY bo'ldi, lekin `users.email` ustuni
+// bazada NOT NULL UNIQUE. Uni bo'shatish SQLite'da jadvalni QAYTA
+// QURISHNI talab qiladi — ishlab turgan bazada bunday amal qilinmaydi.
+//
+// Shuning uchun emailsiz akkauntga tashqariga chiqmaydigan ichki manzil
+// yoziladi: p998901234567@nfcstore.local. U hech qachon ko'rsatilmaydi
+// va unga hech qachon xat yuborilmaydi (.local marshrutlanmaydi).
+// Yon foyda: telefon bo'yicha yagonalik UNIQUE hisobiga bepul chiqadi.
+//
+// MUHIM: eski akkauntlarning haqiqiy emaili tegilmagan — bu faqat
+// yangi, emailsiz ro'yxatdan o'tishlarga tegishli.
+const PLACEHOLDER_EMAIL_HOST_D1 = '@nfcstore.local';
+function placeholderEmailForD1(phone) {
+  return 'p' + String(phone || '').replace(/\D/g, '') + PLACEHOLDER_EMAIL_HOST_D1;
+}
+function isPlaceholderEmailD1(email) {
+  return String(email || '').endsWith(PLACEHOLDER_EMAIL_HOST_D1);
+}
+// Foydalanuvchiga/adminga ko'rinadigan email. Ichki manzil bo'lsa —
+// bo'sh satr: odam o'z profilida "p998...@nfcstore.local" ni ko'rmasin.
+function publicEmailD1(email) {
+  return isPlaceholderEmailD1(email) ? '' : String(email || '');
+}
+
+function normalizePhoneD1(v) {
+  let phone = cleanStr(v, 24).replace(/[\s\-()]/g, '');
+  if (!phone) return '';
+  if (!phone.startsWith('+')) phone = '+' + phone;
+  return /^\+\d{9,15}$/.test(phone) ? phone : '';
+}
 function recSafeUrl(v) {
   const s = cleanStr(v, 500);
   if (!s) return '';
@@ -3237,24 +3277,43 @@ async function authApi(request, env, url) {
 
   if (path === '/api/auth/login' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
-    const email = cleanStr(body.email, 120).toLowerCase();
+    // KIRISH ENDI TELEFON BILAN HAM (2026-09).
+    //
+    // Ro'yxatdan o'tishda email IXTIYORIY bo'ldi — O'zbekistonda ko'p
+    // odam email ishlatmaydi. Demak kirish maydoni ikkalasini ham qabul
+    // qilishi shart: eski foydalanuvchilar email bilan, yangilari
+    // telefon bilan kiradi. Bitta maydon — odam qaysi birini yozganini
+    // o'zi tanlamaydi, biz aniqlaymiz.
+    const login = cleanStr(body.email ?? body.login, 120).toLowerCase();
     const password = typeof body.password === 'string' ? body.password : '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: "Email formati noto'g'ri." }, 422);
+    const asPhone = normalizePhoneD1(login);
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(login);
+    if (!isEmail && !asPhone) return json({ error: 'bad_login' }, 422);
     if (password.length < 6) return json({ error: "Parol kamida 6 belgidan iborat bo'lishi kerak." }, 422);
-    // Brute-force / scrypt CPU-DoS himoyasi: IP bo'yicha 10, email bo'yicha 5 urinish / 15 daqiqa (D1).
-    if (await rateLimitD1(env, 'login:ip:' + reqIp(request), 10, 15 * 60_000) || await rateLimitD1(env, 'login:email:' + email, 5, 15 * 60_000)) {
+    // Brute-force / scrypt CPU-DoS himoyasi: IP bo'yicha 10, hisob
+    // bo'yicha 5 urinish / 15 daqiqa (D1).
+    if (await rateLimitD1(env, 'login:ip:' + reqIp(request), 10, 15 * 60_000)
+      || await rateLimitD1(env, 'login:acct:' + (asPhone || login), 5, 15 * 60_000)) {
       return json({ error: 'too_many_requests' }, 429);
     }
-    const row = await env.DB.prepare(
-      `SELECT id, email, password_hash, deleted_at, suspended_until, suspend_reason FROM users WHERE email = ?`
-    ).bind(email).first();
+    // Telefon bo'yicha qidirishda `deleted_at IS NULL` shart — bitta raqam
+    // o'chirilgan eski akkauntda ham qolishi mumkin, o'shanga tushib
+    // qolmasin. Email bo'yicha qidiruv avvalgidek (u UNIQUE).
+    const row = isEmail
+      ? await env.DB.prepare(
+        `SELECT id, email, password_hash, deleted_at, suspended_until, suspend_reason FROM users WHERE email = ?`
+      ).bind(login).first()
+      : await env.DB.prepare(
+        `SELECT id, email, password_hash, deleted_at, suspended_until, suspend_reason FROM users
+          WHERE phone = ? AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`
+      ).bind(asPhone).first();
     if (!row || !(await verifyPassword(password, row.password_hash))) return json({ error: 'bad_credentials' }, 401);
     if (row.deleted_at) return json({ error: 'account_deleted' }, 403);
     if (row.suspended_until && parseDbDate(row.suspended_until) > new Date()) {
       return json({ error: 'account_suspended', suspendedUntil: row.suspended_until, reason: row.suspend_reason }, 403);
     }
     const session = await createUserSession(env, row.id, request);
-    return jsonWithCookie({ user: { id: row.id, email: row.email } }, 200, session.cookie);
+    return jsonWithCookie({ user: { id: row.id, email: publicEmailD1(row.email) } }, 200, session.cookie);
   }
 
   if (path === '/api/auth/logout' && request.method === 'POST') {
@@ -5802,7 +5861,7 @@ async function coreApi(request, env, url) {
 const H = {
   json, getCurrentUser, getCurrentAdmin, requireAdmin, checkIpWhitelist,
   getRecord, getRecordOwner, rowToRecord, RECORD_COLUMNS, updateRecord, validateRecordBody,
-  cleanStr, recSafeUrl, uploadOrSafeUrl, shortText, safeUrl, validCode, parseJsonArray, parseMusicUrls,
+  cleanStr, normalizePhoneD1, placeholderEmailForD1, isPlaceholderEmailD1, publicEmailD1, recSafeUrl, uploadOrSafeUrl, shortText, safeUrl, validCode, parseJsonArray, parseMusicUrls,
   nowTs, parseDbDate, newToken, sha256Hex, hashPassword, verifyPassword,
   reqIp, logAdminActivity, logAdminLoginEvent, sendTelegramMessage, sendTelegramTo,
   personalIdTierD1, effectiveAccessD1, featureAllowedD1, paymentsEnabledD1, paymeCheckoutLinkD1,

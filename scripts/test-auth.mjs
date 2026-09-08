@@ -48,41 +48,50 @@ const post = (path, json, init = {}) => worker.fetch(req(path, { method: 'POST',
 }
 
 // ===== register =====
+// 2026-09 SHARTNOMA O'ZGARDI. Avval ro'yxatdan o'tish uchun email,
+// "botga yozdim" katakchasi va Telegram kodi SHART edi. Endi:
+//
+//   TELEFON — majburiy;  PAROL — majburiy;  OFERTA — majburiy;
+//   EMAIL   — IXTIYORIY (yozilsa formati tekshiriladi);
+//   Telegram — umuman talab qilinmaydi.
+//
+// Sabab: "Telegram" so'zining o'zi ro'yxat formasida to'siq bo'lib
+// ko'rinardi va odamlar shu joyda to'xtardi. Tasdiqlash kabinetdagi
+// "Profilingizni himoyalang" bo'limiga ko'chdi.
 const regBody = (over = {}) => ({
   email: 'New.User@Test.local', password: 'secret123', phone: '+998901234567',
-  code: lastCode(), botAck: true, tosAccepted: true, promoCode: '', ...over,
+  tosAccepted: true, promoCode: '', ...over,
 });
 {
   let res = await post('/api/auth/register', regBody({ email: 'bad' }));
   check('register: bad email -> 422', res.status, 422);
   res = await post('/api/auth/register', regBody({ password: '123' }));
   check('register: short password -> 422', res.status, 422);
-  res = await post('/api/auth/register', regBody({ botAck: false }));
-  check('register: botAck missing -> 422', res.status, 422);
-  res = await post('/api/auth/register', regBody({ code: '' }));
-  check('register: code missing -> 422 code_required', [res.status, (await res.json()).error], [422, 'code_required']);
-  res = await post('/api/auth/register', regBody({ phone: '+998909999999' }));
-  check('register: unverified phone -> 422', [res.status, (await res.json()).error], [422, 'phone_not_verified']);
+  res = await post('/api/auth/register', regBody({ phone: 'abc' }));
+  check('register: bad phone -> 422', res.status, 422);
+  res = await post('/api/auth/register', regBody({ tosAccepted: false }));
+  check('register: oferta rad etilsa -> 422', res.status, 422);
+
+  // Telegram BO'LMASA HAM ro'yxatdan o'tiladi — bu asosiy o'zgarish.
+  res = await post('/api/auth/register', regBody({ phone: '+998909999999', email: 'no.tg@test.local' }));
+  const noTg = await res.json();
+  check('register: Telegramsiz ham 201', [res.status, noTg.user?.email], [201, 'no.tg@test.local']);
+
   res = await post('/api/auth/register', regBody({ email: 'user@test.local' }));
-  check('register: duplicate email -> 409 (code NOT consumed)', [res.status, (await res.json()).error], [409, 'email_taken']);
+  check('register: duplicate email -> 409', [res.status, (await res.json()).error], [409, 'email_taken']);
 
-  // Noto'g'ri kod → 422, va o'sha kod kuyadi
-  res = await post('/api/auth/register', regBody({ code: '000000' }));
-  check('register: wrong code -> 422 bad_code', [res.status, (await res.json()).error], [422, 'bad_code']);
-  res = await post('/api/auth/register', regBody());
-  check('register: correct code after wrong attempt is burned -> 422', (await res.json()).error, 'bad_code');
+  // TELEFON YAGONALIGI — ustunda UNIQUE yo'q, tekshiruv kodda.
+  res = await post('/api/auth/register', regBody({ phone: '+998909999999', email: 'other.person@test.local' }));
+  check('register: band telefon -> 409 phone_taken', [res.status, (await res.json()).error], [409, 'phone_taken']);
 
-  // Yangi kod (limit oynasini bo'shatamiz) — referral uchun user#1 ga promo beramiz
-  sqlite.prepare(`UPDATE phone_otp_codes SET created_at = '2000-01-01 00:00:00+00'`).run();
   sqlite.prepare(`UPDATE users SET promo_code = 'FRIEND1' WHERE id = 1`).run();
-  await post('/api/auth/request-register-code', { phone: '+998901234567' });
   res = await post('/api/auth/register', regBody({ promoCode: 'friend1' }));
   const body = await res.json();
   check('register: happy path -> 201 {user:{id,email}}', [res.status, body.user?.email, typeof body.user?.id], [201, 'new.user@test.local', 'number']);
   const setCookie = res.headers.get('set-cookie') || '';
   checkTrue('register: Set-Cookie nfc_session', /^nfc_session=[0-9a-f]{64}; Path=\/; HttpOnly/.test(setCookie));
-  const u = sqlite.prepare(`SELECT email, phone, bot_ack, tos_accepted, promo_code, length(password_hash) AS hl FROM users WHERE id = ?`).get(body.user.id);
-  check('register: user row', [u.email, u.phone, u.bot_ack, u.tos_accepted], ['new.user@test.local', '+998901234567', 1, 1]);
+  const u = sqlite.prepare(`SELECT email, phone, tos_accepted, promo_code, length(password_hash) AS hl FROM users WHERE id = ?`).get(body.user.id);
+  check('register: user row', [u.email, u.phone, u.tos_accepted], ['new.user@test.local', '+998901234567', 1]);
   checkTrue('register: promo_code assigned (6 chars)', /^[A-Z2-9]{6}$/.test(u.promo_code || ''));
   checkTrue('register: password hashed (salt:hash)', u.hl > 100);
   const card = sqlite.prepare(`SELECT code, name, price, is_primary, giftable, theme, hashtags FROM cards WHERE user_id = ?`).get(body.user.id);
@@ -90,7 +99,6 @@ const regBody = (over = {}) => ({
   const ref = sqlite.prepare(`SELECT referrer_id, referred_id FROM referral_uses`).all();
   check('register: referral recorded', ref, [{ referrer_id: 1, referred_id: body.user.id }]);
   check('register: referrer discount +10', sqlite.prepare(`SELECT pending_discount_pct AS p FROM users WHERE id = 1`).get().p, 10);
-  check('register: OTP consumed', sqlite.prepare(`SELECT used FROM phone_otp_codes ORDER BY id DESC LIMIT 1`).get().used, 1);
 
   // Cookie ishlaydi
   const token = setCookie.match(/^nfc_session=([0-9a-f]+)/)[1];
@@ -98,15 +106,46 @@ const regBody = (over = {}) => ({
   const me = await res.json();
   check('register: session cookie works on /api/auth/me', [me.user?.id, me.cards?.length], [body.user.id, 1]);
 
-  res = await post('/api/auth/register', regBody());
+  res = await post('/api/auth/register', regBody({ phone: '+998901230000' }));
   check('register: same email again -> 409', res.status, 409);
+
+  // ── EMAILSIZ RO'YXAT ────────────────────────────────────────────────
+  // `users.email` ustuni bazada NOT NULL UNIQUE, shuning uchun emailsiz
+  // akkauntga tashqariga chiqmaydigan ICHKI manzil yoziladi. U odamga
+  // hech qachon ko'rsatilmasligi shart — aks holda profilida
+  // "p998...@nfcstore.local" degan tushunarsiz narsa turardi.
+  res = await post('/api/auth/register', { password: 'secret123', phone: '+998907770001', tosAccepted: true });
+  const noMail = await res.json();
+  check('register: emailsiz -> 201', res.status, 201);
+  check('register: javobda email BO\'SH (ichki manzil ko\'rinmaydi)', noMail.user?.email, '');
+  const nm = sqlite.prepare(`SELECT email, phone FROM users WHERE id = ?`).get(noMail.user.id);
+  check('register: bazada ichki manzil telefondan yasaladi', [nm.email, nm.phone], ['p998907770001@nfcstore.local', '+998907770001']);
+  const meNoMail = await (await worker.fetch(req('/api/auth/me', {
+    cookie: `nfc_session=${(res.headers.get('set-cookie') || '').match(/^nfc_session=([0-9a-f]+)/)[1]}`,
+  }), env)).json();
+  check('register: /api/auth/me da ham email bo\'sh', meNoMail.user?.email, '');
+
+  // Xuddi shu raqam bilan ikkinchi emailsiz akkaunt ochib bo'lmaydi.
+  res = await post('/api/auth/register', { password: 'secret123', phone: '+998907770001', tosAccepted: true });
+  check('register: emailsiz takror telefon -> 409 phone_taken', [res.status, (await res.json()).error], [409, 'phone_taken']);
+
+  // ── TELEFON BILAN KIRISH ────────────────────────────────────────────
+  // Emailsiz odam boshqa yo'l bilan kira olmaydi, shuning uchun kirish
+  // maydoni telefonni ham qabul qiladi. Eski (emailli) foydalanuvchilar
+  // avvalgidek email bilan kirishda davom etadi — bu qo'shimcha yo'l.
+  res = await post('/api/auth/login', { email: '+998907770001', password: 'secret123' });
+  check('login: telefon bilan kirish ishlaydi', [res.status, (await res.json()).user?.id], [200, noMail.user.id]);
+  res = await post('/api/auth/login', { email: '998 907 770-001', password: 'secret123' });
+  check('login: raqam formati erkin (+, bo\'shliq, chiziq)', res.status, 200);
+  res = await post('/api/auth/login', { email: '+998907770001', password: 'notmypassword' });
+  check('login: telefon + xato parol -> 401', res.status, 401);
+  res = await post('/api/auth/login', { email: 'user@test.local', password: 'secret123' });
+  checkTrue('login: eski email yo\'li hali ham ishlaydi (401/200, 422 EMAS)', res.status !== 422);
 
   // Admin o'chirgan akkaunt emaili qayta ro'yxatdan o'tadi (eski qator tozalanadi)
   sqlite.prepare(`INSERT INTO users (id, email, password_hash, deleted_at) VALUES (50, 'gone@test.local', 'x', '2026-01-01 00:00:00+00')`).run();
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('GON001', 'Old', 0, 1, 50)`).run();
-  sqlite.prepare(`UPDATE phone_otp_codes SET created_at = '2000-01-01 00:00:00+00'`).run();
-  await post('/api/auth/request-register-code', { phone: '+998901234567' });
-  res = await post('/api/auth/register', regBody({ email: 'gone@test.local' }));
+  res = await post('/api/auth/register', regBody({ email: 'gone@test.local', phone: '+998901231111' }));
   const gone = await res.json();
   check('register: deleted account email re-registers -> 201', [res.status, gone.user?.email], [201, 'gone@test.local']);
   check('register: old deleted row + its cards removed', [sqlite.prepare(`SELECT COUNT(*) AS n FROM users WHERE id = 50`).get().n, sqlite.prepare(`SELECT COUNT(*) AS n FROM cards WHERE code = 'GON001'`).get().n], [0, 0]);

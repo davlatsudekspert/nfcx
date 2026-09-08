@@ -56,23 +56,45 @@ function validateAuthBody(body, H) {
   return { email, password };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// EMAILSIZ AKKAUNT (2026-09)
+//
+// Endi ro'yxatdan o'tishda TELEFON majburiy, email esa ixtiyoriy —
+// O'zbekistonda ko'p odam email ishlatmaydi va uni so'rash bekorga
+// to'siq bo'lardi.
+//
+// Lekin `users.email` ustuni bazada `NOT NULL UNIQUE`. Uni bo'sh
+// qilinadigan holga keltirish SQLite'da jadvalni QAYTA QURISHNI talab
+// qiladi — bu ishlab turgan bazada xavfli amal va bu yerda qilinmaydi.
+//
+// Shuning uchun emailsiz akkauntga TASHQARIGA CHIQMAYDIGAN ichki manzil
+// yoziladi: p998901234567@nfcstore.local. Bu manzil:
+//   * hech qachon foydalanuvchiga ko'rsatilmaydi (`publicEmail()`);
+//   * hech qachon xat yuborilmaydi (.local domeni marshrutlanmaydi);
+//   * telefon bo'yicha YAGONALIKNI bepul ta'minlaydi — bir raqamga
+//     ikkinchi emailsiz akkaunt ochib bo'lmaydi (UNIQUE ishlaydi).
+// Amalga oshirilishi hosting/worker.js da (yagona manba) va `H` orqali
+// keladi — ikki nusxa bo'lsa, vaqt o'tib biri o'zgarib qolardi.
+
 // Ro'yxatdan o'tishga xos qo'shimcha tekshiruv: telefon, "botga yozdim" va
 // oferta tasdig'i, tasdiqlash kodi — barchasi majburiy (legacy bilan bir xil).
 function validateRegisterExtra(body, H) {
   const phone = normPhone(body.phone, H);
-  const botAck = body.botAck === true;
   const tosAccepted = body.tosAccepted === true;
-  const code = H.cleanStr(body.code, 6);
   const linkToken = H.cleanStr(body.linkToken, 64);
   if (!PHONE_RE.test(phone)) return { error: 'Telefon raqamini to’g’ri kiriting (masalan +998901234567).' };
   if (!tosAccepted) return { error: 'Davom etish uchun ommaviy oferta shartlariga rozilik bering.' };
-  // Yangi oqimda "botga yozdim" katakchasi YO'Q: botga o'tganini
-  // katakcha emas, tokenning O'ZI isbotlaydi. Eski oqim (kod) uchun
-  // katakcha va kod avvalgidek talab qilinadi.
-  if (linkToken) return { phone, botAck: true, tosAccepted, linkToken, code: '' };
-  if (!botAck) return { error: 'Avval Telegram botimizga yozib, tasdiqlash katagini belgilang.' };
-  if (!code) return { error: 'code_required' };
-  return { phone, botAck, tosAccepted, code, linkToken: '' };
+  // Telegram tasdig'i endi ro'yxatdan o'tishda TALAB QILINMAYDI (2026-09).
+  //
+  // Nega: "Telegram" so'zining o'zi ro'yxatdan o'tish formasida to'siq
+  // bo'lib ko'rinardi va odamlar shu joyda to'xtardi. Tasdiqlash endi
+  // kabinetdagi "Profilingizni himoyalang" bo'limida — u yerda u to'siq
+  // emas, IMTIYOZ bo'lib ko'rinadi (parolni tiklash va xabarlar shunga
+  // bog'liq).
+  //
+  // Token YUBORILGAN bo'lsa (masalan kelajakdagi boshqa oqimdan) u
+  // qabul qilinadi va raqam tokendan olinadi — bu qat'iyroq tekshiruv.
+  return { phone, tosAccepted, linkToken, botAck: !!linkToken, code: '' };
 }
 
 // ---------- bot_verifications ----------
@@ -315,40 +337,53 @@ async function requestRegisterCode(request, env, H) {
   return H.json({ ok: true });
 }
 
+// Ro'yxatdan o'tish. 2026-09 dan beri: TELEFON majburiy, EMAIL ixtiyoriy,
+// Telegram tasdig'i esa umuman talab qilinmaydi (validateRegisterExtra
+// izohiga qarang). MAVJUD AKKAUNTLARGA HECH QANDAY TA'SIRI YO'Q — bu yo'l
+// faqat yangi qatorlar yaratadi, eski qatorlar va ularning parollari
+// tegilmaydi.
 async function register(request, env, H) {
   const body = await request.json().catch(() => ({}));
-  const { email, password, error } = validateAuthBody(body || {}, H);
-  if (error) return H.json({ error }, 422);
+  const password = typeof body?.password === 'string' ? body.password : '';
+  if (password.length < 6) return H.json({ error: 'Parol kamida 6 belgidan iborat bo’lishi kerak.' }, 422);
+
   const extra = validateRegisterExtra(body || {}, H);
   if (extra.error) return H.json({ error: extra.error }, 422);
 
-  // YANGI OQIM: token bilan. Raqam FORMDAN emas, TOKENDAN olinadi —
-  // mijoz boshqa birovning raqamini yozib yubora olmasin. Token bir
-  // martalik: ishlatilgach darhol o'chiriladi.
+  // Email BO'SH bo'lishi mumkin. Yozilgan bo'lsa — formati tekshiriladi
+  // (xato yozilgan email jim qabul qilinsa, odam keyin parolini tiklay
+  // olmay qolardi).
+  const rawEmail = H.cleanStr(body?.email, 120).toLowerCase();
+  if (rawEmail && !EMAIL_RE.test(rawEmail)) return H.json({ error: 'Email formati noto’g’ri.' }, 422);
+  const email = rawEmail || H.placeholderEmailForD1(extra.phone);
+
+  // Token yuborilgan bo'lsa — raqam FORMDAN emas, TOKENDAN tasdiqlanadi.
   if (extra.linkToken) {
     const link = await getTgLinkRow(env, H, extra.linkToken);
     if (!link || link.status !== 'linked' || !link.phone) return H.json({ error: 'link_not_confirmed' }, 422);
     if (link.phone !== extra.phone) return H.json({ error: 'link_phone_mismatch' }, 422);
-    const existingEmail = await env.DB.prepare(`SELECT id, deleted_at FROM users WHERE email = ?`).bind(email).first();
-    if (existingEmail && !existingEmail.deleted_at) return H.json({ error: 'email_taken' }, 409);
+  }
+
+  // TELEFON YAGONALIGI. Ustunda UNIQUE yo'q (eski bazada takror raqamlar
+  // bo'lishi mumkin va uni majburlab qo'yish ishlab turgan ma'lumotni
+  // buzardi), shuning uchun tekshiruv shu yerda. O'chirilgan akkauntlar
+  // hisobga olinmaydi — ularning raqami qayta ishlatilishi mumkin.
+  const phoneTaken = await env.DB.prepare(
+    `SELECT id FROM users WHERE phone = ? AND deleted_at IS NULL LIMIT 1`
+  ).bind(extra.phone).first();
+  if (phoneTaken) return H.json({ error: 'phone_taken' }, 409);
+
+  const existing = await env.DB.prepare(`SELECT id, deleted_at FROM users WHERE email = ?`).bind(email).first();
+  if (existing && !existing.deleted_at) {
+    // Ichki (ko'rinmas) manzil band bo'lsa, sabab email emas — TELEFON.
+    // Odamga "email band" deyish chalkash bo'lardi.
+    return H.json({ error: H.isPlaceholderEmailD1(email) ? 'phone_taken' : 'email_taken' }, 409);
+  }
+
+  if (extra.linkToken) {
     const burned = await env.DB.prepare(`DELETE FROM tg_link_tokens WHERE token = ?`)
       .bind(await H.sha256Hex(extra.linkToken)).run();
     if (!burned?.meta?.changes) return H.json({ error: 'link_not_confirmed' }, 422);
-    return finishRegistration(request, env, H, { email, password, extra, existing: existingEmail, body });
-  }
-
-  // Haqiqiy tekshiruv: raqam botga "Kontaktni ulashish" orqali yuborilgan
-  // bo'lishi shart — checkbox o'zi hech narsani isbotlamaydi.
-  if (!(await getTgUserIdForPhone(env, extra.phone))) return H.json({ error: 'phone_not_verified' }, 422);
-
-  // Email bandligini kodni ishlatishdan OLDIN tekshiramiz — aks holda
-  // foydalanuvchi bekorga yangi kod so'rashiga to'g'ri keladi.
-  const existing = await env.DB.prepare(`SELECT id, deleted_at FROM users WHERE email = ?`).bind(email).first();
-  if (existing && !existing.deleted_at) return H.json({ error: 'email_taken' }, 409);
-
-  // Bot orqali yuborilgan kod — raqam HAQIQATAN shu odamniki ekanini isbotlaydi.
-  if (!(await verifyAndConsumePhoneOtpCode(env, H, extra.phone, extra.code, 'register'))) {
-    return H.json({ error: 'bad_code' }, 422);
   }
 
   return finishRegistration(request, env, H, { email, password, extra, existing, body });
@@ -384,7 +419,7 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   }
 
   const s = await H.createUserSession(env, user.id, request);
-  return H.jsonWithCookie({ user: { id: user.id, email: user.email } }, 201, s.cookie);
+  return H.jsonWithCookie({ user: { id: user.id, email: H.publicEmailD1(user.email) } }, 201, s.cookie);
 }
 
 // Parol tiklash so'rovi — foydalanuvchi bor-yo'qligi oshkor qilinmaydi:
@@ -413,15 +448,23 @@ async function requestPasswordReset(request, env, H) {
 
 async function resetPassword(request, env, H) {
   const body = await request.json().catch(() => ({}));
-  const { email, password, error } = validateAuthBody(body || {}, H);
-  if (error) return H.json({ error }, 422);
+  // Akkaunt EMAIL yoki TELEFON bilan topiladi: emailsiz ro'yxatdan
+  // o'tgan odamda email umuman yo'q, u faqat raqamini biladi.
+  const login = H.cleanStr(body?.email ?? body?.login, 120).toLowerCase();
+  const password = typeof body?.password === 'string' ? body.password : '';
+  if (password.length < 6) return H.json({ error: 'Parol kamida 6 belgidan iborat bo’lishi kerak.' }, 422);
+  const asPhone = H.normalizePhoneD1(login);
+  const isEmail = EMAIL_RE.test(login);
+  if (!isEmail && !asPhone) return H.json({ error: 'bad_login' }, 422);
   const code = H.cleanStr(body?.code, 6);
   const linkToken = H.cleanStr(body?.linkToken, 64);
   if (!linkToken && !/^\d{6}$/.test(code)) return H.json({ error: 'bad_code' }, 422);
 
-  const user = await env.DB.prepare(
-    `SELECT id, phone FROM users WHERE email = ? AND deleted_at IS NULL`
-  ).bind(email).first();
+  const user = isEmail
+    ? await env.DB.prepare(`SELECT id, phone FROM users WHERE email = ? AND deleted_at IS NULL`).bind(login).first()
+    : await env.DB.prepare(
+      `SELECT id, phone FROM users WHERE phone = ? AND deleted_at IS NULL ORDER BY id ASC LIMIT 1`
+    ).bind(asPhone).first();
   if (!user) return H.json({ error: 'bad_code' }, 422);
 
   if (linkToken) {
