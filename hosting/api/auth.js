@@ -470,11 +470,32 @@ async function resetPassword(request, env, H) {
   const login = H.cleanStr(body?.email ?? body?.login, 120).toLowerCase();
   const password = typeof body?.password === 'string' ? body.password : '';
   if (password.length < 6) return H.json({ error: 'Parol kamida 6 belgidan iborat bo’lishi kerak.' }, 422);
+
+  // ── EMAIL HAVOLASI ORQALI (2026-09) ────────────────────────────────
+  // Token o'zi qaysi akkaunt ekanini biladi, shuning uchun bu yo'l
+  // login/telefon maydonini UMUMAN talab qilmaydi va boshqa
+  // tekshiruvlardan oldin hal qilinadi.
+  const emailTokenEarly = H.cleanStr(body?.emailToken, 96);
+  if (emailTokenEarly) {
+    const ip0 = H.reqIp(request);
+    if (await H.rateLimitD1(env, `emailresetuse:${ip0}`, 10, 60 * 60_000)) return H.json({ error: 'rate_limited' }, 429);
+    const userId = await burnEmailResetToken(env, H, emailTokenEarly);
+    if (!userId) return H.json({ error: 'link_expired' }, 422);
+    const hash = await H.hashPassword(password);
+    await env.DB.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).bind(hash, userId).run();
+    // Boshqa qurilmalardagi ochiq sessiyalar YOPILADI: parol
+    // o'zgargach, eski sessiya ochiq qolishi mumkin emas.
+    await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(userId).run();
+    return H.json({ ok: true });
+  }
+
   const asPhone = H.normalizePhoneD1(login);
   const isEmail = EMAIL_RE.test(login);
   if (!isEmail && !asPhone) return H.json({ error: 'bad_login' }, 422);
   const code = H.cleanStr(body?.code, 6);
   const linkToken = H.cleanStr(body?.linkToken, 64);
+  // Email havolasi yuqorida hal qilindi; bu yerga faqat Telegram yoki
+  // kod yo'li bilan kelinadi.
   if (!linkToken && !/^\d{6}$/.test(code)) return H.json({ error: 'bad_code' }, 422);
 
   const user = isEmail
@@ -510,6 +531,78 @@ async function resetPassword(request, env, H) {
   return H.json({ ok: true });
 }
 
+// ── EMAIL ORQALI PAROL TIKLASH (2026-09) ─────────────────────────────
+//
+// Telegram yo'liga QO'SHIMCHA, uning o'rniga emas: emailsiz ro'yxatdan
+// o'tganlar avvalgidek botdan foydalanadi, emaili borlar esa pochtadan
+// havola oladi.
+//
+// XAVFSIZLIK QOIDALARI:
+//  1. AKKAUNT BORLIGI OSHKOR QILINMAYDI. Manzil bazada bo'lsa ham,
+//     bo'lmasa ham javob BIR XIL ({ok:true}) — aks holda bu forma
+//     "qaysi email ro'yxatdan o'tgan" degan tekshirgichga aylanardi.
+//  2. Token XESHLANIB saqlanadi, bir martalik, 30 daqiqada kuyadi.
+//  3. Tezlik cheklovi: bitta manzilga soatiga 3 marta, bitta IP dan
+//     soatiga 10 marta.
+const EMAIL_RESET_TTL_MS = 30 * 60 * 1000;
+
+async function requestEmailReset(request, env, H) {
+  const body = await request.json().catch(() => ({}));
+  const email = H.cleanStr(body?.email, 120).toLowerCase();
+  const ok = () => H.json({ ok: true });
+  if (!EMAIL_RE.test(email)) return H.json({ error: 'bad_login' }, 422);
+
+  const ip = H.reqIp(request);
+  if (await H.rateLimitD1(env, `emailreset:ip:${ip}`, 10, 60 * 60_000)) return H.json({ error: 'rate_limited' }, 429);
+  if (await H.rateLimitD1(env, `emailreset:to:${email}`, 3, 60 * 60_000)) return ok();
+  if (!H.emailEnabledD1(env)) return ok();
+
+  // Placeholder email (raqam bilan ro'yxatdan o'tganlar) hech qachon
+  // haqiqiy manzil emas — u orqali tiklash yo'li ochilmaydi.
+  if (H.isPlaceholderEmailD1(email)) return ok();
+  const user = await env.DB.prepare(
+    `SELECT id FROM users WHERE email = ? AND deleted_at IS NULL`,
+  ).bind(email).first();
+  if (!user) return ok();
+
+  const token = H.newToken(32);
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO email_reset_tokens (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`,
+  ).bind(await H.sha256Hex(token), user.id, new Date(now + EMAIL_RESET_TTL_MS).toISOString(), new Date(now).toISOString()).run();
+
+  const origin = new URL(request.url).origin;
+  const link = `${origin}/login?reset=${encodeURIComponent(token)}`;
+  await H.sendEmailD1(env, {
+    to: email,
+    subject: 'NFCSTORE — parolni tiklash',
+    html: H.emailShellD1({
+      title: 'Parolni tiklash',
+      body: 'Quyidagi tugmani bosing va yangi parol qo‘ying. Havola <b>30 daqiqa</b> amal qiladi va bir marta ishlaydi.',
+      buttonLabel: 'Yangi parol qo‘yish',
+      buttonUrl: link,
+      footer: 'Agar bu so‘rovni siz yubormagan bo‘lsangiz, bu xatni e’tiborsiz qoldiring — parolingiz o‘zgarmaydi.',
+    }),
+    text: `Parolni tiklash: ${link}\n\nHavola 30 daqiqa amal qiladi. So'rovni siz yubormagan bo'lsangiz, e'tiborsiz qoldiring.`,
+  });
+  return ok();
+}
+
+// Tokenni tekshiradi va KUYDIRADI. Yaroqli bo'lsa user_id qaytadi.
+async function burnEmailResetToken(env, H, token) {
+  const hash = await H.sha256Hex(token);
+  const row = await env.DB.prepare(
+    `SELECT user_id, expires_at FROM email_reset_tokens WHERE token = ?`,
+  ).bind(hash).first();
+  if (!row) return null;
+  // Kuydirish MUDDATNI TEKSHIRISHDAN OLDIN: token qanday bo'lmasin,
+  // bir marta ishlatilgach yo'q bo'ladi.
+  const burned = await env.DB.prepare(`DELETE FROM email_reset_tokens WHERE token = ?`).bind(hash).run();
+  if (!burned?.meta?.changes) return null;
+  if (new Date(row.expires_at).getTime() < Date.now()) return null;
+  return Number(row.user_id);
+}
+
 export async function handle(request, env, url, H) {
   if (url.pathname === '/api/auth/tg-link/status' && request.method === 'GET') {
     return tgLinkStatus(request, env, H, url);
@@ -520,6 +613,7 @@ export async function handle(request, env, url, H) {
     case '/api/auth/request-register-code': return requestRegisterCode(request, env, H);
     case '/api/auth/register': return register(request, env, H);
     case '/api/auth/request-password-reset': return requestPasswordReset(request, env, H);
+    case '/api/auth/request-email-reset': return requestEmailReset(request, env, H);
     case '/api/auth/reset-password': return resetPassword(request, env, H);
     default: return null;
   }

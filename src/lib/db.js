@@ -1163,7 +1163,14 @@ export async function dbAuthRequestPasswordReset(email) {
 // (satr sifatida). Xato KALITI o'zgartirilmay uzatiladi — chaqiruvchi
 // uni foydalanuvchi tiliga o'giradi.
 export async function dbAuthResetPassword(email, proof, password) {
-  const payload = typeof proof === 'string' ? { code: proof } : { linkToken: proof?.linkToken || '' };
+  // Uch xil isbot: eski kod, Telegram tokeni yoki emaildagi havola
+  // tokeni. Email yo'lida `email` maydoni umuman ishlatilmaydi —
+  // token o'zi qaysi akkaunt ekanini biladi.
+  const payload = typeof proof === 'string'
+    ? { code: proof }
+    : proof?.emailToken
+      ? { emailToken: proof.emailToken }
+      : { linkToken: proof?.linkToken || '' };
   let res;
   try {
     res = await fetch('/api/auth/reset-password', {

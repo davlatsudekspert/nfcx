@@ -1129,6 +1129,30 @@ async function companyAdminApi(request, env, url) {
     }
     return json({ names: out, prices: COMPANY_PREMIUM_PRICE });
   }
+  // EMAIL SINOVI — Resend kaliti va DNS yozuvlari to'g'ri qo'yilganini
+  // tekshirish uchun. Faqat admin. Xatolik sababi (domen tasdiqlanmagan,
+  // kalit noto'g'ri v.h.) TO'G'RIDAN-TO'G'RI qaytariladi, chunki uni
+  // faqat admin ko'radi va aynan shu matn muammoni ko'rsatadi.
+  // Kalitning O'ZI hech qachon qaytarilmaydi.
+  if (path === '/api/admin/test-email' && request.method === 'POST') {
+    if (!emailEnabledD1(env)) {
+      return json({ ok: false, reason: 'disabled', hint: 'RESEND_API_KEY va RESEND_FROM Cloudflare secret sifatida qo\u2018yilmagan.' }, 200);
+    }
+    const body = await request.json().catch(() => ({}));
+    const to = cleanStr(body?.to, 120).toLowerCase();
+    const result = await sendEmailD1(env, {
+      to,
+      subject: 'NFCSTORE \u2014 sinov xati',
+      html: emailShellD1({
+        title: 'Sinov xati',
+        body: 'Bu xat NFCSTORE admin panelidan yuborildi. Demak Resend kaliti va domen yozuvlari to\u2018g\u2018ri ishlayapti.',
+        footer: 'Bu avtomatik sinov xati \u2014 javob berish shart emas.',
+      }),
+      text: 'NFCSTORE sinov xati. Resend sozlamalari ishlayapti.',
+    });
+    await logAdminActivity(env, { action: 'email_test', details: to, ip });
+    return json(result, 200);
+  }
   if (path === '/api/admin/company-id-rules' && request.method === 'GET') {
     const rows = await env.DB.prepare('SELECT * FROM company_id_rules ORDER BY updated_at DESC').all();
     return json({ rules: rows.results || [] });
@@ -1631,6 +1655,16 @@ async function ensureCoreSchema(env) {
         "expires_at" INTEGER NOT NULL, "created_at" INTEGER NOT NULL
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS tg_link_tokens_exp_idx ON tg_link_tokens(expires_at)`),
+      // Email orqali parol tiklash tokenlari. Token XESHLANIB saqlanadi
+      // (bazani ko'rgan odam ham havolani tiklay olmasin), bir martalik
+      // va 30 daqiqada kuyadi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "email_reset_tokens" (
+        "token" TEXT PRIMARY KEY NOT NULL,
+        "user_id" INTEGER NOT NULL,
+        "expires_at" TEXT NOT NULL,
+        "created_at" TEXT NOT NULL
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS email_reset_tokens_exp_idx ON email_reset_tokens(expires_at)`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "post_likes" (
         "id" INTEGER PRIMARY KEY NOT NULL, "post_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL,
         "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -3521,6 +3555,79 @@ async function handleClickRequestD1(env, request, forced) {
   return clickFail(p, CLICK_ERR.ACTION, 'Action not found');
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// EMAIL YUBORISH (Resend)
+//
+// Kalit va yuboruvchi manzil FAQAT Cloudflare secret sifatida qo'yiladi:
+//   wrangler secret put RESEND_API_KEY
+//   RESEND_FROM = "NFCSTORE <no-reply@nfcstore.uz>"
+// Repo'da hech qachon yozilmaydi va loglarga ham tushmaydi.
+//
+// Kalit qo'yilmaguncha emailEnabledD1() false qaytaradi va yuborish
+// funksiyasi jim ravishda `{ok:false, reason:'disabled'}` beradi —
+// ya'ni bu kod deploy qilingani bilan hech narsa o'zi ochilib ketmaydi
+// va hech qanday oqim buzilmaydi.
+
+function emailEnabledD1(env) {
+  return !!(env.RESEND_API_KEY && env.RESEND_FROM);
+}
+
+async function sendEmailD1(env, { to, subject, html, text }) {
+  if (!emailEnabledD1(env)) return { ok: false, reason: 'disabled' };
+  const address = String(to || '').trim();
+  // Placeholder email (raqam bilan ro'yxatdan o'tganlar) — HAQIQIY
+  // manzil emas, unga yuborish Resend'da "bounce" bo'lib, domen
+  // obro'sini tushiradi. Shuning uchun bu yerda to'xtatiladi.
+  if (!address || isPlaceholderEmailD1(address) || !/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(address)) {
+    return { ok: false, reason: 'bad_address' };
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.RESEND_FROM,
+        to: [address],
+        subject: String(subject || '').slice(0, 200),
+        html: String(html || ''),
+        ...(text ? { text: String(text) } : {}),
+      }),
+    });
+    if (!res.ok) {
+      // XATO MATNI LOGGA TUSHADI, KALIT TUSHMAYDI — Resend javobida
+      // kalit qaytmaydi, faqat sabab (domen tasdiqlanmagan v.h.).
+      const detail = await res.text().catch(() => '');
+      console.error('resend', res.status, detail.slice(0, 300));
+      return { ok: false, reason: `http_${res.status}`, detail: detail.slice(0, 300) };
+    }
+    return { ok: true };
+  } catch (error) {
+    console.error('resend fetch', error?.message || error);
+    return { ok: false, reason: 'network' };
+  }
+}
+
+// Xatning umumiy ko'rinishi. Oddiy HTML: pochta mijozlari (Gmail,
+// Mail.ru, Outlook) murakkab CSS ni qirqib tashlaydi.
+function emailShellD1({ title, body, buttonLabel, buttonUrl, footer }) {
+  const esc = (v) => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return `<!doctype html><html><body style="margin:0;padding:24px;background:#0d0d0f;font-family:Arial,Helvetica,sans-serif;color:#e9e6df">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="100%" style="max-width:520px;background:#151518;border:1px solid #2a2a30;border-radius:14px" cellpadding="0" cellspacing="0"><tr><td style="padding:28px">
+<div style="font:700 13px/1 Arial;letter-spacing:.18em;color:#c9a24b">NFCSTORE.UZ</div>
+<h1 style="margin:14px 0 0;font-size:21px;line-height:1.3;color:#fff">${esc(title)}</h1>
+<div style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#b9b5ad">${body}</div>
+${buttonUrl ? `<div style="margin:24px 0 0"><a href="${esc(buttonUrl)}" style="display:inline-block;background:#c9a24b;color:#161616;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px">${esc(buttonLabel)}</a></div>
+<div style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#7c786f;word-break:break-all">${esc(buttonUrl)}</div>` : ''}
+${footer ? `<div style="margin:22px 0 0;padding-top:16px;border-top:1px solid #2a2a30;font-size:12px;line-height:1.6;color:#7c786f">${footer}</div>` : ''}
+</td></tr></table>
+</td></tr></table></body></html>`;
+}
+
 async function handlePaymeRequestD1(env, body) {
   const { method, params, id } = body || {};
   const orderId = Number(params?.account?.order_id);
@@ -3742,6 +3849,7 @@ async function handlePaymeRequestD1(env, body) {
 // export — Workers runtime faqat `export default { fetch }`ni ishlatadi.
 export {
   clickEnabledD1, clickCheckoutLinkD1, clickSignD1, handleClickRequestD1,
+  emailEnabledD1, sendEmailD1, emailShellD1,
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
   setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
   finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1,
@@ -6595,6 +6703,7 @@ const H = {
   finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
   sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
   rateLimitD1, roleAtLeast,
+  emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
 };
 const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram];
@@ -6678,7 +6787,8 @@ async function handleRequest(request, env, url) {
     }
 
     if (url.pathname === '/api/admin/company-requests' || url.pathname.startsWith('/api/admin/company-requests/')
-      || url.pathname === '/api/admin/company-id-rules' || url.pathname === '/api/admin/premium-company-names') {
+      || url.pathname === '/api/admin/company-id-rules' || url.pathname === '/api/admin/premium-company-names'
+      || url.pathname === '/api/admin/test-email') {
       try { return await companyAdminApi(request, env, url); }
       catch (error) {
         console.error('company admin api', error);

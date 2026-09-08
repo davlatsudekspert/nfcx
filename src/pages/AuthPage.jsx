@@ -57,6 +57,12 @@ export default function AuthPage({ mode }) {
     } catch { return ''; }
   })();
   const isBusiness = nextPath === '/business';
+  // Emaildagi havoladan kelgan bir martalik token (/login?reset=...).
+  // Bo'lsa — darhol "yangi parol qo'ying" oynasi ochiladi, hech qanday
+  // kod yoki Telegram tasdig'i so'ralmaydi: havolaning o'zi isbot.
+  const resetToken = (() => {
+    try { return new URLSearchParams(window.location.search).get('reset') || ''; } catch { return ''; }
+  })();
   const { refresh } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -87,7 +93,11 @@ export default function AuthPage({ mode }) {
   const BOT_LINK = botLinkFor(botUsername);
 
   // "Parolni unutdingizmi?" — 2 qadam: email → kod + yangi parol.
-  const [forgot, setForgot] = useState(false);
+  // `resetToken` bo'lsa parol tiklash oynasi DARHOL ochiladi — odam
+  // emaildagi havolani bosgan, uni yana "Parolni unutdingizmi?" ni
+  // qidirishga majburlash mantiqsiz.
+  const [forgot, setForgot] = useState(() => !!resetToken);
+  const [emailSent, setEmailSent] = useState(false);
   const [resetPass, setResetPass] = useState('');
   const [resetPass2, setResetPass2] = useState('');
 
@@ -97,13 +107,17 @@ export default function AuthPage({ mode }) {
   const submitReset = async (e) => {
     e.preventDefault();
     setMsg(null);
-    if (!email.trim()) { setMsg({ type: 'err', text: t('Telefon raqami yoki emailingizni kiriting.') }); return; }
-    if (!linkToken) { setMsg({ type: 'err', text: t('Avval Telegram orqali tasdiqlang.') }); return; }
+    // Emaildagi havoladan kelgan bo'lsa, login ham, Telegram tasdig'i
+    // ham so'ralmaydi — havolaning o'zi isbot.
+    if (!resetToken) {
+      if (!email.trim()) { setMsg({ type: 'err', text: t('Telefon raqami yoki emailingizni kiriting.') }); return; }
+      if (!linkToken) { setMsg({ type: 'err', text: t('Avval Telegram orqali tasdiqlang.') }); return; }
+    }
     if (resetPass.length < 6) { setMsg({ type: 'err', text: t('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.') }); return; }
     if (resetPass !== resetPass2) { setMsg({ type: 'err', text: t('Parollar bir xil emas.') }); return; }
     setBusy(true);
     try {
-      await dbAuthResetPassword(email.trim(), { linkToken }, resetPass);
+      await dbAuthResetPassword(email.trim(), resetToken ? { emailToken: resetToken } : { linkToken }, resetPass);
       setPassword('');
       setForgot(false);
       setLinkToken(''); setPhone('');
@@ -188,28 +202,68 @@ export default function AuthPage({ mode }) {
             <>
               <h2 className="vz-h2 mt-2 !text-2xl">{t('Parolni tiklash')}</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
-                {t("Telefon raqamingiz yoki emailingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.")}
+                {resetToken
+                  ? t('Havola tasdiqlandi. Endi yangi parol qo‘ying.')
+                  : t("Telefon raqamingiz yoki emailingizni yozing va Telegram orqali tasdiqlang — so‘ng yangi parol qo‘yasiz. Hech qanday kod kiritilmaydi.")}
               </p>
               <form onSubmit={submitReset} className="mt-6 space-y-3">
                 {/* Server ikkalasini ham qabul qiladi — emailsiz odam
                     faqat raqamini biladi. */}
+                {/* Emaildagi havoladan kelganda bu maydonlar KERAK EMAS:
+                    token o'zi qaysi akkaunt ekanini biladi. Ularni
+                    ko'rsatish odamni bekorga chalkashtirardi. */}
+                {!resetToken && (
                 <label className="form-control">
                   <span className="vz-label !mb-0">{t('Telefon yoki email')}</span>
                   <input type="text" value={email} onChange={(e) => setEmail(e.target.value)}
                     placeholder="+998901234567" autoComplete="username" required
                     className="input input-bordered mt-1 w-full bg-base-100" />
                 </label>
+                )}
 
                 {/* Tasdiqlash — ro'yxatdan o'tishdagi bilan AYNAN bir xil
                     oqim. Odam ikki joyda ikki xil narsa o'rganmasin. */}
-                <TgLinkBox
+                {!resetToken && <TgLinkBox
                   botUsername={botUsername}
                   linkedPhone={phone}
                   title={t('Akkauntingizga ulangan Telegram orqali tasdiqlang')}
                   onLinked={(p, token) => { setPhone(p); setLinkToken(token); }}
-                />
+                />}
 
-                {linkToken && (
+                {/* EMAIL YO'LI (2026-09) — Telegramga QO'SHIMCHA.
+                    Emaili bor odam botga kirmasdan, pochtadagi havola
+                    orqali ham parolini tiklay oladi. Javob har doim bir
+                    xil: "yubordik" — akkaunt bor-yo'qligi oshkor
+                    qilinmaydi. */}
+                {!resetToken && /^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email.trim()) && (
+                  <div className="rounded-xl border border-white/10 p-3">
+                    <div className="text-xs font-semibold text-base-content/70">{t('Yoki email orqali')}</div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost-vz btn-sm mt-2 min-h-11 w-full"
+                      disabled={emailSent || busy}
+                      onClick={async () => {
+                        setBusy(true); setMsg(null);
+                        try {
+                          const r = await fetch('/api/auth/request-email-reset', {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ email: email.trim().toLowerCase() }),
+                          });
+                          if (r.status === 429) throw new Error('rate');
+                          setEmailSent(true);
+                          setMsg({ type: 'ok', text: t('Agar bu manzil bizda ro‘yxatdan o‘tgan bo‘lsa, havola yuborildi. Pochtangizni (va "Spam" papkasini) tekshiring.') });
+                        } catch (e) {
+                          setMsg({ type: 'err', text: e?.message === 'rate' ? t('Juda ko‘p urinish. Birozdan so‘ng qayta urinib ko‘ring.') : t('Server bilan aloqa yo‘q. Qayta urinib ko‘ring.') });
+                        } finally { setBusy(false); }
+                      }}
+                    >
+                      {emailSent ? t('Havola yuborildi') : t('Emailga havola yuborish')}
+                    </button>
+                  </div>
+                )}
+
+                {(linkToken || resetToken) && (
                   <>
                     <label className="form-control">
                       <span className="vz-label !mb-0">{t('Yangi parol')}</span>
