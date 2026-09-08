@@ -62,3 +62,40 @@
 .cw-upload-url { width: 100%; }
 .cw-upload-err { color: #ff7b81; }
 .cw-upload-hint { color: rgba(255, 255, 255, 0.4); }
+
+/* ── Aloqa bo'limidagi qo'shimcha bloklar ──────────────────────────── */
+.cw-sub {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 18px; padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cw-sub-head b { display: block; font-size: 14.5px; color: #fff; }
+.cw-sub-head small { display: block; margin-top: 4px; font-size: 12.5px; color: rgba(255, 255, 255, 0.42); }
+.cw-link-row { display: flex; align-items: center; gap: 8px; }
+.cw-link-row input { flex: 1; min-width: 0; }
+.cw-link-row > .cw-upload-btn { flex: none; padding: 0 12px; }
+
+/* ── Kompaniya sahifasidagi musiqa pleeri ──────────────────────────── */
+.cp-music {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0 0; padding: 12px 14px;
+  border-radius: 16px;
+  background: #0b0b0d;
+  border: 1px solid rgba(201, 162, 75, 0.3);
+}
+.cp-music-play {
+  width: 44px; height: 44px; flex: none;
+  border: 0; border-radius: 50%;
+  background: linear-gradient(135deg, #f6e3a8, #c9a24b);
+  color: #161616; font-size: 15px; cursor: pointer;
+}
+.cp-music-info { flex: 1; min-width: 0; }
+.cp-music-info b { display: block; font-size: 14.5px; color: #fff; }
+.cp-music-info small { display: block; margin-top: 2px; font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+.cp-music-nav { display: flex; gap: 6px; }
+.cp-music-nav button {
+  width: 36px; height: 36px;
+  border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent; color: #e9e6df; font-size: 18px; cursor: pointer;
+}
+.cp-music-nav button:hover { border-color: rgba(201, 162, 75, 0.6); }

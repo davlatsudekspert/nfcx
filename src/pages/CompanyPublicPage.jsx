@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
+import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -12,6 +14,8 @@ export default function CompanyPublicPage({ companyId }) {
   const { t } = useLanguage();
   const [company, setCompany] = useState(undefined);
   const [tab, setTab] = useState('main');
+  // Karta raqami nusxalangani haqidagi qisqa bildirish.
+  const [copied, setCopied] = useState(false);
   useEffect(() => {
     let live = true;
     getCompany(companyId).then((data) => live && setCompany(data.company)).catch(() => live && setCompany(null));
@@ -36,7 +40,27 @@ export default function CompanyPublicPage({ companyId }) {
         {tab === 'main' && <><section className="cp-about"><div><span>{t('BIZ HAQIMIZDA')}</span><h2>{company.displayName}</h2><p>{company.description}</p><div className="cp-facts"><b>● {t('Admin tasdiqlagan')}</b><b>⌖ {company.city || t('O‘zbekiston')}</b><b>◇ ID {company.companyId}</b></div></div><aside><small>{t('KATALOG')}</small><strong>{company.catalog?.length || 0}</strong><p>{t('{noun} bitta ishonchli manbadan boshqariladi.', { noun: t(cta.noun) })}</p></aside></section>{items.length > 0 && <Catalog items={items.slice(0, 4)} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} />}</>}
         {tab === 'catalog' && <Catalog items={items} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} />}
         {tab === 'gallery' && <section className="cp-gallery"><div className="cp-section-title"><span>{t('GALEREYA')}</span><h2>{t('Kompaniya muhiti')}</h2></div><div>{(company.gallery || [company.coverUrl]).filter(Boolean).map((image, index) => <img key={`${image}-${index}`} src={image} alt="" />)}</div></section>}
-        {tab === 'contact' && <section className="cp-contact"><div><span>{t('ALOQA')}</span><h2>{t('Biz bilan bog‘laning')}</h2><p>{company.address || company.city || t('Manzil kiritilmagan')}</p></div><div className="cp-contact-list">{company.phone && <a href={`tel:${company.phone}`}>📞 {company.phone}</a>}{company.telegram && <a href={socialUrl('tg', company.telegram)}>✈ {company.telegram}</a>}{company.website && <a href={company.website}>◎ {company.website}</a>}</div></section>}
+        {/* Musiqa — kompaniya sahifasining o'zida, hamma bo'limda
+            ko'rinadi va ekran o'chganda ham to'xtamaydi. */}
+        <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
+        {tab === 'contact' && <section className="cp-contact"><div><span>{t('ALOQA')}</span><h2>{t('Biz bilan bog‘laning')}</h2><p>{company.address || company.city || t('Manzil kiritilmagan')}</p></div><div className="cp-contact-list">{company.phone && <a href={`tel:${company.phone}`}>📞 {company.phone}</a>}{company.telegram && <a href={socialUrl('tg', company.telegram)}>✈ {company.telegram}</a>}{company.whatsapp && <a href={socialUrl('wa', company.whatsapp)} target="_blank" rel="noopener noreferrer">✆ WhatsApp</a>}{company.instagram && <a href={socialUrl('ig', company.instagram)} target="_blank" rel="noopener noreferrer">◉ Instagram</a>}{company.facebook && <a href={socialUrl('fb', company.facebook)} target="_blank" rel="noopener noreferrer">f Facebook</a>}{company.website && <a href={company.website}>◎ {company.website}</a>}
+          {/* KARTA RAQAMI — bosilganda nusxalanadi (havola emas). */}
+          {company.cardNumber && (
+            <button type="button" onClick={() => { try { navigator.clipboard.writeText(company.cardNumber); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ruxsat yo'q */ } }}>
+              ▤ {copied ? t('Nusxalandi!') : company.cardNumber}
+            </button>
+          )}
+          {/* YO'NALISH — qurilmaning o'z xarita ilovasida. */}
+          {(company.latitude != null && company.longitude != null) && (
+            <>
+              <a href={directionsUrl(company)} target="_blank" rel="noopener noreferrer">⌖ {t('Yo‘nalish olish')}</a>
+              <a href={yandexDirectionsUrl(company)} target="_blank" rel="noopener noreferrer">🗺 {t('Yandex Karta')}</a>
+            </>
+          )}
+          {/* O'zi qo'shgan havolalar. */}
+          {(company.extraLinks || []).map((l, i) => (
+            <a key={`x${i}`} href={l.url} target="_blank" rel="noopener noreferrer">→ {l.label}</a>
+          ))}</div></section>}
       </div>
       <footer className="cp-footer"><b>NFCSTORE BUSINESS</b><span>{t('Company ID')}: {company.companyId}</span></footer>
     </main>

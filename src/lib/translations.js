@@ -2539,6 +2539,36 @@ const DICT_HOME = {
   'Qayta urinish': { ru: 'Повторить', en: 'Retry' },
   'Test rejimi': { ru: 'Тестовый режим', en: 'Test mode' },
   'Kartaning bosma dizaynini hozir belgilash (ixtiyoriy)': { ru: 'Задать печатный дизайн карты сейчас (необязательно)', en: 'Set the card’s print design now (optional)' },
+  // ── Kompaniya: aloqa, lokatsiya, qo‘shimcha havolalar, musiqa (2026-09) ──
+  'Karta raqami': { ru: 'Номер карты', en: 'Card number' },
+  'Mijoz "Yo‘nalish" tugmasini bosganda ishlatiladi.': {
+    ru: 'Используется, когда клиент нажимает кнопку «Маршрут».',
+    en: 'Used when a customer taps the "Directions" button.' },
+  'Joriy joylashuvimni olish': { ru: 'Определить моё местоположение', en: 'Use my current location' },
+  'Aniqlanmoqda…': { ru: 'Определяем…', en: 'Detecting…' },
+  'Joylashuv aniqlandi. Saqlashni unutmang.': {
+    ru: 'Местоположение определено. Не забудьте сохранить.',
+    en: 'Location detected. Don’t forget to save.' },
+  'Joylashuvga ruxsat berilmadi.': { ru: 'Доступ к геолокации запрещён.', en: 'Location access was denied.' },
+  'Brauzeringiz joylashuvni aniqlay olmadi.': {
+    ru: 'Браузер не смог определить местоположение.',
+    en: 'Your browser could not determine the location.' },
+  'Tozalash': { ru: 'Очистить', en: 'Clear' },
+  'Qo‘shimcha havolalar': { ru: 'Дополнительные ссылки', en: 'Extra links' },
+  'Xohlagan havolangizni nomi bilan qo‘shing — profilda tugma bo‘lib chiqadi.': {
+    ru: 'Добавьте любую ссылку с названием — на странице она станет кнопкой.',
+    en: 'Add any link with a label — it appears as a button on the page.' },
+  'Nomi (masalan: Menyu)': { ru: 'Название (например: Меню)', en: 'Label (e.g. Menu)' },
+  'Havola qo‘shish': { ru: 'Добавить ссылку', en: 'Add link' },
+  'Qo‘shiq qo‘shish': { ru: 'Добавить трек', en: 'Add track' },
+  'Kompaniya sahifasida ijro etiladi. {max} tagacha, fayldan yuklanadi.': {
+    ru: 'Играет на странице компании. До {max} треков, загрузка из файла.',
+    en: 'Plays on the company page. Up to {max} tracks, uploaded from a file.' },
+  'Faqat audio fayl tanlanadi.': { ru: 'Можно выбрать только аудиофайл.', en: 'Only an audio file can be selected.' },
+  'Yuklab bo‘lmadi.': { ru: 'Не удалось загрузить.', en: 'Upload failed.' },
+  '{n} tadan {max} tagacha': { ru: '{n} из {max}', en: '{n} of {max}' },
+  'Ijro etish': { ru: 'Воспроизвести', en: 'Play' },
+  '{n} / {total}': { ru: '{n} / {total}', en: '{n} / {total}' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

@@ -666,6 +666,13 @@ function rowCompany(row, items = []) {
     category: row.category || 'other', subcategory: row.subcategory || '',
     city: row.city || '', address: row.address || '', description: row.description || '',
     phone: row.phone || '', telegram: row.telegram || '', whatsapp: row.whatsapp || '', website: row.website || '',
+    instagram: row.instagram || '', facebook: row.facebook || '', cardNumber: row.card_number || '',
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
+    // O'zi qo'shgan havolalar: [{label, url}] — 8 tagacha.
+    extraLinks: parseJsonArray(row.extra_links_json),
+    // Musiqa: manzillar ro'yxati, 5 tagacha.
+    music: parseJsonArray(row.music_json),
     logoUrl: row.logo_url || '', coverUrl: row.cover_url || '', gallery,
     sourceCardCode: row.source_card_code || '', tier: row.tier, price: Number(row.price || 0),
     status: row.status, adminNote: row.admin_note || '', rejectedReason: row.rejected_reason || '',
@@ -989,11 +996,36 @@ async function companyApi(request, env, url) {
     const value = (key, max) => body[key] == null ? current[key] : shortText(body[key], max);
     // Tahrirlashda ham bir xil tekshiruv (yaratishdagi bilan aynan bir xil).
     if (companyNameBlockedD1(value('displayName', 120))) return json({ error: 'name_not_allowed' }, 422);
-    await env.DB.prepare(`UPDATE companies SET display_name=?, subcategory=?, city=?, address=?, description=?, phone=?, telegram=?, whatsapp=?, website=?, logo_url=?, cover_url=?, gallery_json=?, updated_at=? WHERE company_id=?`).bind(
+    // Koordinata: bo'sh qiymat 0 EMAS. `Number(null)` — bu 0 va profil
+    // Gvineya ko'rfazidagi 0,0 nuqtaga "joylashib" qolardi (shaxsiy
+    // profilda aynan shu xato bo'lgan).
+    const geo = (key, lo, hi) => {
+      if (!(key in body)) return current[key];
+      const v = body[key];
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
+    };
+    // O'zi qo'shgan havolalar — 8 tagacha, manzili tekshiriladi.
+    const extraLinks = Array.isArray(body.extraLinks)
+      ? body.extraLinks
+        .map((l) => ({ label: shortText(l && l.label, 40), url: safeUrl(l && l.url) }))
+        .filter((l) => l.label && l.url).slice(0, 8)
+      : current.extraLinks;
+    // Musiqa — 5 tagacha manzil (egasining talabi).
+    const music = Array.isArray(body.music)
+      ? body.music.map(safeUrl).filter(Boolean).slice(0, 5)
+      : current.music;
+
+    await env.DB.prepare(`UPDATE companies SET display_name=?, subcategory=?, city=?, address=?, description=?, phone=?, telegram=?, whatsapp=?, website=?, logo_url=?, cover_url=?, gallery_json=?, instagram=?, facebook=?, card_number=?, latitude=?, longitude=?, extra_links_json=?, music_json=?, updated_at=? WHERE company_id=?`).bind(
       value('displayName', 120), value('subcategory', 100), value('city', 100), value('address', 300), value('description', 1200),
       value('phone', 40), value('telegram', 100), value('whatsapp', 100), safeUrl(body.website == null ? current.website : body.website),
       safeUrl(body.logoUrl == null ? current.logoUrl : body.logoUrl), safeUrl(body.coverUrl == null ? current.coverUrl : body.coverUrl),
-      JSON.stringify(Array.isArray(body.gallery) ? body.gallery.map(safeUrl).filter(Boolean).slice(0, 12) : current.gallery), now, id
+      JSON.stringify(Array.isArray(body.gallery) ? body.gallery.map(safeUrl).filter(Boolean).slice(0, 12) : current.gallery),
+      value('instagram', 100), value('facebook', 100), value('cardNumber', 34),
+      geo('latitude', -90, 90), geo('longitude', -180, 180),
+      JSON.stringify(extraLinks), JSON.stringify(music),
+      now, id
     ).run();
     return json({ company: await companyWithItems(env, id) });
   }
@@ -1456,6 +1488,7 @@ async function ensureCoreSchema(env) {
   const adminTables = ensureAdminAuthTables(env);
   const totpColumn = ensureTotpReplayColumn(env);
   const internalColumn = ensureUserInternalColumn(env);
+  const companyContact = ensureCompanyContactColumns(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -1677,7 +1710,7 @@ async function ensureCoreSchema(env) {
   }
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
-  await Promise.all([adminTables, totpColumn, internalColumn, coreSchemaReady]);
+  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, coreSchemaReady]);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -1800,6 +1833,29 @@ async function ensureUserInternalColumn(env) {
       .run().catch(() => {});
   }
   await userInternalColumnReady;
+}
+
+// KOMPANIYA ALOQA VA MUSIQA USTUNLARI (2026-09, egasining so'rovi:
+// "Instagram, lokatsiya, Facebook, karta raqam qo'shish kerak, xohlasa
+// o'zi qo'shadigan funksiya; musiqa ham bo'lsin, 5 tagacha").
+//
+// Hammasi ADDITIVE: mavjud kompaniyalarga tegilmaydi, yangi ustunlar
+// bo'sh bo'ladi. Batch ichiga qo'yilmaydi — u atomik, mavjud ustun
+// uchun chiqqan bitta xato butun sxemani yiqitardi.
+let companyContactColumnsReady;
+async function ensureCompanyContactColumns(env) {
+  if (!companyContactColumnsReady) {
+    companyContactColumnsReady = Promise.all([
+      `ALTER TABLE companies ADD COLUMN instagram TEXT`,
+      `ALTER TABLE companies ADD COLUMN facebook TEXT`,
+      `ALTER TABLE companies ADD COLUMN card_number TEXT`,
+      `ALTER TABLE companies ADD COLUMN latitude REAL`,
+      `ALTER TABLE companies ADD COLUMN longitude REAL`,
+      `ALTER TABLE companies ADD COLUMN extra_links_json TEXT`,
+      `ALTER TABLE companies ADD COLUMN music_json TEXT`,
+    ].map((sql) => env.DB.prepare(sql).run().catch(() => {})));
+  }
+  await companyContactColumnsReady;
 }
 
 let totpColumnReady;
