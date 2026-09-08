@@ -134,7 +134,7 @@ export default function CatalogPage({ catalog }) {
             </div>
           )}
         </div>
-        <div className="hidden justify-self-center lg:flex">
+        <div className="hidden justify-center lg:flex">
           {/* Avval bu yerda aylanadigan namoyish kartasi turardi —
               bosilganda faqat orqa tomonini ko'rsatar, hech qayerga olib
               bormasdi. Endi bu bosiladigan taklif: jismoniy karta

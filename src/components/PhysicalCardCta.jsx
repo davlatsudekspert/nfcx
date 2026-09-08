@@ -59,7 +59,7 @@ export default function PhysicalCardCta() {
   return (
     <div className="vz-card grid items-center gap-8 overflow-hidden p-7 md:grid-cols-[1fr_auto] md:p-9">
       <div className="min-w-0">
-        <span className="vz-kicker">{'\u{1F3B4}'} {t('O‘zingiz xohlagan uslubda')}</span>
+        <span className="vz-kicker">{t('O‘zingiz xohlagan uslubda')}</span>
         <h2 className="vz-h2 mt-3 text-[color:var(--vz-ink)]">
           {t('NFC ID kartangizni o‘zingizga mos')} <span className="text-[color:var(--vz-gold-2)]">{t('dizaynda yarating')}</span>
         </h2>
