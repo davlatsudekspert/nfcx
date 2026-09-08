@@ -817,6 +817,9 @@ const DICT_BASE = {
   'Nusxalash': { ru: 'Копировать', en: 'Copy' },
   'Nusxalandi!': { ru: 'Скопировано!', en: 'Copied!' },
   'Havolani nusxalash': { ru: 'Скопировать ссылку', en: 'Copy link' },
+  'ICHKI': { ru: 'ВНУТР.', en: 'INTERNAL' },
+  'Hisobga qo‘shmaslik': { ru: 'Исключить из отчётности', en: 'Exclude from accounting' },
+  'Hisobga qo‘shish': { ru: 'Включить в отчётность', en: 'Include in accounting' },
   'Sinov foydalanuvchilar buyurtmalarini ham ko‘rsatish': { ru: 'Показывать и заказы тестовых пользователей', en: 'Also show orders from test users' },
   // Company ID narx tekshirgichi (Kompaniyalar sahifasi).
   'Nomingiz bo‘shmi? Narxini shu yerda bilib oling': { ru: 'Свободно ли ваше имя? Узнайте цену прямо здесь', en: 'Is your name free? Check the price right here' },

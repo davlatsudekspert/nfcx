@@ -1455,6 +1455,7 @@ async function ensureCoreSchema(env) {
   // promise'ida, biri yiqilsa ikkinchisi baribir bajariladi.
   const adminTables = ensureAdminAuthTables(env);
   const totpColumn = ensureTotpReplayColumn(env);
+  const internalColumn = ensureUserInternalColumn(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -1676,7 +1677,7 @@ async function ensureCoreSchema(env) {
   }
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
-  await Promise.all([adminTables, totpColumn, coreSchemaReady]);
+  await Promise.all([adminTables, totpColumn, internalColumn, coreSchemaReady]);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -1784,6 +1785,23 @@ async function ensureAdminAuthTables(env) {
 // state, not an error; any OTHER failure still surfaces (not swallowed
 // forever) because `totpColumnReady` only caches the settled promise, not
 // a blanket "never try again" flag across isolates.
+// ICHKI AKKAUNT ustuni (2026-09). Egasining o'z akkaunti —
+// buyurtmalari ro'yxatda KO'RINADI (ular haqiqiy), lekin PUL HISOBIGA
+// kirmaydi. `is_test` dan farqi shu: sinov akkaunt umuman yashiriladi,
+// ichki akkaunt esa faqat summalardan chiqariladi.
+//
+// BATCH ICHIGA QO'YILMAYDI: `batch()` atomik — mavjud ustun uchun
+// chiqqan xato butun to'plamni yiqitardi. Shuning uchun alohida,
+// xatosi yutiladigan ALTER (fayldagi boshqa ustunlar bilan bir xil naqsh).
+let userInternalColumnReady;
+async function ensureUserInternalColumn(env) {
+  if (!userInternalColumnReady) {
+    userInternalColumnReady = env.DB.prepare(`ALTER TABLE users ADD COLUMN is_internal INTEGER NOT NULL DEFAULT 0`)
+      .run().catch(() => {});
+  }
+  await userInternalColumnReady;
+}
+
 let totpColumnReady;
 async function ensureTotpReplayColumn(env) {
   if (!totpColumnReady) {
@@ -5521,15 +5539,20 @@ function newsRow(r) {
   };
 }
 
+// Sinov foydalanuvchilarni moliyaviy hisoblardan chiqaradigan shart.
+// Bir joyda turadi: har bir so'rovga qo'lda yozilsa, biri unutilib
+// qolar va hisoblar bir-biriga mos kelmay qolardi.
+const TEST_USER_FILTER_D1 = ' AND user_id NOT IN (SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)';
+
 async function adminCoreApi(request, env, url, admin) {
   const path = url.pathname;
   const ip = reqIp(request);
 
   if (path === '/api/admin/stats' && request.method === 'GET') {
     const [u, c, a, p] = await Promise.all([
-      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(balance),0) AS total_balance FROM users WHERE is_test = 0`).first(),
+      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(balance),0) AS total_balance FROM users WHERE is_test = 0 AND is_internal = 0`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(price),0) AS total_price FROM cards c
-                       WHERE c.user_id IS NULL OR c.user_id NOT IN (SELECT id FROM users WHERE is_test = 1)`).first(),
+                       WHERE c.user_id IS NULL OR c.user_id NOT IN (SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n FROM auctions WHERE status = 'active'`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders WHERE status = 'pending'`).first(),
     ]);
@@ -5549,7 +5572,7 @@ async function adminCoreApi(request, env, url, admin) {
     const [breakdownRows, commissions, signups, cards] = await Promise.all([
       env.DB.prepare(`SELECT kind, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE amount > 0 AND kind <> 'admin_adjust' GROUP BY kind ORDER BY total DESC`).all(),
       env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'platform_commission' AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
-      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM users WHERE is_test = 0 AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM users WHERE is_test = 0 AND is_internal = 0 AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
       env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS count FROM cards WHERE ts >= (unixepoch('now', '-29 days') * 1000) GROUP BY strftime('%Y-%m-%d', ts / 1000, 'unixepoch') ORDER BY day`).all(),
     ]);
     return json({
@@ -5779,8 +5802,12 @@ async function adminCoreApi(request, env, url, admin) {
     const start = range === 'today' ? "datetime('now','start of day')" : range === '7d' ? "datetime('now','-6 days','start of day')" : range === '30d' ? "datetime('now','-29 days','start of day')" : range === 'prev_month' ? "datetime('now','start of month','-1 month')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(from || '') ? `datetime('${from}T00:00:00')` : "datetime('now','start of month')";
     const end = range === 'prev_month' ? "datetime('now','start of month','-1 second')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(to || '') ? `datetime('${to}T23:59:59')` : "datetime('now')";
     const [sales, daily, expenses, bank] = await Promise.all([
-      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN ${start} AND ${end}`).first(),
-      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN ${start} AND ${end} GROUP BY substr(created_at,1,10) ORDER BY day`).all(),
+      // SINOV FOYDALANUVCHILAR HISOBGA OLINMAYDI (2026-09). Egasining
+      // o'z sinov to'lovlari umumiy hisobni buzardi — statistika buni
+      // allaqachon chiqarib tashlardi, moliya bo'limi esa yo'q.
+      // Yozuvlar O'CHIRILMAYDI, faqat hisobga kirmaydi.
+      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND datetime(created_at) BETWEEN ${start} AND ${end}`).first(),
+      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND datetime(created_at) BETWEEN ${start} AND ${end} GROUP BY substr(created_at,1,10) ORDER BY day`).all(),
       env.DB.prepare(`SELECT COALESCE(SUM(amount),0) AS total FROM finance_expenses WHERE datetime(spent_on) BETWEEN ${start} AND ${end}`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(actual_amount),0) AS total FROM finance_bank_actuals WHERE period BETWEEN substr(${start},1,7) AND substr(${end},1,7)`).first(),
     ]);
@@ -6007,7 +6034,7 @@ async function adminCoreApi(request, env, url, admin) {
 
   if (path === '/api/admin/users' && request.method === 'GET') {
     const rows = await env.DB.prepare(
-      `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test,
+      `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test, is_internal,
               suspended_until, suspend_reason, deleted_at,
               (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS card_count,
               (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = users.id) AS codes
@@ -6015,11 +6042,22 @@ async function adminCoreApi(request, env, url, admin) {
     ).all();
     const users = (rows.results || []).map((r) => ({
       id: r.id, email: r.email, phone: r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
-      heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test,
+      heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test, isInternal: !!r.is_internal,
       suspendedUntil: r.suspended_until, suspendReason: r.suspend_reason, deletedAt: r.deleted_at,
       cardCount: Number(r.card_count), codes: r.codes ? r.codes.split(',') : [],
     }));
     return json({ users });
+  }
+
+  // Ichki akkaunt belgisi — pul hisobiga kirmasin.
+  const setInternalMatch = path.match(/^\/api\/admin\/users\/(\d+)\/set-internal$/);
+  if (setInternalMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'super_admin')) return json({ error: 'forbidden' }, 403);
+    const body = await request.json().catch(() => ({}));
+    await env.DB.prepare(`UPDATE users SET is_internal = ? WHERE id = ?`)
+      .bind(body.isInternal !== false ? 1 : 0, Number(setInternalMatch[1])).run();
+    await logAdminActivity(env, { action: 'user_set_internal', details: `#${setInternalMatch[1]} = ${body.isInternal !== false}`, ip });
+    return json({ ok: true });
   }
 
   const setTestMatch = path.match(/^\/api\/admin\/users\/(\d+)\/set-test$/);

@@ -572,6 +572,13 @@ function UsersTab() {
     try { await run(async () => { await adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }); await load(); }); }
     finally { setToggleBusy(null); }
   };
+  // Ichki akkaunt: summalari umumiy hisobga kirmaydi, lekin akkauntning
+  // o'zi va buyurtmalari avvalgidek ko'rinadi.
+  const toggleInternal = async (u) => {
+    setToggleBusy(u.id);
+    try { await run(async () => { await adminApi(`/users/${u.id}/set-internal`, { method: 'POST', body: JSON.stringify({ isInternal: !u.isInternal }) }); await load(); }); }
+    finally { setToggleBusy(null); }
+  };
 
   const submitSuspend = async (userId) => {
     setModBusy(userId);
@@ -653,6 +660,9 @@ function UsersTab() {
               <td className="text-xs tabular-nums text-base-content/40">{i + 1}</td>
               <td>
                 {u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">{t("SINOV")}</span>}
+                {/* ICHKI AKKAUNT — egasining o'z akkaunti. Buyurtmalari
+                    ro'yxatda ko'rinadi, lekin pul hisobiga kirmaydi. */}
+                {u.isInternal && <span className="badge badge-warning badge-xs ml-1">{t("ICHKI")}</span>}
                 {u.deletedAt && <span className="badge badge-error badge-xs ml-1">{t("O'CHIRILGAN")}</span>}
                 {!u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > new Date() && (
                   <div className="mt-0.5 text-[13px] text-error">{t('Bloklangan:')} {t(u.suspendReason)} ({timeAgo(new Date(u.suspendedUntil).getTime())} {t('gacha')})</div>
@@ -669,6 +679,11 @@ function UsersTab() {
                 {isSuper && (
                   <button className="btn btn-ghost btn-xs min-h-9" disabled={toggleBusy === u.id} onClick={() => toggleTest(u)}>
                     {u.isTest ? t('Sinovdan chiqarish') : t("Sinov deb belgilash")}
+                  </button>
+                )}
+                {isSuper && (
+                  <button className="btn btn-ghost btn-xs min-h-9" disabled={toggleBusy === u.id} onClick={() => toggleInternal(u)}>
+                    {u.isInternal ? t('Hisobga qo‘shish') : t('Hisobga qo‘shmaslik')}
                   </button>
                 )}
                 {isManager && !u.deletedAt && (

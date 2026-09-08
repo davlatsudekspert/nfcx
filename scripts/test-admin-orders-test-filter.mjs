@@ -63,4 +63,20 @@ await worker.fetch(req('/api/admin/users/2/set-test', { method: 'POST', cookie: 
   check('5) sinovdan chiqarilgach qaytadan ko‘rinadi', r.codes.includes('TST001'), true);
 }
 
+// ── 6) ICHKI AKKAUNT: buyurtmasi KO'RINADI, lekin pul hisobiga kirmaydi ──
+// Egasining o'z akkaunti shunday belgilanadi: buyurtmalar bilan
+// ishlashi kerak, lekin uning sinov to'lovlari umumiy hisobni buzmasin.
+await worker.fetch(req('/api/admin/users/2/set-internal', { method: 'POST', cookie: cookie.admin, json: { isInternal: true } }), env);
+{
+  const r = await list();
+  check('6) ichki akkaunt buyurtmasi baribir ko‘rinadi', r.codes.includes('TST001'), true);
+  const fin = await worker.fetch(req('/api/admin/finance/overview?range=all', { cookie: cookie.admin }), env);
+  const body = await fin.json().catch(() => null);
+  checkTrue('6) moliya bo‘limi javob berdi', fin.status === 200 && !!body);
+  // 502 — 200 000 to'langan buyurtma. Ichki akkaunt belgilangach u
+  // yalpi tushumga KIRMASLIGI kerak.
+  check('6) ichki akkaunt summasi yalpi tushumga kirmaydi',
+    Number(body?.gross ?? body?.overview?.gross ?? 0) >= 200000, false);
+}
+
 done();
