@@ -698,6 +698,10 @@ const DICT_BASE = {
   'Asosiy qilish': { ru: 'Сделать основным', en: 'Make primary' },
   "Sovg'a qilish": { ru: 'Подарить', en: 'Gift' },
   'NFC ID buyurtma berish': { ru: 'Заказать NFC ID', en: 'Order NFC ID' },
+  // 2026-09: tugma matni aniqlashtirildi — "NFC ID" raqamli ID'ning
+  // o'zi, buyurtma qilinadigan narsa esa JISMONIY KARTA. Eski kalit
+  // yuqorida qoldirildi: qo'llanma matnlarida hali ishlatiladi.
+  'NFC ID karta buyurtma berish': { ru: 'Заказать NFC ID карту', en: 'Order NFC ID card' },
   "Qabul qiluvchining NFC ID'si (masalan ABZ007)": { ru: 'NFC ID получателя (например ABZ007)', en: 'Recipient NFC ID (e.g. ABZ007)' },
   "Qabul qiluvchining NFC ID'sini kiriting.": { ru: 'Введите NFC ID получателя.', en: 'Enter the recipient NFC ID.' },
   "Sovg'a taklifi yuborildi — qabul qiluvchi tasdiqlagach, egalik o'tadi.": { ru: 'Предложение подарка отправлено — после подтверждения получателем право владения перейдёт.', en: 'The gift offer was sent — ownership transfers once the recipient confirms.' },

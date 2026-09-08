@@ -2672,7 +2672,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             className="btn btn-outline-gold btn-sm min-h-11"
             onClick={() => (allow('physicalCardDesigner') ? setDesignModal('print') : setLocked(t('Jismoniy NFC karta dizayni')))}
           >
-            <IconCard width={14} height={14} /> {t('NFC ID buyurtma berish')}{!allow('physicalCardDesigner') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
+            <IconCard width={14} height={14} /> {t('NFC ID karta buyurtma berish')}{!allow('physicalCardDesigner') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
           </button>
           <button className="btn btn-ghost btn-sm min-h-11 text-error" onClick={() => setDelOpen(true)}>
             <IconTrash width={14} height={14} /> {t("O'chirish")}
