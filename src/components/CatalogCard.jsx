@@ -86,19 +86,18 @@ export default function CatalogCard({ item: it, idx = 0 }) {
           hisoblanadi (status='activated') — narxi 0 bo'lgani uchun
           EMAS. Oddiy xarid qilingan kartalar narxi o'zgarmaydi. */}
       <div className="cat-foot">
-        {/* Uch xil holat, uchtasi ham ANIQ nomlanadi:
-              «Sovg'a»      — rostdan sovg'a qilingan ID;
-              «Sotuvda emas» — egasi bor ekslyuziv ID (sovg'a emas,
-                               shunchaki sotilmaydi);
-              summa          — qolgan hammasi.
-            Avval birinchi ikkalasi ham "Sovg'a" deb yozilardi va
-            Sovg'alar sahifasida "hozircha sovg'a qilingan ID yo'q"
-            xabari yonida "Sovg'a" belgili kartalar turardi. */}
-        {it.isGift
+        {/* Summasiz kartalarda «Sovg'a» yoziladi.
+            Bir muddat egasi bor ekslyuziv ID'lar «Sotuvda emas» deb
+            turardi — chunki bazada ular uchun sovg'a yozuvi yo'q edi.
+            Amalda esa bu ID'larni egasining O'ZI sovg'a qilib bergan,
+            ya'ni yozuv to'g'ri. Ma'lumot darajasida farq saqlanadi
+            (`isGift` — bazadagi haqiqiy sovg'a yozuvi, `notForSale` —
+            egasi bor ekslyuziv): Sovg'alar sahifasi faqat birinchisini
+            ko'rsatadi va keyinchalik bu ID'lar sotuvga qo'yilsa,
+            yorliq o'zi o'zgaradi. */}
+        {(it.isGift || it.notForSale)
           ? <span className="rounded-full bg-[color:var(--vz-gold,#d4af5a)]/15 px-2.5 py-0.5 text-[13px] font-bold text-[color:var(--vz-gold-2,#f0cf7a)]">{t("Sovg'a")}</span>
-          : it.notForSale
-            ? <span className="rounded-full border border-white/12 px-2.5 py-0.5 text-[13px] font-semibold text-base-content/50">{t('Sotuvda emas')}</span>
-            : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
+          : <span className="cat-price">{t("{n} so'm", { n: fmt(it.price) })}</span>}
         <span className="cat-when">{timeAgo(it.ts)}</span>
       </div>
     </button>
