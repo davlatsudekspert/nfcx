@@ -117,6 +117,29 @@ export default function GiftsPage({ catalog = [] }) {
       </section>
 
       <section className="mt-10">
+        {/* SARLAVHA — faqat ro'yxatda haqiqiy sovg'a bo'lganda.
+            Avval bu ro'yxatning sarlavhasi umuman yo'q edi: birinchi
+            sovg'a qilinganda kartalar hech qanday izohsiz, to'g'ridan-
+            to'g'ri banner ostida paydo bo'lardi. Pastda esa "Yangi
+            egasini topgan NFC ID'lar" bo'limi turadi — odam ikkalasini
+            bir narsa deb o'ylashi mumkin edi.
+
+            Ikki bo'lim ATAYLAB birlashtirilmadi, chunki ular boshqa
+            narsani bildiradi:
+              bu yerda — kimdir kimgadir SOVG'A qilgan ID;
+              pastda   — umuman yangi egasi paydo bo'lgan ID'lar.
+            Birlashtirilsa, sotib olingan ID ham "sovg'a" bo'lib
+            ko'rinardi — bu to'g'ri bo'lmasdi. */}
+        {gifts !== null && gifts.length > 0 && (
+          <header className="mb-6">
+            <span className="vz-kicker">{t('Sovg‘a qilingan')}</span>
+            <h2 className="vz-h2 mt-2">{t('Sovg‘a qilingan NFC ID’lar')}</h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
+              {t('Egasi o‘z NFC ID’sini boshqa insonga sovg‘a qilgan va u qabul qilingan.')}
+            </p>
+          </header>
+        )}
+
         {gifts === null && (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true" aria-label={t('Yuklanmoqda...')}>
             {[0, 1, 2, 3].map((i) => (
