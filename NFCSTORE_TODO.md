@@ -115,3 +115,27 @@ Ochiq nomuvofiqlik (hozir zarari yo'q, yakunlash qo'lda):
       yuborish mumkin. Auksion ochishda ham `validCode` tekshirilsin.
 - [ ] Auksion to'lovi (`auction_payment`) D1'ga ko'chirilmagan — g'olib
       aniqlangach kartani admin qo'lda biriktiradi.
+
+### Global auksion avtomatikasi — QOLDI (2026-09-08)
+
+Nomlarni band qilish TUGALLANDI (to'rt guruh, 604 ta nom, 99 ta test).
+Qolgani — auksion oqimining avtomatikasi:
+
+- [ ] «Talab bildirish» tugmasi: auksion guruhidagi nom yozilganda odam
+      bir bosishda talab qoldirsin. Hozir faqat admin tasdiqlaydigan
+      `/api/auction-requests` yo'li bor — u ishlaydi, lekin har biri
+      qo'lda tasdiqlanadi.
+- [ ] 20 ta talabda auksion AVTOMATIK ochilsin (boshlang'ich 2 000 000,
+      72 soat, qadam 25 000). Hozir `auction_demand` 20 tada `ready`
+      bo'ladi, auksionni esa admin qo'lda ochadi.
+- [ ] «Auksion boshlanganda xabar olish» tugmasi (Telegram orqali —
+      bog'lanish allaqachon bor).
+- [ ] «Auksionga o'tish» hozir umumiy auksion sahifasiga olib boradi;
+      o'sha NOMNING sahifasiga olib borsin.
+- [ ] Auksion shartlari matni: eng baland taklif bergan g'olib, 72 soat,
+      to'lov muddati.
+
+Eslatma: auksion to'lovi (`auction_payment`) hali D1'ga ko'chirilmagan —
+g'olib aniqlangach kartani admin qo'lda biriktiradi. Avtomatik auksion
+qo'yilishidan OLDIN shu yo'l yopilishi kerak, aks holda avtomatik
+ochilgan auksionlar qo'lda yakunlanadigan bo'lib qoladi.
