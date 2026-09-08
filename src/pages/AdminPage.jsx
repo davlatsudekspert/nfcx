@@ -959,8 +959,16 @@ function OrdersTab() {
   const [loadErr, setLoadErr] = useState(null);
   const [actErr, setActErr] = useState(null);
   const [shown, setShown] = useState(50);
-  const load = () => { setLoadErr(null); setOrders(null); return adminApi('/orders').then((d) => setOrders(Array.isArray(d?.orders) ? d.orders : [])).catch((e) => setLoadErr(e)); };
-  useEffect(() => { load(); }, []);
+  // Sinov buyurtmalari standart holatda YASHIRIN. Ular o'chirilmagan —
+  // "Sinov" deb belgilangan foydalanuvchilarniki shunchaki ko'rsatilmaydi.
+  const [includeTest, setIncludeTest] = useState(false);
+  const load = (withTest = includeTest) => {
+    setLoadErr(null); setOrders(null);
+    return adminApi(`/orders${withTest ? '?includeTest=1' : ''}`)
+      .then((d) => setOrders(Array.isArray(d?.orders) ? d.orders : []))
+      .catch((e) => setLoadErr(e));
+  };
+  useEffect(() => { load(includeTest); }, [includeTest]);
 
   const confirmPayment = async (o) => {
     const ok = await confirm({
@@ -1006,11 +1014,20 @@ function OrdersTab() {
 
   if (loadErr) return <><PaymeTestOrder /><LoadError err={loadErr} onRetry={load} title={t("Buyurtmalarni yuklab bo'lmadi.")} /></>;
   if (!orders) return <><PaymeTestOrder /><AdminLoading rows={8} /></>;
-  if (orders.length === 0) return <><PaymeTestOrder /><EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} /></>;
+  // Sinov buyurtmalarini ko'rsatish/yashirish. O'CHIRISH EMAS —
+  // yozuvlar joyida qoladi, faqat ro'yxatda ko'rinmaydi.
+  const testToggle = (
+      <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm">
+        <input type="checkbox" className="checkbox checkbox-sm" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} />
+        <span>{t('Sinov foydalanuvchilar buyurtmalarini ham ko‘rsatish')}</span>
+      </label>
+  );
+  if (orders.length === 0) return <><PaymeTestOrder />{testToggle}<EmptyState icon="bag" title={t("Hozircha buyurtma yo'q.")} /></>;
   const visible = orders.slice(0, shown);
   return (
     <div className="overflow-x-auto">
       <PaymeTestOrder />
+      {testToggle}
       {dialog}
       {actErr && <div role="alert" className="vz-err mb-3">{actErr}</div>}
       <table className="table table-sm">

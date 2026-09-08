@@ -5561,8 +5561,22 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/orders' && request.method === 'GET') {
+    // SINOV BUYURTMALARI YASHIRILADI (2026-09, egasining so'rovi:
+    // "statistikalarni nol qilib yubor — o'zimiz qilgan ishlar bular").
+    //
+    // HECH NARSA O'CHIRILMAYDI: buyurtmalar, to'lovlar va Payme tarixi
+    // joyida qoladi — ular moliyaviy yozuv va ularni o'chirish Payme
+    // bilan solishtirishni buzardi. Faqat KO'RSATILMAYDI: egasi o'z
+    // akkauntini "Sinov" deb belgilaydi (Foydalanuvchilar bo'limida) va
+    // uning buyurtmalari ro'yxatdan chiqadi. `?includeTest=1` bilan
+    // hammasi qaytadan ko'rinadi.
+    //
+    // Statistika bo'limi allaqachon shunday ishlagan (is_test = 0),
+    // buyurtmalar ro'yxati esa e'tiborsiz qolgan edi.
+    const includeTest = url.searchParams.get('includeTest') === '1';
+    const testFilter = includeTest ? '' : ' WHERE user_id NOT IN (SELECT id FROM users WHERE is_test = 1)';
     const [web, bot] = await Promise.all([
-      env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at, kind, payload FROM web_orders ORDER BY created_at DESC LIMIT 100`).all(),
+      env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at, kind, payload FROM web_orders${testFilter} ORDER BY created_at DESC LIMIT 100`).all(),
       env.DB.prepare(`SELECT id, 'bot' AS source, tg_user_id AS user_id, code, price AS amount, status, created_at, tg_username, tg_name FROM bot_orders ORDER BY created_at DESC LIMIT 100`).all(),
     ]);
     const orders = [...(web.results || []), ...(bot.results || [])]
