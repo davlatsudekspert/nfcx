@@ -2153,6 +2153,20 @@ function normalizePhoneD1(v) {
     else if (digits.length === 11 && digits.startsWith('8')) digits = '7' + digits.slice(1);
   }
 
+
+  // O'ZBEKISTON RAQAMI — UZUNLIGI QAT'IY: 998 + 2 xonali operator kodi +
+  // 7 xona = 12 raqam. Boshqa uzunlik bo'lsa bu ANIQ xato (bitta raqam
+  // kam yoki ortiq terilgan).
+  //
+  // Buni tekshirmasak "99890111223" kabi yozuv jimgina qabul qilinardi:
+  // akkaunt yaratilardi, lekin bunday raqam mavjud emas — Telegram hech
+  // qachon mos kelmasdi va odam parolini unutsa qamalib qolardi. Xatoni
+  // DARHOL aytish, keyin akkauntni yo'qotishdan yaxshiroq.
+  //
+  // Boshqa davlatlar uchun bunday tekshiruv yo'q — ularning raqamlash
+  // rejalarini bu yerda saqlab bo'lmaydi, shuning uchun umumiy 9-15
+  // chegarasi qoladi.
+  if (digits.startsWith('998') && digits.length !== 12) return '';
   // Birinchi raqam 0 bo'la olmaydi — hech bir davlat kodi noldan
   // boshlanmaydi. Shu shart mahalliy yozuvlarni jimgina qabul qilib,
   // keyin akkauntni yo'qotib qo'yishdan saqlaydi.

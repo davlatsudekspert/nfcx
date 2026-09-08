@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { authLogin, authRegister, useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
+import { normalizePhone, prettyPhone } from '../lib/phone.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { dbGetTelegramBotUsername, dbAuthResetPassword } from '../lib/db.js';
 import TgLinkBox from '../components/TgLinkBox.jsx';
@@ -271,7 +272,27 @@ export default function AuthPage({ mode }) {
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                   placeholder="+998901234567" autoComplete="tel" required
                   className="input input-bordered mt-1 w-full bg-base-100" />
-                <span className="mt-1 block text-xs text-base-content/40">{t('Shu raqam bilan kirasiz. Boshqa davlat raqami bo‘lsa, davlat kodi bilan yozing: +7, +996…')}</span>
+                {/* RAQAM QANDAY SAQLANISHI DARHOL KO'RINADI.
+                    Forma "90 111 22 33" ni ham, "+998..." ni ham qabul
+                    qiladi va ikkalasini bir ko'rinishga keltiradi. Buni
+                    yashirsak, odam nima saqlanganini bilmay qoladi —
+                    shuning uchun natijani ko'rsatib turamiz. Xato
+                    bo'lsa ham shu yerda, YUBORISHDAN OLDIN aytiladi. */}
+                {phone.trim() ? (
+                  normalizePhone(phone) ? (
+                    <span className="mt-1 block font-mono text-xs text-[color:var(--vz-gold-2,#f0cf7a)]">
+                      {'\u2713'} {prettyPhone(normalizePhone(phone))}
+                    </span>
+                  ) : (
+                    <span className="mt-1 block text-xs text-error">
+                      {t('Raqam to‘liq emas. O‘zbekiston: 90 111 22 33 yoki +998901112233.')}
+                    </span>
+                  )
+                ) : (
+                  <span className="mt-1 block text-xs text-base-content/40">
+                    {t('Shu raqam bilan kirasiz. Boshqa davlat raqami bo‘lsa, davlat kodi bilan yozing: +7, +996…')}
+                  </span>
+                )}
               </label>
             )}
             <label className="form-control">

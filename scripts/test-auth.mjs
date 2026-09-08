@@ -222,6 +222,14 @@ const noLimit = () => sqlite.prepare(`DELETE FROM rate_limits`).run();
   check('"00" xalqaro chiqish kodi -> "+"', (await tryReg('00 49 30 1112233', 'de@t.local')).phone, '+49301112233');
   check('998 bilan, plyussiz', (await tryReg('998 90 444 55 66', 'uz2@t.local')).phone, '+998904445566');
 
+  // O'ZBEKISTON RAQAMINING UZUNLIGI QAT'IY: 998 + 2 + 7 = 12 raqam.
+  // Bitta raqam kam/ortiq terilsa, avval bu JIMGINA qabul qilinardi —
+  // akkaunt yaratilardi, lekin bunday raqam mavjud emas va odam
+  // parolini unutsa qamalib qolardi.
+  check('998 bilan, bitta raqam KAM -> rad', (await tryReg('99890111223', 'short@t.local')).status, 422);
+  check('998 bilan, bitta raqam ORTIQ -> rad', (await tryReg('9989011122334', 'long@t.local')).status, 422);
+  check('998 bilan, to\'g\'ri uzunlik -> qabul', (await tryReg('998907778899', 'okuz@t.local')).phone, '+998907778899');
+
   // Noldan boshlangan mahalliy yozuv — RAD ETILADI. Hech bir davlat
   // kodi noldan boshlanmaydi, ya'ni buni taxmin bilan tuzatib bo'lmaydi.
   check('nol bilan boshlangan raqam rad etiladi', (await tryReg('0700 111 222', 'bad1@t.local')).status, 422);
