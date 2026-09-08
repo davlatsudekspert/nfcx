@@ -281,6 +281,16 @@ export default function AuctionsPage() {
           <p className="vz-lead mt-3">
             {t("Yoqqan kodga “Auksionda qatnashaman” bosing. {n} kishi qiziqsa, admin auksionni boshlaydi.", { n: threshold })}
           </p>
+          {/* Qoidalar havolasi HAR DOIM ko'rinib turadi — taklif berish
+              oynasidagi tasdiqdan tashqari, odam oldindan ham o'qiy olsin. */}
+          <a
+            href="/auksion-qoidalari"
+            onClick={(e) => { e.preventDefault(); navigate('/auksion-qoidalari'); }}
+            className="vz-tap mt-4 inline-flex items-center gap-2 text-sm font-semibold underline-offset-4 hover:underline"
+            style={{ color: 'var(--vz-gold)' }}
+          >
+            {t('Auksion qoidalari')} →
+          </a>
         </div>
         <div className="hidden justify-self-center lg:flex">
           <AuctionHammerShowcase code={collecting[0]?.code || auctions[0]?.code || 'VIP001'} />

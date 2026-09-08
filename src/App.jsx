@@ -78,6 +78,7 @@ const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx')
 const CompanyWorkspacePage = lazyPage(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfilePage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
+const AuctionRulesPage = lazyPage(() => import('./pages/AuctionRulesPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -93,6 +94,7 @@ const STATIC_ROUTES = {
   shartlar: TermsPage,
   maxfiylik: PrivacyPage,
   auksion: AuctionsPage,
+  'auksion-qoidalari': AuctionRulesPage,
   gifts: GiftsPage,
   qollanma: GuideRedirect,
   admin: AdminPage,

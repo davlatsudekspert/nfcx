@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
+import AuctionBidGate from '../components/AuctionBidGate.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import Interactive3DCard from '../components/Interactive3DCard.jsx';
 
@@ -37,6 +38,8 @@ export default function AuctionPage({ id }) {
   const [loadState, setLoadState] = useState('loading'); // loading | ready | notfound | error
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
+  // Qoidalar + taklifni tasdiqlash oynasi (AuctionBidGate).
+  const [gateOpen, setGateOpen] = useState(false);
   const [msg, setMsg] = useState(null);
   const [payOrder, setPayOrder] = useState(null);
   const [winnerName, setWinnerName] = useState('');
@@ -131,6 +134,17 @@ export default function AuctionPage({ id }) {
   const isOwner = user && user.id === auction.sellerId;
   const isHighest = user && user.id === auction.highestBidderId;
 
+  // "Taklif qilish" tugmasi endi DARHOL taklif yubormaydi: avval auksion
+  // qoidalari (bir marta) va summani tasdiqlash oynasi ochiladi —
+  // Auksion qoidalarining 4 va 15-bandlari shuni talab qiladi.
+  const askToBid = () => {
+    if (!user) { navigate('/login'); return; }
+    const val = Math.round(Number(amount));
+    if (!val || val < minNext) { setMsg({ type: 'err', text: t("Taklif kamida {n} so'm bo'lishi kerak.", { n: fmt(minNext) }) }); return; }
+    setMsg(null);
+    setGateOpen(true);
+  };
+
   const bid = async () => {
     if (!user) { navigate('/login'); return; }
     const val = Math.round(Number(amount));
@@ -166,6 +180,7 @@ export default function AuctionPage({ id }) {
       if (err.code === 'AUCTION_ALREADY_CLOSED' || err.code === 'BID_TOO_LOW') await load();
     } finally {
       setBusy(false);
+      setGateOpen(false);
     }
   };
 
@@ -316,7 +331,7 @@ export default function AuctionPage({ id }) {
             {/* Bu tarmoq faqat PAYMENTS_ENABLED === true bo'lganda
                 render qilinadi, shuning uchun tugmada "Tez kunlarda"
                 holati QATTIQ YOZILGAN ko'rinishda qolmaydi. */}
-            <button type="button" className="btn btn-gold" onClick={bid} disabled={busy || !user}>
+            <button type="button" className="btn btn-gold" onClick={askToBid} disabled={busy || !user}>
               {busy ? <span className="loading loading-spinner loading-xs"></span> : (user ? t('Taklif qilish') : t('Kirish kerak'))}
             </button>
             {auction.buyNowPrice && (
@@ -327,6 +342,15 @@ export default function AuctionPage({ id }) {
           </div>
         </section>
       )}
+      <AuctionBidGate
+        open={gateOpen}
+        amount={Math.round(Number(amount)) || 0}
+        userId={user?.id}
+        busy={busy}
+        onCancel={() => { if (!busy) setGateOpen(false); }}
+        onConfirm={bid}
+      />
+
       {msg && <div role={msg.type === 'ok' ? 'status' : 'alert'} className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
 
       <section className="mt-8">

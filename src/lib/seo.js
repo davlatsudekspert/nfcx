@@ -92,6 +92,12 @@ export const SEO_ROUTES = {
     ru: { title: 'Аукцион', description: 'Аукцион редких и премиальных NFC ID. Делайте ставки и получите желанный номер.' },
     en: { title: 'Auction', description: 'Auction for rare and premium NFC IDs. Place a bid and claim the number you want.' },
   },
+  'auksion-qoidalari': {
+    path: '/auksion-qoidalari',
+    uz: { title: 'Auksion qoidalari', description: "NFCSTORE auksionida qatnashish, narx taklif qilish, g'olibni aniqlash va to'lov tartibi." },
+    ru: { title: 'Правила аукциона', description: 'Участие в аукционе NFCSTORE: ставки, определение победителя и порядок оплаты.' },
+    en: { title: 'Auction rules', description: 'How the NFCSTORE auction works: bidding, deciding the winner and payment.' },
+  },
   yangiliklar: {
     path: '/yangiliklar',
     uz: { title: 'Yangiliklar', description: "Ishga tushirish sanasi, yangi ID'lar, aksiyalar va platforma yangiliklari." },
