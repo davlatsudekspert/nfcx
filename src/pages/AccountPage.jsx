@@ -3804,13 +3804,10 @@ export default function AccountPage({ refreshCatalog }) {
   }, [myCards, selectedCode]);
   const selectedCard = myCards.find((c) => c.code === selectedCode) || myCards[0];
   const primaryCard = myCards.find((c) => c.isPrimary) || myCards[0];
-  // Business Workspace — kabinet yuqori navigatsiyasidan bitta bosishda
-  // ochilsin: biznes turidagi ID tanlanadi va tahrirlash bo'limiga skroll qilinadi.
-  const businessCards = myCards.filter((c) => c.profileType === 'business');
-  const primaryBusinessCard = businessCards.find((c) => c.isPrimary) || businessCards[0];
-  const openBusinessWorkspace = () => navigate(primaryBusinessCard
-    ? '/company/create?from=' + primaryBusinessCard.code.toLowerCase()
-    : '/company/create');
+  // `openBusinessWorkspace` va `businessCards` OLIB TASHLANDI (2026-09):
+  // kompaniya bo'limi shaxsiy kabinetdan chiqarilgach, u yerdan Company
+  // ID yaratishga to'g'ridan-to'g'ri o'tish yo'li ham kerak emas —
+  // hammasi /business dagi biznes kabinetdan boshlanadi.
   const [orders, setOrders] = useState(null);      // null = yuklanmoqda
   const [ordersErr, setOrdersErr] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -3988,7 +3985,13 @@ export default function AccountPage({ refreshCatalog }) {
     { id: 'bildirishnomalar', label: t('Bildirishnomalar'), Icon: IconBell, onClick: () => navigate('/bildirishnomalar') },
     { id: 'tolovlar', label: t("To'lovlar"), Icon: IconWallet, onClick: () => navigate('/tolovlar') },
     { id: 'xabarlar', label: t(MESSAGING_ENABLED ? 'Xabarlar' : 'Xabarlar · tez orada'), Icon: IconChat, onClick: () => MESSAGING_ENABLED && navigate('/xabarlar'), disabled: !MESSAGING_ENABLED },
-    { id: 'kompaniya', label: t('Kompaniya'), Icon: IconBriefcase, onClick: openBusinessWorkspace },
+    // KOMPANIYA BO'LIMI SHAXSIY KABINETDAN CHIQARILDI (2026-09, egasining
+    // qarori: "kompaniyani alohida qilsak, profildan olib tashlasak").
+    // Bu endi shaxsiy kabinetning bir bo'limi emas — /business dagi
+    // ALOHIDA biznes kabinet. Havola qoldirildi, chunki ikkalasi ham bor
+    // odam har safar manzilni qo'lda yozib yurmasin; lekin u boshqa
+    // dunyoga o'tishini nomi bilan ham bildiradi.
+    { id: 'business', label: t('Biznes kabinet ↗'), Icon: IconBriefcase, onClick: () => navigate('/business') },
     { id: 'sozlamalar', label: t('Akkaunt sozlamalari'), Icon: IconCog, onClick: () => navigate('/sozlamalar') },
     { id: 'support', label: t('Adminga murojaat'), Icon: IconSupport, onClick: () => setSupportOpen(true) },
   ];

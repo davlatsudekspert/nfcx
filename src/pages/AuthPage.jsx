@@ -49,6 +49,14 @@ function errText(err, t, botLink) {
 
 export default function AuthPage({ mode }) {
   const isRegister = mode === 'register';
+  // Kirgandan keyin qaytiladigan yo'l (masalan /business).
+  const nextPath = (() => {
+    try {
+      const raw = new URLSearchParams(window.location.search).get('next') || '';
+      return /^\/(?!\/)[A-Za-z0-9\-/_]*$/.test(raw) ? raw : '';
+    } catch { return ''; }
+  })();
+  const isBusiness = nextPath === '/business';
   const { refresh } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -129,7 +137,16 @@ export default function AuthPage({ mode }) {
       else await authLogin(email.trim(), password);
       setFailCount(0);
       await refresh();
-      if (isRegister && profileKind === 'company') {
+      // `?next=` — qayerdan kelgan bo'lsa, o'sha yerga qaytadi.
+      // Biznes kirish eshigi (/business) shu orqali ishlaydi: odam
+      // kirgandan keyin shaxsiy kabinetga emas, biznes kabinetga tushadi.
+      // XAVFSIZLIK: faqat SHU saytdagi yo'l qabul qilinadi ("/..."),
+      // "//" yoki to'liq manzil emas — aks holda havola orqali begona
+      // saytga olib chiqib ketish mumkin bo'lardi.
+      if (nextPath) {
+        try { sessionStorage.removeItem(REG_TYPE_KEY); } catch { /* jim */ }
+        navigate(nextPath);
+      } else if (isRegister && profileKind === 'company') {
         try { sessionStorage.removeItem(REG_TYPE_KEY); } catch { /* jim */ }
         navigate('/company/create');
       } else {
@@ -224,11 +241,24 @@ export default function AuthPage({ mode }) {
             </>
           ) : (
           <>
-          <h2 className="vz-h2 mt-2 !text-2xl">{isRegister ? t('Ro\u2019yxatdan o\u2019tish') : t('Kirish')}</h2>
+          {/* BIZNES ESHIGIDAN kelgan bo'lsa (/business), oyna kompaniya
+              uchun ekani darhol bilinsin — odam "noto'g'ri joyga
+              tushdimmi" deb o'ylamasin. Maydonlar bir xil: akkaunt
+              bitta, faqat kirgandan keyin biznes kabinetga qaytadi. */}
+          {isBusiness && <span className="vz-badge vz-badge--gold mt-2">{t('NFCSTORE BUSINESS')}</span>}
+          <h2 className="vz-h2 mt-2 !text-2xl">
+            {isBusiness
+              ? (isRegister ? t('Kompaniya uchun ro\u2019yxatdan o\u2019tish') : t('Biznes kabinetga kirish'))
+              : (isRegister ? t('Ro\u2019yxatdan o\u2019tish') : t('Kirish'))}
+          </h2>
           <p className="mt-2 text-[15px] leading-relaxed text-base-content/55">
-            {isRegister
-              ? t("Akkaunt yarating — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
-              : t("Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring.")}
+            {isBusiness
+              ? (isRegister
+                ? t('Akkaunt yarating — so\u2019ng Company ID ochasiz. Shaxsiy NFC kartalaringiz bunga aralashmaydi.')
+                : t('Kompaniyalaringizni boshqarish uchun kiring. Akkaunt shu telefon/parol \u2014 alohida raqam kerak emas.'))
+              : (isRegister
+                ? t("Akkaunt yarating — sotib olgan raqamli tashrif qog'ozingiz profilingiz bilan birga shu yerda bo\u2019ladi.")
+                : t("Raqamli tashrif qog'ozilaringizni boshqarish uchun akkauntingizga kiring."))}
           </p>
 
           <form onSubmit={submit} className="mt-4 space-y-2.5">

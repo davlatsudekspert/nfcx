@@ -80,6 +80,7 @@ const CompanyCreatePage = lazyPage(() => import('./pages/CompanyCreatePage.jsx')
 const CompanyWorkspacePage = lazyPage(() => import('./pages/CompanyWorkspacePage.jsx'));
 const CompanyQuickProfilePage = lazyPage(() => import('./pages/CompanyQuickProfilePage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
+const BusinessEntryPage = lazyPage(() => import('./pages/BusinessEntryPage.jsx'));
 
 const STATIC_ROUTES = {
   '': null, // HomePage — handled separately
@@ -275,6 +276,10 @@ export default function App() {
     else if (cleanRoute === 'qollanma') page = <GuideRedirect />;
     else if (cleanRoute === 'tolovlar') page = <PaymentsPage />;
     else if (cleanRoute === 'karta-dizayni') page = <CardDesignerPage />;
+    // NFCSTORE BUSINESS — kompaniyalar uchun alohida kirish eshigi.
+    // `bare`: saytning umumiy sarlavhasi/menyusi ko'rinmaydi, ya'ni
+    // kompaniya bo'limi shaxsiy profil ichida turgandek tuyulmaydi.
+    else if (cleanRoute === 'business') { page = <BusinessEntryPage />; bare = true; }
     else if (cleanRoute === 'biznes-namuna') { page = <BusinessPublicDemoPage />; bare = true; }
     else if (cleanRoute === 'admin') { page = <AdminPage />; bare = true; }
     else if (isNewsDetail) page = <NewsPage key={cleanRoute} newsId={cleanRoute.slice('yangiliklar/'.length)} />;

@@ -23,7 +23,7 @@ export default function CompanyWorkspacePage({ companyId }) {
   const topItems = useMemo(() => (form?.catalog || []).slice(0, 4), [form]);
 
   if (company === undefined) return <main className="cw-state">{t('Workspace yuklanmoqda…')}</main>;
-  if (!company) return <main className="cw-state"><h1>{t('Workspace topilmadi')}</h1><p>{t('Bu Company ID sizga tegishli emas yoki sessiya tugagan.')}</p><button onClick={() => navigate('/account')}>{t('Kabinetga qaytish')}</button></main>;
+  if (!company) return <main className="cw-state"><h1>{t('Workspace topilmadi')}</h1><p>{t('Bu Company ID sizga tegishli emas yoki sessiya tugagan.')}</p><button onClick={() => navigate('/business')}>{t('Biznes kabinetga qaytish')}</button></main>;
 
   // Nom taqiqlangan so'zni o'z ichiga olsa — saqlash ham, tekshiruvga
   // yuborish ham to'xtatiladi (backend baribir 422 qaytaradi, lekin
@@ -47,7 +47,7 @@ export default function CompanyWorkspacePage({ companyId }) {
   const set = (key) => (e) => setForm((old) => ({ ...old, [key]: e.target.value }));
 
   return <main className="cw-page">
-    <header className="cw-header"><button className="cw-brand" onClick={() => navigate('/')}><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b><span>{t('BUSINESS')}</span></button><div className="cw-company"><small>{t('COMPANY ID')}</small><b>{company.companyId}</b><span data-status={company.status}>{t(COMPANY_STATUS[company.status]) || company.status}</span></div><div className="cw-head-actions"><button onClick={() => navigate(`/c/${company.companyId.toLowerCase()}`)}>{t('NFC profil')} ↗</button><button onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya sahifasi')} ↗</button><button onClick={() => navigate('/account')}>{t('Kabinet')}</button></div></header>
+    <header className="cw-header"><button className="cw-brand" onClick={() => navigate('/')}><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b><span>{t('BUSINESS')}</span></button><div className="cw-company"><small>{t('COMPANY ID')}</small><b>{company.companyId}</b><span data-status={company.status}>{t(COMPANY_STATUS[company.status]) || company.status}</span></div><div className="cw-head-actions"><button onClick={() => navigate(`/c/${company.companyId.toLowerCase()}`)}>{t('NFC profil')} ↗</button><button onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya sahifasi')} ↗</button><button onClick={() => navigate('/business')}>{t('Biznes kabinet')}</button></div></header>
     <div className="cw-layout">
       <aside className="cw-sidebar"><div className="cw-owner"><div>{form.logoUrl ? <img src={form.logoUrl} alt="" /> : form.displayName.slice(0,2).toUpperCase()}</div><span><b>{form.displayName}</b><small>{form.city}</small></span></div><nav>{tabs.map(([id,label],index) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}><i>0{index+1}</i>{t(label)}<span>›</span></button>)}</nav><div className="cw-separation"><b>✓ {t('NFC ID’dan alohida')}</b><p>{t('Shaxsiy kartalaringiz bu yerda o‘zgarmaydi.')}</p></div></aside>
       <section className="cw-main">

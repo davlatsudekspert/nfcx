@@ -86,6 +86,12 @@ export const SEO_ROUTES = {
     ru: { title: 'Цены', description: 'Цены на NFC-карту и цифровой профиль. Выберите ID, забронируйте и оплатите через Payme.' },
     en: { title: 'Pricing', description: 'NFC card and digital profile pricing. Pick an ID, reserve it and pay via Payme.' },
   },
+  business: {
+    path: '/business',
+    uz: { title: 'Biznes kabinet', description: 'Kompaniyangiz uchun alohida kabinet: Company ID, kompaniya NFC profili, katalog va jamoa.' },
+    ru: { title: 'Бизнес-кабинет', description: 'Отдельный кабинет для компании: Company ID, NFC-профиль компании, каталог и команда.' },
+    en: { title: 'Business account', description: 'A separate workspace for your company: Company ID, company NFC profile, catalogue and team.' },
+  },
   yangiliklar: {
     path: '/yangiliklar',
     uz: { title: 'Yangiliklar', description: "Ishga tushirish sanasi, yangi ID'lar, aksiyalar va platforma yangiliklari." },
