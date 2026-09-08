@@ -5,7 +5,7 @@
 
 .be-hero {
   display: grid;
-  gap: clamp(28px, 4vw, 64px);
+  gap: clamp(20px, 2.2vw, 36px);
   align-items: center;
   width: min(1500px, 100%);
   margin: 0 auto;
@@ -74,9 +74,10 @@
   /* Oltin nur — karta ortidan */
   content: '';
   position: absolute;
-  inset: -10% -6%;
-  background: radial-gradient(60% 50% at 50% 45%, rgba(201, 162, 75, 0.18), transparent 70%);
-  filter: blur(6px);
+  /* Nur chapga ham cho'ziladi: ro'yxat oltin yaltiroq ichida turadi. */
+  inset: -18% -40% -18% -70%;
+  background: radial-gradient(58% 52% at 62% 48%, rgba(201, 162, 75, 0.22), transparent 72%);
+  filter: blur(8px);
   z-index: -1;
 }
 .be-card { position: relative; z-index: 2; }
@@ -117,12 +118,20 @@
 .be-item {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
   width: 100%; padding: 16px 18px; text-align: left;
-  background: #101013;
-  border: 1px solid var(--vz-line, rgba(255, 255, 255, 0.08));
+  /* Toza qora fon + ko'rinib turadigan oltin chegara. Avval fon
+     kulrangroq, chegara esa deyarli bilinmasdi — qatorlar orqadagi
+     yaltiroq nur ichida "yo'qolib" ketardi. */
+  background: #000;
+  border: 1px solid rgba(201, 162, 75, 0.38);
   border-radius: 14px;
-  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
-.be-item:hover { border-color: rgba(201, 162, 75, 0.45); background: #131317; transform: translateY(-1px); }
+.be-item:hover {
+  border-color: rgba(201, 162, 75, 0.85);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 26px rgba(201, 162, 75, 0.22), 0 10px 30px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
 .be-item b { display: block; font-size: 15.5px; color: #fff; }
 .be-item small { display: block; margin-top: 3px; font-family: 'Space Mono', ui-monospace, monospace; font-size: 12px; color: var(--vz-ink-2, #b9b5ad); }
 .be-item i { font-style: normal; font-size: 13.5px; font-weight: 700; color: var(--vz-gold, #c9a24b); white-space: nowrap; }
