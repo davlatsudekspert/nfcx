@@ -826,12 +826,56 @@ const printSrc = (url) => {
   return m ? `/api/admin/card-print/${m[1]}` : url;
 };
 
+// Bosma maket uchun eng kichik ishonchli hajm. 2022x1276 PNG hech
+// qachon bundan kichik chiqmaydi — kelgan narsa shundan kichik bo'lsa,
+// bu maket emas (xato sahifasi yoki yarim yuklangan fayl).
+const PRINT_MIN_BYTES = 20 * 1024;
+
 function PrintSide({ order, label, url, slug }) {
   const { t } = useLanguage();
   const [size, setSize] = useState(null);   // [w, h]
   const [broken, setBroken] = useState(false);
+  const [dlBusy, setDlBusy] = useState(false);
+  const [dlErr, setDlErr] = useState('');
   const exact = size && size[0] === PRINT_PX[0] && size[1] === PRINT_PX[1];
   const src = printSrc(url);
+  const filename = `nfcstore_${order.code || 'karta'}_${order.id}_${slug}.png`;
+
+  // NEGA ODDIY <a download> EMAS.
+  //
+  // `<a download>` bosilganda brauzerning yuklab olish moduli ALOHIDA
+  // so'rov yuboradi. Ba'zi brauzerlarda (masalan Yandex) u sahifaning
+  // sessiyasi/sarlavhalarisiz ketadi — server bizni tanimaydi va PNG
+  // o'rniga sahifa qaytadi. Natijada 4 KB "png" saqlanadi va u
+  // ochilmaydi. Aynan shu bo'ldi: rasmni bosib saqlash ishlagan,
+  // tugma esa 4 KB bergan.
+  //
+  // Shuning uchun fayl SAHIFANING O'ZI tomonidan olinadi (rasm qanday
+  // olinsa, xuddi shunday) va TEKSHIRILADI: turi rasmmi, hajmi
+  // yetarlimi. Faqat shundan keyin diskka saqlanadi. Ya'ni buzuq fayl
+  // endi jimgina saqlanib qolmaydi — ekranda xato chiqadi.
+  const download = async () => {
+    setDlErr(''); setDlBusy(true);
+    let href = '';
+    try {
+      const res = await fetch(src, { credentials: 'same-origin', cache: 'no-store' });
+      if (!res.ok) throw new Error('http');
+      if (!String(res.headers.get('content-type') || '').startsWith('image/')) throw new Error('type');
+      const blob = await res.blob();
+      if (blob.size < PRINT_MIN_BYTES) throw new Error('tiny');
+      href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) {
+      setDlErr(e?.message === 'tiny' || e?.message === 'type'
+        ? t('Server maket o‘rniga boshqa narsa qaytardi — saqlanmadi.')
+        : t('Yuklab bo‘lmadi. Qayta urinib ko‘ring.'));
+    } finally {
+      setDlBusy(false);
+      if (href) setTimeout(() => URL.revokeObjectURL(href), 10000);
+    }
+  };
 
   return (
     <div className="flex flex-col items-start gap-2">
@@ -856,15 +900,12 @@ function PrintSide({ order, label, url, slug }) {
         </div>
       ) : null}
 
-      {/* `download` — bir bosishda tipografiyaga beriladigan fayl.
-          Nomi buyurtma raqami bilan: papkada aralashib ketmasin. */}
-      <a
-        href={src}
-        download={`nfcstore_${order.code || 'karta'}_${order.id}_${slug}.png`}
-        className="btn btn-outline-gold btn-xs min-h-9"
-      >
-        {t('Yuklab olish')}
-      </a>
+      {/* Fayl nomi buyurtma raqami bilan: papkada aralashib ketmasin. */}
+      <button type="button" onClick={download} disabled={dlBusy}
+        className="btn btn-outline-gold btn-xs min-h-9">
+        {dlBusy ? t('Yuklanmoqda…') : t('Yuklab olish')}
+      </button>
+      {dlErr && <div className="vz-err max-w-[190px] text-[11px] leading-snug">{dlErr}</div>}
     </div>
   );
 }
