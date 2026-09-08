@@ -3,6 +3,8 @@ import { cardContentCleanupStmts } from './card-cleanup.js';
 //
 // server/index.js (Express) dagi quyidagi yo'llarning D1 porti — javob
 // shakllari frontend (src/lib/db.js) bog'langan legacy bilan BIR XIL:
+//   POST /api/settings/change-password-direct {currentPassword,newPassword}
+//   POST /api/settings/link-telegram {linkToken}
 //   POST /api/settings/request-password-code | change-password
 //   POST /api/settings/request-phone-change-code | confirm-phone-change
 //   POST/GET /api/support
@@ -48,6 +50,85 @@ async function readJson(request) {
 export async function handle(request, env, url, H) {
   const path = url.pathname;
   const method = request.method;
+
+  // ---------- Sozlamalar: JORIY PAROL bilan parol o'zgartirish ----------
+  //
+  // Bu — parolni almashtirishning ODATIY yo'li va u Telegramga umuman
+  // bog'liq emas. Ilgari kabinetda parolni almashtirish uchun ham
+  // Telegram kodi kerak edi: ya'ni botni ulamagan odam o'z parolini
+  // umuman o'zgartira olmasdi. Endi parolini bilgan odam uni istagan
+  // vaqtda almashtiradi.
+  //
+  // Joriy parol SO'RALADI: aks holda ochiq qolgan telefonni topgan
+  // birov parolni jimgina almashtirib, egasini akkauntdan chiqarib
+  // yuborardi.
+  if (path === '/api/settings/change-password-direct' && method === 'POST') {
+    const user = await H.getCurrentUser(request, env);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    const body = await readJson(request);
+    const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : '';
+    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    if (newPassword.length < 6) return H.json({ error: 'weak_password' }, 422);
+
+    // Parolni taxmin qilishga urinishni sekinlashtiramiz (scrypt qimmat).
+    if (await H.rateLimitD1(env, 'pwchange:' + user.id, 5, 15 * 60_000)) {
+      return H.json({ error: 'too_many_requests' }, 429);
+    }
+    const row = await env.DB.prepare(`SELECT password_hash FROM users WHERE id = ?`).bind(user.id).first();
+    if (!row || !(await H.verifyPassword(currentPassword, row.password_hash))) {
+      return H.json({ error: 'bad_current_password' }, 401);
+    }
+
+    // Parol almashgach BOSHQA barcha sessiyalar yopiladi (o'g'irlangan
+    // cookie ham) — o'zining joriy sessiyasidan tashqari.
+    const keep = H.parseCookies(request)['nfc_session'] || '';
+    await env.DB.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`)
+      .bind(await H.hashPassword(newPassword), user.id).run();
+    await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ? AND token NOT IN (?, ?)`)
+      .bind(user.id, await H.sha256Hex(keep), keep).run();
+    return H.json({ ok: true });
+  }
+
+  // ---------- Sozlamalar: Telegram bilan bog'lash ("Profilingizni himoyalang") ----------
+  //
+  // Ro'yxatdan o'tishda Telegram endi so'ralmaydi (u yerda "Telegram"
+  // so'zi to'siq bo'lib ko'rinardi). Bu yerda esa u TO'SIQ EMAS,
+  // IMTIYOZ: parolni tiklash va buyurtma xabarlari shunga bog'liq.
+  //
+  // Tasdiqlash TgLinkBox'ning o'sha oqimi orqali: odam botda bitta
+  // tugma bosadi, raqam Telegramning O'ZIDAN keladi. Bu yerda faqat
+  // token akkauntga biriktiriladi.
+  if (path === '/api/settings/link-telegram' && method === 'POST') {
+    const user = await H.getCurrentUser(request, env);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    const body = await readJson(request);
+    const token = H.cleanStr(body.linkToken, 64);
+    if (!/^[0-9a-f]{32}$/.test(token)) return H.json({ error: 'link_not_confirmed' }, 422);
+
+    const link = await env.DB.prepare(
+      `SELECT status, phone FROM tg_link_tokens WHERE token = ? AND expires_at > ?`
+    ).bind(await H.sha256Hex(token), Date.now()).first();
+    if (!link || link.status !== 'linked' || !link.phone) return H.json({ error: 'link_not_confirmed' }, 422);
+
+    // Raqam BOSHQA akkauntda ishlatilayotgan bo'lsa — biriktirmaymiz.
+    // Aks holda bitta Telegram ikki akkauntni tiklay olardi.
+    const taken = await env.DB.prepare(
+      `SELECT id FROM users WHERE phone = ? AND deleted_at IS NULL AND id <> ? LIMIT 1`
+    ).bind(link.phone, user.id).first();
+    if (taken) return H.json({ error: 'phone_taken' }, 409);
+
+    // Token bir martalik.
+    const burned = await env.DB.prepare(`DELETE FROM tg_link_tokens WHERE token = ?`)
+      .bind(await H.sha256Hex(token)).run();
+    if (!burned?.meta?.changes) return H.json({ error: 'link_not_confirmed' }, 422);
+
+    // Akkauntdagi raqam Telegramda tasdiqlangan raqamga TENGLASHTIRILADI.
+    // Odam ro'yxatdan o'tishda xato terib qo'ygan bo'lsa, aynan shu
+    // yerda to'g'rilanadi — tiklash keyin ishlashi uchun shu shart.
+    await env.DB.prepare(`UPDATE users SET phone = ?, bot_ack = 1 WHERE id = ?`)
+      .bind(link.phone, user.id).run();
+    return H.json({ ok: true, phone: link.phone });
+  }
 
   // ---------- Sozlamalar: Telegram OTP orqali parol o'zgartirish ----------
   if (path === '/api/settings/request-password-code' && method === 'POST') {

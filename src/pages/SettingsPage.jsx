@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { dbRequestPasswordCode, dbChangePassword, dbRequestPhoneChangeCode, dbConfirmPhoneChange } from '../lib/db.js';
+import { dbRequestPasswordCode, dbChangePassword, dbRequestPhoneChangeCode, dbConfirmPhoneChange, dbChangePasswordDirect, dbLinkTelegram } from '../lib/db.js';
 import BackToCabinet from '../components/BackToCabinet.jsx';
 import CardTools from '../components/CardTools.jsx';
+import TgLinkBox from '../components/TgLinkBox.jsx';
 import { IconUser, IconShield, IconPhone } from '../components/Icons.jsx';
 
 // Profildagi Sozlamalar sahifasi — o'z ma'lumotlarini ko'rish va
@@ -24,6 +25,19 @@ export default function SettingsPage() {
   // Telefon raqamini o'zgartirish — parolni o'zgartirish bilan bir xil
   // naqsh (Telegram OTP), lekin alohida state (ikkalasi bir vaqtda ochiq
   // bo'lishi mumkin).
+  // Joriy parol bilan almashtirish — Telegramga bog'liq bo'lmagan
+  // ODATIY yo'l. Botni ulamagan odam ham parolini o'zgartira olsin.
+  const [cur, setCur] = useState('');
+  const [np, setNp] = useState('');
+  const [np2, setNp2] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState(null);
+
+  // "Profilingizni himoyalang" — Telegramni akkauntga bog'lash.
+  const [tgBusy, setTgBusy] = useState(false);
+  const [tgMsg, setTgMsg] = useState(null);
+  const [tgDone, setTgDone] = useState(false);
+
   const [phoneStep, setPhoneStep] = useState('idle'); // idle | code_sent
   const [newPhone, setNewPhone] = useState('');
   const [phoneCode, setPhoneCode] = useState('');
@@ -42,6 +56,41 @@ export default function SettingsPage() {
     navigate('/login', { replace: true });
     return null;
   }
+
+  const submitDirectChange = async () => {
+    setPwMsg(null);
+    if (np.length < 6) { setPwMsg({ type: 'err', text: t('Parol kamida 6 belgidan iborat bo\u2019lishi kerak.') }); return; }
+    if (np !== np2) { setPwMsg({ type: 'err', text: t('Parollar bir xil emas.') }); return; }
+    setPwBusy(true);
+    try {
+      await dbChangePasswordDirect(cur, np);
+      setCur(''); setNp(''); setNp2('');
+      setPwMsg({ type: 'ok', text: t('Parol yangilandi. Boshqa qurilmalardagi sessiyalar yopildi.') });
+    } catch (err) {
+      const k = err?.message;
+      setPwMsg({ type: 'err', text:
+        k === 'bad_current_password' ? t('Joriy parol xato.')
+          : k === 'weak_password' ? t('Yangi parol kamida 6 belgidan iborat bo\u2019lishi kerak.')
+            : k === 'too_many_requests' ? t('Juda ko\u2018p urinish. Birozdan so\u2018ng qayta urinib ko\u2018ring.')
+              : t('Xatolik yuz berdi. Qayta urinib ko\u2018ring.') });
+    } finally { setPwBusy(false); }
+  };
+
+  const linkTelegram = async (phoneFromBot, token) => {
+    setTgMsg(null); setTgBusy(true);
+    try {
+      await dbLinkTelegram(token);
+      setTgDone(true);
+      setTgMsg({ type: 'ok', text: t('Telegram ulandi. Endi parolni tiklay olasiz va buyurtma xabarlari keladi.') });
+      await refresh();
+    } catch (err) {
+      const k = err?.message;
+      setTgMsg({ type: 'err', text:
+        k === 'phone_taken' ? t('Bu raqam boshqa akkauntga bog\u2018langan.')
+          : k === 'link_not_confirmed' ? t('Tasdiq topilmadi yoki muddati o\u2018tgan. Tugmani qayta bosing.')
+            : t('Ulab bo\u2018lmadi. Qayta urinib ko\u2018ring.') });
+    } finally { setTgBusy(false); }
+  };
 
   const requestCode = async () => {
     setBusy(true);
@@ -163,9 +212,66 @@ export default function SettingsPage() {
         </section>
       )}
 
+      {/* ═══════════════════════════════════════════════════════════════
+          PROFILNI HIMOYALASH — Telegramni akkauntga bog'lash.
+
+          Ro'yxatdan o'tishda Telegram endi so'ralmaydi: u yerda
+          "Telegram" so'zi TO'SIQ bo'lib ko'rinardi va odamlar shu joyda
+          to'xtardi. Bu yerda esa u to'siq emas, IMTIYOZ — nima
+          berishini ochiq yozamiz.
+
+          Bog'lanmagan bo'lsa blok ko'rinadi; bog'langach o'rniga qisqa
+          tasdiq qoladi (yana bir marta bosishga undamaslik uchun).
+          ═══════════════════════════════════════════════════════════════ */}
+      <section className="mt-10 max-w-lg">
+        <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconShield /> {t('Profilingizni himoyalang')}</h2>
+        <p className="mt-1 text-sm text-base-content/50">
+          {t('Telegramni ulasangiz: parolni unutsangiz o‘zingiz tiklaysiz va buyurtmalaringiz haqida xabar keladi.')}
+        </p>
+
+        <div className="vz-card mt-4 p-5">
+          {(user.telegramLinked || tgDone) ? (
+            <div className="text-sm font-semibold text-accent">{'\u2713'} {t('Telegram ulangan')}</div>
+          ) : (
+            <>
+              <TgLinkBox
+                botUsername=""
+                title={t('Telegramni ulash')}
+                onLinked={linkTelegram}
+              />
+              {tgBusy && <div className="mt-2 text-xs text-base-content/50">{t('Ulanmoqda…')}</div>}
+            </>
+          )}
+          {tgMsg && <div className={`alert mt-3 py-2 text-sm ${tgMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{tgMsg.text}</span></div>}
+        </div>
+      </section>
+
+      {/* Parolni almashtirishning ODATIY yo'li — joriy parol bilan.
+          Ilgari buning uchun ham Telegram kodi kerak edi, ya'ni botni
+          ulamagan odam parolini umuman o'zgartira olmasdi. */}
       <section className="mt-10 max-w-lg">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconShield /> {t("Parolni o'zgartirish")}</h2>
-        <p className="mt-1 text-sm text-base-content/50">{t('Xavfsizlik uchun parol Telegram botingizga yuboriladigan bir martalik kod bilan tasdiqlanadi.')}</p>
+        <p className="mt-1 text-sm text-base-content/50">{t('Joriy parolingizni kiriting va yangisini qo‘ying.')}</p>
+
+        <div className="vz-card mt-4 space-y-3 p-5">
+          <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password"
+            placeholder={t('Joriy parol')} className="input input-bordered input-sm min-h-11 w-full bg-base-100" />
+          <input type="password" value={np} onChange={(e) => setNp(e.target.value)} autoComplete="new-password"
+            placeholder={t('Yangi parol (kamida 6 belgi)')} className="input input-bordered input-sm min-h-11 w-full bg-base-100" />
+          <input type="password" value={np2} onChange={(e) => setNp2(e.target.value)} autoComplete="new-password"
+            placeholder={t('Yangi parolni takrorlang')} className="input input-bordered input-sm min-h-11 w-full bg-base-100" />
+          <button className="btn btn-gold btn-sm min-h-11 w-full" onClick={submitDirectChange} disabled={pwBusy}>
+            {pwBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Parolni o'zgartirish")}
+          </button>
+          {pwMsg && <div className={`alert py-2 text-sm ${pwMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{pwMsg.text}</span></div>}
+        </div>
+      </section>
+
+      {/* Parolni UNUTGAN odam uchun eski, Telegram kodli yo'l — joriy
+          parolni bilmasa, yagona yo'l shu. */}
+      <section className="mt-10 max-w-lg">
+        <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconShield /> {t("Parolni unutdingizmi?")}</h2>
+        <p className="mt-1 text-sm text-base-content/50">{t('Joriy parolni eslay olmasangiz — Telegram botingizga yuboriladigan bir martalik kod bilan yangilaysiz.')}</p>
 
         <div className="vz-card mt-4 p-5">
           {step === 'idle' ? (

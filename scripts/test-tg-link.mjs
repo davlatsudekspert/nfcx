@@ -160,4 +160,62 @@ const startToken = async () => (await jsonOf(await post('/api/auth/tg-link/start
   check('6e) token qayta ishlatilmaydi', [reuse.status, reuse.body.error], [422, 'link_not_confirmed']);
 }
 
+// ── 7) Kabinet: "Profilingizni himoyalang" va parol almashtirish ───────
+// Ro'yxatdan o'tishda Telegram endi so'ralmaydi, shuning uchun ikkita
+// narsa ISHLASHI shart bo'lib qoldi:
+//   a) botni ULAMAGAN odam ham parolini o'zgartira olsin (aks holda u
+//      qamalib qoladi);
+//   b) botni keyin ulaganda akkauntga to'g'ri biriktirilsin.
+{
+  const raw = (path, init) => worker.fetch(req(path, init), env);
+  const call = async (path, json, init = {}) => {
+    const r = await raw(path, { method: 'POST', json, ...init });
+    return { status: r.status, body: await r.json().catch(() => null) };
+  };
+  const reg = await call('/api/auth/register', {
+    password: 'birinchi123', phone: '+998905551212', tosAccepted: true, email: 'settings@test.local',
+  });
+  check('7) yangi akkaunt (Telegramsiz)', reg.status, 201);
+  const cookieHdr = 'nfc_session=' + (await (async () => {
+    const r = await raw('/api/auth/login', { method: 'POST', json: { email: '+998905551212', password: 'birinchi123' } });
+    return (r.headers.get('set-cookie') || '').match(/nfc_session=([0-9a-f]+)/)[1];
+  })());
+
+  // a) Joriy parol bilan almashtirish — Telegram TALAB QILINMAYDI.
+  let r = await call('/api/settings/change-password-direct', { currentPassword: 'xato', newPassword: 'ikkinchi123' }, { cookie: cookieHdr });
+  check('7a) joriy parol xato -> 401', [r.status, r.body.error], [401, 'bad_current_password']);
+  r = await call('/api/settings/change-password-direct', { currentPassword: 'birinchi123', newPassword: '123' }, { cookie: cookieHdr });
+  check('7b) qisqa yangi parol -> 422', [r.status, r.body.error], [422, 'weak_password']);
+  r = await call('/api/settings/change-password-direct', { currentPassword: 'birinchi123', newPassword: 'ikkinchi123' }, { cookie: cookieHdr });
+  check('7c) Telegramsiz ham parol almashadi', [r.status, r.body], [200, { ok: true }]);
+  r = await call('/api/auth/login', { email: '+998905551212', password: 'ikkinchi123' });
+  check('7d) yangi parol bilan kirish ishlaydi', r.status, 200);
+  r = await call('/api/auth/login', { email: '+998905551212', password: 'birinchi123' });
+  check('7e) eski parol endi ishlamaydi', r.status, 401);
+
+  // Sessiya SAQLANADI: odam parolini almashtirgani uchun o'zi tizimdan
+  // chiqib qolmasin (boshqa qurilmalardagi sessiyalar esa yopiladi).
+  const me = await (await raw('/api/auth/me', { cookie: cookieHdr })).json();
+  check('7f) o\'z sessiyasi ochiq qoladi', typeof me.user?.id, 'number');
+  check('7g) Telegram hali ulanmagan', me.user?.telegramLinked, false);
+
+  // b) Telegramni keyin ulash.
+  const token = await startToken();
+  await update({ chat: { id: 701 }, from: { id: 701 }, text: `/start ${token}` });
+  await update({ chat: { id: 701 }, from: { id: 701 }, contact: { user_id: 701, phone_number: '998905551212', first_name: 'Ega' } });
+  r = await call('/api/settings/link-telegram', { linkToken: token }, { cookie: cookieHdr });
+  check('7h) Telegram akkauntga ulandi', [r.status, r.body.phone], [200, '+998905551212']);
+  const me2 = await (await raw('/api/auth/me', { cookie: cookieHdr })).json();
+  check('7i) endi telegramLinked = true', me2.user?.telegramLinked, true);
+
+  r = await call('/api/settings/link-telegram', { linkToken: token }, { cookie: cookieHdr });
+  check('7j) token bir martalik', r.status === 200, false);
+
+  // Sessiyasiz ikkala endpoint ham yopiq.
+  r = await call('/api/settings/change-password-direct', { currentPassword: 'x', newPassword: 'yangi123' });
+  check('7k) sessiyasiz parol almashtirib bo\'lmaydi', r.status, 401);
+  r = await call('/api/settings/link-telegram', { linkToken: '0'.repeat(32) });
+  check('7l) sessiyasiz Telegram ulab bo\'lmaydi', r.status, 401);
+}
+
 done();

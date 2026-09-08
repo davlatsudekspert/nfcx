@@ -1613,7 +1613,8 @@ async function getCurrentUser(request, env) {
   const row = await env.DB.prepare(
     `SELECT u.id, u.email, u.phone, u.is_premium AS isPremium, u.banned_until AS bannedUntil,
             u.strike_count AS strikeCount, u.promo_code AS promoCode, u.pending_discount_pct AS pendingDiscountPct,
-            u.suspended_until AS suspendedUntil, u.deleted_at AS deletedAt, s.token AS storedToken
+            u.suspended_until AS suspendedUntil, u.deleted_at AS deletedAt, s.token AS storedToken,
+            EXISTS(SELECT 1 FROM bot_verifications bv WHERE bv.phone = u.phone) AS tgLinked
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token IN (?, ?) AND s.expires_at > ?`
   ).bind(tokenHash, token, nowTs()).first();
@@ -1628,6 +1629,10 @@ async function getCurrentUser(request, env) {
     id: row.id, email: publicEmailD1(row.email), phone: row.phone || null, isPremium: !!row.isPremium,
     bannedUntil: isBanned ? row.bannedUntil : null, strikeCount: row.strikeCount || 0,
     promoCode: row.promoCode || null, pendingDiscountPct: row.pendingDiscountPct || 0,
+    // Telegram akkauntga bog'langanmi. Kabinetdagi "Profilingizni
+    // himoyalang" bo'limi shunga qarab ko'rinadi/yashiriladi — parolni
+    // tiklash va buyurtma xabarlari shu bog'lanishga tayanadi.
+    telegramLinked: !!row.tgLinked,
   };
 }
 

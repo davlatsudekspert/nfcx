@@ -1107,6 +1107,34 @@ export function dbGetTelegramBotUsername(fallback = 'nfcsalebot') {
   return _botUsernamePromise;
 }
 
+// ---------- Sozlamalar: parolni JORIY PAROL bilan almashtirish ----------
+// Telegramga bog'liq emas. Ilgari kabinetda parolni almashtirish uchun
+// ham Telegram kodi kerak edi — ya'ni botni ulamagan odam parolini
+// umuman o'zgartira olmasdi.
+export async function dbChangePasswordDirect(currentPassword, newPassword) {
+  const res = await fetch('/api/settings/change-password-direct', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  }).catch(() => null);
+  if (!res) throw new Error(API_ERROR_TEXT.network);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.error) || apiErrorText(res.status, null));
+  return data;
+}
+
+// ---------- Sozlamalar: Telegramni akkauntga bog'lash ----------
+// `TgLinkBox` bergan bir martalik tokenni akkauntga biriktiradi.
+export async function dbLinkTelegram(linkToken) {
+  const res = await fetch('/api/settings/link-telegram', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ linkToken }),
+  }).catch(() => null);
+  if (!res) throw new Error(API_ERROR_TEXT.network);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.error) || apiErrorText(res.status, null));
+  return data;
+}
+
 // ---------- Parolni tiklash (AuthPage "Parolni unutdingizmi?") ----------
 // POST /api/auth/request-password-reset {email} → doim {ok:true} (email
 // mavjudligi oshkor qilinmaydi) | 422 {error: matn}.
