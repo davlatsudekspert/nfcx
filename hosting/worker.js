@@ -1118,7 +1118,8 @@ async function companyApi(request, env, url) {
     });
   }
   if (action === 'stories' && !itemId && request.method === 'GET') {
-    return json({ stories: await listStoriesD1(env, 'company', id) });
+    const viewer = await getCurrentUser(request, env).catch(() => null);
+    return json({ stories: await listStoriesD1(env, 'company', id, viewer ? viewer.id : null) });
   }
 
   // POST /api/companies/:id/follow — obuna bo'lish / bekor qilish.
@@ -2177,6 +2178,15 @@ let companyExtrasSchemaReady;
 async function ensureCompanyExtrasSchema(env) {
   if (!companyExtrasSchemaReady) {
     const alters = [
+      // KIM NOMIDAN OBUNA BO'LDI (2026-09, egasining so'rovi:
+      // "biznes profilim obuna bo'lgani ham bilinsin").
+      //
+      // Obuna baribir BITTA odamdan bitta: `follows` kaliti
+      // o'zgarmaydi. Bu ustun faqat KO'RSATILADIGAN yuzni belgilaydi —
+      // shaxsiy karta yoki egasining kompaniyasi. Aks holda bitta odam
+      // ham shaxsiy, ham kompaniya nomidan obuna bo'lib, obunachilar
+      // sonini ikki barobar shishirib qo'yardi.
+      `ALTER TABLE follows ADD COLUMN as_company_id TEXT`,
       // Ish vaqti: 7 kunlik jadval JSON sifatida.
       `ALTER TABLE companies ADD COLUMN hours_json TEXT`,
       // Katalogdan buyurtma qabul qilinsinmi (egasi yoqadi/o'chiradi).
@@ -2231,6 +2241,15 @@ async function ensureCompanyExtrasSchema(env) {
         created_at TEXT NOT NULL, expires_at TEXT NOT NULL
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_stories_owner ON stories(owner_kind, owner_id, expires_at)`),
+      // Istorya layklari. Bitta odam bitta istoryani bir marta yoqtiradi
+      // (birlamchi kalit shuni kafolatlaydi) — qayta bosilsa bekor
+      // bo'ladi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "story_likes" (
+        story_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (story_id, user_id)
+      )`),
       // Kompaniya postlari — shaxsiy `posts` jadvalidan ALOHIDA.
       // Sabab yuqoridagi bilan bir xil: `posts.code` va company_id
       // bir maydonga sig'sa ham, ular BOSHQA nomlar makoni.
@@ -2291,15 +2310,18 @@ function storyMediaD1(body) {
 // qanday dalil qolmasdi.
 const rulesAcceptedD1 = (body) => body?.agreed === true || body?.agreed === 'true';
 
-async function listStoriesD1(env, kind, ownerId) {
+async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const rows = await env.DB.prepare(
-    `SELECT id, image_url, video_url, caption, created_at, expires_at
-       FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at > ?
-      ORDER BY created_at`
-  ).bind(kind, ownerId, new Date().toISOString()).all();
+    `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
+            (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
+            EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
+       FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
+      ORDER BY s.created_at`
+  ).bind(viewerUserId || -1, kind, ownerId, new Date().toISOString()).all();
   return (rows.results || []).map((r) => ({
     id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
     caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
+    likeCount: Number(r.like_count || 0), liked: !!r.liked,
   }));
 }
 
@@ -4874,7 +4896,8 @@ async function recordsApi(request, env, url) {
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
     if (action === 'stories' && request.method === 'GET') {
-      return json({ stories: await listStoriesD1(env, 'card', code) });
+      const viewer = await getCurrentUser(request, env).catch(() => null);
+      return json({ stories: await listStoriesD1(env, 'card', code, viewer ? viewer.id : null) });
     }
 
     if (action === 'stories' && request.method === 'POST') {
@@ -7338,18 +7361,34 @@ async function followListRows(env, ownerId, dir) {
   // kiritgan `dir` to'g'ridan-to'g'ri SQL'ga qo'yilmaydi, shuning uchun injection xavfi yo'q.)
   const joinCol = wantFollowing ? 'fw.followee_id' : 'fw.follower_id';
   const whereCol = wantFollowing ? 'fw.follower_id' : 'fw.followee_id';
+  // `as_company_id` bo'lsa — obunachi KOMPANIYA yuzi bilan ko'rsatiladi
+  // (logotip, nom va /c/<ID> havolasi). Bo'lmasa — shaxsiy kartasi.
+  // Kompaniya keyin o'chirilgan/to'xtatilgan bo'lsa, LEFT JOIN bo'sh
+  // qaytaradi va shaxsiy yuzga qaytadi — ro'yxatda "teshik" qolmaydi.
   const rows = await env.DB.prepare(`
     WITH ranked AS (
       SELECT u.id AS uid, c.code AS code, c.name AS name, c.avatar_url AS avatar_url, c.verified AS verified,
+             fw.as_company_id AS as_company_id,
              ROW_NUMBER() OVER (PARTITION BY u.id ORDER BY c.is_primary DESC, c.ts ASC) AS rn
       FROM follows fw
       JOIN users u ON u.id = ${joinCol}
       JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
       WHERE ${whereCol} = ?
     )
-    SELECT code, name, avatar_url, verified FROM ranked WHERE rn = 1 ORDER BY uid LIMIT 200
+    SELECT r.code, r.name, r.avatar_url, r.verified, r.as_company_id,
+           co.company_id AS co_id, co.display_name AS co_name, co.logo_url AS co_logo
+      FROM ranked r
+      LEFT JOIN companies co ON co.company_id = r.as_company_id AND co.status = 'active'
+     WHERE r.rn = 1 ORDER BY r.uid LIMIT 200
   `).bind(ownerId).all();
-  return (rows.results || []).map((r) => ({
+  return (rows.results || []).map((r) => (r.co_id ? {
+    kind: 'company',
+    code: r.co_id, name: r.co_name, avatarUrl: r.co_logo || '', verified: true,
+    // Shaxsiy karta ham qaytadi: kim ekanini bilib bo'lsin (odam
+    // kompaniya orqasiga butunlay yashirinib olmasin).
+    personCode: r.code, personName: r.name,
+  } : {
+    kind: 'person',
     code: r.code, name: r.name, avatarUrl: r.avatar_url || '', verified: !!r.verified,
   }));
 }
@@ -7359,12 +7398,16 @@ async function getFollowStatsRow(env, userId, viewerId) {
     SELECT
       (SELECT COUNT(*) FROM follows WHERE followee_id = ?) AS followers,
       (SELECT COUNT(*) FROM follows WHERE follower_id = ?) AS following,
-      (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following
-  `).bind(userId, userId, viewerId || -1, userId).first();
+      (SELECT EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = ?)) AS is_following,
+      (SELECT as_company_id FROM follows WHERE follower_id = ? AND followee_id = ?) AS as_company_id
+  `).bind(userId, userId, viewerId || -1, userId, viewerId || -1, userId).first();
   return {
     followers: Number(row?.followers || 0),
     following: Number(row?.following || 0),
     isFollowing: !!(row && row.is_following),
+    // Tashrifchi qaysi yuz bilan obuna bo'lgani — tugma yonidagi
+    // tanlovda o'sha ko'rinib tursin.
+    asCompanyId: (row && row.as_company_id) || '',
   };
 }
 
@@ -7466,14 +7509,16 @@ async function storiesApi(request, env, url) {
     if (!user) return json({ feed: [] });
     const rows = await env.DB.prepare(
       `SELECT s.id, s.owner_id AS code, s.image_url, s.video_url, s.caption, s.created_at,
-              c.name AS name, c.avatar_url AS avatar_url
+              c.name AS name, c.avatar_url AS avatar_url,
+              (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
+              EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
          FROM stories s
          JOIN cards c ON c.code = s.owner_id
         WHERE s.owner_kind = 'card' AND s.expires_at > ?
           AND c.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
         ORDER BY s.created_at
         LIMIT 200`
-    ).bind(new Date().toISOString(), user.id).all();
+    ).bind(user.id, new Date().toISOString(), user.id).all();
 
     // Bitta odamning bir nechta istoryasi BITTA dumaloqcha bo'lib
     // chiqadi — aks holda qator o'nlab bir xil rasmga to'lib ketardi.
@@ -7486,9 +7531,32 @@ async function storiesApi(request, env, url) {
       byCode.get(key).stories.push({
         id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
         caption: r.caption || '', createdAt: r.created_at,
+        likeCount: Number(r.like_count || 0), liked: !!r.liked,
       });
     }
     return json({ feed: [...byCode.values()] });
+  }
+
+  // POST /api/stories/:id/like — bosilganda holat teskarisiga o'giriladi.
+  const likeMatch = url.pathname.match(/^\/api\/stories\/(\d+)\/like$/);
+  if (likeMatch && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const storyId = Number(likeMatch[1]);
+    // Muddati o'tgan istoryaga layk bosib bo'lmaydi — u endi
+    // ko'rinmaydi, demak "yoqtirish" ham ma'nosiz.
+    const story = await env.DB.prepare(`SELECT id FROM stories WHERE id = ? AND expires_at > ?`)
+      .bind(storyId, new Date().toISOString()).first();
+    if (!story) return json({ error: 'not_found' }, 404);
+    const existing = await env.DB.prepare(`SELECT 1 AS x FROM story_likes WHERE story_id = ? AND user_id = ?`).bind(storyId, user.id).first();
+    if (existing) {
+      await env.DB.prepare(`DELETE FROM story_likes WHERE story_id = ? AND user_id = ?`).bind(storyId, user.id).run();
+    } else {
+      await env.DB.prepare(`INSERT OR IGNORE INTO story_likes (story_id, user_id, created_at) VALUES (?,?,?)`)
+        .bind(storyId, user.id, new Date().toISOString()).run();
+    }
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM story_likes WHERE story_id = ?`).bind(storyId).first();
+    return json({ liked: !existing, likeCount: Number(cnt?.n || 0) });
   }
 
   const m = url.pathname.match(/^\/api\/stories\/(\d+)$/);
@@ -7513,12 +7581,35 @@ async function followApi(request, env, url) {
     // O'zini follow qilishni taqiqlash — ALWAYS FIRST, xuddi eski
     // followUserFree(followerId, followeeId) tartibi kabi.
     if (Number(ownerId) === Number(user.id)) return json({ error: 'CANNOT_FOLLOW_SELF' }, 409);
-    const already = await env.DB.prepare(`SELECT id FROM follows WHERE follower_id = ? AND followee_id = ?`)
+    // Kim NOMIDAN obuna bo'lish: bo'sh — shaxsiy profil, aks holda
+    // egasining FAOL kompaniyasi. Egalik SERVERDA tekshiriladi, aks
+    // holda istalgan odam begona kompaniya nomidan obuna bo'lardi.
+    const body = await request.json().catch(() => ({}));
+    let asCompany = '';
+    if (body && body.asCompanyId) {
+      const cid = companyId(String(body.asCompanyId));
+      if (!cid) return json({ error: 'bad_company' }, 422);
+      const owned = await env.DB.prepare(
+        `SELECT company_id FROM companies WHERE company_id = ? AND owner_user_id = ? AND status = 'active'`
+      ).bind(cid, String(user.id)).first();
+      if (!owned) return json({ error: 'not_company_owner' }, 403);
+      asCompany = cid;
+    }
+
+    const already = await env.DB.prepare(`SELECT id, as_company_id FROM follows WHERE follower_id = ? AND followee_id = ?`)
       .bind(user.id, ownerId).first();
-    if (already) return json({ error: 'ALREADY_FOLLOWING' }, 409);
+    if (already) {
+      // Allaqachon obuna bo'lgan bo'lsa — YUZNI almashtirish mumkin.
+      // Yangi obuna YARATILMAYDI: bir odam bir marta sanaladi.
+      if (String(already.as_company_id || '') !== asCompany) {
+        await env.DB.prepare(`UPDATE follows SET as_company_id = ? WHERE id = ?`).bind(asCompany || null, already.id).run();
+        return json({ ok: true, identityChanged: true, asCompanyId: asCompany });
+      }
+      return json({ error: 'ALREADY_FOLLOWING' }, 409);
+    }
     try {
-      await env.DB.prepare(`INSERT INTO follows (follower_id, followee_id, paid, amount) VALUES (?, ?, 0, 0)`)
-        .bind(user.id, ownerId).run();
+      await env.DB.prepare(`INSERT INTO follows (follower_id, followee_id, paid, amount, as_company_id) VALUES (?, ?, 0, 0, ?)`)
+        .bind(user.id, ownerId, asCompany || null).run();
     } catch (err) {
       // UNIQUE(follower_id, followee_id) — bir vaqtda yuborilgan ikkita
       // so'rov (parallel double-click) uchun ham xavfsiz: duplicate qator

@@ -274,5 +274,33 @@ check('8) muddati o‘tgani lentada yo‘q', (await j('/api/stories/feed', { coo
   check('10) profil va kabinet raqami bir xil', withViews.body.company.views, stats.body.views);
 }
 
+// ── 11) ISTORYA LAYKLARI ─────────────────────────────────────────────
+{
+  await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = 'company' AND owner_id = 'NFCTEST'`).run();
+  const made = await j('/api/companies/NFCTEST/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true } });
+  const sid = made.body.id;
+
+  const fresh = await j('/api/companies/NFCTEST/stories');
+  check('11) boshida layk yo‘q', [fresh.body.stories[0].likeCount, fresh.body.stories[0].liked], [0, false]);
+
+  check('11) kirmagan layk bosolmaydi', (await j(`/api/stories/${sid}/like`, { method: 'POST' })).status, 401);
+
+  const on = await j(`/api/stories/${sid}/like`, { method: 'POST', cookie: cookie.other });
+  check('11) layk bosildi', [on.status, on.body.liked, on.body.likeCount], [200, true, 1]);
+  // Ikkinchi marta bosilsa BEKOR bo'ladi, sanoq oshib ketmaydi.
+  const off = await j(`/api/stories/${sid}/like`, { method: 'POST', cookie: cookie.other });
+  check('11) qayta bosilsa bekor', [off.body.liked, off.body.likeCount], [false, 0]);
+
+  await j(`/api/stories/${sid}/like`, { method: 'POST', cookie: cookie.other });
+  const seen = await j('/api/companies/NFCTEST/stories', { cookie: cookie.other });
+  check('11) bosgan odamga "liked" ko‘rinadi', [seen.body.stories[0].likeCount, seen.body.stories[0].liked], [1, true]);
+  const other = await j('/api/companies/NFCTEST/stories', { cookie: cookie.user });
+  check('11) boshqasiga "liked" ko‘rinmaydi', [other.body.stories[0].likeCount, other.body.stories[0].liked], [1, false]);
+
+  // Muddati o'tgan istoryaga layk bosib bo'lmaydi.
+  await env.DB.prepare(`UPDATE stories SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = ?`).bind(sid).run();
+  check('11) muddati o‘tganiga layk bosilmaydi', (await j(`/api/stories/${sid}/like`, { method: 'POST', cookie: cookie.user })).status, 404);
+}
+
 console.log('\\naccess:', access || '(nomaʼlum)');
 done();

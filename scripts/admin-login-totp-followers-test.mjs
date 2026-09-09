@@ -345,7 +345,10 @@ await env.DB.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (
   const res = await worker.fetch(req('/api/follow-list/VIP001?dir=followers'), env);
   const data = await res.json();
   check('GET /api/follow-list/VIP001?dir=followers -> 200', res.status, 200);
-  check('follow-list returns the follower with code/name/avatarUrl for the modal', data.list, [{ code: 'ABC123', name: 'A Follower', avatarUrl: '', verified: false }]);
+  // `kind` 2026-09 da qo'shildi: obunachi SHAXSIY profil sifatida
+  // ko'rinadimi yoki o'z KOMPANIYASI nomidanmi. Bu qo'shimcha maydon,
+  // qolgan shakl o'zgarmadi — modal avvalgidek ishlaydi.
+  check('follow-list returns the follower with code/name/avatarUrl for the modal', data.list, [{ kind: 'person', code: 'ABC123', name: 'A Follower', avatarUrl: '', verified: false }]);
 }
 {
   const res = await worker.fetch(req('/api/follow-list/NOSUCHCODE?dir=followers'), env);

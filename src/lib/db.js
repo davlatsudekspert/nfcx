@@ -970,7 +970,15 @@ async function dbApi(path, options) {
 }
 
 export const dbRequestPremium = () => dbApi('/premium/request', { method: 'POST' });
-export const dbFollow = (code) => dbApi(`/follow/${encodeURIComponent(code)}`, { method: 'POST' });
+// `asCompanyId` — kim NOMIDAN obuna bo'lish: bo'sh bo'lsa shaxsiy
+// profil, aks holda o'zingizning FAOL kompaniyangiz. Allaqachon obuna
+// bo'lgan bo'lsangiz, shu chaqiruv yuzni ALMASHTIRADI (yangi obuna
+// yaratmaydi — bir odam bir marta sanaladi).
+export const dbFollow = (code, asCompanyId = '') => dbApi(`/follow/${encodeURIComponent(code)}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(asCompanyId ? { asCompanyId } : {}),
+});
 export const dbUnfollow = (code) => dbApi(`/unfollow/${encodeURIComponent(code)}`, { method: 'POST' });
 export const dbFollowStats = (code) => dbApi(`/follow-stats/${encodeURIComponent(code)}`);
 
@@ -1038,6 +1046,18 @@ export async function dbStoryFeed() {
   const data = await api('/stories/feed');
   return (data && data.feed) || [];
 }
+// Istoryani yoqtirish — bosilganda holat teskarisiga o'giriladi.
+export async function dbToggleStoryLike(id) {
+  const res = await fetch(`/api/stories/${encodeURIComponent(id)}/like`, { method: 'POST', credentials: 'same-origin' });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error((data && data.error) || `http_${res.status}`);
+    Object.assign(err, data || {});
+    throw err;
+  }
+  return data;
+}
+
 export async function dbDeleteStory(id) {
   const res = await fetch(`/api/stories/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
   if (!res.ok) throw new Error('delete_failed');

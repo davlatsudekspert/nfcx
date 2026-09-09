@@ -2762,6 +2762,10 @@ const DICT_HOME = {
   'Obuna bo‘lish': { ru: 'Подписаться', en: 'Follow' },
   'Obuna bo‘lingan': { ru: 'Вы подписаны', en: 'Following' },
   'Havola nusxalandi': { ru: 'Ссылка скопирована', en: 'Link copied' },
+  // ── Kim nomidan obuna (2026-09) ──
+  'Kim nomidan': { ru: 'От чьего имени', en: 'Follow as' },
+  'Shaxsiy profilim': { ru: 'Мой личный профиль', en: 'My personal profile' },
+  'Yoqdi': { ru: 'Нравится', en: 'Like' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };
