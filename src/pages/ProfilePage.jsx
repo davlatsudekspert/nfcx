@@ -4,7 +4,7 @@ import CloseButton from '../components/CloseButton.jsx';
 import StoryRing from '../components/StoryRing.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbListStories, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbLikeList, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbListStories, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -873,7 +873,10 @@ function PostsFeed({ posts, onLike, t }) {
   );
 }
 
-// Obunachilar / obunalar ro'yxati modali — har biri profilga link.
+// Obunachilar / obunalar / YOQTIRGANLAR ro'yxati — har biri profilga
+// link. Uchalasi bir xil shaklda keladi ({kind, code, name, ...}),
+// shuning uchun bitta modal: `dir` faqat sarlavha va manbani tanlaydi.
+// Uni ikkiga bo'lish nusxa-kod bo'lardi va vaqt o'tib ajralib ketardi.
 function FollowListModal({ code, dir, onClose, t }) {
   const [list, setList] = useState(null);
   const [error, setError] = useState(false);
@@ -882,7 +885,7 @@ function FollowListModal({ code, dir, onClose, t }) {
     setList(null);
     setError(false);
     let cancelled = false;
-    dbFollowList(code, dir)
+    (dir === 'likes' ? dbLikeList(code) : dbFollowList(code, dir))
       .then((rows) => { if (!cancelled) setList(rows); })
       .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
@@ -898,7 +901,9 @@ function FollowListModal({ code, dir, onClose, t }) {
     <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className="flex max-h-[80vh] w-full max-w-[420px] flex-col overflow-hidden rounded-t-3xl bg-[color:var(--vz-bg-a,#15171b)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-          <span className="text-sm font-bold text-[color:var(--vz-ink)]">{dir === 'following' ? t('Obunalar') : t('Obunachilar')}</span>
+          <span className="text-sm font-bold text-[color:var(--vz-ink)]">
+            {dir === 'likes' ? t('Yoqtirganlar') : dir === 'following' ? t('Obunalar') : t('Obunachilar')}
+          </span>
           <CloseButton onClick={onClose} />
         </div>
         <div className="overflow-y-auto p-2">
@@ -1284,7 +1289,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [team, setTeam] = useState([]);
   const [gallery, setGallery] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
-  const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
+  const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following' | 'likes'
   const { user, myCards } = useAuth();
   // O'Z profiliga biriktirilgan kompaniya (asosiy karta birinchi). Bu
   // ODDIY SATR — quyidagi useEffect bog'liqliklariga massiv qo'yilsa,
@@ -1360,8 +1365,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const toggleLike = async () => {
     if (!user) { flashToast(t('Avval tizimga kiring...')); setTimeout(() => navigate('/login'), 800); return; }
     try {
-      const res = await dbToggleLike(code);
-      setLikeInfo((prev) => ({ liked: res.liked, count: (prev?.count || 0) + (res.liked ? 1 : -1) }));
+      // Layk ham obuna kabi: kim NOMIDAN bosilgani saqlanadi va
+      // "Yoqtirganlar" ro'yxatida o'sha yuz ko'rinadi.
+      const res = await dbToggleLike(code, followAs);
+      setLikeInfo((prev) => ({ liked: res.liked, count: (prev?.count || 0) + (res.liked ? 1 : -1), asCompanyId: res.asCompanyId || '' }));
     } catch { /* jim tur */ }
   };
 
@@ -1795,13 +1802,28 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             <button type="button" onClick={() => setFollowListDir('following')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
               <b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}
             </button>
-            <button
-              onClick={toggleLike}
-              className={`ml-auto flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}
-            >
-              <span>{likeInfo?.liked ? '\u2764\uFE0F' : '\u{1F90D}'}</span>
-              <b>{likeInfo?.count ?? 0}</b>
-            </button>
+            {/* Yurak — bosish/bekor qilish; SON esa alohida tugma va u
+                "kim yoqtirdi" ro'yxatini ochadi. Ilgari son ham
+                yurakning ichida edi, ya'ni ro'yxatni ochishning iloji
+                yo'q edi — laykni faqat sanardik. */}
+            <span className={`ml-auto flex items-center rounded-full border transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}>
+              <button
+                type="button"
+                onClick={toggleLike}
+                aria-label={t('Yoqtirish')}
+                className="cursor-pointer py-1 pl-3 pr-1.5"
+              >
+                {likeInfo?.liked ? '\u2764\uFE0F' : '\u{1F90D}'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFollowListDir('likes')}
+                aria-label={t('Yoqtirganlar')}
+                className="cursor-pointer py-1 pl-0.5 pr-3 hover:text-[color:var(--vz-ink)]"
+              >
+                <b>{likeInfo?.count ?? 0}</b>
+              </button>
+            </span>
           </div>
         )}
         {followMsg && <div className="mt-2 text-[15px] text-red-400">{t(followMsg)}</div>}
@@ -1813,6 +1835,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {followStats.asCompanyId
               ? t('{name} nomidan obuna bo‘lgansiz', { name: (myCompanies.find((c) => c.companyId === followStats.asCompanyId)?.displayName) || followStats.asCompanyId })
               : t('Shaxsiy profilingiz nomidan obuna bo‘lgansiz')}
+          </div>
+        )}
+        {!isOwner && likeInfo?.liked && likeInfo.asCompanyId && (
+          <div className="mt-1 text-[14px] text-[color:var(--vz-ink-faint)]">
+            {t('{name} nomidan yoqtirdingiz', { name: (myCompanies.find((c) => c.companyId === likeInfo.asCompanyId)?.displayName) || likeInfo.asCompanyId })}
           </div>
         )}
 

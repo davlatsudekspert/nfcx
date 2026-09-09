@@ -2041,6 +2041,7 @@ async function ensureCoreSchema(env) {
   // hali yo'q paytda ishga tushib, jimgina yiqilardi va ustun umuman
   // qo'shilmasdi (aynan shu ikki testda chiqdi).
   await ensureCardCompanyColumn(env);
+  await ensureCardLikeCompanyColumn(env);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -2182,44 +2183,57 @@ async function ensureUserInternalColumn(env) {
 // bilan bitta kompaniya kuniga bir necha o'nlab qator egallaydi, xolos.
 // Buning evazi: aniq vaqt (soat/daqiqa) saqlanmaydi — egaga bu kerak
 // emas, unga kunlik dinamika kerak.
-let cardCompanyColumnReady;
-// ALTER HAQIQATAN O'TDIMI — TEKSHIRIB KO'RILADI (2026-09 production 503).
+// ── QO'SHIMCHA USTUN: QO'SHILDIMI — TEKSHIRIB KO'RILADI ──────────────
+// (2026-09 production 503 ning ildizi.)
 //
-// Avval bu funksiya ALTER'ni yuborib, xatosini `.catch(() => {})` bilan
-// yutar va "bo'ldi" deb hisoblardi. Ustun MAVJUD bo'lsa xato aynan
-// shunday ("duplicate column") bo'ladi — ya'ni MUVAFFAQIYAT ham,
-// HAQIQIY NOSOZLIK ham bir xil ko'rinardi. Nosozlik yuz bersa esa
-// natija halokatli edi: `RECORD_COLUMNS` ichida `company_id` turgani
-// uchun /api/auth/me, katalog va profil saqlash — HAMMASI "no such
-// column" bilan yiqilib, butun ported API 503 qaytarardi.
+// Ilgari qo'shimcha ustunlar shunchaki `ALTER TABLE ... ADD COLUMN`
+// bilan qo'shilib, xatosi `.catch(() => {})` bilan yutilardi. Ustun
+// MAVJUD bo'lganda xato aynan shunday ("duplicate column") bo'ladi —
+// ya'ni MUVAFFAQIYAT ham, HAQIQIY NOSOZLIK ham bir xil ko'rinardi.
+// Nosozlik yuz berganda esa natija halokatli edi: ustun nomi
+// so'rovlarga qo'shilgani uchun /api/auth/me, katalog va profil
+// saqlash — hammasi "no such column" bilan yiqilib, butun ported API
+// 503 qaytarardi.
 //
-// Endi ALTER'dan keyin PRAGMA bilan ustun ROSTDAN bor-yo'qligi
-// o'qiladi. Yo'q bo'lsa memo tozalanadi (keyingi so'rovda qayta
-// urinadi) va bayroq `false` qoladi — bu holda `company_id` hech qaysi
-// so'rovga QO'SHILMAYDI: kompaniya biriktirish ishlamaydi, xolos,
-// lekin qolgan hamma narsa ishlayveradi.
-let cardsHaveCompanyIdColumn = false;
-export function cardsHaveCompanyIdD1() { return cardsHaveCompanyIdColumn; }
-async function ensureCardCompanyColumn(env) {
-  if (cardsHaveCompanyIdColumn) return true;
-  if (!cardCompanyColumnReady) {
-    cardCompanyColumnReady = (async () => {
-      await env.DB.prepare(`ALTER TABLE cards ADD COLUMN company_id TEXT`).run().catch(() => {});
-      const info = await env.DB.prepare(`PRAGMA table_info(cards)`).all().catch(() => null);
-      const has = (info?.results || []).some((c) => String(c?.name || '') === 'company_id');
-      if (has) cardsHaveCompanyIdColumn = true;
-      // Muvaffaqiyatsiz bo'lsa memo tozalanadi — keyingi so'rov qayta urinadi.
-      else cardCompanyColumnReady = null;
+// Endi ALTER'dan keyin ustun ROSTDAN bor-yo'qligi PRAGMA bilan
+// o'qiladi. Yo'q bo'lsa urinish eslab qolinmaydi (keyingi so'rov qayta
+// urinadi) va chaqiruvchi ustunni ISHLATMAYDI: bitta xususiyat
+// ishlamaydi, xolos — qolgan hamma narsa avvalgidek ishlayveradi.
+//
+// `table`/`column` faqat shu fayldagi qattiq yozilgan qiymatlar —
+// foydalanuvchi kiritgan matn bu yerga hech qachon tushmaydi.
+const verifiedColumnsD1 = new Map();     // "jadval.ustun" -> true
+const verifiedColumnJobsD1 = new Map();
+export function hasColumnD1(table, column) { return verifiedColumnsD1.get(`${table}.${column}`) === true; }
+async function ensureColumnD1(env, table, column, type) {
+  const key = `${table}.${column}`;
+  if (verifiedColumnsD1.get(key)) return true;
+  if (!verifiedColumnJobsD1.has(key)) {
+    verifiedColumnJobsD1.set(key, (async () => {
+      await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run().catch(() => {});
+      const info = await env.DB.prepare(`PRAGMA table_info(${table})`).all().catch(() => null);
+      const has = (info?.results || []).some((c) => String(c?.name || '') === column);
+      if (has) verifiedColumnsD1.set(key, true);
+      else verifiedColumnJobsD1.delete(key);
       return has;
-    })();
+    })());
   }
-  return cardCompanyColumnReady;
+  return verifiedColumnJobsD1.get(key);
 }
+
+// PROFILGA BIRIKTIRILGAN KOMPANIYA.
+const ensureCardCompanyColumn = (env) => ensureColumnD1(env, 'cards', 'company_id', 'TEXT');
+export function cardsHaveCompanyIdD1() { return hasColumnD1('cards', 'company_id'); }
+
+// LAYK KIM NOMIDAN BOSILGAN — shaxsiy profil yoki kompaniya
+// (`follows.as_company_id` bilan bir xil ma'no).
+const ensureCardLikeCompanyColumn = (env) => ensureColumnD1(env, 'card_likes', 'as_company_id', 'TEXT');
+export function likesHaveCompanyIdD1() { return hasColumnD1('card_likes', 'as_company_id'); }
 
 // `cards` ustunlari ro'yxati — `company_id` faqat u ROSTDAN mavjud
 // bo'lsa qo'shiladi (yuqoridagi izohga qarang).
 function recordColumnsD1() {
-  return cardsHaveCompanyIdColumn ? `${RECORD_COLUMNS}, company_id` : RECORD_COLUMNS;
+  return cardsHaveCompanyIdD1() ? `${RECORD_COLUMNS}, company_id` : RECORD_COLUMNS;
 }
 
 let companyExtrasSchemaReady;
@@ -4924,7 +4938,7 @@ async function recordsApi(request, env, url) {
   // ---- /api/records/:code/{view,like,posts} — server/index.js bilan bir xil
   // kontrakt (frontend src/lib/db.js o'zgarishsiz ishlaydi). Avval bu
   // yo'llar Worker'da yo'q edi → legacy proxy → 405.
-  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|posts|stories)$/);
+  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|like-list|posts|stories)$/);
   if (subMatch) {
     const code = subMatch[1].toUpperCase();
     const action = subMatch[2];
@@ -4959,11 +4973,25 @@ async function recordsApi(request, env, url) {
       const user = await getCurrentUser(request, env);
       const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM card_likes WHERE code = ?`).bind(code).first();
       let liked = false;
+      let asCompanyId = '';
       if (user) {
-        const mine = await env.DB.prepare(`SELECT 1 AS x FROM card_likes WHERE code = ? AND user_id = ?`).bind(code, user.id).first();
+        // `as_company_id` ustuni bo'lmasa ham (eski baza) layk o'zi
+        // ishlashi kerak — shuning uchun ikkita alohida so'rov emas,
+        // ustun bor-yo'qligiga qarab tanlanadi.
+        const mine = likesHaveCompanyIdD1()
+          ? await env.DB.prepare(`SELECT as_company_id FROM card_likes WHERE code = ? AND user_id = ?`).bind(code, user.id).first()
+          : await env.DB.prepare(`SELECT 1 AS x FROM card_likes WHERE code = ? AND user_id = ?`).bind(code, user.id).first();
         liked = !!mine;
+        asCompanyId = (mine && mine.as_company_id) || '';
       }
-      return json({ count: Number(cnt?.n || 0), liked });
+      return json({ count: Number(cnt?.n || 0), liked, asCompanyId });
+    }
+
+    // KIM YOQTIRDI — ro'yxat. Obunachilar ro'yxati bilan bir xil
+    // shakl: kompaniya nomidan bosilgan layk kompaniya yuzi bilan
+    // chiqadi, lekin kim ekani ham ko'rinib turadi.
+    if (action === 'like-list' && request.method === 'GET') {
+      return json({ list: await likeListRowsD1(env, code) });
     }
 
     if (action === 'like' && request.method === 'POST') {
@@ -4972,10 +5000,28 @@ async function recordsApi(request, env, url) {
       const existing = await env.DB.prepare(`SELECT id FROM card_likes WHERE code = ? AND user_id = ?`).bind(code, user.id).first();
       if (existing) {
         await env.DB.prepare(`DELETE FROM card_likes WHERE id = ?`).bind(existing.id).run();
-        return json({ liked: false });
+        return json({ liked: false, asCompanyId: '' });
       }
-      await env.DB.prepare(`INSERT OR IGNORE INTO card_likes (code, user_id) VALUES (?, ?)`).bind(code, user.id).run();
-      return json({ liked: true });
+      // KIM NOMIDAN — obuna bilan bir xil qoida: yuborilmasa profilga
+      // biriktirilgan kompaniya, bo'sh satr yuborilsa ataylab shaxsiy.
+      // Egalik SERVERDA tekshiriladi.
+      const body = await request.json().catch(() => ({}));
+      let asCompany = '';
+      if (body && body.asCompanyId) {
+        const owned = await ownedActiveCompanyD1(env, user.id, body.asCompanyId);
+        if (!owned.ok) return json({ error: owned.error }, owned.status);
+        asCompany = owned.companyId;
+      } else if (!body || !('asCompanyId' in body)) {
+        asCompany = await defaultFollowCompanyD1(env, user.id);
+      }
+      if (likesHaveCompanyIdD1()) {
+        await env.DB.prepare(`INSERT OR IGNORE INTO card_likes (code, user_id, as_company_id) VALUES (?, ?, ?)`)
+          .bind(code, user.id, asCompany || null).run();
+      } else {
+        await env.DB.prepare(`INSERT OR IGNORE INTO card_likes (code, user_id) VALUES (?, ?)`).bind(code, user.id).run();
+        asCompany = '';
+      }
+      return json({ liked: true, asCompanyId: asCompany });
     }
 
     if (action === 'posts' && request.method === 'GET') {
@@ -7526,6 +7572,47 @@ async function followListRows(env, ownerId, dir) {
     code: r.co_id, name: r.co_name, avatarUrl: r.co_logo || '', verified: true,
     // Shaxsiy karta ham qaytadi: kim ekanini bilib bo'lsin (odam
     // kompaniya orqasiga butunlay yashirinib olmasin).
+    personCode: r.code, personName: r.name,
+  } : {
+    kind: 'person',
+    code: r.code, name: r.name, avatarUrl: r.avatar_url || '', verified: !!r.verified,
+  }));
+}
+
+// ── KIM YOQTIRDI ─────────────────────────────────────────────────────
+// Ilgari layk faqat SON edi — kim bosgani hech qayerda ko'rinmasdi va
+// shu sabab "biznes nomidan layk" degan tushunchaning ma'nosi ham yo'q
+// edi. Endi ro'yxat bor va u obunachilar ro'yxati bilan bir xil
+// shaklda: kompaniya nomidan bosilgan layk kompaniya yuzi (logotip,
+// nomi) bilan chiqadi, lekin ORQASIDA kim turgani ham ko'rinadi —
+// odam kompaniya orqasiga butunlay yashirinib olmasin.
+//
+// Bir odamning bir nechta kartasi bo'lishi mumkin; ro'yxatda uning
+// FAQAT BITTA (asosiy) kartasi ko'rsatiladi, aks holda bitta odam
+// ro'yxatda bir necha marta chiqardi.
+async function likeListRowsD1(env, code) {
+  // Ustun bo'lmasa (eski baza) — kompaniya yuzi umuman yo'q, ro'yxat
+  // esa baribir ishlaydi.
+  const asCompanySql = likesHaveCompanyIdD1() ? 'l.as_company_id' : 'NULL';
+  const rows = await env.DB.prepare(`
+    WITH ranked AS (
+      SELECT u.id AS uid, c.code AS code, c.name AS name, c.avatar_url AS avatar_url, c.verified AS verified,
+             ${asCompanySql} AS as_company_id, l.created_at AS created_at,
+             ROW_NUMBER() OVER (PARTITION BY u.id ORDER BY c.is_primary DESC, c.ts ASC) AS rn
+      FROM card_likes l
+      JOIN users u ON u.id = l.user_id
+      JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      WHERE l.code = ?
+    )
+    SELECT r.code, r.name, r.avatar_url, r.verified, r.as_company_id,
+           co.company_id AS co_id, co.display_name AS co_name, co.logo_url AS co_logo
+      FROM ranked r
+      LEFT JOIN companies co ON co.company_id = r.as_company_id AND co.status = 'active'
+     WHERE r.rn = 1 ORDER BY r.created_at DESC, r.uid LIMIT 200
+  `).bind(code).all();
+  return (rows.results || []).map((r) => (r.co_id ? {
+    kind: 'company',
+    code: r.co_id, name: r.co_name, avatarUrl: r.co_logo || '', verified: true,
     personCode: r.code, personName: r.name,
   } : {
     kind: 'person',

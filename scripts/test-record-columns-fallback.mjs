@@ -12,7 +12,7 @@
 // QOLGAN HAMMA NARSA esa avvalgidek ishlaydi.
 //
 //   node scripts/test-record-columns-fallback.mjs
-import worker, { cardsHaveCompanyIdD1 } from '../hosting/worker.js';
+import worker, { cardsHaveCompanyIdD1, likesHaveCompanyIdD1 } from '../hosting/worker.js';
 import { makeEnv, seedBasic, cookie, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
@@ -23,7 +23,7 @@ const { env } = makeEnv();
 const realPrepare = env.DB.prepare.bind(env.DB);
 let alterSeen = 0;
 env.DB.prepare = (sql) => {
-  if (/ALTER\s+TABLE\s+cards\s+ADD\s+COLUMN\s+company_id/i.test(String(sql))) {
+  if (/ALTER\s+TABLE\s+(cards\s+ADD\s+COLUMN\s+company_id|card_likes\s+ADD\s+COLUMN\s+as_company_id)/i.test(String(sql))) {
     alterSeen += 1;
     const stub = { bind: () => stub, async run() { return { success: true, meta: { changes: 0 } }; }, async first() { return null; }, async all() { return { results: [] }; } };
     return stub;
@@ -36,6 +36,7 @@ const j = async (path, init) => { const r = await worker.fetch(req(path, init), 
 
 checkTrue('0) ALTER urinib ko‘rildi', alterSeen > 0);
 check('0) ustun YO‘Q deb aniqlandi', cardsHaveCompanyIdD1(), false);
+check('0) layk ustuni ham YO‘Q', likesHaveCompanyIdD1(), false);
 
 // ── 1) Profil saqlash ISHLAYDI ───────────────────────────────────────
 const saved = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'Yangi Ism', phone: '+998901234567' } });
@@ -66,5 +67,12 @@ check('4) aniq xato qaytdi', [attach.status, attach.body?.error], [503, 'company
 const follow = await j('/api/follow/OTH222', { method: 'POST', cookie: cookie.user, json: {} });
 check('5) obuna bo‘ldi', follow.status, 200);
 check('5) yuz — shaxsiy', (await j('/api/follow-stats/OTH222', { cookie: cookie.user })).body?.asCompanyId, '');
+
+// ── 6) Layk ham ishlaydi (faqat yuzsiz) ─────────────────────────────
+const like = await j('/api/records/OTH222/like', { method: 'POST', cookie: cookie.user, json: {} });
+check('6) layk bosildi', [like.status, like.body?.liked, like.body?.asCompanyId], [200, true, '']);
+check('6) son sanaladi', (await j('/api/records/OTH222/like', { cookie: cookie.user })).body?.count, 1);
+const likeList = (await j('/api/records/OTH222/like-list')).body?.list;
+check('6) ro‘yxat ham ishlaydi', [likeList.length, likeList[0].kind], [1, 'person']);
 
 done();

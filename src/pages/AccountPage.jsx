@@ -2727,10 +2727,10 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // ko'rinadi-yu, ichi bo'sh qolib ketadi) — mos kelmasa mos andozaga qaytaramiz.
   useEffect(() => {
     const extraIds = extraSections.map((x) => x.id);
-    const businessTabs = ['asosiy', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
+    const businessTabs = ['asosiy', 'lenta', 'katalog', 'aksiyalar', 'galereya', 'lokatsiya', 'sozlamalar', ...extraIds];
     // Shaxsiy profilda alohida "Sozlamalar" tabi yo'q — akkaunt sozlamalari
     // sidebar'ning "Kabinet" guruhidan (bitta kirish nuqtasi) ochiladi.
-    const personalTabs = ['boshqaruv', 'profil', 'nfckarta', 'myids', 'postlar', ...extraIds];
+    const personalTabs = ['boshqaruv', 'profil', 'lenta', 'nfckarta', 'myids', ...extraIds];
     if (isBusiness && !businessTabs.includes(wsTab)) setWsTab('asosiy');
     if (!isBusiness && !personalTabs.includes(wsTab)) setWsTab('boshqaruv');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3330,15 +3330,21 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // ── Yagona navigatsiya (sidebar lg / gorizontal tab qatori mobil) ──
   // Shaxsiy va biznes uchun ro'yxat `isBusiness` bilan tanlanadi; kabinet
   // qo'shimcha bo'limlari (extraSections) ikkalasiga ham qo'shiladi.
+  // "Istorya va post" — ATAYLAB Profil/Asosiy dan KEYIN, birinchi
+  // o'rinda va OLTIN yaltiroq bilan ajratilgan (egasining so'rovi).
+  // Sabab: ilgari istorya "Umumiy" ichida, post esa ro'yxatning eng
+  // oxirida turardi — odam ularni umuman topmasdi.
+  const lentaNav = ['lenta', t('Istorya va post'), IconImage, 0, true];
   const personalNav = [
     ['boshqaruv', t('Umumiy'), IconHome],
     ['profil', t('Profil'), IconUser],
+    lentaNav,
     ['nfckarta', t('NFC karta'), IconCard],
     ['myids', t("Mening ID'larim"), IconIdCard],
-    ['postlar', t('Postlar / Media'), IconImage],
   ];
   const businessNav = [
     ['asosiy', t('Asosiy'), IconBriefcase],
+    lentaNav,
     ['katalog', CATALOG_TAB_LABEL[catalogModule] || t('Katalog'), IconGrid],
     ...(catalogModule === 'products' ? [['aksiyalar', t('Aksiyalar'), IconTag]] : []),
     ['galereya', t('Galereya'), IconImage],
@@ -3347,7 +3353,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   ];
   const navItems = [
     ...(isBusiness ? businessNav : personalNav),
-    ...extraSections.map((x) => [x.id, x.label, x.Icon || IconGrid, x.badge]),
+    ...extraSections.map((x) => [x.id, x.label, x.Icon || IconGrid, x.badge, false]),
   ];
   const activeExtra = extraSections.find((x) => x.id === wsTab);
   // Katalog/Aksiyalar tabida modul o'z preview'iga ega; qo'shimcha kabinet
@@ -3359,13 +3365,15 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     if (prem) { setWsTab('tarif'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     else document.getElementById('premium-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
-  const navBtn = (id, label, Icon, badge) => (
+  // `gold` — bo'lim ro'yxatda ajralib tursin (oltin fon + ustidan
+  // begushiy yaltiroq o'tadi, `.ws-nav-gold` — src/theme.css).
+  const navBtn = (id, label, Icon, badge, gold) => (
     <button
       key={id}
       type="button"
       onClick={() => setWsTab(id)}
       aria-current={wsTab === id ? 'page' : undefined}
-      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--vz-gold-2)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
+      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2 text-left text-sm font-semibold transition lg:w-full ${gold ? 'ws-nav-gold' : ''} ${wsTab === id ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-card-2)] text-[color:var(--vz-gold-2)]' : 'border-transparent text-base-content/60 hover:bg-white/5 hover:text-base-content'}`}
     >
       <span className="shrink-0"><Icon width={16} height={16} /></span>
       <span className="truncate">{label}</span>
@@ -3384,7 +3392,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         </div>
       </div>
       <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-1.5 lg:mt-3 lg:flex-col lg:overflow-visible">
-        {navItems.map(([id, label, Icon, badge]) => navBtn(id, label, Icon, badge))}
+        {navItems.map(([id, label, Icon, badge, gold]) => navBtn(id, label, Icon, badge, gold))}
         {cabinetLinks.length > 0 && (
           <>
             <div className="mx-1 hidden h-px bg-[color:var(--vz-line)] lg:my-1.5 lg:block"></div>
@@ -3458,13 +3466,6 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         <div className={`grid gap-6 ${showPreview ? 'xl:grid-cols-[minmax(0,1fr)_280px]' : ''}`}>
         <div className="min-w-0">
         {activeExtra && <div className="min-w-0">{activeExtra.content}</div>}
-        {/* ISTORYA BO'LIMI — kompaniya kabinetidagi "Lenta" bilan bir
-            xil ko'rinish. Avval faqat tugmalar qatoridagi kichkina
-            tugma bor edi va uni topmaslik oson edi: egasi "istorya
-            qo'yib bo'lmayapti" deb o'ylardi. */}
-        {!isBusiness && wsTab === 'boshqaruv' && (
-          <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Istorya joylashtirish'))} t={t} />
-        )}
         {!isBusiness && wsTab === 'boshqaruv' && (
           <div className="space-y-5">
             {/* PROFILDA KO'RSATILADIGAN KOMPANIYA — Telegramdagi "kanal"
@@ -3575,10 +3576,17 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           </Section>
         )}
 
-        {!isBusiness && wsTab === 'postlar' && (
-          <Section title={t('Postlar / Media')} subtitle={t('Rasm va izohlarni joylashtiring')} defaultOpen>
-            <PostsManager code={card.code} />
-          </Section>
+        {/* ISTORYA VA POST — bitta bo'limda, shaxsiy va biznes profilda
+            ham bir xil. Ilgari istorya "Umumiy" ichida, post esa
+            ro'yxatning oxirida alohida turardi; endi ikkalasi ham shu
+            yerda va ro'yxatda oltin bilan ajralib turadi. */}
+        {wsTab === 'lenta' && (
+          <div className="space-y-5">
+            <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Istorya joylashtirish'))} t={t} />
+            <Section title={t('Postlar / Media')} subtitle={t('Rasm va izohlarni joylashtiring')} defaultOpen>
+              <PostsManager code={card.code} />
+            </Section>
+          </div>
         )}
 
           {/* ── Profil formasi: aniq bo'limlar (Asosiy / Aloqa / Ijtimoiy / Media / Ko'rinish) ── */}

@@ -988,8 +988,21 @@ export const dbUnfollow = (code) => dbApi(`/unfollow/${encodeURIComponent(code)}
 export const dbFollowStats = (code) => dbApi(`/follow-stats/${encodeURIComponent(code)}`);
 
 export const dbGetLike = (code) => dbApi(`/records/${encodeURIComponent(code)}/like`);
-export async function dbToggleLike(code) {
-  const res = await fetch(`/api/records/${encodeURIComponent(code)}/like`, { method: 'POST', credentials: 'same-origin' });
+// Kim yoqtirgani — obunachilar ro'yxati bilan bir xil shakl
+// ({kind, code, name, avatarUrl, personCode, personName}).
+export async function dbLikeList(code) {
+  const j = await dbApi(`/records/${encodeURIComponent(code)}/like-list`);
+  return (j && j.list) || [];
+}
+// `asCompanyId` obuna bilan bir xil ma'noda: berilmasa server profilga
+// biriktirilgan kompaniyani oladi, bo'sh satr esa "shaxsiy profilim".
+export async function dbToggleLike(code, asCompanyId) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/like`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(asCompanyId === undefined ? {} : { asCompanyId: asCompanyId || '' }),
+  });
   if (!res.ok) throw new Error('Xatolik yuz berdi.');
   return res.json();
 }
