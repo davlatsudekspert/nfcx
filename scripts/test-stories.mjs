@@ -303,4 +303,42 @@ check('8) muddati o‘tgani lentada yo‘q', (await j('/api/stories/feed', { coo
 }
 
 console.log('\\naccess:', access || '(nomaʼlum)');
+// (xulosa fayl OXIRIDA bir marta chiqariladi — 12-bo'limdan keyin)
+
+// ── 12) SHAXSIY PROFIL: OQIM BOSHDAN-OXIR ────────────────────────────
+// Egasining shikoyati: "jismoniy profildan istorya qo'yib bo'lmayapti".
+// Bu yerda AYNAN interfeys yuradigan yo'l takrorlanadi: media yuklash
+// (haqiqiy fayl nomi bilan) -> istoryaga qo'yish -> profilda ko'rinishi.
+{
+  await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = 'card' AND owner_id = 'VIP001'`).run();
+  await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'VIP001'`).run();
+
+  // 12.1 Rasm — yuklash endpointidan kelgan HAQIQIY nom bilan
+  // (`story_<hex>.jpg`). Avval testda o'ylab topilgan nom ishlatilardi;
+  // haqiqiy nomda kengaytma tekshiruvi boshqacha ishlashi mumkin edi.
+  const up = await upload(jpeg, 'image/jpeg');
+  check('12) media yuklandi', up.status, 200);
+  const st = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: up.body.url, agreed: true } });
+  check('12) shaxsiy istorya joylandi', st.status, 201);
+  const list = await j('/api/records/VIP001/stories');
+  checkTrue('12) profilda ko‘rinadi', list.body.stories.some((x) => x.imageUrl === up.body.url));
+
+  // 12.2 Daraja qoidasi — egasining talabi: FAQAT gold, premium,
+  // ekskluziv yoki premium OBUNACHI.
+  const cases = [
+    ['free', false], ['silver', false], ['gold', true], ['premium', true], ['exclusive', true],
+  ];
+  for (const [tierName, allowed] of cases) {
+    await env.DB.prepare(`UPDATE cards SET tier_override = ? WHERE code = 'VIP001'`).bind(tierName).run();
+    await env.DB.prepare(`UPDATE users SET is_premium = 0 WHERE id = 1`).run().catch(() => {});
+    const r = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: up.body.url, agreed: true } });
+    check(`12) ${tierName} -> ${allowed ? 'ochiq' : 'yopiq'}`, r.status === 201, allowed);
+  }
+  // Premium OBUNA: ID darajasi past bo'lsa ham ochiladi.
+  await env.DB.prepare(`UPDATE cards SET tier_override = 'free' WHERE code = 'VIP001'`).run();
+  await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = 1`).run().catch(() => {});
+  const sub = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: up.body.url, agreed: true } });
+  check('12) premium obunachi (free ID bilan) -> ochiq', sub.status, 201);
+}
+
 done();

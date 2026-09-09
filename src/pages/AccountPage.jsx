@@ -3436,6 +3436,13 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         <div className={`grid gap-6 ${showPreview ? 'xl:grid-cols-[minmax(0,1fr)_280px]' : ''}`}>
         <div className="min-w-0">
         {activeExtra && <div className="min-w-0">{activeExtra.content}</div>}
+        {/* ISTORYA BO'LIMI — kompaniya kabinetidagi "Lenta" bilan bir
+            xil ko'rinish. Avval faqat tugmalar qatoridagi kichkina
+            tugma bor edi va uni topmaslik oson edi: egasi "istorya
+            qo'yib bo'lmayapti" deb o'ylardi. */}
+        {!isBusiness && wsTab === 'boshqaruv' && (
+          <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Istorya joylashtirish'))} t={t} />
+        )}
         {!isBusiness && wsTab === 'boshqaruv' && (
           <div className="space-y-5">
             {/* PROFILDA KO'RSATILADIGAN KOMPANIYA — Telegramdagi "kanal"
@@ -4267,5 +4274,75 @@ function ProfileCompanyPicker({ form, setForm, t }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// ── ISTORYA BO'LIMI (shaxsiy kabinet) ────────────────────────────────
+// Kompaniya kabinetidagi "Lenta" bilan bir xil ko'rinish: mavjud
+// istoryalar lentasi va qo'shish tugmasi.
+//
+// Yopiq tarifda ham bo'lim KO'RINADI — nima ochilishini va nima
+// kerakligini aniq aytadi. Yashirilsa, odam "menda bunday narsa yo'q
+// ekan" deb o'ylardi.
+function StorySection({ code, allowed, onLocked, t }) {
+  const [list, setList] = useState([]);
+  const load = () => dbListStories(code).then(setList).catch(() => setList([]));
+  useEffect(() => { if (allowed) load(); }, [code, allowed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const remove = async (id) => {
+    setList((old) => old.filter((x) => x.id !== id));
+    try { await dbDeleteStory(id); } catch { load(); }
+  };
+
+  return (
+    <section className="vz-card mb-6 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-display text-lg font-semibold">{t('Istorya')}</h3>
+          <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
+            {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
+          </p>
+        </div>
+        {allowed && list.length > 0 && <span className="shrink-0 text-xs text-base-content/45">{list.length}/10</span>}
+      </div>
+
+      {!allowed ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-white/12 p-4 text-center">
+          <p className="text-sm text-base-content/60">
+            {t('Istorya Gold, Premium va Ekskluziv NFC ID egalari hamda Premium obunachilar uchun.')}
+          </p>
+          <button type="button" className="btn btn-outline-gold btn-sm mt-3" onClick={onLocked}>
+            {t('Qanday ochiladi?')}
+          </button>
+        </div>
+      ) : (
+        <>
+          {list.length > 0 && (
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+              {list.map((st) => (
+                <div key={st.id} className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10">
+                  {st.videoUrl
+                    ? <video src={st.videoUrl} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                    : <img src={st.imageUrl} alt="" className="h-full w-full object-cover" />}
+                  <button
+                    type="button" onClick={() => remove(st.id)} aria-label={t('O‘chirish')}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-4">
+            <StoryUploader
+              label={t('Istorya qo‘shish')}
+              disabled={list.length >= 10}
+              onSubmit={async (payload) => { await dbCreateStory(code, payload); load(); }}
+            />
+          </div>
+        </>
+      )}
+    </section>
   );
 }

@@ -2770,6 +2770,13 @@ const DICT_HOME = {
   'Profilda kompaniya': { ru: 'Компания в профиле', en: 'Company on your profile' },
   'Ko‘rsatilmasin': { ru: 'Не показывать', en: 'Do not show' },
   '{name} nomidan obuna bo‘lgansiz': { ru: 'Вы подписаны от имени «{name}»', en: 'You follow as {name}' },
+  'Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.': {
+    ru: 'Появляется кольцом вокруг фото профиля и исчезает через 24 часа. До 10 штук.',
+    en: 'Shows as a ring around your profile photo and disappears after 24 hours. Up to 10.' },
+  'Istorya Gold, Premium va Ekskluziv NFC ID egalari hamda Premium obunachilar uchun.': {
+    ru: 'Истории доступны владельцам NFC ID уровней Gold, Premium и Exclusive, а также подписчикам Premium.',
+    en: 'Stories are for Gold, Premium and Exclusive NFC ID owners, and for Premium subscribers.' },
+  'Qanday ochiladi?': { ru: 'Как открыть?', en: 'How to unlock?' },
   'Shaxsiy profilingiz nomidan obuna bo‘lgansiz': {
     ru: 'Вы подписаны от своего личного профиля',
     en: 'You follow from your personal profile' },
