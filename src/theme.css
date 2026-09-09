@@ -512,6 +512,13 @@ body{ background:var(--color-page-bg); }
   --vz-gold:#d4af5a; --vz-gold-2:#f0cf7a; --vz-gold-3:#b3860f; --vz-gold-ink:#1a1206;
   --vz-bg:#0a0805; --vz-bg-2:#14100a; --vz-card:#141009; --vz-card-2:#1e1810; --vz-line:#2d2518;
   --vz-ink:#f6efe0; --vz-ink-2:#b5a78b; --vz-ink-3:#8a7f68;
+  /* Matn ichidagi havola rangi — OLTIN EMAS, KO'K (2026-09, egasining
+     so'rovi). Sabab: sahifada oltin rang hamma joyda — sarlavha,
+     tugma, ramka — shuning uchun oltin havola "bosilsa bo'ladi" degan
+     ma'noni bermasdi. Ko'k rang esa butun internetda aynan shu
+     ma'noni anglatadi. Qora fonda o'qilishi uchun to'q emas, ochroq
+     ko'k tanlandi. */
+  --vz-link:#5fa8ff;
   --vz-radius:14px; --vz-radius-sm:10px;
   --vz-shadow:0 12px 30px -16px rgba(0,0,0,.7);
 }

@@ -20,7 +20,7 @@ export default function Linkify({ text }) {
           target="_blank"
           rel="noopener noreferrer nofollow"
           className="break-all underline underline-offset-2"
-          style={{ color: 'var(--vz-gold)' }}
+          style={{ color: 'var(--vz-link, #5fa8ff)' }}
         >
           {p.label}
         </a>

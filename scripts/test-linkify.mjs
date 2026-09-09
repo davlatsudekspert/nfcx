@@ -58,7 +58,28 @@ check('3e) havola ichidagi juft qavs qoladi', links('https://x.uz/a_(b)').map((l
 // Bu ikkisi yangiliklar matnida tez-tez uchraydi: narx va o'nlik son.
 check('4) narx havolaga aylanmaydi', links("Narx 1.500.000 so'm").length, 0);
 check('4b) o\'nlik son havolaga aylanmaydi', links('3.5 barobar').length, 0);
-check('4c) oddiy domen (protokolsiz) tegilmaydi', links('nfcstore.uz saytimiz').length, 0);
+
+// ── 4c) SXEMASIZ DOMEN endi TOPILADI (2026-09) ─────────────────────────
+// Egasining so'rovi: "havolalar ko'k bo'lsin, bosilganda kirsin".
+// Yangilik matnini odam qo'lda yozadi va "https://" ni deyarli hech
+// qachon qo'shmaydi — avval ular oddiy matn bo'lib qolardi.
+check('4c) sxemasiz domen topiladi', links('nfcstore.uz saytimiz').map((l) => l.href), ['https://nfcstore.uz']);
+check('4c) yo‘l bilan ham', links('nfcstore.uz/c/nfcstoreuz').map((l) => l.href), ['https://nfcstore.uz/c/nfcstoreuz']);
+check('4c) t.me ham', links('Telegram: t.me/nfcstoreuz').map((l) => l.href), ['https://t.me/nfcstoreuz']);
+check('4c) nuqtali yo‘l ham butun qoladi', links('instagram.com/nfcstore.uz').map((l) => l.href), ['https://instagram.com/nfcstore.uz']);
+check('4c) ko‘rinishi matndagidek qoladi', links('nfcstore.uz saytimiz').map((l) => l.label), ['nfcstore.uz']);
+
+// ── 4d) SXEMASIZ DOMEN qayerda TOPILMASLIGI kerak ──────────────────────
+// Bular yangiliklar matnida haqiqatan uchraydigan holatlar.
+// Ro'yxatda yo'q "TLD" — domen emas.
+check('4d) notanish TLD tegilmaydi', links('hujjat.pdf va rasm.png').length, 0);
+check('4d) so‘z yarmi olinmaydi', links('nfcstore.uzb').length, 0);
+// Elektron pochta: domen qismi ALOHIDA havolaga aylanmasin.
+check('4d) pochta manzili tegilmaydi', links('Yozing: info@nfcstore.uz').length, 0);
+// Nuqtadan keyin probel qo'yilmagan xato — TLD katta harfda, demak
+// bu gap boshlanishi, domen emas.
+check('4d) "tugadi.Ishni" havola emas', links('Ish tugadi.Ishni boshladik').length, 0);
+check('4d) "keldi.Menga" havola emas', links('U keldi.Menga aytdi').length, 0);
 
 // ── 5) XAVFSIZLIK: faqat http/https ────────────────────────────────────
 // `javascript:` yoki `data:` sxemalari umuman topilmasligi kerak —
