@@ -712,12 +712,25 @@ export function normalizeDomainD1(value) {
   return v;
 }
 
-async function companyWithItems(env, id) {
-  const [row, items] = await Promise.all([
+async function companyWithItems(env, id, viewerUserId = null) {
+  const [row, items, views, followers, mine] = await Promise.all([
     env.DB.prepare('SELECT * FROM companies WHERE company_id = ?').bind(id).first(),
     env.DB.prepare('SELECT * FROM company_catalog_items WHERE company_id = ? ORDER BY sort_order, created_at').bind(id).all(),
+    // Ko'rishlar — kunlik jamlanmadan. Statistika bo'limidagi raqam
+    // bilan BIR MANBA: ikkalasi boshqa-boshqa son ko'rsatmasin.
+    env.DB.prepare(`SELECT COALESCE(SUM(hits),0) AS n FROM company_stats WHERE company_id = ? AND kind = 'view'`).bind(id).first().catch(() => null),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`).bind(id).first().catch(() => null),
+    viewerUserId
+      ? env.DB.prepare(`SELECT 1 AS x FROM company_follows WHERE company_id = ? AND user_id = ?`).bind(id, viewerUserId).first().catch(() => null)
+      : Promise.resolve(null),
   ]);
-  return row ? rowCompany(row, items.results || []) : null;
+  if (!row) return null;
+  return {
+    ...rowCompany(row, items.results || []),
+    views: Number(views?.n || 0),
+    followers: Number(followers?.n || 0),
+    following: !!mine,
+  };
 }
 
 async function companyAvailability(env, rawId) {
@@ -995,7 +1008,7 @@ async function companyApi(request, env, url) {
   // Bo'lak `[^/]` bilan keng olinadi va companyId() qat'iy tekshiradi:
   // o'zbekcha O'/G' apostrofi (yoki uning %27 ko'rinishi) regexga
   // qo'shimcha belgi qo'shishni talab qilmasin uchun.
-  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog|event|stats|orders|posts|stories)(?:\/([A-Za-z0-9_-]+))?)?$/);
+  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog|event|stats|orders|posts|stories|follow)(?:\/([A-Za-z0-9_-]+))?)?$/);
   if (!match) return json({ error: 'not_found' }, 404);
   const id = companyId(decodeCompanySeg(match[1]));
   if (!id) return json({ error: 'not_found' }, 404);
@@ -1003,7 +1016,10 @@ async function companyApi(request, env, url) {
   const itemId = match[3] || '';
 
   if (!action && request.method === 'GET') {
-    const company = await companyWithItems(env, id);
+    // Kim qarayotgani kerak: "siz obuna bo'lgansiz" holatini ko'rsatish
+    // uchun. Kirmagan bo'lsa ham sahifa OCHIQ ochiladi.
+    const viewer = await getCurrentUser(request, env).catch(() => null);
+    const company = await companyWithItems(env, id, viewer ? viewer.id : null);
     if (!company) return json({ error: 'not_found' }, 404);
     if (company.status !== 'active') {
       const auth = await upstreamUser(request, env);
@@ -1103,6 +1119,28 @@ async function companyApi(request, env, url) {
   }
   if (action === 'stories' && !itemId && request.method === 'GET') {
     return json({ stories: await listStoriesD1(env, 'company', id) });
+  }
+
+  // POST /api/companies/:id/follow — obuna bo'lish / bekor qilish.
+  // Bitta endpoint ikkala yo'nalish uchun: bosilganda holat teskarisiga
+  // o'giriladi (interfeysda ham bitta tugma).
+  if (action === 'follow' && request.method === 'POST') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const row = await env.DB.prepare(`SELECT status, owner_user_id FROM companies WHERE company_id = ?`).bind(id).first();
+    if (!row || row.status !== 'active') return json({ error: 'not_found' }, 404);
+    // O'z kompaniyangizga obuna bo'lish ma'nosiz — raqamni o'zi
+    // shishirib qo'yardi.
+    if (String(row.owner_user_id) === String(user.id)) return json({ error: 'cannot_follow_self' }, 409);
+    const existing = await env.DB.prepare(`SELECT 1 AS x FROM company_follows WHERE company_id = ? AND user_id = ?`).bind(id, user.id).first();
+    if (existing) {
+      await env.DB.prepare(`DELETE FROM company_follows WHERE company_id = ? AND user_id = ?`).bind(id, user.id).run();
+    } else {
+      await env.DB.prepare(`INSERT OR IGNORE INTO company_follows (company_id, user_id, created_at) VALUES (?,?,?)`)
+        .bind(id, user.id, new Date().toISOString()).run();
+    }
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_follows WHERE company_id = ?`).bind(id).first();
+    return json({ following: !existing, followers: Number(cnt?.n || 0) });
   }
 
   const owned = await requireCompanyOwner(request, env, id);
@@ -2203,6 +2241,17 @@ async function ensureCompanyExtrasSchema(env) {
         created_at TEXT NOT NULL
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_posts ON company_posts(company_id, created_at DESC)`),
+      // Kompaniyaga OBUNA. Shaxsiy `follows` dan alohida: u
+      // foydalanuvchidan foydalanuvchiga, bu esa foydalanuvchidan
+      // KOMPANIYAGA. Bittasiga tiqishtirilsa, "kimga obuna bo'ldim"
+      // degan savolga javob berib bo'lmay qolardi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_follows" (
+        company_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (company_id, user_id)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_follows_user ON company_follows(user_id)`),
     ]);
     // ALTER'lar batch'dan TASHQARIDA: batch atomik, mavjud ustun uchun
     // chiqqan bitta xato butun to'plamni yiqitardi.

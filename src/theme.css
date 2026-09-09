@@ -1103,3 +1103,108 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 /* Karta chapdagi matnga chiqib ketmasin va qirqilmasin. */
 .co-showcase-card .co-showcase-visual { inset: 0 0 0 48%; }
 .co-showcase-visual .co-nfc-waves span { width: 170px; height: 170px; margin: -85px 0 0 -85px; }
+
+/* ════════════════════════════════════════════════════════════════════
+   ISTORYA (2026-09)
+
+   DIQQAT: bu qoidalar avval `src/index.css` ga yozilgan edi — o'sha
+   fayl esa HECH QAYERDA import qilinmaydi (tirik global CSS aynan shu
+   fayl, theme.css). Shuning uchun halqa ham, to'liq ekranli ko'ruvchi
+   ham saytda umuman uslubsiz chiqdi. Uslub qo'shganda shu faylga
+   yozilishi kerak.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── HALQA ────────────────────────────────────────────────────────────
+   Instagram kabi: profil rasmi atrofida aylanuvchi rangli halqa.
+   `mask` ISHLATILMAYDI: rangli doira rasmning ORQASIDA, undan bir oz
+   kattaroq chiziladi — rasm shaffof emas, shuning uchun faqat chetdagi
+   halqa ko'rinadi. Har qanday brauzerda ishlaydi.
+   Shakl rasmga moslashadi (`--ring-radius`): dumaloq avatar uchun 50%,
+   yumaloq-kvadrat logotip uchun mos radius. */
+.story-ring{position:relative;display:inline-flex;padding:0;border:0;background:none;cursor:pointer;line-height:0}
+.story-ring>*{position:relative;z-index:1}
+.story-ring-glow{
+  position:absolute;inset:-6px;z-index:0;pointer-events:none;
+  border-radius:var(--ring-radius,50%);
+  background:conic-gradient(from 0deg,#ffd76e,#ff7a45,#e04ea0,#8b5cf6,#3fa9ff,#ffd76e);
+  animation:story-spin 6s linear infinite;
+  box-shadow:0 0 18px rgba(255,160,60,.35)
+}
+/* Rangli doira bilan rasm orasidagi ingichka qora bo'shliq. */
+.story-ring::before{
+  content:'';position:absolute;inset:-2px;z-index:0;pointer-events:none;
+  border-radius:var(--ring-radius,50%);background:#08080a
+}
+@keyframes story-spin{to{transform:rotate(1turn)}}
+@media (prefers-reduced-motion:reduce){.story-ring-glow{animation:none}}
+/* Sanoq belgisi OLIB TASHLANDI (egasining talabi): logotip yonidagi
+   "1", "2" raqamlari ortiqcha edi — halqaning o‘zi istorya borligini
+   bildiradi. */
+/* ── TO'LIQ EKRANLI KO'RUVCHI ─────────────────────────────────────── */
+.sv-back{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sv-bars{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:4px;z-index:3}
+.sv-bars i{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.28);overflow:hidden;position:relative}
+.sv-bars i.done{background:#fff}
+.sv-bars i.active::after{content:'';position:absolute;inset:0;background:#fff;transform-origin:left;animation:sv-fill linear forwards}
+@keyframes sv-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.sv-top{position:absolute;top:24px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;z-index:3}
+.sv-who{display:flex;align-items:center;gap:9px;color:#fff;font-size:14px}
+.sv-who img,.sv-who span{width:32px;height:32px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#2a2a2a;font-weight:800;font-size:13px}
+.sv-top-actions{display:flex;gap:6px}
+.sv-top-actions button{width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:15px;cursor:pointer}
+/* Media ekranni TO'LIQ egallaydi — kichkina quticha ichida emas. */
+.sv-media{width:100%;height:100%;padding:44px 0 74px;display:flex;align-items:center;justify-content:center}
+.sv-media img,.sv-media video{width:100%;height:100%;border-radius:0;object-fit:contain}
+@media(min-width:640px){
+  .sv-media{padding:56px 0 86px}
+  .sv-media img,.sv-media video{max-width:min(100%,520px);border-radius:16px}
+}
+.sv-caption{position:absolute;bottom:64px;left:16px;right:16px;text-align:center;color:#fff;font-size:14px;line-height:1.5;text-shadow:0 2px 12px #000;margin:0}
+.sv-nav{position:absolute;top:0;bottom:0;width:32%;border:0;background:transparent;cursor:pointer;z-index:2}
+.sv-nav.left{left:0}
+.sv-nav.right{right:0}
+.sv-back-btn{
+  position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:4;
+  border:1px solid rgba(255,255,255,.22);border-radius:999px;
+  background:rgba(0,0,0,.55);color:#fff;padding:10px 20px;font:600 13px/1 system-ui;
+  cursor:pointer;backdrop-filter:blur(8px)
+}
+.sv-back-btn:hover{background:rgba(255,255,255,.14)}
+
+/* ── LENTA (obuna bo'lganlaringiz) ─────────────────────────────────── */
+.sf-bar{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none}
+.sf-bar::-webkit-scrollbar{display:none}
+.sf-item{position:relative;flex:0 0 auto;width:72px;border:0;background:none;padding:0;cursor:pointer;display:grid;justify-items:center;gap:6px}
+.sf-ring{
+  position:absolute;top:-4px;left:50%;margin-left:-33px;width:66px;height:66px;
+  border-radius:50%;pointer-events:none;z-index:0;
+  background:conic-gradient(from 0deg,#ffd76e,#ff7a45,#e04ea0,#8b5cf6,#3fa9ff,#ffd76e);
+  animation:story-spin 6s linear infinite
+}
+/* Ko'rilgan istorya — kulrang halqa (Instagram bilan bir xil ma'no). */
+.sf-item:not(.is-new) .sf-ring{background:#3a3a3a;animation:none}
+.sf-avatar{
+  position:relative;z-index:1;
+  width:58px;height:58px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+  background:linear-gradient(145deg,#2a2a2e,#131316);color:#cfc6b4;font-weight:800;font-size:17px;
+  border:2px solid var(--vz-bg,#0b0b0d)
+}
+.sf-avatar img{width:100%;height:100%;object-fit:cover}
+.sf-item small{position:relative;z-index:1;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--vz-ink-3,#8a8479)}
+
+/* ── KONTENT QOIDALARI OYNASI ─────────────────────────────────────────
+   ContentRulesGate shaxsiy kabinetda ham ishlatiladi, u yerda esa
+   company-system.css YUKLANMAYDI — shuning uchun oynaning asosiy
+   uslublari ham shu global faylda. */
+.co-modal-back{position:fixed;inset:0;z-index:130;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:18px;overflow:auto}
+.co-modal{width:min(100%,420px);border:1px solid #2e2a22;border-radius:20px;background:#0c0c0b;padding:22px;color:#e8e2d6}
+.co-modal h3{margin:0 0 4px;font-size:19px}
+.co-modal>p,.co-modal form>p{font-size:13px;color:#8d867a;margin:0 0 14px;line-height:1.55}
+.co-modal-cta{width:100%;border:0;border-radius:11px;background:#efb72f;color:#080705;padding:12px;font-weight:900;cursor:pointer;font-family:inherit}
+.co-modal-cta:disabled{opacity:.55}
+.cn-close{width:100%;margin-top:10px;border:1px solid #2f2b23;background:transparent;color:#8d867a;border-radius:11px;padding:10px;cursor:pointer;font-family:inherit;font-size:13px}
+.cr-modal .cr-list{margin:0 0 14px;padding-left:20px;color:#c9c2b5;font-size:13px;line-height:1.85}
+.cr-warn{border:1px solid #5a2020;background:#1a0c0c;border-radius:12px;padding:12px 14px;color:#ffb9b9!important;font-size:12.5px!important;line-height:1.6!important;margin:0 0 14px!important}
+.cr-check{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;cursor:pointer}
+.cr-check input{margin-top:2px;width:18px;height:18px;accent-color:#efb72f;flex:none}
+.cr-check span{font-size:13px;line-height:1.5;color:#ddd6c8}

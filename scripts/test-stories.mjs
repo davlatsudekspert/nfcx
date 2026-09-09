@@ -207,5 +207,72 @@ check('8) obuna bo‘lmagan odam ko‘rinmaydi', feed2.body.feed.length, 0);
 await env.DB.prepare(`UPDATE stories SET expires_at = '2000-01-01T00:00:00.000Z' WHERE owner_id = 'VIP001'`).run();
 check('8) muddati o‘tgani lentada yo‘q', (await j('/api/stories/feed', { cookie: cookie.other })).body.feed.length, 0);
 
+// ── 9) TO'LIQ OQIM: yuklash -> joylash -> ko'rish ────────────────────
+// Egasining shikoyati: "istorya qo'yish ishlamayapti", "post qo'ydim
+// ko'rinmayapti". Shuning uchun oqimning HAR BOSQICHI shu yerda
+// ketma-ket yuriladi — bittasi uzilsa aynan qaysi joyi ekani chiqadi.
+{
+  // 7-bo'limda chegara sinovi uchun 12 ta istorya qo'shilgan edi —
+  // bu yerda toza holatdan boshlaymiz, aks holda `limit_reached`
+  // chiqib, oqim uzilgandek ko'rinardi.
+  await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = 'company' AND owner_id = 'NFCTEST'`).run();
+
+  // 9.1 video yuklash
+  const upVid = await upload(mp4, 'video/mp4');
+  check('9) video yuklandi', [upVid.status, upVid.body?.kind], [200, 'video']);
+
+  // 9.2 kompaniya istoryasi (video bilan)
+  const st = await j('/api/companies/NFCTEST/stories', { method: 'POST', cookie: cookie.user, json: { videoUrl: upVid.body.url, agreed: true } });
+  check('9) video istorya joylandi', st.status, 201);
+  const stList = await j('/api/companies/NFCTEST/stories');
+  checkTrue('9) istorya ro‘yxatda ko‘rinadi', stList.body.stories.some((x) => x.videoUrl === upVid.body.url));
+
+  // 9.3 fayl HAQIQATAN beriladimi (profil uni shu manzildan o'qiydi)
+  const fileRes = await worker.fetch(new Request(`https://nfcstore.uz${upVid.body.url}`), env);
+  check('9) yuklangan fayl beriladi', fileRes.status, 200);
+  check('9) turi to‘g‘ri', fileRes.headers.get('content-type'), 'video/mp4');
+  // Video uchun Range so'rovi SHART — usiz telefonda ijro boshlanmaydi.
+  const ranged = await worker.fetch(new Request(`https://nfcstore.uz${upVid.body.url}`, { headers: { range: 'bytes=0-9' } }), env);
+  check('9) Range so‘rovi qo‘llab-quvvatlanadi', ranged.status, 206);
+
+  // 9.4 post: yuklash -> joylash -> OCHIQ ro'yxatda ko'rinishi
+  const upImg = await upload(jpeg, 'image/jpeg');
+  const post = await j('/api/companies/NFCTEST/posts', { method: 'POST', cookie: cookie.user, json: { imageUrl: upImg.body.url, agreed: true, caption: 'yangi' } });
+  check('9) post joylandi', post.status, 201);
+  const openPosts = await j('/api/companies/NFCTEST/posts');
+  checkTrue('9) post OCHIQ ro‘yxatda (kirmasdan ham)', openPosts.body.posts.some((x) => x.imageUrl === upImg.body.url));
+}
+
+// ── 10) OBUNA VA KO'RISHLAR ──────────────────────────────────────────
+{
+  const before = await j('/api/companies/NFCTEST', { cookie: cookie.other });
+  check('10) boshida obunachi yo‘q', [before.body.company.followers, before.body.company.following], [0, false]);
+
+  const anon = await j('/api/companies/NFCTEST/follow', { method: 'POST' });
+  check('10) kirmagan obuna bo‘la olmaydi', anon.status, 401);
+  const self = await j('/api/companies/NFCTEST/follow', { method: 'POST', cookie: cookie.user });
+  check('10) egasi o‘ziga obuna bo‘la olmaydi', [self.status, self.body?.error], [409, 'cannot_follow_self']);
+
+  const on = await j('/api/companies/NFCTEST/follow', { method: 'POST', cookie: cookie.other });
+  check('10) obuna bo‘ldi', [on.status, on.body.following, on.body.followers], [200, true, 1]);
+  const seen = await j('/api/companies/NFCTEST', { cookie: cookie.other });
+  check('10) profilda ko‘rinadi', [seen.body.company.followers, seen.body.company.following], [1, true]);
+  // Boshqa odam uchun "following" YOLG'ON bo'lishi kerak.
+  const otherView = await j('/api/companies/NFCTEST', { cookie: cookie.user });
+  check('10) boshqa odamga "obuna bo‘lingan" ko‘rinmaydi', otherView.body.company.following, false);
+
+  const off = await j('/api/companies/NFCTEST/follow', { method: 'POST', cookie: cookie.other });
+  check('10) qayta bosilsa bekor bo‘ladi', [off.body.following, off.body.followers], [false, 0]);
+
+  // Ko'rishlar — statistika jamlanmasidan, ya'ni kabinetdagi son bilan
+  // BIR MANBA. Ikkalasi boshqa-boshqa raqam ko'rsatmasin.
+  await j('/api/companies/NFCTEST/event', { method: 'POST', json: { kind: 'view' }, ip: '203.0.113.211' });
+  await j('/api/companies/NFCTEST/event', { method: 'POST', json: { kind: 'view' }, ip: '203.0.113.212' });
+  const withViews = await j('/api/companies/NFCTEST');
+  const stats = await j('/api/companies/NFCTEST/stats', { cookie: cookie.user });
+  checkTrue('10) ko‘rishlar profilda bor', withViews.body.company.views >= 2);
+  check('10) profil va kabinet raqami bir xil', withViews.body.company.views, stats.body.views);
+}
+
 console.log('\\naccess:', access || '(nomaʼlum)');
 done();

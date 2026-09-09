@@ -20,7 +20,6 @@ export default function StoryRing({ stories = [], title = '', avatarUrl = '', ca
       <button type="button" className="story-ring" onClick={() => setOpen(true)} aria-label={t('Istoryani ko‘rish')}>
         <span className="story-ring-glow" aria-hidden="true" />
         {children}
-        <span className="story-ring-count">{list.length}</span>
       </button>
       {open && (
         <StoryViewer

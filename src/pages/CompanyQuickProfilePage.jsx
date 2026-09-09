@@ -6,7 +6,9 @@ import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import { downloadVcard } from '../lib/vcard.js';
 import StoryRing from '../components/StoryRing.jsx';
-import { listCompanyStories } from '../lib/company.js';
+import CompanyStatsBar from '../components/CompanyStatsBar.jsx';
+import { useAuth } from '../lib/auth.jsx';
+import { listCompanyPosts, listCompanyStories } from '../lib/company.js';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, companyEvent, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -34,11 +36,13 @@ function isNetworkError(err) {
 
 export default function CompanyQuickProfilePage({ companyId }) {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [company, setCompany] = useState(undefined);
   const [error, setError] = useState(null);
   const [orderItem, setOrderItem] = useState(null);
   const [showCard, setShowCard] = useState(false);
   const [stories, setStories] = useState([]);
+  const [posts, setPosts] = useState([]);
 
   const load = useCallback(() => {
     let live = true;
@@ -65,6 +69,12 @@ export default function CompanyQuickProfilePage({ companyId }) {
     listCompanyStories(company.companyId)
       .then((d) => live && setStories(d.stories || []))
       .catch(() => live && setStories([]));
+    // POSTLAR — avval faqat to'liq kompaniya sahifasida chiqardi,
+    // shuning uchun egasi post qo'yib, NFC profilida hech narsa
+    // ko'rmasdi. Endi bu yerda ham bor.
+    listCompanyPosts(company.companyId)
+      .then((d) => live && setPosts(d.posts || []))
+      .catch(() => live && setPosts([]));
     return () => { live = false; };
   }, [company?.companyId]);
 
@@ -121,7 +131,17 @@ export default function CompanyQuickProfilePage({ companyId }) {
   return (
     <main className="cq-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
       <div className="cq-shell">
-        <header className="cq-top"><span className="cq-brand"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span><span className="cq-id">COMPANY ID · {company.companyId}</span></header>
+        <header className="cq-top">
+          <span className="cq-brand"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span>
+          {/* IKKALASIDAN BITTASI: kompaniya egasi bo'lsangiz —
+              "Tahrirlash" (kabinetga), kirgan boshqa odam bo'lsangiz —
+              o'z profilingizga qaytish. Mehmonga hech biri kerak emas:
+              NFC kartani tegizgan odamda "qaytadigan" profil yo'q. */}
+          {user && (String(user.id) === String(company.ownerUserId)
+            ? <button type="button" className="cq-top-link" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>✎ {t('Tahrirlash')}</button>
+            : <button type="button" className="cq-top-link" onClick={() => navigate('/account')}>‹ {t('Profilga qaytish')}</button>)}
+          <span className="cq-id">COMPANY ID · {company.companyId}</span>
+        </header>
         <section className="cq-identity">
           <StoryRing stories={stories} title={company.displayName} avatarUrl={company.logoUrl}>
             <div className="cq-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
@@ -133,6 +153,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
         </section>
 
         <CompanyHours hours={company.hours} openNow={company.openNow} compact />
+
+        <CompanyStatsBar company={company} onChange={(patch) => setCompany((c) => ({ ...c, ...patch }))} />
 
         <section className="cq-actions" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
           {company.phone && <a data-ev="phone" className="primary vz-tap" href={contactUrl('phone', company.phone)}><IconPhone width={14} height={14} aria-hidden="true" />&nbsp;{t('Qo‘ng‘iroq')}</a>}
@@ -166,6 +188,22 @@ export default function CompanyQuickProfilePage({ companyId }) {
             <div className="cq-section-head"><div><span>01</span><h2>{t(cta.noun)}</h2></div><button type="button" className="vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}#catalog`)}>{t(cta.label)} →</button></div>
             <div className="cq-item-grid">
               {items.map((item) => <article key={item.id} className="min-w-0"><img src={item.imageUrl || company.coverUrl || fallbackCover} alt="" /><div><b className="break-words">{item.name}</b><p>{item.description || item.category}</p><strong>{fmt(item.price)} {t('so‘m')}</strong>{company.ordersEnabled && <button type="button" className="cq-order-btn vz-tap" onClick={() => { companyEvent(company.companyId, 'item', String(item.id)); setOrderItem(item); }}>{t('Buyurtma berish')}</button>}</div></article>)}
+            </div>
+          </section>
+        )}
+
+        {posts.length > 0 && (
+          <section className="cq-posts">
+            <div className="cq-section-head"><div><span>02</span><h2>{t('Yangiliklar')}</h2></div></div>
+            <div className="cq-post-strip">
+              {posts.map((p) => (
+                <article key={p.id}>
+                  {p.videoUrl
+                    ? <video src={p.videoUrl} controls playsInline preload="none" />
+                    : <img src={p.imageUrl} alt={p.caption || ''} loading="lazy" />}
+                  {p.caption && <p>{p.caption}</p>}
+                </article>
+              ))}
             </div>
           </section>
         )}

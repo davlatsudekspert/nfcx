@@ -168,6 +168,11 @@ export const setCompanyOrderStatus = (companyId, orderId, status) =>
 // ── POSTLAR VA ISTORYA ────────────────────────────────────────────────
 // `agreed: true` — kontent qoidalariga rozilik. Server ham buni
 // tekshiradi (faqat frontendda bo'lsa chetlab o'tish mumkin edi).
+// Obuna bo'lish / bekor qilish — bitta endpoint, holat teskarisiga
+// o'giriladi (interfeysda ham bitta tugma).
+export const toggleCompanyFollow = (companyId) =>
+  companyApi(`/${encodeURIComponent(companyId)}/follow`, { method: 'POST' });
+
 export const listCompanyPosts = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/posts`);
 export const createCompanyPost = (companyId, payload) =>
   companyApi(`/${encodeURIComponent(companyId)}/posts`, { method: 'POST', body: JSON.stringify(payload) });

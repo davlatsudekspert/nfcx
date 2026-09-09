@@ -343,3 +343,29 @@
 .cw-phone-music-row small{font-size:6px;color:#dcad3f;margin-top:2px}
 .cw-phone-save{margin-top:7px;border-radius:9px;background:linear-gradient(135deg,#e9af23,#ffd76e);color:#080603;text-align:center;padding:7px;font-weight:900;font-size:8px}
 .cw-phone-items{margin-top:7px}
+
+/* ── PROFIL RAQAMLARI: ko'rildi / obunachi / ulashish ────────────────
+   Raqamlar HAQIQIY: ko'rishlar statistika jamlanmasidan (kabinetdagi
+   son bilan bir manba), obunachilar haqiqiy obuna yozuvlaridan. */
+.cq-metrics{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;margin:14px 0 4px}
+.cq-metric{text-align:center;min-width:62px}
+.cq-metric b{display:block;font-size:17px;color:#f0cf7b;line-height:1.2}
+.cq-metric small{display:block;font-size:9px;letter-spacing:.08em;color:#8d867a;margin-top:3px;text-transform:uppercase}
+.cq-metric-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.cq-follow,.cq-share{border:1px solid rgba(255,255,255,.16);border-radius:99px;background:rgba(10,10,9,.8);color:#e7e2d8;padding:8px 15px;font:600 12px/1 inherit;cursor:pointer;font-family:inherit}
+.cq-follow{border-color:rgba(239,183,47,.5);color:#f0cf7b}
+.cq-follow.is-on{background:rgba(239,183,47,.16);border-color:rgba(239,183,47,.75)}
+.cq-follow:hover,.cq-share:hover{border-color:rgba(239,183,47,.7);color:#f5d888}
+.cq-follow:disabled{opacity:.55}
+/* Sarlavhadagi "Tahrirlash" / "Profilga qaytish" */
+.cq-top{gap:8px;flex-wrap:wrap}
+.cq-top-link{border:1px solid rgba(255,255,255,.16);border-radius:99px;background:rgba(0,0,0,.5);color:#cfc6b4;padding:5px 11px;font:600 10px/1 inherit;cursor:pointer;font-family:inherit;white-space:nowrap}
+.cq-top-link:hover{border-color:rgba(239,183,47,.6);color:#f0cf7b}
+
+/* Postlar NFC profilida — gorizontal lenta (sahifa uzayib ketmasin) */
+.cq-posts{margin-top:22px;border-top:1px solid #25221c;padding-top:18px}
+.cq-post-strip{display:flex;gap:9px;overflow-x:auto;margin-top:11px;padding-bottom:5px;scrollbar-width:none}
+.cq-post-strip::-webkit-scrollbar{display:none}
+.cq-post-strip article{flex:0 0 148px;width:148px;border:1px solid #26231d;border-radius:13px;overflow:hidden;background:#0c0c0b}
+.cq-post-strip img,.cq-post-strip video{display:block;width:100%;height:148px;object-fit:cover;background:#000}
+.cq-post-strip p{margin:0;padding:8px 9px;font-size:var(--fs-2xs);color:#8e877c;line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}

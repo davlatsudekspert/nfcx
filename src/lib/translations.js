@@ -2757,6 +2757,11 @@ const DICT_HOME = {
     ru: 'Печатный вид NFC-карты вашей компании. Выберите готовый фон или загрузите своё изображение.',
     en: 'The print design of your company NFC card. Pick a ready-made background or upload your own.' },
   'Bugun yopiq': { ru: 'Сегодня закрыто', en: 'Closed today' },
+  // ── Profil raqamlari va obuna (2026-09) ──
+  'ko‘rildi': { ru: 'просмотров', en: 'views' },
+  'Obuna bo‘lish': { ru: 'Подписаться', en: 'Follow' },
+  'Obuna bo‘lingan': { ru: 'Вы подписаны', en: 'Following' },
+  'Havola nusxalandi': { ru: 'Ссылка скопирована', en: 'Link copied' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };
