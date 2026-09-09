@@ -2684,6 +2684,13 @@ const DICT_HOME = {
     ru: 'Перед активацией: CNAME владельца должен указывать на nfcstore.uz, а в Cloudflare добавлен Custom Hostname.',
     en: 'Before activating: the owner\u2019s CNAME must point to nfcstore.uz and a Custom Hostname must be added in Cloudflare.' },
   '{n} kun': { ru: '{n} дн.', en: '{n} days' },
+  // ── NFC tezkor profil: karta raqami oynasi va kontakt (2026-09) ──
+  'Karta raqami QR kodi': { ru: 'QR-код номера карты', en: 'Card number QR code' },
+  'Raqamni nusxalash': { ru: 'Скопировать номер', en: 'Copy number' },
+  'QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.': {
+    ru: 'В QR-коде записан только номер карты — это не платёжная ссылка.',
+    en: 'The QR code holds only the card number — it is not a payment link.' },
+  'Kontaktni saqlash': { ru: 'Сохранить контакт', en: 'Save contact' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

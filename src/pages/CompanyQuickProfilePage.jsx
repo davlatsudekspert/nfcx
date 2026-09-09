@@ -3,6 +3,8 @@ import { directionsUrl, hasCoords, yandexDirectionsUrl } from '../lib/mapLink.js
 import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
 import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
+import CardNumberModal from '../components/CardNumberModal.jsx';
+import { downloadVcard } from '../lib/vcard.js';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, companyEvent, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -32,9 +34,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const { t } = useLanguage();
   const [company, setCompany] = useState(undefined);
   const [error, setError] = useState(null);
-  // Karta raqami nusxalangani haqidagi qisqa bildirish.
-  const [copied, setCopied] = useState(false);
   const [orderItem, setOrderItem] = useState(null);
+  const [showCard, setShowCard] = useState(false);
 
   const load = useCallback(() => {
     let live = true;
@@ -125,13 +126,12 @@ export default function CompanyQuickProfilePage({ companyId }) {
           {company.website && <a data-ev="website" className="vz-tap" href={contactUrl('website', company.website)} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Veb-sayt')}</a>}
           {mapUrl && <a data-ev="directions" className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Yo‘nalish olish')}</a>}
           {geo && <a data-ev="yandex" className="vz-tap" href={yandexDirectionsUrl(company)} target="_blank" rel="noreferrer">{t('Yandex Karta')}</a>}
-          {/* KARTA RAQAMI — havola emas, bosilganda nusxalanadi. */}
+          {/* KARTA RAQAMI — ro'yxatda YASHIRIN turadi. Ochiq tursa u
+              tasodifan ekranga tushadi (skrinshot, video, yonidagi
+              odam); bosish esa ataylab qilingan harakat. */}
           {company.cardNumber && (
-            <button
-              type="button" className="vz-tap"
-              onClick={() => { try { navigator.clipboard.writeText(company.cardNumber); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ruxsat yo'q */ } }}
-            >
-              {copied ? t('Nusxalandi!') : `▤ ${company.cardNumber}`}
+            <button data-ev="card" type="button" className="vz-tap" onClick={() => setShowCard(true)}>
+              ▤ {t('Karta raqami')}
             </button>
           )}
           {/* Egasi o'zi qo'shgan havolalar. */}
@@ -154,8 +154,30 @@ export default function CompanyQuickProfilePage({ companyId }) {
         )}
 
         <button type="button" className="cq-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya saytini to‘liq ochish')} <span>↗</span></button>
+        {/* KONTAKTNI SAQLASH — eng ostida, oltin yozuvda. NFC kartaning
+            butun ma'nosi shu: odam sahifani yopgandan keyin ham
+            raqamingiz uning telefonida qoladi. */}
+        <button
+          type="button" className="cq-save vz-tap"
+          onClick={() => {
+            companyEvent(company.companyId, 'action', 'vcard');
+            downloadVcard({
+              name: company.displayName,
+              org: company.displayName,
+              title: company.subcategory || company.categoryLabel || '',
+              phone: company.phone,
+              address: company.address || company.city,
+              website: company.website,
+              urls: [`${window.location.origin}/c/${company.companyId.toLowerCase()}`],
+              note: company.description,
+            }, company.companyId.toLowerCase());
+          }}
+        >
+          {t('Kontaktni saqlash')}
+        </button>
         <footer><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></footer>
         {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
+        {showCard && <CardNumberModal cardNumber={company.cardNumber} holder={company.displayName} onClose={() => setShowCard(false)} />}
       </div>
     </main>
   );

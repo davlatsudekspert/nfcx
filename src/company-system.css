@@ -193,3 +193,48 @@
 .cw-domain-note{font-size:var(--fs-2xs)!important;color:#a29a8d!important;margin-top:8px!important}
 .cw-domain-steps{margin:11px 0 0;padding-left:18px;color:#7f796f;font-size:var(--fs-2xs);line-height:1.7}
 @media(max-width:900px){.cw-stat-cols{grid-template-columns:1fr}.cw-hours-row{grid-template-columns:1fr auto;row-gap:6px}.cw-hours-row input[type=time]{width:100%}.cw-orders article{flex-direction:column}.cw-order-actions{flex-direction:row;align-items:center}}
+
+/* ── NFC TEZKOR PROFIL: fon, tugmalar, karta raqami, kontakt ────────
+   Egasining talabi (2026-09):
+   • muqova rasm/GIF butun profilni egallasin, faqat tepasini emas;
+   • Telegram/WhatsApp uzun bo'lsin — bir qatorga bitta, shaxsiy
+     profildagidek; "Qo'ng'iroq" ham ular bilan bir xil rangda;
+   • karta raqami yashirin tursin;
+   • eng ostida oltin yozuvda "Kontaktni saqlash".            */
+
+/* Fon: butun qobiqni egallaydi va SCROLL BILAN BIRGA ketmaydi
+   (`fixed` emas — iOS Safari'da `background-attachment:fixed` ishlamaydi
+   va rasm sakrab ketardi). `cover` — GIF ham kesilmay to'liq yopadi.
+   Ustidagi qoraytirish gradienti matn o'qilishi uchun SHART: yorqin
+   GIF ustida oq harflar yo'qolib ketardi. */
+.cq-shell{
+  background:
+    linear-gradient(180deg,rgba(3,3,3,.62) 0%,rgba(3,3,3,.78) 38%,rgba(3,3,3,.92) 100%),
+    var(--cq-cover) center center/cover no-repeat,
+    #070706;
+}
+
+/* Tugmalar: bir qatorga bitta, to'liq kenglikda. */
+.cq-actions{grid-template-columns:1fr;gap:9px}
+.cq-actions a,.cq-actions button{
+  justify-content:flex-start;gap:9px;padding:13px 16px;
+  border:1px solid rgba(255,255,255,.11);border-radius:13px;
+  background:rgba(10,10,9,.78);color:#e7e2d8;font-weight:600;
+  backdrop-filter:blur(6px)
+}
+/* "Qo'ng'iroq" ham qolganlar bilan BIR XIL rangda (egasining talabi) —
+   oltin to'ldirish faqat eng pastdagi "Kontaktni saqlash"da qoladi,
+   shunda sahifada bitta aniq asosiy harakat bo'ladi. */
+.cq-actions a.primary{background:rgba(10,10,9,.78);color:#e7e2d8;border:1px solid rgba(255,255,255,.11);font-weight:600}
+.cq-actions a:hover,.cq-actions button:hover{border-color:rgba(239,183,47,.5);color:#f2cd6e}
+
+/* Karta raqami oynasi */
+.cn-modal{text-align:center}
+.cn-modal canvas{width:210px;height:210px;margin:6px auto 14px;display:block;border-radius:14px;background:#fff;padding:9px}
+.cn-holder{margin:0 0 12px!important;color:#9a9388!important;font-size:var(--fs-xs)!important}
+.cn-number{display:block;font:700 19px/1.4 monospace;letter-spacing:.06em;color:#f0cf7b;margin-bottom:14px;word-break:break-all}
+.cn-close{width:100%;margin-top:10px;border:1px solid #2f2b23;background:transparent;color:#8d867a;border-radius:11px;padding:10px;cursor:pointer;font-family:inherit;font-size:var(--fs-xs)}
+
+/* Kontaktni saqlash — oltin, eng ostida */
+.cq-save{width:100%;margin-top:9px;border:0;border-radius:13px;background:linear-gradient(135deg,#e9af23,#ffd76e);color:#080603;padding:14px;font-weight:900;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;box-shadow:0 10px 30px rgba(233,175,35,.18)}
+.cq-save:hover{filter:brightness(1.06)}
