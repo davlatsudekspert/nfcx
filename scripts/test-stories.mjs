@@ -113,6 +113,50 @@ for (let i = 0; i < 12; i += 1) {
 const capped = await j('/api/companies/NFCTEST/stories');
 checkTrue('7) istorya soni cheklangan', capped.body.stories.length <= 10);
 
+// ── 7b) 100 MB LIK MEDIA YUKLASH (rasm va video) ─────────────────────
+// Tana xotiraga yig'ilmay R2 ga oqiziladi — mock ham oqimni qabul
+// qiladi, ya'ni test haqiqiy yo'lni yuradi.
+const upload = async (bytes, contentType, extra = {}) => {
+  const r = await worker.fetch(new Request('https://nfcstore.uz/api/upload-media', {
+    method: 'POST',
+    headers: { cookie: 'nfc_session=user-token', 'content-type': contentType, 'content-length': String(extra.len ?? bytes.length), 'cf-connecting-ip': '198.51.100.60' },
+    body: bytes,
+  }), env);
+  return { status: r.status, body: await r.json().catch(() => null) };
+};
+const jpeg = new Uint8Array(64); jpeg.set([0xff, 0xd8, 0xff, 0xe0], 0);
+const png = new Uint8Array(64); png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+const mp4 = new Uint8Array(64); mp4.set([...'    ftypisom'].map((c) => c.charCodeAt(0)), 0);
+const junk = new Uint8Array(64); junk.set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 0);
+
+const upJpeg = await upload(jpeg, 'image/jpeg');
+check('7b) jpeg qabul qilindi', [upJpeg.status, upJpeg.body?.kind], [200, 'image']);
+checkTrue('7b) manzil /uploads/ ichida', /^\/uploads\/story_[0-9a-f]+\.jpg$/.test(upJpeg.body.url));
+const upPng = await upload(png, 'image/png');
+check('7b) png qabul qilindi', upPng.status, 200);
+const upMp4 = await upload(mp4, 'video/mp4');
+check('7b) video qabul qilindi', [upMp4.status, upMp4.body?.kind], [200, 'video']);
+// Tur mijoz aytganidan emas, SEHRLI BAYTLARDAN olinadi.
+const lying = await upload(mp4, 'image/png');
+check('7b) yolg‘on content-type rad etildi', lying.status, 422);
+const bad = await upload(junk, 'application/octet-stream');
+check('7b) noma’lum format rad etildi', bad.status, 422);
+// 100 MB dan katta tana UMUMAN o'qilmaydi.
+const tooBig = await upload(jpeg, 'image/jpeg', { len: 101 * 1024 * 1024 });
+check('7b) 100 MB dan katta rad etildi', [tooBig.status, tooBig.body?.limitMb], [413, 100]);
+// Kirmagan odam yuklay olmaydi.
+const anonUp = await worker.fetch(new Request('https://nfcstore.uz/api/upload-media', {
+  method: 'POST', headers: { 'content-type': 'image/jpeg', 'cf-connecting-ip': '198.51.100.61' }, body: jpeg,
+}), env);
+check('7b) kirmagan yuklay olmaydi', anonUp.status, 401);
+
+// Yuklangan video istoryaga qo'yilishi mumkin (premium darajada).
+await env.DB.prepare(`UPDATE cards SET tier_override = 'premium' WHERE code = 'VIP001'`).run();
+const vidStory = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { videoUrl: upMp4.body.url, agreed: true } });
+check('7b) video istorya joylandi', vidStory.status, 201);
+await env.DB.prepare(`DELETE FROM stories WHERE owner_id = 'VIP001'`).run();
+await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'VIP001'`).run();
+
 // ── 8) LENTA (obuna bo'lganlar istoryasi) ────────────────────────────
 // Kirmagan odam bo'sh lenta oladi (xato emas — vidjet o'zini chizmaydi).
 check('8) kirmagan uchun bo‘sh', (await j('/api/stories/feed')).body.feed, []);

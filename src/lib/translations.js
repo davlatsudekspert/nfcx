@@ -2735,6 +2735,13 @@ const DICT_HOME = {
     en: 'I have read this and agree — I take responsibility' },
   'Davom etish': { ru: 'Продолжить', en: 'Continue' },
   'Istoryalar': { ru: 'Истории', en: 'Stories' },
+  'Profilga qaytish': { ru: 'Вернуться в профиль', en: 'Back to profile' },
+  'Faqat rasm yoki video tanlanadi.': { ru: 'Можно выбрать только фото или видео.', en: 'Only a photo or video can be selected.' },
+  'Fayl 100 MB dan katta.': { ru: 'Файл больше 100 МБ.', en: 'The file is larger than 100 MB.' },
+  'Rasm yoki video, 100 MB gacha.': { ru: 'Фото или видео, до 100 МБ.', en: 'Photo or video, up to 100 MB.' },
+  'Bu format qo‘llab-quvvatlanmaydi (JPG, PNG, WEBP, GIF, MP4, WEBM).': {
+    ru: 'Этот формат не поддерживается (JPG, PNG, WEBP, GIF, MP4, WEBM).',
+    en: 'This format is not supported (JPG, PNG, WEBP, GIF, MP4, WEBM).' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

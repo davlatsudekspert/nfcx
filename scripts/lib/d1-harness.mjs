@@ -24,7 +24,26 @@ export function makeEnv(extraEnv = {}) {
   }
   const store = new Map();
   const UPLOADS = {
-    async put(key, bytes, opts = {}) { const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes); store.set(key, { bytes: buf, httpMetadata: opts.httpMetadata || {}, customMetadata: opts.customMetadata || {}, httpEtag: `"${buf.length}-${key}"` }); return { key }; },
+    // R2 `put` OQIMNI ham qabul qiladi (istorya mediasi 100 MB gacha
+    // xotiraga yig'ilmay to'g'ridan-to'g'ri yoziladi) — mock ham shuni
+    // qo'llab-quvvatlashi kerak, aks holda test haqiqiy yo'ldan
+    // farq qiladigan narsani tekshirardi.
+    async put(key, bytes, opts = {}) {
+      let buf;
+      if (bytes && typeof bytes.getReader === 'function') {
+        const reader = bytes.getReader();
+        const parts = [];
+        for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(new Uint8Array(value)); }
+        const total = parts.reduce((n, p) => n + p.length, 0);
+        buf = new Uint8Array(total);
+        let off = 0;
+        for (const p of parts) { buf.set(p, off); off += p.length; }
+      } else {
+        buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      }
+      store.set(key, { bytes: buf, httpMetadata: opts.httpMetadata || {}, customMetadata: opts.customMetadata || {}, httpEtag: `"${buf.length}-${key}"` });
+      return { key };
+    },
     async head(key) { const o = store.get(key); if (!o) return null; return { size: o.bytes.length, httpEtag: o.httpEtag, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
     async get(key, options = {}) { const o = store.get(key); if (!o) return null; let bytes = o.bytes; if (options.range) bytes = bytes.slice(options.range.offset, options.range.offset + options.range.length); return { body: bytes, httpEtag: o.httpEtag, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
     async delete(key) { store.delete(key); },

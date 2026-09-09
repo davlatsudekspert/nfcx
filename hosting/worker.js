@@ -5072,6 +5072,38 @@ const CARD_PRINT_MAX_BYTES = 8 * 1024 * 1024;
 // Mijoz yuborishi mumkin bo'lgan, lekin bir xil turni bildiruvchi MIME
 // nomlari (masalan iOS ba'zan video/quicktime deb yuboradi, ichida esa
 // ftyp/mp4 bo'ladi).
+// ── ISTORYA / POST MEDIASI — 100 MB gacha ────────────────────────────
+// Egasining talabi: rasm ham, video ham katta bo'lishi mumkin.
+//
+// Tana XOTIRAGA YIG'ILMAYDI, to'g'ridan-to'g'ri R2 ga OQIZILADI.
+// Sabab: Worker izolyati 128 MB xotira bilan cheklangan — 100 MB faylni
+// `arrayBuffer()` bilan o'qish o'sha chegaraga urilib, so'rovni butunlay
+// yiqitardi (va buni faqat katta fayl yuklagan mijoz ko'rardi).
+// Oqim ikkiga bo'linadi (`tee`): birinchi bo'lak turni aniqlash uchun
+// o'qiladi va DARHOL bekor qilinadi, ikkinchisi R2 ga ketadi.
+const STORY_MEDIA_MAX_BYTES = 100 * 1024 * 1024;
+const STORY_MEDIA_ALIASES = {
+  'application/octet-stream': ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'],
+  'video/quicktime': ['video/mp4'],
+  'video/x-m4v': ['video/mp4'],
+  'video/x-matroska': ['video/webm'],
+  'image/jpg': ['image/jpeg'],
+};
+
+// Sehrli baytlar bo'yicha tur. Mijoz aytgan nomga ISHONILMAYDI —
+// kengaytma shu yerdagi natijadan olinadi.
+function sniffMediaTypeD1(bytes) {
+  if (!bytes || bytes.length < 12) return null;
+  const head = String.fromCharCode(...bytes.slice(0, 40));
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return { ext: 'jpg', type: 'image/jpeg' };
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return { ext: 'png', type: 'image/png' };
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return { ext: 'gif', type: 'image/gif' };
+  if (head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WEBP') return { ext: 'webp', type: 'image/webp' };
+  if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) return { ext: 'webm', type: 'video/webm' };
+  if (head.includes('ftyp')) return { ext: 'mp4', type: 'video/mp4' };
+  return null;
+}
+
 const PROFILE_BG_ALIASES = {
   'application/octet-stream': ['image/gif', 'video/mp4', 'video/webm'],
   'video/quicktime': ['video/mp4'],
@@ -5131,6 +5163,62 @@ async function uploadApi(request, env, pathname) {
 
     const filename = `profilebg_${uploadRandomHex(12)}.${sniffed.ext}`;
     return json({ url: await putUploadR2(env, filename, bytes, sniffed.type, actor) });
+  }
+
+  // ─── ISTORYA / POST MEDIASI (100 MB, rasm yoki video) ────────────────
+  if (pathname === '/api/upload-media') {
+    const declared = Number(request.headers.get('content-length') || 0);
+    if (declared > STORY_MEDIA_MAX_BYTES) return json({ error: 'too_large', limitMb: 100 }, 413);
+    if (!request.body) return json({ error: 'bad_file' }, 422);
+
+    // Faqat BOSH QISM o'qiladi (turni aniqlash uchun ~40 bayt), qolgani
+    // o'qilmagan holicha R2 ga oqib ketadi.
+    //
+    // `tee()` ATAYLAB ishlatilmadi: bir tarmog'ini bekor qilib,
+    // ikkinchisini o'qish turli muhitlarda turlicha ishlaydi va
+    // testda oqim butunlay osilib qoldi. Bu yerda esa oddiy va aniq
+    // yo'l — o'qilgan bosh qism yangi oqim boshiga QAYTA qo'yiladi.
+    const reader = request.body.getReader();
+    const head = [];
+    let headLen = 0;
+    let ended = false;
+    while (headLen < 40 && !ended) {
+      const { done, value } = await reader.read();
+      if (done) { ended = true; break; }
+      const part = new Uint8Array(value);
+      head.push(part);
+      headLen += part.length;
+    }
+    const headBytes = new Uint8Array(headLen);
+    { let off = 0; for (const part of head) { headBytes.set(part, off); off += part.length; } }
+
+    const sniffed = sniffMediaTypeD1(headBytes);
+    const declaredType = String(request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const typeOk = sniffed && (!declaredType || declaredType === sniffed.type
+      || STORY_MEDIA_ALIASES[declaredType]?.includes(sniffed.type));
+    if (!typeOk) {
+      await reader.cancel().catch(() => {});
+      return json({ error: 'bad_file' }, 422);
+    }
+
+    const uploadStream = new ReadableStream({
+      start(controller) { if (headLen) controller.enqueue(headBytes); if (ended) controller.close(); },
+      async pull(controller) {
+        if (ended) { controller.close(); return; }
+        const { done, value } = await reader.read();
+        if (done) { ended = true; controller.close(); return; }
+        controller.enqueue(value);
+      },
+      cancel(reason) { return reader.cancel(reason); },
+    });
+
+    const filename = `story_${uploadRandomHex(12)}.${sniffed.ext}`;
+    if (!env.UPLOADS) return json({ error: 'r2_unavailable' }, 503);
+    await env.UPLOADS.put(`uploads/${filename}`, uploadStream, {
+      httpMetadata: { contentType: sniffed.type, cacheControl: UPLOAD_CACHE_CONTROL },
+      customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
+    });
+    return json({ url: `/uploads/${filename}`, kind: sniffed.type.startsWith('video/') ? 'video' : 'image' });
   }
 
   // ─── JISMONIY KARTA BOSMA DIZAYNI (PNG) ──────────────────────────────
@@ -7534,7 +7622,7 @@ async function handleRequest(request, env, url) {
     }
 
     if (request.method === 'POST'
-      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-card-print', '/api/admin/upload'].includes(url.pathname)) {
+      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-media', '/api/upload-card-print', '/api/admin/upload'].includes(url.pathname)) {
       try {
         return await uploadApi(request, env, url.pathname);
       } catch (error) {

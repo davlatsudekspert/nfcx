@@ -1006,6 +1006,33 @@ export async function dbCreateStory(code, payload) {
   }
   return data;
 }
+// ISTORYA / POST MEDIASI — 100 MB gacha, rasm yoki video.
+//
+// Fayl XOM BINAR sifatida yuboriladi, base64 dataURL EMAS: base64
+// hajmni ~33% ga oshiradi va 100 MB fayl 133 MB satrga aylanib,
+// brauzerda ham, serverda ham xotiraga sig'masdi.
+export const STORY_MEDIA_MAX_BYTES = 100 * 1024 * 1024;
+export async function dbUploadMedia(file) {
+  if (file.size > STORY_MEDIA_MAX_BYTES) {
+    const err = new Error('too_large');
+    err.error = 'too_large';
+    throw err;
+  }
+  const res = await fetch('/api/upload-media', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error((data && data.error) || `http_${res.status}`);
+    Object.assign(err, data || {});
+    throw err;
+  }
+  return data; // { url, kind: 'image' | 'video' }
+}
+
 // Obuna bo'lganlaringizning istoryasi (Instagram uslubidagi qator).
 export async function dbStoryFeed() {
   const data = await api('/stories/feed');

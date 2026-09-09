@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../lib/i18n.jsx';
 
 const STEP_MS = 5000;
@@ -46,7 +47,14 @@ export default function StoryViewer({ stories = [], title = '', avatarUrl = '', 
 
   if (!current) return null;
 
-  return (
+  // PORTAL — oyna `document.body` ga chiqariladi.
+  //
+  // Avval u chaqirilgan joyda (profil ichida) chizilardi. Ota
+  // elementlarda `transform`/`filter` bo'lsa, `position:fixed` o'sha
+  // elementga nisbatan hisoblanadi va oyna ekranni to'liq qoplamay,
+  // sahifa ichida "cho'zilib" qolardi — logotip ham, sahifa matni ham
+  // ko'rinib turardi (egasi aynan shuni ko'rdi).
+  const view = (
     <div className="sv-back" role="dialog" aria-modal="true">
       <div className="sv-bars">
         {list.map((s, i) => (
@@ -81,6 +89,17 @@ export default function StoryViewer({ stories = [], title = '', avatarUrl = '', 
       {/* Bosish sohalari media USTIDA — chapga/o'ngga o'tish. */}
       <button type="button" className="sv-nav left" onClick={() => go(-1)} aria-label={t('Oldingi')} />
       <button type="button" className="sv-nav right" onClick={() => go(1)} aria-label={t('Keyingi')} />
+
+      {/* PROFILGA QAYTISH — pastda, aniq ko'rinadigan tugma.
+          Yuqoridagi "✕" kichik va uni topa olmaslik mumkin, telefonda
+          esa brauzerning "orqaga" tugmasi sahifadan butunlay chiqarib
+          yuborardi. */}
+      <button type="button" className="sv-back-btn" onClick={onClose}>
+        ‹ {t('Profilga qaytish')}
+      </button>
     </div>
   );
+
+  if (typeof document === 'undefined') return view;
+  return createPortal(view, document.body);
 }

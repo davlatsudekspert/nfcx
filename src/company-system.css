@@ -305,3 +305,20 @@
 @media (prefers-reduced-motion:reduce){
   .cq-actions a::after,.cq-actions button::after,.cq-save::after{animation:none;opacity:0}
 }
+
+/* ── MUSIQA PLEERI: matn o'rtada ─────────────────────────────────────
+   Avval `.cp-music-info{flex:1}` matnni butun bo'sh joyga cho'zib,
+   chap chekkaga bosib qo'yardi. Endi tugma va matn birgalikda
+   o'rtaga yig'iladi; "keyingi/oldingi" tugmalari esa o'ng chekkada
+   qoladi va matnni surib yubormaydi (`position:absolute`). */
+.cp-music{position:relative;justify-content:center;gap:14px;padding-right:14px}
+.cp-music-info{flex:0 1 auto;text-align:center}
+.cp-music-nav{position:absolute;right:12px;top:50%;transform:translateY(-50%)}
+/* NFC tezkor profilda pleer ham tugmalar kabi yaltirab tursin. */
+.cq-page .cp-music{overflow:hidden}
+.cq-page .cp-music::after{
+  content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
+  background:linear-gradient(100deg,transparent,rgba(255,224,150,.14) 50%,transparent);
+  transform:skewX(-18deg);pointer-events:none;animation:cq-shine 4.6s ease-in-out infinite;animation-delay:1.6s
+}
+@media (prefers-reduced-motion:reduce){.cq-page .cp-music::after{animation:none;opacity:0}}
