@@ -809,6 +809,7 @@ const DICT_BASE = {
   'Yoqtirish': { ru: 'Нравится', en: 'Like' },
   '{name} nomidan yoqtirdingiz': { ru: 'Вы поставили лайк от имени {name}', en: 'You liked as {name}' },
   'Istorya va post': { ru: 'История и пост', en: 'Story & post' },
+  'Brauzer nusxalashga ruxsat bermadi — raqam ustiga bosib, qo‘lda nusxalang.': { ru: 'Браузер не разрешил копирование — нажмите на номер и скопируйте вручную.', en: 'The browser blocked copying — tap the number and copy it manually.' },
   'Saqlashda xatolik yuz berdi.': { ru: 'Произошла ошибка при сохранении.', en: 'An error occurred while saving.' },
   'Asosiy profil sifatida belgilandi.': { ru: 'Отмечено как основной профиль.', en: 'Marked as the primary profile.' },
   'Adminga murojaat': { ru: 'Обращение к администратору', en: 'Contact admin' },

@@ -29,12 +29,29 @@ export default function CardNumberModal({ cardNumber, holder = '', onClose }) {
     return () => { live = false; };
   }, [value]);
 
-  const copy = () => {
+  // NUSXALASH ISHLAMASA — SHUNI AYTAMIZ.
+  //
+  // Avval bu yerda `navigator.clipboard.writeText(...)` sinxron
+  // `try/catch` ichida chaqirilardi. U va'da (promise) qaytaradi, ya'ni
+  // RAD ETILGANDA catch umuman ishlamasdi: tugma baribir "Nusxalandi!"
+  // deb yozar, xotirada esa hech narsa yo'q edi. Ba'zi brauzerlarda
+  // (ruxsat berilmagan, HTTPS bo'lmagan muhit) aynan shu bo'ladi va
+  // odam "ishlamayapti" deb ko'radi.
+  //
+  // Endi natija rost aytiladi, muvaffaqiyatsiz bo'lsa esa raqamning
+  // o'zi bir tegishda belgilanadi (.cn-number { user-select: all }).
+  const [failed, setFailed] = useState(false);
+  const copy = async () => {
+    const plain = value.replace(/\s+/g, '');
     try {
-      navigator.clipboard.writeText(value.replace(/\s+/g, ''));
+      await navigator.clipboard.writeText(plain);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ruxsat yo'q */ }
+      setFailed(false);
+    } catch {
+      setCopied(false);
+      setFailed(true);
+    }
+    setTimeout(() => { setCopied(false); setFailed(false); }, 2500);
   };
 
   // Ko'rinish uchun 4 talab ajratiladi — o'qish va tekshirish oson.
@@ -48,9 +65,13 @@ export default function CardNumberModal({ cardNumber, holder = '', onClose }) {
         <canvas ref={canvasRef} width={260} height={260} aria-label={t('Karta raqami QR kodi')} />
         <b className="cn-number">{pretty || value}</b>
         <button type="button" className="co-modal-cta" onClick={copy}>
-          {copied ? t('Nusxalandi!') : t('Raqamni nusxalash')}
+          {copied ? t('Nusxalandi!') : failed ? t('Nusxalab bo‘lmadi') : t('Raqamni nusxalash')}
         </button>
-        <p className="co-modal-note">{t('QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.')}</p>
+        <p className={`co-modal-note${failed ? ' cn-fail' : ''}`}>
+          {failed
+            ? t('Brauzer nusxalashga ruxsat bermadi — raqam ustiga bosib, qo‘lda nusxalang.')
+            : t('QR kodda faqat karta raqami yozilgan — bu to‘lov havolasi emas.')}
+        </p>
         <button type="button" className="cn-close" onClick={onClose}>{t('Yopish')}</button>
       </div>
     </div>

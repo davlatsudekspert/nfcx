@@ -14,6 +14,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ShareButton from '../components/ShareButton.jsx';
+import CardNumberModal from '../components/CardNumberModal.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -1290,6 +1291,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [gallery, setGallery] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following' | 'likes'
+  // Karta raqami oynasi: {number, label} yoki null.
+  const [cardModal, setCardModal] = useState(null);
   const { user, myCards } = useAuth();
   // O'Z profiliga biriktirilgan kompaniya (asosiy karta birinchi). Bu
   // ODDIY SATR — quyidagi useEffect bog'liqliklariga massiv qo'yilsa,
@@ -2082,13 +2085,21 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer" onClick={() => track('instagram_click')}><IconInstagram /> Instagram</a>}
               {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer" onClick={() => track('link_click', 'facebook')}><IconFacebook /> Facebook</a>}
               {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer" onClick={() => track('link_click', 'twitter')}><IconX /> X (Twitter)</a>}
+              {/* KARTA RAQAMI — endi biznes profildagidek: bosilganda QR
+                  kod bilan oyna ochiladi, ostida raqamning o'zi va
+                  nusxalash tugmasi.
+                  Avval bu tugma darhol `navigator.clipboard` ga
+                  yozardi — ba'zi brauzerlarda u jimgina rad etiladi va
+                  odam uchun tugma "ishlamayotgan" bo'lib ko'rinardi
+                  (egasi aynan shuni aytdi). Endi natija ko'rinib
+                  turadi va nusxalash ishlamasa ham raqam ekranda. */}
               {record.cardNumber && (
-                <button type="button" onClick={() => { track('link_click', 'card_number'); copyText(record.cardNumber, t('Karta raqami nusxalandi!')); }} className={`${linkBtn} cursor-pointer`}>
+                <button type="button" onClick={() => { track('link_click', 'card_number'); setCardModal({ number: record.cardNumber, label: '' }); }} className={`${linkBtn} cursor-pointer`}>
                   <IconTag /> {t('Karta raqam')}
                 </button>
               )}
               {(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => (
-                <button type="button" key={`cn${i}`} onClick={() => { track('link_click', 'card_number'); copyText(c.number, t('Karta raqami nusxalandi!')); }} className={`${linkBtn} cursor-pointer`}>
+                <button type="button" key={`cn${i}`} onClick={() => { track('link_click', 'card_number'); setCardModal({ number: c.number, label: c.label || '' }); }} className={`${linkBtn} cursor-pointer`}>
                   <IconTag /> {c.label || t('Karta raqam')}
                 </button>
               ))}
@@ -2170,6 +2181,14 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
       {followListDir && record && (
         <FollowListModal code={record.code} dir={followListDir} onClose={() => setFollowListDir(null)} t={t} />
+      )}
+
+      {cardModal && (
+        <CardNumberModal
+          cardNumber={cardModal.number}
+          holder={cardModal.label || (record ? record.name : '')}
+          onClose={() => setCardModal(null)}
+        />
       )}
 
       {leadOpen && record && (

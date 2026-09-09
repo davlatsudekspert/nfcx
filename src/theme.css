@@ -1219,6 +1219,22 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .co-modal-cta{width:100%;border:0;border-radius:11px;background:#efb72f;color:#080705;padding:12px;font-weight:900;cursor:pointer;font-family:inherit}
 .co-modal-cta:disabled{opacity:.55}
 .cn-close{width:100%;margin-top:10px;border:1px solid #2f2b23;background:transparent;color:#8d867a;border-radius:11px;padding:10px;cursor:pointer;font-family:inherit;font-size:13px}
+/* KARTA RAQAMI oynasi — QR + raqam + nusxalash.
+   Bu uslublar avval FAQAT src/company-system.css da edi, u esa faqat
+   kompaniya sahifalarida yuklanadi. Oyna endi shaxsiy profilda ham
+   ishlatiladi, shuning uchun uslublar UMUMIY faylga ko'chirildi —
+   aks holda oyna shaxsiy profilda uslubsiz, buzilgan holda chiqardi
+   (bu xato bu loyihada avval ham bo'lgan: istorya CSS'i o'lik faylga
+   yozilib, hech qayerda ko'rinmagan edi). */
+.cn-modal{text-align:center}
+.cn-modal canvas{width:210px;height:210px;margin:6px auto 14px;display:block;border-radius:14px;background:#fff;padding:9px}
+.cn-holder{margin:0 0 12px!important;color:#9a9388!important;font-size:var(--fs-xs)!important}
+/* `user-select:all` — bir tegishda BUTUN raqam belgilanadi. Nusxalash
+   tugmasi ishlamay qolgan brauzerda (ruxsat berilmagan bo'lsa) odam
+   raqamni qo'lda ola olsin. */
+.cn-number{display:block;font:700 19px/1.4 monospace;letter-spacing:.06em;color:#f0cf7b;margin-bottom:14px;word-break:break-all;user-select:all;-webkit-user-select:all}
+.co-modal-note{font-size:var(--fs-2xs)!important;color:#756f65!important;margin:0 0 12px!important}
+.cn-fail{color:#ff9b9b!important}
 .cr-modal .cr-list{margin:0 0 14px;padding-left:20px;color:#c9c2b5;font-size:13px;line-height:1.85}
 .cr-warn{border:1px solid #5a2020;background:#1a0c0c;border-radius:12px;padding:12px 14px;color:#ffb9b9!important;font-size:12.5px!important;line-height:1.6!important;margin:0 0 14px!important}
 .cr-check{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;cursor:pointer}
