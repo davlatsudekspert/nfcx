@@ -803,6 +803,8 @@ const DICT_BASE = {
   "Ism bo'sh bo'lmasligi kerak.": { ru: 'Имя не должно быть пустым.', en: 'The name must not be empty.' },
   'Avval tizimga kiring.': { ru: 'Сначала войдите в систему.', en: 'Please sign in first.' },
   "Bu raqamli tashrif qog'ozi sizga tegishli emas.": { ru: 'Эта цифровая визитка вам не принадлежит.', en: 'This digital card does not belong to you.' },
+  'Tanlangan kompaniya sizga tegishli emas yoki hali faol emas.': { ru: 'Выбранная компания вам не принадлежит или ещё не активна.', en: 'The selected company is not yours or is not active yet.' },
+  "Server bilan bog'liq xatolik ({code}). Birozdan so'ng qayta urinib ko'ring.": { ru: 'Ошибка на стороне сервера ({code}). Попробуйте позже.', en: 'Server-side error ({code}). Please try again shortly.' },
   'Saqlashda xatolik yuz berdi.': { ru: 'Произошла ошибка при сохранении.', en: 'An error occurred while saving.' },
   'Asosiy profil sifatida belgilandi.': { ru: 'Отмечено как основной профиль.', en: 'Marked as the primary profile.' },
   'Adminga murojaat': { ru: 'Обращение к администратору', en: 'Contact admin' },

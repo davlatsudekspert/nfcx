@@ -26,6 +26,7 @@ import { listMyCompanies } from '../lib/company.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
+import { rememberFollowAs } from '../lib/followIdentity.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -2641,7 +2642,18 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         theme: form.theme,
         hashtags: form.hashtags.split(',').map((h) => h.trim()).filter(Boolean),
       });
+      // PROFILDA TANLANGAN KOMPANIYA = OBUNA YUZI (egasining so'rovi:
+      // "buni tanlab boshqa profillarga bosam bizness dan obuna
+      // bo'lish kk"). Tanlov shu yerda yozilib, profil sahifasidagi
+      // "Kim nomidan" ro'yxati shundan boshlanadi.
+      //
+      // FAQAT ALMASHTIRILGANDA yoziladi: odam profil sahifasida
+      // "shaxsiy profilim" deb tanlagan bo'lsa, oddiy (kompaniyaga
+      // aloqasi yo'q) saqlash uning tanlovini bosib ketmasligi kerak.
+      let prevCompanyId = '';
+      try { prevCompanyId = JSON.parse(savedFormRef.current || '{}').companyId || ''; } catch { /* birinchi saqlash */ }
       savedFormRef.current = JSON.stringify(form);
+      if ((form.companyId || '') !== prevCompanyId) rememberFollowAs(form.companyId);
       setMsg({ type: 'ok', text: t('Saqlandi! Profilingiz yangilandi.') });
       onSaved(updated);
     } catch (err) {
@@ -2658,15 +2670,24 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         setBusy(false);
         return;
       }
+      // SABABINI AYTAMIZ. Ilgari har qanday server xatosi bitta umumiy
+      // "Saqlashda xatolik yuz berdi" bo'lib chiqardi — odam nimani
+      // to'g'rilashini bilmasdi va biz ham sababini ko'rmasdik.
+      const COMPANY_ERRORS = ['not_company_owner', 'company_not_active', 'bad_company'];
+      const SERVER_ERRORS = ['company_link_unavailable', 'company_lookup_failed', 'core_api_unavailable', 'api_unavailable', 'd1_unavailable'];
       const text = err.message === 'unauthorized'
         ? t('Avval tizimga kiring.')
         : err.message === 'forbidden'
           ? t("Bu raqamli tashrif qog'ozi sizga tegishli emas.")
-          : (err.message === 'too_many_requests' || err.message === 'api_error_429')
-            ? t("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.")
-            : err.name === 'TypeError'
-              ? t("Server bilan aloqa yo'q. Qayta urinib ko'ring.")
-              : t("Saqlashda xatolik yuz berdi.");
+          : COMPANY_ERRORS.includes(err.message)
+            ? t('Tanlangan kompaniya sizga tegishli emas yoki hali faol emas.')
+            : SERVER_ERRORS.includes(err.message)
+              ? t("Server bilan bog'liq xatolik ({code}). Birozdan so'ng qayta urinib ko'ring.", { code: err.message })
+              : (err.message === 'too_many_requests' || err.message === 'api_error_429')
+                ? t("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.")
+                : err.name === 'TypeError'
+                  ? t("Server bilan aloqa yo'q. Qayta urinib ko'ring.")
+                  : t("Saqlashda xatolik yuz berdi.");
       setMsg({ type: 'err', text });
     } finally {
       setBusy(false);

@@ -974,10 +974,15 @@ export const dbRequestPremium = () => dbApi('/premium/request', { method: 'POST'
 // profil, aks holda o'zingizning FAOL kompaniyangiz. Allaqachon obuna
 // bo'lgan bo'lsangiz, shu chaqiruv yuzni ALMASHTIRADI (yangi obuna
 // yaratmaydi — bir odam bir marta sanaladi).
-export const dbFollow = (code, asCompanyId = '') => dbApi(`/follow/${encodeURIComponent(code)}`, {
+// `asCompanyId` ATAYLAB berilgan bo'lsa — bo'sh satr bo'lsa ham —
+// serverga yuboriladi: bo'sh satr "shaxsiy profilim nomidan" degani va
+// u serverdagi standart qiymatni (profilga biriktirilgan kompaniya)
+// bekor qilishi kerak. Umuman berilmasa esa tana bo'sh ketadi va
+// serverning o'zi standart yuzni tanlaydi.
+export const dbFollow = (code, asCompanyId) => dbApi(`/follow/${encodeURIComponent(code)}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(asCompanyId ? { asCompanyId } : {}),
+  body: JSON.stringify(asCompanyId === undefined ? {} : { asCompanyId: asCompanyId || '' }),
 });
 export const dbUnfollow = (code) => dbApi(`/unfollow/${encodeURIComponent(code)}`, { method: 'POST' });
 export const dbFollowStats = (code) => dbApi(`/follow-stats/${encodeURIComponent(code)}`);

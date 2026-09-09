@@ -12,6 +12,7 @@ import { menuEligible, productEligible, serviceEligible } from '../lib/access.js
 import { listMyCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
+import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -872,20 +873,6 @@ function PostsFeed({ posts, onLike, t }) {
 }
 
 // Obunachilar / obunalar ro'yxati modali — har biri profilga link.
-// Oxirgi tanlangan "kim nomidan" — shu brauzerda saqlanadi.
-// Serverga yozilmaydi: bu ko'rsatma emas, shunchaki qulaylik, va har
-// bir obuna baribir serverda qaytadan tekshiriladi.
-const FOLLOW_AS_KEY = 'nfc_follow_as';
-function readFollowAs() {
-  try { return localStorage.getItem(FOLLOW_AS_KEY) || ''; } catch { return ''; }
-}
-function rememberFollowAs(value) {
-  try {
-    if (value) localStorage.setItem(FOLLOW_AS_KEY, value);
-    else localStorage.removeItem(FOLLOW_AS_KEY);
-  } catch { /* jim tur */ }
-}
-
 function FollowListModal({ code, dir, onClose, t }) {
   const [list, setList] = useState(null);
   const [error, setError] = useState(false);
@@ -1281,7 +1268,12 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   // Tanlov ESLAB QOLINADI. Egasi "biznes profilga o'tdim" deb
   // o'ylaydi — har bir yangi profilda tanlovni qaytadan qidirishi
   // shart emas: bir marta tanlangani keyingi profillarda ham turadi.
-  const [followAs, setFollowAs] = useState(() => readFollowAs());
+  const [followAs, setFollowAs] = useState(() => readFollowAs() || '');
+  // Brauzerda saqlangan tanlov BORMI. Yo'q bo'lsa — profilga
+  // biriktirilgan kompaniya standart yuz bo'ladi (egasining so'rovi:
+  // hisobda kompaniyani tanlagach, boshqa profillarga ham o'sha
+  // kompaniya nomidan obuna bo'lish kerak).
+  const followAsRemembered = useRef(readFollowAs() !== null);
   const [followMsg, setFollowMsg] = useState(null);
   const [posts, setPosts] = useState([]);
   const [menu, setMenu] = useState([]);
@@ -1293,6 +1285,14 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [leadOpen, setLeadOpen] = useState(false);
   const [followListDir, setFollowListDir] = useState(null); // null | 'followers' | 'following'
   const { user, myCards } = useAuth();
+  // O'Z profiliga biriktirilgan kompaniya (asosiy karta birinchi). Bu
+  // ODDIY SATR — quyidagi useEffect bog'liqliklariga massiv qo'yilsa,
+  // har render'da yangi havola bo'lib effektni cheksiz qayta ishga
+  // tushirardi.
+  const attachedCompanyId = (() => {
+    const own = (Array.isArray(myCards) ? myCards : []).filter((c) => c && c.companyId);
+    return (own.find((c) => c.isPrimary) || own[0] || {}).companyId || '';
+  })();
   const { t, lang } = useLanguage();
   const cats = useCategories();
 
@@ -1382,15 +1382,19 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         if (!live) return;
         const active = (d.companies || []).filter((c) => c.status === 'active');
         setMyCompanies(active);
-        // Eslab qolingan kompaniya o'chirilgan yoki to'xtatilgan
-        // bo'lsa — shaxsiy profilga qaytamiz. Aks holda tanlov
-        // ro'yxatda yo'q qiymatda qolib, server har safar rad
-        // etardi va odam sababini tushunmasdi.
-        setFollowAs((cur) => (cur && !active.some((c) => c.companyId === cur) ? '' : cur));
+        setFollowAs((cur) => {
+          // Eslab qolingan kompaniya o'chirilgan yoki to'xtatilgan
+          // bo'lsa — shaxsiy profilga qaytamiz. Aks holda tanlov
+          // ro'yxatda yo'q qiymatda qolib, server har safar rad
+          // etardi va odam sababini tushunmasdi.
+          if (cur && !active.some((c) => c.companyId === cur)) return '';
+          if (cur || followAsRemembered.current) return cur;
+          return active.some((c) => c.companyId === attachedCompanyId) ? attachedCompanyId : '';
+        });
       })
       .catch(() => live && setMyCompanies([]));
     return () => { live = false; };
-  }, [user]);
+  }, [user, attachedCompanyId]);
 
   // Obuna endi har doim bepul va darhol amalga oshadi.
   const toggleFollow = async () => {

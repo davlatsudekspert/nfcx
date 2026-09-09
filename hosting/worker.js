@@ -2183,11 +2183,43 @@ async function ensureUserInternalColumn(env) {
 // Buning evazi: aniq vaqt (soat/daqiqa) saqlanmaydi — egaga bu kerak
 // emas, unga kunlik dinamika kerak.
 let cardCompanyColumnReady;
+// ALTER HAQIQATAN O'TDIMI — TEKSHIRIB KO'RILADI (2026-09 production 503).
+//
+// Avval bu funksiya ALTER'ni yuborib, xatosini `.catch(() => {})` bilan
+// yutar va "bo'ldi" deb hisoblardi. Ustun MAVJUD bo'lsa xato aynan
+// shunday ("duplicate column") bo'ladi — ya'ni MUVAFFAQIYAT ham,
+// HAQIQIY NOSOZLIK ham bir xil ko'rinardi. Nosozlik yuz bersa esa
+// natija halokatli edi: `RECORD_COLUMNS` ichida `company_id` turgani
+// uchun /api/auth/me, katalog va profil saqlash — HAMMASI "no such
+// column" bilan yiqilib, butun ported API 503 qaytarardi.
+//
+// Endi ALTER'dan keyin PRAGMA bilan ustun ROSTDAN bor-yo'qligi
+// o'qiladi. Yo'q bo'lsa memo tozalanadi (keyingi so'rovda qayta
+// urinadi) va bayroq `false` qoladi — bu holda `company_id` hech qaysi
+// so'rovga QO'SHILMAYDI: kompaniya biriktirish ishlamaydi, xolos,
+// lekin qolgan hamma narsa ishlayveradi.
+let cardsHaveCompanyIdColumn = false;
+export function cardsHaveCompanyIdD1() { return cardsHaveCompanyIdColumn; }
 async function ensureCardCompanyColumn(env) {
+  if (cardsHaveCompanyIdColumn) return true;
   if (!cardCompanyColumnReady) {
-    cardCompanyColumnReady = env.DB.prepare(`ALTER TABLE cards ADD COLUMN company_id TEXT`).run().catch(() => {});
+    cardCompanyColumnReady = (async () => {
+      await env.DB.prepare(`ALTER TABLE cards ADD COLUMN company_id TEXT`).run().catch(() => {});
+      const info = await env.DB.prepare(`PRAGMA table_info(cards)`).all().catch(() => null);
+      const has = (info?.results || []).some((c) => String(c?.name || '') === 'company_id');
+      if (has) cardsHaveCompanyIdColumn = true;
+      // Muvaffaqiyatsiz bo'lsa memo tozalanadi — keyingi so'rov qayta urinadi.
+      else cardCompanyColumnReady = null;
+      return has;
+    })();
   }
-  await cardCompanyColumnReady;
+  return cardCompanyColumnReady;
+}
+
+// `cards` ustunlari ro'yxati — `company_id` faqat u ROSTDAN mavjud
+// bo'lsa qo'shiladi (yuqoridagi izohga qarang).
+function recordColumnsD1() {
+  return cardsHaveCompanyIdColumn ? `${RECORD_COLUMNS}, company_id` : RECORD_COLUMNS;
 }
 
 let companyExtrasSchemaReady;
@@ -2802,7 +2834,7 @@ const RECORD_COLUMNS = `code, name, role, avatar_url, bg_url, bg_pattern, accent
   music_url, links_transparent, link_style, profile_type, city, category_slug, hidden_from_directory,
   address, latitude, longitude, lead_capture, is_primary, giftable, hide_phone, tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website, card_number, extra_links, card_numbers,
-  tier_override, card_design, verified, theme, for_sale, sale_price, hashtags, price, ts, views, company_id`;
+  tier_override, card_design, verified, theme, for_sale, sale_price, hashtags, price, ts, views`;
 
 // ── HAR KODGA QO'LDA BELGILANGAN NARX (per-code price override) ──────────
 // DIQQAT: bu blok src/lib/codePrices.js bilan AYNAN bir xil bo'lishi shart
@@ -3612,7 +3644,7 @@ async function createRecordD1(env, record) {
        source)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT("code") DO NOTHING
-    RETURNING ${RECORD_COLUMNS}
+    RETURNING ${recordColumnsD1()}
   `).bind(
     record.code, record.name, record.role || '', record.avatarUrl || '', record.bgUrl || '',
     record.bgPattern === false ? 0 : 1, record.accentColor || null, record.bgColor || null,
@@ -4651,6 +4683,11 @@ async function updateRecord(env, code, fields) {
   const sets = [];
   const vals = [];
   for (const [key, col] of Object.entries(map)) {
+    // `cards.company_id` ustuni yo'q bo'lsa (ALTER o'tmagan bo'lsa) uni
+    // YOZMAYMIZ — aks holda BUTUN profil saqlash "no such column" bilan
+    // yiqilib, 503 qaytarardi. Kompaniya biriktirish shunda ishlamaydi,
+    // qolgan maydonlar esa avvalgidek saqlanaveradi.
+    if (key === 'companyId' && !cardsHaveCompanyIdD1()) continue;
     if (key in fields) {
       let v = fields[key];
       if (typeof v === 'boolean') v = v ? 1 : 0;
@@ -4726,7 +4763,7 @@ async function authApi(request, env, url) {
   if (path === '/api/auth/me' && request.method === 'GET') {
     const user = await getCurrentUser(request, env);
     if (!user) return json({ user: null, cards: [] });
-    const rows = await env.DB.prepare(`SELECT ${RECORD_COLUMNS} FROM cards WHERE user_id = ? ORDER BY is_primary DESC, ts DESC`)
+    const rows = await env.DB.prepare(`SELECT ${recordColumnsD1()} FROM cards WHERE user_id = ? ORDER BY is_primary DESC, ts DESC`)
       .bind(user.id).all();
     return json({ user, cards: (rows.results || []).map(rowToRecord) });
   }
@@ -4781,6 +4818,60 @@ async function edgeCached(request, url, build) {
   return res;
 }
 
+// ── "Bu kompaniya shu odamniki va FAOLmi?" ────────────────────────────
+// Solishtirish SQL ichida emas, JS'da: `companies.owner_user_id` ba'zi
+// eski qatorlarda son, ba'zilarida matn bo'lishi mumkin (jadval Postgres
+// migratsiyasidan kelgan), SQLite esa affinity qoidalari bilan bunday
+// solishtiruvni jimgina "mos emas" deb qaytarardi — ya'ni odam O'Z
+// kompaniyasini biriktira olmasdi. `requireCompanyOwner()` allaqachon
+// shu naqshda ishlaydi, bu esa o'sha naqshning qayta ishlatiladigan
+// ko'rinishi.
+//
+// So'rovning O'ZI yiqilsa (jadval yo'q va h.k.) `company_lookup_failed`
+// qaytadi — chaqiruvchi buni ANIQ xato bilan javob beradi, umumiy
+// "core_api_unavailable" 503 bilan emas.
+async function ownedActiveCompanyD1(env, userId, rawId) {
+  const cid = companyId(String(rawId || ''));
+  if (!cid) return { ok: false, error: 'bad_company', status: 422 };
+  let row;
+  try {
+    row = await env.DB.prepare(
+      `SELECT company_id, owner_user_id, status FROM companies WHERE company_id = ?`
+    ).bind(cid).first();
+  } catch {
+    return { ok: false, error: 'company_lookup_failed', status: 503 };
+  }
+  if (!row) return { ok: false, error: 'not_company_owner', status: 403 };
+  if (String(row.owner_user_id) !== String(userId)) return { ok: false, error: 'not_company_owner', status: 403 };
+  if (String(row.status || '') !== 'active') return { ok: false, error: 'company_not_active', status: 403 };
+  return { ok: true, companyId: cid };
+}
+
+// ── OBUNA YUZI: PROFILGA BIRIKTIRILGAN KOMPANIYA ─────────────────────
+// Egasi hisobida "Profilda kompaniya"ni tanlaganida, boshqa profillarga
+// obuna bo'lganda ham O'SHA kompaniya ko'rinishi kerak ("bizness dan
+// like obuna bo'lish kk"). Frontend tanlovni brauzerda eslab qoladi,
+// lekin u boshqa qurilmada yoki tozalangan brauzerda yo'q — shuning
+// uchun standart qiymat SERVERDA ham hisoblanadi.
+//
+// MUHIM: bu faqat so'rovda `asCompanyId` MUTLAQO bo'lmaganda ishlaydi.
+// Frontend "shaxsiy profilim"ni tanlaganida bo'sh satr YUBORADI, ya'ni
+// odamning ataylab qilgan tanlovi hech qachon bekor qilinmaydi.
+async function defaultFollowCompanyD1(env, userId) {
+  if (!cardsHaveCompanyIdD1()) return '';
+  try {
+    const row = await env.DB.prepare(
+      `SELECT company_id FROM cards WHERE user_id = ? AND company_id IS NOT NULL AND company_id != ''
+        ORDER BY is_primary DESC, ts DESC LIMIT 1`
+    ).bind(userId).first();
+    if (!row || !row.company_id) return '';
+    const owned = await ownedActiveCompanyD1(env, userId, row.company_id);
+    return owned.ok ? owned.companyId : '';
+  } catch {
+    return '';
+  }
+}
+
 async function recordsApi(request, env, url) {
   const path = url.pathname;
 
@@ -4791,7 +4882,7 @@ async function recordsApi(request, env, url) {
     // chiqarib tashlanadi (ro'yxat, filtr, sanoq va pagination ham shu
     // javobdan hisoblanadi, shuning uchun ular hech qayerda ko'rinmaydi).
     const rows = await env.DB.prepare(
-      `SELECT ${RECORD_COLUMNS},
+      `SELECT ${recordColumnsD1()},
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
          FROM cards WHERE hidden_from_directory = 0 AND ${catalogVisibleSql('cards')}
          ORDER BY ts DESC LIMIT 500`
@@ -5006,10 +5097,11 @@ async function recordsApi(request, env, url) {
       // O'ZINING FAOL kompaniyasi qabul qilinadi; bo'sh qiymat esa
       // biriktirishni bekor qiladi.
       if ('companyId' in record && record.companyId) {
-        const ownedCompany = await env.DB.prepare(
-          `SELECT company_id FROM companies WHERE company_id = ? AND owner_user_id = ? AND status = 'active'`
-        ).bind(record.companyId, String(user.id)).first();
-        if (!ownedCompany) return json({ error: 'not_company_owner' }, 403);
+        const owned = await ownedActiveCompanyD1(env, user.id, record.companyId);
+        if (!owned.ok) return json({ error: owned.error }, owned.status);
+        // Ustun yo'q bo'lsa biriktirish saqlanmaydi — odam "saqlandi"
+        // deb o'ylab qolmasin, aniq xato qaytaramiz.
+        if (!cardsHaveCompanyIdD1()) return json({ error: 'company_link_unavailable' }, 503);
       }
       // NOTE: tier/feature-gating (e.g. music/animated background require a
       // paid tier) from src/lib/access.js is NOT enforced here yet — the
@@ -7635,13 +7727,13 @@ async function followApi(request, env, url) {
     const body = await request.json().catch(() => ({}));
     let asCompany = '';
     if (body && body.asCompanyId) {
-      const cid = companyId(String(body.asCompanyId));
-      if (!cid) return json({ error: 'bad_company' }, 422);
-      const owned = await env.DB.prepare(
-        `SELECT company_id FROM companies WHERE company_id = ? AND owner_user_id = ? AND status = 'active'`
-      ).bind(cid, String(user.id)).first();
-      if (!owned) return json({ error: 'not_company_owner' }, 403);
-      asCompany = cid;
+      const owned = await ownedActiveCompanyD1(env, user.id, body.asCompanyId);
+      if (!owned.ok) return json({ error: owned.error }, owned.status);
+      asCompany = owned.companyId;
+    } else if (!body || !('asCompanyId' in body)) {
+      // Tanlov umuman yuborilmagan — profilga biriktirilgan kompaniya
+      // (bo'lsa) standart yuz bo'ladi.
+      asCompany = await defaultFollowCompanyD1(env, user.id);
     }
 
     const already = await env.DB.prepare(`SELECT id, as_company_id FROM follows WHERE follower_id = ? AND followee_id = ?`)
@@ -7850,6 +7942,19 @@ export default {
   },
 };
 
+// ── 503 SABABI: SXEMA XATOLARI KO'RSATILADI ──────────────────────────
+// Ilgari har qanday ichki xato faqat `core_api_unavailable` bo'lib
+// qaytardi va production'da nima yiqilganini bilishning yo'li yo'q edi
+// (Worker loglariga esa egasi qaramaydi). Endi FAQAT sxema shaklidagi
+// xatolar ("no such column/table", "has no column") qisqa `detail`
+// bilan qaytadi — bu jadval/ustun NOMI, foydalanuvchi MA'LUMOTI emas,
+// ya'ni hech qanday maxfiy narsa oshkor bo'lmaydi. Boshqa xatolar
+// avvalgidek jim.
+function schemaErrorDetailD1(error) {
+  const msg = String((error && error.message) || '');
+  return /no such (column|table)|has no column|unknown column/i.test(msg) ? msg.slice(0, 160) : '';
+}
+
 async function handleRequest(request, env, url) {
 
     const catalogMatch = url.pathname.match(/^\/api\/catalog-meta\/([^/]+)(?:\/items\/([^/]+)\/(view|reaction|promotion))?$/);
@@ -7857,7 +7962,8 @@ async function handleRequest(request, env, url) {
       try {
         return await catalogMeta(request, env, url, catalogMatch);
       } catch (error) {
-        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'catalog_meta_unavailable' }, 503);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'catalog_meta_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
     }
 
@@ -7893,7 +7999,8 @@ async function handleRequest(request, env, url) {
         if (res) return res;
       } catch (error) {
         console.error('public content api', error);
-        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'public_content_unavailable' }, 503);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'public_content_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
     }
 
@@ -7901,7 +8008,8 @@ async function handleRequest(request, env, url) {
       try { return await companyApi(request, env, url); }
       catch (error) {
         console.error('company api', error);
-        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'company_api_unavailable' }, 503);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'company_api_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
     }
 
@@ -7912,7 +8020,8 @@ async function handleRequest(request, env, url) {
       try { return await companyAdminApi(request, env, url); }
       catch (error) {
         console.error('company admin api', error);
-        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'company_admin_unavailable' }, 503);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'company_admin_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
     }
 
@@ -7932,7 +8041,8 @@ async function handleRequest(request, env, url) {
         if (coreRes) return coreRes;
       } catch (error) {
         console.error('core api', error);
-        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'core_api_unavailable' }, 503);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'core_api_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
     }
 
@@ -7966,7 +8076,8 @@ async function handleRequest(request, env, url) {
         }
       } catch (error) {
         console.error('api module', url.pathname, error);
-        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'api_unavailable' }, 503);
+        return json({ error: error?.message === 'd1_unavailable' ? 'd1_unavailable' : 'api_unavailable',
+          detail: schemaErrorDetailD1(error) || undefined }, 503);
       }
       return json({ error: 'not_found', path: url.pathname }, 404);
     }

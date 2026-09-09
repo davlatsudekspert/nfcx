@@ -95,4 +95,46 @@ check('6) ikkinchi profilda ham kompaniya yuzi', st2.body?.asCompanyId, 'ONEBRAN
 const st3 = await j('/api/follow-stats/OTH222', { cookie: cookie.user });
 check('6) obuna bo‘lmaganda bo‘sh qaytadi', [st3.body?.isFollowing, st3.body?.asCompanyId], [false, '']);
 
+
+// ── 7) PROFILGA BIRIKTIRILGAN KOMPANIYA — STANDART YUZ ───────────────
+// Egasining so'rovi: hisobda "Profilda kompaniya"ni tanlagach, boshqa
+// profillarga obuna bo'lganda ham O'SHA kompaniya ko'rinishi kerak.
+// Brauzer xotirasiga tayanib bo'lmaydi (boshqa qurilma, tozalangan
+// brauzer) — shuning uchun standart qiymat SERVERDA hisoblanadi.
+await j('/api/companies', {
+  method: 'POST', cookie: cookie.user,
+  json: { companyId: 'MYBRAND', displayName: 'My Brand', city: 'Toshkent', phone: '+998901112233', category: 'other', description: 'Ikkinchi test kompaniya tavsifi, yigirma belgidan uzun.' },
+});
+await env.DB.prepare(`UPDATE companies SET status='active' WHERE company_id='MYBRAND'`).run();
+const attach = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'Muhammad', companyId: 'MYBRAND' } });
+check('7) kompaniya profilga biriktirildi', [attach.status, attach.body?.companyId], [200, 'MYBRAND']);
+
+// Tanlov YUBORILMAGAN — server profildagi kompaniyani oladi.
+await j('/api/follow/OTH222', { method: 'POST', cookie: cookie.user, json: {} });
+const st4 = await j('/api/follow-stats/OTH222', { cookie: cookie.user });
+check('7) standart yuz — profildagi kompaniya', st4.body?.asCompanyId, 'MYBRAND');
+const flist = await j('/api/follow-list/OTH222?dir=followers');
+check('7) ro‘yxatda kompaniya ko‘rinadi', [flist.body.list[0].kind, flist.body.list[0].code], ['company', 'MYBRAND']);
+
+// ATAYLAB "shaxsiy profilim" tanlansa — standart qiymat BEKOR bo'ladi.
+// Frontend buni bo'sh satr yuborib bildiradi.
+const toPersonal = await j('/api/follow/OTH222', { method: 'POST', cookie: cookie.user, json: { asCompanyId: '' } });
+check('7) ataylab shaxsiy tanlandi', [toPersonal.status, toPersonal.body?.identityChanged], [200, true]);
+check('7) endi shaxsiy yuz', (await j('/api/follow-stats/OTH222', { cookie: cookie.user })).body?.asCompanyId, '');
+
+// Biriktirma OLIB TASHLANSA standart yuz ham yo'qoladi.
+await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'Muhammad', companyId: '' } });
+await j('/api/unfollow/OTH222', { method: 'POST', cookie: cookie.user });
+await j('/api/follow/OTH222', { method: 'POST', cookie: cookie.user, json: {} });
+check('7) biriktirma yo‘q — shaxsiy', (await j('/api/follow-stats/OTH222', { cookie: cookie.user })).body?.asCompanyId, '');
+
+// ── 8) KOMPANIYA FAOL BO‘LMASA STANDART YUZ QO‘YILMAYDI ──────────────
+// Biriktirma kartada saqlanib qoladi (odamning ma'lumoti o'chirilmaydi),
+// lekin to'xtatilgan kompaniya nomidan obuna KO'RINMASLIGI kerak.
+await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'Muhammad', companyId: 'MYBRAND' } });
+await env.DB.prepare(`UPDATE companies SET status='suspended' WHERE company_id='MYBRAND'`).run();
+await j('/api/unfollow/OTH222', { method: 'POST', cookie: cookie.user });
+await j('/api/follow/OTH222', { method: 'POST', cookie: cookie.user, json: {} });
+check('8) to‘xtatilgan kompaniya standart bo‘lmaydi', (await j('/api/follow-stats/OTH222', { cookie: cookie.user })).body?.asCompanyId, '');
+
 done();
