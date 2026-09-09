@@ -76,4 +76,23 @@ check('4) o‘zgarish yo‘q — ALREADY_FOLLOWING', [again.status, again.body?.
 await j('/api/unfollow/VIP001', { method: 'POST', cookie: cookie.other });
 check('5) ro‘yxat bo‘shadi', (await j('/api/follow-list/VIP001?dir=followers')).body.list.length, 0);
 
+// ── 6) SERVER YUZNI ESLAB QOLADI ─────────────────────────────────────
+// Interfeys tanlovni brauzerda eslab qoladi, LEKIN haqiqiy manba —
+// server. Bir necha profilga ketma-ket kompaniya nomidan obuna bo'lish
+// ishlashi va har birida to'g'ri yuz qaytishi kerak.
+await j('/api/follow/VIP001', { method: 'POST', cookie: cookie.other, json: { asCompanyId: 'ONEBRAND' } });
+const st1 = await j('/api/follow-stats/VIP001', { cookie: cookie.other });
+check('6) birinchi profilda kompaniya yuzi', st1.body?.asCompanyId, 'ONEBRAND');
+
+// user#1 ning ikkinchi kartasi (BIZ777) — o'sha odamning o'zi, lekin
+// boshqa profil. Obuna user#2 dan boradi.
+await j('/api/follow/BIZ777', { method: 'POST', cookie: cookie.other, json: { asCompanyId: 'ONEBRAND' } });
+const st2 = await j('/api/follow-stats/BIZ777', { cookie: cookie.other });
+check('6) ikkinchi profilda ham kompaniya yuzi', st2.body?.asCompanyId, 'ONEBRAND');
+
+// Obuna bo'lmagan profilda `asCompanyId` BO'SH qaytadi — interfeys
+// shunda o'zining eslab qolgan tanlovini ishlatadi.
+const st3 = await j('/api/follow-stats/OTH222', { cookie: cookie.user });
+check('6) obuna bo‘lmaganda bo‘sh qaytadi', [st3.body?.isFollowing, st3.body?.asCompanyId], [false, '']);
+
 done();

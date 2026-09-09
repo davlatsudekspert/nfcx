@@ -872,6 +872,20 @@ function PostsFeed({ posts, onLike, t }) {
 }
 
 // Obunachilar / obunalar ro'yxati modali — har biri profilga link.
+// Oxirgi tanlangan "kim nomidan" — shu brauzerda saqlanadi.
+// Serverga yozilmaydi: bu ko'rsatma emas, shunchaki qulaylik, va har
+// bir obuna baribir serverda qaytadan tekshiriladi.
+const FOLLOW_AS_KEY = 'nfc_follow_as';
+function readFollowAs() {
+  try { return localStorage.getItem(FOLLOW_AS_KEY) || ''; } catch { return ''; }
+}
+function rememberFollowAs(value) {
+  try {
+    if (value) localStorage.setItem(FOLLOW_AS_KEY, value);
+    else localStorage.removeItem(FOLLOW_AS_KEY);
+  } catch { /* jim tur */ }
+}
+
 function FollowListModal({ code, dir, onClose, t }) {
   const [list, setList] = useState(null);
   const [error, setError] = useState(false);
@@ -1264,7 +1278,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   // Kim nomidan obuna bo'lyapman: '' — shaxsiy profil, aks holda
   // o'zimning kompaniyam Company ID si.
   const [myCompanies, setMyCompanies] = useState([]);
-  const [followAs, setFollowAs] = useState('');
+  // Tanlov ESLAB QOLINADI. Egasi "biznes profilga o'tdim" deb
+  // o'ylaydi — har bir yangi profilda tanlovni qaytadan qidirishi
+  // shart emas: bir marta tanlangani keyingi profillarda ham turadi.
+  const [followAs, setFollowAs] = useState(() => readFollowAs());
   const [followMsg, setFollowMsg] = useState(null);
   const [posts, setPosts] = useState([]);
   const [menu, setMenu] = useState([]);
@@ -1280,7 +1297,14 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const cats = useCategories();
 
   useEffect(() => {
-    dbFollowStats(code).then((st) => { setFollowStats(st); setFollowAs(st.asCompanyId || ''); }).catch(() => {});
+    // Bu profilga ALLAQACHON obuna bo'lgan bo'lsa — serverdagi yuz
+    // ko'rsatiladi. Obuna bo'lmagan bo'lsa esa eslab qolingan tanlov
+    // saqlanadi (aks holda u har bir yangi profilda "shaxsiy"ga
+    // qaytib ketardi).
+    dbFollowStats(code).then((st) => {
+      setFollowStats(st);
+      if (st.isFollowing) setFollowAs(st.asCompanyId || '');
+    }).catch(() => {});
     dbGetLike(code).then(setLikeInfo).catch(() => {});
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
     dbListStories(code).then(setStories).catch(() => setStories([]));
@@ -1354,7 +1378,16 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     if (!user) { setMyCompanies([]); return undefined; }
     let live = true;
     listMyCompanies()
-      .then((d) => live && setMyCompanies((d.companies || []).filter((c) => c.status === 'active')))
+      .then((d) => {
+        if (!live) return;
+        const active = (d.companies || []).filter((c) => c.status === 'active');
+        setMyCompanies(active);
+        // Eslab qolingan kompaniya o'chirilgan yoki to'xtatilgan
+        // bo'lsa — shaxsiy profilga qaytamiz. Aks holda tanlov
+        // ro'yxatda yo'q qiymatda qolib, server har safar rad
+        // etardi va odam sababini tushunmasdi.
+        setFollowAs((cur) => (cur && !active.some((c) => c.companyId === cur) ? '' : cur));
+      })
       .catch(() => live && setMyCompanies([]));
     return () => { live = false; };
   }, [user]);
@@ -1371,7 +1404,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
       }
       const stats = await dbFollowStats(code);
       setFollowStats(stats);
-      setFollowAs(stats.asCompanyId || '');
+      if (stats.isFollowing) setFollowAs(stats.asCompanyId || '');
     } catch (err) {
       if (err.code === 'unauthorized') { navigate('/login'); return; }
       setFollowMsg(err.message);
@@ -1720,28 +1753,31 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                     mumkin: yangi obuna yaratilmaydi, faqat ko'rinadigan
                     yuz o'zgaradi (bir odam bir marta sanaladi). */}
                 {myCompanies.length > 0 && (
-                  <select
-                    aria-label={t('Kim nomidan')}
-                    className="rounded-full border border-[color:var(--vz-line)] bg-transparent px-3 py-1.5 text-[14px] text-[color:var(--vz-ink)] outline-none"
-                    value={followAs}
-                    disabled={followBusy}
-                    onChange={async (e) => {
-                      const next = e.target.value;
-                      setFollowAs(next);
-                      if (!followStats?.isFollowing) return;
-                      setFollowBusy(true);
-                      try {
-                        await dbFollow(code, next);
-                        const st = await dbFollowStats(code);
-                        setFollowStats(st);
-                      } catch { /* jim tur */ } finally { setFollowBusy(false); }
-                    }}
-                  >
-                    <option value="">{t('Shaxsiy profilim')}</option>
-                    {myCompanies.map((c) => (
-                      <option key={c.companyId} value={c.companyId}>{c.displayName}</option>
-                    ))}
-                  </select>
+                  <label className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] px-3 py-1 text-[13px] text-[color:var(--vz-ink-dim)]">
+                    <span className="whitespace-nowrap">{t('Kim nomidan')}:</span>
+                    <select
+                      className="max-w-[150px] truncate bg-transparent text-[14px] font-semibold text-[color:var(--vz-ink)] outline-none"
+                      value={followAs}
+                      disabled={followBusy}
+                      onChange={async (e) => {
+                        const next = e.target.value;
+                        setFollowAs(next);
+                        rememberFollowAs(next);
+                        if (!followStats?.isFollowing) return;
+                        setFollowBusy(true);
+                        try {
+                          await dbFollow(code, next);
+                          const st = await dbFollowStats(code);
+                          setFollowStats(st);
+                        } catch { /* jim tur */ } finally { setFollowBusy(false); }
+                      }}
+                    >
+                      <option value="">{t('Shaxsiy profilim')}</option>
+                      {myCompanies.map((c) => (
+                        <option key={c.companyId} value={c.companyId}>{c.displayName}</option>
+                      ))}
+                    </select>
+                  </label>
                 )}
               </>
             )}
@@ -1765,6 +1801,16 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           </div>
         )}
         {followMsg && <div className="mt-2 text-[15px] text-red-400">{t(followMsg)}</div>}
+        {/* Obuna bo'lgandan keyin QAYSI yuz bilan ekani ochiq yozilib
+            turadi — egasi "biznesdan obuna bo'ldimmi?" deb shubhada
+            qolmasin. Tanlovning o'zi tepadagi ro'yxatda. */}
+        {!isOwner && followStats?.isFollowing && (
+          <div className="mt-1.5 text-[14px] text-[color:var(--vz-ink-faint)]">
+            {followStats.asCompanyId
+              ? t('{name} nomidan obuna bo‘lgansiz', { name: (myCompanies.find((c) => c.companyId === followStats.asCompanyId)?.displayName) || followStats.asCompanyId })
+              : t('Shaxsiy profilingiz nomidan obuna bo‘lgansiz')}
+          </div>
+        )}
 
 
         <div className="mt-0.5 flex flex-col items-center">

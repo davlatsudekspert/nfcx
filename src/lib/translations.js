@@ -2769,6 +2769,10 @@ const DICT_HOME = {
   // ── Profilda kompaniya va karta belgisi (2026-09) ──
   'Profilda kompaniya': { ru: 'Компания в профиле', en: 'Company on your profile' },
   'Ko‘rsatilmasin': { ru: 'Не показывать', en: 'Do not show' },
+  '{name} nomidan obuna bo‘lgansiz': { ru: 'Вы подписаны от имени «{name}»', en: 'You follow as {name}' },
+  'Shaxsiy profilingiz nomidan obuna bo‘lgansiz': {
+    ru: 'Вы подписаны от своего личного профиля',
+    en: 'You follow from your personal profile' },
   'Profilingizda kompaniyangiz alohida blok bo‘lib chiqadi va bosilganda kompaniya sahifasi ochiladi.': {
     ru: 'Компания появится в вашем профиле отдельным блоком, а при нажатии откроется её страница.',
     en: 'Your company appears as its own block on your profile and opens its page when tapped.' },
