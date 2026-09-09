@@ -2691,6 +2691,49 @@ const DICT_HOME = {
     ru: 'В QR-коде записан только номер карты — это не платёжная ссылка.',
     en: 'The QR code holds only the card number — it is not a payment link.' },
   'Kontaktni saqlash': { ru: 'Сохранить контакт', en: 'Save contact' },
+  // ── Istorya va postlar (2026-09) ──
+  'Istorya': { ru: 'История', en: 'Story' },
+  'Istorya qo‘shish': { ru: 'Добавить историю', en: 'Add story' },
+  'Istoryani ko‘rish': { ru: 'Смотреть историю', en: 'View story' },
+  'Istorya joylandi': { ru: 'История опубликована', en: 'Story published' },
+  'Istorya joylashtirish': { ru: 'Публикация историй', en: 'Posting stories' },
+  'Hozircha istorya yo‘q.': { ru: 'Пока историй нет.', en: 'No stories yet.' },
+  'Istorya profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.': {
+    ru: 'История появляется кольцом вокруг фото профиля и исчезает через 24 часа. До 10 штук.',
+    en: 'A story shows as a ring around your profile photo and disappears after 24 hours. Up to 10.' },
+  '24 soat': { ru: '24 часа', en: '24 hours' },
+  'Lenta': { ru: 'Лента', en: 'Feed' },
+  'LENTA': { ru: 'ЛЕНТА', en: 'FEED' },
+  'Yangiliklar': { ru: 'Новости', en: 'Updates' },
+  'Post qo‘shish': { ru: 'Добавить пост', en: 'Add post' },
+  'Post joylandi': { ru: 'Пост опубликован', en: 'Post published' },
+  'Post o‘chirilsinmi?': { ru: 'Удалить пост?', en: 'Delete this post?' },
+  'Hozircha post yo‘q.': { ru: 'Пока постов нет.', en: 'No posts yet.' },
+  'Post kompaniya sahifasida qoladi. Istorya logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.': {
+    ru: 'Пост остаётся на странице компании. История появляется вокруг логотипа и исчезает через 24 часа.',
+    en: 'A post stays on the company page. A story appears around the logo and disappears after 24 hours.' },
+  'Faqat rasm tanlanadi.': { ru: 'Можно выбрать только изображение.', en: 'Only an image can be selected.' },
+  'Chegaraga yetdingiz — eskilaridan birini o‘chiring.': {
+    ru: 'Достигнут лимит — удалите одну из старых.', en: 'Limit reached — delete an older one.' },
+  'Bu imkoniyat sizning tarifingizda yopiq.': {
+    ru: 'Эта возможность недоступна на вашем тарифе.', en: 'This feature is locked on your plan.' },
+  // Kontent qoidalari
+  'Joylashdan oldin o‘qing': { ru: 'Прочитайте перед публикацией', en: 'Read before you publish' },
+  'Quyidagilarni joylash TAQIQLANADI:': { ru: 'ЗАПРЕЩЕНО публиковать:', en: 'Publishing the following is PROHIBITED:' },
+  'Diniy adovat yoki targ‘ibot': { ru: 'Религиозная вражда или пропаганда', en: 'Religious hatred or proselytising' },
+  'Pornografiya va shafqatsizlik': { ru: 'Порнография и жестокость', en: 'Pornography and violence' },
+  'Siyosiy targ‘ibot va da’vat': { ru: 'Политическая пропаганда и призывы', en: 'Political propaganda and calls to action' },
+  'So‘kinish va haqorat': { ru: 'Нецензурная брань и оскорбления', en: 'Profanity and insults' },
+  'Boshqa odamning rasmi yoki ma’lumoti — ruxsatisiz': {
+    ru: 'Фото или данные другого человека — без его согласия',
+    en: 'Another person\u2019s photo or data — without their consent' },
+  'Joylagan kontentingiz uchun to‘liq javobgarlik SIZNING zimmangizda. Qonun buzilsa, materiallaringiz va akkaunt ma’lumotlaringiz vakolatli organlarga topshiriladi va siz qonun oldida javob berasiz.': {
+    ru: 'Полную ответственность за опубликованный контент несёте ВЫ. При нарушении закона материалы и данные вашего аккаунта будут переданы уполномоченным органам, и вы ответите перед законом.',
+    en: 'YOU bear full responsibility for what you publish. If the law is broken, your materials and account data will be handed to the authorities and you will answer before the law.' },
+  'O‘qidim va roziman — javobgarlikni o‘z zimmamga olaman': {
+    ru: 'Я прочитал(а) и согласен(на) — беру ответственность на себя',
+    en: 'I have read this and agree — I take responsibility' },
+  'Davom etish': { ru: 'Продолжить', en: 'Continue' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

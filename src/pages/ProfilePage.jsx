@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import CloseButton from '../components/CloseButton.jsx';
+import StoryRing from '../components/StoryRing.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
-import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
+import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbListStories, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
@@ -1232,6 +1233,9 @@ function LeadForm({ code, linkBtn, onDone }) {
 
 export default function ProfilePage({ code, catalog, initialTab }) {
   const [record, setRecord] = useState(undefined);
+  // Istorya — asosiy ma'lumotdan ALOHIDA so'rov: u 24 soatda o'zgaradi,
+  // profil javobi esa keshlanadi.
+  const [stories, setStories] = useState([]);
   const [pendingGift, setPendingGift] = useState(undefined); // "Gift NFC ID" — yangi, izolyatsiyalangan
   const [toast, setToast] = useState('');
   // Company System — nfcstore.uz/{code}/menyu va /{code}/mahsulotlar
@@ -1262,6 +1266,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     dbFollowStats(code).then(setFollowStats).catch(() => {});
     dbGetLike(code).then(setLikeInfo).catch(() => {});
     dbListPosts(code).then(setPosts).catch(() => setPosts([]));
+    dbListStories(code).then(setStories).catch(() => setStories([]));
     dbGetMenu(code).then(setMenu).catch(() => setMenu([]));
     dbGetProducts(code).then(setProducts).catch(() => setProducts([]));
     dbGetServices(code).then(setServices).catch(() => setServices([]));
@@ -1721,10 +1726,14 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               ))}
             </div>
 
-            <div className="font-display z-10 flex h-[132px] w-[132px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[38px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
-              style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
-              {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
-            </div>
+            {/* Istorya bo'lsa — profil rasmi atrofida halqa. Rasmning
+                O'ZI qayta chizilmaydi: StoryRing uni o'rab oladi. */}
+            <StoryRing stories={stories} title={record.name} avatarUrl={record.avatarUrl}>
+              <div className="font-display z-10 flex h-[132px] w-[132px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[38px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
+                style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
+                {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
+              </div>
+            </StoryRing>
           </div>
           {/* Ism — sahifaning ASOSIY sarlavhasi (h1). Avval oddiy div edi:
               ko'rinishi to'g'ri, lekin qidiruv tizimlari uchun public

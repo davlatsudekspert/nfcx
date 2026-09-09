@@ -995,7 +995,7 @@ async function companyApi(request, env, url) {
   // Bo'lak `[^/]` bilan keng olinadi va companyId() qat'iy tekshiradi:
   // o'zbekcha O'/G' apostrofi (yoki uning %27 ko'rinishi) regexga
   // qo'shimcha belgi qo'shishni talab qilmasin uchun.
-  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog|event|stats|orders)(?:\/([A-Za-z0-9_-]+))?)?$/);
+  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog|event|stats|orders|posts|stories)(?:\/([A-Za-z0-9_-]+))?)?$/);
   if (!match) return json({ error: 'not_found' }, 404);
   const id = companyId(decodeCompanySeg(match[1]));
   if (!id) return json({ error: 'not_found' }, 404);
@@ -1088,10 +1088,72 @@ async function companyApi(request, env, url) {
     return json({ ok: true, orderId: res?.meta?.last_row_id || null }, 201);
   }
 
+  // Postlar va istorya — OCHIQ o'qiladi (sahifa mehmonlarga ham
+  // ko'rinadi), shuning uchun egalik tekshiruvidan OLDIN.
+  if (action === 'posts' && !itemId && request.method === 'GET') {
+    const rows = await env.DB.prepare(
+      `SELECT id, image_url, video_url, caption, created_at FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
+    ).bind(id).all();
+    return json({
+      posts: (rows.results || []).map((r) => ({
+        id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
+        caption: r.caption || '', createdAt: r.created_at,
+      })),
+    });
+  }
+  if (action === 'stories' && !itemId && request.method === 'GET') {
+    return json({ stories: await listStoriesD1(env, 'company', id) });
+  }
+
   const owned = await requireCompanyOwner(request, env, id);
   if (owned.error) return owned.error;
 
   // ── EGASI UCHUN ────────────────────────────────────────────────────
+
+  // POST /api/companies/:id/posts
+  if (action === 'posts' && !itemId && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    const media = storyMediaD1(body);
+    if (!media.ok) return json({ error: 'bad_image' }, 422);
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_posts WHERE company_id = ?`).bind(id).first();
+    if (Number(cnt?.n || 0) >= COMPANY_POST_MAX) return json({ error: 'limit_reached', limit: COMPANY_POST_MAX }, 409);
+    const row = await env.DB.prepare(
+      `INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at) VALUES (?,?,?,?,?)
+       RETURNING id, image_url, video_url, caption, created_at`
+    ).bind(id, media.imageUrl, media.videoUrl, String(body?.caption || '').slice(0, 600), new Date().toISOString()).first();
+    return json({
+      post: { id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '', createdAt: row.created_at },
+    }, 201);
+  }
+
+  if (action === 'posts' && itemId && request.method === 'DELETE') {
+    const res = await env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(Number(itemId) || 0, id).run();
+    if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    return json({ ok: true });
+  }
+
+  // POST /api/companies/:id/stories
+  if (action === 'stories' && !itemId && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    const media = storyMediaD1(body);
+    if (!media.ok) return json({ error: 'bad_image' }, 422);
+    const res = await addStoryD1(env, {
+      kind: 'company', ownerId: id, userId: owned.auth.user.id,
+      imageUrl: media.imageUrl, videoUrl: media.videoUrl,
+      caption: String(body?.caption || '').slice(0, 300),
+    });
+    if (res.error) return json(res, 409);
+    return json(res.story, 201);
+  }
+
+  if (action === 'stories' && itemId && request.method === 'DELETE') {
+    const res = await env.DB.prepare(`DELETE FROM stories WHERE id = ? AND owner_kind = 'company' AND owner_id = ?`)
+      .bind(Number(itemId) || 0, id).run();
+    if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    return json({ ok: true });
+  }
 
   // GET /api/companies/:id/stats?days=30
   if (action === 'stats' && request.method === 'GET') {
@@ -2111,12 +2173,107 @@ async function ensureCompanyExtrasSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_orders ON company_orders(company_id, created_at DESC)`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_domain ON companies(custom_domain)`),
+      // ── ISTORYA (2026-09) ────────────────────────────────────────
+      // 24 soatdan keyin o'zi yo'qoladi. O'CHIRILMAYDI, faqat
+      // KO'RSATILMAYDI: o'chirish uchun alohida jarayon (cron) kerak,
+      // Worker'da esa uni ishonchli yuritish qiyin. Muddati o'tgani
+      // so'rovda `expires_at > ?` bilan chetlab o'tiladi va yangi
+      // istorya qo'shilganda o'sha egadagi eskilari tozalanadi —
+      // ya'ni jadval cheksiz o'smaydi.
+      //
+      // Bitta jadval ikkala egaga: shaxsiy karta ham, kompaniya ham.
+      // `owner_kind` ularni ajratadi — aks holda "VIP" kodli karta va
+      // "VIP" nomli kompaniya bir-birining istoryasini ko'rsatardi.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "stories" (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_kind TEXT NOT NULL,
+        owner_id TEXT NOT NULL,
+        user_id INTEGER,
+        image_url TEXT, video_url TEXT, caption TEXT,
+        created_at TEXT NOT NULL, expires_at TEXT NOT NULL
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_stories_owner ON stories(owner_kind, owner_id, expires_at)`),
+      // Kompaniya postlari — shaxsiy `posts` jadvalidan ALOHIDA.
+      // Sabab yuqoridagi bilan bir xil: `posts.code` va company_id
+      // bir maydonga sig'sa ham, ular BOSHQA nomlar makoni.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_posts" (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id TEXT NOT NULL,
+        image_url TEXT, video_url TEXT, caption TEXT,
+        created_at TEXT NOT NULL
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_posts ON company_posts(company_id, created_at DESC)`),
     ]);
     // ALTER'lar batch'dan TASHQARIDA: batch atomik, mavjud ustun uchun
     // chiqqan bitta xato butun to'plamni yiqitardi.
     companyExtrasSchemaReady = Promise.all([...alters, tables.catch(() => {})]);
   }
   await companyExtrasSchemaReady;
+}
+
+// ── ISTORYA VA POST: umumiy qoidalar ─────────────────────────────────
+const STORY_TTL_MS = 24 * 60 * 60_000;
+const STORY_MAX = 10;          // bitta egada bir vaqtda
+const COMPANY_POST_MAX = 30;
+
+// Yuklangan media faqat O'ZIMIZNING R2 dan bo'lishi mumkin. Tashqi
+// manzil qabul qilinsa, profil sahifasi begona serverdan rasm tortardi
+// (kuzatuv piksellari, o'chib qolgan havolalar, hatto zararli kontent).
+// Bitta papka ichidagi bitta fayl nomi, kengaytmasi ham kutilganidek.
+// Eski post yo'lidagi tekshiruv `/uploads/` bilan boshlanishini va
+// belgilar to'plamini ko'rardi, xolos — u `..` ni ham, `.exe` ni ham
+// o'tkazib yuborardi. Bu yerda qat'iyroq: papka ichida chuqurlashish
+// yo'q, kengaytma ro'yxatdan.
+const UPLOAD_IMAGE_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(png|jpe?g|webp|gif)$/i;
+const UPLOAD_VIDEO_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
+
+function storyMediaD1(body) {
+  const imageUrl = String(body?.imageUrl || '');
+  const videoUrl = String(body?.videoUrl || '');
+  const okImg = UPLOAD_IMAGE_PATH_RE.test(imageUrl);
+  const okVid = UPLOAD_VIDEO_PATH_RE.test(videoUrl);
+  return { imageUrl: okImg ? imageUrl : null, videoUrl: okVid ? videoUrl : null, ok: okImg || okVid };
+}
+
+// KONTENT QOIDALARI. Foydalanuvchi joylashdan oldin ogohlantirishni
+// o'qib, javobgarlikni qabul qilishi kerak — bu SERVERDA tekshiriladi.
+// Faqat frontend'da bo'lsa, to'g'ridan-to'g'ri API ga so'rov yuborib
+// chetlab o'tish mumkin bo'lardi va bizda "u rozilik bergan" degan hech
+// qanday dalil qolmasdi.
+const rulesAcceptedD1 = (body) => body?.agreed === true || body?.agreed === 'true';
+
+async function listStoriesD1(env, kind, ownerId) {
+  const rows = await env.DB.prepare(
+    `SELECT id, image_url, video_url, caption, created_at, expires_at
+       FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at > ?
+      ORDER BY created_at`
+  ).bind(kind, ownerId, new Date().toISOString()).all();
+  return (rows.results || []).map((r) => ({
+    id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
+    caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
+  }));
+}
+
+async function addStoryD1(env, { kind, ownerId, userId, imageUrl, videoUrl, caption }) {
+  const now = new Date();
+  // Muddati o'tganlarini shu yerda tozalaymiz — alohida cron kerak
+  // bo'lmasin va jadval cheksiz o'smasin.
+  await env.DB.prepare(`DELETE FROM stories WHERE owner_kind = ? AND owner_id = ? AND expires_at <= ?`)
+    .bind(kind, ownerId, now.toISOString()).run();
+  const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM stories WHERE owner_kind = ? AND owner_id = ?`)
+    .bind(kind, ownerId).first();
+  if (Number(cnt?.n || 0) >= STORY_MAX) return { error: 'limit_reached', limit: STORY_MAX };
+  const row = await env.DB.prepare(
+    `INSERT INTO stories (owner_kind, owner_id, user_id, image_url, video_url, caption, created_at, expires_at)
+     VALUES (?,?,?,?,?,?,?,?) RETURNING id, image_url, video_url, caption, created_at, expires_at`
+  ).bind(kind, ownerId, userId || null, imageUrl, videoUrl, caption || null,
+    now.toISOString(), new Date(now.getTime() + STORY_TTL_MS).toISOString()).first();
+  return {
+    story: {
+      id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '',
+      caption: row.caption || '', createdAt: row.created_at, expiresAt: row.expires_at,
+    },
+  };
 }
 
 // ── ISH VAQTI ────────────────────────────────────────────────────────
@@ -4579,7 +4736,7 @@ async function recordsApi(request, env, url) {
   // ---- /api/records/:code/{view,like,posts} — server/index.js bilan bir xil
   // kontrakt (frontend src/lib/db.js o'zgarishsiz ishlaydi). Avval bu
   // yo'llar Worker'da yo'q edi → legacy proxy → 405.
-  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|posts)$/);
+  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|posts|stories)$/);
   if (subMatch) {
     const code = subMatch[1].toUpperCase();
     const action = subMatch[2];
@@ -4664,6 +4821,37 @@ async function recordsApi(request, env, url) {
          RETURNING id, image_url, video_url, caption, created_at`
       ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null).first();
       return json(postRowToJson(row, 0, false), 201);
+    }
+
+    // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
+    if (action === 'stories' && request.method === 'GET') {
+      return json({ stories: await listStoriesD1(env, 'card', code) });
+    }
+
+    if (action === 'stories' && request.method === 'POST') {
+      const user = await getCurrentUser(request, env);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      const body = await request.json().catch(() => ({}));
+      // Qoidalar roziligi SERVERDA tekshiriladi — faqat frontendda
+      // bo'lsa, to'g'ridan-to'g'ri API ga so'rov yuborib chetlab
+      // o'tish mumkin bo'lardi.
+      if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+      const media = storyMediaD1(body);
+      if (!media.ok) return json({ error: 'bad_image' }, 422);
+      const rec = await getRecord(env, code);
+      if (!rec) return json({ error: 'not_found' }, 404);
+      const owner = await getRecordOwner(env, code);
+      if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
+      const access = effectiveAccessD1(rec);
+      if (!featureAllowedD1('story', access)) return json({ error: 'feature_locked', feature: 'story' }, 403);
+      if (media.videoUrl && !featureAllowedD1('video', access)) return json({ error: 'feature_locked', feature: 'video' }, 403);
+      const res = await addStoryD1(env, {
+        kind: 'card', ownerId: code, userId: user.id,
+        imageUrl: media.imageUrl, videoUrl: media.videoUrl,
+        caption: String(body?.caption || '').slice(0, 300),
+      });
+      if (res.error) return json(res, 409);
+      return json(res.story, 201);
     }
     return null;
   }
@@ -6997,7 +7185,10 @@ async function getFollowStatsRow(env, userId, viewerId) {
 const ACCESS_LEVELS_D1 = ['free', 'silver', 'gold', 'premium', 'exclusive'];
 const ACCESS_RANK_D1 = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
 const POST_LIMIT_D1 = { free: 0, silver: 5, gold: 30, premium: 60, exclusive: 999 };
-const FEATURE_MIN_D1 = { post: 'silver', video: 'premium' };
+// `story: 'gold'` — egasining qarori: istoryani gold, premium va
+// ekskluziv ID egalari qo'yadi. Premium OBUNACHI ham qo'ya oladi, chunki
+// effectiveAccessD1() obunachiga kamida 'premium' darajasini beradi.
+const FEATURE_MIN_D1 = { post: 'silver', video: 'premium', story: 'gold' };
 
 // NFC ID ning "xom" darajasi — src/lib/access.js idTier() + pricing.js
 // tierForCode() tartibi: admin tier_override → sovg'a → per-code override
@@ -7073,6 +7264,17 @@ async function postsApi(request, env, url) {
     return json({ liked: !existing, count: Number(cnt?.n || 0) });
   }
   return null;
+}
+
+// DELETE /api/stories/:id — faqat joylashtirgan odam o'chira oladi.
+async function storiesApi(request, env, url) {
+  const m = url.pathname.match(/^\/api\/stories\/(\d+)$/);
+  if (!m || request.method !== 'DELETE') return null;
+  const user = await getCurrentUser(request, env);
+  if (!user) return json({ error: 'unauthorized' }, 401);
+  const res = await env.DB.prepare(`DELETE FROM stories WHERE id = ? AND user_id = ?`).bind(Number(m[1]), user.id).run();
+  if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+  return json({ ok: true });
 }
 
 async function followApi(request, env, url) {
@@ -7171,6 +7373,10 @@ async function coreApi(request, env, url) {
   }
   if (url.pathname.startsWith('/api/posts/')) {
     const res = await postsApi(request, env, url);
+    if (res) return res;
+  }
+  if (url.pathname.startsWith('/api/stories/')) {
+    const res = await storiesApi(request, env, url);
     if (res) return res;
   }
   if (url.pathname.startsWith('/api/orders')) {
@@ -7358,7 +7564,7 @@ async function handleRequest(request, env, url) {
       || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
       || url.pathname === '/api/referrals' || url.pathname === '/api/auctions/won/pending'
       || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')
-      || url.pathname.startsWith('/api/posts/')) {
+      || url.pathname.startsWith('/api/posts/') || url.pathname.startsWith('/api/stories/')) {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;

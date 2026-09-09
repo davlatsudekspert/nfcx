@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ImageUploadField from '../components/ImageUploadField.jsx';
-import { addCompanyItem, beginCompanyPayment, companyCta, COMPANY_STATUS, deleteCompanyItem, getCompany, getCompanyStats, listCompanyOrders, setCompanyOrderStatus, submitCompany, updateCompany } from '../lib/company.js';
+import { addCompanyItem, beginCompanyPayment, companyCta, COMPANY_STATUS, createCompanyPost, createCompanyStory, deleteCompanyItem, deleteCompanyPost, deleteCompanyStory, getCompany, getCompanyStats, listCompanyOrders, listCompanyPosts, listCompanyStories, setCompanyOrderStatus, submitCompany, updateCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { dbUploadAudio } from '../lib/db.js';
 import { directionsUrl, hasCoords } from '../lib/mapLink.js';
 import CompanyQrCard from '../components/CompanyQrCard.jsx';
+import StoryUploader from '../components/StoryUploader.jsx';
 import { DAY_NAMES, WEEK_ORDER, defaultHours, hoursEmpty, normalizeHours } from '../lib/hours.js';
 import { fmt } from '../lib/format.js';
 import { socialUrl } from '../lib/socialLinks.js';
@@ -13,7 +14,7 @@ import { companyNameBlocked } from '../lib/nameGuard.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
-const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['settings','Sozlamalar']];
+const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Lenta'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['settings','Sozlamalar']];
 const blankItem = { name: '', category: '', description: '', price: '', promotionPrice: '', imageUrl: '', available: true };
 
 export default function CompanyWorkspacePage({ companyId }) {
@@ -73,6 +74,8 @@ export default function CompanyWorkspacePage({ companyId }) {
         {tab === 'stats' && <CompanyStatsPanel companyId={company.companyId} t={t} />}
 
         {tab === 'orders' && <CompanyOrdersPanel companyId={company.companyId} form={form} setForm={setForm} save={save} busy={busy} t={t} />}
+
+        {tab === 'feed' && <CompanyFeedPanel companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
 
         {tab === 'settings' && <div className="cw-settings"><section><small>{t('COMPANY ID')}</small><h2>{company.companyId}</h2><p>{t('ID o‘zgarmaydi va shaxsiy NFC ID bilan aralashmaydi.')}</p></section><section><small>{t('NFC KARTAGA YOZILADIGAN URL')}</small><code>{window.location.origin}/c/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/c/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('KOMPANIYA PUBLIC URL')}</small><code>{window.location.origin}/company/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/company/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('QR KOD')}</small><p>{t('NFC ishlamaydigan telefonlar uchun — kamera bilan skanerlansa ham sahifangiz ochiladi.')}</p><CompanyQrCard url={`${window.location.origin}/c/${company.companyId.toLowerCase()}`} fileName={`nfcstore-${company.companyId.toLowerCase()}`} /></section><CompanyDomainSection company={company} form={form} setForm={setForm} save={save} busy={busy} t={t} /><section className="warning"><small>{t('ESKI NFC ID')}</small><p>{company.sourceCardCode ? t('{code} dan ma’lumot nusxalangan. Asl profil o‘zgarmagan.', { code: company.sourceCardCode }) : t('Bu kompaniya hech bir shaxsiy NFC IDga bog‘lanmagan.')}</p></section></div>}
       </section>
@@ -455,5 +458,86 @@ function CompanyDomainSection({ company, form, setForm, save, busy, t }) {
         <li>{t('Admin tekshirib tasdiqlaydi — shundan so‘ng sahifangiz o‘sha manzilda ochiladi.')}</li>
       </ol>
     </section>
+  );
+}
+
+// ── LENTA: postlar va istorya ────────────────────────────────────────
+// Post — qoladi. Istorya — 24 soatdan keyin o'zi yo'qoladi.
+// Ikkalasida ham joylashdan OLDIN kontent qoidalari ko'rsatiladi
+// (StoryUploader ichida) va rozilik serverga yuboriladi.
+function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
+  const [posts, setPosts] = useState([]);
+  const [stories, setStories] = useState([]);
+  const [notice, setNotice] = useState('');
+
+  const load = () => Promise.all([
+    listCompanyPosts(companyId).then((d) => setPosts(d.posts || [])).catch(() => setPosts([])),
+    listCompanyStories(companyId).then((d) => setStories(d.stories || [])).catch(() => setStories([])),
+  ]);
+  useEffect(() => { load(); }, [companyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const removePost = async (id) => {
+    if (!confirm(t('Post o‘chirilsinmi?'))) return;
+    await deleteCompanyPost(companyId, id).catch(() => {});
+    load();
+  };
+  const removeStory = async (id) => {
+    await deleteCompanyStory(companyId, id).catch(() => {});
+    load();
+  };
+
+  return (
+    <div className="cw-panel">
+      <div className="cw-panel-head">
+        <span>01</span>
+        <div>
+          <h2>{t('Lenta')}</h2>
+          <p>{t('Post kompaniya sahifasida qoladi. Istorya logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')}</p>
+        </div>
+      </div>
+
+      <div className="cw-sub">
+        <div className="cw-sub-head">
+          <b>{t('Istorya')}</b>
+          <small>{t('{n} tadan {max} tagacha', { n: stories.length, max: 10 })} · {t('24 soat')}</small>
+        </div>
+        <div className="cw-feed-strip">
+          {stories.map((st) => (
+            <div key={st.id} className="cw-feed-item is-story">
+              <img src={st.imageUrl} alt="" />
+              <button type="button" onClick={() => removeStory(st.id)} aria-label={t('O‘chirish')}>×</button>
+            </div>
+          ))}
+          {!stories.length && <p className="cw-empty">{t('Hozircha istorya yo‘q.')}</p>}
+        </div>
+        <StoryUploader
+          label={t('Istorya qo‘shish')}
+          onSubmit={async (payload) => { await createCompanyStory(companyId, payload); setNotice(t('Istorya joylandi')); load(); }}
+        />
+      </div>
+
+      <div className="cw-sub">
+        <div className="cw-sub-head">
+          <b>{t('Postlar')}</b>
+          <small>{t('{n} tadan {max} tagacha', { n: posts.length, max: 30 })}</small>
+        </div>
+        <div className="cw-feed-grid">
+          {posts.map((p) => (
+            <div key={p.id} className="cw-feed-item">
+              <img src={p.imageUrl} alt="" />
+              {p.caption && <span>{p.caption}</span>}
+              <button type="button" onClick={() => removePost(p.id)} aria-label={t('O‘chirish')}>×</button>
+            </div>
+          ))}
+          {!posts.length && <p className="cw-empty">{t('Hozircha post yo‘q.')}</p>}
+        </div>
+        <StoryUploader
+          label={t('Post qo‘shish')}
+          onSubmit={async (payload) => { await createCompanyPost(companyId, payload); setNotice(t('Post joylandi')); load(); }}
+        />
+      </div>
+
+      {notice && <div className="cw-toast" role="status">{notice}</div>}
+    </div>
   );
 }

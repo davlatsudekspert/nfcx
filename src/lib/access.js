@@ -47,6 +47,10 @@ export function hasAccess(current, required) {
 // Kalitlar frontend va backend'da bir xil ishlatiladi.
 export const FEATURE_MIN = {
   post:                 'silver',
+  // Istorya (2026-09, egasining qarori): gold, premium va ekskluziv ID
+  // egalari. Premium OBUNACHI ham qo'ya oladi — obuna joriy darajani
+  // kamida 'premium' ga ko'taradi (accessFor()).
+  story:                'gold',
   music:                'premium',
   innerBackground:      'gold',      // profil ICHKI foni (rasm/rang)
   advancedColors:       'gold',

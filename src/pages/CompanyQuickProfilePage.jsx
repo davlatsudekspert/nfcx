@@ -5,6 +5,8 @@ import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import { downloadVcard } from '../lib/vcard.js';
+import StoryRing from '../components/StoryRing.jsx';
+import { listCompanyStories } from '../lib/company.js';
 import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, companyEvent, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -36,6 +38,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const [error, setError] = useState(null);
   const [orderItem, setOrderItem] = useState(null);
   const [showCard, setShowCard] = useState(false);
+  const [stories, setStories] = useState([]);
 
   const load = useCallback(() => {
     let live = true;
@@ -52,6 +55,18 @@ export default function CompanyQuickProfilePage({ companyId }) {
   }, [companyId]);
 
   useEffect(() => load(), [load]);
+
+  // Istorya — dumaloq logo atrofidagi halqa. Alohida so'rov: asosiy
+  // ma'lumot bilan birga kelmaydi, chunki u 24 soatda o'zgaradi va
+  // profil javobi keshlanadi.
+  useEffect(() => {
+    if (!company?.companyId) return undefined;
+    let live = true;
+    listCompanyStories(company.companyId)
+      .then((d) => live && setStories(d.stories || []))
+      .catch(() => live && setStories([]));
+    return () => { live = false; };
+  }, [company?.companyId]);
 
   // NFC tegish — egasi uchun eng muhim raqam. Ma'lumot kelgach bir
   // marta sanaladi (yiqilgan so'rov statistikani shishirmasin).
@@ -108,7 +123,9 @@ export default function CompanyQuickProfilePage({ companyId }) {
       <div className="cq-shell">
         <header className="cq-top"><span className="cq-brand"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span><span className="cq-id">COMPANY ID · {company.companyId}</span></header>
         <section className="cq-identity">
-          <div className="cq-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
+          <StoryRing stories={stories} title={company.displayName} avatarUrl={company.logoUrl}>
+            <div className="cq-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
+          </StoryRing>
           <span className="cq-live">● {t('TASDIQLANGAN KOMPANIYA')}</span>
           <h1 className="break-words">{company.displayName}</h1>
           <p className="cq-category break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')} · {company.city || t('O‘zbekiston')}</p>

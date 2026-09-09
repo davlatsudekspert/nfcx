@@ -986,6 +986,32 @@ export async function dbListPosts(code) {
   const data = await api(`/records/${encodeURIComponent(code)}/posts`);
   return (data && data.posts) || [];
 }
+// ── ISTORYA (shaxsiy profil) ──────────────────────────────────────────
+export async function dbListStories(code) {
+  const data = await api(`/records/${encodeURIComponent(code)}/stories`);
+  return (data && data.stories) || [];
+}
+export async function dbCreateStory(code, payload) {
+  const res = await fetch(`/api/records/${encodeURIComponent(code)}/stories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error((data && data.error) || `http_${res.status}`);
+    Object.assign(err, data || {});
+    throw err;
+  }
+  return data;
+}
+export async function dbDeleteStory(id) {
+  const res = await fetch(`/api/stories/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
+  if (!res.ok) throw new Error('delete_failed');
+  return true;
+}
+
 export async function dbCreatePost(code, { imageUrl, caption, videoUrl }) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/posts`, {
     method: 'POST',

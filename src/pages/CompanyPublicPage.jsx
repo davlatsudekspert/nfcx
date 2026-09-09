@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
 import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
+import StoryRing from '../components/StoryRing.jsx';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import { socialUrl } from '../lib/socialLinks.js';
-import { companyCta, companyEvent, getCompany } from '../lib/company.js';
+import { companyCta, companyEvent, getCompany, listCompanyPosts, listCompanyStories } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
@@ -19,6 +20,18 @@ export default function CompanyPublicPage({ companyId }) {
   // Karta raqami nusxalangani haqidagi qisqa bildirish.
   const [copied, setCopied] = useState(false);
   const [orderItem, setOrderItem] = useState(null);
+  const [stories, setStories] = useState([]);
+  const [posts, setPosts] = useState([]);
+  // Istorya va postlar — asosiy ma'lumotdan ALOHIDA so'rov: ular tez
+  // o'zgaradi, profil javobi esa keshlanadi.
+  useEffect(() => {
+    if (!company?.companyId) return undefined;
+    let live = true;
+    listCompanyStories(company.companyId).then((d) => live && setStories(d.stories || [])).catch(() => {});
+    listCompanyPosts(company.companyId).then((d) => live && setPosts(d.posts || [])).catch(() => {});
+    return () => { live = false; };
+  }, [company?.companyId]);
+
   // Ko'rish hodisasi — egasi sahifasi qanchalik ochilganini bilsin.
   // Faqat BIR MARTA, ma'lumot kelgach: sahifa ochilmasa ham hisoblanib
   // ketmasin va yiqilgan so'rov statistikani shishirmasin.
@@ -41,13 +54,13 @@ export default function CompanyPublicPage({ companyId }) {
     <main className="cp-page">
       <header className="cp-header"><button onClick={() => navigate('/')} className="cp-logo"><i><img src={logo} alt="NFCSTORE" /></i><b>NFCSTORE</b></button><nav><button onClick={() => setTab('main')}>{t('Asosiy')}</button><button onClick={() => setTab('catalog')}>{t(cta.noun)}</button><button onClick={() => setTab('gallery')}>{t('Galereya')}</button><button onClick={() => setTab('contact')}>{t('Aloqa')}</button></nav><button className="cp-nfc" onClick={() => navigate(`/c/${company.companyId.toLowerCase()}`)}>{t('NFC ko‘rinish')} ↗</button></header>
       <section className="cp-hero" style={{ backgroundImage: `linear-gradient(90deg,rgba(0,0,0,.96) 5%,rgba(0,0,0,.56) 62%,rgba(0,0,0,.16)),url("${company.coverUrl || fallbackCover}")` }}>
-        <div className="cp-hero-copy"><span className="cp-kicker">{t('COMPANY ID')} · {company.companyId}</span><div className="cp-title-row"><div className="cp-hero-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : company.displayName.slice(0, 2).toUpperCase()}</div><div><h1>{company.displayName}</h1><p>{company.subcategory || company.categoryLabel || t('Professional kompaniya')}</p></div></div><p className="cp-lead">{company.description || t('Biz haqimizda to‘liq ma’lumot tez orada qo‘shiladi.')}</p><CompanyHours hours={company.hours} openNow={company.openNow} /><div className="cp-hero-actions">{company.phone && <a href={`tel:${company.phone}`} onClick={() => companyEvent(company.companyId, 'action', 'phone')}>{t('Qo‘ng‘iroq qilish')}</a>}<button onClick={() => { setTab('catalog'); document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }); }}>{t(cta.label)}</button></div></div>
+        <div className="cp-hero-copy"><span className="cp-kicker">{t('COMPANY ID')} · {company.companyId}</span><div className="cp-title-row"><StoryRing stories={stories} title={company.displayName} avatarUrl={company.logoUrl}><div className="cp-hero-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : company.displayName.slice(0, 2).toUpperCase()}</div></StoryRing><div><h1>{company.displayName}</h1><p>{company.subcategory || company.categoryLabel || t('Professional kompaniya')}</p></div></div><p className="cp-lead">{company.description || t('Biz haqimizda to‘liq ma’lumot tez orada qo‘shiladi.')}</p><CompanyHours hours={company.hours} openNow={company.openNow} /><div className="cp-hero-actions">{company.phone && <a href={`tel:${company.phone}`} onClick={() => companyEvent(company.companyId, 'action', 'phone')}>{t('Qo‘ng‘iroq qilish')}</a>}<button onClick={() => { setTab('catalog'); document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }); }}>{t(cta.label)}</button></div></div>
       </section>
 
       <nav className="cp-tabs">{[['main',t('Asosiy')],['catalog',t(cta.noun)],['gallery',t('Galereya')],['contact',t('Lokatsiya va aloqa')]].map(([id,label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}</nav>
 
       <div className="cp-content">
-        {tab === 'main' && <><section className="cp-about"><div><span>{t('BIZ HAQIMIZDA')}</span><h2>{company.displayName}</h2><p>{company.description}</p><div className="cp-facts"><b>● {t('Admin tasdiqlagan')}</b><b>⌖ {company.city || t('O‘zbekiston')}</b><b>◇ ID {company.companyId}</b></div></div><aside><small>{t('KATALOG')}</small><strong>{company.catalog?.length || 0}</strong><p>{t('{noun} bitta ishonchli manbadan boshqariladi.', { noun: t(cta.noun) })}</p></aside></section>{items.length > 0 && <Catalog items={items.slice(0, 4)} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} company={company} onOrder={setOrderItem} />}</>}
+        {tab === 'main' && <><section className="cp-about"><div><span>{t('BIZ HAQIMIZDA')}</span><h2>{company.displayName}</h2><p>{company.description}</p><div className="cp-facts"><b>● {t('Admin tasdiqlagan')}</b><b>⌖ {company.city || t('O‘zbekiston')}</b><b>◇ ID {company.companyId}</b></div></div><aside><small>{t('KATALOG')}</small><strong>{company.catalog?.length || 0}</strong><p>{t('{noun} bitta ishonchli manbadan boshqariladi.', { noun: t(cta.noun) })}</p></aside></section>{items.length > 0 && <Catalog items={items.slice(0, 4)} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} company={company} onOrder={setOrderItem} />}{posts.length > 0 && <CompanyPosts posts={posts} t={t} />}</>}
         {tab === 'catalog' && <Catalog items={items} categories={categories} filter={filter} setFilter={setFilter} title={t(cta.noun)} t={t} company={company} onOrder={setOrderItem} />}
         {tab === 'gallery' && <section className="cp-gallery"><div className="cp-section-title"><span>{t('GALEREYA')}</span><h2>{t('Kompaniya muhiti')}</h2></div><div>{(company.gallery || [company.coverUrl]).filter(Boolean).map((image, index) => <img key={`${image}-${index}`} src={image} alt="" />)}</div></section>}
         {/* Musiqa — kompaniya sahifasining o'zida, hamma bo'limda
@@ -75,6 +88,27 @@ export default function CompanyPublicPage({ companyId }) {
       {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
       <footer className="cp-footer"><b>NFCSTORE BUSINESS</b><span>{t('Company ID')}: {company.companyId}</span></footer>
     </main>
+  );
+}
+
+// Kompaniya postlari — yangiliklar lentasi (yangi taom, aksiya, ish
+// jarayoni). Katalogdan farqi: narx yo'q, muddat yo'q, shunchaki
+// ko'rsatish.
+function CompanyPosts({ posts, t }) {
+  return (
+    <section className="cp-posts">
+      <div className="cp-section-title"><span>{t('LENTA')}</span><h2>{t('Yangiliklar')}</h2></div>
+      <div className="cp-post-grid">
+        {posts.map((p) => (
+          <article key={p.id}>
+            {p.videoUrl
+              ? <video src={p.videoUrl} controls playsInline preload="none" />
+              : <img src={p.imageUrl} alt={p.caption || ''} loading="lazy" />}
+            {p.caption && <p>{p.caption}</p>}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

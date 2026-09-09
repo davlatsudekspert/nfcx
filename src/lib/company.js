@@ -165,6 +165,21 @@ export const listCompanyOrders = (companyId) => companyApi(`/${encodeURIComponen
 export const setCompanyOrderStatus = (companyId, orderId, status) =>
   companyApi(`/${encodeURIComponent(companyId)}/orders/${encodeURIComponent(orderId)}`, { method: 'PATCH', body: JSON.stringify({ status }) });
 
+// ── POSTLAR VA ISTORYA ────────────────────────────────────────────────
+// `agreed: true` — kontent qoidalariga rozilik. Server ham buni
+// tekshiradi (faqat frontendda bo'lsa chetlab o'tish mumkin edi).
+export const listCompanyPosts = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/posts`);
+export const createCompanyPost = (companyId, payload) =>
+  companyApi(`/${encodeURIComponent(companyId)}/posts`, { method: 'POST', body: JSON.stringify(payload) });
+export const deleteCompanyPost = (companyId, postId) =>
+  companyApi(`/${encodeURIComponent(companyId)}/posts/${encodeURIComponent(postId)}`, { method: 'DELETE' });
+
+export const listCompanyStories = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/stories`);
+export const createCompanyStory = (companyId, payload) =>
+  companyApi(`/${encodeURIComponent(companyId)}/stories`, { method: 'POST', body: JSON.stringify(payload) });
+export const deleteCompanyStory = (companyId, storyId) =>
+  companyApi(`/${encodeURIComponent(companyId)}/stories/${encodeURIComponent(storyId)}`, { method: 'DELETE' });
+
 export const submitCompany = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/submit`, { method: 'POST' });
 export const beginCompanyPayment = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/payment`, { method: 'POST' });
 export const addCompanyItem = (companyId, payload) => companyApi(`/${encodeURIComponent(companyId)}/catalog`, { method: 'POST', body: JSON.stringify(payload) });

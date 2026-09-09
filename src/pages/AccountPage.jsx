@@ -3,7 +3,7 @@ import { googleDirectionsUrl } from '../lib/mapLink.js';
 import { backdropProps } from '../lib/backdrop.js';
 import CloseButton from '../components/CloseButton.jsx';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbListStories, dbCreateStory, dbDeleteStory, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -19,6 +19,7 @@ import LockedFeatureModal from '../components/LockedFeatureModal.jsx';
 import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
+import StoryUploader from '../components/StoryUploader.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
@@ -2493,6 +2494,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const [giftBusy, setGiftBusy] = useState(false);
   const [giftMsg, setGiftMsg] = useState(null);
   const [postModal, setPostModal] = useState(false);
+  const [storyOpen, setStoryOpen] = useState(false);
   const [designModal, setDesignModal] = useState(null); // null | 'profile' | 'print'
 
   // Bosh sahifa yoki katalogdagi "NFC ID karta buyurtma berish" taklifidan
@@ -2726,6 +2728,16 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             onClick={() => (allow('post') ? setPostModal(true) : setLocked(t('Post joylashtirish')))}
           >
             <IconImage width={14} height={14} /> {t('Post')}{!allow('post') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
+          </button>
+          {/* ISTORYA — gold, premium, ekskluziv va premium obunachilar
+              uchun. Yopiq bo'lsa tugma ko'rinadi-yu, qulf bilan: odam
+              nima ochilishini bilsin (mavjud "Post" tugmasi bilan bir xil
+              mantiq). */}
+          <button
+            className="btn btn-outline-gold btn-sm min-h-11"
+            onClick={() => (allow('story') ? setStoryOpen(true) : setLocked(t('Istorya joylashtirish')))}
+          >
+            <IconImage width={14} height={14} /> {t('Istorya')}{!allow('story') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
           </button>
           <button
             className="btn btn-outline-gold btn-sm min-h-11"
@@ -3375,6 +3387,11 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       {postModal && (
         <Modal title={t('Postlar')} onClose={() => setPostModal(false)}>
           <PostsManager code={card.code} />
+        </Modal>
+      )}
+      {storyOpen && (
+        <Modal title={t('Istorya')} onClose={() => setStoryOpen(false)}>
+          <StoriesManager code={card.code} />
         </Modal>
       )}
       {designModal && (
@@ -4104,5 +4121,62 @@ export default function AccountPage({ refreshCatalog }) {
         )}
       </section>
     </main>
+  );
+}
+
+// ── ISTORYA (shaxsiy profil) ─────────────────────────────────────────
+// 24 soatdan keyin o'zi yo'qoladi va profil rasmi atrofida halqa bo'lib
+// ko'rinadi. Joylashdan oldin kontent qoidalari ko'rsatiladi
+// (StoryUploader ichida) va rozilik SERVERGA ham yuboriladi.
+function StoriesManager({ code }) {
+  const { t } = useLanguage();
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => dbListStories(code)
+    .then((s) => setList(s))
+    .catch(() => setList([]))
+    .finally(() => setLoading(false));
+  useEffect(() => { load(); }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const remove = async (id) => {
+    setList((old) => old.filter((x) => x.id !== id));
+    try { await dbDeleteStory(id); } catch { load(); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs leading-relaxed text-base-content/55">
+        {t('Istorya profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
+      </p>
+
+      {loading ? (
+        <div className="vz-skel" style={{ height: 90 }} />
+      ) : list.length ? (
+        <div className="flex flex-wrap gap-2">
+          {list.map((st) => (
+            <div key={st.id} className="relative h-24 w-20 overflow-hidden rounded-xl border border-white/10">
+              <img src={st.imageUrl} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => remove(st.id)}
+                aria-label={t('O‘chirish')}
+                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-base-content/40">{t('Hozircha istorya yo‘q.')}</p>
+      )}
+
+      <StoryUploader
+        label={t('Istorya qo‘shish')}
+        disabled={list.length >= 10}
+        onSubmit={async (payload) => { await dbCreateStory(code, payload); load(); }}
+      />
+    </div>
   );
 }
