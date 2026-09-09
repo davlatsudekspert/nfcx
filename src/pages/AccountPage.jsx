@@ -27,6 +27,7 @@ import { autoCropToContent, centerObject, removeBackground, whitenBackground, en
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { rememberFollowAs } from '../lib/followIdentity.js';
+import { shareLink } from '../lib/share.js';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
@@ -3518,8 +3519,11 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={async () => {
                 const shareUrl = window.location.origin + '/' + card.code.toLowerCase();
-                if (navigator.share) { try { await navigator.share({ title: form.name || card.code, url: shareUrl }); return; } catch { /* bekor qilindi */ } }
-                navigator.clipboard?.writeText(shareUrl).then(() => setSaleMsg({ type: 'ok', text: t('Havola nusxalandi!') })).catch(() => {});
+                // Tizim oynasi faqat u chindan ishlaydigan joyda ochiladi
+                // (ish stoli Yandex'da u bo'm-bo'sh ochilib yopilardi) —
+                // qaror `shareLink()` ichida.
+                const res = await shareLink({ url: shareUrl, title: form.name || card.code });
+                if (res === 'copied') setSaleMsg({ type: 'ok', text: t('Havola nusxalandi!') });
               }}><IconShare width={14} height={14} /> {t('Ulashish')}</button>
               <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => navigate('/' + card.code)}><IconEye width={14} height={14} /> {t("Profilni ko'rish")}</button>
             </div>

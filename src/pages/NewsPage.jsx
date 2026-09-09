@@ -228,10 +228,9 @@ export default function NewsPage({ newsId = null }) {
                     label={t('Ulashish')}
                     className="btn btn-outline-gold btn-sm"
                   />
-                  {/* Ba'zi brauzerlarda (masalan Yandex ish stoli) tizimning
-                      ulashish oynasi bo'sh ochiladi. Shu sabab havolani
-                      to'g'ridan-to'g'ri nusxalaydigan zaxira tugma ham bor —
-                      u har qanday brauzerda ishlaydi. */}
+                  {/* Bir bosishda nusxalash — yuqoridagi "Ulashish"
+                      menyusini ochmasdan. Menyu ham, bu tugma ham hech
+                      qanday brauzer imkoniyatiga tayanmaydi. */}
                   <ShareButton
                     url={newsUrl(detail.id)}
                     forceCopy

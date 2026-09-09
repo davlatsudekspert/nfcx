@@ -4,6 +4,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { shareLink } from '../lib/share.js';
 
 // Kompaniya profilidagi raqamlar qatori: nechta ko'rilgan, nechta
 // obunachi, va ulashish tugmasi.
@@ -34,17 +35,14 @@ export default function CompanyStatsBar({ company, onChange }) {
   };
 
   const share = async () => {
-    const data = { title: company.displayName, text: company.description || company.displayName, url };
     // Telefonda tizimning o'z "ulashish" oynasi ochiladi (Telegram,
-    // WhatsApp, Instagram...). Kompyuterda u yo'q — havola nusxalanadi.
-    try {
-      if (navigator.share) { await navigator.share(data); return; }
-    } catch { return; /* foydalanuvchi bekor qildi — xato emas */ }
-    try {
-      await navigator.clipboard.writeText(url);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
-    } catch { /* ruxsat yo'q */ }
+    // WhatsApp, Instagram...), ish stolida esa havola nusxalanadi.
+    // Qaror `shareLink()` ichida — ba'zi ish stoli brauzerlarida
+    // (Yandex) tizim oynasi bo'm-bo'sh ochilib darhol yopiladi.
+    const res = await shareLink({ url, title: company.displayName, text: company.description || company.displayName });
+    if (res !== 'copied') return;
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
   };
 
   return (

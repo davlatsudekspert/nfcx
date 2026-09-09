@@ -13,6 +13,7 @@ import { listMyCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
+import { shareLink } from '../lib/share.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -1504,16 +1505,15 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     if (!isOwner && record && record.code) dbLogEvent(record.code, type, ref);
   };
 
-  // "Ulashish" tugmasi — telefonlarda tizimning ulashish oynasini ochadi
-  // (Telegram, WhatsApp, ...). Web Share API bo'lmasa — havolani nusxalaydi.
+  // "Ulashish" tugmasi — telefonlarda tizimning ulashish oynasini
+  // ochadi (Telegram, WhatsApp, ...), ish stolida esa havolani
+  // nusxalaydi. Qaror `shareLink()` ichida: ba'zi ish stoli
+  // brauzerlarida (Yandex) tizim oynasi bo'm-bo'sh ochilib, darhol
+  // yopiladi — o'sha yerda izohi bor.
   const shareProfile = async (url) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: record ? record.name : 'NFCSTORE', text: t('Mening raqamli tashrif qog‘ozim'), url });
-        return;
-      } catch (e) { /* foydalanuvchi bekor qildi yoki qo'llab-quvvatlanmaydi */ }
-    }
-    copyText(url, t('Havola nusxalandi!'));
+    const res = await shareLink({ url, title: record ? record.name : 'NFCSTORE', text: t('Mening raqamli tashrif qog‘ozim') });
+    if (res === 'copied') flashToast(t('Havola nusxalandi!'));
+    else if (res === 'failed') flashToast(t('Nusxalab bo‘lmadi'));
   };
 
   if (record === undefined) {

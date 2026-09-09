@@ -22,7 +22,10 @@ export async function shareLink({ url, title, text, forceCopy = false } = {}) {
   const href = String(url || '');
   if (!href) return 'failed';
 
-  if (!forceCopy && typeof navigator !== 'undefined' && navigator.share) {
+  // Tizim oynasi faqat u CHINDAN ishlaydigan joyda (pastdagi
+  // `canSystemShare` izohiga qarang) — aks holda darhol nusxalashga
+  // o'tamiz, chunki ish stolida bo'sh oq oyna ochilib yopilardi.
+  if (!forceCopy && canSystemShare()) {
     try {
       await navigator.share({ url: href, ...(title ? { title } : {}), ...(text ? { text } : {}) });
       return 'shared';
@@ -42,4 +45,41 @@ export async function shareLink({ url, title, text, forceCopy = false } = {}) {
   } catch {
     return 'failed';
   }
+}
+
+// ── TIZIM ULASHISH OYNASI QACHON ISHLATILADI ─────────────────────────
+// `navigator.share` MAVJUDLIGI uning ISHLASHINI bildirmaydi. Ish stoli
+// brauzerlarining bir qismida (Yandex shulardan biri) u bo'm-bo'sh oq
+// oyna ochib, darhol yopadi va va'dani XATOSIZ bajaradi — ya'ni koddan
+// "ishlamadi" deb aniqlab bo'lmaydi.
+//
+// Shuning uchun mezon boshqacha: tizim oynasi FAQAT sensorli
+// qurilmalarda (telefon/planshet) ochiladi — u yerda u chindan
+// ishlaydi va eng qulay yo'l. Ish stolida esa interfeys o'z menyusini
+// ko'rsatadi (Telegram/WhatsApp/Facebook/X/nusxalash), u hech qanday
+// brauzer imkoniyatiga tayanmaydi.
+export function canSystemShare() {
+  if (typeof navigator === 'undefined' || !navigator.share) return false;
+  try {
+    const coarse = typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+    return coarse && (navigator.maxTouchPoints || 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Ulashish menyusidagi tarmoqlar. Hammasi oddiy HTTPS havola —
+// hech qanday SDK, hech qanday kuzatuv skripti qo'shilmaydi.
+export function shareTargets({ url, title, text } = {}) {
+  const u = encodeURIComponent(String(url || ''));
+  const caption = String(title || '') + (text ? ` — ${text}` : '');
+  const c = encodeURIComponent(caption.slice(0, 280));
+  return [
+    { id: 'telegram', name: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${c}` },
+    { id: 'whatsapp', name: 'WhatsApp', href: `https://wa.me/?text=${c}%20${u}` },
+    { id: 'facebook', name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+    { id: 'x', name: 'X', href: `https://twitter.com/intent/tweet?url=${u}&text=${c}` },
+  ];
 }
