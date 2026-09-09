@@ -1343,14 +1343,21 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   // O'ZIMNING FAOL KOMPANIYALARIM — "kim nomidan obuna bo'laman"
   // tanlovi uchun. Kirmagan yoki kompaniyasi yo'q odamda bu ro'yxat
   // bo'sh qoladi va tanlov umuman ko'rsatilmaydi.
+  //
+  // `isOwner` ga BOG'LANMAYDI: u shu funksiyada ANCHA PASTDA `const`
+  // bilan e'lon qilingan, ya'ni bu yerda unga murojaat qilish
+  // "Cannot access before initialization" xatosini beradi va butun
+  // sahifa ochilmay qoladi (production'da aynan shu bo'ldi).
+  // Zarurat ham yo'q: tanlov faqat obuna tugmasi yonida chiqadi, u esa
+  // profil egasiga umuman ko'rsatilmaydi.
   useEffect(() => {
-    if (!user || isOwner) { setMyCompanies([]); return; }
+    if (!user) { setMyCompanies([]); return undefined; }
     let live = true;
     listMyCompanies()
       .then((d) => live && setMyCompanies((d.companies || []).filter((c) => c.status === 'active')))
       .catch(() => live && setMyCompanies([]));
     return () => { live = false; };
-  }, [user, isOwner]);
+  }, [user]);
 
   // Obuna endi har doim bepul va darhol amalga oshadi.
   const toggleFollow = async () => {
