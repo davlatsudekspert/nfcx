@@ -303,6 +303,27 @@ function renderCard(ctx, w, h, state) {
     ctx.restore();
     hitboxes.wm = { x: wm.x * w - wmW / 2 - 14, y: wm.y * h - wmSize / 2 - 12, w: wmW + 28, h: wmSize + 24 };
   }
+  // ── KOMPANIYA BELGISI "C" ──────────────────────────────────────────
+  // Kompaniya kartasi bir qarashda bilinib tursin. O'CHIRIB BO'LMAYDI:
+  // o'lchami, joyi va rangi o'zgaradi, LEKIN harfning o'zi qat'iy —
+  // shuning uchun u yerda kompaniyaga aloqasi yo'q boshqa yozuv paydo
+  // bo'la olmaydi.
+  if (state.companyMark && state.side === 'back') {
+    const cm = state.cmXY || { x: 0.5, y: 0.845 };
+    const cmSize = state.cmSize || 34;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 ${cmSize}px ${state.font}, sans-serif`;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillText('C', cm.x * w - 1, cm.y * h + 2);
+    ctx.fillStyle = state.cmColor || '#e9c766';
+    ctx.fillText('C', cm.x * w, cm.y * h);
+    const cmW = ctx.measureText('C').width;
+    ctx.restore();
+    hitboxes.cm = { x: cm.x * w - cmW / 2 - 14, y: cm.y * h - cmSize / 2 - 12, w: cmW + 28, h: cmSize + 24 };
+  }
+
   // Matn uchun taxminiy hitbox (o'lchangan kenglik asosida).
   hitboxes.text = { x: cx - mainWidth / 2 - 14, y: mainY - fontSize / 2 - 14, w: mainWidth + 28, h: fontSize + 28 };
   return hitboxes;
@@ -410,7 +431,7 @@ export function renderPrintDataUrl(state) {
   return canvas.toDataURL('image/png');
 }
 
-export default function CardDesignerPage({ embedded = false, code = '', printApi = null } = {}) {
+export default function CardDesignerPage({ embedded = false, code = '', printApi = null, companyMark = false } = {}) {
   const { t } = useLanguage();
   const canvasRef = useRef(null);
   const bgFileRef = useRef(null);
@@ -430,6 +451,11 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const [bgImage, setBgImage] = useState(null);
   // Qaysi tayyor fon tanlangani — ro'yxatda belgilab turish uchun.
   const [presetId, setPresetId] = useState('');
+  // Kompaniya belgisi "C" — joyi, o'lchami, rangi. Harfning O'ZI
+  // o'zgarmaydi va belgini o'chirib bo'lmaydi.
+  const [cmXY, setCmXY] = useState({ x: 0.5, y: 0.845 });
+  const [cmSize, setCmSize] = useState(34);
+  const [cmColor, setCmColor] = useState('#e9c766');
   const [darken, setDarken] = useState(35);
   const [font, setFont] = useState('Arial');
   const [fontSize, setFontSize] = useState(92);
@@ -494,11 +520,12 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
       textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
       logoImage, logoXY, showQr, qrImage, qrXY, qrSize,
       textXY: effectiveSide === 'front' ? frontTextXY : backTextXY,
-      wmXY, wmSize, wmColor, ...overrides,
+      wmXY, wmSize, wmColor,
+      companyMark, cmXY, cmSize, cmColor, ...overrides,
     };
   }, [side, frontText, frontSubText, backText, backSubText, showNfc,
     textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize,
-    frontTextXY, backTextXY, wmXY, wmSize, wmColor]);
+    frontTextXY, backTextXY, wmXY, wmSize, wmColor, companyMark, cmXY, cmSize, cmColor]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -538,6 +565,7 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
     const { x, y } = pointerToCanvasXY(e);
     const hb = hitboxesRef.current;
     if (hitTest(x, y, hb.qr)) dragRef.current = 'qr';
+    else if (hitTest(x, y, hb.cm)) dragRef.current = 'cm';
     else if (hitTest(x, y, hb.wm)) dragRef.current = 'wm';
     else if (hitTest(x, y, hb.logo)) dragRef.current = 'logo';
     else if (hitTest(x, y, hb.text)) dragRef.current = 'text';
@@ -552,6 +580,7 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
     if (dragRef.current === 'logo') setLogoXY({ x: nx, y: ny });
     else if (dragRef.current === 'qr') setQrXY({ x: nx, y: ny });
     else if (dragRef.current === 'wm') setWmXY({ x: nx, y: ny });
+    else if (dragRef.current === 'cm') setCmXY({ x: nx, y: ny });
     else if (dragRef.current === 'text') setTextXY({ x: nx, y: ny });
   };
   const onCanvasPointerUp = () => { dragRef.current = null; };
@@ -730,6 +759,31 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
               </div>
             )}
           </FieldGroup>
+
+          {/* KOMPANIYA BELGISI — faqat kompaniya kabinetida chiqadi va
+              O'CHIRILMAYDI. Harfning o'zi qat'iy: bu belgi kartaning
+              kompaniyaga tegishli ekanini bildiradi, shuning uchun uni
+              boshqa yozuvga almashtirib bo'lmaydi. */}
+          {companyMark && (
+            <FieldGroup title={t('Kompaniya belgisi «C»')}>
+              <p className="mb-3 text-xs leading-relaxed text-base-content/45">
+                {t('Kartaning orqa tomonida, NFCSTORE yozuvi tepasida turadi. Joyini kartadan sudrab o‘zgartiring. Harfning o‘zi o‘zgarmaydi va belgini o‘chirib bo‘lmaydi.')}
+              </p>
+              <Label>{t('O‘lchami')}</Label>
+              <input type="range" min={18} max={90} value={cmSize} onChange={(e) => setCmSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+              <div className="mt-3 flex items-center gap-3">
+                <input
+                  type="color" value={cmColor} onChange={(e) => setCmColor(e.target.value)}
+                  className="h-8 w-8 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
+                  aria-label={t('Rangi')}
+                />
+                <span className="text-xs text-base-content/60">{t('Rangi')}</span>
+                <button type="button" className="btn btn-ghost btn-xs" onClick={() => { setCmColor('#e9c766'); setCmSize(34); setCmXY({ x: 0.5, y: 0.845 }); }}>
+                  {t('Andozaga qaytarish')}
+                </button>
+              </div>
+            </FieldGroup>
+          )}
 
           <FieldGroup title={t("Logotip (ixtiyoriy)")}>
             <Label>{t('Logotip rasm yuklash')}</Label>

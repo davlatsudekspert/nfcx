@@ -92,7 +92,7 @@ export default function CompanyWorkspacePage({ companyId }) {
               </div>
             </div>
             <Suspense fallback={<p className="cw-empty">{t('Yuklanmoqda…')}</p>}>
-              <CardDesignerPage embedded code={company.companyId} />
+              <CardDesignerPage embedded companyMark code={company.companyId} />
             </Suspense>
           </div>
         )}

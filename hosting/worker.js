@@ -2033,6 +2033,14 @@ async function ensureCoreSchema(env) {
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
   await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, coreSchemaReady]);
+  // PROFILGA BIRIKTIRILGAN KOMPANIYA (2026-09).
+  //
+  // Bu ALTER `cards` jadvaliga tegadi, `cards` esa yuqoridagi umumiy
+  // batch ICHIDA yaratiladi — shuning uchun u BATCH TUGAGANDAN KEYIN
+  // bajarilishi shart. Parallel qo'yilganda toza bazada ALTER jadval
+  // hali yo'q paytda ishga tushib, jimgina yiqilardi va ustun umuman
+  // qo'shilmasdi (aynan shu ikki testda chiqdi).
+  await ensureCardCompanyColumn(env);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -2174,6 +2182,14 @@ async function ensureUserInternalColumn(env) {
 // bilan bitta kompaniya kuniga bir necha o'nlab qator egallaydi, xolos.
 // Buning evazi: aniq vaqt (soat/daqiqa) saqlanmaydi — egaga bu kerak
 // emas, unga kunlik dinamika kerak.
+let cardCompanyColumnReady;
+async function ensureCardCompanyColumn(env) {
+  if (!cardCompanyColumnReady) {
+    cardCompanyColumnReady = env.DB.prepare(`ALTER TABLE cards ADD COLUMN company_id TEXT`).run().catch(() => {});
+  }
+  await cardCompanyColumnReady;
+}
+
 let companyExtrasSchemaReady;
 async function ensureCompanyExtrasSchema(env) {
   if (!companyExtrasSchemaReady) {
@@ -2195,6 +2211,10 @@ async function ensureCompanyExtrasSchema(env) {
       `ALTER TABLE companies ADD COLUMN custom_domain TEXT`,
       `ALTER TABLE companies ADD COLUMN custom_domain_status TEXT`,
       `ALTER TABLE companies ADD COLUMN custom_domain_note TEXT`,
+      // Bu indeks BATCH dan TASHQARIDA: batch atomik, `companies`
+      // hali yaratilmagan bo'lsa butun to'plam (stories, story_likes,
+      // company_posts...) birdaniga yiqilardi.
+      `CREATE INDEX IF NOT EXISTS idx_company_domain ON companies(custom_domain)`,
     ].map((sql) => env.DB.prepare(sql).run().catch(() => {}));
     const tables = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_stats" (
@@ -2220,7 +2240,6 @@ async function ensureCompanyExtrasSchema(env) {
         created_at TEXT
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_orders ON company_orders(company_id, created_at DESC)`),
-      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_domain ON companies(custom_domain)`),
       // ── ISTORYA (2026-09) ────────────────────────────────────────
       // 24 soatdan keyin o'zi yo'qoladi. O'CHIRILMAYDI, faqat
       // KO'RSATILMAYDI: o'chirish uchun alohida jarayon (cron) kerak,
@@ -2750,6 +2769,9 @@ function parseJsonObjectOrNull(text) {
 function rowToRecord(row) {
   return {
     code: row.code, name: row.name, role: row.role || '', avatarUrl: row.avatar_url || '',
+    // Profilga biriktirilgan kompaniya (bo'lsa). To'liq ma'lumot —
+    // nom va logotip — alohida `company` maydonida keladi.
+    companyId: row.company_id || '',
     bgUrl: row.bg_url || '', bgPattern: !!row.bg_pattern, accentColor: row.accent_color || '',
     bgColor: row.bg_color || '', bgAnimated: !!row.bg_animated, isPrimary: !!row.is_primary,
     hidePhone: !!row.hide_phone, giftable: !!row.giftable, linksTransparent: !!row.links_transparent,
@@ -2780,7 +2802,7 @@ const RECORD_COLUMNS = `code, name, role, avatar_url, bg_url, bg_pattern, accent
   music_url, links_transparent, link_style, profile_type, city, category_slug, hidden_from_directory,
   address, latitude, longitude, lead_capture, is_primary, giftable, hide_phone, tg, phone, email,
   linkedin, instagram, about, facebook, twitter, website, card_number, extra_links, card_numbers,
-  tier_override, card_design, verified, theme, for_sale, sale_price, hashtags, price, ts, views`;
+  tier_override, card_design, verified, theme, for_sale, sale_price, hashtags, price, ts, views, company_id`;
 
 // ── HAR KODGA QO'LDA BELGILANGAN NARX (per-code price override) ──────────
 // DIQQAT: bu blok src/lib/codePrices.js bilan AYNAN bir xil bo'lishi shart
@@ -4591,6 +4613,10 @@ function validateRecordBody(body, opts = {}) {
     hidePhone: body.hidePhone === true,
   };
   if ('cardDesign' in body) record.cardDesign = body.cardDesign && typeof body.cardDesign === 'object' ? body.cardDesign : null;
+  // Kompaniya biriktirish. Bu yerda faqat SHAKLI tekshiriladi; EGALIK
+  // saqlashdan oldin alohida tekshiriladi (`recordsApi`), chunki bu
+  // funksiya bazaga murojaat qilmaydi.
+  if ('companyId' in body) record.companyId = companyId(String(body.companyId || '')) || '';
   if ('profileType' in body) record.profileType = ['personal', 'expert', 'business'].includes(body.profileType) ? body.profileType : 'personal';
   if ('city' in body) record.city = cleanStr(body.city, 60);
   if ('categorySlug' in body) record.categorySlug = String(body.categorySlug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
@@ -4620,7 +4646,7 @@ async function updateRecord(env, code, fields) {
     latitude: 'latitude', longitude: 'longitude', hiddenFromDirectory: 'hidden_from_directory', leadCapture: 'lead_capture',
     tg: 'tg', phone: 'phone', email: 'email', linkedin: 'linkedin', instagram: 'instagram',
     about: 'about', facebook: 'facebook', twitter: 'twitter', website: 'website', cardNumber: 'card_number',
-    theme: 'theme', hidePhone: 'hide_phone',
+    theme: 'theme', hidePhone: 'hide_phone', companyId: 'company_id',
   };
   const sets = [];
   const vals = [];
@@ -4936,6 +4962,18 @@ async function recordsApi(request, env, url) {
     if (request.method === 'GET') {
       const rec = await getRecord(env, code);
       if (!rec) return json({ error: 'not_found' }, 404);
+      // Biriktirilgan kompaniya — nomi va logotipi bilan. Kompaniya
+      // keyin to'xtatilgan bo'lsa `company` bo'sh qoladi va profilda
+      // blok umuman chizilmaydi (o'lik havola qolmasin).
+      if (rec.companyId) {
+        const co = await env.DB.prepare(
+          `SELECT company_id, display_name, logo_url, category, subcategory, city FROM companies WHERE company_id = ? AND status = 'active'`
+        ).bind(rec.companyId).first().catch(() => null);
+        rec.company = co ? {
+          companyId: co.company_id, displayName: co.display_name, logoUrl: co.logo_url || '',
+          subtitle: co.subcategory || co.category || '', city: co.city || '',
+        } : null;
+      }
       const user = await getCurrentUser(request, env);
       const owner = await getRecordOwner(env, code);
       const isOwner = !!user && String(owner) === String(user.id);
@@ -4963,6 +5001,16 @@ async function recordsApi(request, env, url) {
       // oddiy 5 ta, Premium 10 ta (NFC ID darajasiga bog'liq emas).
       const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
       if (error) return json({ error }, 422);
+      // KOMPANIYA EGALIGI — SERVERDA. Aks holda istalgan odam profiliga
+      // begona brendni "o'zimniki" qilib biriktirib olardi. Faqat
+      // O'ZINING FAOL kompaniyasi qabul qilinadi; bo'sh qiymat esa
+      // biriktirishni bekor qiladi.
+      if ('companyId' in record && record.companyId) {
+        const ownedCompany = await env.DB.prepare(
+          `SELECT company_id FROM companies WHERE company_id = ? AND owner_user_id = ? AND status = 'active'`
+        ).bind(record.companyId, String(user.id)).first();
+        if (!ownedCompany) return json({ error: 'not_company_owner' }, 403);
+      }
       // NOTE: tier/feature-gating (e.g. music/animated background require a
       // paid tier) from src/lib/access.js is NOT enforced here yet — the
       // owner can update any field on their own card. Re-add that guard

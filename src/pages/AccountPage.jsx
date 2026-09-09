@@ -22,6 +22,7 @@ import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, 
 import StoryUploader from '../components/StoryUploader.jsx';
 import StoryFeedBar from '../components/StoryFeedBar.jsx';
 import { CARD_BACKGROUNDS, cardBackgroundFromUrl } from '../lib/cardBackgrounds.js';
+import { listMyCompanies } from '../lib/company.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
@@ -2338,6 +2339,8 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     profileType: ['personal', 'expert', 'business'].includes(card.profileType) ? card.profileType : 'personal',
     city: card.city || '',
     categorySlug: card.categorySlug || '',
+    // Profilda ko'rsatiladigan kompaniya (bo'sh — ko'rsatilmaydi).
+    companyId: card.companyId || '',
     address: card.address || '',
     latitude: card.latitude != null ? String(card.latitude) : '',
     longitude: card.longitude != null ? String(card.longitude) : '',
@@ -2602,6 +2605,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         profileType: form.profileType,
         city: form.city.trim(),
         categorySlug: form.categorySlug,
+        companyId: form.companyId,
         address: form.address.trim(),
         latitude: form.latitude === '' ? null : Number(form.latitude),
         longitude: form.longitude === '' ? null : Number(form.longitude),
@@ -3434,6 +3438,12 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         {activeExtra && <div className="min-w-0">{activeExtra.content}</div>}
         {!isBusiness && wsTab === 'boshqaruv' && (
           <div className="space-y-5">
+            {/* PROFILDA KO'RSATILADIGAN KOMPANIYA — Telegramdagi "kanal"
+                bloki kabi. Ikkitadan ortiq kompaniyasi bo'lsa, qaysi
+                birini ko'rsatishni egasi TANLAYDI: profilda bittasi
+                chiqadi, aks holda blok ro'yxatga aylanib ketardi.
+                Kompaniyasi yo'q odamga bu bo'lim umuman ko'rinmaydi. */}
+            <ProfileCompanyPicker form={form} setForm={setForm} t={t} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="vz-panel min-w-0 p-4">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Tarif')}</div>
@@ -4204,6 +4214,58 @@ function StoriesManager({ code }) {
         disabled={list.length >= 10}
         onSubmit={async (payload) => { await dbCreateStory(code, payload); load(); }}
       />
+    </div>
+  );
+}
+
+// ── PROFILDA KO'RSATILADIGAN KOMPANIYA ───────────────────────────────
+// Faqat O'ZINING FAOL kompaniyalari ro'yxatga tushadi (server ham
+// aynan shuni tekshiradi: begona brendni biriktirib bo'lmaydi).
+function ProfileCompanyPicker({ form, setForm, t }) {
+  const [companies, setCompanies] = useState(null);
+  useEffect(() => {
+    let live = true;
+    listMyCompanies()
+      .then((d) => live && setCompanies((d.companies || []).filter((c) => c.status === 'active')))
+      .catch(() => live && setCompanies([]));
+    return () => { live = false; };
+  }, []);
+
+  // Kompaniyasi yo'q odamga bu bo'lim keraksiz — umuman chizilmaydi.
+  if (!companies || companies.length === 0) return null;
+
+  return (
+    <div className="vz-panel p-4">
+      <div className="text-[11px] font-bold uppercase tracking-wider text-base-content/45">{t('Profilda kompaniya')}</div>
+      <p className="mt-1 text-xs leading-relaxed text-base-content/45">
+        {t('Profilingizda kompaniyangiz alohida blok bo‘lib chiqadi va bosilganda kompaniya sahifasi ochiladi.')}
+      </p>
+      <div className="mt-3 space-y-1.5">
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-white/5">
+          <input
+            type="radio" name="profile-company" className="radio radio-sm"
+            checked={!form.companyId}
+            onChange={() => setForm((f) => ({ ...f, companyId: '' }))}
+          />
+          <span className="text-sm text-base-content/70">{t('Ko‘rsatilmasin')}</span>
+        </label>
+        {companies.map((c) => (
+          <label key={c.companyId} className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 hover:bg-white/5">
+            <input
+              type="radio" name="profile-company" className="radio radio-sm"
+              checked={form.companyId === c.companyId}
+              onChange={() => setForm((f) => ({ ...f, companyId: c.companyId }))}
+            />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-accent/40 bg-black/25 text-[11px] font-black text-accent">
+              {c.logoUrl ? <img src={c.logoUrl} alt="" className="h-full w-full object-cover" /> : c.displayName.slice(0, 2).toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">{c.displayName}</span>
+              <span className="block truncate font-mono text-[11px] text-base-content/45">/c/{c.companyId.toLowerCase()}</span>
+            </span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

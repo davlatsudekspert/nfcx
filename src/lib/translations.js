@@ -2766,6 +2766,17 @@ const DICT_HOME = {
   'Kim nomidan': { ru: 'От чьего имени', en: 'Follow as' },
   'Shaxsiy profilim': { ru: 'Мой личный профиль', en: 'My personal profile' },
   'Yoqdi': { ru: 'Нравится', en: 'Like' },
+  // ── Profilda kompaniya va karta belgisi (2026-09) ──
+  'Profilda kompaniya': { ru: 'Компания в профиле', en: 'Company on your profile' },
+  'Ko‘rsatilmasin': { ru: 'Не показывать', en: 'Do not show' },
+  'Profilingizda kompaniyangiz alohida blok bo‘lib chiqadi va bosilganda kompaniya sahifasi ochiladi.': {
+    ru: 'Компания появится в вашем профиле отдельным блоком, а при нажатии откроется её страница.',
+    en: 'Your company appears as its own block on your profile and opens its page when tapped.' },
+  'Kompaniya belgisi «C»': { ru: 'Знак компании «C»', en: 'Company mark "C"' },
+  'O‘lchami': { ru: 'Размер', en: 'Size' },
+  'Kartaning orqa tomonida, NFCSTORE yozuvi tepasida turadi. Joyini kartadan sudrab o‘zgartiring. Harfning o‘zi o‘zgarmaydi va belgini o‘chirib bo‘lmaydi.': {
+    ru: 'Находится на обратной стороне карты, над надписью NFCSTORE. Перетащите его прямо на карте. Сама буква не меняется, и знак нельзя убрать.',
+    en: 'It sits on the back of the card, above the NFCSTORE text. Drag it on the card to move it. The letter itself cannot be changed and the mark cannot be removed.' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };
