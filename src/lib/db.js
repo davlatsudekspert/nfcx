@@ -1006,6 +1006,11 @@ export async function dbCreateStory(code, payload) {
   }
   return data;
 }
+// Obuna bo'lganlaringizning istoryasi (Instagram uslubidagi qator).
+export async function dbStoryFeed() {
+  const data = await api('/stories/feed');
+  return (data && data.feed) || [];
+}
 export async function dbDeleteStory(id) {
   const res = await fetch(`/api/stories/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'same-origin' });
   if (!res.ok) throw new Error('delete_failed');

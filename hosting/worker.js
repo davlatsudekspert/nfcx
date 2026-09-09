@@ -7266,8 +7266,42 @@ async function postsApi(request, env, url) {
   return null;
 }
 
-// DELETE /api/stories/:id — faqat joylashtirgan odam o'chira oladi.
+// GET /api/stories/feed va DELETE /api/stories/:id
 async function storiesApi(request, env, url) {
+  // ── LENTA: obuna bo'lgan odamlaringizning istoryasi ────────────────
+  // Instagram mantiqi: yuqorida dumaloq rasmlar qatori, har biri bitta
+  // odamning istoryasi. Faqat SIZ OBUNA BO'LGANLAR ko'rinadi — hammaning
+  // istoryasini ko'rsatish tanlov emas, tasodifiy oqim bo'lardi.
+  if (url.pathname === '/api/stories/feed' && request.method === 'GET') {
+    const user = await getCurrentUser(request, env);
+    if (!user) return json({ feed: [] });
+    const rows = await env.DB.prepare(
+      `SELECT s.id, s.owner_id AS code, s.image_url, s.video_url, s.caption, s.created_at,
+              c.name AS name, c.avatar_url AS avatar_url
+         FROM stories s
+         JOIN cards c ON c.code = s.owner_id
+        WHERE s.owner_kind = 'card' AND s.expires_at > ?
+          AND c.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
+        ORDER BY s.created_at
+        LIMIT 200`
+    ).bind(new Date().toISOString(), user.id).all();
+
+    // Bitta odamning bir nechta istoryasi BITTA dumaloqcha bo'lib
+    // chiqadi — aks holda qator o'nlab bir xil rasmga to'lib ketardi.
+    const byCode = new Map();
+    for (const r of rows.results || []) {
+      const key = String(r.code);
+      if (!byCode.has(key)) {
+        byCode.set(key, { code: key, name: r.name || key, avatarUrl: r.avatar_url || '', stories: [] });
+      }
+      byCode.get(key).stories.push({
+        id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
+        caption: r.caption || '', createdAt: r.created_at,
+      });
+    }
+    return json({ feed: [...byCode.values()] });
+  }
+
   const m = url.pathname.match(/^\/api\/stories\/(\d+)$/);
   if (!m || request.method !== 'DELETE') return null;
   const user = await getCurrentUser(request, env);

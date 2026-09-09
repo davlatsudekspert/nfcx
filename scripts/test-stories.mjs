@@ -113,5 +113,34 @@ for (let i = 0; i < 12; i += 1) {
 const capped = await j('/api/companies/NFCTEST/stories');
 checkTrue('7) istorya soni cheklangan', capped.body.stories.length <= 10);
 
+// ── 8) LENTA (obuna bo'lganlar istoryasi) ────────────────────────────
+// Kirmagan odam bo'sh lenta oladi (xato emas — vidjet o'zini chizmaydi).
+check('8) kirmagan uchun bo‘sh', (await j('/api/stories/feed')).body.feed, []);
+
+// user#2 (other) hali user#1 ga obuna emas — lenta bo'sh.
+const beforeFollow = await j('/api/stories/feed', { cookie: cookie.other });
+check('8) obunasiz bo‘sh', beforeFollow.body.feed.length, 0);
+
+// user#1 ning VIP001 da istoryasi bo'lsin.
+await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'VIP001'`).run();
+await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true } });
+await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true } });
+
+await env.DB.prepare(`INSERT INTO follows (follower_id, followee_id) VALUES (2, 1)`).run();
+const feed = await j('/api/stories/feed', { cookie: cookie.other });
+check('8) obunadan keyin ko‘rinadi', feed.body.feed.length, 1);
+check('8) bitta odam — bitta dumaloqcha', feed.body.feed[0].code, 'VIP001');
+checkTrue('8) ikkala istorya ichida', feed.body.feed[0].stories.length >= 2);
+
+// O'ZINGIZ obuna bo'lmagan odamning istoryasi lentaga TUSHMAYDI.
+await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'OTH222'`).run();
+await j('/api/records/OTH222/stories', { method: 'POST', cookie: cookie.other, json: { imageUrl: IMG, agreed: true } });
+const feed2 = await j('/api/stories/feed', { cookie: cookie.user });
+check('8) obuna bo‘lmagan odam ko‘rinmaydi', feed2.body.feed.length, 0);
+
+// Muddati o'tgani lentada ham ko'rinmaydi.
+await env.DB.prepare(`UPDATE stories SET expires_at = '2000-01-01T00:00:00.000Z' WHERE owner_id = 'VIP001'`).run();
+check('8) muddati o‘tgani lentada yo‘q', (await j('/api/stories/feed', { cookie: cookie.other })).body.feed.length, 0);
+
 console.log('\\naccess:', access || '(nomaʼlum)');
 done();

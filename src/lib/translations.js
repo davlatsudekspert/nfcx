@@ -2734,6 +2734,7 @@ const DICT_HOME = {
     ru: 'Я прочитал(а) и согласен(на) — беру ответственность на себя',
     en: 'I have read this and agree — I take responsibility' },
   'Davom etish': { ru: 'Продолжить', en: 'Continue' },
+  'Istoryalar': { ru: 'Истории', en: 'Stories' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

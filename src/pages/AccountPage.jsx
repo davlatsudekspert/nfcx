@@ -20,6 +20,7 @@ import { outerPageStyle, innerPanelStyle } from './ProfilePage.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import StoryUploader from '../components/StoryUploader.jsx';
+import StoryFeedBar from '../components/StoryFeedBar.jsx';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
@@ -4013,6 +4014,10 @@ export default function AccountPage({ refreshCatalog }) {
       <div className="pt-8 font-mono text-xs uppercase tracking-widest text-base-content/45">
         {t('Kabinet')} <span className="text-base-content/25">/</span> <span className="text-base-content/80">{t('Mening profilim')}</span>
       </div>
+
+      {/* Obuna bo'lganlaringizning istoryasi. Hech kim qo'ymagan bo'lsa
+          qator umuman chizilmaydi — bo'sh joy "buzuq" ko'rinardi. */}
+      <div className="mt-4"><StoryFeedBar /></div>
 
       {/* Ixcham identifikatsiya paneli — faqat real user/card state. Navigatsiya
           bu yerda EMAS: bitta sidebar (EditCardForm) hamma bo'limlarni beradi. */}

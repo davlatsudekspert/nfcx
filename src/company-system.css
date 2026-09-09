@@ -253,3 +253,55 @@
 .cp-post-grid img,.cp-post-grid video{display:block;width:100%;height:190px;object-fit:cover;background:#000}
 .cp-post-grid p{padding:11px 13px;margin:0;font-size:var(--fs-xs);color:#a29a8d;line-height:1.5}
 .cq-identity .story-ring{margin:0 auto}
+
+/* ── KATALOG KARTASI: matn kesilishi tuzatildi ────────────────────────
+   Avval tavsifga QAT'IY `height:35px` berilgan edi va ortiqchasi
+   `overflow:hidden` bilan kesilardi — kesish satr o'rtasidan o'tib,
+   harflarning yarmi ko'rinib turardi (skrinshotda aynan shu).
+   Endi butun SATRLAR bo'yicha cheklanadi: ikki satr to'liq ko'rinadi,
+   qolgani umuman chizilmaydi. `min-height` kartalarni bir tekisda
+   ushlab turadi, `margin-bottom` esa narx bilan yopishib qolmasin. */
+.cp-product-grid p{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  height:auto;min-height:calc(2 * 1.5em);margin:0 0 11px;overflow:hidden
+}
+.cp-product-grid .cp-price,.cp-product-grid .cp-price-single{margin-top:2px}
+
+/* ── NFC PROFIL TUGMALARI: matn o'rtada + yaltiroq o'tishi ───────────
+   Egasining talabi: yozuvlar chekkada emas, O'RTADA tursin va
+   quticha ustidan yaltiroq vizual o'tib tursin.
+   Yorug'lik `::after` bilan chiziladi va tugmaning O'ZIGA tegmaydi:
+   shuning uchun matn ham, ikonka ham qimirlamaydi. */
+.cq-actions a,.cq-actions button{
+  position:relative;overflow:hidden;justify-content:center;text-align:center
+}
+.cq-actions a::after,.cq-actions button::after{
+  content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
+  background:linear-gradient(100deg,transparent,rgba(255,224,150,.16) 45%,rgba(255,238,200,.30) 50%,rgba(255,224,150,.16) 55%,transparent);
+  transform:skewX(-18deg);pointer-events:none;
+  animation:cq-shine 4.6s ease-in-out infinite
+}
+/* Har bir tugmada biroz kechikish — hammasi bir vaqtda "chaqnab"
+   ketsa bezovta qiladi, ketma-ket o'tsa jonli ko'rinadi. */
+.cq-actions>*:nth-child(2)::after{animation-delay:.25s}
+.cq-actions>*:nth-child(3)::after{animation-delay:.5s}
+.cq-actions>*:nth-child(4)::after{animation-delay:.75s}
+.cq-actions>*:nth-child(5)::after{animation-delay:1s}
+.cq-actions>*:nth-child(6)::after{animation-delay:1.25s}
+.cq-actions>*:nth-child(7)::after{animation-delay:1.5s}
+.cq-actions>*:nth-child(8)::after{animation-delay:1.75s}
+@keyframes cq-shine{
+  0%{left:-60%}
+  /* Yorug'lik o'tib bo'lgach uzoq PAUZA — takrorlanish bezovta
+     qilmasin. Shuning uchun 35% dan keyin kadr o'zgarmaydi. */
+  35%,100%{left:130%}
+}
+.cq-save{position:relative;overflow:hidden}
+.cq-save::after{
+  content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.32) 50%,transparent);
+  transform:skewX(-18deg);pointer-events:none;animation:cq-shine 4.6s ease-in-out infinite;animation-delay:2s
+}
+@media (prefers-reduced-motion:reduce){
+  .cq-actions a::after,.cq-actions button::after,.cq-save::after{animation:none;opacity:0}
+}
