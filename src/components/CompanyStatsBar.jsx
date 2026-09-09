@@ -4,7 +4,7 @@ import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
-import { shareLink } from '../lib/share.js';
+import ShareButton from './ShareButton.jsx';
 
 // Kompaniya profilidagi raqamlar qatori: nechta ko'rilgan, nechta
 // obunachi, va ulashish tugmasi.
@@ -17,7 +17,6 @@ export default function CompanyStatsBar({ company, onChange }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [shared, setShared] = useState(false);
 
   const isOwner = user && String(user.id) === String(company.ownerUserId);
   const url = `${window.location.origin}/c/${company.companyId.toLowerCase()}`;
@@ -34,17 +33,6 @@ export default function CompanyStatsBar({ company, onChange }) {
     } catch { /* jim tur */ } finally { setBusy(false); }
   };
 
-  const share = async () => {
-    // Telefonda tizimning o'z "ulashish" oynasi ochiladi (Telegram,
-    // WhatsApp, Instagram...), ish stolida esa havola nusxalanadi.
-    // Qaror `shareLink()` ichida — ba'zi ish stoli brauzerlarida
-    // (Yandex) tizim oynasi bo'm-bo'sh ochilib darhol yopiladi.
-    const res = await shareLink({ url, title: company.displayName, text: company.description || company.displayName });
-    if (res !== 'copied') return;
-    setShared(true);
-    setTimeout(() => setShared(false), 2000);
-  };
-
   return (
     <div className="cq-metrics">
       <div className="cq-metric"><b>{fmt(company.views || 0)}</b><small>{t('ko‘rildi')}</small></div>
@@ -55,9 +43,16 @@ export default function CompanyStatsBar({ company, onChange }) {
             {company.following ? t('Obuna bo‘lingan') : t('Obuna bo‘lish')}
           </button>
         )}
-        <button type="button" className="cq-share" onClick={share} aria-label={t('Ulashish')}>
-          {shared ? t('Havola nusxalandi') : `↗ ${t('Ulashish')}`}
-        </button>
+        {/* Saytdagi barcha "Ulashish" tugmalari bir xil: telefonda
+            tizim oynasi, ish stolida esa Telegram/WhatsApp/Facebook/X
+            menyusi (izohi src/components/ShareButton.jsx da). */}
+        <ShareButton
+          url={url}
+          title={company.displayName}
+          text={company.description || company.displayName}
+          label={t('Ulashish')}
+          className="cq-share"
+        />
       </div>
     </div>
   );

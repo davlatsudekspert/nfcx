@@ -31,7 +31,7 @@ import { IconShare, IconCheck, IconLink, IconCopy, IconTelegram, IconWhatsApp, I
 //   forceCopy — menyusiz, to'g'ridan-to'g'ri nusxalash tugmasi
 const NET_ICON = { telegram: IconTelegram, whatsapp: IconWhatsApp, facebook: IconFacebook, x: IconX };
 
-export default function ShareButton({ url, title, text, label, forceCopy = false, className = 'btn btn-ghost-vz btn-sm' }) {
+export default function ShareButton({ url, title, text, label, forceCopy = false, className = 'btn btn-ghost-vz btn-sm min-h-11' }) {
   const { t } = useLanguage();
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -110,7 +110,7 @@ export default function ShareButton({ url, title, text, label, forceCopy = false
         ref={btnRef}
         type="button"
         onClick={onClick}
-        className={`${className} min-h-11 gap-2`}
+        className={`${className} gap-2`}
         aria-haspopup={forceCopy ? undefined : 'menu'}
         aria-expanded={menu ? true : undefined}
         aria-label={label ? undefined : t(forceCopy ? 'Havolani nusxalash' : 'Ulashish')}

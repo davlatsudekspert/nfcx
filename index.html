@@ -40,9 +40,19 @@
     "logo": "https://nfcstore.uz/logo-512.png"
   }
   </script>
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/logo-192.png" />
+  <!-- SAYT BELGISI (favicon). `?v=` — BILA TURIB qo'yilgan: brauzerlar
+       favicon'ni juda uzoq eslab qoladi va fayl o'zgarsa ham eskisini
+       ko'rsatishda davom etadi (Yandex'da ayniqsa). Manzil o'zgarsa
+       yangisi majburan yuklanadi. Logotip yangilanganda bu raqamni ham
+       oshirish kerak.
+       `/favicon.ico` ALOHIDA kerak: brauzerlar uni sahifadagi teglardan
+       qat'i nazar o'zi so'raydi (xatcho'p, tarix, "asosiy ekranga
+       qo'shish"). U bo'lmasa SPA qoidasi bo'yicha index.html qaytardi va
+       brauzer rasmni ololmay eski nusxada qolardi. -->
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+  <link rel="icon" type="image/png" href="/favicon.png?v=3" sizes="96x96" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3" />
+  <link rel="manifest" href="/manifest.webmanifest?v=3" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="NFCSTORE" />

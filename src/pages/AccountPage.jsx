@@ -27,12 +27,12 @@ import { autoCropToContent, centerObject, removeBackground, whitenBackground, en
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { rememberFollowAs } from '../lib/followIdentity.js';
-import { shareLink } from '../lib/share.js';
+import ShareButton from '../components/ShareButton.jsx';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import {
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown, IconShare,
+  IconPhone, IconGlobe, IconTag, IconLink, IconChevronDown,
   IconCopy, IconImage, IconSupport, IconBell, IconChat, IconUser, IconCheck, IconStar,
 } from '../components/Icons.jsx';
 
@@ -3518,14 +3518,15 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={async () => {
-                const shareUrl = window.location.origin + '/' + card.code.toLowerCase();
-                // Tizim oynasi faqat u chindan ishlaydigan joyda ochiladi
-                // (ish stoli Yandex'da u bo'm-bo'sh ochilib yopilardi) —
-                // qaror `shareLink()` ichida.
-                const res = await shareLink({ url: shareUrl, title: form.name || card.code });
-                if (res === 'copied') setSaleMsg({ type: 'ok', text: t('Havola nusxalandi!') });
-              }}><IconShare width={14} height={14} /> {t('Ulashish')}</button>
+              {/* Saytdagi barcha "Ulashish" tugmalari bir xil: telefonda
+                  tizim oynasi, ish stolida Telegram/WhatsApp/Facebook/X
+                  menyusi (izohi src/components/ShareButton.jsx da). */}
+              <ShareButton
+                url={window.location.origin + '/' + card.code.toLowerCase()}
+                title={form.name || card.code}
+                label={t('Ulashish')}
+                className="btn btn-outline-gold btn-sm min-h-11"
+              />
               <button type="button" className="btn btn-ghost-vz btn-sm min-h-11" onClick={() => navigate('/' + card.code)}><IconEye width={14} height={14} /> {t("Profilni ko'rish")}</button>
             </div>
             {saleMsg && <div className={`alert py-2 text-sm ${saleMsg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(saleMsg.text)}</span></div>}

@@ -226,7 +226,7 @@ export default function NewsPage({ newsId = null }) {
                     title={pick(detail, 'title', lang)}
                     text={shareExcerpt(pick(detail, 'body', lang)) || t('NFCSTORE yangiligi')}
                     label={t('Ulashish')}
-                    className="btn btn-outline-gold btn-sm"
+                    className="btn btn-outline-gold btn-sm min-h-11"
                   />
                   {/* Bir bosishda nusxalash — yuqoridagi "Ulashish"
                       menyusini ochmasdan. Menyu ham, bu tugma ham hech
@@ -235,7 +235,7 @@ export default function NewsPage({ newsId = null }) {
                     url={newsUrl(detail.id)}
                     forceCopy
                     label={t('Havolani nusxalash')}
-                    className="btn btn-ghost-vz btn-sm"
+                    className="btn btn-ghost-vz btn-sm min-h-11"
                   />
                   <a href="/yangiliklar" onClick={(e) => go(e, '/yangiliklar')} className="btn btn-ghost-vz btn-sm">{t('Orqaga')}</a>
                 </div>
@@ -348,7 +348,7 @@ export default function NewsPage({ newsId = null }) {
                             url={newsUrl(item.id)}
                             title={pick(item, 'title', lang)}
                             text={shareExcerpt(body) || t('NFCSTORE yangiligi')}
-                            className="btn btn-ghost-vz btn-sm px-2"
+                            className="btn btn-ghost-vz btn-sm min-h-11 px-2"
                           />
                         </span>
                         <a href={href} onClick={(e) => go(e, href)} className="vz-tap inline-flex items-center rounded-full text-sm font-semibold" style={{ color: 'var(--vz-gold)' }}>

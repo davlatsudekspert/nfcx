@@ -13,7 +13,7 @@ import { listMyCompanies } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
-import { shareLink } from '../lib/share.js';
+import ShareButton from '../components/ShareButton.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -21,7 +21,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
 import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
 import {
-  IconArrowLeft, IconShare, IconCheck, IconSearch,
+  IconArrowLeft, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
   IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
 } from '../components/Icons.jsx';
@@ -1512,17 +1512,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     if (!isOwner && record && record.code) dbLogEvent(record.code, type, ref);
   };
 
-  // "Ulashish" tugmasi — telefonlarda tizimning ulashish oynasini
-  // ochadi (Telegram, WhatsApp, ...), ish stolida esa havolani
-  // nusxalaydi. Qaror `shareLink()` ichida: ba'zi ish stoli
-  // brauzerlarida (Yandex) tizim oynasi bo'm-bo'sh ochilib, darhol
-  // yopiladi — o'sha yerda izohi bor.
-  const shareProfile = async (url) => {
-    const res = await shareLink({ url, title: record ? record.name : 'NFCSTORE', text: t('Mening raqamli tashrif qog‘ozim') });
-    if (res === 'copied') flashToast(t('Havola nusxalandi!'));
-    else if (res === 'failed') flashToast(t('Nusxalab bo‘lmadi'));
-  };
-
   if (record === undefined) {
     return (
       <div className="min-h-screen text-[color:var(--vz-ink-dim)]" style={vzStyle('classic')}>
@@ -1695,7 +1684,15 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         </div>
         <div className="flex gap-1">
           <button title={t('Nusxalash')} aria-label={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          <button title={t('Ulashish')} aria-label={t('Ulashish')} onClick={() => shareProfile(`${window.location.origin}/${record.code.toLowerCase()}`)} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconShare /></button>
+          {/* Yangiliklardagi bilan AYNAN bir xil tugma: telefonda
+              tizim oynasi, ish stolida esa Telegram/WhatsApp/Facebook/X
+              menyusi. Avval bu yerda faqat nusxalash bo'lardi. */}
+          <ShareButton
+            url={`${window.location.origin}/${record.code.toLowerCase()}`}
+            title={record.name || 'NFCSTORE'}
+            text={t('Mening raqamli tashrif qog‘ozim')}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
+          />
         </div>
       </div>
 
