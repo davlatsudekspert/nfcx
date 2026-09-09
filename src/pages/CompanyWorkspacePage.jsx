@@ -102,7 +102,12 @@ export default function CompanyWorkspacePage({ companyId }) {
         {tab === 'settings' && <div className="cw-settings"><section><small>{t('COMPANY ID')}</small><h2>{company.companyId}</h2><p>{t('ID o‘zgarmaydi va shaxsiy NFC ID bilan aralashmaydi.')}</p></section><section><small>{t('NFC KARTAGA YOZILADIGAN URL')}</small><code>{window.location.origin}/c/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/c/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('KOMPANIYA PUBLIC URL')}</small><code>{window.location.origin}/company/{company.companyId.toLowerCase()}</code><button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/company/${company.companyId.toLowerCase()}`)}>{t('Nusxalash')}</button></section><section><small>{t('QR KOD')}</small><p>{t('NFC ishlamaydigan telefonlar uchun — kamera bilan skanerlansa ham sahifangiz ochiladi.')}</p><CompanyQrCard url={`${window.location.origin}/c/${company.companyId.toLowerCase()}`} fileName={`nfcstore-${company.companyId.toLowerCase()}`} /></section><CompanyDomainSection company={company} form={form} setForm={setForm} save={save} busy={busy} t={t} /><section className="warning"><small>{t('ESKI NFC ID')}</small><p>{company.sourceCardCode ? t('{code} dan ma’lumot nusxalangan. Asl profil o‘zgarmagan.', { code: company.sourceCardCode }) : t('Bu kompaniya hech bir shaxsiy NFC IDga bog‘lanmagan.')}</p></section></div>}
       </section>
 
-      <aside className="cw-preview"><div className="cw-preview-head"><div><span>{t('JONLI KO‘RISH')}</span><b>{t('Tezkor NFC profil')}</b></div><i>● {t('REAL VAQTDA')}</i></div><div className="cw-iphone"><div className="cw-phone-side left"/><div className="cw-phone-side right"/><div className="cw-phone-screen" style={{ backgroundImage:`linear-gradient(rgba(2,2,2,.42),rgba(2,2,2,.92)),url("${form.coverUrl || '/business-assets/market-interior.jpg'}")` }}><div className="cw-dynamic"><span/><i/></div><div className="cw-phone-status"><b>9:41</b><span>⌁ ▰</span></div><div className="cw-phone-id">◆ {company.companyId}</div><div className="cw-phone-logo">{form.logoUrl ? <img src={form.logoUrl} alt=""/> : form.displayName.slice(0,2).toUpperCase()}</div><h3>{form.displayName}</h3><p>{form.subcategory || form.category} · {form.city}</p><PhoneButtons form={form} t={t} /><div className="cw-phone-items">{topItems.length ? topItems.map((entry) => <div key={entry.id}><img src={entry.imageUrl || form.coverUrl || '/business-assets/market-phone.jpg'} alt=""/><span><b>{entry.name}</b><small>{Number(entry.price).toLocaleString('uz-UZ')} {t('so‘m')}</small></span></div>) : <div className="empty"><span><b>{t(cta.label)}</b><small>{t('Katalog elementlari shu yerda chiqadi')}</small></span></div>}</div><div className="cw-home-indicator"/></div></div><p>{t('Bu preview shaxsiy NFC kontakt kartasi emas. Kompaniya NFC kartasiga aynan shu quick profil yoziladi.')}</p></aside>
+      {/* JONLI KO'RINISH — endi haqiqiy /c/:id sahifasini takrorlaydi:
+          muqova butun ekranni egallaydi, tugmalar bir qatorga bitta va
+          o'rtada, ish vaqti belgisi, musiqa va "Kontaktni saqlash".
+          Avval bu preview eski ko'rinishda qolgan edi va egasi
+          kiritgan o'zgarishlarni ko'rsatmasdi. */}
+      <aside className="cw-preview"><div className="cw-preview-head"><div><span>{t('JONLI KO\u2018RISH')}</span><b>{t('Tezkor NFC profil')}</b></div><i>● {t('REAL VAQTDA')}</i></div><div className="cw-iphone"><div className="cw-phone-side left"/><div className="cw-phone-side right"/><div className="cw-phone-screen" style={{ backgroundImage:`linear-gradient(rgba(3,3,3,.62),rgba(3,3,3,.78) 38%,rgba(3,3,3,.92)),url("${form.coverUrl || '/business-assets/market-interior.jpg'}")` }}><div className="cw-dynamic"><span/><i/></div><div className="cw-phone-status"><b>9:41</b><span>⌁ ▰</span></div><div className="cw-phone-id">◆ {company.companyId}</div><div className="cw-phone-logo">{form.logoUrl ? <img src={form.logoUrl} alt=""/> : form.displayName.slice(0,2).toUpperCase()}</div><h3>{form.displayName}</h3><p>{form.subcategory || form.category} · {form.city}</p><PhoneHoursBadge form={form} t={t} /><PhoneButtons form={form} t={t} /><PhoneMusicRow form={form} t={t} /><div className="cw-phone-items">{topItems.length ? topItems.map((entry) => <div key={entry.id}><img src={entry.imageUrl || form.coverUrl || '/business-assets/market-phone.jpg'} alt=""/><span><b>{entry.name}</b><small>{Number(entry.price).toLocaleString('uz-UZ')} {t('so\u2018m')}</small></span></div>) : <div className="empty"><span><b>{t(cta.label)}</b><small>{t('Katalog elementlari shu yerda chiqadi')}</small></span></div>}</div><div className="cw-phone-save">{t('Kontaktni saqlash')}</div><div className="cw-home-indicator"/></div></div><p>{t('Bu preview shaxsiy NFC kontakt kartasi emas. Kompaniya NFC kartasiga aynan shu quick profil yoziladi.')}</p></aside>
     </div>{notice && <div className="cw-toast">{notice}</div>}
   </main>;
 }
@@ -267,7 +272,6 @@ function PhoneButtons({ form, t }) {
       {links.map((l) => (l.href
         ? <a key={l.key} href={l.href} target="_blank" rel="noopener noreferrer" className={l.primary ? 'primary' : ''}>{l.label}</a>
         : <span key={l.key}>{l.label}</span>))}
-      {(form.music || []).length > 0 && <span className="cw-phone-music">♪ {t('Musiqa')} · {(form.music || []).length}</span>}
     </div>
   );
 }
@@ -562,4 +566,25 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
       {notice && <div className="cw-toast" role="status">{notice}</div>}
     </div>
   );
+}
+
+// Preview uchun ish vaqti belgisi — haqiqiy sahifadagi CompanyHours
+// bilan bir xil ma'no, lekin `openNow` SERVERDAN keladi va tahrirlash
+// paytida hali yangilanmagan bo'lishi mumkin, shuning uchun bu yerda
+// faqat bugungi oraliq ko'rsatiladi.
+function PhoneHoursBadge({ form, t }) {
+  const week = normalizeHours(form.hours);
+  if (hoursEmpty(week)) return null;
+  const today = week[new Date().getDay()];
+  return (
+    <div className="cw-phone-hours">
+      <span />{today.closed ? t('Bugun yopiq') : `${today.open}\u2013${today.close}`}
+    </div>
+  );
+}
+
+function PhoneMusicRow({ form, t }) {
+  const n = (form.music || []).length;
+  if (!n) return null;
+  return <div className="cw-phone-music-row"><i>▶</i><span><b>{form.displayName}</b><small>{t('Musiqa')}{n > 1 ? ` \u00b7 ${n}` : ''}</small></span></div>;
 }

@@ -5201,23 +5201,75 @@ async function uploadApi(request, env, pathname) {
       return json({ error: 'bad_file' }, 422);
     }
 
-    const uploadStream = new ReadableStream({
-      start(controller) { if (headLen) controller.enqueue(headBytes); if (ended) controller.close(); },
-      async pull(controller) {
-        if (ended) { controller.close(); return; }
-        const { done, value } = await reader.read();
-        if (done) { ended = true; controller.close(); return; }
-        controller.enqueue(value);
-      },
-      cancel(reason) { return reader.cancel(reason); },
-    });
-
     const filename = `story_${uploadRandomHex(12)}.${sniffed.ext}`;
     if (!env.UPLOADS) return json({ error: 'r2_unavailable' }, 503);
-    await env.UPLOADS.put(`uploads/${filename}`, uploadStream, {
+    const meta = {
       httpMetadata: { contentType: sniffed.type, cacheControl: UPLOAD_CACHE_CONTROL },
       customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
-    });
+    };
+
+    // R2 ga YOZISH.
+    //
+    // Bu yerda avval o'zimiz qurgan `ReadableStream` uzatilgan edi va
+    // PRODUCTION'da ishlamadi: R2 oqimni qabul qilishi uchun uning
+    // UZUNLIGI ma'lum bo'lishi kerak, qo'lda qurilgan oqimda esa u
+    // yo'q. Test o'tardi, chunki mock istalgan oqimni yutardi —
+    // ya'ni test haqiqiy cheklovni tekshirmagan.
+    //
+    // Endi ikki yo'l:
+    //   kichik fayl  -> baytlarni yig'ib bitta `put()` (uzunlik ma'lum);
+    //   katta fayl   -> R2 MULTIPART: bo'laklab yuboriladi va xotirada
+    //                   bir vaqtda faqat BITTA bo'lak turadi.
+    // Shunday qilib 100 MB ham 128 MB lik izolyatga bemalol sig'adi.
+    const PART = 8 * 1024 * 1024; // R2 minimal bo'lak 5 MiB (oxirgisidan tashqari)
+    const chunks = headLen ? [headBytes] : [];
+    let pending = headLen;
+    let total = headLen;
+    let multipart = null;
+    const parts = [];
+
+    const joinPending = () => {
+      const out = new Uint8Array(pending);
+      let off = 0;
+      for (const c of chunks) { out.set(c, off); off += c.length; }
+      chunks.length = 0; pending = 0;
+      return out;
+    };
+
+    try {
+      while (!ended) {
+        const { done, value } = await reader.read();
+        if (done) { ended = true; break; }
+        const part = new Uint8Array(value);
+        total += part.length;
+        // Yolg'on `content-length` bilan chegarani aylanib o'tib
+        // bo'lmasin — haqiqiy hajm ham sanaladi.
+        if (total > STORY_MEDIA_MAX_BYTES) {
+          await reader.cancel().catch(() => {});
+          if (multipart) await multipart.abort().catch(() => {});
+          return json({ error: 'too_large', limitMb: 100 }, 413);
+        }
+        chunks.push(part); pending += part.length;
+        if (pending >= PART) {
+          if (!multipart) multipart = await env.UPLOADS.createMultipartUpload(`uploads/${filename}`, meta);
+          const body = joinPending();
+          parts.push(await multipart.uploadPart(parts.length + 1, body));
+        }
+      }
+
+      if (multipart) {
+        // Oxirgi bo'lak 5 MiB dan kichik bo'lishi mumkin — bu ruxsat etilgan.
+        if (pending) parts.push(await multipart.uploadPart(parts.length + 1, joinPending()));
+        await multipart.complete(parts);
+      } else {
+        await env.UPLOADS.put(`uploads/${filename}`, joinPending(), meta);
+      }
+    } catch (error) {
+      if (multipart) await multipart.abort().catch(() => {});
+      console.error('upload-media', error?.message);
+      return json({ error: 'upload_failed' }, 500);
+    }
+
     return json({ url: `/uploads/${filename}`, kind: sniffed.type.startsWith('video/') ? 'video' : 'image' });
   }
 

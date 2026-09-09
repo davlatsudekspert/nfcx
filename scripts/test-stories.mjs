@@ -157,6 +157,27 @@ check('7b) video istorya joylandi', vidStory.status, 201);
 await env.DB.prepare(`DELETE FROM stories WHERE owner_id = 'VIP001'`).run();
 await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'VIP001'`).run();
 
+// KATTA FAYL — multipart yo'li. Bu eng muhim tekshiruv: production'da
+// aynan shu joyda yiqilgan edi (R2 uzunligi noma'lum oqimni rad etadi),
+// mock esa uni yutib yuborardi.
+const bigLen = 20 * 1024 * 1024 + 12345;
+const bigJpeg = new Uint8Array(bigLen);
+bigJpeg.set([0xff, 0xd8, 0xff, 0xe0], 0);
+// Bo'laklar TO'G'RI tartibda yig'ilganini tekshirish uchun belgi
+// qo'yamiz: mazmun buzilsa yoki bo'lak tushib qolsa, bu bilinadi.
+for (let i = 0; i < bigLen; i += 1) bigJpeg[i] = bigJpeg[i] || (i % 251);
+const upBig = await upload(bigJpeg, 'image/jpeg');
+check('7b) 20 MB fayl yuklandi (multipart)', upBig.status, 200);
+const stored = env.UPLOADS._store.get(`uploads/${upBig.body.url.split('/').pop()}`);
+check('7b) hajmi to‘liq saqlandi', stored?.bytes.length, bigLen);
+checkTrue('7b) mazmun buzilmagan', stored && stored.bytes[0] === 0xff && stored.bytes[bigLen - 1] === bigJpeg[bigLen - 1]
+  && stored.bytes[9 * 1024 * 1024] === bigJpeg[9 * 1024 * 1024]);
+
+// Yolg'on `content-length` bilan chegarani aylanib o'tib bo'lmaydi:
+// haqiqiy hajm ham sanaladi.
+const liar = await upload(bigJpeg, 'image/jpeg', { len: 10 });
+checkTrue('7b) yolg‘on content-length chegarani chetlab o‘tmaydi', liar.status === 200 || liar.status === 413);
+
 // ── 8) LENTA (obuna bo'lganlar istoryasi) ────────────────────────────
 // Kirmagan odam bo'sh lenta oladi (xato emas — vidjet o'zini chizmaydi).
 check('8) kirmagan uchun bo‘sh', (await j('/api/stories/feed')).body.feed, []);

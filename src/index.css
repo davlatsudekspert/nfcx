@@ -962,24 +962,39 @@ footer .fgrid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:2
   .glass-panel{ padding:11px 11px 12px 14px; }
 }
 
-/* ── ISTORYA (2026-09) ───────────────────────────────────────────────
-   Halqa profil rasmini O'RAB oladi: rasmning o'zi har sahifada boshqa
-   o'lchamda, shuning uchun halqa `inset` bo'yicha moslashadi va hech
-   qanday qat'iy o'lcham yozilmagan. */
-.story-ring{position:relative;display:inline-flex;padding:0;border:0;background:none;cursor:pointer;line-height:0;z-index:10}
+/* ── ISTORYA HALQASI (2026-09) ────────────────────────────────────────
+   Instagram kabi: profil rasmi atrofida aylanib turuvchi rangli halqa.
+
+   Avval halqa `mask` bilan chizilgan edi va saytda KO'RINMADI. Endi
+   mask umuman ishlatilmaydi: rangli doira rasmning ORQASIDA, undan
+   bir oz kattaroq qilib chiziladi — rasmning o'zi esa xira emas,
+   shuning uchun faqat chetdagi halqa ko'rinadi. Bu har qanday
+   brauzerda ishlaydi.
+
+   Shakl rasmga moslashadi: dumaloq avatar uchun 50%, kompaniya
+   logotipi kabi yumaloq-kvadrat uchun `--ring-radius` beriladi. Aks
+   holda dumaloq halqa kvadrat logotip burchaklaridan chiqib turardi. */
+.story-ring{position:relative;display:inline-flex;padding:0;border:0;background:none;cursor:pointer;line-height:0}
+.story-ring>*{position:relative;z-index:1}
 .story-ring-glow{
-  position:absolute;inset:-7px;border-radius:999px;pointer-events:none;
-  background:conic-gradient(from 180deg,#efc45a,#ff7a45,#e04ea0,#8b5cf6,#3fa9ff,#efc45a);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3.5px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3.5px));
-  animation:story-spin 7s linear infinite
+  position:absolute;inset:-6px;z-index:0;pointer-events:none;
+  border-radius:var(--ring-radius,50%);
+  background:conic-gradient(from 0deg,#ffd76e,#ff7a45,#e04ea0,#8b5cf6,#3fa9ff,#ffd76e);
+  animation:story-spin 6s linear infinite;
+  box-shadow:0 0 18px rgba(255,160,60,.35)
+}
+/* Rangli doira bilan rasm orasidagi ingichka qora bo'shliq — halqa
+   "yopishib" qolmasin, Instagram'dagi kabi ajralib tursin. */
+.story-ring::before{
+  content:'';position:absolute;inset:-2px;z-index:0;pointer-events:none;
+  border-radius:var(--ring-radius,50%);background:#08080a
 }
 @keyframes story-spin{to{transform:rotate(1turn)}}
 @media (prefers-reduced-motion:reduce){.story-ring-glow{animation:none}}
 .story-ring-count{
-  position:absolute;right:-2px;bottom:-2px;min-width:20px;height:20px;padding:0 5px;
+  position:absolute;right:-4px;bottom:-4px;z-index:2;min-width:20px;height:20px;padding:0 5px;
   display:grid;place-items:center;border-radius:999px;background:#0b0b0a;color:#f0cf7b;
-  border:1px solid rgba(239,196,90,.5);font:700 11px/1 system-ui;pointer-events:none
+  border:1px solid rgba(239,196,90,.55);font:700 11px/1 system-ui;pointer-events:none
 }
 
 /* To'liq ekranli ko'ruvchi */

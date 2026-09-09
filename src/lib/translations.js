@@ -2742,6 +2742,21 @@ const DICT_HOME = {
   'Bu format qo‘llab-quvvatlanmaydi (JPG, PNG, WEBP, GIF, MP4, WEBM).': {
     ru: 'Этот формат не поддерживается (JPG, PNG, WEBP, GIF, MP4, WEBM).',
     en: 'This format is not supported (JPG, PNG, WEBP, GIF, MP4, WEBM).' },
+  // ── Karta fonlari va jonli ko'rinish (2026-09) ──
+  'Tayyor fonlar': { ru: 'Готовые фоны', en: 'Ready-made backgrounds' },
+  'Yoki tayyor fonlardan tanlang': { ru: 'Или выберите готовый фон', en: 'Or pick a ready-made background' },
+  'Shahar manzarasi — oltin chizma': { ru: 'Городская панорама — золотая графика', en: 'City skyline — gold line art' },
+  'Samarqand': { ru: 'Самарканд', en: 'Samarkand' },
+  'Buxoro': { ru: 'Бухара', en: 'Bukhara' },
+  'Xiva': { ru: 'Хива', en: 'Khiva' },
+  'Dubay': { ru: 'Дубай', en: 'Dubai' },
+  'Istanbul': { ru: 'Стамбул', en: 'Istanbul' },
+  'Parij': { ru: 'Париж', en: 'Paris' },
+  'Nyu-York': { ru: 'Нью-Йорк', en: 'New York' },
+  'Kompaniya NFC kartangizning bosma ko‘rinishi. Tayyor fonlardan tanlang yoki o‘z rasmingizni yuklang.': {
+    ru: 'Печатный вид NFC-карты вашей компании. Выберите готовый фон или загрузите своё изображение.',
+    en: 'The print design of your company NFC card. Pick a ready-made background or upload your own.' },
+  'Bugun yopiq': { ru: 'Сегодня закрыто', en: 'Closed today' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };
