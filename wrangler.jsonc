@@ -58,27 +58,20 @@
     // dist/server pastki papkalari ham bor — ularni Cloudflare'ga
     // statik aktiv sifatida yubormaslik uchun aynan dist/client tanlangan).
     "directory": "./dist/client",
-    "not_found_handling": "single-page-application",
-    // ULASHISH KARTOCHKASI UCHUN — WORKER BIRINCHI (2026-09).
+    "not_found_handling": "single-page-application"
+    // DIQQAT — BU YERGA `run_worker_first` QO'SHMANG (2026-09-09).
     //
-    // Muammo: `single-page-application` rejimida hech qanday faylga mos
-    // kelmagan sahifa so'rovi (masalan /yangiliklar/6) STATIK xizmat
-    // tomonidan to'g'ridan-to'g'ri index.html bilan javob berilishi
-    // mumkin — Worker umuman ishga tushmaydi. Brauzer uchun farqi yo'q
-    // (SPA baribir ochiladi), lekin Telegram/WhatsApp/Facebook robotlari
-    // uchun bor: ular JavaScript ishlatmaydi va faqat HTML ichidagi meta
-    // teglarni o'qiydi. Natijada har qanday yangilik havolasi bir xil
-    // UMUMIY kartochka bilan (yoki umuman kartochkasiz) ulashilardi.
+    // Yangilik havolasining Telegram kartochkasi uchun bu yerga
+    // `"run_worker_first": ["/yangiliklar/*"]` qo'shib ko'rildi va sayt
+    // DARHOL ISHDAN CHIQDI: ro'yxat berilganda Cloudflare FAQAT
+    // ro'yxatdagi yo'llarni Worker'ga yuboradi, qolgani (jumladan
+    // `/api/*`) statik xizmatga tushadi va SPA qoidasi bo'yicha
+    // index.html qaytadi. Natijada har bir API so'rovi JSON o'rniga HTML
+    // olardi: yangiliklar "yo'q" bo'lib ko'rindi va foydalanuvchilar
+    // tizimdan chiqib ketdi.
     //
-    // `run_worker_first` shu yo'llar uchun Worker'ni MAJBURAN birinchi
-    // ishga tushiradi — u esa `newsShellResponse()` bilan aynan shu
-    // maqolaning sarlavhasi, matni va rasmini meta teglarga yozib
-    // qaytaradi.
-    //
-    // XAVFSIZ: ro'yxatdagi yo'llar uchun ham oxir-oqibat o'sha SPA
-    // qobig'i beriladi (worker.js oxirida `env.ASSETS.fetch` zaxirasi
-    // bor), qolgan hamma yo'l esa avvalgidek statikadan tez ketaveradi.
-    "run_worker_first": ["/yangiliklar/*"]
+    // Agar kelajakda kerak bo'lsa — ro'yxatda `/api/*` ham BO'LISHI
+    // SHART, va o'zgarish production'da darhol tekshirilishi kerak.
   },
   // Mavjud production D1/R2 resurslari — hosting/worker.js env.DB va
   // env.UPLOADS orqali ishlatadi. Bular AVVAL bu faylda yozilmagan edi

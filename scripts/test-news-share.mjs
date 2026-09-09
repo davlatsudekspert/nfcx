@@ -119,24 +119,20 @@ checkTrue('teglar yo‘q bo‘lsa ham qo‘shiladi', injected.includes('property
 checkTrue('sarlavhadagi qo‘shtirnoq ekranlangan', injected.includes('&quot;qo\'shtirnoq&quot;'));
 checkTrue('<title> almashtirildi', !injected.includes('<title>Eski</title>'));
 
-// ── KONFIGURATSIYA: /yangiliklar/* WORKER'GA TUSHISHI SHART ──────────
-// Meta teglarni Worker yozadi. Lekin Cloudflare'ning statik xizmati
-// `single-page-application` rejimida faylga mos kelmagan sahifa
-// so'rovini O'ZI index.html bilan qaytarib yuborishi mumkin — bunda
-// Worker umuman ishga tushmaydi va yuqoridagi hamma tekshiruv
-// "yashil" bo'lgani holda ROBOT umumiy kartochkani ko'radi.
+// ── KONFIGURATSIYA: `run_worker_first` QO'YILMAGAN BO'LSIN ───────────
+// 2026-09-09 da bu yerga ["/yangiliklar/*"] qo'shilib, sayt darhol
+// ishdan chiqdi: ro'yxat berilganda Cloudflare FAQAT ro'yxatdagi
+// yo'llarni Worker'ga yuboradi, qolgani — jumladan `/api/*` — statik
+// xizmatga tushib, SPA qoidasi bo'yicha index.html qaytardi. Har bir
+// API so'rovi JSON o'rniga HTML olardi.
 //
-// Shuning uchun sozlamaning o'zi ham test bilan qo'riqlanadi:
-// `run_worker_first` ro'yxati yangilik yo'lini qamrab olishi shart.
+// Shuning uchun test endi TESKARI narsani qo'riqlaydi: ro'yxat bo'lsa,
+// unda `/api/*` ham bo'lishi SHART.
 const wrangler = JSON.parse(
   readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8').replace(/^[ \t]*\/\/.*$/gm, ''),
 );
 const firstRoutes = wrangler.assets?.run_worker_first;
-checkTrue('sozlamada run_worker_first bor', Array.isArray(firstRoutes) && firstRoutes.length > 0);
-checkTrue('/yangiliklar/... Worker\'ga tushadi', (firstRoutes || []).some((r) => {
-  // "/yangiliklar/*" kabi naqsh — oddiy prefiks tekshiruvi yetarli.
-  const prefix = String(r).replace(/\*+$/, '');
-  return '/yangiliklar/6'.startsWith(prefix);
-}));
+checkTrue('run_worker_first yo‘q, yoki /api/* ni ham qamraydi',
+  firstRoutes === undefined || (Array.isArray(firstRoutes) && firstRoutes.some((r) => String(r).startsWith('/api/'))));
 
 done();
