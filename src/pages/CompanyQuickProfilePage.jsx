@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { directionsUrl, hasCoords, yandexDirectionsUrl } from '../lib/mapLink.js';
 import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
+import CompanyHours from '../components/CompanyHours.jsx';
+import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
-import { companyCta, getCompany } from '../lib/company.js';
+import { companyCta, companyEvent, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
@@ -32,6 +34,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const [error, setError] = useState(null);
   // Karta raqami nusxalangani haqidagi qisqa bildirish.
   const [copied, setCopied] = useState(false);
+  const [orderItem, setOrderItem] = useState(null);
 
   const load = useCallback(() => {
     let live = true;
@@ -48,6 +51,12 @@ export default function CompanyQuickProfilePage({ companyId }) {
   }, [companyId]);
 
   useEffect(() => load(), [load]);
+
+  // NFC tegish — egasi uchun eng muhim raqam. Ma'lumot kelgach bir
+  // marta sanaladi (yiqilgan so'rov statistikani shishirmasin).
+  useEffect(() => {
+    if (company?.companyId) companyEvent(company.companyId, 'view');
+  }, [company?.companyId]);
 
   const cta = companyCta(company?.category);
   const items = useMemo(() => (company?.catalog || []).filter((item) => item.available !== false).slice(0, 4), [company]);
@@ -105,15 +114,17 @@ export default function CompanyQuickProfilePage({ companyId }) {
           <p className="cq-description break-words">{company.description || t('Kompaniya haqida qisqa ma’lumot.')}</p>
         </section>
 
-        <section className="cq-actions">
-          {company.phone && <a className="primary vz-tap" href={contactUrl('phone', company.phone)}><IconPhone width={14} height={14} aria-hidden="true" />&nbsp;{t('Qo‘ng‘iroq')}</a>}
-          {company.telegram && <a className="vz-tap" href={contactUrl('telegram', company.telegram)} target="_blank" rel="noreferrer"><IconTelegram width={14} height={14} aria-hidden="true" />&nbsp;Telegram</a>}
-          {company.whatsapp && <a className="vz-tap" href={contactUrl('whatsapp', company.whatsapp)} target="_blank" rel="noreferrer">WhatsApp</a>}
-          {company.instagram && <a className="vz-tap" href={socialUrl('ig', company.instagram)} target="_blank" rel="noreferrer">Instagram</a>}
-          {company.facebook && <a className="vz-tap" href={socialUrl('fb', company.facebook)} target="_blank" rel="noreferrer">Facebook</a>}
-          {company.website && <a className="vz-tap" href={contactUrl('website', company.website)} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Veb-sayt')}</a>}
-          {mapUrl && <a className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Yo‘nalish olish')}</a>}
-          {geo && <a className="vz-tap" href={yandexDirectionsUrl(company)} target="_blank" rel="noreferrer">{t('Yandex Karta')}</a>}
+        <CompanyHours hours={company.hours} openNow={company.openNow} compact />
+
+        <section className="cq-actions" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
+          {company.phone && <a data-ev="phone" className="primary vz-tap" href={contactUrl('phone', company.phone)}><IconPhone width={14} height={14} aria-hidden="true" />&nbsp;{t('Qo‘ng‘iroq')}</a>}
+          {company.telegram && <a data-ev="telegram" className="vz-tap" href={contactUrl('telegram', company.telegram)} target="_blank" rel="noreferrer"><IconTelegram width={14} height={14} aria-hidden="true" />&nbsp;Telegram</a>}
+          {company.whatsapp && <a data-ev="whatsapp" className="vz-tap" href={contactUrl('whatsapp', company.whatsapp)} target="_blank" rel="noreferrer">WhatsApp</a>}
+          {company.instagram && <a data-ev="instagram" className="vz-tap" href={socialUrl('ig', company.instagram)} target="_blank" rel="noreferrer">Instagram</a>}
+          {company.facebook && <a data-ev="facebook" className="vz-tap" href={socialUrl('fb', company.facebook)} target="_blank" rel="noreferrer">Facebook</a>}
+          {company.website && <a data-ev="website" className="vz-tap" href={contactUrl('website', company.website)} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Veb-sayt')}</a>}
+          {mapUrl && <a data-ev="directions" className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Yo‘nalish olish')}</a>}
+          {geo && <a data-ev="yandex" className="vz-tap" href={yandexDirectionsUrl(company)} target="_blank" rel="noreferrer">{t('Yandex Karta')}</a>}
           {/* KARTA RAQAMI — havola emas, bosilganda nusxalanadi. */}
           {company.cardNumber && (
             <button
@@ -137,13 +148,14 @@ export default function CompanyQuickProfilePage({ companyId }) {
           <section className="cq-offers" id="catalog">
             <div className="cq-section-head"><div><span>01</span><h2>{t(cta.noun)}</h2></div><button type="button" className="vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}#catalog`)}>{t(cta.label)} →</button></div>
             <div className="cq-item-grid">
-              {items.map((item) => <article key={item.id} className="min-w-0"><img src={item.imageUrl || company.coverUrl || fallbackCover} alt="" /><div><b className="break-words">{item.name}</b><p>{item.description || item.category}</p><strong>{fmt(item.price)} {t('so‘m')}</strong></div></article>)}
+              {items.map((item) => <article key={item.id} className="min-w-0"><img src={item.imageUrl || company.coverUrl || fallbackCover} alt="" /><div><b className="break-words">{item.name}</b><p>{item.description || item.category}</p><strong>{fmt(item.price)} {t('so‘m')}</strong>{company.ordersEnabled && <button type="button" className="cq-order-btn vz-tap" onClick={() => { companyEvent(company.companyId, 'item', String(item.id)); setOrderItem(item); }}>{t('Buyurtma berish')}</button>}</div></article>)}
             </div>
           </section>
         )}
 
         <button type="button" className="cq-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya saytini to‘liq ochish')} <span>↗</span></button>
         <footer><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></footer>
+        {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
       </div>
     </main>
   );

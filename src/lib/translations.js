@@ -2572,6 +2572,118 @@ const DICT_HOME = {
   'Aloqa bo‘limini to‘ldiring — tugmalar shu yerda chiqadi': {
     ru: 'Заполните раздел «Контакты» — кнопки появятся здесь',
     en: 'Fill in the Contact section — the buttons appear here' },
+
+  // ── Kompaniya: ish vaqti, statistika, buyurtmalar, QR, o‘z domeni (2026-09) ──
+  'Yakshanba': { ru: 'Воскресенье', en: 'Sunday' },
+  'Dushanba': { ru: 'Понедельник', en: 'Monday' },
+  'Seshanba': { ru: 'Вторник', en: 'Tuesday' },
+  'Chorshanba': { ru: 'Среда', en: 'Wednesday' },
+  'Payshanba': { ru: 'Четверг', en: 'Thursday' },
+  'Juma': { ru: 'Пятница', en: 'Friday' },
+  'Shanba': { ru: 'Суббота', en: 'Saturday' },
+  'Yak': { ru: 'Вс', en: 'Sun' },
+  'Du': { ru: 'Пн', en: 'Mon' },
+  'Se': { ru: 'Вт', en: 'Tue' },
+  'Chor': { ru: 'Ср', en: 'Wed' },
+  'Pay': { ru: 'Чт', en: 'Thu' },
+  'Ju': { ru: 'Пт', en: 'Fri' },
+  'Sha': { ru: 'Сб', en: 'Sat' },
+  'Ish vaqti': { ru: 'Часы работы', en: 'Opening hours' },
+  'Ish vaqtini qo‘shish': { ru: 'Добавить часы работы', en: 'Add opening hours' },
+  'Ish vaqtini olib tashlash': { ru: 'Убрать часы работы', en: 'Remove opening hours' },
+  'Hozir ochiq': { ru: 'Сейчас открыто', en: 'Open now' },
+  'Hozir yopiq': { ru: 'Сейчас закрыто', en: 'Closed now' },
+  'Yopiq': { ru: 'Закрыто', en: 'Closed' },
+  'Vaqt Toshkent bo‘yicha': { ru: 'Время по Ташкенту', en: 'Times are Tashkent time' },
+  'Sahifangizda “Hozir ochiq / yopiq” deb ko‘rinadi. Vaqt Toshkent bo‘yicha.': {
+    ru: 'На вашей странице показывается «Сейчас открыто / закрыто». Время по Ташкенту.',
+    en: 'Your page shows "Open now / Closed". Times are Tashkent time.' },
+  // Statistika
+  'Sahifangiz necha marta ochilgan va qaysi tugmalar bosilgan.': {
+    ru: 'Сколько раз открывали вашу страницу и какие кнопки нажимали.',
+    en: 'How often your page was opened and which buttons were tapped.' },
+  'OCHILISHLAR': { ru: 'ОТКРЫТИЙ', en: 'OPENS' },
+  'TUGMA BOSILDI': { ru: 'НАЖАТИЙ', en: 'BUTTON TAPS' },
+  'BUYURTMALAR': { ru: 'ЗАКАЗЫ', en: 'ORDERS' },
+  'NFC tegish va havola': { ru: 'NFC-касания и ссылки', en: 'NFC taps and links' },
+  'Qo‘ng‘iroq, Telegram, yo‘nalish…': { ru: 'Звонок, Telegram, маршрут…', en: 'Call, Telegram, directions…' },
+  'Kunlik ochilishlar': { ru: 'Открытия по дням', en: 'Opens per day' },
+  'Tugmalar': { ru: 'Кнопки', en: 'Buttons' },
+  'Eng ko‘p qaralgan': { ru: 'Самое просматриваемое', en: 'Most viewed' },
+  'Hali hech kim bosmagan.': { ru: 'Пока никто не нажимал.', en: 'Nobody has tapped yet.' },
+  'Hozircha yo‘q.': { ru: 'Пока пусто.', en: 'Nothing yet.' },
+  'Hozircha ma’lumot yo‘q. Kartangiz birinchi marta ishlatilganda shu yerda ko‘rinadi.': {
+    ru: 'Данных пока нет. Они появятся, когда картой воспользуются впервые.',
+    en: 'No data yet. It appears once your card is used for the first time.' },
+  'Statistikani yuklab bo‘lmadi.': { ru: 'Не удалось загрузить статистику.', en: 'Could not load the statistics.' },
+  // Buyurtmalar
+  'Buyurtma berish': { ru: 'Заказать', en: 'Order' },
+  'Buyurtmangiz yuborildi': { ru: 'Ваш заказ отправлен', en: 'Your order was sent' },
+  'Kompaniya tez orada siz bilan bog‘lanadi. To‘lov va yetkazib berish kompaniya bilan kelishiladi.': {
+    ru: 'Компания скоро свяжется с вами. Оплата и доставка обсуждаются с компанией.',
+    en: 'The company will contact you shortly. Payment and delivery are arranged with the company.' },
+  'Ismingiz': { ru: 'Ваше имя', en: 'Your name' },
+  'Telefon raqamingiz': { ru: 'Ваш номер телефона', en: 'Your phone number' },
+  'Soni': { ru: 'Количество', en: 'Quantity' },
+  'Izoh (ixtiyoriy)': { ru: 'Комментарий (необязательно)', en: 'Note (optional)' },
+  'To‘lov saytda amalga oshirilmaydi — kompaniya siz bilan bog‘lanadi.': {
+    ru: 'Оплата на сайте не производится — компания свяжется с вами.',
+    en: 'Payment does not happen on the site — the company will contact you.' },
+  'Ism va telefon raqamini to‘g‘ri kiriting.': { ru: 'Укажите имя и корректный номер телефона.', en: 'Enter a name and a valid phone number.' },
+  'Bu kompaniya hozircha saytdan buyurtma qabul qilmaydi.': {
+    ru: 'Эта компания пока не принимает заказы через сайт.',
+    en: 'This company is not accepting orders through the site yet.' },
+  'Yuborib bo‘lmadi. Qayta urinib ko‘ring.': { ru: 'Не удалось отправить. Попробуйте ещё раз.', en: 'Could not send. Please try again.' },
+  'Buyurtmalarni yuklab bo‘lmadi.': { ru: 'Не удалось загрузить заказы.', en: 'Could not load the orders.' },
+  'Hozircha buyurtma yo‘q.': { ru: 'Пока заказов нет.', en: 'No orders yet.' },
+  'Umumiy so‘rov': { ru: 'Общий запрос', en: 'General request' },
+  'Saytdan buyurtma qabul qilish': { ru: 'Принимать заказы через сайт', en: 'Accept orders from the site' },
+  'Yoqilsa, katalogdagi har bir mahsulotda “Buyurtma berish” tugmasi chiqadi.': {
+    ru: 'Если включено, у каждой позиции каталога появится кнопка «Заказать».',
+    en: 'When on, every catalog item gets an "Order" button.' },
+  'Mijoz katalogdan buyurtma bersa shu yerga tushadi va Telegramingizga xabar keladi.': {
+    ru: 'Заказы из каталога попадают сюда, а вам приходит уведомление в Telegram.',
+    en: 'Orders from the catalog land here and you get a Telegram notification.' },
+  'Telegramda xabar olish uchun akkauntingiz botga ulangan bo‘lishi kerak.': {
+    ru: 'Чтобы получать уведомления в Telegram, аккаунт должен быть привязан к боту.',
+    en: 'To get Telegram notifications your account must be linked to the bot.' },
+  'Yangi': { ru: 'Новый', en: 'New' },
+  'Bajarildi': { ru: 'Выполнен', en: 'Done' },
+  'Bekor qilingan': { ru: 'Отменён', en: 'Cancelled' },
+  // QR
+  'QR KOD': { ru: 'QR-КОД', en: 'QR CODE' },
+  'QR kod': { ru: 'QR-код', en: 'QR code' },
+  'QR kodni yuklab olish': { ru: 'Скачать QR-код', en: 'Download QR code' },
+  'QR kodni chizib bo‘lmadi.': { ru: 'Не удалось построить QR-код.', en: 'Could not render the QR code.' },
+  'NFC ishlamaydigan telefonlar uchun — kamera bilan skanerlansa ham sahifangiz ochiladi.': {
+    ru: 'Для телефонов без NFC — страница откроется и при сканировании камерой.',
+    en: 'For phones without NFC — the page also opens when scanned with a camera.' },
+  'Chop etib stolga yoki vitrinaga qo‘ying — kamera bilan skanerlansa sahifangiz ochiladi.': {
+    ru: 'Распечатайте и поставьте на стол или витрину — при сканировании откроется ваша страница.',
+    en: 'Print it for a table or window — scanning it opens your page.' },
+  // O'z domeni
+  'O‘Z DOMENINGIZ': { ru: 'ВАШ ДОМЕН', en: 'YOUR OWN DOMAIN' },
+  'Sahifangiz o‘z domeningizda ochilsin: menu.kompaniya.uz': {
+    ru: 'Пусть страница открывается на вашем домене: menu.kompaniya.uz',
+    en: 'Serve your page on your own domain: menu.kompaniya.uz' },
+  'Domeningiz DNS sozlamasida CNAME yozuvini nfcstore.uz ga yo‘naltiring.': {
+    ru: 'В DNS вашего домена направьте CNAME на nfcstore.uz.',
+    en: 'In your domain\u2019s DNS, point a CNAME to nfcstore.uz.' },
+  'Domenni shu yerga yozib saqlang.': { ru: 'Впишите домен здесь и сохраните.', en: 'Enter the domain here and save.' },
+  'Admin tekshirib tasdiqlaydi — shundan so‘ng sahifangiz o‘sha manzilda ochiladi.': {
+    ru: 'Администратор проверит и подтвердит — после этого страница откроется по этому адресу.',
+    en: 'An admin verifies and approves it — after that your page opens at that address.' },
+  'Tekshiruvda': { ru: 'На проверке', en: 'Under review' },
+  'Kompaniya domenlari': { ru: 'Домены компаний', en: 'Company domains' },
+  'Domen': { ru: 'Домен', en: 'Domain' },
+  'Domenni faollashtirish': { ru: 'Активировать домен', en: 'Activate domain' },
+  'Domenni rad etish': { ru: 'Отклонить домен', en: 'Reject domain' },
+  'Sabab (egasiga ko‘rinadi)': { ru: 'Причина (видна владельцу)', en: 'Reason (visible to the owner)' },
+  'Hozircha so‘rov yo‘q.': { ru: 'Пока нет заявок.', en: 'No requests yet.' },
+  'Faollashtirishdan oldin: egasining CNAME yozuvi nfcstore.uz ga yo‘naltirilgan va Cloudflare’da Custom Hostname qo‘shilgan bo‘lishi kerak.': {
+    ru: 'Перед активацией: CNAME владельца должен указывать на nfcstore.uz, а в Cloudflare добавлен Custom Hostname.',
+    en: 'Before activating: the owner\u2019s CNAME must point to nfcstore.uz and a Custom Hostname must be added in Cloudflare.' },
+  '{n} kun': { ru: '{n} дн.', en: '{n} days' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

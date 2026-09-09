@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import CloseButton from './CloseButton.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { domainCompanyId, usePathRoute } from '../lib/router.js';
+
+// Foydalanuvchi kompaniya sahifasida turgan bo'lsa — yordamchi o'sha
+// kompaniyani BILSIN ("pitsangiz bormi, qancha turadi?").
+// ID manzildan olinadi; server uni baribir qayta tekshiradi va faqat
+// FAOL kompaniyaning ochiq ma'lumotini qo'shadi.
+function companyFromPath(path) {
+  const m = String(path || '').match(/^\/(?:c|company)\/([^/]{3,40})$/i);
+  if (m) return decodeURIComponent(m[1]).toUpperCase();
+  return domainCompanyId() || '';
+}
 
 // O'ng past burchakdagi AI yordamchi. Server ANTHROPIC_API_KEY bilan
 // sozlanmagan bo'lsa — vidjet ko'rinmaydi.
@@ -12,6 +23,8 @@ export default function AiAssistant() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const bodyRef = useRef(null);
+  const path = usePathRoute();
+  const companyId = companyFromPath(path);
 
   useEffect(() => {
     fetch('/api/assistant/status')
@@ -37,7 +50,7 @@ export default function AiAssistant() {
       const res = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next.slice(-12) }),
+        body: JSON.stringify({ messages: next.slice(-12), companyId }),
       });
       const data = await res.json().catch(() => ({}));
       const reply = res.ok && data.reply

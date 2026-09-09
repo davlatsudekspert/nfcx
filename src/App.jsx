@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { usePathRoute, navigate } from './lib/router.js';
+import { usePathRoute, navigate, domainCompanyId } from './lib/router.js';
 import { parseAnyCode } from './lib/pricing.js';
 import { companyIdLocalInfo } from './lib/company.js';
 import { dbList } from './lib/db.js';
@@ -216,6 +216,15 @@ export default function App() {
   const companyPublicMatch = companyIdFromRoute(cleanRoute, /^company\/([^/]{1,40})$/);
   const companyWorkspaceMatch = companyIdFromRoute(cleanRoute, /^workspace\/([^/]{1,40})$/);
   const companySubMatch = cleanRoute.match(/^([^/]+)\/(menu|products|services|menyu|mahsulotlar|xizmatlar|aksiyalar)$/);
+  // KOMPANIYANING O'Z DOMENI. menu.kompaniya.uz da ildiz sahifa —
+  // o'sha kompaniyaning to'liq sahifasi bo'lishi kerak, NFCSTORE bosh
+  // sahifasi emas. Ichki yo'llar (/c/..., /kompaniyalar) avvalgidek
+  // ishlayveradi, shuning uchun tekshiruv faqat ildizga tegishli.
+  const ownDomainCompany = domainCompanyId();
+  if (!page && ownDomainCompany && cleanRoute === '') {
+    page = <CompanyPublicPage key={`domain-${ownDomainCompany}`} companyId={ownDomainCompany} />;
+    bare = true;
+  }
   if (!page && cleanRoute === 'company/create') {
     page = <CompanyCreatePage />;
     bare = true;
@@ -288,6 +297,10 @@ export default function App() {
     else page = <HomePage catalog={catalog} refreshCatalog={refreshCatalog} />;
   }
 
+  // Ochiq kompaniya sahifalari: /c/:id, /company/:id va o'z domenining
+  // ildizi. Kabinet (/workspace/...) bunga KIRMAYDI.
+  const showAssistantOnBare = !!(companyQuickMatch || companyPublicMatch || (ownDomainCompany && cleanRoute === ''));
+
   const renderedPage = (
     <Suspense fallback={<main className="mx-auto min-h-[55vh] w-full max-w-[1800px] px-6 py-16 text-sm text-base-content/50">Yuklanmoqda...</main>}>
       {page}
@@ -299,7 +312,11 @@ export default function App() {
       <SeoSync route={cleanRoute} profileCode={profileCode} catalog={catalog} />
       <PaymentsEnabledProvider>
         <AuthProvider>
-          {bare ? renderedPage : (
+          {/* AI yordamchi "bare" sahifalarda ham kerak — aynan kompaniya
+              sahifasida mijoz "ish vaqtingiz qanday, pitsangiz bormi"
+              deb so'raydi. Lekin FAQAT ochiq kompaniya sahifalarida:
+              kabinet va admin ichida u ortiqcha. */}
+          {bare ? (<>{renderedPage}{showAssistantOnBare && <AiAssistant />}</>) : (
             <>
               <Header />
               {renderedPage}

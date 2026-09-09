@@ -3711,6 +3711,7 @@ function CompanyIdRequests() {
   const [premium, setPremium] = useState([]);
   const [premiumQ, setPremiumQ] = useState('');
   const [premiumLevel, setPremiumLevel] = useState('');
+  const [domains, setDomains] = useState([]);
   const load = () => {
     setErr(null);
     return Promise.all([
@@ -3718,9 +3719,28 @@ function CompanyIdRequests() {
       adminApi('/company-id-rules').then((d) => setRules(d.rules || [])).catch(() => setRules([])),
       // Premium kompaniya nomlari — daraja, narx, holat, egasi.
       adminApi('/premium-company-names').then((d) => setPremium(d.names || [])).catch(() => setPremium([])),
+      // Kompaniyalarning o'z domenlari — tasdiqlash navbati.
+      adminApi('/company-domains').then((d) => setDomains(d.domains || [])).catch(() => setDomains([])),
     ]).catch((e) => { setData(null); setErr(e); });
   };
   useEffect(() => { setData(null); load(); }, [filter]);
+
+  const setDomainStatus = async (companyId, status) => {
+    const reject = status === 'rejected';
+    const res = await confirm({
+      title: reject ? t('Domenni rad etish') : t('Domenni faollashtirish'),
+      message: companyId,
+      input: { label: t('Admin izohi'), placeholder: t('Sabab (egasiga ko‘rinadi)'), optional: !reject },
+      confirmLabel: reject ? t('Rad etish') : t('Faollashtirish'),
+      danger: reject,
+    });
+    if (res === false || res === null) return;
+    setBusy(`dom${companyId}`); setActErr(null);
+    try {
+      await adminApi(`/company-domains/${encodeURIComponent(companyId)}`, { method: 'PATCH', body: JSON.stringify({ status, note: String(res || '') }) });
+      await load();
+    } catch (e) { setActErr(apiErrText(e, t)); } finally { setBusy(''); }
+  };
 
   const STATUS_TITLE = { approved: 'Arizani tasdiqlash', rejected: 'Arizani rad etish', active: 'Company ID’ni faollashtirish', suspended: 'Company ID’ni bloklash' };
   const setStatus = async (companyId, status) => {
@@ -3782,6 +3802,42 @@ function CompanyIdRequests() {
         Narx/holat o'zgartirish yuqoridagi "rezerv va narx override"
         formasi orqali: nomni yozib, Maxsus narx yoki Reserved qo'yiladi.
         Admin qo'ygan qiymat avtomatik narxdan har doim ustun. */}
+    <AdminCard title={t('Kompaniya domenlari')}>
+      {/* Domen O'ZI faollashmaydi. Tasdiqlashdan OLDIN tekshiring:
+          (1) egasi CNAME ni nfcstore.uz ga yo'naltirganmi,
+          (2) Cloudflare'da Custom Hostname qo'shilganmi (SSL shu yerda
+          beriladi). Ikkalasisiz "Faol" qilinsa, domen ochilmaydi va
+          egasi biz aybdor deb o'ylaydi. */}
+      <p className="mb-3 text-xs text-base-content/45">
+        {t('Faollashtirishdan oldin: egasining CNAME yozuvi nfcstore.uz ga yo‘naltirilgan va Cloudflare’da Custom Hostname qo‘shilgan bo‘lishi kerak.')}
+      </p>
+      {domains.length === 0 ? (
+        <p className="text-xs text-base-content/40">{t('Hozircha so‘rov yo‘q.')}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="table table-sm">
+            <thead><tr><th>{t('Domen')}</th><th>{t('Kompaniya')}</th><th>{t('Holat')}</th><th /></tr></thead>
+            <tbody>
+              {domains.map((d) => (
+                <tr key={d.companyId}>
+                  <td className="font-mono text-xs">{d.domain}</td>
+                  <td><b>{d.displayName}</b><div className="font-mono text-xs text-base-content/45">{d.companyId}</div></td>
+                  <td>
+                    <span className={`vz-badge ${d.status === 'active' ? 'vz-badge--ok' : d.status === 'rejected' ? 'vz-badge--warn' : 'vz-badge--muted'}`}>{d.status}</span>
+                    {d.note && <div className="mt-1 text-xs text-base-content/45">{d.note}</div>}
+                  </td>
+                  <td className="whitespace-nowrap">
+                    {d.status !== 'active' && <button className="btn btn-xs btn-gold" disabled={busy === `dom${d.companyId}`} onClick={() => setDomainStatus(d.companyId, 'active')}>{t('Faollashtirish')}</button>}
+                    {d.status !== 'rejected' && <button className="btn btn-xs btn-ghost-vz ml-1" disabled={busy === `dom${d.companyId}`} onClick={() => setDomainStatus(d.companyId, 'rejected')}>{t('Rad etish')}</button>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </AdminCard>
+
     <AdminCard title={t('Premium kompaniya nomlari')}>
       <div className="flex flex-wrap items-center gap-2">
         <input

@@ -2,6 +2,20 @@ import { useEffect, useState } from 'react';
 
 const ROUTE_EVENT = 'routechange';
 
+// KOMPANIYANING O'Z DOMENI (menu.kompaniya.uz).
+// Worker shu domenda SPA qobig'iga <meta name="nfc-company"> yozadi.
+// Teg BIRINCHI renderdayoq o'qiladi — qo'shimcha so'rov kutilmaydi,
+// shuning uchun sahifa "bo'sh" holatda ko'rinmaydi.
+let domainCompany;
+export function domainCompanyId() {
+  if (domainCompany === undefined) {
+    try {
+      domainCompany = document.querySelector('meta[name="nfc-company"]')?.content?.trim().toUpperCase() || '';
+    } catch { domainCompany = ''; }
+  }
+  return domainCompany;
+}
+
 function currentPath() {
   return window.location.pathname;
 }

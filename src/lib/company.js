@@ -140,6 +140,31 @@ export const listMyCompanies = () => companyApi('/mine');
 export const getCompany = (companyId) => companyApi(`/${encodeURIComponent(companyId)}`);
 export const createCompany = (payload) => companyApi('', { method: 'POST', body: JSON.stringify(payload) });
 export const updateCompany = (companyId, payload) => companyApi(`/${encodeURIComponent(companyId)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+// ── STATISTIKA ────────────────────────────────────────────────────────
+// Hodisa yuborish "eng yaxshi harakat" tamoyilida: yiqilsa JIM turadi.
+// Sahifa statistika uchun buzilmasligi kerak, statistika esa sahifa
+// uchun emas — shuning uchun `catch` bo'sh va `await` shart emas.
+export function companyEvent(companyId, kind, ref = '') {
+  if (!companyId) return;
+  try {
+    const body = JSON.stringify({ kind, ref });
+    const path = `/api/companies/${encodeURIComponent(companyId)}/event`;
+    // sendBeacon — sahifa yopilayotgan bo'lsa ham yetib boradi.
+    if (navigator.sendBeacon && navigator.sendBeacon(path, new Blob([body], { type: 'application/json' }))) return;
+    fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  } catch { /* jim tur */ }
+}
+
+export const getCompanyStats = (companyId, days = 30) =>
+  companyApi(`/${encodeURIComponent(companyId)}/stats?days=${days}`);
+
+// ── BUYURTMALAR ───────────────────────────────────────────────────────
+export const createCompanyOrder = (companyId, payload) =>
+  companyApi(`/${encodeURIComponent(companyId)}/orders`, { method: 'POST', body: JSON.stringify(payload) });
+export const listCompanyOrders = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/orders`);
+export const setCompanyOrderStatus = (companyId, orderId, status) =>
+  companyApi(`/${encodeURIComponent(companyId)}/orders/${encodeURIComponent(orderId)}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
 export const submitCompany = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/submit`, { method: 'POST' });
 export const beginCompanyPayment = (companyId) => companyApi(`/${encodeURIComponent(companyId)}/payment`, { method: 'POST' });
 export const addCompanyItem = (companyId, payload) => companyApi(`/${encodeURIComponent(companyId)}/catalog`, { method: 'POST', body: JSON.stringify(payload) });

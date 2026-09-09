@@ -674,6 +674,14 @@ function rowCompany(row, items = []) {
     extraLinks: parseJsonArray(row.extra_links_json),
     // Musiqa: manzillar ro'yxati, 5 tagacha.
     music: parseJsonArray(row.music_json),
+    // Ish vaqti + "hozir ochiqmi" — SERVERDA hisoblanadi (Toshkent
+    // vaqti bo'yicha), tashrifchining telefoni bo'yicha emas.
+    hours: normalizeHoursD1(parseJsonArray(row.hours_json)),
+    openNow: companyOpenStateD1(normalizeHoursD1(parseJsonArray(row.hours_json))),
+    ordersEnabled: Number(row.orders_enabled || 0) === 1,
+    customDomain: row.custom_domain || '',
+    customDomainStatus: row.custom_domain_status || '',
+    customDomainNote: row.custom_domain_note || '',
     logoUrl: row.logo_url || '', coverUrl: row.cover_url || '', gallery,
     sourceCardCode: row.source_card_code || '', tier: row.tier, price: Number(row.price || 0),
     status: row.status, adminNote: row.admin_note || '', rejectedReason: row.rejected_reason || '',
@@ -685,6 +693,23 @@ function rowCompany(row, items = []) {
       imageUrl: item.image_url || '', available: Boolean(item.available), sortOrder: Number(item.sort_order || 0),
     })),
   };
+}
+
+// O'z domeni: "https://Menu.Kompaniya.UZ/" -> "menu.kompaniya.uz".
+// Yaroqsiz bo'lsa bo'sh satr (ya'ni "domen yo'q").
+//
+// nfcstore.uz va uning pastki domenlari ATAYLAB rad etiladi: aks holda
+// egasi "admin.nfcstore.uz" deb yozib qo'yib, o'z sahifasini bizning
+// domenimizda ko'rsatishga urinishi mumkin edi.
+export function normalizeDomainD1(value) {
+  let v = String(value == null ? '' : value).trim().toLowerCase();
+  if (!v) return '';
+  v = v.replace(/^[a-z]+:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '').replace(/\.$/, '');
+  if (v.startsWith('www.')) v = v.slice(4);
+  if (v.length > 100) return '';
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(v)) return '';
+  if (v === 'nfcstore.uz' || v.endsWith('.nfcstore.uz')) return '';
+  return v;
 }
 
 async function companyWithItems(env, id) {
@@ -970,7 +995,7 @@ async function companyApi(request, env, url) {
   // Bo'lak `[^/]` bilan keng olinadi va companyId() qat'iy tekshiradi:
   // o'zbekcha O'/G' apostrofi (yoki uning %27 ko'rinishi) regexga
   // qo'shimcha belgi qo'shishni talab qilmasin uchun.
-  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog)(?:\/([A-Za-z0-9_-]+))?)?$/);
+  const match = path.match(/^\/api\/companies\/([^/]{3,40})(?:\/(submit|payment|catalog|event|stats|orders)(?:\/([A-Za-z0-9_-]+))?)?$/);
   if (!match) return json({ error: 'not_found' }, 404);
   const id = companyId(decodeCompanySeg(match[1]));
   if (!id) return json({ error: 'not_found' }, 404);
@@ -987,8 +1012,152 @@ async function companyApi(request, env, url) {
     return json({ company });
   }
 
+  // ── OCHIQ (egalik talab qilinmaydi) ────────────────────────────────
+  // Statistika hodisasi va buyurtma — ikkalasi ham tashrifchidan keladi,
+  // shuning uchun `requireCompanyOwner`dan OLDIN turadi.
+
+  // POST /api/companies/:id/event — {kind, ref}
+  // Egaga sahifasi qanday ishlayotganini ko'rsatish uchun. Shaxsiy
+  // ma'lumot yozilmaydi: IP ham, User-Agent ham saqlanmaydi — faqat
+  // kunlik SANOQ. IP faqat chegara uchun ishlatiladi va hech qayerda
+  // qolmaydi.
+  if (action === 'event' && request.method === 'POST') {
+    const row = await env.DB.prepare(`SELECT status FROM companies WHERE company_id = ?`).bind(id).first();
+    if (!row || row.status !== 'active') return json({ ok: true });
+    const body = await request.json().catch(() => ({}));
+    const kind = ['view', 'action', 'item'].includes(body.kind) ? body.kind : '';
+    if (!kind) return json({ error: 'bad_kind' }, 422);
+    const ref = kind === 'view' ? '' : String(body.ref || '').replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 60);
+    if (kind !== 'view' && !ref) return json({ error: 'bad_ref' }, 422);
+    // Bitta odam tugmani 50 marta bossa — bu 50 ta mijoz emas.
+    // Soatiga 60 ta hodisa yetarli va raqamlarni ishonchli qoldiradi.
+    if (await rateLimitD1(env, `cev:${id}:${reqIp(request)}`, 60, 60 * 60_000)) return json({ ok: true });
+    const day = tashkentNowD1().day;
+    await env.DB.prepare(
+      `INSERT INTO company_stats (company_id, day, kind, ref, hits) VALUES (?,?,?,?,1)
+       ON CONFLICT(company_id, day, kind, ref) DO UPDATE SET hits = hits + 1`
+    ).bind(id, day, kind, ref).run();
+    return json({ ok: true });
+  }
+
+  // POST /api/companies/:id/orders — katalogdan buyurtma
+  if (action === 'orders' && !itemId && request.method === 'POST') {
+    const row = await env.DB.prepare(`SELECT status, orders_enabled, display_name, owner_user_id FROM companies WHERE company_id = ?`).bind(id).first();
+    if (!row || row.status !== 'active') return json({ error: 'not_found' }, 404);
+    if (Number(row.orders_enabled || 0) !== 1) return json({ error: 'orders_disabled' }, 409);
+    if (await rateLimitD1(env, `cord:${reqIp(request)}`, 10, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
+
+    const body = await request.json().catch(() => ({}));
+    const name = shortText(body.name, 80);
+    const phone = shortText(body.phone, 40);
+    if (!name || !/[0-9]{7,}/.test(phone.replace(/\D/g, ''))) return json({ error: 'required_fields' }, 422);
+    const qty = Math.min(999, Math.max(1, Math.round(Number(body.qty) || 1)));
+    const itemKey = String(body.itemId || '').slice(0, 60);
+    // Nom va narx KATALOGDAN olinadi, mijoz yuborganidan emas — aks
+    // holda buyurtmaga "1 so'm" deb yozib yuborish mumkin bo'lardi.
+    const item = itemKey
+      ? await env.DB.prepare(`SELECT id, name, price, promotion_price FROM company_catalog_items WHERE company_id = ? AND id = ?`).bind(id, itemKey).first()
+      : null;
+    const unit = item ? Number(item.promotion_price ?? item.price ?? 0) : 0;
+    const now = new Date().toISOString();
+    const res = await env.DB.prepare(
+      `INSERT INTO company_orders (company_id, item_id, item_name, qty, price, customer_name, customer_phone, note, status, created_at)
+       VALUES (?,?,?,?,?,?,?,?,'new',?)`
+    ).bind(id, item ? String(item.id) : '', item ? String(item.name) : '', qty, unit * qty, name, phone, shortText(body.note, 300), now).run();
+
+    // Egasiga xabar — Telegram bog'langan bo'lsa. Bog'lanmagan bo'lsa
+    // buyurtma baribir kabinetda turadi, ya'ni YO'QOLMAYDI.
+    try {
+      const info = await env.DB.prepare(
+        `SELECT bv.tg_user_id AS tgUserId FROM users u
+           LEFT JOIN bot_verifications bv ON bv.phone = u.phone WHERE u.id = ?`
+      ).bind(row.owner_user_id).first();
+      if (info?.tgUserId) {
+        await sendTelegramTo(env, info.tgUserId, [
+          `\uD83D\uDED2 <b>Yangi buyurtma</b> — ${escapeHtmlD1(row.display_name)}`,
+          item ? `\n\n\uD83D\uDCE6 ${escapeHtmlD1(String(item.name))} \u00D7 ${qty}` : '',
+          unit ? `\n\uD83D\uDCB0 ${(unit * qty).toLocaleString('uz-UZ')} so'm` : '',
+          `\n\n\uD83D\uDC64 ${escapeHtmlD1(name)}`,
+          `\n\uD83D\uDCDE ${escapeHtmlD1(phone)}`,
+          body.note ? `\n\uD83D\uDCAC ${escapeHtmlD1(shortText(body.note, 300))}` : '',
+          `\n\nKabinet: nfcstore.uz/kompaniyalar/${id.toLowerCase()}`,
+        ].join(''));
+      }
+    } catch (error) { console.error('company order tg', error?.message); }
+
+    return json({ ok: true, orderId: res?.meta?.last_row_id || null }, 201);
+  }
+
   const owned = await requireCompanyOwner(request, env, id);
   if (owned.error) return owned.error;
+
+  // ── EGASI UCHUN ────────────────────────────────────────────────────
+
+  // GET /api/companies/:id/stats?days=30
+  if (action === 'stats' && request.method === 'GET') {
+    const days = Math.min(90, Math.max(7, Math.round(Number(url.searchParams.get('days')) || 30)));
+    // Boshlanish sanasi Toshkent kuni bo'yicha — jadvalga aynan shu
+    // shaklda yozilgan.
+    const start = new Date(Date.now() - (days - 1) * 86400_000);
+    const from = tashkentNowD1(start).day;
+    const rows = await env.DB.prepare(
+      `SELECT day, kind, ref, hits FROM company_stats WHERE company_id = ? AND day >= ? ORDER BY day`
+    ).bind(id, from).all();
+    const list = rows.results || [];
+    const daily = new Map();
+    const actions = new Map();
+    const itemHits = new Map();
+    let views = 0; let taps = 0;
+    for (const r of list) {
+      const hits = Number(r.hits || 0);
+      if (r.kind === 'view') { views += hits; daily.set(r.day, (daily.get(r.day) || 0) + hits); }
+      else if (r.kind === 'action') { taps += hits; actions.set(r.ref, (actions.get(r.ref) || 0) + hits); }
+      else if (r.kind === 'item') itemHits.set(r.ref, (itemHits.get(r.ref) || 0) + hits);
+    }
+    // Bo'sh kunlar ham qatorda tursin — grafik uzilib qolmasin.
+    const series = [];
+    for (let i = days - 1; i >= 0; i -= 1) {
+      const d = tashkentNowD1(new Date(Date.now() - i * 86400_000)).day;
+      series.push({ day: d, views: daily.get(d) || 0 });
+    }
+    const items = await env.DB.prepare(`SELECT id, name FROM company_catalog_items WHERE company_id = ?`).bind(id).all();
+    const nameById = new Map((items.results || []).map((r) => [String(r.id), r.name]));
+    const orders = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_orders WHERE company_id = ?`).bind(id).first();
+    return json({
+      days, views, taps, orders: Number(orders?.n || 0),
+      series,
+      actions: [...actions.entries()].map(([key, hits]) => ({ key, hits })).sort((a, b) => b.hits - a.hits),
+      items: [...itemHits.entries()]
+        .map(([itemId2, hits]) => ({ id: itemId2, name: nameById.get(itemId2) || '', hits }))
+        .sort((a, b) => b.hits - a.hits).slice(0, 10),
+    });
+  }
+
+  // GET /api/companies/:id/orders
+  if (action === 'orders' && !itemId && request.method === 'GET') {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM company_orders WHERE company_id = ? ORDER BY id DESC LIMIT 200`
+    ).bind(id).all();
+    return json({
+      orders: (rows.results || []).map((r) => ({
+        id: r.id, itemId: r.item_id || '', itemName: r.item_name || '',
+        qty: Number(r.qty || 1), price: Number(r.price || 0),
+        name: r.customer_name || '', phone: r.customer_phone || '',
+        note: r.note || '', status: r.status || 'new', createdAt: r.created_at,
+      })),
+    });
+  }
+
+  // PATCH /api/companies/:id/orders/:orderId — holatni o'zgartirish
+  if (action === 'orders' && itemId && request.method === 'PATCH') {
+    const body = await request.json().catch(() => ({}));
+    const status = ['new', 'done', 'cancelled'].includes(body.status) ? body.status : '';
+    if (!status) return json({ error: 'bad_status' }, 422);
+    const res = await env.DB.prepare(`UPDATE company_orders SET status = ? WHERE id = ? AND company_id = ?`)
+      .bind(status, Number(itemId) || 0, id).run();
+    if (!res?.meta?.changes) return json({ error: 'not_found' }, 404);
+    return json({ ok: true });
+  }
 
   if (!action && request.method === 'PATCH') {
     const body = await request.json().catch(() => ({}));
@@ -1017,8 +1186,26 @@ async function companyApi(request, env, url) {
     const music = Array.isArray(body.music)
       ? body.music.map(safeUrl).filter(Boolean).slice(0, 5)
       : current.music;
+    const hours = body.hours === undefined ? current.hours : normalizeHoursD1(body.hours);
+    const ordersEnabled = body.ordersEnabled === undefined ? current.ordersEnabled : !!body.ordersEnabled;
+    // O'Z DOMENI. Egasi yozadi, lekin u O'ZI FAOLLASHMAYDI: admin
+    // tasdiqlashi shart. Aks holda istalgan odam boshqa saytning
+    // domenini yozib qo'yib, o'sha manzilda o'z sahifasi chiqishini
+    // kutib turardi (yoki chalkashlik yaratardi).
+    const domainInput = body.customDomain === undefined ? null : normalizeDomainD1(body.customDomain);
+    const domainChanged = domainInput !== null && domainInput !== current.customDomain;
+    const customDomain = domainInput === null ? current.customDomain : domainInput;
+    const customDomainStatus = domainChanged
+      ? (customDomain ? 'pending' : '')
+      : current.customDomainStatus;
 
-    await env.DB.prepare(`UPDATE companies SET display_name=?, subcategory=?, city=?, address=?, description=?, phone=?, telegram=?, whatsapp=?, website=?, logo_url=?, cover_url=?, gallery_json=?, instagram=?, facebook=?, card_number=?, latitude=?, longitude=?, extra_links_json=?, music_json=?, updated_at=? WHERE company_id=?`).bind(
+    // Domen band bo'lsa — aniq xato, jimgina o'zlashtirib olmaydi.
+    if (domainChanged && customDomain) {
+      const taken = await env.DB.prepare(`SELECT company_id FROM companies WHERE LOWER(custom_domain) = ? AND company_id <> ?`).bind(customDomain, id).first();
+      if (taken) return json({ error: 'domain_taken' }, 409);
+    }
+
+    await env.DB.prepare(`UPDATE companies SET display_name=?, subcategory=?, city=?, address=?, description=?, phone=?, telegram=?, whatsapp=?, website=?, logo_url=?, cover_url=?, gallery_json=?, instagram=?, facebook=?, card_number=?, latitude=?, longitude=?, extra_links_json=?, music_json=?, hours_json=?, orders_enabled=?, custom_domain=?, custom_domain_status=?, updated_at=? WHERE company_id=?`).bind(
       value('displayName', 120), value('subcategory', 100), value('city', 100), value('address', 300), value('description', 1200),
       value('phone', 40), value('telegram', 100), value('whatsapp', 100), safeUrl(body.website == null ? current.website : body.website),
       safeUrl(body.logoUrl == null ? current.logoUrl : body.logoUrl), safeUrl(body.coverUrl == null ? current.coverUrl : body.coverUrl),
@@ -1026,6 +1213,7 @@ async function companyApi(request, env, url) {
       value('instagram', 100), value('facebook', 100), value('cardNumber', 34),
       geo('latitude', -90, 90), geo('longitude', -180, 180),
       JSON.stringify(extraLinks), JSON.stringify(music),
+      JSON.stringify(hours), ordersEnabled ? 1 : 0, customDomain, customDomainStatus,
       now, id
     ).run();
     return json({ company: await companyWithItems(env, id) });
@@ -1107,6 +1295,36 @@ async function companyAdminApi(request, env, url) {
     const counts = await env.DB.prepare('SELECT status, COUNT(*) AS count FROM companies GROUP BY status').all();
     return json({ companies: (rows.results || []).map((row) => rowCompany(row)), counts: counts.results || [] });
   }
+  // O'Z DOMENI so'rovlari. Domen O'ZI faollashmaydi — admin ko'radi va
+  // tasdiqlaydi. Tasdiqlashdan OLDIN egasi CNAME ni nfcstore.uz ga
+  // yo'naltirgan bo'lishi va admin Cloudflare'da Custom Hostname
+  // qo'shgan bo'lishi kerak (SSL shu bosqichda beriladi).
+  if (path === '/api/admin/company-domains' && request.method === 'GET') {
+    const rows = await env.DB.prepare(
+      `SELECT company_id, display_name, status, custom_domain, custom_domain_status, custom_domain_note
+         FROM companies WHERE custom_domain IS NOT NULL AND custom_domain <> '' ORDER BY updated_at DESC`
+    ).all();
+    return json({
+      domains: (rows.results || []).map((r) => ({
+        companyId: r.company_id, displayName: r.display_name, companyStatus: r.status,
+        domain: r.custom_domain, status: r.custom_domain_status || 'pending', note: r.custom_domain_note || '',
+      })),
+    });
+  }
+  const domainMatch = path.match(/^\/api\/admin\/company-domains\/([^/]{3,40})$/);
+  if (domainMatch && request.method === 'PATCH') {
+    const id = companyId(decodeCompanySeg(domainMatch[1]));
+    if (!id) return json({ error: 'not_found' }, 404);
+    const body = await request.json().catch(() => ({}));
+    const status = ['pending', 'active', 'rejected'].includes(body.status) ? body.status : '';
+    if (!status) return json({ error: 'bad_status' }, 422);
+    const res = await env.DB.prepare(`UPDATE companies SET custom_domain_status = ?, custom_domain_note = ? WHERE company_id = ?`)
+      .bind(status, shortText(body.note, 200), id).run();
+    if (!res?.meta?.changes) return json({ error: 'not_found' }, 404);
+    await logAdminActivity(env, { action: 'company_domain_status', details: `${id} -> ${status}`, ip: reqIp(request) });
+    return json({ ok: true });
+  }
+
   const requestMatch = path.match(/^\/api\/admin\/company-requests\/([^/]{3,40})\/status$/);
   if (requestMatch && request.method === 'PATCH') {
     const id = companyId(decodeCompanySeg(requestMatch[1]));
@@ -1491,6 +1709,7 @@ async function ensureCoreSchema(env) {
   const totpColumn = ensureTotpReplayColumn(env);
   const internalColumn = ensureUserInternalColumn(env);
   const companyContact = ensureCompanyContactColumns(env);
+  const companyExtras = ensureCompanyExtrasSchema(env);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "users" (
@@ -1712,7 +1931,7 @@ async function ensureCoreSchema(env) {
   }
   // Natijalar birga kutiladi. `allSettled` emas, `all` — biror sxema
   // buyrug'i haqiqatan yiqilsa, chaqiruvchi buni bilishi kerak.
-  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, coreSchemaReady]);
+  await Promise.all([adminTables, totpColumn, internalColumn, companyContact, companyExtras, coreSchemaReady]);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -1844,6 +2063,140 @@ async function ensureUserInternalColumn(env) {
 // Hammasi ADDITIVE: mavjud kompaniyalarga tegilmaydi, yangi ustunlar
 // bo'sh bo'ladi. Batch ichiga qo'yilmaydi — u atomik, mavjud ustun
 // uchun chiqqan bitta xato butun sxemani yiqitardi.
+// KOMPANIYA QO'SHIMCHALARI (2026-09): statistika, buyurtmalar, ish
+// vaqti, o'z domeni. Hammasi ADDITIVE — mavjud ma'lumotga tegilmaydi.
+//
+// Statistika HAR TEGISH uchun alohida qator yozmaydi, KUNLIK jamlanma
+// saqlaydi (company_id + kun + tur + havola). Sabab: mashhur kompaniya
+// kuniga minglab tegish oladi; har birini yozsak jadval yiliga
+// millionlab qatorga o'sardi va D1 o'qishlari qimmatlashardi. Jamlanma
+// bilan bitta kompaniya kuniga bir necha o'nlab qator egallaydi, xolos.
+// Buning evazi: aniq vaqt (soat/daqiqa) saqlanmaydi — egaga bu kerak
+// emas, unga kunlik dinamika kerak.
+let companyExtrasSchemaReady;
+async function ensureCompanyExtrasSchema(env) {
+  if (!companyExtrasSchemaReady) {
+    const alters = [
+      // Ish vaqti: 7 kunlik jadval JSON sifatida.
+      `ALTER TABLE companies ADD COLUMN hours_json TEXT`,
+      // Katalogdan buyurtma qabul qilinsinmi (egasi yoqadi/o'chiradi).
+      `ALTER TABLE companies ADD COLUMN orders_enabled INTEGER DEFAULT 0`,
+      // O'z domeni + uning holati (pending/active/rejected).
+      `ALTER TABLE companies ADD COLUMN custom_domain TEXT`,
+      `ALTER TABLE companies ADD COLUMN custom_domain_status TEXT`,
+      `ALTER TABLE companies ADD COLUMN custom_domain_note TEXT`,
+    ].map((sql) => env.DB.prepare(sql).run().catch(() => {}));
+    const tables = env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_stats" (
+        company_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        ref TEXT NOT NULL DEFAULT '',
+        hits INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (company_id, day, kind, ref)
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_stats_day ON company_stats(company_id, day)`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_orders" (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id TEXT NOT NULL,
+        item_id TEXT DEFAULT '',
+        item_name TEXT DEFAULT '',
+        qty INTEGER DEFAULT 1,
+        price INTEGER DEFAULT 0,
+        customer_name TEXT DEFAULT '',
+        customer_phone TEXT DEFAULT '',
+        note TEXT DEFAULT '',
+        status TEXT DEFAULT 'new',
+        created_at TEXT
+      )`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_orders ON company_orders(company_id, created_at DESC)`),
+      env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_company_domain ON companies(custom_domain)`),
+    ]);
+    // ALTER'lar batch'dan TASHQARIDA: batch atomik, mavjud ustun uchun
+    // chiqqan bitta xato butun to'plamni yiqitardi.
+    companyExtrasSchemaReady = Promise.all([...alters, tables.catch(() => {})]);
+  }
+  await companyExtrasSchemaReady;
+}
+
+// ── ISH VAQTI ────────────────────────────────────────────────────────
+// Vaqt HAR DOIM Toshkent bo'yicha hisoblanadi, tashrifchining
+// telefonidagi vaqt bo'yicha EMAS. Aks holda chet eldagi (yoki soatini
+// noto'g'ri qo'ygan) odam yopiq restoranni "ochiq" deb ko'rardi.
+// Telegram HTML rejimida ishlaydi — mijoz yozgan matn ichidagi `<`
+// xabarni buzmasin (yoki soxta <b> qo'shmasin).
+function escapeHtmlD1(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+const COMPANY_TZ = 'Asia/Tashkent';
+
+export function tashkentNowD1(date = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: COMPANY_TZ, weekday: 'short', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(date);
+    const get = (t) => parts.find((x) => x.type === t)?.value || '';
+    const dowMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
+    return {
+      day: `${get('year')}-${get('month')}-${get('day')}`,
+      dow: dowMap[get('weekday')] ?? 0,
+      minutes: Number(get('hour')) * 60 + Number(get('minute')),
+    };
+  } catch {
+    // Intl vaqt mintaqasisiz qurilgan bo'lsa — O'zbekiston UTC+5, yoz
+    // vaqti yo'q, shuning uchun oddiy qo'shish aniq natija beradi.
+    const t = new Date(date.getTime() + 5 * 3600_000);
+    return {
+      day: t.toISOString().slice(0, 10),
+      dow: t.getUTCDay(),
+      minutes: t.getUTCHours() * 60 + t.getUTCMinutes(),
+    };
+  }
+}
+
+const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const hhmmToMin = (v) => { const m = HHMM_RE.exec(String(v || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+
+// Kirish: [{closed, open, close}] — 0 = yakshanba ... 6 = shanba.
+// Har doim 7 ta element qaytadi; yaroqsiz qiymat "yopiq" bo'ladi.
+export function normalizeHoursD1(value) {
+  const src = Array.isArray(value) ? value : [];
+  const out = [];
+  for (let i = 0; i < 7; i += 1) {
+    const d = src[i] || {};
+    const open = HHMM_RE.test(String(d.open || '')) ? String(d.open) : '';
+    const close = HHMM_RE.test(String(d.close || '')) ? String(d.close) : '';
+    out.push(d.closed || !open || !close ? { closed: true, open: '', close: '' } : { closed: false, open, close });
+  }
+  return out;
+}
+
+const hoursEmptyD1 = (hours) => !hours.some((d) => !d.closed);
+
+// "Hozir ochiqmi?" — tungacha cho'zilgan ish vaqti ham to'g'ri
+// hisoblanadi: 18:00-02:00 bo'lsa, soat 01:00 da HALI OCHIQ (kechagi
+// smena). Oddiy `open <= now && now < close` buni yopiq deb ko'rsatardi.
+export function companyOpenStateD1(hours, now = tashkentNowD1()) {
+  if (!Array.isArray(hours) || hoursEmptyD1(hours)) return null;
+  const check = (dayIndex, offset) => {
+    const d = hours[dayIndex];
+    if (!d || d.closed) return false;
+    const from = hhmmToMin(d.open);
+    let to = hhmmToMin(d.close);
+    if (from == null || to == null) return false;
+    if (to <= from) to += 1440; // yarim tundan oshgan
+    const t = now.minutes + offset;
+    return t >= from && t < to;
+  };
+  const today = hours[now.dow];
+  // Bugungi oraliq, keyin kechagi (tungacha cho'zilgani) tekshiriladi.
+  const open = check(now.dow, 0) || check((now.dow + 6) % 7, 1440);
+  return { open, today: today && !today.closed ? { open: today.open, close: today.close } : null };
+}
+
 let companyContactColumnsReady;
 async function ensureCompanyContactColumns(env) {
   if (!companyContactColumnsReady) {
@@ -5588,6 +5941,64 @@ async function newsShellResponse(env, url, id) {
   return new Response(out, { status: 200, headers });
 }
 
+// ── KOMPANIYANING O'Z DOMENI ─────────────────────────────────────────
+// menu.kompaniya.uz -> aynan o'sha kompaniyaning sahifasi.
+//
+// Nima uchun redirect EMAS: mijoz o'z domenida qolishi kerak, aks holda
+// manzil qatorida nfcstore.uz chiqib, "o'z sayti" degan ma'no yo'qoladi.
+// Shuning uchun SPA qobig'i shu domenda beriladi va ichiga qaysi
+// kompaniya ekani yoziladi — frontend uni birinchi renderdayoq o'qiydi,
+// qo'shimcha so'rov kutmaydi.
+//
+// DIQQAT: bu FAQAT admin tasdiqlagan (custom_domain_status='active')
+// domen uchun ishlaydi. Aks holda istalgan odam o'z domenini yozib
+// qo'yib, uni nfcstore.uz ga yo'naltirib, tasdiqsiz sahifa ochib
+// olardi.
+async function companyDomainShellResponse(env, request, url) {
+  const host = normalizeDomainD1(url.hostname);
+  if (!host) return null;
+  let row = null;
+  try {
+    row = await env.DB.prepare(
+      `SELECT company_id, display_name, description, logo_url, cover_url
+         FROM companies
+        WHERE LOWER(custom_domain) = ? AND custom_domain_status = 'active' AND status = 'active'`
+    ).bind(host).first();
+  } catch (error) {
+    console.error('company domain', host, error?.message);
+    return null;
+  }
+  if (!row) return null;
+
+  const shell = await env.ASSETS.fetch(new Request(new URL('/', url), { method: 'GET' }));
+  if (!shell.ok) return null;
+  let html = await shell.text();
+  if (!/<\/head>/i.test(html)) return null;
+
+  const origin = url.origin;
+  const title = String(row.display_name || 'Kompaniya').trim();
+  const description = ogExcerpt(row.description) || `${title} — NFCSTORE Business.`;
+  const image = ogAbsolute(row.cover_url || row.logo_url, origin) || origin + OG_FALLBACK_IMAGE;
+
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${ogTextEscape(title)}</title>`);
+  html = ogReplaceMeta(html, 'name', 'description', description);
+  html = ogReplaceMeta(html, 'property', 'og:title', title);
+  html = ogReplaceMeta(html, 'property', 'og:description', description);
+  html = ogReplaceMeta(html, 'property', 'og:type', 'website');
+  html = ogReplaceMeta(html, 'property', 'og:url', origin + '/');
+  html = ogReplaceMeta(html, 'property', 'og:image', image);
+  html = ogReplaceMeta(html, 'name', 'twitter:card', 'summary_large_image');
+  // Frontend shu tegni o'qiydi (src/lib/router.js).
+  html = ogReplaceMeta(html, 'name', 'nfc-company', String(row.company_id));
+
+  const headers = new Headers(shell.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('cache-control', 'public, max-age=120');
+  headers.delete('content-length');
+  headers.delete('etag');
+  return new Response(html, { status: 200, headers });
+}
+
 function newsRow(r) {
   return {
     id: Number(r.id), title: r.title, body: r.body || '',
@@ -6928,6 +7339,7 @@ async function handleRequest(request, env, url) {
 
     if (url.pathname === '/api/admin/company-requests' || url.pathname.startsWith('/api/admin/company-requests/')
       || url.pathname === '/api/admin/company-id-rules' || url.pathname === '/api/admin/premium-company-names'
+      || url.pathname === '/api/admin/company-domains' || url.pathname.startsWith('/api/admin/company-domains/')
       || url.pathname === '/api/admin/test-email') {
       try { return await companyAdminApi(request, env, url); }
       catch (error) {
@@ -7002,6 +7414,22 @@ async function handleRequest(request, env, url) {
         if (shell) return shell;
       } catch (error) {
         console.error('news shell', url.pathname, error);
+      }
+    }
+
+    // Kompaniyaning o'z domeni — HTML so'rovlari uchun. Statik fayllar
+    // (JS/CSS/rasm) odatdagidek beriladi, shuning uchun `accept` bo'yicha
+    // ajratiladi va D1 ga har bir fayl uchun so'rov ketmaydi.
+    if (request.method === 'GET' && request.headers.get('accept')?.includes('text/html')
+      && url.hostname !== 'nfcstore.uz' && url.hostname !== 'www.nfcstore.uz'
+      && !url.hostname.endsWith('.workers.dev') && !url.hostname.startsWith('127.0.0.1')
+      && !url.hostname.startsWith('localhost')) {
+      try {
+        await ensureCoreSchema(env);
+        const domainShell = await companyDomainShellResponse(env, request, url);
+        if (domainShell) return domainShell;
+      } catch (error) {
+        console.error('company domain shell', error?.message);
       }
     }
 

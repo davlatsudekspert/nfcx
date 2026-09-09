@@ -33,6 +33,7 @@ const readCode = (rel) => read(rel)
 
 // Har bir maydon: nomi va uni sahifada topish uchun namuna.
 const FIELDS = [
+  ['ish vaqti', /CompanyHours|CompanyHoursEditor/],
   ['instagram', /company\.instagram|form\.instagram/],
   ['facebook', /company\.facebook|form\.facebook/],
   ['karta raqami', /company\.cardNumber|form\.cardNumber/],
@@ -79,6 +80,18 @@ for (const key of ['instagram', 'facebook', 'cardNumber']) {
 checkTrue('lokatsiya komponenti ulangan', /<CompanyLocationField\b/.test(workspace));
 checkTrue('havolalar komponenti ulangan', /<CompanyExtraLinks\b/.test(workspace));
 checkTrue('musiqa komponenti ulangan', /<CompanyMusic\b/.test(workspace));
+checkTrue('ish vaqti tahrirlagichi ulangan', /<CompanyHoursEditor\b/.test(workspace));
+checkTrue('statistika bo‘limi ulangan', /<CompanyStatsPanel\b/.test(workspace));
+checkTrue('buyurtmalar bo‘limi ulangan', /<CompanyOrdersPanel\b/.test(workspace));
+checkTrue('QR kod ulangan', /<CompanyQrCard\b/.test(workspace));
+checkTrue('o‘z domeni bo‘limi ulangan', /<CompanyDomainSection\b/.test(workspace));
+
+// Buyurtma tugmasi ikkala OCHIQ sahifada ham bo'lsin — biri unutilsa,
+// mijoz kartani tegizib buyurtma bera olmaydi.
+for (const [surface, file] of SURFACES.slice(0, 2)) {
+  checkTrue(`${surface}: buyurtma tugmasi`, /CompanyOrderModal/.test(readCode(file)));
+  checkTrue(`${surface}: statistika hodisasi yuboriladi`, /companyEvent\(/.test(readCode(file)));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
