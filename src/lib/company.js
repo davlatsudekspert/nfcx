@@ -137,6 +137,11 @@ async function companyApi(path, options) {
 
 export const checkCompanyId = (companyId) => companyApi(`/check?id=${encodeURIComponent(companyId)}`);
 export const listMyCompanies = () => companyApi('/mine');
+// OCHIQ kompaniyalar katalogi (faqat FAOL bo'lganlar). Kompaniyalar
+// sahifasidagi ro'yxat uchun: u ilgari faqat `cards` jadvalidagi biznes
+// kartalarni ko'rsatardi va haqiqiy kompaniya profillari (Company ID
+// bilan) u yerga umuman tushmasdi.
+export const listPublicCompanies = () => companyApi('').then((d) => d.companies || []);
 export const getCompany = (companyId) => companyApi(`/${encodeURIComponent(companyId)}`);
 export const createCompany = (payload) => companyApi('', { method: 'POST', body: JSON.stringify(payload) });
 export const updateCompany = (companyId, payload) => companyApi(`/${encodeURIComponent(companyId)}`, { method: 'PATCH', body: JSON.stringify(payload) });

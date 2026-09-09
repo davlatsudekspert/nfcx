@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { useCategories, catPath } from '../lib/categories.js';
 import { fmt } from '../lib/format.js';
 import { dbSearchCompanies } from '../lib/db.js';
+import { listPublicCompanies } from '../lib/company.js';
 import { checkCompanyId, companyIdLocalInfo, normalizeCompanyId } from '../lib/company.js';
 import NfcCard from '../components/NfcCard.jsx';
 
@@ -249,17 +250,22 @@ function DemoCompanyCard({ type, t }) {
 
 function RealCompanyCard({ item, categories, lang, t }) {
   const path = catPath(categories, item.categorySlug, lang);
+  // Ikki xil yozuv bir ro'yxatda: biznes turidagi NFC karta (/vip001)
+  // va haqiqiy KOMPANIYA profili (/c/nfcstoreuz). Manzili ham, belgisi
+  // ham shunga qarab tanlanadi.
+  const isCompany = item.kind === 'company';
+  const href = isCompany ? `/c/${item.code.toLowerCase()}` : '/' + item.code.toLowerCase();
   return (
-    <button type="button" className="co-real-company" onClick={() => navigate('/' + item.code.toLowerCase())}>
+    <button type="button" className="co-real-company" onClick={() => navigate(href)}>
       <div className="co-real-cover">
         {item.bgUrl || item.avatarUrl
           ? <img src={item.bgUrl || item.avatarUrl} alt="" />
           : <span>{(item.name || item.code).slice(0, 2).toUpperCase()}</span>}
-        <em>{t('Biznes profil')}</em>
+        <em>{isCompany ? t('Kompaniya') : t('Biznes profil')}</em>
       </div>
       <div className="co-real-body">
         <span className="co-real-logo">{item.avatarUrl ? <img src={item.avatarUrl} alt="" /> : (item.name || item.code).slice(0, 2).toUpperCase()}</span>
-        <div><h3>{item.name || item.code}{item.verified && <i>✓</i>}</h3><p>{path || item.role || t('Kompaniya')}</p><small>{item.city ? `⌖ ${item.city}` : `nfcstore.uz/${item.code.toLowerCase()}`}</small></div>
+        <div><h3>{item.name || item.code}{item.verified && <i>✓</i>}</h3><p>{path || item.role || t('Kompaniya')}</p><small>{item.city ? `⌖ ${item.city}` : `nfcstore.uz${href}`}</small></div>
       </div>
       {item.matchLabel && <div className="co-match">✨ {t('Mos natija')}: <b>{item.matchLabel}</b>{item.matchPrice != null && <> · {fmt(item.matchPrice)} {t("so'm")}</>}</div>}
       <span className="co-real-link">{t('Profilga o‘tish')} →</span>
@@ -276,6 +282,19 @@ export default function CompaniesPage({ catalog = [] }) {
   const [searchError, setSearchError] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const debounceRef = useRef(null);
+  // HAQIQIY KOMPANIYA PROFILLARI (`companies` jadvali, /c/<ID>).
+  // Egasining shikoyati: "Kompaniyalar sahifasida NFCSTORE biznes
+  // profili ko'rinmayapti" — ro'yxat faqat biznes turidagi NFC
+  // kartalardan yig'ilardi va kompaniyalar u yerga umuman tushmasdi.
+  // Yiqilsa JIM turadi: sahifaning qolgani avvalgidek ishlayveradi.
+  const [realCompanies, setRealCompanies] = useState([]);
+  useEffect(() => {
+    let live = true;
+    listPublicCompanies()
+      .then((rows) => live && setRealCompanies(rows))
+      .catch(() => live && setRealCompanies([]));
+    return () => { live = false; };
+  }, []);
 
   useEffect(() => {
     const term = q.trim();
@@ -292,21 +311,42 @@ export default function CompaniesPage({ catalog = [] }) {
   }, [q, retryTick]);
 
   const query = q.trim().toUpperCase();
-  const localMatches = useMemo(() => [...catalog]
-    .filter((item) => item.profileType === 'business' && !item.hiddenFromDirectory)
-    .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-    .filter((item) => !query
-      || item.code.includes(query)
-      || (item.name || '').toUpperCase().includes(query)
-      || (item.role || '').toUpperCase().includes(query)
-      || (item.city || '').toUpperCase().includes(query)
-      || catPath(categories, item.categorySlug, lang).toUpperCase().includes(query)),
-  [catalog, query, categories, lang]);
+  const localMatches = useMemo(() => {
+    // Kompaniya profillarini kartochkalar bilan BIR XIL shaklga
+    // keltiramiz — pastdagi filtr va kartochka ikkalasiga ham ishlasin.
+    const asCards = realCompanies.map((c) => ({
+      kind: 'company',
+      code: c.companyId,
+      name: c.displayName || c.companyId,
+      role: c.subcategory || '',
+      city: c.city || '',
+      categorySlug: c.category || '',
+      avatarUrl: c.logoUrl || '',
+      bgUrl: c.coverUrl || '',
+      verified: true,
+      // Tartib uchun: kompaniyada `ts` yo'q, yaratilgan sanasidan olamiz.
+      ts: c.createdAt ? Date.parse(c.createdAt) || 0 : 0,
+      hiddenFromDirectory: false,
+      profileType: 'business',
+    }));
+    return [...catalog.filter((item) => item.profileType === 'business' && !item.hiddenFromDirectory), ...asCards]
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .filter((item) => !query
+        || item.code.includes(query)
+        || (item.name || '').toUpperCase().includes(query)
+        || (item.role || '').toUpperCase().includes(query)
+        || (item.city || '').toUpperCase().includes(query)
+        || catPath(categories, item.categorySlug, lang).toUpperCase().includes(query));
+  }, [catalog, realCompanies, query, categories, lang]);
 
   const companies = useMemo(() => {
     if (!query || itemResults == null) return localMatches;
-    const byCode = new Map(localMatches.map((item) => [item.code, item]));
-    for (const result of itemResults) byCode.set(result.code, { ...(byCode.get(result.code) || result), ...result });
+    const keyOf = (item) => `${item.kind === 'company' ? 'c' : 'p'}:${item.code}`;
+    const byCode = new Map(localMatches.map((item) => [keyOf(item), item]));
+    for (const result of itemResults) {
+      const key = keyOf(result);
+      byCode.set(key, { ...(byCode.get(key) || result), ...result });
+    }
     return [...byCode.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   }, [localMatches, itemResults, query]);
 
@@ -363,7 +403,7 @@ export default function CompaniesPage({ catalog = [] }) {
             {[0, 1].map((i) => <div key={i} className="vz-card--flat vz-card min-w-0 p-4"><div className="vz-skel" style={{ height: 96 }} /><div className="vz-skel mt-3 w-2/3" /><div className="vz-skel mt-2 w-1/2" /></div>)}
           </div>
         ) : companies.length > 0 ? (
-          <div className="co-real-grid">{companies.map((item) => <RealCompanyCard key={item.code} item={item} categories={categories} lang={lang} t={t} />)}</div>
+          <div className="co-real-grid">{companies.map((item) => <RealCompanyCard key={`${item.kind === 'company' ? 'c' : 'p'}:${item.code}`} item={item} categories={categories} lang={lang} t={t} />)}</div>
         ) : query ? (
           <div className="co-empty vz-empty"><span aria-hidden="true">⌕</span><b>{t('Mos kompaniya topilmadi')}</b><p>{t('Boshqa nom, xizmat yoki shahar bilan qidiring.')}</p></div>
         ) : (

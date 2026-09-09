@@ -961,6 +961,39 @@ async function companyApi(request, env, url) {
     return json({ companies: (rows.results || []).map((row) => rowCompany(row)) });
   }
 
+  // ── OCHIQ KOMPANIYALAR RO'YXATI (2026-09) ──────────────────────────
+  // Egasining shikoyati: "Kompaniyalar sahifasida NFCSTORE biznes
+  // profili ko'rinmayapti".
+  //
+  // Sababi: o'sha ro'yxat FAQAT `cards` jadvalidagi biznes turidagi
+  // kartalardan yig'ilardi. `companies` jadvalidagi HAQIQIY kompaniya
+  // profillari (Company ID bilan, /c/<ID> sahifasi) esa u yerga
+  // umuman tushmasdi — ya'ni kompaniya ochgan odam o'zini kompaniyalar
+  // katalogida topa olmasdi.
+  //
+  // Faqat FAOL (admin tasdiqlagan va to'langan) kompaniyalar
+  // qaytariladi: qoralama yoki rad etilgani ko'rinmasligi kerak.
+  // Maxfiy maydonlar (egasi, telefoni, to'lov holati) YUBORILMAYDI —
+  // faqat sahifada allaqachon ochiq ko'rinadigan ma'lumot.
+  if (path === '/api/companies' && request.method === 'GET') {
+    const rows = await env.DB.prepare(
+      `SELECT company_id, display_name, logo_url, cover_url, category, subcategory, city, created_at
+         FROM companies WHERE status = 'active' ORDER BY created_at DESC LIMIT 200`
+    ).all();
+    return json({
+      companies: (rows.results || []).map((r) => ({
+        companyId: r.company_id,
+        displayName: r.display_name || r.company_id,
+        logoUrl: r.logo_url || '',
+        coverUrl: r.cover_url || '',
+        category: r.category || '',
+        subcategory: r.subcategory || '',
+        city: r.city || '',
+        createdAt: r.created_at || null,
+      })),
+    });
+  }
+
   if (path === '/api/companies' && request.method === 'POST') {
     const auth = await upstreamUser(request, env);
     if (!auth) return json({ error: 'unauthorized' }, 401);
