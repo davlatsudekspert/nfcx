@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CARD_BACKGROUNDS } from '../lib/cardBackgrounds.js';
 import { useLanguage } from '../lib/i18n.jsx';
 
 // Jismoniy NFC karta uchun bosma dizayn generatori — matn, rang, fon
@@ -223,7 +224,7 @@ function renderCard(ctx, w, h, state) {
   ctx.save();
   ctx.clip();
 
-  if (state.bgMode === 'image' && state.bgImage) {
+  if ((state.bgMode === 'image' || state.bgMode === 'preset') && state.bgImage) {
     drawCoverImage(ctx, state.bgImage, 0, 0, w, h);
     ctx.fillStyle = `rgba(0,0,0,${state.darken / 100})`;
     ctx.fillRect(0, 0, w, h);
@@ -427,6 +428,8 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const [bgColor, setBgColor] = useState('black');
   const [bgMode, setBgMode] = useState('color');
   const [bgImage, setBgImage] = useState(null);
+  // Qaysi tayyor fon tanlangani — ro'yxatda belgilab turish uchun.
+  const [presetId, setPresetId] = useState('');
   const [darken, setDarken] = useState(35);
   const [font, setFont] = useState('Arial');
   const [fontSize, setFontSize] = useState(92);
@@ -556,7 +559,19 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const onPickBgImage = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    setPresetId('');
     loadImageFromFile(file, setBgImage);
+  };
+
+  // Tayyor fon: to'liq rasm faqat SHU YERDA yuklanadi.
+  // `crossOrigin` shart emas — rasm o'z domenimizdan, shuning uchun
+  // canvas "iflos" bo'lmaydi va PNG qilib saqlash ishlayveradi.
+  const pickPreset = (bg) => {
+    setPresetId(bg.id);
+    const img = new Image();
+    img.onload = () => setBgImage(img);
+    img.onerror = () => { setPresetId(''); setBgImage(null); };
+    img.src = bg.url;
   };
   const onPickLogo = (e) => {
     const file = e.target.files[0];
@@ -659,11 +674,38 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
 
           <FieldGroup title={t("Fon turi")}>
             <ToggleGroup
-              options={[{ value: 'color', label: 'Teri rang' }, { value: 'image', label: 'Rasm yuklash' }]}
+              options={[
+                { value: 'color', label: 'Teri rang' },
+                { value: 'preset', label: 'Tayyor fonlar' },
+                { value: 'image', label: 'Rasm yuklash' },
+              ]}
               value={bgMode}
               onChange={setBgMode}
             />
-            {bgMode === 'color' ? (
+            {bgMode === 'preset' ? (
+              <div className="mt-4">
+                <Label>{t('Shahar manzarasi — oltin chizma')}</Label>
+                {/* Ro'yxatda KICHIK nusxa ko'rsatiladi; to'liq rasm faqat
+                    tanlanganda yuklanadi. 8 ta to'liq rasm birdan
+                    yuklansa 2.5 MB bo'lardi. */}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {CARD_BACKGROUNDS.map((bg) => (
+                    <button
+                      key={bg.id} type="button"
+                      onClick={() => pickPreset(bg)}
+                      className={`overflow-hidden rounded-xl border text-left transition ${presetId === bg.id ? 'border-accent ring-1 ring-accent/50' : 'border-white/10 hover:border-white/30'}`}
+                    >
+                      <img src={bg.thumb} alt="" loading="lazy" className="block h-auto w-full" />
+                      <span className="block px-2 py-1.5 text-[11px] text-base-content/70">{t(bg.label)}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <Label>{t("Rasm qorong'uligi (matn o'qilishi uchun)")}</Label>
+                  <input type="range" min={0} max={80} value={darken} onChange={(e) => setDarken(Number(e.target.value))} className="range range-xs range-primary mt-1" />
+                </div>
+              </div>
+            ) : bgMode === 'color' ? (
               <div className="mt-4">
                 <Label>{t('Teri foni rangi')}</Label>
                 <SwatchRow items={BG_SWATCHES} value={bgColor} onChange={setBgColor} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import ImageUploadField from '../components/ImageUploadField.jsx';
 import { addCompanyItem, beginCompanyPayment, companyCta, COMPANY_STATUS, createCompanyPost, createCompanyStory, deleteCompanyItem, deleteCompanyPost, deleteCompanyStory, getCompany, getCompanyStats, listCompanyOrders, listCompanyPosts, listCompanyStories, setCompanyOrderStatus, submitCompany, updateCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
@@ -6,6 +6,10 @@ import { dbUploadAudio } from '../lib/db.js';
 import { directionsUrl, hasCoords } from '../lib/mapLink.js';
 import CompanyQrCard from '../components/CompanyQrCard.jsx';
 import StoryUploader from '../components/StoryUploader.jsx';
+
+// Karta dizayneri OG'IR (canvas, qrcode, shriftlar) — u faqat shu bo'lim
+// ochilganda yuklanadi, kabinetning qolgan qismini sekinlashtirmaydi.
+const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
 import { DAY_NAMES, WEEK_ORDER, defaultHours, hoursEmpty, normalizeHours } from '../lib/hours.js';
 import { fmt } from '../lib/format.js';
 import { socialUrl } from '../lib/socialLinks.js';
@@ -14,7 +18,7 @@ import { companyNameBlocked } from '../lib/nameGuard.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
-const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Lenta'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['settings','Sozlamalar']];
+const tabs = [['dashboard','Boshqaruv'],['stats','Statistika'],['orders','Buyurtmalar'],['feed','Lenta'],['profile','Profil'],['catalog','Katalog'],['contact','Aloqa'],['design','Karta dizayni'],['settings','Sozlamalar']];
 const blankItem = { name: '', category: '', description: '', price: '', promotionPrice: '', imageUrl: '', available: true };
 
 export default function CompanyWorkspacePage({ companyId }) {
@@ -74,6 +78,24 @@ export default function CompanyWorkspacePage({ companyId }) {
         {tab === 'stats' && <CompanyStatsPanel companyId={company.companyId} t={t} />}
 
         {tab === 'orders' && <CompanyOrdersPanel companyId={company.companyId} form={form} setForm={setForm} save={save} busy={busy} t={t} />}
+
+        {/* KARTA DIZAYNI — shaxsiy profildagi bilan AYNAN bir xil vosita
+            (bitta komponent, ikki joyda). Alohida nusxa yozilsa, ikkovi
+            vaqt o'tib bir-biridan farq qilib ketardi. */}
+        {tab === 'design' && (
+          <div className="cw-panel">
+            <div className="cw-panel-head">
+              <span>01</span>
+              <div>
+                <h2>{t('Karta dizayni')}</h2>
+                <p>{t('Kompaniya NFC kartangizning bosma ko‘rinishi. Tayyor fonlardan tanlang yoki o‘z rasmingizni yuklang.')}</p>
+              </div>
+            </div>
+            <Suspense fallback={<p className="cw-empty">{t('Yuklanmoqda…')}</p>}>
+              <CardDesignerPage embedded code={company.companyId} />
+            </Suspense>
+          </div>
+        )}
 
         {tab === 'feed' && <CompanyFeedPanel companyId={company.companyId} name={company.displayName} logoUrl={company.logoUrl} t={t} />}
 

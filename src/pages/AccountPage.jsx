@@ -21,6 +21,7 @@ import NfcCard from '../components/NfcCard.jsx';
 import { PhoneFrame, MenuPreviewList, ProductsPreviewGrid, ServicesPreviewList, mergeDraftIntoCategories } from '../components/CompanyPhonePreview.jsx';
 import StoryUploader from '../components/StoryUploader.jsx';
 import StoryFeedBar from '../components/StoryFeedBar.jsx';
+import { CARD_BACKGROUNDS, cardBackgroundFromUrl } from '../lib/cardBackgrounds.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
@@ -2143,6 +2144,27 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
               </div>
               <p className="mt-1 text-[14px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm/GIF maks. 3 MB, video (MP4/WebM) maks. 10 MB.')}</p>
               {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
+
+              {/* TAYYOR FONLAR — o'z rasmini izlab yurmasin. Bular
+                  saytning o'z fayllari, shuning uchun yuklash ham,
+                  hajm chegarasi ham yo'q: tanlash yetarli. */}
+              <div className="mt-3">
+                <span className="text-xs font-semibold text-base-content/70">{t('Yoki tayyor fonlardan tanlang')}</span>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {CARD_BACKGROUNDS.map((bg) => {
+                    const active = cardBackgroundFromUrl(bgUrl)?.id === bg.id;
+                    return (
+                      <button
+                        key={bg.id} type="button" onClick={() => setBgUrl(bg.url)}
+                        className={`overflow-hidden rounded-xl border text-left transition ${active ? 'border-accent ring-1 ring-accent/50' : 'border-white/10 hover:border-white/30'}`}
+                      >
+                        <img src={bg.thumb} alt="" loading="lazy" className="block h-auto w-full" />
+                        <span className="block px-2 py-1 text-[11px] text-base-content/70">{t(bg.label)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="mt-4">
