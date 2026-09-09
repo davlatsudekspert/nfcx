@@ -58,7 +58,27 @@
     // dist/server pastki papkalari ham bor — ularni Cloudflare'ga
     // statik aktiv sifatida yubormaslik uchun aynan dist/client tanlangan).
     "directory": "./dist/client",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // ULASHISH KARTOCHKASI UCHUN — WORKER BIRINCHI (2026-09).
+    //
+    // Muammo: `single-page-application` rejimida hech qanday faylga mos
+    // kelmagan sahifa so'rovi (masalan /yangiliklar/6) STATIK xizmat
+    // tomonidan to'g'ridan-to'g'ri index.html bilan javob berilishi
+    // mumkin — Worker umuman ishga tushmaydi. Brauzer uchun farqi yo'q
+    // (SPA baribir ochiladi), lekin Telegram/WhatsApp/Facebook robotlari
+    // uchun bor: ular JavaScript ishlatmaydi va faqat HTML ichidagi meta
+    // teglarni o'qiydi. Natijada har qanday yangilik havolasi bir xil
+    // UMUMIY kartochka bilan (yoki umuman kartochkasiz) ulashilardi.
+    //
+    // `run_worker_first` shu yo'llar uchun Worker'ni MAJBURAN birinchi
+    // ishga tushiradi — u esa `newsShellResponse()` bilan aynan shu
+    // maqolaning sarlavhasi, matni va rasmini meta teglarga yozib
+    // qaytaradi.
+    //
+    // XAVFSIZ: ro'yxatdagi yo'llar uchun ham oxir-oqibat o'sha SPA
+    // qobig'i beriladi (worker.js oxirida `env.ASSETS.fetch` zaxirasi
+    // bor), qolgan hamma yo'l esa avvalgidek statikadan tez ketaveradi.
+    "run_worker_first": ["/yangiliklar/*"]
   },
   // Mavjud production D1/R2 resurslari — hosting/worker.js env.DB va
   // env.UPLOADS orqali ishlatadi. Bular AVVAL bu faylda yozilmagan edi
