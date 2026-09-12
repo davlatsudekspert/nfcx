@@ -16,7 +16,7 @@ import { companyCta, companyEvent, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
-import { IconPhone, IconTelegram, IconGlobe } from '../components/Icons.jsx';
+import { IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
@@ -102,6 +102,11 @@ export default function CompanyQuickProfilePage({ companyId }) {
     items.length > 0 && 'katalog',
   ].filter(Boolean);
   const activeTab = availableTabs.includes(tab) ? tab : (availableTabs[0] || '');
+  // Halqa "yangi kontent bor" degani. Istorya baribir 24 soatlik,
+  // POST esa doimiy — shuning uchun post uchun yoshini alohida
+  // tekshiramiz, aks holda halqa bir marta yoqilib, mangu yonib
+  // turardi.
+  const hasFreshPost = posts.some((p) => p.createdAt && (Date.now() - Date.parse(p.createdAt)) < 24 * 3600_000);
 
   if (company === undefined) {
     return (
@@ -148,7 +153,9 @@ export default function CompanyQuickProfilePage({ companyId }) {
     <main className="cq-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
       <div className="cq-shell">
         <header className="cq-top">
-          <span className="cq-brand"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span>
+          {/* Brend yozuvi ikki nozik oltin chiziq orasida — chiziqlar
+              yozuvda uchrashadi. Premium ko'rinishning imzosi. */}
+          <span className="cq-brand cq-brand--lined"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span>
           {/* IKKALASIDAN BITTASI: kompaniya egasi bo'lsangiz —
               "Tahrirlash" (kabinetga), kirgan boshqa odam bo'lsangiz —
               o'z profilingizga qaytish. Mehmonga hech biri kerak emas:
@@ -159,7 +166,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
           <span className="cq-id">COMPANY ID · {company.companyId}</span>
         </header>
         <section className="cq-identity">
-          <StoryRing stories={stories} title={company.displayName} avatarUrl={company.logoUrl}>
+          <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
             <div className="cq-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
           </StoryRing>
           <span className="cq-live">● {t('TASDIQLANGAN KOMPANIYA')}</span>
@@ -174,10 +181,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
         <section className="cq-actions" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
           {company.phone && <a data-ev="phone" className="primary vz-tap" href={contactUrl('phone', company.phone)}><IconPhone width={14} height={14} aria-hidden="true" />&nbsp;{t('Qo‘ng‘iroq')}</a>}
-          {company.telegram && <a data-ev="telegram" className="vz-tap" href={contactUrl('telegram', company.telegram)} target="_blank" rel="noreferrer"><IconTelegram width={14} height={14} aria-hidden="true" />&nbsp;Telegram</a>}
-          {company.whatsapp && <a data-ev="whatsapp" className="vz-tap" href={contactUrl('whatsapp', company.whatsapp)} target="_blank" rel="noreferrer">WhatsApp</a>}
-          {company.instagram && <a data-ev="instagram" className="vz-tap" href={socialUrl('ig', company.instagram)} target="_blank" rel="noreferrer">Instagram</a>}
-          {company.facebook && <a data-ev="facebook" className="vz-tap" href={socialUrl('fb', company.facebook)} target="_blank" rel="noreferrer">Facebook</a>}
+          {/* IJTIMOIY TARMOQLAR O'Z RANGIDA. Ilgari hammasi bir xil
+              oltin edi va ko'z ularni ajratmasdi — odam "Telegram
+              qayerda?" deb qidirardi. Endi ikonka har birining o'z
+              firma rangida (`cq-brandicon`), tugma esa umumiy qora
+              uslubda qoladi: rang faqat URG'U, butun tugmani
+              bo'yash sahifani rang-barang qilib yuborardi. */}
+          {company.telegram && <a data-ev="telegram" className="vz-tap" href={contactUrl('telegram', company.telegram)} target="_blank" rel="noreferrer"><i className="cq-brandicon" style={{ color: '#2aabee' }}><IconTelegram width={15} height={15} aria-hidden="true" /></i>Telegram</a>}
+          {company.whatsapp && <a data-ev="whatsapp" className="vz-tap" href={contactUrl('whatsapp', company.whatsapp)} target="_blank" rel="noreferrer"><i className="cq-brandicon" style={{ color: '#25d366' }}><IconWhatsApp width={15} height={15} aria-hidden="true" /></i>WhatsApp</a>}
+          {company.instagram && <a data-ev="instagram" className="vz-tap" href={socialUrl('ig', company.instagram)} target="_blank" rel="noreferrer"><i className="cq-brandicon cq-brandicon--ig"><IconInstagram width={15} height={15} aria-hidden="true" /></i>Instagram</a>}
+          {company.facebook && <a data-ev="facebook" className="vz-tap" href={socialUrl('fb', company.facebook)} target="_blank" rel="noreferrer"><i className="cq-brandicon" style={{ color: '#1877f2' }}><IconFacebook width={15} height={15} aria-hidden="true" /></i>Facebook</a>}
           {company.website && <a data-ev="website" className="vz-tap" href={contactUrl('website', company.website)} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Veb-sayt')}</a>}
           {mapUrl && <a data-ev="directions" className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Yo‘nalish olish')}</a>}
           {geo && <a data-ev="yandex" className="vz-tap" href={yandexDirectionsUrl(company)} target="_blank" rel="noreferrer">{t('Yandex Karta')}</a>}

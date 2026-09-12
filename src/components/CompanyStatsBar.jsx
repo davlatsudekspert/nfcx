@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toggleCompanyFollow } from '../lib/company.js';
+import { toggleCompanyFollow, companyCta } from '../lib/company.js';
 import { fmt } from '../lib/format.js';
 import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
@@ -33,10 +33,21 @@ export default function CompanyStatsBar({ company, onChange }) {
     } catch { /* jim tur */ } finally { setBusy(false); }
   };
 
+  // Katalogdagi mavjud yozuvlar soni va uning nomi.
+  const catalogCount = (company.catalog || []).filter((i) => i && i.available !== false).length;
+  const catalogNoun = companyCta(company.category).noun;
+
   return (
     <div className="cq-metrics">
       <div className="cq-metric"><b>{fmt(company.views || 0)}</b><small>{t('ko‘rildi')}</small></div>
       <div className="cq-metric"><b>{fmt(company.followers || 0)}</b><small>{t('obunachi')}</small></div>
+      {/* KATALOG SONI — spec bo'yicha uchinchi raqam. Katalog bo'sh
+          bo'lsa umuman chizilmaydi: "0 mahsulot" deb turish
+          kompaniyani tashlandiq ko'rsatardi. Nomi turiga qarab
+          o'zgaradi (taom / mahsulot / xizmat). */}
+      {catalogCount > 0 && (
+        <div className="cq-metric"><b>{fmt(catalogCount)}</b><small>{t(catalogNoun)}</small></div>
+      )}
       <div className="cq-metric-actions">
         {!isOwner && (
           <button type="button" className={`cq-follow ${company.following ? 'is-on' : ''}`} onClick={follow} disabled={busy}>
