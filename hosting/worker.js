@@ -4398,7 +4398,10 @@ function emailShellD1({ title, body, buttonLabel, buttonUrl, footer }) {
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#0d0d0f;font-family:Arial,Helvetica,sans-serif;color:#e9e6df">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" style="max-width:520px;background:#151518;border:1px solid #2a2a30;border-radius:14px" cellpadding="0" cellspacing="0"><tr><td style="padding:28px">
-<div style="font:700 13px/1 Arial;letter-spacing:.18em;color:#c9a24b">NFCSTORE.UZ</div>
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-right:10px"><img src="https://nfcstore.uz/logo-192.png?v=4" width="34" height="34" alt="" style="display:block;border:0;border-radius:50%" /></td>
+<td style="font:700 13px/1 Arial;letter-spacing:.18em;color:#c9a24b">NFCSTORE.UZ</td>
+</tr></table>
 <h1 style="margin:14px 0 0;font-size:21px;line-height:1.3;color:#fff">${esc(title)}</h1>
 <div style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#b9b5ad">${body}</div>
 ${buttonUrl ? `<div style="margin:24px 0 0"><a href="${esc(buttonUrl)}" style="display:inline-block;background:#c9a24b;color:#161616;text-decoration:none;font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px">${esc(buttonLabel)}</a></div>
