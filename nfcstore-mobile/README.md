@@ -54,15 +54,20 @@ src/
   features/profile/     sarlavha, tablar, varaqlar, ma'lumot qatlami
   lib/                  format (narx, ish vaqti, nisbiy vaqt)
 docs/
-  BEARER-AUTH-DIFF.md   backend uchun aniq diff (sayt sessiyasida qo'llanadi)
+  BEARER-AUTH-DIFF.md   Bearer auth o'zgarishi — qo'llangan, tarixiy yozuv
 ```
 
 ## Backend
 
 Ilova mavjud jonli API ga ulanadi: `https://nfcstore.uz/api`.
 
-`hosting/` **o'zgartirilmaydi**. Mobil uchun kerak bo'lgan bitta o'zgarish
-(Bearer token) `docs/BEARER-AUTH-DIFF.md` da aniq diff sifatida yozilgan.
+Autentifikatsiya — **Bearer token**, cookie emas. Backend tomoni qo'llangan va
+production'da tasdiqlangan: `getCurrentUser()` cookie bo'lmasa `Authorization:
+Bearer` dan o'qiydi, login/register esa `X-Client: mobile` sarlavhasi bilan
+javob tanasida `token` qaytaradi. Veb tomonidagi cookie oqimi o'zgarmagan.
+Batafsili: `docs/BEARER-AUTH-DIFF.md`.
+
+Token `expo-secure-store` da saqlanadi (Android Keystore / iOS Keychain).
 
 Ro'yxatdan o'tish oqimi tekshirilgan (`hosting/api/auth.js`, 2026-09):
 bir qadam, Telegram OTP **yo'q** — `phone` + `password` + `tosAccepted`,

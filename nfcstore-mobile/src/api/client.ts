@@ -8,15 +8,18 @@ import * as SecureStore from 'expo-secure-store';
  * cookie jar farq qiladi, WebView bilan bo'linadi va background'dan
  * qaytganda yo'qoladi. Shuning uchun biz TOKEN ishlatamiz.
  *
- * Backend tomonda kerak bo'ladigan (hali qo'shilmagan) o'zgarish:
+ * Backend tomoni QO'LLANGAN va production'da tasdiqlangan:
  *   1) getCurrentUser() cookie bo'lmasa `Authorization: Bearer <token>`
- *      dan o'qiydi;
- *   2) /api/auth/login va register javob tanasida `token` qaytaradi
- *      (faqat `X-Client: mobile` sarlavhasi bo'lganda).
+ *      dan o'qiydi (cookie birinchi ustuvorlikda);
+ *   2) /api/auth/login va register javob tanasida `token` qaytaradi —
+ *      faqat `X-Client: mobile` sarlavhasi bo'lganda, shuning uchun veb
+ *      javobi o'zgarmaydi.
  * Batafsili: docs/BEARER-AUTH-DIFF.md.
  *
- * Shu o'zgarish kirmagunicha `login()` tokenni `Set-Cookie` dan
- * ajratib olishga harakat qiladi (zaxira yo'l) — quyida `extractToken`.
+ * Shu sababli tokenni `Set-Cookie` dan ajratib oladigan zaxira yo'l
+ * OLIB TASHLANDI: server token bermasa bu haqiqiy nosozlik va u jim
+ * yashirilmasligi kerak — `login()` va `register()` ikkalasi ham
+ * `no_session_token` bilan to'xtaydi.
  */
 
 export const API_BASE = 'https://nfcstore.uz/api';
@@ -130,18 +133,6 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return data as T;
 }
 
-/**
- * Zaxira yo'l: backend hali tanada token qaytarmasa, uni `Set-Cookie`
- * dan ajratib olamiz. Ishlaydi, lekin mo'rt — asosiy yo'l baribir
- * javob tanasidagi `token`.
- */
-function extractTokenFromCookie(res: Response): string | null {
-  const raw = res.headers.get('set-cookie');
-  if (!raw) return null;
-  const m = /(?:^|[,;\s])nfc_session=([^;,\s]+)/.exec(raw);
-  return m ? m[1] : null;
-}
-
 export type AuthedUser = {
   id: number;
   email: string;
@@ -167,15 +158,14 @@ export async function login(loginOrEmail: string, password: string): Promise<Aut
     throw new ApiError(res.status, typeof data?.error === 'string' ? data.error : `api_error_${res.status}`);
   }
 
-  const token = data?.token ?? extractTokenFromCookie(res);
-  if (!token) {
-    // Sessiya ochildi, lekin biz uni saqlay olmadik — keyingi so'rov
-    // 401 bo'lardi. Jim qolib "kirdik" deb ko'rsatgandan ko'ra aniq
-    // aytish yaxshi.
+  if (!data?.token) {
+    // Sessiya serverda ochildi, lekin token bizga yetib kelmadi —
+    // keyingi so'rov 401 bo'lardi. Jim qolib "kirdik" deb ko'rsatishdan
+    // ko'ra aniq aytish yaxshi: bu backend nosozligi.
     throw new ApiError(500, 'no_session_token');
   }
-  await setToken(token);
-  if (!data?.user) throw new ApiError(500, 'bad_login_response');
+  await setToken(data.token);
+  if (!data.user) throw new ApiError(500, 'bad_login_response');
   return data.user;
 }
 
@@ -210,9 +200,14 @@ export async function register(input: {
   if (!res.ok) {
     throw new ApiError(res.status, typeof data?.error === 'string' ? data.error : `api_error_${res.status}`);
   }
-  const token = data?.token ?? extractTokenFromCookie(res);
-  if (token) await setToken(token);
-  if (!data?.user) throw new ApiError(500, 'bad_register_response');
+  // Login bilan bir xil qat'iylik: ilgari bu yerda token yo'q bo'lsa jim
+  // o'tib ketilardi va odam "ro'yxatdan o'tdim, lekin kirmaganman"
+  // holatida qolardi.
+  if (!data?.token) {
+    throw new ApiError(500, 'no_session_token');
+  }
+  await setToken(data.token);
+  if (!data.user) throw new ApiError(500, 'bad_register_response');
   return data.user;
 }
 

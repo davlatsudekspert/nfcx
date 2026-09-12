@@ -1,10 +1,16 @@
-# Bearer token auth — backend uchun aniq diff
+# Bearer token auth — backend o'zgarishi
 
-Bu o'zgarishlar **mobil ilova uchun** kerak. Ularni `nfcx` repozitoriyasida
-(sayt sessiyasida) o'zingiz qo'llaysiz — mobil loyiha `hosting/` ga tegmaydi.
+> **HOLAT: QO'LLANGAN VA DEPLOY QILINGAN.** PR #54 → `main` (`1bb3ab6`),
+> Cloudflare deploy workflow'i `success`. Production'da uch tekshiruv ham
+> kutilgan natijani berdi: `X-Client: mobile` bilan login token qaytardi,
+> cookie'siz `/me` foydalanuvchini tanidi, sarlavhasiz login esa token
+> qaytarmadi — ya'ni veb javobi o'zgarmagan.
+>
+> Bu hujjat endi **tarixiy yozuv**: nima va nega qilinganini saqlaydi.
+> Qayta qo'llash kerak emas.
 
-Uch o'zgarish ham **qo'shimcha (additive)**: veb tomonidagi cookie oqimi
-o'zgarmaydi, hech qanday mavjud xatti-harakat buzilmaydi.
+Uch o'zgarish ham **qo'shimcha (additive)** edi: veb tomonidagi cookie oqimi
+o'zgarmadi, hech qanday mavjud xatti-harakat buzilmadi.
 
 ## Nega cookie emas
 
@@ -99,15 +105,17 @@ maydonini qo'yish ham bir xil natija beradi — men sarlavhani tanladim,
 chunki u `register` da ham bir xil ishlaydi va mavjud tana sxemasiga
 tegmaydi.
 
-## Mobil tomon tayyor
+## Mobil tomon
 
-`src/api/client.ts` allaqachon:
+`src/api/client.ts`:
 
 - har so'rovga `X-Client: mobile` qo'yadi;
 - token bo'lsa `Authorization: Bearer <token>` qo'shadi;
-- tokenni `expo-secure-store` da saqlaydi.
+- tokenni `expo-secure-store` (Android Keystore / iOS Keychain) da saqlaydi.
 
-Zaxira yo'l ham bor: backend hali tanada token qaytarmasa, klient uni
-`Set-Cookie` sarlavhasidan ajratib olishga harakat qiladi
-(`extractTokenFromCookie`). Ishlaydi, lekin mo'rt — shuning uchun yuqoridagi
-uch o'zgarish qo'llanganidan keyin o'sha zaxira yo'lni olib tashlash mumkin.
+Ilgari bu yerda zaxira yo'l bor edi — token javob tanasida bo'lmasa uni
+`Set-Cookie` sarlavhasidan ajratib olishga harakat qilinardi. Backend
+qo'llanib, deploy qilinib, tasdiqlangandan keyin u **olib tashlandi**: endi
+server token bermasligi haqiqiy nosozlik va uni jim yashirib turish faqat
+diagnostikani qiyinlashtirardi. `login()` ham, `register()` ham bunday holatda
+`no_session_token` bilan to'xtaydi.
