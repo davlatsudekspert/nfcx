@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "NFCSTORE",
+    "slug": "nfcstore-mobile",
+    "scheme": "nfcstore",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0805"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "uz.nfcstore.app"
+    },
+    "android": {
+      "package": "uz.nfcstore.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0805",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "NFCSTORE kartani o'qish uchun NFC dan foydalanadi.",
+          "includeNdefEntitlement": true
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
