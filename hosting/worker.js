@@ -2736,7 +2736,18 @@ async function createUserSession(env, userId, request) {
 }
 
 async function getCurrentUser(request, env) {
-  const token = parseCookies(request)[SESSION_COOKIE];
+  // MOBIL: cookie bo'lmasa `Authorization: Bearer <token>` dan o'qiymiz.
+  // Sessiya mexanizmi bir xil — o'sha `sessions` jadvali, o'sha SHA-256
+  // hash, o'sha 30 kunlik muddat. Faqat token yetkazish kanali boshqa,
+  // chunki React Native da HttpOnly cookie ishonchsiz (platformalar
+  // orasidagi cookie jar farqi, WebView bilan bo'linish, fondan
+  // qaytganda yo'qolish).
+  //
+  // Veb uchun hech narsa o'zgarmaydi: cookie bor bo'lsa u BIRINCHI.
+  const cookieToken = parseCookies(request)[SESSION_COOKIE];
+  const authHeader = request.headers.get('authorization') || '';
+  const bearer = /^Bearer\s+(.+)$/i.exec(authHeader.trim());
+  const token = cookieToken || (bearer ? bearer[1].trim() : null);
   if (!token) return null;
   // Tozalash har so'rovda emas — ~1/50 so'rovda (sessions(expires_at) indeksi yo'q edi).
   if (Math.random() < 0.02) await env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(nowTs()).run().catch(() => {});
@@ -4941,7 +4952,15 @@ async function authApi(request, env, url) {
       return json({ error: 'account_suspended', suspendedUntil: row.suspended_until, reason: row.suspend_reason }, 403);
     }
     const session = await createUserSession(env, row.id, request);
-    return jsonWithCookie({ user: { id: row.id, email: publicEmailD1(row.email) } }, 200, session.cookie);
+    // MOBIL: `X-Client: mobile` bo'lsa token javob TANASIDA ham qaytadi
+    // (`createUserSession` uni allaqachon qaytaradi — ilgari u faqat
+    // Set-Cookie ga ketib, tanadan tashlab yuborilardi). Veb bu
+    // sarlavhani yubormaydi, demak uning javobi bitma-bit avvalgidek.
+    const wantsToken = (request.headers.get('x-client') || '').toLowerCase() === 'mobile';
+    return jsonWithCookie({
+      user: { id: row.id, email: publicEmailD1(row.email) },
+      ...(wantsToken ? { token: session.token } : {}),
+    }, 200, session.cookie);
   }
 
   if (path === '/api/auth/logout' && request.method === 'POST') {

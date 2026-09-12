@@ -448,7 +448,15 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   }
 
   const s = await H.createUserSession(env, user.id, request);
-  return H.jsonWithCookie({ user: { id: user.id, email: H.publicEmailD1(user.email) } }, 201, s.cookie);
+  // MOBIL: login bilan bir xil naqsh — `X-Client: mobile` bo'lsa token
+  // javob tanasida ham qaytadi, aks holda javob avvalgidek qoladi.
+  // Shunda ilova ro'yxatdan o'tgandan keyin darhol kirgan holatda
+  // bo'ladi va qayta login so'ralmaydi.
+  const wantsToken = (request.headers.get('x-client') || '').toLowerCase() === 'mobile';
+  return H.jsonWithCookie({
+    user: { id: user.id, email: H.publicEmailD1(user.email) },
+    ...(wantsToken ? { token: s.token } : {}),
+  }, 201, s.cookie);
 }
 
 // Parol tiklash so'rovi — foydalanuvchi bor-yo'qligi oshkor qilinmaydi:
