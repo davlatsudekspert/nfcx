@@ -16,7 +16,7 @@ import { companyCta, companyEvent, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
-import { IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook } from '../components/Icons.jsx';
+import { IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconChip, IconLink } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
@@ -91,8 +91,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
   }, [company?.companyId]);
 
   const cta = companyCta(company?.category);
-  const items = useMemo(() => (company?.catalog || []).filter((item) => item.available !== false).slice(0, 4), [company]);
-  // Qaysi bo'limlar BOR — shu tartibda: Post, Lenta, Katalog.
+  const items = useMemo(() => (company?.catalog || []).filter((item) => item.available !== false), [company]);
+  // Qaysi bo'limlar BOR — shu tartibda: Post, Lenta, Katalog, Ma'lumot.
   // `activeTab` tanlanganini emas, MAVJUDINI qaytaradi: ma'lumot
   // keyinroq kelganda yoki bo'lim bo'shab qolganda sahifa bo'sh
   // ko'rinib qolmasin.
@@ -100,6 +100,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
     posts.length > 0 && 'post',
     stories.length > 0 && 'lenta',
     items.length > 0 && 'katalog',
+    'haqida',
   ].filter(Boolean);
   const activeTab = availableTabs.includes(tab) ? tab : (availableTabs[0] || '');
   // Halqa "yangi kontent bor" degani. Istorya baribir 24 soatlik,
@@ -110,15 +111,20 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
   if (company === undefined) {
     return (
-      <main className="cq-page" aria-busy="true">
-        <div className="cq-shell" style={{ '--cq-cover': 'none' }}>
-          <div className="cq-identity" style={{ paddingTop: 48 }}>
-            <div className="vz-skel mx-auto" style={{ width: 82, height: 82, borderRadius: 25 }} />
-            <div className="vz-skel mx-auto mt-4" style={{ width: '60%', height: 22 }} />
-            <div className="vz-skel mx-auto mt-3" style={{ width: '40%' }} />
-            <div className="vz-skel mx-auto mt-3" style={{ width: '80%' }} />
-          </div>
-          <div className="cq-actions"><div className="vz-skel" style={{ height: 44 }} /><div className="vz-skel" style={{ height: 44 }} /></div>
+      <main className="qp-page" aria-busy="true" style={{ '--cq-cover': 'none' }}>
+        <div className="qp-shell">
+          <header className="qp-top"><span className="vz-skel" style={{ width: 110, height: 14 }} /></header>
+          <section className="qp-hero">
+            <div className="qp-hero-row">
+              <div className="vz-skel" style={{ width: 64, height: 64, borderRadius: 20, flex: 'none' }} />
+              <div style={{ flex: 1 }}>
+                <div className="vz-skel" style={{ width: '70%', height: 20 }} />
+                <div className="vz-skel mt-2" style={{ width: '45%', height: 12 }} />
+              </div>
+            </div>
+            <div className="vz-skel mt-3" style={{ height: 46 }} />
+            <div className="vz-skel mt-3" style={{ height: 58 }} />
+          </section>
           <span className="sr-only">{t('Yuklanmoqda…')}</span>
         </div>
       </main>
@@ -149,74 +155,80 @@ export default function CompanyQuickProfilePage({ companyId }) {
     : company.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}` : '';
   const extraLinks = (company.extraLinks || []).filter((l) => l && l.label && l.url);
 
+  // ALOQA TUGMALARI — dumaloq ikonkalar qatori.
+  //
+  // Ilgari bular ustma-ust yotgan ETTITA keng tugma edi: faqat shuning
+  // o'zi ekranning yarmini yeb, qolgan hamma narsa (bo'limlar, post,
+  // menyu) ko'rinmas joyga tushib ketardi. Endi bitta gorizontal qator:
+  // balandligi 7 ta tugma o'rniga bittasiniki, ikonka esa o'z firma
+  // rangida — ko'z Telegramni qidirmaydi, darrov topadi.
+  const quick = [
+    company.phone && { k: 'phone', href: contactUrl('phone', company.phone), label: t('Qo‘ng‘iroq'), color: '#4ddb8f', icon: <IconPhone width={19} height={19} aria-hidden="true" /> },
+    company.telegram && { k: 'telegram', href: contactUrl('telegram', company.telegram), label: 'Telegram', color: '#2aabee', icon: <IconTelegram width={19} height={19} aria-hidden="true" /> },
+    company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#25d366', icon: <IconWhatsApp width={19} height={19} aria-hidden="true" /> },
+    company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#e1306c', icon: <IconInstagram width={19} height={19} aria-hidden="true" /> },
+    company.facebook && { k: 'facebook', href: socialUrl('fb', company.facebook), label: 'Facebook', color: '#1877f2', icon: <IconFacebook width={19} height={19} aria-hidden="true" /> },
+    company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#e6c169', icon: <IconGlobe width={19} height={19} aria-hidden="true" /> },
+    mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#ff7a59', icon: <IconGlobe width={19} height={19} aria-hidden="true" /> },
+    geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#ff3f40', icon: <IconGlobe width={19} height={19} aria-hidden="true" /> },
+    // KARTA RAQAMI — ro'yxatda YASHIRIN turadi. Ochiq tursa u tasodifan
+    // ekranga tushadi (skrinshot, video, yonidagi odam); bosish esa
+    // ataylab qilingan harakat.
+    company.cardNumber && { k: 'card', onClick: () => setShowCard(true), label: t('Karta'), color: '#f0cf7b', icon: <IconChip width={19} height={19} aria-hidden="true" /> },
+    // Egasi o'zi qo'shgan havolalar.
+    ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#cfc6b4', icon: <IconLink width={19} height={19} aria-hidden="true" /> })),
+  ].filter(Boolean);
+
+  const isOwner = user && String(user.id) === String(company.ownerUserId);
+
   return (
-    <main className="cq-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
-      <div className="cq-shell">
-        <header className="cq-top">
-          {/* Brend yozuvi ikki nozik oltin chiziq orasida — chiziqlar
-              yozuvda uchrashadi. Premium ko'rinishning imzosi. */}
-          <span className="cq-brand cq-brand--lined"><i><img src={logo} alt="NFCSTORE" /></i> NFCSTORE</span>
+    <main className="qp-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
+      {/* BITTA EKRANLIK QOBIQ. Balandligi aynan telefon ekrani
+          (100dvh) va o'zi SCROLL BO'LMAYDI: faqat o'rtadagi kontent
+          qismi suriladi. NFC kartani tegizgan odam sahifani ochishi
+          bilan hamma muhim narsani — nomi, holati, aloqa tugmalari va
+          "Kontaktni saqlash"ni — bir qarashda ko'radi. */}
+      <div className="qp-shell">
+        <header className="qp-top">
+          <span className="qp-brand"><i><img src={logo} alt="" /></i> NFCSTORE</span>
+          <span className="qp-id">ID · {company.companyId}</span>
           {/* IKKALASIDAN BITTASI: kompaniya egasi bo'lsangiz —
               "Tahrirlash" (kabinetga), kirgan boshqa odam bo'lsangiz —
               o'z profilingizga qaytish. Mehmonga hech biri kerak emas:
               NFC kartani tegizgan odamda "qaytadigan" profil yo'q. */}
-          {user && (String(user.id) === String(company.ownerUserId)
-            ? <button type="button" className="cq-top-link" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>✎ {t('Tahrirlash')}</button>
-            : <button type="button" className="cq-top-link" onClick={() => navigate('/account')}>‹ {t('Profilga qaytish')}</button>)}
-          <span className="cq-id">COMPANY ID · {company.companyId}</span>
+          {user && (isOwner
+            ? <button type="button" className="qp-top-link" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>✎ {t('Tahrirlash')}</button>
+            : <button type="button" className="qp-top-link" onClick={() => navigate('/account')}>‹ {t('Profil')}</button>)}
         </header>
-        <section className="cq-identity">
-          <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
-            <div className="cq-logo">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
-          </StoryRing>
-          <span className="cq-live">● {t('TASDIQLANGAN KOMPANIYA')}</span>
-          <h1 className="break-words">{company.displayName}</h1>
-          <p className="cq-category break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')} · {company.city || t('O‘zbekiston')}</p>
-          <p className="cq-description break-words">{company.description || t('Kompaniya haqida qisqa ma’lumot.')}</p>
-        </section>
 
-        <CompanyHours hours={company.hours} openNow={company.openNow} compact />
+        <section className="qp-hero">
+          <div className="qp-hero-row">
+            <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
+              <div className="qp-avatar">{company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}</div>
+            </StoryRing>
+            <div className="qp-hero-text">
+              <h1 className="break-words">
+                {company.displayName}
+                <i className="qp-verified" title={t('Tasdiqlangan kompaniya')} aria-label={t('Tasdiqlangan kompaniya')}>✓</i>
+              </h1>
+              <p className="qp-cat break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')} · {company.city || t('O‘zbekiston')}</p>
+              <CompanyHours hours={company.hours} openNow={company.openNow} compact />
+            </div>
+          </div>
 
-        <CompanyStatsBar company={company} onChange={(patch) => setCompany((c) => ({ ...c, ...patch }))} />
+          <CompanyStatsBar company={company} onChange={(patch) => setCompany((c) => ({ ...c, ...patch }))} />
 
-        <section className="cq-actions" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
-          {company.phone && <a data-ev="phone" className="primary vz-tap" href={contactUrl('phone', company.phone)}><IconPhone width={14} height={14} aria-hidden="true" />&nbsp;{t('Qo‘ng‘iroq')}</a>}
-          {/* IJTIMOIY TARMOQLAR O'Z RANGIDA. Ilgari hammasi bir xil
-              oltin edi va ko'z ularni ajratmasdi — odam "Telegram
-              qayerda?" deb qidirardi. Endi ikonka har birining o'z
-              firma rangida (`cq-brandicon`), tugma esa umumiy qora
-              uslubda qoladi: rang faqat URG'U, butun tugmani
-              bo'yash sahifani rang-barang qilib yuborardi. */}
-          {company.telegram && <a data-ev="telegram" className="vz-tap" href={contactUrl('telegram', company.telegram)} target="_blank" rel="noreferrer"><i className="cq-brandicon" style={{ color: '#2aabee' }}><IconTelegram width={15} height={15} aria-hidden="true" /></i>Telegram</a>}
-          {company.whatsapp && <a data-ev="whatsapp" className="vz-tap" href={contactUrl('whatsapp', company.whatsapp)} target="_blank" rel="noreferrer"><i className="cq-brandicon" style={{ color: '#25d366' }}><IconWhatsApp width={15} height={15} aria-hidden="true" /></i>WhatsApp</a>}
-          {company.instagram && <a data-ev="instagram" className="vz-tap" href={socialUrl('ig', company.instagram)} target="_blank" rel="noreferrer"><i className="cq-brandicon cq-brandicon--ig"><IconInstagram width={15} height={15} aria-hidden="true" /></i>Instagram</a>}
-          {company.facebook && <a data-ev="facebook" className="vz-tap" href={socialUrl('fb', company.facebook)} target="_blank" rel="noreferrer"><i className="cq-brandicon" style={{ color: '#1877f2' }}><IconFacebook width={15} height={15} aria-hidden="true" /></i>Facebook</a>}
-          {company.website && <a data-ev="website" className="vz-tap" href={contactUrl('website', company.website)} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Veb-sayt')}</a>}
-          {mapUrl && <a data-ev="directions" className="vz-tap" href={mapUrl} target="_blank" rel="noreferrer"><IconGlobe width={14} height={14} aria-hidden="true" />&nbsp;{t('Yo‘nalish olish')}</a>}
-          {geo && <a data-ev="yandex" className="vz-tap" href={yandexDirectionsUrl(company)} target="_blank" rel="noreferrer">{t('Yandex Karta')}</a>}
-          {/* KARTA RAQAMI — ro'yxatda YASHIRIN turadi. Ochiq tursa u
-              tasodifan ekranga tushadi (skrinshot, video, yonidagi
-              odam); bosish esa ataylab qilingan harakat. */}
-          {company.cardNumber && (
-            <button data-ev="card" type="button" className="vz-tap" onClick={() => setShowCard(true)}>
-              ▤ {t('Karta raqami')}
-            </button>
+          {quick.length > 0 && (
+            <div className="qp-quick" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
+              {quick.map((q) => (q.href
+                ? <a key={q.k} data-ev={q.k} className="qp-quick-btn vz-tap" href={q.href} target={q.k === 'phone' ? undefined : '_blank'} rel="noreferrer"><i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span></a>
+                : <button key={q.k} data-ev={q.k} type="button" className="qp-quick-btn vz-tap" onClick={q.onClick}><i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span></button>
+              ))}
+            </div>
           )}
-          {/* Egasi o'zi qo'shgan havolalar. */}
-          {extraLinks.map((l, i) => (
-            <a key={`x${i}`} className="vz-tap" href={l.url} target="_blank" rel="noreferrer">{l.label}</a>
-          ))}
         </section>
-
-        {/* Musiqa — NFC profilda ham ijro etiladi va telefon ekrani
-            o'chsa ham to'xtamaydi (MediaSession). */}
-        <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
 
         {/* BO'LIMLAR — shaxsiy profildagi bilan BIR XIL qator.
-            Ilgari bu yerda "01 Xizmatlar" va "02 Yangiliklar"
-            ustma-ust turardi: sahifa uzayib ketardi va istorya
-            (lenta) umuman alohida bo'lim emas edi.
-
             "Post" — doimiy, "Lenta" — 24 soatlik. Bo'sh bo'lim
             chizilmaydi; katalog nomi kompaniya turiga qarab
             "Menyu" / "Tovarlar" / "Xizmatlar" bo'ladi. */}
@@ -227,25 +239,34 @@ export default function CompanyQuickProfilePage({ companyId }) {
             posts.length > 0 && { id: 'post', label: 'Post', count: posts.length },
             stories.length > 0 && { id: 'lenta', label: 'Lenta', count: stories.length },
             items.length > 0 && { id: 'katalog', label: cta.noun, count: items.length },
+            { id: 'haqida', label: 'Ma’lumot' },
           ]}
         />
 
-        {activeTab === 'katalog' && items.length > 0 && (
-          <section className="cq-offers" id="catalog">
-            <div className="cq-section-head"><div><h2>{t(cta.noun)}</h2></div><button type="button" className="vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}#catalog`)}>{t(cta.label)} →</button></div>
-            <div className="cq-item-grid">
-              {items.map((item) => <article key={item.id} className="min-w-0"><img src={item.imageUrl || company.coverUrl || fallbackCover} alt="" /><div><b className="break-words">{item.name}</b><p>{item.description || item.category}</p><strong>{fmt(item.price)} {t('so‘m')}</strong>{company.ordersEnabled && <button type="button" className="cq-order-btn vz-tap" onClick={() => { companyEvent(company.companyId, 'item', String(item.id)); setOrderItem(item); }}>{t('Buyurtma berish')}</button>}</div></article>)}
-            </div>
-          </section>
-        )}
+        {/* YAGONA SURILADIGAN QISM. Sahifaning o'zi emas, aynan shu
+            oyna suriladi — shuning uchun tepadagi nomi va pastdagi
+            "Kontaktni saqlash" hech qachon ko'zdan yo'qolmaydi. */}
+        <div className="qp-body">
+          {activeTab === 'katalog' && items.length > 0 && (
+            <section className="qp-cards" id="catalog">
+              {items.map((item) => (
+                <article key={item.id} className="qp-item min-w-0">
+                  <img src={item.imageUrl || company.coverUrl || fallbackCover} alt="" loading="lazy" />
+                  <div>
+                    <b className="break-words">{item.name}</b>
+                    <p>{item.description || item.category}</p>
+                    <strong>{fmt(item.price)} {t('so‘m')}</strong>
+                    {company.ordersEnabled && <button type="button" className="qp-order vz-tap" onClick={() => { companyEvent(company.companyId, 'item', String(item.id)); setOrderItem(item); }}>{t('Buyurtma berish')}</button>}
+                  </div>
+                </article>
+              ))}
+            </section>
+          )}
 
-        {activeTab === 'lenta' && (
-          <StoryGrid stories={stories} title={company.displayName} avatarUrl={company.logoUrl} />
-        )}
+          {activeTab === 'lenta' && <StoryGrid stories={stories} title={company.displayName} avatarUrl={company.logoUrl} />}
 
-        {activeTab === 'post' && posts.length > 0 && (
-          <section className="cq-posts">
-            <div className="cq-post-strip">
+          {activeTab === 'post' && posts.length > 0 && (
+            <section className="qp-posts">
               {posts.map((p) => (
                 <article key={p.id}>
                   {p.videoUrl
@@ -254,43 +275,58 @@ export default function CompanyQuickProfilePage({ companyId }) {
                   {p.caption && <p>{p.caption}</p>}
                 </article>
               ))}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        {/* O'Z NFC ID RAQAMI — egasining so'rovi bo'yicha eng pastda,
-            bo'limlar ostida. Bu kompaniyaning doimiy manzili. */}
-        <div className="pf-nfcid">
-          <i aria-hidden="true">◉</i>
-          <div style={{ textAlign: 'center' }}>
-            <b>{company.companyId}</b>
-            <small>NFC ID · nfcstore.uz/c/{company.companyId.toLowerCase()}</small>
-          </div>
+          {/* "MA'LUMOT" — tavsif, musiqa, manzil, NFC ID va to'liq
+              sahifaga o'tish. Bular ilgari sahifaning oxirida uzun
+              ustun bo'lib yotardi; endi o'z bo'limida — hech narsa
+              yo'qolmadi, lekin birinchi ekranni band qilmaydi. */}
+          {activeTab === 'haqida' && (
+            <section className="qp-about">
+              <p className="qp-desc break-words">{company.description || t('Kompaniya haqida qisqa ma’lumot.')}</p>
+              {company.address && <p className="qp-addr break-words">◎ {company.address}</p>}
+              {/* Musiqa — NFC profilda ham ijro etiladi va telefon ekrani
+                  o'chsa ham to'xtamaydi (MediaSession). */}
+              <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
+              {/* O'Z NFC ID RAQAMI — kompaniyaning doimiy manzili. */}
+              <div className="pf-nfcid">
+                <i aria-hidden="true">◉</i>
+                <div style={{ textAlign: 'center' }}>
+                  <b>{company.companyId}</b>
+                  <small>NFC ID · nfcstore.uz/c/{company.companyId.toLowerCase()}</small>
+                </div>
+              </div>
+              <button type="button" className="cq-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya saytini to‘liq ochish')} <span>↗</span></button>
+              <p className="qp-foot"><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></p>
+            </section>
+          )}
         </div>
 
-        <button type="button" className="cq-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya saytini to‘liq ochish')} <span>↗</span></button>
-        {/* KONTAKTNI SAQLASH — eng ostida, oltin yozuvda. NFC kartaning
-            butun ma'nosi shu: odam sahifani yopgandan keyin ham
-            raqamingiz uning telefonida qoladi. */}
-        <button
-          type="button" className="cq-save vz-tap"
-          onClick={() => {
-            companyEvent(company.companyId, 'action', 'vcard');
-            downloadVcard({
-              name: company.displayName,
-              org: company.displayName,
-              title: company.subcategory || company.categoryLabel || '',
-              phone: company.phone,
-              address: company.address || company.city,
-              website: company.website,
-              urls: [`${window.location.origin}/c/${company.companyId.toLowerCase()}`],
-              note: company.description,
-            }, company.companyId.toLowerCase());
-          }}
-        >
-          {t('Kontaktni saqlash')}
-        </button>
-        <footer><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></footer>
+        {/* KONTAKTNI SAQLASH — doim ko'rinib turadigan pastki qator.
+            NFC kartaning butun ma'nosi shu: odam sahifani yopgandan
+            keyin ham raqamingiz uning telefonida qoladi. */}
+        <div className="qp-bottom">
+          <button
+            type="button" className="qp-save vz-tap"
+            onClick={() => {
+              companyEvent(company.companyId, 'action', 'vcard');
+              downloadVcard({
+                name: company.displayName,
+                org: company.displayName,
+                title: company.subcategory || company.categoryLabel || '',
+                phone: company.phone,
+                address: company.address || company.city,
+                website: company.website,
+                urls: [`${window.location.origin}/c/${company.companyId.toLowerCase()}`],
+                note: company.description,
+              }, company.companyId.toLowerCase());
+            }}
+          >
+            {t('Kontaktni saqlash')}
+          </button>
+        </div>
+
         {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
         {showCard && <CardNumberModal cardNumber={company.cardNumber} holder={company.displayName} onClose={() => setShowCard(false)} />}
       </div>
