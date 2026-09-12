@@ -18,6 +18,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
 import { TIER_COLOR, TIER_LABEL } from '../lib/pricing.js';
 import ShareButton from '../components/ShareButton.jsx';
+import ProfileManifest from '../components/ProfileManifest.jsx';
 import { IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconChip, IconLink } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
@@ -193,6 +194,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
           qismi suriladi. NFC kartani tegizgan odam sahifani ochishi
           bilan hamma muhim narsani — nomi, holati, aloqa tugmalari va
           "Kontaktni saqlash"ni — bir qarashda ko'radi. */}
+      {/* Bosh ekranga qo'shilganda AYNAN shu kompaniya ochilsin. */}
+      <ProfileManifest kind="c" code={company.companyId} name={company.displayName} />
       <div className="qp-shell">
         <header className="qp-top">
           <span className="qp-brand"><i><img src={logo} alt="" /></i> NFCSTORE</span>

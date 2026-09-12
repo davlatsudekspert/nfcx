@@ -5722,6 +5722,92 @@ const PROFILE_BG_ALIASES = {
   'video/x-matroska': ['video/webm'],
 };
 
+
+// ── PROFIL UCHUN PWA MANIFESTI ──────────────────────────────────────
+// Egasining shikoyati: "nfcstore.uz/vip001 ni bosh ekranga qo'shsam,
+// ochilganda bosh sahifa chiqyapti".
+//
+// Sababi: butun saytda BITTA statik manifest bor va uning
+// `start_url` i "/" — ya'ni Android (Chrome) qaysi sahifadan
+// qo'shilganidan qat'i nazar, bosh sahifani ochadi.
+//
+// Yechim: har bir profil O'Z manifestini oladi. Sahifa ochilganda
+// mijoz `<link rel="manifest">` ni shu manzilga almashtiradi, bu yerda
+// esa `start_url`, `id` va NOM aynan o'sha profilniki bo'ladi.
+//
+// `data:` yoki `blob:` manifest ishlamaydi: Chrome `start_url` ni
+// MANIFEST manzili bo'yicha hisoblaydi va opaque origin'da u yaroqsiz
+// bo'lib qoladi. Shuning uchun haqiqiy endpoint kerak.
+const MANIFEST_ICONS = [
+  { src: '/logo-192.png?v=4', sizes: '192x192', type: 'image/png', purpose: 'any' },
+  { src: '/logo-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'any' },
+  { src: '/icon-maskable-192.png?v=4', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+  { src: '/icon-maskable-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+];
+
+async function profileManifestApi(request, env, url) {
+  const m = /^\/api\/manifest\/(p|c)\/([^/]{1,40})$/.exec(url.pathname);
+  if (!m) return null;
+  const kind = m[1];
+  const raw = decodeURIComponent(m[2]);
+
+  // MAVJUD BO'LMAGAN profil uchun manifest berilmaydi. Bu shunchaki
+  // ozodalik emas: `companyId()` yaroqsiz qiymatni "tozalab" boshqa,
+  // MAVJUD ID ga aylantirib yuborishi mumkin (masalan "BIZ777" ->
+  // "BIZ"), ya'ni odam butunlay boshqa profilni bosh ekraniga
+  // qo'shib qo'yardi.
+  let path = '';
+  let name = '';
+  if (kind === 'c') {
+    const id = companyId(raw);
+    if (!id) return json({ error: 'not_found' }, 404);
+    const row = await env.DB.prepare(`SELECT display_name FROM companies WHERE company_id = ? AND status = 'active'`)
+      .bind(id).first().catch(() => null);
+    if (!row) return json({ error: 'not_found' }, 404);
+    path = `/c/${id.toLowerCase()}`;
+    name = row.display_name || id;
+  } else {
+    const code = String(raw || '').toUpperCase();
+    if (!validCode(code)) return json({ error: 'not_found' }, 404);
+    const row = await env.DB.prepare(`SELECT name FROM cards WHERE code = ?`).bind(code).first().catch(() => null);
+    if (!row) return json({ error: 'not_found' }, 404);
+    path = `/${code.toLowerCase()}`;
+    name = row.name || code;
+  }
+
+  const short = cleanStr(name, 30) || 'NFCSTORE';
+  const body = {
+    name: `${cleanStr(name, 60)} — NFCSTORE`,
+    short_name: short,
+    description: 'NFCSTORE raqamli tashrif qog\u2018ozi.',
+    // `id` HAR BIR PROFILDA BOSHQACHA bo'lishi SHART: aks holda
+    // Android ularni bitta ilova deb biladi va ikkinchisini qo'shganda
+    // birinchisining ustiga yozadi.
+    id: path,
+    start_url: `${path}?source=pwa`,
+    // QAMROV (`scope`) — butun sayt, `path` EMAS. Sabab: qamrovdan
+    // tashqaridagi havola bosilganda ilova uni BRAUZERDA ochadi, ya'ni
+    // profildagi "Kompaniyalar" yoki "Narxlar" havolasi odamni
+    // ilovadan uloqtirib yuborardi. Ilovalar bir-biridan `id` bilan
+    // ajraladi — aynan shuning uchun u bor.
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0a0908',
+    theme_color: '#0a0908',
+    lang: 'uz',
+    dir: 'ltr',
+    icons: MANIFEST_ICONS,
+  };
+  return new Response(JSON.stringify(body), {
+    headers: {
+      'content-type': 'application/manifest+json; charset=utf-8',
+      'cache-control': 'public, max-age=300',
+    },
+  });
+}
+
+
 // POST /api/upload, /api/upload-audio, /api/upload-card-video,
 //      /api/upload-profile-bg, /api/upload-card-print, /api/admin/upload
 async function uploadApi(request, env, pathname) {
@@ -8356,6 +8442,16 @@ async function handleRequest(request, env, url) {
     // Checked BEFORE the generic /api/companies/:id dispatch below —
     // "search" would otherwise match that route's company-id shape
     // (3-15 letters) and be misread as a literal company ID.
+    if (url.pathname.startsWith('/api/manifest/')) {
+      try {
+        const res = await profileManifestApi(request, env, url);
+        if (res) return res;
+      } catch (error) {
+        console.error('profile manifest', error?.message);
+      }
+      return json({ error: 'not_found' }, 404);
+    }
+
     if (url.pathname === '/api/companies/search' || url.pathname === '/api/categories'
       || url.pathname === '/api/news' || url.pathname.startsWith('/api/tap/')
       || url.pathname === '/api/settings/physical-nfc-pricing'

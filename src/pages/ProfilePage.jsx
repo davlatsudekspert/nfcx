@@ -14,6 +14,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ShareButton from '../components/ShareButton.jsx';
+import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
 import StoryGrid from '../components/StoryGrid.jsx';
@@ -1696,6 +1697,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         '--cq-cover': hasBg && !videoBg ? `url("${record.bgUrl}")` : 'none',
       }}
     >
+      {/* Bosh ekranga qo'shilganda AYNAN shu profil ochilsin. */}
+      <ProfileManifest kind="p" code={record.code} name={record.name} />
       <div className="qp-shell">
         {/* Video fon — CSS `background-image` bilan chizilmaydi. */}
         {videoBg && <ProfileBgVideo src={record.bgUrl} />}
