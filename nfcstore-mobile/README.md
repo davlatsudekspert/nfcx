@@ -14,7 +14,7 @@ SVG yo'llari va animatsiya vaqtlari **aynan** ko'chirilgan.
 - **NFC o'qish** — ilovaning asosiy vazifasi. Kartani tekkizsangiz teg
   ichidagi URL o'qiladi, koddan profil ochiladi, chip esa orqada
   tekshiriladi. ⚠️ **Expo Go da ishlamaydi** — development build kerak
-  (pastdagi "NFC va development build" bo'limiga qarang)
+  (pastdagi "APK olish" bo'limiga qarang)
 - **Home** — tezkor amal kartalari, hammasi haqiqiy endpointlarda:
   ID holati, jismoniy karta narxi, sovg'a (kutilayotganlar soni),
   to'lovlar (Payme holati, premium/sinov muddati), tarif chizig'i
@@ -46,6 +46,7 @@ Profil qismi (kelishilgan asosiy qamrov):
   preseti, qurilmada saqlanadi), oxirgi post to'liq ekranda
 - **Pastki navigatsiya** — gradient bilan to'ldirilgan faol ikonka,
   ortidagi yorug'lik, siljiydigan indikator, bosishda 1.12x sakrash
+
 Almashtirgich tugmasi (handle + chevron) BARCHA tablarda bir xil joyda.
 
 Auction tab **yo'q** — u saytdan olib tashlangan.
