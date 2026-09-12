@@ -15,6 +15,8 @@ import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ShareButton from '../components/ShareButton.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
+import ProfileTabs from '../components/ProfileTabs.jsx';
+import StoryGrid from '../components/StoryGrid.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -1978,46 +1980,28 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               tashlardi va ularga umuman yetib bo'lmasdi. Endi tor ekranda
               qator chapdan boshlanadi va yon tomonga suriladi; keng ekranda
               avvalgidek markazda turadi. */}
-        <div className="vz-tabrow mt-6 flex justify-start gap-5 overflow-x-auto border-b border-[color:var(--vz-line)] sm:justify-center sm:gap-[26px] sm:overflow-visible">
-          <button
-            onClick={() => setTab('vizitka')}
-            className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'vizitka' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
-          >
-            {t("Raqamli tashrif qog'ozi")}
-          </button>
-          <button
-            onClick={() => setTab('postlar')}
-            className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'postlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
-          >
-            {t('Postlar')}{posts.length > 0 ? ` (${posts.length})` : ''}
-          </button>
-          {menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && (
-            <button
-              onClick={() => setTab('menyu')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'menyu' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
-            >
-              {t('Menyu')}
-            </button>
-          )}
-          {products.length > 0 && productEligible(record.profileType, record.categorySlug) && (
-            <button
-              onClick={() => setTab('mahsulotlar')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'mahsulotlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
-            >
-              {t('Mahsulotlar')}
-            </button>
-          )}
-          {services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && (
-            <button
-              onClick={() => setTab('xizmatlar')}
-              className={`-mb-px cursor-pointer border-b-2 bg-transparent whitespace-nowrap pb-3 pt-2 px-1 text-[16.5px] font-semibold transition ${tab === 'xizmatlar' ? 'border-current text-[color:var(--vz-ink)]' : 'border-transparent text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]'}`}
-            >
-              {t('Xizmatlar')}
-            </button>
-          )}
-        </div>
+        {/* BO'LIMLAR — endi ikkala profilda ham BIR XIL ko'rinish
+            (`ProfileTabs`, egasi tanlagan dumaloq tugmalar). "Lenta"
+            postdan ALOHIDA bo'lim: post — doimiy, lenta — 24 soatlik.
+            Ilgari istorya faqat avatar atrofidagi halqada ko'rinardi va
+            uni payqamaslik oson edi. Halqa ham joyida qoladi. */}
+        <ProfileTabs
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'vizitka', label: "Raqamli tashrif qog'ozi" },
+            { id: 'postlar', label: 'Post', count: posts.length },
+            stories.length > 0 && { id: 'lenta', label: 'Lenta', count: stories.length },
+            menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && { id: 'menyu', label: 'Menyu' },
+            products.length > 0 && productEligible(record.profileType, record.categorySlug) && { id: 'mahsulotlar', label: 'Mahsulotlar' },
+            services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && { id: 'xizmatlar', label: 'Xizmatlar' },
+          ]}
+        />
 
         {tab === 'postlar' && <PostsFeed posts={posts} onLike={togglePostLike} t={t} />}
+        {tab === 'lenta' && (
+          <StoryGrid stories={stories} title={record.name} avatarUrl={record.avatarUrl} />
+        )}
         {tab === 'menyu' && <MenuView menu={menu} t={t} />}
         {tab === 'mahsulotlar' && <ProductsView products={products} t={t} />}
         {tab === 'xizmatlar' && <ServicesView services={services} t={t} />}

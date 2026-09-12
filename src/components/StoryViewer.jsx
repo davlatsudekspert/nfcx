@@ -18,10 +18,15 @@ const IMAGE_MS = 5000;
 // video sekin yuklansa yoki pauza qilinsa, chiziq ham to'xtaydi.
 // CSS animatsiyasida bu mumkin emas edi: u videoning uzunligini ham,
 // bufer kutishini ham bilmaydi va bir-biridan ajralib ketardi.
-export default function StoryViewer({ stories = [], title = '', avatarUrl = '', canDelete = false, onDelete, onClose }) {
+export default function StoryViewer({ stories = [], title = '', avatarUrl = '', startIndex = 0, canDelete = false, onDelete, onClose }) {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [index, setIndex] = useState(0);
+  // `startIndex` — lentadan bosilgan istoryadan boshlanadi. Halqadan
+  // ochilganda 0 (birinchisidan), bu esa avvalgi xulq.
+  const [index, setIndex] = useState(() => {
+    const n = Number(startIndex) || 0;
+    return n >= 0 && n < stories.length ? n : 0;
+  });
   const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [likes, setLikes] = useState({});   // { [storyId]: { liked, likeCount } }

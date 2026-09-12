@@ -6,6 +6,8 @@ import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import { downloadVcard } from '../lib/vcard.js';
 import StoryRing from '../components/StoryRing.jsx';
+import StoryGrid from '../components/StoryGrid.jsx';
+import ProfileTabs from '../components/ProfileTabs.jsx';
 import CompanyStatsBar from '../components/CompanyStatsBar.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { listCompanyPosts, listCompanyStories } from '../lib/company.js';
@@ -42,6 +44,10 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const [orderItem, setOrderItem] = useState(null);
   const [showCard, setShowCard] = useState(false);
   const [stories, setStories] = useState([]);
+  // Faol bo'lim. Boshlang'ich qiymat quyida — qaysi bo'limlar BOR
+  // ekanini bilgandan keyin tanlanadi (bo'sh bo'limga tushib
+  // qolmasligi uchun).
+  const [tab, setTab] = useState('');
   const [posts, setPosts] = useState([]);
 
   const load = useCallback(() => {
@@ -86,6 +92,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
   const cta = companyCta(company?.category);
   const items = useMemo(() => (company?.catalog || []).filter((item) => item.available !== false).slice(0, 4), [company]);
+  // Qaysi bo'limlar BOR — shu tartibda: Post, Lenta, Katalog.
+  // `activeTab` tanlanganini emas, MAVJUDINI qaytaradi: ma'lumot
+  // keyinroq kelganda yoki bo'lim bo'shab qolganda sahifa bo'sh
+  // ko'rinib qolmasin.
+  const availableTabs = [
+    posts.length > 0 && 'post',
+    stories.length > 0 && 'lenta',
+    items.length > 0 && 'katalog',
+  ].filter(Boolean);
+  const activeTab = availableTabs.includes(tab) ? tab : (availableTabs[0] || '');
 
   if (company === undefined) {
     return (
@@ -183,18 +199,39 @@ export default function CompanyQuickProfilePage({ companyId }) {
             o'chsa ham to'xtamaydi (MediaSession). */}
         <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
 
-        {items.length > 0 && (
+        {/* BO'LIMLAR — shaxsiy profildagi bilan BIR XIL qator.
+            Ilgari bu yerda "01 Xizmatlar" va "02 Yangiliklar"
+            ustma-ust turardi: sahifa uzayib ketardi va istorya
+            (lenta) umuman alohida bo'lim emas edi.
+
+            "Post" — doimiy, "Lenta" — 24 soatlik. Bo'sh bo'lim
+            chizilmaydi; katalog nomi kompaniya turiga qarab
+            "Menyu" / "Tovarlar" / "Xizmatlar" bo'ladi. */}
+        <ProfileTabs
+          value={activeTab}
+          onChange={setTab}
+          tabs={[
+            posts.length > 0 && { id: 'post', label: 'Post', count: posts.length },
+            stories.length > 0 && { id: 'lenta', label: 'Lenta', count: stories.length },
+            items.length > 0 && { id: 'katalog', label: cta.noun, count: items.length },
+          ]}
+        />
+
+        {activeTab === 'katalog' && items.length > 0 && (
           <section className="cq-offers" id="catalog">
-            <div className="cq-section-head"><div><span>01</span><h2>{t(cta.noun)}</h2></div><button type="button" className="vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}#catalog`)}>{t(cta.label)} →</button></div>
+            <div className="cq-section-head"><div><h2>{t(cta.noun)}</h2></div><button type="button" className="vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}#catalog`)}>{t(cta.label)} →</button></div>
             <div className="cq-item-grid">
               {items.map((item) => <article key={item.id} className="min-w-0"><img src={item.imageUrl || company.coverUrl || fallbackCover} alt="" /><div><b className="break-words">{item.name}</b><p>{item.description || item.category}</p><strong>{fmt(item.price)} {t('so‘m')}</strong>{company.ordersEnabled && <button type="button" className="cq-order-btn vz-tap" onClick={() => { companyEvent(company.companyId, 'item', String(item.id)); setOrderItem(item); }}>{t('Buyurtma berish')}</button>}</div></article>)}
             </div>
           </section>
         )}
 
-        {posts.length > 0 && (
+        {activeTab === 'lenta' && (
+          <StoryGrid stories={stories} title={company.displayName} avatarUrl={company.logoUrl} />
+        )}
+
+        {activeTab === 'post' && posts.length > 0 && (
           <section className="cq-posts">
-            <div className="cq-section-head"><div><span>02</span><h2>{t('Yangiliklar')}</h2></div></div>
             <div className="cq-post-strip">
               {posts.map((p) => (
                 <article key={p.id}>
@@ -207,6 +244,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
             </div>
           </section>
         )}
+
+        {/* O'Z NFC ID RAQAMI — egasining so'rovi bo'yicha eng pastda,
+            bo'limlar ostida. Bu kompaniyaning doimiy manzili. */}
+        <div className="pf-nfcid">
+          <i aria-hidden="true">◉</i>
+          <div style={{ textAlign: 'center' }}>
+            <b>{company.companyId}</b>
+            <small>NFC ID · nfcstore.uz/c/{company.companyId.toLowerCase()}</small>
+          </div>
+        </div>
 
         <button type="button" className="cq-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>{t('Kompaniya saytini to‘liq ochish')} <span>↗</span></button>
         {/* KONTAKTNI SAQLASH — eng ostida, oltin yozuvda. NFC kartaning
