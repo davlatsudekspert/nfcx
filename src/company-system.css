@@ -385,3 +385,13 @@
 
 /* Istorya yo'q, lekin yangi post bor — halqa jilvalanadi, bosilmaydi. */
 .story-ring--static{display:inline-block;position:relative;cursor:default}
+
+/* Biznes hisob ochish: "nom tanlayman" yoki "bepul" tanlovi. */
+.cc-mode{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.cc-mode button{border:1px solid #2b2822;border-radius:13px;background:#0a0a08;padding:12px;text-align:left;cursor:pointer;font-family:inherit;color:#c5bcab}
+.cc-mode button b{display:block;font-size:14px;color:#e8e2d6}
+.cc-mode button small{display:block;margin-top:4px;font-size:11.5px;line-height:1.4;color:#8d867a}
+.cc-mode button.is-on{border-color:#c79a2a;background:#151108}
+.cc-mode button.is-on b{color:#f0c65d}
+.cc-free-note{margin:0 0 14px;border:1px solid #2b2822;border-radius:13px;background:#0a0a08;padding:12px 14px;font-size:13px;line-height:1.6;color:#9a9388}
+@media (max-width:520px){.cc-mode{grid-template-columns:1fr}}

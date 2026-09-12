@@ -28,13 +28,34 @@ export function idTier(card) {
   return tierForCode(card.code || '');
 }
 
+// 30 KUNLIK SINOV — Premium obunasi kabi "pol" (floor) sifatida
+// ishlaydi: muddat ichida hisob barcha imkoniyatlarni oladi, NFC ID
+// darajasi past bo'lsa ham. Muddati o'tgach pol yo'qoladi va daraja
+// o'z holiga qaytadi — hech narsa o'chirilmaydi.
+//
+// Maydoni BO'SH bo'lsa (bu o'zgarishdan oldin ochilgan hisoblar) —
+// sinov umuman qo'llanmaydi va ular uchun hech narsa o'zgarmaydi.
+export function trialActive(owner, now = Date.now()) {
+  const t = owner && (owner.trialExpiresAt || owner.trial_expires_at);
+  return !!t && Date.parse(t) > now;
+}
+
+// Sinov tugashiga necha kun qolgani (tugagan/yo'q bo'lsa — null).
+export function trialDaysLeft(owner, now = Date.now()) {
+  const t = owner && (owner.trialExpiresAt || owner.trial_expires_at);
+  if (!t) return null;
+  const left = Date.parse(t) - now;
+  return left > 0 ? Math.ceil(left / 86400000) : null;
+}
+
 // Effective access — spec bo'yicha.
 //   card:  { code, tierOverride?, isGift? }
-//   owner: { isPremium? }  (public profil uchun record.isPremium ni uzating)
+//   owner: { isPremium?, trialExpiresAt? }  (public profil uchun record.isPremium ni uzating)
 export function effectiveAccess(card, owner) {
   const a = ACCESS_RANK[idTier(card)] ?? 0;
   const premiumFloor = owner && owner.isPremium ? ACCESS_RANK.premium : 0;
-  return ACCESS_LEVELS[Math.max(a, premiumFloor)];
+  const trialFloor = trialActive(owner) ? ACCESS_RANK.premium : 0;
+  return ACCESS_LEVELS[Math.max(a, premiumFloor, trialFloor)];
 }
 
 // `current` darajasi `required` dan past emasmi.

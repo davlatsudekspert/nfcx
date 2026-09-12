@@ -19,6 +19,11 @@ export default function CompanyCreatePage() {
   const { user, myCards } = useAuth();
   const [mine, setMine] = useState([]);
   const [form, setForm] = useState({ companyId: '', displayName: '', category: 'market', subcategory: '', city: '', phone: '', telegram: '', description: '', sourceCardCode: '' });
+  // BEPUL OCHISH (2026-09). Nom sotib olish SHART EMAS: avtomatik ID
+  // bilan hisob bepul ochiladi. Cheklovi bor (katalogda 5 ta, istorya
+  // va post yopiq), lekin birinchi 30 kun hammasi ochiq — shuning
+  // uchun odam avval ko'rib, keyin qaror qiladi.
+  const [freeMode, setFreeMode] = useState(false);
   const [check, setCheck] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -67,14 +72,15 @@ export default function CompanyCreatePage() {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!check?.valid || !check?.available) return;
+    // BEPUL yo'lda Company ID tanlanmaydi — server o'zi beradi.
+    if (!freeMode && (!check?.valid || !check?.available)) return;
     if (companyNameBlocked(form.displayName)) {
       setError(t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.'));
       return;
     }
     setBusy(true); setError('');
     try {
-      const data = await createCompany(form);
+      const data = await createCompany(freeMode ? { ...form, companyId: '', auto: true } : form);
       navigate(`/workspace/${data.company.companyId.toLowerCase()}`);
     } catch (err) {
       setError(({ company_id_taken: t('Bu Company ID hozirgina band qilindi.'), company_id_reserved: t('Bu Company ID admin rezervida.'), bad_company_id: t('Company ID faqat 3–15 ta lotin harfidan iborat bo‘ladi.'), name_not_allowed: t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.') })[err.message] || t('So‘rovni yuborib bo‘lmadi. Qayta urinib ko‘ring.'));
@@ -92,7 +98,20 @@ export default function CompanyCreatePage() {
 
       <form className="cc-form" onSubmit={submit}>
         <div className="cc-form-title"><span>{t('ARIZA')}</span><h2>{t('Company ID oching')}</h2><p>{t('Lotin harflari, shuningdek o‘zbekcha O‘ va G‘ (masalan g‘oya). Raqam, probel va boshqa belgilar qabul qilinmaydi.')}</p></div>
-        <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: normalizeCompanyId(e.target.value) }))} placeholder={t('KOMPANIYA')} spellCheck={false} autoCapitalize="characters" autoCorrect="off" /></div></label>
+        <div className="cc-mode">
+          <button type="button" className={freeMode ? '' : 'is-on'} onClick={() => setFreeMode(false)}>
+            <b>{t('Nom tanlayman')}</b><small>{t('Masalan ONE — pullik, cheklovsiz')}</small>
+          </button>
+          <button type="button" className={freeMode ? 'is-on' : ''} onClick={() => setFreeMode(true)}>
+            <b>{t('Bepul ochish')}</b><small>{t('Avtomatik ID · 30 kun hammasi ochiq')}</small>
+          </button>
+        </div>
+        {freeMode && (
+          <p className="cc-free-note">
+            {t('Bepul hisob: dastlabki 30 kun barcha imkoniyatlar ochiq. Keyin katalogda 5 tagacha yozuv qoladi, istorya va post yopiladi. Istalgan vaqtda nom sotib olib, cheklovni butunlay olib tashlash mumkin.')}
+          </p>
+        )}
+        {!freeMode && <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: normalizeCompanyId(e.target.value) }))} placeholder={t('KOMPANIYA')} spellCheck={false} autoCapitalize="characters" autoCorrect="off" /></div></label>}
         {/* BREND UCHUN HIMOYALANGAN — alohida blok.
             "Band" deb yozish noto'g'ri bo'lardi: bu tugab qolgan narsa
             emas, qoida. Narx ham ko'rsatilmaydi (sotilmaydi), lekin
@@ -101,7 +120,7 @@ export default function CompanyCreatePage() {
         {/* AUKSION BEKOR QILINDI (2026-09): 'auction' guruhidagi nomlar
             endi PREMIUM NOM — qat'iy narxda, oddiy oqim bilan sotiladi,
             shuning uchun bu "sotuvda emas" tarmog'iga TUSHMAYDI. */}
-        {check?.reserved && check.reserved !== 'auction' ? (
+        {!freeMode && (check?.reserved && check.reserved !== 'auction' ? (
           <div className="cc-id-result unavailable">
             <div>
               <b>{check.reserved === 'blocked' ? t('Bu nom taqiqlangan')
@@ -127,7 +146,7 @@ export default function CompanyCreatePage() {
             : t('3–15 ta harf')}</b><span>{check?.available === true ? `✓ ${t('Bo‘sh — ariza yuborish mumkin')}` : check?.available === false ? `✕ ${check.reason ? t(check.reason) : t('Band yoki sotuvda emas')}` : (check?.reason ? t(check.reason) : t('ID yozishni boshlang'))}</span></div>
           {check?.alternatives?.length > 0 && <div className="cc-alternatives flex-wrap">{check.alternatives.map((id) => <button type="button" key={id} className="vz-tap" onClick={() => setForm((old) => ({ ...old, companyId: id }))}>{id}</button>)}</div>}
         </div>
-        )}
+        ))}
         <div className="cc-grid">
           <label><span>{t('Kompaniya nomi')} *</span><input required value={form.displayName} onChange={(e) => setForm((old) => ({ ...old, displayName: e.target.value }))} placeholder={t('Masalan, NFC Dorixona')} aria-invalid={nameBlocked || undefined} aria-describedby={nameBlocked ? 'cc-name-err' : undefined} />{nameBlocked && <small id="cc-name-err" role="alert" className="cc-name-err">{t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.')}</small>}</label>
           <label><span>{t('Yo‘nalish')} *</span><select value={form.category} onChange={(e) => setForm((old) => ({ ...old, category: e.target.value }))}>{categories.map(([value,label]) => <option key={value} value={value}>{t(label)}</option>)}</select></label>
@@ -139,7 +158,7 @@ export default function CompanyCreatePage() {
           {form.sourceCardCode && <label className="wide cc-copy"><input type="checkbox" checked onChange={(e) => setForm((old) => ({ ...old, sourceCardCode: e.target.checked ? form.sourceCardCode : '' }))} /><div><b>{t('{code} dagi eski biznes ma’lumotini qoralamaga nusxalash', { code: form.sourceCardCode })}</b><span>{t('Asl NFC ID va uning profili o‘zgarmaydi.')}</span></div></label>}
         </div>
         {error && <p className="cc-error" role="alert">{error}</p>}
-        <button type="submit" className="cc-submit vz-tap" disabled={busy || !check?.available || nameBlocked}>{busy ? t('Yuborilmoqda…') : t('Admin tekshiruviga yuborish →')}</button>
+        <button type="submit" className="cc-submit vz-tap" disabled={busy || (!freeMode && !check?.available) || nameBlocked}>{busy ? t('Yuborilmoqda…') : t('Admin tekshiruviga yuborish →')}</button>
         <p className="cc-legal">{t('ID qidirish uni band qilmaydi. Ariza serverda saqlangandan keyingina ID rezervlanadi.')}</p>
       </form>
     </div>

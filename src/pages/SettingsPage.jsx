@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { dbRequestPasswordCode, dbChangePassword, dbRequestPhoneChangeCode, dbConfirmPhoneChange, dbChangePasswordDirect, dbLinkTelegram } from '../lib/db.js';
 import BackToCabinet from '../components/BackToCabinet.jsx';
+import PremiumPreviewCard from '../components/PremiumPreviewCard.jsx';
 import CardTools from '../components/CardTools.jsx';
 import TgLinkBox from '../components/TgLinkBox.jsx';
 import { IconUser, IconShield, IconPhone } from '../components/Icons.jsx';
@@ -165,6 +166,13 @@ export default function SettingsPage() {
       <section className="pt-6">
         <span className="vz-kicker">{t('Sozlamalar')}</span>
         <h1 className="vz-h2 mt-3">{t('Akkaunt sozlamalari')}</h1>
+      </section>
+
+      {/* PREMIUM KO'RINISHI — odam nima olishini o'qib emas, KO'RIB
+          tushunsin. Bosilganda to'lov bo'limiga olib boradi; to'lov
+          oqimining o'ziga tegilmagan. */}
+      <section className="mt-8 max-w-lg">
+        <PremiumPreviewCard user={user} />
       </section>
 
       <section className="mt-8 max-w-lg">

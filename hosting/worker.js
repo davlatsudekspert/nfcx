@@ -679,6 +679,10 @@ function rowCompany(row, items = []) {
     hours: normalizeHoursD1(parseJsonArray(row.hours_json)),
     openNow: companyOpenStateD1(normalizeHoursD1(parseJsonArray(row.hours_json))),
     ordersEnabled: Number(row.orders_enabled || 0) === 1,
+    // TARIF HOLATI — interfeys cheklovni OLDINDAN ko'rsatsin, odam
+    // tugmani bosib "403" olmasin. Haqiqiy tekshiruv baribir
+    // serverda (companyPlanStateD1).
+    plan: companyPlanStateD1(row),
     customDomain: row.custom_domain || '',
     customDomainStatus: row.custom_domain_status || '',
     customDomainNote: row.custom_domain_note || '',
@@ -946,6 +950,47 @@ async function publicContentApi(request, env, url) {
   return null;
 }
 
+// ── KOMPANIYA TARIFI (2026-09) ───────────────────────────────────────
+// Uch holat:
+//   1) `trial_expires_at` BO'SH — bu o'zgarishdan OLDIN yaratilgan
+//      kompaniya. Unga yangi cheklovlar UMUMAN tegmaydi: bugungi
+//      xulq saqlanadi (egasining qarori — mavjud katalog
+//      qisqarmasin).
+//   2) sinov davom etyapti — barcha imkoniyatlar ochiq.
+//   3) sinov tugagan:
+//        plan = 'free' (avtomatik ID)  -> katalogda 5 ta, istorya/post YO'Q;
+//        plan = 'paid' (sotib olingan nom) -> cheklovsiz.
+const COMPANY_FREE_ITEM_LIMIT = 5;
+
+export function companyPlanStateD1(row, now = Date.now()) {
+  const trial = row?.trial_expires_at || row?.trialExpiresAt || null;
+  if (!trial) return { legacy: true, trialActive: false, free: false, itemLimit: null, canPost: true };
+  const trialActive = Date.parse(trial) > now;
+  if (trialActive) return { legacy: false, trialActive: true, free: false, itemLimit: null, canPost: true, trialEndsAt: trial };
+  const free = String(row?.plan || '') === 'free';
+  return {
+    legacy: false, trialActive: false, free,
+    itemLimit: free ? COMPANY_FREE_ITEM_LIMIT : null,
+    canPost: !free,
+    trialEndsAt: trial,
+  };
+}
+
+// BEPUL AVTOMATIK COMPANY ID — nom sotib olmagan odam uchun.
+// Harflardan iborat, band bo'lmagan, premium/reserved ro'yxatiga
+// tushmaydigan tasodifiy ID. Uzunligi 9 harf: qisqa nomlar qimmat
+// tarifga tegishli, shuning uchun bepul ID ataylab uzun.
+async function generateFreeCompanyIdD1(env) {
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const bytes = crypto.getRandomValues(new Uint8Array(9));
+    const id = Array.from(bytes, (b) => LETTERS[b % 26]).join('');
+    const availability = await companyAvailability(env, id);
+    if (availability.available) return id;
+  }
+  return null;
+}
+
 async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
   const path = url.pathname;
@@ -998,9 +1043,17 @@ async function companyApi(request, env, url) {
     const auth = await upstreamUser(request, env);
     if (!auth) return json({ error: 'unauthorized' }, 401);
     const body = await request.json().catch(() => ({}));
-    const id = companyId(body.companyId);
-    if (!id) return json({ error: 'bad_company_id' }, 422);
-    const availability = await companyAvailability(env, id);
+    await ensureCompanyPlanColumns(env);
+    // BIZNES HISOB OCHISH BEPUL (2026-09). Nom tanlanmasa yoki
+    // `auto: true` yuborilsa — tasodifiy, bepul Company ID beriladi va
+    // oldindan to'lov TALAB QILINMAYDI. Nom TANLANSA — avvalgidek:
+    // narxi bor, to'lovdan keyin faollashadi.
+    const wantsAuto = body.auto === true || !String(body.companyId || '').trim();
+    const id = wantsAuto ? await generateFreeCompanyIdD1(env) : companyId(body.companyId);
+    if (!id) return json({ error: wantsAuto ? 'auto_id_failed' : 'bad_company_id' }, 422);
+    const availability = wantsAuto
+      ? { available: true, tier: 'free', price: 0 }
+      : await companyAvailability(env, id);
     if (!availability.available) return json({ error: availability.rule ? 'company_id_reserved' : 'company_id_taken', ...availability }, 409);
     const displayName = shortText(body.displayName, 120);
     const city = shortText(body.city, 100);
@@ -1019,15 +1072,16 @@ async function companyApi(request, env, url) {
       await env.DB.prepare(`INSERT INTO companies (
         company_id, owner_user_id, owner_email, display_name, category, subcategory, city, address, description,
         phone, telegram, whatsapp, website, logo_url, cover_url, gallery_json, source_card_code,
-        tier, price, status, created_at, updated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+        tier, price, status, created_at, updated_at, trial_expires_at, plan
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
         id, String(auth.user.id), shortText(auth.user.email, 160), displayName, category,
         shortText(body.subcategory, 100) || shortText(source?.role, 100), city || shortText(source?.city, 100),
         shortText(body.address, 300) || shortText(source?.address, 300), description || shortText(source?.about, 1200),
         phone || shortText(source?.phone, 40), shortText(body.telegram, 100) || shortText(source?.tg, 100),
         shortText(body.whatsapp, 100), safeUrl(body.website) || safeUrl(source?.website),
         safeUrl(body.logoUrl) || safeUrl(source?.avatarUrl), safeUrl(body.coverUrl) || safeUrl(source?.bgUrl),
-        '[]', source ? sourceCode : '', availability.tier, availability.price, 'pending_review', now, now
+        '[]', source ? sourceCode : '', availability.tier, availability.price, 'pending_review', now, now,
+        trialEndsAtD1(), wantsAuto ? 'free' : 'paid'
       ).run();
       await env.DB.prepare(`INSERT INTO company_status_log(company_id, from_status, to_status, actor, note, created_at) VALUES(?,?,?,?,?,?)`)
         .bind(id, 'draft', 'pending_review', `user:${auth.user.id}`, source ? `Legacy ${sourceCode} dan xavfsiz nusxa` : '', now).run();
@@ -1186,6 +1240,12 @@ async function companyApi(request, env, url) {
   if (action === 'posts' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    // BEPUL TARIFDA ISTORYA VA POST YOPIQ (egasining qarori). Sinov
+    // davomida va sotib olingan nomda ochiq; eski kompaniyalarda
+    // (trial_expires_at bo'sh) hech narsa o'zgarmaydi.
+    const planPost = companyPlanStateD1(owned.row);
+    if (!planPost.canPost) return json({ error: 'plan_locked', feature: 'post' }, 403);
+
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
     const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM company_posts WHERE company_id = ?`).bind(id).first();
@@ -1209,6 +1269,9 @@ async function companyApi(request, env, url) {
   if (action === 'stories' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    // Post bilan bir xil qoida — bepul tarifda istorya ham yopiq.
+    const planStory = companyPlanStateD1(owned.row);
+    if (!planStory.canPost) return json({ error: 'plan_locked', feature: 'story' }, 403);
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
     const res = await addStoryD1(env, {
@@ -1385,6 +1448,14 @@ async function companyApi(request, env, url) {
     const uuid = crypto.randomUUID();
     const now = new Date().toISOString();
     const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM company_catalog_items WHERE company_id = ?').bind(id).first();
+    // BEPUL TARIF CHEKLOVI. Mavjud yozuvlar HECH QACHON o'chirilmaydi
+    // va yashirilmaydi — limit faqat YANGI qo'shishga ta'sir qiladi
+    // (egasining qarori). Sinov davomida va sotib olingan nomda limit
+    // umuman yo'q.
+    const plan = companyPlanStateD1(owned.row);
+    if (plan.itemLimit != null && Number(count?.n || 0) >= plan.itemLimit) {
+      return json({ error: 'plan_limit_reached', limit: plan.itemLimit }, 409);
+    }
     await env.DB.prepare(`INSERT INTO company_catalog_items(id,company_id,name,category,description,price,promotion_price,image_url,available,sort_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
       uuid, id, name, shortText(body.category, 100), shortText(body.description, 600), price, promo, safeUrl(body.imageUrl), body.available === false ? 0 : 1, Number(count?.n || 0), now, now
     ).run();
@@ -2075,6 +2146,7 @@ async function ensureCoreSchema(env) {
   // qo'shilmasdi (aynan shu ikki testda chiqdi).
   await ensureCardCompanyColumn(env);
   await ensureCardLikeCompanyColumn(env);
+  await ensureTrialColumns(env);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -2261,6 +2333,41 @@ export function cardsHaveCompanyIdD1() { return hasColumnD1('cards', 'company_id
 // LAYK KIM NOMIDAN BOSILGAN — shaxsiy profil yoki kompaniya
 // (`follows.as_company_id` bilan bir xil ma'no).
 const ensureCardLikeCompanyColumn = (env) => ensureColumnD1(env, 'card_likes', 'as_company_id', 'TEXT');
+
+// ── TARIF VA OBUNA USTUNLARI (2026-09) ───────────────────────────────
+// `trial_expires_at` — ro'yxatdan o'tgandan keyingi 30 kunlik SINOV.
+// `premium_expires_at` — Premium OYLIK obunasining tugash sanasi.
+// `companies.plan` — 'free' (avtomatik ID) yoki 'paid' (sotib olingan
+//   nom). Eskilarida NULL bo'lib qoladi — pastdagi izohga qarang.
+//
+// HAMMASI QO'SHIMCHA VA BO'SH: mavjud qatorlarda NULL qoladi, ya'ni
+// eski foydalanuvchi va kompaniyalar uchun HECH NARSA O'ZGARMAYDI.
+// Yangi qoidalar FAQAT shu maydonlar to'ldirilgan (ya'ni shu
+// o'zgarishdan KEYIN yaratilgan) hisoblarga tegishli — egasining
+// qarori: "sinov faqat yangilarga", "limit mavjud katalogni
+// qisqartirmasin", "eski Premium muddatsiz qoladi".
+const ensureTrialColumns = async (env) => {
+  await ensureColumnD1(env, 'users', 'trial_expires_at', 'TEXT');
+  await ensureColumnD1(env, 'users', 'premium_expires_at', 'TEXT');
+};
+const ensureCompanyPlanColumns = async (env) => {
+  await ensureColumnD1(env, 'companies', 'trial_expires_at', 'TEXT');
+  await ensureColumnD1(env, 'companies', 'plan', 'TEXT');
+};
+export function usersHaveTrialColumnsD1() {
+  return hasColumnD1('users', 'trial_expires_at') && hasColumnD1('users', 'premium_expires_at');
+}
+
+// SINOV MUDDATI — 30 kun.
+const TRIAL_DAYS = 30;
+export const trialEndsAtD1 = (from = new Date()) => new Date(from.getTime() + TRIAL_DAYS * 86400_000).toISOString();
+// Premium obunasi — 1 oy (30 kun). Mavjud muddat tugamagan bo'lsa,
+// yangi to'lov uning USTIGA qo'shiladi (odam ikki marta to'lab,
+// bir oyni yo'qotmasin).
+export const premiumExtendD1 = (current) => {
+  const base = current && Date.parse(current) > Date.now() ? new Date(Date.parse(current)) : new Date();
+  return new Date(base.getTime() + 30 * 86400_000).toISOString();
+};
 export function likesHaveCompanyIdD1() { return hasColumnD1('card_likes', 'as_company_id'); }
 
 // `cards` ustunlari ro'yxati — `company_id` faqat u ROSTDAN mavjud
@@ -2637,13 +2744,23 @@ async function getCurrentUser(request, env) {
   // tokenli sessiyalar ham qabul qilinadi va darhol hash'ga ko'chiriladi.
   const tokenHash = await sha256Hex(token);
   const row = await env.DB.prepare(
-    `SELECT u.id, u.email, u.phone, u.is_premium AS isPremium, u.banned_until AS bannedUntil,
+    // PREMIUM ENDI IKKI YO'L BILAN FAOL BO'LADI:
+    //   1) `is_premium = 1` — ESKI, bir martalik to'lov qilganlar.
+    //      Ular MUDDATSIZ qoladi (egasining qarori: sotib olgan
+    //      narsasini tortib olmaymiz).
+    //   2) `premium_expires_at > hozir` — yangi OYLIK obuna.
+    // Shu sabab hisob bitta joyda qilinadi va qolgan butun kod
+    // avvalgidek `isPremium` ni o'qiyveradi — hech narsa o'zgarmaydi.
+    `SELECT u.id, u.email, u.phone,
+            (u.is_premium = 1 OR (u.premium_expires_at IS NOT NULL AND u.premium_expires_at > ?)) AS isPremium,
+            u.premium_expires_at AS premiumExpiresAt, u.trial_expires_at AS trialExpiresAt,
+            u.banned_until AS bannedUntil,
             u.strike_count AS strikeCount, u.promo_code AS promoCode, u.pending_discount_pct AS pendingDiscountPct,
             u.suspended_until AS suspendedUntil, u.deleted_at AS deletedAt, s.token AS storedToken,
             EXISTS(SELECT 1 FROM bot_verifications bv WHERE bv.phone = u.phone) AS tgLinked
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token IN (?, ?) AND s.expires_at > ?`
-  ).bind(tokenHash, token, nowTs()).first();
+  ).bind(nowTs(), tokenHash, token, nowTs()).first();
   if (!row) return null;
   if (row.storedToken === token) {
     await env.DB.prepare(`UPDATE sessions SET token = ? WHERE token = ?`).bind(tokenHash, token).run().catch(() => {});
@@ -3088,12 +3205,22 @@ function catalogCard(record, auctionFinal = null) {
 
 async function getRecord(env, code) {
   const row = await env.DB.prepare(
-    `SELECT c.*, u.is_premium AS owner_is_premium,
+    `SELECT c.*,
+            (u.is_premium = 1 OR (u.premium_expires_at IS NOT NULL AND u.premium_expires_at > ?)) AS owner_is_premium,
+            u.trial_expires_at AS owner_trial_expires_at,
             EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
      FROM cards c LEFT JOIN users u ON u.id = c.user_id WHERE c.code = ?`
-  ).bind(code).first();
+  ).bind(nowTs(), code).first();
   if (!row) return null;
-  const rec = { ...rowToRecord(row), isPremium: !!row.owner_is_premium, isGift: !!row.is_gift };
+  // OMMAVIY profil uchun ham egasining holati muhim: sinov muddati
+  // yoki oylik obuna faol bo'lsa, profil pullik imkoniyatlar bilan
+  // ko'rinishi kerak (musiqa, animatsiya va h.k.).
+  const rec = {
+    ...rowToRecord(row),
+    isPremium: !!row.owner_is_premium,
+    trialExpiresAt: row.owner_trial_expires_at || null,
+    isGift: !!row.is_gift,
+  };
   // `rowToRecord()` narxni auksion natijasini BILMASDAN hisoblaydi
   // (u sinxron). Shuning uchun bu yerda haqiqiy auksion yakuniy narxi
   // bilan qayta hisoblaymiz — aks holda profil belgisi katalogdan farq
@@ -3793,7 +3920,15 @@ async function finalizePaidWebOrderD1(env, orderId) {
   // yangilash faqat users.is_premium ni yoqadi; jismoniy karta buyurtmasi
   // physical_cards qatorini SHU YERDA (to'lovdan keyin) yaratadi.
   if (order.kind === 'premium_upgrade') {
-    await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = ?`).bind(order.userId).run();
+    // OYLIK OBUNA (2026-09). Avval bu yerda `is_premium = 1` yozilardi
+    // — ya'ni bir martalik to'lov MUDDATSIZ premium berardi. Endi
+    // muddat 30 kunga uzaytiriladi; `is_premium` ga TEGILMAYDI, shunda
+    // eski (muddatsiz) egalar o'z huquqini yo'qotmaydi.
+    await ensureTrialColumns(env);
+    const row = await env.DB.prepare(`SELECT premium_expires_at AS exp FROM users WHERE id = ?`)
+      .bind(order.userId).first().catch(() => null);
+    await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ?`)
+      .bind(premiumExtendD1(row?.exp), order.userId).run();
     await setWebOrderStatusD1(env, order.id, 'paid');
     return { ok: true };
   }
@@ -7700,10 +7835,19 @@ function personalIdTierD1(rec) {
   return ACCESS_RANK_D1[t] != null ? t : 'free';
 }
 // EFFECTIVE ACCESS = max(idTier, egasi Premium bo'lsa 'premium').
+// SINOV MUDDATI ham "pol" (floor) sifatida ishlaydi — xuddi Premium
+// obunasi kabi. Ya'ni 30 kun davomida hisob barcha imkoniyatlarni
+// oladi, NFC ID darajasi past bo'lsa ham. Muddat tugagach pol yo'qoladi
+// va daraja o'z holiga qaytadi — hech narsa o'chirilmaydi.
+export function trialActiveD1(owner, now = Date.now()) {
+  const t = owner && (owner.trialExpiresAt || owner.trial_expires_at);
+  return !!t && Date.parse(t) > now;
+}
 function effectiveAccessD1(rec) {
   const a = ACCESS_RANK_D1[personalIdTierD1(rec)] ?? 0;
   const floor = rec.isPremium ? ACCESS_RANK_D1.premium : 0;
-  return ACCESS_LEVELS_D1[Math.max(a, floor)];
+  const trial = trialActiveD1(rec) ? ACCESS_RANK_D1.premium : 0;
+  return ACCESS_LEVELS_D1[Math.max(a, floor, trial)];
 }
 function featureAllowedD1(feature, access) {
   const min = FEATURE_MIN_D1[feature];
@@ -8039,6 +8183,7 @@ const H = {
   rateLimitD1, roleAtLeast,
   emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
+  usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
 };
 const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant];
 

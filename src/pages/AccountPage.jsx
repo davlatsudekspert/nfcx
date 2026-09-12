@@ -25,7 +25,7 @@ import { CARD_BACKGROUNDS, cardBackgroundFromUrl } from '../lib/cardBackgrounds.
 import { listMyCompanies } from '../lib/company.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess, trialDaysLeft } from '../lib/access.js';
 import { rememberFollowAs } from '../lib/followIdentity.js';
 import { useContentRulesGate, CONTENT_RULES_TEXT, CONTENT_RULES_ACCEPT } from '../components/ContentRulesGate.jsx';
 import ShareButton from '../components/ShareButton.jsx';
@@ -1674,6 +1674,18 @@ function PremiumPanel({ user, card, onBecamePremium }) {
   const paymentsOn = PAYMENTS_ENABLED && !disabledByServer;
   const tierLabel = t(tierLabelFor(card?.code, access));
 
+  // PREMIUM ENDI OYLIK (2026-09), LEKIN ESKI EGALAR MUDDATSIZ QOLADI.
+  // Farqi: muddatsiz egada `premiumExpiresAt` umuman yo'q (ular
+  // `is_premium` bayrog'i bilan yuradi), oylik obunachida esa sana bor.
+  const premiumUntil = user?.premiumExpiresAt ? new Date(user.premiumExpiresAt) : null;
+  const lifetimePremium = !!user?.isPremium && !premiumUntil;
+  const daysLeft = premiumUntil ? Math.ceil((premiumUntil.getTime() - Date.now()) / 86400000) : null;
+  // Uzaytirish eslatmasi — muddat tugashiga 3 kun qolganda. Avtomatik
+  // yechish YO'Q (Payme'da alohida obuna API kerak), shuning uchun
+  // odamning o'zi to'laydi — eslatma shuning uchun kerak.
+  const renewSoon = daysLeft != null && daysLeft <= 3;
+  const trialLeft = trialDaysLeft(user);
+
   return (
     <div className="vz-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1682,15 +1694,27 @@ function PremiumPanel({ user, card, onBecamePremium }) {
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 font-display text-2xl font-semibold text-[color:var(--vz-gold-2)]"><IconCrown width={22} height={22} /> {tierLabel}</span>
             {user?.isPremium && <span className="vz-badge vz-badge--gold"><IconCheck width={12} height={12} /> {t("Premium a'zo")}</span>}
+            {!user?.isPremium && trialLeft != null && (
+              <span className="vz-badge vz-badge--gold">{t('Sinov: {n} kun qoldi', { n: trialLeft })}</span>
+            )}
             {card?.code && <span className="vz-badge vz-badge--muted font-mono">{card.code}</span>}
           </div>
           <p className="mt-2 max-w-md text-sm text-base-content/55">
-            {user?.isPremium
+            {lifetimePremium
               ? t('Barcha premium imkoniyatlar faol. Amal qilish muddati cheklanmagan.')
-              : t("Daraja = NFC ID tarifi yoki Profile Premium (qaysi biri yuqori bo'lsa). Premium — bir martalik to'lov, muddatsiz.")}
+              : premiumUntil
+                ? t('Premium faol. Muddati: {d} ({n} kun qoldi).', { d: premiumUntil.toLocaleDateString('uz-UZ'), n: Math.max(0, daysLeft) })
+                : trialLeft != null
+                  ? t('Sinov muddati: yana {n} kun barcha imkoniyatlar ochiq. Keyin tarifga qaytadi.', { n: trialLeft })
+                  : t("Daraja = NFC ID tarifi yoki Premium obuna (qaysi biri yuqori bo'lsa). Premium — oyiga {n} so'm.", { n: fmt(PREMIUM_FEE) })}
           </p>
+          {renewSoon && (
+            <div className="alert alert-warning mt-3 py-2 text-sm">
+              <span>{t('Premium muddati tugayapti. Uzaytirish uchun to‘lovni o‘zingiz amalga oshirasiz — avtomatik yechilmaydi.')}</span>
+            </div>
+          )}
         </div>
-        {!user?.isPremium && (
+        {!lifetimePremium && (
           <div className="w-full shrink-0 sm:w-auto">
             {!paymentsOn ? (
               <button className="btn btn-gold btn-sm min-h-11 w-full btn-disabled !cursor-not-allowed opacity-60 sm:w-auto" disabled aria-disabled="true">

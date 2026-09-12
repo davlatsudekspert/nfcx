@@ -1307,3 +1307,19 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .pf-nfcid i{font-style:normal;font-size:15px;color:var(--vz-gold)}
 .pf-nfcid b{display:block;font-family:'Space Mono',monospace;font-size:17px;font-weight:800;line-height:1;letter-spacing:.16em;color:var(--vz-gold-2)}
 .pf-nfcid small{display:block;font-family:inherit;font-size:8px;font-weight:700;line-height:1;letter-spacing:.16em;color:var(--vz-ink-3);margin-top:5px;text-transform:uppercase}
+
+/* ===== PREMIUM KO'RINISHI kartochkasi (Sozlamalar) =====
+   Jilva `.tier-shine` bilan bir ruhda, lekin o'z o'lchamida. */
+.pp-card{position:relative;display:block;width:100%;text-align:left;overflow:hidden;isolation:isolate;cursor:pointer;border:1px solid var(--vz-gold-3);border-radius:18px;padding:18px;font-family:inherit;background:
+  radial-gradient(120% 160% at 100% 0,rgba(240,207,122,.16),transparent 60%),
+  linear-gradient(180deg,#171209,#120e08)}
+.pp-card:hover{border-color:var(--vz-gold-2)}
+.pp-shine{position:absolute;inset:0 auto 0 -55%;width:42%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.16),transparent);transform:skewX(-18deg);animation:ppShine 3.6s ease-in-out infinite;pointer-events:none;z-index:1}
+@keyframes ppShine{0%,60%{left:-55%}100%{left:130%}}
+@media (prefers-reduced-motion:reduce){.pp-shine{animation:none;display:none}}
+.pp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;position:relative;z-index:2}
+.pp-head b{font-family:'Space Grotesk',system-ui,sans-serif;font-size:19px;font-weight:800;letter-spacing:.16em;background:linear-gradient(135deg,var(--vz-gold-2),var(--vz-gold-3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.pp-head em{font-style:normal;font-size:12px;font-weight:700;color:var(--vz-ink-3)}
+.pp-perks{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;position:relative;z-index:2}
+.pp-perks i{font-style:normal;font-size:11.5px;font-weight:700;color:var(--vz-ink-2);border:1px solid var(--vz-line);border-radius:999px;padding:5px 10px;background:rgba(0,0,0,.35)}
+.pp-cta{display:block;margin-top:14px;font-size:13.5px;font-weight:800;color:var(--vz-gold-2);position:relative;z-index:2}

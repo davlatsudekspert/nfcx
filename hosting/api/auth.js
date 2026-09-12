@@ -200,6 +200,18 @@ async function hardDeleteUser(env, userId) {
 }
 
 async function createUser(env, H, { email, passwordHash, phone, botAck, tosAccepted }) {
+  // 30 KUNLIK SINOV (2026-09). Yangi hisob birinchi oy davomida barcha
+  // pullik imkoniyatlardan foydalanadi. Muddat tugagach tarifga
+  // qaytadi. Ustun bo'lmasa (juda eski baza) — yozilmaydi, hisob
+  // avvalgidek ochiladi: sinov "qo'shimcha", "shart" emas.
+  const trial = H.usersHaveTrialColumnsD1 && H.usersHaveTrialColumnsD1() ? H.trialEndsAtD1() : null;
+  if (trial) {
+    return env.DB.prepare(
+      `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, created_at, trial_expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (email) DO NOTHING RETURNING id, email`
+    ).bind(email, passwordHash, phone || null, botAck ? 1 : 0, tosAccepted ? 1 : 0, H.nowTs(), trial).first();
+  }
   return env.DB.prepare(
     `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, created_at) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (email) DO NOTHING RETURNING id, email`

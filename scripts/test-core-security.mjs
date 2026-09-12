@@ -54,7 +54,7 @@ check('unknown admin route → 404', r.status, 404);
   const ev = await env.DB.prepare(`SELECT COUNT(*) AS n FROM card_events WHERE code = 'VIP001' AND event_type = 'profile_view'`).first();
   check('profile_view events logged (2 distinct visitors)', Number(ev.n), 2);
 }
-// 11) Payme finalize: premium_upgrade → users.is_premium; physical_card_order → physical_cards
+// 11) Payme finalize: premium_upgrade → OYLIK obuna; physical_card_order → physical_cards
 {
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
   await env.DB.prepare(`INSERT INTO web_orders (id, user_id, code, kind, price, payload, status, created_at) VALUES (901, 1, 'PREMIUM', 'premium_upgrade', 100000, '{}', 'pending', ?)`).bind(now).run();
@@ -62,8 +62,15 @@ check('unknown admin route → 404', r.status, 404);
     .bind(JSON.stringify({ shippingName: 'Test', shippingPhone: '+998901111111', shippingAddress: 'Toshkent' }), now).run();
   r = await f('/api/admin/orders/901/confirm-payment', { method: 'POST', cookie: cookie.admin, json: {} });
   check('premium order finalize ok', [r.status, (await r.json()).ok], [200, true]);
-  const u = await env.DB.prepare(`SELECT is_premium FROM users WHERE id = 1`).first();
-  check('user became premium', Number(u.is_premium), 1);
+  // PREMIUM ENDI OYLIK (2026-09). To'lov `is_premium` bayrog'ini
+  // YOQMAYDI — u faqat eski, muddatsiz egalar uchun qoladi. Yangi
+  // to'lov muddatni 30 kunga uzaytiradi.
+  const u = await env.DB.prepare(`SELECT is_premium, premium_expires_at FROM users WHERE id = 1`).first();
+  check('eski muddatsiz bayroq YOQILMAYDI', Number(u.is_premium || 0), 0);
+  checkTrue('premium muddati kelajakda', !!u.premium_expires_at && Date.parse(u.premium_expires_at) > Date.now());
+  // Taxminan 30 kun (bir necha soniya farq bo'lishi tabiiy).
+  const days = (Date.parse(u.premium_expires_at) - Date.now()) / 86400000;
+  checkTrue('taxminan 30 kun', days > 29.9 && days < 30.1);
   r = await f('/api/admin/orders/902/confirm-payment', { method: 'POST', cookie: cookie.admin, json: {} });
   check('physical order finalize ok', [r.status, (await r.json()).ok], [200, true]);
   const pc = await env.DB.prepare(`SELECT linked_code, owner_user_id, shipping_name, length(chip_token) AS tl FROM physical_cards WHERE linked_code = 'VIP001'`).first();
