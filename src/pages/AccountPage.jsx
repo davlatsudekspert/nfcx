@@ -27,6 +27,7 @@ import { autoCropToContent, centerObject, removeBackground, whitenBackground, en
 import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess } from '../lib/access.js';
 import { rememberFollowAs } from '../lib/followIdentity.js';
+import { useContentRulesGate, CONTENT_RULES_TEXT, CONTENT_RULES_ACCEPT } from '../components/ContentRulesGate.jsx';
 import ShareButton from '../components/ShareButton.jsx';
 import { useCategories, catName, findCat } from '../lib/categories.js';
 const CardDesignerPage = lazy(() => import('./CardDesignerPage.jsx'));
@@ -1839,7 +1840,7 @@ function PostsManager({ code }) {
 
         <label className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-base-content/70">
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="checkbox checkbox-xs mt-0.5 shrink-0" />
-          <span>{t('Men joylayotgan rasm O‘zbekiston Respublikasi qonunchiligiga zid emasligini tasdiqlayman. Diniy targ‘ibot, pornografik va axloq normalariga zid tasvirlar, giyohvand moddalar, spirtli ichimliklar hamda tamaki mahsulotlari reklamasi, zo‘ravonlik, kamsitish va boshqa noqonuniy mazmundagi rasmlarni joylash qat’iyan taqiqlanadi. Qoidaga rioya qilinmasa, post o‘chiriladi va NFC ID bloklanishi mumkin.')}</span>
+          <span><b className="text-base-content/85">{t(CONTENT_RULES_TEXT)}</b><br />{t(CONTENT_RULES_ACCEPT)}</span>
         </label>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -2396,6 +2397,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const fileRef = useRef(null);
   const bgFileRef = useRef(null);
   const musicFileRef = useRef(null);
+  // Musiqa ham kontent — rasm, istorya va post bilan bir xil qoidalar
+  // oynasi ko'rsatiladi (egasining talabi).
+  const contentRules = useContentRulesGate();
   // Qaysi qo'shiq qatoriga fayl yuklanayotgani (bitta umumiy fayl input
   // barcha qatorlar uchun ishlatiladi) — ko'pi bilan 5 ta qo'shiq.
   const [musicUploadIndex, setMusicUploadIndex] = useState(null);
@@ -3039,6 +3043,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
       <label className="form-control mt-5 block">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/70"><IconMusic width={12} height={12} /> {t('Profil musiqasi')} <span className="font-normal text-base-content/40">({form.musicUrls.length}/{musicMax})</span></span>
         <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onPickMusicFile} />
+        {contentRules.node}
         <div className="mt-2 space-y-3">
           {form.musicUrls.map((url, i) => (
             <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3">
@@ -3053,7 +3058,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm min-h-11 shrink-0"
-                  onClick={() => { setMusicUploadIndex(i); musicFileRef.current && musicFileRef.current.click(); }}
+                  onClick={() => contentRules.ask(() => { setMusicUploadIndex(i); musicFileRef.current && musicFileRef.current.click(); })}
                   disabled={uploadingMusic}
                 >
                   {uploadingMusic && musicUploadIndex === i ? <span className="loading loading-spinner loading-xs"></span> : t('Fayl')}

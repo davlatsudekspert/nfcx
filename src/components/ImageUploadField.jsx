@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { dbUploadImage } from '../lib/db.js';
+import { useContentRulesGate } from './ContentRulesGate.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 
 // Rasm maydoni: KOMPYUTERDAN FAYL tanlanadi, URL yozish shart emas.
@@ -26,6 +27,11 @@ export default function ImageUploadField({ label, value, onChange, hint = '', ki
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [manual, setManual] = useState(false);
+  // Fayl tanlashdan OLDIN kontent qoidalari ko'rsatiladi (istorya va
+  // postdagi bilan bir xil matn). Tartib ataylab shunday: ogohlantirish
+  // fayl tanlangandan keyin chiqsa, odam "ish tugadi" deb o'ylab uni
+  // o'qimay yopib yuboradi.
+  const rules = useContentRulesGate();
 
   const pick = async (e) => {
     const file = e.target.files?.[0];
@@ -58,7 +64,7 @@ export default function ImageUploadField({ label, value, onChange, hint = '', ki
           ? <img src={value} alt="" className="cw-upload-thumb" />
           : <div className="cw-upload-thumb cw-upload-empty">{'☷'}</div>}
         <div className="cw-upload-actions">
-          <button type="button" className="cw-upload-btn" disabled={busy} onClick={() => fileRef.current?.click()}>
+          <button type="button" className="cw-upload-btn" disabled={busy} onClick={() => rules.ask(() => fileRef.current?.click())}>
             {busy ? t('Yuklanmoqda…') : value ? t('Rasmni almashtirish') : t('Fayl tanlash')}
           </button>
           {value && (
@@ -82,6 +88,7 @@ export default function ImageUploadField({ label, value, onChange, hint = '', ki
       )}
       {err && <small role="alert" className="cw-upload-err">{err}</small>}
       {!err && hint && <small className="cw-upload-hint">{hint}</small>}
+      {rules.node}
     </label>
   );
 }

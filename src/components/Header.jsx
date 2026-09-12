@@ -249,7 +249,14 @@ export default function Header() {
       </div>
 
       {open && (
-        <div className="max-h-[calc(100dvh-96px)] overflow-y-auto border-t border-[color:var(--vz-line)] px-5 pb-4 xl:hidden">
+        <div
+          /* Balandlik: sarlavha aynan 64px. Avval 96px ayirilardi va
+             past ekranlarda (320x568) oxirgi band ko'rinmay qolardi.
+             `env(safe-area-inset-bottom)` — iPhone'dagi pastki chiziq
+             oxirgi tugmani berkitmasligi uchun. */
+          className="max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain border-t border-[color:var(--vz-line)] px-5 pb-4 xl:hidden"
+          style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+        >
           <div className="py-3">
             <HeaderSearch onNavigate={go} />
           </div>
@@ -266,18 +273,43 @@ export default function Header() {
                 </button>
               </li>
             ))}
-            <li className="mt-2 border-t border-white/10 pt-2">
-              {user && MESSAGING_ENABLED && (
+            {/* TELEFONDA HAM HAMMASI KO'RINSIN (2026-09, egasining
+                shikoyati: "telefonda tepadagi menyu kesilib qolyapti").
+                Sabab: "Bildirishnomalar" va "To'lovlar" FAQAT kompyuter
+                qatorida (`hidden xl:flex`, To'lovlar esa hatto
+                `2xl:`) turardi — ya'ni telefondan ularga kirishning
+                YO'LI YO'Q edi. Endi ular shu menyuda ham bor.
+                Har bir band ALOHIDA `li` — `.menu` uslubi bitta `li`
+                ichidagi bir nechta tugmani bitta qator deb hisoblaydi
+                va ular bir-birini siqib qo'yishi mumkin. */}
+            {user && MESSAGING_ENABLED && (
+              <li className="mt-2 border-t border-white/10 pt-2">
                 <button onClick={() => go('/xabarlar')} className="min-h-11 cursor-pointer">
                   <IconChat /> {t('Xabarlar')} {unread > 0 && <span className="badge badge-accent badge-xs ml-1">{unread}</span>}
                 </button>
-              )}
-              {/* Telefondagi menyuda ham biznes kabinet ko'rinsin. */}
-              {user && (
+              </li>
+            )}
+            {user && (
+              <li className={MESSAGING_ENABLED ? '' : 'mt-2 border-t border-white/10 pt-2'}>
+                <button onClick={() => go('/bildirishnomalar')} className="min-h-11 cursor-pointer">
+                  <IconBell /> {t('Bildirishnomalar')}
+                </button>
+              </li>
+            )}
+            {user && (
+              <li>
+                <button onClick={() => go('/tolovlar')} className="min-h-11 cursor-pointer">{t("To'lovlar")}</button>
+              </li>
+            )}
+            {/* Telefondagi menyuda ham biznes kabinet ko'rinsin. */}
+            {user && (
+              <li>
                 <button onClick={() => go('/business')} className="min-h-11 cursor-pointer">
                   {t('Biznes kabinet')}
                 </button>
-              )}
+              </li>
+            )}
+            <li className={user ? '' : 'mt-2 border-t border-white/10 pt-2'}>
               {user ? (
                 <button onClick={() => go('/account')} className="flex min-h-11 cursor-pointer items-center gap-2">
                   <MyProfileAvatar src={myAvatar} label={myLabel} size="h-7 w-7" />
