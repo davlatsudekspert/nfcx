@@ -33,7 +33,7 @@ export function ReelsGrid({
   const tile = (width - 4 - 4) / 3;
 
   if (!reels.length) {
-    return <EmptyState text="Hozircha video yo&#x2019;q" />;
+    return <EmptyState text="Hozircha video yo’q" />;
   }
 
   return (

@@ -49,7 +49,7 @@ export function SettingsSheet({
           { color: 'rgba(255,255,255,.42)', marginBottom: 13 },
         ]}
       >
-        Faqat presetlar. Har bir tema qorong&#x2019;u asosni saqlaydi.
+        Faqat presetlar. Har bir tema qorong’u asosni saqlaydi.
       </Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>

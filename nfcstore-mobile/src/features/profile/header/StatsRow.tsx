@@ -33,7 +33,7 @@ export function StatsRow({
         marginTop: 14,
       }}
     >
-      <Stat value={views} label="ko&#x2019;rishlar" />
+      <Stat value={views} label="ko’rishlar" />
       <VDivider />
       <Stat value={followers} label="obunachi" />
       <VDivider />

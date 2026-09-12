@@ -53,10 +53,10 @@ export function ActionButtons({
           <GhostButton label="Profilni tahrirlash" onPress={onEdit} style={{ flex: 1 }} />
         </>
       ) : following ? (
-        <GhostButton label="Obuna bo&#x2019;lingan" onPress={onFollow} style={{ flex: 1 }} />
+        <GhostButton label="Obuna bo’lingan" onPress={onFollow} style={{ flex: 1 }} />
       ) : (
         <GoldButton
-          label="Obuna bo&#x2019;lish"
+          label="Obuna bo’lish"
           onPress={onFollow}
           sweep={false}
           style={{ flex: 1 }}

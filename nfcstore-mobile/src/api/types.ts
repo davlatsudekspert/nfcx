@@ -18,7 +18,12 @@ export type CompanyHours = {
 };
 
 export type CatalogItem = {
-  id: number;
+  /**
+   * UUID SATR, son emas — server `crypto.randomUUID()` bilan yaratadi
+   * (worker.js, catalog POST). PATCH/DELETE yo'llariga ham xuddi shu
+   * satr qo'yiladi.
+   */
+  id: string;
   name: string;
   category: string;
   description: string;
@@ -144,3 +149,103 @@ export type CompanyStory = {
 export type FollowResult = { following: boolean; followers: number };
 
 export type TapInfo = { active: boolean; linkedCode: string | null };
+
+/* ══ Katalog (ochiq direktoriya) ═════════════════════════════════════
+   GET /api/records        -> catalogCard[] (YALANG'OCH massiv, {records} emas)
+   GET /api/records/search -> { records: catalogCard[] }
+   Ikkisi ham `catalogCard()` shaklini qaytaradi (worker.js).             */
+
+export type CatalogRecord = {
+  code: string;
+  name: string;
+  role: string;
+  avatarUrl: string;
+  tg: string;
+  hashtags: string[];
+  theme: string;
+  price: number;
+  ts: number;
+  views: number;
+  /** Filtrlar uchun: All / Personal / Expert / Business. */
+  profileType: 'personal' | 'expert' | 'business';
+  city: string;
+  categorySlug: string;
+  verified: boolean;
+  tierOverride: string;
+  /** Haqiqiy sovg'a yozuvidan (narxdan EMAS). */
+  isGift: boolean;
+  notForSale: boolean;
+};
+
+/** GET /api/companies -> ochiq, FAQAT faol kompaniyalar (maxfiy maydonlarsiz). */
+export type PublicCompany = {
+  companyId: string;
+  displayName: string;
+  logoUrl: string;
+  coverUrl: string;
+  category: string;
+  subcategory: string;
+  city: string;
+  createdAt: string | null;
+};
+
+/* ══ Obuna statistikasi (shaxsiy kartalar) ═══════════════════════════
+   Kompaniyada bitta toggle endpoint bor, shaxsiy kartada esa UCHTA
+   alohida endpoint: stats / follow / unfollow.                        */
+
+export type FollowStats = {
+  followers: number;
+  following: number;
+  isFollowing: boolean;
+};
+
+/* ══ Home ekrani ════════════════════════════════════════════════════ */
+
+/** GET /api/settings/physical-nfc-pricing */
+export type PhysicalPricing = {
+  tiers: { minQty: number; maxQty: number | null; pricePerUnit: number }[];
+  delivery: { minDays: number; maxDays: number };
+};
+
+/** GET /api/gift-offers — kutilayotgan sovg'alar (ikki yo'nalish). */
+export type GiftOffers = {
+  incoming: { id: number; code: string; createdAt: string; fromEmail: string }[];
+  outgoing: { id: number; code: string; createdAt: string; toEmail: string }[];
+};
+
+/** GET /api/settings/payments-enabled */
+export type PaymentsSettings = {
+  enabled: boolean;
+  sandbox: boolean;
+  providers?: Record<string, { enabled: boolean; sandbox?: boolean }>;
+};
+
+/* ══ Dashboard ══════════════════════════════════════════════════════ */
+
+/** GET /api/companies/:id/stats?days=30 */
+export type CompanyStats = {
+  days: number;
+  views: number;
+  taps: number;
+  orders: number;
+  /** Har kun uchun bitta yozuv — bo'sh kunlar ham bor (grafik uzilmasin). */
+  series: { day: string; views: number }[];
+  /** Bosilgan amallar: telefon, telegram, manzil va h.k. */
+  actions: { key: string; hits: number }[];
+  /** Eng ko'p ochilgan 10 mahsulot. */
+  items: { id: string; name: string; hits: number }[];
+};
+
+/** GET /api/companies/:id/orders */
+export type CompanyOrder = {
+  id: number;
+  itemId: string;
+  itemName: string;
+  qty: number;
+  price: number;
+  name: string;
+  phone: string;
+  note: string;
+  status: string;
+  createdAt: string;
+};

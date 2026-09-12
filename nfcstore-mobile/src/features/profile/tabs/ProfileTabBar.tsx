@@ -65,7 +65,7 @@ export function ProfileTabBar({
         label="Reels"
         plusBadge={isOwner && isBusiness}
       />
-      <TabButton tab="info" active={active} onChange={onChange} label="Ma&#x2019;lumot" />
+      <TabButton tab="info" active={active} onChange={onChange} label="Ma’lumot" />
     </View>
   );
 }

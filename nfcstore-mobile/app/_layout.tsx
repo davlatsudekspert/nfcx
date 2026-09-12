@@ -106,6 +106,15 @@ function Shell({ ready }: { ready: boolean }) {
         }}
       >
         <Stack.Screen name="(tabs)" />
+        {/* Tashqi profillar — NFC teginish va Katalog shu ekranlarga
+            olib boradi. Ular tab navigatorining TASHQARISIDA: pastki
+            navigatsiya ko'rinmaydi, chunki bu "mening ID'larim" emas. */}
+        <Stack.Screen name="p/[code]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="c/[companyId]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen
+          name="dashboard/[companyId]"
+          options={{ animation: 'slide_from_right' }}
+        />
         <Stack.Screen
           name="post/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}

@@ -28,13 +28,16 @@ const LOGO = require('../../assets/logo.png');
  * ekran darhol ochiladi, kutish holati ko'rinmaydi.
  */
 export default function PostScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, company } = useLocalSearchParams<{ id: string; company?: string }>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const active = useActiveIdStore((s) => s.active);
 
-  const companyId = active?.kind === 'business' ? active.companyId : null;
+  // `?company=` — tashqi kompaniya profilidan ochilganda. Bo'lmasa faol
+  // ID dan olinadi (Profil tabidan ochilgan holat).
+  const companyId =
+    company ?? (active?.kind === 'business' ? active.companyId : null);
   const posts = queryClient.getQueryData<CompanyPost[]>(['posts', companyId]) ?? [];
   const post = posts.find((p) => String(p.id) === String(id)) ?? null;
 

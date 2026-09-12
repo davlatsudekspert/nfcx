@@ -29,11 +29,14 @@ export function CatalogGrid({
   plan,
   isOwner,
   onOpen,
+  onManage,
 }: {
   items: CatalogItem[];
   plan?: CompanyPlan;
   isOwner: boolean;
   onOpen?: (item: CatalogItem) => void;
+  /** Egasi uchun — Dashboard'dagi katalog boshqaruviga o'tish. */
+  onManage?: () => void;
 }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
@@ -59,7 +62,20 @@ export function CatalogGrid({
         <Text style={[sans(600, 12), { color: 'rgba(255,255,255,.5)' }]}>
           {items.length} mahsulot
         </Text>
-        <Text style={[mono(500, 11.5), { color: theme.a1 }]}>Ommabop ▾</Text>
+        {isOwner && onManage ? (
+          <TapScale
+            radius={9}
+            onPress={onManage}
+            accessibilityLabel="Katalogni boshqarish"
+            style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 9 }}
+          >
+            <Text style={[mono(600, 11), { color: theme.a1, letterSpacing: 0.6 }]}>
+              BOSHQARISH
+            </Text>
+          </TapScale>
+        ) : (
+          <Text style={[mono(500, 11.5), { color: theme.a1 }]}>Ommabop ▾</Text>
+        )}
       </View>
 
       {limitReached ? (
@@ -69,13 +85,13 @@ export function CatalogGrid({
             { color: theme.off, marginBottom: 12 },
           ]}
         >
-          Bepul tarifda {plan?.productLimit} mahsulot. Ko&#x2019;proq qo&#x2019;shish uchun
+          Bepul tarifda {plan?.productLimit} mahsulot. Ko’proq qo’shish uchun
           Company ID sotib olish kerak.
         </Text>
       ) : null}
 
       {items.length === 0 ? (
-        <EmptyState text="Katalog hozircha bo&#x2019;sh" />
+        <EmptyState text="Katalog hozircha bo’sh" />
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {items.map((item) => (

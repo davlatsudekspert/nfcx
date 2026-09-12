@@ -33,7 +33,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "NFCSTORE kartani o'qish uchun NFC dan foydalanadi.",
+          "includeNdefEntitlement": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

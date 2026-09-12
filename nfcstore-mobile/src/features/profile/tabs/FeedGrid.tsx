@@ -32,7 +32,7 @@ export function FeedGrid({
   const tile = (width - 4 - 4) / 3;
 
   if (!posts.length) {
-    return <EmptyState text="Hozircha post yo&#x2019;q" />;
+    return <EmptyState text="Hozircha post yo’q" />;
   }
 
   return (

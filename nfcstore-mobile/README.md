@@ -9,7 +9,28 @@ SVG yo'llari va animatsiya vaqtlari **aynan** ko'chirilgan.
 
 ## Bu bosqichda nima bor
 
-Kelishilgan qamrov — **profil ekrani va uning varaqlari**:
+**NFC o'qish, Home, Katalog, Dashboard va to'liq profil tizimi:**
+
+- **NFC o'qish** — ilovaning asosiy vazifasi. Kartani tekkizsangiz teg
+  ichidagi URL o'qiladi, koddan profil ochiladi, chip esa orqada
+  tekshiriladi. ⚠️ **Expo Go da ishlamaydi** — development build kerak
+  (pastdagi "NFC va development build" bo'limiga qarang)
+- **Home** — tezkor amal kartalari, hammasi haqiqiy endpointlarda:
+  ID holati, jismoniy karta narxi, sovg'a (kutilayotganlar soni),
+  to'lovlar (Payme holati, premium/sinov muddati), tarif chizig'i
+- **Katalog** — band qilingan profillar direktoriyasi mini NFC karta
+  ko'rinishida, Barchasi / Shaxsiy / Ekspert / Biznes filtrlari va
+  qidiruv bilan
+- **Dashboard** (biznes egasi) — 30 kunlik metrikalar va grafik,
+  buyurtmalar ro'yxati (holatni o'zgartirish bilan), katalog boshqaruvi
+  (tahrirlash, o'chirish, rasmsiz qo'shish)
+- **Kompaniyalar** — barcha Company ID lar, har biri Dashboard'ga olib
+  boradi
+- **Tashqi profillar** — `/p/<KOD>` va `/c/<ID>`: NFC teginish va
+  Katalog shu ekranlarga olib boradi, profil tabi bilan bir xil
+  komponentdan
+
+Profil qismi (kelishilgan asosiy qamrov):
 
 - **Biznes profil** — bezak chiziqlari + kichik brend belgisi, aylanuvchi
   shimmer halqali avatar, musiqa nishoni, "Hozir ochiq" + ish vaqti,
@@ -25,10 +46,17 @@ Kelishilgan qamrov — **profil ekrani va uning varaqlari**:
   preseti, qurilmada saqlanadi), oxirgi post to'liq ekranda
 - **Pastki navigatsiya** — gradient bilan to'ldirilgan faol ikonka,
   ortidagi yorug'lik, siljiydigan indikator, bosishda 1.12x sakrash
-- **Home / Katalog / Kompaniyalar** — vaqtinchalik ekranlar, lekin
-  almashtirgich tugmasi ularda ham ishlaydi
+Almashtirgich tugmasi (handle + chevron) BARCHA tablarda bir xil joyda.
 
 Auction tab **yo'q** — u saytdan olib tashlangan.
+
+## Keyingi bosqichga qolgani
+
+- Mahsulot rasmini ilovadan yuklash (`expo-image-picker` +
+  `/api/upload-media`) — hozir rasmsiz qo'shiladi
+- Yangi Company ID ochish formasi (hozir veb orqali)
+- Profilni tahrirlash va post/reels qo'shish oqimlari
+- Shaxsiy kartaning post/feed tarkibi — backendda hali yo'q
 
 ## Ishga tushirish
 
@@ -38,13 +66,40 @@ npm start          # keyin Expo Go yoki dev build
 npm run typecheck  # tsc --noEmit
 ```
 
-`npx expo export --platform android` bilan bundle tekshiriladi.
+```bash
+npm test           # NFC teg URL parseri (14 test)
+npx expo export --platform android   # bundle tekshiruvi
+```
+
+## NFC va development build
+
+NFC nativ modul talab qiladi, shuning uchun **Expo Go da ishlamaydi** —
+u yerda ilova ochiladi, lekin "NFC qo'llab-quvvatlanmaydi" xabari chiqadi.
+
+Haqiqiy qurilmada sinash uchun development build kerak:
+
+```bash
+npm install -g eas-cli
+eas login
+eas build --profile development --platform android
+```
+
+`eas.json` da `development` profili tayyor (APK, `developmentClient: true`).
+Build tugagach APK ni qurilmaga o'rnatib, `npx expo start --dev-client`
+bilan ulanasiz. Mahalliy build ham bo'ladi: `npx expo run:android`
+(Android SDK o'rnatilgan bo'lishi kerak).
+
+iOS: NFC simulyatorda ishlamaydi, haqiqiy qurilma va Apple Developer
+hisobidagi NFC entitlement kerak. Konfiguratsiya `app.json` da tayyor.
 
 ## Tuzilma
 
 ```
 app/                    expo-router marshrutlari
   (tabs)/               4 tab + maxsus tabBar
+  p/[code].tsx          tashqi shaxsiy profil (NFC, Katalog)
+  c/[companyId].tsx     tashqi kompaniya profili
+  dashboard/[companyId].tsx   biznes egasining Dashboard'i
   post/[id].tsx         to'liq ekran post
 src/
   api/                  klient (Bearer), endpointlar, backend tiplari
@@ -52,7 +107,11 @@ src/
   store/                auth, faol ID, dev rol override
   components/           TapScale, GoldSweep, Card, Sheet, StripeFill, nav
   features/profile/     sarlavha, tablar, varaqlar, ma'lumot qatlami
-  lib/                  format (narx, ish vaqti, nisbiy vaqt)
+  features/nfc/         teginish oqimi va o'qish tugmasi
+  features/home/        tezkor amal kartalari
+  features/katalog/     mini NFC karta ro'yxati va filtrlar
+  features/dashboard/   metrikalar, buyurtmalar, katalog boshqaruvi
+  lib/                  format, NFC (nfc.ts, tagUrl.ts), svgId
 docs/
   BEARER-AUTH-DIFF.md   Bearer auth o'zgarishi — qo'llangan, tarixiy yozuv
 ```
