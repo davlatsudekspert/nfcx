@@ -62,4 +62,32 @@ checkTrue('4) SHELL da hamma ikonka bor', ['/favicon.ico', '/favicon.png', '/app
   .every((f) => shellUrls.includes(`${f}?v=${V}`)));
 checkTrue('4) SHELL da versiyasiz ikonka qolmagan', shellUrls.every((u) => u === '/' || /\?v=\d+$/.test(u)));
 
+
+// ── 6) IKONKALARNING HAQIQIY O'LCHAMI ────────────────────────────────
+// Manifestda "512x512" deb yozib, ichida 192 lik rasm turishi mumkin —
+// Chrome bunday ikonkani jimgina rad etadi va ilova umuman
+// o'rnatilmaydi. Shuning uchun o'lcham PNG sarlavhasidan o'qiladi.
+const pngSize = (p) => {
+  const b = readFileSync(new URL('../' + p, import.meta.url));
+  return [b.readUInt32BE(16), b.readUInt32BE(20)];
+};
+for (const [file, size] of [
+  ['public/logo-512.png', 512],
+  ['public/logo-192.png', 192],
+  ['public/apple-touch-icon.png', 180],
+  ['public/icon-maskable-512.png', 512],
+  ['public/icon-maskable-192.png', 192],
+  ['public/favicon.png', 96],
+]) {
+  check(`6) ${file} o‘lchami`, pngSize(file), [size, size]);
+}
+
+// ── 7) IKONKALAR BITTA MANBADAN HISOBLANADI ──────────────────────────
+// Qo'lda tahrirlangan ikonka o'lchamlar orasida farq qoldiradi (biri
+// yangi logotip, ikkinchisi eski). Shuning uchun generator skript
+// saqlanadi: logotip o'zgarsa hammasi bir buyruq bilan yangilanadi.
+checkTrue('7) generator skript joyida', existsSync(new URL('../scripts/gen-icons.mjs', import.meta.url)));
+checkTrue('7) generator mantig‘i joyida', existsSync(new URL('../scripts/gen-icons.py', import.meta.url)));
+checkTrue('7) manba logotip joyida', existsSync(new URL('../src/assets/nfcstore-logo-source.png', import.meta.url)));
+
 done();

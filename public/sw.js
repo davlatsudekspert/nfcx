@@ -16,14 +16,14 @@
 // bir marta keshlangan eski logotip foydalanuvchida MANGU qolib ketardi
 // — xatcho'pda, "asosiy ekranga qo'shish"da va yorliqda ham (egasi
 // aynan shuni ko'rdi: "Yandex brauzerda hali ham eski logo turibdi").
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL_CACHE = `nfcstore-shell-${VERSION}`;
 const RUNTIME_CACHE = `nfcstore-rt-${VERSION}`;
 // Manzillar index.html'dagi `?v=` bilan BIR XIL bo'lishi shart: kesh
 // to'liq manzil bo'yicha qidiriladi, shuning uchun `?v=` siz yozilsa
 // sahifaning so'rovi keshdan topilmasdi (va aksincha).
-const SHELL = ['/', '/logo-192.png?v=4', '/logo-512.png?v=4', '/favicon.png?v=4',
-  '/favicon.ico?v=4', '/apple-touch-icon.png?v=4', '/manifest.webmanifest?v=4'];
+const SHELL = ['/', '/logo-192.png?v=5', '/logo-512.png?v=5', '/favicon.png?v=5',
+  '/favicon.ico?v=5', '/apple-touch-icon.png?v=5', '/manifest.webmanifest?v=5'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

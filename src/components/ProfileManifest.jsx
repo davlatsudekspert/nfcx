@@ -38,7 +38,7 @@ export default function ProfileManifest({ kind, code, name = '' }) {
     if (meta && name) meta.setAttribute('content', String(name).slice(0, 30));
 
     return () => {
-      link.setAttribute('href', previous || '/manifest.webmanifest?v=4');
+      link.setAttribute('href', previous || '/manifest.webmanifest?v=5');
       if (meta && prevTitle != null) meta.setAttribute('content', prevTitle);
     };
   }, [kind, code, name]);

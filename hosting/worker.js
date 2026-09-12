@@ -4534,7 +4534,7 @@ function emailShellD1({ title, body, buttonLabel, buttonUrl, footer }) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" style="max-width:520px;background:#151518;border:1px solid #2a2a30;border-radius:14px" cellpadding="0" cellspacing="0"><tr><td style="padding:28px">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-<td style="padding-right:10px"><img src="https://nfcstore.uz/logo-192.png?v=4" width="34" height="34" alt="" style="display:block;border:0;border-radius:50%" /></td>
+<td style="padding-right:10px"><img src="https://nfcstore.uz/logo-192.png?v=5" width="34" height="34" alt="" style="display:block;border:0;border-radius:50%" /></td>
 <td style="font:700 13px/1 Arial;letter-spacing:.18em;color:#c9a24b">NFCSTORE.UZ</td>
 </tr></table>
 <h1 style="margin:14px 0 0;font-size:21px;line-height:1.3;color:#fff">${esc(title)}</h1>
@@ -5739,10 +5739,10 @@ const PROFILE_BG_ALIASES = {
 // MANIFEST manzili bo'yicha hisoblaydi va opaque origin'da u yaroqsiz
 // bo'lib qoladi. Shuning uchun haqiqiy endpoint kerak.
 const MANIFEST_ICONS = [
-  { src: '/logo-192.png?v=4', sizes: '192x192', type: 'image/png', purpose: 'any' },
-  { src: '/logo-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'any' },
-  { src: '/icon-maskable-192.png?v=4', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-  { src: '/icon-maskable-512.png?v=4', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  { src: '/logo-192.png?v=5', sizes: '192x192', type: 'image/png', purpose: 'any' },
+  { src: '/logo-512.png?v=5', sizes: '512x512', type: 'image/png', purpose: 'any' },
+  { src: '/icon-maskable-192.png?v=5', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+  { src: '/icon-maskable-512.png?v=5', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
 ];
 
 async function profileManifestApi(request, env, url) {
