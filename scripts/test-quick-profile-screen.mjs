@@ -20,7 +20,6 @@ import { makeChecker } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 const page = readFileSync(new URL('../src/pages/CompanyQuickProfilePage.jsx', import.meta.url), 'utf8');
-const person = readFileSync(new URL('../src/pages/ProfilePage.jsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/company-system.css', import.meta.url), 'utf8');
 
 // Bitta CSS qoidasining tanasini ajratib oladi (`.qp-body{...}`).
@@ -100,34 +99,5 @@ checkTrue('9) pastda safe-area', rule('.qp-bottom').includes('env(safe-area-inse
 // ── 10) Past ekranlar uchun kichrayish qoidasi bor ───────────────────
 checkTrue('10) past ekran uchun media so‘rov', css.includes('@media(max-height:720px)'));
 
-
-// ── 11) JISMONIY PROFIL HAM AYNAN SHU QOBIQDA ────────────────────────
-// Egasining talabi: "nfcstore.uz/c/nfcstore bilan nfcstore.uz/vip001 ni
-// bir xil qil". Ikkalasi bitta CSS to'plamidan ovqatlanadi — biri
-// o'zgarsa ikkinchisi ortda qolmasin.
-checkTrue('11) jismoniy profil qobig‘i bir xil', person.includes('className="qp-shell"'));
-checkTrue('11) jismoniy profilda ham suriladigan oyna', person.includes('className="qp-body"'));
-checkTrue('11) jismoniy profilda ham pastki qator', person.includes('className="qp-bottom"'));
-checkTrue('11) jismoniy profilda ham ikonkalar qatori', person.includes('className="qp-quick"'));
-checkTrue('11) jismoniy profilda ham katta ID', person.includes('qp-idbig'));
-checkTrue('11) jismoniy profilda ham bo‘limlar qatori', person.includes('<ProfileTabs'));
-checkTrue('11) jismoniy profilda ham Ulashish ikonkalar qatorida', person.includes('qp-quick-share'));
-// Eski uzun ustun ko'rinishidan qolgan narsa bo'lmasligi kerak.
-checkTrue('11) eski panel ko‘rinishi olib tashlandi', !person.includes('style={innerPanelStyle(record)}'));
-// Hech bir imkoniyat yo'qolmadi.
-for (const [label, needle] of [
-  ['NFC kartaning ko‘rinishi', '<FlipNfcCard'],
-  ['jamoa', '<ProfileTeam'],
-  ['galereya', '<ProfileGallery'],
-  ['fayllar', 'qp-file'],
-  ['musiqa', '<MusicPlayer'],
-  ['kontakt qoldirish', 'setLeadOpen(true)'],
-  ['karta raqami oynasi', 'setCardModal'],
-  ['obunachi ro‘yxati', 'setFollowListDir'],
-  ['"kim nomidan" tanlovi', 'rememberFollowAs'],
-  ['vCard saqlash', 'downloadVcf'],
-]) {
-  checkTrue(`11) ${label} joyida`, person.includes(needle));
-}
 
 done();

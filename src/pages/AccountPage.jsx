@@ -24,7 +24,7 @@ import StoryFeedBar from '../components/StoryFeedBar.jsx';
 import { CARD_BACKGROUNDS, cardBackgroundFromUrl } from '../lib/cardBackgrounds.js';
 import { listMyCompanies } from '../lib/company.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
-import { tierForCode, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
+import { tierForCode, TIER_COLOR, TIER_EMOJI, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
 import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess, trialDaysLeft } from '../lib/access.js';
 import { rememberFollowAs } from '../lib/followIdentity.js';
 import { useContentRulesGate, CONTENT_RULES_TEXT, CONTENT_RULES_ACCEPT } from '../components/ContentRulesGate.jsx';
@@ -1329,6 +1329,9 @@ function GallerySection({ code, onLock }) {
 function PhonePreview({ form, code }) {
   const { t } = useLanguage();
   const record = form;
+  // Daraja (tarif) — ochiq profildagi bilan AYNAN bir xil qoida bo'yicha.
+  const previewTier = tierForCode(code);
+  const previewTierColor = TIER_COLOR[previewTier];
   const socials = [
     form.tg && { Icon: IconTelegram, label: 'Telegram' },
     form.instagram && { Icon: IconInstagram, label: 'Instagram' },
@@ -1377,8 +1380,33 @@ function PhonePreview({ form, code }) {
                 {form.avatarUrl ? <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(form.name)}
               </div>
             </div>
-            <div className="mt-2.5 text-[16.5px] font-bold leading-tight">{form.name || t('Ismingiz')}</div>
-            {form.role && <div className="mt-0.5 text-[13px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
+            <div className="mt-2.5 flex items-center justify-center gap-1 text-[16.5px] font-bold leading-tight">
+              {form.name || t('Ismingiz')}
+              {form.verified && (
+                <span title={t('Tasdiqlangan profil')} className="inline-flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[10px] font-black text-white">✓</span>
+              )}
+            </div>
+            {/* NFC ID va TARIF — ochiq profildagi bilan bir xil tartib va
+                bir xil rang. Ilgari preview'da umuman yo'q edi: egasi
+                o'z sahifasining eng ko'zga tashlanadigan yozuvini shu
+                yerda ko'rmasdi. */}
+            <div
+              className="mt-1 flex items-center justify-center gap-1 font-mono text-[15px] font-extrabold leading-none tracking-[0.1em]"
+              style={{ color: previewTier === 'free' ? 'var(--vz-ink-dim)' : previewTierColor }}
+            >
+              {TIER_EMOJI[previewTier] && <span className="text-[11px]">{TIER_EMOJI[previewTier]}</span>}
+              {code}
+            </div>
+            {previewTier !== 'free' && (
+              <div
+                className="mx-auto mt-1 inline-flex rounded-full px-2 py-[1px] text-[8px] font-extrabold uppercase tracking-wider"
+                style={{ color: previewTierColor, border: `1px solid ${previewTierColor}55`, background: `${previewTierColor}15` }}
+              >
+                {t('{tier} tarif', { tier: t(TIER_LABEL[previewTier] || previewTier) })}
+              </div>
+            )}
+            {form.role && <div className="mt-1 text-[13px] text-[color:var(--vz-ink-dim)]">{form.role}</div>}
+            {form.city && <div className="mt-0.5 text-[9.5px] text-[color:var(--vz-ink-faint)]">{form.city}</div>}
             {form.about && <p className="mx-auto mt-1.5 max-w-[190px] text-[9.5px] leading-snug text-[color:var(--vz-ink-dim)]">{form.about}</p>}
 
             {form.hashtags && (
