@@ -12,10 +12,12 @@ import CompanyStatsBar from '../components/CompanyStatsBar.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { listCompanyPosts, listCompanyStories } from '../lib/company.js';
 import { socialUrl } from '../lib/socialLinks.js';
-import { companyCta, companyEvent, getCompany } from '../lib/company.js';
+import { companyCta, companyEvent, companyTier, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { fmt } from '../lib/format.js';
+import { TIER_COLOR, TIER_LABEL } from '../lib/pricing.js';
+import ShareButton from '../components/ShareButton.jsx';
 import { IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconChip, IconLink } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
@@ -163,23 +165,26 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // balandligi 7 ta tugma o'rniga bittasiniki, ikonka esa o'z firma
   // rangida — ko'z Telegramni qidirmaydi, darrov topadi.
   const quick = [
-    company.phone && { k: 'phone', href: contactUrl('phone', company.phone), label: t('Qo‘ng‘iroq'), color: '#4ddb8f', icon: <IconPhone width={19} height={19} aria-hidden="true" /> },
-    company.telegram && { k: 'telegram', href: contactUrl('telegram', company.telegram), label: 'Telegram', color: '#2aabee', icon: <IconTelegram width={19} height={19} aria-hidden="true" /> },
-    company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#25d366', icon: <IconWhatsApp width={19} height={19} aria-hidden="true" /> },
-    company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#e1306c', icon: <IconInstagram width={19} height={19} aria-hidden="true" /> },
-    company.facebook && { k: 'facebook', href: socialUrl('fb', company.facebook), label: 'Facebook', color: '#1877f2', icon: <IconFacebook width={19} height={19} aria-hidden="true" /> },
-    company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#e6c169', icon: <IconGlobe width={19} height={19} aria-hidden="true" /> },
-    mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#ff7a59', icon: <IconGlobe width={19} height={19} aria-hidden="true" /> },
-    geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#ff3f40', icon: <IconGlobe width={19} height={19} aria-hidden="true" /> },
+    company.phone && { k: 'phone', href: contactUrl('phone', company.phone), label: t('Qo‘ng‘iroq'), color: '#4ddb8f', icon: <IconPhone width={26} height={26} aria-hidden="true" /> },
+    company.telegram && { k: 'telegram', href: contactUrl('telegram', company.telegram), label: 'Telegram', color: '#2aabee', icon: <IconTelegram width={26} height={26} aria-hidden="true" /> },
+    company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#25d366', icon: <IconWhatsApp width={26} height={26} aria-hidden="true" /> },
+    company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#e1306c', icon: <IconInstagram width={26} height={26} aria-hidden="true" /> },
+    company.facebook && { k: 'facebook', href: socialUrl('fb', company.facebook), label: 'Facebook', color: '#1877f2', icon: <IconFacebook width={26} height={26} aria-hidden="true" /> },
+    company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#e6c169', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
+    mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#ff7a59', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
+    geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#ff3f40', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
     // KARTA RAQAMI — ro'yxatda YASHIRIN turadi. Ochiq tursa u tasodifan
     // ekranga tushadi (skrinshot, video, yonidagi odam); bosish esa
     // ataylab qilingan harakat.
-    company.cardNumber && { k: 'card', onClick: () => setShowCard(true), label: t('Karta'), color: '#f0cf7b', icon: <IconChip width={19} height={19} aria-hidden="true" /> },
+    company.cardNumber && { k: 'card', onClick: () => setShowCard(true), label: t('Karta'), color: '#f0cf7b', icon: <IconChip width={26} height={26} aria-hidden="true" /> },
     // Egasi o'zi qo'shgan havolalar.
-    ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#cfc6b4', icon: <IconLink width={19} height={19} aria-hidden="true" /> })),
+    ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#cfc6b4', icon: <IconLink width={26} height={26} aria-hidden="true" /> })),
   ].filter(Boolean);
 
   const isOwner = user && String(user.id) === String(company.ownerUserId);
+  const tier = companyTier(company.companyId);
+  const tierColor = TIER_COLOR[tier] || TIER_COLOR.free;
+  const shareUrl = `${window.location.origin}/c/${company.companyId.toLowerCase()}`;
 
   return (
     <main className="qp-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")` }}>
@@ -191,7 +196,14 @@ export default function CompanyQuickProfilePage({ companyId }) {
       <div className="qp-shell">
         <header className="qp-top">
           <span className="qp-brand"><i><img src={logo} alt="" /></i> NFCSTORE</span>
-          <span className="qp-id">ID · {company.companyId}</span>
+          {/* ID — KATTA va TARIF RANGIDA (egasining talabi). "nfcstore.uz/"
+              prefiksi olib tashlandi: u har bir profilda bir xil va
+              faqat joy egallaydi; odam eslab qoladigan narsa — ID ning
+              o'zi. Rang ID darajasidan keladi (qancha qisqa — shuncha
+              yuqori), ya'ni qimmat ID bir qarashda bilinadi. */}
+          <span className="qp-idbig" style={{ '--tier': tierColor }} title={t('{tier} tarif', { tier: t(TIER_LABEL[tier] || tier) })}>
+            {company.companyId}
+          </span>
           {/* IKKALASIDAN BITTASI: kompaniya egasi bo'lsangiz —
               "Tahrirlash" (kabinetga), kirgan boshqa odam bo'lsangiz —
               o'z profilingizga qaytish. Mehmonga hech biri kerak emas:
@@ -216,7 +228,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
             </div>
           </div>
 
-          <CompanyStatsBar company={company} onChange={(patch) => setCompany((c) => ({ ...c, ...patch }))} />
+          <CompanyStatsBar company={company} showShare={false} onChange={(patch) => setCompany((c) => ({ ...c, ...patch }))} />
 
           {quick.length > 0 && (
             <div className="qp-quick" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
@@ -224,6 +236,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
                 ? <a key={q.k} data-ev={q.k} className="qp-quick-btn vz-tap" href={q.href} target={q.k === 'phone' ? undefined : '_blank'} rel="noreferrer"><i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span></a>
                 : <button key={q.k} data-ev={q.k} type="button" className="qp-quick-btn vz-tap" onClick={q.onClick}><i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span></button>
               ))}
+              {/* ULASHISH — qolgan havolalar bilan BIR QATORDA (egasining
+                  talabi). Ilgari u yuqorida, raqamlar yonida turardi va
+                  "aloqa usullari" ro'yxatidan tushib qolgan edi. */}
+              <ShareButton
+                url={shareUrl}
+                title={company.displayName}
+                text={company.description || company.displayName}
+                label={t('Ulashish')}
+                className="qp-quick-btn qp-quick-share vz-tap"
+              />
             </div>
           )}
         </section>

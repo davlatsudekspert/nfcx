@@ -441,7 +441,19 @@
 .qp-brand{flex:none;display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:.1em}
 .qp-brand i{width:20px;height:20px;flex:none;border:1px solid #b68720;border-radius:50%;overflow:hidden}
 .qp-brand i img{display:block;width:100%;height:100%;object-fit:cover}
-.qp-id{margin-left:auto;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;color:#e7bd58;border:1px solid rgba(234,179,45,.34);border-radius:99px;padding:5px 8px;background:rgba(0,0,0,.5);white-space:nowrap}
+/* PROFIL ID — endi KATTA va TARIF RANGIDA (egasining talabi).
+   "nfcstore.uz/" prefiksi olib tashlandi: u har bir profilda bir xil
+   bo'lib, faqat joy egallardi va ID ni kichraytirardi. Rang ID
+   darajasidan keladi — qimmat (qisqa) ID bir qarashda bilinadi. */
+.qp-idbig{
+  margin-left:auto;font-family:'Space Mono',monospace;
+  font-size:17px;font-weight:800;line-height:1;letter-spacing:.12em;
+  color:var(--tier,#e7bd58);
+  border:1px solid color-mix(in srgb,var(--tier,#e7bd58) 45%,transparent);
+  border-radius:99px;padding:7px 13px;white-space:nowrap;
+  background:linear-gradient(135deg,rgba(0,0,0,.62),color-mix(in srgb,var(--tier,#e7bd58) 12%,transparent));
+  text-shadow:0 0 14px color-mix(in srgb,var(--tier,#e7bd58) 40%,transparent)
+}
 .qp-top-link{flex:none;border:1px solid rgba(255,255,255,.16);border-radius:99px;background:rgba(0,0,0,.5);color:#cfc6b4;padding:5px 10px;font-size:10px;font-weight:600;line-height:1;cursor:pointer;font-family:inherit;white-space:nowrap}
 .qp-top-link:hover{border-color:rgba(239,183,47,.6);color:#f0cf7b}
 
@@ -476,6 +488,8 @@
 .qp-hero .cq-follow{flex:1;min-height:40px;border:0;background:linear-gradient(135deg,#e9af23,#ffd76e);color:#0a0803;font-size:13px;font-weight:800}
 .qp-hero .cq-follow.is-on{background:rgba(239,183,47,.14);color:#f0cf7b;border:1px solid rgba(239,183,47,.6)}
 .qp-hero .cq-share{flex:none;min-height:40px;padding:0 15px}
+/* NFC profilida Ulashish qatorda yo'q — Obuna butun kenglikni oladi. */
+.qp-hero .cq-metric-actions:not(:has(.cq-share)) .cq-follow{flex:1 1 100%}
 
 /* Aloqa — dumaloq ikonkalar qatori (yon tomonga suriladi) */
 .qp-quick{display:flex;gap:9px;margin-top:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-right:14px;margin-right:-14px}
@@ -485,9 +499,23 @@
   border:0;background:none;padding:0;text-decoration:none;cursor:pointer;text-align:center;
   font-family:inherit;font-size:9px;font-weight:600;line-height:1.2;color:#a79f92
 }
-.qp-quick-btn i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12);background:rgba(12,12,11,.82);backdrop-filter:blur(6px);transition:border-color .18s,transform .16s}
+.qp-quick-btn i{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12);background:rgba(12,12,11,.82);backdrop-filter:blur(6px);transition:border-color .18s,transform .16s}
 .qp-quick-btn:hover i{border-color:currentColor;transform:translateY(-2px)}
 .qp-quick-btn:hover{color:#f0cf7b}
+.qp-quick-btn.qp-quick-share{gap:5px}
+.qp-quick-share>svg{
+  width:46px;height:46px;padding:10px;box-sizing:border-box;border-radius:50%;
+  border:1px solid rgba(255,255,255,.12);background:rgba(12,12,11,.82);color:#e6c169;
+  transition:border-color .18s,transform .16s
+}
+.qp-quick-share:hover>svg{border-color:currentColor;transform:translateY(-2px)}
+@media(max-height:720px){.qp-quick-share>svg{width:42px;height:42px;padding:9px}}
+/* `.qp-page button{font:inherit}` (0,1,1) tugmadagi yozuvni katta
+   qilib yuborardi — "Karta" va "Ulashish" qolganlaridan ikki barobar
+   yirik chiqardi. Shuning uchun bu qoida IKKI SINF bilan yozilgan
+   (0,2,0), ya'ni undan kuchliroq. */
+.qp-page .qp-quick-btn{font-size:9px;font-weight:600;line-height:1.2;color:#a79f92}
+.qp-page .qp-quick-btn:hover{color:#f0cf7b}
 .qp-quick-btn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Bo'limlar qatori ────────────────────────────────────────────── */
@@ -542,6 +570,6 @@
   .qp-hero .cq-metric b{font-size:14px}
   .qp-hero .cq-metric-actions{margin-top:8px}
   .qp-hero .cq-follow,.qp-hero .cq-share{min-height:36px}
-    .qp-quick-btn i{width:40px;height:40px}
+    .qp-quick-btn i{width:42px;height:42px}
   .qp-save{padding:11px}
 }

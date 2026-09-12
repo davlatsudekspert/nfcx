@@ -95,6 +95,17 @@ export function companyIdLetters(id) {
   return String(id || '').replace(/'/g, '').length;
 }
 
+// KOMPANIYA ID TARIFI — faqat harflar soniga qarab. Jismoniy profildagi
+// `tierForCode` bilan bir xil vazifa: ID qanchalik qisqa bo'lsa,
+// shunchalik qimmat va shunchalik yuqori daraja. Profil sahifasida ID
+// yozuvining RANGI aynan shundan olinadi.
+export function companyTier(companyId) {
+  const letters = companyIdLetters(String(companyId || '').toUpperCase());
+  if (letters < 3) return 'free';
+  return letters === 3 ? 'exclusive' : letters <= 5 ? 'premium' : letters <= 7 ? 'gold' : 'silver';
+}
+
+
 export function companyIdLocalInfo(value) {
   const companyId = normalizeCompanyId(value);
   const letters = companyIdLetters(companyId);

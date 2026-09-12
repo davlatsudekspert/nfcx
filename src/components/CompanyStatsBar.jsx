@@ -13,7 +13,11 @@ import ShareButton from './ShareButton.jsx';
 // bo'limidagi son bilan BIR MANBA), obunachilar esa haqiqiy obuna
 // yozuvlaridan. Bu yerda hech narsa "chiroyli ko'rinsin" deb
 // to'qilmaydi.
-export default function CompanyStatsBar({ company, onChange }) {
+// `showShare` — "Ulashish" tugmasi shu qatorda chiqsinmi. NFC profilida
+// u endi aloqa ikonkalari QATORIDA turadi (egasining talabi: "ulashishni
+// ham linklar orasiga qo'shib qo'yish kerak"), shuning uchun bu yerda
+// takrorlanmaydi.
+export default function CompanyStatsBar({ company, onChange, showShare = true }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -57,13 +61,13 @@ export default function CompanyStatsBar({ company, onChange }) {
         {/* Saytdagi barcha "Ulashish" tugmalari bir xil: telefonda
             tizim oynasi, ish stolida esa Telegram/WhatsApp/Facebook/X
             menyusi (izohi src/components/ShareButton.jsx da). */}
-        <ShareButton
+        {showShare && <ShareButton
           url={url}
           title={company.displayName}
           text={company.description || company.displayName}
           label={t('Ulashish')}
           className="cq-share"
-        />
+        />}
       </div>
     </div>
   );
