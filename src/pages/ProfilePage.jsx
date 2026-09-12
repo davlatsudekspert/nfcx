@@ -6,7 +6,7 @@ import { socialUrl } from '../lib/socialLinks.js';
 import { createPortal } from 'react-dom';
 import { dbGet, dbAddView, dbLogEvent, dbFollow, dbUnfollow, dbFollowStats, dbFollowList, dbStartConversation, dbGetLike, dbToggleLike, dbLikeList, dbGetPendingGift, dbVerifyGiftCode, dbActivateGift, dbListPosts, dbListStories, dbTogglePostLike, dbSubmitLead, dbGetMenu, dbGetProducts, dbGetServices, dbGetFiles, dbGetTeam, dbGetGallery } from '../lib/db.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
-import { fmt, timeAgo, dateTime, initials } from '../lib/format.js';
+import { fmt, timeAgo, initials } from '../lib/format.js';
 import { parseAnyCode, letterPattern, digitPattern, tierForCode, TIER_LABEL, TIER_COLOR, TIER_EMOJI, TIER_PAGE_GLOW } from '../lib/pricing.js';
 import { menuEligible, productEligible, serviceEligible } from '../lib/access.js';
 import { listMyCompanies } from '../lib/company.js';
@@ -20,14 +20,14 @@ import StoryGrid from '../components/StoryGrid.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { parseMusicSource, yandexEmbedSrc, fetchYoutubeTitle, cachedYoutubeTitle, audioFileTitle } from '../lib/music.js';
 import { useCategories, catPath } from '../lib/categories.js';
-import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import NfcCard, { cardFinish } from '../components/NfcCard.jsx';
 import BusinessPublicProfile from '../components/BusinessPublicProfile.jsx';
 import {
-  IconArrowLeft, IconCheck, IconSearch,
   IconLinkedIn, IconInstagram, IconTelegram, IconFacebook, IconX,
-  IconPhone, IconMail, IconDownload, IconGlobe, IconCopy, IconTag, IconStar, IconLink, IconSupport,
+  IconPhone, IconMail, IconGlobe, IconTag, IconLink, IconSupport, IconChat,
 } from '../components/Icons.jsx';
+import logo from '../assets/logo-128.png';
+import '../company-system.css';
 
 export const THEME_FINISH = { classic: 'silver', midnight: 'black', emerald: 'graphite', royal: 'silver', sunset: 'black', gold: 'gold' };
 const DARK_THEMES = ['classic', 'midnight', 'sunset', 'emerald', 'gold', 'glass'];
@@ -1263,7 +1263,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const [toast, setToast] = useState('');
   // Company System — nfcstore.uz/{code}/menyu va /{code}/mahsulotlar
   // to'g'ridan-to'g'ri shu tabga ochiladi (Faz 9/10).
-  const [tab, setTab] = useState(initialTab || 'vizitka');
+  // Boshlang'ich bo'lim BO'SH: qaysi bo'limlar bor ekani ma'lum
+  // bo'lgach quyida tanlanadi (biznes profildagi bilan bir xil qoida).
+  // `initialTab` — /vip001/menyu kabi manzillardan keladi va u ustun.
+  const [tab, setTab] = useState(initialTab || '');
   const [tapInactive, setTapInactive] = useState(false);
   // Suzuvchi mini-pleer ochiqmi — ochiq bo'lsa kontent oxiriga bo'sh joy
   // qo'shiladi, shunda pleer aloqa tugmalarini to'sib qolmaydi.
@@ -1601,7 +1604,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   const tier = record.isGift ? 'exclusive' : (record.tierOverride || tierForCode(record.code));
   const tierColor = TIER_COLOR[tier];
   const tierEmoji = TIER_EMOJI[tier];
-  const dark = DARK_THEMES.includes(record.theme || 'classic');
   // "Shaffof" tema yoki foydalanuvchi o'z fon rasmini qo'ygan holat — asosiy
   // kontent bloki yarim shaffof (glassmorphism) + chegara bilan ko'rsatiladi,
   // shunda fon (rasm) butun sahifa bo'ylab ko'rinadi va panel toza ajralib turadi.
@@ -1618,7 +1620,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
 
   const otherCodes = isOwner ? myCards.filter((c) => c.code !== record.code) : [];
 
-  const pillBtn = 'cursor-pointer rounded-full bg-[color:var(--vz-pill)] px-[18px] py-2 text-[16px] font-bold text-white transition hover:brightness-125';
   const linkStyleName = ['standard', 'transparent', 'glass'].includes(record.linkStyle)
     ? record.linkStyle
     : (record.linksTransparent ? 'glass' : 'standard');
@@ -1627,541 +1628,352 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   // o'tganda ham matn tugma ichida gorizontal VA vertikal markazda qoladi,
   // barcha aloqa tugmalari bir xil tekislikda turadi (touch maydoni >=44px).
   const linkBtn = `vz-link${linkStyleCls} flex min-h-[52px] items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-center text-[16px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
-  const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[14px] font-extrabold uppercase tracking-wide';
+
+  // QAYSI BO'LIMLAR BOR — shu tartibda. `activeTab` tanlanganini emas,
+  // MAVJUDINI qaytaradi: ma'lumot keyinroq kelganda yoki bo'lim bo'shab
+  // qolganda sahifa bo'sh ko'rinib qolmasin.
+  const availableTabs = [
+    posts.length > 0 && 'postlar',
+    stories.length > 0 && 'lenta',
+    menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && 'menyu',
+    products.length > 0 && productEligible(record.profileType, record.categorySlug) && 'mahsulotlar',
+    services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && 'xizmatlar',
+    'vizitka',
+  ].filter(Boolean);
+  const activeTab = availableTabs.includes(tab) ? tab : availableTabs[0];
+
+  // ── ALOQA — biznes profildagi bilan AYNAN BIR XIL dumaloq ikonkalar
+  //    qatori (egasining talabi: "jismoniy va kompaniyanikini bir xil
+  //    qil"). Ilgari bu yerda ustma-ust yotgan, butun kenglikdagi
+  //    tugmalar ro'yxati bor edi va u ekranni yeb, qolgan hamma
+  //    narsani pastga surib yuborardi.
+  const quick = [
+    record.phone && (!record.hidePhone || isOwner) && {
+      k: 'phone', href: `tel:${record.phone}`, label: t('Qo‘ng‘iroq'), color: '#4ddb8f',
+      icon: <IconPhone width={26} height={26} aria-hidden="true" />, ev: 'phone_click',
+    },
+    tgUrl && { k: 'telegram', href: tgUrl, label: 'Telegram', color: '#2aabee', icon: <IconTelegram width={26} height={26} aria-hidden="true" />, ev: 'telegram_click' },
+    igUrl && { k: 'instagram', href: igUrl, label: 'Instagram', color: '#e1306c', icon: <IconInstagram width={26} height={26} aria-hidden="true" />, ev: 'instagram_click' },
+    fbUrl && { k: 'facebook', href: fbUrl, label: 'Facebook', color: '#1877f2', icon: <IconFacebook width={26} height={26} aria-hidden="true" /> },
+    xUrl && { k: 'x', href: xUrl, label: 'X', color: '#e7e2d8', icon: <IconX width={26} height={26} aria-hidden="true" /> },
+    liUrl && { k: 'linkedin', href: liUrl, label: 'LinkedIn', color: '#0a66c2', icon: <IconLinkedIn width={26} height={26} aria-hidden="true" /> },
+    record.email && { k: 'email', href: `mailto:${record.email}`, label: t('Pochta'), color: '#e6c169', icon: <IconMail width={26} height={26} aria-hidden="true" />, ev: 'email_click' },
+    hasLocation && mapsUrl && { k: 'directions', href: mapsUrl, label: t('Manzil'), color: '#ff7a59', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
+    hasLocation && yandexUrl && { k: 'yandex', href: yandexUrl, label: 'Yandex', color: '#ff3f40', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
+    // KARTA RAQAMI — ro'yxatda YASHIRIN turadi: bosilganda QR kod bilan
+    // oyna ochiladi. Ochiq tursa u tasodifan ekranga tushardi.
+    record.cardNumber && {
+      k: 'card', label: t('Karta'), color: '#f0cf7b', icon: <IconTag width={26} height={26} aria-hidden="true" />,
+      onClick: () => { track('link_click', 'card_number'); setCardModal({ number: record.cardNumber, label: '' }); },
+    },
+    ...(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => ({
+      k: `cn${i}`, label: c.label || t('Karta'), color: '#f0cf7b', icon: <IconTag width={26} height={26} aria-hidden="true" />,
+      onClick: () => { track('link_click', 'card_number'); setCardModal({ number: c.number, label: c.label || '' }); },
+    })),
+    ...(record.extraLinks || []).filter((l) => l && l.url).map((l, i) => ({
+      k: `x${i}`, href: l.url, label: l.label || t('Havola'), color: '#cfc6b4', icon: <IconLink width={26} height={26} aria-hidden="true" />,
+    })),
+    record.leadCapture && !isOwner && {
+      k: 'lead', label: t('Kontakt'), color: '#9bd1ff', icon: <IconMail width={26} height={26} aria-hidden="true" />,
+      onClick: () => setLeadOpen(true),
+    },
+    !isOwner && MESSAGING_ENABLED && {
+      k: 'chat', label: t('Xabar'), color: '#a5b4fc', icon: <IconChat width={26} height={26} aria-hidden="true" />, onClick: startChat,
+    },
+  ].filter(Boolean);
+
+  const profileUrl = `${window.location.origin}/${record.code.toLowerCase()}`;
+  const videoBg = hasBg && isVideoBg(record.bgUrl);
 
   return (
-    // `pb` — suzuvchi pleer ochilganda pastdagi aloqa tugmalari to'silib
-    // qolmasligi uchun kontent oxiriga qo'shimcha bo'sh joy (mobil ekranda
-    // muhim). Pleer yopiq bo'lsa odatdagi 60px qoladi.
-    <div
-      className={`min-h-screen pb-[60px] text-[color:var(--vz-ink)]${musicOpen ? ' vz-music-open' : ''}`}
-      style={outerPageStyle(record.theme || 'classic', record, tier)}
+    // BITTA EKRANLIK QOBIQ — biznes profilidagi bilan bir xil
+    // (`.qp-*`). Balandligi aynan telefon ekrani va o'zi SCROLL
+    // BO'LMAYDI: faqat o'rtadagi kontent qismi suriladi.
+    <main
+      className="qp-page"
+      style={{
+        ...outerPageStyle(record.theme || 'classic', record, tier),
+        '--cq-cover': hasBg && !videoBg ? `url("${record.bgUrl}")` : 'none',
+      }}
     >
-      <div className="mx-auto flex max-w-[640px] items-center gap-3 px-[18px] pt-5">
-        {/* Tor ekranda FAQAT strelka qoladi: "Bosh sahifaga" matni ~130px
-            egallab, yonidagi havola maydonini nolga siqib qo'yardi (320px
-            ekranda havola umuman ko'rinmasdi). aria-label ekran o'quvchi
-            uchun matnni saqlaydi. */}
-        <button onClick={() => navigate('/')} aria-label={t('Bosh sahifaga')} title={t('Bosh sahifaga')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
-          <IconArrowLeft /> <span className="hidden sm:inline">{t('Bosh sahifaga')}</span>
-        </button>
-        <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5">
-          <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[16px] text-[color:var(--vz-ink)] outline-none" />
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
-        </div>
-        <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
-          <LanguageSwitcher />
-        </div>
-      </div>
+      <div className="qp-shell">
+        {/* Video fon — CSS `background-image` bilan chizilmaydi. */}
+        {videoBg && <ProfileBgVideo src={record.bgUrl} />}
 
-      <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5">
-          <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
-          {/* Egaga: boshqa raqamli tashrif qog'ozlari — tepada, ixcham
-              select ro'yxat; tanlansa o'sha profilga o'tadi. */}
-          {otherCodes.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
-              aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
-              // `max-w-full min-w-0 truncate` — `select` elementining ichki
-              // (intrinsic) kengligi eng uzun `option` matnidan kelib chiqadi;
-              // 390px telefonda u 392px bo'lib sahifadan chiqib ketardi va
-              // gorizontal scroll hosil qilardi (faqat karta EGASIGA
-              // ko'rinadigan element bo'lgani uchun ilgari sezilmagan).
-              className="min-w-0 max-w-full cursor-pointer truncate rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
-            >
-              <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
-              {otherCodes.map((c) => (
-                <option key={c.code} value={c.code}>nfcstore.uz/{c.code.toLowerCase()}</option>
-              ))}
-            </select>
-          )}
-          {/* Summasiz ID — «Sovg'a» (katalogdagi karta bilan bir xil
-              qoida, CatalogCard izohiga qarang). */}
-          {(record.isGift || record.notForSale) ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[15px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
-              {'\u{1F381}'} {t("Sovg'a")}
-            </span>
-          ) : (
-            <span className="text-[16px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
-          )}
-        </div>
-        <div className="flex gap-1">
-          <button title={t('Nusxalash')} aria-label={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
-          {/* Yangiliklardagi bilan AYNAN bir xil tugma: telefonda
-              tizim oynasi, ish stolida esa Telegram/WhatsApp/Facebook/X
-              menyusi. Avval bu yerda faqat nusxalash bo'lardi. */}
-          <ShareButton
-            url={`${window.location.origin}/${record.code.toLowerCase()}`}
-            title={record.name || 'NFCSTORE'}
-            text={t('Mening raqamli tashrif qog‘ozim')}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
-          />
-        </div>
-      </div>
-
-      {record.isPremium && (
-        <div className="mt-2 flex justify-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-4 py-1 font-mono text-[14px] font-extrabold tracking-[0.12em] text-[#1a1206] shadow-[0_2px_10px_rgba(212,175,90,0.4)]">
-            {'\u{1F451}'} PREMIUM
+        <header className="qp-top">
+          <span className="qp-brand"><i><img src={logo} alt="" /></i> NFCSTORE</span>
+          {/* ID — KATTA va TARIF RANGIDA. "nfcstore.uz/" prefiksi olib
+              tashlandi: u har bir profilda bir xil va faqat joy
+              egallardi; odam eslab qoladigan narsa — ID ning o'zi. */}
+          <span className="qp-idbig" style={{ '--tier': tierColor }} title={t('{tier} tarif', { tier: t(TIER_LABEL[tier] || tier) })}>
+            {record.code}
           </span>
-        </div>
-      )}
+          {isOwner
+            ? <button type="button" className="qp-top-link" onClick={() => navigate('/account')}>✎ {t('Tahrirlash')}</button>
+            : <button type="button" className="qp-top-link" onClick={() => copyText(profileUrl, t('Havola nusxalandi!'))} title={t('Nusxalash')}>⧉</button>}
+        </header>
 
-      <div className="pt-[18px]">
-        <div className="flex animate-[floatY_5s_ease-in-out_infinite] justify-center">
-          <FlipNfcCard finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)} t={t}>
-          <NfcCard
-            hideBrand
-            code={record.code}
-            name={design.name || record.name}
-            since={record.ts}
-            finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)}
-            bgImage={design.bgUrl || ''}
-            namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
-            nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
-            nameColor={design.nameColor || ''}
-            codePos={Number.isFinite(design.codeX) && Number.isFinite(design.codeY) ? { x: design.codeX, y: design.codeY } : null}
-            codeScale={Number.isFinite(design.codeScale) ? design.codeScale : 1}
-            brandPos={Number.isFinite(design.brandX) && Number.isFinite(design.brandY) ? { x: design.brandX, y: design.brandY } : null}
-            brandScale={Number.isFinite(design.brandScale) ? design.brandScale : 1}
-            brandColor={design.brandColor || ''}
-            size="md"
-          />
-          </FlipNfcCard>
-        </div>
-      </div>
-
-      <div
-        className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] ${
-          hasBg && isVideoBg(record.bgUrl) ? 'profile-panel--video ' : ''}${
-          (record.theme === 'glass' && !hasBg && !record.bgColor)
-            ? 'border border-white/15 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.35)]'
-            : (hasBg || record.bgColor)
-              ? 'border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.4)]'
-              : `shadow-[0_20px_45px_rgba(20,25,30,0.08),0_2px_8px_rgba(20,25,30,0.04)] ${dark ? 'animate-[cardBreath_4s_ease-in-out_infinite]' : ''}`
-        }`}
-        style={innerPanelStyle(record)}
-      >
-        {hasBg && isVideoBg(record.bgUrl) && <ProfileBgVideo src={record.bgUrl} />}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-5">
-          <div className="flex flex-wrap gap-2">
-            {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
-            {!isOwner && (
-              <>
-                {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>}
-                <button
-                  className={`${pillBtn} ${followStats?.isFollowing ? '!bg-transparent !text-[color:var(--vz-ink)] border border-[color:var(--vz-line)]' : ''}`}
-                  onClick={toggleFollow}
-                  disabled={followBusy}
-                >
-                  {followBusy ? '...' : followStats?.isFollowing ? t('Obunani bekor qilish') : t("Obuna bo'lish")}
-                </button>
-                {/* KIM NOMIDAN — faqat o'z FAOL kompaniyasi bor odamga
-                    ko'rinadi. Obuna bo'lgandan keyin ham almashtirish
-                    mumkin: yangi obuna yaratilmaydi, faqat ko'rinadigan
-                    yuz o'zgaradi (bir odam bir marta sanaladi). */}
-                {myCompanies.length > 0 && (
-                  <label className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] px-3 py-1 text-[13px] text-[color:var(--vz-ink-dim)]">
-                    <span className="whitespace-nowrap">{t('Kim nomidan')}:</span>
-                    <select
-                      className="max-w-[150px] truncate bg-transparent text-[14px] font-semibold text-[color:var(--vz-ink)] outline-none"
-                      value={followAs}
-                      disabled={followBusy}
-                      onChange={async (e) => {
-                        const next = e.target.value;
-                        setFollowAs(next);
-                        rememberFollowAs(next);
-                        if (!followStats?.isFollowing) return;
-                        setFollowBusy(true);
-                        try {
-                          await dbFollow(code, next);
-                          const st = await dbFollowStats(code);
-                          setFollowStats(st);
-                        } catch { /* jim tur */ } finally { setFollowBusy(false); }
-                      }}
-                    >
-                      <option value="">{t('Shaxsiy profilim')}</option>
-                      {myCompanies.map((c) => (
-                        <option key={c.companyId} value={c.companyId}>{c.displayName}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-        {followStats && (
-          <div className="mt-2 flex items-center gap-4 text-[16px] text-[color:var(--vz-ink-dim)]">
-            <button type="button" onClick={() => setFollowListDir('followers')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
-              <b className="text-[color:var(--vz-ink)]">{followStats.followers}</b> {t('obunachi')}
-            </button>
-            <button type="button" onClick={() => setFollowListDir('following')} className="cursor-pointer hover:text-[color:var(--vz-ink)]">
-              <b className="text-[color:var(--vz-ink)]">{followStats.following}</b> {t('obuna')}
-            </button>
-            {/* Yurak — bosish/bekor qilish; SON esa alohida tugma va u
-                "kim yoqtirdi" ro'yxatini ochadi. Ilgari son ham
-                yurakning ichida edi, ya'ni ro'yxatni ochishning iloji
-                yo'q edi — laykni faqat sanardik. */}
-            <span className={`ml-auto flex items-center rounded-full border transition ${likeInfo?.liked ? 'border-red-400/50 text-red-400' : 'border-[color:var(--vz-line)] text-[color:var(--vz-ink-dim)]'}`}>
-              <button
-                type="button"
-                onClick={toggleLike}
-                aria-label={t('Yoqtirish')}
-                className="cursor-pointer py-1 pl-3 pr-1.5"
-              >
-                {likeInfo?.liked ? '\u2764\uFE0F' : '\u{1F90D}'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setFollowListDir('likes')}
-                aria-label={t('Yoqtirganlar')}
-                className="cursor-pointer py-1 pl-0.5 pr-3 hover:text-[color:var(--vz-ink)]"
-              >
-                <b>{likeInfo?.count ?? 0}</b>
-              </button>
-            </span>
-          </div>
-        )}
-        {followMsg && <div className="mt-2 text-[15px] text-red-400">{t(followMsg)}</div>}
-        {/* Obuna bo'lgandan keyin QAYSI yuz bilan ekani ochiq yozilib
-            turadi — egasi "biznesdan obuna bo'ldimmi?" deb shubhada
-            qolmasin. Tanlovning o'zi tepadagi ro'yxatda. */}
-        {!isOwner && followStats?.isFollowing && (
-          <div className="mt-1.5 text-[14px] text-[color:var(--vz-ink-faint)]">
-            {followStats.asCompanyId
-              ? t('{name} nomidan obuna bo‘lgansiz', { name: (myCompanies.find((c) => c.companyId === followStats.asCompanyId)?.displayName) || followStats.asCompanyId })
-              : t('Shaxsiy profilingiz nomidan obuna bo‘lgansiz')}
-          </div>
-        )}
-        {!isOwner && likeInfo?.liked && likeInfo.asCompanyId && (
-          <div className="mt-1 text-[14px] text-[color:var(--vz-ink-faint)]">
-            {t('{name} nomidan yoqtirdingiz', { name: (myCompanies.find((c) => c.companyId === likeInfo.asCompanyId)?.displayName) || likeInfo.asCompanyId })}
-          </div>
-        )}
-
-
-        <div className="mt-0.5 flex flex-col items-center">
-          <div className="relative flex h-[152px] w-[152px] items-center justify-center">
-            {/* Yengil oltin porlash (glow) — premium ko'rinish uchun, avatar ortida sekin nafas oladi. */}
-            <span className="pointer-events-none absolute inset-[-22px] animate-[goldGlow_3.6s_ease-in-out_infinite] rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${tier === 'free' ? 'var(--vz-accent)' : tierColor} 45%, transparent), transparent 70%)` }}></span>
-            <span className={`pointer-events-none absolute inset-[-4px] animate-[spinSlow_18s_linear_infinite] rounded-full border border-dashed border-[color:var(--vz-line)] ${glass ? 'opacity-40' : ''}`}></span>
-            <span className={`pointer-events-none absolute inset-[-14px] animate-[spinSlow_30s_linear_infinite_reverse] rounded-full border border-[color:var(--vz-line)] ${glass ? 'opacity-20' : 'opacity-50'}`}></span>
-            <span className="pointer-events-none absolute left-[82%] top-[4%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
-            <span className="pointer-events-none absolute left-[88%] top-[78%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
-            <span className="pointer-events-none absolute left-[10%] top-[86%] h-[5px] w-[5px] animate-[floatY_3.6s_ease-in-out_infinite] rounded-full bg-[color:var(--vz-ink-faint)]" ></span>
-
-            {/* Chap va o'ng tomondagi NFC signal to'lqinlari (tegish animatsiyasi) */}
-            <div className="pointer-events-none absolute right-full top-1/2 mr-1 -translate-y-1/2">
-              {[0, 1, 2].map((i) => (
-                <span key={i} className="absolute right-0 top-1/2 -translate-y-1/2 animate-[nfcPulse_2.2s_ease-out_infinite] rounded-full border-2"
-                  style={{ width: 10 + i * 10, height: 10 + i * 10, marginRight: -(5 + i * 5), borderColor: tierColor, animationDelay: `${i * 0.35}s` }} />
-              ))}
-            </div>
-            <div className="pointer-events-none absolute left-full top-1/2 ml-1 -translate-y-1/2">
-              {[0, 1, 2].map((i) => (
-                <span key={i} className="absolute left-0 top-1/2 -translate-y-1/2 animate-[nfcPulse_2.2s_ease-out_infinite] rounded-full border-2"
-                  style={{ width: 10 + i * 10, height: 10 + i * 10, marginLeft: -(5 + i * 5), borderColor: tierColor, animationDelay: `${i * 0.35}s` }} />
-              ))}
-            </div>
-
-            {/* Istorya bo'lsa — profil rasmi atrofida halqa. Rasmning
-                O'ZI qayta chizilmaydi: StoryRing uni o'rab oladi. */}
+        <section className="qp-hero">
+          <div className="qp-hero-row">
             <StoryRing stories={stories} title={record.name} avatarUrl={record.avatarUrl}>
-              <div className="font-display z-10 flex h-[132px] w-[132px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[38px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
-                style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
-                {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
+              <div className="qp-avatar qp-avatar--round">
+                {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} /> : initials(record.name)}
               </div>
             </StoryRing>
-          </div>
-          {/* Ism — sahifaning ASOSIY sarlavhasi (h1). Avval oddiy div edi:
-              ko'rinishi to'g'ri, lekin qidiruv tizimlari uchun public
-              profilda h1 umuman yo'q hisoblanardi. Global `h1` qoidasi
-              (src/index.css: 44px, margin 0 0 18px, max-width 640px)
-              ko'rinishni buzmasligi uchun mb-0 va max-w-none ochiq
-              berilgan; o'lcham/vazn/shrift avvalgidek utilitalardan. */}
-          <h1 className="font-display mb-0 mt-4 flex max-w-none items-center justify-center gap-1.5 text-[23px] font-bold">
-            {record.name}
-            {record.verified && (
-              <span title={t('Tasdiqlangan profil')} className="inline-flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[15px] font-black text-white">✓</span>
-            )}
-          </h1>
-          <div className="mb-1 mt-0.5 flex items-center gap-1.5 text-[16px] font-bold" style={{ color: tier === 'free' ? 'var(--vz-ink-dim)' : tierColor }}>
-            {tierEmoji && <span>{tierEmoji}</span>}
-            nfcstore.uz/{record.code.toLowerCase()}
-            <span className="shrink-0"><IconCheck style={{ color: 'var(--vz-accent)' }} /></span>
-          </div>
-          {tier !== 'free' && (
-            <div className="mb-1 rounded-full px-2.5 py-0.5 text-[13px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
-              {t('{tier} tarif', { tier: t(TIER_LABEL[tier]) })}
-            </div>
-          )}
-          <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">{t('Faol bo‘lgan: {when}', { when: timeAgo(record.ts) })}</div>
-          {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
-          {(catPath(cats, record.categorySlug, lang) || record.city) && (
-            <div className="mx-auto mt-1 flex max-w-[420px] flex-wrap justify-center gap-1.5 text-[14px] text-[color:var(--vz-ink-faint)]">
-              {catPath(cats, record.categorySlug, lang) && (
-                <span className="rounded-full border border-[color:var(--vz-line)] px-2.5 py-0.5">{catPath(cats, record.categorySlug, lang)}</span>
+            <div className="qp-hero-text">
+              <h1 className="break-words">
+                {record.name}
+                {record.verified && <i className="qp-verified" title={t('Tasdiqlangan profil')} aria-label={t('Tasdiqlangan profil')}>✓</i>}
+              </h1>
+              {(record.role || record.company?.displayName) && (
+                <p className="qp-cat break-words">
+                  {[record.role, record.company?.displayName].filter(Boolean).join(' · ')}
+                </p>
               )}
-              {record.city && (
-                <span className="rounded-full border border-[color:var(--vz-line)] px-2.5 py-0.5">{'\u{1F4CD}'} {record.city}</span>
-              )}
+              <p className="qp-sub break-words">
+                {tierEmoji && <span>{tierEmoji} </span>}
+                {t(TIER_LABEL[tier] || tier)}
+                {record.city ? ` · ${record.city}` : ''}
+                {topRank ? ` · TOP #${topRank}` : ''}
+              </p>
             </div>
-          )}
-          {record.about && <p className="mx-auto mt-2 max-w-[460px] text-center text-sm leading-relaxed text-[color:var(--vz-ink-dim)]">{record.about}</p>}
+          </div>
 
-          {/* BIRIKTIRILGAN KOMPANIYA — Telegramdagi "kanal" bloki kabi.
-              Kompaniya to'xtatilgan bo'lsa server `company` ni bo'sh
-              qaytaradi va bu blok umuman chizilmaydi: o'lik havola
-              qolmasin. */}
-          {record.company && (
-            <button
-              type="button"
-              onClick={() => navigate(`/c/${record.company.companyId.toLowerCase()}`)}
-              className="mx-auto mt-3 flex w-full max-w-[420px] items-center gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card,rgba(255,255,255,0.03))] px-3.5 py-3 text-left transition hover:border-[color:var(--vz-gold-2,#c9a24b)]/60"
-            >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--vz-gold-2,#c9a24b)]/45 bg-black/30 text-sm font-black text-[color:var(--vz-gold-2,#c9a24b)]">
-                {record.company.logoUrl
-                  ? <img src={record.company.logoUrl} alt="" className="h-full w-full object-cover" />
-                  : record.company.displayName.slice(0, 2).toUpperCase()}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--vz-gold-2,#c9a24b)]">{t('Kompaniya')}</span>
-                <span className="block truncate text-[15px] font-semibold text-[color:var(--vz-ink)]">{record.company.displayName}</span>
-                <span className="block truncate text-[13px] text-[color:var(--vz-ink-faint)]">
-                  {[record.company.subtitle, record.company.city].filter(Boolean).join(' · ') || `nfcstore.uz/c/${record.company.companyId.toLowerCase()}`}
-                </span>
-              </span>
-              <span className="shrink-0 text-[color:var(--vz-ink-faint)]">›</span>
+          {/* RAQAMLAR — biznes profildagi bilan bir xil qator. Har biri
+              bosiladi: obunachilar, obunalar va yoqtirganlar ro'yxati. */}
+          <div className="cq-metrics">
+            <div className="cq-metric"><b>{fmt(record.views || 0)}</b><small>{t('ko‘rildi')}</small></div>
+            <button type="button" className="cq-metric" onClick={() => setFollowListDir('followers')}>
+              <b>{fmt(followStats?.followers || 0)}</b><small>{t('obunachi')}</small>
             </button>
-          )}
-
-          {/* Business Workspace — tezkor amallar (qo'ng'iroq/Telegram/yo'nalish)
-              tashrifchi tab tanlashini kutmasdan, darhol ko'rinadi. To'liq
-              tugmalar ro'yxati pastda (vizitka tabida) o'zgarishsiz qoladi —
-              bu shunchaki eng muhim uchtasini yuqoriga chiqaradi. */}
-          {record.profileType === 'business' && (record.phone && (!record.hidePhone || isOwner) || tgUrl || hasLocation) && (
-            <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
-              {record.phone && (!record.hidePhone || isOwner) && (
-                <a href={`tel:${record.phone}`} onClick={() => track('phone_click')}
-                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[15px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
-                  <IconPhone /> {t("Qo'ng'iroq")}
-                </a>
-              )}
-              {tgUrl && (
-                <a href={tgUrl} target="_blank" rel="noreferrer" onClick={() => track('telegram_click')}
-                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[15px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
-                  <IconTelegram /> Telegram
-                </a>
-              )}
-              {hasLocation && (
-                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}
-                  className="flex items-center gap-1.5 rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-pill)] px-3.5 py-2 text-[15px] font-bold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-accent)]">
-                  {'\u{1F4CD}'} {t("Yo'nalishni ochish")}
-                </a>
+            <button type="button" className="cq-metric" onClick={() => setFollowListDir('likes')}>
+              <b>{fmt(likeInfo?.count || 0)}</b><small>{t('yoqtirish')}</small>
+            </button>
+            <div className="cq-metric-actions">
+              {!isOwner && (
+                <>
+                  <button
+                    type="button"
+                    className={`cq-follow ${followStats?.isFollowing ? 'is-on' : ''}`}
+                    onClick={toggleFollow}
+                    disabled={followBusy}
+                  >
+                    {followBusy ? '…' : followStats?.isFollowing ? t('Obuna bo‘lingan') : t('Obuna bo‘lish')}
+                  </button>
+                  {/* Yurak — bosish/bekor qilish. Soni yuqoridagi
+                      raqamlar qatorida va u ro'yxatni ochadi. */}
+                  <button
+                    type="button"
+                    className={`qp-like ${likeInfo?.liked ? 'is-on' : ''}`}
+                    onClick={toggleLike}
+                    aria-label={t('Yoqtirish')}
+                  >
+                    {likeInfo?.liked ? '❤️' : '\u{1F90D}'}
+                  </button>
+                </>
               )}
             </div>
+          </div>
+
+          {/* KIM NOMIDAN — faqat o'z FAOL kompaniyasi bor odamga
+              ko'rinadi. Obunadan keyin ham almashtirish mumkin: yangi
+              obuna yaratilmaydi, faqat ko'rinadigan yuz o'zgaradi. */}
+          {!isOwner && myCompanies.length > 0 && (
+            <label className="qp-asrow">
+              <span>{t('Kim nomidan')}:</span>
+              <select
+                value={followAs}
+                disabled={followBusy}
+                onChange={async (e) => {
+                  const next = e.target.value;
+                  setFollowAs(next);
+                  rememberFollowAs(next);
+                  if (!followStats?.isFollowing) return;
+                  setFollowBusy(true);
+                  try {
+                    await dbFollow(code, next);
+                    setFollowStats(await dbFollowStats(code));
+                  } catch { /* jim tur */ } finally { setFollowBusy(false); }
+                }}
+              >
+                <option value="">{t('Shaxsiy profilim')}</option>
+                {myCompanies.map((c) => <option key={c.companyId} value={c.companyId}>{c.displayName}</option>)}
+              </select>
+            </label>
           )}
-        </div>
+          {followMsg && <div className="qp-warn">{t(followMsg)}</div>}
 
-        <div className="mt-[22px] flex justify-center gap-11">
-          <div className="text-center"><b className="font-display block text-[19px] font-bold">{fmt(record.views || 0)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t("Ko'rishlar")}</span></div>
-          <div className="text-center"><b className="font-display block text-[19px] font-bold">{dateTime(record.ts)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t('Band qilingan')}</span></div>
-        </div>
+          {quick.length > 0 && (
+            <div className="qp-quick">
+              {quick.map((q) => (q.href
+                ? (
+                  <a
+                    key={q.k} className="qp-quick-btn vz-tap" href={q.href}
+                    target={q.k === 'phone' || q.k === 'email' ? undefined : '_blank'} rel="noreferrer"
+                    onClick={() => track(q.ev || 'link_click', q.ev ? undefined : q.k)}
+                  >
+                    <i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span>
+                  </a>
+                ) : (
+                  <button key={q.k} type="button" className="qp-quick-btn vz-tap" onClick={q.onClick}>
+                    <i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span>
+                  </button>
+                )
+              ))}
+              {/* ULASHISH — qolgan havolalar bilan BIR QATORDA. */}
+              <ShareButton
+                url={profileUrl}
+                title={record.name || 'NFCSTORE'}
+                text={t('Mening raqamli tashrif qog‘ozim')}
+                label={t('Ulashish')}
+                className="qp-quick-btn qp-quick-share vz-tap"
+              />
+            </div>
+          )}
+        </section>
 
-        {/* Tor ekranda tab qatori SIG'MAY qolardi: 4-5 ta tabli biznes
-              profilida (Menyu, Mahsulotlar, Xizmatlar) qator ~450px bo'lib,
-              ota-blokning `overflow-hidden`i chetdagi tablarni KESIB
-              tashlardi va ularga umuman yetib bo'lmasdi. Endi tor ekranda
-              qator chapdan boshlanadi va yon tomonga suriladi; keng ekranda
-              avvalgidek markazda turadi. */}
-        {/* BO'LIMLAR — endi ikkala profilda ham BIR XIL ko'rinish
-            (`ProfileTabs`, egasi tanlagan dumaloq tugmalar). "Stories"
-            postdan ALOHIDA bo'lim: post — doimiy, lenta — 24 soatlik.
-            Ilgari istorya faqat avatar atrofidagi halqada ko'rinardi va
-            uni payqamaslik oson edi. Halqa ham joyida qoladi. */}
+        {/* BO'LIMLAR — biznes profildagi bilan bir xil qator. */}
         <ProfileTabs
-          value={tab}
+          value={activeTab}
           onChange={setTab}
           tabs={[
-            { id: 'vizitka', label: "Raqamli tashrif qog'ozi" },
-            { id: 'postlar', label: 'Post', count: posts.length },
+            posts.length > 0 && { id: 'postlar', label: 'Post', count: posts.length },
             stories.length > 0 && { id: 'lenta', label: 'Stories', count: stories.length },
             menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && { id: 'menyu', label: 'Menyu' },
             products.length > 0 && productEligible(record.profileType, record.categorySlug) && { id: 'mahsulotlar', label: 'Mahsulotlar' },
             services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && { id: 'xizmatlar', label: 'Xizmatlar' },
+            { id: 'vizitka', label: 'Ma’lumot' },
           ]}
         />
 
-        {tab === 'postlar' && <PostsFeed posts={posts} onLike={togglePostLike} t={t} />}
-        {tab === 'lenta' && (
-          <StoryGrid stories={stories} title={record.name} avatarUrl={record.avatarUrl} />
-        )}
-        {tab === 'menyu' && <MenuView menu={menu} t={t} />}
-        {tab === 'mahsulotlar' && <ProductsView products={products} t={t} />}
-        {tab === 'xizmatlar' && <ServicesView services={services} t={t} />}
+        {/* YAGONA SURILADIGAN QISM. */}
+        <div className="qp-body">
+          {activeTab === 'postlar' && <PostsFeed posts={posts} onLike={togglePostLike} t={t} />}
+          {activeTab === 'lenta' && <StoryGrid stories={stories} title={record.name} avatarUrl={record.avatarUrl} />}
+          {activeTab === 'menyu' && <MenuView menu={menu} t={t} />}
+          {activeTab === 'mahsulotlar' && <ProductsView products={products} t={t} />}
+          {activeTab === 'xizmatlar' && <ServicesView services={services} t={t} />}
 
-        {tab === 'vizitka' && (
-          <>
-            {record.hashtags && record.hashtags.length > 0 && (
-              <div className="mt-5 flex flex-wrap justify-center gap-4 text-[16px] font-semibold text-[color:var(--vz-accent)]">
-                {record.hashtags.map((h) => <span key={h}>#{h}</span>)}
-              </div>
-            )}
+          {activeTab === 'vizitka' && (
+            <>
+              {record.about && <p className="qp-desc break-words">{record.about}</p>}
+              {record.hashtags && record.hashtags.length > 0 && (
+                <div className="qp-tags">{record.hashtags.map((h) => <span key={h}>#{h}</span>)}</div>
+              )}
+              {record.address && <p className="qp-addr break-words">◎ {record.address}</p>}
 
-            {/* Pleer endi kontent ICHIDA emas — u `createPortal` orqali
-                sahifaning o'ng-pastki burchagida suzib turadi (yuqoridagi
-                MusicPlayer izohiga qarang). Shu sababli bu yerda hech
-                narsa render qilinmaydi; `musicOpen` esa mobil ekranda
-                kontent oxiriga bo'sh joy qo‘shish uchun kerak — pleer
-                aloqa tugmalarini to'sib qolmasin. */}
-            <MusicPlayer
-              urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])}
-              accentColor={record.accentColor}
-              onOpenChange={setMusicOpen}
-              ownerName={record.name || ''}
-              coverUrl={record.avatarUrl || ''}
-            />
-
-            <div className="mt-[22px] flex flex-col gap-2.5">
-              {record.phone && (!record.hidePhone || isOwner) && (
-                // Ikonka `shrink-0`, matn esa alohida markazlashgan blok —
-                // avval ikkalasi ham to'g'ridan-to'g'ri flex bola edi, shu
-                // sababli uzun yorliq ("QO'NG'IROQ QILISH (YASHIRINGAN)")
-                // ikki qatorga o'tganda ikonka matnni chetga surib,
-                // kompozitsiya markazdan chiqib ketardi.
-                <a className={`${linkBtn} relative !gap-0`} href={`tel:${record.phone}`} onClick={() => track('phone_click')}>
-                  {/* Ikonka ABSOLYUT joylashgan — u tugmaning oqim (flow)
-                      kengligini EGALLAMAYDI, shuning uchun matnni o'ngga
-                      surib yubormaydi. Matn esa tugmaning TO'LIQ kengligi
-                      bo'ylab markazlashadi va ikki qatorga o'tsa ham
-                      markazda qoladi. Matnga simmetrik `px-9` berilgan —
-                      shu sababli u chapdagi ikonka ustiga ham chiqmaydi,
-                      o'ngda ham bir xil bo'shliq qoladi. Ikonka vertikal
-                      markazda (`top-1/2 -translate-y-1/2`). */}
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 leading-none" aria-hidden="true"><IconPhone /></span>
-                  <span className="block w-full px-9 text-center leading-tight">
-                    {t("Qo'ng'iroq qilish")}{record.hidePhone && isOwner ? ` (${t('yashiringan')})` : ''}
+              {/* BIRIKTIRILGAN KOMPANIYA — Telegramdagi "kanal" bloki kabi. */}
+              {record.company && (
+                <button type="button" className="qp-company vz-tap" onClick={() => navigate(`/c/${record.company.companyId.toLowerCase()}`)}>
+                  <span className="qp-company-logo">
+                    {record.company.logoUrl
+                      ? <img src={record.company.logoUrl} alt="" />
+                      : (record.company.displayName || 'N').slice(0, 2).toUpperCase()}
                   </span>
-                </a>
-              )}
-              {/* Ikkita tugma: birinchisi qurilmaning O'Z xaritasi
-                  (iPhone'da Apple Maps, Android'da Google Maps), ikkinchisi
-                  Yandex — O'zbekistonda ko'p ishlatiladi va ba'zi ko'chalar
-                  faqat unda aniq. Ikkalasi ham YO'NALISH rejimida ochiladi. */}
-              {hasLocation && (
-                <a className={linkBtn} href={mapsUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location')}>
-                  {'\u{1F4CD}'} {t('Yo‘nalish olish')}
-                </a>
-              )}
-              {hasLocation && yandexUrl && (
-                <a className={linkBtn} href={yandexUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('link_click', 'location_yandex')}>
-                  {'\u{1F5FA}'} {t('Yandex Karta')}
-                </a>
-              )}
-              {record.email && <a className={linkBtn} href={`mailto:${record.email}`} onClick={() => track('email_click')}><IconMail /> {record.email}</a>}
-              {tgUrl && <a className={linkBtn} href={tgUrl} target="_blank" rel="noreferrer" onClick={() => track('telegram_click')}><IconTelegram /> Telegram</a>}
-              {igUrl && <a className={linkBtn} href={igUrl} target="_blank" rel="noreferrer" onClick={() => track('instagram_click')}><IconInstagram /> Instagram</a>}
-              {fbUrl && <a className={linkBtn} href={fbUrl} target="_blank" rel="noreferrer" onClick={() => track('link_click', 'facebook')}><IconFacebook /> Facebook</a>}
-              {xUrl && <a className={linkBtn} href={xUrl} target="_blank" rel="noreferrer" onClick={() => track('link_click', 'twitter')}><IconX /> X (Twitter)</a>}
-              {/* KARTA RAQAMI — endi biznes profildagidek: bosilganda QR
-                  kod bilan oyna ochiladi, ostida raqamning o'zi va
-                  nusxalash tugmasi.
-                  Avval bu tugma darhol `navigator.clipboard` ga
-                  yozardi — ba'zi brauzerlarda u jimgina rad etiladi va
-                  odam uchun tugma "ishlamayotgan" bo'lib ko'rinardi
-                  (egasi aynan shuni aytdi). Endi natija ko'rinib
-                  turadi va nusxalash ishlamasa ham raqam ekranda. */}
-              {record.cardNumber && (
-                <button type="button" onClick={() => { track('link_click', 'card_number'); setCardModal({ number: record.cardNumber, label: '' }); }} className={`${linkBtn} cursor-pointer`}>
-                  <IconTag /> {t('Karta raqam')}
+                  <span className="qp-company-text">
+                    <b className="break-words">{record.company.displayName}</b>
+                    <small className="break-words">
+                      {[record.company.subtitle, record.company.city].filter(Boolean).join(' · ')
+                        || `nfcstore.uz/c/${record.company.companyId.toLowerCase()}`}
+                    </small>
+                  </span>
+                  <span aria-hidden="true">›</span>
                 </button>
               )}
-              {(record.cardNumbers || []).filter((c) => c && c.number).map((c, i) => (
-                <button type="button" key={`cn${i}`} onClick={() => { track('link_click', 'card_number'); setCardModal({ number: c.number, label: c.label || '' }); }} className={`${linkBtn} cursor-pointer`}>
-                  <IconTag /> {c.label || t('Karta raqam')}
-                </button>
-              ))}
-              {(record.extraLinks || []).map((l, i) => (
-                <a className={linkBtn} key={i} href={l.url} target="_blank" rel="noreferrer" onClick={() => track('link_click', l.label || l.url)}><IconLink /> {l.label || t('Havola')}</a>
-              ))}
-            </div>
 
-            <ProfileTeam team={team} t={t} />
-            <ProfileGallery gallery={gallery} t={t} />
+              {/* NFC KARTANING O'ZI — aylantirib ikki tomonini ko'rish
+                  mumkin. U endi birinchi ekranni band qilmaydi. */}
+              <div className="qp-cardwrap">
+                <FlipNfcCard finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)} t={t}>
+                  <NfcCard
+                    hideBrand
+                    code={record.code}
+                    name={design.name || record.name}
+                    since={record.ts}
+                    finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)}
+                    bgImage={design.bgUrl || ''}
+                    namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
+                    nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
+                    nameColor={design.nameColor || ''}
+                    codePos={Number.isFinite(design.codeX) && Number.isFinite(design.codeY) ? { x: design.codeX, y: design.codeY } : null}
+                    codeScale={Number.isFinite(design.codeScale) ? design.codeScale : 1}
+                    brandPos={Number.isFinite(design.brandX) && Number.isFinite(design.brandY) ? { x: design.brandX, y: design.brandY } : null}
+                    brandScale={Number.isFinite(design.brandScale) ? design.brandScale : 1}
+                    brandColor={design.brandColor || ''}
+                    size="md"
+                  />
+                </FlipNfcCard>
+              </div>
 
-            {files.length > 0 && (
-              <div className="mt-5">
-                <div className="mb-2 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Fayllar')}</div>
-                <div className="flex flex-col gap-2">
+              <ProfileTeam team={team} t={t} />
+              <ProfileGallery gallery={gallery} t={t} />
+
+              {files.length > 0 && (
+                <div className="qp-files">
+                  <div className="qp-section-title">{t('Fayllar')}</div>
                   {files.map((f) => (
                     <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" download
-                      onClick={() => track('link_click', 'file')}
-                      className="flex items-center gap-2.5 rounded-xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3.5 py-3 text-[16px] font-semibold text-[color:var(--vz-ink)] no-underline transition hover:border-[color:var(--vz-ink-dim)]">
-                      <span className="text-[color:var(--vz-accent)]">📄</span>
-                      <span className="min-w-0 flex-1 truncate">{f.title}</span>
-                      {f.sizeBytes != null && <span className="shrink-0 text-[14px] font-normal text-[color:var(--vz-ink-faint)]">{Math.round(f.sizeBytes / 1024)} KB</span>}
+                      onClick={() => track('link_click', 'file')} className="qp-file">
+                      <span aria-hidden="true">📄</span>
+                      <span className="qp-file-name">{f.title}</span>
+                      {f.sizeBytes != null && <small>{Math.round(f.sizeBytes / 1024)} KB</small>}
                     </a>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {record.leadCapture && !isOwner && (
-              <button type="button" onClick={() => setLeadOpen(true)} className={`${linkBtn} mt-5 w-full cursor-pointer`}>
-                {'✉️'} {t('Kontakt qoldirish')}
-              </button>
-            )}
-
-            {/* Telegram/Instagram nomi — RO'YXAT TUGAGANDAN KEYIN.
-                Avval u tugmalar orasida, "Kontakt qoldirish" dan yuqorida
-                turardi: ya'ni ro'yxat ikkiga bo'linib, kimda "Kontakt
-                qoldirish" yoqilgan bo'lsa nom o'rtada, kimda yo'q bo'lsa
-                oxirida chiqardi. Bir sahifada ikki xil tartib bo'lardi.
-                Endi u har bir profilda BITTA joyda — butun ro'yxatdan
-                keyin, rasmiy kanallar chizig'idan oldin. */}
-            {(tgUrl || igUrl) && (
-              <div className="mt-5 text-center text-[16px] text-[color:var(--vz-ink-faint)]">
-                #{String(record.tg || record.instagram).replace('@', '')}
-              </div>
-            )}
-
-            {/* Diqqat: shaxsiy ijtimoiy tarmoq havolalari (Telegram/Instagram/
-                Facebook/X/LinkedIn) bu yerda alohida ikonka qatori sifatida
-                TAKRORLANMAYDI — ular allaqachon yuqorida to'liq nomli
-                tugmalar sifatida ko'rsatilgan. Pastda faqat NFCSTORE'ning
-                rasmiy kanali qoladi. */}
-
-            {/* NFCSTORE'ning o'z rasmiy kanallari — har doim, har bir profilda bir xil. */}
-            <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-            <div className="flex justify-center gap-3.5">
-              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstoreuz" target="_blank" rel="noreferrer" title="NFCSTORE Telegram"><IconTelegram /></a>
-              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://www.instagram.com/nfcstore.uz" target="_blank" rel="noreferrer" title="NFCSTORE Instagram"><IconInstagram /></a>
-              <a className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)] no-underline transition hover:border-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]" href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
-            </div>
-
-            {/* "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati pastda
-                TAKRORLANMAYDI — yuqorida (sarlavha qatorida, kod belgisi
-                yonida) allaqachon ko'rsatilgan, shu yetarli. */}
-
-            <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-            <div className="flex gap-2.5">
-              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
-              {!isOwner && MESSAGING_ENABLED && (
-                <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
               )}
-            </div>
-          </>
-        )}
+
+              {/* Musiqa — sahifaning o'ng-pastki burchagida suzib turadi
+                  (portal orqali), shuning uchun bu yerda joy egallamaydi. */}
+              <MusicPlayer
+                urls={Array.isArray(record.musicUrls) && record.musicUrls.length ? record.musicUrls : (record.musicUrl ? [record.musicUrl] : [])}
+                accentColor={record.accentColor}
+                onOpenChange={setMusicOpen}
+                ownerName={record.name || ''}
+                coverUrl={record.avatarUrl || ''}
+              />
+
+              {/* O'Z NFC ID RAQAMI — profilning doimiy manzili. */}
+              <div className="pf-nfcid">
+                <i aria-hidden="true">◉</i>
+                <div style={{ textAlign: 'center' }}>
+                  <b>{record.code}</b>
+                  <small>NFC ID · nfcstore.uz/{record.code.toLowerCase()}</small>
+                </div>
+              </div>
+
+              {/* Egaga: boshqa raqamli tashrif qog'ozlari. */}
+              {otherCodes.length > 0 && (
+                <select
+                  className="qp-othercodes"
+                  value=""
+                  onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
+                  aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
+                >
+                  <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
+                  {otherCodes.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
+                </select>
+              )}
+
+              {/* NFCSTORE'ning rasmiy kanallari — har bir profilda bir xil. */}
+              <div className="qp-official">
+                <a href="https://t.me/nfcstoreuz" target="_blank" rel="noreferrer" title="NFCSTORE Telegram"><IconTelegram /></a>
+                <a href="https://www.instagram.com/nfcstore.uz" target="_blank" rel="noreferrer" title="NFCSTORE Instagram"><IconInstagram /></a>
+                <a href="https://t.me/nfcstore_admin" target="_blank" rel="noreferrer" title={t("Qo'llab-quvvatlash")}><IconSupport /></a>
+              </div>
+              <p className="qp-foot"><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE</b></p>
+            </>
+          )}
+        </div>
+
+        {/* KONTAKTNI SAQLASH — doim ko'rinib turadigan pastki qator. */}
+        <div className="qp-bottom">
+          <button type="button" className="qp-save vz-tap" onClick={() => { track('contact_save'); downloadVcf(record); }}>
+            {t('Kontaktni saqlash')}
+          </button>
+        </div>
       </div>
 
-      <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{t("{n} ko'rishlar", { n: fmt(record.views || 1) })}</div>
-      {toast && <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] bg-[color:var(--vz-pill)] px-[18px] py-2.5 text-[16px] text-white shadow-xl">{toast}</div>}
+      {toast && <div className="qp-toast">{toast}</div>}
 
       {followListDir && record && (
         <FollowListModal code={record.code} dir={followListDir} onClose={() => setFollowListDir(null)} t={t} />
@@ -2187,7 +1999,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
