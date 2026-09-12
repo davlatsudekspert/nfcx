@@ -169,6 +169,14 @@ function drawSubText(ctx, text, cx, cy, colorSet, font) {
   ctx.restore();
 }
 
+// NFC belgisining `scale = 1` dagi taxminiy o'lchami: "N" harfi
+// chapda, uchta yoy o'ngda (eng chetki yoy radiusi 28). Hitbox va
+// slayderni pikselga aylantirish shu ikki songa tayanadi.
+const NFC_BASE_W = 62;
+const NFC_BASE_H = 52;
+export const NFC_DEFAULT_SIZE = Math.round(NFC_BASE_H * 1.8); // eski qat'iy masshtab
+export const NFC_DEFAULT_XY = { x: 0.5, y: 0.6859 }; // eski qat'iy joy: 807px maketda h/2 + 150
+
 function drawNfcIcon(ctx, cx, cy, scale, colorSet) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -275,12 +283,28 @@ function renderCard(ctx, w, h, state) {
     drawSubText(ctx, subText, cx, mainY + fontSize / 2 + 30, colorSet, state.font);
   }
 
+  // NFC BELGISI — endi o'lchami ham, joyi ham o'zgaradi (egasining
+  // talabi: "qo'lda boshqarilishi, katta-kichik bo'lishi kerak").
+  // Ilgari u qat'iy `1.8` masshtabda, qat'iy joyda chizilardi.
+  // `nfcSize` — belgining taxminiy BALANDLIGI pikselda; ichkarida u
+  // masshtabga aylantiriladi, shunda slayderdagi son odamga tushunarli
+  // bo'ladi.
+  let nfcBox = null;
   if (state.side === 'back' && state.showNfc) {
-    drawNfcIcon(ctx, w / 2, h / 2 + 150, 1.8, colorSet);
+    const pos = state.nfcXY || NFC_DEFAULT_XY;
+    const scale = (state.nfcSize || NFC_DEFAULT_SIZE) / NFC_BASE_H;
+    drawNfcIcon(ctx, pos.x * w, pos.y * h, scale, colorSet);
+    nfcBox = {
+      x: pos.x * w - (NFC_BASE_W * scale) / 2 - 12,
+      y: pos.y * h - (NFC_BASE_H * scale) / 2 - 12,
+      w: NFC_BASE_W * scale + 24,
+      h: NFC_BASE_H * scale + 24,
+    };
   }
 
   // Hitbox'lar — drag qilish uchun (qaysi elementga sichqoncha bosilgani).
   const hitboxes = {};
+  if (nfcBox) hitboxes.nfc = nfcBox;
   hitboxes.logo = drawPositionedImage(ctx, w, h, state.logoImage, state.logoXY, state.logoSize || 70);
   // MUHIM: QR-kod faqat ORQA tomonda ko'rsatiladi (old tomonda hech qachon).
   if (state.showQr && state.side === 'back') {
@@ -303,27 +327,6 @@ function renderCard(ctx, w, h, state) {
     ctx.restore();
     hitboxes.wm = { x: wm.x * w - wmW / 2 - 14, y: wm.y * h - wmSize / 2 - 12, w: wmW + 28, h: wmSize + 24 };
   }
-  // ── KOMPANIYA BELGISI "C" ──────────────────────────────────────────
-  // Kompaniya kartasi bir qarashda bilinib tursin. O'CHIRIB BO'LMAYDI:
-  // o'lchami, joyi va rangi o'zgaradi, LEKIN harfning o'zi qat'iy —
-  // shuning uchun u yerda kompaniyaga aloqasi yo'q boshqa yozuv paydo
-  // bo'la olmaydi.
-  if (state.companyMark && state.side === 'back') {
-    const cm = state.cmXY || { x: 0.5, y: 0.845 };
-    const cmSize = state.cmSize || 34;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `900 ${cmSize}px ${state.font}, sans-serif`;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillText('C', cm.x * w - 1, cm.y * h + 2);
-    ctx.fillStyle = state.cmColor || '#e9c766';
-    ctx.fillText('C', cm.x * w, cm.y * h);
-    const cmW = ctx.measureText('C').width;
-    ctx.restore();
-    hitboxes.cm = { x: cm.x * w - cmW / 2 - 14, y: cm.y * h - cmSize / 2 - 12, w: cmW + 28, h: cmSize + 24 };
-  }
-
   // Matn uchun taxminiy hitbox (o'lchangan kenglik asosida).
   hitboxes.text = { x: cx - mainWidth / 2 - 14, y: mainY - fontSize / 2 - 14, w: mainWidth + 28, h: fontSize + 28 };
   return hitboxes;
@@ -431,7 +434,7 @@ export function renderPrintDataUrl(state) {
   return canvas.toDataURL('image/png');
 }
 
-export default function CardDesignerPage({ embedded = false, code = '', printApi = null, companyMark = false } = {}) {
+export default function CardDesignerPage({ embedded = false, code = '', printApi = null } = {}) {
   const { t } = useLanguage();
   const canvasRef = useRef(null);
   const bgFileRef = useRef(null);
@@ -445,6 +448,10 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const [backText, setBackText] = useState('NFCSTORE.UZ');
   const [backSubText, setBackSubText] = useState('');
   const [showNfc, setShowNfc] = useState(true);
+  // NFC belgisining o'lchami (px) va joyi — endi ikkalasi ham qo'lda
+  // boshqariladi: slayder bilan kattalashadi, kartadan sudrab ko'chadi.
+  const [nfcSize, setNfcSize] = useState(NFC_DEFAULT_SIZE);
+  const [nfcXY, setNfcXY] = useState(NFC_DEFAULT_XY);
   const [textColor, setTextColor] = useState('gold');
   const [bgColor, setBgColor] = useState('black');
   const [bgMode, setBgMode] = useState('color');
@@ -453,9 +460,6 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const [presetId, setPresetId] = useState('');
   // Kompaniya belgisi "C" — joyi, o'lchami, rangi. Harfning O'ZI
   // o'zgarmaydi va belgini o'chirib bo'lmaydi.
-  const [cmXY, setCmXY] = useState({ x: 0.5, y: 0.845 });
-  const [cmSize, setCmSize] = useState(34);
-  const [cmColor, setCmColor] = useState('#e9c766');
   const [darken, setDarken] = useState(35);
   const [font, setFont] = useState('Arial');
   const [fontSize, setFontSize] = useState(92);
@@ -516,16 +520,16 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
     // bosmaxonaga ketadigan faylda orqa matn noto'g'ri joyda turardi.
     const effectiveSide = overrides?.side || side;
     return {
-      side, frontText, frontSubText, backText, backSubText, showNfc,
+      side, frontText, frontSubText, backText, backSubText, showNfc, nfcSize, nfcXY,
       textColor, bgColor, bgMode, bgImage, darken, font, fontSize,
       logoImage, logoXY, showQr, qrImage, qrXY, qrSize,
       textXY: effectiveSide === 'front' ? frontTextXY : backTextXY,
       wmXY, wmSize, wmColor,
-      companyMark, cmXY, cmSize, cmColor, ...overrides,
+      ...overrides,
     };
-  }, [side, frontText, frontSubText, backText, backSubText, showNfc,
+  }, [side, frontText, frontSubText, backText, backSubText, showNfc, nfcSize, nfcXY,
     textColor, bgColor, bgMode, bgImage, darken, font, fontSize, logoImage, logoXY, showQr, qrImage, qrXY, qrSize,
-    frontTextXY, backTextXY, wmXY, wmSize, wmColor, companyMark, cmXY, cmSize, cmColor]);
+    frontTextXY, backTextXY, wmXY, wmSize, wmColor]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -564,8 +568,8 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
   const onCanvasPointerDown = (e) => {
     const { x, y } = pointerToCanvasXY(e);
     const hb = hitboxesRef.current;
-    if (hitTest(x, y, hb.qr)) dragRef.current = 'qr';
-    else if (hitTest(x, y, hb.cm)) dragRef.current = 'cm';
+    if (hitTest(x, y, hb.nfc)) dragRef.current = 'nfc';
+    else if (hitTest(x, y, hb.qr)) dragRef.current = 'qr';
     else if (hitTest(x, y, hb.wm)) dragRef.current = 'wm';
     else if (hitTest(x, y, hb.logo)) dragRef.current = 'logo';
     else if (hitTest(x, y, hb.text)) dragRef.current = 'text';
@@ -577,10 +581,10 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
     const { x, y } = pointerToCanvasXY(e);
     const nx = Math.min(1, Math.max(0, x / canvas.width));
     const ny = Math.min(1, Math.max(0, y / canvas.height));
-    if (dragRef.current === 'logo') setLogoXY({ x: nx, y: ny });
+    if (dragRef.current === 'nfc') setNfcXY({ x: nx, y: ny });
+    else if (dragRef.current === 'logo') setLogoXY({ x: nx, y: ny });
     else if (dragRef.current === 'qr') setQrXY({ x: nx, y: ny });
     else if (dragRef.current === 'wm') setWmXY({ x: nx, y: ny });
-    else if (dragRef.current === 'cm') setCmXY({ x: nx, y: ny });
     else if (dragRef.current === 'text') setTextXY({ x: nx, y: ny });
   };
   const onCanvasPointerUp = () => { dragRef.current = null; };
@@ -694,6 +698,27 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
                 value={showNfc}
                 onChange={setShowNfc}
               />
+              {/* Belgi endi qat'iy emas: o'lchami slayder bilan, joyi esa
+                  kartaning o'zidan sudrab o'zgartiriladi. */}
+              {showNfc && (
+                <div className="mt-3">
+                  <Label>{t('NFC belgisi o‘lchami:')} {nfcSize}px</Label>
+                  <input
+                    type="range" min={30} max={220} value={nfcSize}
+                    onChange={(e) => setNfcSize(Number(e.target.value))}
+                    className="range range-xs range-primary mt-1"
+                  />
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <p className="text-[14px] text-base-content/40">{t('Joyini kartadan sudrab o‘zgartiring')}</p>
+                    <button
+                      type="button" className="btn btn-ghost btn-xs"
+                      onClick={() => { setNfcSize(NFC_DEFAULT_SIZE); setNfcXY(NFC_DEFAULT_XY); }}
+                    >
+                      {t('Andozaga qaytarish')}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </FieldGroup>
 
@@ -759,31 +784,6 @@ export default function CardDesignerPage({ embedded = false, code = '', printApi
               </div>
             )}
           </FieldGroup>
-
-          {/* KOMPANIYA BELGISI — faqat kompaniya kabinetida chiqadi va
-              O'CHIRILMAYDI. Harfning o'zi qat'iy: bu belgi kartaning
-              kompaniyaga tegishli ekanini bildiradi, shuning uchun uni
-              boshqa yozuvga almashtirib bo'lmaydi. */}
-          {companyMark && (
-            <FieldGroup title={t('Kompaniya belgisi «C»')}>
-              <p className="mb-3 text-xs leading-relaxed text-base-content/45">
-                {t('Kartaning orqa tomonida, NFCSTORE yozuvi tepasida turadi. Joyini kartadan sudrab o‘zgartiring. Harfning o‘zi o‘zgarmaydi va belgini o‘chirib bo‘lmaydi.')}
-              </p>
-              <Label>{t('O‘lchami')}</Label>
-              <input type="range" min={18} max={90} value={cmSize} onChange={(e) => setCmSize(Number(e.target.value))} className="range range-xs range-primary mt-1" />
-              <div className="mt-3 flex items-center gap-3">
-                <input
-                  type="color" value={cmColor} onChange={(e) => setCmColor(e.target.value)}
-                  className="h-8 w-8 cursor-pointer rounded-lg border border-white/15 bg-transparent p-0"
-                  aria-label={t('Rangi')}
-                />
-                <span className="text-xs text-base-content/60">{t('Rangi')}</span>
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => { setCmColor('#e9c766'); setCmSize(34); setCmXY({ x: 0.5, y: 0.845 }); }}>
-                  {t('Andozaga qaytarish')}
-                </button>
-              </div>
-            </FieldGroup>
-          )}
 
           <FieldGroup title={t("Logotip (ixtiyoriy)")}>
             <Label>{t('Logotip rasm yuklash')}</Label>

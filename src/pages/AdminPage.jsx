@@ -15,6 +15,7 @@ import {
   chartGrid, chartAxis, chartTooltip,
 } from '../components/admin/AdminUI.jsx';
 import { useConfirm } from '../components/admin/ConfirmDialog.jsx';
+import { dbUploadFileBinary, UPLOAD_MAX_BYTES } from '../lib/db.js';
 
 // Xatolik obyekti: message = server `error` kodi (eski kod shunga tayanadi),
 // qo'shimcha `status` (HTTP) va `code` maydonlari — holatlarni ajratish uchun.
@@ -2340,21 +2341,14 @@ function NewsTab() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setErr(t('Rasm hajmi juda katta (maks. 10 MB).')); return; }
+    if (file.size > UPLOAD_MAX_BYTES) { setErr(t('Rasm hajmi juda katta (maks. 100 MB).')); return; }
     setUploading(true); setErr(null);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const d = await adminApi('/upload', { method: 'POST', body: JSON.stringify({ dataUrl: reader.result }) });
-        setImageUrl(d.url);
-      } catch {
-        setErr(t('Rasmni yuklab bo‘lmadi.'));
-      } finally {
-        setUploading(false);
-      }
-    };
-    reader.onerror = () => { setUploading(false); setErr(t('Rasmni yuklab bo‘lmadi.')); };
-    reader.readAsDataURL(file);
+    // Fayl XOM BINAR sifatida oqim bilan ketadi (base64 emas) —
+    // shuning uchun chegara endi butun saytdagidek 100 MB.
+    dbUploadFileBinary(file, { admin: true })
+      .then((d) => setImageUrl(d.url))
+      .catch(() => setErr(t('Rasmni yuklab bo‘lmadi.')))
+      .finally(() => setUploading(false));
   };
 
   const togglePublish = async (n) => {
@@ -3243,19 +3237,23 @@ function FinanceDocs() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 15 * 1024 * 1024) { setActErr(t('Fayl 15 MB dan katta.')); return; }
+    if (file.size > UPLOAD_MAX_BYTES) { setActErr(t('Fayl 100 MB dan katta.')); return; }
     setActErr(null);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      setBusy(true);
+    setBusy(true);
+    (async () => {
       try {
-        await adminApi('/finance/documents', { method: 'POST', body: JSON.stringify({ name: form.name || file.name, docType: form.docType, period: form.period, dataUrl: reader.result }) });
+        // Ikki bosqich: hujjat oqim bilan yuklanadi, so'ng yozuvga
+        // faqat havolasi yoziladi.
+        const up = await dbUploadFileBinary(file, { doc: true });
+        await adminApi('/finance/documents', { method: 'POST', body: JSON.stringify({ name: form.name || file.name, docType: form.docType, period: form.period, fileUrl: up.url }) });
         setForm({ name: '', docType: 'other', period: '', url: '' });
         load();
-      } catch (e2) { setActErr(e2.message === 'too_large' ? t('Fayl 15 MB dan katta.') : e2.message === 'bad_file' ? t('Fayl formati qo‘llab-quvvatlanmaydi.') : apiErrText(e2, t)); } finally { setBusy(false); }
-    };
-    reader.onerror = () => setActErr(t('Faylni o‘qib bo‘lmadi.'));
-    reader.readAsDataURL(file);
+      } catch (e2) {
+        setActErr(e2.message === 'too_large' ? t('Fayl 100 MB dan katta.')
+          : e2.message === 'bad_file' ? t('Fayl formati qo‘llab-quvvatlanmaydi.')
+          : apiErrText(e2, t));
+      } finally { setBusy(false); }
+    })();
   };
   const addLink = async () => {
     if (!form.name.trim() || !form.url.trim()) return;
@@ -3276,7 +3274,7 @@ function FinanceDocs() {
       {dialog}
       <div className="vz-card p-5">
         <span className="vz-kicker">{t('Hujjat qo‘shish')}</span>
-        <p className="mt-1 text-[13px]" style={{ color: 'var(--vz-ink-2)' }}>{t('Payme hisobot, bank ko‘chirmasi, soliq hujjati, chek… Fayl (PDF/Excel/CSV/rasm, ≤15 MB) yoki tashqi havola. Diqqat: yuklangan fayllar server yangilanganda o‘chishi mumkin — muhimlarini tashqi drayvda ham saqlang.')}</p>
+        <p className="mt-1 text-[13px]" style={{ color: 'var(--vz-ink-2)' }}>{t('Payme hisobot, bank ko‘chirmasi, soliq hujjati, chek… Fayl (PDF/Excel/CSV/rasm, ≤100 MB) yoki tashqi havola. Diqqat: yuklangan fayllar server yangilanganda o‘chishi mumkin — muhimlarini tashqi drayvda ham saqlang.')}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('Nomi')} className="vz-input min-w-0" aria-label={t('Nomi')} />
           <select value={form.docType} onChange={(e) => setForm((f) => ({ ...f, docType: e.target.value }))} className="vz-input min-w-0" aria-label={t('Tur')}>

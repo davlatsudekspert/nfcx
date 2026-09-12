@@ -20,7 +20,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 //   value    — joriy manzil ('' bo'lishi mumkin)
 //   onChange — yangi manzil (yoki '' — o'chirilganda)
 //   hint     — maydon ostidagi izoh
-// `kind='cover'` — muqova rasmi: 20 MB gacha va GIF ham mumkin.
+// `kind` endi hajmni cheklamaydi: chegara butun saytda bir xil — 100 MB.
 export default function ImageUploadField({ label, value, onChange, hint = '', kind = '' }) {
   const { t } = useLanguage();
   const fileRef = useRef(null);
@@ -42,13 +42,10 @@ export default function ImageUploadField({ label, value, onChange, hint = '', ki
     if (!file.type.startsWith('image/')) { setErr(t('Faqat rasm fayli tanlanadi.')); return; }
     setBusy(true); setErr('');
     try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('read'));
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-      onChange(await dbUploadImage(dataUrl, { kind }));
+      // Fayl TO'G'RIDAN-TO'G'RI yuboriladi. Ilgari u avval
+      // `readAsDataURL` bilan base64 satrga aylantirilardi — 100 MB
+      // fayl brauzerda 133 MB satrga aylanib, telefonni qotirardi.
+      onChange(await dbUploadImage(file, { kind }));
     } catch (error) {
       setErr(error?.message === 'read' ? t('Faylni o‘qib bo‘lmadi.') : (error?.message || t('Rasmni yuklab bo‘lmadi.')));
     } finally {

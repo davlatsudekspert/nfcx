@@ -4797,6 +4797,11 @@ const MUSIC_LIMIT_PREMIUM_D1 = 10;
 // Bitta musiqa faylining maksimal hajmi (MB) — src/lib/musicLimits.js
 // MUSIC_MAX_MB bilan AYNAN bir xil (parity testda tekshiriladi).
 // DIQQAT: bu FAQAT audio uchun. Admin rasm yuklashi 10 MB bo'lib qoladi.
+// ESKI base64 endpointi (/api/upload-audio) uchun chegara. U 20 MB da
+// qoladi: base64 hajmni ~33% oshiradi va undan kattasi Worker
+// izolyatining 128 MB xotirasiga sig'masdi. Mijoz endi musiqani
+// /api/upload-file orqali OQIM bilan yuboradi — u yerda chegara
+// butun saytdagidek 100 MB.
 const MUSIC_MAX_MB_D1 = 20;
 function musicLimitD1(isPremium) { return isPremium ? MUSIC_LIMIT_PREMIUM_D1 : MUSIC_LIMIT_FREE_D1; }
 
@@ -5533,6 +5538,183 @@ function sniffMediaTypeD1(bytes) {
   return null;
 }
 
+// ── BUTUN SAYT BO'YICHA YAGONA FAYL CHEGARASI — 100 MB ───────────────
+// Egasining talabi: "hamma joydagi limitni 100 MB qilib qo'y".
+//
+// 100 MB ni ko'tarishning YAGONA xavfsiz yo'li — OQIM. Workers izolyati
+// 128 MB xotira bilan cheklangan, ya'ni faylni `arrayBuffer()` bilan
+// butunlay o'qish (yoki base64 qilish — u hajmni yana ~33% oshiradi)
+// shu chegaraga urilib, so'rovni yiqitardi. Quyidagi
+// `streamUploadToR2()` tanani BO'LAKLAB o'qiydi va R2 ga multipart
+// qilib yozadi: xotirada bir vaqtda faqat bitta bo'lak turadi.
+const UPLOAD_MAX_BYTES = 100 * 1024 * 1024;
+
+// Barcha qo'llab-quvvatlanadigan fayl turlari (rasm, video, audio, PDF)
+// — sehrli baytlar bo'yicha. `sniffMediaTypeD1` ATAYLAB o'zgarmadi: u
+// istorya/post uchun ishlatiladi va u yerda PDF yoki mp3 qabul
+// qilinmasligi kerak.
+function sniffAnyFileTypeD1(bytes) {
+  const media = sniffMediaTypeD1(bytes);
+  if (media) {
+    // ftyp brendi "M4A" bo'lsa — bu video emas, audio.
+    if (media.ext === 'mp4' && String.fromCharCode(...bytes.slice(8, 12)).startsWith('M4A')) {
+      return { ext: 'm4a', type: 'audio/mp4' };
+    }
+    return media;
+  }
+  if (!bytes || bytes.length < 12) return null;
+  const head = String.fromCharCode(...bytes.slice(0, 40));
+  if (head.startsWith('%PDF-')) return { ext: 'pdf', type: 'application/pdf' };
+  if (head.startsWith('ID3')) return { ext: 'mp3', type: 'audio/mpeg' };
+  // MP3 freym sinxronizatsiyasi (ID3 tegsiz fayllar).
+  if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) return { ext: 'mp3', type: 'audio/mpeg' };
+  if (head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WAVE') return { ext: 'wav', type: 'audio/wav' };
+  if (head.slice(0, 4) === 'OggS') return { ext: 'ogg', type: 'audio/ogg' };
+  return null;
+}
+
+// MOLIYA HUJJATLARI uchun alohida sniffer: bu yerda xlsx va csv ham
+// bo'ladi. `sniffAnyFileTypeD1` ularni bilmaydi va bilishi ham SHART
+// EMAS — profil media'siga xlsx tushishi kerak emas.
+//
+// csv ning sehrli bayti yo'q (u oddiy matn), shuning uchun u FAQAT
+// mijoz shunday deb aytganda va bosh qismi haqiqatan o'qiladigan matn
+// bo'lganda qabul qilinadi.
+function sniffDocTypeD1(bytes, declaredType = '') {
+  const known = sniffAnyFileTypeD1(bytes);
+  if (known && ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(known.type)) return known;
+  if (!bytes || bytes.length < 8) return null;
+  // xlsx — zip konteyner (PK\x03\x04); xls — eski OLE konteyner.
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b && (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07)) {
+    return { ext: 'xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+  }
+  if (bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0) {
+    return { ext: 'xls', type: 'application/vnd.ms-excel' };
+  }
+  if (declaredType === 'text/csv' && bytes.every((b) => b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127) || b >= 160)) {
+    return { ext: 'csv', type: 'text/csv' };
+  }
+  return null;
+}
+
+// Tur ruxsat etilganmi? `accept` ichida to'liq tur ('image/png') yoki
+// prefiks ('image/') bo'lishi mumkin.
+const uploadTypeAllowedD1 = (type, accept) => accept.some((a) => (a.endsWith('/') ? type.startsWith(a) : type === a));
+
+// Tanani BO'LAKLAB o'qib R2 ga yozadi.
+// Muvaffaqiyatda `{ ok: true, url, type, size }`, aks holda
+// `{ ok: false, error, status, limitMb }`.
+async function streamUploadToR2(request, env, opts) {
+  const {
+    prefix, accept, aliases = {}, actor,
+    maxBytes = UPLOAD_MAX_BYTES, sniff = sniffAnyFileTypeD1,
+  } = opts;
+  const limitMb = Math.round(maxBytes / (1024 * 1024));
+  const declaredLen = Number(request.headers.get('content-length') || 0);
+  if (declaredLen > maxBytes) return { ok: false, error: 'too_large', limitMb, status: 413 };
+  if (!request.body) return { ok: false, error: 'bad_file', status: 422 };
+  if (!env.UPLOADS) return { ok: false, error: 'r2_unavailable', status: 503 };
+
+  // Faqat BOSH QISM o'qiladi (turni aniqlash uchun ~40 bayt), qolgani
+  // o'qilmagan holicha R2 ga oqib ketadi. `tee()` ATAYLAB ishlatilmadi:
+  // bir tarmog'ini bekor qilib ikkinchisini o'qish turli muhitlarda
+  // turlicha ishlaydi va testda oqim butunlay osilib qolgan edi.
+  const reader = request.body.getReader();
+  const head = [];
+  let headLen = 0;
+  let ended = false;
+  while (headLen < 40 && !ended) {
+    const { done, value } = await reader.read();
+    if (done) { ended = true; break; }
+    const part = new Uint8Array(value);
+    head.push(part);
+    headLen += part.length;
+  }
+  // BOSH QISM ham chegaraga bo'ysunadi. Bu tekshiruv ATAYLAB shu
+  // yerda: bitta katta bo'lak bilan kelgan tana (yoki yolg'on
+  // `content-length`) pastdagi tsiklga umuman kirmasdan o'tib
+  // ketardi — ya'ni chegara aylanib o'tilardi.
+  if (headLen > maxBytes) {
+    await reader.cancel().catch(() => {});
+    return { ok: false, error: 'too_large', limitMb, status: 413 };
+  }
+  const headBytes = new Uint8Array(headLen);
+  { let off = 0; for (const part of head) { headBytes.set(part, off); off += part.length; } }
+
+  let declaredType = String(request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  // "octet-stream" — "bilmayman" degani (brauzer turni aniqlay olmagan).
+  // Uni sniff natijasi bilan solishtirish ma'nosiz: qaror sehrli
+  // baytlarga qoladi.
+  if (declaredType === 'application/octet-stream') declaredType = '';
+  // Ikkinchi argument faqat csv kabi SEHRLI BAYTI YO'Q turlar uchun
+  // kerak (`sniffDocTypeD1`); qolgan snifferlar uni e'tiborsiz qoldiradi.
+  const sniffed = sniff(headBytes, declaredType);
+  const typeOk = sniffed
+    && uploadTypeAllowedD1(sniffed.type, accept)
+    && (!declaredType || declaredType === sniffed.type || aliases[declaredType]?.includes(sniffed.type));
+  if (!typeOk) {
+    await reader.cancel().catch(() => {});
+    return { ok: false, error: 'bad_file', status: 422 };
+  }
+
+  const filename = `${prefix}_${uploadRandomHex(12)}.${sniffed.ext}`;
+  const meta = {
+    httpMetadata: { contentType: sniffed.type, cacheControl: UPLOAD_CACHE_CONTROL },
+    customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
+  };
+
+  // R2 ga YOZISH. Kichik fayl — bitta `put()` (uzunligi ma'lum bo'lishi
+  // SHART: qo'lda qurilgan oqimni R2 qabul qilmaydi). Katta fayl —
+  // MULTIPART: bo'laklab, xotirada bir vaqtda bitta bo'lak.
+  const PART = 8 * 1024 * 1024; // R2 minimal bo'lak 5 MiB (oxirgisidan tashqari)
+  const chunks = headLen ? [headBytes] : [];
+  let pending = headLen;
+  let total = headLen;
+  let multipart = null;
+  const parts = [];
+  const joinPending = () => {
+    const out = new Uint8Array(pending);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    chunks.length = 0; pending = 0;
+    return out;
+  };
+
+  try {
+    while (!ended) {
+      const { done, value } = await reader.read();
+      if (done) { ended = true; break; }
+      const part = new Uint8Array(value);
+      total += part.length;
+      // Yolg'on `content-length` bilan chegarani aylanib o'tib
+      // bo'lmasin — haqiqiy hajm ham sanaladi.
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        if (multipart) await multipart.abort().catch(() => {});
+        return { ok: false, error: 'too_large', limitMb, status: 413 };
+      }
+      chunks.push(part); pending += part.length;
+      if (pending >= PART) {
+        if (!multipart) multipart = await env.UPLOADS.createMultipartUpload(`uploads/${filename}`, meta);
+        parts.push(await multipart.uploadPart(parts.length + 1, joinPending()));
+      }
+    }
+    if (multipart) {
+      // Oxirgi bo'lak 5 MiB dan kichik bo'lishi mumkin — bu ruxsat etilgan.
+      if (pending) parts.push(await multipart.uploadPart(parts.length + 1, joinPending()));
+      await multipart.complete(parts);
+    } else {
+      if (!total) return { ok: false, error: 'bad_file', status: 422 };
+      await env.UPLOADS.put(`uploads/${filename}`, joinPending(), meta);
+    }
+  } catch (error) {
+    if (multipart) await multipart.abort().catch(() => {});
+    console.error('streamUploadToR2', error?.message);
+    return { ok: false, error: 'upload_failed', status: 500 };
+  }
+  return { ok: true, url: `/uploads/${filename}`, type: sniffed.type, size: total };
+}
+
 const PROFILE_BG_ALIASES = {
   'application/octet-stream': ['image/gif', 'video/mp4', 'video/webm'],
   'video/quicktime': ['video/mp4'],
@@ -5543,7 +5725,7 @@ const PROFILE_BG_ALIASES = {
 // POST /api/upload, /api/upload-audio, /api/upload-card-video,
 //      /api/upload-profile-bg, /api/upload-card-print, /api/admin/upload
 async function uploadApi(request, env, pathname) {
-  const isAdmin = pathname === '/api/admin/upload';
+  const isAdmin = pathname.startsWith('/api/admin/');
   const auth = isAdmin ? await requireAdmin(request, env) : await getCurrentUser(request, env);
   if (!auth) return json({ error: 'unauthorized' }, 401);
   const actor = isAdmin ? `admin:${auth.role || 'admin'}` : `user:${auth.id || auth.email || 'authenticated'}`;
@@ -5562,144 +5744,64 @@ async function uploadApi(request, env, pathname) {
   // Boshqa yuklash limitlari (avatar, post, logo, musiqa, admin) BU
   // O'ZGARISHDAN TASHQARIDA — ular avvalgidek qoladi.
   if (pathname === '/api/upload-profile-bg') {
-    // 1) Avval content-length bo'yicha ERTA rad etamiz — 50 MB dan katta
-    //    tana umuman o'qilmaydi va saqlanmaydi.
-    const declared = Number(request.headers.get('content-length') || 0);
-    if (declared > PROFILE_BG_MAX_BYTES) return json({ error: 'too_large', limitMb: 50 }, 413);
-
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (!bytes.length) return json({ error: 'bad_file' }, 422);
-    // 2) Haqiqiy hajm bo'yicha qayta tekshiruv (content-length yolg'on
-    //    bo'lishi yoki umuman kelmasligi mumkin).
-    if (bytes.length > PROFILE_BG_MAX_BYTES) return json({ error: 'too_large', limitMb: 50 }, 413);
-
-    // 3) Tur — MIME sarlavhasi VA sehrli baytlar bo'yicha. Ikkalasi mos
-    //    kelmasa rad etiladi (kengaytma serverda sniff natijasidan
-    //    olinadi, mijoz yuborgan nomdan emas).
-    const declaredType = String(request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-    const head = String.fromCharCode(...bytes.slice(0, 40));
-    const isGif = bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38;
-    const isWebm = bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3;
-    const isMp4 = head.includes('ftyp');
-    const sniffed = isGif ? { ext: 'gif', type: 'image/gif' }
-      : isWebm ? { ext: 'webm', type: 'video/webm' }
-      : isMp4 ? { ext: 'mp4', type: 'video/mp4' }
-      : null;
-    if (!sniffed) return json({ error: 'bad_file' }, 422);
-    if (declaredType && declaredType !== sniffed.type && !PROFILE_BG_ALIASES[declaredType]?.includes(sniffed.type)) {
-      return json({ error: 'bad_file' }, 422);
-    }
-
-    const filename = `profilebg_${uploadRandomHex(12)}.${sniffed.ext}`;
-    return json({ url: await putUploadR2(env, filename, bytes, sniffed.type, actor) });
+    // Chegara endi butun saytdagidek 100 MB va tana OQIM bilan o'qiladi
+    // (ilgari `arrayBuffer()` edi — 50 MB da ham izolyat xotirasining
+    // yarmini yeb turardi).
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'profilebg', actor,
+      accept: ['image/gif', 'video/mp4', 'video/webm'],
+      aliases: PROFILE_BG_ALIASES,
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url });
   }
 
   // ─── ISTORYA / POST MEDIASI (100 MB, rasm yoki video) ────────────────
   if (pathname === '/api/upload-media') {
-    const declared = Number(request.headers.get('content-length') || 0);
-    if (declared > STORY_MEDIA_MAX_BYTES) return json({ error: 'too_large', limitMb: 100 }, 413);
-    if (!request.body) return json({ error: 'bad_file' }, 422);
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'story', actor,
+      accept: ['image/', 'video/'],
+      aliases: STORY_MEDIA_ALIASES,
+      maxBytes: STORY_MEDIA_MAX_BYTES,
+      // Istoryada faqat rasm/video: PDF yoki mp3 bu yerga tushmasin.
+      sniff: sniffMediaTypeD1,
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url, kind: up.type.startsWith('video/') ? 'video' : 'image' });
+  }
 
-    // Faqat BOSH QISM o'qiladi (turni aniqlash uchun ~40 bayt), qolgani
-    // o'qilmagan holicha R2 ga oqib ketadi.
-    //
-    // `tee()` ATAYLAB ishlatilmadi: bir tarmog'ini bekor qilib,
-    // ikkinchisini o'qish turli muhitlarda turlicha ishlaydi va
-    // testda oqim butunlay osilib qoldi. Bu yerda esa oddiy va aniq
-    // yo'l — o'qilgan bosh qism yangi oqim boshiga QAYTA qo'yiladi.
-    const reader = request.body.getReader();
-    const head = [];
-    let headLen = 0;
-    let ended = false;
-    while (headLen < 40 && !ended) {
-      const { done, value } = await reader.read();
-      if (done) { ended = true; break; }
-      const part = new Uint8Array(value);
-      head.push(part);
-      headLen += part.length;
-    }
-    const headBytes = new Uint8Array(headLen);
-    { let off = 0; for (const part of head) { headBytes.set(part, off); off += part.length; } }
+  // ─── UMUMIY FAYL YUKLASH (rasm / video / audio / PDF) — 100 MB ───────
+  // Saytdagi barcha "fayl tanlash" joylari shu yerga keladi: avatar,
+  // muqova, katalog rasmi, musiqa, PDF hujjat, moliya hujjati. Ilgari
+  // ularning har biri base64 dataURL yuborardi va aynan shuning uchun
+  // 700 KB–20 MB oralig'ida qotib qolgan edi.
+  // Admin: yangilik rasmi va moliya hujjati — ular ham OQIM bilan,
+  // 100 MB gacha (ilgari 10 va 15 MB, base64 orqali).
+  if (pathname === '/api/admin/upload-file') {
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'news', actor, accept: ['image/', 'video/'],
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url, type: up.type, size: up.size });
+  }
 
-    const sniffed = sniffMediaTypeD1(headBytes);
-    const declaredType = String(request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-    const typeOk = sniffed && (!declaredType || declaredType === sniffed.type
-      || STORY_MEDIA_ALIASES[declaredType]?.includes(sniffed.type));
-    if (!typeOk) {
-      await reader.cancel().catch(() => {});
-      return json({ error: 'bad_file' }, 422);
-    }
+  if (pathname === '/api/admin/upload-doc') {
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'fin', actor, sniff: sniffDocTypeD1,
+      accept: ['application/pdf', 'text/csv', 'image/png', 'image/jpeg', 'image/webp',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url, type: up.type, size: up.size });
+  }
 
-    const filename = `story_${uploadRandomHex(12)}.${sniffed.ext}`;
-    if (!env.UPLOADS) return json({ error: 'r2_unavailable' }, 503);
-    const meta = {
-      httpMetadata: { contentType: sniffed.type, cacheControl: UPLOAD_CACHE_CONTROL },
-      customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
-    };
-
-    // R2 ga YOZISH.
-    //
-    // Bu yerda avval o'zimiz qurgan `ReadableStream` uzatilgan edi va
-    // PRODUCTION'da ishlamadi: R2 oqimni qabul qilishi uchun uning
-    // UZUNLIGI ma'lum bo'lishi kerak, qo'lda qurilgan oqimda esa u
-    // yo'q. Test o'tardi, chunki mock istalgan oqimni yutardi —
-    // ya'ni test haqiqiy cheklovni tekshirmagan.
-    //
-    // Endi ikki yo'l:
-    //   kichik fayl  -> baytlarni yig'ib bitta `put()` (uzunlik ma'lum);
-    //   katta fayl   -> R2 MULTIPART: bo'laklab yuboriladi va xotirada
-    //                   bir vaqtda faqat BITTA bo'lak turadi.
-    // Shunday qilib 100 MB ham 128 MB lik izolyatga bemalol sig'adi.
-    const PART = 8 * 1024 * 1024; // R2 minimal bo'lak 5 MiB (oxirgisidan tashqari)
-    const chunks = headLen ? [headBytes] : [];
-    let pending = headLen;
-    let total = headLen;
-    let multipart = null;
-    const parts = [];
-
-    const joinPending = () => {
-      const out = new Uint8Array(pending);
-      let off = 0;
-      for (const c of chunks) { out.set(c, off); off += c.length; }
-      chunks.length = 0; pending = 0;
-      return out;
-    };
-
-    try {
-      while (!ended) {
-        const { done, value } = await reader.read();
-        if (done) { ended = true; break; }
-        const part = new Uint8Array(value);
-        total += part.length;
-        // Yolg'on `content-length` bilan chegarani aylanib o'tib
-        // bo'lmasin — haqiqiy hajm ham sanaladi.
-        if (total > STORY_MEDIA_MAX_BYTES) {
-          await reader.cancel().catch(() => {});
-          if (multipart) await multipart.abort().catch(() => {});
-          return json({ error: 'too_large', limitMb: 100 }, 413);
-        }
-        chunks.push(part); pending += part.length;
-        if (pending >= PART) {
-          if (!multipart) multipart = await env.UPLOADS.createMultipartUpload(`uploads/${filename}`, meta);
-          const body = joinPending();
-          parts.push(await multipart.uploadPart(parts.length + 1, body));
-        }
-      }
-
-      if (multipart) {
-        // Oxirgi bo'lak 5 MiB dan kichik bo'lishi mumkin — bu ruxsat etilgan.
-        if (pending) parts.push(await multipart.uploadPart(parts.length + 1, joinPending()));
-        await multipart.complete(parts);
-      } else {
-        await env.UPLOADS.put(`uploads/${filename}`, joinPending(), meta);
-      }
-    } catch (error) {
-      if (multipart) await multipart.abort().catch(() => {});
-      console.error('upload-media', error?.message);
-      return json({ error: 'upload_failed' }, 500);
-    }
-
-    return json({ url: `/uploads/${filename}`, kind: sniffed.type.startsWith('video/') ? 'video' : 'image' });
+  if (pathname === '/api/upload-file') {
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'file', actor,
+      accept: ['image/', 'video/', 'audio/', 'application/pdf'],
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url, type: up.type, size: up.size });
   }
 
   // ─── JISMONIY KARTA BOSMA DIZAYNI (PNG) ──────────────────────────────
@@ -5713,27 +5815,23 @@ async function uploadApi(request, env, pathname) {
   // Faqat PNG: bosmaxona uchun yo'qotishsiz format kerak, JPEG matn
   // chekkalarini "iflos" qiladi.
   if (pathname === '/api/upload-card-print') {
-    const declared = Number(request.headers.get('content-length') || 0);
-    if (declared > CARD_PRINT_MAX_BYTES) return json({ error: 'too_large', limitMb: 8 }, 413);
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (!bytes.length) return json({ error: 'bad_file' }, 422);
-    if (bytes.length > CARD_PRINT_MAX_BYTES) return json({ error: 'too_large', limitMb: 8 }, 413);
-    // Tur MIJOZ AYTGANIGA emas, sehrli baytlarga qarab aniqlanadi.
-    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
-    if (!isPng) return json({ error: 'bad_file' }, 422);
-    const filename = `cardprint_${uploadRandomHex(12)}.png`;
-    return json({ url: await putUploadR2(env, filename, bytes, 'image/png', actor) });
+    // Maket 600 DPI PNG. Chegara endi umumiy 100 MB: fon rasmi juda
+    // batafsil bo'lgan maket ham rad etilmasin.
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'cardprint', actor, accept: ['image/png'],
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url });
   }
 
   if (pathname === '/api/upload-card-video') {
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (!bytes.length) return json({ error: 'bad_file' }, 422);
-    if (bytes.length > 10 * 1024 * 1024) return json({ error: 'too_large' }, 413);
-    const looksMp4 = String.fromCharCode(...bytes.slice(0, 40)).includes('ftyp');
-    const looksWebm = bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3;
-    if (!looksMp4 && !looksWebm) return json({ error: 'bad_file' }, 422);
-    const filename = `cardvid_${uploadRandomHex(12)}.${looksWebm ? 'webm' : 'mp4'}`;
-    return json({ url: await putUploadR2(env, filename, bytes, looksWebm ? 'video/webm' : 'video/mp4', actor) });
+    const up = await streamUploadToR2(request, env, {
+      prefix: 'cardvid', actor,
+      accept: ['video/mp4', 'video/webm'],
+      aliases: PROFILE_BG_ALIASES,
+    });
+    if (!up.ok) return json({ error: up.error, ...(up.limitMb ? { limitMb: up.limitMb } : {}) }, up.status);
+    return json({ url: up.url });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -8236,7 +8334,7 @@ async function handleRequest(request, env, url) {
     }
 
     if (request.method === 'POST'
-      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-media', '/api/upload-card-print', '/api/admin/upload'].includes(url.pathname)) {
+      && ['/api/upload', '/api/upload-audio', '/api/upload-card-video', '/api/upload-profile-bg', '/api/upload-media', '/api/upload-file', '/api/upload-card-print', '/api/admin/upload', '/api/admin/upload-file', '/api/admin/upload-doc'].includes(url.pathname)) {
       try {
         return await uploadApi(request, env, url.pathname);
       } catch (error) {

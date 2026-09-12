@@ -331,8 +331,17 @@ export async function dbGetFiles(code) {
 }
 
 // title + PDF dataURL. Xatoда Error tashlaydi (.message: bad_file | too_large | limit_reached | feature_locked).
-export const dbUploadFile = (code, title, dataUrl) =>
-  api(`/records/${encodeURIComponent(code)}/files`, { method: 'POST', body: JSON.stringify({ title, dataUrl }) });
+// PDF hujjat — IKKI BOSQICH: avval fayl xom binar sifatida yuklanadi,
+// keyin yozuvga faqat HAVOLASI yoziladi. Shu tufayli hujjat 100 MB
+// gacha bo'lishi mumkin.
+export async function dbUploadFile(code, title, file) {
+  const blob = typeof file === 'string' ? await dataUrlToBlob(file) : file;
+  const up = await dbUploadFileBinary(blob);
+  return api(`/records/${encodeURIComponent(code)}/files`, {
+    method: 'POST',
+    body: JSON.stringify({ title, fileUrl: up.url, sizeBytes: up.size }),
+  });
+}
 export const dbUpdateFile = (code, id, data) =>
   api(`/records/${encodeURIComponent(code)}/files/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const dbDeleteFile = (code, id) =>
@@ -365,14 +374,19 @@ export async function dbGetVideos(code) {
 
 // Video — raw MP4 body (base64 emas). title/thumb query paramда.
 export async function dbUploadVideo(code, blob, { title, thumbUrl } = {}) {
+  // IKKI BOSQICH: video xom binar sifatida oqim bilan yuklanadi
+  // (/api/upload-file), so'ng yozuvga faqat havolasi yoziladi. Ilgari
+  // butun tana bitta so'rovda kelardi va 100 MB Worker xotirasiga
+  // sig'masdi.
+  const up = await dbUploadFileBinary(blob);
   const qs = new URLSearchParams();
   if (title) qs.set('title', title);
   if (thumbUrl) qs.set('thumb', thumbUrl);
+  qs.set('url', up.url);
+  if (up.size) qs.set('size', String(up.size));
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/video?${qs.toString()}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'video/mp4' },
     credentials: 'same-origin',
-    body: blob,
   });
   const j = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -682,15 +696,51 @@ export async function dbAcceptGift(id) {
   return data;
 }
 
-// Karta dizayni foni uchun video (max 10 MB) — /uploads/x.mp4 manzilini qaytaradi.
-// Profil foni uchun GIF/video — 50 MB gacha, XOM BINAR sifatida
-// (base64 emas: u hajmni ~33% oshirib, Workers xotira chegarasiga urardi).
-// Limit backend'da ham AYNAN shunday tekshiriladi — bu yerdagi tekshiruv
-// faqat foydalanuvchiga tez javob berish uchun.
-export const PROFILE_BG_MAX_BYTES = 50 * 1024 * 1024; // 52 428 800
+// ── BUTUN SAYTDAGI YAGONA FAYL CHEGARASI — 100 MB ───────────────────
+// Egasining talabi. Fayl HAR DOIM xom binar sifatida ketadi (base64
+// dataURL emas): base64 hajmni ~33% oshiradi va 100 MB fayl 133 MB
+// satrga aylanib, na brauzer, na Worker uni ko'tarardi. Server ham
+// aynan shu chegarani tekshiradi — bu yerdagisi foydalanuvchiga TEZ
+// javob berish uchun.
+export const UPLOAD_MAX_BYTES = 100 * 1024 * 1024; // 104 857 600
+export const PROFILE_BG_MAX_BYTES = UPLOAD_MAX_BYTES;
+
+const uploadTooLarge = () => new Error('Maksimal hajm \u2014 100 MB.');
+
+// Faylni (yoki Blob'ni) xom binar sifatida yuklaydi va /uploads/...
+// manzilini qaytaradi. Saytdagi barcha fayl tanlash joylari shu yerga
+// keladi.
+export async function dbUploadFileBinary(file, { admin = false, doc = false } = {}) {
+  if (!file || file.size === 0) throw new Error('Fayl tanlanmadi.');
+  if (file.size > UPLOAD_MAX_BYTES) throw uploadTooLarge();
+  const path = doc ? '/api/admin/upload-doc' : admin ? '/api/admin/upload-file' : '/api/upload-file';
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    credentials: 'same-origin',
+    body: file,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.url) {
+    const k = data && data.error;
+    if (k === 'too_large') throw uploadTooLarge();
+    if (k === 'bad_file') throw new Error('Fayl formati qo\u2018llab-quvvatlanmaydi.');
+    if (k === 'unauthorized') throw new Error('Avval tizimga kiring.');
+    if (k === 'too_many_requests') throw new Error("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.");
+    throw new Error('Faylni yuklab bo\u2018lmadi.');
+  }
+  return data;
+}
+
+// dataURL -> Blob. Eski chaqiruvlar (FileReader.readAsDataURL) o'z
+// holicha qolsin deb: ular baribir xom binar bo'lib ketadi.
+export async function dataUrlToBlob(dataUrl) {
+  const res = await fetch(String(dataUrl || ''));
+  return res.blob();
+}
 
 export async function dbUploadProfileBgMedia(file) {
-  if (file.size > PROFILE_BG_MAX_BYTES) throw new Error('Maksimal hajm \u2014 50 MB.');
+  if (file.size > PROFILE_BG_MAX_BYTES) throw uploadTooLarge();
   const res = await fetch('/api/upload-profile-bg', {
     method: 'POST',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -700,7 +750,7 @@ export async function dbUploadProfileBgMedia(file) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const k = data && data.error;
-    if (k === 'too_large') throw new Error('Maksimal hajm \u2014 50 MB.');
+    if (k === 'too_large') throw uploadTooLarge();
     if (k === 'bad_file') throw new Error('Faqat GIF, MP4 yoki WebM fayl.');
     if (k === 'unauthorized') throw new Error('Avval tizimga kiring.');
     if (k === 'too_many_requests') throw new Error("Juda ko'p urinish. Birozdan so'ng qayta urinib ko'ring.");
@@ -719,7 +769,7 @@ export async function dbUploadCardVideo(file) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const k = data && data.error;
-    if (k === 'too_large') throw new Error('Video 10 MB dan katta — kichraytiring.');
+    if (k === 'too_large') throw uploadTooLarge();
     if (k === 'bad_file') throw new Error('Faqat MP4 yoki WebM video.');
     if (k === 'unauthorized') throw new Error('Avval tizimga kiring.');
     throw new Error('Videoni yuklab bo‘lmadi.');
@@ -750,39 +800,18 @@ export async function dbCancelGift(id) {
 //
 // `kind: 'cover'` — muqova rasmi: chegara 20 MB va GIF ham mumkin.
 // Boshqa hamma joyda (avatar, xabar, katalog) avvalgi chegara.
-export async function dbUploadImage(dataUrl, { kind = '' } = {}) {
-  const res = await fetch('/api/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify({ dataUrl, ...(kind ? { kind } : {}) }),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const key = data && data.error;
-    if (key === 'too_large') throw new Error(kind === 'cover' ? 'Rasm 20 MB dan katta.' : 'Rasm hajmi juda katta.');
-    if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
-    throw new Error('Rasmni yuklab bo\u2019lmadi.');
-  }
-  return data.url;
+// `kind` endi hech narsani cheklamaydi (chegara hamma joyda bir xil) —
+// chaqiruvchilarni buzmaslik uchun imzo o'z holicha qoldirildi.
+export async function dbUploadImage(fileOrDataUrl, { kind = '' } = {}) { // eslint-disable-line no-unused-vars
+  const blob = typeof fileOrDataUrl === 'string' ? await dataUrlToBlob(fileOrDataUrl) : fileOrDataUrl;
+  const { url } = await dbUploadFileBinary(blob);
+  return url;
 }
 
-export async function dbUploadAudio(dataUrl) {
-  const res = await fetch('/api/upload-audio', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify({ dataUrl }),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const key = data && data.error;
-    if (key === 'too_large') throw new Error("Musiqa fayli juda katta (maksimal ~8 MB).");
-    if (key === 'unauthorized') throw new Error('Avval tizimga kiring.');
-    if (key === 'bad_audio') throw new Error("Fayl formati qo'llab-quvvatlanmaydi (mp3, m4a, ogg, wav bo'lishi kerak).");
-    throw new Error('Musiqani yuklab bo\u2019lmadi.');
-  }
-  return data.url;
+export async function dbUploadAudio(fileOrDataUrl) {
+  const blob = typeof fileOrDataUrl === 'string' ? await dataUrlToBlob(fileOrDataUrl) : fileOrDataUrl;
+  const { url } = await dbUploadFileBinary(blob);
+  return url;
 }
 
 // ---------- Auksion ----------

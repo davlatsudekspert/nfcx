@@ -598,6 +598,8 @@ const DICT_BASE = {
   'Sizning raqamli profilingiz. Har doim yoningizda.': { ru: 'Ваш цифровой профиль. Всегда с вами.', en: 'Your digital profile. Always with you.' },
   'Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va o‘ziga xos NFCSTORE ID’ingizni bitta profilda jamlang. NFC karta yoki havola orqali qulay ulashing.':
     { ru: 'Объедините номер телефона, социальные сети, сайт и ваш уникальный NFCSTORE ID в одном профиле. Удобно делитесь им с помощью NFC-карты или ссылки.', en: 'Bring your phone number, social media profiles, website, and unique NFCSTORE ID together in one profile. Share it easily via an NFC card or link.' },
+  'Shaxsiy kontaktlaringiz, ijtimoiy tarmoqlar va to‘liq biznes profilingiz — bitta joyda. Mijoz yoki hamkoringizga NFC karta yoki havola orqali o‘zingizni zamonaviy usulda tanishtiring.':
+    { ru: 'Ваши личные контакты, социальные сети и полный бизнес-профиль — в одном месте. Представьте себя клиенту или партнёру современным способом — через NFC-карту или ссылку.', en: 'Your personal contacts, social networks and full business profile — all in one place. Introduce yourself to a client or partner the modern way, via an NFC card or a link.' },
   'Tez ulashish': { ru: 'Быстрый обмен', en: 'Quick sharing' },
   'NFC yoki havola orqali': { ru: 'Через NFC или ссылку', en: 'Via NFC or link' },
   'Ulashish shunchalik oson.': { ru: 'Делиться так просто.', en: 'Sharing is this simple.' },
@@ -2535,6 +2537,7 @@ const DICT_BASE = {
 const DICT_HOME = {
   'NFC karta + raqamli profil': { ru: 'NFC-карта + цифровой профиль', en: 'NFC card + digital profile' },
   'Bitta teginish — barcha kontaktlaringiz.': { ru: 'Одно касание — все ваши контакты.', en: 'One tap — all your contacts.' },
+  'Siz va biznesingiz — bitta profilda.': { ru: 'Вы и ваш бизнес — в одном профиле.', en: 'You and your business — in one profile.' },
   'Kimlar uchun': { ru: 'Для кого', en: 'Who is it for' },
   'Jismoniy shaxs': { ru: 'Частное лицо', en: 'Individual' },
   'Mutaxassis, tadbirkor, ijodkor — o‘z brendingiz uchun bitta havola.': { ru: 'Специалист, предприниматель, творческая личность — одна ссылка для вашего бренда.', en: 'Professional, entrepreneur, creator — a single link for your personal brand.' },

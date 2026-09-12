@@ -57,8 +57,13 @@ const upload = (bytes, init = {}) => call('/api/upload-card-print', {
   const bad = await upload(NOT_PNG, { cookie: cookie.user });
   check('1e) PNG bo\'lmagan fayl rad etiladi', bad.status, 422);
 
-  const big = await upload(Buffer.alloc(9 * 1024 * 1024, 1), { cookie: cookie.user });
-  check('1f) 8 MB dan katta fayl rad etiladi', big.status, 413);
+  // Chegara endi butun saytdagidek 100 MB (ilgari 8 MB edi) —
+  // egasining talabi. Katta maket (9 MB) qabul qilinadi, 100 MB dan
+  // oshgani esa rad etiladi.
+  const ninembPng = Buffer.concat([PNG, Buffer.alloc(9 * 1024 * 1024, 0)]);
+  check('1f) 9 MB maket endi qabul qilinadi', (await upload(ninembPng, { cookie: cookie.user })).status, 200);
+  const hugePng = Buffer.concat([PNG, Buffer.alloc(100 * 1024 * 1024, 0)]);
+  check('1f2) 100 MB dan katta fayl rad etiladi', (await upload(hugePng, { cookie: cookie.user })).status, 413);
 
   // BAYTMA-BAYT BUTUNLIK. Maket bir necha megabayt bo'ladi; yo'lda bir
   // bayt o'zgarsa yoki fayl kesilsa, PNG umuman ochilmaydi va bosmaxona

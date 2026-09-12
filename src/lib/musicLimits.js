@@ -17,7 +17,7 @@ export const MUSIC_LIMIT_PREMIUM = 10;
 // uchun 20 MB fayl ~27 MB so'rov tanasi bo'ladi — Worker cheklovlari
 // ichida. Bu qiymat ham hosting/worker.js MUSIC_MAX_MB_D1 bilan AYNAN
 // bir xil bo'lishi shart; scripts/test-music-limits.mjs tekshiradi.
-export const MUSIC_MAX_MB = 20;
+export const MUSIC_MAX_MB = 100;
 
 export function musicLimit(isPremium) {
   return isPremium ? MUSIC_LIMIT_PREMIUM : MUSIC_LIMIT_FREE;

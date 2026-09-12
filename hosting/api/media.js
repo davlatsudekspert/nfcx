@@ -33,18 +33,21 @@ const hasAccess = (access, min) => (RANK[access] ?? 0) >= (RANK[min] ?? 99);
 const FILE_LIMIT = { free: 0, silver: 0, gold: 5, premium: 15, exclusive: 999 };
 const TEAM_LIMIT = { free: 3, silver: 8, gold: 25, premium: 60, exclusive: 999 };
 const GALLERY_LIMIT = { free: 0, silver: 6, gold: 20, premium: 40, exclusive: 999 };
+// Hajm chegarasi butun saytda bir xil — 100 MB (egasining talabi).
+// Tarif endi faqat video SONINI va uzunligini belgilaydi.
+const VIDEO_MAX_MB = 100;
 const VIDEO_LIMITS = {
   free: { count: 0, mb: 0, sec: 0 },
   silver: { count: 0, mb: 0, sec: 0 },
   gold: { count: 0, mb: 0, sec: 0 },
-  premium: { count: 1, mb: 30, sec: 30 },
-  exclusive: { count: 5, mb: 50, sec: 60 },
+  premium: { count: 1, mb: VIDEO_MAX_MB, sec: 30 },
+  exclusive: { count: 5, mb: VIDEO_MAX_MB, sec: 60 },
 };
 const FEATURE_MIN = { fileCatalog: 'gold', video: 'premium' };
 
 const UPLOAD_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const PDF_RE = /^data:(application\/pdf);base64,([A-Za-z0-9+/=]+)$/;
-const PDF_MAX_BYTES = 8 * 1024 * 1024;
+const PDF_MAX_BYTES = 100 * 1024 * 1024;
 
 const FILE_COLS = 'id, title, file_url AS fileUrl, size_bytes AS sizeBytes, sort, created_at AS createdAt';
 const TEAM_COLS = 'id, name, position, photo_url AS photoUrl, member_code AS memberCode, sort';
@@ -153,6 +156,23 @@ async function handleFiles(request, env, H, code, sub) {
     const limit = FILE_LIMIT[ctx.access] ?? 0;
     if ((await count(env, 'card_files', code)) >= limit) return H.json({ error: 'limit_reached', limit }, 429);
     const body = await readJson(request);
+    const title = H.cleanStr(body.title, 80) || 'Hujjat';
+
+    // ── YANGI YO'L: fayl allaqachon /api/upload-file orqali OQIM bilan
+    //    yuklangan va bu yerga faqat HAVOLASI keladi. Aynan shu tufayli
+    //    hujjat 100 MB gacha bo'lishi mumkin: base64 yo'lida 100 MB
+    //    fayl 133 MB satrga aylanib, Worker xotirasiga sig'masdi.
+    if (body.fileUrl) {
+      const fileUrl = H.uploadOrSafeUrl(body.fileUrl);
+      if (!fileUrl.startsWith('/uploads/') || !fileUrl.endsWith('.pdf')) return H.json({ error: 'bad_file' }, 422);
+      const size = Number(body.sizeBytes) > 0 ? Math.round(Number(body.sizeBytes)) : null;
+      const row = await env.DB.prepare(
+        `INSERT INTO card_files (code, title, file_url, size_bytes, sort, created_at) VALUES (?, ?, ?, ?, 0, ?) RETURNING ${FILE_COLS}`
+      ).bind(code, title, fileUrl, size, H.nowTs()).first();
+      return H.json(fileRow(row), 201);
+    }
+
+    // ── ESKI YO'L (base64) — keshda qolgan eski mijozlar uchun. ──────
     const pm = PDF_RE.exec(String(body.dataUrl || ''));
     if (!pm) return H.json({ error: 'bad_file' }, 422);
     const bytes = base64ToBytes(pm[2]);
@@ -160,7 +180,6 @@ async function handleFiles(request, env, H, code, sub) {
     if (bytes.length > PDF_MAX_BYTES) return H.json({ error: 'too_large' }, 413);
     // PDF sehrli baytlari (%PDF-).
     if (String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-') return H.json({ error: 'bad_file' }, 422);
-    const title = H.cleanStr(body.title, 80) || 'Hujjat';
     const fileUrl = await putR2(env, `file_${randomHex(12)}.pdf`, bytes, 'application/pdf', `user:${ctx.user.id}`);
     const row = await env.DB.prepare(
       `INSERT INTO card_files (code, title, file_url, size_bytes, sort, created_at) VALUES (?, ?, ?, ?, 0, ?) RETURNING ${FILE_COLS}`
@@ -350,13 +369,32 @@ async function handleVideos(request, env, H, url, code, kind, sub) {
     if (!hasAccess(ctx.access, FEATURE_MIN.video)) return H.json({ error: 'feature_locked', feature: 'video' }, 403);
     const lim = VIDEO_LIMITS[ctx.access] || VIDEO_LIMITS.free;
     if ((await count(env, 'card_videos', code)) >= lim.count) return H.json({ error: 'limit_reached', limit: lim.count }, 429);
+    const thumbParam = H.uploadOrSafeUrl(url.searchParams.get('thumb') || '');
+    const titleParam = H.cleanStr(url.searchParams.get('title') || '', 80);
+
+    // ── YANGI YO'L: video allaqachon /api/upload-file orqali OQIM bilan
+    //    yuklangan, bu yerga faqat HAVOLASI keladi. 100 MB video
+    //    `arrayBuffer()` bilan o'qilsa Worker izolyatining 128 MB
+    //    xotirasiga urilardi.
+    const urlParam = H.uploadOrSafeUrl(url.searchParams.get('url') || '');
+    if (urlParam) {
+      if (!urlParam.startsWith('/uploads/') || !/\.(mp4|webm)$/.test(urlParam)) return H.json({ error: 'bad_file' }, 422);
+      const size = Number(url.searchParams.get('size')) > 0 ? Math.round(Number(url.searchParams.get('size'))) : null;
+      if (size && size > VIDEO_MAX_MB * 1024 * 1024) return H.json({ error: 'too_large', limit: VIDEO_MAX_MB }, 413);
+      const saved = await env.DB.prepare(
+        `INSERT INTO card_videos (code, video_url, thumb_url, title, size_bytes, sort, created_at) VALUES (?, ?, ?, ?, ?, 0, ?) RETURNING ${VIDEO_COLS}`
+      ).bind(code, urlParam, thumbParam || null, titleParam || null, size, H.nowTs()).first();
+      return H.json(videoRow(saved), 201);
+    }
+
+    // ── ESKI YO'L: xom tana (eski mijozlar uchun). ──────────────────
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (!bytes.length) return H.json({ error: 'bad_file' }, 422);
     if (bytes.length > lim.mb * 1024 * 1024) return H.json({ error: 'too_large', limit: lim.mb }, 413);
     // MP4 tekshiruvi: dastlabki 40 baytda 'ftyp' box'i bo'lishi kerak.
     if (!String.fromCharCode(...bytes.slice(0, 40)).includes('ftyp')) return H.json({ error: 'bad_file' }, 422);
-    const thumbUrl = H.uploadOrSafeUrl(url.searchParams.get('thumb') || '');
-    const title = H.cleanStr(url.searchParams.get('title') || '', 80);
+    const thumbUrl = thumbParam;
+    const title = titleParam;
     const videoUrl = await putR2(env, `video_${randomHex(12)}.mp4`, bytes, 'video/mp4', `user:${ctx.user.id}`);
     const row = await env.DB.prepare(
       `INSERT INTO card_videos (code, video_url, thumb_url, title, size_bytes, sort, created_at) VALUES (?, ?, ?, ?, ?, 0, ?) RETURNING ${VIDEO_COLS}`

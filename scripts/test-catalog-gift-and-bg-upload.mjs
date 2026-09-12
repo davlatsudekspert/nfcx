@@ -1,4 +1,4 @@
-// Katalogdagi sovg'a kartasi + profil foni media (50 MB) testi.
+// Katalogdagi sovg'a kartasi + profil foni media (100 MB) testi.
 //   node scripts/test-catalog-gift-and-bg-upload.mjs
 import worker from '../hosting/worker.js';
 import { makeEnv, seedBasic, cookie, req, makeChecker } from './lib/d1-harness.mjs';
@@ -52,8 +52,9 @@ const j = async (pathname, init) => {
   check('search results carry isGift too', hit?.isGift, true);
 }
 
-// ═══ 2. PROFIL FONI MEDIA — 50 MB ═══
-const MAX = 50 * 1024 * 1024;
+// ═══ 2. PROFIL FONI MEDIA — 100 MB ═══
+// Egasining talabi bo'yicha chegara butun saytda 100 MB ga ko'tarildi.
+const MAX = 100 * 1024 * 1024;
 const gif = (n) => { const b = new Uint8Array(n); b.set([0x47, 0x49, 0x46, 0x38], 0); return b; };
 const webm = (n) => { const b = new Uint8Array(n); b.set([0x1a, 0x45, 0xdf, 0xa3], 0); return b; };
 const mp4 = (n) => { const b = new Uint8Array(n); b.set([...'....ftypisom'].map((c) => c.charCodeAt(0)), 0); return b; };
@@ -64,7 +65,7 @@ const upload = async (bytes, type, ck = cookie.user) => {
   return { status: r.status, body };
 };
 
-check('exact limit constant is 52 428 800 bytes', MAX, 52428800);
+check('exact limit constant is 104 857 600 bytes', MAX, 104857600);
 
 {
   const ok = await upload(gif(2 * 1024 * 1024), 'image/gif');
@@ -80,15 +81,15 @@ check('exact limit constant is 52 428 800 bytes', MAX, 52428800);
 
   // Chegaraning AYNAN o'zi o'tishi kerak
   const edge = await upload(gif(MAX), 'image/gif');
-  check('a file of exactly 50 MB is accepted', edge.status, 200);
+  check('a file of exactly 100 MB is accepted', edge.status, 200);
 }
 
-// 50 MB dan KATTA -> 413, saqlanmaydi
+// 100 MB dan KATTA -> 413, saqlanmaydi
 {
   const before = env.UPLOADS._store.size;
   const big = await upload(gif(MAX + 1), 'image/gif');
   check('over the limit -> 413 too_large', [big.status, big.body?.error], [413, 'too_large']);
-  check('413 response tells the client the limit in MB', big.body?.limitMb, 50);
+  check('413 response tells the client the limit in MB', big.body?.limitMb, 100);
   check('an oversized file is NOT written to storage', env.UPLOADS._store.size, before);
 }
 
@@ -134,13 +135,19 @@ check('exact limit constant is 52 428 800 bytes', MAX, 52428800);
   check('the saved background url is kept as-is', own.body?.bgUrl, '/uploads/profilebg_deadbeef.mp4');
 }
 
-// Boshqa upload limitlari O'ZGARMAGAN
+// Karta videosi ham endi 100 MB (ilgari 10 MB edi)
 {
-  const bigVideo = await worker.fetch(new Request('https://nfcstore.uz/api/upload-card-video', {
+  const okVideo = await worker.fetch(new Request('https://nfcstore.uz/api/upload-card-video', {
     method: 'POST', body: webm(11 * 1024 * 1024),
     headers: { 'content-type': 'video/webm', cookie: cookie.user, 'cf-connecting-ip': '203.0.113.9' },
   }), env);
-  check('post/card video limit is still 10 MB (unchanged) -> 413', bigVideo.status, 413);
+  check('an 11 MB card video is now accepted', okVideo.status, 200);
+
+  const hugeVideo = await worker.fetch(new Request('https://nfcstore.uz/api/upload-card-video', {
+    method: 'POST', body: webm(MAX + 1),
+    headers: { 'content-type': 'video/webm', cookie: cookie.user, 'cf-connecting-ip': '203.0.113.9' },
+  }), env);
+  check('over 100 MB is still rejected -> 413', hugeVideo.status, 413);
 }
 
 done();

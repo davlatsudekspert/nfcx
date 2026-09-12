@@ -1981,7 +1981,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               qator chapdan boshlanadi va yon tomonga suriladi; keng ekranda
               avvalgidek markazda turadi. */}
         {/* BO'LIMLAR — endi ikkala profilda ham BIR XIL ko'rinish
-            (`ProfileTabs`, egasi tanlagan dumaloq tugmalar). "Lenta"
+            (`ProfileTabs`, egasi tanlagan dumaloq tugmalar). "Stories"
             postdan ALOHIDA bo'lim: post — doimiy, lenta — 24 soatlik.
             Ilgari istorya faqat avatar atrofidagi halqada ko'rinardi va
             uni payqamaslik oson edi. Halqa ham joyida qoladi. */}
@@ -1991,7 +1991,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           tabs={[
             { id: 'vizitka', label: "Raqamli tashrif qog'ozi" },
             { id: 'postlar', label: 'Post', count: posts.length },
-            stories.length > 0 && { id: 'lenta', label: 'Lenta', count: stories.length },
+            stories.length > 0 && { id: 'lenta', label: 'Stories', count: stories.length },
             menu.length > 0 && menuEligible(record.profileType, record.categorySlug) && { id: 'menyu', label: 'Menyu' },
             products.length > 0 && productEligible(record.profileType, record.categorySlug) && { id: 'mahsulotlar', label: 'Mahsulotlar' },
             services.length > 0 && serviceEligible(record.profileType, record.categorySlug) && { id: 'xizmatlar', label: 'Xizmatlar' },

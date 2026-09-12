@@ -28,6 +28,9 @@ const TX_KINDS = ['card_purchase', 'auction_payment', 'premium_upgrade', 'premiu
 const TX_STATUSES = ['paid', 'cancelled', 'failed_code_taken'];
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const YM_RE = /^\d{4}-\d{2}$/;
+// Bu chegara faqat ESKI base64 yo'liga tegishli: base64 hajmni ~33% ga
+// oshiradi va undan kattasi Worker izolyatining 128 MB xotirasiga
+// sig'masdi. Yangi yo'l — /api/admin/upload-doc (oqim, 100 MB).
 const DOC_MAX_BYTES = 15 * 1024 * 1024;
 const DOC_DATAURL_RE = /^data:(application\/pdf|text\/csv|image\/(?:png|jpeg|jpg|webp)|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|application\/vnd\.ms-excel);base64,([A-Za-z0-9+/=\s]+)$/;
 const DOC_EXT = { 'application/pdf': 'pdf', 'text/csv': 'csv', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/webp': 'webp', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx', 'application/vnd.ms-excel': 'xls' };
@@ -530,7 +533,11 @@ export async function handle(request, env, url, H) {
     case 'document_add': {
       const body = await readBody();
       const name = H.shortText(body.name ?? body.title, 160);
-      let docUrl = H.safeUrl(body.url ?? body.fileUrl);
+      // `uploadOrSafeUrl`: tashqi havola HAM, o'zimizning /uploads/...
+      // yo'limiz HAM qabul qilinadi. Ilgari `safeUrl` edi va u
+      // /uploads/ ni rad etardi — ya'ni oqim bilan yuklangan hujjatni
+      // saqlab bo'lmasdi.
+      let docUrl = H.uploadOrSafeUrl(body.url ?? body.fileUrl);
       const dataUrl = typeof body.dataUrl === 'string' ? body.dataUrl : '';
       if (dataUrl) {
         const stored = await storeDocDataUrl(env, dataUrl, actor);

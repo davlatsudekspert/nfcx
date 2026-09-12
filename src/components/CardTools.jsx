@@ -8,8 +8,7 @@ import {
   dbGetAnalytics, dbListLeads, dbDeleteLead,
   dbGetFiles, dbUploadFile, dbUpdateFile, dbDeleteFile,
 
-  dbUploadImage,
-} from '../lib/db.js';
+  dbUploadImage, UPLOAD_MAX_BYTES } from '../lib/db.js';
 import { effectiveAccess, featureAllowed, fileLimitFor } from '../lib/access.js';
 import { IconChevronDown } from './Icons.jsx';
 
@@ -238,22 +237,18 @@ function FilesSection({ code, access, allowed }) {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
     if (file.type !== 'application/pdf') { flash(t('Faqat PDF fayl qabul qilinadi.')); return; }
-    if (file.size > 8 * 1024 * 1024) { flash(t('Fayl hajmi 8 MB dan oshmasligi kerak.')); return; }
+    if (file.size > UPLOAD_MAX_BYTES) { flash(t('Fayl hajmi 100 MB dan oshmasligi kerak.')); return; }
     setBusy(true);
     try {
-      const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onerror = () => rej(new Error('read'));
-        r.onload = () => res(r.result);
-        r.readAsDataURL(file);
-      });
-      await dbUploadFile(code, title.trim() || file.name.replace(/\.pdf$/i, ''), dataUrl);
+      // Fayl XOM BINAR sifatida ketadi (base64 emas) — 100 MB hujjat
+      // base64 da 133 MB satrga aylanardi.
+      await dbUploadFile(code, title.trim() || file.name.replace(/\.pdf$/i, ''), file);
       setTitle('');
       await load();
     } catch (er) {
       const m = {
         limit_reached: t('Fayl limiti tugadi ({n} ta).', { n: limit }),
-        too_large: t('Fayl hajmi 8 MB dan oshmasligi kerak.'),
+        too_large: t('Fayl hajmi 100 MB dan oshmasligi kerak.'),
         bad_file: t('Faqat PDF fayl qabul qilinadi.'),
         feature_locked: t('Fayllar — Gold NFC ID yoki Profile Premiumda ochiladi.'),
       };
@@ -285,7 +280,7 @@ function FilesSection({ code, access, allowed }) {
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-base-content/50">{t('Fayllar')}: {files.length}/{limit} · {t('PDF, maks. 8 MB')}</div>
+      <div className="text-xs text-base-content/50">{t('Fayllar')}: {files.length}/{limit} · {t('PDF, maks. 100 MB')}</div>
       {msg && <div className="rounded-lg bg-error/10 px-3 py-2 text-xs text-error">{msg}</div>}
 
       <div className="space-y-2">

@@ -3,7 +3,7 @@ import { googleDirectionsUrl } from '../lib/mapLink.js';
 import { backdropProps } from '../lib/backdrop.js';
 import CloseButton from '../components/CloseButton.jsx';
 import { useAuth, authLogout, authUpdateCard } from '../lib/auth.jsx';
-import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbListStories, dbCreateStory, dbDeleteStory, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
+import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MAX_BYTES, UPLOAD_MAX_BYTES, dbUploadAudio, dbSetPrimary, dbDeleteOwnCard, dbOrderPhysicalCard, dbUploadCardPrint, dbRequestPremium, dbGetPayment, dbListWonPendingAuctions, dbListMyOrders, dbGiftCard, dbListGiftOffers, dbAcceptGift, dbRejectGift, dbCancelGift, dbSendSupportMessage, dbListMySupportMessages, dbListReferrals, dbListPosts, dbCreatePost, dbDeletePost, dbListStories, dbCreateStory, dbDeleteStory, dbGetMenuManage, dbAddMenuCategory, dbUpdateMenuCategory, dbDeleteMenuCategory, dbAddMenuItem, dbUpdateMenuItem, dbDeleteMenuItem, dbGetProductsManage, dbAddProductCategory, dbUpdateProductCategory, dbDeleteProductCategory, dbAddProduct, dbUpdateProduct, dbDeleteProduct, dbGetCatalogMeta, dbSaveCatalogPromotion, dbDeleteCatalogPromotion, dbGetServicesManage, dbAddServiceCategory, dbUpdateServiceCategory, dbDeleteServiceCategory, dbAddService, dbUpdateService, dbDeleteService, dbGetTeamManage, dbAddTeamMember, dbUpdateTeamMember, dbDeleteTeamMember, dbGetGalleryManage, dbAddGalleryImage, dbUpdateGalleryImage, dbDeleteGalleryImage } from '../lib/db.js';
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -1422,8 +1422,8 @@ function fileToCompressedDataUrl(file) {
       const b = new Uint8Array(head.result || new ArrayBuffer(0));
       const isGif = b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38;
       if (isGif) {
-        if (file.size > 3 * 1024 * 1024) {
-          reject(new Error('GIF hajmi 3 MB dan oshmasligi kerak.'));
+        if (file.size > UPLOAD_MAX_BYTES) {
+          reject(new Error('Maksimal hajm — 100 MB.'));
           return;
         }
         const gr = new FileReader();
@@ -1454,16 +1454,7 @@ function fileToCompressedDataUrl(file) {
   });
 }
 
-// Audio fayllar siqilmaydi (rasm kabi canvas orqali qayta ishlab bo'lmaydi) —
-// shunchaki base64 data URL sifatida o'qiladi, hajm serverda tekshiriladi.
-function audioFileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Fayl oqilmadi.'));
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
-}
+
 
 const PREMIUM_FEE = PROFILE_PREMIUM_FEE;  // src/lib/pricing.js — yagona manba
 
@@ -1819,7 +1810,7 @@ function PostsManager({ code }) {
     }
     setUploading(true); setMsg(null);
     try {
-      if (file.size > 10 * 1024 * 1024) throw new Error(t('Video 10 MB dan katta — kichraytiring.'));
+      if (file.size > UPLOAD_MAX_BYTES) throw new Error(t('Maksimal hajm — 100 MB.'));
       const url = await dbUploadCardVideo(file);
       setVideoUrl(url); setImageUrl('');
     } catch (err) {
@@ -1872,7 +1863,7 @@ function PostsManager({ code }) {
           <button type="button" className="btn btn-outline-gold btn-sm min-h-11" disabled={!agreed || uploading} onClick={() => videoRef.current && videoRef.current.click()}>{t('Video')}</button>
           <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
         </div>
-        <p className="mt-1 text-[14px] text-base-content/40">{t('Rasm yoki video (MP4/WebM, maks. 10 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.')}</p>
+        <p className="mt-1 text-[14px] text-base-content/40">{t('Rasm yoki video (MP4/WebM, maks. 100 MB). iPhone’da GIF/video uchun “Fayllar”dan tanlang.')}</p>
         {uploading && <p className="mt-1 flex items-center gap-2 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
         {imageUrl && <img src={imageUrl} alt="" className="mt-2 max-h-52 rounded-lg border border-white/10 object-cover" />}
         {videoUrl && <video src={videoUrl} controls playsInline className="mt-2 max-h-52 rounded-lg border border-white/10" />}
@@ -2083,7 +2074,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
     if (!file) return;
     setUploading(true); setMsg(null);
     try {
-      if (file.size > 10 * 1024 * 1024) throw new Error(t('Video 10 MB dan katta — kichraytiring.'));
+      if (file.size > UPLOAD_MAX_BYTES) throw new Error(t('Maksimal hajm — 100 MB.'));
       const url = await dbUploadCardVideo(file);
       setBgUrl(url);
     } catch (err) { setMsg({ type: 'err', text: err.message }); }
@@ -2170,7 +2161,7 @@ function CardDesignModal({ card, onClose, onSaved, initialTab = 'profile' }) {
                 <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={onPickVideo} className="hidden" />
                 {bgUrl && <button type="button" className="btn btn-ghost btn-xs" onClick={() => setBgUrl('')}>{t('Olib tashlash')}</button>}
               </div>
-              <p className="mt-1 text-[14px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm/GIF maks. 3 MB, video (MP4/WebM) maks. 10 MB.')}</p>
+              <p className="mt-1 text-[14px] text-base-content/40">{t('GIF: iPhone’da “Fayllar”dan tanlang (Galereyadan tanlansa animatsiya yo‘qoladi). Rasm, GIF va video (MP4/WebM) — maks. 100 MB.')}</p>
               {uploading && <p className="mt-1 text-xs text-base-content/45"><span className="loading loading-spinner loading-xs"></span> {t('Yuklanmoqda...')}</p>}
 
               {/* TAYYOR FONLAR — o'z rasmini izlab yurmasin. Bular
@@ -2522,9 +2513,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     const file = e.target.files && e.target.files[0];
     const idx = musicUploadIndex;
     if (!file || idx == null) return;
-    if (file.size > MUSIC_MAX_MB * 1024 * 1024) {
+    if (file.size > UPLOAD_MAX_BYTES) {
       const mb = (file.size / (1024 * 1024)).toFixed(1);
-      setMusicMsg({ idx, type: 'err', text: t("Fayl {size} MB — maksimal {n} MB. Kichikroq fayl tanlang.", { size: mb, n: MUSIC_MAX_MB }) });
+      setMusicMsg({ idx, type: 'err', text: t("Fayl {size} MB — maksimal {n} MB. Kichikroq fayl tanlang.", { size: mb, n: 100 }) });
       if (musicFileRef.current) musicFileRef.current.value = '';
       setMusicUploadIndex(null);
       return;
@@ -2532,8 +2523,8 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
     setUploadingMusic(true);
     setMusicMsg(null);
     try {
-      const dataUrl = await audioFileToDataUrl(file);
-      const url = await dbUploadAudio(dataUrl);
+      // Fayl XOM BINAR sifatida — base64 100 MB ni ko'tarmasdi.
+      const url = await dbUploadAudio(file);
       setForm((f) => ({ ...f, musicUrls: f.musicUrls.map((u, i) => (i === idx ? url : u)) }));
       setMusicMsg({ idx, type: 'ok', text: t('Musiqa yuklandi. Saqlash tugmasini bosing.') });
     } catch (err) {
@@ -4341,7 +4332,7 @@ function ProfileCompanyPicker({ form, setForm, t }) {
 }
 
 // ── ISTORYA BO'LIMI (shaxsiy kabinet) ────────────────────────────────
-// Kompaniya kabinetidagi "Lenta" bilan bir xil ko'rinish: mavjud
+// Kompaniya kabinetidagi "Stories" bilan bir xil ko'rinish: mavjud
 // istoryalar lentasi va qo'shish tugmasi.
 //
 // Yopiq tarifda ham bo'lim KO'RINADI — nima ochilishini va nima

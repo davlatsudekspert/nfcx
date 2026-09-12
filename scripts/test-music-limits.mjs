@@ -68,11 +68,13 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
   check("another user cannot change someone else's tracks -> 403", [r.status, r.body?.error], [403, 'forbidden']);
 }
 
-// ═══ 7. FAYL HAJMI LIMITI — 20 MB (2026-09: 10 -> 20) ═══
-// HAQIQIY /api/upload-audio endpointi orqali: fayl base64 data-URL
-// bo'lib boradi, shuning uchun aynan shu yo'l tekshiriladi.
+// ═══ 7. FAYL HAJMI LIMITI — 100 MB (2026-09: 10 -> 20 -> 100) ═══
+// Mijoz musiqani endi /api/upload-file orqali XOM BINAR (oqim) bilan
+// yuboradi — chegara butun saytdagidek 100 MB. Eski base64 endpointi
+// (/api/upload-audio) keshda qolgan mijozlar uchun saqlanadi va u
+// 20 MB da qoladi: base64 undan kattasini ko'tara olmaydi.
 {
-  check('frontend konstanta = 20 MB', MUSIC_MAX_MB, 20);
+  check('frontend konstanta = 100 MB', MUSIC_MAX_MB, 100);
 
   // `n` MB lik audio uchun data-URL (mp3 sarlavhasi bilan).
   const audioDataUrl = (bytes) => {
@@ -89,13 +91,14 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
   checkTrue('12 MB (avval rad etilardi) endi qabul qilinadi', r12.status < 400);
   checkTrue('12 MB fayl uchun /uploads/ havolasi qaytadi', String(r12.body?.url || '').startsWith('/uploads/'));
 
-  // AYNAN chegara — 20 MB o'tadi.
-  const rMax = await upload(MUSIC_MAX_MB * 1024 * 1024);
-  checkTrue(`aynan ${MUSIC_MAX_MB} MB qabul qilinadi`, rMax.status < 400);
+  // Eski base64 yo'lining AYNAN chegarasi — 20 MB o'tadi.
+  const LEGACY_MB = 20;
+  const rMax = await upload(LEGACY_MB * 1024 * 1024);
+  checkTrue(`eski yo'lda aynan ${LEGACY_MB} MB qabul qilinadi`, rMax.status < 400);
 
   // Chegaradan oshgani RAD etiladi (o'ylab topilgan qisqartirish yo'q).
-  const rOver = await upload(MUSIC_MAX_MB * 1024 * 1024 + 64 * 1024);
-  check(`${MUSIC_MAX_MB} MB dan kattasi -> 413 too_large`, [rOver.status, rOver.body?.error], [413, 'too_large']);
+  const rOver = await upload(LEGACY_MB * 1024 * 1024 + 64 * 1024);
+  check(`eski yo'lda ${LEGACY_MB} MB dan kattasi -> 413 too_large`, [rOver.status, rOver.body?.error], [413, 'too_large']);
 
   // Fayl R2 ga HAQIQATAN yozildi (mock bucket) va hajmi to'g'ri.
   const key = 'uploads/' + String(rMax.body.url).split('/').pop();

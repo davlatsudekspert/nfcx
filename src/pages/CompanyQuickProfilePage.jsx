@@ -92,7 +92,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
   const cta = companyCta(company?.category);
   const items = useMemo(() => (company?.catalog || []).filter((item) => item.available !== false), [company]);
-  // Qaysi bo'limlar BOR — shu tartibda: Post, Lenta, Katalog, Ma'lumot.
+  // Qaysi bo'limlar BOR — shu tartibda: Post, Stories, Katalog, Ma'lumot.
   // `activeTab` tanlanganini emas, MAVJUDINI qaytaradi: ma'lumot
   // keyinroq kelganda yoki bo'lim bo'shab qolganda sahifa bo'sh
   // ko'rinib qolmasin.
@@ -229,7 +229,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
         </section>
 
         {/* BO'LIMLAR — shaxsiy profildagi bilan BIR XIL qator.
-            "Post" — doimiy, "Lenta" — 24 soatlik. Bo'sh bo'lim
+            "Post" — doimiy, "Stories" — 24 soatlik. Bo'sh bo'lim
             chizilmaydi; katalog nomi kompaniya turiga qarab
             "Menyu" / "Tovarlar" / "Xizmatlar" bo'ladi. */}
         <ProfileTabs
@@ -237,7 +237,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
           onChange={setTab}
           tabs={[
             posts.length > 0 && { id: 'post', label: 'Post', count: posts.length },
-            stories.length > 0 && { id: 'lenta', label: 'Lenta', count: stories.length },
+            stories.length > 0 && { id: 'lenta', label: 'Stories', count: stories.length },
             items.length > 0 && { id: 'katalog', label: cta.noun, count: items.length },
             { id: 'haqida', label: 'Ma’lumot' },
           ]}

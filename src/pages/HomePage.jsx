@@ -140,16 +140,16 @@ export default function HomePage({ catalog, refreshCatalog }) {
           </Reveal>
 
           <Reveal delay="[transition-delay:80ms]">
-            <h1 className="vz-h1 mt-5 max-w-[16ch] text-[color:var(--vz-ink)]">
+            <h1 className="vz-h1 mt-5 max-w-[18ch] text-[color:var(--vz-ink)]">
               {lang === 'uz' ? (
-                <>Bitta teginish — <span className="text-[color:var(--vz-gold-2)]">barcha kontaktlaringiz.</span></>
-              ) : t('Bitta teginish — barcha kontaktlaringiz.')}
+                <>Siz va biznesingiz — <span className="text-[color:var(--vz-gold-2)]">bitta profilda.</span></>
+              ) : t('Siz va biznesingiz — bitta profilda.')}
             </h1>
           </Reveal>
 
           <Reveal delay="[transition-delay:160ms]">
             <p className="vz-lead mx-auto mt-5 lg:mx-0">
-              {t("Telefon raqamingiz, ijtimoiy tarmoqlaringiz, saytingiz va o‘ziga xos NFCSTORE ID’ingizni bitta profilda jamlang. NFC karta yoki havola orqali qulay ulashing.")}
+              {t("Shaxsiy kontaktlaringiz, ijtimoiy tarmoqlar va to‘liq biznes profilingiz — bitta joyda. Mijoz yoki hamkoringizga NFC karta yoki havola orqali o‘zingizni zamonaviy usulda tanishtiring.")}
             </p>
           </Reveal>
 
