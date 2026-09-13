@@ -62,12 +62,15 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
     }
 
     setState(() => _phase = _Phase.waiting);
-    final link = await Nfc.readLink();
+    final res = await Nfc.readLink();
     _busy = false;
     if (!mounted) return;
 
+    final link = res.link;
     if (link == null) {
-      setState(() => _phase = _Phase.unknown);
+      // Karta TEGIZILDIMI — shunga qarab boshqa xabar: "bizniki
+      // emas" va "umuman sezilmadi" ikki xil muammo.
+      setState(() => _phase = res.tagSeen ? _Phase.unknown : _Phase.error);
       return;
     }
 
@@ -127,8 +130,9 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
 
       case _Phase.error:
         return _Message(
-          title: 'O‘qib bo‘lmadi',
-          text: 'Kartani telefon orqasiga yaqinroq tuting.',
+          title: 'Karta sezilmadi',
+          text: 'Kartani telefon orqasining yuqori qismiga yaqinroq '
+              'tuting va bir necha soniya ushlab turing.',
           actionLabel: 'Qayta urinish',
           onAction: _start,
         );

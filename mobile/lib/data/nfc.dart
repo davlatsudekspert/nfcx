@@ -34,11 +34,21 @@ class Nfc {
 
   /// Tegizilgan kartadan NFCSTORE havolasini o'qish.
   ///
-  /// Qaytaradi: `NfcLink` (kod + shaxsiymi/kompaniyami) yoki `null` —
-  /// begona karta. Sessiya birinchi natijadan keyin O'ZI yopiladi:
-  /// ochiq qolgan sessiya keyingi o'qishni bloklaydi va batareyani yeydi.
-  static Future<NfcLink?> readLink({Duration timeout = const Duration(seconds: 20)}) async {
-    final completer = Completer<NfcLink?>();
+  /// Qaytaradi:
+  ///   `link`    — topilgan kod (`null` bo'lsa tanilmadi);
+  ///   `tagSeen` — karta UMUMAN tegizildimi.
+  ///
+  /// NIMA UCHUN IKKITA QIYMAT: "karta tegizilmadi" va "tegizildi,
+  /// lekin bu bizniki emas" — bular BOSHQA muammo va foydalanuvchiga
+  /// boshqacha aytilishi kerak. Faqat `null` qaytarsak, ikkalasiga
+  /// ham bitta noaniq xabar chiqarardik.
+  ///
+  /// Sessiya birinchi natijadan keyin O'ZI yopiladi: ochiq qolgan
+  /// sessiya keyingi o'qishni bloklaydi va batareyani yeydi.
+  static Future<({NfcLink? link, bool tagSeen})> readLink({
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final completer = Completer<({NfcLink? link, bool tagSeen})>();
     Timer? timer;
 
     Future<void> stop([String? reason]) async {
@@ -53,16 +63,20 @@ class Nfc {
         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
         onDiscovered: (tag) async {
           final link = _linkFromTag(tag);
-          if (!completer.isCompleted) completer.complete(link);
+          if (!completer.isCompleted) {
+            completer.complete((link: link, tagSeen: true));
+          }
           await stop();
         },
       );
     } catch (_) {
-      return null;
+      return (link: null, tagSeen: false);
     }
 
     timer = Timer(timeout, () async {
-      if (!completer.isCompleted) completer.complete(null);
+      if (!completer.isCompleted) {
+        completer.complete((link: null, tagSeen: false));
+      }
       await stop();
     });
 
