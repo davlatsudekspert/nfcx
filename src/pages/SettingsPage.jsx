@@ -16,10 +16,20 @@ export default function SettingsPage() {
   const { t } = useLanguage();
 
   const [step, setStep] = useState('idle'); // idle | code_sent
-  // Kod QAYSI kanalga ketgani — server javobidan. Ekrandagi hamma
-  // yozuv shunga qarab yoziladi, aks holda odam noto'g'ri joyni
-  // ochib kutib o'tiradi.
-  const [channel, setChannel] = useState('telegram');
+  // KOD QAYSI KANALGA KETADI.
+  //
+  // Server qoidasi: haqiqiy emaili bor odamga — pochtaga, qolganiga —
+  // Telegramga. Frontend buni OLDINDAN bila oladi: `/api/auth/me`
+  // raqam bilan ro'yxatdan o'tganlarning ichki (ko'rinmas) manzilini
+  // bo'sh qaytaradi, ya'ni `user.email` bo'lsa — u haqiqiy manzil.
+  //
+  // Nima uchun oldindan bilish kerak: tavsif va tugma yozuvi kod
+  // yuborilishidan OLDIN ko'rinadi. Ilgari ular har doim "Telegram"
+  // deb turardi va emaili bor odam noto'g'ri joyni kutardi. Xabar
+  // esa yuborilgandan keyin server javobidagi `channel` bilan aniq
+  // yangilanadi — server oxirgi so'zni aytadi.
+  const emailChannel = !!user?.email;
+  const [channel, setChannel] = useState(emailChannel ? 'email' : 'telegram');
   const [toolsCode, setToolsCode] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -297,12 +307,14 @@ export default function SettingsPage() {
           parolni bilmasa, yagona yo'l shu. */}
       <section className="mt-10 max-w-lg">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconShield /> {t("Parolni unutdingizmi?")}</h2>
-        <p className="mt-1 text-sm text-base-content/50">{t('Joriy parolni eslay olmasangiz — emailingizga yoki Telegram botingizga yuboriladigan bir martalik kod bilan yangilaysiz.')}</p>
+        <p className="mt-1 text-sm text-base-content/50">{emailChannel
+            ? t('Joriy parolni eslay olmasangiz — emailingizga yuboriladigan bir martalik kod bilan yangilaysiz.')
+            : t('Joriy parolni eslay olmasangiz — Telegram botingizga yuboriladigan bir martalik kod bilan yangilaysiz.')}</p>
 
         <div className="vz-card mt-4 p-5">
           {step === 'idle' ? (
             <button className="btn btn-gold btn-sm min-h-11" onClick={requestCode} disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Kod yuborish')}
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : (emailChannel ? t('Emailga kod yuborish') : t("Telegram'ga kod yuborish"))}
             </button>
           ) : (
             <div className="space-y-3">
@@ -354,7 +366,7 @@ export default function SettingsPage() {
                 className="input input-bordered input-sm min-h-11 w-full bg-base-100"
               />
               <button className="btn btn-gold btn-sm min-h-11" onClick={requestPhoneCode} disabled={phoneBusy}>
-                {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Kod yuborish')}
+                {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : (emailChannel ? t('Emailga kod yuborish') : t("Telegram'ga kod yuborish"))}
               </button>
             </div>
           ) : (
