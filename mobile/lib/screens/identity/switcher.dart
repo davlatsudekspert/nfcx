@@ -7,6 +7,8 @@ import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import '../business/create_company.dart';
+import '../../design/nav.dart';
 
 /// SHAXS ALMASHTIRGICH — ilovaning ildiz holati o'zgaradigan joy.
 ///
@@ -83,8 +85,24 @@ class _SwitcherBody extends StatelessWidget {
             for (final r in rows) ...[r, const SizedBox(height: S.x8)],
           const SizedBox(height: S.x4),
           // Yangi kompaniya — ro'yxatning OXIRIDA, handoff tartibi.
+          //
+          // Bu tugma ILGARI FAQAT VARAQNI YOPARDI: ko'rinishi tugma,
+          // xulqi yo'q. Endi u haqiqiy biznes ochish oqimini ochadi
+          // (`POST /api/companies`).
           Press(
-            onTap: () => Navigator.of(context).pop(),
+            haptic: true,
+            onTap: () {
+              // Varaq yopilgandan KEYIN ochiladi: aks holda yangi
+              // ekran yopilayotgan varaq ustiga chiqib, o'zi ham
+              // yopilib ketardi.
+              final nav = Navigator.of(context, rootNavigator: true);
+              Navigator.of(context).pop();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                nav.push(SlidePage<void>(
+                  builder: (_) => const CreateCompanyScreen(),
+                ));
+              });
+            },
             child: Container(
               padding: const EdgeInsets.all(S.x16),
               decoration: BoxDecoration(

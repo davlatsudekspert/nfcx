@@ -390,6 +390,96 @@ class Repo {
   /// O'z postini o'chirish.
   Future<void> deletePost(int id) => api.delete('/api/posts/$id');
 
+  // ── Biznes kontenti ────────────────────────────────────────────────
+  //
+  // Shaxsiy profil bilan BIR XIL oqim, boshqa endpoint. Yaratish
+  // ekrani (`ComposeScreen`) ikkalasiga ham xizmat qiladi —
+  // nusxalangan kod yozilmadi.
+
+  Future<void> addCompanyPost(String id, {required String imageUrl, String caption = ''}) =>
+      api.post('/api/companies/$id/posts', {
+        'imageUrl': imageUrl,
+        if (caption.isNotEmpty) 'caption': caption,
+        'agreed': true,
+      });
+
+  Future<void> addCompanyStory(
+    String id, {
+    required String imageUrl,
+    String caption = '',
+    required bool agreed,
+  }) =>
+      api.post('/api/companies/$id/stories', {
+        'imageUrl': imageUrl,
+        if (caption.isNotEmpty) 'caption': caption,
+        'agreed': agreed,
+      });
+
+  Future<void> deleteCompanyPost(String id, int postId) =>
+      api.delete('/api/companies/$id/posts/$postId');
+
+  // ── Biznes profili ─────────────────────────────────────────────────
+
+  /// Biznes profilini tahrirlash.
+  ///
+  /// FAQAT YUBORILGAN MAYDONLAR o'zgaradi: server `body[key] == null`
+  /// bo'lsa joriy qiymatni qoldiradi. Shuning uchun bu yerda ham
+  /// bo'sh maydonlar yuborilmaydi — aks holda tahrirlash ekranida
+  /// ko'rsatilmagan narsa (masalan musiqa) tozalanib ketardi.
+  Future<Company> updateCompany(String id, Map<String, dynamic> body) async {
+    await api.patch('/api/companies/$id', body);
+    return company(id);
+  }
+
+  /// Company ID bandmi va narxi qancha.
+  Future<Map<String, dynamic>> checkCompanyId(String id) async =>
+      _map(await api.get('/api/companies/check', query: {'id': id}));
+
+  /// Yangi biznes hisob ochish.
+  ///
+  /// `auto: true` — tasodifiy BEPUL Company ID (2026-09 qarori).
+  /// Nom tanlansa narxi bo'ladi va to'lovdan keyin faollashadi.
+  Future<Map<String, dynamic>> createCompany(Map<String, dynamic> body) async =>
+      _map(await api.post('/api/companies', body));
+
+  // ── Jismoniy sovg'a karta ──────────────────────────────────────────
+  //
+  // DIQQAT: bu oqim YANGI HISOB yaratadi — u kartani sovg'a olgan,
+  // hali ro'yxatdan o'tmagan odam uchun. Shuning uchun u kirish
+  // ekranidan boradi, ilova ichidan emas.
+
+  /// Kod haqiqiy sovg'a kartasimi (kimga atalgan).
+  Future<String?> giftCardLookup(String code) async {
+    final r = _map(await api.get('/api/nfc-gifts/$code'));
+    final gift = r['gift'];
+    return gift is Map ? '${gift['recipientName'] ?? ''}' : null;
+  }
+
+  /// Aktivatsiya kodini tekshirish — hisob yaratishdan OLDIN.
+  Future<void> giftCardVerify(String code, String activationCode) =>
+      api.post('/api/nfc-gifts/$code/verify', {'activationCode': activationCode});
+
+  /// Faollashtirish: hisob yaratiladi va ID biriktiriladi.
+  ///
+  /// SERVER FAQAT COOKIE QAYTARADI, token emas — shuning uchun
+  /// keyin oddiy kirish chaqiriladi. Bu vaqtinchalik yechim emas,
+  /// backend cheklovi: `jsonWithCookie` mobil mijozni bilmaydi.
+  Future<void> giftCardActivate(
+    String code, {
+    required String activationCode,
+    required String email,
+    required String password,
+    required String name,
+    String phone = '',
+  }) =>
+      api.post('/api/nfc-gifts/$code/activate', {
+        'activationCode': activationCode,
+        'email': email,
+        'password': password,
+        'name': name,
+        if (phone.isNotEmpty) 'phone': phone,
+      });
+
   // ── Sovg'a takliflari ──────────────────────────────────────────────
   //
   // `POST /api/records/:code/gift` ID ni DARHOL o'tkazmaydi — u

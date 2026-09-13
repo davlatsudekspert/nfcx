@@ -23,6 +23,7 @@ import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../content/post_detail.dart';
 import '../nfc/qr_share.dart';
+import '../business/edit_business.dart';
 
 /// PROFIL — bitta skelet, to'rt kombinatsiya.
 ///
@@ -82,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _compose(String code, ComposeKind kind) async {
     final done = await push<bool>(
       context,
-      (_) => ComposeScreen(code: code, kind: kind),
+      (_) => ComposeScreen(code: code, kind: kind, company: _isBusiness),
     );
     if (done == true && mounted) await _load();
   }
@@ -243,16 +244,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             body: TabBarView(
               children: [
                 if (_isBusiness) _CatalogGrid(items: _catalog),
-                // KONTENT QO'SHISH — faqat EGADA va faqat SHAXSIY
-                // profilda. Biznes posti boshqa endpointga boradi
-                // (`/api/companies/:id/posts`) va uning o'z oqimi
-                // kerak — soxta tugma qo'yishdan ko'ra yo'qligi
-                // ochiq turgani ma'qul.
+                // KONTENT QO'SHISH — EGADA, shaxsiyda ham biznesda
+                // ham. Yaratish ekrani bitta (`ComposeScreen`),
+                // faqat so'rov boshqa endpointga ketadi.
                 _PostGrid(
                   posts: _posts,
-                  onAdd: isOwner && !_isBusiness
-                      ? () => _compose(code, ComposeKind.post)
-                      : null,
+                  onAdd: isOwner ? () => _compose(code, ComposeKind.post) : null,
                 ),
                 _PostGrid(
                   posts: _stories,
@@ -260,9 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   emptyHint: 'Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.',
                   emptyIcon: Ico.camera,
                   addLabel: 'Story qo‘shish',
-                  onAdd: isOwner && !_isBusiness
-                      ? () => _compose(code, ComposeKind.story)
-                      : null,
+                  onAdd: isOwner ? () => _compose(code, ComposeKind.story) : null,
                 ),
                 _About(record: _record, company: _company),
               ],
@@ -587,18 +582,17 @@ class _OwnerActions extends StatelessWidget {
                 child: SecondaryButton(
                   'Tahrirlash',
                   height: 44,
-                  // Biznes profilini tahrirlash alohida oqim (katalog,
-                  // ish vaqti, manzil) — u hali qurilmagan, shuning
-                  // uchun faqat shaxsiy profilda faol.
-                  onTap: record == null
-                      ? null
-                      : () async {
-                          final saved = await push<bool>(
-                            context,
-                            (_) => EditProfileScreen(record: record!),
-                          );
-                          if (saved == true) onChanged();
-                        },
+                  // Endi IKKALASI ham: biznes o'z ekraniga boradi
+                  // (`PATCH /api/companies/:id`), shaxsiy — o'zinikiga.
+                  onTap: () async {
+                    final saved = await push<bool>(
+                      context,
+                      (_) => company != null
+                          ? EditBusinessScreen(company: company!)
+                          : EditProfileScreen(record: record!),
+                    );
+                    if (saved == true) onChanged();
+                  },
                 ),
               ),
               const SizedBox(width: S.x8),

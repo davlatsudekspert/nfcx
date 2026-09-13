@@ -3,13 +3,12 @@ import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/input.dart';
-import '../../design/components/media.dart';
 import '../../design/components/states.dart';
-import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../design/components/media_picker.dart';
 
 /// PROFILNI TAHRIRLASH.
 ///
@@ -18,10 +17,10 @@ import '../common/top_bar.dart';
 /// yoziladi. Aks holda bu ekranda ko'rsatilmaydigan maydonlar
 /// (mavzu, havolalar, karta dizayni) jimgina tozalanib ketardi.
 ///
-/// RASM YUKLASH bu ekranda YO'Q: u alohida `/api/upload` oqimini va
-/// galereya ruxsatlarini talab qiladi. Hozircha mavjud rasm
-/// ko'rsatiladi va uni saytda o'zgartirish mumkinligi aytiladi —
-/// ishlamaydigan tugma qo'yishdan ko'ra shu halolroq.
+/// RASM YUKLASH ENDI BOR: avatar va muqova `MediaPickField` orqali
+/// tanlanadi va DARHOL yuklanadi (`/api/upload-media`). Ilgari bu
+/// yerda "rasmni saytdan almashtirasiz" degan yozuv turardi —
+/// ya'ni ilovada profilni to'liq sozlab bo'lmasdi.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.record});
   final Record record;
@@ -38,6 +37,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final _phone = TextEditingController(text: widget.record.phone);
   late final _tg = TextEditingController(text: widget.record.tg);
   late final _website = TextEditingController(text: widget.record.website);
+
+  /// Yuklangan yangi rasmlar. `null` — o'zgarmagan, ya'ni eski
+  /// qiymat saqlanadi.
+  String? _avatar;
+  String? _bg;
 
   bool _busy = false;
   String? _error;
@@ -89,8 +93,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Map<String, dynamic> _recordToJson(Record r) => {
         'name': r.name,
         'role': r.role,
-        'avatarUrl': r.avatarUrl ?? '',
-        'bgUrl': r.bgUrl ?? '',
+        // Yangi rasm tanlangan bo'lsa o'sha, aks holda eskisi.
+        // Server TO'LIQ yozuvni kutadi, shuning uchun bo'sh
+        // qoldirib bo'lmaydi — rasm o'chib ketardi.
+        'avatarUrl': _avatar ?? r.avatarUrl ?? '',
+        'bgUrl': _bg ?? r.bgUrl ?? '',
         'about': r.about,
         'city': r.city,
         'address': r.address,
@@ -129,30 +136,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
                   children: [
-                    Surface(
-                      child: Row(
-                        children: [
-                          Avatar(
-                            url: widget.record.avatarUrl,
-                            name: widget.record.name,
-                            size: 56,
-                          ),
-                          const SizedBox(width: S.x12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Profil rasmi', style: T.cardTitle),
-                                SizedBox(height: 3),
-                                Text(
-                                  'Rasm va muqovani hozircha saytdan almashtirasiz.',
-                                  style: T.caption,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    MediaPickField(
+                      label: 'Muqova',
+                      repo: AppScope.of(context).repo,
+                      url: widget.record.bgUrl,
+                      aspect: 16 / 7,
+                      hint: 'Profil tepasidagi keng rasm.',
+                      onUploaded: (u) => setState(() => _bg = u),
+                    ),
+                    const SizedBox(height: S.x20),
+                    MediaPickField(
+                      label: 'Profil rasmi',
+                      repo: AppScope.of(context).repo,
+                      url: widget.record.avatarUrl,
+                      circle: true,
+                      hint: 'Kvadrat rasm eng yaxshi ko‘rinadi.',
+                      onUploaded: (u) => setState(() => _avatar = u),
                     ),
                     const SizedBox(height: S.x20),
                     Field(label: 'Ism', controller: _name, hint: 'Ismingiz'),

@@ -31,10 +31,23 @@ enum ComposeKind { post, story }
 /// javoblarini ilova O'ZI oldindan taxmin qilmaydi — narx va tarif
 /// qoidalari bitta joyda, serverda turishi kerak.
 class ComposeScreen extends StatefulWidget {
-  const ComposeScreen({super.key, required this.code, required this.kind});
+  const ComposeScreen({
+    super.key,
+    required this.code,
+    required this.kind,
+    this.company = false,
+  });
 
+  /// Shaxsiy ID kodi yoki Company ID.
   final String code;
   final ComposeKind kind;
+
+  /// Biznes profili uchunmi.
+  ///
+  /// Oqim AYNAN bir xil — faqat so'rov boshqa endpointga ketadi.
+  /// Ikkita alohida ekran yozish ularning vaqt o'tib bir-biridan
+  /// uzoqlashishiga olib kelardi.
+  final bool company;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
@@ -100,12 +113,21 @@ class _ComposeScreenState extends State<ComposeScreen> {
     try {
       final repo = AppScope.read(context).repo;
       final url = await repo.uploadMedia(bytes, contentType: _mime(_name));
-      if (_isStory) {
-        await repo.addStory(widget.code,
-            imageUrl: url, caption: _caption.text.trim(), agreed: _agreed);
+      final caption = _caption.text.trim();
+      if (widget.company) {
+        if (_isStory) {
+          await repo.addCompanyStory(widget.code,
+              imageUrl: url, caption: caption, agreed: _agreed);
+        } else {
+          await repo.addCompanyPost(widget.code, imageUrl: url, caption: caption);
+        }
       } else {
-        await repo.addPost(widget.code,
-            imageUrl: url, caption: _caption.text.trim());
+        if (_isStory) {
+          await repo.addStory(widget.code,
+              imageUrl: url, caption: caption, agreed: _agreed);
+        } else {
+          await repo.addPost(widget.code, imageUrl: url, caption: caption);
+        }
       }
       successHaptic();
       if (mounted) Navigator.of(context).pop(true);
@@ -129,7 +151,10 @@ class _ComposeScreenState extends State<ComposeScreen> {
         'feature_locked' => _isStory
             ? 'Istorya yuqoriroq tarifda ochiladi.'
             : 'Post yuqoriroq tarifda ochiladi.',
-        'limit_reached' => 'Bu tarifdagi post chegarasiga yetdingiz.',
+        'limit_reached' => 'Post chegarasiga yetdingiz.',
+        // Biznesda bepul tarifda post va istorya yopiq.
+        'plan_locked' => 'Bepul tarifda post va story yopiq.',
+        'rules_not_accepted' => 'Kontent qoidalariga rozilik bering.',
         'too_large' => 'Rasm juda katta.',
         'bad_image' => 'Bu fayl rasm emas.',
         'not_owner' => 'Bu ID sizga tegishli emas.',

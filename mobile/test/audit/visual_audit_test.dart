@@ -23,6 +23,11 @@ import 'package:nfcstore/screens/nfc/id_detail.dart';
 import 'package:nfcstore/design/components/icons.dart';
 import 'package:nfcstore/design/components/identity_card.dart';
 import 'package:nfcstore/design/components/states.dart';
+import 'package:nfcstore/screens/business/create_company.dart';
+import 'package:nfcstore/screens/business/edit_business.dart';
+import 'package:nfcstore/screens/content/compose.dart';
+import 'package:nfcstore/screens/entry/gift_card.dart';
+import 'package:nfcstore/screens/nfc/gift_offers.dart';
 import 'package:nfcstore/screens/nfc/nfc_center.dart';
 import 'package:nfcstore/screens/nfc/nfc_scan.dart';
 import 'package:nfcstore/screens/nfc/nfc_write.dart';
@@ -356,7 +361,42 @@ void main() {
     );
     await golden(t, '32-bosh-holatlar');
   });
+
+  testWidgets('33 biznesni tahrirlash', (t) async {
+    final s = await ready();
+    await pumpScreen(t, EditBusinessScreen(company: s.companies.first), state: s);
+    await golden(t, '33-biznes-tahrir');
+  });
+
+  testWidgets('34 biznes hisob ochish', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const CreateCompanyScreen(), state: s);
+    await golden(t, '34-biznes-ochish');
+  });
+
+  testWidgets('35 sovg‘a kartasi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const GiftCardScreen(), state: s);
+    await golden(t, '35-sovga-kartasi');
+  });
+
+  testWidgets('36 sovg‘a takliflari', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const GiftOffersScreen(), state: s);
+    await golden(t, '36-sovga-takliflari');
+  });
+
+  testWidgets('37 post yaratish', (t) async {
+    final s = await ready();
+    await pumpScreen(
+      t,
+      const ComposeScreen(code: 'VIP001', kind: ComposeKind.post),
+      state: s,
+    );
+    await golden(t, '37-post-yaratish');
+  });
 }
+
 
 /// Audit kadridagi ajratuvchi chiziq — holatlar bir-biriga
 /// qo'shilib ketmasin.

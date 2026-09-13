@@ -10,6 +10,8 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import 'forgot_password.dart';
 import 'register.dart';
+import '../../design/components/icons.dart';
+import 'gift_card.dart';
 
 /// Kirish — email YOKI telefon, plus parol.
 ///
@@ -115,6 +117,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: S.x12),
                 PrimaryButton('Kirish', loading: _busy, onTap: _busy ? null : _submit),
+                const SizedBox(height: S.x20),
+                // SOVG'A KARTASI — hisobi YO'Q odam uchun.
+                //
+                // Kimdir unga karta sovg'a qilgan bo'lsa, u avval
+                // ro'yxatdan o'tib, keyin kartani qidirishi kerak
+                // emas: kod va aktivatsiya kodi bilan hisob shu
+                // yerning o'zida ochiladi.
+                SecondaryButton(
+                  'Menda sovg‘a kartasi bor',
+                  height: 48,
+                  icon: const NIcon(Ico.gift, size: 17, color: C.platinum),
+                  onTap: () => push(context, (_) => const GiftCardScreen()),
+                ),
                 const SizedBox(height: S.x24),
                 Center(
                   child: GestureDetector(
