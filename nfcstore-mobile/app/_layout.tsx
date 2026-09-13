@@ -137,6 +137,12 @@ function Shell({ ready }: { ready: boolean }) {
         <Stack.Screen name="buy" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="company/new" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="edit/[code]" options={{ animation: 'slide_from_right' }} />
+        {/* Istorya ko'ruvchi — to'liq ekran, pastdan ochiladi va
+            pastga surib yopiladi. */}
+        <Stack.Screen
+          name="stories/[code]"
+          options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }}
+        />
         <Stack.Screen
           name="post/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}

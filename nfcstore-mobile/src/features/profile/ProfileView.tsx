@@ -12,6 +12,7 @@ import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
+import { MusicBar } from './MusicBar';
 import { ProfileHeader } from './header/ProfileHeader';
 import type { ProfileVM } from './profileVM';
 import { CatalogGrid } from './tabs/CatalogGrid';
@@ -81,7 +82,8 @@ export function ProfileView({
   // bo'yicha topadi, `React.Children.toArray` esa `null` bolalarni
   // tashlab yuboradi — shuning uchun indeks shartli bloklar soniga
   // qarab hisoblanadi, qo'lda yozilmaydi.
-  const tabBarIndex = 1 + (stories ? 1 : 0) + (vm.featuredCompany ? 1 : 0);
+  const tabBarIndex =
+    1 + (vm.musicUrls.length ? 1 : 0) + (stories ? 1 : 0) + (vm.featuredCompany ? 1 : 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -104,6 +106,8 @@ export function ProfileView({
           onDashboard={onDashboard}
           onEdit={onEdit}
         />
+
+        {vm.musicUrls.length ? <MusicBar urls={vm.musicUrls} /> : null}
 
         {stories}
 

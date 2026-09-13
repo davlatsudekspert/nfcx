@@ -18,7 +18,7 @@ import { useSvgId } from '@/lib/svgId';
  * (`stroke="var(--bg)"`), shuning uchun `bg` prop kerak.
  */
 
-export type NavIconName = 'home' | 'katalog' | 'company' | 'profile';
+export type NavIconName = 'home' | 'search' | 'nfc' | 'company' | 'profile';
 
 type ActiveProps = { size?: number; a1: string; a2: string; bg: string };
 type IdleProps = { size?: number; color: string };
@@ -184,6 +184,73 @@ export function ProfileIdle({ size = 21, color }: IdleProps) {
   );
 }
 
+/* ── Search ───────────────────────────────────────────────────────── */
+
+export function SearchActive({ size = 21, a1, a2, bg }: ActiveProps) {
+  const id = useGrad();
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <GradDefs id={id} a1={a1} a2={a2} />
+      <Circle cx={10.5} cy={10.5} r={7.5} fill={`url(#${id})`} />
+      <Circle cx={10.5} cy={10.5} r={4.2} fill={bg} />
+      <Path
+        d="M16.2 16.2L21 21"
+        stroke={`url(#${id})`}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function SearchIdle({ size = 21, color }: IdleProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M16.2 16.2L21 21M18 10.5a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/* ── NFC (markaziy tab) ───────────────────────────────────────────── */
+
+export function NfcActive({ size = 21, a1, a2 }: ActiveProps) {
+  const id = useGrad();
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <GradDefs id={id} a1={a1} a2={a2} />
+      <Circle cx={6.2} cy={12} r={1.9} fill={`url(#${id})`} />
+      <Path
+        d="M10.6 8a5.6 5.6 0 010 8M14.2 5.2a9.7 9.7 0 010 13.6M17.8 2.6a13.6 13.6 0 010 18.8"
+        stroke={`url(#${id})`}
+        strokeWidth={2.1}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+export function NfcIdle({ size = 21, color }: IdleProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={6.2} cy={12} r={1.6} fill={color} />
+      <Path
+        d="M10.6 8a5.6 5.6 0 010 8M14.2 5.2a9.7 9.7 0 010 13.6M17.8 2.6a13.6 13.6 0 010 18.8"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
 export const NAV_ICONS: Record<
   NavIconName,
   {
@@ -192,7 +259,8 @@ export const NAV_ICONS: Record<
   }
 > = {
   home: { Active: HomeActive, Idle: HomeIdle },
-  katalog: { Active: KatalogActive, Idle: KatalogIdle },
+  search: { Active: SearchActive, Idle: SearchIdle },
+  nfc: { Active: NfcActive, Idle: NfcIdle },
   company: { Active: CompanyActive, Idle: CompanyIdle },
   profile: { Active: ProfileActive, Idle: ProfileIdle },
 };

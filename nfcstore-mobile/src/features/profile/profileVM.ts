@@ -44,6 +44,8 @@ export type ProfileVM = {
   catalog: CatalogItem[];
   plan?: CompanyPlan;
   hasMusic: boolean;
+  /** Fon musiqasi manzillari — pleyer shu ro'yxatni ijro etadi. */
+  musicUrls: string[];
   isOwner: boolean;
   following: boolean;
   shareUrl: string;
@@ -109,6 +111,7 @@ export function businessVM(
     catalog: c.catalog,
     plan: c.plan,
     hasMusic: (c.music ?? []).length > 0,
+    musicUrls: c.music ?? [],
     isOwner: resolveIsOwner(realOwner, override),
     following: c.following,
     shareUrl: `${SITE}/kompaniyalar/${id}`,
@@ -176,6 +179,7 @@ export function cardVM(card: Card, opts: CardVMOptions): ProfileVM {
     links,
     catalog: [],
     hasMusic: (card.musicUrls ?? []).length > 0,
+    musicUrls: card.musicUrls ?? [],
     isOwner: resolveIsOwner(opts.isOwner, opts.override),
     following: !!opts.isFollowing,
     shareUrl: `${SITE}/${card.code}`,

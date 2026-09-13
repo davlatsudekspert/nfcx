@@ -9,6 +9,9 @@ import type { Card } from '@/api/types';
 import { BackBar } from '@/components/BackBar';
 import { Field, Input, Notice } from '@/components/Form';
 import { GoldButton } from '@/components/GoldButton';
+import { Photo } from '@/components/Photo';
+import { TapScale } from '@/components/TapScale';
+import { pickAndUpload, uploadErrText } from '@/lib/upload';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -21,9 +24,9 @@ import { sans } from '@/theme/type';
  * avval mavjud yozuv o'qiladi, `recordToInput()` bilan to'liq shaklga
  * keltiriladi va faqat shundan keyin ustiga o'zgarish qo'yiladi.
  *
- * Bu ekranda faqat MATNLI maydonlar bor. Rasm yuklash, tema va karta
- * dizayni veb tahrirlagichida qoladi — ular alohida yuklash oqimini
- * talab qiladi va bu bosqichga kirmaydi.
+ * Profil rasmi shu yerdan almashtiriladi: galereyadan tanlanadi,
+ * darhol serverga yuklanadi va manzili formaga yoziladi. Tema va karta
+ * dizayni veb tahrirlagichida qoladi.
  */
 export function EditLinksScreen() {
   const { theme } = useTheme();
@@ -39,6 +42,24 @@ export function EditLinksScreen() {
   const [form, setForm] = useState<Partial<Card>>({});
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const pickAvatar = async () => {
+    setError('');
+    setUploading(true);
+    try {
+      const url = await pickAndUpload('avatar', true);
+      // `null` — odam bekor qildi, bu xato emas.
+      if (url) {
+        setForm((prev) => ({ ...prev, avatarUrl: url }));
+        setSaved(false);
+      }
+    } catch (e) {
+      setError(uploadErrText(e));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Javob kelganda formani bir marta to'ldiramiz. Keyingi qayta
   // yuklanishlar yozayotgan matnni bosib ketmasligi uchun `data` ning
@@ -59,6 +80,7 @@ export function EditLinksScreen() {
         // Mavjud qiymatlar ASOS, ustiga formadagi o'zgarish.
         ...recordToInput(base),
         name: (form.name ?? base.name).trim(),
+        avatarUrl: form.avatarUrl ?? base.avatarUrl,
         role: form.role ?? base.role,
         phone: form.phone ?? base.phone,
         email: form.email ?? base.email,
@@ -128,6 +150,46 @@ export function EditLinksScreen() {
       >
         {saved ? <Notice kind="ok" text="Saqlandi." /> : null}
         {error ? <Notice kind="error" text={error} /> : null}
+
+        {/* Profil rasmi — galereyadan tanlanadi va darhol yuklanadi.
+            Manzil formada saqlanadi, bazaga esa "Saqlash" bosilganda
+            qolgan maydonlar bilan birga ketadi. */}
+        <Field label="Profil rasmi" hint="Bosib galereyadan tanlang">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <TapScale
+              radius={34}
+              onPress={uploading ? undefined : pickAvatar}
+              accessibilityLabel="Profil rasmini almashtirish"
+              style={{ width: 68, height: 68, borderRadius: 34 }}
+            >
+              <Photo uri={form.avatarUrl} width={68} height={68} radius={34} step={6} />
+              {uploading ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    borderRadius: 34,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0,0,0,.55)',
+                  }}
+                >
+                  <ActivityIndicator color={theme.a1} />
+                </View>
+              ) : null}
+            </TapScale>
+
+            <Text
+              style={[sans(400, 12, 1.45), { color: 'rgba(255,255,255,.52)', flex: 1 }]}
+            >
+              {uploading ? 'Yuklanmoqda…' : 'Kvadrat rasm eng yaxshi ko’rinadi'}
+            </Text>
+          </View>
+        </Field>
 
         <Field label="Ism" error={nameOk ? undefined : 'Ism bo’sh bo’lishi mumkin emas'}>
           <Input
@@ -214,7 +276,7 @@ export function EditLinksScreen() {
         </Field>
 
         <Text style={[sans(400, 11.5, 1.5), { color: 'rgba(255,255,255,.42)' }]}>
-          Rasm, tema va karta dizayni hozircha sayt orqali tahrirlanadi.
+          Tema va karta dizayni hozircha sayt orqali tahrirlanadi.
         </Text>
 
         <GoldButton

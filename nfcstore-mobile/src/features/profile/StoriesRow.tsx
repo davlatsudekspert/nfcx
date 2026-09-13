@@ -73,10 +73,7 @@ export function StoriesRow() {
           unseen={latestId(a) !== seenIds[a.code]}
           onPress={() => {
             markSeen(a.code, latestId(a));
-            // Istoryalar uchun alohida ko'ruvchi hali yo'q — muallif
-            // profili ochiladi, u yerda oxirgi post to'liq ekranda
-            // ko'riladi. (Ilova va sayt bir xil ishlaydi.)
-            router.push(`/p/${a.code}`);
+            router.push(`/stories/${a.code}`);
           }}
         />
       ))}

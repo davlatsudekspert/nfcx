@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Text,
   TextInput,
@@ -19,13 +17,15 @@ import {
 } from '@/api/endpoints';
 import type { CatalogRecord, PublicCompany } from '@/api/types';
 import { CardSurface } from '@/components/Card';
+import { Photo } from '@/components/Photo';
+import { usePullToRefresh } from '@/components/Refreshing';
+import { CardSkeleton } from '@/components/Skeleton';
 import { ChevronRight } from '@/components/Glyphs';
-import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
-import { mediaUrl } from '@/lib/media';
+import { tapSelect } from '@/lib/haptics';
 import { A120, SH } from '@/theme/css';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -70,6 +70,10 @@ export function KatalogScreen() {
   const { vm, accounts, active } = useProfileData();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const refresh = usePullToRefresh([
+    ['catalog', 'records'],
+    ['catalog', 'companies'],
+  ]);
   const [query, setQuery] = useState('');
 
   const trimmed = query.trim();
@@ -144,8 +148,8 @@ export function KatalogScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <ScreenHeader
-        title="Katalog"
-        sub="Odamlar, brendlar va imkoniyatlarni toping"
+        title="Qidiruv"
+        sub="Odamlar, brendlar va NFC ID’larni toping"
         handle={vm?.handle ?? '@…'}
         onOpenSwitcher={() => setSwitcherOpen(true)}
       />
@@ -217,20 +221,24 @@ export function KatalogScreen() {
             key={f.key}
             label={f.label}
             on={filter === f.key}
-            onPress={() => setFilter(f.key)}
+            onPress={() => {
+              tapSelect();
+              setFilter(f.key);
+            }}
           />
         ))}
       </View>
 
       {loading && !entries.length ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.a1} />
+        <View style={{ paddingHorizontal: 16 }}>
+          <CardSkeleton rows={6} />
         </View>
       ) : (
         <FlatList
           data={entries}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          refreshControl={refresh}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: 24,
@@ -387,31 +395,7 @@ function MiniNfcCard({ entry, onPress }: { entry: Entry; onPress: () => void }) 
           yuqori chetdagi nozik yorug'lik kartaga hajm beradi. */}
       <CardSurface tilt={150} />
 
-      {entry.photo ? (
-        <Image
-          source={{ uri: mediaUrl(entry.photo) }}
-          contentFit="cover"
-          style={{
-            width: 54,
-            height: 54,
-            borderRadius: 9,
-            borderWidth: 1,
-            borderColor: theme.rim,
-          }}
-        />
-      ) : (
-        <StripeFill
-          step={6}
-          style={{
-            width: 54,
-            height: 54,
-            borderRadius: 9,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: theme.rim,
-          }}
-        />
-      )}
+      <Photo uri={entry.photo} width={54} height={54} radius={9} step={6} />
 
       <View style={{ flex: 1, gap: 5, minWidth: 0 }}>
         <Text style={[sans(700, 13.5, 1.2), { color: theme.ink }]} numberOfLines={1}>
