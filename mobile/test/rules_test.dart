@@ -40,7 +40,26 @@ void main() {
   test('Ichki messenjer yo‘q', () {
     // Chat ekrani ham, suhbatlar ro‘yxati ham, profildagi "Xabar"
     // tugmasi ham bo‘lmaydi. Bog‘lanish faqat tashqi ilovalar orqali.
-    expect(hits(RegExp(r'[Cc]hat[A-Z_]|[Cc]onversation|Messages[A-Z]?|Xabar yuborish')), isEmpty);
+    //
+    // ISTISNO — QO'LLAB-QUVVATLASH. Qoidaning maqsadi:
+    // FOYDALANUVCHILAR BIR-BIRIGA yozmasin. Yordam ekrani esa
+    // foydalanuvchi va ADMIN o'rtasidagi bir tomonlama murojaat
+    // (`POST /api/support`), suhbat emas: javobni faqat admin
+    // yozadi va u ham bitta maydon. Shuning uchun qoida buzilmaydi,
+    // faqat "Xabar yuborish" so'zlari mos tushadi.
+    //
+    // Tarjima jadvallari ham chetda: ular shunchaki o'sha matnning
+    // ruscha va inglizcha nusxasi.
+    const supportOnly = {
+      'lib/screens/settings/support.dart',
+      'lib/l10n/ru.dart',
+      'lib/l10n/en.dart',
+      'lib/data/repo.dart',
+    };
+    final found = hits(RegExp(
+      r'[Cc]hat[A-Z_]|[Cc]onversation|Messages[A-Z]?|Xabar yuborish',
+    )).where((p) => !supportOnly.contains(p.replaceAll(r'\', '/'))).toList();
+    expect(found, isEmpty, reason: 'Ichki messenjer izi: $found');
   });
 
   test('SMS tasdiqlash yo‘q', () {

@@ -26,6 +26,9 @@ import 'package:nfcstore/design/components/states.dart';
 import 'package:nfcstore/l10n/strings.dart';
 import 'package:nfcstore/screens/business/create_company.dart';
 import 'package:nfcstore/screens/settings/appearance.dart';
+import 'package:nfcstore/screens/settings/payments_history.dart';
+import 'package:nfcstore/screens/settings/premium.dart';
+import 'package:nfcstore/screens/settings/support.dart';
 import 'package:nfcstore/screens/business/edit_business.dart';
 import 'package:nfcstore/screens/content/compose.dart';
 import 'package:nfcstore/screens/entry/gift_card.dart';
@@ -452,7 +455,7 @@ void main() {
   // To'rt mavzu BIR XIL ekranda. Farqni shundan boshqa yo'l bilan
   // baholab bo'lmaydi: "yashil mavzu" degan yozuvni o'qib, u qanday
   // ko'rinishini bilib bo'lmaydi.
-  for (final p in Palette.all)
+  for (final p in Palette.all) {
     testWidgets('44 mavzu — ${p.id}', (t) async {
       C.apply(p);
       addTearDown(() => C.apply(Palette.original));
@@ -460,13 +463,14 @@ void main() {
       await pumpScreen(t, const NfcCenterScreen(), state: s);
       await golden(t, '44-mavzu-${p.id}');
     });
+  }
 
   // ── TILLAR ─────────────────────────────────────────────────────────
   //
   // Tarjima UZUNROQ bo'lishi mumkin ("Sozlamalar" -> "Настройки" ->
   // "Settings") va maketni buzishi mumkin. Buni faqat kadrni ko'rib
   // aniqlash mumkin.
-  for (final l in AppLocale.values)
+  for (final l in AppLocale.values) {
     testWidgets('45 til — ${l.code}', (t) async {
       applyLocale(l);
       addTearDown(() => applyLocale(AppLocale.uz));
@@ -474,11 +478,30 @@ void main() {
       await pumpScreen(t, const SettingsScreen(), state: s);
       await golden(t, '45-til-${l.code}');
     });
+  }
 
   testWidgets('46 ko‘rinish sozlamasi', (t) async {
     final s = await ready();
     await pumpScreen(t, const AppearanceScreen(), state: s);
     await golden(t, '46-korinish');
+  });
+
+  testWidgets('47 to‘lovlar tarixi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const PaymentsHistoryScreen(), state: s);
+    await golden(t, '47-tolovlar');
+  });
+
+  testWidgets('48 yordam', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const SupportScreen(), state: s);
+    await golden(t, '48-yordam');
+  });
+
+  testWidgets('49 premium', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const PremiumScreen(), state: s);
+    await golden(t, '49-premium');
   });
 }
 

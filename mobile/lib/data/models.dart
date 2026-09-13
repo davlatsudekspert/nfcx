@@ -507,3 +507,70 @@ class GiftOffer {
         createdAt: _s(j['createdAt']),
       );
 }
+
+/// TO'LOV TARIXIDAGI BITTA YOZUV.
+///
+/// `kind` — buyurtma turi (ID sotib olish, jismoniy karta, premium).
+/// `status` — `pending` / `paid` / `cancelled` / `failed`.
+class PaymentEntry {
+  const PaymentEntry({
+    required this.id,
+    required this.kind,
+    required this.code,
+    required this.price,
+    required this.status,
+    this.createdAt = '',
+  });
+
+  final int id;
+  final String kind;
+  final String code;
+  final int price;
+  final String status;
+  final String createdAt;
+
+  bool get isPaid => status == 'paid';
+  bool get isPending => status == 'pending';
+  bool get isCancelled => status == 'cancelled' || status == 'failed';
+
+  factory PaymentEntry.fromJson(Map<String, dynamic> j) => PaymentEntry(
+        id: _i(j['id']),
+        kind: _s(j['kind']),
+        code: _s(j['code']).toUpperCase(),
+        price: _i(j['price']),
+        status: _s(j['status']),
+        createdAt: _s(j['createdAt']),
+      );
+}
+
+/// QO'LLAB-QUVVATLASH MUROJAATI.
+///
+/// `reply` bo'sh bo'lsa — hali javob berilmagan.
+class SupportMessage {
+  const SupportMessage({
+    required this.id,
+    required this.message,
+    this.reply = '',
+    this.status = 'pending',
+    this.createdAt = '',
+    this.repliedAt = '',
+  });
+
+  final int id;
+  final String message;
+  final String reply;
+  final String status;
+  final String createdAt;
+  final String repliedAt;
+
+  bool get answered => reply.trim().isNotEmpty;
+
+  factory SupportMessage.fromJson(Map<String, dynamic> j) => SupportMessage(
+        id: _i(j['id']),
+        message: _s(j['message']),
+        reply: _s(j['reply']),
+        status: _s(j['status']),
+        createdAt: _s(j['createdAt']),
+        repliedAt: _s(j['repliedAt']),
+      );
+}

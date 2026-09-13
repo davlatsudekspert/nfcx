@@ -312,9 +312,6 @@ class Repo {
   Future<List<Order>> orders() async =>
       _rows(await api.get('/api/orders'), 'orders').map(Order.fromJson).toList();
 
-  Future<List<Map<String, dynamic>>> payments() async =>
-      _rows(await api.get('/api/payments'), 'payments');
-
   /// To'lov usullari yoqilganmi (Payme/Click kalitlari sozlanganmi).
   Future<Map<String, dynamic>> paymentsEnabled() async =>
       _map(await api.get('/api/settings/payments-enabled'));
@@ -441,6 +438,63 @@ class Repo {
   /// Nom tanlansa narxi bo'ladi va to'lovdan keyin faollashadi.
   Future<Map<String, dynamic>> createCompany(Map<String, dynamic> body) async =>
       _map(await api.post('/api/companies', body));
+
+  // ── To'lovlar tarixi ───────────────────────────────────────────────
+
+  /// Barcha buyurtma va to'lovlar — eng yangisi birinchi.
+  ///
+  /// Server 50 tagacha qator beradi. Sahifalash YO'Q va kerak ham
+  /// emas: bitta odamda yuzlab to'lov bo'lmaydi.
+  Future<({List<PaymentEntry> items, int pendingPayout})> payments() async {
+    final r = _map(await api.get('/api/payments'));
+    return (
+      items: _rows(r, 'payments').map(PaymentEntry.fromJson).toList(),
+      pendingPayout: (r['pendingPayout'] as num?)?.round() ?? 0,
+    );
+  }
+
+  // ── Qo'llab-quvvatlash ─────────────────────────────────────────────
+
+  /// Murojaatlar tarixi — javob bilan birga.
+  Future<List<SupportMessage>> supportMessages() async =>
+      _rows(await api.get('/api/support'), 'messages')
+          .map(SupportMessage.fromJson)
+          .toList();
+
+  /// Yangi murojaat. Server uni Telegram orqali adminga yuboradi.
+  Future<void> sendSupport(String message) =>
+      api.post('/api/support', {'message': message});
+
+  /// Telegram bot foydalanuvchi nomi (`@nomi`). Sozlanmagan bo'lsa
+  /// `null` — tugma ko'rsatilmaydi, ishlamaydigan havola berilmaydi.
+  Future<String?> telegramBot() async {
+    try {
+      final r = _map(await api.get('/api/telegram/bot'));
+      final name = '${r['username'] ?? ''}'.trim();
+      return name.isEmpty ? null : name;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Premium ────────────────────────────────────────────────────────
+
+  /// Premium profil so'rovi.
+  ///
+  /// KUTAYOTGAN BUYURTMA XATO EMAS: server o'sha buyurtmaning
+  /// havolasini qaytaradi, yangisini yaratmaydi — ya'ni ikki marta
+  /// pul yechilishi mumkin emas.
+  Future<Order> requestPremium() async {
+    final r = _map(await api.post('/api/premium/request'));
+    return Order(
+      id: (r['orderId'] as num?)?.round() ?? 0,
+      code: 'PREMIUM',
+      price: (r['amount'] as num?)?.round() ?? 0,
+      status: 'pending',
+      kind: 'premium_upgrade',
+      payLink: '${r['payLink'] ?? ''}'.isEmpty ? null : '${r['payLink']}',
+    );
+  }
 
   // ── Jismoniy sovg'a karta ──────────────────────────────────────────
   //

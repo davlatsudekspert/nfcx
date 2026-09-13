@@ -142,6 +142,29 @@ Future<http.Response> _normalResponse(http.Request req) async {
       } else if (p == '/api/settings/physical-nfc-pricing') {
         body = {'physicalCardFee': 200000, 'delivery': {'minDays': 3, 'maxDays': 5},
                 'tiers': [{'minQty': 1, 'maxQty': 9, 'pricePerUnit': 120000}]};
+      } else if (p == '/api/payments') {
+        body = {
+          'payments': [
+            {'id': 2096, 'kind': 'physical_card_order', 'code': 'VIP001',
+             'price': 200000, 'status': 'paid', 'createdAt': '2026-09-10 14:22:00'},
+            {'id': 2081, 'kind': 'premium_upgrade', 'code': 'PREMIUM',
+             'price': 20000, 'status': 'pending', 'createdAt': '2026-09-08 09:10:00'},
+            {'id': 2044, 'kind': 'card_purchase', 'code': 'AAA111',
+             'price': 149000, 'status': 'cancelled', 'createdAt': '2026-08-29 18:40:00'},
+          ],
+          'pendingPayout': 0,
+        };
+      } else if (p == '/api/support') {
+        body = {
+          'messages': [
+            {'id': 12, 'message': 'Kartam o‘qilmayapti.', 'reply': 'NFC yoqilganini tekshiring.',
+             'status': 'answered', 'createdAt': '2026-09-11 10:00:00'},
+            {'id': 13, 'message': 'Biznes profilini qanday ochaman?', 'reply': '',
+             'status': 'pending', 'createdAt': '2026-09-12 12:30:00'},
+          ],
+        };
+      } else if (p == '/api/telegram/bot') {
+        body = {'username': 'nfcstore_bot'};
       } else if (p == '/api/categories') {
         body = {'categories': []};
       } else {

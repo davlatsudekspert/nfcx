@@ -19,6 +19,9 @@ import '../identity/edit_profile.dart';
 import 'change_password.dart';
 import '../../l10n/strings.dart';
 import 'appearance.dart';
+import 'support.dart';
+import 'premium.dart';
+import 'payments_history.dart';
 
 /// SOZLAMALAR — va IKKI XIL TASDIQLASH.
 ///
@@ -201,7 +204,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: AppPrefsScope.of(context).locale.label,
                     onTap: () => push(context, (_) => const AppearanceScreen()),
                   ),
-                  _Row(label: tr('To‘lovlar'), icon: Ico.card, value: tr('Payme · Click'), last: true),
+                  _Row(
+                    label: tr('To‘lovlar'),
+                    icon: Ico.card,
+                    onTap: () => push(context, (_) => const PaymentsHistoryScreen()),
+                  ),
+                  _Row(
+                    label: tr('Premium obuna'),
+                    icon: Ico.star,
+                    onTap: () => push(context, (_) => const PremiumScreen()),
+                  ),
+                  _Row(
+                    label: tr('Yordam'),
+                    icon: Ico.bell,
+                    onTap: () => push(context, (_) => const SupportScreen()),
+                    last: true,
+                  ),
                   ]),
 
                   const SizedBox(height: S.x24),
