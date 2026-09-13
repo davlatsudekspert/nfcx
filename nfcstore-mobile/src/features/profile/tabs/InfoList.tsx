@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
-import { SHADOW } from '@/theme/css';
+import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
@@ -42,7 +42,7 @@ export function InfoList({
       {rows.map((row) => (
         <Card
           key={row.k}
-          shadow="soft"
+          
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -82,7 +82,7 @@ export function LinksList({ links }: { links: InfoRow[] }) {
       {links.map((link) => (
         <Card
           key={`${link.k}-${link.v}`}
-          shadow="soft"
+          
           style={[
             {
               flexDirection: 'row',
@@ -92,7 +92,7 @@ export function LinksList({ links }: { links: InfoRow[] }) {
               paddingHorizontal: 15,
               paddingVertical: 14,
             },
-            SHADOW.soft,
+            SH.card(theme.a2),
           ]}
         >
           <Text style={[sans(600, 12.5, 1.3), { color: theme.ink }]}>{link.k}</Text>

@@ -4,16 +4,25 @@ import { Text, useWindowDimensions, View } from 'react-native';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
 import type { CompanyPost } from '@/api/types';
+import { mediaUrl } from '@/lib/media';
+import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
 /**
- * Feed — 3 ustunli postlar to'ri (maketda `gap:2px; padding:2px`).
+ * Feed — 3 ustunli postlar to'ri.
+ *
+ *   gap: 8px; padding: 12px 14px 24px;
+ *   katak: radius 12, `1px solid #2d2518`,
+ *          `0 8px 18px rgba(0,0,0,.5), 0 0 14px -6px #b3860f`
  *
  * REELS emas: `videoUrl` to'ldirilgan yozuvlar Reels tabiga ketadi
  * (egasi tasdiqlagan qoida), shuning uchun bu ro'yxat allaqachon
  * filtrlangan holda keladi.
  */
+const PAD = 14;
+const GAP = 8;
+
 export function FeedGrid({
   posts,
   onOpen,
@@ -24,12 +33,11 @@ export function FeedGrid({
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
 
-  // Maketda `grid-template-columns: 1fr 1fr 1fr; gap:2px; padding:2px`.
-  // RN da grid yo'q, shuning uchun katakning kengligi ANIQ hisoblanadi:
-  // ekran kengligidan chetlar (2+2) va ikki tirqish (2+2) ayiriladi.
+  // RN da CSS grid yo'q, shuning uchun katakning kengligi ANIQ
+  // hisoblanadi: ekran kengligidan ikki chet va ikki tirqish ayiriladi.
   // Foiz bilan qilsa tirqishlar hisobga olinmay, oxirgi ustun pastga
   // tushib ketardi.
-  const tile = (width - 4 - 4) / 3;
+  const tile = (width - PAD * 2 - GAP * 2) / 3;
 
   if (!posts.length) {
     return <EmptyState text="Hozircha post yo’q" />;
@@ -40,21 +48,34 @@ export function FeedGrid({
       style={{
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 2,
-        padding: 2,
+        gap: GAP,
+        paddingTop: 12,
+        paddingHorizontal: PAD,
+        paddingBottom: 24,
       }}
     >
       {posts.map((post) => (
         <TapScale
           key={post.id}
-          radius={0}
+          radius={12}
           onPress={onOpen ? () => onOpen(post) : undefined}
           accessibilityLabel={post.caption || 'Post'}
-          style={{ width: tile, height: tile }}
+          style={[
+            {
+              width: tile,
+              height: tile,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.rim,
+              backgroundColor: theme.c2,
+              overflow: 'hidden',
+            },
+            SH.tile(theme.a2),
+          ]}
         >
           {post.imageUrl ? (
             <Image
-              source={{ uri: post.imageUrl }}
+              source={{ uri: mediaUrl(post.imageUrl) }}
               contentFit="cover"
               style={{ flex: 1 }}
             />

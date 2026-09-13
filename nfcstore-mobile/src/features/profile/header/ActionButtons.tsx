@@ -4,7 +4,6 @@ import Svg, { Path } from 'react-native-svg';
 import { GhostButton, GoldButton } from '@/components/GoldButton';
 import { TapScale } from '@/components/TapScale';
 import { useTheme } from '@/theme/ThemeProvider';
-import { mono } from '@/theme/type';
 
 /**
  * Sarlavha ostidagi amal tugmalari — spetsifikatsiya 5-bo'limi:
@@ -94,66 +93,6 @@ export function ActionButtons({
         </Svg>
       </TapScale>
     </View>
-  );
-}
-
-/**
- * Sarlavha yuqorisidagi handle + chevron — PROFIL ALMASHTIRGICHNING
- * kirish nuqtasi.
- *
- * Spetsifikatsiya talabi: u Personal va Business ekranlarda BIR XIL
- * joyda va bir xil ishlashi kerak. Shuning uchun bu komponent profil
- * turiga umuman qaramaydi — ikkala ko'rinish ham shu bitta qatordan
- * foydalanadi. Home / Katalog / Company ekranlarida ham xuddi shu
- * komponent ishlatiladi.
- */
-export function HandleChip({
-  handle,
-  onPress,
-  bordered = false,
-}: {
-  handle: string;
-  onPress: () => void;
-  /** Home/Katalog/Company da maketda chegara bor, profilda yo'q. */
-  bordered?: boolean;
-}) {
-  const { theme } = useTheme();
-
-  return (
-    <TapScale
-      radius={12}
-      onPress={onPress}
-      accessibilityLabel={`${handle} — profilni almashtirish`}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 7,
-        paddingHorizontal: 10,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,.04)',
-        ...(bordered ? { borderWidth: 1, borderColor: theme.rim } : null),
-      }}
-    >
-      <Text
-        style={[
-          mono(600, bordered ? 12 : 13),
-          { color: 'rgba(255,255,255,.72)', letterSpacing: bordered ? 0.6 : 0.78 },
-        ]}
-      >
-        {handle}
-      </Text>
-      <Svg width={10} height={6} viewBox="0 0 10 6">
-        <Path
-          d="M1 1l4 4 4-4"
-          stroke={theme.a1}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </Svg>
-    </TapScale>
   );
 }
 

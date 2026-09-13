@@ -1,13 +1,11 @@
 import { type ReactNode } from 'react';
-import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * Maketdagi `.tapscale` ning RN ekvivalenti:
@@ -77,17 +75,7 @@ export function TapScale({
   };
 
   return (
-    <AnimatedPressable
-      onPress={onPress}
-      onPressIn={press}
-      onPressOut={release}
-      disabled={disabled || !onPress}
-      hitSlop={hitSlop}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
-      style={[style, boxStyle]}
-    >
+    <Animated.View style={[style, boxStyle]}>
       <Animated.View
         pointerEvents="none"
         style={[
@@ -105,6 +93,27 @@ export function TapScale({
         ]}
       />
       {children}
-    </AnimatedPressable>
+
+      {/* Bosish qatlami — KONTENTDAN KEYIN va ustida.
+          Ilgari bu yerda `Animated.createAnimatedComponent(Pressable)`
+          ishlatilgan edi: animatsiya to'g'ridan-to'g'ri Pressable ustiga
+          qo'yilganda uning ichki `Pressability` mexanizmi ref/native
+          props orqali buziladi va bosish umuman ishlamay qolishi mumkin.
+          Endi animatsiya tashqi View da, bosish esa STANDART Pressable
+          da — ikkalasi bir-biriga xalaqit qilmaydi.
+          Layout o'zgarmaydi: `style` avvalgidek tashqi elementda. */}
+      {onPress && !disabled ? (
+        <Pressable
+          onPress={onPress}
+          onPressIn={press}
+          onPressOut={release}
+          hitSlop={hitSlop}
+          accessibilityRole={accessibilityRole}
+          accessibilityLabel={accessibilityLabel}
+          accessibilityState={accessibilityState}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+    </Animated.View>
   );
 }

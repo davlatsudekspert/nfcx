@@ -2,11 +2,12 @@ import { Image } from 'expo-image';
 import { Text, useWindowDimensions, View } from 'react-native';
 
 import type { CatalogItem, CompanyPlan } from '@/api/types';
-import { CardBackdrop } from '@/components/Card';
+import { CardSurface } from '@/components/Card';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { money } from '@/lib/format';
-import { SHADOW } from '@/theme/css';
+import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
@@ -133,10 +134,10 @@ function ProductCard({
           borderColor: theme.rim,
           overflow: 'hidden',
         },
-        SHADOW.card,
+        SH.card(theme.a2),
       ]}
     >
-      <CardBackdrop radius={14} />
+      <CardSurface />
 
       <View
         style={{
@@ -147,7 +148,7 @@ function ProductCard({
         }}
       >
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} contentFit="cover" style={{ flex: 1 }} />
+          <Image source={{ uri: mediaUrl(item.imageUrl) }} contentFit="cover" style={{ flex: 1 }} />
         ) : (
           <StripeFill
             step={8}

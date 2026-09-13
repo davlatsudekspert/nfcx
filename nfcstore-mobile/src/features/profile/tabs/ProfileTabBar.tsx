@@ -35,14 +35,19 @@ export function ProfileTabBar({
   isOwner: boolean;
   isBusiness: boolean;
 }) {
+  const { theme } = useTheme();
+
   return (
     <View
       style={{
         flexDirection: 'row',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,.07)',
+        borderTopColor: theme.rim,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,.07)',
+        borderBottomColor: theme.rim,
+        // Yopishqoq qator — ostidagi kontent orqasidan ko'rinmasligi
+        // uchun fon QATTIQ (spetsifikatsiya: "solid #0a0805 background").
+        backgroundColor: theme.bg,
       }}
     >
       <TabButton tab="feed" active={active} onChange={onChange} label="Postlar" />

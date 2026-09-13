@@ -1,10 +1,12 @@
-import { apiFetch } from './client';
+import { ApiError, apiFetch } from './client';
 import type {
   AuthMe,
   Card,
   CatalogItem,
   CatalogRecord,
   Company,
+  CompanyAvailability,
+  CompanyInput,
   CompanyOrder,
   CompanyPost,
   CompanyStats,
@@ -15,6 +17,9 @@ import type {
   PaymentsSettings,
   PhysicalPricing,
   PublicCompany,
+  PurchasePending,
+  RecordInput,
+  StoryAuthor,
   TapInfo,
 } from './types';
 
@@ -48,6 +53,20 @@ export const getCompanyStories = (companyId: string) =>
   ).then((r) => r.stories);
 
 /**
+ * GET /api/stories/feed -> {feed}
+ *
+ * Profildagi istorya qatorining MANBASI. Backend (worker.js:8098)
+ * faqat SIZ OBUNA BO'LGAN odamlarning muddati o'tmagan istoryalarini
+ * qaytaradi va bitta odamning bir nechta istoryasini BITTA yozuvga
+ * yig'adi — ya'ni javob to'g'ridan-to'g'ri "dumaloqchalar qatori".
+ *
+ * Kirmagan foydalanuvchiga bo'sh ro'yxat qaytadi (401 emas), shuning
+ * uchun so'rov xato bermaydi va qator shunchaki ko'rinmaydi.
+ */
+export const getStoriesFeed = () =>
+  apiFetch<{ feed: StoryAuthor[] }>('/stories/feed').then((r) => r.feed ?? []);
+
+/**
  * POST /api/companies/:id/follow — BITTA endpoint ikki yo'nalish uchun:
  * bosilganda holat teskarisiga o'giriladi va yangi holat qaytadi.
  * O'z kompaniyasiga obuna bo'lish 409 `cannot_follow_self` beradi.
@@ -59,9 +78,19 @@ export const toggleFollowCompany = (companyId: string) =>
 
 /* ══ Shaxsiy karta profili ══════════════════════════════════════════ */
 
-/** GET /api/records/:code -> shaxsiy karta (ochiq profil) */
+/**
+ * GET /api/records/:code -> shaxsiy karta (ochiq profil).
+ *
+ * DIQQAT: bu endpoint yozuvni O'RAMASDAN, to'g'ridan-to'g'ri qaytaradi
+ * (worker.js:5322 `return json(rec)`), boshqa endpointlardagidek
+ * `{record: …}` EMAS. Ilgari bu yerda `.record` ochilardi va natija
+ * `undefined` bo'lib qolardi; TanStack Query v5 esa `undefined` ni XATO
+ * deb hisoblaydi, shuning uchun har qanday SHAXSIY profil "Ma'lumotni
+ * yuklab bo'lmadi" ekraniga tushardi va almashtirgichdan shaxsiy ID
+ * tanlab ham bo'lmasdi.
+ */
 export const getRecord = (code: string) =>
-  apiFetch<{ record: Card }>(`/records/${encodeURIComponent(code)}`).then((r) => r.record);
+  apiFetch<Card>(`/records/${encodeURIComponent(code)}`);
 
 /**
  * Obuna statistikasi. Kompaniyadan FARQLI: shaxsiy kartada uchta alohida
@@ -101,6 +130,105 @@ export const searchRecords = (q: string) =>
 /** GET /api/companies — faqat FAOL kompaniyalar, maxfiy maydonlarsiz. */
 export const getPublicCompanies = () =>
   apiFetch<{ companies: PublicCompany[] }>('/companies').then((r) => r.companies);
+
+/* ══ Yangi NFC ID sotib olish ═══════════════════════════════════════ */
+
+/**
+ * Kod bandmi? Alohida "tekshirish" endpointi YO'Q — sayt ham shunday
+ * qiladi: profil so'raladi, 404 kelsa kod bo'sh.
+ */
+export const isCodeTaken = (code: string): Promise<boolean> =>
+  getRecord(code)
+    .then(() => true)
+    .catch((e) => {
+      if (e instanceof ApiError && e.status === 404) return false;
+      throw e;
+    });
+
+/**
+ * POST /api/records/:code — shaxsiy NFC ID sotib olish.
+ *
+ * Narxni SERVER hisoblaydi (`personalPurchaseQuote`), clientdan kelgan
+ * summaga ishonilmaydi. Javob 202 bilan kutilayotgan buyurtma va
+ * `payLink` qaytaradi — to'lov oqimi ILOVADA QURILMAYDI, shu havola
+ * ochiladi (saytdagi naqshning o'zi).
+ */
+export const buyRecord = (code: string, record: RecordInput) =>
+  apiFetch<PurchasePending>(`/records/${encodeURIComponent(code)}`, {
+    method: 'POST',
+    body: record,
+  });
+
+/**
+ * PUT /api/records/:code — profilni yangilash.
+ *
+ * DIQQAT: server yozuvni TO'LIQ ALMASHTIRADI (`updateRecord`), ya'ni
+ * yuborilmagan maydon O'CHADI. Shuning uchun chaqiruvchi avval mavjud
+ * yozuvni o'qib, uning ustiga o'zgarishni qo'yib yuborishi shart —
+ * `recordToInput()` shu ish uchun.
+ */
+export const updateRecord = (code: string, record: RecordInput) =>
+  apiFetch<Card>(`/records/${encodeURIComponent(code)}`, { method: 'PUT', body: record });
+
+/**
+ * Mavjud kartani PUT uchun tayyor shaklga o'tkazadi — maydonlar
+ * yo'qolib ketmasligi uchun.
+ */
+export function recordToInput(card: Card): RecordInput {
+  return {
+    name: card.name,
+    role: card.role,
+    avatarUrl: card.avatarUrl,
+    phone: card.phone,
+    email: card.email,
+    tg: card.tg,
+    instagram: card.instagram,
+    facebook: card.facebook,
+    twitter: card.twitter,
+    linkedin: card.linkedin,
+    website: card.website,
+    about: card.about,
+    city: card.city,
+    address: card.address,
+    profileType: card.profileType,
+    hidePhone: card.hidePhone,
+    musicUrls: card.musicUrls,
+    extraLinks: card.extraLinks,
+  };
+}
+
+/* ══ Yangi Company ID ═══════════════════════════════════════════════ */
+
+/** GET /api/companies/check?id=... — nom bo'shmi va narxi qancha. */
+export const checkCompanyId = (id: string) =>
+  apiFetch<CompanyAvailability>(`/companies/check?id=${encodeURIComponent(id)}`);
+
+/**
+ * POST /api/companies — yangi Company ID.
+ *
+ * `auto: true` bo'lsa server tasodifiy BEPUL ID beradi va to'lov
+ * so'ralmaydi. Nom tanlansa — narxi bor va to'lovdan keyin faollashadi.
+ * Ikkala holatda ham kompaniya `pending_review` holatida yaratiladi:
+ * admin tasdiqlagach faol bo'ladi.
+ */
+export const createCompany = (input: CompanyInput) =>
+  apiFetch<{ company: Company }>('/companies', { method: 'POST', body: input }).then(
+    (r) => r.company,
+  );
+
+/** worker.js:248 dagi `COMPANY_CATEGORIES` — boshqa qiymat rad etiladi. */
+export const COMPANY_CATEGORIES = [
+  { key: 'restaurant', label: 'Restoran' },
+  { key: 'cafe', label: 'Kafe' },
+  { key: 'market', label: 'Market' },
+  { key: 'shop', label: "Do'kon" },
+  { key: 'services', label: 'Xizmatlar' },
+  { key: 'construction', label: 'Qurilish' },
+  { key: 'clinic', label: 'Klinika' },
+  { key: 'pharmacy', label: 'Dorixona' },
+  { key: 'education', label: "Ta'lim" },
+  { key: 'other', label: 'Boshqa' },
+] as const;
 
 /* ══ NFC teginish ═══════════════════════════════════════════════════ */
 
@@ -187,6 +315,8 @@ export type {
   CatalogItem,
   CatalogRecord,
   Company,
+  CompanyAvailability,
+  CompanyInput,
   CompanyOrder,
   CompanyPost,
   CompanyStats,
@@ -197,5 +327,8 @@ export type {
   PaymentsSettings,
   PhysicalPricing,
   PublicCompany,
+  PurchasePending,
+  RecordInput,
+  StoryAuthor,
   TapInfo,
 };

@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 
 import { Sheet } from '@/components/Sheet';
 import { TapScale } from '@/components/TapScale';
-import { A140, A165, SHADOW } from '@/theme/css';
+import { A140, A165, SH } from '@/theme/css';
 import { THEME_KEYS, THEMES, type ThemeKey } from '@/theme/themes';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
@@ -28,7 +28,7 @@ export function SettingsSheet({
   visible: boolean;
   onClose: () => void;
   /** Hisob, bildirishnoma, til, to'lov, chiqish kabi qatorlar. */
-  rows: { k: string; v: string }[];
+  rows: { k: string; v: string; onPress?: () => void; danger?: boolean }[];
 }) {
   const { themeKey, setTheme } = useTheme();
 
@@ -71,8 +71,11 @@ export function SettingsSheet({
         }}
       >
         {rows.map((row) => (
-          <View
+          <TapScale
             key={row.k}
+            radius={0}
+            onPress={row.onPress}
+            accessibilityLabel={row.k}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -83,13 +86,18 @@ export function SettingsSheet({
               borderBottomColor: 'rgba(255,255,255,.06)',
             }}
           >
-            <Text style={[sans(500, 13), { color: 'rgba(255,255,255,.78)' }]}>
+            <Text
+              style={[
+                sans(500, 13),
+                { color: row.danger ? '#d98b8b' : 'rgba(255,255,255,.78)' },
+              ]}
+            >
               {row.k}
             </Text>
             <Text style={[mono(500, 12), { color: 'rgba(255,255,255,.4)' }]}>
               {row.v}
             </Text>
-          </View>
+          </TapScale>
         ))}
       </View>
     </Sheet>
@@ -125,7 +133,12 @@ function ThemeCard({
           borderColor: selected ? t.a1 : 'rgba(255,255,255,.09)',
           overflow: 'hidden',
         },
-        selected ? null : SHADOW.tier,
+        // Spetsifikatsiya: TANLANGAN kartaning yorug'ligi kuchliroq
+        // (`0 0 20px -4px <accent2>`), tanlanmaganida esa oddiy karta
+        // soyasi. Rang kartaning O'Z temasidan olinadi.
+        selected
+          ? { boxShadow: `0px 10px 22px rgba(0, 0, 0, 0.5), 0px 0px 20px -4px ${t.a2}` }
+          : SH.cardTight(t.a2),
       ]}
     >
       {/* Har bir karta O'Z temasining rangida chiziladi — odam tanlashdan
@@ -134,6 +147,7 @@ function ThemeCard({
         colors={[t.c1, t.c2]}
         start={A165.start}
         end={A165.end}
+        pointerEvents="none"
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
 

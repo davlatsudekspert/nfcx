@@ -33,7 +33,13 @@ export function StripeFill({
 
   return (
     <View style={style}>
-      <Svg style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      {/* Bu qatlam BEZAK. `pointerEvents="none"` SHART: u kontentning
+          ustida to'liq yotadi va bo'lmasa o'zini o'rab turgan bosiladigan
+          elementdan bosishni tortib oladi. */}
+      <Svg
+        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      >
         <Defs>
           <Pattern
             id={id}

@@ -1,11 +1,40 @@
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
+import { ChevronLeft } from '@/components/Glyphs';
 import { TapScale } from '@/components/TapScale';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
+
+/**
+ * Orqaga chevroni — 34×34 dumaloqqa yaqin plita. Tashqi profil,
+ * Dashboard VA profil tabining yuqori panelida bir xil ko'rinadi
+ * (spetsifikatsiya: "Top app bar: back chevron · handle chip · gear").
+ */
+export function BackTile({ onPress }: { onPress: () => void }) {
+  const { theme } = useTheme();
+
+  return (
+    <TapScale
+      radius={12}
+      onPress={onPress}
+      accessibilityLabel="Orqaga"
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,.04)',
+        borderWidth: 1,
+        borderColor: theme.rim,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <ChevronLeft color={theme.ink} size={17} width={1.8} />
+    </TapScale>
+  );
+}
 
 /**
  * Tashqi profil va Dashboard uchun yuqori qator: orqaga tugmasi va
@@ -35,8 +64,7 @@ export function BackBar({
         paddingBottom: 6,
       }}
     >
-      <TapScale
-        radius={12}
+      <BackTile
         onPress={() => {
           // `canGoBack` bo'lmasa (masalan deep link bilan to'g'ridan-to'g'ri
           // ochilgan) Profil tabiga qaytamiz — ilova boshi berk ko'chada
@@ -44,27 +72,7 @@ export function BackBar({
           if (router.canGoBack()) router.back();
           else router.replace('/(tabs)/profile');
         }}
-        accessibilityLabel="Orqaga"
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 12,
-          backgroundColor: 'rgba(255,255,255,.04)',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Svg width={17} height={17} viewBox="0 0 24 24">
-          <Path
-            d="M14.5 5.5L8 12l6.5 6.5"
-            stroke={theme.ink}
-            strokeWidth={1.8}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-        </Svg>
-      </TapScale>
+      />
 
       <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
         <Text style={[sans(700, 14), { color: theme.ink }]} numberOfLines={1}>

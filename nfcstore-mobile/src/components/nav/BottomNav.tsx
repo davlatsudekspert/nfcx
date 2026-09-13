@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
@@ -12,23 +11,35 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
+import { tapSelect } from '@/lib/haptics';
 import { useSvgId } from '@/lib/svgId';
-import { A180 } from '@/theme/css';
+import { A180, SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
 import { NAV_ICONS, type NavIconName } from './NavIcons';
 import { NavGlow } from './NavGlow';
 
-/** Maketdagi tartib: Home / Katalog / Company / Profile. Auction YO'Q. */
-const TABS: { route: string; icon: NavIconName; label: string }[] = [
+/**
+ * Tartib: Home / Qidiruv / NFC / Company / Profile. Auction YO'Q —
+ * u saytdan olib tashlangan.
+ *
+ * NFC O'RTADA va `center: true` bilan belgilangan: u ilovaning asosiy
+ * vazifasi, shuning uchun vizual jihatdan ajralib turishi kerak.
+ * Lekin ARZON suzuvchi tugma qilinmaydi (brifdagi aniq talab) — u
+ * o'sha qatorda qoladi, faqat ikonkasi kattaroq va ortida doimiy
+ * yumshoq yorug'lik turadi.
+ */
+const TABS: { route: string; icon: NavIconName; label: string; center?: boolean }[] = [
   { route: 'index', icon: 'home', label: 'Home' },
-  { route: 'katalog', icon: 'katalog', label: 'Katalog' },
+  { route: 'katalog', icon: 'search', label: 'Qidiruv' },
+  { route: 'nfc', icon: 'nfc', label: 'NFC', center: true },
   { route: 'company', icon: 'company', label: 'Company' },
   { route: 'profile', icon: 'profile', label: 'Profile' },
 ];
 
-const INDICATOR_W = 26;
+const TAB_COUNT = TABS.length;
+const INDICATOR_W = 24;
 
 /**
  * `Tabs` ning `tabBar` prop'i beradigan ma'lumotning BIZGA KERAKLI
@@ -61,7 +72,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
   const glowId = useSvgId('indGlow');
 
   // Indikatorning gorizontal o'rni. Maketda:
-  //   left: calc(index*25% + 12.5% - 13px)
+  //   left: calc(index/N*100% + 50%/N - 12px)
   //   transition: left .34s cubic-bezier(.4,0,.2,1)
   const indicator = useSharedValue(0);
 
@@ -72,7 +83,8 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
 
   useEffect(() => {
     if (width <= 0) return;
-    const target = (activeIndex * 0.25 + 0.125) * width - INDICATOR_W / 2;
+    const target =
+      ((activeIndex + 0.5) / TAB_COUNT) * width - INDICATOR_W / 2;
     indicator.value = withTiming(target, {
       duration: 340,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
@@ -89,7 +101,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
       setWidth(w);
       // Birinchi o'lchashda indikator joyida TURIB qolsin, chapdan
       // uchib kelmasin.
-      indicator.value = (activeIndex * 0.25 + 0.125) * w - INDICATOR_W / 2;
+      indicator.value = ((activeIndex + 0.5) / TAB_COUNT) * w - INDICATOR_W / 2;
     }
   };
 
@@ -100,7 +112,8 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
         position: 'relative',
         flexDirection: 'row',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,.08)',
+        // Spetsifikatsiya: `1px solid #2d2518` — temaning `rim` i.
+        borderTopColor: theme.rim,
         paddingTop: 9,
         paddingHorizontal: 4,
         // Maketda 8px; qurilmadagi gesture-bar uchun xavfsiz zona qo'shiladi.
@@ -108,9 +121,13 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
         backgroundColor: theme.bg,
       }}
     >
-      {/* linear-gradient(180deg, rgba(255,255,255,.03), transparent) */}
+      {/* linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.25))
+          + `backdrop-filter: blur(18px)`.
+          Orqa fonni bulutlashtirish (backdrop-filter) RN da yo'q —
+          panel ostidagi kontent ko'rinmaydi, shuning uchun u qattiq fon
+          bilan almashtirilgan. Gradientning o'zi maketdagidek. */}
       <LinearGradient
-        colors={['rgba(255,255,255,.03)', 'rgba(255,255,255,0)']}
+        colors={['rgba(255,255,255,.05)', 'rgba(0,0,0,.25)']}
         start={A180.start}
         end={A180.end}
         pointerEvents="none"
@@ -137,6 +154,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
           <Svg
             width={INDICATOR_W + 18}
             height={13}
+            pointerEvents="none"
             style={{ position: 'absolute', left: -9, top: -5 }}
           >
             <Defs>
@@ -157,7 +175,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
             colors={[theme.a1, theme.a2]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
-            style={{ flex: 1, borderRadius: 3 }}
+            style={[{ flex: 1, borderRadius: 3 }, SH.navIndicator(theme.a1)]}
           />
         </Animated.View>
       ) : null}
@@ -172,7 +190,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
             onPress={() => {
               if (!route) return;
               if (i !== activeIndex) {
-                Haptics.selectionAsync().catch(() => {});
+                tapSelect();
                 navigation.navigate(route.name as never);
               }
             }}
@@ -188,7 +206,7 @@ function NavItem({
   focused,
   onPress,
 }: {
-  tab: { route: string; icon: NavIconName; label: string };
+  tab: { route: string; icon: NavIconName; label: string; center?: boolean };
   focused: boolean;
   onPress: () => void;
 }) {
@@ -226,18 +244,27 @@ function NavItem({
         position: 'relative',
       }}
     >
-      {focused ? <NavGlow color={theme.a1} /> : null}
+      {/* Markaziy NFC tabi ortidagi yorug'lik DOIMIY — u faol
+          bo'lmaganda ham ko'rinib turadi va shu bilan qatordan
+          ajraladi. Qolgan tablarda yorug'lik faqat faol holatda. */}
+      {focused || tab.center ? (
+        <NavGlow
+          color={theme.a1}
+          width={tab.center ? 52 : 46}
+          opacity={focused ? 0.22 : 0.12}
+        />
+      ) : null}
       <Animated.View style={iconStyle}>
         {focused ? (
-          <Active a1={theme.a1} a2={theme.a2} bg={theme.bg} />
+          <Active size={tab.center ? 25 : 21} a1={theme.a1} a2={theme.a2} bg={theme.bg} />
         ) : (
-          <Idle color={theme.off} />
+          <Idle size={tab.center ? 25 : 21} color={tab.center ? theme.a2 : theme.off} />
         )}
       </Animated.View>
       <Text
         style={[
           focused ? sans(700, 9.5) : sans(500, 9.5),
-          { color: focused ? theme.a1 : theme.off },
+          { color: focused ? theme.a1 : tab.center ? theme.a2 : theme.off },
         ]}
       >
         {tab.label}

@@ -3,9 +3,10 @@
 NFCSTORE Android ilovasi (iOS'ga tayyor arxitektura). Expo SDK 57 + React
 Native 0.86 + TypeScript.
 
-Dizayn manbasi: Claude Design maketi `NFCSTORE App.dc.html` (shu
-repozitoriyaning `project/` papkasida). Maketdagi ranglar, o'lchamlar,
-SVG yo'llari va animatsiya vaqtlari **aynan** ko'chirilgan.
+Dizayn manbasi: Claude Design handoff'i (`design_handoff_nfcstore_app/`).
+Maketdagi ranglar, o'lchamlar, radiuslar, soyalar va animatsiya vaqtlari
+**aynan** ko'chirilgan. Prototipdagi SONLAR esa ko'chirilmagan — barcha
+ma'lumot jonli sayt API'sidan olinadi.
 
 ## Bu bosqichda nima bor
 
@@ -14,7 +15,7 @@ SVG yo'llari va animatsiya vaqtlari **aynan** ko'chirilgan.
 - **NFC o'qish** — ilovaning asosiy vazifasi. Kartani tekkizsangiz teg
   ichidagi URL o'qiladi, koddan profil ochiladi, chip esa orqada
   tekshiriladi. ⚠️ **Expo Go da ishlamaydi** — development build kerak
-  (pastdagi "NFC va development build" bo'limiga qarang)
+  (pastdagi "APK olish" bo'limiga qarang)
 - **Home** — tezkor amal kartalari, hammasi haqiqiy endpointlarda:
   ID holati, jismoniy karta narxi, sovg'a (kutilayotganlar soni),
   to'lovlar (Payme holati, premium/sinov muddati), tarif chizig'i
@@ -46,6 +47,7 @@ Profil qismi (kelishilgan asosiy qamrov):
   preseti, qurilmada saqlanadi), oxirgi post to'liq ekranda
 - **Pastki navigatsiya** — gradient bilan to'ldirilgan faol ikonka,
   ortidagi yorug'lik, siljiydigan indikator, bosishda 1.12x sakrash
+
 Almashtirgich tugmasi (handle + chevron) BARCHA tablarda bir xil joyda.
 
 Auction tab **yo'q** — u saytdan olib tashlangan.
@@ -71,81 +73,65 @@ npm test           # NFC teg URL parseri (14 test)
 npx expo export --platform android   # bundle tekshiruvi
 ```
 
-## NFC va development build
+## APK olish (NFC'ni telefonda sinash)
 
-NFC nativ modul talab qiladi, shuning uchun **Expo Go da ishlamaydi** —
-u yerda ilova ochiladi, lekin "NFC qo'llab-quvvatlanmaydi" xabari chiqadi.
+NFC nativ modul, shuning uchun **Expo Go'da ishlamaydi** — u yerda ilova
+ochiladi, lekin "NFC qo'llab-quvvatlanmaydi" xabari chiqadi. Telefonda
+sinash uchun APK kerak.
 
-Haqiqiy qurilmada sinash uchun development build kerak:
+### Variant 1 — EAS bulut build (eng oson, Android SDK kerak emas)
 
 ```bash
 npm install -g eas-cli
-eas login
+eas login                 # Expo hisobi bilan
+eas build:configure       # birinchi marta: projectId yaratadi
+
+# Telefonga o'rnatib SINASH uchun — mustaqil APK, noutbuk kerak emas:
+eas build --profile preview --platform android
+
+# Faol ISHLAB CHIQISH uchun — Metro serverga ulanadi:
 eas build --profile development --platform android
 ```
 
-`eas.json` da `development` profili tayyor (APK, `developmentClient: true`).
-Build tugagach APK ni qurilmaga o'rnatib, `npx expo start --dev-client`
-bilan ulanasiz. Mahalliy build ham bo'ladi: `npx expo run:android`
-(Android SDK o'rnatilgan bo'lishi kerak).
+Build tugagach Expo yuklab olish havolasini beradi (QR kod ham).
+`preview` APK o'z-o'zidan ishlaydi — NFC'ni sinash uchun shu qulay.
+`development` APK esa `npx expo start --dev-client` bilan ulanadi.
 
-iOS: NFC simulyatorda ishlamaydi, haqiqiy qurilma va Apple Developer
-hisobidagi NFC entitlement kerak. Konfiguratsiya `app.json` da tayyor.
+### Variant 2 — mahalliy build (Android Studio o'rnatilgan bo'lsa)
 
-## Tuzilma
+**RELEASE variantini yig'ing, debug'ni emas.** Bu muhim:
 
-```
-app/                    expo-router marshrutlari
-  (tabs)/               4 tab + maxsus tabBar
-  p/[code].tsx          tashqi shaxsiy profil (NFC, Katalog)
-  c/[companyId].tsx     tashqi kompaniya profili
-  dashboard/[companyId].tsx   biznes egasining Dashboard'i
-  post/[id].tsx         to'liq ekran post
-src/
-  api/                  klient (Bearer), endpointlar, backend tiplari
-  theme/                4 preset, CSS->RN o'girgichlar, tipografiya
-  store/                auth, faol ID, dev rol override
-  components/           TapScale, GoldSweep, Card, Sheet, StripeFill, nav
-  features/profile/     sarlavha, tablar, varaqlar, ma'lumot qatlami
-  features/nfc/         teginish oqimi va o'qish tugmasi
-  features/home/        tezkor amal kartalari
-  features/katalog/     mini NFC karta ro'yxati va filtrlar
-  features/dashboard/   metrikalar, buyurtmalar, katalog boshqaruvi
-  lib/                  format, NFC (nfc.ts, tagUrl.ts), svgId
-docs/
-  BEARER-AUTH-DIFF.md   Bearer auth o'zgarishi — qo'llangan, tarixiy yozuv
+* `npx expo run:android` — **debug** APK yasaydi. Unda JS kodi ILOVA
+  ICHIDA EMAS: har safar ishga tushganda Metro serveridan (noutbukdan)
+  yuklab olinadi. Metro uzilsa yoki eski keshni bersa, telefonda ESKI
+  dizayn va eski xatti-harakat ko'rinadi — tashqaridan bu "ilova
+  buzilgan" bo'lib tuyuladi.
+* `assembleRelease` — **release** APK: JS kodi ichiga qotirilgan,
+  noutbuk kerak emas, boshqa telefonga ham yuborsa bo'ladi.
+
+```bash
+npx expo prebuild --platform android --clean   # android/ papkasini yaratadi
+cd android && ./gradlew assembleRelease
+# natija: android/app/build/outputs/apk/release/app-release.apk
+adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-## Backend
+`ANDROID_HOME` va `JAVA_HOME` sozlangan bo'lishi kerak. Yangi kod
+tortilganda `--clean` bilan qayta prebuild qiling — eski `android/`
+papkasi eski sozlamalarni saqlab qolishi mumkin.
 
-Ilova mavjud jonli API ga ulanadi: `https://nfcstore.uz/api`.
+### iOS
 
-Autentifikatsiya — **Bearer token**, cookie emas. Backend tomoni qo'llangan va
-production'da tasdiqlangan: `getCurrentUser()` cookie bo'lmasa `Authorization:
-Bearer` dan o'qiydi, login/register esa `X-Client: mobile` sarlavhasi bilan
-javob tanasida `token` qaytaradi. Veb tomonidagi cookie oqimi o'zgarmagan.
-Batafsili: `docs/BEARER-AUTH-DIFF.md`.
+NFC simulyatorda ishlamaydi — haqiqiy qurilma va Apple Developer
+hisobidagi NFC entitlement kerak. Konfiguratsiya `app.json` da tayyor:
 
-Token `expo-secure-store` da saqlanadi (Android Keystore / iOS Keychain).
+```bash
+eas build --profile development --platform ios
+```
 
-Ro'yxatdan o'tish oqimi tekshirilgan (`hosting/api/auth.js`, 2026-09):
-bir qadam, Telegram OTP **yo'q** — `phone` + `password` + `tosAccepted`,
-`email` ixtiyoriy.
+### Nima uchun bu APK sessiyada yasalmaydi
 
-## CSS -> React Native o'girmalar
-
-Maketda brauzerga xos bir nechta narsa bor, ularning RN dagi ekvivalenti:
-
-| CSS | RN dagi yechim |
-|---|---|
-| `conic-gradient` (shimmer halqa) | 4 chorak SVG yoy, har biriga chiziqli gradient |
-| `radial-gradient` + `blur()` (nav yorug'ligi) | SVG `RadialGradient`, blur o'rniga oraliq to'xtash nuqtasi |
-| `repeating-linear-gradient` (placeholder) | SVG `Pattern`, `rotate(-45)` |
-| `translateX(%)` (sweep) | `onLayout` bilan o'lchab pikselga o'girish |
-| `box-shadow` pulsatsiyasi | kengayib o'chadigan chegara halqasi |
-| `linear-gradient(Ndeg)` | `angle()` yordamchisi -> `start`/`end` |
-| `grid-template-columns` | katak kengligini aniq hisoblash |
-| `localStorage` | `AsyncStorage` |
-
-`box-shadow` Android'da rangli/yumshoq bo'lmaydi (`elevation` bilan
-taqqoslanadi) — bu RN cheklovi, qora fonda deyarli sezilmaydi.
+Claude Code ishlayotgan muhitda tarmoq siyosati `dl.google.com` va
+`api.expo.dev` ni bloklaydi. Birinchisi Android SDK (`android.jar`,
+`aapt2`, `d8`) yuklab olishni, ikkinchisi EAS bulut buildini imkonsiz
+qiladi. Shuning uchun APK sizning mashinangizda yoki EAS'da yasaladi.

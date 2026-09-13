@@ -1,5 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { DEFAULT_THEME, isThemeKey, THEMES, type Theme, type ThemeKey } from './themes';
 
@@ -39,18 +47,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const setTheme = (key: ThemeKey) => {
+  const setTheme = useCallback((key: ThemeKey) => {
     // Ekran DARHOL o'zgaradi, diskka yozish esa orqada ketadi: odam
     // tugmani bosgach kutib turmasligi kerak.
     setThemeKey(key);
     AsyncStorage.setItem(STORAGE_KEY, key).catch(() => {});
-  };
+  }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme: THEMES[themeKey], themeKey, setTheme, ready }}>
-      {children}
-    </ThemeContext.Provider>
+  // MEMOIZATSIYA — tema almashinuvi sekinligining asosiy sababi shu edi.
+  //
+  // Ilgari bu yerda har renderda YANGI obyekt yaratilardi
+  // (`{theme, themeKey, setTheme, ready}`). Kontekst qiymati o'zgargan
+  // deb hisoblanadi va uni o'qiyotgan HAR BIR komponent qayta
+  // chiziladi — ilovada esa ular yuzlab: har bir karta, har bir SVG
+  // gradient, har bir soya. Ya'ni tema o'zgarmaganda ham butun daraxt
+  // qayta chizilaverardi.
+  //
+  // Endi qiymat faqat tema yoki `ready` haqiqatan o'zgarganda yangi
+  // bo'ladi.
+  const value = useMemo(
+    () => ({ theme: THEMES[themeKey], themeKey, setTheme, ready }),
+    [themeKey, ready, setTheme],
   );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {

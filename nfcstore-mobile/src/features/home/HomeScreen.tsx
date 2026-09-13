@@ -1,147 +1,259 @@
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getGiftOffers, getPaymentsSettings, getPhysicalPricing } from '@/api/endpoints';
-import { Card } from '@/components/Card';
+import {
+  getCatalogRecords,
+  getGiftOffers,
+  getPublicCompanies,
+} from '@/api/endpoints';
+import { CardSurface } from '@/components/Card';
+import { CardGlyph, GiftGlyph, LinkGlyph, PlusGlyph } from '@/components/Glyphs';
+import { AccountChip } from '@/components/ScreenHeader';
+import { Photo } from '@/components/Photo';
+import { usePullToRefresh } from '@/components/Refreshing';
 import { TapScale } from '@/components/TapScale';
-import { HandleChip } from '@/features/profile/header/ActionButtons';
-import { NfcScanCard } from '@/features/nfc/NfcScanCard';
-import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
-import { useProfileData } from '@/features/profile/useProfileData';
-import { money } from '@/lib/format';
-import { useActiveIdStore } from '@/store/activeIdStore';
-import { useAuthStore } from '@/store/authStore';
+import { QrGlyph } from '@/features/nfc/QrGlyph';
 import { SITE } from '@/features/profile/profileVM';
+import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
+import { StoriesRow } from '@/features/profile/StoriesRow';
+import { useProfileData } from '@/features/profile/useProfileData';
+import { tapLight } from '@/lib/haptics';
+import { useActiveIdStore } from '@/store/activeIdStore';
+import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
+import { HeroCarousel } from './HeroCarousel';
+import { PortraitRow, QuickActions, SectionHead, WideRow, type Tile } from './Sections';
+
 /**
- * Home — tezkor amal kartalari.
+ * HOME — rasmga boy bosh ekran.
  *
- * Kartalar FAOL ID ga qarab o'zgaradi (biznes yoki shaxsiy), xuddi
- * maketdagidek. Har bir karta haqiqiy endpointga ulangan:
+ * Tuzilish (brif 5-bo'lim):
+ *   yuqori qator   -> avatar + ism + hisob chipi
+ *   HERO karusel   -> foydalanuvchining NFC ID kartalari, surib almashadi
+ *   STORIES        -> obuna bo'lganlarning istoryalari
+ *   QUICK ACTIONS  -> QR, havolalar, sovg'a, jismoniy karta
+ *   bo'limlar      -> Yangi profillar / Kompaniyalar / Ekspertlar
  *
- *   ID holati       -> faol profil javobidan (ko'rishlar, ochiq havola)
- *   Jismoniy karta  -> GET /api/settings/physical-nfc-pricing
- *   Sovg'a          -> GET /api/gift-offers (kutilayotganlar soni)
- *   To'lovlar       -> GET /api/settings/payments-enabled + /auth/me dagi
- *                      premium/sinov muddati
+ * HAMMASI JONLI API DAN:
+ *   ID kartalari   -> /auth/me + /companies/mine
+ *   istoryalar     -> /stories/feed
+ *   profillar      -> /records   (katalogdagi ochiq profillar)
+ *   kompaniyalar   -> /companies (faqat faol)
+ *   sovg'alar      -> /gift-offers
+ *
+ * NFC o'qish kartasi bu ekrandan OLIB TASHLANDI — u endi o'z tabiga
+ * ega (NFC Center). Home ikki joyda bir xil narsani ko'rsatmaydi.
  */
 export function HomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const setActive = useActiveIdStore((s) => s.setActive);
-  const user = useAuthStore((s) => s.user);
 
-  const { vm, accounts, active } = useProfileData();
+  const { vm, accounts, active, loading } = useProfileData();
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
-  const pricing = useQuery({ queryKey: ['physical-pricing'], queryFn: getPhysicalPricing });
+  const records = useQuery({ queryKey: ['catalog', 'records'], queryFn: getCatalogRecords });
+  const companies = useQuery({ queryKey: ['catalog', 'companies'], queryFn: getPublicCompanies });
   const gifts = useQuery({ queryKey: ['gift-offers'], queryFn: getGiftOffers });
-  const payments = useQuery({ queryKey: ['payments-settings'], queryFn: getPaymentsSettings });
 
-  const isBusiness = vm?.kind === 'business';
+  const refresh = usePullToRefresh([
+    ['me'],
+    ['companies', 'mine'],
+    ['stories', 'feed'],
+    ['catalog', 'records'],
+    ['catalog', 'companies'],
+    ['gift-offers'],
+  ]);
 
-  // Bir dona karta narxi — birinchi tarif (1–9 dona) bo'yicha.
-  const unitPrice = pricing.data?.tiers?.[0]?.pricePerUnit ?? null;
-  const delivery = pricing.data?.delivery;
-  const pendingGifts = (gifts.data?.incoming?.length ?? 0) + (gifts.data?.outgoing?.length ?? 0);
+  const activeKey =
+    active?.kind === 'business'
+      ? `business:${active.companyId}`
+      : active?.kind === 'personal'
+        ? `personal:${active.code}`
+        : null;
+
+  // Eng yangi profillar — `ts` bo'yicha, katalogdagi ochiq yozuvlardan.
+  const newProfiles = useMemo<Tile[]>(() => {
+    const list = [...(records.data ?? [])].sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0));
+    return list.slice(0, 12).map((r) => ({
+      key: r.code,
+      title: r.name || r.code,
+      badge: r.code,
+      photo: r.avatarUrl,
+      href: `/p/${r.code}`,
+    }));
+  }, [records.data]);
+
+  // Ekspertlar — profil turi bo'yicha ajratiladi.
+  const experts = useMemo<Tile[]>(
+    () =>
+      (records.data ?? [])
+        .filter((r) => r.profileType === 'expert')
+        .slice(0, 12)
+        .map((r) => ({
+          key: r.code,
+          title: r.name || r.code,
+          sub: r.role || undefined,
+          badge: r.city || undefined,
+          photo: r.avatarUrl,
+          href: `/p/${r.code}`,
+        })),
+    [records.data],
+  );
+
+  const companyTiles = useMemo<Tile[]>(
+    () =>
+      (companies.data ?? []).slice(0, 12).map((c) => ({
+        key: c.companyId,
+        title: c.displayName || c.companyId,
+        sub: [c.category, c.city].filter(Boolean).join(' · ') || undefined,
+        photo: c.logoUrl,
+        href: `/c/${c.companyId}`,
+      })),
+    [companies.data],
+  );
+
+  const pendingGifts =
+    (gifts.data?.incoming?.length ?? 0) + (gifts.data?.outgoing?.length ?? 0);
+
+  const shareUrl = vm?.shareUrl ?? SITE;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      {/* Yuqori qator: kim kirgan + hisob chipi. Sarlavha yo'q —
+          brifdagi talab: Home dashboard emas, tirik lenta bo'lsin. */}
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
+          gap: 11,
           paddingTop: 10 + insets.top,
           paddingHorizontal: 16,
           paddingBottom: 14,
         }}
       >
-        <Text style={[sans(800, 24, 1.2), { color: theme.ink, letterSpacing: -0.48 }]}>
-          Home
-        </Text>
-        {/* Almashtirgich Home'da ham bor — egasining aniq talabi. */}
-        <HandleChip
-          handle={vm?.handle ?? '@…'}
-          bordered
-          onPress={() => setSwitcherOpen(true)}
-        />
+        <Photo uri={vm?.photoUrl} width={40} height={40} radius={20} step={5} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[mono(500, 10), { color: 'rgba(255,255,255,.42)', letterSpacing: 1.1 }]}>
+            XUSH KELIBSIZ
+          </Text>
+          <Text
+            style={[sans(800, 17, 1.2), { color: theme.ink, letterSpacing: -0.34, marginTop: 3 }]}
+            numberOfLines={1}
+          >
+            {vm?.name ?? '…'}
+          </Text>
+        </View>
+        <AccountChip handle={vm?.handle ?? '@…'} onPress={() => setSwitcherOpen(true)} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}
+        refreshControl={refresh}
+        contentContainerStyle={{ paddingBottom: 28, gap: 4 }}
       >
-        <NfcScanCard />
-
-        <ActionCard
-          title={isBusiness ? 'Biznes ID faol' : 'Shaxsiy ID faol'}
-          meta={vm ? 'FAOL' : '—'}
-          sub={
-            vm
-              ? `${vm.views} ko’rish · ${publicUrl(vm)}`
-              : 'ID yuklanmoqda…'
-          }
-          onPress={vm ? () => openUrl(publicUrl(vm, true)) : undefined}
+        <HeroCarousel
+          accounts={accounts}
+          activeKey={activeKey}
+          onPick={setActive}
+          onOpen={() => router.push('/(tabs)/profile')}
         />
 
-        <ActionCard
-          title={
-            isBusiness ? 'Jamoa uchun kartalar buyurtma qilish' : 'Jismoniy karta buyurtma qilish'
-          }
-          meta={unitPrice != null ? money(unitPrice) : '…'}
-          sub={
-            delivery
-              ? `Rang va uslubni tanlang · ${delivery.minDays}–${delivery.maxDays} kunda yetkazib beriladi`
-              : 'Rang va uslubni tanlang'
-          }
-          onPress={() => openUrl(`${SITE}/karta-dizayni`)}
+        <View style={{ height: 14 }} />
+        <StoriesRow />
+
+        <QuickActions
+          items={[
+            {
+              key: 'qr',
+              label: 'Ulashish',
+              icon: <QrGlyph color={theme.a1} size={21} />,
+              onPress: () => {
+                tapLight();
+                Share.share({
+                  message: `${vm?.name ?? 'NFCSTORE'} — ${shareUrl}`,
+                  url: shareUrl,
+                }).catch(() => {});
+              },
+            },
+            {
+              key: 'edit',
+              label: 'Havolalar',
+              icon: <LinkGlyph color={theme.a1} size={21} />,
+              onPress: () =>
+                vm?.code
+                  ? router.push(`/edit/${vm.code}`)
+                  : router.push('/(tabs)/profile'),
+            },
+            {
+              key: 'buy',
+              label: 'Yangi ID',
+              icon: <PlusGlyph color={theme.a1} size={19} width={2} />,
+              onPress: () => router.push('/buy'),
+            },
+            {
+              key: 'gift',
+              label: pendingGifts > 0 ? `Sovg’a ${pendingGifts}` : 'Sovg’a',
+              icon: <GiftGlyph color={theme.a1} size={21} />,
+              onPress: () =>
+                WebBrowser.openBrowserAsync(`${SITE}/gifts`).catch(() => {}),
+            },
+            {
+              key: 'card',
+              label: 'Karta',
+              icon: <CardGlyph color={theme.a1} size={21} />,
+              onPress: () =>
+                WebBrowser.openBrowserAsync(`${SITE}/karta-dizayni`).catch(() => {}),
+            },
+          ]}
         />
 
-        {isBusiness ? (
-          <ActionCard
-            title="Mahsulot qo’shish"
-            meta="KATALOG"
-            sub={`${vm?.third.value ?? 0} mahsulot faol · nom va narx qo’shing`}
-            onPress={
-              vm?.companyId ? () => openUrl(`${SITE}/c/${vm.companyId}`) : undefined
-            }
-          />
-        ) : (
-          <ActionCard
-            title="Havolalarni tahrirlash"
-            meta={`${vm?.third.value ?? 0} HAVOLA`}
-            sub="Veb-sayt, Telegram, portfolio, kalendar"
-            onPress={vm?.code ? () => openUrl(`${SITE}/${vm.code}`) : undefined}
-          />
-        )}
+        <View style={{ height: 16 }} />
 
-        <ActionCard
-          title={isBusiness ? 'Mijozga ID sovg’a qilish' : 'Do’stga ID sovg’a qilish'}
-          meta={pendingGifts > 0 ? `${pendingGifts} KUTILMOQDA` : 'BEPUL'}
-          sub={
-            pendingGifts > 0
-              ? 'Tasdiqlashni kutayotgan sovg’alar bor'
-              : 'ID yuboring — qabul qiluvchi tasdiqlaydi'
-          }
-          onPress={() => openUrl(`${SITE}/gifts`)}
+        <SectionHead
+          title="Yangi profillar"
+          action="Hammasi"
+          onAction={() => router.push('/(tabs)/katalog')}
+        />
+        <PortraitRow
+          tiles={newProfiles}
+          loading={records.isLoading}
+          empty="Katalog hozircha bo’sh"
         />
 
-        <ActionCard
-          title="To’lovlar"
-          meta={payments.data?.providers?.payme?.enabled === false ? 'O’CHIRILGAN' : 'PAYME'}
-          sub={paymentsSub(user, payments.data?.sandbox)}
-          onPress={() => openUrl(`${SITE}/tolovlar`)}
+        <View style={{ height: 18 }} />
+
+        <SectionHead
+          title="Kompaniyalar"
+          action="Hammasi"
+          onAction={() => router.push('/(tabs)/katalog')}
+        />
+        <WideRow
+          tiles={companyTiles}
+          loading={companies.isLoading}
+          empty="Faol kompaniya yo’q"
         />
 
-        {/* Tarif chizig'i — maketda Home'da, ikkala profil turida ham. */}
-        <TierStrip />
+        {experts.length ? (
+          <>
+            <View style={{ height: 18 }} />
+            <SectionHead title="Ekspertlar" />
+            <WideRow tiles={experts} />
+          </>
+        ) : null}
+
+        <View style={{ height: 18 }} />
+        <SectionHead title="NFCSTORE" />
+        <PromoCard
+          onPress={() => router.push('/buy')}
+          loading={loading && !accounts.length}
+        />
       </ScrollView>
 
       <SwitcherSheet
@@ -155,185 +267,45 @@ export function HomeScreen() {
   );
 }
 
-function ActionCard({
-  title,
-  meta,
-  sub,
-  onPress,
-}: {
-  title: string;
-  meta: string;
-  sub: string;
-  onPress?: () => void;
-}) {
-  const { theme } = useTheme();
-
-  return (
-    <TapScale
-      radius={16}
-      onPress={onPress}
-      accessibilityLabel={title}
-      style={{ borderRadius: 16 }}
-    >
-      <Card radius={16} style={{ padding: 16, gap: 6 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-          }}
-        >
-          <Text style={[sans(700, 14, 1.3), { color: theme.ink, flex: 1 }]}>{title}</Text>
-          <Text style={[mono(600, 11), { color: theme.a1 }]} numberOfLines={1}>
-            {meta}
-          </Text>
-        </View>
-        <Text style={[sans(400, 12, 1.5), { color: 'rgba(255,255,255,.48)' }]}>{sub}</Text>
-      </Card>
-    </TapScale>
-  );
-}
-
 /**
- * Tarif chizig'i — metall gradientli "medal" nishonlari
- * (spetsifikatsiya 7-bo'lim: embossed medal look, flat pill emas).
- *
- * Narxlar spetsifikatsiyada qat'iy berilgan, shuning uchun ular shu
- * yerda: Bronze 49k / Silver 99k / Gold 149k / Premium 199k /
- * Exclusive 490k dan. Xarid oqimi veb orqali ochiladi.
+ * Katta "muharrirlik" kartasi — bo'limlar bir xil grid bo'lib
+ * qolmasligi uchun (brifdagi "large editorial card").
  */
-function TierStrip() {
+function PromoCard({ onPress, loading }: { onPress: () => void; loading?: boolean }) {
   const { theme } = useTheme();
 
-  const TIERS = [
-    { name: 'Bronze', price: 49_000, m1: '#e0b083', m2: '#7d4a1e' },
-    { name: 'Silver', price: 99_000, m1: '#eef2f6', m2: '#8b949c' },
-    { name: 'Gold', price: 149_000, m1: '#f0cf7a', m2: '#a87c0d' },
-    { name: 'Premium', price: 199_000, m1: '#d8c6f0', m2: '#6b4fa0' },
-    { name: 'Exclusive', price: 490_000, m1: '#f6ead0', m2: '#5a4a22', from: true },
-  ];
-
   return (
-    <View style={{ gap: 10, marginTop: 2 }}>
-      <Text style={[mono(600, 11), { color: theme.a1, letterSpacing: 1.1 }]}>
-        YANGI NFC ID
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+    <View style={{ paddingHorizontal: 16 }}>
+      <TapScale
+        radius={18}
+        onPress={loading ? undefined : onPress}
+        pulseColor={theme.a1}
+        accessibilityLabel="Yangi NFC ID olish"
+        style={[
+          {
+            borderRadius: 18,
+            padding: 18,
+            gap: 8,
+            borderWidth: 1,
+            borderColor: theme.rim,
+            backgroundColor: theme.c2,
+            overflow: 'hidden',
+          },
+          SH.card(theme.a2),
+        ]}
       >
-        {TIERS.map((t) => (
-          <TapScale
-            key={t.name}
-            radius={14}
-            onPress={() => openUrl(`${SITE}/narxlar`)}
-            accessibilityLabel={`${t.name} tarifi`}
-            style={{ borderRadius: 14 }}
-          >
-            <Card
-              radius={14}
-              shadow="tier"
-              style={{
-                alignItems: 'flex-start',
-                gap: 7,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-              }}
-            >
-              <TierMedal m1={t.m1} m2={t.m2} />
-              <Text style={[sans(700, 11.5), { color: theme.ink }]}>{t.name}</Text>
-              <Text style={[mono(500, 10), { color: 'rgba(255,255,255,.5)' }]}>
-                {t.from ? `${money(t.price)} dan` : money(t.price)}
-              </Text>
-            </Card>
-          </TapScale>
-        ))}
-      </ScrollView>
+        <CardSurface />
+        <Text style={[mono(500, 10), { color: theme.a1, letterSpacing: 1.4 }]}>
+          YANGI NFC ID
+        </Text>
+        <Text style={[sans(800, 21, 1.2), { color: theme.ink, letterSpacing: -0.42 }]}>
+          O’zingizga yoqqan kodni band qiling
+        </Text>
+        <Text style={[sans(400, 12.5, 1.5), { color: 'rgba(255,255,255,.52)' }]}>
+          Qisqa va yodda qoladigan NFC ID — bir marta olinadi, umrbod
+          sizniki bo’lib qoladi.
+        </Text>
+      </TapScale>
     </View>
   );
-}
-
-/**
- * Metall nishon — ichki soya bilan "bosma medal" ko'rinishi.
- * Maketda bu `inset` box-shadow bilan qilingan; RN da inset soya yo'q,
- * shuning uchun effekt ikki qatlam gradient bilan taqlid qilinadi.
- */
-function TierMedal({ m1, m2 }: { m1: string; m2: string }) {
-  return (
-    <View
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        overflow: 'hidden',
-        borderWidth: 0.5,
-        borderColor: 'rgba(255,255,255,.35)',
-      }}
-    >
-      <View style={{ flex: 1, backgroundColor: m2 }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: -2,
-            left: -2,
-            right: 6,
-            bottom: 8,
-            borderRadius: 11,
-            backgroundColor: m1,
-            opacity: 0.9,
-          }}
-        />
-      </View>
-    </View>
-  );
-}
-
-/* ── yordamchilar ─────────────────────────────────────────────────── */
-
-function publicUrl(vm: { kind: string; companyId?: string; code?: string }, full = false) {
-  const path = vm.kind === 'business' ? `/c/${vm.companyId}` : `/${vm.code}`;
-  return full ? `${SITE}${path}` : `nfcstore.uz${path}`;
-}
-
-function paymentsSub(
-  user: { isPremium?: boolean; premiumExpiresAt?: string | null; trialExpiresAt?: string | null } | null | undefined,
-  sandbox?: boolean,
-): string {
-  const parts: string[] = [];
-  if (sandbox) parts.push('TEST REJIMI');
-
-  if (user?.premiumExpiresAt) {
-    parts.push(`Premium ${formatDate(user.premiumExpiresAt)} gacha`);
-  } else if (user?.isPremium) {
-    // Eski bir martalik to'lov — muddatsiz (worker.js dagi izohga qarang).
-    parts.push('Premium faol — muddatsiz');
-  } else if (user?.trialExpiresAt) {
-    parts.push(`Sinov davri ${formatDate(user.trialExpiresAt)} gacha`);
-  } else {
-    parts.push('Karta ulanmagan');
-  }
-  return parts.join(' · ');
-}
-
-function formatDate(iso: string): string {
-  const ts = Date.parse(iso.replace(' ', 'T'));
-  if (!Number.isFinite(ts)) return iso;
-  return new Date(ts).toLocaleDateString('uz-UZ', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-/**
- * Tashqi havolalar ilova ichidagi brauzerda ochiladi.
- *
- * To'lov oqimi ham shu yo'l bilan: spetsifikatsiya aniq aytadi —
- * Payme/Click mantig'i ILOVADA QURILMAYDI, mavjud checkout havolasi
- * ochiladi (saytdagi naqshning o'zi).
- */
-function openUrl(url: string) {
-  WebBrowser.openBrowserAsync(url).catch(() => {});
 }

@@ -8,9 +8,11 @@ import type { CompanyPost } from '@/api/types';
 import { Card } from '@/components/Card';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
+import { MusicBar } from './MusicBar';
 import { ProfileHeader } from './header/ProfileHeader';
 import type { ProfileVM } from './profileVM';
 import { CatalogGrid } from './tabs/CatalogGrid';
@@ -46,6 +48,7 @@ export function ProfileView({
   onManageCatalog,
   topBar,
   banner,
+  stories,
 }: {
   vm: ProfileVM;
   posts: CompanyPost[];
@@ -62,20 +65,36 @@ export function ProfileView({
   topBar: ReactNode;
   /** Masalan "bu karta faol emas" ogohlantirishi. */
   banner?: ReactNode;
+  /**
+   * Istorya qatori — FAQAT o'z profil tabida. Tashrifchi ko'rayotgan
+   * begona profilda "men obuna bo'lganlar" qatorini ko'rsatish
+   * noto'g'ri bo'lardi, shuning uchun u prop sifatida tashqaridan
+   * beriladi.
+   */
+  stories?: ReactNode;
 }) {
   const { theme } = useTheme();
 
   const feedPosts = posts.filter((p) => !p.videoUrl);
   const reels = selectReels(posts);
 
+  // `ScrollView` yopishqoq sarlavhani BOLALAR RO'YXATIDAGI indeks
+  // bo'yicha topadi, `React.Children.toArray` esa `null` bolalarni
+  // tashlab yuboradi — shuning uchun indeks shartli bloklar soniga
+  // qarab hisoblanadi, qo'lda yozilmaydi.
+  const tabBarIndex =
+    1 + (vm.musicUrls.length ? 1 : 0) + (stories ? 1 : 0) + (vm.featuredCompany ? 1 : 0);
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       {topBar}
       {banner}
 
+      {/* BUTUN ekran BITTA skroll: sarlavha, istoryalar va tab kontenti
+          birga siljiydi, faqat tab bar tepada yopishib qoladi. */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[vm.featuredCompany ? 2 : 1]}
+        stickyHeaderIndices={[tabBarIndex]}
         contentContainerStyle={{ paddingBottom: 26 }}
       >
         <ProfileHeader
@@ -87,6 +106,10 @@ export function ProfileView({
           onDashboard={onDashboard}
           onEdit={onEdit}
         />
+
+        {vm.musicUrls.length ? <MusicBar urls={vm.musicUrls} /> : null}
+
+        {stories}
 
         {vm.featuredCompany ? (
           <FeaturedCompanyBlock
@@ -167,7 +190,7 @@ function FeaturedCompanyBlock({
         >
           {company.logoUrl ? (
             <Image
-              source={{ uri: company.logoUrl }}
+              source={{ uri: mediaUrl(company.logoUrl) }}
               contentFit="cover"
               style={{ width: 44, height: 44, borderRadius: 12 }}
             />

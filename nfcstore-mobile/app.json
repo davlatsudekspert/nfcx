@@ -20,9 +20,10 @@
     "android": {
       "package": "uz.nfcstore.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0a0805",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#0a0805"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -40,7 +41,17 @@
           "nfcPermission": "NFCSTORE kartani o'qish uchun NFC dan foydalanadi.",
           "includeNdefEntitlement": true
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil rasmi va mahsulot suratlarini tanlash uchun galereyaga ruxsat kerak.",
+          "cameraPermission": "Suratga olib profilga qo'yish uchun kameraga ruxsat kerak."
+        }
+      ],
+      "expo-audio",
+      "expo-video",
+      "./plugins/withAndroidBuildTuning"
     ],
     "experiments": {
       "typedRoutes": true
