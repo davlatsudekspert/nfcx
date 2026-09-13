@@ -28,7 +28,7 @@ export function SettingsSheet({
   visible: boolean;
   onClose: () => void;
   /** Hisob, bildirishnoma, til, to'lov, chiqish kabi qatorlar. */
-  rows: { k: string; v: string }[];
+  rows: { k: string; v: string; onPress?: () => void; danger?: boolean }[];
 }) {
   const { themeKey, setTheme } = useTheme();
 
@@ -71,8 +71,11 @@ export function SettingsSheet({
         }}
       >
         {rows.map((row) => (
-          <View
+          <TapScale
             key={row.k}
+            radius={0}
+            onPress={row.onPress}
+            accessibilityLabel={row.k}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -83,13 +86,18 @@ export function SettingsSheet({
               borderBottomColor: 'rgba(255,255,255,.06)',
             }}
           >
-            <Text style={[sans(500, 13), { color: 'rgba(255,255,255,.78)' }]}>
+            <Text
+              style={[
+                sans(500, 13),
+                { color: row.danger ? '#d98b8b' : 'rgba(255,255,255,.78)' },
+              ]}
+            >
               {row.k}
             </Text>
             <Text style={[mono(500, 12), { color: 'rgba(255,255,255,.4)' }]}>
               {row.v}
             </Text>
-          </View>
+          </TapScale>
         ))}
       </View>
     </Sheet>

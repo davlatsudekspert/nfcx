@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { followCard, toggleFollowCompany, unfollowCard } from '@/api/endpoints';
 import type { Company, FollowStats } from '@/api/types';
 import { useActiveIdStore } from '@/store/activeIdStore';
+import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -230,6 +231,15 @@ export function settingRows(handle: string | undefined) {
     { k: 'Bildirishnomalar', v: 'Yoniq' },
     { k: 'Til', v: "O'zbekcha" },
     { k: "To'lovlar", v: 'Payme' },
-    { k: 'Chiqish', v: '' },
+    {
+      k: 'Chiqish',
+      v: '',
+      danger: true,
+      onPress: () => {
+        // Tokenni tashlaymiz; `_layout.tsx` dagi darvoza buni ko'rib
+        // kirish ekraniga o'zi yo'naltiradi.
+        useAuthStore.getState().signOut();
+      },
+    },
   ];
 }

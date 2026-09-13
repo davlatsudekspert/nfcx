@@ -12,7 +12,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -81,6 +81,9 @@ export default function RootLayout() {
  */
 function Shell({ ready }: { ready: boolean }) {
   const { theme, ready: themeReady } = useTheme();
+  const hasToken = useAuthStore((s) => s.hasToken);
+  const user = useAuthStore((s) => s.user);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (ready && themeReady) SplashScreen.hideAsync().catch(() => {});
@@ -88,6 +91,17 @@ function Shell({ ready }: { ready: boolean }) {
 
   if (!ready || !themeReady) {
     return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
+  }
+
+  // KIRISH DARVOZASI. Tokensiz holatda hamma so'rov bo'sh javob
+  // qaytaradi (/auth/me -> {user:null}, /companies/mine -> 401), ya'ni
+  // ilova "ma'lumot yo'q" bo'lib ko'rinadi. Shuning uchun tokeni
+  // yo'qlarni darhol kirish ekraniga yuboramiz.
+  //
+  // `user === undefined` — hali tekshirilmagan holat, unda kutamiz.
+  const checked = user !== undefined;
+  if (checked && !hasToken && pathname !== '/auth') {
+    return <Redirect href="/auth" />;
   }
 
   return (
@@ -105,6 +119,7 @@ function Shell({ ready }: { ready: boolean }) {
           animationDuration: 220,
         }}
       >
+        <Stack.Screen name="auth" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" />
         {/* Tashqi profillar — NFC teginish va Katalog shu ekranlarga
             olib boradi. Ular tab navigatorining TASHQARISIDA: pastki

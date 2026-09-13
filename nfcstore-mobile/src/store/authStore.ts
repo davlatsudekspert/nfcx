@@ -19,15 +19,40 @@ export const useAuthStore = create<AuthState>((set) => ({
   cards: [],
   hasToken: false,
 
-  setSession: (me) => set({ user: me.user, cards: me.cards ?? [], hasToken: true }),
+  /**
+   * `/api/auth/me` javobini qabul qiladi.
+   *
+   * MUHIM: server tokeni eskirgan bo'lsa 401 EMAS, `{user: null}` bilan
+   * 200 qaytaradi. Shu holda tokenni saqlab qolsak, ilova "kirgan"
+   * hisoblanib bo'sh ekranlarni ko'rsatib turardi. Shuning uchun
+   * `user === null` bo'lsa tokenni tashlaymiz va kirish darvozasi
+   * ishga tushadi.
+   */
+  setSession: (me) => {
+    if (!me.user) {
+      setToken(null).catch(() => {});
+      set({ user: null, cards: [], hasToken: false });
+      return;
+    }
+    set({ user: me.user, cards: me.cards ?? [], hasToken: true });
+  },
 
   clear: () => set({ user: null, cards: [], hasToken: false }),
 
-  /** Ilova ochilganda: Keystore'da token bormi? */
+  /**
+   * Ilova ochilganda: Keystore'da token bormi?
+   *
+   * Token yo'q bo'lsa `user` DARHOL `null` ga o'tadi — shunda kirish
+   * darvozasi kutib turmasdan ishga tushadi. Token bor bo'lsa `user`
+   * `undefined` bo'lib qoladi va `/auth/me` javobi kutiladi.
+   */
   restore: async () => {
     const token = await getToken();
-    set({ hasToken: !!token });
-    if (!token) set({ user: null });
+    if (!token) {
+      set({ hasToken: false, user: null, cards: [] });
+      return;
+    }
+    set({ hasToken: true });
   },
 
   signOut: async () => {
