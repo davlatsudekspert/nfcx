@@ -29,17 +29,29 @@ type LinkFlowState =
 /**
  * Sozlamalar → Tasdiqlash — spetsifikatsiya "Three corrections":
  *
- *   1. Hisob tasdiqlash = EMAIL. Backend'da bu FLOW HALI YO'Q (faqat
- *      parolni tiklash uchun email yuborish infratuzilmasi bor,
- *      `sendEmailD1`/Resend) — shuning uchun MISSING BACKEND CAPABILITY
- *      sifatida ko'rsatiladi, fake "kod yuborildi" degan holat YO'Q.
+ *   1. Hisob tasdiqlash = EMAIL. AUDIT YANGILANDI (2026-09, backend
+ *      qo'shildi): ro'yxatdan o'tishda endi emailga 6 xonali kod
+ *      yuboriladi va tekshiriladi (`POST /api/auth/request-register-code`,
+ *      `POST /api/auth/register {..., emailCode}` — `RegisterScreen.tsx`ga
+ *      qarang). Hisob tasdiqlangan-tasdiqlanmaganini KEYINGI safar
+ *      ANIQLASH uchun ALOHIDA "email verified" ustuni YO'Q — buning
+ *      o'rniga `/auth/me`dagi `user.email` HAQIQIY qiymat bo'lsa (bo'sh
+ *      emas), demak email ro'yxatdan o'tishda tasdiqlangan
+ *      (`publicEmailD1()` placeholder manzillarni bo'sh qatorga
+ *      aylantiradi — worker.js:2789 atrofida). Eski akkauntlarda
+ *      (email hali xizmat yoqilmasdan oldin ro'yxatdan o'tgan) yoki
+ *      email umuman berilmagan hollarda — email yo'q, va HOZIRCHA
+ *      buni RO'YXATDAN O'TISHDAN KEYIN qo'shib tasdiqlash imkoniyati
+ *      YO'Q (bu haligacha MISSING BACKEND CAPABILITY: alohida
+ *      "add/verify email" sozlamalar endpointi yo'q — faqat parolni
+ *      tiklash uchun email yuborish bor).
  *   2. Profil tasdiqlash = mavjud NFCSTORE Telegram bot oqimi
  *      (`POST /api/auth/tg-link/start` → bot → `GET .../status` →
  *      `POST /api/settings/link-telegram`), HAQIQIY, tasdiqlangan.
  *   3. Ikkalasi ARALASHTIRILMAYDI — alohida kartalar, alohida holat.
  *
- * Tasdiqlangan nishon backend'dan (`user.telegramLinked`) — clientda
- * hech qachon qattiq yozilmagan.
+ * Ikkala nishon ham backend'dan (`user.email`, `user.telegramLinked`) —
+ * clientda hech qachon qattiq yozilmagan.
  */
 export function VerificationScreen() {
   const { theme } = useTheme();
@@ -123,16 +135,26 @@ export function VerificationScreen() {
             <Text style={[mono(600, 11), { color: theme.a1, letterSpacing: 1.1 }]}>
               HISOB — EMAIL
             </Text>
-            <StatusChip label="Mavjud emas" tone="muted" />
+            <StatusChip
+              label={user?.email ? 'Tasdiqlangan' : 'Yo’q'}
+              tone={user?.email ? 'verdant' : 'muted'}
+            />
           </View>
-          <Text style={[sans(400, 12.5, 1.5), { color: theme.ash }]}>
-            {user?.email ?? '—'}
-          </Text>
-          <Text style={[sans(400, 11.5, 1.45), { color: theme.off }]}>
-            Email orqali hisobni tasdiqlash hozircha ilovada mavjud emas
-            (backend'da bu tasdiqlash oqimi hali yo’q). Telefon raqamingiz
-            aloqa ma’lumoti sifatida saqlanadi.
-          </Text>
+          {user?.email ? (
+            <>
+              <Text style={[sans(400, 12.5, 1.5), { color: theme.ash }]}>{user.email}</Text>
+              <Text style={[sans(400, 11.5, 1.45), { color: theme.off }]}>
+                Ro’yxatdan o’tishda emailga yuborilgan kod orqali tasdiqlangan.
+              </Text>
+            </>
+          ) : (
+            <Text style={[sans(400, 11.5, 1.45), { color: theme.off }]}>
+              Hisobingizda tasdiqlangan email yo’q (ro’yxatdan o’tishda
+              kiritilmagan yoki eski hisob). Hozircha uni keyinroq qo’shib
+              tasdiqlash imkoniyati ilovada yo’q — bu alohida sozlamalar
+              oqimi hali backend’da mavjud emas.
+            </Text>
+          )}
         </Card>
 
         {/* ── Profil — Telegram ─────────────────────────────────────── */}

@@ -170,13 +170,50 @@ export async function login(loginOrEmail: string, password: string): Promise<Aut
 }
 
 /**
- * POST /api/auth/register — TEKSHIRILGAN hozirgi oqim
- * (hosting/api/auth.js, 2026-09): BIR QADAM, Telegram OTP YO'Q.
+ * POST /api/auth/request-register-code {email} -> {ok, channel} — YANGI
+ * oqim (hosting/api/auth.js, audit 2026-09 yangilanishi): ro'yxatdan
+ * o'tishdan OLDIN chaqiriladi, `register()`ga emailCode YUBORISHDAN
+ * OLDIN.
+ *
+ *   channel: 'email'    — kod emailga yuborildi, `register()`da
+ *                          `emailCode` talab qilinadi
+ *            'none'     — email xizmati o'chiq, kod umuman kerak emas
+ *                          (`register()` emailCode'siz chaqiriladi)
+ *            'telegram' — ZAXIRA yo'l (email berilmagan, telefon
+ *                          Telegram bot orqali tasdiqlangan bo'lsa) —
+ *                          MOBIL ILOVADA QO'LLAB-QUVVATLANMAYDI (eski
+ *                          `{code, botAck}` shaklidagi kod talab
+ *                          qiladi, `emailCode`dan farqli) — shuning
+ *                          uchun ilova email'ni majburiy qiladi.
+ */
+export async function requestRegisterCode(
+  email: string,
+): Promise<{ ok: boolean; channel: 'email' | 'none' | 'telegram' }> {
+  const res = await fetch(`${API_BASE}/auth/request-register-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Client': 'mobile' },
+    body: JSON.stringify({ email }),
+  });
+  const data = (await res.json().catch(() => null)) as
+    | { ok?: boolean; channel?: string; error?: string; reason?: string }
+    | null;
+  if (!res.ok || !data?.ok) {
+    throw new ApiError(res.status, typeof data?.error === 'string' ? data.error : `api_error_${res.status}`);
+  }
+  return { ok: true, channel: (data.channel as 'email' | 'none' | 'telegram') ?? 'none' };
+}
+
+/**
+ * POST /api/auth/register — YANGILANGAN oqim (hosting/api/auth.js,
+ * audit 2026-09): email endi majburiy VA TASDIQLANGAN bo'lishi kerak
+ * (agar email xizmati yoqilgan bo'lsa — `requestRegisterCode()`ning
+ * `channel` javobi shuni ko'rsatadi).
  *
  *   phone       majburiy  +?\d{9,15}
  *   password    majburiy  >= 6 belgi
  *   tosAccepted majburiy  true bo'lishi shart
- *   email       IXTIYORIY (bo'sh bo'lsa server ichki manzil yasaydi)
+ *   email       xizmat YOQIQ bo'lsa MAJBURIY, aks holda ixtiyoriy
+ *   emailCode   xizmat YOQIQ bo'lsa MAJBURIY (requestRegisterCode'dan)
  *   promoCode   ixtiyoriy
  *
  * Yon effekt: server darhol bepul shaxsiy ID yaratadi (createFreeAutoId).
@@ -186,6 +223,7 @@ export async function register(input: {
   password: string;
   tosAccepted: true;
   email?: string;
+  emailCode?: string;
   promoCode?: string;
 }): Promise<AuthedUser> {
   const res = await fetch(`${API_BASE}/auth/register`, {
