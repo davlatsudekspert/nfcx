@@ -45,6 +45,7 @@ async function api(path, options) {
     // Xatoning QO'SHIMCHA sababi (masalan email yuborishda "http_403").
     // Maxfiy emas — server u yerga faqat holat kodini qo'yadi.
     if (data && data.reason != null) err.reason = data.reason;
+    if (data && data.detail != null) err.detail = data.detail;
     throw err;
   }
   return data;
