@@ -923,6 +923,13 @@ async function publicContentApi(request, env, url) {
     return json({
       tiers: parseOr(tiersRow?.value, defaultTiers),
       delivery: parseOr(deliveryRow?.value, { minDays: 3, maxDays: 5 }),
+      // Jismoniy karta narxi — buyurtma endpointidagi bilan AYNAN bir
+      // xil manbadan (`hosting/api/account.js`). Mijozlar uni shu
+      // yerdan o'qiydi va o'zida nusxa saqlamaydi.
+      //
+      // Qo'shimcha maydon: mavjud sayt uni umuman o'qimaydi va
+      // javobning qolgan qismi bitma-bit avvalgidek.
+      physicalCardFee: apiAccount.PHYSICAL_CARD_FEE,
     });
   }
 

@@ -16,6 +16,7 @@ import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
 import 'gift_id.dart';
 import 'id_catalog.dart';
+import 'order_card.dart';
 import 'qr_share.dart';
 
 /// NFC CENTER — mahsulotning o'zagi.
@@ -134,21 +135,26 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sovg'a qilish — FAQAT o'z shaxsiy ID'sida. Biznes profilini
-    // sovg'a qilish alohida oqim (egalik + katalog + buyurtmalar
-    // ko'chadi) va backend uni `/api/records/:code/gift` orqali
-    // qo'llab-quvvatlamaydi.
+    // Karta buyurtmasi va sovg'a — FAQAT o'z SHAXSIY ID'sida.
+    // Biznes profilini sovg'a qilish alohida oqim (egalik, katalog va
+    // buyurtmalar ham ko'chadi) va backend uni
+    // `/api/records/:code/gift` orqali qo'llab-quvvatlamaydi.
     final card = active.record;
-    final canGift = card != null && owned.any((c) => c.code == card.code);
+    final ownsCard = card != null && owned.any((c) => c.code == card.code);
 
     final items = <({Ico icon, String label, VoidCallback? onTap})>[
       (icon: Ico.qr, label: 'QR', onTap: () => push(context, (_) => QrShareScreen(identity: active))),
       (icon: Ico.share, label: 'Ulashish', onTap: () => shareIdentity(active)),
-      (icon: Ico.card, label: 'Karta', onTap: null),
+      (
+        icon: Ico.card,
+        label: 'Karta',
+        // Jismoniy karta faqat O'Z shaxsiy ID'siga buyurtma qilinadi.
+        onTap: ownsCard ? () => push(context, (_) => OrderCardScreen(record: card)) : null,
+      ),
       (
         icon: Ico.gift,
         label: 'Sovg‘a',
-        onTap: canGift ? () => push(context, (_) => GiftIdScreen(record: card)) : null,
+        onTap: ownsCard ? () => push(context, (_) => GiftIdScreen(record: card)) : null,
       ),
     ];
     return Padding(

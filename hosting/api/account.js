@@ -22,7 +22,12 @@ import { cardContentCleanupStmts } from './card-cleanup.js';
 const PROFILE_PREMIUM_FEE = 20000;
 
 const PHONE_RE = /^\+?\d{9,15}$/;                 // server/index.js PHONE_RE
-const PHYSICAL_CARD_FEE = 200_000;               // server/index.js PHYSICAL_CARD_FEE
+// Jismoniy karta narxi. EKSPORT QILINADI: `/api/settings/
+// physical-nfc-pricing` javobiga qo'shiladi, shunda mijozlar (sayt va
+// mobil ilova) narxni SERVERDAN oladi. Ilgari uni faqat sayt o'zida
+// nusxa sifatida saqlardi (src/lib/pricing.js) — narx o'zgarsa ikki
+// joyni qo'lda tuzatish kerak bo'lardi.
+export const PHYSICAL_CARD_FEE = 200_000;        // server/index.js PHYSICAL_CARD_FEE
 // src/lib/pricing.js PHYSICAL_CARD_MAX_QTY bilan bir xil.
 const PHYSICAL_CARD_MAX_QTY = 50;
 const OTP_TTL_MS = 10 * 60 * 1000;               // kod 10 daqiqa amal qiladi
