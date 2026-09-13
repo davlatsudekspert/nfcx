@@ -30,3 +30,12 @@ export function adminPreviewUrl(code) {
   const c = String(code || '').trim();
   return c ? `/${encodeURIComponent(c)}?preview=1` : '';
 }
+
+// Kompaniya profiliga admin havolasi. Manzil boshqacha (`/c/<id>`),
+// lekin qoida bir xil — shu sabab u ham shu yerda turadi: havola
+// yasash mantig'i BITTA joyda bo'lsa, "preview" belgisini qo'shishni
+// unutib qolish mumkin emas.
+export function adminCompanyPreviewUrl(companyId) {
+  const c = String(companyId || '').trim().toLowerCase();
+  return c ? `/c/${encodeURIComponent(c)}?preview=1` : '';
+}

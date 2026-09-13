@@ -1,11 +1,11 @@
-import { Fragment, createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Fragment, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import CloseButton from '../components/CloseButton.jsx';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
-import { adminPreviewUrl } from '../lib/preview.js';
+import { adminPreviewUrl, adminCompanyPreviewUrl } from '../lib/preview.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { idTier, effectiveAccess } from '../lib/access.js';
@@ -280,7 +280,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -416,6 +416,180 @@ const KIND_LABEL = {
   platform_commission: 'Platforma komissiyasi',
 };
 const PIE_COLORS = ['#f5a524', '#3abff8', '#36d399', '#f87272', '#a78bfa', '#fb7185', '#94a3b8'];
+
+// ═══ TRAFIK: kim kirdi, nechta profil ochildi, qayerdan ═══
+//
+// Egasining so'rovi: "saytga nechta odam kirdi, nechta profil ochildi,
+// qayerdan kirdi — shuni bitta diagramma qilib qo'ysa bo'ladimi".
+//
+// Ma'lumot allaqachon yig'ilib turgan edi (card_events va
+// company_stats), faqat hech qayerda ko'rsatilmasdi.
+
+// Manba nomlari. `direct` — profil to'g'ridan-to'g'ri ochilgan: odam
+// manzilni o'zi yozgan yoki havolada belgi bo'lmagan.
+const TRAFFIC_SRC = { nfc: 'NFC karta', qr: 'QR kod', link: 'Havola', direct: "To'g'ridan-to'g'ri" };
+
+// GRAFIK RANGLARI — ikkalasi tekshiruvdan o'tgan (scripts/validate:
+// rang ko'rish buzilishida ham ajraladi, qorong'i fonda kontrast
+// yetarli). Ularni o'zgartirsangiz qaytadan tekshiring: ikkita seriya
+// bir-biridan farq qilishi SHART, aks holda grafik o'qilmaydi.
+const C_OPENS = '#b08736';     // ochilishlar — oltin
+const C_VISITORS = '#4a90c4';  // noyob tashrifchilar — ko'k
+
+function TrafficTab() {
+  const { t } = useLanguage();
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [loadErr, setLoadErr] = useState(null);
+
+  const load = useCallback(() => {
+    setLoadErr(null); setData(null);
+    adminApi(`/traffic?days=${days}`).then(setData).catch((e) => setLoadErr(e));
+  }, [days]);
+  useEffect(() => { load(); }, [load]);
+
+  const ranges = (
+    <div className="flex flex-wrap gap-1.5">
+      {[7, 30, 90].map((d) => (
+        <button key={d} type="button" onClick={() => setDays(d)}
+          className={`btn btn-xs min-h-9 ${days === d ? 'btn-gold' : 'btn-ghost'}`}>
+          {d} {t('kun')}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (loadErr) return <><div className="mb-4">{ranges}</div><LoadError err={loadErr} onRetry={load} title={t("Trafikni yuklab bo'lmadi.")} /></>;
+  if (!data) return <><div className="mb-4">{ranges}</div><AdminLoading rows={6} /></>;
+
+  const { totals } = data;
+  const avg = totals.opens ? Math.round(totals.opens / data.days) : 0;
+  const sources = (data.sources || []).map((r) => ({ ...r, label: t(TRAFFIC_SRC[r.src] || r.src) }));
+  const hasAny = totals.opens > 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {ranges}
+        <span className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>
+          {t('Sinov va ichki akkauntlar hisobga kirmaydi.')}
+        </span>
+      </div>
+
+      {!hasAny ? (
+        <EmptyState icon="activity" title={t("Bu davrda hech kim profil ochmagan.")}
+          hint={t("Boshqa davrni tanlab ko'ring.")} />
+      ) : (
+      <>
+      {/* RAQAMLAR — diagramma emas. Uchta son bir qarashda o'qilishi
+          kerak, ular uchun grafik ortiqcha bo'lardi. */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard icon="activity" tone="accent" label={t('Profil ochilishlari')} value={fmt(totals.opens)}
+          sub={`${fmt(totals.personalOpens)} ${t('shaxsiy')} · ${fmt(totals.companyOpens)} ${t('kompaniya')}`} />
+        {/* NOYOB TASHRIFCHI faqat shaxsiy/NFC profillar bo'yicha:
+            kompaniya ko'rishlari oldindan yig'ilgan sanoq bo'lib
+            saqlanadi va unda kim kirgani yozilmaydi. Shuni ochiq
+            aytamiz — aks holda raqam kam ko'rinib, chalkashlik
+            tug'diradi. */}
+        <KpiCard icon="users" tone="ok" label={t('Noyob tashrifchilar')} value={fmt(totals.visitors)}
+          sub={t('Faqat shaxsiy va NFC profillar bo‘yicha')} />
+        <KpiCard icon="chart" tone="muted" label={t('Kuniga o‘rtacha')} value={fmt(avg)}
+          sub={`${data.days} ${t('kun ichida')}`} />
+      </div>
+
+      {/* KUNLAR BO'YICHA. Ikkita seriya — shuning uchun izoh (legend)
+          bor: rang yolg'iz o'zi nimani anglatishini aytmasligi kerak. */}
+      <AdminCard title={`${t('Kunlar bo‘yicha')} (${data.days} ${t('kun')})`}>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data.series} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="day" {...chartAxis} minTickGap={24} />
+              <YAxis {...chartAxis} width={36} allowDecimals={false} />
+              <Tooltip {...chartTooltip} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />
+              <Line type="monotone" dataKey="opens" name={t('Profil ochilishlari')}
+                stroke={C_OPENS} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="visitors" name={t('Noyob tashrifchilar')}
+                stroke={C_VISITORS} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </AdminCard>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        {/* QAYERDAN KIRDI. Bitta o'lchov, bir nechta nom — ya'ni BITTA
+            rang yetarli. Har bir ustunga boshqa rang berish "ranglar
+            nimadir anglatadi" degan yolg'on taassurot qoldirardi.
+            Gorizontal: nomlar uzun va vertikalda qiyshayib ketardi. */}
+        <AdminCard title={t('Qayerdan kirilgan')}>
+          <div style={{ height: Math.max(160, sources.length * 46 + 40) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sources} layout="vertical" margin={{ top: 4, right: 44, bottom: 4, left: 4 }}>
+                <CartesianGrid {...chartGrid} horizontal={false} vertical />
+                <XAxis type="number" {...chartAxis} allowDecimals={false} />
+                <YAxis type="category" dataKey="label" {...chartAxis} width={110} />
+                <Tooltip {...chartTooltip} formatter={(v) => [fmt(v), t('Ochilish')]} />
+                <Bar dataKey="opens" name={t('Ochilish')} fill={C_OPENS} radius={[0, 4, 4, 0]} maxBarSize={22}
+                  label={{ position: 'right', fill: 'rgba(246,239,224,0.65)', fontSize: 11, formatter: (v) => fmt(v) }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>
+            {t('Manba faqat shaxsiy va NFC profillar uchun yoziladi. Kompaniya profillari «to‘g‘ridan-to‘g‘ri» sifatida ko‘rinmaydi — ular alohida sanaladi.')}
+          </p>
+        </AdminCard>
+
+        {/* ENG KO'P OCHILGANLAR — jadval. Aniq raqamlarni solishtirish
+            uchun jadval grafikdan aniqroq. */}
+        <AdminCard title={t('Eng ko‘p ochilgan profillar')}>
+          <div className="overflow-x-auto">
+            <table className="table table-sm">
+              <thead>
+                <tr>
+                  <th className="w-8 text-base-content/40">#</th>
+                  <th>{t('Profil')}</th>
+                  <th className="text-right">{t('Ochilish')}</th>
+                  <th className="text-right">{t('Odam')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.topProfiles || []).map((r, i) => (
+                  <tr key={r.code}>
+                    <td className="text-xs tabular-nums text-base-content/40">{i + 1}</td>
+                    <td>
+                      <a href={adminPreviewUrl(r.code)} target="_blank" rel="noopener noreferrer"
+                        className="link link-hover font-mono text-accent" title={t('Profilni yangi oynada ochish')}>
+                        {r.code} <span aria-hidden="true" className="text-xs opacity-60">↗</span>
+                      </a>
+                    </td>
+                    <td className="text-right font-semibold tabular-nums">{fmt(r.opens)}</td>
+                    <td className="text-right tabular-nums text-base-content/60">{fmt(r.visitors)}</td>
+                  </tr>
+                ))}
+                {(data.topCompanies || []).map((r) => (
+                  <tr key={'co-' + r.code}>
+                    <td className="text-xs text-base-content/40">—</td>
+                    <td>
+                      <a href={adminCompanyPreviewUrl(r.code)} target="_blank" rel="noopener noreferrer"
+                        className="link link-hover font-mono text-accent" title={t('Profilni yangi oynada ochish')}>
+                        {r.code} <span className="badge badge-ghost badge-xs ml-1">{t('kompaniya')}</span>
+                      </a>
+                    </td>
+                    <td className="text-right font-semibold tabular-nums">{fmt(r.opens)}</td>
+                    <td className="text-right text-base-content/30">—</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AdminCard>
+      </div>
+      </>
+      )}
+    </div>
+  );
+}
 
 function AnalyticsTab() {
   const { t } = useLanguage();
@@ -4011,6 +4185,7 @@ function CompaniesTab() {
 const ADMIN_NAV = [
   { index: 0, label: 'Umumiy', icon: 'dashboard' },
   { index: 1, label: 'Statistika', icon: 'chart' },
+  { index: 20, label: 'Trafik', icon: 'activity' },
   { index: 2, label: 'Foydalanuvchilar', icon: 'users' },
   { index: 19, label: 'Kompaniyalar', icon: 'building' },
   { index: 3, label: 'Buyurtmalar', icon: 'bag' },
@@ -4085,6 +4260,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
         {tab === 17 && <AuctionDemandTab />}
         {tab === 18 && (isSuperAdmin ? <FinanceTab /> : <ForbiddenState />)}
         {tab === 19 && <CompaniesTab />}
+        {tab === 20 && <TrafficTab />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

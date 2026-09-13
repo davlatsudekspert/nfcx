@@ -22,7 +22,16 @@ const src = readFileSync(new URL('../src/pages/AdminPage.jsx', import.meta.url),
 const tabsLine = src.match(/^const TABS = \[(.*)\];$/m);
 checkTrue('TABS topildi', !!tabsLine);
 const tabs = [...tabsLine[1].matchAll(/(['"])((?:\\.|(?!\1).)*)\1/g)].map((m) => m[2]);
-check('TABS soni o‘zgarmadi (20)', tabs.length, 20);
+// QOIDA: bu ro'yxatga OXIRIGA qo'shish mumkin, lekin ichidan olib
+// tashlash yoki tartibni o'zgartirish MUMKIN EMAS — indekslar
+// `ADMIN_NAV` da qattiq yozilgan. Shuning uchun boshlanishi aynan
+// mos kelishi tekshiriladi: qo'shish o'tadi, siljitish yiqiladi.
+const FROZEN = ['Umumiy', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar",
+  'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika',
+  'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar',
+  'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar'];
+check('TABS boshlanishi o‘zgarmadi (indekslar qotirilgan)', tabs.slice(0, FROZEN.length), FROZEN);
+checkTrue('TABS qisqarmadi', tabs.length >= FROZEN.length);
 
 // ADMIN_NAV dagi har bir yozuvni o'qiymiz.
 const navBlock = src.slice(src.indexOf('const ADMIN_NAV = ['));

@@ -7034,6 +7034,96 @@ async function adminCoreApi(request, env, url, admin) {
     });
   }
 
+  // ── TRAFIK: saytga nechta odam kirdi, nechta profil ochildi, qayerdan ──
+  //
+  // Egasining so'rovi: "saytga nechta odam kirdi, nechta profil ochildi,
+  // qayerdan kirdi — shuni bitta diagramma qilib qo'ysa bo'ladimi".
+  //
+  // YANGI YIG'ISH QO'SHILMADI — ma'lumot allaqachon yozilib turibdi,
+  // faqat hech qayerda ko'rsatilmasdi:
+  //   card_events   — har bir NFC/shaxsiy profil ochilishi: manba (ref)
+  //                   va tashrifchi belgisi (visitor_hash) bilan
+  //   company_stats — kompaniya profillari, kun bo'yicha yig'ilgan
+  //
+  // IKKALASI BIR XIL EMAS va bu javobda ATAYLAB ajratilgan:
+  //   - `visitors` (noyob odam) faqat card_events da bor. company_stats
+  //     oldindan yig'ilgan sanoq, unda kim kirgani saqlanmaydi.
+  //   - manba (ref) ham faqat card_events da: kompaniya ko'rishlari
+  //     doim ref='' bilan yoziladi (yuqoridagi `companyEvent` ga qarang).
+  // Shuning uchun frontend bu ikkisini qo'shib yubormasligi va
+  // "noyob tashrifchi" raqami nimani anglatishini aniq yozishi kerak.
+  //
+  // SINOV VA ICHKI akkauntlarning profillari chiqarib tashlanadi —
+  // qolgan admin statistikasi ham shunday ishlaydi (egasining qoidasi:
+  // "o'zimiz qilgan ishlar statistikaga kirmasin").
+  if (path === '/api/admin/traffic' && request.method === 'GET') {
+    const days = Math.min(90, Math.max(7, Math.round(Number(url.searchParams.get('days')) || 30)));
+    // Kun chegarasi JS'da hisoblanadi: ikkala jadvalda ham sana MATN
+    // ("YYYY-MM-DD...") bo'lgani uchun leksikografik solishtirish
+    // to'g'ri ishlaydi va SQL ikkala formatga ham bir xil qo'llanadi.
+    const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+
+    // Sinov/ichki akkaunt profillarini chiqaramiz. `card_events.code`
+    // -> `cards.user_id` -> `users`.
+    const NOT_TEST = `code IN (SELECT c.code FROM cards c JOIN users u ON u.id = c.user_id
+                               WHERE u.is_test = 0 AND u.is_internal = 0)`;
+    const EV = `FROM card_events WHERE event_type = 'profile_view' AND created_at >= ? AND ${NOT_TEST}`;
+
+    const [daily, sources, topCards, coDaily, topCo, totals] = await Promise.all([
+      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COUNT(*) AS opens,
+                             COUNT(DISTINCT visitor_hash) AS visitors ${EV}
+                      GROUP BY day ORDER BY day`).bind(since).all(),
+      env.DB.prepare(`SELECT COALESCE(NULLIF(ref,''),'direct') AS src, COUNT(*) AS opens ${EV}
+                      GROUP BY src ORDER BY opens DESC`).bind(since).all(),
+      env.DB.prepare(`SELECT code, COUNT(*) AS opens, COUNT(DISTINCT visitor_hash) AS visitors ${EV}
+                      GROUP BY code ORDER BY opens DESC LIMIT 10`).bind(since).all(),
+      env.DB.prepare(`SELECT day, COALESCE(SUM(hits),0) AS opens FROM company_stats
+                      WHERE kind = 'view' AND day >= ? GROUP BY day ORDER BY day`).bind(since).all(),
+      env.DB.prepare(`SELECT company_id, COALESCE(SUM(hits),0) AS opens FROM company_stats
+                      WHERE kind = 'view' AND day >= ? GROUP BY company_id
+                      ORDER BY opens DESC LIMIT 10`).bind(since).all(),
+      // Noyob tashrifchi BUTUN davr bo'yicha — kunlik raqamlarni qo'shib
+      // bo'lmaydi: bir odam uch kun kirsa, u uch kunda ham sanaladi,
+      // lekin u BITTA odam.
+      env.DB.prepare(`SELECT COUNT(*) AS opens, COUNT(DISTINCT visitor_hash) AS visitors ${EV}`)
+        .bind(since).first(),
+    ]);
+
+    // Kunlik qatorni BIRLASHTIRAMIZ va bo'sh kunlarni nol bilan
+    // to'ldiramiz — aks holda grafikda kunlar o'tkazib yuborilib,
+    // egri chiziq yolg'on ko'rinish beradi.
+    const byDay = new Map();
+    for (const r of (daily.results || [])) {
+      byDay.set(r.day, { day: r.day, personal: Number(r.opens), visitors: Number(r.visitors), company: 0 });
+    }
+    for (const r of (coDaily.results || [])) {
+      const cur = byDay.get(r.day) || { day: r.day, personal: 0, visitors: 0, company: 0 };
+      cur.company = Number(r.opens);
+      byDay.set(r.day, cur);
+    }
+    const series = [];
+    for (let i = 0; i < days; i++) {
+      const day = new Date(Date.now() - (days - 1 - i) * 86400000).toISOString().slice(0, 10);
+      const r = byDay.get(day) || { day, personal: 0, visitors: 0, company: 0 };
+      series.push({ day, opens: r.personal + r.company, visitors: r.visitors });
+    }
+
+    const companyOpens = (coDaily.results || []).reduce((n, r) => n + Number(r.opens), 0);
+    return json({
+      days,
+      totals: {
+        opens: Number(totals?.opens || 0) + companyOpens,
+        personalOpens: Number(totals?.opens || 0),
+        companyOpens,
+        visitors: Number(totals?.visitors || 0),
+      },
+      sources: (sources.results || []).map((r) => ({ src: r.src, opens: Number(r.opens) })),
+      series,
+      topProfiles: (topCards.results || []).map((r) => ({ code: r.code, opens: Number(r.opens), visitors: Number(r.visitors) })),
+      topCompanies: (topCo.results || []).map((r) => ({ code: r.company_id, opens: Number(r.opens) })),
+    });
+  }
+
   if (path === '/api/admin/orders' && request.method === 'GET') {
     // SINOV BUYURTMALARI YASHIRILADI (2026-09, egasining so'rovi:
     // "statistikalarni nol qilib yubor — o'zimiz qilgan ishlar bular").
