@@ -7014,9 +7014,31 @@ async function adminCoreApi(request, env, url, admin) {
     });
   }
 
+  // PLATFORMA DAROMADI — HAQIQIY, jonli raqam.
+  //
+  // Egasining so'rovi: "bu summani ham nol qilib qo'y, yo aniq summa
+  // bo'lsa yozib qo'y".
+  //
+  // MUAMMO TOPILDI: bu yerda `platform_wallet.balance` o'qilardi, unga
+  // esa HOZIRGI kod HECH QACHON yozmaydi. Uni faqat eski Express/
+  // Postgres tizimi oshirib borardi (server/db.js:5257). Ya'ni ekranda
+  // ko'ringan 7 990 000 — o'sha eski tizimdan qotib qolgan raqam: u
+  // hech qachon o'zgarmaydi va bugungi pulga hech qanday aloqasi yo'q.
+  // "Real pul" deb yozib turgani esa uni yanada chalg'ituvchi qilardi.
+  //
+  // Endi raqam HAR SAFAR hisoblanadi: haqiqatan TO'LANGAN buyurtmalar
+  // yig'indisi. Sinov va ichki akkauntlar chiqarib tashlanadi — qolgan
+  // hamma admin statistikasi ham shunday ishlaydi.
+  //
+  // Jadval o'chirilmadi: u eski moliyaviy yozuv va uni o'chirish
+  // tarixni yo'qotardi. Shunchaki endi ko'rsatilmaydi.
   if (path === '/api/admin/platform-wallet' && request.method === 'GET') {
-    const row = await env.DB.prepare(`SELECT balance FROM platform_wallet WHERE id = 1`).first();
-    return json({ balance: Number(row?.balance || 0) });
+    const row = await env.DB.prepare(
+      `SELECT COALESCE(SUM(price), 0) AS total, COUNT(*) AS n FROM web_orders
+       WHERE status = 'paid'
+         AND (user_id IS NULL OR user_id NOT IN (SELECT id FROM users WHERE is_test = 1 OR is_internal = 1))`
+    ).first();
+    return json({ balance: Number(row?.total || 0), paidOrders: Number(row?.n || 0) });
   }
 
   if (path === '/api/admin/analytics' && request.method === 'GET') {
