@@ -181,7 +181,7 @@ function ItemRow({
   }
 
   return (
-    <Card radius={14} shadow="soft" style={{ padding: 14, gap: 10 }}>
+    <Card radius={14} style={{ padding: 14, gap: 10 }}>
       <View
         style={{
           flexDirection: 'row',

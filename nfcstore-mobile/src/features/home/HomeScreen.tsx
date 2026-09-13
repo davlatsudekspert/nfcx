@@ -1,38 +1,53 @@
 import { useQuery } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getGiftOffers, getPaymentsSettings, getPhysicalPricing } from '@/api/endpoints';
-import { Card } from '@/components/Card';
+import { CardSurface } from '@/components/Card';
+import {
+  CardGlyph,
+  CheckCircleGlyph,
+  GiftGlyph,
+  LinkGlyph,
+  PaymentGlyph,
+} from '@/components/Glyphs';
+import { IconCircle } from '@/components/IconCircle';
+import { ScreenHeader, SectionDivider } from '@/components/ScreenHeader';
+import { TIER_METALS, TierMedal, type TierKey } from '@/components/TierMedal';
 import { TapScale } from '@/components/TapScale';
-import { HandleChip } from '@/features/profile/header/ActionButtons';
 import { NfcScanCard } from '@/features/nfc/NfcScanCard';
+import { SITE } from '@/features/profile/profileVM';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
 import { money } from '@/lib/format';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useAuthStore } from '@/store/authStore';
-import { SITE } from '@/features/profile/profileVM';
+import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
 /**
- * Home — tezkor amal kartalari.
+ * HOME — egasining boshlang'ich maydoni: kartani o'qish, ID ni
+ * boshqarish, sotib olish/sovg'a qilish, tariflarni ko'rish.
  *
- * Kartalar FAOL ID ga qarab o'zgaradi (biznes yoki shaxsiy), xuddi
- * maketdagidek. Har bir karta haqiqiy endpointga ulangan:
+ * Tuzilish (spetsifikatsiya 1-ekran):
+ *   sarlavha qatori  -> "Home" 29px + ost-qator + hisob chipi
+ *   hero karta       -> NFC o'qish (gold ramka + nafas + sweep)
+ *   5 ta ikkilamchi karta
+ *   "YANGI NFC ID" ajratkichi
+ *   tarif medallari (gorizontal)
  *
- *   ID holati       -> faol profil javobidan (ko'rishlar, ochiq havola)
+ * MA'LUMOT MANBALARI — hammasi jonli API dan, maketdagi sonlar
+ * (120 000, "284 marta o'qildi", "9 TA") faqat o'rin egallovchi:
+ *   ID holati       -> faol profil javobi (ko'rishlar, ochiq havola)
  *   Jismoniy karta  -> GET /api/settings/physical-nfc-pricing
- *   Sovg'a          -> GET /api/gift-offers (kutilayotganlar soni)
- *   To'lovlar       -> GET /api/settings/payments-enabled + /auth/me dagi
- *                      premium/sinov muddati
+ *   Havolalar soni  -> profil javobidagi havolalar ro'yxati
+ *   Sovg'a          -> GET /api/gift-offers
+ *   To'lovlar       -> GET /api/settings/payments-enabled + /auth/me
  */
 export function HomeScreen() {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const setActive = useActiveIdStore((s) => s.setActive);
   const user = useAuthStore((s) => s.user);
 
@@ -52,95 +67,82 @@ export function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-          paddingTop: 10 + insets.top,
-          paddingHorizontal: 16,
-          paddingBottom: 14,
-        }}
-      >
-        <Text style={[sans(800, 24, 1.2), { color: theme.ink, letterSpacing: -0.48 }]}>
-          Home
-        </Text>
-        {/* Almashtirgich Home'da ham bor — egasining aniq talabi. */}
-        <HandleChip
-          handle={vm?.handle ?? '@…'}
-          bordered
-          onPress={() => setSwitcherOpen(true)}
-        />
-      </View>
+      <ScreenHeader
+        title="Home"
+        sub="Yana ko’rishganimizdan xursandmiz"
+        handle={vm?.handle ?? '@…'}
+        onOpenSwitcher={() => setSwitcherOpen(true)}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}
       >
         <NfcScanCard />
 
         <ActionCard
+          icon={<CheckCircleGlyph color="#63d694" />}
+          tint="#63d694"
           title={isBusiness ? 'Biznes ID faol' : 'Shaxsiy ID faol'}
+          sub={vm ? `${vm.views} marta o’qildi · ${publicUrl(vm)}` : 'ID yuklanmoqda…'}
           meta={vm ? 'FAOL' : '—'}
-          sub={
-            vm
-              ? `${vm.views} ko’rish · ${publicUrl(vm)}`
-              : 'ID yuklanmoqda…'
-          }
+          metaColor="#63d694"
           onPress={vm ? () => openUrl(publicUrl(vm, true)) : undefined}
         />
 
         <ActionCard
+          icon={<CardGlyph color={theme.a1} />}
           title={
             isBusiness ? 'Jamoa uchun kartalar buyurtma qilish' : 'Jismoniy karta buyurtma qilish'
           }
-          meta={unitPrice != null ? money(unitPrice) : '…'}
           sub={
             delivery
-              ? `Rang va uslubni tanlang · ${delivery.minDays}–${delivery.maxDays} kunda yetkazib beriladi`
+              ? `Rang va uslubni tanlang, ${delivery.maxDays} kunda yetib boradi`
               : 'Rang va uslubni tanlang'
           }
+          meta={unitPrice != null ? money(unitPrice) : '…'}
           onPress={() => openUrl(`${SITE}/karta-dizayni`)}
         />
 
         {isBusiness ? (
           <ActionCard
+            icon={<LinkGlyph color={theme.a1} />}
             title="Mahsulot qo’shish"
-            meta="KATALOG"
-            sub={`${vm?.third.value ?? 0} mahsulot faol · nom va narx qo’shing`}
-            onPress={
-              vm?.companyId ? () => openUrl(`${SITE}/c/${vm.companyId}`) : undefined
-            }
+            sub="Nom, narx va rasm bilan katalogni to’ldiring"
+            meta={`${vm?.third.value ?? 0} TA`}
+            onPress={vm?.companyId ? () => openUrl(`${SITE}/c/${vm.companyId}`) : undefined}
           />
         ) : (
           <ActionCard
+            icon={<LinkGlyph color={theme.a1} />}
             title="Havolalarni tahrirlash"
-            meta={`${vm?.third.value ?? 0} HAVOLA`}
             sub="Veb-sayt, Telegram, portfolio, kalendar"
+            meta={`${vm?.third.value ?? 0} TA`}
             onPress={vm?.code ? () => openUrl(`${SITE}/${vm.code}`) : undefined}
           />
         )}
 
         <ActionCard
+          icon={<GiftGlyph color={theme.a1} />}
           title={isBusiness ? 'Mijozga ID sovg’a qilish' : 'Do’stga ID sovg’a qilish'}
-          meta={pendingGifts > 0 ? `${pendingGifts} KUTILMOQDA` : 'BEPUL'}
           sub={
             pendingGifts > 0
               ? 'Tasdiqlashni kutayotgan sovg’alar bor'
-              : 'ID yuboring — qabul qiluvchi tasdiqlaydi'
+              : 'Qabul qiluvchi tasdiqlashi kerak'
           }
+          meta={pendingGifts > 0 ? `${pendingGifts} KUTILMOQDA` : 'BEPUL'}
           onPress={() => openUrl(`${SITE}/gifts`)}
         />
 
         <ActionCard
+          icon={<PaymentGlyph color={theme.a1} />}
           title="To’lovlar"
-          meta={payments.data?.providers?.payme?.enabled === false ? 'O’CHIRILGAN' : 'PAYME'}
           sub={paymentsSub(user, payments.data?.sandbox)}
+          meta={payments.data?.providers?.payme?.enabled === false ? 'O’CHIRILGAN' : 'PAYME'}
           onPress={() => openUrl(`${SITE}/tolovlar`)}
         />
 
-        {/* Tarif chizig'i — maketda Home'da, ikkala profil turida ham. */}
+        <SectionDivider label="YANGI NFC ID" />
         <TierStrip />
       </ScrollView>
 
@@ -155,15 +157,29 @@ export function HomeScreen() {
   );
 }
 
+/**
+ * Ikkilamchi karta — Home dagi beshta qatorning hammasi shu qobiqda:
+ *
+ *   row, gap 14, padding 15, radius 16, karta gradienti + rim-glow
+ *   ikonka: 46×46 DUMALOQ plita, glif 19px stroke 1.7
+ *   sarlavha 15.5px 700 · ost-qator 12px 400 rgba(255,255,255,.52)
+ *   meta 10.5px IBM Plex Mono, aksent rangida, qatorga sig'maydi
+ */
 function ActionCard({
+  icon,
+  tint,
   title,
-  meta,
   sub,
+  meta,
+  metaColor,
   onPress,
 }: {
+  icon: ReactNode;
+  tint?: string;
   title: string;
-  meta: string;
   sub: string;
+  meta: string;
+  metaColor?: string;
   onPress?: () => void;
 }) {
   const { theme } = useTheme();
@@ -172,140 +188,150 @@ function ActionCard({
     <TapScale
       radius={16}
       onPress={onPress}
-      accessibilityLabel={title}
-      style={{ borderRadius: 16 }}
+      accessibilityLabel={`${title}. ${sub}`}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          padding: 15,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: theme.rim,
+          backgroundColor: theme.c2,
+          overflow: 'hidden',
+        },
+        SH.card(theme.a2),
+      ]}
     >
-      <Card radius={16} style={{ padding: 16, gap: 6 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-          }}
+      <CardSurface />
+      <IconCircle tint={tint}>{icon}</IconCircle>
+
+      <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+        <Text style={[sans(700, 15.5, 1.3), { color: theme.ink }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text
+          style={[sans(400, 12, 1.45), { color: 'rgba(255,255,255,.52)' }]}
+          numberOfLines={2}
         >
-          <Text style={[sans(700, 14, 1.3), { color: theme.ink, flex: 1 }]}>{title}</Text>
-          <Text style={[mono(600, 11), { color: theme.a1 }]} numberOfLines={1}>
-            {meta}
-          </Text>
-        </View>
-        <Text style={[sans(400, 12, 1.5), { color: 'rgba(255,255,255,.48)' }]}>{sub}</Text>
-      </Card>
+          {sub}
+        </Text>
+      </View>
+
+      <Text
+        style={[mono(500, 10.5), { color: metaColor ?? theme.a1, flexShrink: 0 }]}
+        numberOfLines={1}
+      >
+        {meta}
+      </Text>
     </TapScale>
   );
 }
 
 /**
- * Tarif chizig'i — metall gradientli "medal" nishonlari
- * (spetsifikatsiya 7-bo'lim: embossed medal look, flat pill emas).
+ * Tarif chizig'i — 96px kengligidagi kartalar, ichida 46px metall
+ * medal, nom va narx.
  *
- * Narxlar spetsifikatsiyada qat'iy berilgan, shuning uchun ular shu
- * yerda: Bronze 49k / Silver 99k / Gold 149k / Premium 199k /
- * Exclusive 490k dan. Xarid oqimi veb orqali ochiladi.
+ * NARXLAR HAQIDA: bu sonlar maketdan EMAS, backenddagi haqiqiy
+ * konstantadan olingan — `hosting/worker.js` dagi
+ *
+ *   const PERSONAL_TIER_PRICE =
+ *     { exclusive: 490000, premium: 199000, gold: 149000,
+ *       silver: 99000, free: 49000 };
+ *
+ * Ularni ochiq beradigan endpoint hozircha YO'Q, shuning uchun qiymat
+ * shu yerda takrorlanadi. Narx o'zgarganda ikki joyni yangilash kerak
+ * bo'ladi — buni yo'qotish uchun backendga kichik `GET
+ * /api/settings/id-pricing` qo'shilsa, bu ro'yxat o'chiriladi.
+ * (Hisobotda alohida taklif sifatida keltirilgan; backendga bu
+ * bosqichda tegilmaydi.)
  */
+const TIERS: { key: TierKey; price: number; from?: boolean }[] = [
+  { key: 'free', price: 49_000 },
+  { key: 'silver', price: 99_000 },
+  { key: 'gold', price: 149_000 },
+  { key: 'premium', price: 199_000 },
+  // Exclusive to'g'ridan-to'g'ri sotilmaydi — "dan" boshlanadi
+  // (worker.js: `exclusive` uchun narx qat'iy emas).
+  { key: 'exclusive', price: 490_000, from: true },
+];
+
 function TierStrip() {
   const { theme } = useTheme();
 
-  const TIERS = [
-    { name: 'Bronze', price: 49_000, m1: '#e0b083', m2: '#7d4a1e' },
-    { name: 'Silver', price: 99_000, m1: '#eef2f6', m2: '#8b949c' },
-    { name: 'Gold', price: 149_000, m1: '#f0cf7a', m2: '#a87c0d' },
-    { name: 'Premium', price: 199_000, m1: '#d8c6f0', m2: '#6b4fa0' },
-    { name: 'Exclusive', price: 490_000, m1: '#f6ead0', m2: '#5a4a22', from: true },
-  ];
-
   return (
-    <View style={{ gap: 10, marginTop: 2 }}>
-      <Text style={[mono(600, 11), { color: theme.a1, letterSpacing: 1.1 }]}>
-        YANGI NFC ID
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingRight: 4 }}
-      >
-        {TIERS.map((t) => (
-          <TapScale
-            key={t.name}
-            radius={14}
-            onPress={() => openUrl(`${SITE}/narxlar`)}
-            accessibilityLabel={`${t.name} tarifi`}
-            style={{ borderRadius: 14 }}
-          >
-            <Card
-              radius={14}
-              shadow="tier"
-              style={{
-                alignItems: 'flex-start',
-                gap: 7,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-              }}
-            >
-              <TierMedal m1={t.m1} m2={t.m2} />
-              <Text style={[sans(700, 11.5), { color: theme.ink }]}>{t.name}</Text>
-              <Text style={[mono(500, 10), { color: 'rgba(255,255,255,.5)' }]}>
-                {t.from ? `${money(t.price)} dan` : money(t.price)}
-              </Text>
-            </Card>
-          </TapScale>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-/**
- * Metall nishon — ichki soya bilan "bosma medal" ko'rinishi.
- * Maketda bu `inset` box-shadow bilan qilingan; RN da inset soya yo'q,
- * shuning uchun effekt ikki qatlam gradient bilan taqlid qilinadi.
- */
-function TierMedal({ m1, m2 }: { m1: string; m2: string }) {
-  return (
-    <View
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        overflow: 'hidden',
-        borderWidth: 0.5,
-        borderColor: 'rgba(255,255,255,.35)',
-      }}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      // `boxShadow` karta chetidan tashqariga chiqadi — ro'yxat uni
+      // kesib tashlamasligi uchun ichkarida bo'sh joy qoldiriladi.
+      contentContainerStyle={{ gap: 9, paddingVertical: 6, paddingRight: 6 }}
+      style={{ marginVertical: -6, flexGrow: 0 }}
     >
-      <View style={{ flex: 1, backgroundColor: m2 }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: -2,
-            left: -2,
-            right: 6,
-            bottom: 8,
-            borderRadius: 11,
-            backgroundColor: m1,
-            opacity: 0.9,
-          }}
-        />
-      </View>
-    </View>
+      {TIERS.map((t) => {
+        const metal = TIER_METALS[t.key];
+        return (
+          <TapScale
+            key={t.key}
+            radius={16}
+            onPress={() => openUrl(`${SITE}/narxlar`)}
+            accessibilityLabel={`${metal.name} tarifi, ${money(t.price)}`}
+            style={[
+              {
+                width: 96,
+                alignItems: 'center',
+                gap: 9,
+                paddingVertical: 14,
+                paddingHorizontal: 10,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: theme.rim,
+                backgroundColor: theme.c2,
+                overflow: 'hidden',
+              },
+              SH.cardTight(theme.a2),
+            ]}
+          >
+            <CardSurface />
+            <TierMedal m1={metal.m1} m2={metal.m2} />
+            <Text style={[sans(700, 12), { color: theme.ink }]}>{metal.name}</Text>
+            <Text
+              style={[mono(400, 9.5), { color: 'rgba(255,255,255,.5)' }]}
+              numberOfLines={1}
+            >
+              {t.from ? `${money(t.price)} dan` : money(t.price)}
+            </Text>
+          </TapScale>
+        );
+      })}
+    </ScrollView>
   );
 }
 
 /* ── yordamchilar ─────────────────────────────────────────────────── */
 
 function publicUrl(vm: { kind: string; companyId?: string; code?: string }, full = false) {
+  // Maketda `nfcstore.uz/id/<slug>` yozilgan, lekin saytdagi HAQIQIY
+  // manzil boshqacha: kartalar uchun `/<KOD>`, kompaniyalar uchun
+  // `/c/<ID>`. Ko'rsatilayotgan havola bosilganda ochiladigan havola
+  // bilan bir xil bo'lishi shart, shuning uchun haqiqiy manzil.
   const path = vm.kind === 'business' ? `/c/${vm.companyId}` : `/${vm.code}`;
   return full ? `${SITE}${path}` : `nfcstore.uz${path}`;
 }
 
 function paymentsSub(
-  user: { isPremium?: boolean; premiumExpiresAt?: string | null; trialExpiresAt?: string | null } | null | undefined,
+  user:
+    | { isPremium?: boolean; premiumExpiresAt?: string | null; trialExpiresAt?: string | null }
+    | null
+    | undefined,
   sandbox?: boolean,
 ): string {
   const parts: string[] = [];
   if (sandbox) parts.push('TEST REJIMI');
 
   if (user?.premiumExpiresAt) {
-    parts.push(`Premium ${formatDate(user.premiumExpiresAt)} gacha`);
+    parts.push(`Karta ulangan · keyingi to’lov ${formatDate(user.premiumExpiresAt)}`);
   } else if (user?.isPremium) {
     // Eski bir martalik to'lov — muddatsiz (worker.js dagi izohga qarang).
     parts.push('Premium faol — muddatsiz');

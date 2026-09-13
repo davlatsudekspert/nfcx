@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollView, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { CardBackdrop } from '@/components/Card';
+import { CardSurface } from '@/components/Card';
 import { Sheet } from '@/components/Sheet';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
@@ -78,7 +78,7 @@ export function SwitcherSheet({
                 overflow: 'hidden',
               }}
             >
-              <CardBackdrop radius={14} />
+              <CardSurface />
 
               {account.photoUrl ? (
                 <Image

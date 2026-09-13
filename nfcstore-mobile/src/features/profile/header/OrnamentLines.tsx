@@ -59,6 +59,7 @@ export function OrnamentLines() {
       </Svg>
 
       <Image
+        pointerEvents="none"
         source={LOGO}
         accessibilityLabel="NFCSTORE"
         contentFit="cover"

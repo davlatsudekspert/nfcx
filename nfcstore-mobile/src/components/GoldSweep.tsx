@@ -35,7 +35,19 @@ import Animated, {
  * Kesish shu komponentning o'zida (`overflow:'hidden'`) — ota elementga
  * qo'shimcha talab qo'yilmaydi.
  */
-export function GoldSweep({ duration = 5000, radius = 0 }: { duration?: number; radius?: number }) {
+export function GoldSweep({
+  duration = 5000,
+  radius = 0,
+  /** Chiziq kengligi elementga nisbatan. Hero kartada 38%. */
+  band = 0.35,
+  /** Yorug'likning eng kuchli nuqtasi. Hero kartada .55. */
+  intensity = 0.5,
+}: {
+  duration?: number;
+  radius?: number;
+  band?: number;
+  intensity?: number;
+}) {
   const [width, setWidth] = useState(0);
   const progress = useSharedValue(0);
 
@@ -79,13 +91,14 @@ export function GoldSweep({ duration = 5000, radius = 0 }: { duration?: number; 
     >
       {width > 0 ? (
         <Animated.View
+          pointerEvents="none"
           style={[
-            { position: 'absolute', top: 0, bottom: 0, left: 0, width: width * 0.35 },
+            { position: 'absolute', top: 0, bottom: 0, left: 0, width: width * band },
             stripStyle,
           ]}
         >
           <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,.5)', 'transparent']}
+            colors={['transparent', `rgba(255,255,255,${intensity})`, 'transparent']}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={{ flex: 1 }}

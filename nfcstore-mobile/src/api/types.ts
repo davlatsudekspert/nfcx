@@ -82,6 +82,16 @@ export type Company = {
   views: number;
   followers: number;
   following: boolean;
+  /**
+   * Foydalanuvchining shu kompaniyadagi roli.
+   *
+   * Backendda hozircha a'zolik jadvali YO'Q: `/api/companies/mine`
+   * faqat `owner_user_id = men` bo'lgan yozuvlarni qaytaradi, ya'ni bu
+   * maydon hozir kelmaydi va rol har doim "ega" deb olinadi. Maydon
+   * ixtiyoriy qilib e'lon qilingan — backendga ADMIN a'zolik
+   * qo'shilganda ilova kodini o'zgartirmasdan to'g'ri ko'rsatadi.
+   */
+  role?: string;
 };
 
 export type ExtraLink = { label?: string; url?: string; title?: string; href?: string };
@@ -147,6 +157,26 @@ export type CompanyStory = {
 };
 
 export type FollowResult = { following: boolean; followers: number };
+
+/**
+ * `GET /api/stories/feed` javobining bitta yozuvi — obuna bo'lingan
+ * BITTA odam va uning barcha faol istoryalari (worker.js:8116).
+ */
+export type StoryAuthor = {
+  /** Karta kodi — profilga o'tish uchun (`/p/<KOD>`). */
+  code: string;
+  name: string;
+  avatarUrl: string;
+  stories: {
+    id: number;
+    imageUrl: string;
+    videoUrl: string;
+    caption: string;
+    createdAt: string;
+    likeCount: number;
+    liked: boolean;
+  }[];
+};
 
 export type TapInfo = { active: boolean; linkedCode: string | null };
 

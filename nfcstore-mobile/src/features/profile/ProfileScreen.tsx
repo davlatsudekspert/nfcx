@@ -11,7 +11,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
-import { HandleChip, SettingsButton } from './header/ActionButtons';
+import { AccountChip } from '@/components/ScreenHeader';
+import { BackTile } from '@/components/BackBar';
+import { SettingsButton } from './header/ActionButtons';
+import { StoriesRow } from './StoriesRow';
 import { ProfileView } from './ProfileView';
 import { SettingsSheet } from './sheets/SettingsSheet';
 import { SwitcherSheet } from './sheets/SwitcherSheet';
@@ -46,15 +49,28 @@ export function ProfileScreen() {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 10,
         paddingTop: 8 + insets.top,
         paddingHorizontal: 14,
         paddingBottom: 2,
       }}
     >
+      {/* Orqaga chevroni — spetsifikatsiyadagi 34×34 plita.
+          Profil TABI ilovaning ildiz ekrani, ya'ni u yerdan qaytadigan
+          joy bo'lmasligi mumkin. O'LIK tugma qo'ymaymiz (bosilib
+          ishlamaydigan element aynan shikoyat mavzusi edi): tarix bo'sh
+          bo'lsa o'sha o'lchamdagi BO'SH joy qoladi, shunda chip va
+          tishli g'ildirak joyidan siljimaydi. */}
+      {router.canGoBack() ? (
+        <BackTile onPress={() => router.back()} />
+      ) : (
+        <View style={{ width: 34, height: 34 }} />
+      )}
+
       {/* Almashtirgich tugmasi SARLAVHANING umumiy qatorida turadi —
           shuning uchun u Personal va Business ekranlarda bir xil joyda
           va bir xil ishlaydi (spetsifikatsiya talabi). */}
-      <HandleChip handle={vm?.handle ?? '@…'} onPress={() => setSwitcherOpen(true)} />
+      <AccountChip handle={vm?.handle ?? '@…'} onPress={() => setSwitcherOpen(true)} />
       <SettingsButton onPress={() => setSettingsOpen(true)} />
     </View>
   );
@@ -126,6 +142,7 @@ export function ProfileScreen() {
         hasNewContent={hasNewContent}
         seen={seen}
         topBar={topBar}
+        stories={<StoriesRow />}
         onOpenPost={
           latest
             ? () => {

@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
 import { useSvgId } from '@/lib/svgId';
-import { A180 } from '@/theme/css';
+import { A180, SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -100,7 +100,8 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
         position: 'relative',
         flexDirection: 'row',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,.08)',
+        // Spetsifikatsiya: `1px solid #2d2518` — temaning `rim` i.
+        borderTopColor: theme.rim,
         paddingTop: 9,
         paddingHorizontal: 4,
         // Maketda 8px; qurilmadagi gesture-bar uchun xavfsiz zona qo'shiladi.
@@ -108,9 +109,13 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
         backgroundColor: theme.bg,
       }}
     >
-      {/* linear-gradient(180deg, rgba(255,255,255,.03), transparent) */}
+      {/* linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.25))
+          + `backdrop-filter: blur(18px)`.
+          Orqa fonni bulutlashtirish (backdrop-filter) RN da yo'q —
+          panel ostidagi kontent ko'rinmaydi, shuning uchun u qattiq fon
+          bilan almashtirilgan. Gradientning o'zi maketdagidek. */}
       <LinearGradient
-        colors={['rgba(255,255,255,.03)', 'rgba(255,255,255,0)']}
+        colors={['rgba(255,255,255,.05)', 'rgba(0,0,0,.25)']}
         start={A180.start}
         end={A180.end}
         pointerEvents="none"
@@ -137,6 +142,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
           <Svg
             width={INDICATOR_W + 18}
             height={13}
+            pointerEvents="none"
             style={{ position: 'absolute', left: -9, top: -5 }}
           >
             <Defs>
@@ -157,7 +163,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
             colors={[theme.a1, theme.a2]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
-            style={{ flex: 1, borderRadius: 3 }}
+            style={[{ flex: 1, borderRadius: 3 }, SH.navIndicator(theme.a1)]}
           />
         </Animated.View>
       ) : null}

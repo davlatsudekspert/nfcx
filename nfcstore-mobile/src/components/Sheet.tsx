@@ -3,7 +3,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SHADOW } from '@/theme/css';
+import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -11,14 +11,23 @@ import { sans } from '@/theme/type';
  * Pastdan chiqadigan varaq (bottom sheet) — maketdagi:
  *
  *   overlay: rgba(0,0,0,.62), fadeIn .2s
- *   sheet:   background var(--sheet); border-top 1px var(--rim);
- *            border-radius: 26px 26px 0 0; padding: 12px 16px 26px;
+ *   sheet:   background color-mix(in srgb, #100c07 80%, transparent);
+ *            backdrop-filter: blur(22px) saturate(140%);
+ *            border: 1px solid #b3860f;
+ *            border-radius: 28px 28px 0 0; padding: 12px 16px 26px;
  *            sheetUp .28s cubic-bezier(.2,.8,.25,1);
  *            box-shadow: 0 -20px 50px rgba(0,0,0,.6)
  *
  * `Modal` ishlatiladi, chunki varaq pastki navigatsiya USTIDA turishi
  * kerak — oddiy `View` bo'lsa u tab navigator ichida qolib, nav bar
  * uning ustidan chiqib ketardi.
+ *
+ * `backdrop-filter` (ortdagi ekranni bulutlashtirish) RN da MAVJUD EMAS
+ * va uni beradigan kutubxona (`expo-blur`) bu muhitda o'rnatib
+ * bo'lmaydi (paket reestri bloklangan). Shuning uchun varaq QATTIQ
+ * `--sheet` foni bilan chiziladi: ortidagi ekran baribir `rgba(0,0,0,.62)`
+ * parda bilan qoraytirilgan, ya'ni ko'zga farq deyarli bilinmaydi.
+ * Bu yagona ataylab qilingan chekinish — hisobotda ham qayd etilgan.
  */
 export function Sheet({
   visible,
@@ -53,15 +62,17 @@ export function Sheet({
             {
               backgroundColor: theme.sheet,
               borderTopWidth: 1,
-              borderTopColor: theme.rim,
-              borderTopLeftRadius: 26,
-              borderTopRightRadius: 26,
+              // Spetsifikatsiya: `1px solid #b3860f` — to'q aksent,
+              // shaffof `rim` emas. Bu varaqni fondan ajratib turadi.
+              borderTopColor: theme.a2,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
               paddingTop: 12,
               paddingHorizontal: 16,
               // Maketda 26px; qurilmadagi xavfsiz zona qo'shiladi.
               paddingBottom: 26 + insets.bottom,
             },
-            SHADOW.sheet,
+            SH.sheet(),
           ]}
         >
           <View

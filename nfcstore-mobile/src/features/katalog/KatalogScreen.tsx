@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import {
@@ -19,12 +18,14 @@ import {
   searchRecords,
 } from '@/api/endpoints';
 import type { CatalogRecord, PublicCompany } from '@/api/types';
+import { CardSurface } from '@/components/Card';
+import { ChevronRight } from '@/components/Glyphs';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
-import { HandleChip } from '@/features/profile/header/ActionButtons';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
-import { A120, A150, SHADOW } from '@/theme/css';
+import { A120, SH } from '@/theme/css';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
@@ -63,7 +64,6 @@ type Entry =
 
 export function KatalogScreen() {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const setActive = useActiveIdStore((s) => s.setActive);
 
   const { vm, accounts, active } = useProfileData();
@@ -142,26 +142,12 @@ export function KatalogScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-          paddingTop: 10 + insets.top,
-          paddingHorizontal: 16,
-          paddingBottom: 12,
-        }}
-      >
-        <Text style={[sans(800, 24, 1.2), { color: theme.ink, letterSpacing: -0.48 }]}>
-          Katalog
-        </Text>
-        <HandleChip
-          handle={vm?.handle ?? '@…'}
-          bordered
-          onPress={() => setSwitcherOpen(true)}
-        />
-      </View>
+      <ScreenHeader
+        title="Katalog"
+        sub="Odamlar, brendlar va imkoniyatlarni toping"
+        handle={vm?.handle ?? '@…'}
+        onOpenSwitcher={() => setSwitcherOpen(true)}
+      />
 
       <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
         <View
@@ -253,7 +239,6 @@ export function KatalogScreen() {
           // bir vaqtda chizmaydi.
           initialNumToRender={10}
           windowSize={7}
-          removeClippedSubviews
           ListEmptyComponent={
             <Text
               style={[
@@ -311,26 +296,49 @@ function FilterChip({
     <TapScale
       radius={11}
       onPress={onPress}
+      pulseColor={on ? theme.a1 : undefined}
       accessibilityLabel={label}
       accessibilityState={{ selected: on }}
-      style={{
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 11,
-        overflow: 'hidden',
-        backgroundColor: on ? undefined : 'rgba(255,255,255,.05)',
-        borderWidth: 1,
-        borderColor: on ? 'transparent' : 'rgba(255,255,255,.08)',
-      }}
+      style={[
+        {
+          paddingVertical: 8,
+          paddingHorizontal: 14,
+          borderRadius: 11,
+          overflow: 'hidden',
+          backgroundColor: on ? theme.a2 : theme.c2,
+          borderWidth: 1,
+          borderColor: on ? 'transparent' : theme.rim,
+        },
+        // Faol: `inset 0 1px 0 rgba(255,255,255,.45),
+        //        0 6px 14px rgba(0,0,0,.45), 0 0 16px -6px #f0cf7a`
+        on ? SH.pill(theme.a1) : null,
+      ]}
     >
       {on ? (
-        <LinearGradient
-          colors={[theme.a1, theme.a2]}
-          start={A120.start}
-          end={A120.end}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-      ) : null}
+        <>
+          <LinearGradient
+            colors={[theme.a1, theme.a2]}
+            start={A120.start}
+            end={A120.end}
+            pointerEvents="none"
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+          {/* inset 0 1px 0 rgba(255,255,255,.45) */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 1,
+              backgroundColor: 'rgba(255,255,255,.45)',
+            }}
+          />
+        </>
+      ) : (
+        <CardSurface />
+      )}
       <Text
         style={[
           sans(600, 11.5),
@@ -368,30 +376,15 @@ function MiniNfcCard({ entry, onPress }: { entry: Entry; onPress: () => void }) 
           borderRadius: 12,
           borderWidth: 1,
           borderColor: theme.a2,
+          backgroundColor: theme.c2,
           overflow: 'hidden',
         },
-        SHADOW.card,
+        SH.mini(theme.a2),
       ]}
     >
-      <LinearGradient
-        colors={[theme.c1, theme.c2]}
-        start={A150.start}
-        end={A150.end}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
-      {/* Maketdagi `inset 0 1px 0 rgba(255,255,255,.04)` — yuqori
-          chetdagi nozik yorug'lik, kartaga hajm beradi. */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 1,
-          backgroundColor: 'rgba(255,255,255,.04)',
-        }}
-      />
+      {/* 150deg gradient + `inset 0 1px 0 rgba(255,255,255,.06)` —
+          yuqori chetdagi nozik yorug'lik kartaga hajm beradi. */}
+      <CardSurface tilt={150} />
 
       {entry.photo ? (
         <Image
@@ -434,16 +427,9 @@ function MiniNfcCard({ entry, onPress }: { entry: Entry; onPress: () => void }) 
         </Text>
       </View>
 
-      <Svg width={18} height={18} viewBox="0 0 24 24" opacity={0.8}>
-        <Path
-          d="M8.5 12h7M12.5 8.5l3.5 3.5-3.5 3.5"
-          stroke={theme.a2}
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </Svg>
+      <View style={{ opacity: 0.8 }}>
+        <ChevronRight color={theme.a2} size={18} width={1.6} />
+      </View>
     </TapScale>
   );
 }

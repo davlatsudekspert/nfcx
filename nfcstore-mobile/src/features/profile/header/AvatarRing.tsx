@@ -1,23 +1,14 @@
 import { LinearGradient as ExpoGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
-import { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
+import { ShimmerRing } from '@/components/ShimmerRing';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
-import { useSvgId } from '@/lib/svgId';
 import { A145 } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono } from '@/theme/type';
-import { SEEN_RING } from '@/theme/themes';
 
 /**
  * Avatar va "yangi kontent" halqasi — spetsifikatsiya 3 va 8-bo'limlari.
@@ -56,44 +47,7 @@ export function AvatarRing({
   onPress?: () => void;
 }) {
   const { theme } = useTheme();
-  const spin = useSharedValue(0);
-  const ringId = useSvgId('ring');
-
   const active = hasNewContent && !seen;
-
-  useEffect(() => {
-    if (active) {
-      spin.value = 0;
-      spin.value = withRepeat(
-        withTiming(360, { duration: 9000, easing: Easing.linear }),
-        -1,
-        false,
-      );
-    } else {
-      spin.value = 0;
-    }
-  }, [active, spin]);
-
-  const spinStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${spin.value}deg` }],
-  }));
-
-  const c = size / 2;
-  const r = c - band / 2;
-  // Chorak yoylarning uchlari: θ yuqoridan soat yo'nalishi bo'yicha.
-  const top = { x: c, y: c - r };
-  const right = { x: c + r, y: c };
-  const bottom = { x: c, y: c + r };
-  const left = { x: c - r, y: c };
-
-  const [g1, g2] = active ? [theme.a2, theme.a1] : [SEEN_RING[0], SEEN_RING[1]];
-
-  const quadrants = [
-    { id: `${ringId}a`, from: top, to: right, c1: g1, c2: g2 },
-    { id: `${ringId}b`, from: right, to: bottom, c1: g2, c2: g1 },
-    { id: `${ringId}c`, from: bottom, to: left, c1: g1, c2: g2 },
-    { id: `${ringId}d`, from: left, to: top, c1: g2, c2: g1 },
-  ];
 
   const photoInset = band;
   const photoSize = size - photoInset * 2;
@@ -116,48 +70,7 @@ export function AvatarRing({
         justifyContent: 'center',
       }}
     >
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: size,
-            height: size,
-            opacity: active ? 1 : 0.6,
-          },
-          spinStyle,
-        ]}
-      >
-        <Svg width={size} height={size}>
-          <Defs>
-            {quadrants.map((q) => (
-              <LinearGradient
-                key={q.id}
-                id={q.id}
-                x1={q.from.x}
-                y1={q.from.y}
-                x2={q.to.x}
-                y2={q.to.y}
-                gradientUnits="userSpaceOnUse"
-              >
-                <Stop offset="0" stopColor={q.c1} />
-                <Stop offset="1" stopColor={q.c2} />
-              </LinearGradient>
-            ))}
-          </Defs>
-          {quadrants.map((q) => (
-            <Path
-              key={q.id}
-              d={`M ${q.from.x} ${q.from.y} A ${r} ${r} 0 0 1 ${q.to.x} ${q.to.y}`}
-              stroke={`url(#${q.id})`}
-              strokeWidth={band}
-              fill="none"
-            />
-          ))}
-        </Svg>
-      </Animated.View>
+      <ShimmerRing size={size} band={band} active={active} duration={9000} />
 
       <View
         pointerEvents="none"

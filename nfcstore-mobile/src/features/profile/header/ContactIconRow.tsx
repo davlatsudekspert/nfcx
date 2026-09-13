@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Linking, View } from 'react-native';
 import Svg, {
   Circle,
@@ -9,12 +8,11 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 
+import { IconCircle } from '@/components/IconCircle';
 import { TapScale } from '@/components/TapScale';
 import { useSvgId } from '@/lib/svgId';
-import { A160 } from '@/theme/css';
 import { BRAND } from '@/theme/themes';
 import { useTheme } from '@/theme/ThemeProvider';
-import { SHADOW } from '@/theme/css';
 
 /**
  * Kontakt ikonkalari qatori — spetsifikatsiya 3-bo'limi:
@@ -63,7 +61,7 @@ export function ContactIconRow({
   if (!contacts.length) return null;
 
   return (
-    <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+    <View style={{ flexDirection: 'row', gap: 9, marginTop: 16 }}>
       {contacts.map((c) => (
         <ContactTile key={c.key} contact={c} />
       ))}
@@ -71,12 +69,24 @@ export function ContactIconRow({
   );
 }
 
+/**
+ * Bitta kontakt tugmasi — 46px DUMALOQ plita:
+ *
+ *   radial-gradient(70% 70% at 35% 25%, rgba(255,255,255,.1), rgba(0,0,0,.5))
+ *   1px solid #b3860f
+ *   inset 0 1px 0 rgba(255,255,255,.14),
+ *   0 6px 16px rgba(0,0,0,.55), 0 0 16px -4px #b3860f
+ *
+ * `IconCircle` ning aynan o'zi, faqat ichidagi yorug'lik gold emas OQ
+ * (`rgba(255,255,255,.1)`) — brend rangli gliflar ustidan gold tus
+ * tushmasligi uchun.
+ */
 function ContactTile({ contact }: { contact: Contact }) {
   const { theme } = useTheme();
 
   return (
     <TapScale
-      radius={13}
+      radius={23}
       accessibilityLabel={contact.label}
       onPress={() => {
         Linking.openURL(contact.url).catch(() => {
@@ -84,32 +94,11 @@ function ContactTile({ contact }: { contact: Contact }) {
           // chiqarish bu yerda foydadan ko'ra bezovtalik.
         });
       }}
-      style={[
-        {
-          width: 44,
-          height: 42,
-          borderRadius: 13,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 1,
-          borderColor: theme.rim,
-          overflow: 'hidden',
-        },
-        SHADOW.tile,
-      ]}
+      style={{ width: 46, height: 46, borderRadius: 23 }}
     >
-      {/* Konteyner — qora karta uslubi, brend rangi YO'Q. */}
-      <LinearGradient
-        colors={
-          contact.key === 'call'
-            ? ['rgba(255,255,255,.09)', 'rgba(255,255,255,.02)']
-            : ['rgba(255,255,255,.07)', 'rgba(255,255,255,.02)']
-        }
-        start={A160.start}
-        end={A160.end}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
-      <ContactGlyph kind={contact.key} accent={theme.a1} />
+      <IconCircle size={46} tint="#ffffff" shadow="contact">
+        <ContactGlyph kind={contact.key} accent={theme.a1} />
+      </IconCircle>
     </TapScale>
   );
 }
@@ -121,7 +110,7 @@ function ContactGlyph({
   kind: Contact['key'];
   accent: string;
 }) {
-  const size = 18;
+  const size = 20;
   const igId = useSvgId('igGrad');
 
   if (kind === 'call') {

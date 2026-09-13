@@ -3,9 +3,10 @@
 NFCSTORE Android ilovasi (iOS'ga tayyor arxitektura). Expo SDK 57 + React
 Native 0.86 + TypeScript.
 
-Dizayn manbasi: Claude Design maketi `NFCSTORE App.dc.html` (shu
-repozitoriyaning `project/` papkasida). Maketdagi ranglar, o'lchamlar,
-SVG yo'llari va animatsiya vaqtlari **aynan** ko'chirilgan.
+Dizayn manbasi: Claude Design handoff'i (`design_handoff_nfcstore_app/`).
+Maketdagi ranglar, o'lchamlar, radiuslar, soyalar va animatsiya vaqtlari
+**aynan** ko'chirilgan. Prototipdagi SONLAR esa ko'chirilmagan — barcha
+ma'lumot jonli sayt API'sidan olinadi.
 
 ## Bu bosqichda nima bor
 
@@ -98,15 +99,26 @@ Build tugagach Expo yuklab olish havolasini beradi (QR kod ham).
 
 ### Variant 2 — mahalliy build (Android Studio o'rnatilgan bo'lsa)
 
+**RELEASE variantini yig'ing, debug'ni emas.** Bu muhim:
+
+* `npx expo run:android` — **debug** APK yasaydi. Unda JS kodi ILOVA
+  ICHIDA EMAS: har safar ishga tushganda Metro serveridan (noutbukdan)
+  yuklab olinadi. Metro uzilsa yoki eski keshni bersa, telefonda ESKI
+  dizayn va eski xatti-harakat ko'rinadi — tashqaridan bu "ilova
+  buzilgan" bo'lib tuyuladi.
+* `assembleRelease` — **release** APK: JS kodi ichiga qotirilgan,
+  noutbuk kerak emas, boshqa telefonga ham yuborsa bo'ladi.
+
 ```bash
-npx expo prebuild --platform android   # android/ papkasini yaratadi
-npx expo run:android                   # qurilmaga o'rnatadi
-# yoki qo'lda APK:
+npx expo prebuild --platform android --clean   # android/ papkasini yaratadi
 cd android && ./gradlew assembleRelease
-# natija: android/app/build/outputs/apk/release/
+# natija: android/app/build/outputs/apk/release/app-release.apk
+adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-`ANDROID_HOME` va `JAVA_HOME` sozlangan bo'lishi kerak.
+`ANDROID_HOME` va `JAVA_HOME` sozlangan bo'lishi kerak. Yangi kod
+tortilganda `--clean` bilan qayta prebuild qiling — eski `android/`
+papkasi eski sozlamalarni saqlab qolishi mumkin.
 
 ### iOS
 

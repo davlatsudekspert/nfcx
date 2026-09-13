@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { A120 } from '@/theme/css';
+import { A120, SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -51,7 +51,11 @@ export function GoldButton({
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
+          backgroundColor: theme.a2,
         },
+        // `0 8px 18px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.45),
+        //  0 0 18px -6px <a1>`
+        SH.goldButton(theme.a1),
         style,
       ]}
     >
@@ -59,7 +63,20 @@ export function GoldButton({
         colors={[theme.a1, theme.a2]}
         start={A120.start}
         end={A120.end}
+        pointerEvents="none"
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      {/* inset 0 1px 0 rgba(255,255,255,.45) */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 1,
+          backgroundColor: 'rgba(255,255,255,.45)',
+        }}
       />
       {sweep ? <GoldSweep duration={5000} radius={radius} /> : null}
       <Text style={[sans(700, 13), { color: theme.onAccent }]}>{label}</Text>

@@ -15,6 +15,7 @@ import type {
   PaymentsSettings,
   PhysicalPricing,
   PublicCompany,
+  StoryAuthor,
   TapInfo,
 } from './types';
 
@@ -46,6 +47,20 @@ export const getCompanyStories = (companyId: string) =>
   apiFetch<{ stories: CompanyStory[] }>(
     `/companies/${encodeURIComponent(companyId)}/stories`,
   ).then((r) => r.stories);
+
+/**
+ * GET /api/stories/feed -> {feed}
+ *
+ * Profildagi istorya qatorining MANBASI. Backend (worker.js:8098)
+ * faqat SIZ OBUNA BO'LGAN odamlarning muddati o'tmagan istoryalarini
+ * qaytaradi va bitta odamning bir nechta istoryasini BITTA yozuvga
+ * yig'adi — ya'ni javob to'g'ridan-to'g'ri "dumaloqchalar qatori".
+ *
+ * Kirmagan foydalanuvchiga bo'sh ro'yxat qaytadi (401 emas), shuning
+ * uchun so'rov xato bermaydi va qator shunchaki ko'rinmaydi.
+ */
+export const getStoriesFeed = () =>
+  apiFetch<{ feed: StoryAuthor[] }>('/stories/feed').then((r) => r.feed ?? []);
 
 /**
  * POST /api/companies/:id/follow — BITTA endpoint ikki yo'nalish uchun:
@@ -197,5 +212,6 @@ export type {
   PaymentsSettings,
   PhysicalPricing,
   PublicCompany,
+  StoryAuthor,
   TapInfo,
 };
