@@ -246,3 +246,97 @@ export function IconLock(props) {
     </svg>
   );
 }
+
+// ── NFC PROFIL MAKETI UCHUN IKONKALAR ───────────────────────────────
+// Bo'limlar qatori endi YOZUVSIZ — faqat ikonka (egasining maketi).
+// Shuning uchun har biri o'z ma'nosini BIR QARASHDA berishi kerak.
+
+// To'r — postlar (Instagram'dagi kabi kataklar).
+export function IconGrid(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.6" /><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6" /><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6" />
+    </svg>
+  );
+}
+
+// Quti — katalog (mahsulot / tovar / menyu).
+export function IconBox(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M21 8.5v7a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 15.5v-7a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8.5z" />
+      <path d="m3.3 7.5 8.7 5 8.7-5M12 22v-9.5" />
+    </svg>
+  );
+}
+
+// Doira ichidagi o'ynatish belgisi — Stories (24 soatlik).
+export function IconStories(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="9" strokeDasharray="3.4 2.6" />
+      <path d="M10.4 9.3v5.4l4.4-2.7z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// "i" — ma'lumot.
+export function IconInfo(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// Uy — pastki navigatsiya.
+export function IconHome(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M3.5 10.5 12 3.5l8.5 7" /><path d="M5.5 9.5V20h13V9.5" /><path d="M9.8 20v-5.4h4.4V20" />
+    </svg>
+  );
+}
+
+// Bino — kompaniyalar.
+export function IconBuilding(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M4 21V6.5a1 1 0 0 1 .6-.92l6-2.5a1 1 0 0 1 1.4.92V21" />
+      <path d="M12 21V10l6.4 2.3a1 1 0 0 1 .6.94V21" /><path d="M2.5 21h19" />
+      <path d="M7 8.5v0M7 12v0M7 15.5v0M15.5 15.5v0M15.5 18v0" />
+    </svg>
+  );
+}
+
+// Tashrif qog'ozi — katalog / NFC ID'lar.
+export function IconCard(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.6" />
+      <circle cx="8.2" cy="11" r="2" /><path d="M5.4 16.2c.5-1.5 1.6-2.3 2.8-2.3s2.3.8 2.8 2.3" />
+      <path d="M14.5 10.4h4.2M14.5 13.6h4.2" />
+    </svg>
+  );
+}
+
+// Musiqa notasi — avatar yonidagi belgi.
+export function IconNote(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M9 18V6.5l10-2V16" /><circle cx="6.6" cy="18" r="2.6" fill="currentColor" stroke="none" /><circle cx="16.6" cy="16" r="2.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// Manzil belgisi — xaritada joy. Sayt (globus) bilan ARALASHMASLIGI
+// kerak: ilgari sayt, manzil va Yandex uchtasi ham globus edi va
+// qatorda uchta bir xil ikonka turardi.
+export function IconPin(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M12 21.5s7-6.1 7-11.2A7 7 0 0 0 5 10.3c0 5.1 7 11.2 7 11.2z" /><circle cx="12" cy="10" r="2.6" />
+    </svg>
+  );
+}

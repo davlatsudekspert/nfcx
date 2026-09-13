@@ -46,21 +46,32 @@ checkTrue('2) kontent oynasi qolgan joyni oladi', body.includes('flex:1'));
 checkTrue('2) flex element kichrayishi mumkin', body.includes('min-height:0'));
 
 // ── 3) Tepa, bo'limlar va pastki qator — surilmaydigan qismlar ───────
-for (const sel of ['.qp-top', '.qp-hero', '.qp-bottom']) {
+for (const sel of ['.qp-top', '.qp-hero', '.qp-nav']) {
   checkTrue(`3) ${sel} qat'iy (flex:none)`, rule(sel).includes('flex:none'));
 }
-checkTrue('3) bo‘limlar qatori ham qat‘iy', rule('.qp-shell .pf-tabs').includes('flex:none'));
+checkTrue('3) bo‘limlar qatori ham qat‘iy', rule('.qp-itabs').includes('flex:none'));
 
-// ── 4) "Kontaktni saqlash" DOIM ko'rinib turadi ──────────────────────
-// NFC kartaning butun ma'nosi shu tugmada: u pastda, alohida
-// surilmaydigan qatorda turishi shart.
-const bottomBlock = page.slice(page.indexOf('className="qp-bottom"'), page.indexOf('className="qp-bottom"') + 900);
-checkTrue('4) saqlash tugmasi pastki qatorda', bottomBlock.includes('qp-save') && bottomBlock.includes('Kontaktni saqlash'));
-checkTrue('4) vCard yuklab olinadi', bottomBlock.includes('downloadVcard'));
+// ── 4) "Saqlash" — ASOSIY harakat va u AJRALIB turadi ────────────────
+// NFC kartaning butun ma'nosi shunda: odam sahifani yopgandan keyin
+// ham raqam uning telefonida qoladi. Shuning uchun u aloqa qatoridagi
+// BIRINCHI tugma va yagona OLTIN tugma.
+checkTrue('4) saqlash tugmasi aloqa qatorida birinchi', /const quick = \[\s*\{\s*k: 'vcard'/.test(page));
+checkTrue('4) saqlash tugmasi ajratilgan (primary)', page.includes("k: 'vcard', primary: true"));
+checkTrue('4) oltin ko‘rinish CSS da bor', rule('.qp-qbtn.is-primary').includes('linear-gradient'));
+checkTrue('4) vCard yuklab olinadi', page.includes('downloadVcard'));
+// Pastki qator endi NAVIGATSIYA: maketdagi to'rtta bo'lim.
+for (const label of ['Bosh', 'Katalog', 'Kompaniya', 'Profil']) {
+  checkTrue(`4) pastki navigatsiyada "${label}"`, page.includes(`{t('${label}')}`));
+}
 
 // ── 5) Aloqa — ustma-ust tugmalar EMAS, bitta ikonkalar qatori ───────
 checkTrue('5) dumaloq ikonkalar qatori bor', page.includes('className="qp-quick"'));
 checkTrue('5) qator yon tomonga suriladi', rule('.qp-quick').includes('overflow-x:auto'));
+// Ichki o'ram SHART: `justify-content:center` bo'lgan suriladigan
+// qatorda kontent sig'masa BOSHI kesilib qoladi va unga yetib
+// bo'lmaydi — oltin "Saqlash" aynan shunday yo'qolgan edi.
+checkTrue('5) qator boshi kesilmaydi (ichki o‘ram)', page.includes('qp-quick-in') && rule('.qp-quick-in').includes('margin:0 auto'));
+checkTrue('5) qatorning o‘zi markazlamaydi', !rule('.qp-quick').includes('justify-content:center'));
 checkTrue('5) eski ustun olib tashlandi', !page.includes('className="cq-actions"'));
 // Hech bir aloqa turi yo'qolmasligi kerak.
 for (const key of ['phone', 'telegram', 'whatsapp', 'instagram', 'facebook', 'website', 'directions', 'yandex', 'card']) {
@@ -71,11 +82,15 @@ checkTrue('5) egasining havolalari joyida', page.includes('extraLinks.map'));
 // ── 6) Hech narsa YO'QOLMADI — tavsif, manzil, NFC ID, musiqa ────────
 // Ular endi "Ma'lumot" bo'limida; birinchi ekranni band qilmaydi.
 checkTrue('6) "Ma’lumot" bo‘limi bor', page.includes("'haqida'"));
+// Bo'limlar YOZUVSIZ — faqat ikonka (egasining maketi). Shu sababli
+// har birida `aria-label` bo'lishi SHART: aks holda ekran o'quvchi
+// uchun qator to'rtta nomsiz tugmaga aylanadi.
+checkTrue('6) bo‘lim ikonkalarida aria-label bor', page.includes('aria-label={t(tb.label)}'));
 checkTrue('6) tavsif joyida', page.includes('qp-desc'));
 checkTrue('6) manzil joyida', page.includes('qp-addr'));
 checkTrue('6) NFC ID joyida', page.includes('pf-nfcid'));
 checkTrue('6) musiqa pleeri joyida', page.includes('CompanyMusicPlayer'));
-checkTrue('6) to‘liq sahifa havolasi joyida', page.includes('cq-public'));
+checkTrue('6) to‘liq sahifa havolasi joyida', page.includes("navigate(`/company/${company.companyId.toLowerCase()}`)"));
 
 // ── 7) Ish vaqti jadvali hero'ni cho'zib yubormaydi ──────────────────
 // U ochilganda ustiga tushadigan oyna bo'lishi shart: aks holda jadval
@@ -94,10 +109,10 @@ check('8) buzuq font qisqartmasi yo‘q', (qpCss.match(/font:\s*(?!inherit\s*[;}
 
 // ── 9) Telefon "tirnog'i" (safe-area) hisobga olingan ────────────────
 checkTrue('9) tepada safe-area', rule('.qp-top').includes('env(safe-area-inset-top'));
-checkTrue('9) pastda safe-area', rule('.qp-bottom').includes('env(safe-area-inset-bottom'));
+checkTrue('9) pastda safe-area', rule('.qp-nav').includes('env(safe-area-inset-bottom'));
 
 // ── 10) Past ekranlar uchun kichrayish qoidasi bor ───────────────────
-checkTrue('10) past ekran uchun media so‘rov', css.includes('@media(max-height:720px)'));
+checkTrue('10) past ekran uchun media so‘rov', css.includes('@media(max-height:740px)'));
 
 
 done();
