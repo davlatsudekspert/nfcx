@@ -22,11 +22,21 @@ const { withGradleProperties } = require('expo/config-plugins');
  *    Emulyatorda (x86_64) sinash kerak bo'lsa, shu qatorga
  *    `,x86_64` qo'shiladi.
  *
- * 2. org.gradle.jvmargs
- *    Standart 2 GB nativ modullar (reanimated, worklets, screens,
- *    expo-modules-core) bir vaqtda kompilyatsiya qilinganda yetmaydi.
- *    4 GB + kengaytirilgan metaspace daemon'ning o'lib qolishini
- *    oldini oladi.
+ * 2. org.gradle.jvmargs = -Xmx2048m
+ *    DIQQAT: bu qiymatni OSHIRISH xotirasi kam mashinada ZARAR qiladi.
+ *    Avval 4 GB qo'yilgan edi va 7.8 GB li noutbukda yig'ish aynan
+ *    shundan sindi: Windows o'zi ~3 GB oladi, JVM yana 4 GB ni band
+ *    qiladi va C++ kompilyatorlariga (ninja/clang) joy qolmaydi —
+ *    tizim jarayonni o'ldiradi, Gradle esa buni "daemon disappeared
+ *    unexpectedly" deb ko'rsatadi. 2 GB — React Native shablonining
+ *    o'z qiymati va 8 GB li mashinada ishonchli ishlaydi.
+ *
+ * 3. org.gradle.parallel = false
+ *    Modullar KETMA-KET yig'iladi. Parallel holatda `reanimated`,
+ *    `worklets`, `screens` va `expo-modules-core` ning C++ qismlari
+ *    bir vaqtda kompilyatsiya bo'lib, har biri bir necha yuz megabayt
+ *    talab qiladi — yig'indisi xotirani portlatadi. Ketma-ket yig'ish
+ *    sekinroq, lekin sinmaydi.
  */
 module.exports = function withAndroidBuildTuning(config) {
   return withGradleProperties(config, (cfg) => {
@@ -40,7 +50,8 @@ module.exports = function withAndroidBuildTuning(config) {
     };
 
     set('reactNativeArchitectures', 'arm64-v8a');
-    set('org.gradle.jvmargs', '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8');
+    set('org.gradle.jvmargs', '-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8');
+    set('org.gradle.parallel', 'false');
 
     return cfg;
   });
