@@ -378,6 +378,42 @@ class Order {
       );
 }
 
+/// Obunachilar/obunalar ro'yxatidagi bitta qator.
+///
+/// Odam KOMPANIYA nomidan obuna bo'lishi mumkin — u holda ro'yxatda
+/// kompaniya yuzi (logotip va nom) ko'rinadi, lekin backend orqasidagi
+/// SHAXSNI ham qaytaradi: odam kompaniya ortiga butunlay yashirinib
+/// olmasligi kerak.
+class FollowEntry {
+  const FollowEntry({
+    required this.code,
+    required this.name,
+    this.avatarUrl,
+    this.verified = false,
+    this.isCompany = false,
+    this.personCode = '',
+    this.personName = '',
+  });
+
+  final String code;
+  final String name;
+  final String? avatarUrl;
+  final bool verified;
+  final bool isCompany;
+  final String personCode;
+  final String personName;
+
+  factory FollowEntry.fromJson(Map<String, dynamic> j) => FollowEntry(
+        code: _s(j['code']).toUpperCase(),
+        name: _s(j['name']),
+        avatarUrl: absUrl(_s(j['avatarUrl'])),
+        verified: _b(j['verified']),
+        isCompany: _s(j['kind']) == 'company',
+        personCode: _s(j['personCode']).toUpperCase(),
+        personName: _s(j['personName']),
+      );
+}
+
 /// Obuna raqamlari.
 class FollowStats {
   const FollowStats({this.followers = 0, this.following = 0, this.isFollowing = false});

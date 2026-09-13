@@ -118,6 +118,17 @@ class Repo {
   Future<FollowStats> followStats(String code) async =>
       FollowStats.fromJson(_map(await api.get('/api/follow-stats/$code')));
 
+  /// Obunachilar (`dir: followers`) yoki obunalar (`dir: following`).
+  ///
+  /// Server 200 tagacha qator qaytaradi va XATO BO'LSA bo'sh ro'yxat
+  /// beradi (yiqilmaydi) — shuning uchun bu yerda ham qo'shimcha
+  /// himoya kerak emas.
+  Future<List<FollowEntry>> followList(String code, {bool following = false}) async =>
+      _rows(
+        await api.get('/api/follow-list/$code', query: {if (following) 'dir': 'following'}),
+        'list',
+      ).map(FollowEntry.fromJson).toList();
+
   Future<void> follow(String code) => api.post('/api/follow/$code');
 
   Future<void> unfollow(String code) => api.post('/api/unfollow/$code');

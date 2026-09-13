@@ -88,6 +88,23 @@ bo'laklar bor, feed yo'q.
 > U qo'shilgach: `NavBar.tabs` ga bitta qator va `Shell` ga bitta
 > ekran qo'shiladi — boshqa hech narsa o'zgarmaydi.
 
+## Qo'shilmagan narsalar — va nima uchun
+
+Handoff'da bor, lekin ILOVADA YO'Q. Har biri backend imkoniyati
+yetmagani uchun, soxta ekran yasashdan ko'ra ochiq aytilgani ma'qul:
+
+| Ekran | Nima yetishmaydi |
+|---|---|
+| Activity tab | Birlashgan activity feed endpointi (yuqoriga qarang) |
+| Post/Story yaratish | Rasm yuklash oqimi (`/api/upload`) ilovada yo'q |
+| Post yoqtirish | `/api/records/:code/like` — bu PROFIL layki, post emas |
+| Karta bosma maketi | Sayt kartani 600 DPI PNG qilib chizadi; ilovada chizma dvigateli kerak |
+| Biznes profilini tahrirlash | Katalog, ish vaqti va manzil uchun alohida oqim |
+| NFC kartaga yozish | Qurilma NFC API'si (P2 handoff'da) |
+
+Bu tugmalar ilovada **o'chirilgan holatda** ko'rinadi — bosilganda jim
+turmaydi. `onTap: null` bo'lgan har bir joyda sabab izohda yozilgan.
+
 ## To'lov
 
 Payme/Click oqimiga **tegilmagan**. Ilova:

@@ -16,6 +16,7 @@ import '../business/business_stats.dart';
 import '../business/product_detail.dart';
 import '../orders/owner_orders.dart';
 import 'edit_profile.dart';
+import 'follow_list.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../content/post_detail.dart';
@@ -343,11 +344,34 @@ class _Header extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _Stat(value: follow.followers, label: 'obunachi'),
+                    // Obunachi va obuna raqamlari BOSILADI — ro'yxatni
+                    // ochadi. Ko'rishlar soni esa bosilmaydi: uning
+                    // ortida ro'yxat yo'q (tashrifchi kimligi
+                    // saqlanmaydi) va bosilsa hech narsa bo'lmasligi
+                    // odamni chalg'itardi.
+                    _Stat(
+                      value: follow.followers,
+                      label: 'obunachi',
+                      onTap: () => push(
+                        context,
+                        (_) => FollowListScreen(code: code, title: name),
+                      ),
+                    ),
                     if (company != null)
                       _Stat(value: company!.itemCount, label: 'mahsulot')
                     else
-                      _Stat(value: follow.following, label: 'obuna'),
+                      _Stat(
+                        value: follow.following,
+                        label: 'obuna',
+                        onTap: () => push(
+                          context,
+                          (_) => FollowListScreen(
+                            code: code,
+                            title: name,
+                            startWithFollowing: true,
+                          ),
+                        ),
+                      ),
                     _Stat(value: company?.views ?? record?.views ?? 0, label: 'ko‘rish'),
                   ],
                 ),
@@ -428,18 +452,26 @@ class _Header extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
+  const _Stat({required this.value, required this.label, this.onTap});
   final int value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(compact(value), style: T.cardTitle.copyWith(fontSize: 16)),
-          const SizedBox(height: 2),
-          Text(label, style: T.caption.copyWith(fontSize: 10.5, color: C.muted)),
-        ],
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        scale: onTap == null ? 1 : .95,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(compact(value), style: T.cardTitle.copyWith(fontSize: 16)),
+              const SizedBox(height: 2),
+              Text(label, style: T.caption.copyWith(fontSize: 10.5, color: C.muted)),
+            ],
+          ),
+        ),
       );
 }
 
