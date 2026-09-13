@@ -140,7 +140,7 @@ export type AuthedUser = {
   isPremium: boolean;
   trialExpiresAt?: string | null;
   premiumExpiresAt?: string | null;
-  tgLinked?: boolean;
+  telegramLinked?: boolean;
 };
 
 /** POST /api/auth/login — `{email | login, password}` ikkalasini ham qabul qiladi. */

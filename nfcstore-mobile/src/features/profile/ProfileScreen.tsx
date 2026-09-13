@@ -10,12 +10,13 @@ import { followCard, toggleFollowCompany, unfollowCard } from '@/api/endpoints';
 import type { Company, FollowStats } from '@/api/types';
 import { SITE } from '@/features/profile/profileVM';
 import { useActiveIdStore } from '@/store/activeIdStore';
+import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
 import { HandleChip, SettingsButton } from './header/ActionButtons';
 import { ProfileView } from './ProfileView';
-import { SettingsSheet } from './sheets/SettingsSheet';
+import { SettingsSheet, type SettingRow } from './sheets/SettingsSheet';
 import { SwitcherSheet } from './sheets/SwitcherSheet';
 import type { ProfileTab } from './tabs/ProfileTabBar';
 import { useProfileData } from './useProfileData';
@@ -81,7 +82,21 @@ export function ProfileScreen() {
       <SettingsSheet
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        rows={settingRows(vm?.handle)}
+        rows={settingRows({
+          handle: vm?.handle,
+          onOpenPayments: () => {
+            setSettingsOpen(false);
+            WebBrowser.openBrowserAsync(`${SITE}/tolovlar`).catch(() => {});
+          },
+          onSignOut: () => {
+            // `(tabs)/_layout.tsx` gate `user === null` bo'lganda o'zi
+            // `/login`ga yo'naltiradi — bu yerda faqat varaqni yopib,
+            // haqiqiy chiqishni (`POST /api/auth/logout` + token o'chirish)
+            // ishga tushiramiz.
+            setSettingsOpen(false);
+            useAuthStore.getState().signOut();
+          },
+        })}
       />
     </>
   );
@@ -256,12 +271,21 @@ function useFollowMutation(
   return null;
 }
 
-export function settingRows(handle: string | undefined) {
+export function settingRows({
+  handle,
+  onOpenPayments,
+  onSignOut,
+}: {
+  handle: string | undefined;
+  onOpenPayments: () => void;
+  /** Haqiqiy chiqish — `authStore.signOut()` (avval hech qayerga ulanmagan edi). */
+  onSignOut: () => void;
+}): SettingRow[] {
   return [
     { k: 'Hisob', v: handle ?? '—' },
     { k: 'Bildirishnomalar', v: 'Yoniq' },
     { k: 'Til', v: "O'zbekcha" },
-    { k: "To'lovlar", v: 'Payme' },
-    { k: 'Chiqish', v: '' },
+    { k: "To'lovlar", v: 'Payme', onPress: onOpenPayments },
+    { k: 'Chiqish', v: '', onPress: onSignOut, danger: true },
   ];
 }

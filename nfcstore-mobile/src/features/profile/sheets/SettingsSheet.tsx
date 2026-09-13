@@ -20,6 +20,14 @@ import { mono, sans } from '@/theme/type';
  * Bu "presetdan tanlash" darajasidagi MVP — to'liq rang tanlagich
  * ataylab yo'q.
  */
+export type SettingRow = {
+  k: string;
+  v: string;
+  onPress?: () => void;
+  /** Masalan "Chiqish" — qizil rangda ko'rsatiladi. */
+  danger?: boolean;
+};
+
 export function SettingsSheet({
   visible,
   onClose,
@@ -28,7 +36,7 @@ export function SettingsSheet({
   visible: boolean;
   onClose: () => void;
   /** Hisob, bildirishnoma, til, to'lov, chiqish kabi qatorlar. */
-  rows: { k: string; v: string }[];
+  rows: SettingRow[];
 }) {
   const { themeKey, setTheme } = useTheme();
 
@@ -70,27 +78,47 @@ export function SettingsSheet({
           borderTopColor: 'rgba(255,255,255,.07)',
         }}
       >
-        {rows.map((row) => (
-          <View
-            key={row.k}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingVertical: 13,
-              paddingHorizontal: 2,
-              borderBottomWidth: 1,
-              borderBottomColor: 'rgba(255,255,255,.06)',
-            }}
-          >
-            <Text style={[sans(500, 13), { color: 'rgba(255,255,255,.78)' }]}>
-              {row.k}
-            </Text>
-            <Text style={[mono(500, 12), { color: 'rgba(255,255,255,.4)' }]}>
-              {row.v}
-            </Text>
-          </View>
-        ))}
+        {rows.map((row) => {
+          const content = (
+            <>
+              <Text
+                style={[
+                  sans(500, 13),
+                  { color: row.danger ? '#e2685f' : 'rgba(255,255,255,.78)' },
+                ]}
+              >
+                {row.k}
+              </Text>
+              <Text style={[mono(500, 12), { color: 'rgba(255,255,255,.4)' }]}>
+                {row.v}
+              </Text>
+            </>
+          );
+          const rowStyle = {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            justifyContent: 'space-between' as const,
+            paddingVertical: 13,
+            paddingHorizontal: 2,
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(255,255,255,.06)',
+          };
+          return row.onPress ? (
+            <TapScale
+              key={row.k}
+              radius={0}
+              onPress={row.onPress}
+              accessibilityLabel={row.k}
+              style={rowStyle}
+            >
+              {content}
+            </TapScale>
+          ) : (
+            <View key={row.k} style={rowStyle}>
+              {content}
+            </View>
+          );
+        })}
       </View>
     </Sheet>
   );

@@ -1,6 +1,8 @@
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 
 import { BottomNav, type TabBarSlice } from '@/components/nav/BottomNav';
+import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
 /**
@@ -21,6 +23,21 @@ import { useTheme } from '@/theme/ThemeProvider';
  */
 export default function TabsLayout() {
   const { theme } = useTheme();
+  const restored = useAuthStore((s) => s.restored);
+  const hasToken = useAuthStore((s) => s.hasToken);
+
+  // Entry/Auth GATE — audit topilmasi: ilovada login/register ekrani
+  // umuman yo'q edi, `login()`/`register()` (src/api/client.ts) esa hech
+  // qayerdan chaqirilmagan edi. `restored` — `authStore.restore()`
+  // tugaguncha hech narsaga yo'naltirmaymiz (aks holda haqiqiy tokenli
+  // foydalanuvchi bir lahza Login ekraniga uchib ketardi). `hasToken`dan
+  // (`user`dan EMAS) qaraymiz: login/register muvaffaqiyatidan keyin
+  // `user` hali `/auth/me` orqali aniqlanmagan (`undefined`) bo'ladi —
+  // agar shu yerda `user === null` tekshirilsa, muvaffaqiyatli
+  // kirishning o'zi darhol Login'ga qaytarib yuborardi.
+  if (restored && !hasToken) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs

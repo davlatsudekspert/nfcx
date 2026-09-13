@@ -122,7 +122,12 @@ export type AuthMe = {
     isPremium: boolean;
     trialExpiresAt?: string | null;
     premiumExpiresAt?: string | null;
-    tgLinked?: boolean;
+    /**
+     * `GET /api/auth/me` haqiqiy javobida bu maydon `telegramLinked`
+     * (worker.js:2789), `tgLinked` EMAS — bu yerdagi nom oldin xato
+     * yozilgan edi (audit topilmasi, hech qachon `true` bo'lmagan).
+     */
+    telegramLinked?: boolean;
   } | null;
   cards: Card[];
 };
