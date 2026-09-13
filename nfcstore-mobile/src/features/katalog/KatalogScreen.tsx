@@ -2,14 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -24,13 +18,16 @@ import { TapScale } from '@/components/TapScale';
 import { HandleChip } from '@/features/profile/header/ActionButtons';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { A120, A150, SHADOW } from '@/theme/css';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
+import { useRecentSearches } from './useRecentSearches';
+
 /**
- * Katalog — band qilingan profillar direktoriyasi.
+ * Discover — band qilingan profillar bo'yicha yagona qidiruv oynasi.
  *
  * MUHIM: bu BITTA ID sotib olish ekrani EMAS. Bu saytdagi mavjud
  * Catalog funksiyasining o'zi: barcha ochiq profillar ro'yxati,
@@ -45,6 +42,16 @@ import { mono, sans } from '@/theme/type';
  *   GET /api/companies — Company ID li kompaniyalar
  * Kompaniyalar "Business" va "Barchasi" filtrlarida ko'rinadi, chunki
  * saytda ular ham biznes profillar hisoblanadi.
+ *
+ * BACKEND AUDITI (bu slice uchun): production Worker'da (`hosting/worker.js`)
+ * shaxsiy/ekspert/biznes uchun BITTA qidiruv bor (`/api/records/search`,
+ * `profileType` maydoni bilan) — shuning uchun All/Personal/Expert/Business
+ * filtrlari real. Lekin butun sayt bo'ylab MAHSULOT/XIZMAT qidiruvi
+ * (bitta kompaniyaning o'z katalogidan tashqari) va band qilinMAGAN NFC
+ * ID'larni ko'rish/qidirish uchun HECH QANDAY endpoint yo'q — shuning
+ * uchun "Mahsulot/Xizmat" va "NFC ID" filtrlari BU EKRANGA QO'SHILMADI
+ * (fake natija ko'rsatmaslik uchun). NFC ID tarif katalogi allaqachon
+ * `NFC` tabida bor (haqiqiy narxlar).
  */
 
 type Filter = 'all' | 'personal' | 'expert' | 'business';
@@ -70,12 +77,20 @@ export function KatalogScreen() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
+  const recent = useRecentSearches();
 
   const trimmed = query.trim();
+  // Yozishda HAR HARFDA so'rov yubormaslik uchun: server so'rovi faqat
+  // foydalanuvchi 300ms JIM turgan qiymat bilan ishlaydi. React Query
+  // buning ustiga har bir `queryKey` uchun eskirgan so'rovni o'zi
+  // bekor qiladi (AbortController) — shuning uchun tezda ketma-ket
+  // yozilgan holatlar ortiqcha tarmoq trafigi yaratmaydi.
+  const debouncedQuery = useDebouncedValue(trimmed, 300);
   // Server qidiruvi kamida 2 belgi talab qiladi, aks holda bo'sh
   // ro'yxat qaytaradi — shuning uchun shundan qisqasida umuman
   // so'ramaymiz va butun ro'yxatni ko'rsatamiz.
-  const searching = trimmed.length >= 2;
+  const searching = debouncedQuery.length >= 2;
 
   const listQuery = useQuery({
     queryKey: ['catalog', 'records'],
@@ -84,8 +99,8 @@ export function KatalogScreen() {
   });
 
   const searchQuery = useQuery({
-    queryKey: ['catalog', 'search', trimmed],
-    queryFn: () => searchRecords(trimmed),
+    queryKey: ['catalog', 'search', debouncedQuery],
+    queryFn: () => searchRecords(debouncedQuery),
     enabled: searching,
   });
 
@@ -93,6 +108,13 @@ export function KatalogScreen() {
     queryKey: ['catalog', 'companies'],
     queryFn: getPublicCompanies,
   });
+
+  // Muvaffaqiyatli qidiruv "so'nggi qidiruvlar" ro'yxatiga yoziladi —
+  // faqat qurilmada (`useRecentSearches`), serverga yubormaydi.
+  useEffect(() => {
+    if (searching && searchQuery.isSuccess) recent.add(debouncedQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searching, searchQuery.isSuccess, debouncedQuery]);
 
   const records: CatalogRecord[] = (searching ? searchQuery.data : listQuery.data) ?? [];
   const companies: PublicCompany[] = companiesQuery.data ?? [];
@@ -103,7 +125,7 @@ export function KatalogScreen() {
     // Kompaniyalar oldinda: ular Company ID li "haqiqiy" biznes
     // profillar va saytda ham yuqorida turadi.
     if (filter === 'all' || filter === 'business') {
-      const q = trimmed.toLowerCase();
+      const q = debouncedQuery.toLowerCase();
       for (const c of companies) {
         // Kompaniyalar uchun server qidiruvi yo'q, shuning uchun
         // allaqachon yuklangan ro'yxat mahalliy filtrlanadi.
@@ -117,7 +139,9 @@ export function KatalogScreen() {
           code: c.companyId,
           city: c.city,
           photo: c.logoUrl,
-          label: 'Kompaniya',
+          // Haqiqiy kategoriya (`GET /api/companies`) — "Business →
+          // logo + company + category" talabi.
+          label: c.category || c.subcategory || 'Kompaniya',
         });
       }
     }
@@ -136,9 +160,11 @@ export function KatalogScreen() {
     }
 
     return out;
-  }, [records, companies, filter, searching, trimmed]);
+  }, [records, companies, filter, searching, debouncedQuery]);
 
   const loading = searching ? searchQuery.isLoading : listQuery.isLoading;
+  const isError = searching ? searchQuery.isError : listQuery.isError;
+  const retry = () => (searching ? searchQuery.refetch() : listQuery.refetch());
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -154,7 +180,7 @@ export function KatalogScreen() {
         }}
       >
         <Text style={[sans(800, 24, 1.2), { color: theme.ink, letterSpacing: -0.48 }]}>
-          Katalog
+          Discover
         </Text>
         <HandleChip
           handle={vm?.handle ?? '@…'}
@@ -189,6 +215,9 @@ export function KatalogScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            onSubmitEditing={() => recent.add(query)}
             placeholder="Nom, ID kod yoki shahar"
             placeholderTextColor={theme.off}
             autoCapitalize="none"
@@ -217,6 +246,29 @@ export function KatalogScreen() {
         </View>
       </View>
 
+      {inputFocused && !query && recent.items.length ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 7,
+            paddingHorizontal: 16,
+            paddingBottom: 13,
+          }}
+        >
+          <FlatList
+            horizontal
+            data={recent.items}
+            keyExtractor={(v) => v}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 7 }}
+            renderItem={({ item }) => (
+              <RecentChip label={item} onPress={() => setQuery(item)} />
+            )}
+          />
+        </View>
+      ) : null}
+
       <View
         style={{
           flexDirection: 'row',
@@ -235,9 +287,40 @@ export function KatalogScreen() {
         ))}
       </View>
 
-      {loading && !entries.length ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.a1} />
+      {isError && !entries.length ? (
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 32,
+            gap: 14,
+          }}
+        >
+          <Text style={[sans(500, 13, 1.5), { color: theme.off, textAlign: 'center' }]}>
+            Ma’lumotni yuklab bo’lmadi. Internetni tekshirib qayta urinib ko’ring.
+          </Text>
+          <TapScale
+            radius={11}
+            onPress={retry}
+            accessibilityLabel="Qayta urinish"
+            style={{
+              paddingVertical: 10,
+              paddingHorizontal: 18,
+              borderRadius: 11,
+              backgroundColor: 'rgba(255,255,255,.06)',
+              borderWidth: 1,
+              borderColor: theme.rim,
+            }}
+          >
+            <Text style={[sans(600, 12.5), { color: theme.ink }]}>Qayta urinish</Text>
+          </TapScale>
+        </View>
+      ) : loading && !entries.length ? (
+        <View style={{ paddingHorizontal: 16, gap: 10 }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <DiscoverSkeletonRow key={i} />
+          ))}
         </View>
       ) : (
         <FlatList
@@ -262,7 +345,7 @@ export function KatalogScreen() {
               ]}
             >
               {searching
-                ? `"${trimmed}" bo’yicha hech narsa topilmadi`
+                ? `"${debouncedQuery}" bo’yicha hech narsa topilmadi`
                 : 'Ro’yxat bo’sh'}
             </Text>
           }
@@ -295,6 +378,70 @@ const KIND_LABEL: Record<string, string> = {
   expert: 'Ekspert',
   business: 'Biznes',
 };
+
+/** So'nggi qidiruv chipi — bosilganda o'sha so'z qayta qidiriladi. */
+function RecentChip({ label, onPress }: { label: string; onPress: () => void }) {
+  const { theme } = useTheme();
+
+  return (
+    <TapScale
+      radius={9}
+      onPress={onPress}
+      accessibilityLabel={`So'nggi qidiruv: ${label}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 7,
+        paddingHorizontal: 11,
+        borderRadius: 9,
+        backgroundColor: 'rgba(255,255,255,.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,.08)',
+      }}
+    >
+      <Svg width={11} height={11} viewBox="0 0 24 24">
+        <Path
+          d="M12 7v5l3.5 2M21 12a9 9 0 11-9-9 9 9 0 019 9z"
+          stroke={theme.off}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </Svg>
+      <Text style={[sans(500, 11.5), { color: 'rgba(255,255,255,.65)' }]}>{label}</Text>
+    </TapScale>
+  );
+}
+
+/**
+ * Yuklanish skeleton'i — haqiqiy natija kartasi bilan BIR XIL o'lcham
+ * (spetsifikatsiya: "skeletons matching the real layout so nothing
+ * shifts"). Animatsiyasiz, statik silhouette — byudjetga mos.
+ */
+function DiscoverSkeletonRow() {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 13,
+        paddingVertical: 13,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+        backgroundColor: '#121117',
+      }}
+    >
+      <View style={{ width: 54, height: 54, borderRadius: 9, backgroundColor: '#1b1a21' }} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <View style={{ width: '55%', height: 13, borderRadius: 4, backgroundColor: '#1b1a21' }} />
+        <View style={{ width: '35%', height: 11, borderRadius: 4, backgroundColor: '#1b1a21' }} />
+        <View style={{ width: '45%', height: 10, borderRadius: 4, backgroundColor: '#1b1a21' }} />
+      </View>
+    </View>
+  );
+}
 
 function FilterChip({
   label,
