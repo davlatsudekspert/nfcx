@@ -43,7 +43,15 @@ function errText(err, t, botLink) {
   if (key === 'bad_phone') return t("Telefon raqamini to'g'ri kiriting.");
   if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
   // ---- Emailga kod yuborish xatolari ----
-  if (key === 'email_send_failed') return t("Emailga kod yuborib bo'lmadi. Manzilni tekshiring yoki birozdan so'ng qayta urining.");
+  if (key === 'email_send_failed') {
+    // SABAB ham ko'rsatiladi. U maxfiy emas (faqat "http_403" kabi
+    // holat kodi) va aynan shu narsa muammoni bir qarashda ochadi:
+    // 401 — kalit noto'g'ri, 403 — jo'natuvchiga ruxsat yo'q,
+    // 422 — `from` formati noto'g'ri. Busiz har safar Cloudflare
+    // loglarini ochish kerak bo'lardi.
+    const why = err?.reason ? ` (${err.reason})` : '';
+    return t("Emailga kod yuborib bo'lmadi. Manzilni tekshiring yoki birozdan so'ng qayta urining.") + why;
+  }
   if (key === 'email_required') return t('Email manzilingizni kiriting — tasdiqlash kodi shu manzilga yuboriladi.');
   if (key === 'email_code_required') return t('Emailingizga kelgan 6 xonali kodni kiriting.');
   if (key === 'bad_email_code') return t("Kod noto'g'ri yoki muddati o'tgan. «Qaytadan yuborish» ni bosing.");
