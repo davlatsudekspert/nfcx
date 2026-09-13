@@ -132,17 +132,40 @@ const pendingCount = async (code) =>
   check('to\'langan buyurtmada taymer yo\'q', paid?.expiresAtMs ?? null, null);
 }
 
-// ═══ 10. VAQTNI O'QIB BO'LMASA — taymer KO'RSATILMAYDI (noto'g'ri emas) ═══
-// worker.js `nowTs()` formati ("...+00") SQLite sana funksiyalarini buzadi
-// va strftime NULL qaytaradi. Bunday holatda noto'g'ri vaqt ko'rsatgandan
-// ko'ra, umuman ko'rsatmagan afzal.
+// ═══ 10. TAYMER HAR QANDAY VAQT FORMATIDA ISHLAYDI ═══
+//
+// O'ZGARTIRILDI (2026-09). Ilgari bu yerda "nowTs() formati -> taymer
+// yo'q" deb yozilgan edi: SQLite "2020-01-01 00:00:00.000+00" ni parse
+// qila olmaydi (soat mintaqasida daqiqa yo'q) va strftime NULL
+// qaytarardi. O'sha paytda bu "noto'g'ri vaqtdan ko'ra yo'g'i afzal"
+// deb qabul qilingan.
+//
+// LEKIN aynan shu format bilan PREMIUM va JISMONIY KARTA
+// buyurtmalarining HAMMASI yoziladi. Ya'ni mijoz eng muhim joyda —
+// to'lovni davom ettirish oynasida — qancha vaqti qolganini
+// KO'RMASDI. Endi vaqt oldindan normallashtiriladi
+// (order-window.js) va uchala format ham to'g'ri o'qiladi.
 {
   await mkOrder('BADTS1');
   await env.DB.prepare(`UPDATE web_orders SET created_at = ? WHERE code = 'BADTS1' AND status = 'pending'`)
     .bind('2020-01-01 00:00:00.000+00').run();
   const r = await call('/api/orders', { cookie: cookie.user });
   const o = (r.body?.orders || []).find((x) => x.code === 'BADTS1');
-  check('o\'qib bo\'lmaydigan vaqt -> taymer yo\'q (null)', o?.expiresAtMs ?? null, null);
+  // 2020-01-01 00:00:00 UTC + 24 soat.
+  check('"+00" formatidagi vaqt ham o\'qiladi', o?.expiresAtMs ?? null, Date.UTC(2020, 0, 2));
+}
+
+// ═══ 10b. BUTUNLAY BUZUQ VAQT — taymer YO'Q, lekin so'rov yiqilmaydi ═══
+// Normallashtirish sehr emas: sana umuman bo'lmagan qatorda NULL
+// qaytadi va bu holat avvalgidek xavfsiz kechiriladi.
+{
+  await mkOrder('BADTS2');
+  await env.DB.prepare(`UPDATE web_orders SET created_at = ? WHERE code = 'BADTS2' AND status = 'pending'`)
+    .bind('umuman-sana-emas').run();
+  const r = await call('/api/orders', { cookie: cookie.user });
+  const o = (r.body?.orders || []).find((x) => x.code === 'BADTS2');
+  check('buzuq vaqt -> taymer yo\'q (null)', o?.expiresAtMs ?? null, null);
+  checkTrue('lekin buyurtmaning o\'zi qaytadi', o?.status === 'pending');
 }
 
 done();

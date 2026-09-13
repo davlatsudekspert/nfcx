@@ -6,11 +6,13 @@ import '../../design/components/icons.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
+import '../orders/my_orders.dart';
 
 /// SOZLAMALAR — va IKKI XIL TASDIQLASH.
 ///
@@ -140,6 +142,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: S.x24),
                   const Eyebrow('Akkaunt'),
                   const SizedBox(height: S.x12),
+                  _Row(
+                    label: 'Buyurtmalarim',
+                    icon: Ico.bag,
+                    onTap: () => push(context, (_) => const MyOrdersScreen()),
+                  ),
                   _Row(label: 'Shaxsiy ma‘lumotlar', icon: Ico.user),
                   _Row(label: 'Bildirishnomalar', icon: Ico.bell, value: 'Yoniq'),
                   _Row(label: 'Til', icon: Ico.globe, value: 'O‘zbekcha'),
@@ -174,15 +181,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.icon, this.value});
+  const _Row({required this.label, required this.icon, this.value, this.onTap});
   final String label;
   final Ico icon;
   final String? value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: S.x8),
-        child: Surface(
+        child: Press(
+          onTap: onTap,
+          child: Surface(
           padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
           shadow: E.e1,
           child: Row(
@@ -194,8 +204,9 @@ class _Row extends StatelessWidget {
                 Text(value!, style: T.caption.copyWith(fontSize: 11.5)),
                 const SizedBox(width: S.x8),
               ],
-              const NIcon(Ico.chevronRight, size: 17, color: C.muted),
+              NIcon(Ico.chevronRight, size: 17, color: onTap == null ? C.muted : C.ash),
             ],
+          ),
           ),
         ),
       );

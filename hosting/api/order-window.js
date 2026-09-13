@@ -21,13 +21,25 @@ export const PENDING_ORDER_TTL_MS = PENDING_ORDER_TTL_HOURS * 60 * 60 * 1000;
 
 // Buyurtma muddati tugaydigan payt (epoch ms) — kabinetdagi taymer uchun.
 //
-// DIQQAT: bazada vaqt ikki xil formatda uchraydi. SQLite'ning
-// DEFAULT CURRENT_TIMESTAMP ("2026-09-07 00:21:21") va ISO
-// ("...T00:21:21.055Z") — ikkalasini ham SQLite tushunadi. Lekin worker.js
-// `nowTs()` formati ("2026-09-07 00:21:21.065+00") sana funksiyalarini
-// BUZADI va `strftime` NULL qaytaradi. Shunday holatda taymer
-// ko'rsatilmaydi (NULL) — noto'g'ri vaqt ko'rsatgandan ko'ra, umuman
-// ko'rsatmagan afzal.
+// VAQT UCH XIL FORMATDA YOZILGAN:
+//   "2026-09-07 00:21:21"           SQLite DEFAULT CURRENT_TIMESTAMP
+//   "2026-09-07T00:21:21.055Z"      ISO
+//   "2026-09-07 00:21:21.065+00"    worker.js nowTs() va eski Postgres
+//
+// Uchinchisini SQLite PARSE QILA OLMAYDI (soat mintaqasida daqiqa yo'q:
+// "+00", "+00:00" emas) va `strftime` NULL qaytarardi. Ilgari shu holat
+// "taymer ko'rsatilmaydi" deb qabul qilingan edi — noto'g'ri vaqtdan
+// ko'ra yo'g'i afzal. LEKIN bu premium va jismoniy karta
+// buyurtmalarining HAMMASIGA tegishli edi (ular aynan nowTs() bilan
+// yoziladi), ya'ni mijoz eng muhim joyda — to'lovni davom ettirish
+// oynasida — qancha vaqti qolganini KO'RMASDI.
+//
+// Endi vaqt oldindan normallashtiriladi: birinchi 19 belgi olinadi
+// (kasr va mintaqa tashlanadi) va probel "T" ga almashtiriladi. Uchala
+// format ham to'g'ri o'qiladi; NULL tekshiruvi joyida qoladi, chunki
+// butunlay buzuq qiymat baribir bo'lishi mumkin.
+const CREATED_AT_EPOCH_SQL = `strftime('%s', replace(substr(created_at, 1, 19), ' ', 'T'))`;
+
 export const PENDING_EXPIRES_MS_SQL =
-  `CASE WHEN strftime('%s', created_at) IS NULL THEN NULL
-        ELSE (CAST(strftime('%s', created_at) AS INTEGER) + ${PENDING_ORDER_TTL_HOURS * 3600}) * 1000 END`;
+  `CASE WHEN ${CREATED_AT_EPOCH_SQL} IS NULL THEN NULL
+        ELSE (CAST(${CREATED_AT_EPOCH_SQL} AS INTEGER) + ${PENDING_ORDER_TTL_HOURS * 3600}) * 1000 END`;

@@ -17,6 +17,7 @@ import '../content/story_viewer.dart';
 import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
 import '../nfc/qr_share.dart';
+import '../orders/my_orders.dart';
 import '../settings/settings_screen.dart';
 
 /// HOME — "menga o'z shaxsimni ko'rsat".
@@ -33,6 +34,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Record>? _catalog;
   Map<String, dynamic>? _analytics;
+  List<Order> _pending = const [];
   Object? _error;
   bool _loading = true;
   String? _loadedFor;
@@ -57,6 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       final catalog = await state.repo.catalog();
+      // TUGALLANMAGAN TO'LOV — vaqtga bog'liq: kod 24 soat band
+      // bo'lib turadi va shu muddatda to'lanmasa bekor qilinadi.
+      // Shuning uchun u Home'da ko'rinadi, sozlamalar ichida
+      // ko'milib qolmaydi.
+      List<Order> pending = const [];
+      try {
+        pending = (await state.repo.orders()).where((o) => o.isPending).toList();
+      } catch (_) {}
       Map<String, dynamic>? analytics;
       final active = state.active;
       if (active != null && !active.isBusiness) {
@@ -70,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _catalog = catalog;
         _analytics = analytics;
+        _pending = pending;
         _loading = false;
       });
     } catch (e) {
@@ -106,6 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               SliverToBoxAdapter(child: _ActiveCard(active: active, analytics: _analytics)),
             if (active != null) SliverToBoxAdapter(child: _QuickActions(active: active)),
+            if (_pending.isNotEmpty)
+              SliverToBoxAdapter(child: _PendingBanner(count: _pending.length)),
             SliverToBoxAdapter(child: _Stories(cards: state.cards)),
             if (active != null && !active.verified)
               const SliverToBoxAdapter(child: _VerifyPrompt()),
@@ -278,6 +291,54 @@ class _Stories extends StatelessWidget {
       ),
     );
   }
+}
+
+/// TUGALLANMAGAN TO'LOV eslatmasi.
+///
+/// Bu shunchaki ma'lumot emas: to'lov tugallanmasa kod bekor qilinadi
+/// va boshqa odam uni olib ketishi mumkin. Shuning uchun uslub
+/// diqqatni tortadi (champagne chegara), lekin qizil emas — bu xato
+/// emas, tugallanmagan ish.
+class _PendingBanner extends StatelessWidget {
+  const _PendingBanner({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x20),
+        child: Press(
+          haptic: true,
+          onTap: () => push(context, (_) => const MyOrdersScreen()),
+          child: Surface(
+            border: C.champagne.withValues(alpha: .38),
+            child: Row(
+              children: [
+                const NIcon(Ico.clock, size: 21, color: C.champagne),
+                const SizedBox(width: S.x12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        count == 1
+                            ? 'To‘lov tugallanmagan'
+                            : '$count ta to‘lov tugallanmagan',
+                        style: T.cardTitle,
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'Band qilish muddati tugasa ID qaytadan sotuvga chiqadi',
+                        style: T.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                const NIcon(Ico.chevronRight, size: 18, color: C.champagne),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 /// Profil tasdiqlash eslatmasi — faqat tasdiqlanmagan shaxsda.
