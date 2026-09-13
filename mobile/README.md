@@ -90,19 +90,66 @@ bo'laklar bor, feed yo'q.
 
 ## Qo'shilmagan narsalar — va nima uchun
 
-Handoff'da bor, lekin ILOVADA YO'Q. Har biri backend imkoniyati
-yetmagani uchun, soxta ekran yasashdan ko'ra ochiq aytilgani ma'qul:
+Har biri backend imkoniyati yetmagani uchun. Soxta ekran yasashdan
+ko'ra ochiq aytilgani ma'qul:
 
 | Ekran | Nima yetishmaydi |
 |---|---|
-| Activity tab | Birlashgan activity feed endpointi (yuqoriga qarang) |
-| Post/Story yaratish | Rasm yuklash oqimi (`/api/upload`) ilovada yo'q |
-| Post yoqtirish | `/api/records/:code/like` — bu PROFIL layki, post emas |
+| Activity tab | Birlashgan activity feed endpointi yo'q (`GET /api/activity`) |
+| Push bildirishnoma | Serverda FCM qatlami yo'q |
+| Ikki tillilik | Ilovada `intl` qatlami yo'q — hozircha faqat o'zbekcha |
 | Karta bosma maketi | Sayt kartani 600 DPI PNG qilib chizadi; ilovada chizma dvigateli kerak |
-| Biznes profilini tahrirlash | Katalog, ish vaqti va manzil uchun alohida oqim |
+| Ish vaqti, katalog, galereya, o'z domeni | Biznes tahririda yo'q — saytdan sozlanadi |
 
-Bu tugmalar ilovada **o'chirilgan holatda** ko'rinadi — bosilganda jim
-turmaydi. `onTap: null` bo'lgan har bir joyda sabab izohda yozilgan.
+Bu tugmalar ilovada **ko'rsatilmaydi** yoki o'chirilgan holatda
+ko'rinadi. `onTap: null` bo'lgan har bir joyda sabab izohda yozilgan.
+
+### Prioritet bo'yicha qolganlar
+
+| Daraja | Narsa | Endpoint |
+|---|---|---|
+| P1 | To'lovlar tarixi | `GET /api/payments` |
+| P1 | Qo'llab-quvvatlash | `/api/support` |
+| P1 | Premium so'rovi | `/api/premium/request` |
+| P2 | Telefon raqamini o'zgartirish | `/api/settings/request-phone-change-code` |
+| P2 | Referal | `/api/referrals` |
+| P2 | Yangiliklar | `/api/news` |
+
+## Dizayn qarorlari
+
+### Tariflar — MATERIAL farqi, rang mavzusi emas
+
+Har tarifning o'z yuzasi, qirrasi, urg'usi va yaltirash kuchi bor
+(`TierStyle`). Ekranning qolgan rangi **tegilmaydi**:
+
+| Tarif | Material |
+|---|---|
+| Bronze | issiq, mat, cho'tkalangan metall — yaltirash eng zaif |
+| Silver | sovuq platina, eng toza aks ettirish |
+| Gold | issiq champagne, nozik metall yorqinligi |
+| Premium | platina + tiyilgan urg'u, **ikki qavatli qirra** |
+| Exclusive | deyarli qora yuza, oltin qirra — eng kam effekt |
+
+Premium Silver'dan **rangi bilan emas, ishlovi bilan** ajraladi.
+Birinchi urinishda u lavanda tusga ketgan va "o'yinchoq" ko'rinardi.
+
+### Ekran imzosi — nurning qayerdan tushishi
+
+Sarlavhani yopib qo'yganda ham bo'limni ajratish uchun
+(`ScreenAura`, kuchi 5–8%):
+
+| Ekran | Nur | Ierarxiya |
+|---|---|---|
+| Home | chap yuqoridan, issiq | salomlashuv + karta + tezkor amallar |
+| Discover | tepadan, sovuq, eng zaif | **qidiruv maydoni bosh element** |
+| NFC | o'ng yuqoridan, platina | serif sarlavha + so'nuvchi qirra chizig'i |
+| Settings | nur yo'q | bitta yuzada ro'yxat, eng sokin bo'lim |
+
+### Bo'sh holatlar
+
+Chizilgan belgi + sarlavha + foydali izoh + (**faqat egada**) bitta
+amal. Mehmonga CTA berilmaydi: begona profildagi "Post qo'shing" —
+bajarib bo'lmaydigan taklif. Rasm ishlatilmaydi.
 
 ## NFC va App Links
 
@@ -151,3 +198,24 @@ Payme/Click oqimiga **tegilmagan**. Ilova:
 
 Ilova to'lov muvaffaqiyatli bo'lganini **hech qachon o'zi
 belgilamaydi** — yagona haqiqat manbai provayder tasdig'i va backend.
+
+## Sifat darvozasi
+
+`test/audit/` — 43 ta golden kadr. Ular ikki savolga javob beradi:
+
+1. **Chiroylimi?** — 01–37: har ekran to'ldirilgan holatda.
+2. **Buzilmaydimi?** — 38–43: yangi foydalanuvchi (hisob bor, hech
+   narsa yo'q), tarmoq yo'q, server xatosi.
+
+Ikkinchi guruh bo'lmasa auditning ma'nosi yarim: odam bu holatlarni
+ilovaning birinchi kunidayoq ko'radi. U darhol haqiqiy xato topdi —
+shaxsi yo'q foydalanuvchida bosh ekran umuman yuklanmasdi.
+
+```bash
+flutter test                       # hammasi
+flutter test --update-goldens test/audit   # kadrlarni yangilash
+```
+
+Kadr o'zgarsa test yiqiladi va farq `test/audit/failures/` ga
+yoziladi. **Kadrni ko'rmasdan yangilamang** — golden testning butun
+ma'nosi o'zgarishni KO'RISHDA.
