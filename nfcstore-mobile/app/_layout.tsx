@@ -106,7 +106,7 @@ function Shell({ ready }: { ready: boolean }) {
         }}
       >
         <Stack.Screen name="(tabs)" />
-        {/* Tashqi profillar — NFC teginish va Katalog shu ekranlarga
+        {/* Tashqi profillar — NFC teginish va Discover shu ekranlarga
             olib boradi. Ular tab navigatorining TASHQARISIDA: pastki
             navigatsiya ko'rinmaydi, chunki bu "mening ID'larim" emas. */}
         <Stack.Screen name="p/[code]" options={{ animation: 'slide_from_right' }} />
@@ -115,6 +115,9 @@ function Shell({ ready }: { ready: boolean }) {
           name="dashboard/[companyId]"
           options={{ animation: 'slide_from_right' }}
         />
+        {/* Company ENDI TAB EMAS (spetsifikatsiya) — ro'yxat Profile
+            Switcher'dan ochiladigan alohida stack ekrani. */}
+        <Stack.Screen name="companies/index" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen
           name="post/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}

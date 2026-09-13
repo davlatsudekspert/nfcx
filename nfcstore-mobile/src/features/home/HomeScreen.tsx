@@ -8,7 +8,6 @@ import { getGiftOffers, getPaymentsSettings, getPhysicalPricing } from '@/api/en
 import { Card } from '@/components/Card';
 import { TapScale } from '@/components/TapScale';
 import { HandleChip } from '@/features/profile/header/ActionButtons';
-import { NfcScanCard } from '@/features/nfc/NfcScanCard';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
 import { money } from '@/lib/format';
@@ -78,8 +77,6 @@ export function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 28, gap: 12 }}
       >
-        <NfcScanCard />
-
         <ActionCard
           title={isBusiness ? 'Biznes ID faol' : 'Shaxsiy ID faol'}
           meta={vm ? 'FAOL' : '—'}
@@ -150,6 +147,7 @@ export function HomeScreen() {
         accounts={accounts}
         active={active}
         onPick={setActive}
+        onCreateCompany={() => openUrl(`${SITE}/business`)}
       />
     </View>
   );

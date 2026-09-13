@@ -55,11 +55,22 @@ export function shadow(y: number, blur: number, opacity: number): ViewStyle {
   };
 }
 
-/** Maket qiymatlari: `0 10px 24px rgba(0,0,0,.55)` va hokazo. */
+/**
+ * Maket qiymatlari: `0 10px 24px rgba(0,0,0,.55)` va hokazo.
+ *
+ * `e1`/`e2`/`e3` — `design_handoff_nfcstore_app/README.md` dagi yakuniy
+ * elevatsiya spetsifikatsiyasi (`theme/tokens.ts` dagi `ELEVATION_SPEC`
+ * bilan bir xil qiymatlar). Eski nomlar (`card`/`soft`/`tile`/`tier`)
+ * ishlatilayotgan joylarni buzmaslik uchun saqlanadi; yangi kod `e1-e3`
+ * dan foydalansin.
+ */
 export const SHADOW = {
   card: shadow(10, 24, 0.55),
   soft: shadow(8, 20, 0.45),
   tile: shadow(6, 16, 0.5),
   tier: shadow(8, 18, 0.45),
   sheet: shadow(-20, 50, 0.6),
+  e1: shadow(4, 12, 0.4),
+  e2: shadow(10, 24, 0.5),
+  e3: shadow(22, 50, 0.6),
 } as const;

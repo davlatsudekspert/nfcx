@@ -199,6 +199,7 @@ export function CompanyListScreen() {
         accounts={accounts}
         active={active}
         onPick={setActive}
+        onCreateCompany={() => WebBrowser.openBrowserAsync(`${SITE}/business`).catch(() => {})}
       />
     </View>
   );

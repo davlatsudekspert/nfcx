@@ -20,13 +20,22 @@ import { sans } from '@/theme/type';
 import { NAV_ICONS, type NavIconName } from './NavIcons';
 import { NavGlow } from './NavGlow';
 
-/** Maketdagi tartib: Home / Katalog / Company / Profile. Auction YO'Q. */
+/**
+ * Yangi tartib (design_handoff_nfcstore_app spetsifikatsiyasi):
+ * Home / Discover / NFC / Profile. Auction YO'Q, Activity YO'Q (haqiqiy
+ * agregatsiyalangan activity/notifications backend topilmadi — 4-tab
+ * variant). Company endi tab EMAS: biznes identity Profile Switcher
+ * orqali, Dashboard esa `/companies` va Business profildan ochiladi.
+ */
 const TABS: { route: string; icon: NavIconName; label: string }[] = [
   { route: 'index', icon: 'home', label: 'Home' },
-  { route: 'katalog', icon: 'katalog', label: 'Katalog' },
-  { route: 'company', icon: 'company', label: 'Company' },
+  { route: 'discover', icon: 'discover', label: 'Discover' },
+  { route: 'nfc', icon: 'nfc', label: 'NFC' },
   { route: 'profile', icon: 'profile', label: 'Profile' },
 ];
+
+/** NFC — markaziy tab, boshqalardan biroz kattaroq glif oladi. */
+const NFC_ROUTE = 'nfc';
 
 const INDICATOR_W = 26;
 
@@ -195,6 +204,12 @@ function NavItem({
   const { theme } = useTheme();
   const pop = useSharedValue(1);
   const { Active, Idle } = NAV_ICONS[tab.icon];
+  const isNfc = tab.route === NFC_ROUTE;
+  // NFC — markaziy tab, platinum aksent (champagne emas) va biroz
+  // kattaroq glif. Ikkinchi gradient to'xtash nuqtasi platinumdan
+  // qo'lda hisoblangan quyuqroq soya (Theme'da alohida token yo'q,
+  // chunki bu FAQAT shu tab uchun, umumiy aksent emas).
+  const nfcA2 = '#8b8f99';
 
   // @keyframes iconPop { 0%{scale(1)} 40%{scale(1.12)} 100%{scale(1)} }
   // davomiyligi .34s
@@ -226,9 +241,32 @@ function NavItem({
         position: 'relative',
       }}
     >
-      {focused ? <NavGlow color={theme.a1} /> : null}
+      {focused && !isNfc ? <NavGlow color={theme.a1} /> : null}
+      {isNfc ? (
+        // Spetsifikatsiya: "a subtle rounded plate behind it. Never a
+        // floating pill or FAB." — statik, bar bilan bir tekis, hech
+        // qanday animatsiya yoki soya yo'q.
+        <View
+          style={{
+            position: 'absolute',
+            top: 1,
+            width: 40,
+            height: 34,
+            borderRadius: 12,
+            backgroundColor: focused ? 'rgba(201,204,210,.08)' : 'rgba(255,255,255,.03)',
+            borderWidth: 1,
+            borderColor: focused ? 'rgba(201,204,210,.22)' : 'rgba(255,255,255,.06)',
+          }}
+        />
+      ) : null}
       <Animated.View style={iconStyle}>
-        {focused ? (
+        {isNfc ? (
+          focused ? (
+            <Active a1={theme.platinum} a2={nfcA2} bg={theme.bg} size={24} />
+          ) : (
+            <Idle color={theme.off} size={22} />
+          )
+        ) : focused ? (
           <Active a1={theme.a1} a2={theme.a2} bg={theme.bg} />
         ) : (
           <Idle color={theme.off} />
@@ -237,7 +275,7 @@ function NavItem({
       <Text
         style={[
           focused ? sans(700, 9.5) : sans(500, 9.5),
-          { color: focused ? theme.a1 : theme.off },
+          { color: focused ? (isNfc ? theme.platinum : theme.a1) : theme.off },
         ]}
       >
         {tab.label}

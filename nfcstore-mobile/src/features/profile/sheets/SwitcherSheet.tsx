@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -43,6 +44,7 @@ export function SwitcherSheet({
   onCreateCompany?: () => void;
 }) {
   const { theme } = useTheme();
+  const hasBusiness = accounts.some((a) => a.kind === 'Business');
 
   return (
     <Sheet visible={visible} onClose={onClose} title="Profilni almashtirish">
@@ -130,6 +132,62 @@ export function SwitcherSheet({
             </TapScale>
           );
         })}
+
+        {/* Company endi tab EMAS (spetsifikatsiya) — barcha biznes
+            ID'larni Dashboard bilan ko'rish shu yerdan, Switcher'dan
+            ochiladi. Faqat foydalanuvchida kamida bitta Business ID
+            bo'lsa ko'rinadi. */}
+        {hasBusiness ? (
+          <TapScale
+            radius={14}
+            onPress={() => {
+              onClose();
+              router.push('/companies');
+            }}
+            accessibilityLabel="Barcha kompaniyalarim"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingVertical: 11,
+              paddingHorizontal: 12,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: theme.rim,
+            }}
+          >
+            <View
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: 'rgba(255,255,255,.05)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Svg width={16} height={16} viewBox="0 0 24 24">
+                <Path
+                  d="M4 21V6.4L12 3.4v17.6H4z"
+                  stroke={theme.platinum}
+                  strokeWidth={1.6}
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+                <Path
+                  d="M12 8.2l7.4 2.4V21H12"
+                  stroke={theme.platinum}
+                  strokeWidth={1.6}
+                  strokeLinejoin="round"
+                  fill="none"
+                />
+              </Svg>
+            </View>
+            <Text style={[sans(600, 13), { color: theme.ink }]}>
+              Barcha kompaniyalarim
+            </Text>
+          </TapScale>
+        ) : null}
 
         <TapScale
           radius={14}

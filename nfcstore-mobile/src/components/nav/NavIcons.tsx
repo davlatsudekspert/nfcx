@@ -18,7 +18,7 @@ import { useSvgId } from '@/lib/svgId';
  * (`stroke="var(--bg)"`), shuning uchun `bg` prop kerak.
  */
 
-export type NavIconName = 'home' | 'katalog' | 'company' | 'profile';
+export type NavIconName = 'home' | 'discover' | 'nfc' | 'profile';
 
 type ActiveProps = { size?: number; a1: string; a2: string; bg: string };
 type IdleProps = { size?: number; color: string };
@@ -67,9 +67,9 @@ export function HomeIdle({ size = 21, color }: IdleProps) {
   );
 }
 
-/* ── Katalog (ID karta) ───────────────────────────────────────────── */
+/* ── Discover (ID karta) ──────────────────────────────────────────── */
 
-export function KatalogActive({ size = 21, a1, a2, bg }: ActiveProps) {
+export function DiscoverActive({ size = 21, a1, a2, bg }: ActiveProps) {
   const id = useGrad();
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -87,7 +87,7 @@ export function KatalogActive({ size = 21, a1, a2, bg }: ActiveProps) {
   );
 }
 
-export function KatalogIdle({ size = 21, color }: IdleProps) {
+export function DiscoverIdle({ size = 21, color }: IdleProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Rect
@@ -112,7 +112,58 @@ export function KatalogIdle({ size = 21, color }: IdleProps) {
   );
 }
 
-/* ── Company ──────────────────────────────────────────────────────── */
+/* ── NFC (markaziy tab) ───────────────────────────────────────────────
+   Spetsifikatsiya: "platinum active state, slightly larger glyph, a
+   subtle rounded plate behind it. Never a floating pill or FAB." Glif —
+   karta + kontaktsiz to'lqinlar, umumiy NFC belgisi tiliga mos. Faol
+   holatdagi plita `NavIcons`da emas, `BottomNav` ichida chiziladi
+   (o'lchami joylashuvga bog'liq); bu yerda faqat glif. */
+
+export function NfcActive({ size = 24, a1, a2, bg }: ActiveProps) {
+  const id = useGrad();
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <GradDefs id={id} a1={a1} a2={a2} />
+      <Rect x={3} y={7} width={13} height={10} rx={2.6} fill={`url(#${id})`} />
+      <Circle cx={7.2} cy={12} r={1.15} fill={bg} />
+      <Path
+        d="M15.3 8.6a4.4 4.4 0 010 6.8M18.1 6.1a8.2 8.2 0 010 11.8M20.6 3.8a11.9 11.9 0 010 16.4"
+        stroke={`url(#${id})`}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+export function NfcIdle({ size = 22, color }: IdleProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect
+        x={3}
+        y={7}
+        width={13}
+        height={10}
+        rx={2.6}
+        stroke={color}
+        strokeWidth={1.6}
+        fill="none"
+      />
+      <Circle cx={7.2} cy={12} r={1.1} fill={color} />
+      <Path
+        d="M15.3 8.6a4.4 4.4 0 010 6.8M18.1 6.1a8.2 8.2 0 010 11.8M20.6 3.8a11.9 11.9 0 010 16.4"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/* ── Company (endi tabda emas — Business identity badge sifatida
+     boshqa joyda qayta ishlatilishi mumkin, shuning uchun saqlanadi) ── */
 
 export function CompanyActive({ size = 21, a1, a2, bg }: ActiveProps) {
   const id = useGrad();
@@ -192,7 +243,7 @@ export const NAV_ICONS: Record<
   }
 > = {
   home: { Active: HomeActive, Idle: HomeIdle },
-  katalog: { Active: KatalogActive, Idle: KatalogIdle },
-  company: { Active: CompanyActive, Idle: CompanyIdle },
+  discover: { Active: DiscoverActive, Idle: DiscoverIdle },
+  nfc: { Active: NfcActive, Idle: NfcIdle },
   profile: { Active: ProfileActive, Idle: ProfileIdle },
 };

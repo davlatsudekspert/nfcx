@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import * as WebBrowser from 'expo-web-browser';
+
 import { followCard, toggleFollowCompany, unfollowCard } from '@/api/endpoints';
 import type { Company, FollowStats } from '@/api/types';
+import { SITE } from '@/features/profile/profileVM';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
@@ -71,6 +74,9 @@ export function ProfileScreen() {
           // Katalog, shaxsiyda Postlar ochiladi — maketdagi xatti-harakat.
           setTab(id.kind === 'business' ? 'catalog' : 'feed');
         }}
+        onCreateCompany={() =>
+          WebBrowser.openBrowserAsync(`${SITE}/business`).catch(() => {})
+        }
       />
       <SettingsSheet
         visible={settingsOpen}
