@@ -265,6 +265,20 @@ export type PaymentsSettings = {
   providers?: Record<string, { enabled: boolean; sandbox?: boolean }>;
 };
 
+/**
+ * GET /api/payments -> {payments, pendingPayout}. `status` va `kind`
+ * SERVERDA belgilanadi (`web_orders` jadvali) — client hech qachon
+ * "to'landi" holatini o'zi belgilamaydi.
+ */
+export type PaymentRecord = {
+  id: number;
+  kind: string;
+  code: string;
+  price: number;
+  status: string;
+  createdAt: string;
+};
+
 /* ══ Dashboard ══════════════════════════════════════════════════════ */
 
 /** GET /api/companies/:id/stats?days=30 */

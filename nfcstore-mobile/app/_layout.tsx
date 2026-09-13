@@ -117,6 +117,8 @@ function Shell({ ready }: { ready: boolean }) {
           name="settings/verification"
           options={{ animation: 'slide_from_right' }}
         />
+        {/* Sozlamalar → To'lovlar tarixi (real, faqat ko'rish). */}
+        <Stack.Screen name="settings/payments" options={{ animation: 'slide_from_right' }} />
         {/* Tashqi profillar — NFC teginish va Discover shu ekranlarga
             olib boradi. Ular tab navigatorining TASHQARISIDA: pastki
             navigatsiya ko'rinmaydi, chunki bu "mening ID'larim" emas. */}

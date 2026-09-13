@@ -92,7 +92,7 @@ export function ProfileScreen() {
           },
           onOpenPayments: () => {
             setSettingsOpen(false);
-            WebBrowser.openBrowserAsync(`${SITE}/tolovlar`).catch(() => {});
+            router.push('/settings/payments');
           },
           onSignOut: () => {
             // `(tabs)/_layout.tsx` gate `user === null` bo'lganda o'zi

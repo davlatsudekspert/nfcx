@@ -12,6 +12,7 @@ import type {
   FollowResult,
   FollowStats,
   GiftOffers,
+  PaymentRecord,
   PaymentsSettings,
   PersonalPost,
   PersonalStory,
@@ -177,6 +178,15 @@ export const getGiftOffers = () => apiFetch<GiftOffers>('/gift-offers');
 export const getPaymentsSettings = () =>
   apiFetch<PaymentsSettings>('/settings/payments-enabled', { anonymous: true });
 
+/**
+ * GET /api/payments -> {payments, pendingPayout} — foydalanuvchining
+ * HAQIQIY to'lov tarixi (`web_orders`, autentifikatsiya talab qiladi).
+ * Payme/Click checkout mantig'i ilovada QURILMAGAN (spetsifikatsiya
+ * qoidasi) — bu faqat ko'rish uchun, holatni backend belgilaydi.
+ */
+export const getPayments = () =>
+  apiFetch<{ payments: PaymentRecord[]; pendingPayout: number }>('/payments');
+
 /* ══ Dashboard ══════════════════════════════════════════════════════ */
 
 /** GET /api/companies/:id/stats?days=N — N 7..90 orasiga qisiladi. */
@@ -245,6 +255,7 @@ export type {
   FollowResult,
   FollowStats,
   GiftOffers,
+  PaymentRecord,
   PaymentsSettings,
   PersonalPost,
   PersonalStory,
