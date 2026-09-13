@@ -47,4 +47,24 @@ env.TELEGRAM_BOT_USERNAME = '@';
 res = await post('/api/auth/tg-link/start', {});
 check('faqat "@" -> 503 bot_not_configured', [res.status, (await res.json()).error], [503, 'bot_not_configured']);
 
+// ===== SOZLAMALAR: ekrandagi yozuv KANALGA mos bo'lsin =====
+//
+// Egasi shuni yozdi: "bu yerda telegramga kod kelmayapti". Aslida kod
+// KELGAN edi — emailiga. Server kanalni akkauntga qarab tanlaydi,
+// ekranda esa har doim "Telegram botingizga yuborildi" deb turardi.
+// Ya'ni odam noto'g'ri joyni ochib, kodni kuta-kuta o'tirdi.
+//
+// Server javobidagi `channel` ekranda ISHLATILISHI shart.
+import { readFileSync } from 'node:fs';
+const settings = readFileSync(new URL('../src/pages/SettingsPage.jsx', import.meta.url), 'utf8');
+
+checkTrue('sozlamalar: kanal server javobidan olinadi', /setChannel\(res\?\.channel === 'email'/.test(settings));
+checkTrue('sozlamalar: xabar kanalga qarab yoziladi',
+  /channel === 'email'/.test(settings) && settings.includes('Kod emailingizga yuborildi'));
+checkTrue('sozlamalar: maydon yozuvi ham kanalga qarab',
+  settings.includes("t('Emailga kelgan 6 xonali kod')"));
+// Tugma bosilgunga qadar kanal NOMA'LUM — shuning uchun u neytral
+// bo'lishi kerak, "Telegram'ga kod yuborish" emas.
+checkTrue('sozlamalar: tugma neytral', !settings.includes("Telegram'ga kod yuborish"));
+
 done();

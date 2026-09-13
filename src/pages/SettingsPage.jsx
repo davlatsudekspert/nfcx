@@ -16,6 +16,10 @@ export default function SettingsPage() {
   const { t } = useLanguage();
 
   const [step, setStep] = useState('idle'); // idle | code_sent
+  // Kod QAYSI kanalga ketgani — server javobidan. Ekrandagi hamma
+  // yozuv shunga qarab yoziladi, aks holda odam noto'g'ri joyni
+  // ochib kutib o'tiradi.
+  const [channel, setChannel] = useState('telegram');
   const [toolsCode, setToolsCode] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -97,9 +101,23 @@ export default function SettingsPage() {
     setBusy(true);
     setMsg(null);
     try {
-      await dbRequestPasswordCode();
+      // KOD QAYERGA KETGANINI AYNAN AYTAMIZ. Server kanalni akkauntga
+      // qarab tanlaydi: haqiqiy emaili bor odamga — pochtaga, qolganga
+      // — Telegramga.
+      //
+      // Ilgari bu yerda har doim "Telegram botingizga yuborildi" deb
+      // yozilardi. Natijada emailga o'tgan odam Telegramni ochib,
+      // kodni kuta-kuta "kelmayapti" degan xulosaga kelardi —
+      // aslida kod pochtasida yotardi.
+      const res = await dbRequestPasswordCode();
+      setChannel(res?.channel === 'email' ? 'email' : 'telegram');
       setStep('code_sent');
-      setMsg({ type: 'ok', text: t('Kod Telegram botingizga yuborildi.') });
+      setMsg({
+        type: 'ok',
+        text: res?.channel === 'email'
+          ? t('Kod emailingizga yuborildi. Pochtangizni oching (spam papkasini ham tekshiring).')
+          : t('Kod Telegram botingizga yuborildi.'),
+      });
     } catch (err) {
       setMsg({ type: 'err', text: err.message });
     } finally {
@@ -279,19 +297,19 @@ export default function SettingsPage() {
           parolni bilmasa, yagona yo'l shu. */}
       <section className="mt-10 max-w-lg">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold"><IconShield /> {t("Parolni unutdingizmi?")}</h2>
-        <p className="mt-1 text-sm text-base-content/50">{t('Joriy parolni eslay olmasangiz — Telegram botingizga yuboriladigan bir martalik kod bilan yangilaysiz.')}</p>
+        <p className="mt-1 text-sm text-base-content/50">{t('Joriy parolni eslay olmasangiz — emailingizga yoki Telegram botingizga yuboriladigan bir martalik kod bilan yangilaysiz.')}</p>
 
         <div className="vz-card mt-4 p-5">
           {step === 'idle' ? (
             <button className="btn btn-gold btn-sm min-h-11" onClick={requestCode} disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-xs"></span> : t("Telegram'ga kod yuborish")}
+              {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Kod yuborish')}
             </button>
           ) : (
             <div className="space-y-3">
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder={t("Telegram'dan kelgan 6 xonali kod")}
+                placeholder={channel === 'email' ? t('Emailga kelgan 6 xonali kod') : t("Telegram'dan kelgan 6 xonali kod")}
                 className="input input-bordered input-sm min-h-11 w-full bg-base-100 font-mono tracking-widest"
                 maxLength={6}
               />
@@ -336,7 +354,7 @@ export default function SettingsPage() {
                 className="input input-bordered input-sm min-h-11 w-full bg-base-100"
               />
               <button className="btn btn-gold btn-sm min-h-11" onClick={requestPhoneCode} disabled={phoneBusy}>
-                {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Telegram'ga kod yuborish")}
+                {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : t('Kod yuborish')}
               </button>
             </div>
           ) : (
@@ -345,7 +363,7 @@ export default function SettingsPage() {
               <input
                 value={phoneCode}
                 onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder={t("Telegram'dan kelgan 6 xonali kod")}
+                placeholder={channel === 'email' ? t('Emailga kelgan 6 xonali kod') : t("Telegram'dan kelgan 6 xonali kod")}
                 className="input input-bordered input-sm min-h-11 w-full bg-base-100 font-mono tracking-widest"
                 maxLength={6}
               />
