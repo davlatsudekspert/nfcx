@@ -33,6 +33,7 @@ export function ProfileScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const setActive = useActiveIdStore((s) => s.setActive);
+  const authUser = useAuthStore((s) => s.user);
 
   const { vm, accounts, active, posts, stories, loading, error } = useProfileData();
 
@@ -84,6 +85,11 @@ export function ProfileScreen() {
         onClose={() => setSettingsOpen(false)}
         rows={settingRows({
           handle: vm?.handle,
+          telegramLinked: authUser?.telegramLinked,
+          onOpenVerification: () => {
+            setSettingsOpen(false);
+            router.push('/settings/verification');
+          },
           onOpenPayments: () => {
             setSettingsOpen(false);
             WebBrowser.openBrowserAsync(`${SITE}/tolovlar`).catch(() => {});
@@ -273,16 +279,25 @@ function useFollowMutation(
 
 export function settingRows({
   handle,
+  telegramLinked,
+  onOpenVerification,
   onOpenPayments,
   onSignOut,
 }: {
   handle: string | undefined;
+  telegramLinked: boolean | undefined;
+  onOpenVerification: () => void;
   onOpenPayments: () => void;
   /** Haqiqiy chiqish — `authStore.signOut()` (avval hech qayerga ulanmagan edi). */
   onSignOut: () => void;
 }): SettingRow[] {
   return [
     { k: 'Hisob', v: handle ?? '—' },
+    {
+      k: 'Profilni tasdiqlash',
+      v: telegramLinked ? 'Tasdiqlangan' : 'Tasdiqlanmagan',
+      onPress: onOpenVerification,
+    },
     { k: 'Bildirishnomalar', v: 'Yoniq' },
     { k: 'Til', v: "O'zbekcha" },
     { k: "To'lovlar", v: 'Payme', onPress: onOpenPayments },

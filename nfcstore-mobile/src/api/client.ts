@@ -218,3 +218,42 @@ export async function logout(): Promise<void> {
   });
   await setToken(null);
 }
+
+/* ══ Profil tasdiqlash — Telegram (tg-link, hosting/api/auth.js) ═════
+ *
+ * Ro'yxatdan o'tishdagi bilan BIR XIL "bir bosishda bog'lanish" oqimi
+ * (spetsifikatsiya: SMS OTP yo'q, kod so'ralmaydi). Uch qadam:
+ *   1) startTelegramLink()      — token + t.me havolasi yaratadi
+ *   2) odam botda "Kontaktni ulashish"ni bosadi (ilova tashqarisida)
+ *   3) getTelegramLinkStatus()  — sayt holatni so'rab turadi
+ *   4) 'linked' bo'lgach confirmTelegramLink() — tokenni HISOBGA
+ *      biriktiradi (shu qadamdan keyin `/auth/me`da `telegramLinked`
+ *      haqiqiy bo'ladi)
+ * 1 va 3 — ochiq (token talab qilmaydi), 4 — AUTENTIFIKATSIYA talab
+ * qiladi (`apiFetch`, Bearer bilan), shuning uchun pastda emas,
+ * `endpoints.ts`da.
+ */
+export async function startTelegramLink(): Promise<{ token: string; url: string }> {
+  const res = await fetch(`${API_BASE}/auth/tg-link/start`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-Client': 'mobile' },
+  });
+  const data = (await res.json().catch(() => null)) as
+    | { token?: string; url?: string; error?: string }
+    | null;
+  if (!res.ok || !data?.token || !data.url) {
+    throw new ApiError(res.status, typeof data?.error === 'string' ? data.error : `api_error_${res.status}`);
+  }
+  return { token: data.token, url: data.url };
+}
+
+export type TgLinkStatus = { status: 'pending' | 'linked' | 'expired'; phone?: string };
+
+export async function getTelegramLinkStatus(token: string): Promise<TgLinkStatus> {
+  const res = await fetch(`${API_BASE}/auth/tg-link/status?token=${encodeURIComponent(token)}`, {
+    headers: { Accept: 'application/json', 'X-Client': 'mobile' },
+  });
+  const data = (await res.json().catch(() => null)) as TgLinkStatus | null;
+  if (!res.ok || !data?.status) throw new ApiError(res.status, 'api_error');
+  return data;
+}

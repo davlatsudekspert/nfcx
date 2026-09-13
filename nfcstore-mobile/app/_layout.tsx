@@ -112,6 +112,11 @@ function Shell({ ready }: { ready: boolean }) {
             yo'naltiradi. */}
         <Stack.Screen name="login" options={{ animation: 'fade' }} />
         <Stack.Screen name="register" options={{ animation: 'slide_from_right' }} />
+        {/* Sozlamalar → Tasdiqlash — Telegram profil bog'lash oqimi. */}
+        <Stack.Screen
+          name="settings/verification"
+          options={{ animation: 'slide_from_right' }}
+        />
         {/* Tashqi profillar — NFC teginish va Discover shu ekranlarga
             olib boradi. Ular tab navigatorining TASHQARISIDA: pastki
             navigatsiya ko'rinmaydi, chunki bu "mening ID'larim" emas. */}

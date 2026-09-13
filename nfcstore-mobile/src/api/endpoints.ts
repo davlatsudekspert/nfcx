@@ -25,6 +25,19 @@ import type {
 /** GET /api/auth/me -> {user, cards} */
 export const getMe = () => apiFetch<AuthMe>('/auth/me');
 
+/**
+ * POST /api/settings/link-telegram {linkToken} -> {ok, phone}
+ * AUTENTIFIKATSIYA talab qiladi — token
+ * `startTelegramLink()`/`getTelegramLinkStatus()`dan (`api/client.ts`)
+ * "linked" bo'lgach shu yerga yuboriladi. Muvaffaqiyatdan keyin
+ * `/auth/me`dagi `telegramLinked` haqiqiy bo'ladi.
+ */
+export const confirmTelegramLink = (linkToken: string) =>
+  apiFetch<{ ok: boolean; phone: string }>('/settings/link-telegram', {
+    method: 'POST',
+    body: { linkToken },
+  });
+
 /** GET /api/companies/mine -> {companies} (egasining barcha kompaniyalari) */
 export const getMyCompanies = () =>
   apiFetch<{ companies: Company[] }>('/companies/mine').then((r) => r.companies);
