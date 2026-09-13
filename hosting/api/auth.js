@@ -213,16 +213,16 @@ async function verifyAndConsumeEmailOtpCode(env, H, email, code, purpose) {
   return (await H.sha256Hex(code)) === row.code;
 }
 
-// Kodni emailga yuboradi. `true` — ketdi.
+// Kodni emailga yuboradi. Natijani BUTUNLIGICHA qaytaradi — chaqiruvchi
+// xato sababini javobga qo'sha olishi uchun.
 async function sendEmailOtp(env, H, email, purpose, code) {
   const t = EMAIL_OTP_TEXT[purpose](code);
-  const res = await H.sendEmailD1(env, {
+  return H.sendEmailD1(env, {
     to: email,
     subject: t.subject,
     html: emailCodeHtml(H, { title: t.title, intro: t.intro, code, ttlText: t.ttl }),
     text: `${t.intro}\n\n${code}\n\n${t.ttl}`,
   });
-  return !!res?.ok;
 }
 
 // ---------- password_reset_codes ----------
@@ -454,8 +454,18 @@ async function requestRegisterCode(request, env, H) {
       return H.json({ error: 'too_many_requests' }, 429);
     }
     const code = await createEmailOtpCode(env, H, email, 'register', REGISTER_OTP_TTL_MS);
-    if (!(await sendEmailOtp(env, H, email, 'register', code))) {
-      return H.json({ error: 'email_send_failed' }, 503);
+    const sent = await sendEmailOtp(env, H, email, 'register', code);
+    if (!sent?.ok) {
+      // SABAB javobga qo'shiladi. Bu MAXFIY EMAS: `reason` faqat
+      // "http_403" kabi holat kodi yoki "network"/"bad_address" —
+      // Resend javobining matni ham, kalit ham bu yerga tushmaydi.
+      //
+      // Nima uchun kerak: xato faqat Cloudflare loglarida qolganda
+      // sababni topish uchun har safar terminal ochish kerak bo'ladi.
+      // Holat kodi esa o'zi aytadi: 401 — kalit noto'g'ri, 403 —
+      // yuborishga ruxsat yo'q (masalan jo'natuvchi tasdiqlanmagan
+      // manzil), 422 — `from` formati noto'g'ri.
+      return H.json({ error: 'email_send_failed', reason: sent?.reason || 'unknown' }, 503);
     }
     return H.json({ ok: true, channel: 'email' });
   }

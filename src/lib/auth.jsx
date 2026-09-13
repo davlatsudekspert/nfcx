@@ -42,6 +42,9 @@ async function api(path, options) {
     const err = new Error((data && data.error) || 'api_error_' + res.status);
     if (data && data.feature) err.feature = data.feature;
     if (data && data.limit != null) err.limit = data.limit;
+    // Xatoning QO'SHIMCHA sababi (masalan email yuborishda "http_403").
+    // Maxfiy emas — server u yerga faqat holat kodini qo'yadi.
+    if (data && data.reason != null) err.reason = data.reason;
     throw err;
   }
   return data;
