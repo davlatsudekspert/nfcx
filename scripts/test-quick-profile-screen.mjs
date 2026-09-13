@@ -189,4 +189,29 @@ for (const sel of ['.qp-tab', '.qp-sidebtn', '.qp-save', '.qp-order']) {
 checkTrue('15) to‘liq sahifa tugmasi oltin', rule('.qp-public').includes('var(--gold-face)'));
 checkTrue('15) ustidan yaltiroq o‘tadi', page.includes('qp-public tier-shine'));
 
+
+// ── 16) OBUNA TUGMASI — butun kenglikda, ALOHIDA qatorda ─────────────
+// Ilgari u logotip yonida, kichkina tugmada osilib turardi va ko'zga
+// tashlanmasdi. Endi raqamlar ostida, butun kenglikda.
+checkTrue('16) obuna tugmasi alohida qatorda', /!isOwner && \(\s*<button[^>]*className=\{`qp-follow/.test(page));
+checkTrue('16) butun kenglikda', rule('.qp-follow').includes('width:100%'));
+// TO'LDIRILGAN OLTIN ATAYLAB FAQAT BITTA tugmada — "Kontaktni
+// saqlash"da. Ikkalasi to'ldirilgan bo'lsa ko'z hech qaysisida
+// to'xtamaydi.
+checkTrue('16) obuna to‘ldirilgan oltin EMAS', !rule('.qp-follow').includes('var(--gold-face)'));
+checkTrue('16) saqlash esa to‘ldirilgan oltin', rule('.qp-save').includes('var(--gold-face)'));
+
+// ── 17) ISH VAQTI HOLATI RANGDA ham bilinadi ─────────────────────────
+// Rangni belgilaydigan yagona manba — yashil nuqta (`.ch-dot.is-open`),
+// ya'ni rang bilan matn hech qachon bir-biriga zid bo'lib qolmaydi.
+checkTrue('17) ochiq — yashil', css.includes('.qp-hero .ch-box:has(.ch-dot.is-open) .ch-head'));
+checkTrue('17) yopiq — qizg‘ish', css.includes('.qp-hero .ch-box:not(:has(.ch-dot.is-open)) .ch-head'));
+
+// ── 18) Aloqa qatorining o'ng cheti so'nadi ──────────────────────────
+// `mask-image` ATAYLAB: u KONTENTNI so'ndiradi, fon ustiga to'rtburchak
+// chizmaydi. Gradientli qoplama muqova rasmi ustida dog' bo'lib
+// qolgan edi.
+checkTrue('18) o‘ng chet so‘nadi', rule('.qp-quick').includes('mask-image'));
+checkTrue('18) qoplama emas, niqob', !rule('.qp-quick').includes('::after'));
+
 done();

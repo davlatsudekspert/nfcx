@@ -258,13 +258,13 @@ export default function CompanyQuickProfilePage({ companyId }) {
               )}
             </div>
             <div className="qp-side">
-              {isOwner ? (
+              {/* Egasiga — "Tahrirlash": kamdan-kam bosiladigan, ikkinchi
+                  darajali harakat, shuning uchun logotip yonida. Mehmonga
+                  bu joy BO'SH qoladi va "Obuna bo'lish" pastda, butun
+                  kenglikda turadi (pastga qarang). */}
+              {isOwner && (
                 <button type="button" className="qp-sidebtn" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>
                   ✎ {t('Tahrirlash')}
-                </button>
-              ) : (
-                <button type="button" className={`qp-sidebtn${company.following ? ' is-on' : ''}`} onClick={follow} disabled={followBusy}>
-                  {followBusy ? '…' : company.following ? t('Obuna bo‘lingan') : t('Obuna bo‘lish')}
                 </button>
               )}
             </div>
@@ -287,6 +287,18 @@ export default function CompanyQuickProfilePage({ companyId }) {
             <div><b>{fmt(company.followers || 0)}</b><small>{t('Obunachi')}</small></div>
             {items.length > 0 && <div><b>{fmt(items.length)}</b><small>{t(cta.noun)}</small></div>}
           </div>
+
+          {/* OBUNA — mehmon uchun asosiy ikkinchi harakat, shuning uchun
+              butun kenglikda va raqamlar ostida. Ataylab OLTIN
+              TO'LDIRILGAN EMAS: to'ldirilgan oltin bitta tugmaga —
+              "Kontaktni saqlash"ga — qoldirilgan, aks holda ikkalasi
+              bir-biri bilan raqobatlashib, ko'z hech qaysisida
+              to'xtamasdi. */}
+          {!isOwner && (
+            <button type="button" className={`qp-follow${company.following ? ' is-on' : ''}`} onClick={follow} disabled={followBusy}>
+              {followBusy ? '…' : company.following ? t('Obuna bo‘lingan') : t('Obuna bo‘lish')}
+            </button>
+          )}
 
           <div className="qp-quick" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
             {/* Ichki o'ram SHART: `justify-content:center` bo'lgan
