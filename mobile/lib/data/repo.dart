@@ -137,6 +137,25 @@ class Repo {
   Future<List<Post>> recordStories(String code) async =>
       _rows(await api.get('/api/records/$code/stories'), 'stories').map(Post.fromJson).toList();
 
+  /// HAQIQIY STORY LENTASI — obuna bo'lingan odamlarniki.
+  ///
+  /// Bosh ekrandagi dumaloqchalar ilgari FOYDALANUVCHINING O'Z
+  /// ID'larini ko'rsatardi: ya'ni har bir halqa "yangi kontent bor"
+  /// deb yonib turardi, lekin ortida hech narsa yo'q edi. Server bu
+  /// lentani allaqachon beradi.
+  ///
+  /// Xato bo'lsa BO'SH ro'yxat: lenta yiqilgani uchun butun bosh
+  /// ekranni xato holatiga o'tkazish noto'g'ri bo'lardi.
+  Future<List<StoryFeedEntry>> storyFeed() async {
+    try {
+      return _rows(await api.get('/api/stories/feed'), 'feed')
+          .map(StoryFeedEntry.fromJson)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Profil ko'rilganini belgilash — "fire and forget".
   ///
   /// Xatosi YUTILADI: statistika yozuvi tushmagani uchun odamga profil
@@ -308,6 +327,90 @@ class Repo {
       _map(await api.post('/api/records/$code/order-physical-card', body));
 
   /// ID'ni sovg'a qilish. Qabul qiluvchi tasdiqlagach o'tadi.
+  /// Parolni o'zgartirish — joriy parolni bilgan holda.
+  ///
+  /// NIMA UCHUN `-direct`: ikkinchi variant (`change-password`)
+  /// email/Telegram kodini talab qiladi va u parolni UNUTGANLAR
+  /// uchun. Sozlamalarda esa odam allaqachon kirgan va joriy
+  /// parolini biladi — undan yana kod kutish ortiqcha to'siq.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) =>
+      api.post('/api/settings/change-password-direct', {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      });
+
+  /// O'z NFC ID'sini butunlay o'chirish.
+  ///
+  /// Server OXIRGI ID ni o'chirishga yo'l qo'ymaydi (`last_card`) —
+  /// aks holda odam hech qanday profilsiz qolardi.
+  Future<void> deleteRecord(String code) => api.delete('/api/records/$code');
+
+  // ── Kontent yaratish ───────────────────────────────────────────────
+
+  /// Rasm yoki videoni yuklab, ichki manzilini qaytaradi
+  /// (`/uploads/story_...`).
+  ///
+  /// Server faqat SHU shakldagi manzilni qabul qiladi — ya'ni post
+  /// va istoryaga tashqi havola qo'yib bo'lmaydi.
+  Future<String> uploadMedia(List<int> bytes, {String contentType = 'image/jpeg'}) async {
+    final r = _map(await api.upload('/api/upload-media', bytes, contentType: contentType));
+    final url = '${r['url'] ?? ''}';
+    if (url.isEmpty) throw ApiError('bad_image');
+    return url;
+  }
+
+  /// Yangi post. `imageUrl` — `uploadMedia` qaytargan manzil.
+  Future<Post> addPost(String code, {required String imageUrl, String caption = ''}) async =>
+      Post.fromJson(_map(await api.post('/api/records/$code/posts', {
+        'imageUrl': imageUrl,
+        if (caption.isNotEmpty) 'caption': caption,
+      })));
+
+  /// Yangi istorya. 24 soatdan keyin serverda o'zi o'chadi.
+  ///
+  /// Kontent qoidalariga rozilik (`agreed`) SERVERDA tekshiriladi —
+  /// faqat mijozda bo'lsa so'rovni to'g'ridan-to'g'ri yuborib chetlab
+  /// o'tish mumkin edi. Shu sababli ekranda ham rozilik SO'RALADI,
+  /// bu yerda `true` shunchaki yozib qo'yilmaydi.
+  Future<void> addStory(
+    String code, {
+    required String imageUrl,
+    String caption = '',
+    required bool agreed,
+  }) =>
+      api.post('/api/records/$code/stories', {
+        'imageUrl': imageUrl,
+        if (caption.isNotEmpty) 'caption': caption,
+        'agreed': agreed,
+      });
+
+  /// O'z postini o'chirish.
+  Future<void> deletePost(int id) => api.delete('/api/posts/$id');
+
+  // ── Sovg'a takliflari ──────────────────────────────────────────────
+  //
+  // `POST /api/records/:code/gift` ID ni DARHOL o'tkazmaydi — u
+  // KUTILAYOTGAN TAKLIF yaratadi. Oluvchi uni tasdiqlamasa, ID
+  // egasida qolaveradi. Ilovada bu qabul qilish oqimi YO'Q edi:
+  // ya'ni ilovadan yuborilgan sovg'ani ilovadagi odam hech qachon
+  // ololmasdi.
+
+  /// Kiruvchi (menga) va chiquvchi (mendan) kutilayotgan takliflar.
+  Future<({List<GiftOffer> incoming, List<GiftOffer> outgoing})> giftOffers() async {
+    final r = _map(await api.get('/api/gift-offers'));
+    List<GiftOffer> parse(String key, bool incoming) =>
+        _rows(r, key).map((j) => GiftOffer.fromJson(j, incoming: incoming)).toList();
+    return (incoming: parse('incoming', true), outgoing: parse('outgoing', false));
+  }
+
+  /// `accept` — ID menga o'tadi. `reject` — rad etaman.
+  /// `cancel` — o'zim yuborgan taklifni qaytarib olaman.
+  Future<void> giftOfferAction(int id, String action) =>
+      api.post('/api/gift-offers/$id/$action');
+
   Future<Map<String, dynamic>> giftRecord(String code, Map<String, dynamic> body) async =>
       _map(await api.post('/api/records/$code/gift', body));
 

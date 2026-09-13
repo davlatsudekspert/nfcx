@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
+import '../../design/components/input.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
@@ -30,6 +31,17 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
   Object? _error;
   bool _loading = true;
   Tier? _filter;
+
+  /// QIDIRUV — kod bo'yicha.
+  ///
+  /// NIMA UCHUN KERAK: katalogda yuzlab kod bo'ladi va odam ko'pincha
+  /// AYNAN bittasini (o'z ismi harflari, tug'ilgan yili) qidiradi.
+  /// Faqat tarif chiplari bilan uni topib bo'lmasdi — pastga
+  /// aylantirishdan boshqa yo'l yo'q edi.
+  ///
+  /// Filtr MIJOZDA: katalog allaqachon to'liq yuklangan va keshda
+  /// turadi, ya'ni har harfda serverga so'rov yuborish ortiqcha.
+  final _query = TextEditingController();
 
   @override
   void initState() {
@@ -63,11 +75,19 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
   }
 
   @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     const tiers = [Tier.bronze, Tier.silver, Tier.gold, Tier.premium, Tier.exclusive];
-    final list = _items == null
-        ? null
-        : (_filter == null ? _items! : _items!.where((r) => r.tier == _filter).toList());
+    final q = _query.text.trim().toUpperCase();
+    final list = _items
+        ?.where((r) => _filter == null || r.tier == _filter)
+        .where((r) => q.isEmpty || r.code.contains(q))
+        .toList();
 
     return Scaffold(
       backgroundColor: C.obsidian,
@@ -76,6 +96,15 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
         child: Column(
           children: [
             const TopBar(title: 'Yangi NFC ID', subtitle: 'Bo‘sh ID‘lardan tanlang'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x12),
+              child: Field(
+                label: '',
+                controller: _query,
+                hint: 'Kod bo‘yicha qidirish',
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
             SizedBox(
               height: 44,
               child: ListView(
@@ -102,7 +131,9 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                 data: list,
                 onRetry: _load,
                 isEmpty: (d) => d.isEmpty,
-                emptyMessage: 'Bu tarifda hozir bo‘sh ID yo‘q.',
+                emptyMessage: q.isEmpty
+                    ? 'Bu tarifda hozir bo‘sh ID yo‘q.'
+                    : '«$q» bo‘yicha bo‘sh ID topilmadi.',
                 skeleton: GridView.count(
                   crossAxisCount: 2,
                   padding: const EdgeInsets.symmetric(horizontal: S.gutter),

@@ -68,6 +68,10 @@ class Api {
   /// lekin 20 soniyadan ortiq kutish "osilib qolgan" degani.
   static const _timeout = Duration(seconds: 20);
 
+  /// Fayl yuklash uchun alohida, uzunroq muddat: 10 MB rasm mobil
+  /// internetda 20 soniyaga sig'maydi.
+  static const _uploadTimeout = Duration(seconds: 90);
+
   Map<String, String> _headers({bool json = false}) => {
         'accept': 'application/json',
         'x-client': clientName,
@@ -112,12 +116,43 @@ class Api {
 
   Future<dynamic> delete(String path) => _send(() => _http.delete(_uri(path), headers: _headers()));
 
+  /// FAYL YUKLASH — XOM BINAR.
+  ///
+  /// NIMA UCHUN base64 EMAS: base64 hajmni ~33% ga oshiradi va
+  /// Workers izolyati 128 MB xotira bilan cheklangan — 10 MB rasm
+  /// base64 yo'li bilan dekodlashda bir necha baravar joy oladi.
+  /// `/api/upload-media` tanani xom holda o'qiydi, shuning uchun
+  /// telefondan to'g'ridan-to'g'ri baytlar yuboriladi.
+  ///
+  /// Tur `content-type` orqali beriladi va SERVER uni fayl
+  /// boshidagi baytlar bilan qayta tekshiradi — noto'g'ri tur
+  /// yuborib qutulib bo'lmaydi.
+  Future<dynamic> upload(
+    String path,
+    List<int> bytes, {
+    String contentType = 'image/jpeg',
+  }) =>
+      _send(() async {
+        final req = http.Request('POST', _uri(path))
+          ..headers.addAll({
+            'accept': 'application/json',
+            'x-client': clientName,
+            'content-type': contentType,
+            if (_token != null) 'authorization': 'Bearer $_token',
+          })
+          ..bodyBytes = bytes;
+        return http.Response.fromStream(await _http.send(req));
+      }, timeout: _uploadTimeout);
+
   /// Barcha so'rovlar shu yerdan o'tadi — xato tarjimasi ham, offline
   /// aniqlash ham bitta joyda.
-  Future<dynamic> _send(Future<http.Response> Function() run) async {
+  Future<dynamic> _send(
+    Future<http.Response> Function() run, {
+    Duration? timeout,
+  }) async {
     http.Response res;
     try {
-      res = await run().timeout(_timeout);
+      res = await run().timeout(timeout ?? _timeout);
       // Javob KELDI — status kodi qanday bo'lishidan qat'i nazar,
       // tarmoq ishlayapti.
       online.value = true;

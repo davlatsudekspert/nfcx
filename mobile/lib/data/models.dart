@@ -438,3 +438,72 @@ class FollowStats {
         isFollowing: _b(j['isFollowing'] ?? j['following_by_me'] ?? j['followed']),
       );
 }
+
+/// STORY LENTASIDAGI BITTA ODAM.
+///
+/// `GET /api/stories/feed` obuna bo'lingan odamlarning muddati
+/// o'tmagan istoryalarini BITTA dumaloqcha qilib guruhlab beradi.
+///
+/// NIMA UCHUN ALOHIDA MODEL: bu FOYDALANUVCHINING O'Z ID'lari emas,
+/// boshqa odamlarning yangi kontenti. Ikkalasini bitta ro'yxatda
+/// ko'rsatish — lentani soxta ko'rsatish bo'lardi.
+class StoryFeedEntry {
+  const StoryFeedEntry({
+    required this.code,
+    required this.name,
+    this.avatarUrl,
+    this.count = 0,
+  });
+
+  final String code;
+  final String name;
+  final String? avatarUrl;
+
+  /// Shu odamdagi ko'rilmagan istoryalar soni — halqa segmentlari.
+  final int count;
+
+  factory StoryFeedEntry.fromJson(Map<String, dynamic> j) {
+    final stories = j['stories'];
+    return StoryFeedEntry(
+      code: _s(j['code']).toUpperCase(),
+      name: _s(j['name']),
+      avatarUrl: absUrl(_s(j['avatarUrl'])),
+      count: stories is List ? stories.length : 0,
+    );
+  }
+}
+
+/// SOVG'A TAKLIFI.
+///
+/// ID sovg'a qilinganda darhol o'tmaydi: server `pending` taklif
+/// yaratadi va OLUVCHI uni tasdiqlashi kerak. Shu sababli bu model
+/// ikki tomondan ham ishlatiladi — menga kelgan (`incoming`) va
+/// men yuborgan (`outgoing`) takliflar.
+class GiftOffer {
+  const GiftOffer({
+    required this.id,
+    required this.code,
+    required this.incoming,
+    this.email = '',
+    this.createdAt = '',
+  });
+
+  final int id;
+  final String code;
+
+  /// `true` — menga sovg'a qilinyapti (qabul/rad qilaman).
+  /// `false` — men yubordim (faqat qaytarib olishim mumkin).
+  final bool incoming;
+
+  /// Kiruvchida — yuboruvchi, chiquvchida — oluvchi.
+  final String email;
+  final String createdAt;
+
+  factory GiftOffer.fromJson(Map<String, dynamic> j, {required bool incoming}) => GiftOffer(
+        id: _i(j['id']),
+        code: _s(j['code']).toUpperCase(),
+        incoming: incoming,
+        email: _s(incoming ? j['fromEmail'] : j['toEmail']),
+        createdAt: _s(j['createdAt']),
+      );
+}

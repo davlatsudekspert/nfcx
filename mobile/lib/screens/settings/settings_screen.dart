@@ -15,6 +15,8 @@ import '../../app.dart';
 import '../common/top_bar.dart';
 import '../lock/set_pin_screen.dart';
 import '../orders/my_orders.dart';
+import '../identity/edit_profile.dart';
+import 'change_password.dart';
 
 /// SOZLAMALAR — va IKKI XIL TASDIQLASH.
 ///
@@ -165,8 +167,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Ico.bag,
                     onTap: () => push(context, (_) => const MyOrdersScreen()),
                   ),
-                  _Row(label: 'Shaxsiy ma‘lumotlar', icon: Ico.user),
-                  _Row(label: 'Bildirishnomalar', icon: Ico.bell, value: 'Yoniq'),
+                  // "Shaxsiy ma'lumotlar" ilgari BOSILMAYDIGAN qator
+                  // edi — ko'rinishi tugma, xulqi esa yo'q. Endi u
+                  // faol shaxsning tahrirlash ekranini ochadi.
+                  _Row(
+                    label: 'Shaxsiy ma‘lumotlar',
+                    icon: Ico.user,
+                    onTap: state.active?.record == null
+                        ? null
+                        : () => push(
+                              context,
+                              (_) => EditProfileScreen(record: state.active!.record!),
+                            ),
+                  ),
+                  _Row(
+                    label: 'Parolni o‘zgartirish',
+                    icon: Ico.lock,
+                    onTap: () => push(context, (_) => const ChangePasswordScreen()),
+                  ),
+                  // BILDIRISHNOMALAR QATORI OLIB TASHLANDI: u "Yoniq"
+                  // deb yozib turardi, lekin ilovada push bildirishnoma
+                  // umuman yo'q. Mavjud bo'lmagan imkoniyatni va'da
+                  // qilishdan ko'ra, uni ko'rsatmagan ma'qul.
                   _Row(label: 'Til', icon: Ico.globe, value: 'O‘zbekcha'),
                   _Row(label: 'To‘lovlar', icon: Ico.card, value: 'Payme · Click'),
 

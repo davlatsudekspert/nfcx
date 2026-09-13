@@ -14,6 +14,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../business/business_stats.dart';
 import '../business/product_detail.dart';
+import '../content/compose.dart';
 import '../orders/owner_orders.dart';
 import 'edit_profile.dart';
 import 'follow_list.dart';
@@ -71,6 +72,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  /// Yaratish ekranini ochadi va joylangandan keyin profilni
+  /// yangilaydi.
+  ///
+  /// Yangilamasak, joylangan post faqat ilova qayta ochilganda
+  /// ko'rinardi — odam esa "joylanmadi" deb o'ylardi.
+  Future<void> _compose(String code, ComposeKind kind) async {
+    final done = await push<bool>(
+      context,
+      (_) => ComposeScreen(code: code, kind: kind),
+    );
+    if (done == true && mounted) await _load();
   }
 
   Future<void> _load() async {
@@ -229,8 +243,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             body: TabBarView(
               children: [
                 if (_isBusiness) _CatalogGrid(items: _catalog),
-                _PostGrid(posts: _posts),
-                _PostGrid(posts: _stories, empty: 'Hali story yo‘q.'),
+                // KONTENT QO'SHISH — faqat EGADA va faqat SHAXSIY
+                // profilda. Biznes posti boshqa endpointga boradi
+                // (`/api/companies/:id/posts`) va uning o'z oqimi
+                // kerak — soxta tugma qo'yishdan ko'ra yo'qligi
+                // ochiq turgani ma'qul.
+                _PostGrid(
+                  posts: _posts,
+                  onAdd: isOwner && !_isBusiness
+                      ? () => _compose(code, ComposeKind.post)
+                      : null,
+                ),
+                _PostGrid(
+                  posts: _stories,
+                  empty: 'Hali story yo‘q.',
+                  addLabel: 'Story qo‘shish',
+                  onAdd: isOwner && !_isBusiness
+                      ? () => _compose(code, ComposeKind.story)
+                      : null,
+                ),
                 _About(record: _record, company: _company),
               ],
             ),
@@ -709,13 +740,31 @@ class _CatalogGrid extends StatelessWidget {
 }
 
 class _PostGrid extends StatelessWidget {
-  const _PostGrid({required this.posts, this.empty = 'Hali post yo‘q.'});
+  const _PostGrid({
+    required this.posts,
+    this.empty = 'Hali post yo‘q.',
+    this.onAdd,
+    this.addLabel = 'Post qo‘shish',
+  });
   final List<Post> posts;
   final String empty;
 
+  /// Faqat EGADA bo'ladi. `null` — mehmon ko'rinishi.
+  final VoidCallback? onAdd;
+  final String addLabel;
+
   @override
   Widget build(BuildContext context) {
-    if (posts.isEmpty) return EmptyState(empty);
+    if (posts.isEmpty) {
+      // Bo'sh to'rda amal SHU YERDA bo'lishi kerak: ega profilini
+      // ochib "bo'sh" yozuvini ko'rsa, keyingi qadam nima ekani
+      // ko'rinmasdi va kontent qo'shish yo'li umuman yo'q edi.
+      return EmptyState(
+        empty,
+        actionLabel: onAdd == null ? null : addLabel,
+        onAction: onAdd,
+      );
+    }
     return GridView.builder(
       // Oraliq 3 -> 2 va nisbat 4:5 (dizayndagi POST MEDIA bilan bir
       // xil). Ilgari 0.8 nisbat rasmlarni qirqib, to'r notekis
@@ -727,12 +776,18 @@ class _PostGrid extends StatelessWidget {
         mainAxisSpacing: 2,
         childAspectRatio: 4 / 5,
       ),
-      itemCount: posts.length,
-      itemBuilder: (context, i) => RepaintBoundary(
+      itemCount: posts.length + (onAdd == null ? 0 : 1),
+      itemBuilder: (context, i) => onAdd != null && i == 0
+          ? _AddTile(label: addLabel, onTap: onAdd!)
+          : _tile(context, posts[i - (onAdd == null ? 0 : 1)]),
+    );
+  }
+
+  Widget _tile(BuildContext context, Post post) => RepaintBoundary(
         child: Press(
-          onTap: () => push(context, (_) => PostDetailScreen(post: posts[i])),
+          onTap: () => push(context, (_) => PostDetailScreen(post: post)),
           child: NetImage(
-            posts[i].images.isEmpty ? null : posts[i].images.first,
+            post.images.isEmpty ? null : post.images.first,
             radius: 4,
             // Uch ustunli to'rda har rasm ~130px — undan kattaroq
             // dekodlash xotirani behuda yeydi.
@@ -740,9 +795,48 @@ class _PostGrid extends StatelessWidget {
             slotLabel: 'POST',
           ),
         ),
-      ),
-    );
-  }
+      );
+}
+
+/// To'rdagi birinchi katak — "qo'shish".
+///
+/// NIMA UCHUN SUZUVCHI TUGMA EMAS: suzuvchi tugma oxirgi qatorni
+/// to'sib qoladi va dizayn tilida bunday element yo'q. Katak esa
+/// to'rning o'z ritmida turadi.
+class _AddTile extends StatelessWidget {
+  const _AddTile({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        haptic: true,
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            color: C.placeholder,
+            border: Border.all(color: C.warmHairline),
+          ),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const NIcon(Ico.plus, size: 22, color: C.champagne),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  style: T.caption.copyWith(fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class _About extends StatelessWidget {

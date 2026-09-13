@@ -22,6 +22,24 @@ MockClient auditClient() => MockClient((req) async {
         body = {'companies': [_company, _company2]};
       } else if (p == '/api/records') {
         body = [_card, _secondCard, _freeId, _freeId2, _expert];
+      } else if (p == '/api/stories/feed') {
+        // HAQIQIY LENTA: obuna bo'lingan odamlarning istoryalari.
+        // Bo'sh qoldirilsa, audit bosh ekrandagi story qatorini
+        // umuman ko'rmasdi.
+        body = {
+          'feed': [
+            {'code': 'AAA512', 'name': 'Jasur Tolipov', 'stories': [
+              {'id': 1, 'imageUrl': '/uploads/s1.jpg'},
+            ]},
+            {'code': 'EXP318', 'name': 'Dr. Shahnoza', 'stories': [
+              {'id': 2, 'imageUrl': '/uploads/s2.jpg'},
+              {'id': 3, 'imageUrl': '/uploads/s3.jpg'},
+            ]},
+            {'code': 'ZZZ100', 'name': 'Karim Rashidov', 'stories': [
+              {'id': 4, 'imageUrl': '/uploads/s4.jpg'},
+            ]},
+          ],
+        };
       } else if (p == '/api/records/search') {
         body = {'records': [_card, _expert, _freeId]};
       } else if (p == '/api/companies/search') {
@@ -43,7 +61,15 @@ MockClient auditClient() => MockClient((req) async {
           ],
         };
       } else if (p.startsWith('/api/records/')) {
-        body = _card;
+        // SO'RALGAN KOD QAYTARILADI.
+        //
+        // Ilgari har qanday kodga bitta karta (VIP001) qaytarilardi.
+        // Natijada "ommaviy profil" audit kadri aslida EGA
+        // ko'rinishini ko'rsatardi (Tahrirlash/Statistika tugmalari
+        // bilan) — ya'ni mehmon ko'rinishi umuman tekshirilmasdan
+        // qolgan edi.
+        final code = p.split('/').last.toUpperCase();
+        body = {..._card, 'code': code, if (code != 'VIP001') 'name': 'Jasur Tolipov'};
       } else if (p.startsWith('/api/companies/') && p.endsWith('/catalog')) {
         body = {'items': _products};
       } else if (p.startsWith('/api/companies/') && p.endsWith('/orders')) {

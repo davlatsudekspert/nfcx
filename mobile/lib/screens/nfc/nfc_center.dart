@@ -15,11 +15,16 @@ import '../common/top_bar.dart';
 import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
 import 'gift_id.dart';
+import 'gift_offers.dart';
 import 'id_catalog.dart';
 import 'nfc_scan.dart';
 import 'nfc_write.dart';
 import 'order_card.dart';
 import 'qr_share.dart';
+import '../../design/feedback.dart';
+import '../../design/components/sheet.dart';
+import '../../design/components/buttons.dart';
+import '../../data/api_client.dart';
 
 /// NFC CENTER — mahsulotning o'zagi.
 ///
@@ -34,6 +39,98 @@ class NfcCenterScreen extends StatefulWidget {
 
 class _NfcCenterScreenState extends State<NfcCenterScreen> {
   bool _refreshing = false;
+
+  /// ID BOSHQARUVI — asosiy qilish va o'chirish.
+  ///
+  /// NIMA UCHUN VARAQ ICHIDA: ikkalasi ham kamdan-kam ishlatiladi,
+  /// lekin biri qaytarib bo'lmaydigan amal. Ro'yxatdagi qatorga
+  /// to'g'ridan-to'g'ri "o'chirish" tugmasi qo'yilsa, ID almashtirmoqchi
+  /// bo'lgan odam uni tasodifan bosib yuborardi.
+  Future<void> _manage(Record record) async {
+    final state = AppScope.read(context);
+    final choice = await showSheet<String>(
+      context,
+      title: record.code,
+      subtitle: TierStyle.of(record.tier).label,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            SecondaryButton('Asosiy ID qilish',
+                onTap: () => Navigator.of(context).pop('primary')),
+            const SizedBox(height: S.x8),
+            // O'CHIRISH — qaytarib bo'lmaydi va shuning uchun rangi
+            // bilan ajralib turadi. Server oxirgi ID ni o'chirishga
+            // yo'l qo'ymaydi.
+            GhostButton('ID‘ni o‘chirish',
+                color: C.signal, onTap: () => Navigator.of(context).pop('delete')),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+
+    if (choice == 'primary') {
+      try {
+        await state.repo.setPrimary(record.code);
+        successHaptic();
+        await state.refreshIdentities();
+      } catch (e) {
+        errorHaptic();
+        if (mounted) _toast(humanError(e));
+      }
+      return;
+    }
+
+    final sure = await showSheet<bool>(
+      context,
+      title: '${record.code} o‘chirilsinmi?',
+      subtitle: 'Profil, postlar va statistika butunlay yo‘qoladi. '
+          'Buni qaytarib bo‘lmaydi.',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            GhostButton('Ha, o‘chirilsin',
+                color: C.signal, onTap: () => Navigator.of(context).pop(true)),
+            const SizedBox(height: S.x8),
+            SecondaryButton('Bekor qilish',
+                onTap: () => Navigator.of(context).pop(false)),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || sure != true) return;
+
+    try {
+      await state.repo.deleteRecord(record.code);
+      successHaptic();
+      await state.refreshIdentities();
+    } on ApiError catch (e) {
+      errorHaptic();
+      if (mounted) {
+        _toast(e.key == 'last_card'
+            ? 'Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.'
+            : humanError(e));
+      }
+    } catch (e) {
+      errorHaptic();
+      if (mounted) _toast(humanError(e));
+    }
+  }
+
+  void _toast(String message) {
+    showSheet<void>(
+      context,
+      title: 'Bajarilmadi',
+      subtitle: message,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: SecondaryButton('Yopish',
+            onTap: () => Navigator.of(context).pop()),
+      ),
+    );
+  }
 
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
@@ -122,6 +219,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                         record: owned[i],
                         active: owned[i].code == active?.code,
                         onTap: () => state.switchIdentity(Identity.personal(owned[i])),
+                        onMore: () => _manage(owned[i]),
                       ),
                     ],
                   ],
@@ -227,6 +325,15 @@ class _NfcActions extends StatelessWidget {
             sub: 'Bo‘sh kartaga o‘z ID havolangizni yozing',
             onTap: () => push(context, (_) => const NfcWriteScreen()),
           ),
+          const SizedBox(height: S.x8),
+          // DOIMIY YO'L: sovg'a taklifi Home'dagi eslatma yo'qolganda
+          // ham topilishi kerak. Taklif tasdiqlanmasa ID o'tmaydi.
+          _NfcRow(
+            icon: Ico.gift,
+            title: 'Sovg‘a takliflari',
+            sub: 'Sizga sovg‘a qilingan ID‘larni qabul qiling',
+            onTap: () => push(context, (_) => const GiftOffersScreen()),
+          ),
         ],
       );
 }
@@ -276,10 +383,16 @@ class _NfcRow extends StatelessWidget {
 }
 
 class _OwnedRow extends StatelessWidget {
-  const _OwnedRow({required this.record, required this.active, required this.onTap});
+  const _OwnedRow({
+    required this.record,
+    required this.active,
+    required this.onTap,
+    required this.onMore,
+  });
   final Record record;
   final bool active;
   final VoidCallback onTap;
+  final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) => Press(
@@ -310,6 +423,16 @@ class _OwnedRow extends StatelessWidget {
                 ),
               ),
               if (active) const StatusChip('Faol', tone: StatusTone.pending),
+              // BOSHQARISH — asosiy qilish va o'chirish shu yerda.
+              // Ilgari bu ikkala amalning ilovada yo'li YO'Q edi.
+              Press(
+                haptic: true,
+                onTap: onMore,
+                child: const Padding(
+                  padding: EdgeInsets.only(left: S.x8, top: 6, bottom: 6),
+                  child: NIcon(Ico.settings, size: 17, color: C.muted),
+                ),
+              ),
             ],
           ),
         ),

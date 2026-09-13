@@ -13,9 +13,11 @@ import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import '../content/compose.dart';
 import '../content/story_viewer.dart';
 import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
+import '../nfc/gift_offers.dart';
 import '../nfc/qr_share.dart';
 import '../orders/my_orders.dart';
 import '../settings/settings_screen.dart';
@@ -35,6 +37,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Record>? _catalog;
   Map<String, dynamic>? _analytics;
   List<Order> _pending = const [];
+  List<StoryFeedEntry> _feed = const [];
+  int _gifts = 0;
   Object? _error;
   bool _loading = true;
   String? _loadedFor;
@@ -53,6 +57,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// `force` — "tortib yangilash". Keshni chetlab o'tadi; oddiy
   /// ochilishda esa kesh ishlatiladi va so'rov takrorlanmaydi.
+  /// O'z istoryasini qo'shish.
+  ///
+  /// "Siz" dumaloqchasi ilgari ISTORYA KO'RUVCHINI ochardi — istorya
+  /// bo'lmasa esa bo'sh ekran chiqardi. Halqadagi "+" belgisi esa
+  /// qo'shishni va'da qiladi.
+  Future<void> _compose(String code) async {
+    final done = await push<bool>(
+      context,
+      (_) => ComposeScreen(code: code, kind: ComposeKind.story),
+    );
+    if (done == true && mounted) await _load(force: true);
+  }
+
   Future<void> _load({bool force = false}) async {
     final state = AppScope.read(context);
     setState(() {
@@ -69,6 +86,15 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         pending = (await state.repo.orders()).where((o) => o.isPending).toList();
       } catch (_) {}
+      // STORY LENTASI — obuna bo'lingan odamlarniki. Xatosi butun
+      // bosh ekranni yiqitmaydi (repo ichida yutiladi).
+      final feed = await state.repo.storyFeed();
+      // KUTILAYOTGAN SOVG'A — tasdiqlanmasa ID o'tmaydi, ya'ni odam
+      // o'ziga sovg'a qilingan ID borligini umuman bilmay qoladi.
+      var gifts = 0;
+      try {
+        gifts = (await state.repo.giftOffers()).incoming.length;
+      } catch (_) {}
       Map<String, dynamic>? analytics;
       final active = state.active;
       if (active != null && !active.isBusiness) {
@@ -83,6 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _catalog = catalog;
         _analytics = analytics;
         _pending = pending;
+        _feed = feed;
+        _gifts = gifts;
         _loading = false;
       });
     } catch (e) {
@@ -121,7 +149,15 @@ class _HomeScreenState extends State<HomeScreen> {
             if (active != null) SliverToBoxAdapter(child: _QuickActions(active: active)),
             if (_pending.isNotEmpty)
               SliverToBoxAdapter(child: _PendingBanner(count: _pending.length)),
-            SliverToBoxAdapter(child: _Stories(cards: state.cards)),
+            if (_gifts > 0)
+              SliverToBoxAdapter(child: _GiftBanner(count: _gifts, onDone: _load)),
+            SliverToBoxAdapter(
+              child: _Stories(
+                feed: _feed,
+                own: state.cards,
+                onAdd: () => _compose(state.cards.first.code),
+              ),
+            ),
             if (active != null && !active.verified)
               const SliverToBoxAdapter(child: _VerifyPrompt()),
             SliverToBoxAdapter(
@@ -262,38 +298,108 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
+/// STORY QATORI.
+///
+/// MUHIM TUZATISH (audit): bu yerda ilgari FOYDALANUVCHINING O'Z
+/// ID'lari ko'rsatilardi. Ya'ni har bir dumaloqcha "yangi kontent
+/// bor" degandek tilla halqa bilan yonardi, lekin ortida hech narsa
+/// yo'q edi — bu soxta lenta. Endi qator SERVER bergan haqiqiy
+/// lentadan quriladi (`GET /api/stories/feed`): obuna bo'lingan
+/// odamlarning muddati o'tmagan istoryalari.
+///
+/// Birinchi dumaloqcha — "Siz": o'z istoryangizni ko'rish yoki
+/// qo'shish. U har doim turadi, chunki bu AMAL, lenta emas.
+///
+/// Lenta bo'sh bo'lsa qator umuman ko'rsatilmaydi: bo'sh tilla
+/// halqalar qatori ekranni to'ldiradi, lekin hech narsa aytmaydi.
 class _Stories extends StatelessWidget {
-  const _Stories({required this.cards});
-  final List<Record> cards;
+  const _Stories({required this.feed, required this.own, required this.onAdd});
+
+  final List<StoryFeedEntry> feed;
+  final List<Record> own;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    if (cards.isEmpty) return const SizedBox.shrink();
+    if (own.isEmpty && feed.isEmpty) return const SizedBox.shrink();
+    final mine = own.isEmpty ? null : own.first;
+
     return SizedBox(
       height: 94,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        itemCount: cards.length + 1,
+        itemCount: (mine == null ? 0 : 1) + feed.length,
         separatorBuilder: (_, __) => const SizedBox(width: S.x12),
         itemBuilder: (context, i) {
-          if (i == 0) {
+          if (mine != null && i == 0) {
             return StoryRing(
               name: 'Siz',
+              avatarUrl: mine.avatarUrl,
               addButton: true,
-              onTap: () => push(context, (_) => StoryViewerScreen(code: cards.first.code)),
+              onTap: onAdd,
             );
           }
-          final c = cards[i - 1];
+          final e = feed[i - (mine == null ? 0 : 1)];
           return StoryRing(
-            name: c.name.isEmpty ? c.code : c.name,
-            avatarUrl: c.avatarUrl,
-            onTap: () => push(context, (_) => StoryViewerScreen(code: c.code)),
+            name: e.name.isEmpty ? e.code : e.name,
+            avatarUrl: e.avatarUrl,
+            onTap: () => push(context, (_) => StoryViewerScreen(code: e.code)),
           );
         },
       ),
     );
   }
+}
+
+/// SIZGA SOVG'A QILINGAN ID eslatmasi.
+///
+/// Sovg'a taklifi tasdiqlanmaguncha ID o'tmaydi. Eslatma bo'lmasa
+/// odam o'ziga ID sovg'a qilinganini umuman bilmay qoladi.
+class _GiftBanner extends StatelessWidget {
+  const _GiftBanner({required this.count, required this.onDone});
+  final int count;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, 0),
+        child: Press(
+          haptic: true,
+          onTap: () async {
+            await push(context, (_) => const GiftOffersScreen());
+            onDone();
+          },
+          child: Surface(
+            padding: const EdgeInsets.all(S.x16),
+            border: C.champagne.withValues(alpha: .35),
+            shadow: E.e1,
+            child: Row(
+              children: [
+                const NIcon(Ico.gift, size: 20, color: C.champagne),
+                const SizedBox(width: S.x12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        count == 1
+                            ? 'Sizga ID sovg‘a qilindi'
+                            : 'Sizga $count ta ID sovg‘a qilindi',
+                        style: T.cardTitle,
+                      ),
+                      const SizedBox(height: 2),
+                      Text('Qabul qilmaguningizcha ID sizga o‘tmaydi',
+                          style: T.caption),
+                    ],
+                  ),
+                ),
+                const NIcon(Ico.chevronRight, size: 18, color: C.muted),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 /// TUGALLANMAGAN TO'LOV eslatmasi.
