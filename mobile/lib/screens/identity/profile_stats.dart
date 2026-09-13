@@ -8,6 +8,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../../design/components/icons.dart';
+import '../../l10n/strings.dart';
 
 /// SHAXSIY PROFIL STATISTIKASI — `/api/records/:code/analytics`.
 ///
@@ -63,16 +64,16 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
   }
 
   /// Hodisa turlarini odam tiliga o'girish.
-  static const _eventNames = {
-    'profile_view': 'Profil ko‘rildi',
-    'phone': 'Telefon bosildi',
-    'telegram': 'Telegram bosildi',
-    'whatsapp': 'WhatsApp bosildi',
-    'instagram': 'Instagram bosildi',
-    'website': 'Sayt bosildi',
-    'vcard': 'Kontakt saqlandi',
-    'link': 'Havola bosildi',
-    'share': 'Ulashildi',
+  static final _eventNames = {
+    'profile_view': tr('Profil ko‘rildi'),
+    'phone': tr('Telefon bosildi'),
+    'telegram': tr('Telegram bosildi'),
+    'whatsapp': tr('WhatsApp bosildi'),
+    'instagram': tr('Instagram bosildi'),
+    'website': tr('Sayt bosildi'),
+    'vcard': tr('Kontakt saqlandi'),
+    'link': tr('Havola bosildi'),
+    'share': tr('Ulashildi'),
   };
 
   @override
@@ -83,7 +84,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
           child: Column(
             children: [
               TopBar(
-                title: 'Statistika',
+                title: tr('Statistika'),
                 subtitle: widget.name.isEmpty ? widget.code : widget.name,
               ),
               Expanded(
@@ -145,7 +146,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Eyebrow('Profil ko‘rishlari'),
+              Eyebrow(tr('Profil ko‘rishlari')),
               const SizedBox(height: 6),
               Text(compact(total), style: T.displaySm),
               const SizedBox(height: S.x16),
@@ -169,14 +170,14 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Eyebrow('Noyob tashrifchi'),
+              Eyebrow(tr('Noyob tashrifchi')),
               const SizedBox(height: 6),
               Text(compact(uniq), style: T.cardTitle.copyWith(fontSize: 20)),
               const SizedBox(height: 4),
               // Farqni ochiq yozamiz: aks holda ikkita raqam
               // bir-biriga zid ko'rinadi.
               Text(
-                'Bir odam bir necha marta kirsa ham bitta hisoblanadi',
+                tr('Bir odam bir necha marta kirsa ham bitta hisoblanadi'),
                 style: T.caption.copyWith(fontSize: 11, color: C.muted),
               ),
             ],
@@ -184,7 +185,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
         ),
         if (actions.isNotEmpty) ...[
           const SizedBox(height: S.x24),
-          const Eyebrow('Nimalar bosildi'),
+          Eyebrow(tr('Nimalar bosildi')),
           const SizedBox(height: S.x12),
           for (final a in actions.take(8)) ...[
             _Bar(
@@ -197,7 +198,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
         ],
         if (byRef.isNotEmpty) ...[
           const SizedBox(height: S.x24),
-          const Eyebrow('Manbalar'),
+          Eyebrow(tr('Manbalar')),
           const SizedBox(height: S.x12),
           for (final r in byRef.take(6)) ...[
             _Bar(
@@ -209,10 +210,10 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
           ],
         ],
         if (total == 0 && uniq == 0)
-          const EmptyState(
-            'Profilingiz ochilgani va kartangiz tegizilgani shu yerda '
-            'ko‘rinadi.',
-            title: 'Ma‘lumot to‘planmagan',
+          EmptyState(
+            tr('Profilingiz ochilgani va kartangiz tegizilgani shu yerda ') +
+            tr('ko‘rinadi.'),
+            title: tr('Ma‘lumot to‘planmagan'),
             icon: Ico.chart,
           ),
       ],

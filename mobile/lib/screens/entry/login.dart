@@ -12,6 +12,7 @@ import 'forgot_password.dart';
 import 'register.dart';
 import '../../design/components/icons.dart';
 import 'gift_card.dart';
+import '../../l10n/strings.dart';
 
 /// Kirish — email YOKI telefon, plus parol.
 ///
@@ -40,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     final login = _login.text.trim();
     if (login.isEmpty || _password.text.length < 6) {
-      setState(() => _error = 'Email/telefon va parolni to‘liq kiriting.');
+      setState(() => _error = tr('Email/telefon va parolni to‘liq kiriting.'));
       return;
     }
     setState(() {
@@ -72,13 +73,13 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Image(image: AssetImage('assets/img/logo.png'), width: 46, height: 46),
                 const SizedBox(height: S.x32),
-                const Text('Xush\nkelibsiz', style: T.display),
+                Text(tr('Xush\nkelibsiz'), style: T.display),
                 const SizedBox(height: S.x12),
-                const Text('Email yoki telefon raqamingiz va parolingiz bilan kiring.',
+                Text(tr('Email yoki telefon raqamingiz va parolingiz bilan kiring.'),
                     style: T.body),
                 const SizedBox(height: S.x32),
                 Field(
-                  label: 'Email yoki telefon',
+                  label: tr('Email yoki telefon'),
                   controller: _login,
                   hint: 'ism@gmail.com',
                   keyboardType: TextInputType.emailAddress,
@@ -86,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: S.x16),
                 Field(
-                  label: 'Parol',
+                  label: tr('Parol'),
                   controller: _password,
                   hint: '••••••••',
                   obscure: true,
@@ -109,14 +110,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       // matn oddiy izoh kabi o'qiladi va bosiladigan
                       // joy ekani sezilmaydi.
                       child: Text(
-                        'Parolni unutdingizmi?',
+                        tr('Parolni unutdingizmi?'),
                         style: T.caption.copyWith(color: C.antiqueGold),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: S.x12),
-                PrimaryButton('Kirish', loading: _busy, onTap: _busy ? null : _submit),
+                PrimaryButton(tr('Kirish'), loading: _busy, onTap: _busy ? null : _submit),
                 const SizedBox(height: S.x20),
                 // SOVG'A KARTASI — hisobi YO'Q odam uchun.
                 //
@@ -125,9 +126,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 // emas: kod va aktivatsiya kodi bilan hisob shu
                 // yerning o'zida ochiladi.
                 SecondaryButton(
-                  'Menda sovg‘a kartasi bor',
+                  tr('Menda sovg‘a kartasi bor'),
                   height: 48,
-                  icon: const NIcon(Ico.gift, size: 17, color: C.platinum),
+                  icon: NIcon(Ico.gift, size: 17, color: C.platinum),
                   onTap: () => push(context, (_) => const GiftCardScreen()),
                 ),
                 const SizedBox(height: S.x24),
@@ -140,11 +141,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: RichText(
                         text: TextSpan(
                           style: T.caption,
-                          children: const [
-                            TextSpan(text: 'Akkauntingiz yo‘qmi? '),
+                          children: [
+                            TextSpan(text: tr('Akkauntingiz yo‘qmi? ')),
                             TextSpan(
-                              text: 'Akkaunt yaratish',
-                              style: TextStyle(color: C.champagne, fontWeight: FontWeight.w700),
+                              text: tr('Akkaunt yaratish'),
+                              style: TextStyle(
+                                  color: C.champagne, fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),

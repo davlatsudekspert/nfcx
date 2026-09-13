@@ -16,6 +16,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// BIZNES HISOB OCHISH.
 ///
@@ -37,17 +38,17 @@ class CreateCompanyScreen extends StatefulWidget {
 }
 
 /// Backend qabul qiladigan turkumlar (`COMPANY_CATEGORIES`).
-const _categories = <String, String>{
-  'restaurant': 'Restoran',
-  'cafe': 'Kafe',
-  'market': 'Market',
-  'shop': 'Do‘kon',
-  'services': 'Xizmatlar',
-  'construction': 'Qurilish',
-  'clinic': 'Klinika',
-  'pharmacy': 'Dorixona',
-  'education': 'Ta‘lim',
-  'other': 'Boshqa',
+final _categories = <String, String>{
+  'restaurant': tr('Restoran'),
+  'cafe': tr('Kafe'),
+  'market': tr('Market'),
+  'shop': tr('Do‘kon'),
+  'services': tr('Xizmatlar'),
+  'construction': tr('Qurilish'),
+  'clinic': tr('Klinika'),
+  'pharmacy': tr('Dorixona'),
+  'education': tr('Ta‘lim'),
+  'other': tr('Boshqa'),
 };
 
 class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
@@ -118,11 +119,11 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 
     if (name.isEmpty || city.isEmpty || phone.isEmpty || about.length < 20) {
       setState(() => _error =
-          'Nom, shahar, telefon va kamida 20 belgilik tavsif to‘ldirilsin.');
+          tr('Nom, shahar, telefon va kamida 20 belgilik tavsif to‘ldirilsin.'));
       return;
     }
     if (!_auto && _id.text.trim().length < 3) {
-      setState(() => _error = 'Company ID kamida 3 ta belgidan iborat bo‘lsin.');
+      setState(() => _error = tr('Company ID kamida 3 ta belgidan iborat bo‘lsin.'));
       return;
     }
 
@@ -150,13 +151,13 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       errorHaptic();
       if (mounted) {
         setState(() => _error = switch (e.key) {
-              'company_id_taken' => 'Bu Company ID band.',
-              'company_id_reserved' => 'Bu nom band qilingan ro‘yxatda.',
-              'bad_company_id' => 'Company ID faqat harf va raqamdan iborat bo‘lsin.',
-              'name_not_allowed' => 'Bu nomni ishlatib bo‘lmaydi.',
+              'company_id_taken' => tr('Bu Company ID band.'),
+              'company_id_reserved' => tr('Bu nom band qilingan ro‘yxatda.'),
+              'bad_company_id' => tr('Company ID faqat harf va raqamdan iborat bo‘lsin.'),
+              'name_not_allowed' => tr('Bu nomni ishlatib bo‘lmaydi.'),
               'required_fields' =>
-                'Nom, shahar, telefon va tavsif to‘liq to‘ldirilsin.',
-              'auto_id_failed' => 'Hozir bepul ID berib bo‘lmadi. Qayta urining.',
+                tr('Nom, shahar, telefon va tavsif to‘liq to‘ldirilsin.'),
+              'auto_id_failed' => tr('Hozir bepul ID berib bo‘lmadi. Qayta urining.'),
               _ => humanError(e),
             });
       }
@@ -179,33 +180,33 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const TopBar(
-              title: 'Biznes hisob',
-              subtitle: 'Katalog, buyurtma va statistika',
+            TopBar(
+              title: tr('Biznes hisob'),
+              subtitle: tr('Katalog, buyurtma va statistika'),
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
                 children: [
-                  const Eyebrow('Company ID'),
+                  Eyebrow(tr('Company ID')),
                   const SizedBox(height: S.x8),
                   _Choice(
-                    title: 'Bepul ID',
-                    hint: 'Tasodifiy kod beriladi. To‘lov talab qilinmaydi.',
+                    title: tr('Bepul ID'),
+                    hint: tr('Tasodifiy kod beriladi. To‘lov talab qilinmaydi.'),
                     selected: _auto,
                     onTap: _busy ? null : () => setState(() => _auto = true),
                   ),
                   const SizedBox(height: S.x8),
                   _Choice(
-                    title: 'O‘z nomim',
-                    hint: 'Narxi harflar soniga qarab belgilanadi.',
+                    title: tr('O‘z nomim'),
+                    hint: tr('Narxi harflar soniga qarab belgilanadi.'),
                     selected: !_auto,
                     onTap: _busy ? null : () => setState(() => _auto = false),
                   ),
                   if (!_auto) ...[
                     const SizedBox(height: S.x16),
                     Field(
-                      label: 'Company ID',
+                      label: tr('Company ID'),
                       controller: _id,
                       hint: 'MASALAN',
                       onChanged: _onId,
@@ -220,23 +221,23 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                     ),
                   ],
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Biznes haqida'),
+                  Eyebrow(tr('Biznes haqida')),
                   const SizedBox(height: S.x12),
                   Field(
-                    label: 'Nomi',
+                    label: tr('Nomi'),
                     controller: _name,
-                    hint: 'Biznes nomi',
+                    hint: tr('Biznes nomi'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Tavsif',
+                    label: tr('Tavsif'),
                     controller: _about,
-                    hint: 'Kamida 20 ta belgi',
+                    hint: tr('Kamida 20 ta belgi'),
                     maxLines: 4,
                   ),
                   const SizedBox(height: S.x16),
-                  const Eyebrow('Turkum'),
+                  Eyebrow(tr('Turkum')),
                   const SizedBox(height: S.x8),
                   Wrap(
                     spacing: 6,
@@ -252,14 +253,14 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                   ),
                   const SizedBox(height: S.x20),
                   Field(
-                    label: 'Shahar',
+                    label: tr('Shahar'),
                     controller: _city,
-                    hint: 'Toshkent',
+                    hint: tr('Toshkent'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Telefon',
+                    label: tr('Telefon'),
                     controller: _phone,
                     hint: '+998 90 123 45 67',
                     keyboardType: TextInputType.phone,
@@ -268,15 +269,15 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                   ),
                   const SizedBox(height: S.x24),
                   PrimaryButton(
-                    _auto || price == 0 ? 'Biznes ochish' : 'Davom etish',
+                    _auto || price == 0 ? tr('Biznes ochish') : tr('Davom etish'),
                     loading: _busy,
                     onTap: _busy ? null : _submit,
                   ),
                   const SizedBox(height: S.x12),
                   Text(
                     _auto
-                        ? 'Hisob darhol ochiladi va admin ko‘rigidan o‘tadi.'
-                        : 'Tanlangan nom to‘lovdan keyin faollashadi.',
+                        ? tr('Hisob darhol ochiladi va admin ko‘rigidan o‘tadi.')
+                        : tr('Tanlangan nom to‘lovdan keyin faollashadi.'),
                     textAlign: TextAlign.center,
                     style: T.caption.copyWith(fontSize: 11),
                   ),
@@ -311,17 +312,17 @@ class _CheckLine extends StatelessWidget {
         children: [
           const Spinner(size: 14),
           const SizedBox(width: S.x8),
-          Text('Tekshirilmoqda…', style: T.caption.copyWith(fontSize: 11.5)),
+          Text(tr('Tekshirilmoqda…'), style: T.caption.copyWith(fontSize: 11.5)),
         ],
       );
     }
     if (check == null) return const SizedBox.shrink();
     if (!available) {
-      return Text('Bu Company ID band.',
+      return Text(tr('Bu Company ID band.'),
           style: T.caption.copyWith(fontSize: 11.5, color: C.signal));
     }
     return Text(
-      price == 0 ? 'Bo‘sh — bepul' : 'Bo‘sh — ${som(price)}',
+      price == 0 ? tr('Bo‘sh — bepul') : 'Bo‘sh — ${som(price)}',
       style: T.caption.copyWith(fontSize: 11.5, color: C.verdant),
     );
   }
@@ -359,7 +360,7 @@ class _Choice extends StatelessWidget {
                   ],
                 ),
               ),
-              if (selected) const NIcon(Ico.check, size: 16, color: C.champagne),
+              if (selected) NIcon(Ico.check, size: 16, color: C.champagne),
             ],
           ),
         ),

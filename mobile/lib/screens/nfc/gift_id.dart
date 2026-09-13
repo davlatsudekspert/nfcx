@@ -12,6 +12,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../../design/feedback.dart';
+import '../../l10n/strings.dart';
 
 /// ID'NI SOVG'A QILISH / O'TKAZISH.
 ///
@@ -66,7 +67,7 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
   Future<void> _send() async {
     final to = _toCode.text.trim().toUpperCase();
     if (to.isEmpty) {
-      setState(() => _error = 'Qabul qiluvchining ID kodini kiriting.');
+      setState(() => _error = tr('Qabul qiluvchining ID kodini kiriting.'));
       return;
     }
     setState(() {
@@ -90,11 +91,11 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
 
   /// Backend bu yerda KATTA HARFLI kalitlar qaytaradi (legacy kontrakt).
   String _giftError(ApiError e) => switch (e.key) {
-        'NOT_OWNER' => 'Bu ID sizga tegishli emas.',
-        'NOT_GIFTABLE' => 'Bu ID‘ni sovg‘a qilib bo‘lmaydi.',
-        'RECIPIENT_NOT_FOUND' => 'Bunday ID topilmadi. Kodni tekshiring.',
-        'CANNOT_GIFT_SELF' => 'O‘zingizga sovg‘a qilib bo‘lmaydi.',
-        'ALREADY_PENDING' => 'Bu ID uchun tasdiqlanmagan sovg‘a allaqachon bor.',
+        'NOT_OWNER' => tr('Bu ID sizga tegishli emas.'),
+        'NOT_GIFTABLE' => tr('Bu ID‘ni sovg‘a qilib bo‘lmaydi.'),
+        'RECIPIENT_NOT_FOUND' => tr('Bunday ID topilmadi. Kodni tekshiring.'),
+        'CANNOT_GIFT_SELF' => tr('O‘zingizga sovg‘a qilib bo‘lmaydi.'),
+        'ALREADY_PENDING' => tr('Bu ID uchun tasdiqlanmagan sovg‘a allaqachon bor.'),
         _ => humanError(e),
       };
 
@@ -110,7 +111,7 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(),
-                const Text('Sovg‘a\nyuborildi', style: T.display),
+                Text(tr('Sovg‘a\nyuborildi'), style: T.display),
                 const SizedBox(height: S.x12),
                 Text(
                   '${_toCode.text.trim().toUpperCase()} egasi tasdiqlagandan keyin '
@@ -118,7 +119,7 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
                   style: T.body,
                 ),
                 const Spacer(),
-                PrimaryButton('Tayyor', onTap: () => Navigator.of(context).pop()),
+                PrimaryButton(tr('Tayyor'), onTap: () => Navigator.of(context).pop()),
                 const SizedBox(height: S.x32),
               ],
             ),
@@ -133,41 +134,41 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
         bottom: false,
         child: Column(
           children: [
-            const TopBar(title: 'Sovg‘a qilish'),
+            TopBar(title: tr('Sovg‘a qilish')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x24),
                 children: [
-                  const Eyebrow('Bepul o‘tkazish'),
+                  Eyebrow(tr('Bepul o‘tkazish')),
                   const SizedBox(height: 6),
-                  const Text('ID‘ni\nsovg‘a qilish', style: T.display),
+                  Text(tr('ID‘ni\nsovg‘a qilish'), style: T.display),
                   const SizedBox(height: S.x12),
-                  const Text(
-                    'Qabul qiluvchi tasdiqlagandan keyin ID unga o‘tadi.',
+                  Text(
+                    tr('Qabul qiluvchi tasdiqlagandan keyin ID unga o‘tadi.'),
                     style: T.body,
                   ),
                   const SizedBox(height: S.x24),
                   IdentityCard(
                     code: widget.record.code,
-                    holder: widget.record.name.isEmpty ? 'Shaxsiy' : widget.record.name,
+                    holder: widget.record.name.isEmpty ? tr('Shaxsiy') : widget.record.name,
                     subtitle: TierStyle.of(widget.record.tier).label,
                     tier: widget.record.tier,
                   ),
                   const SizedBox(height: S.x24),
                   Field(
-                    label: 'Qabul qiluvchining ID kodi',
+                    label: tr('Qabul qiluvchining ID kodi'),
                     controller: _toCode,
-                    hint: 'Masalan: AAA904',
+                    hint: tr('Masalan: AAA904'),
                     onChanged: _lookup,
                     error: _error,
                   ),
                   if (_looking) ...[
                     const SizedBox(height: S.x12),
-                    const Row(
+                    Row(
                       children: [
                         Spinner(size: 13),
                         SizedBox(width: S.x8),
-                        Text('Qidirilmoqda…', style: T.caption),
+                        Text(tr('Qidirilmoqda…'), style: T.caption),
                       ],
                     ),
                   ] else if (_recipient != null) ...[
@@ -204,8 +205,8 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
                   Surface(
                     shadow: E.e1,
                     child: Text(
-                      'ID o‘tgandan keyin unga bog‘langan profil, postlar va '
-                      'statistika yangi egasiga o‘tadi.',
+                      tr('ID o‘tgandan keyin unga bog‘langan profil, postlar va ') +
+                      tr('statistika yangi egasiga o‘tadi.'),
                       style: T.caption.copyWith(color: C.muted),
                     ),
                   ),
@@ -217,12 +218,12 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
                 S.gutter, S.x12, S.gutter,
                 MediaQuery.paddingOf(context).bottom + S.x12,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: C.obsidian,
                 border: Border(top: BorderSide(color: C.hairline)),
               ),
               child: PrimaryButton(
-                'Sovg‘a qilishni yuborish',
+                tr('Sovg‘a qilishni yuborish'),
                 loading: _busy,
                 onTap: _busy ? null : _send,
               ),
@@ -241,7 +242,7 @@ class NIconPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         width: 40, height: 40,
-        decoration: const BoxDecoration(color: C.graphite, shape: BoxShape.circle),
-        child: const Center(child: Text('ID', style: T.eyebrow)),
+        decoration: BoxDecoration(color: C.graphite, shape: BoxShape.circle),
+        child: Center(child: Text('ID', style: T.eyebrow)),
       );
 }

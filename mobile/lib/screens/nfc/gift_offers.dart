@@ -11,6 +11,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// SOVG'A TAKLIFLARI — qabul qilish, rad etish, qaytarib olish.
 ///
@@ -72,7 +73,7 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
       errorHaptic();
       if (mounted) {
         setState(() => _error = e.key == 'OWNERSHIP_CHANGED'
-            ? 'Bu ID allaqachon boshqa egaga o‘tgan.'
+            ? tr('Bu ID allaqachon boshqa egaga o‘tgan.')
             : humanError(e));
       }
     } catch (e) {
@@ -90,7 +91,7 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
     return SafeArea(
       child: Column(
         children: [
-          const TopBar(title: 'Sovg‘a takliflari'),
+          TopBar(title: tr('Sovg‘a takliflari')),
           Expanded(
             child: incoming == null && _error != null
                 ? ErrorState(humanError(_error!), onRetry: _load)
@@ -107,14 +108,14 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
                             const SizedBox(height: S.x16),
                           ],
                           if (incoming.isEmpty && _outgoing.isEmpty)
-                            const EmptyState(
-                              'Kimdir sizga ID sovg‘a qilsa, u shu yerda '
-                              'tasdiqlashni kutib turadi.',
-                              title: 'Sovg‘a taklifi yo‘q',
+                            EmptyState(
+                              tr('Kimdir sizga ID sovg‘a qilsa, u shu yerda ') +
+                              tr('tasdiqlashni kutib turadi.'),
+                              title: tr('Sovg‘a taklifi yo‘q'),
                               icon: Ico.gift,
                             ),
                           if (incoming.isNotEmpty) ...[
-                            const Eyebrow('Sizga sovg‘a qilinyapti'),
+                            Eyebrow(tr('Sizga sovg‘a qilinyapti')),
                             const SizedBox(height: S.x8),
                             for (final o in incoming) ...[
                               _OfferCard(
@@ -128,7 +129,7 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
                           ],
                           if (_outgoing.isNotEmpty) ...[
                             const SizedBox(height: S.x16),
-                            const Eyebrow('Siz yuborgan'),
+                            Eyebrow(tr('Siz yuborgan')),
                             const SizedBox(height: S.x8),
                             for (final o in _outgoing) ...[
                               _OfferCard(
@@ -184,7 +185,7 @@ class _OfferCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const NIcon(Ico.gift, size: 20, color: C.champagne),
+                NIcon(Ico.gift, size: 20, color: C.champagne),
                 const SizedBox(width: S.x12),
                 Expanded(
                   child: Column(
@@ -194,7 +195,7 @@ class _OfferCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         offer.email.isEmpty
-                            ? (offer.incoming ? 'Sizga' : 'Yuborilgan')
+                            ? (offer.incoming ? tr('Sizga') : tr('Yuborilgan'))
                             : (offer.incoming
                                 ? '${offer.email} yubordi'
                                 : '${offer.email} uchun'),
@@ -212,12 +213,12 @@ class _OfferCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: PrimaryButton('Qabul qilish',
+                    child: PrimaryButton(tr('Qabul qilish'),
                         loading: busy, onTap: busy ? null : onAccept),
                   ),
                   const SizedBox(width: S.x8),
                   Expanded(
-                    child: GhostButton('Rad etish',
+                    child: GhostButton(tr('Rad etish'),
                         onTap: busy ? null : onReject),
                   ),
                 ],
@@ -227,13 +228,13 @@ class _OfferCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Tasdiqlash kutilmoqda.',
+                      tr('Tasdiqlash kutilmoqda.'),
                       style: T.caption.copyWith(fontSize: 11.5),
                     ),
                   ),
                   SizedBox(
                     width: 150,
-                    child: GhostButton('Qaytarib olish',
+                    child: GhostButton(tr('Qaytarib olish'),
                         onTap: busy ? null : onCancel),
                   ),
                 ],

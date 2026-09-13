@@ -12,6 +12,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import 'id_detail.dart';
+import '../../l10n/strings.dart';
 
 /// BO'SH NFC ID KATALOGI.
 ///
@@ -95,13 +96,13 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
         bottom: false,
         child: Column(
           children: [
-            const TopBar(title: 'Yangi NFC ID', subtitle: 'Bo‘sh ID‘lardan tanlang'),
+            TopBar(title: tr('Yangi NFC ID'), subtitle: tr('Bo‘sh ID‘lardan tanlang')),
             Padding(
               padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x12),
               child: Field(
                 label: '',
                 controller: _query,
-                hint: 'Kod bo‘yicha qidirish',
+                hint: tr('Kod bo‘yicha qidirish'),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -111,7 +112,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                 children: [
-                  Chip('Hammasi', active: _filter == null, onTap: () => setState(() => _filter = null)),
+                  Chip(tr('Hammasi'), active: _filter == null, onTap: () => setState(() => _filter = null)),
                   for (final t in tiers) ...[
                     const SizedBox(width: 6),
                     Chip(
@@ -132,7 +133,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                 onRetry: _load,
                 isEmpty: (d) => d.isEmpty,
                 emptyMessage: q.isEmpty
-                    ? 'Bu tarifda hozir bo‘sh ID yo‘q.'
+                    ? tr('Bu tarifda hozir bo‘sh ID yo‘q.')
                     : '«$q» bo‘yicha bo‘sh ID topilmadi.',
                 skeleton: GridView.count(
                   crossAxisCount: 2,

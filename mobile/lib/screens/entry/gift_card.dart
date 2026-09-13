@@ -12,6 +12,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// SOVG'A KARTASINI FAOLLASHTIRISH.
 ///
@@ -66,7 +67,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
 
   Future<void> _lookup() async {
     if (_cleanCode.length < 3) {
-      setState(() => _error = 'Kartadagi kodni kiriting.');
+      setState(() => _error = tr('Kartadagi kodni kiriting.'));
       return;
     }
     setState(() {
@@ -77,8 +78,8 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
       final name = await AppScope.read(context).repo.giftCardLookup(_cleanCode);
       if (!mounted) return;
       if (name == null) {
-        setState(() => _error = 'Bunday sovg‘a kartasi topilmadi yoki '
-            'u allaqachon faollashtirilgan.');
+        setState(() => _error = tr('Bunday sovg‘a kartasi topilmadi yoki ') +
+            tr('u allaqachon faollashtirilgan.'));
         return;
       }
       setState(() {
@@ -96,7 +97,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
 
   Future<void> _verify() async {
     if (_activation.text.trim().isEmpty) {
-      setState(() => _error = 'Aktivatsiya kodini kiriting.');
+      setState(() => _error = tr('Aktivatsiya kodini kiriting.'));
       return;
     }
     setState(() {
@@ -112,7 +113,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
       errorHaptic();
       if (mounted) {
         setState(() => _error = e.key == 'bad_code'
-            ? 'Aktivatsiya kodi noto‘g‘ri.'
+            ? tr('Aktivatsiya kodi noto‘g‘ri.')
             : humanError(e));
       }
     } catch (e) {
@@ -125,15 +126,15 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
   Future<void> _activate() async {
     final email = _email.text.trim();
     if (!email.contains('@')) {
-      setState(() => _error = 'Email manzilini to‘g‘ri kiriting.');
+      setState(() => _error = tr('Email manzilini to‘g‘ri kiriting.'));
       return;
     }
     if (_password.text.length < 6) {
-      setState(() => _error = 'Parol kamida 6 ta belgidan iborat bo‘lsin.');
+      setState(() => _error = tr('Parol kamida 6 ta belgidan iborat bo‘lsin.'));
       return;
     }
     if (_name.text.trim().isEmpty) {
-      setState(() => _error = 'Ismingizni kiriting.');
+      setState(() => _error = tr('Ismingizni kiriting.'));
       return;
     }
 
@@ -160,12 +161,12 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
       errorHaptic();
       if (mounted) {
         setState(() => _error = switch (e.key) {
-              'bad_code' => 'Aktivatsiya kodi noto‘g‘ri.',
+              'bad_code' => tr('Aktivatsiya kodi noto‘g‘ri.'),
               'email_taken' =>
-                'Bu email band. Parol to‘g‘ri bo‘lsa, avval kiring.',
-              'code_taken' => 'Bu ID allaqachon boshqa odamga biriktirilgan.',
-              'weak_password' => 'Parol juda oddiy.',
-              'bad_email' => 'Email manzilini to‘g‘ri kiriting.',
+                tr('Bu email band. Parol to‘g‘ri bo‘lsa, avval kiring.'),
+              'code_taken' => tr('Bu ID allaqachon boshqa odamga biriktirilgan.'),
+              'weak_password' => tr('Parol juda oddiy.'),
+              'bad_email' => tr('Email manzilini to‘g‘ri kiriting.'),
               _ => humanError(e),
             });
       }
@@ -183,7 +184,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              const TopBar(title: 'Sovg‘a kartasi'),
+              TopBar(title: tr('Sovg‘a kartasi')),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
@@ -207,15 +208,15 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
     switch (_step) {
       case _Step.code:
         return [
-          Text('Kartadagi kod', style: T.section),
+          Text(tr('Kartadagi kod'), style: T.section),
           const SizedBox(height: S.x8),
           Text(
-            'Sovg‘a kartangizning orqasida yozilgan ID kodini kiriting.',
+            tr('Sovg‘a kartangizning orqasida yozilgan ID kodini kiriting.'),
             style: T.caption,
           ),
           const SizedBox(height: S.x20),
           Field(
-            label: 'ID kodi',
+            label: tr('ID kodi'),
             controller: _code,
             // Namuna kod — maket ma'lumoti emas, shakl ko'rsatkichi.
             hint: 'ABC123',
@@ -223,7 +224,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
             onSubmitted: (_) => _lookup(),
           ),
           const SizedBox(height: S.x20),
-          PrimaryButton('Davom etish', loading: _busy, onTap: _busy ? null : _lookup),
+          PrimaryButton(tr('Davom etish'), loading: _busy, onTap: _busy ? null : _lookup),
         ];
 
       case _Step.activation:
@@ -233,7 +234,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
             border: C.champagne.withValues(alpha: .3),
             child: Row(
               children: [
-                const NIcon(Ico.gift, size: 20, color: C.champagne),
+                NIcon(Ico.gift, size: 20, color: C.champagne),
                 const SizedBox(width: S.x12),
                 Expanded(
                   child: Column(
@@ -251,31 +252,31 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
             ),
           ),
           const SizedBox(height: S.x24),
-          Text('Aktivatsiya kodi', style: T.section),
+          Text(tr('Aktivatsiya kodi'), style: T.section),
           const SizedBox(height: S.x8),
           Text(
-            'Karta bilan kelgan maxfiy kodni kiriting. Uni boshqalarga '
-            'bermang — kod bilan ID faollashtiriladi.',
+            tr('Karta bilan kelgan maxfiy kodni kiriting. Uni boshqalarga ') +
+            tr('bermang — kod bilan ID faollashtiriladi.'),
             style: T.caption,
           ),
           const SizedBox(height: S.x20),
           Field(
-            label: 'Aktivatsiya kodi',
+            label: tr('Aktivatsiya kodi'),
             controller: _activation,
             hint: '••••••',
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _verify(),
           ),
           const SizedBox(height: S.x20),
-          PrimaryButton('Tekshirish', loading: _busy, onTap: _busy ? null : _verify),
+          PrimaryButton(tr('Tekshirish'), loading: _busy, onTap: _busy ? null : _verify),
           const SizedBox(height: S.x12),
-          GhostButton('Orqaga',
+          GhostButton(tr('Orqaga'),
               onTap: _busy ? null : () => setState(() => _step = _Step.code)),
         ];
 
       case _Step.account:
         return [
-          Text('Hisob yaratish', style: T.section),
+          Text(tr('Hisob yaratish'), style: T.section),
           const SizedBox(height: S.x8),
           Text(
             '$_cleanCode shu hisobga biriktiriladi.',
@@ -283,14 +284,14 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
           ),
           const SizedBox(height: S.x20),
           Field(
-            label: 'Ism',
+            label: tr('Ism'),
             controller: _name,
-            hint: 'Ismingiz',
+            hint: tr('Ismingiz'),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: S.x16),
           Field(
-            label: 'Email',
+            label: tr('Email'),
             controller: _email,
             hint: 'ism@gmail.com',
             keyboardType: TextInputType.emailAddress,
@@ -298,23 +299,23 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
           ),
           const SizedBox(height: S.x16),
           Field(
-            label: 'Parol',
+            label: tr('Parol'),
             controller: _password,
-            hint: 'Kamida 6 ta belgi',
+            hint: tr('Kamida 6 ta belgi'),
             obscure: true,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: S.x16),
           Field(
-            label: 'Telefon',
+            label: tr('Telefon'),
             controller: _phone,
-            hint: 'Ixtiyoriy',
+            hint: tr('Ixtiyoriy'),
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _activate(),
           ),
           const SizedBox(height: S.x24),
-          PrimaryButton('Faollashtirish', loading: _busy, onTap: _busy ? null : _activate),
+          PrimaryButton(tr('Faollashtirish'), loading: _busy, onTap: _busy ? null : _activate),
         ];
     }
   }

@@ -8,6 +8,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../../design/components/icons.dart';
+import '../../l10n/strings.dart';
 
 /// BIZNES STATISTIKASI — ko'rishlar, amallar, buyurtmalar, top mahsulot.
 ///
@@ -63,7 +64,7 @@ class _BusinessStatsScreenState extends State<BusinessStatsScreen> {
           bottom: false,
           child: Column(
             children: [
-              TopBar(title: 'Statistika', subtitle: widget.companyId),
+              TopBar(title: tr('Statistika'), subtitle: widget.companyId),
               Expanded(
                 child: AsyncView<Map<String, dynamic>>(
                   loading: _loading,
@@ -121,7 +122,7 @@ class _BusinessStatsScreenState extends State<BusinessStatsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Eyebrow('Profil ko‘rishlari'),
+              Eyebrow(tr('Profil ko‘rishlari')),
               const SizedBox(height: 6),
               Text(compact(views), style: T.displaySm),
               const SizedBox(height: S.x16),
@@ -142,14 +143,14 @@ class _BusinessStatsScreenState extends State<BusinessStatsScreen> {
         const SizedBox(height: S.x12),
         Row(
           children: [
-            Expanded(child: _Kpi(label: 'Amallar', value: compact(taps))),
+            Expanded(child: _Kpi(label: tr('Amallar'), value: compact(taps))),
             const SizedBox(width: S.x8),
-            Expanded(child: _Kpi(label: 'Buyurtma', value: compact(orders))),
+            Expanded(child: _Kpi(label: tr('Buyurtma'), value: compact(orders))),
           ],
         ),
         if (actions.isNotEmpty) ...[
           const SizedBox(height: S.x24),
-          const Eyebrow('Eng ko‘p bosilgan'),
+          Eyebrow(tr('Eng ko‘p bosilgan')),
           const SizedBox(height: S.x12),
           for (final a in actions.take(5)) ...[
             _Bar(
@@ -162,7 +163,7 @@ class _BusinessStatsScreenState extends State<BusinessStatsScreen> {
         ],
         if (items.isNotEmpty) ...[
           const SizedBox(height: S.x24),
-          const Eyebrow('Top mahsulotlar'),
+          Eyebrow(tr('Top mahsulotlar')),
           const SizedBox(height: S.x12),
           for (final it in items.take(5)) ...[
             _Bar(
@@ -174,10 +175,10 @@ class _BusinessStatsScreenState extends State<BusinessStatsScreen> {
           ],
         ],
         if (views == 0 && taps == 0 && orders == 0)
-          const EmptyState(
-            'Profil ochilishi, tegishlar va buyurtmalar shu yerda '
-            'to‘planadi.',
-            title: 'Ma‘lumot to‘planmagan',
+          EmptyState(
+            tr('Profil ochilishi, tegishlar va buyurtmalar shu yerda ') +
+            tr('to‘planadi.'),
+            title: tr('Ma‘lumot to‘planmagan'),
             icon: Ico.chart,
           ),
       ],

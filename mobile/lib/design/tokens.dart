@@ -6,57 +6,218 @@ import 'package:flutter/widgets.dart';
 /// kodida "sehrli raqam" yozmang: rang yoki masofa kerak bo'lsa shu
 /// yerdan oling. Aks holda bir necha oydan keyin ikkita "deyarli bir xil"
 /// kulrang paydo bo'ladi va interfeys sekin-asta buziladi.
+/// RANG MAVZUSI.
+///
+/// To'rtta mavzu bor va ular FAQAT URG'U OILASINI va yuzalarning
+/// nozik tusini almashtiradi. Nima uchun shunchalik cheklangan:
+///
+///  1. NFCSTORE dizayn tili — near-black ustidagi metall. Fonni
+///     yashil yoki ko'k qilish uni butunlay boshqa mahsulotga
+///     aylantirardi;
+///  2. TARIFLAR TEGILMAYDI. Bronza bronza bo'lib qoladi, Exclusive
+///     oltin qirrali bo'lib qoladi — ular mahsulot darajalari,
+///     bezak emas. Mavzu almashganda tarif farqi yo'qolsa, odam
+///     nima uchun ko'proq to'laganini ko'rmay qolardi;
+///  3. holat ranglari (yashil/qizil) va brend belgilari ham
+///     tegilmaydi — ular ma'no tashiydi.
+///
+/// Ya'ni mavzu ilovaning KIYIMINI almashtiradi, suyagini emas.
+class Palette {
+  const Palette({
+    required this.id,
+    required this.label,
+    required this.obsidian,
+    required this.backdrop,
+    required this.graphite,
+    required this.slate,
+    required this.hairline,
+    required this.warmHairline,
+    required this.accent,
+    required this.accentDeep,
+    required this.accentCool,
+    required this.ink,
+  });
+
+  /// Saqlash uchun kalit — sozlama shu satr bo'lib yoziladi.
+  final String id;
+
+  /// Sozlamalarda ko'rinadigan nom.
+  final String label;
+
+  final Color obsidian;
+  final Color backdrop;
+  final Color graphite;
+  final Color slate;
+  final Color hairline;
+  final Color warmHairline;
+
+  /// Asosiy urg'u — tugma, faol holat, karta kodi.
+  final Color accent;
+
+  /// Chuqurroq urg'u — eyebrow yozuvlari, meta.
+  final Color accentDeep;
+
+  /// Sovuq ikkilamchi urg'u — NFC, tasdiqlangan nishon.
+  final Color accentCool;
+
+  /// Urg'u foni ustidagi matn rangi.
+  final Color ink;
+
+  /// ASL — hozirgi dizayn, hech narsa o'zgarmaydi.
+  static const original = Palette(
+    id: 'original',
+    label: 'Asl',
+    obsidian: Color(0xFF0A0805),
+    backdrop: Color(0xFF050508),
+    graphite: Color(0xFF0E0D11),
+    slate: Color(0xFF141318),
+    hairline: Color(0xFF232028),
+    warmHairline: Color(0xFF2A2620),
+    accent: Color(0xFFE8CFA0),
+    accentDeep: Color(0xFFB99A5E),
+    accentCool: Color(0xFFC9CCD2),
+    ink: Color(0xFF1A1508),
+  );
+
+  /// CHAMPAGNE GOLD — issiqroq va boyroq oltin.
+  ///
+  /// Asldan farqi: urg'u to'yingannroq, yuzalarga juda zaif issiq
+  /// tus qo'shilgan. Bu "ko'proq oltin" emas — handoff aynan
+  /// shundan ogohlantiradi. Farq materialning haroratida.
+  static const gold = Palette(
+    id: 'gold',
+    label: 'Champagne Gold',
+    obsidian: Color(0xFF0B0805),
+    backdrop: Color(0xFF060402),
+    graphite: Color(0xFF110E09),
+    slate: Color(0xFF181410),
+    hairline: Color(0xFF2A2318),
+    warmHairline: Color(0xFF332A1B),
+    accent: Color(0xFFF0D089),
+    accentDeep: Color(0xFFC9A257),
+    accentCool: Color(0xFFD9CFBC),
+    ink: Color(0xFF1C1506),
+  );
+
+  /// EMERALD LUXURY — chuqur zumrad.
+  ///
+  /// Yashil TO'YINGAN emas: neon yashil qorong'i interfeysda
+  /// "terminal" ko'rinadi va qimmat tuyg'usini yo'qotadi.
+  static const emerald = Palette(
+    id: 'emerald',
+    label: 'Emerald Luxury',
+    obsidian: Color(0xFF050907),
+    backdrop: Color(0xFF030605),
+    graphite: Color(0xFF090F0C),
+    slate: Color(0xFF0F1713),
+    hairline: Color(0xFF1B2A22),
+    warmHairline: Color(0xFF1F332A),
+    accent: Color(0xFF8FD9B4),
+    accentDeep: Color(0xFF4E9E77),
+    accentCool: Color(0xFFC2D8CD),
+    ink: Color(0xFF061410),
+  );
+
+  /// SAPPHIRE ROYAL — qirollik safiri.
+  static const sapphire = Palette(
+    id: 'sapphire',
+    label: 'Sapphire Royal',
+    obsidian: Color(0xFF05070C),
+    backdrop: Color(0xFF03040A),
+    graphite: Color(0xFF090C14),
+    slate: Color(0xFF10141F),
+    hairline: Color(0xFF1D2536),
+    warmHairline: Color(0xFF222B3F),
+    accent: Color(0xFF9CC1EE),
+    accentDeep: Color(0xFF5683BC),
+    accentCool: Color(0xFFC6D1E2),
+    ink: Color(0xFF07101C),
+  );
+
+  static const all = <Palette>[original, gold, emerald, sapphire];
+
+  static Palette byId(String? id) =>
+      all.firstWhere((p) => p.id == id, orElse: () => original);
+}
+
+/// NFCSTORE dizayn tokenlari — handoff README ning yagona manbasi.
+///
+/// Bu yerdagi qiymatlar dizayn hujjatidan AYNAN ko'chirilgan. Ekran
+/// kodida "sehrli raqam" yozmang: rang yoki masofa kerak bo'lsa shu
+/// yerdan oling. Aks holda bir necha oydan keyin ikkita "deyarli bir
+/// xil" kulrang paydo bo'ladi va interfeys sekin-asta buziladi.
+///
+/// MAVZUGA BOG'LIQ ranglar `static get` — ular `const` EMAS. Shuning
+/// uchun ularni ishlatadigan widget ham `const` bo'la olmaydi va
+/// mavzu almashganda QAYTA QURILADI. Bu tasodif emas, mexanizmning
+/// o'zi: `const` widget hech qachon qayta qurilmaydi va eski rangda
+/// qotib qolardi.
 class C {
   C._();
 
-  // ── Yuzalar ────────────────────────────────────────────────────────
-  /// Ilova foni. Saytning theme-color'i bilan bir xil.
-  static const obsidian = Color(0xFF0A0805);
+  static Palette _palette = Palette.original;
+
+  /// Joriy mavzu.
+  static Palette get palette => _palette;
+
+  /// Mavzuni almashtirish. Chaqirgandan keyin ildizda `setState`
+  /// qilish SHART — aks holda ekran eski rangda qoladi.
+  static void apply(Palette p) => _palette = p;
+
+  // ── Yuzalar (MAVZUGA BOG'LIQ) ──────────────────────────────────────
+  /// Ilova foni.
+  static Color get obsidian => _palette.obsidian;
 
   /// Eng chuqur yer — sheet orqasidagi scrim va kadr tashqarisi.
-  static const backdrop = Color(0xFF050508);
+  static Color get backdrop => _palette.backdrop;
 
   /// Karta asosi, input to'ldirmasi.
-  static const graphite = Color(0xFF0E0D11);
+  static Color get graphite => _palette.graphite;
 
   /// Karta yuqori nuqtasi, sheet, ikkilamchi tugma.
-  static const slate = Color(0xFF141318);
+  static Color get slate => _palette.slate;
 
   /// Standart chegara.
-  static const hairline = Color(0xFF232028);
+  static Color get hairline => _palette.hairline;
 
   /// Interaktiv/to'ldirilgan elementdagi chegara.
-  static const warmHairline = Color(0xFF2A2620);
+  static Color get warmHairline => _palette.warmHairline;
 
-  // ── Urg'u ──────────────────────────────────────────────────────────
+  // ── Urg'u (MAVZUGA BOG'LIQ) ────────────────────────────────────────
   /// Asosiy urg'u. EKRANDA BITTA. Ikkitadan ko'p ishlatsangiz dizayn
   /// "arzon" ko'rina boshlaydi — handoff buni alohida ta'kidlaydi.
-  static const champagne = Color(0xFFE8CFA0);
+  static Color get champagne => _palette.accent;
 
   /// Eyebrow yozuvlari, meta ma'lumot, chuqur gardish.
-  static const antiqueGold = Color(0xFFB99A5E);
+  static Color get antiqueGold => _palette.accentDeep;
 
   /// NFC tabi, tasdiqlangan nishon, ikkilamchi urg'u.
-  static const platinum = Color(0xFFC9CCD2);
+  static Color get platinum => _palette.accentCool;
 
-  // ── Matn ───────────────────────────────────────────────────────────
+  /// Urg'u foni ustidagi siyoh (asosiy tugma yozuvi).
+  static Color get ink => _palette.ink;
+
+  // ── Matn (O'ZGARMAYDI) ─────────────────────────────────────────────
+  //
+  // Matn ranglari mavzuga bog'liq emas: ular O'QILISHI uchun
+  // tanlangan, bezak uchun emas.
   static const offWhite = Color(0xFFFAF7F0);
   static const ash = Color(0xFF98918A);
   static const muted = Color(0xFF5F5A55);
 
-  /// Champagne fon ustidagi siyoh (asosiy tugma yozuvi).
-  static const ink = Color(0xFF1A1508);
-
-  // ── Holat ──────────────────────────────────────────────────────────
-  static const verdant = Color(0xFF63D694); // ochiq, muvaffaqiyat, to'langan
-  static const signal = Color(0xFFE2685F); // xato, muvaffaqiyatsiz, o'qilmagan
+  // ── Holat (O'ZGARMAYDI) ────────────────────────────────────────────
+  //
+  // Yashil "ochiq/to'langan", qizil "xato" degani. Mavzuga qarab
+  // o'zgarsa, ma'no yo'qolardi.
+  static const verdant = Color(0xFF63D694);
+  static const signal = Color(0xFFE2685F);
 
   // ── Rasm o'rni ─────────────────────────────────────────────────────
-  static const placeholder = Color(0xFF16151B);
-  static const placeholderAlt = Color(0xFF101016);
-  static final placeholderInk = champagne.withValues(alpha: .42);
+  static Color get placeholder => _palette.graphite;
+  static Color get placeholderAlt => _palette.backdrop;
+  static Color get placeholderInk => champagne.withValues(alpha: .42);
 
-  // ── Brend belgilari (faqat glif rangi) ─────────────────────────────
+  // ── Brend belgilari (faqat glif rangi, O'ZGARMAYDI) ────────────────
   static const telegram = Color(0xFF2AABEE);
   static const whatsapp = Color(0xFF25D366);
   static const facebook = Color(0xFF1877F2);
@@ -69,19 +230,21 @@ class C {
   // ── Gradientlar ────────────────────────────────────────────────────
   /// Karta yuzasi. 170° — deyarli vertikal, lekin biroz og'ishi
   /// yassi to'rtburchakni "yuza" ga aylantiradi.
-  static const cardSurface = LinearGradient(
-    begin: Alignment(-0.18, -1), end: Alignment(0.18, 1),
-    colors: [slate, graphite],
-  );
+  static LinearGradient get cardSurface => LinearGradient(
+        begin: const Alignment(-0.18, -1),
+        end: const Alignment(0.18, 1),
+        colors: [slate, graphite],
+      );
 
-  /// Metall ID kartasi — uchta to'xtash nuqtasi bor, shuning uchun
-  /// alohida.
-  static const metalSurface = LinearGradient(
-    begin: Alignment(-1, -0.9), end: Alignment(1, 0.9),
-    colors: [Color(0xFF2A2831), slate, Color(0xFF0D0C11)],
-    stops: [0, .58, 1],
-  );
-  static const metalBorder = Color(0xFF3A3743);
+  /// Metall ID kartasi — tarifi yo'q joylar uchun zaxira.
+  static LinearGradient get metalSurface => LinearGradient(
+        begin: const Alignment(-1, -0.9),
+        end: const Alignment(1, 0.9),
+        colors: [slate, graphite, backdrop],
+        stops: const [0, .58, 1],
+      );
+
+  static Color get metalBorder => hairline;
 }
 
 /// NFC ID tarifi. Ranglar handoff dagi "tier metals" jadvalidan:

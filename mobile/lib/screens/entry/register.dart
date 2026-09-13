@@ -10,6 +10,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import 'verify_email.dart';
+import '../../l10n/strings.dart';
 
 /// Ro'yxatdan o'tish — ism, email, telefon, parol.
 ///
@@ -46,15 +47,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final email = _email.text.trim().toLowerCase();
     final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (!_emailRe.hasMatch(email)) {
-      setState(() => _error = 'Email manzilini tekshiring.');
+      setState(() => _error = tr('Email manzilini tekshiring.'));
       return;
     }
     if (phone.length < 9) {
-      setState(() => _error = 'Telefon raqamini to‘liq kiriting.');
+      setState(() => _error = tr('Telefon raqamini to‘liq kiriting.'));
       return;
     }
     if (_password.text.length < 8) {
-      setState(() => _error = 'Parol kamida 8 belgi bo‘lsin.');
+      setState(() => _error = tr('Parol kamida 8 belgi bo‘lsin.'));
       return;
     }
     setState(() {
@@ -74,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       if (channel == 'none') {
         setState(() => _error =
-            'Hozir emailga kod yuborib bo‘lmayapti. Birozdan so‘ng qayta urining.');
+            tr('Hozir emailga kod yuborib bo‘lmayapti. Birozdan so‘ng qayta urining.'));
         return;
       }
       await push(context, (_) => VerifyEmailScreen(
@@ -106,21 +107,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Akkaunt\nyaratish', style: T.display),
+                      Text(tr('Akkaunt\nyaratish'), style: T.display),
                       const SizedBox(height: S.x12),
-                      const Text('Emailingizga tasdiqlash kodi yuboriladi.', style: T.body),
+                      Text(tr('Emailingizga tasdiqlash kodi yuboriladi.'), style: T.body),
                       const SizedBox(height: S.x24),
-                      Field(label: 'Ism', controller: _name, hint: 'Ismingiz',
+                      Field(label: tr('Ism'), controller: _name, hint: tr('Ismingiz'),
                           textInputAction: TextInputAction.next),
                       const SizedBox(height: S.x16),
                       Field(
-                        label: 'Email', controller: _email, hint: 'ism@gmail.com',
+                        label: tr('Email'), controller: _email, hint: 'ism@gmail.com',
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: S.x16),
                       Field(
-                        label: 'Telefon raqam', controller: _phone, hint: '90 123 45 67',
+                        label: tr('Telefon raqam'), controller: _phone, hint: '90 123 45 67',
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -128,18 +129,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: S.x16),
                       Field(
-                        label: 'Parol', controller: _password, hint: '••••••••',
-                        obscure: true, helper: 'Kamida 8 belgi',
+                        label: tr('Parol'), controller: _password, hint: '••••••••',
+                        obscure: true, helper: tr('Kamida 8 belgi'),
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _submit(),
                         error: _error,
                       ),
                       const SizedBox(height: S.x24),
-                      PrimaryButton('Ro‘yxatdan o‘tish', loading: _busy, onTap: _busy ? null : _submit),
+                      PrimaryButton(tr('Ro‘yxatdan o‘tish'), loading: _busy, onTap: _busy ? null : _submit),
                       const SizedBox(height: S.x12),
                       Center(
                         child: Text(
-                          'Ro‘yxatdan o‘tish orqali shartlarga rozilik bildirasiz',
+                          tr('Ro‘yxatdan o‘tish orqali shartlarga rozilik bildirasiz'),
                           textAlign: TextAlign.center,
                           style: T.caption.copyWith(color: C.muted, fontSize: 11),
                         ),

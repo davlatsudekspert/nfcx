@@ -201,7 +201,7 @@ class ScreenAura extends StatelessWidget {
   const ScreenAura({
     super.key,
     required this.child,
-    this.color = C.champagne,
+    this.color,
     this.origin = const Alignment(-0.7, -1),
     this.strength = .07,
     this.radius = 1.1,
@@ -210,7 +210,8 @@ class ScreenAura extends StatelessWidget {
   final Widget child;
 
   /// Nur rangi — champagne (issiq) yoki platinum (sovuq).
-  final Color color;
+  /// `null` — joriy mavzuning asosiy urg'usi.
+  final Color? color;
 
   /// Nur manbai. Har ekranda boshqa joyda.
   final Alignment origin;
@@ -233,8 +234,8 @@ class ScreenAura extends StatelessWidget {
                     center: origin,
                     radius: radius,
                     colors: [
-                      color.withValues(alpha: strength),
-                      color.withValues(alpha: 0),
+                      (color ?? C.champagne).withValues(alpha: strength),
+                      (color ?? C.champagne).withValues(alpha: 0),
                     ],
                     stops: const [0, 1],
                   ),
@@ -251,9 +252,9 @@ class ScreenAura extends StatelessWidget {
 ///
 /// Chapdan o'ngga so'nadi: metall qirrasi shunday tutadi.
 class FadeRule extends StatelessWidget {
-  const FadeRule({super.key, this.color = C.platinum, this.width = 120});
+  const FadeRule({super.key, this.color, this.width = 120});
 
-  final Color color;
+  final Color? color;
   final double width;
 
   @override
@@ -262,7 +263,10 @@ class FadeRule extends StatelessWidget {
         width: width,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color.withValues(alpha: .55), color.withValues(alpha: 0)],
+            colors: [
+              (color ?? C.platinum).withValues(alpha: .55),
+              (color ?? C.platinum).withValues(alpha: 0),
+            ],
           ),
         ),
       );

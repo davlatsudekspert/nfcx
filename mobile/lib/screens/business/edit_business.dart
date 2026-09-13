@@ -15,6 +15,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// BIZNES PROFILINI TAHRIRLASH.
 ///
@@ -66,11 +67,11 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Nomi bo‘sh bo‘lmasin.');
+      setState(() => _error = tr('Nomi bo‘sh bo‘lmasin.'));
       return;
     }
     if (_about.text.trim().length < 20) {
-      setState(() => _error = 'Tavsif kamida 20 ta belgidan iborat bo‘lsin.');
+      setState(() => _error = tr('Tavsif kamida 20 ta belgidan iborat bo‘lsin.'));
       return;
     }
 
@@ -103,9 +104,9 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       errorHaptic();
       if (mounted) {
         setState(() => _error = switch (e.key) {
-              'name_not_allowed' => 'Bu nomni ishlatib bo‘lmaydi.',
-              'required_fields' => 'Nom, shahar, telefon va tavsif to‘ldirilsin.',
-              'forbidden' => 'Bu biznes sizga tegishli emas.',
+              'name_not_allowed' => tr('Bu nomni ishlatib bo‘lmaydi.'),
+              'required_fields' => tr('Nom, shahar, telefon va tavsif to‘ldirilsin.'),
+              'forbidden' => tr('Bu biznes sizga tegishli emas.'),
               _ => humanError(e),
             });
       }
@@ -126,65 +127,65 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            TopBar(title: 'Biznesni tahrirlash', subtitle: widget.company.id),
+            TopBar(title: tr('Biznesni tahrirlash'), subtitle: widget.company.id),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
                 children: [
                   MediaPickField(
-                    label: 'Muqova',
+                    label: tr('Muqova'),
                     repo: repo,
                     url: widget.company.coverUrl,
                     aspect: 16 / 7,
-                    hint: 'Keng rasm — profil tepasida ko‘rinadi.',
+                    hint: tr('Keng rasm — profil tepasida ko‘rinadi.'),
                     onUploaded: (u) => setState(() => _cover = u),
                   ),
                   const SizedBox(height: S.x20),
                   MediaPickField(
-                    label: 'Logotip',
+                    label: tr('Logotip'),
                     repo: repo,
                     url: widget.company.logoUrl,
                     circle: true,
-                    hint: 'Kvadrat rasm eng yaxshi ko‘rinadi.',
+                    hint: tr('Kvadrat rasm eng yaxshi ko‘rinadi.'),
                     onUploaded: (u) => setState(() => _logo = u),
                   ),
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Asosiy'),
+                  Eyebrow(tr('Asosiy')),
                   const SizedBox(height: S.x12),
                   Field(
-                    label: 'Nomi',
+                    label: tr('Nomi'),
                     controller: _name,
-                    hint: 'Biznes nomi',
+                    hint: tr('Biznes nomi'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Tavsif',
+                    label: tr('Tavsif'),
                     controller: _about,
-                    hint: 'Nima bilan shug‘ullanasiz',
+                    hint: tr('Nima bilan shug‘ullanasiz'),
                     maxLines: 5,
                   ),
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Manzil'),
+                  Eyebrow(tr('Manzil')),
                   const SizedBox(height: S.x12),
                   Field(
-                    label: 'Shahar',
+                    label: tr('Shahar'),
                     controller: _city,
-                    hint: 'Toshkent',
+                    hint: tr('Toshkent'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Manzil',
+                    label: tr('Manzil'),
                     controller: _address,
-                    hint: 'Ko‘cha, uy',
+                    hint: tr('Ko‘cha, uy'),
                     maxLines: 2,
                   ),
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Aloqa'),
+                  Eyebrow(tr('Aloqa')),
                   const SizedBox(height: S.x12),
                   Field(
-                    label: 'Telefon',
+                    label: tr('Telefon'),
                     controller: _phone,
                     hint: '+998 90 123 45 67',
                     keyboardType: TextInputType.phone,
@@ -206,7 +207,7 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Veb-sayt',
+                    label: tr('Veb-sayt'),
                     controller: _website,
                     hint: 'https://',
                     keyboardType: TextInputType.url,
@@ -214,24 +215,24 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     error: _error,
                   ),
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Buyurtmalar'),
+                  Eyebrow(tr('Buyurtmalar')),
                   const SizedBox(height: S.x12),
                   _Toggle(
-                    label: 'Katalogdan buyurtma qabul qilish',
-                    hint: 'O‘chirilsa mahsulotlar ko‘rinadi, lekin '
-                        'buyurtma tugmasi bo‘lmaydi.',
+                    label: tr('Katalogdan buyurtma qabul qilish'),
+                    hint: tr('O‘chirilsa mahsulotlar ko‘rinadi, lekin ') +
+                        tr('buyurtma tugmasi bo‘lmaydi.'),
                     value: _orders,
                     onChanged: _busy ? null : (v) => setState(() => _orders = v),
                   ),
                   const SizedBox(height: S.x24),
-                  PrimaryButton('Saqlash', loading: _busy, onTap: _busy ? null : _save),
+                  PrimaryButton(tr('Saqlash'), loading: _busy, onTap: _busy ? null : _save),
                   const SizedBox(height: S.x12),
                   // HALOL BO'LISH: ilovada hamma narsa yo'q va bu
                   // ochiq aytiladi — odam yo'q tugmani qidirib
                   // vaqtini yo'qotmasin.
                   Text(
-                    'Ish vaqti, katalog, galereya va o‘z domeni saytdan '
-                    'sozlanadi.',
+                    tr('Ish vaqti, katalog, galereya va o‘z domeni saytdan '
+                        'sozlanadi.'),
                     textAlign: TextAlign.center,
                     style: T.caption.copyWith(fontSize: 11),
                   ),

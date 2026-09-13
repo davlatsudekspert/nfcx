@@ -3,6 +3,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import '../l10n/strings.dart';
 
 /// ILOVA QULFI — PIN kod va barmoq izi / yuz.
 ///
@@ -174,7 +175,7 @@ class AppLock extends ChangeNotifier {
     if (!_biometricEnabled) return false;
     try {
       final ok = await _auth.authenticate(
-        localizedReason: 'NFCSTORE ni ochish uchun tasdiqlang',
+        localizedReason: tr('NFCSTORE ni ochish uchun tasdiqlang'),
         options: const AuthenticationOptions(
           biometricOnly: false,
           stickyAuth: true,

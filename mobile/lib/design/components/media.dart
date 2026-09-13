@@ -99,7 +99,7 @@ class NetImage extends StatelessWidget {
         fadeInDuration: M.image,
         fadeOutDuration: Duration.zero,
         memCacheWidth: (logicalCap * dpr).round(),
-        placeholder: (_, __) => const ColoredBox(color: C.placeholder),
+        placeholder: (_, __) => ColoredBox(color: C.placeholder),
         errorWidget: (_, __, ___) => MediaSlot(label: slotLabel, radius: 0),
       ),
     );

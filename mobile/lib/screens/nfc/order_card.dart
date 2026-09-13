@@ -15,6 +15,7 @@ import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../../design/feedback.dart';
+import '../../l10n/strings.dart';
 
 /// JISMONIY KARTA BUYURTMASI.
 ///
@@ -93,7 +94,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
 
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty || _phone.text.replaceAll(RegExp(r'\D'), '').length < 7) {
-      setState(() => _error = 'Ism va telefon raqamini to‘liq kiriting.');
+      setState(() => _error = tr('Ism va telefon raqamini to‘liq kiriting.'));
       return;
     }
     setState(() {
@@ -137,11 +138,11 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
 
   String _cardError(ApiError e) => switch (e.key) {
         'feature_locked' =>
-          'Jismoniy karta Silver va undan yuqori ID uchun. ID tarifingizni ko‘taring.',
-        'payments_disabled' => 'To‘lov tizimi hozir o‘chirilgan.',
-        'shipping_required' => 'Ism va telefon raqami kerak.',
-        'bad_quantity' => 'Sonni tekshiring.',
-        'forbidden' => 'Bu ID sizga tegishli emas.',
+          tr('Jismoniy karta Silver va undan yuqori ID uchun. ID tarifingizni ko‘taring.'),
+        'payments_disabled' => tr('To‘lov tizimi hozir o‘chirilgan.'),
+        'shipping_required' => tr('Ism va telefon raqami kerak.'),
+        'bad_quantity' => tr('Sonni tekshiring.'),
+        'forbidden' => tr('Bu ID sizga tegishli emas.'),
         _ => humanError(e),
       };
 
@@ -157,18 +158,21 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(),
-                const Text('Buyurtma\nyaratildi', style: T.display),
+                Text(tr('Buyurtma\nyaratildi'), style: T.display),
                 const SizedBox(height: S.x12),
                 Text(
-                  'To‘lovni yakunlang — shundan keyin karta chop etishga '
-                  'ketadi. Yetkazish $_minDays–$_maxDays kun.',
+                  trf(
+                    'To‘lovni yakunlang — shundan keyin karta chop etishga '
+                    'ketadi. Yetkazish {kun} kun.',
+                    {'kun': '$_minDays–$_maxDays'},
+                  ),
                   style: T.body,
                 ),
                 const SizedBox(height: S.x24),
                 Surface(
                   child: Row(
                     children: [
-                      const Text('Summa', style: T.caption),
+                      Text(tr('Summa'), style: T.caption),
                       const Spacer(),
                       Text('${som(_order!.price)} so‘m', style: T.price.copyWith(fontSize: 15)),
                     ],
@@ -177,11 +181,11 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                 const Spacer(),
                 if (_order!.payLink != null)
                   PrimaryButton(
-                    'To‘lov sahifasini ochish',
+                    tr('To‘lov sahifasini ochish'),
                     onTap: () => openExternal(Uri.parse(_order!.payLink!)),
                   ),
                 const SizedBox(height: S.x8),
-                GhostButton('Yopish', onTap: () => Navigator.of(context).pop()),
+                GhostButton(tr('Yopish'), onTap: () => Navigator.of(context).pop()),
                 const SizedBox(height: S.x24),
               ],
             ),
@@ -199,7 +203,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
         bottom: false,
         child: Column(
           children: [
-            const TopBar(title: 'Jismoniy karta'),
+            TopBar(title: tr('Jismoniy karta')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x24),
@@ -239,10 +243,10 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                     shadow: E.e1,
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Karta maketi (ism va logotip joylashuvi) buyurtmadan '
-                            'keyin siz bilan kelishiladi.',
+                            tr('Karta maketi (ism va logotip joylashuvi) buyurtmadan ') +
+                            tr('keyin siz bilan kelishiladi.'),
                             style: T.caption,
                           ),
                         ),
@@ -252,16 +256,16 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                   const SizedBox(height: S.x20),
                   Row(
                     children: [
-                      const Eyebrow('Soni'),
+                      Eyebrow(tr('Soni')),
                       const Spacer(),
                       _Stepper(value: _qty, onChange: (v) => setState(() => _qty = v)),
                     ],
                   ),
                   const SizedBox(height: S.x20),
-                  Field(label: 'Ism', controller: _name, hint: 'Kartada yoziladigan ism'),
+                  Field(label: tr('Ism'), controller: _name, hint: tr('Kartada yoziladigan ism')),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Telefon',
+                    label: tr('Telefon'),
                     controller: _phone,
                     hint: '+998 90 123 45 67',
                     keyboardType: TextInputType.phone,
@@ -269,10 +273,10 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Manzil · ixtiyoriy',
+                    label: tr('Manzil · ixtiyoriy'),
                     controller: _address,
                     maxLines: 2,
-                    hint: 'Yetkazish manzili',
+                    hint: tr('Yetkazish manzili'),
                     helper: 'Yetkazish $_minDays–$_maxDays kun',
                     error: _error,
                   ),
@@ -284,7 +288,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                 S.gutter, S.x12, S.gutter,
                 MediaQuery.paddingOf(context).bottom + S.x12,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: C.obsidian,
                 border: Border(top: BorderSide(color: C.hairline)),
               ),
@@ -292,7 +296,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text('Karta narxi', style: T.caption),
+                      Text(tr('Karta narxi'), style: T.caption),
                       const Spacer(),
                       if (_loading)
                         const Spinner(size: 13)
@@ -305,7 +309,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                   ),
                   const SizedBox(height: S.x12),
                   PrimaryButton(
-                    'Buyurtma berish',
+                    tr('Buyurtma berish'),
                     loading: _busy,
                     onTap: _busy || _loading ? null : _submit,
                   ),

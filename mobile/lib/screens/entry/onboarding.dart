@@ -6,6 +6,7 @@ import '../../design/components/media.dart';
 import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 
 /// Uch panelli tanishtiruv.
 ///
@@ -24,22 +25,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pager = PageController();
   int _page = 0;
 
-  static const _panels = [
+  static final _panels = [
     (
-      title: 'Bitta teginish —\nbarcha kontaktlaringiz',
-      body: 'Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim '
-          'ma‘lumotlaringizni bitta raqamli profilda jamlang va NFC karta '
-          'orqali ulashing.',
+      title: tr('Bitta teginish —\nbarcha kontaktlaringiz'),
+      body: tr('Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ') +
+          tr('ma‘lumotlaringizni bitta raqamli profilda jamlang va NFC karta ') +
+          tr('orqali ulashing.'),
     ),
     (
-      title: 'Bitta akkaunt,\nko‘p shaxs',
-      body: 'Shaxsiy va biznes ID‘laringiz bir joyda. Sarlavhaga tegib, '
-          'faol shaxsni bir tegishda almashtirasiz.',
+      title: tr('Bitta akkaunt,\nko‘p shaxs'),
+      body: tr('Shaxsiy va biznes ID‘laringiz bir joyda. Sarlavhaga tegib, ') +
+          tr('faol shaxsni bir tegishda almashtirasiz.'),
     ),
     (
-      title: 'Biznesingiz —\nmobil do‘kon',
-      body: 'Mahsulot, narx, ish vaqti va buyurtma — hammasi profilingizda. '
-          'Mijoz kartani o‘qiydi va to‘g‘ridan-to‘g‘ri buyurtma beradi.',
+      title: tr('Biznesingiz —\nmobil do‘kon'),
+      body: tr('Mahsulot, narx, ish vaqti va buyurtma — hammasi profilingizda. ') +
+          tr('Mijoz kartani o‘qiydi va to‘g‘ridan-to‘g‘ri buyurtma beradi.'),
     ),
   ];
 
@@ -74,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.all(S.x8),
-                    child: Text('O‘tkazish', style: T.caption.copyWith(color: C.ash)),
+                    child: Text(tr('O‘tkazish'), style: T.caption.copyWith(color: C.ash)),
                   ),
                 ),
               ),
@@ -107,10 +108,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.fromLTRB(S.gutter, S.x24, S.gutter, S.x16),
               child: Column(
                 children: [
-                  PrimaryButton(last ? 'Boshlash' : 'Keyingisi', onTap: _next),
+                  PrimaryButton(last ? tr('Boshlash') : tr('Keyingisi'), onTap: _next),
                   if (last) ...[
                     const SizedBox(height: S.x12),
-                    GhostButton('Akkauntim bor', onTap: widget.onDone),
+                    GhostButton(tr('Akkauntim bor'), onTap: widget.onDone),
                   ],
                 ],
               ),
@@ -147,10 +148,10 @@ class _Panel extends StatelessWidget {
   Widget _art(int i) {
     switch (i) {
       case 0:
-        return const Center(
+        return Center(
           child: IdentityCard(
             code: 'VIP001', holder: 'Aziz Karimov',
-            subtitle: 'Shaxsiy profil', taps: 284, tier: Tier.exclusive,
+            subtitle: tr('Shaxsiy profil'), taps: 284, tier: Tier.exclusive,
           ),
         );
       case 1:
@@ -170,9 +171,9 @@ class _Panel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(
+              SizedBox(
                 height: 92, width: double.infinity,
-                child: MediaSlot(label: 'COVER 16:7', radius: R.card),
+                child: MediaSlot(label: tr('COVER 16:7'), radius: R.card),
               ),
               Padding(
                 padding: const EdgeInsets.all(S.x12),
@@ -180,16 +181,16 @@ class _Panel extends StatelessWidget {
                   children: [
                     const Avatar(name: 'Ali Market', size: 38),
                     const SizedBox(width: S.x12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Ali Market', style: T.cardTitle),
-                          Text('Do‘kon · Toshkent', style: T.caption),
+                          Text(tr('Do‘kon · Toshkent'), style: T.caption),
                         ],
                       ),
                     ),
-                    const StatusChip('Ochiq', tone: StatusTone.ok),
+                    StatusChip(tr('Ochiq'), tone: StatusTone.ok),
                   ],
                 ),
               ),
@@ -234,7 +235,7 @@ class _IdRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (active) const NIcon(Ico.check, size: 16, color: C.champagne),
+            if (active) NIcon(Ico.check, size: 16, color: C.champagne),
           ],
         ),
       );

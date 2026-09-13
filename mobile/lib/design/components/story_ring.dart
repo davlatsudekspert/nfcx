@@ -101,13 +101,13 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                   // Halqa bilan avatar orasida fon rangidagi bo'shliq.
                   Container(
                     width: widget.size - 5, height: widget.size - 5,
-                    decoration: const BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
                   ),
                   if (widget.addButton)
                     Container(
                       width: widget.size - 9, height: widget.size - 9,
-                      decoration: const BoxDecoration(color: C.graphite, shape: BoxShape.circle),
-                      child: const Center(
+                      decoration: BoxDecoration(color: C.graphite, shape: BoxShape.circle),
+                      child: Center(
                         child: Text('+', style: TextStyle(
                           fontFamily: 'Manrope', fontSize: 24,
                           fontWeight: FontWeight.w400, color: C.champagne, height: 1,
@@ -160,7 +160,7 @@ class _ConicRingPainter extends CustomPainter {
     final p = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
-      ..shader = const SweepGradient(
+      ..shader = SweepGradient(
         colors: [C.antiqueGold, C.champagne, Color(0xFFF3E3C4), C.antiqueGold],
         stops: [0, .35, .6, 1],
       ).createShader(rect);

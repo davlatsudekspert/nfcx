@@ -10,6 +10,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../common/top_bar.dart';
 import '../orders/order_flow.dart';
+import '../../l10n/strings.dart';
 
 /// Mahsulot kartochkasi — 1:1 rasm, nom, narx.
 ///
@@ -149,7 +150,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           itemBuilder: (_, i) {
                             final img = NetImage(
                               images[i].isEmpty ? null : images[i],
-                              slotLabel: 'MAHSULOT 1:1',
+                              slotLabel: tr('MAHSULOT 1:1'),
                               radius: R.card,
                             );
                             // Faqat BIRINCHI rasm Hero: qolganlari
@@ -235,12 +236,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 S.gutter, S.x12, S.gutter,
                 MediaQuery.paddingOf(context).bottom + S.x12,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: C.obsidian,
                 border: Border(top: BorderSide(color: C.hairline)),
               ),
               child: PrimaryButton(
-                'Buyurtma berish',
+                tr('Buyurtma berish'),
                 onTap: widget.companyId == null
                     ? null
                     : () => push(

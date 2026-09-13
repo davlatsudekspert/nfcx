@@ -9,6 +9,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../common/top_bar.dart';
 import '../payment/payment_screen.dart';
+import '../../l10n/strings.dart';
 
 /// NFC ID tafsiloti — ID katta, tarif, narx, nimalar kiradi, olish.
 class IdDetailScreen extends StatelessWidget {
@@ -21,11 +22,11 @@ class IdDetailScreen extends StatelessWidget {
     final rank = Tier.values.indexOf(record.tier);
     bool at(Tier t) => rank >= Tier.values.indexOf(t);
     return [
-      (label: 'Katalog va mahsulotlar', on: at(Tier.bronze)),
-      (label: 'Story va postlar', on: at(Tier.silver)),
-      (label: 'Statistika va tahlil', on: at(Tier.gold)),
-      (label: 'Tasdiqlangan nishon', on: at(Tier.gold)),
-      (label: 'Jamoa ID‘lari', on: at(Tier.premium)),
+      (label: tr('Katalog va mahsulotlar'), on: at(Tier.bronze)),
+      (label: tr('Story va postlar'), on: at(Tier.silver)),
+      (label: tr('Statistika va tahlil'), on: at(Tier.gold)),
+      (label: tr('Tasdiqlangan nishon'), on: at(Tier.gold)),
+      (label: tr('Jamoa ID‘lari'), on: at(Tier.premium)),
     ];
   }
 
@@ -89,7 +90,7 @@ class IdDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Nimalar kiradi'),
+                  Eyebrow(tr('Nimalar kiradi')),
                   const SizedBox(height: S.x12),
                   for (final f in _features()) ...[
                     Row(
@@ -117,7 +118,7 @@ class IdDetailScreen extends StatelessWidget {
                 S.gutter, S.x12, S.gutter,
                 MediaQuery.paddingOf(context).bottom + S.x12,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: C.obsidian,
                 border: Border(top: BorderSide(color: C.hairline)),
               ),
@@ -128,7 +129,7 @@ class IdDetailScreen extends StatelessWidget {
                     onTap: () => push(context, (_) => PaymentScreen(record: record)),
                   ),
                   const SizedBox(height: 7),
-                  Text('Payme yoki Click orqali to‘lov',
+                  Text(tr('Payme yoki Click orqali to‘lov'),
                       style: T.caption.copyWith(fontSize: 11, color: C.muted)),
                 ],
               ),

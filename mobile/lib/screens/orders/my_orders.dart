@@ -11,6 +11,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// MENING BUYURTMALARIM — va TO'LOVNI DAVOM ETTIRISH.
 ///
@@ -81,7 +82,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           bottom: false,
           child: Column(
             children: [
-              const TopBar(title: 'Buyurtmalarim'),
+              TopBar(title: tr('Buyurtmalarim')),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _load,
@@ -93,7 +94,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     data: _orders,
                     onRetry: _load,
                     isEmpty: (d) => d.isEmpty,
-                    emptyMessage: 'Hali buyurtmangiz yo‘q.',
+                    emptyMessage: tr('Hali buyurtmangiz yo‘q.'),
                     skeleton: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                       children: const [SkeletonRow(), SkeletonRow(), SkeletonRow()],
@@ -120,16 +121,16 @@ class _OrderCard extends StatelessWidget {
 
   /// Buyurtma turi — odam tilida.
   String get _kind => switch (order.kind) {
-        'physical_card_order' => 'Jismoniy karta',
-        'premium_upgrade' => 'Premium obuna',
-        _ => 'NFC ID',
+        'physical_card_order' => tr('Jismoniy karta'),
+        'premium_upgrade' => tr('Premium obuna'),
+        _ => tr('NFC ID'),
       };
 
   ({String label, StatusTone tone}) get _status => switch (order.status) {
-        'paid' => (label: 'To‘langan', tone: StatusTone.ok),
-        'pending' => (label: 'Kutilmoqda', tone: StatusTone.pending),
-        'cancelled' => (label: 'Bekor qilingan', tone: StatusTone.neutral),
-        'failed' => (label: 'Amalga oshmadi', tone: StatusTone.fail),
+        'paid' => (label: tr('To‘langan'), tone: StatusTone.ok),
+        'pending' => (label: tr('Kutilmoqda'), tone: StatusTone.pending),
+        'cancelled' => (label: tr('Bekor qilingan'), tone: StatusTone.neutral),
+        'failed' => (label: tr('Amalga oshmadi'), tone: StatusTone.fail),
         _ => (label: order.status, tone: StatusTone.neutral),
       };
 
@@ -184,13 +185,13 @@ class _OrderCard extends StatelessWidget {
               )
             else
               Text(
-                'To‘lov yakunlanmagan.',
+                tr('To‘lov yakunlanmagan.'),
                 style: T.caption.copyWith(fontSize: 11, color: C.champagne),
               ),
             if (link != null) ...[
               const SizedBox(height: S.x12),
               SecondaryButton(
-                'To‘lovni davom ettirish',
+                tr('To‘lovni davom ettirish'),
                 height: 44,
                 onTap: () => openExternal(Uri.parse(link)),
               ),

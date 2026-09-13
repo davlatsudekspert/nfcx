@@ -12,6 +12,7 @@ import 'icons.dart';
 import 'media.dart';
 import 'press.dart';
 import 'states.dart';
+import '../../l10n/strings.dart';
 
 /// RASM TANLASH VA YUKLASH MAYDONI.
 ///
@@ -91,9 +92,9 @@ class _MediaPickFieldState extends State<MediaPickField> {
         // Yuklanmagan rasm ko'rsatib turish yolg'on bo'lardi.
         _preview = null;
         _error = switch (e.key) {
-          'too_large' => 'Rasm juda katta.',
-          'bad_image' => 'Bu fayl rasm emas.',
-          'too_many_requests' => 'Juda ko‘p urinish. Birozdan keyin qayta urining.',
+          'too_large' => tr('Rasm juda katta.'),
+          'bad_image' => tr('Bu fayl rasm emas.'),
+          'too_many_requests' => tr('Juda ko‘p urinish. Birozdan keyin qayta urining.'),
           _ => humanError(e),
         };
       });
@@ -180,9 +181,9 @@ class _MediaPickFieldState extends State<MediaPickField> {
                   SizedBox(
                     width: 170,
                     child: SecondaryButton(
-                      widget.url == null && preview == null ? 'Tanlash' : 'Almashtirish',
+                      widget.url == null && preview == null ? tr('Tanlash') : tr('Almashtirish'),
                       height: 42,
-                      icon: const NIcon(Ico.image, size: 16, color: C.platinum),
+                      icon: NIcon(Ico.image, size: 16, color: C.platinum),
                       onTap: _busy ? null : _pick,
                     ),
                   ),

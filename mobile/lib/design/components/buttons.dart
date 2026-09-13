@@ -33,7 +33,7 @@ class PrimaryButton extends StatelessWidget {
             boxShadow: enabled ? E.e2 : null,
           ),
           child: loading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18, height: 18,
                   child: _Spinner(color: C.ink),
                 )
@@ -196,11 +196,17 @@ class _ArcPainter extends CustomPainter {
 
 /// Ochiq spinner — yuklanish holatlarida kerak bo'lganda.
 class Spinner extends StatelessWidget {
-  const Spinner({super.key, this.size = 18, this.color = C.champagne});
+  // Rang MAVZUGA bog'liq, ya'ni `const` standart qiymat bo'la
+  // olmaydi. `null` -> build ichida joriy urg'u olinadi.
+  const Spinner({super.key, this.size = 18, this.color});
   final double size;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) =>
-      SizedBox(width: size, height: size, child: _Spinner(color: color));
+      SizedBox(
+        width: size,
+        height: size,
+        child: _Spinner(color: color ?? C.champagne),
+      );
 }

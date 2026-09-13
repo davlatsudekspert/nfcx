@@ -8,6 +8,7 @@ import '../../design/type.dart';
 import '../../state/app_lock.dart';
 import '../common/top_bar.dart';
 import '../../design/feedback.dart';
+import '../../l10n/strings.dart';
 
 /// PIN O'RNATISH — ikki qadam: kiriting, keyin tasdiqlang.
 ///
@@ -71,15 +72,15 @@ class _SetPinScreenState extends State<SetPinScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              const TopBar(title: 'PIN kod'),
+              TopBar(title: tr('PIN kod')),
               const Spacer(),
-              Text(_confirming ? 'Kodni takrorlang' : 'Yangi kod', style: T.displaySm),
+              Text(_confirming ? tr('Kodni takrorlang') : tr('Yangi kod'), style: T.displaySm),
               const SizedBox(height: S.x8),
               Text(
                 _error
-                    ? 'Kodlar mos kelmadi. Qaytadan boshlang.'
+                    ? tr('Kodlar mos kelmadi. Qaytadan boshlang.')
                     : _confirming
-                        ? 'Xato bo‘lmasligi uchun yana bir marta'
+                        ? tr('Xato bo‘lmasligi uchun yana bir marta')
                         : '${AppLock.pinLength} xonali kod o‘ylab toping',
                 style: T.caption.copyWith(color: _error ? C.signal : C.ash),
               ),

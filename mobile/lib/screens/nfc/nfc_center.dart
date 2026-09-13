@@ -25,6 +25,7 @@ import '../../design/feedback.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/buttons.dart';
 import '../../data/api_client.dart';
+import '../../l10n/strings.dart';
 
 /// NFC CENTER — mahsulotning o'zagi.
 ///
@@ -56,13 +57,13 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
         child: Column(
           children: [
-            SecondaryButton('Asosiy ID qilish',
+            SecondaryButton(tr('Asosiy ID qilish'),
                 onTap: () => Navigator.of(context).pop('primary')),
             const SizedBox(height: S.x8),
             // O'CHIRISH — qaytarib bo'lmaydi va shuning uchun rangi
             // bilan ajralib turadi. Server oxirgi ID ni o'chirishga
             // yo'l qo'ymaydi.
-            GhostButton('ID‘ni o‘chirish',
+            GhostButton(tr('ID‘ni o‘chirish'),
                 color: C.signal, onTap: () => Navigator.of(context).pop('delete')),
           ],
         ),
@@ -85,16 +86,16 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
     final sure = await showSheet<bool>(
       context,
       title: '${record.code} o‘chirilsinmi?',
-      subtitle: 'Profil, postlar va statistika butunlay yo‘qoladi. '
-          'Buni qaytarib bo‘lmaydi.',
+      subtitle: tr('Profil, postlar va statistika butunlay yo‘qoladi. ') +
+          tr('Buni qaytarib bo‘lmaydi.'),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
         child: Column(
           children: [
-            GhostButton('Ha, o‘chirilsin',
+            GhostButton(tr('Ha, o‘chirilsin'),
                 color: C.signal, onTap: () => Navigator.of(context).pop(true)),
             const SizedBox(height: S.x8),
-            SecondaryButton('Bekor qilish',
+            SecondaryButton(tr('Bekor qilish'),
                 onTap: () => Navigator.of(context).pop(false)),
           ],
         ),
@@ -110,7 +111,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
       errorHaptic();
       if (mounted) {
         _toast(e.key == 'last_card'
-            ? 'Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.'
+            ? tr('Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.')
             : humanError(e));
       }
     } catch (e) {
@@ -122,11 +123,11 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
   void _toast(String message) {
     showSheet<void>(
       context,
-      title: 'Bajarilmadi',
+      title: tr('Bajarilmadi'),
       subtitle: message,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: SecondaryButton('Yopish',
+        child: SecondaryButton(tr('Yopish'),
             onTap: () => Navigator.of(context).pop()),
       ),
     );
@@ -170,7 +171,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: S.x32),
           children: [
-            ScreenTitle('NFC', subtitle: 'ID‘laringiz va kartalar', trailing: const IdChip()),
+            ScreenTitle('NFC', subtitle: tr('ID‘laringiz va kartalar'), trailing: const IdChip()),
             // IMZO DETALI — faqat shu ekranda. Metall qirrasi kabi
             // chapdan o'ngga so'nadi.
             const Padding(
@@ -182,10 +183,10 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                 child: Column(
                   children: [
-                    const EmptyState(
-                      'ID — bu sizning raqamli vizitkangiz. Katalogdan '
-                      'bo‘sh kod tanlab boshlang.',
-                      title: 'Hali NFC ID‘ingiz yo‘q',
+                    EmptyState(
+                      tr('ID — bu sizning raqamli vizitkangiz. Katalogdan ') +
+                      tr('bo‘sh kod tanlab boshlang.'),
+                      title: tr('Hali NFC ID‘ingiz yo‘q'),
                       icon: Ico.nfc,
                     ),
                     _NewIdCard(onTap: () => push(context, (_) => const IdCatalogScreen())),
@@ -203,12 +204,12 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Eyebrow('Faol ID'),
+                    Eyebrow(tr('Faol ID')),
                     const SizedBox(height: S.x8),
                     IdentityCard(
                       code: active.code,
                       holder: active.name,
-                      subtitle: active.isBusiness ? 'Biznes' : 'Shaxsiy',
+                      subtitle: active.isBusiness ? tr('Biznes') : tr('Shaxsiy'),
                       tier: active.isBusiness ? Tier.gold : (active.record?.tier ?? Tier.free),
                       // Havola va ko'rishlar soni — bu ekran
                       // mahsulotning o'zagi, karta shu yerda eng to'liq
@@ -231,7 +232,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
             ),
             if (owned.isNotEmpty) ...[
               const SizedBox(height: S.x32),
-              SectionHeader('Mening ID‘larim', actionLabel: '${owned.length} TA'),
+              SectionHeader(tr('Mening ID‘larim'), actionLabel: '${owned.length} TA'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                 child: Column(
@@ -278,16 +279,16 @@ class _Actions extends StatelessWidget {
 
     final items = <({Ico icon, String label, VoidCallback? onTap})>[
       (icon: Ico.qr, label: 'QR', onTap: () => push(context, (_) => QrShareScreen(identity: active))),
-      (icon: Ico.share, label: 'Ulashish', onTap: () => shareIdentity(active)),
+      (icon: Ico.share, label: tr('Ulashish'), onTap: () => shareIdentity(active)),
       (
         icon: Ico.card,
-        label: 'Karta',
+        label: tr('Karta'),
         // Jismoniy karta faqat O'Z shaxsiy ID'siga buyurtma qilinadi.
         onTap: ownsCard ? () => push(context, (_) => OrderCardScreen(record: card)) : null,
       ),
       (
         icon: Ico.gift,
-        label: 'Sovg‘a',
+        label: tr('Sovg‘a'),
         onTap: ownsCard ? () => push(context, (_) => GiftIdScreen(record: card)) : null,
       ),
     ];
@@ -338,15 +339,15 @@ class _NfcActions extends StatelessWidget {
         children: [
           _NfcRow(
             icon: Ico.nfc,
-            title: 'Kartani o‘qish',
-            sub: 'Begona kartani tegizib, profilini oching',
+            title: tr('Kartani o‘qish'),
+            sub: tr('Begona kartani tegizib, profilini oching'),
             onTap: () => push(context, (_) => const NfcScanScreen()),
           ),
           const SizedBox(height: S.x8),
           _NfcRow(
             icon: Ico.edit,
-            title: 'Kartaga yozish',
-            sub: 'Bo‘sh kartaga o‘z ID havolangizni yozing',
+            title: tr('Kartaga yozish'),
+            sub: tr('Bo‘sh kartaga o‘z ID havolangizni yozing'),
             onTap: () => push(context, (_) => const NfcWriteScreen()),
           ),
           const SizedBox(height: S.x8),
@@ -354,8 +355,8 @@ class _NfcActions extends StatelessWidget {
           // ham topilishi kerak. Taklif tasdiqlanmasa ID o'tmaydi.
           _NfcRow(
             icon: Ico.gift,
-            title: 'Sovg‘a takliflari',
-            sub: 'Sizga sovg‘a qilingan ID‘larni qabul qiling',
+            title: tr('Sovg‘a takliflari'),
+            sub: tr('Sizga sovg‘a qilingan ID‘larni qabul qiling'),
             onTap: () => push(context, (_) => const GiftOffersScreen()),
           ),
         ],
@@ -446,7 +447,7 @@ class _OwnedRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (active) const StatusChip('Faol', tone: StatusTone.pending),
+              if (active) StatusChip(tr('Faol'), tone: StatusTone.pending),
               // BOSHQARISH — asosiy qilish va o'chirish shu yerda.
               // Ilgari bu ikkala amalning ilovada yo'li YO'Q edi.
               Press(
@@ -478,15 +479,15 @@ class _NewIdCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const NIcon(Ico.plus, size: 20, color: C.champagne),
+              NIcon(Ico.plus, size: 20, color: C.champagne),
               const SizedBox(width: S.x12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Yangi NFC ID olish', style: T.cardTitle),
+                    Text(tr('Yangi NFC ID olish'), style: T.cardTitle),
                     SizedBox(height: 2),
-                    Text('Bronze‘dan Exclusive‘gacha', style: T.caption),
+                    Text(tr('Bronze‘dan Exclusive‘gacha'), style: T.caption),
                   ],
                 ),
               ),

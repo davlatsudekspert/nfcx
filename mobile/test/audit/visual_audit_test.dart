@@ -23,7 +23,9 @@ import 'package:nfcstore/screens/nfc/id_detail.dart';
 import 'package:nfcstore/design/components/icons.dart';
 import 'package:nfcstore/design/components/identity_card.dart';
 import 'package:nfcstore/design/components/states.dart';
+import 'package:nfcstore/l10n/strings.dart';
 import 'package:nfcstore/screens/business/create_company.dart';
+import 'package:nfcstore/screens/settings/appearance.dart';
 import 'package:nfcstore/screens/business/edit_business.dart';
 import 'package:nfcstore/screens/content/compose.dart';
 import 'package:nfcstore/screens/entry/gift_card.dart';
@@ -204,7 +206,7 @@ void main() {
 
   testWidgets('20 ega buyurtmalari', (t) async {
     final s = await ready();
-    await pumpScreen(t, const OwnerOrdersScreen(
+    await pumpScreen(t, OwnerOrdersScreen(
       companyId: 'DDD333', companyName: 'NFCSTORE',
     ), state: s);
     await golden(t, '20-ega-buyurtmalari');
@@ -248,7 +250,7 @@ void main() {
       t,
       Builder(builder: (c) => GestureDetector(
         onTap: () => showIdentitySwitcher(c),
-        child: const ColoredBox(color: C.obsidian, child: SizedBox.expand()),
+        child: ColoredBox(color: C.obsidian, child: SizedBox.expand()),
       )),
       state: s,
     );
@@ -372,7 +374,7 @@ void main() {
 
   testWidgets('34 biznes hisob ochish', (t) async {
     final s = await ready();
-    await pumpScreen(t, const CreateCompanyScreen(), state: s);
+    await pumpScreen(t, CreateCompanyScreen(), state: s);
     await golden(t, '34-biznes-ochish');
   });
 
@@ -443,6 +445,40 @@ void main() {
     final s = await ready(mode: AuditMode.offline);
     await pumpScreen(t, const ProfileScreen(companyId: 'QQQ777'), state: s);
     await golden(t, '43-biznes-tarmoq-yoq');
+  });
+
+  // ── MAVZULAR ───────────────────────────────────────────────────────
+  //
+  // To'rt mavzu BIR XIL ekranda. Farqni shundan boshqa yo'l bilan
+  // baholab bo'lmaydi: "yashil mavzu" degan yozuvni o'qib, u qanday
+  // ko'rinishini bilib bo'lmaydi.
+  for (final p in Palette.all)
+    testWidgets('44 mavzu — ${p.id}', (t) async {
+      C.apply(p);
+      addTearDown(() => C.apply(Palette.original));
+      final s = await ready();
+      await pumpScreen(t, const NfcCenterScreen(), state: s);
+      await golden(t, '44-mavzu-${p.id}');
+    });
+
+  // ── TILLAR ─────────────────────────────────────────────────────────
+  //
+  // Tarjima UZUNROQ bo'lishi mumkin ("Sozlamalar" -> "Настройки" ->
+  // "Settings") va maketni buzishi mumkin. Buni faqat kadrni ko'rib
+  // aniqlash mumkin.
+  for (final l in AppLocale.values)
+    testWidgets('45 til — ${l.code}', (t) async {
+      applyLocale(l);
+      addTearDown(() => applyLocale(AppLocale.uz));
+      final s = await ready();
+      await pumpScreen(t, const SettingsScreen(), state: s);
+      await golden(t, '45-til-${l.code}');
+    });
+
+  testWidgets('46 ko‘rinish sozlamasi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const AppearanceScreen(), state: s);
+    await golden(t, '46-korinish');
   });
 }
 

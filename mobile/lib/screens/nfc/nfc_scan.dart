@@ -12,6 +12,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../identity/profile_screen.dart';
+import '../../l10n/strings.dart';
 
 /// NFC SKANER — begona kartani telefonga tegizib, profilini ochish.
 ///
@@ -97,7 +98,7 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
   Widget build(BuildContext context) => SafeArea(
         child: Column(
           children: [
-            const TopBar(title: 'Kartani o‘qish'),
+            TopBar(title: tr('Kartani o‘qish')),
             Expanded(child: Center(child: _body())),
           ],
         ),
@@ -113,27 +114,27 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
         // O'CHIRILGAN bo'ladi. Foydalanuvchi tizim sozlamalaridan
         // yoqib qaytadi — shu yerdayoq qayta tekshira olsin.
         return _Message(
-          title: 'Bu qurilmada NFC yo‘q',
-          text: 'NFC o‘chirilgan yoki qurilma uni qo‘llab-quvvatlamaydi. '
-              'Sozlamalardan NFC‘ni yoqib, qayta tekshiring.',
-          actionLabel: 'Qayta tekshirish',
+          title: tr('Bu qurilmada NFC yo‘q'),
+          text: tr('NFC o‘chirilgan yoki qurilma uni qo‘llab-quvvatlamaydi. ') +
+              tr('Sozlamalardan NFC‘ni yoqib, qayta tekshiring.'),
+          actionLabel: tr('Qayta tekshirish'),
           onAction: _start,
         );
 
       case _Phase.unknown:
         return _Message(
-          title: 'Karta tanilmadi',
-          text: 'Bu karta NFCSTORE kartasi emas yoki hali faollashtirilmagan.',
-          actionLabel: 'Qayta urinish',
+          title: tr('Karta tanilmadi'),
+          text: tr('Bu karta NFCSTORE kartasi emas yoki hali faollashtirilmagan.'),
+          actionLabel: tr('Qayta urinish'),
           onAction: _start,
         );
 
       case _Phase.error:
         return _Message(
-          title: 'Karta sezilmadi',
-          text: 'Kartani telefon orqasining yuqori qismiga yaqinroq '
-              'tuting va bir necha soniya ushlab turing.',
-          actionLabel: 'Qayta urinish',
+          title: tr('Karta sezilmadi'),
+          text: tr('Kartani telefon orqasining yuqori qismiga yaqinroq ') +
+              tr('tuting va bir necha soniya ushlab turing.'),
+          actionLabel: tr('Qayta urinish'),
           onAction: _start,
         );
 
@@ -145,19 +146,19 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
             children: [
               const _Pulse(),
               const SizedBox(height: S.x32),
-              Text('Kartani telefonga tegizing',
+              Text(tr('Kartani telefonga tegizing'),
                   textAlign: TextAlign.center, style: T.section),
               const SizedBox(height: S.x8),
               Text(
-                'Kartani telefon orqasining yuqori qismiga yaqinlashtiring '
-                'va bir necha soniya ushlab turing.',
+                tr('Kartani telefon orqasining yuqori qismiga yaqinlashtiring ') +
+                tr('va bir necha soniya ushlab turing.'),
                 textAlign: TextAlign.center,
                 style: T.caption,
               ),
               const SizedBox(height: S.x32),
               SizedBox(
                 width: 200,
-                child: GhostButton('Bekor qilish',
+                child: GhostButton(tr('Bekor qilish'),
                     onTap: () => Navigator.of(context).maybePop()),
               ),
             ],
@@ -242,7 +243,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
               Container(
                 width: 72,
                 height: 72,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -251,7 +252,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
                   ),
                 ),
                 alignment: Alignment.center,
-                child: const NIcon(Ico.nfc, size: 30, color: C.champagne),
+                child: NIcon(Ico.nfc, size: 30, color: C.champagne),
               ),
             ],
           ),

@@ -17,6 +17,8 @@ import '../lock/set_pin_screen.dart';
 import '../orders/my_orders.dart';
 import '../identity/edit_profile.dart';
 import 'change_password.dart';
+import '../../l10n/strings.dart';
+import 'appearance.dart';
 
 /// SOZLAMALAR — va IKKI XIL TASDIQLASH.
 ///
@@ -58,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final res = await AppScope.read(context).repo.telegramLinkStart();
       final link = '${res['link'] ?? res['url'] ?? ''}';
       if (link.isEmpty) {
-        setState(() => _tgError = 'Telegram bot hozir sozlanmagan.');
+        setState(() => _tgError = tr('Telegram bot hozir sozlanmagan.'));
         return;
       }
       await openExternal(Uri.parse(link));
@@ -81,12 +83,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         bottom: false,
         child: Column(
           children: [
-            const TopBar(title: 'Sozlamalar'),
+            TopBar(title: tr('Sozlamalar')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
                 children: [
-                  const Eyebrow('Tasdiqlash'),
+                  Eyebrow(tr('Tasdiqlash')),
                   const SizedBox(height: S.x12),
 
                   // 1) HISOB — EMAIL. Ro'yxatdan o'tishda bajarilgan.
@@ -99,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Akkaunt — email', style: T.cardTitle),
+                              Text(tr('Akkaunt — email'), style: T.cardTitle),
                               const SizedBox(height: 2),
                               Text(
                                 email.isEmpty ? '—' : AppUser.mask(email),
@@ -108,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ],
                           ),
                         ),
-                        const StatusChip('Tasdiqlangan', tone: StatusTone.ok),
+                        StatusChip(tr('Tasdiqlangan'), tone: StatusTone.ok),
                       ],
                     ),
                   ),
@@ -121,22 +123,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Row(
                           children: [
-                            const Expanded(
-                              child: Text('Profilni tasdiqlash', style: T.cardTitle),
+                            Expanded(
+                              child: Text(tr('Profilni tasdiqlash'), style: T.cardTitle),
                             ),
                             if (active?.verified == true)
-                              const StatusChip('Tasdiqlangan', tone: StatusTone.ok),
+                              StatusChip(tr('Tasdiqlangan'), tone: StatusTone.ok),
                           ],
                         ),
                         const SizedBox(height: 5),
-                        const Text(
-                          'Telegram bot orqali profilingizni tasdiqlang. Tasdiqlangan '
-                          'nishon profilingizda ko‘rinadi.',
+                        Text(
+                          tr('Telegram bot orqali profilingizni tasdiqlang. Tasdiqlangan ') +
+                          tr('nishon profilingizda ko‘rinadi.'),
                           style: T.caption,
                         ),
                         const SizedBox(height: S.x12),
                         SecondaryButton(
-                          'Telegram orqali tasdiqlash',
+                          tr('Telegram orqali tasdiqlash'),
                           height: 46,
                           icon: const NIcon(Ico.telegram, size: 17, color: C.telegram),
                           onTap: _busyTg ? null : _startTelegram,
@@ -147,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                         const SizedBox(height: S.x8),
                         Text(
-                          'Tasdiqlash holati NFCSTORE serverida saqlanadi',
+                          tr('Tasdiqlash holati NFCSTORE serverida saqlanadi'),
                           style: T.caption.copyWith(fontSize: 10.5, color: C.muted),
                         ),
                       ],
@@ -155,16 +157,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Xavfsizlik'),
+                  Eyebrow(tr('Xavfsizlik')),
                   const SizedBox(height: S.x12),
                   _LockCard(available: _bioAvailable),
 
                   const SizedBox(height: S.x24),
-                  const Eyebrow('Akkaunt'),
+                  Eyebrow(tr('Akkaunt')),
                   const SizedBox(height: S.x12),
                   _Group([
                   _Row(
-                    label: 'Buyurtmalarim',
+                    label: tr('Buyurtmalarim'),
                     icon: Ico.bag,
                     onTap: () => push(context, (_) => const MyOrdersScreen()),
                   ),
@@ -172,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // edi — ko'rinishi tugma, xulqi esa yo'q. Endi u
                   // faol shaxsning tahrirlash ekranini ochadi.
                   _Row(
-                    label: 'Shaxsiy ma‘lumotlar',
+                    label: tr('Shaxsiy ma‘lumotlar'),
                     icon: Ico.user,
                     onTap: state.active?.record == null
                         ? null
@@ -182,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                   ),
                   _Row(
-                    label: 'Parolni o‘zgartirish',
+                    label: tr('Parolni o‘zgartirish'),
                     icon: Ico.lock,
                     onTap: () => push(context, (_) => const ChangePasswordScreen()),
                   ),
@@ -190,8 +192,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // deb yozib turardi, lekin ilovada push bildirishnoma
                   // umuman yo'q. Mavjud bo'lmagan imkoniyatni va'da
                   // qilishdan ko'ra, uni ko'rsatmagan ma'qul.
-                  _Row(label: 'Til', icon: Ico.globe, value: 'O‘zbekcha'),
-                  _Row(label: 'To‘lovlar', icon: Ico.card, value: 'Payme · Click', last: true),
+                  // KO'RINISH — mavzu va til bitta ekranda: ikkalasi
+                  // ham "ilova qanday ko'rinadi" degan savolga
+                  // tegishli va ikkalasi ham darhol qo'llanadi.
+                  _Row(
+                    label: tr('Ko‘rinish'),
+                    icon: Ico.globe,
+                    value: AppPrefsScope.of(context).locale.label,
+                    onTap: () => push(context, (_) => const AppearanceScreen()),
+                  ),
+                  _Row(label: tr('To‘lovlar'), icon: Ico.card, value: tr('Payme · Click'), last: true),
                   ]),
 
                   const SizedBox(height: S.x24),
@@ -207,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           const NIcon(Ico.logout, size: 19, color: C.signal),
                           const SizedBox(width: S.x12),
-                          Text('Chiqish', style: T.cardTitle.copyWith(color: C.signal)),
+                          Text(tr('Chiqish'), style: T.cardTitle.copyWith(color: C.signal)),
                         ],
                       ),
                     ),
@@ -255,7 +265,7 @@ class _Row extends StatelessWidget {
           decoration: BoxDecoration(
             border: last
                 ? null
-                : const Border(bottom: BorderSide(color: C.hairline)),
+                : Border(bottom: BorderSide(color: C.hairline)),
           ),
           child: Row(
             children: [
@@ -315,15 +325,15 @@ class _LockCardState extends State<_LockCard> {
         children: [
           Row(
             children: [
-              const NIcon(Ico.lock, size: 20, color: C.champagne),
+              NIcon(Ico.lock, size: 20, color: C.champagne),
               const SizedBox(width: S.x12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('PIN kod', style: T.cardTitle),
+                    Text(tr('PIN kod'), style: T.cardTitle),
                     SizedBox(height: 3),
-                    Text('Ilova ochilganda kod so‘raladi', style: T.caption),
+                    Text(tr('Ilova ochilganda kod so‘raladi'), style: T.caption),
                   ],
                 ),
               ),
@@ -353,12 +363,12 @@ class _LockCardState extends State<_LockCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Barmoq izi yoki yuz', style: T.cardTitle),
+                      Text(tr('Barmoq izi yoki yuz'), style: T.cardTitle),
                       const SizedBox(height: 3),
                       Text(
                         widget.available
-                            ? 'Kod o‘rniga tezroq ochish'
-                            : 'Qurilmada sozlanmagan',
+                            ? tr('Kod o‘rniga tezroq ochish')
+                            : tr('Qurilmada sozlanmagan'),
                         style: T.caption,
                       ),
                     ],
@@ -379,7 +389,7 @@ class _LockCardState extends State<_LockCard> {
             ),
             const SizedBox(height: S.x12),
             SecondaryButton(
-              'Kodni o‘zgartirish',
+              tr('Kodni o‘zgartirish'),
               height: 44,
               onTap: () async {
                 await push<bool>(context, (_) => SetPinScreen(lock: lock));

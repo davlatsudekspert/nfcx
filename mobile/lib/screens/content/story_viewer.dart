@@ -9,6 +9,7 @@ import '../../design/components/states.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import '../../l10n/strings.dart';
 
 /// STORY KO'RUVCHI.
 ///
@@ -99,7 +100,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: C.backdrop,
         body: Center(child: Spinner()),
       );
@@ -111,9 +112,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           child: Center(
             child: _error != null
                 ? ErrorState(humanError(_error), onRetry: _load)
-                : const EmptyState(
-                    'Story 24 soat turadi va keyin o‘zi o‘chadi.',
-                    title: 'Story yo‘q',
+                : EmptyState(
+                    tr('Story 24 soat turadi va keyin o‘zi o‘chadi.'),
+                    title: tr('Story yo‘q'),
                     icon: Ico.camera,
                   ),
           ),
@@ -149,7 +150,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               story.images.isEmpty ? null : story.images.first,
               radius: 0,
               fit: BoxFit.contain,
-              slotLabel: 'STORY MEDIA 9:16',
+              slotLabel: tr('STORY MEDIA 9:16'),
             ),
             // Yuqori va pastki qorong'i gradient — oq matn har qanday
             // rasm ustida o'qiladi.

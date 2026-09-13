@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 
 /// Splash — qora fonda logotip va nom.
 ///
@@ -10,7 +11,7 @@ class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => const ColoredBox(
+  Widget build(BuildContext context) => ColoredBox(
         color: C.obsidian,
         child: Center(
           child: Column(
@@ -23,7 +24,7 @@ class SplashScreen extends StatelessWidget {
                 letterSpacing: 3.4, color: C.offWhite, height: 1,
               )),
               SizedBox(height: S.x12),
-              Text('RAQAMLI PROFIL VA NFC KARTA', style: T.eyebrow),
+              Text(tr('RAQAMLI PROFIL VA NFC KARTA'), style: T.eyebrow),
             ],
           ),
         ),

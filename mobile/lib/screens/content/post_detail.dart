@@ -6,6 +6,7 @@ import '../../design/components/media.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// Post tafsiloti — to'liq media, tavsif, yoqtirish va ko'rish soni.
 class PostDetailScreen extends StatefulWidget {
@@ -29,7 +30,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         child: Column(
           children: [
             TopBar(
-              title: p.authorName.isEmpty ? 'Post' : p.authorName,
+              title: p.authorName.isEmpty ? tr('Post') : p.authorName,
               subtitle: p.createdAt == null ? null : _ago(p.createdAt!),
             ),
             Expanded(
@@ -45,7 +46,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           onPageChanged: (i) => setState(() => _page = i),
                           itemBuilder: (_, i) => NetImage(
                             images[i].isEmpty ? null : images[i],
-                            slotLabel: 'POST MEDIA 4:5',
+                            slotLabel: tr('POST MEDIA 4:5'),
                           ),
                         ),
                         if (images.length > 1)

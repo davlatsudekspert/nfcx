@@ -16,6 +16,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
+import '../../l10n/strings.dart';
 
 /// DISCOVER — bitta qidiruv yuzasi: odamlar, bizneslar, mahsulotlar va
 /// bo'sh NFC ID'lar. Eski "Katalog" ning o'rnini bosadi.
@@ -39,7 +40,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Object? _error;
   int _filter = 0;
 
-  static const _filters = ['Hammasi', 'Odamlar', 'Biznes', 'ID'];
+  static final _filters = [tr('Hammasi'), tr('Odamlar'), tr('Biznes'), 'ID'];
 
   @override
   void initState() {
@@ -152,9 +153,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Eyebrow('Kashf qilish'),
+                      Eyebrow(tr('Kashf qilish')),
                       const SizedBox(height: 3),
-                      Text('Odamlar, bizneslar, mahsulotlar',
+                      Text(tr('Odamlar, bizneslar, mahsulotlar'),
                           style: T.caption.copyWith(fontSize: 11.5)),
                     ],
                   ),
@@ -215,9 +216,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     if (rows.isEmpty) {
-      return const EmptyState(
-        'Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.',
-        title: 'Hech narsa topilmadi',
+      return EmptyState(
+        tr('Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.'),
+        title: tr('Hech narsa topilmadi'),
         icon: Ico.search,
       );
     }
@@ -259,7 +260,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           // Muqova rasmi bo'lgan kompaniya birinchi turadi: rasmli
           // blok bo'sh o'rindan ancha jonli ko'rinadi.
           if (_allCompanies.isNotEmpty) ...[
-            const SectionHeader('Bizneslar'),
+            SectionHeader(tr('Bizneslar')),
             SizedBox(
               height: 140,
               child: ListView.separated(
@@ -273,7 +274,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             const SizedBox(height: S.x24),
           ],
           if (freeIds.isNotEmpty) ...[
-            const SectionHeader('Bo‘sh NFC ID‘lar'),
+            SectionHeader(tr('Bo‘sh NFC ID‘lar')),
             SizedBox(
               height: 92,
               child: ListView.separated(
@@ -286,7 +287,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
             const SizedBox(height: S.x24),
           ],
-          const SectionHeader('Mashhur profillar'),
+          SectionHeader(tr('Mashhur profillar')),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: S.gutter),
             child: Column(
@@ -376,7 +377,7 @@ class _SearchBarState extends State<_SearchBar> {
                   focusedBorder: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
-                  hintText: 'ID, ism, biznes yoki mahsulot',
+                  hintText: tr('ID, ism, biznes yoki mahsulot'),
                   hintStyle: T.cardTitle.copyWith(
                     fontWeight: FontWeight.w400, fontSize: 14.5, color: C.muted,
                   ),
@@ -458,7 +459,7 @@ class _RecordRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(R.tile),
                     border: Border.all(color: C.metalBorder),
                   ),
-                  child: const Text('ID', style: T.eyebrow),
+                  child: Text('ID', style: T.eyebrow),
                 )
               else
                 Avatar(url: record.avatarUrl, name: record.name, size: 44),
@@ -488,7 +489,7 @@ class _RecordRow extends StatelessWidget {
                       freeId
                           ? 'Bo‘sh ID · ${TierStyle.of(record.tier).label}'
                           : [
-                              record.isBusiness ? 'Biznes' : (record.isExpert ? 'Ekspert' : 'Shaxsiy'),
+                              record.isBusiness ? tr('Biznes') : (record.isExpert ? tr('Ekspert') : tr('Shaxsiy')),
                               if (record.city.isNotEmpty) record.city,
                             ].join(' · '),
                       maxLines: 1,
@@ -532,7 +533,7 @@ class _CompanyRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       [
-                        'Biznes',
+                        tr('Biznes'),
                         if (company.city.isNotEmpty) company.city,
                       ].join(' · '),
                       style: T.caption.copyWith(fontSize: 11),
@@ -542,7 +543,7 @@ class _CompanyRow extends StatelessWidget {
               ),
               if (company.isOpen != null)
                 StatusChip(
-                  company.isOpen! ? 'Ochiq' : 'Yopiq',
+                  company.isOpen! ? tr('Ochiq') : tr('Yopiq'),
                   tone: company.isOpen! ? StatusTone.ok : StatusTone.neutral,
                 ),
             ],
@@ -619,7 +620,7 @@ class _CompanyCard extends StatelessWidget {
                       bottom: S.x8,
                       child: Container(
                         padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: C.obsidian,
                           shape: BoxShape.circle,
                         ),

@@ -32,7 +32,7 @@ void main() {
             200,
           )));
 
-      await tester.pumpWidget(host(const OwnerOrdersScreen(companyId: 'DDD333'), state));
+      await tester.pumpWidget(host(OwnerOrdersScreen(companyId: 'DDD333'), state));
       await tester.pumpAndSettle();
 
       // Standart filtr — "Yangi": faqat birinchi buyurtma ko‘rinadi.
@@ -63,7 +63,7 @@ void main() {
         );
       }));
 
-      await tester.pumpWidget(host(const OwnerOrdersScreen(companyId: 'DDD333'), state));
+      await tester.pumpWidget(host(OwnerOrdersScreen(companyId: 'DDD333'), state));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Bajarildi'));
@@ -80,7 +80,7 @@ void main() {
       final state = stateWith(MockClient(
         (_) async => http.Response(jsonEncode({'orders': []}), 200),
       ));
-      await tester.pumpWidget(host(const OwnerOrdersScreen(companyId: 'X'), state));
+      await tester.pumpWidget(host(OwnerOrdersScreen(companyId: 'X'), state));
       await tester.pumpAndSettle();
       expect(find.text('Yangi buyurtma yo‘q.'), findsOneWidget);
     });

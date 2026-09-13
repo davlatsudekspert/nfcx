@@ -15,6 +15,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// Nima yaratilyapti.
 enum ComposeKind { post, story }
@@ -98,11 +99,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
   Future<void> _submit() async {
     final bytes = _bytes;
     if (bytes == null) {
-      setState(() => _error = 'Avval rasm tanlang.');
+      setState(() => _error = tr('Avval rasm tanlang.'));
       return;
     }
     if (_isStory && !_agreed) {
-      setState(() => _error = 'Kontent qoidalariga rozilik bering.');
+      setState(() => _error = tr('Kontent qoidalariga rozilik bering.'));
       return;
     }
 
@@ -149,16 +150,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
   /// umumiy yozuv esa hech narsa aytmaydi.
   String _composeError(ApiError e) => switch (e.key) {
         'feature_locked' => _isStory
-            ? 'Istorya yuqoriroq tarifda ochiladi.'
-            : 'Post yuqoriroq tarifda ochiladi.',
-        'limit_reached' => 'Post chegarasiga yetdingiz.',
+            ? tr('Istorya yuqoriroq tarifda ochiladi.')
+            : tr('Post yuqoriroq tarifda ochiladi.'),
+        'limit_reached' => tr('Post chegarasiga yetdingiz.'),
         // Biznesda bepul tarifda post va istorya yopiq.
-        'plan_locked' => 'Bepul tarifda post va story yopiq.',
-        'rules_not_accepted' => 'Kontent qoidalariga rozilik bering.',
-        'too_large' => 'Rasm juda katta.',
-        'bad_image' => 'Bu fayl rasm emas.',
-        'not_owner' => 'Bu ID sizga tegishli emas.',
-        'too_many_requests' => 'Juda ko‘p urinish. Birozdan keyin qayta urining.',
+        'plan_locked' => tr('Bepul tarifda post va story yopiq.'),
+        'rules_not_accepted' => tr('Kontent qoidalariga rozilik bering.'),
+        'too_large' => tr('Rasm juda katta.'),
+        'bad_image' => tr('Bu fayl rasm emas.'),
+        'not_owner' => tr('Bu ID sizga tegishli emas.'),
+        'too_many_requests' => tr('Juda ko‘p urinish. Birozdan keyin qayta urining.'),
         _ => humanError(e),
       };
 
@@ -177,7 +178,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          TopBar(title: _isStory ? 'Yangi istorya' : 'Yangi post'),
+          TopBar(title: _isStory ? tr('Yangi istorya') : tr('Yangi post')),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
@@ -199,11 +200,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
                           ? Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const NIcon(Ico.image, size: 30, color: C.champagne),
+                                NIcon(Ico.image, size: 30, color: C.champagne),
                                 const SizedBox(height: S.x12),
-                                Text('Rasm tanlash', style: T.cardTitle),
+                                Text(tr('Rasm tanlash'), style: T.cardTitle),
                                 const SizedBox(height: 3),
-                                Text('Galereyadan', style: T.caption),
+                                Text(tr('Galereyadan'), style: T.caption),
                               ],
                             )
                           : Image.memory(
@@ -228,8 +229,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   children: [
                     Expanded(
                       child: SecondaryButton(
-                        bytes == null ? 'Galereya' : 'Boshqasi',
-                        icon: const NIcon(Ico.image, size: 17, color: C.platinum),
+                        bytes == null ? tr('Galereya') : tr('Boshqasi'),
+                        icon: NIcon(Ico.image, size: 17, color: C.platinum),
                         height: 46,
                         onTap: _busy ? null : () => _pick(ImageSource.gallery),
                       ),
@@ -237,8 +238,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     const SizedBox(width: S.x8),
                     Expanded(
                       child: SecondaryButton(
-                        'Kamera',
-                        icon: const NIcon(Ico.camera, size: 17, color: C.platinum),
+                        tr('Kamera'),
+                        icon: NIcon(Ico.camera, size: 17, color: C.platinum),
                         height: 46,
                         onTap: _busy ? null : () => _pick(ImageSource.camera),
                       ),
@@ -247,9 +248,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
                 ),
                 const SizedBox(height: S.x20),
                 Field(
-                  label: 'Izoh',
+                  label: tr('Izoh'),
                   controller: _caption,
-                  hint: 'Ixtiyoriy',
+                  hint: tr('Ixtiyoriy'),
                   maxLines: 4,
                 ),
                 if (_isStory) ...[
@@ -265,13 +266,13 @@ class _ComposeScreenState extends State<ComposeScreen> {
                 ],
                 const SizedBox(height: S.x20),
                 PrimaryButton(
-                  _isStory ? 'Istoryani joylash' : 'Postni joylash',
+                  _isStory ? tr('Istoryani joylash') : tr('Postni joylash'),
                   loading: _busy,
                   onTap: _busy ? null : _submit,
                 ),
                 if (_isStory) ...[
                   const SizedBox(height: S.x12),
-                  Text('Istorya 24 soatdan keyin o‘zi o‘chadi.',
+                  Text(tr('Istorya 24 soatdan keyin o‘zi o‘chadi.'),
                       textAlign: TextAlign.center, style: T.caption),
                 ],
               ],
@@ -315,14 +316,14 @@ class _Rules extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: value
-                    ? const NIcon(Ico.check, size: 13, color: C.ink)
+                    ? NIcon(Ico.check, size: 13, color: C.ink)
                     : null,
               ),
               const SizedBox(width: S.x12),
               Expanded(
                 child: Text(
-                  'Joylayotgan kontentim uchun javobgarlikni olaman va '
-                  'u boshqalarning huquqini buzmasligini tasdiqlayman.',
+                  tr('Joylayotgan kontentim uchun javobgarlikni olaman va ') +
+                  tr('u boshqalarning huquqini buzmasligini tasdiqlayman.'),
                   style: T.caption,
                 ),
               ),

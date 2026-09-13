@@ -10,6 +10,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// Profilni ulashish — tizimning o'z ulashish oynasi orqali.
 Future<void> shareIdentity(Identity id) async {
@@ -75,19 +76,19 @@ class QrShareScreen extends StatelessWidget {
                     Surface(
                       child: Row(
                         children: [
-                          const NIcon(Ico.nfc, size: 20, color: C.platinum),
+                          NIcon(Ico.nfc, size: 20, color: C.platinum),
                           const SizedBox(width: S.x12),
                           Expanded(
-                            child: Text('Yoki telefonni kartaga tegizing', style: T.caption),
+                            child: Text(tr('Yoki telefonni kartaga tegizing'), style: T.caption),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: S.x16),
-                    PrimaryButton('Ulashish', onTap: () => shareIdentity(identity)),
+                    PrimaryButton(tr('Ulashish'), onTap: () => shareIdentity(identity)),
                     const SizedBox(height: S.x12),
                     GhostButton(
-                      'Havolani nusxalash',
+                      tr('Havolani nusxalash'),
                       onTap: () => Clipboard.setData(ClipboardData(text: url)),
                     ),
                     const SizedBox(height: S.x32),

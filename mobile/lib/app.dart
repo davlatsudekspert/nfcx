@@ -14,7 +14,9 @@ import 'screens/entry/splash.dart';
 import 'screens/identity/profile_screen.dart';
 import 'screens/lock/lock_screen.dart';
 import 'screens/shell.dart';
+import 'l10n/strings.dart';
 import 'state/app_lock.dart';
+import 'state/app_prefs.dart';
 import 'state/app_state.dart';
 
 /// Ilova ildizi.
@@ -23,7 +25,13 @@ import 'state/app_state.dart';
 /// Ekranlar orasidagi qolgan navigatsiya har bo'limning o'z
 /// `Navigator`ida qoladi.
 class NfcstoreApp extends StatefulWidget {
-  const NfcstoreApp({super.key, required this.state, this.lock, this.links});
+  const NfcstoreApp({
+    super.key,
+    required this.state,
+    this.lock,
+    this.links,
+    this.prefs,
+  });
   final AppState state;
 
   /// Testda soxta qulf berish uchun. Odatda `null` — o'zi yaratiladi.
@@ -32,6 +40,9 @@ class NfcstoreApp extends StatefulWidget {
   /// Testda soxta havola oqimi berish uchun. Odatda `null`.
   final DeepLinks? links;
 
+  /// Testda mavzu/tilni belgilash uchun. Odatda `null`.
+  final AppPrefs? prefs;
+
   @override
   State<NfcstoreApp> createState() => _NfcstoreAppState();
 }
@@ -39,6 +50,7 @@ class NfcstoreApp extends StatefulWidget {
 class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
   late final AppLock _lock = widget.lock ?? AppLock();
   late final DeepLinks _links = widget.links ?? DeepLinks();
+  late final AppPrefs _prefs = widget.prefs ?? AppPrefs();
   final _navKey = GlobalKey<NavigatorState>();
   StreamSubscription<NfcLink>? _linkSub;
 
@@ -59,6 +71,11 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     widget.state.boot();
     _lock.load();
+    // MAVZU VA TIL — ildiz qurilishidan OLDIN. `C` va `tr()` statik
+    // o'qiydi, ya'ni saqlangan qiymat kech kelsa ekran avval asl
+    // ko'rinishda chiqib, keyin sakrab o'zgarardi.
+    _prefs.load();
+    _prefs.addListener(_onPrefs);
     _listenLinks();
     // Kutayotgan havola qulf ochilishi yoki hisobga kirish bilan
     // ochilsin: bu ikki hodisa ildiz widgetni O'ZI qayta qurmaydi.
@@ -68,6 +85,17 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
 
   void _onReady() {
     if (_pending != null && mounted) setState(() {});
+  }
+
+  /// Mavzu yoki til almashdi — BUTUN daraxt qayta quriladi.
+  ///
+  /// Bu shunchaki `setState` bilan ishlaydi, chunki rang va matn
+  /// `C.x` / `tr()` orqali BUILD ICHIDA o'qiladi. Ularni ishlatgan
+  /// widget `const` bo'la olmaydi (kompilyator buni majburlaydi),
+  /// demak u qayta qurilishdan chetda qolmaydi.
+  void _onPrefs() {
+    applyLocale(_prefs.locale);
+    if (mounted) setState(() {});
   }
 
   Future<void> _listenLinks() async {
@@ -110,6 +138,7 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     _linkSub?.cancel();
+    _prefs.removeListener(_onPrefs);
     _lock.removeListener(_onReady);
     widget.state.removeListener(_onReady);
     WidgetsBinding.instance.removeObserver(this);
@@ -140,7 +169,9 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
     _flushPending();
     return AppScope(
       state: widget.state,
-      child: AppLockScope(
+      child: AppPrefsScope(
+        prefs: _prefs,
+        child: AppLockScope(
         lock: _lock,
         child: MaterialApp(
         navigatorKey: _navKey,
@@ -183,7 +214,26 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
         home: _Root(onboarded: _onboarded, onOnboarded: () => setState(() => _onboarded = true)),
         ),
       ),
+      ),
     );
+  }
+}
+
+/// Ko'rinish sozlamalariga kirish — `AppPrefsScope.of(context)`.
+class AppPrefsScope extends InheritedNotifier<AppPrefs> {
+  const AppPrefsScope({super.key, required AppPrefs prefs, required super.child})
+      : super(notifier: prefs);
+
+  static AppPrefs of(BuildContext context) {
+    final s = context.dependOnInheritedWidgetOfExactType<AppPrefsScope>();
+    assert(s?.notifier != null, 'AppPrefsScope topilmadi.');
+    return s!.notifier!;
+  }
+
+  static AppPrefs read(BuildContext context) {
+    final s = context.getInheritedWidgetOfExactType<AppPrefsScope>();
+    assert(s?.notifier != null, 'AppPrefsScope topilmadi.');
+    return s!.notifier!;
   }
 }
 

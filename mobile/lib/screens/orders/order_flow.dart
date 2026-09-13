@@ -14,6 +14,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../../design/feedback.dart';
+import '../../l10n/strings.dart';
 
 /// Katalogdan buyurtma.
 ///
@@ -66,7 +67,7 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
 
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty || _phone.text.replaceAll(RegExp(r'\D'), '').length < 7) {
-      setState(() => _error = 'Ism va telefon raqamini to‘liq kiriting.');
+      setState(() => _error = tr('Ism va telefon raqamini to‘liq kiriting.'));
       return;
     }
     setState(() {
@@ -107,15 +108,22 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(),
-                const Text('Buyurtma\nyuborildi', style: T.display),
+                Text(tr('Buyurtma\nyuborildi'), style: T.display),
                 const SizedBox(height: S.x12),
                 Text(
-                  '${widget.companyName.isEmpty ? 'Sotuvchi' : widget.companyName} '
-                  'siz bilan bog‘lanadi. Buyurtma holatini shu yerdan kuzatasiz.',
+                  trf(
+                    '{sotuvchi} siz bilan bog‘lanadi. Buyurtma holatini shu '
+                    'yerdan kuzatasiz.',
+                    {
+                      'sotuvchi': widget.companyName.isEmpty
+                          ? tr('Sotuvchi')
+                          : widget.companyName
+                    },
+                  ),
                   style: T.body,
                 ),
                 const Spacer(),
-                PrimaryButton('Tayyor', onTap: () => Navigator.of(context).pop()),
+                PrimaryButton(tr('Tayyor'), onTap: () => Navigator.of(context).pop()),
                 const SizedBox(height: S.x32),
               ],
             ),
@@ -130,7 +138,7 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
         bottom: false,
         child: Column(
           children: [
-            const TopBar(title: 'Buyurtma'),
+            TopBar(title: tr('Buyurtma')),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x24),
@@ -165,10 +173,10 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
                     ),
                   ),
                   const SizedBox(height: S.x20),
-                  Field(label: 'Ism', controller: _name, hint: 'Ismingiz'),
+                  Field(label: tr('Ism'), controller: _name, hint: tr('Ismingiz')),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Telefon', controller: _phone, hint: '+998 90 123 45 67',
+                    label: tr('Telefon'), controller: _phone, hint: '+998 90 123 45 67',
                     keyboardType: TextInputType.phone,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s]')),
@@ -176,9 +184,9 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
                   ),
                   const SizedBox(height: S.x16),
                   Field(
-                    label: 'Izoh · ixtiyoriy',
+                    label: tr('Izoh · ixtiyoriy'),
                     controller: _note,
-                    hint: 'Yetkazish manzili yoki qo‘shimcha so‘rov',
+                    hint: tr('Yetkazish manzili yoki qo‘shimcha so‘rov'),
                     maxLines: 3,
                     error: _error,
                   ),
@@ -190,7 +198,7 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
                 S.gutter, S.x12, S.gutter,
                 MediaQuery.paddingOf(context).bottom + S.x12,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: C.obsidian,
                 border: Border(top: BorderSide(color: C.hairline)),
               ),
@@ -198,13 +206,13 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text('Jami', style: T.caption),
+                      Text(tr('Jami'), style: T.caption),
                       const Spacer(),
                       Text('${som(total)} so‘m', style: T.price.copyWith(fontSize: 16)),
                     ],
                   ),
                   const SizedBox(height: S.x12),
-                  PrimaryButton('Buyurtmani yuborish', loading: _busy, onTap: _busy ? null : _submit),
+                  PrimaryButton(tr('Buyurtmani yuborish'), loading: _busy, onTap: _busy ? null : _submit),
                 ],
               ),
             ),

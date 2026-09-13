@@ -10,6 +10,7 @@ import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import '../../l10n/strings.dart';
 
 /// HISOB TASDIQLASH — EMAIL.
 ///
@@ -96,7 +97,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       if (token.isEmpty) {
         // Ro'yxatdan o'tish o'tdi, lekin token kelmadi — kirish
         // ekraniga qaytaramiz, "hammasi yaxshi" deb turmaymiz.
-        setState(() => _error = 'Hisob yaratildi. Endi kirish sahifasidan kiring.');
+        setState(() => _error = tr('Hisob yaratildi. Endi kirish sahifasidan kiring.'));
         return;
       }
       setState(() => _done = true);
@@ -108,7 +109,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       setState(() {
         _expired = e.key == 'code_expired' || e.key == 'expired';
         _error = _expired
-            ? 'Kod muddati tugadi. Yangi kod so‘rang.'
+            ? tr('Kod muddati tugadi. Yangi kod so‘rang.')
             : humanError(e);
       });
     } catch (e) {
@@ -130,7 +131,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           .requestRegisterCode(email: widget.email, phone: widget.phone);
       if (!mounted) return;
       if (channel == 'none') {
-        setState(() => _error = 'Hozir kod yuborib bo‘lmayapti. Birozdan so‘ng urining.');
+        setState(() => _error = tr('Hozir kod yuborib bo‘lmayapti. Birozdan so‘ng urining.'));
       } else {
         setState(() {
           _expired = false;
@@ -162,7 +163,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _expired ? 'Kod muddati\ntugadi' : 'Emailingizni\ntasdiqlang',
+                _expired ? tr('Kod muddati\ntugadi') : tr('Emailingizni\ntasdiqlang'),
                 style: T.display,
               ),
               const SizedBox(height: S.x12),
@@ -189,7 +190,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     behavior: HitTestBehavior.opaque,
                     onTap: _left > 0 ? null : _resend,
                     child: Text(
-                      'Qayta yuborish',
+                      tr('Qayta yuborish'),
                       style: T.caption.copyWith(
                         color: _left > 0 ? C.muted : C.champagne,
                         fontWeight: FontWeight.w700,
@@ -205,12 +206,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               ),
               const SizedBox(height: S.x24),
               PrimaryButton(
-                'Tasdiqlash',
+                tr('Tasdiqlash'),
                 loading: _busy,
                 onTap: _busy || _code.text.length != 6 ? null : _verify,
               ),
               const SizedBox(height: S.x12),
-              GhostButton('Emailni o‘zgartirish', onTap: () => Navigator.of(context).maybePop()),
+              GhostButton(tr('Emailni o‘zgartirish'), onTap: () => Navigator.of(context).maybePop()),
             ],
           ),
         ),
@@ -238,11 +239,11 @@ class _Success extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(),
-                const Text('Email\ntasdiqlandi', style: T.display),
+                Text(tr('Email\ntasdiqlandi'), style: T.display),
                 const SizedBox(height: S.x12),
-                const Text(
-                  'Akkauntingiz tayyor. Endi NFC ID tanlab, profilingizni '
-                  'to‘ldirishingiz mumkin.',
+                Text(
+                  tr('Akkauntingiz tayyor. Endi NFC ID tanlab, profilingizni ') +
+                  tr('to‘ldirishingiz mumkin.'),
                   style: T.body,
                 ),
                 const SizedBox(height: S.x24),
@@ -252,7 +253,7 @@ class _Success extends StatelessWidget {
                       Container(
                         width: 26, height: 26,
                         decoration: const BoxDecoration(color: C.verdant, shape: BoxShape.circle),
-                        child: const Center(
+                        child: Center(
                           child: NIcon(Ico.check, size: 15, color: C.obsidian),
                         ),
                       ),
@@ -261,16 +262,16 @@ class _Success extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: S.x12),
+                SizedBox(height: S.x12),
                 Surface(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('Profilni tasdiqlash — keyinroq', style: T.cardTitle),
+                    children: [
+                      Text(tr('Profilni tasdiqlash — keyinroq'), style: T.cardTitle),
                       SizedBox(height: 5),
                       Text(
-                        'Telegram bot orqali profilingizni tasdiqlab, tasdiqlangan '
-                        'nishonga ega bo‘lasiz.',
+                        tr('Telegram bot orqali profilingizni tasdiqlab, tasdiqlangan ') +
+                        tr('nishonga ega bo‘lasiz.'),
                         style: T.caption,
                       ),
                     ],

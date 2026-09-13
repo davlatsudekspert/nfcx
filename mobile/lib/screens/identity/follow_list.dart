@@ -12,6 +12,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import 'profile_screen.dart';
+import '../../l10n/strings.dart';
 
 /// OBUNACHILAR VA OBUNALAR.
 ///
@@ -117,7 +118,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
         data: _cache[following],
         onRetry: () => _load(following, force: true),
         isEmpty: (d) => d.isEmpty,
-        emptyMessage: following ? 'Hali hech kimga obuna emas.' : 'Hali obunachi yo‘q.',
+        emptyMessage: following ? tr('Hali hech kimga obuna emas.') : tr('Hali obunachi yo‘q.'),
         skeleton: ListView(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
           children: const [SkeletonRow(), SkeletonRow(), SkeletonRow(), SkeletonRow()],

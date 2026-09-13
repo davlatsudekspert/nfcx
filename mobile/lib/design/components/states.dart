@@ -3,6 +3,7 @@ import '../tokens.dart';
 import '../type.dart';
 import 'buttons.dart';
 import 'icons.dart';
+import '../../l10n/strings.dart';
 
 /// BO'SH holat — belgi, sarlavha, izoh va (kerak bo'lsa) BITTA amal.
 ///
@@ -118,15 +119,15 @@ class ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter, vertical: S.x32),
+        padding: EdgeInsets.symmetric(horizontal: S.gutter, vertical: S.x32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(message, textAlign: TextAlign.center,
                 style: T.body.copyWith(color: C.offWhite)),
             if (onRetry != null) ...[
-              const SizedBox(height: S.x20),
-              SizedBox(width: 200, child: GhostButton('Qayta urinish', onTap: onRetry)),
+              SizedBox(height: S.x20),
+              SizedBox(width: 200, child: GhostButton(tr('Qayta urinish'), onTap: onRetry)),
             ],
           ],
         ),
@@ -138,8 +139,10 @@ class ErrorState extends StatelessWidget {
 /// Modal oyna EMAS: keshlangan tarkib o'qilishi kerak, odam esa
 /// ma'lumot eski ekanini bilib tursin.
 class OfflineBar extends StatelessWidget {
-  const OfflineBar({super.key, this.text = 'Internet aloqasi yo‘q'});
-  final String text;
+  // Standart qiymat TILGA BOG'LIQ — `const` bo'la olmaydi.
+  // `null` -> build ichida joriy tilda olinadi.
+  const OfflineBar({super.key, this.text});
+  final String? text;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -147,7 +150,7 @@ class OfflineBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 7, horizontal: S.x12),
         color: C.signal.withValues(alpha: .16),
         child: Text(
-          text,
+          text ?? tr('Internet aloqasi yo‘q'),
           textAlign: TextAlign.center,
           style: T.caption.copyWith(color: C.signal, fontWeight: FontWeight.w600),
         ),
@@ -207,23 +210,25 @@ class AsyncView<Tv> extends StatelessWidget {
 /// Noma'lum kalit ham xom holda chiqarilmaydi.
 String humanError(Object? e) {
   final s = e?.toString() ?? '';
-  const map = {
-    'bad_credentials': 'Login yoki parol noto‘g‘ri.',
-    'bad_login': 'Email yoki telefon raqamini tekshiring.',
-    'too_many_requests': 'Juda ko‘p urinish. Bir necha daqiqadan so‘ng qayta urining.',
-    'account_suspended': 'Hisob vaqtincha to‘xtatilgan.',
-    'account_deleted': 'Bu hisob o‘chirilgan.',
-    'email_taken': 'Bu email allaqachon ro‘yxatdan o‘tgan.',
-    'email_required': 'Email kiriting.',
-    'email_code_required': 'Emailga kelgan kodni kiriting.',
-    'bad_email_code': 'Kod xato. Tekshirib, qaytadan kiriting.',
-    'email_send_failed': 'Emailga kod yuborib bo‘lmadi. Birozdan so‘ng qayta urining.',
-    'not_found': 'Topilmadi.',
-    'forbidden': 'Bu amal uchun ruxsat yo‘q.',
-    'orders_disabled': 'Bu biznes hozir buyurtma qabul qilmayapti.',
-    'required_fields': 'Barcha majburiy maydonlarni to‘ldiring.',
-    'offline': 'Internet aloqasi yo‘q. Ulanishni tekshiring.',
-    'timeout': 'Server javob bermadi. Qayta urinib ko‘ring.',
+  // TILGA BOG'LIQ, ya'ni `const` bo'la olmaydi: jadval har
+  // chaqiruvda joriy tilda quriladi.
+  final map = {
+    'bad_credentials': tr('Login yoki parol noto‘g‘ri.'),
+    'bad_login': tr('Email yoki telefon raqamini tekshiring.'),
+    'too_many_requests': tr('Juda ko‘p urinish. Bir necha daqiqadan so‘ng qayta urining.'),
+    'account_suspended': tr('Hisob vaqtincha to‘xtatilgan.'),
+    'account_deleted': tr('Bu hisob o‘chirilgan.'),
+    'email_taken': tr('Bu email allaqachon ro‘yxatdan o‘tgan.'),
+    'email_required': tr('Email kiriting.'),
+    'email_code_required': tr('Emailga kelgan kodni kiriting.'),
+    'bad_email_code': tr('Kod xato. Tekshirib, qaytadan kiriting.'),
+    'email_send_failed': tr('Emailga kod yuborib bo‘lmadi. Birozdan so‘ng qayta urining.'),
+    'not_found': tr('Topilmadi.'),
+    'forbidden': tr('Bu amal uchun ruxsat yo‘q.'),
+    'orders_disabled': tr('Bu biznes hozir buyurtma qabul qilmayapti.'),
+    'required_fields': tr('Barcha majburiy maydonlarni to‘ldiring.'),
+    'offline': tr('Internet aloqasi yo‘q. Ulanishni tekshiring.'),
+    'timeout': tr('Server javob bermadi. Qayta urinib ko‘ring.'),
   };
   for (final k in map.keys) {
     if (s.contains(k)) return map[k]!;
@@ -231,5 +236,5 @@ String humanError(Object? e) {
   if (s.contains('SocketException') || s.contains('Failed host lookup')) {
     return map['offline']!;
   }
-  return 'Nimadir noto‘g‘ri ketdi. Qayta urinib ko‘ring.';
+  return tr('Nimadir noto‘g‘ri ketdi. Qayta urinib ko‘ring.');
 }

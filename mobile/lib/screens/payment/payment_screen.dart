@@ -14,6 +14,7 @@ import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../../design/feedback.dart';
+import '../../l10n/strings.dart';
 
 /// TO'LOV.
 ///
@@ -133,11 +134,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   String _payError(ApiError e) => switch (e.key) {
-        'payments_disabled' => 'To‘lov tizimi hozir o‘chirilgan.',
-        'already_taken' => 'Bu ID allaqachon band qilingan.',
+        'payments_disabled' => tr('To‘lov tizimi hozir o‘chirilgan.'),
+        'already_taken' => tr('Bu ID allaqachon band qilingan.'),
         'reserved_pending_payment' =>
-          'Bu ID uchun tugallanmagan to‘lov bor. Buyurtmalar bo‘limidan davom ettiring.',
-        'not_purchasable' => 'Bu ID sotuvda emas.',
+          tr('Bu ID uchun tugallanmagan to‘lov bor. Buyurtmalar bo‘limidan davom ettiring.'),
+        'not_purchasable' => tr('Bu ID sotuvda emas.'),
         _ => humanError(e),
       };
 
@@ -162,14 +163,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     return Column(
       children: [
-        const TopBar(title: 'To‘lov'),
+        TopBar(title: tr('To‘lov')),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x24),
             children: [
-              const Eyebrow('To‘lov'),
+              Eyebrow(tr('To‘lov')),
               const SizedBox(height: 6),
-              const Text('Buyurtmani\ntasdiqlash', style: T.display),
+              Text(tr('Buyurtmani\ntasdiqlash'), style: T.display),
               const SizedBox(height: S.x24),
               Surface(
                 child: Column(
@@ -196,7 +197,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                     Row(
                       children: [
-                        const Text('Jami', style: T.cardTitle),
+                        Text(tr('Jami'), style: T.cardTitle),
                         const Spacer(),
                         Text('${som(price)} so‘m', style: T.price.copyWith(fontSize: 16)),
                       ],
@@ -205,11 +206,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               const SizedBox(height: S.x24),
-              const Eyebrow('To‘lov usuli'),
+              Eyebrow(tr('To‘lov usuli')),
               const SizedBox(height: S.x12),
               _MethodTile(
                 name: 'Payme',
-                note: 'Payme ilovasi orqali',
+                note: tr('Payme ilovasi orqali'),
                 color: C.payme,
                 selected: _method == 0,
                 enabled: paymeOn,
@@ -218,7 +219,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               const SizedBox(height: S.x8),
               _MethodTile(
                 name: 'Click',
-                note: clickOn ? 'Click ilovasi orqali' : 'Hozir mavjud emas',
+                note: clickOn ? tr('Click ilovasi orqali') : tr('Hozir mavjud emas'),
                 color: C.click,
                 selected: _method == 1,
                 enabled: clickOn,
@@ -236,7 +237,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             S.gutter, S.x12, S.gutter,
             MediaQuery.paddingOf(context).bottom + S.x12,
           ),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: C.obsidian,
             border: Border(top: BorderSide(color: C.hairline)),
           ),
@@ -249,7 +250,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(height: 7),
               Text(
-                'To‘lov ${_method == 0 ? 'Payme' : 'Click'} tomonidan himoyalangan',
+                trf('To‘lov {tizim} tomonidan himoyalangan',
+                    {'tizim': _method == 0 ? 'Payme' : 'Click'}),
                 style: T.caption.copyWith(fontSize: 11, color: C.muted),
               ),
             ],
@@ -265,29 +267,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Spacer(),
-            const Text('To‘lov\nkutilmoqda', style: T.display),
+            Text(tr('To‘lov\nkutilmoqda'), style: T.display),
             const SizedBox(height: S.x12),
             Text(
-              'To‘lovni ${_method == 0 ? 'Payme' : 'Click'} ilovasida yakunlang. '
-              'Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.',
+              '${trf('To‘lovni {tizim} ilovasida yakunlang.', {
+                'tizim': _method == 0 ? 'Payme' : 'Click'
+              })} ${tr('Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.')}',
               style: T.body,
             ),
             const SizedBox(height: S.x24),
-            const Row(
+            Row(
               children: [
                 Spinner(size: 16),
                 SizedBox(width: S.x12),
-                Text('Bankdan javob olinmoqda…', style: T.caption),
+                Text(tr('Bankdan javob olinmoqda…'), style: T.caption),
               ],
             ),
             const Spacer(),
             if ((_order?.payLink ?? '').isNotEmpty)
               SecondaryButton(
-                'To‘lov sahifasini qayta ochish',
+                tr('To‘lov sahifasini qayta ochish'),
                 onTap: () => openExternal(Uri.parse(_order!.payLink!)),
               ),
             const SizedBox(height: S.x8),
-            GhostButton('Keyinroq', onTap: () => Navigator.of(context).maybePop()),
+            GhostButton(tr('Keyinroq'), onTap: () => Navigator.of(context).maybePop()),
             const SizedBox(height: S.x24),
           ],
         ),
@@ -299,27 +302,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Spacer(),
-            const Text('To‘lov\nqabul qilindi', style: T.display),
+            Text(tr('To‘lov\nqabul qilindi'), style: T.display),
             const SizedBox(height: S.x12),
             Text(
-              '${widget.record.code} sizga biriktirildi. Endi profilingizni '
-              'to‘ldirib, kartani ulashishingiz mumkin.',
+              trf(
+                '{kod} sizga biriktirildi. Endi profilingizni to‘ldirib, '
+                'kartani ulashishingiz mumkin.',
+                {'kod': widget.record.code},
+              ),
               style: T.body,
             ),
             const SizedBox(height: S.x24),
             Surface(
               child: Column(
                 children: [
-                  _Line('To‘langan', '${som(_order?.price ?? widget.record.price)} so‘m'),
+                  _Line(tr('To‘langan'), '${som(_order?.price ?? widget.record.price)} so‘m'),
                   const SizedBox(height: S.x8),
-                  _Line('Usul', _method == 0 ? 'Payme' : 'Click'),
+                  _Line(tr('Usul'), _method == 0 ? 'Payme' : 'Click'),
                   const SizedBox(height: S.x8),
-                  _Line('Buyurtma', '#${_order?.id ?? '—'}'),
+                  _Line(tr('Buyurtma'), '#${_order?.id ?? '—'}'),
                 ],
               ),
             ),
             const Spacer(),
-            PrimaryButton('Profilni sozlash', onTap: () => Navigator.of(context).maybePop()),
+            PrimaryButton(tr('Profilni sozlash'), onTap: () => Navigator.of(context).maybePop()),
             const SizedBox(height: S.x24),
           ],
         ),
@@ -331,16 +337,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Spacer(),
-            const Text('To‘lov\namalga oshmadi', style: T.display),
+            Text(tr('To‘lov\namalga oshmadi'), style: T.display),
             const SizedBox(height: S.x12),
-            const Text(
-              'To‘lov yakunlanmadi. Qayta urinib ko‘ring yoki boshqa usul tanlang.',
+            Text(
+              tr('To‘lov yakunlanmadi. Qayta urinib ko‘ring yoki boshqa usul tanlang.'),
               style: T.body,
             ),
             const Spacer(),
-            PrimaryButton('Qayta urinish', onTap: () => setState(() => _phase = _Phase.choose)),
+            PrimaryButton(tr('Qayta urinish'), onTap: () => setState(() => _phase = _Phase.choose)),
             const SizedBox(height: S.x8),
-            GhostButton('Yopish', onTap: () => Navigator.of(context).maybePop()),
+            GhostButton(tr('Yopish'), onTap: () => Navigator.of(context).maybePop()),
             const SizedBox(height: S.x24),
           ],
         ),
@@ -419,7 +425,7 @@ class _MethodTile extends StatelessWidget {
                     color: selected ? C.champagne : null,
                   ),
                   child: selected
-                      ? const Center(
+                      ? Center(
                           child: NIcon(Ico.check, size: 12, color: C.ink))
                       : null,
                 ),

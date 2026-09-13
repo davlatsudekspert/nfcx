@@ -9,6 +9,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../../design/components/media_picker.dart';
+import '../../l10n/strings.dart';
 
 /// PROFILNI TAHRIRLASH.
 ///
@@ -56,7 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) {
-      setState(() => _error = 'Ism bo‘sh bo‘lmasin.');
+      setState(() => _error = tr('Ism bo‘sh bo‘lmasin.'));
       return;
     }
     setState(() {
@@ -119,7 +120,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             children: [
               TopBar(
-                title: 'Tahrirlash',
+                title: tr('Tahrirlash'),
                 trailing: _busy
                     ? const Padding(padding: EdgeInsets.all(S.x8), child: Spinner(size: 16))
                     : GestureDetector(
@@ -127,7 +128,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         onTap: _save,
                         child: Padding(
                           padding: const EdgeInsets.all(S.x8),
-                          child: Text('Saqlash',
+                          child: Text(tr('Saqlash'),
                               style: T.button.copyWith(fontSize: 13.5, color: C.champagne)),
                         ),
                       ),
@@ -137,39 +138,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
                   children: [
                     MediaPickField(
-                      label: 'Muqova',
+                      label: tr('Muqova'),
                       repo: AppScope.of(context).repo,
                       url: widget.record.bgUrl,
                       aspect: 16 / 7,
-                      hint: 'Profil tepasidagi keng rasm.',
+                      hint: tr('Profil tepasidagi keng rasm.'),
                       onUploaded: (u) => setState(() => _bg = u),
                     ),
                     const SizedBox(height: S.x20),
                     MediaPickField(
-                      label: 'Profil rasmi',
+                      label: tr('Profil rasmi'),
                       repo: AppScope.of(context).repo,
                       url: widget.record.avatarUrl,
                       circle: true,
-                      hint: 'Kvadrat rasm eng yaxshi ko‘rinadi.',
+                      hint: tr('Kvadrat rasm eng yaxshi ko‘rinadi.'),
                       onUploaded: (u) => setState(() => _avatar = u),
                     ),
                     const SizedBox(height: S.x20),
-                    Field(label: 'Ism', controller: _name, hint: 'Ismingiz'),
+                    Field(label: tr('Ism'), controller: _name, hint: tr('Ismingiz')),
                     const SizedBox(height: S.x16),
-                    Field(label: 'Kasb · kompaniya', controller: _role, hint: 'Masalan: Founder · NFC Studio'),
+                    Field(label: tr('Kasb · kompaniya'), controller: _role, hint: tr('Masalan: Founder · NFC Studio')),
                     const SizedBox(height: S.x16),
                     Field(
-                      label: 'Bio',
+                      label: tr('Bio'),
                       controller: _about,
                       maxLines: 4,
                       maxLength: 160,
-                      hint: 'O‘zingiz haqingizda qisqacha',
+                      hint: tr('O‘zingiz haqingizda qisqacha'),
                     ),
                     const SizedBox(height: S.x16),
-                    Field(label: 'Shahar', controller: _city, hint: 'Toshkent'),
+                    Field(label: tr('Shahar'), controller: _city, hint: tr('Toshkent')),
                     const SizedBox(height: S.x16),
                     Field(
-                      label: 'Telefon',
+                      label: tr('Telefon'),
                       controller: _phone,
                       hint: '+998 90 123 45 67',
                       keyboardType: TextInputType.phone,
@@ -178,7 +179,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Field(label: 'Telegram', controller: _tg, hint: 'foydalanuvchi_nomi'),
                     const SizedBox(height: S.x16),
                     Field(
-                      label: 'Veb-sayt',
+                      label: tr('Veb-sayt'),
                       controller: _website,
                       hint: 'sayt.uz',
                       error: _error,

@@ -10,6 +10,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// BO'SH KARTAGA YOZISH — o'z ID havolasini NFC kartaga yozish.
 ///
@@ -75,7 +76,7 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
         (
           code: r.code,
           label: r.code,
-          sub: r.name.isEmpty ? 'Shaxsiy' : r.name,
+          sub: r.name.isEmpty ? tr('Shaxsiy') : r.name,
           company: false,
         ),
       for (final c in state.companies)
@@ -94,7 +95,7 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
     return SafeArea(
       child: Column(
         children: [
-          const TopBar(title: 'Kartaga yozish'),
+          TopBar(title: tr('Kartaga yozish')),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
@@ -104,13 +105,13 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const NIcon(Ico.nfc, size: 20, color: C.champagne),
+                      NIcon(Ico.nfc, size: 20, color: C.champagne),
                       const SizedBox(width: S.x12),
                       Expanded(
                         child: Text(
-                          'Yozish kartadagi eski havolani butunlay almashtiradi. '
-                          'NFCSTORE‘dan kelgan karta allaqachon yozilgan — uni '
-                          'qayta yozish shart emas.',
+                          tr('Yozish kartadagi eski havolani butunlay almashtiradi. ') +
+                          tr('NFCSTORE‘dan kelgan karta allaqachon yozilgan — uni ') +
+                          tr('qayta yozish shart emas.'),
                           style: T.caption,
                         ),
                       ),
@@ -119,9 +120,9 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
                 ),
                 const SizedBox(height: S.x20),
                 if (options.isEmpty)
-                  Text('Yozish uchun ID‘ingiz yo‘q.', style: T.body)
+                  Text(tr('Yozish uchun ID‘ingiz yo‘q.'), style: T.body)
                 else ...[
-                  const Eyebrow('Qaysi ID yozilsin'),
+                  Eyebrow(tr('Qaysi ID yozilsin')),
                   const SizedBox(height: S.x8),
                   for (var i = 0; i < options.length; i++) ...[
                     if (i > 0) const SizedBox(height: S.x8),
@@ -144,7 +145,7 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
                   _status(),
                   const SizedBox(height: S.x12),
                   PrimaryButton(
-                    _phase == _Phase.done ? 'Yana yozish' : 'Kartaga yozish',
+                    _phase == _Phase.done ? tr('Yana yozish') : tr('Kartaga yozish'),
                     loading: _phase == _Phase.writing,
                     onTap: _phase == _Phase.unsupported ? null : _write,
                   ),
@@ -160,17 +161,17 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
   Widget _status() {
     final (String text, Color color) = switch (_phase) {
       _Phase.unsupported => (
-          'Bu qurilmada NFC yo‘q yoki o‘chirilgan.',
+          tr('Bu qurilmada NFC yo‘q yoki o‘chirilgan.'),
           C.signal,
         ),
-      _Phase.writing => ('Kartani telefonga tegizib turing…', C.ash),
-      _Phase.done => ('Yozildi. Kartani tekshirib ko‘ring.', C.verdant),
+      _Phase.writing => (tr('Kartani telefonga tegizib turing…'), C.ash),
+      _Phase.done => (tr('Yozildi. Kartani tekshirib ko‘ring.'), C.verdant),
       _Phase.failed => (
-          'Yozib bo‘lmadi — karta himoyalangan yoki juda tez olindi.',
+          tr('Yozib bo‘lmadi — karta himoyalangan yoki juda tez olindi.'),
           C.signal,
         ),
       _Phase.idle => (
-          'Tugmani bosing, keyin kartani telefon orqasiga tegizing.',
+          tr('Tugmani bosing, keyin kartani telefon orqasiga tegizing.'),
           C.muted,
         ),
     };
@@ -214,7 +215,7 @@ class _Option extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const NIcon(Ico.check, size: 16, color: C.champagne),
+                NIcon(Ico.check, size: 16, color: C.champagne),
             ],
           ),
         ),

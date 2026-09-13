@@ -7,6 +7,7 @@ import 'package:nfcstore/design/theme.dart';
 import 'package:nfcstore/design/tokens.dart';
 import 'package:nfcstore/design/type.dart';
 import 'package:nfcstore/state/app_lock.dart';
+import 'package:nfcstore/state/app_prefs.dart';
 import 'package:nfcstore/state/app_state.dart';
 import '../widget_test.dart' show FakeStore;
 import 'fixtures.dart';
@@ -61,9 +62,16 @@ AppState auditState({AuditMode mode = AuditMode.normal}) => AppState(
 /// `app.dart` dagi builder bilan AYNAN bir xil: Material qatlami,
 /// mavzu, matn masshtabi chegarasi. Aks holda audit ekranni haqiqiy
 /// ilovadagidan boshqacha ko'rsatardi va xulosa yolg'on bo'lardi.
-Widget auditApp(Widget child, AppState state, {AppLock? lock}) => AppScope(
+Widget auditApp(Widget child, AppState state, {AppLock? lock, AppPrefs? prefs}) =>
+    AppScope(
       state: state,
-      child: AppLockScope(
+      // KO'RINISH SOZLAMALARI ham o'ralishi SHART: haqiqiy ilovada
+      // ular ildizda turadi va ekranlar ularni o'qiydi. Auditda
+      // bo'lmasa, kadr haqiqiy ilovadan farq qilardi (va sozlamalar
+      // ekrani umuman ochilmasdi).
+      child: AppPrefsScope(
+        prefs: prefs ?? AppPrefs(storage: FakeStore()),
+        child: AppLockScope(
         lock: lock ?? AppLock(storage: FakeStore()),
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -81,6 +89,7 @@ Widget auditApp(Widget child, AppState state, {AppLock? lock}) => AppScope(
           home: child,
         ),
       ),
+      ),
     );
 
 /// Ekranni kadrga joylab, tarmoq javoblarini kutadi.
@@ -89,12 +98,14 @@ Future<void> pumpScreen(
   Widget screen, {
   AppState? state,
   AppLock? lock,
+  AppPrefs? prefs,
 }) async {
   tester.view.physicalSize = auditSize * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
-  await tester.pumpWidget(auditApp(screen, state ?? auditState(), lock: lock));
+  await tester.pumpWidget(
+      auditApp(screen, state ?? auditState(), lock: lock, prefs: prefs));
   // Soxta server javoblari va animatsiyalar tugasin.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));

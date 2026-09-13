@@ -11,6 +11,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// PAROLNI TIKLASH — ikki qadam: kod so'rash, keyin yangi parol.
 ///
@@ -65,7 +66,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _request() async {
     final login = _login.text.trim();
     if (login.isEmpty) {
-      setState(() => _error = 'Email yoki telefon raqamini kiriting.');
+      setState(() => _error = tr('Email yoki telefon raqamini kiriting.'));
       return;
     }
     setState(() {
@@ -80,7 +81,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } on ApiError catch (e) {
       if (mounted) {
         setState(() => _error = e.key == 'rate_limited'
-            ? 'Juda ko‘p urinish. Birozdan so‘ng qayta urining.'
+            ? tr('Juda ko‘p urinish. Birozdan so‘ng qayta urining.')
             : humanError(e));
       }
     } catch (e) {
@@ -92,11 +93,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _reset() async {
     if (_code.text.length != 6) {
-      setState(() => _error = 'Kodni to‘liq kiriting.');
+      setState(() => _error = tr('Kodni to‘liq kiriting.'));
       return;
     }
     if (_password.text.length < 6) {
-      setState(() => _error = 'Parol kamida 6 belgi bo‘lsin.');
+      setState(() => _error = tr('Parol kamida 6 belgi bo‘lsin.'));
       return;
     }
     setState(() {
@@ -113,7 +114,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } on ApiError catch (e) {
       if (mounted) {
         setState(() => _error = e.key == 'bad_code'
-            ? 'Kod xato yoki muddati tugagan.'
+            ? tr('Kod xato yoki muddati tugagan.')
             : humanError(e));
       }
     } catch (e) {
@@ -135,15 +136,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(),
-                const Text('Parol\nyangilandi', style: T.display),
+                Text(tr('Parol\nyangilandi'), style: T.display),
                 const SizedBox(height: S.x12),
-                const Text(
-                  'Endi yangi parol bilan kirishingiz mumkin. Boshqa '
-                  'qurilmalardagi ochiq sessiyalar yopildi.',
+                Text(
+                  tr('Endi yangi parol bilan kirishingiz mumkin. Boshqa ') +
+                  tr('qurilmalardagi ochiq sessiyalar yopildi.'),
                   style: T.body,
                 ),
                 const Spacer(),
-                PrimaryButton('Kirish', onTap: () => Navigator.of(context).pop()),
+                PrimaryButton(tr('Kirish'), onTap: () => Navigator.of(context).pop()),
                 const SizedBox(height: S.x32),
               ],
             ),
@@ -157,26 +158,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const TopBar(title: 'Parolni tiklash'),
+            TopBar(title: tr('Parolni tiklash')),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, S.x32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_sent ? 'Kodni\nkiriting' : 'Parolni\nunutdingizmi', style: T.display),
+                    Text(_sent ? tr('Kodni\nkiriting') : tr('Parolni\nunutdingizmi'), style: T.display),
                     const SizedBox(height: S.x12),
                     Text(
                       _sent
-                          ? 'Agar bu hisob mavjud bo‘lsa, unga 6 xonali kod '
-                              'yuborildi. Kod 10 daqiqa amal qiladi.'
-                          : 'Email yoki telefon raqamingizni kiriting — tiklash '
-                              'kodini yuboramiz.',
+                          ? tr('Agar bu hisob mavjud bo‘lsa, unga 6 xonali kod ') +
+                              tr('yuborildi. Kod 10 daqiqa amal qiladi.')
+                          : tr('Email yoki telefon raqamingizni kiriting — tiklash ') +
+                              tr('kodini yuboramiz.'),
                       style: T.body,
                     ),
                     const SizedBox(height: S.x24),
                     Field(
-                      label: 'Email yoki telefon',
+                      label: tr('Email yoki telefon'),
                       controller: _login,
                       hint: 'ism@gmail.com',
                       enabled: !_sent,
@@ -185,22 +186,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                     if (_sent) ...[
                       const SizedBox(height: S.x20),
-                      const Eyebrow('Kod'),
+                      Eyebrow(tr('Kod')),
                       const SizedBox(height: 7),
                       CodeField(controller: _code, hasError: _error != null),
                       const SizedBox(height: S.x16),
                       Field(
-                        label: 'Yangi parol',
+                        label: tr('Yangi parol'),
                         controller: _password,
                         hint: '••••••••',
                         obscure: true,
-                        helper: 'Kamida 6 belgi',
+                        helper: tr('Kamida 6 belgi'),
                         error: _error,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _reset(),
                       ),
                       const SizedBox(height: S.x20),
-                      PrimaryButton('Parolni yangilash', loading: _busy, onTap: _busy ? null : _reset),
+                      PrimaryButton(tr('Parolni yangilash'), loading: _busy, onTap: _busy ? null : _reset),
                       const SizedBox(height: S.x12),
                       Center(
                         child: GestureDetector(
@@ -209,7 +210,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(S.x8),
                             child: Text(
-                              _left > 0 ? 'Qayta yuborish · $_left' : 'Qayta yuborish',
+                              _left > 0 ? 'Qayta yuborish · $_left' : tr('Qayta yuborish'),
                               style: T.caption.copyWith(
                                 color: _left > 0 ? C.muted : C.champagne,
                                 fontWeight: FontWeight.w700,
@@ -220,7 +221,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ] else ...[
                       const SizedBox(height: S.x24),
-                      PrimaryButton('Kod yuborish', loading: _busy, onTap: _busy ? null : _request),
+                      PrimaryButton(tr('Kod yuborish'), loading: _busy, onTap: _busy ? null : _request),
                     ],
                   ],
                 ),

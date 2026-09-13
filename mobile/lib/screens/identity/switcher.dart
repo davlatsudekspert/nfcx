@@ -9,6 +9,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../business/create_company.dart';
 import '../../design/nav.dart';
+import '../../l10n/strings.dart';
 
 /// SHAXS ALMASHTIRGICH — ilovaning ildiz holati o'zgaradigan joy.
 ///
@@ -23,8 +24,8 @@ Future<void> showIdentitySwitcher(BuildContext context) async {
   final state = AppScope.read(context);
   await showSheet<void>(
     context,
-    title: 'Shaxsni almashtirish',
-    subtitle: 'Tanlangan shaxs butun ilova uchun faol bo‘ladi.',
+    title: tr('Shaxsni almashtirish'),
+    subtitle: tr('Tanlangan shaxs butun ilova uchun faol bo‘ladi.'),
     child: _SwitcherBody(state: state),
   );
 }
@@ -76,7 +77,7 @@ class _SwitcherBody extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: S.x24),
               child: Text(
-                'Hali ID‘ingiz yo‘q. NFC bo‘limidan ID tanlashingiz mumkin.',
+                tr('Hali ID‘ingiz yo‘q. NFC bo‘limidan ID tanlashingiz mumkin.'),
                 textAlign: TextAlign.center,
                 style: T.body,
               ),
@@ -99,7 +100,7 @@ class _SwitcherBody extends StatelessWidget {
               Navigator.of(context).pop();
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 nav.push(SlidePage<void>(
-                  builder: (_) => const CreateCompanyScreen(),
+                  builder: (_) => CreateCompanyScreen(),
                 ));
               });
             },
@@ -111,9 +112,9 @@ class _SwitcherBody extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const NIcon(Ico.plus, size: 18, color: C.champagne),
+                  NIcon(Ico.plus, size: 18, color: C.champagne),
                   const SizedBox(width: S.x12),
-                  Text('Yangi Company ID yaratish',
+                  Text(tr('Yangi Company ID yaratish'),
                       style: T.cardTitle.copyWith(color: C.champagne)),
                 ],
               ),
@@ -183,7 +184,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
               if (active)
-                const NIcon(Ico.check, size: 17, color: C.champagne),
+                NIcon(Ico.check, size: 17, color: C.champagne),
             ],
           ),
         ),

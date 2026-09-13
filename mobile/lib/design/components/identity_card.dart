@@ -245,7 +245,7 @@ class _IdentityCardState extends State<IdentityCard>
                           crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('TEGISHLAR', style: T.eyebrow),
+                            Text('TEGISHLAR', style: T.eyebrow),
                             const SizedBox(height: 2),
                             Text(compact(taps), style: T.price.copyWith(fontSize: 14)),
                           ],

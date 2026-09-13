@@ -49,7 +49,7 @@ class SheetBody extends StatelessWidget {
           constraints: BoxConstraints(maxHeight: media.size.height * .86),
           decoration: BoxDecoration(
             color: const Color(0xE6100F14),
-            border: const Border(top: BorderSide(color: C.warmHairline)),
+            border: Border(top: BorderSide(color: C.warmHairline)),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(R.sheet)),
             boxShadow: E.sheet,
           ),

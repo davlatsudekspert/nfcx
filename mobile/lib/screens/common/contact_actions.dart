@@ -4,6 +4,7 @@ import '../../design/components/icons.dart';
 import '../../design/components/press.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 
 /// TASHQI KONTAKT AMALLARI.
 ///
@@ -33,7 +34,7 @@ class ContactRow extends StatelessWidget {
     if (phone.trim().isNotEmpty) {
       items.add((
         icon: Ico.phone,
-        label: 'Qo‘ng‘iroq',
+        label: tr('Qo‘ng‘iroq'),
         color: C.offWhite,
         uri: Uri.parse('tel:${phone.replaceAll(RegExp(r'[^0-9+]'), '')}'),
       ));

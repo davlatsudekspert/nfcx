@@ -24,6 +24,7 @@ import '../common/top_bar.dart';
 import '../content/post_detail.dart';
 import '../nfc/qr_share.dart';
 import '../business/edit_business.dart';
+import '../../l10n/strings.dart';
 
 /// PROFIL — bitta skelet, to'rt kombinatsiya.
 ///
@@ -253,10 +254,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 _PostGrid(
                   posts: _stories,
-                  empty: 'Hali story yo‘q',
-                  emptyHint: 'Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.',
+                  empty: tr('Hali story yo‘q'),
+                  emptyHint: tr('Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.'),
                   emptyIcon: Ico.camera,
-                  addLabel: 'Story qo‘shish',
+                  addLabel: tr('Story qo‘shish'),
                   onAdd: isOwner ? () => _compose(code, ComposeKind.story) : null,
                 ),
                 _About(record: _record, company: _company),
@@ -368,7 +369,7 @@ class _Header extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: S.gutter),
               child: AspectRatio(
                 aspectRatio: 16 / 7,
-                child: NetImage(cover, slotLabel: 'COVER 16:7', radius: R.card),
+                child: NetImage(cover, slotLabel: tr('COVER 16:7'), radius: R.card),
               ),
             ),
             // Muqova ostidagi yumshoq qorong'ilashuv — avatar va
@@ -393,7 +394,7 @@ class _Header extends StatelessWidget {
               bottom: -26,
               child: Container(
                 padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
                 child: Avatar(url: avatar, name: name, size: 72),
               ),
             ),
@@ -437,7 +438,7 @@ class _Header extends StatelessWidget {
                           ),
                         ),
                       ),
-                    _Stat(value: company?.views ?? record?.views ?? 0, label: 'ko‘rish'),
+                    _Stat(value: company?.views ?? record?.views ?? 0, label: tr('ko‘rish')),
                   ],
                 ),
               ),
@@ -478,7 +479,7 @@ class _Header extends StatelessWidget {
                   if (company?.isOpen != null) ...[
                     const SizedBox(width: S.x8),
                     StatusChip(
-                      company!.isOpen! ? 'Ochiq' : 'Yopiq',
+                      company!.isOpen! ? tr('Ochiq') : tr('Yopiq'),
                       tone: company!.isOpen! ? StatusTone.ok : StatusTone.neutral,
                     ),
                     if (company!.hoursLabel.isNotEmpty) ...[
@@ -580,7 +581,7 @@ class _OwnerActions extends StatelessWidget {
             children: [
               Expanded(
                 child: SecondaryButton(
-                  'Tahrirlash',
+                  tr('Tahrirlash'),
                   height: 44,
                   // Endi IKKALASI ham: biznes o'z ekraniga boradi
                   // (`PATCH /api/companies/:id`), shaxsiy — o'zinikiga.
@@ -598,7 +599,7 @@ class _OwnerActions extends StatelessWidget {
               const SizedBox(width: S.x8),
               Expanded(
                 child: SecondaryButton(
-                  'Statistika',
+                  tr('Statistika'),
                   height: 44,
                   // Ikkala tur uchun ham ishlaydi: biznesda
                   // `/api/companies/:id/stats`, shaxsiyda
@@ -626,8 +627,8 @@ class _OwnerActions extends StatelessWidget {
               if (isBusiness) ...[
                 Expanded(
                   child: GhostButton(
-                    'Buyurtmalar',
-                    icon: const NIcon(Ico.bag, size: 15, color: C.champagne),
+                    tr('Buyurtmalar'),
+                    icon: NIcon(Ico.bag, size: 15, color: C.champagne),
                     onTap: () => push(
                       context,
                       (_) => OwnerOrdersScreen(
@@ -646,8 +647,8 @@ class _OwnerActions extends StatelessWidget {
               // "tugallanmagan" ko'rinardi.
               Expanded(
                 child: GhostButton(
-                  'Ulashish',
-                  icon: const NIcon(Ico.share, size: 15, color: C.champagne),
+                  tr('Ulashish'),
+                  icon: NIcon(Ico.share, size: 15, color: C.champagne),
                   onTap: onShare,
                 ),
               ),
@@ -683,8 +684,8 @@ class _PublicActions extends StatelessWidget {
             children: [
               Expanded(
                 child: following
-                    ? SecondaryButton('Obuna bo‘lingan', height: 48, onTap: busy ? null : onFollow)
-                    : PrimaryButton('Obuna bo‘lish', loading: busy, onTap: busy ? null : onFollow),
+                    ? SecondaryButton(tr('Obuna bo‘lingan'), height: 48, onTap: busy ? null : onFollow)
+                    : PrimaryButton(tr('Obuna bo‘lish'), loading: busy, onTap: busy ? null : onFollow),
               ),
               const SizedBox(width: S.x8),
               // Ikonkali kvadrat: "Obuna bo'lish" ekrandagi YAGONA
@@ -705,7 +706,7 @@ class _PublicActions extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: S.x12),
+          SizedBox(height: S.x12),
           // TASHQI KONTAKT — ichki messenjer YO'Q.
           ContactRow(phone: phone, telegram: tg, instagram: instagram),
         ],
@@ -719,15 +720,15 @@ class _CatalogGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const EmptyState(
-        'Bu biznes hali mahsulot joylamagan. Keyinroq kirib ko‘ring.',
-        title: 'Katalog bo‘sh',
+      return EmptyState(
+        tr('Bu biznes hali mahsulot joylamagan. Keyinroq kirib ko‘ring.'),
+        title: tr('Katalog bo‘sh'),
         icon: Ico.bag,
       );
     }
     return GridView.builder(
-      padding: const EdgeInsets.all(S.gutter),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      padding: EdgeInsets.all(S.gutter),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: S.x12,
         mainAxisSpacing: S.x12,
@@ -740,26 +741,28 @@ class _CatalogGrid extends StatelessWidget {
 }
 
 class _PostGrid extends StatelessWidget {
+  // Standart matnlar TILGA BOG'LIQ, ya'ni `const` standart qiymat
+  // bo'la olmaydi. `null` -> build ichida joriy tilda olinadi.
   const _PostGrid({
     required this.posts,
-    this.empty = 'Hali post yo‘q',
-    this.emptyHint = 'Bu profilda hali post joylanmagan.',
+    this.empty,
+    this.emptyHint,
     this.emptyIcon = Ico.image,
     this.onAdd,
-    this.addLabel = 'Post qo‘shish',
+    this.addLabel,
   });
   final List<Post> posts;
 
   /// Bo'sh holat sarlavhasi.
-  final String empty;
+  final String? empty;
 
   /// MEHMONGA ko'rsatiladigan izoh (egada boshqacha yoziladi).
-  final String emptyHint;
+  final String? emptyHint;
   final Ico emptyIcon;
 
   /// Faqat EGADA bo'ladi. `null` — mehmon ko'rinishi.
   final VoidCallback? onAdd;
-  final String addLabel;
+  final String? addLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -771,11 +774,11 @@ class _PostGrid extends StatelessWidget {
         // MEHMONGA va EGAGA boshqa izoh: mehmon hech narsa qila
         // olmaydi, egaga esa keyingi qadam aytiladi.
         onAdd == null
-            ? emptyHint
-            : 'Birinchisini joylang — profilingiz shu bilan jonlanadi.',
-        title: empty,
+            ? (emptyHint ?? tr('Bu profilda hali post joylanmagan.'))
+            : tr('Birinchisini joylang — profilingiz shu bilan jonlanadi.'),
+        title: empty ?? tr('Hali post yo‘q'),
         icon: emptyIcon,
-        actionLabel: onAdd == null ? null : addLabel,
+        actionLabel: onAdd == null ? null : (addLabel ?? tr('Post qo‘shish')),
         onAction: onAdd,
       );
     }
@@ -792,7 +795,7 @@ class _PostGrid extends StatelessWidget {
       ),
       itemCount: posts.length + (onAdd == null ? 0 : 1),
       itemBuilder: (context, i) => onAdd != null && i == 0
-          ? _AddTile(label: addLabel, onTap: onAdd!)
+          ? _AddTile(label: addLabel ?? tr('Post qo‘shish'), onTap: onAdd!)
           : _tile(context, posts[i - (onAdd == null ? 0 : 1)]),
     );
   }
@@ -836,7 +839,7 @@ class _AddTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const NIcon(Ico.plus, size: 22, color: C.champagne),
+              NIcon(Ico.plus, size: 22, color: C.champagne),
               const SizedBox(height: 6),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -862,22 +865,22 @@ class _About extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = <({String label, String value})>[
       if ((company?.address ?? record?.address ?? '').isNotEmpty)
-        (label: 'Manzil', value: company?.address ?? record!.address),
+        (label: tr('Manzil'), value: company?.address ?? record!.address),
       if ((company?.city ?? record?.city ?? '').isNotEmpty)
-        (label: 'Shahar', value: company?.city ?? record!.city),
+        (label: tr('Shahar'), value: company?.city ?? record!.city),
       if ((company?.hoursLabel ?? '').isNotEmpty)
-        (label: 'Ish vaqti', value: company!.hoursLabel),
+        (label: tr('Ish vaqti'), value: company!.hoursLabel),
       if ((company?.phone ?? record?.phone ?? '').isNotEmpty)
-        (label: 'Telefon', value: company?.phone ?? record!.phone),
+        (label: tr('Telefon'), value: company?.phone ?? record!.phone),
       if ((company?.website ?? record?.website ?? '').isNotEmpty)
-        (label: 'Veb-sayt', value: company?.website ?? record!.website),
+        (label: tr('Veb-sayt'), value: company?.website ?? record!.website),
     ];
     final about = company?.about ?? record?.about ?? '';
 
     if (rows.isEmpty && about.isEmpty) {
-      return const EmptyState(
-        'Manzil, ish vaqti va aloqa ma‘lumotlari hali kiritilmagan.',
-        title: 'Ma‘lumot yo‘q',
+      return EmptyState(
+        tr('Manzil, ish vaqti va aloqa ma‘lumotlari hali kiritilmagan.'),
+        title: tr('Ma‘lumot yo‘q'),
         icon: Ico.user,
       );
     }

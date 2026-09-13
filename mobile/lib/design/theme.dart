@@ -11,7 +11,7 @@ import 'type.dart';
 /// to'g'ri o'qiydi, shuning uchun tasodifan Material ranglariga
 /// "sirg'alib" ketmaydi.
 ThemeData buildTheme() {
-  const scheme = ColorScheme.dark(
+  final scheme = ColorScheme.dark(
     primary: C.champagne,
     onPrimary: C.ink,
     secondary: C.platinum,
@@ -29,7 +29,7 @@ ThemeData buildTheme() {
     splashFactory: NoSplash.splashFactory,
     highlightColor: const Color(0x00000000),
     splashColor: const Color(0x00000000),
-    textSelectionTheme: const TextSelectionThemeData(
+    textSelectionTheme: TextSelectionThemeData(
       cursorColor: C.champagne,
       selectionColor: Color(0x33E8CFA0),
       selectionHandleColor: C.champagne,
@@ -47,10 +47,12 @@ ThemeData buildTheme() {
 }
 
 /// Tizim panellari — status bar shaffof, ikonkalari oq (fon qorong'i).
-const systemOverlay = SystemUiOverlayStyle(
-  statusBarColor: Color(0x00000000),
-  statusBarIconBrightness: Brightness.light,
-  statusBarBrightness: Brightness.dark,
-  systemNavigationBarColor: C.obsidian,
-  systemNavigationBarIconBrightness: Brightness.light,
-);
+/// Tizim paneli uslubi. MAVZUGA BOG'LIQ (pastki panel rangi), shuning
+/// uchun `const` emas — funksiya.
+SystemUiOverlayStyle get systemOverlay => SystemUiOverlayStyle(
+      statusBarColor: const Color(0x00000000),
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: C.obsidian,
+      systemNavigationBarIconBrightness: Brightness.light,
+    );

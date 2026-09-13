@@ -11,6 +11,7 @@ import '../settings/settings_screen.dart';
 import 'profile_screen.dart';
 import 'switcher.dart';
 import '../nfc/id_catalog.dart';
+import '../../l10n/strings.dart';
 
 /// PROFILE tabi — faol shaxsning profili.
 ///
@@ -32,10 +33,10 @@ class ProfileTab extends StatelessWidget {
           children: [
             const SizedBox(height: S.x44),
             EmptyState(
-              'ID tanlaganingizdan keyin profil shu yerda ochiladi.',
-              title: 'Shaxsingiz yo‘q',
+              tr('ID tanlaganingizdan keyin profil shu yerda ochiladi.'),
+              title: tr('Shaxsingiz yo‘q'),
               icon: Ico.user,
-              actionLabel: 'ID tanlash',
+              actionLabel: tr('ID tanlash'),
               onAction: () => push(context, (_) => const IdCatalogScreen()),
             ),
             const Spacer(),
@@ -49,7 +50,7 @@ class ProfileTab extends StatelessWidget {
                     children: [
                       const NIcon(Ico.settings, size: 19, color: C.ash),
                       const SizedBox(width: S.x12),
-                      const Expanded(child: Text('Sozlamalar', style: T.cardTitle)),
+                      Expanded(child: Text(tr('Sozlamalar'), style: T.cardTitle)),
                       const NIcon(Ico.chevronRight, size: 17, color: C.muted),
                     ],
                   ),
@@ -79,7 +80,7 @@ class ProfileTab extends StatelessWidget {
               Press(
                 haptic: true,
                 onTap: () => showIdentitySwitcher(context),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(S.x8),
                   child: NIcon(Ico.refresh, size: 20, color: C.champagne),
                 ),

@@ -22,6 +22,7 @@ import '../nfc/qr_share.dart';
 import '../orders/my_orders.dart';
 import '../settings/settings_screen.dart';
 import '../nfc/id_catalog.dart';
+import '../../l10n/strings.dart';
 
 /// HOME — "menga o'z shaxsimni ko'rsat".
 ///
@@ -160,11 +161,11 @@ class _HomeScreenState extends State<HomeScreen> {
             if (active == null)
               SliverToBoxAdapter(
                 child: EmptyState(
-                  'NFC ID — bu sizning raqamli vizitkangiz: bitta '
-                  'tegizish bilan ulashiladi.',
-                  title: 'Boshlaymizmi?',
+                  tr('NFC ID — bu sizning raqamli vizitkangiz: bitta ') +
+                  tr('tegizish bilan ulashiladi.'),
+                  title: tr('Boshlaymizmi?'),
                   icon: Ico.nfc,
-                  actionLabel: 'ID tanlash',
+                  actionLabel: tr('ID tanlash'),
                   onAction: () => push(context, (_) => const IdCatalogScreen()),
                 ),
               )
@@ -215,7 +216,7 @@ class _Header extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Assalomu alaykum', style: T.caption.copyWith(color: C.ash)),
+                  Text(tr('Assalomu alaykum'), style: T.caption.copyWith(color: C.ash)),
                   const SizedBox(height: 3),
                   Text(
                     active?.name.isNotEmpty == true ? active!.name : name,
@@ -246,12 +247,12 @@ class _ActiveCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Eyebrow('Faol ID'),
+          Eyebrow(tr('Faol ID')),
           const SizedBox(height: S.x8),
           IdentityCard(
             code: active.code,
             holder: active.name,
-            subtitle: active.isBusiness ? 'Biznes' : 'Shaxsiy',
+            subtitle: active.isBusiness ? tr('Biznes') : tr('Shaxsiy'),
             taps: taps is num ? taps.round() : null,
             tier: active.isBusiness ? Tier.gold : (active.record?.tier ?? Tier.free),
             active: true,
@@ -279,17 +280,17 @@ class _QuickActions extends StatelessWidget {
       ),
       (
         icon: Ico.share,
-        label: 'Ulashish',
+        label: tr('Ulashish'),
         onTap: () => shareIdentity(active),
       ),
       (
         icon: Ico.user,
-        label: 'Profil',
+        label: tr('Profil'),
         onTap: () => push(context, (_) => ProfileScreen(identity: active)),
       ),
       (
         icon: Ico.settings,
-        label: 'Sozlamalar',
+        label: tr('Sozlamalar'),
         onTap: () => push(context, (_) => const SettingsScreen()),
       ),
     ];
@@ -359,7 +360,7 @@ class _Stories extends StatelessWidget {
         itemBuilder: (context, i) {
           if (mine != null && i == 0) {
             return StoryRing(
-              name: 'Siz',
+              name: tr('Siz'),
               avatarUrl: mine.avatarUrl,
               addButton: true,
               onTap: onAdd,
@@ -401,7 +402,7 @@ class _GiftBanner extends StatelessWidget {
             shadow: E.e1,
             child: Row(
               children: [
-                const NIcon(Ico.gift, size: 20, color: C.champagne),
+                NIcon(Ico.gift, size: 20, color: C.champagne),
                 const SizedBox(width: S.x12),
                 Expanded(
                   child: Column(
@@ -409,12 +410,12 @@ class _GiftBanner extends StatelessWidget {
                     children: [
                       Text(
                         count == 1
-                            ? 'Sizga ID sovg‘a qilindi'
+                            ? tr('Sizga ID sovg‘a qilindi')
                             : 'Sizga $count ta ID sovg‘a qilindi',
                         style: T.cardTitle,
                       ),
                       const SizedBox(height: 2),
-                      Text('Qabul qilmaguningizcha ID sizga o‘tmaydi',
+                      Text(tr('Qabul qilmaguningizcha ID sizga o‘tmaydi'),
                           style: T.caption),
                     ],
                   ),
@@ -447,7 +448,7 @@ class _PendingBanner extends StatelessWidget {
             border: C.champagne.withValues(alpha: .38),
             child: Row(
               children: [
-                const NIcon(Ico.clock, size: 21, color: C.champagne),
+                NIcon(Ico.clock, size: 21, color: C.champagne),
                 const SizedBox(width: S.x12),
                 Expanded(
                   child: Column(
@@ -455,19 +456,19 @@ class _PendingBanner extends StatelessWidget {
                     children: [
                       Text(
                         count == 1
-                            ? 'To‘lov tugallanmagan'
+                            ? tr('To‘lov tugallanmagan')
                             : '$count ta to‘lov tugallanmagan',
                         style: T.cardTitle,
                       ),
                       const SizedBox(height: 3),
-                      const Text(
-                        'Band qilish muddati tugasa ID qaytadan sotuvga chiqadi',
+                      Text(
+                        tr('Band qilish muddati tugasa ID qaytadan sotuvga chiqadi'),
                         style: T.caption,
                       ),
                     ],
                   ),
                 ),
-                const NIcon(Ico.chevronRight, size: 18, color: C.champagne),
+                NIcon(Ico.chevronRight, size: 18, color: C.champagne),
               ],
             ),
           ),
@@ -492,13 +493,13 @@ class _VerifyPrompt extends StatelessWidget {
               children: [
                 const NIcon(Ico.telegram, size: 22, color: C.telegram),
                 const SizedBox(width: S.x12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Profilni tasdiqlang', style: T.cardTitle),
+                      Text(tr('Profilni tasdiqlang'), style: T.cardTitle),
                       SizedBox(height: 3),
-                      Text('Telegram bot orqali tasdiqlang va nishonga ega bo‘ling',
+                      Text(tr('Telegram bot orqali tasdiqlang va nishonga ega bo‘ling'),
                           style: T.caption),
                     ],
                   ),
@@ -534,14 +535,14 @@ class _Recommended extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: S.x32),
-        const SectionHeader('Mashhur profillar'),
+        SectionHeader(tr('Mashhur profillar')),
         AsyncView<List<Record>>(
           loading: loading,
           error: error,
           data: items,
           onRetry: onRetry,
           isEmpty: (d) => d.isEmpty,
-          emptyMessage: 'Katalog hozircha bo‘sh.',
+          emptyMessage: tr('Katalog hozircha bo‘sh.'),
           skeleton: const Padding(
             padding: EdgeInsets.symmetric(horizontal: S.gutter),
             child: Column(children: [SkeletonRow(), SkeletonRow(), SkeletonRow()]),

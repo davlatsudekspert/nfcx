@@ -8,6 +8,7 @@ import '../../design/components/press.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_lock.dart';
+import '../../l10n/strings.dart';
 
 /// QULF EKRANI — PIN va barmoq izi / yuz.
 ///
@@ -99,14 +100,14 @@ class _LockScreenState extends State<LockScreen> {
             const Spacer(),
             const Image(image: AssetImage('assets/img/logo.png'), width: 54, height: 54),
             const SizedBox(height: S.x20),
-            Text(wait > 0 ? 'Biroz kuting' : 'Kodni kiriting', style: T.displaySm),
+            Text(wait > 0 ? tr('Biroz kuting') : tr('Kodni kiriting'), style: T.displaySm),
             const SizedBox(height: S.x8),
             Text(
               wait > 0
                   ? '$wait soniyadan so‘ng qayta urinib ko‘ring'
                   : _error
-                      ? 'Kod xato. Qaytadan kiriting.'
-                      : 'NFCSTORE ni ochish uchun',
+                      ? tr('Kod xato. Qaytadan kiriting.')
+                      : tr('NFCSTORE ni ochish uchun'),
               style: T.caption.copyWith(color: _error && wait == 0 ? C.signal : C.ash),
             ),
             const SizedBox(height: S.x32),
@@ -199,7 +200,7 @@ class _Keypad extends StatelessWidget {
                     : key(
                         busy
                             ? const Spinner(size: 22)
-                            : const NIcon(Ico.user, size: 25, color: C.champagne),
+                            : NIcon(Ico.user, size: 25, color: C.champagne),
                         busy ? null : onBiometric,
                       ),
               ),

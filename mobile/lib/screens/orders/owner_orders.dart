@@ -9,6 +9,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
+import '../../l10n/strings.dart';
 
 /// BUYURTMALAR — EGA UCHUN.
 ///
@@ -32,10 +33,10 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
   String _filter = 'new';
   final _busy = <int>{};
 
-  static const _tabs = [
-    (key: 'new', label: 'Yangi'),
-    (key: 'done', label: 'Bajarilgan'),
-    (key: 'cancelled', label: 'Bekor'),
+  static final _tabs = [
+    (key: 'new', label: tr('Yangi')),
+    (key: 'done', label: tr('Bajarilgan')),
+    (key: 'cancelled', label: tr('Bekor')),
   ];
 
   @override
@@ -96,7 +97,7 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
         child: Column(
           children: [
             TopBar(
-              title: 'Buyurtmalar',
+              title: tr('Buyurtmalar'),
               subtitle: widget.companyName.isEmpty ? widget.companyId : widget.companyName,
             ),
             Padding(
@@ -124,8 +125,8 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
                 onRetry: _load,
                 isEmpty: (d) => d.isEmpty,
                 emptyMessage: _filter == 'new'
-                    ? 'Yangi buyurtma yo‘q.'
-                    : 'Bu ro‘yxat bo‘sh.',
+                    ? tr('Yangi buyurtma yo‘q.')
+                    : tr('Bu ro‘yxat bo‘sh.'),
                 skeleton: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: S.gutter),
                   child: Column(children: [SkeletonRow(), SkeletonRow(), SkeletonRow()]),
@@ -175,9 +176,9 @@ class _OrderCard extends StatelessWidget {
               const Spacer(),
               StatusChip(
                 switch (status) {
-                  'new' => 'Yangi',
-                  'done' => 'Bajarildi',
-                  'cancelled' => 'Bekor',
+                  'new' => tr('Yangi'),
+                  'done' => tr('Bajarildi'),
+                  'cancelled' => tr('Bekor'),
                   _ => status,
                 },
                 tone: switch (status) {
@@ -214,7 +215,7 @@ class _OrderCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: SecondaryButton(
-                    'Bajarildi',
+                    tr('Bajarildi'),
                     height: 42,
                     onTap: busy ? null : () => onStatus(id, 'done'),
                   ),
@@ -223,7 +224,7 @@ class _OrderCard extends StatelessWidget {
                 if (phone.isNotEmpty)
                   Expanded(
                     child: GhostButton(
-                      'Qo‘ng‘iroq',
+                      tr('Qo‘ng‘iroq'),
                       onTap: () => openExternal(
                         Uri.parse('tel:${phone.replaceAll(RegExp(r'[^0-9+]'), '')}'),
                       ),
@@ -232,7 +233,7 @@ class _OrderCard extends StatelessWidget {
                 const SizedBox(width: S.x8),
                 Expanded(
                   child: GhostButton(
-                    'Bekor',
+                    tr('Bekor'),
                     color: C.signal,
                     onTap: busy ? null : () => onStatus(id, 'cancelled'),
                   ),

@@ -70,21 +70,24 @@ class T {
 
   // ── IBM Plex Mono ──────────────────────────────────────────────────
   /// Eyebrow — bo'lim ustidagi kichik antiqua-oltin yozuv.
-  static const eyebrow = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 10,
-    letterSpacing: 1.6, color: C.antiqueGold,
-  );
+  /// MAVZUGA BOG'LIQ uslublar `get` — `const` bo'la olmaydi, chunki
+  /// rangi ish vaqtida o'zgaradi. Ularni ishlatadigan widget ham
+  /// `const` bo'lmaydi va mavzu almashganda qayta quriladi.
+  static TextStyle get eyebrow => TextStyle(
+        fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 10,
+        letterSpacing: 1.6, color: C.antiqueGold,
+      );
   static const meta = TextStyle(
     fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 11.5, color: C.ash,
   );
-  static const price = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 12.5,
-    color: C.champagne,
-  );
-  static const code = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 12,
-    letterSpacing: 0.6, color: C.champagne,
-  );
+  static TextStyle get price => TextStyle(
+        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 12.5,
+        color: C.champagne,
+      );
+  static TextStyle get code => TextStyle(
+        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 12,
+        letterSpacing: 0.6, color: C.champagne,
+      );
   static const statusLabel = TextStyle(
     fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 9.5,
     letterSpacing: 0.76,

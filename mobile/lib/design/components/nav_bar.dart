@@ -3,6 +3,7 @@ import '../tokens.dart';
 import '../type.dart';
 import 'icons.dart';
 import 'press.dart';
+import '../../l10n/strings.dart';
 
 /// Pastki navigatsiya.
 ///
@@ -24,11 +25,11 @@ class NavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final int unread;
 
-  static const tabs = <({Ico icon, String label})>[
-    (icon: Ico.home, label: 'Home'),
-    (icon: Ico.search, label: 'Discover'),
+  static final tabs = <({Ico icon, String label})>[
+    (icon: Ico.home, label: tr('Home')),
+    (icon: Ico.search, label: tr('Discover')),
     (icon: Ico.nfc, label: 'NFC'),
-    (icon: Ico.user, label: 'Profile'),
+    (icon: Ico.user, label: tr('Profile')),
   ];
 
   /// NFC tabining indeksi — u markaziy va boshqacha ko'rinadi.
@@ -38,7 +39,7 @@ class NavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [Color(0xEB141318), Color(0xFA0A0805)],
