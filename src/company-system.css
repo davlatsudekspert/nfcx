@@ -460,6 +460,24 @@
 /* Uch ustun: logotip AYNAN markazda qoladi, yon tugma uni surmaydi. */
 .qp-ava-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
 .qp-side{display:flex;justify-content:flex-start;min-width:0}
+.qp-side--left{justify-content:flex-end;padding-right:16px}
+/* TO'LIQ EKRAN tugmasi — brauzerning manzil va pastki qatorini
+   yashiradi.
+   Faqat ikonka emas, YOZUVI bilan: egasining talabi — "nimaligi
+   bilinib tursin". Shu bilan birga ixcham (11px yozuv, past bo'y),
+   chunki u asosiy harakat emas — o'ng tomondagi "Tahrirlash" bilan
+   bir xil ko'rinishda, logotipni markazda ushlab turadi. */
+.qp-fsbtn{
+  display:inline-flex;align-items:center;gap:4px;
+  max-width:100%;min-height:28px;padding:0 8px;border-radius:99px;cursor:pointer;
+  border:1px solid rgba(226,190,110,.38);
+  background:linear-gradient(160deg,rgba(40,33,18,.9),rgba(18,15,9,.9));
+  color:#d8c08a;font-size:10px;font-weight:600;
+  line-height:1;white-space:nowrap;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07)
+}
+.qp-fsbtn>svg{flex:none}
+.qp-fsbtn:hover{border-color:rgba(226,190,110,.7);color:#f0cf7b}
 .qp-sidebtn{
   border:1px solid rgba(226,190,110,.42);border-radius:13px;cursor:pointer;white-space:nowrap;
   background:linear-gradient(160deg,rgba(40,33,18,.92),rgba(20,17,10,.92));
@@ -728,4 +746,50 @@
   .qp-body{padding:10px}
   .qp-bottom{padding:8px 16px calc(9px + env(safe-area-inset-bottom,0px))}
   .qp-save{min-height:44px;font-size:14.5px}
+}
+
+/* ── XARITA ILOVASINI TANLASH OYNASI ────────────────────────────────
+   Pastdan chiqadigan varaq (bottom sheet) — telefonda barmoq shu
+   yerga yetadi. `position:fixed` + `z-index` yuqori: u `.qp-shell`
+   ichida emas, `document.body` ga portal orqali qo'yiladi, ya'ni
+   `overflow:hidden` uni kesmaydi. */
+.ma-veil{
+  position:fixed;inset:0;z-index:120;
+  display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(4,3,2,.72);backdrop-filter:blur(3px);
+  animation:ma-fade .16s ease-out;
+}
+@keyframes ma-fade{from{opacity:0}to{opacity:1}}
+.ma-sheet{
+  width:min(100%,440px);
+  padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));
+  border-radius:20px 20px 0 0;
+  border:1px solid rgba(226,190,110,.3);border-bottom:0;
+  background:linear-gradient(180deg,#15110a 0%,#0b0906 100%);
+  box-shadow:0 -18px 50px rgba(0,0,0,.7);
+  animation:ma-up .2s cubic-bezier(.22,1,.36,1);
+}
+@keyframes ma-up{from{transform:translateY(18px)}to{transform:translateY(0)}}
+.ma-head{
+  display:flex;align-items:center;gap:8px;
+  padding:2px 4px 12px;
+  color:#f0d69a;
+}
+.ma-head i{display:grid;place-items:center;color:#e0be72}
+.ma-head b{font-size:14px;font-weight:700}
+.ma-item{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;min-height:50px;margin-bottom:8px;padding:0 15px;
+  border-radius:13px;
+  border:1px solid rgba(226,190,110,.24);
+  background:linear-gradient(160deg,rgba(44,36,19,.75),rgba(20,16,9,.85));
+  color:#f3e4bf;font-size:14.5px;font-weight:600;text-align:left;
+  cursor:pointer;
+}
+.ma-item span{color:#c0a44e;font-size:19px;line-height:1}
+.ma-close{
+  width:100%;min-height:46px;margin-top:4px;
+  border-radius:13px;border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.05);
+  color:#b9ab8e;font-size:14px;font-weight:600;cursor:pointer;
 }

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { directionsUrl, hasCoords, yandexDirectionsUrl } from '../lib/mapLink.js';
+import { directionsUrl, hasCoords } from '../lib/mapLink.js';
 import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
 import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
+import MapAppSheet from '../components/MapAppSheet.jsx';
 import { downloadVcard } from '../lib/vcard.js';
 import StoryRing from '../components/StoryRing.jsx';
 import StoryGrid from '../components/StoryGrid.jsx';
@@ -20,7 +21,7 @@ import ShareButton from '../components/ShareButton.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import {
   IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconLink,
-  IconNote, IconPin, IconBankCard,
+  IconNote, IconPin, IconBankCard, IconExpand, IconCollapse,
 } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
@@ -59,6 +60,46 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const [followBusy, setFollowBusy] = useState(false);
   // Xarita bosilgandagina yuklanadi (izohi pastda).
   const [mapOpen, setMapOpen] = useState(false);
+  // Xarita ilovasini tanlash oynasi (Yandex Navigator / Google / …).
+  const [mapPick, setMapPick] = useState(false);
+  // TO'LIQ EKRAN — brauzerning manzil qatori va pastki tugmalarini
+  // yashiradi. Egasining talabi: "NFC kartani urganda telefon ekranini
+  // to'liq egallab chiqsin".
+  //
+  // Sayt buni O'ZICHA qila olmaydi — bu brauzerning xavfsizlik qoidasi
+  // (aks holda istalgan sahifa butun ekranni egallab, tizim oynasiga
+  // o'xshab qolardi). Faqat ODAMNING bosishi bilan mumkin, shuning
+  // uchun tugma kerak.
+  const [isFs, setIsFs] = useState(false);
+  const [fsOk, setFsOk] = useState(false);
+  useEffect(() => {
+    // iPhone Safari'da element uchun to'liq ekran YO'Q — u yerda tugma
+    // umuman chizilmaydi (bosilib, hech narsa bo'lmasligidan ko'ra
+    // ko'rinmagani yaxshi). U yerdagi yagona yo'l — "Bosh ekranga
+    // qo'shish", u esa alohida ishlaydi (ProfileManifest).
+    const can = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+    // Ilova sifatida ochilgan bo'lsa brauzer qatori allaqachon yo'q.
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    setFsOk(can && !standalone);
+    const sync = () => setIsFs(!!(document.fullscreenElement || document.webkitFullscreenElement));
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    sync();
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync);
+    };
+  }, []);
+
+  const toggleFs = () => {
+    const el = document.documentElement;
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    } else {
+      (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el).catch?.(() => {});
+    }
+  };
 
   const load = useCallback(() => {
     let live = true;
@@ -203,8 +244,12 @@ export default function CompanyQuickProfilePage({ companyId }) {
     company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#0b8a3c', icon: <IconWhatsApp width={26} height={26} aria-hidden="true" /> },
     company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#b3175a', icon: <IconInstagram width={26} height={26} aria-hidden="true" /> },
     company.facebook && { k: 'facebook', href: socialUrl('fb', company.facebook), label: 'Facebook', color: '#0d4fa8', icon: <IconFacebook width={26} height={26} aria-hidden="true" /> },
-    mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#b83a1e', icon: <IconPin width={26} height={26} aria-hidden="true" /> },
-    geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#b31217', icon: <IconPin width={26} height={26} aria-hidden="true" /> },
+    // MANZIL — bosilganda XARITA ILOVASINI TANLASH oynasi ochiladi
+    // (Yandex Navigator, Yandex Xarita, Google Maps, iPhone'da Apple
+    // Xarita). Ilgari bu yerda ikkita alohida tugma bor edi —
+    // "Manzil" (Google/Apple) va "Yandex" — va odam qaysi biri
+    // o'ziga kerakligini tugmadan bilolmasdi.
+    mapUrl && { k: 'directions', label: t('Manzil'), color: '#b83a1e', icon: <IconPin width={26} height={26} aria-hidden="true" />, onClick: () => setMapPick(true) },
     company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#5a4410', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
     ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#5a4410', icon: <IconLink width={26} height={26} aria-hidden="true" /> })),
   ].filter(Boolean);
@@ -244,7 +289,21 @@ export default function CompanyQuickProfilePage({ companyId }) {
           {/* Uch ustunli qator: logotip AYNAN markazda qoladi, yon
               tugma esa uni surib yubormaydi. */}
           <div className="qp-ava-row">
-            <span aria-hidden="true" />
+            {/* Chap ustun: to'liq ekran tugmasi. O'ng ustunda egasiga
+                "Tahrirlash" turadi — ikkalasi logotipni markazda
+                ushlab turadi. */}
+            <div className="qp-side qp-side--left">
+              {fsOk && (
+                <button
+                  type="button" className="qp-fsbtn" onClick={toggleFs}
+                  aria-label={isFs ? t('To‘liq ekrandan chiqish') : t('To‘liq ekran')}
+                  title={isFs ? t('To‘liq ekrandan chiqish') : t('To‘liq ekran')}
+                >
+                  {isFs ? <IconCollapse width={12} height={12} aria-hidden="true" /> : <IconExpand width={12} height={12} aria-hidden="true" />}
+                  <span>{isFs ? t('Chiqish') : t('To‘liq ekran')}</span>
+                </button>
+              )}
+            </div>
             <div className="qp-ava-wrap">
               <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
                 <div className="qp-ava">
@@ -415,12 +474,12 @@ export default function CompanyQuickProfilePage({ companyId }) {
                 </div>
               )}
               {mapUrl && (
-                <a
-                  className="qp-route vz-tap" href={mapUrl} target="_blank" rel="noreferrer"
-                  onClick={() => companyEvent(company.companyId, 'action', 'directions')}
+                <button
+                  type="button" className="qp-route vz-tap"
+                  onClick={() => { companyEvent(company.companyId, 'action', 'directions'); setMapPick(true); }}
                 >
                   <IconPin width={17} height={17} aria-hidden="true" /> {t('Yo‘nalish olish')}
-                </a>
+                </button>
               )}
 
               <button type="button" className="qp-public tier-shine vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
@@ -446,6 +505,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
         {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
         {showCard && <CardNumberModal cardNumber={company.cardNumber} holder={company.displayName} onClose={() => setShowCard(false)} />}
+        {mapPick && <MapAppSheet company={company} onClose={() => setMapPick(false)} />}
       </div>
     </main>
   );
