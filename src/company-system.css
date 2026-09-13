@@ -388,28 +388,36 @@
 
 /* ══ NFC BIZNES PROFILI — EGASINING MAKETI BO'YICHA ═══════════════════
    Talab: NFC kartani tegizganda telefon ekranida BITTA EKRANDA,
-   "premium" ko'rinishda chiqsin. Maketdagi joylashuv aynan shu:
+   "mukammal premium" ko'rinishda chiqsin. Maketdagi joylashuv:
 
-     @handle ▾                                    [til]
-              ──── (NFC belgisi) ────
-                    [ logotip ]  (♪)
-                    NOMI ✓
-                ● Hozir ochiq  10:00–19:00
-                 +998 …  •  Toshkent
-            ko'rildi | obunachi | mahsulot
-            [ Obuna bo'lish ]   [ ulashish ]
-             ( ) ( ) ( ) ( ) ( )   ← aloqa
-     ─────────────────────────────────────
-        ⊞      📦      🗓      ⓘ         ← yozuvsiz bo'limlar
-     ─────────────────────────────────────
+              NFCSTOREUZ                 ← ID, oltin serif
+            [ logotip ]  [Tahrirlash]    ← logotip AYNAN markazda
+              NOMI ✓
+        Digital Identity & MarTech…
+                Toshkent
+            ( HOZIR YOPIQ ▾ )
+      ───────────────────────────────
+        348        0          1
+      Ko'rildi  Obunachi  Xizmatlar
+      ───────────────────────────────
+       (📞) (✈) (✆) (📷) (f) (📍)      ← OLTIN katakcha, belgi O'Z RANGIDA
+      Qo'ng'iroq Telegram …
+      ───────────────────────────────
+      [POST] (STORIES) (XIZMATLAR) (MA'LUMOT)
+      ───────────────────────────────
             (suriladigan kontent)
-     ─────────────────────────────────────
-      Bosh   Katalog   Kompaniya   Profil  ← pastki navigatsiya
+        [   Kontaktni saqlash   ]
 
    Qobiq balandligi aynan ekran (100dvh) va O'ZI SURILMAYDI: faqat
    o'rtadagi kontent oynasi suriladi. */
+
+/* Oltin — bitta joyda belgilanadi va hamma yerda ishlatiladi, shunda
+   tugma, chiziq va yozuv bir xil metalldan bo'ladi. */
 .qp-page{
-  height:100dvh;overflow:hidden;background:#030303;color:#f7f4eb;
+  --gold-1:#fbeec2; --gold-2:#e6c36a; --gold-3:#c39a33; --gold-4:#8a6712;
+  --gold-face:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 34%,var(--gold-3) 62%,var(--gold-1) 100%);
+  --gold-line:linear-gradient(90deg,transparent,rgba(226,190,110,.55) 18%,rgba(226,190,110,.75) 50%,rgba(226,190,110,.55) 82%,transparent);
+  height:100dvh;overflow:hidden;background:#060504;color:#f2ece0;
   font-family:Inter,ui-sans-serif,system-ui,sans-serif;
   display:grid;place-items:center
 }
@@ -417,217 +425,222 @@
 .qp-shell{
   position:relative;width:min(100%,440px);height:100dvh;
   display:flex;flex-direction:column;overflow:hidden;
+  /* Muqova rasmi SAQLANADI, lekin juda xira: maketdagi fon deyarli
+     qop-qora, ustida yengil oltin yaltirash bor. */
   background:
-    linear-gradient(180deg,rgba(3,3,3,.72) 0%,rgba(3,3,3,.86) 40%,rgba(3,3,3,.96) 100%),
+    radial-gradient(120% 60% at 50% 0%,rgba(201,161,74,.13),transparent 62%),
+    radial-gradient(90% 50% at 50% 100%,rgba(201,161,74,.08),transparent 60%),
+    linear-gradient(180deg,rgba(6,5,4,.93),rgba(6,5,4,.97)),
     var(--cq-cover) center center/cover no-repeat,
-    #070706
+    #0a0806
 }
 /* Ish stolida — telefon shaklidagi ramka; telefonda butun ekran. */
 @media(min-width:601px){
   .qp-page{padding:22px}
-  .qp-shell{height:min(calc(100dvh - 44px),880px);border:1px solid #2b261a;border-radius:34px;box-shadow:0 40px 100px #000}
+  .qp-shell{height:min(calc(100dvh - 44px),880px);border-radius:38px;box-shadow:0 40px 100px #000,0 0 0 1px rgba(201,161,74,.34)}
 }
 
-/* ── Tepa qatori ─────────────────────────────────────────────────── */
-.qp-top{
-  flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px
+/* ── Tepa: kompaniya ID'si ───────────────────────────────────────── */
+.qp-top{flex:none;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 4px;text-align:center}
+.qp-cid{
+  font-family:var(--font-display,Georgia),serif;font-size:21px;font-weight:600;
+  letter-spacing:.16em;line-height:1;
+  background:var(--gold-face);-webkit-background-clip:text;background-clip:text;color:transparent
 }
-.qp-handle-wrap{position:relative;min-width:0}
-/* Chip rangi TARIFDAN keladi (ID qancha qisqa — shuncha yuqori
-   daraja), ya'ni qimmat ID bir qarashda bilinadi. */
-.qp-handle{
-  display:flex;align-items:center;gap:6px;max-width:100%;
-  border:1px solid color-mix(in srgb,var(--tier,#e7bd58) 40%,transparent);
-  border-radius:99px;padding:8px 13px;
-  background:linear-gradient(135deg,rgba(0,0,0,.6),color-mix(in srgb,var(--tier,#e7bd58) 10%,transparent));
-  color:var(--tier,#e7bd58);font-family:'Space Mono',monospace;
-  font-size:13px;font-weight:700;line-height:1;letter-spacing:.04em;
-  cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-}
-.qp-handle:hover{filter:brightness(1.12)}
-.qp-menu-veil{position:fixed;inset:0;z-index:30}
-.qp-menu{
-  position:absolute;z-index:31;left:0;top:calc(100% + 6px);width:232px;
-  border:1px solid #2d2518;border-radius:14px;background:#151109;
-  box-shadow:0 18px 44px #000;padding:5px;overflow:hidden
-}
-.qp-menu button{
-  display:flex;align-items:center;gap:9px;width:100%;
-  border:0;background:none;color:#e4dfd5;padding:10px 11px;border-radius:10px;
-  font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer
-}
-.qp-menu button:hover{background:rgba(255,255,255,.06);color:#f0cf7b}
-/* Til tugmasi — maketdagi o'ng tomondagi dumaloq tugma. */
-.qp-lang{flex:none}
-.qp-lang .btn{
-  width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;
-  border:1px solid rgba(255,255,255,.14);background:rgba(12,12,11,.8)
-}
-.qp-lang .btn:hover{border-color:rgba(239,183,47,.55)}
 
 /* ── Hero ────────────────────────────────────────────────────────── */
-.qp-hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:2px 16px 12px;text-align:center}
+.qp-hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:6px 16px 10px;text-align:center}
 
-/* Ikki nozik oltin chiziq NFC belgisida uchrashadi. */
-.qp-nfcline{display:flex;align-items:center;gap:10px;width:100%;max-width:300px;margin-bottom:8px}
-.qp-nfcline i{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(224,178,76,.55))}
-.qp-nfcline i:last-child{background:linear-gradient(270deg,transparent,rgba(224,178,76,.55))}
-.qp-nfcbadge{
-  flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  border:1px solid rgba(224,178,76,.45);background:rgba(10,9,6,.9);color:#e6c169
+/* Uch ustun: logotip AYNAN markazda qoladi, yon tugma uni surmaydi. */
+.qp-ava-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
+.qp-side{display:flex;justify-content:flex-start;min-width:0}
+.qp-sidebtn{
+  border:1px solid rgba(226,190,110,.42);border-radius:13px;cursor:pointer;white-space:nowrap;
+  background:linear-gradient(160deg,rgba(40,33,18,.92),rgba(20,17,10,.92));
+  color:#edd79a;padding:9px 11px;font-size:11.5px;font-weight:600;line-height:1.2;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08)
 }
+.qp-sidebtn:hover{border-color:rgba(226,190,110,.75);color:#f7e6b8}
+.qp-sidebtn.is-on{background:var(--gold-face);color:#241a05;border-color:transparent}
+.qp-sidebtn:disabled{opacity:.6}
 
 .qp-ava-wrap{position:relative;display:inline-flex}
 .qp-hero .story-ring{--ring-radius:50%}
+/* Qalin oltin halqa — maketning eng ko'zga tashlanadigan belgisi. */
 .qp-ava{
   width:96px;height:96px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
-  background:#0e0d09;border:2px solid var(--tier,#d09c24);color:#efc65b;
-  font-weight:900;font-size:26px;box-shadow:0 12px 34px #000,0 0 0 6px rgba(212,175,90,.07)
+  background:#0d0b07;color:#efc65b;font-weight:900;font-size:27px;
+  box-shadow:
+    0 0 0 3px #0d0b07,
+    0 0 0 9px rgba(201,161,74,.92),
+    0 0 0 10px rgba(120,92,24,.9),
+    0 14px 40px rgba(0,0,0,.75)
 }
 .qp-ava img{width:100%;height:100%;object-fit:cover}
 .qp-ava-note{
-  position:absolute;right:-2px;bottom:2px;width:30px;height:30px;border-radius:50%;
-  display:grid;place-items:center;cursor:pointer;
-  border:1px solid rgba(239,183,47,.5);background:#12100a;color:#e6c169
+  position:absolute;right:-1px;bottom:3px;width:30px;height:30px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;z-index:2;
+  border:1px solid rgba(226,190,110,.5);background:#12100a;color:#e6c169
 }
-.qp-ava-note.is-on{background:linear-gradient(135deg,#e9af23,#ffd76e);color:#120d03;border-color:transparent}
+.qp-ava-note.is-on{background:var(--gold-face);color:#241a05;border-color:transparent}
 
-.qp-name{display:flex;align-items:center;justify-content:center;gap:7px;margin:11px 0 0;font-size:24px;line-height:1.2;font-weight:800}
-.qp-verified{flex:none;width:17px;height:17px;border-radius:50%;background:linear-gradient(135deg,#e9af23,#ffd76e);color:#0a0803;font-style:normal;font-size:11px;font-weight:900;line-height:1;display:grid;place-items:center}
-.qp-hero .ch-box{position:relative;margin:8px 0 0;display:block}
-.qp-hero .ch-head{padding:5px 12px;gap:7px;font-size:11.5px;background:rgba(10,10,9,.72)}
-.qp-hero .ch-list{position:absolute;z-index:12;left:50%;transform:translateX(-50%);top:calc(100% + 5px);width:250px;max-width:calc(100vw - 42px);box-shadow:0 18px 44px #000}
-.qp-line{margin:8px 0 0;font-size:12px;line-height:1.4;color:#a79f92}
+.qp-name{
+  display:flex;align-items:center;justify-content:center;gap:9px;margin:13px 0 0;
+  font-family:var(--font-display,Georgia),serif;font-size:29px;font-weight:600;line-height:1.15;letter-spacing:.02em;
+  background:var(--gold-face);-webkit-background-clip:text;background-clip:text;color:transparent
+}
+/* Tasdiqlangan belgisi — matn gradienti unga tegmasligi uchun alohida. */
+.qp-verified{
+  flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  background:var(--gold-face);color:#1d1405;font-style:normal;font-size:13px;font-weight:900;line-height:1;
+  -webkit-text-fill-color:#1d1405;box-shadow:0 2px 8px rgba(0,0,0,.5)
+}
+.qp-sub{margin:7px 0 0;max-width:330px;font-size:14px;line-height:1.45;color:#cfc6b4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qp-city{margin:2px 0 0;font-size:14px;line-height:1.45;color:#cfc6b4}
 
-/* Raqamlar — ajratuvchi chiziqlar bilan. */
-.qp-stats{display:flex;align-items:center;justify-content:center;width:100%;margin-top:13px}
+/* Ish vaqti — metall tanachali tugma (maketdagi kabi). */
+.qp-hero .ch-box{position:relative;margin:10px 0 0;display:block}
+.qp-hero .ch-head{
+  padding:7px 16px;gap:8px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid rgba(226,190,110,.4);
+  background:linear-gradient(160deg,rgba(86,74,58,.9),rgba(38,32,24,.92));color:#e9dfc8
+}
+.qp-hero .ch-head small{letter-spacing:0;text-transform:none;color:#bdb3a0}
+.qp-hero .ch-list{position:absolute;z-index:12;left:50%;transform:translateX(-50%);top:calc(100% + 6px);width:250px;max-width:calc(100vw - 42px);box-shadow:0 18px 44px #000}
+
+/* Raqamlar — ikki oltin chiziq orasida. */
+.qp-stats{
+  display:flex;align-items:center;justify-content:center;width:100%;margin-top:12px;padding:9px 0;
+  border-top:1px solid transparent;border-bottom:1px solid transparent;
+  border-image:var(--gold-line) 1;border-left:0;border-right:0
+}
 .qp-stats>div{flex:1;min-width:0;padding:0 4px}
-.qp-stats>div+div{border-left:1px solid rgba(255,255,255,.09)}
-.qp-stats b{display:block;font-size:18px;font-weight:800;line-height:1.15;color:#f5efe2}
-.qp-stats small{display:block;margin-top:3px;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:#8d867a}
+.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:25px;font-weight:600;line-height:1.1;color:#f5efe2}
+.qp-stats small{display:block;margin-top:3px;font-size:12px;line-height:1.2;color:#b9b0a0}
 
-/* Asosiy harakat: keng oltin tugma + kvadrat ulashish. */
-.qp-cta{display:flex;align-items:stretch;gap:10px;width:100%;margin-top:14px}
-.qp-follow{
-  flex:1;min-height:46px;border:0;border-radius:99px;cursor:pointer;font-family:inherit;
-  background:linear-gradient(135deg,#e9af23,#ffd76e);color:#0a0803;
-  font-size:15px;font-weight:800;box-shadow:0 10px 26px rgba(233,175,35,.22)
-}
-.qp-follow.is-on{background:rgba(239,183,47,.13);color:#f0cf7b;box-shadow:none;border:1px solid rgba(239,183,47,.55)}
-.qp-follow:disabled{opacity:.6}
-.qp-sharebtn{
-  flex:none;width:46px;height:46px;padding:0;border-radius:15px;display:grid;place-items:center;
-  border:1px solid rgba(255,255,255,.14);background:rgba(12,12,11,.8);color:#e4dfd5;cursor:pointer
-}
-.qp-sharebtn:hover{border-color:rgba(239,183,47,.55);color:#f0cf7b}
-
-/* Aloqa — dumaloq ikonkalar, yon tomonga suriladi. */
-.qp-quick{display:flex;width:100%;margin-top:14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 16px 0;margin-inline:-16px}
-/* Ichki o'ram: sig'sa markazda, sig'masa chapdan boshlanadi va
-   to'liq suriladi. `justify-content:center` bilan suriladigan
-   qatorning BOSHI kesilib qolardi. */
-.qp-quick-in{display:flex;gap:11px;margin:0 auto}
+/* ── Aloqa: OLTIN katakcha, belgi O'Z FIRMA RANGIDA ──────────────── */
+.qp-quick{display:flex;width:100%;margin-top:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 16px 0;margin-inline:-16px}
 .qp-quick::-webkit-scrollbar{display:none}
+/* Ichki o'ram: sig'sa markazda, sig'masa chapdan boshlanadi va to'liq
+   suriladi. `justify-content:center` bilan qatorning BOSHI kesilib
+   qolardi va unga umuman yetib bo'lmasdi. */
+.qp-quick-in{display:flex;gap:12px;margin:0 auto}
 .qp-qbtn{
-  flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
-  border:1px solid rgba(255,255,255,.13);background:rgba(12,12,11,.75);
-  cursor:pointer;text-decoration:none;padding:0;font-family:inherit;
-  transition:border-color .18s,transform .16s
+  flex:0 0 auto;width:62px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  border:0;background:none;padding:0;cursor:pointer;text-decoration:none;text-align:center;
+  font-family:inherit;color:#e6ddcc
 }
-.qp-qbtn:hover{transform:translateY(-2px);border-color:currentColor}
-.qp-qbtn i{display:grid;place-items:center;line-height:0}
-/* Yorliq faqat ekran o'quvchi uchun: maketda yozuv yo'q. */
-.qp-qbtn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-/* "Saqlash" — ASOSIY harakat, shuning uchun oltin. */
-.qp-qbtn.is-primary{background:linear-gradient(135deg,#e9af23,#ffd76e);border-color:transparent;color:#0a0803}
-.qp-qbtn.is-primary i{color:#0a0803}
+.qp-page .qp-qbtn{font-size:11px;font-weight:500;line-height:1.2}
+.qp-qbtn i{
+  width:56px;height:56px;border-radius:50%;display:grid;place-items:center;
+  background:var(--gold-face);
+  box-shadow:0 0 0 1px rgba(120,92,24,.75),0 6px 16px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6);
+  transition:transform .16s,filter .16s
+}
+/* Belgi o'z rangida — oltin ustida o'qilishi uchun yengil oq soya. */
+.qp-qbtn i>svg{filter:drop-shadow(0 1px 0 rgba(255,255,255,.5))}
+.qp-qbtn:hover i{transform:translateY(-2px);filter:brightness(1.07)}
+.qp-qbtn span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* "Ulashish" — ShareButton ichida <i> yo'q, belgi to'g'ridan-to'g'ri
+   <svg>. Shuning uchun dumaloq katak SVGning o'ziga beriladi.
+   Ikki sinf (0,2,0) Tailwind'ning `gap-2` sidan kuchliroq. */
+.qp-qbtn.qp-qbtn--share{gap:7px}
+.qp-qbtn--share>svg{
+  width:56px;height:56px;padding:15px;box-sizing:border-box;border-radius:50%;color:#5a4410;
+  background:var(--gold-face);
+  box-shadow:0 0 0 1px rgba(120,92,24,.75),0 6px 16px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6)
+}
+.qp-qbtn--share:hover>svg{filter:brightness(1.07)}
 
-/* ── Bo'limlar — yozuvsiz ikonkalar ──────────────────────────────── */
-.qp-itabs{
-  flex:none;display:flex;align-items:stretch;
-  border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);
-  background:rgba(3,3,3,.45)
+/* ── Bo'limlar — oltin tanachali tugmalar ────────────────────────── */
+.qp-tabs{
+  flex:none;display:flex;gap:8px;padding:10px 16px;overflow-x:auto;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  border-top:1px solid transparent;border-bottom:1px solid transparent;
+  border-image:var(--gold-line) 1;border-left:0;border-right:0
 }
-.qp-itab{
-  flex:1;min-height:46px;display:grid;place-items:center;position:relative;
-  border:0;background:none;color:#6f6a61;cursor:pointer;font-family:inherit
+.qp-tabs::-webkit-scrollbar{display:none}
+.qp-tab{
+  flex:0 0 auto;border:1px solid rgba(226,190,110,.42);border-radius:99px;cursor:pointer;
+  background:rgba(16,13,8,.6);color:#ddd0ae;
+  padding:9px 14px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1;letter-spacing:.05em;text-transform:uppercase
 }
-.qp-itab:hover{color:#a79f92}
-.qp-itab.is-on{color:#f0cf7b}
-.qp-itab.is-on::after{
-  content:"";position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);
-  width:34px;height:2px;border-radius:2px;background:linear-gradient(90deg,#e9af23,#ffd76e)
-}
+.qp-tab:hover{border-color:rgba(226,190,110,.8);color:#f7e6b8}
+.qp-tab.is-on{background:var(--gold-face);color:#241a05;border-color:transparent;box-shadow:0 6px 18px rgba(201,161,74,.22)}
 
 /* ── YAGONA suriladigan qism ─────────────────────────────────────── */
-.qp-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 14px}
+.qp-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px}
 .qp-body::-webkit-scrollbar{width:0}
 
-/* Katalog kartasi — maketdagidek: kvadrat rasm, nom, oltin narx. */
-.qp-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.qp-item{border:1px solid #262117;border-radius:14px;overflow:hidden;background:rgba(14,12,9,.86)}
+.qp-posts{display:grid;gap:14px}
+/* Postlar — maketdagidek oltin hoshiyali kartochka. */
+.qp-posts article{border:1px solid rgba(226,190,110,.45);border-radius:16px;overflow:hidden;background:rgba(12,10,7,.85);box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.qp-posts img,.qp-posts video{display:block;width:100%;max-height:320px;object-fit:cover;background:#000}
+.qp-posts p{margin:0;padding:11px 13px;font-size:12.5px;line-height:1.5;color:#b5ab99}
+
+.qp-cards{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.qp-item{border:1px solid rgba(226,190,110,.35);border-radius:15px;overflow:hidden;background:rgba(12,10,7,.85)}
 .qp-item-pic{position:relative;aspect-ratio:1;display:grid;place-items:center;overflow:hidden;
-  background:repeating-linear-gradient(135deg,rgba(233,175,35,.09) 0 6px,transparent 6px 12px),#100d08}
+  background:repeating-linear-gradient(135deg,rgba(226,190,110,.1) 0 6px,transparent 6px 12px),#100d08}
 .qp-item-pic img{width:100%;height:100%;object-fit:cover}
-.qp-item-pic span{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:rgba(233,175,35,.5)}
-.qp-item-txt{padding:9px 10px 10px}
-.qp-item-txt b{display:block;font-size:11.5px;font-weight:700;line-height:1.35}
+.qp-item-pic span{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:rgba(226,190,110,.5)}
+.qp-item-txt{padding:10px}
+.qp-item-txt b{display:block;font-size:12px;font-weight:700;line-height:1.35}
 .qp-item-txt strong{display:block;margin-top:5px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#e3b44a}
 /* DIQQAT: `font:700 10px/1 inherit` YOZMANG — `font` qisqartmasi ichida
    oila sifatida `inherit` bo'lmaydi va butun qoida tashlab yuboriladi. */
-.qp-order{width:100%;margin-top:8px;border:1px solid rgba(239,183,47,.4);border-radius:9px;background:rgba(239,183,47,.1);color:#f0cf7b;padding:7px;font-family:inherit;font-size:10px;font-weight:700;line-height:1.2;cursor:pointer}
-.qp-order:hover{background:rgba(239,183,47,.18)}
+.qp-order{width:100%;margin-top:8px;border:1px solid rgba(226,190,110,.42);border-radius:9px;background:rgba(226,190,110,.1);color:#f0cf7b;padding:7px;font-family:inherit;font-size:10px;font-weight:700;line-height:1.2;cursor:pointer}
+.qp-order:hover{background:rgba(226,190,110,.2)}
 
-.qp-posts{display:grid;gap:12px}
-.qp-posts article{border:1px solid #26231d;border-radius:14px;overflow:hidden;background:rgba(11,11,10,.8)}
-.qp-posts img,.qp-posts video{display:block;width:100%;max-height:300px;object-fit:cover;background:#000}
-.qp-posts p{margin:0;padding:10px 12px;font-size:12px;line-height:1.5;color:#a29a8d}
-.qp-desc{margin:0;font-size:13px;line-height:1.65;color:#a8a094}
-.qp-addr{margin:10px 0 0;font-size:12px;line-height:1.5;color:#8f887c}
+.qp-desc{margin:0;font-size:13.5px;line-height:1.65;color:#b9b0a0}
+.qp-addr{margin:11px 0 0;font-size:12.5px;line-height:1.5;color:#948b7c}
 .qp-body .pf-story-grid{margin-top:0}
-.qp-body .pf-nfcid{margin-top:14px}
-.qp-foot{display:flex;justify-content:space-between;gap:10px;margin:14px 0 0;color:#5f5a51;font-size:8px;letter-spacing:.11em}
+.qp-body .pf-nfcid{margin-top:15px}
+.qp-public{width:100%;margin-top:11px;border:1px solid rgba(226,190,110,.42);border-radius:13px;background:rgba(18,14,8,.8);color:#f0cf7b;padding:12px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer}
+.qp-public span{float:right}
+.qp-public:hover{border-color:rgba(226,190,110,.8)}
+.qp-foot{display:flex;justify-content:space-between;gap:10px;margin:15px 0 0;color:#5f5a51;font-size:8px;letter-spacing:.11em}
 
-/* Musiqa pleeri — yopiq holatda joy egallamaydi, lekin ULANGAN
-   qoladi: ekran o'chsa ham ijro to'xtamaydi (MediaSession). */
+/* Musiqa — yopiq holatda joy egallamaydi, lekin ULANGAN qoladi:
+   ekran o'chsa ham ijro to'xtamaydi (MediaSession). */
 .qp-music{flex:none;overflow:hidden;max-height:0;transition:max-height .22s ease}
-.qp-music.is-open{max-height:180px;padding:0 14px 10px}
+.qp-music.is-open{max-height:180px;padding:0 14px 8px}
 
-/* ── Pastki navigatsiya ──────────────────────────────────────────── */
-.qp-nav{
-  flex:none;display:flex;align-items:stretch;
-  padding-bottom:env(safe-area-inset-bottom,0px);
-  border-top:1px solid rgba(255,255,255,.09);
-  background:rgba(5,5,4,.92);backdrop-filter:blur(12px)
+/* ── Kontaktni saqlash — doim ko'rinadigan oltin qator ───────────── */
+.qp-bottom{flex:none;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.qp-save{
+  width:100%;min-height:52px;border:0;border-radius:15px;cursor:pointer;font-family:inherit;
+  background:var(--gold-face);color:#241a05;font-size:16px;font-weight:700;letter-spacing:.01em;
+  box-shadow:0 10px 30px rgba(201,161,74,.26),inset 0 1px 0 rgba(255,255,255,.55)
 }
-.qp-nav button{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  min-height:58px;border:0;background:none;color:#6f6a61;cursor:pointer;font-family:inherit
-}
-.qp-nav button span{font-size:9.5px;font-weight:600;letter-spacing:.02em}
-.qp-nav button:hover{color:#a79f92}
-.qp-nav button.is-on{color:#f0cf7b}
+.qp-save:hover{filter:brightness(1.05)}
 
 /* Past ekranlar (360×640 va shunga o'xshash) — hamma narsa biroz
    kichrayadi, shunda o'rtadagi kontent oynasiga joy qoladi. */
 @media(max-height:740px){
-  .qp-top{padding-top:calc(7px + env(safe-area-inset-top,0px));padding-bottom:7px}
-  .qp-hero{padding:0 16px 8px}
-  .qp-nfcline{margin-bottom:5px}
-  .qp-nfcbadge{width:26px;height:26px}
-  .qp-ava{width:70px;height:70px;font-size:20px}
-  .qp-ava-note{width:26px;height:26px}
-  .qp-name{margin-top:7px;font-size:19px}
-  .qp-hero .ch-box{margin-top:6px}
-  .qp-line{margin-top:6px;font-size:11px}
-  .qp-stats{margin-top:8px}
-  .qp-stats small{font-size:8px}
-  .qp-stats b{font-size:16px}
-  .qp-cta{margin-top:9px}
-  .qp-follow,.qp-sharebtn{min-height:42px;height:42px}
-  .qp-quick{margin-top:9px}
-  .qp-qbtn{width:42px;height:42px}
-  .qp-itab{min-height:42px}
-  .qp-nav button{min-height:52px}
+  .qp-top{padding-top:calc(7px + env(safe-area-inset-top,0px));padding-bottom:2px}
+  .qp-cid{font-size:16px;letter-spacing:.13em}
+  .qp-hero{padding:3px 16px 7px}
+  .qp-ava{width:74px;height:74px;font-size:20px;box-shadow:0 0 0 2px #0d0b07,0 0 0 6px rgba(201,161,74,.92),0 0 0 7px rgba(120,92,24,.9),0 10px 26px rgba(0,0,0,.7)}
+  .qp-ava-note{width:24px;height:24px}
+  .qp-sidebtn{padding:7px 10px;font-size:11px}
+  .qp-name{margin-top:9px;font-size:21px}
+  .qp-verified{width:18px;height:18px;font-size:11px}
+  .qp-sub,.qp-city{font-size:12px}
+  .qp-sub{margin-top:5px}
+  .qp-hero .ch-box{margin-top:7px}
+  .qp-hero .ch-head{padding:5px 13px;font-size:11px}
+  .qp-stats{margin-top:8px;padding:6px 0}
+  .qp-stats b{font-size:19px}
+  .qp-stats small{font-size:10.5px}
+  .qp-quick{margin-top:8px}
+  .qp-qbtn{width:54px}
+  .qp-qbtn i,.qp-qbtn--share>svg{width:44px;height:44px}
+  .qp-qbtn--share>svg{padding:12px}
+  .qp-page .qp-qbtn{font-size:10px}
+  .qp-tabs{padding:7px 16px;gap:7px}
+  .qp-tab{padding:7px 12px;font-size:11px}
+  .qp-body{padding:10px}
+  .qp-bottom{padding:8px 16px calc(9px + env(safe-area-inset-bottom,0px))}
+  .qp-save{min-height:44px;font-size:14.5px}
 }

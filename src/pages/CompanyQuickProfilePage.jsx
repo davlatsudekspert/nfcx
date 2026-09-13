@@ -20,10 +20,8 @@ import ShareButton from '../components/ShareButton.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import {
   IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconChip, IconLink,
-  IconGrid, IconBox, IconStories, IconInfo, IconHome, IconBuilding, IconCard, IconNote,
-  IconChevronDown, IconDownload, IconCopy, IconUser, IconWave, IconPin,
+  IconNote, IconPin,
 } from '../components/Icons.jsx';
-import LanguageSwitcher from '../components/LanguageSwitcher.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
 
@@ -56,9 +54,6 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // qolmasligi uchun).
   const [tab, setTab] = useState('');
   const [posts, setPosts] = useState([]);
-  // Tepadagi chip menyusi (nusxalash / to'liq sahifa / tahrirlash).
-  const [menu, setMenu] = useState(false);
-  const [copied, setCopied] = useState(false);
   // Musiqa pleeri — avatar yonidagi belgi bilan ochiladi/yopiladi.
   const [musicOpen, setMusicOpen] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
@@ -102,16 +97,6 @@ export default function CompanyQuickProfilePage({ companyId }) {
   useEffect(() => {
     if (company?.companyId) companyEvent(company.companyId, 'view');
   }, [company?.companyId]);
-
-  // Havolani nusxalash. `clipboard.writeText` VA'DA qaytaradi va uning
-  // xatosi sinxron `try/catch` bilan ushlanmaydi — shuning uchun
-  // `catch` aynan va'dada.
-  const copyLink = () => {
-    const url = `${window.location.origin}/c/${String(companyId || '').toLowerCase()}`;
-    navigator.clipboard?.writeText(url)
-      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); })
-      .catch(() => {});
-  };
 
   // Obuna — kirmagan odam avval tizimga kiradi va SHU sahifaga qaytadi.
   const follow = async () => {
@@ -194,46 +179,45 @@ export default function CompanyQuickProfilePage({ companyId }) {
   const tier = companyTier(company.companyId);
   const tierColor = TIER_COLOR[tier] || TIER_COLOR.free;
   const shareUrl = `${window.location.origin}/c/${company.companyId.toLowerCase()}`;
-  const handle = `@${(company.customDomain || company.companyId).toLowerCase()}`;
 
-  // ── ALOQA — dumaloq ikonkalar qatori ────────────────────────────────
-  // Birinchisi — KONTAKTNI SAQLASH va u OLTIN: NFC kartaning butun
-  // ma'nosi shunda, ya'ni u qolganlaridan ajralib turishi kerak.
+  // ── ALOQA — oltin dumaloq tugmalar, ikonka O'Z FIRMA RANGIDA ────────
+  // Egasining talabi: "ikonka Telegram va boshqalar o'zini rangida
+  // bo'lsin". Shuning uchun katakcha oltin, ichidagi belgi esa
+  // tarmoqning o'z rangida — ko'z Telegramni qidirmaydi, darrov topadi.
   const quick = [
-    { k: 'vcard', primary: true, label: t('Saqlash'), icon: <IconDownload width={22} height={22} aria-hidden="true" />,
-      onClick: () => {
-        companyEvent(company.companyId, 'action', 'vcard');
-        downloadVcard({
-          name: company.displayName,
-          org: company.displayName,
-          title: company.subcategory || company.categoryLabel || '',
-          phone: company.phone,
-          address: company.address || company.city,
-          website: company.website,
-          urls: [shareUrl],
-          note: company.description,
-        }, company.companyId.toLowerCase());
-      } },
-    company.phone && { k: 'phone', href: contactUrl('phone', company.phone), label: t('Qo‘ng‘iroq'), color: '#4ddb8f', icon: <IconPhone width={22} height={22} aria-hidden="true" /> },
-    company.telegram && { k: 'telegram', href: contactUrl('telegram', company.telegram), label: 'Telegram', color: '#2aabee', icon: <IconTelegram width={22} height={22} aria-hidden="true" /> },
-    company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#25d366', icon: <IconWhatsApp width={22} height={22} aria-hidden="true" /> },
-    company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#e1306c', icon: <IconInstagram width={22} height={22} aria-hidden="true" /> },
-    company.facebook && { k: 'facebook', href: socialUrl('fb', company.facebook), label: 'Facebook', color: '#1877f2', icon: <IconFacebook width={22} height={22} aria-hidden="true" /> },
-    company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#e6c169', icon: <IconGlobe width={22} height={22} aria-hidden="true" /> },
-    mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#ff7a59', icon: <IconPin width={22} height={22} aria-hidden="true" /> },
-    geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#ff3f40', icon: <IconPin width={22} height={22} aria-hidden="true" /> },
+    company.phone && { k: 'phone', href: contactUrl('phone', company.phone), label: t('Qo‘ng‘iroq'), color: '#0e7a3d', icon: <IconPhone width={26} height={26} aria-hidden="true" /> },
+    company.telegram && { k: 'telegram', href: contactUrl('telegram', company.telegram), label: 'Telegram', color: '#0f7ab0', icon: <IconTelegram width={26} height={26} aria-hidden="true" /> },
+    company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#0b8a3c', icon: <IconWhatsApp width={26} height={26} aria-hidden="true" /> },
+    company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#b3175a', icon: <IconInstagram width={26} height={26} aria-hidden="true" /> },
+    company.facebook && { k: 'facebook', href: socialUrl('fb', company.facebook), label: 'Facebook', color: '#0d4fa8', icon: <IconFacebook width={26} height={26} aria-hidden="true" /> },
+    mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#b83a1e', icon: <IconPin width={26} height={26} aria-hidden="true" /> },
+    geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#b31217', icon: <IconPin width={26} height={26} aria-hidden="true" /> },
+    company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#5a4410', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
     // KARTA RAQAMI — ro'yxatda YASHIRIN: bosilganda QR bilan oyna ochiladi.
-    company.cardNumber && { k: 'card', label: t('Karta'), color: '#f0cf7b', icon: <IconChip width={24} height={19} aria-hidden="true" />, onClick: () => setShowCard(true) },
-    ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#cfc6b4', icon: <IconLink width={22} height={22} aria-hidden="true" /> })),
+    company.cardNumber && { k: 'card', label: t('Karta'), color: '#5a4410', icon: <IconChip width={28} height={22} aria-hidden="true" />, onClick: () => setShowCard(true) },
+    ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#5a4410', icon: <IconLink width={26} height={26} aria-hidden="true" /> })),
   ].filter(Boolean);
 
-  // ── BO'LIMLAR — YOZUVSIZ, faqat ikonka (egasining maketi) ───────────
   const tabs = [
-    posts.length > 0 && { id: 'post', label: 'Post', icon: IconGrid },
-    stories.length > 0 && { id: 'lenta', label: 'Stories', icon: IconStories },
-    items.length > 0 && { id: 'katalog', label: cta.noun, icon: IconBox },
-    { id: 'haqida', label: 'Ma’lumot', icon: IconInfo },
+    posts.length > 0 && { id: 'post', label: 'POST' },
+    stories.length > 0 && { id: 'lenta', label: 'STORIES' },
+    items.length > 0 && { id: 'katalog', label: cta.noun },
+    { id: 'haqida', label: 'MA’LUMOT' },
   ].filter(Boolean);
+
+  const saveContact = () => {
+    companyEvent(company.companyId, 'action', 'vcard');
+    downloadVcard({
+      name: company.displayName,
+      org: company.displayName,
+      title: company.subcategory || company.categoryLabel || '',
+      phone: company.phone,
+      address: company.address || company.city,
+      website: company.website,
+      urls: [shareUrl],
+      note: company.description,
+    }, company.companyId.toLowerCase());
+  };
 
   return (
     // BITTA EKRANLIK QOBIQ: balandligi aynan telefon ekrani, o'zi
@@ -242,139 +226,98 @@ export default function CompanyQuickProfilePage({ companyId }) {
       {/* Bosh ekranga qo'shilganda AYNAN shu kompaniya ochilsin. */}
       <ProfileManifest kind="c" code={company.companyId} name={company.displayName} />
       <div className="qp-shell">
+        {/* Kompaniya ID'si — eng tepada, oltin serif harflarda. */}
         <header className="qp-top">
-          {/* CHAP CHIP — kompaniyaning "manzili" va shu bilan birga
-              menyu tugmasi: nusxalash, to'liq sahifa, egasiga
-              tahrirlash. Rangi TARIFDAN keladi (ID qancha qisqa —
-              shuncha yuqori daraja), ya'ni qimmat ID bilinib turadi. */}
-          <div className="qp-handle-wrap">
-            <button
-              type="button" className="qp-handle" onClick={() => setMenu((v) => !v)}
-              aria-expanded={menu} aria-haspopup="menu"
-              title={t('{tier} tarif', { tier: t(TIER_LABEL[tier] || tier) })}
-            >
-              {handle}
-              <IconChevronDown width={13} height={13} aria-hidden="true" />
-            </button>
-            {menu && (
-              <>
-                <span className="qp-menu-veil" onClick={() => setMenu(false)} />
-                <div className="qp-menu" role="menu">
-                  <button type="button" role="menuitem" onClick={() => { setMenu(false); copyLink(); }}>
-                    <IconCopy width={15} height={15} aria-hidden="true" /> {copied ? t('Nusxalandi!') : t('Havolani nusxalash')}
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => { setMenu(false); navigate(`/company/${company.companyId.toLowerCase()}`); }}>
-                    <IconGlobe width={15} height={15} aria-hidden="true" /> {t('Kompaniya saytini to‘liq ochish')}
-                  </button>
-                  {isOwner && (
-                    <button type="button" role="menuitem" onClick={() => { setMenu(false); navigate(`/workspace/${company.companyId.toLowerCase()}`); }}>
-                      <IconCard width={15} height={15} aria-hidden="true" /> {t('Tahrirlash')}
-                    </button>
-                  )}
-                  {user && !isOwner && (
-                    <button type="button" role="menuitem" onClick={() => { setMenu(false); navigate('/account'); }}>
-                      <IconUser width={15} height={15} aria-hidden="true" /> {t('Profilga qaytish')}
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <LanguageSwitcher className="qp-lang" />
+          <span className="qp-cid">{company.companyId}</span>
         </header>
 
         <section className="qp-hero">
-          {/* Ikki nozik oltin chiziq NFC belgisida uchrashadi — premium
-              ko'rinishning imzosi va "bu NFC profil" degan belgi. */}
-          <div className="qp-nfcline" aria-hidden="true">
-            <i /><span className="qp-nfcbadge"><IconWave width={16} height={16} /></span><i />
-          </div>
-
-          <div className="qp-ava-wrap">
-            <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
-              <div className="qp-ava">
-                {company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}
-              </div>
-            </StoryRing>
-            {/* Musiqa — avatar yonidagi kichik belgi. Faqat kompaniya
-                musiqa qo'ygan bo'lsa chiqadi va pleerni ochadi. */}
-            {(company.music || []).length > 0 && (
-              <button type="button" className={`qp-ava-note${musicOpen ? ' is-on' : ''}`} onClick={() => setMusicOpen((v) => !v)} aria-label={t('Musiqa')}>
-                <IconNote width={15} height={15} aria-hidden="true" />
-              </button>
-            )}
+          {/* Uch ustunli qator: logotip AYNAN markazda qoladi, yon
+              tugma esa uni surib yubormaydi. */}
+          <div className="qp-ava-row">
+            <span aria-hidden="true" />
+            <div className="qp-ava-wrap">
+              <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
+                <div className="qp-ava">
+                  {company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}
+                </div>
+              </StoryRing>
+              {(company.music || []).length > 0 && (
+                <button type="button" className={`qp-ava-note${musicOpen ? ' is-on' : ''}`} onClick={() => setMusicOpen((v) => !v)} aria-label={t('Musiqa')}>
+                  <IconNote width={15} height={15} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            <div className="qp-side">
+              {isOwner ? (
+                <button type="button" className="qp-sidebtn" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>
+                  ✎ {t('Tahrirlash')}
+                </button>
+              ) : (
+                <button type="button" className={`qp-sidebtn${company.following ? ' is-on' : ''}`} onClick={follow} disabled={followBusy}>
+                  {followBusy ? '…' : company.following ? t('Obuna bo‘lingan') : t('Obuna bo‘lish')}
+                </button>
+              )}
+            </div>
           </div>
 
           <h1 className="qp-name break-words">
             {company.displayName}
             <i className="qp-verified" title={t('Tasdiqlangan kompaniya')} aria-label={t('Tasdiqlangan kompaniya')}>✓</i>
           </h1>
+          {/* QISQA tanishtiruv (soha). Uzun tavsif ATAYLAB bu yerda
+              emas: u to'rt qatorga cho'zilib, pastdagi kontent oynasini
+              yeb qo'yardi. To'liq tavsif "Ma'lumot" bo'limida. */}
+          <p className="qp-sub break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')}</p>
+          {company.city && <p className="qp-city">{company.city}</p>}
 
           <CompanyHours hours={company.hours} openNow={company.openNow} compact />
 
-          <p className="qp-line break-words">
-            {[company.phone, company.city || company.subcategory || company.categoryLabel].filter(Boolean).join(' • ')}
-          </p>
-
           <div className="qp-stats">
-            <div><b>{fmt(company.views || 0)}</b><small>{t('ko‘rildi')}</small></div>
-            <div><b>{fmt(company.followers || 0)}</b><small>{t('obunachi')}</small></div>
+            <div><b>{fmt(company.views || 0)}</b><small>{t('Ko‘rildi')}</small></div>
+            <div><b>{fmt(company.followers || 0)}</b><small>{t('Obunachi')}</small></div>
             {items.length > 0 && <div><b>{fmt(items.length)}</b><small>{t(cta.noun)}</small></div>}
-          </div>
-
-          <div className="qp-cta">
-            {!isOwner && (
-              <button type="button" className={`qp-follow${company.following ? ' is-on' : ''}`} onClick={follow} disabled={followBusy}>
-                {followBusy ? '…' : company.following ? t('Obuna bo‘lingan') : t('Obuna bo‘lish')}
-              </button>
-            )}
-            {isOwner && (
-              <button type="button" className="qp-follow" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>
-                ✎ {t('Tahrirlash')}
-              </button>
-            )}
-            <ShareButton url={shareUrl} title={company.displayName} text={company.description || company.displayName} className="qp-sharebtn" />
           </div>
 
           <div className="qp-quick" onClick={(e) => { const k = e.target.closest('[data-ev]')?.dataset.ev; if (k) companyEvent(company.companyId, 'action', k); }}>
             {/* Ichki o'ram SHART: `justify-content:center` bo'lgan
-                suriladigan qatorda kontent sig'masa, BOSHI kesilib
-                qoladi va unga umuman yetib bo'lmaydi (oltin "Saqlash"
-                aynan shunday yo'qolgan edi). `margin:auto` esa sig'sa
-                markazlaydi, sig'masa chapdan boshlaydi. */}
+                suriladigan qatorda kontent sig'masa BOSHI kesilib
+                qoladi va unga umuman yetib bo'lmaydi. `margin:auto`
+                esa sig'sa markazlaydi, sig'masa chapdan boshlaydi. */}
             <div className="qp-quick-in">
-            {quick.map((q) => (q.href
-              ? (
-                <a key={q.k} data-ev={q.k} className="qp-qbtn vz-tap" href={q.href} target={q.k === 'phone' ? undefined : '_blank'} rel="noreferrer" title={q.label}>
-                  <i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span>
-                </a>
-              ) : (
-                <button key={q.k} data-ev={q.k} type="button" className={`qp-qbtn vz-tap${q.primary ? ' is-primary' : ''}`} onClick={q.onClick} title={q.label}>
-                  <i style={q.color ? { color: q.color } : undefined}>{q.icon}</i><span>{q.label}</span>
-                </button>
-              )
-            ))}
+              {quick.map((q) => (q.href
+                ? (
+                  <a key={q.k} data-ev={q.k} className="qp-qbtn vz-tap" href={q.href} target={q.k === 'phone' ? undefined : '_blank'} rel="noreferrer">
+                    <i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span>
+                  </a>
+                ) : (
+                  <button key={q.k} data-ev={q.k} type="button" className="qp-qbtn vz-tap" onClick={q.onClick}>
+                    <i style={{ color: q.color }}>{q.icon}</i><span>{q.label}</span>
+                  </button>
+                )
+              ))}
+              {/* ULASHISH — qolgan havolalar bilan BIR QATORDA. */}
+              <ShareButton
+                url={shareUrl} title={company.displayName}
+                text={company.description || company.displayName}
+                label={t('Ulashish')} className="qp-qbtn qp-qbtn--share vz-tap"
+              />
             </div>
           </div>
         </section>
 
-        {/* BO'LIMLAR — yozuvsiz ikonkalar, faoli ostiga oltin chiziq. */}
         {tabs.length > 1 && (
-          <nav className="qp-itabs" role="tablist">
-            {tabs.map((tb) => {
-              const Ico = tb.icon;
-              return (
-                <button
-                  key={tb.id} type="button" role="tab"
-                  aria-selected={activeTab === tb.id}
-                  aria-label={t(tb.label)} title={t(tb.label)}
-                  className={`qp-itab${activeTab === tb.id ? ' is-on' : ''}`}
-                  onClick={() => setTab(tb.id)}
-                >
-                  <Ico width={21} height={21} />
-                </button>
-              );
-            })}
+          <nav className="qp-tabs" role="tablist">
+            {tabs.map((tb) => (
+              <button
+                key={tb.id} type="button" role="tab"
+                aria-selected={activeTab === tb.id}
+                className={`qp-tab${activeTab === tb.id ? ' is-on' : ''}`}
+                onClick={() => setTab(tb.id)}
+              >
+                {t(tb.label)}
+              </button>
+            ))}
           </nav>
         )}
 
@@ -385,9 +328,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
               {items.map((item) => (
                 <article key={item.id} className="qp-item min-w-0">
                   <div className="qp-item-pic">
-                    {item.imageUrl
-                      ? <img src={item.imageUrl} alt="" loading="lazy" />
-                      : <span>{t('RASM')} 1:1</span>}
+                    {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <span>{t('RASM')} 1:1</span>}
                   </div>
                   <div className="qp-item-txt">
                     <b className="break-words">{item.name}</b>
@@ -429,24 +370,26 @@ export default function CompanyQuickProfilePage({ companyId }) {
                   <small>NFC ID · nfcstore.uz/c/{company.companyId.toLowerCase()}</small>
                 </div>
               </div>
+              <button type="button" className="qp-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
+                {t('Kompaniya saytini to‘liq ochish')} <span>↗</span>
+              </button>
               <p className="qp-foot"><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></p>
             </section>
           )}
         </div>
 
-        {/* Musiqa pleeri — avatar yonidagi belgi bilan ochiladi.
-            Har doim ulanган: ekran o'chsa ham ijro to'xtamaydi. */}
+        {/* Musiqa — yopiq holatda joy egallamaydi, lekin ULANGAN qoladi:
+            ekran o'chsa ham ijro to'xtamaydi (MediaSession). */}
         <div className={`qp-music${musicOpen ? ' is-open' : ''}`}>
           <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
         </div>
 
-        {/* PASTKI NAVIGATSIYA — maketdagidek. */}
-        <nav className="qp-nav">
-          <button type="button" onClick={() => navigate('/')}><IconHome width={19} height={19} /><span>{t('Bosh')}</span></button>
-          <button type="button" onClick={() => navigate('/katalog')}><IconCard width={19} height={19} /><span>{t('Katalog')}</span></button>
-          <button type="button" className="is-on" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}><IconBuilding width={19} height={19} /><span>{t('Kompaniya')}</span></button>
-          <button type="button" onClick={() => navigate(user ? '/account' : '/login')}><IconUser width={19} height={19} /><span>{t('Profil')}</span></button>
-        </nav>
+        {/* KONTAKTNI SAQLASH — doim ko'rinib turadigan oltin qator.
+            NFC kartaning butun ma'nosi shu: odam sahifani yopgandan
+            keyin ham raqamingiz uning telefonida qoladi. */}
+        <div className="qp-bottom">
+          <button type="button" className="qp-save vz-tap" onClick={saveContact}>{t('Kontaktni saqlash')}</button>
+        </div>
 
         {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
         {showCard && <CardNumberModal cardNumber={company.cardNumber} holder={company.displayName} onClose={() => setShowCard(false)} />}

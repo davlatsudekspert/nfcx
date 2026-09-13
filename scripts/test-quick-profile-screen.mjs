@@ -46,23 +46,19 @@ checkTrue('2) kontent oynasi qolgan joyni oladi', body.includes('flex:1'));
 checkTrue('2) flex element kichrayishi mumkin', body.includes('min-height:0'));
 
 // ── 3) Tepa, bo'limlar va pastki qator — surilmaydigan qismlar ───────
-for (const sel of ['.qp-top', '.qp-hero', '.qp-nav']) {
+for (const sel of ['.qp-top', '.qp-hero', '.qp-bottom']) {
   checkTrue(`3) ${sel} qat'iy (flex:none)`, rule(sel).includes('flex:none'));
 }
-checkTrue('3) bo‘limlar qatori ham qat‘iy', rule('.qp-itabs').includes('flex:none'));
+checkTrue('3) bo‘limlar qatori ham qat‘iy', rule('.qp-tabs').includes('flex:none'));
 
-// ── 4) "Saqlash" — ASOSIY harakat va u AJRALIB turadi ────────────────
-// NFC kartaning butun ma'nosi shunda: odam sahifani yopgandan keyin
-// ham raqam uning telefonida qoladi. Shuning uchun u aloqa qatoridagi
-// BIRINCHI tugma va yagona OLTIN tugma.
-checkTrue('4) saqlash tugmasi aloqa qatorida birinchi', /const quick = \[\s*\{\s*k: 'vcard'/.test(page));
-checkTrue('4) saqlash tugmasi ajratilgan (primary)', page.includes("k: 'vcard', primary: true"));
-checkTrue('4) oltin ko‘rinish CSS da bor', rule('.qp-qbtn.is-primary').includes('linear-gradient'));
+// ── 4) "Kontaktni saqlash" DOIM ko'rinib turadi ──────────────────────
+// NFC kartaning butun ma'nosi shu tugmada: odam sahifani yopgandan
+// keyin ham raqam uning telefonida qoladi. Shuning uchun u pastda,
+// alohida surilmaydigan qatorda va OLTIN.
+const bottomBlock = page.slice(page.indexOf('className="qp-bottom"'), page.indexOf('className="qp-bottom"') + 500);
+checkTrue('4) saqlash tugmasi pastki qatorda', bottomBlock.includes('qp-save') && bottomBlock.includes('Kontaktni saqlash'));
+checkTrue('4) oltin ko‘rinishda', rule('.qp-save').includes('var(--gold-face)'));
 checkTrue('4) vCard yuklab olinadi', page.includes('downloadVcard'));
-// Pastki qator endi NAVIGATSIYA: maketdagi to'rtta bo'lim.
-for (const label of ['Bosh', 'Katalog', 'Kompaniya', 'Profil']) {
-  checkTrue(`4) pastki navigatsiyada "${label}"`, page.includes(`{t('${label}')}`));
-}
 
 // ── 5) Aloqa — ustma-ust tugmalar EMAS, bitta ikonkalar qatori ───────
 checkTrue('5) dumaloq ikonkalar qatori bor', page.includes('className="qp-quick"'));
@@ -85,7 +81,8 @@ checkTrue('6) "Ma’lumot" bo‘limi bor', page.includes("'haqida'"));
 // Bo'limlar YOZUVSIZ — faqat ikonka (egasining maketi). Shu sababli
 // har birida `aria-label` bo'lishi SHART: aks holda ekran o'quvchi
 // uchun qator to'rtta nomsiz tugmaga aylanadi.
-checkTrue('6) bo‘lim ikonkalarida aria-label bor', page.includes('aria-label={t(tb.label)}'));
+// Bo'limlar — matnli tugmalar (egasining maketi), faoli OLTIN.
+checkTrue('6) faol bo‘lim oltin', rule('.qp-tab.is-on').includes('var(--gold-face)'));
 checkTrue('6) tavsif joyida', page.includes('qp-desc'));
 checkTrue('6) manzil joyida', page.includes('qp-addr'));
 checkTrue('6) NFC ID joyida', page.includes('pf-nfcid'));
@@ -109,10 +106,22 @@ check('8) buzuq font qisqartmasi yo‘q', (qpCss.match(/font:\s*(?!inherit\s*[;}
 
 // ── 9) Telefon "tirnog'i" (safe-area) hisobga olingan ────────────────
 checkTrue('9) tepada safe-area', rule('.qp-top').includes('env(safe-area-inset-top'));
-checkTrue('9) pastda safe-area', rule('.qp-nav').includes('env(safe-area-inset-bottom'));
+checkTrue('9) pastda safe-area', rule('.qp-bottom').includes('env(safe-area-inset-bottom'));
 
 // ── 10) Past ekranlar uchun kichrayish qoidasi bor ───────────────────
 checkTrue('10) past ekran uchun media so‘rov', css.includes('@media(max-height:740px)'));
 
+
+
+// ── 11) ALOQA IKONKALARI O'Z FIRMA RANGIDA ───────────────────────────
+// Egasining talabi: "faqat ikonka Telegram va boshqalar o'zini
+// rangida bo'lsin". Katakcha oltin, ichidagi belgi esa tarmoqning
+// o'z rangida — ko'z Telegramni qidirmaydi, darrov topadi.
+checkTrue('11) katakcha oltin', rule('.qp-qbtn i').includes('var(--gold-face)'));
+for (const [net, color] of [['telegram', '#0f7ab0'], ['whatsapp', '#0b8a3c'], ['instagram', '#b3175a'], ['facebook', '#0d4fa8']]) {
+  checkTrue(`11) ${net} o‘z rangida`, page.includes(`k: '${net}'`) && page.includes(`color: '${color}'`));
+}
+// Oltin ustida belgi o'qilishi uchun yengil oq soya.
+checkTrue('11) belgi oltin ustida o‘qiladi', rule('.qp-qbtn i>svg').includes('drop-shadow'));
 
 done();
