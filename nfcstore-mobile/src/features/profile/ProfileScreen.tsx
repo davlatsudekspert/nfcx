@@ -90,6 +90,10 @@ export function ProfileScreen() {
             setSettingsOpen(false);
             router.push('/settings/verification');
           },
+          onOpenChangePassword: () => {
+            setSettingsOpen(false);
+            router.push('/settings/change-password');
+          },
           onOpenPayments: () => {
             setSettingsOpen(false);
             router.push('/settings/payments');
@@ -281,12 +285,14 @@ export function settingRows({
   handle,
   telegramLinked,
   onOpenVerification,
+  onOpenChangePassword,
   onOpenPayments,
   onSignOut,
 }: {
   handle: string | undefined;
   telegramLinked: boolean | undefined;
   onOpenVerification: () => void;
+  onOpenChangePassword: () => void;
   onOpenPayments: () => void;
   /** Haqiqiy chiqish — `authStore.signOut()` (avval hech qayerga ulanmagan edi). */
   onSignOut: () => void;
@@ -298,6 +304,7 @@ export function settingRows({
       v: telegramLinked ? 'Tasdiqlangan' : 'Tasdiqlanmagan',
       onPress: onOpenVerification,
     },
+    { k: 'Parolni o’zgartirish', v: '', onPress: onOpenChangePassword },
     { k: 'Bildirishnomalar', v: 'Yoniq' },
     { k: 'Til', v: "O'zbekcha" },
     { k: "To'lovlar", v: 'Payme', onPress: onOpenPayments },

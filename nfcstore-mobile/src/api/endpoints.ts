@@ -39,6 +39,25 @@ export const confirmTelegramLink = (linkToken: string) =>
     body: { linkToken },
   });
 
+/**
+ * POST /api/settings/change-password-direct {currentPassword,newPassword}
+ * -> {ok} — AUTENTIFIKATSIYA talab qiladi.
+ *
+ * MUHIM MOBIL UCHUN OQIBAT (kodni o'qib tasdiqlangan, `hosting/api/
+ * account.js`): muvaffaqiyatli almashtirilgach, backend foydalanuvchining
+ * BARCHA sessiyalarini o'chiradi, faqat so'rovdagi `nfc_session`
+ * COOKIE'siga mos keladiganini saqlab qoladi. Mobil Bearer token bilan
+ * ishlaydi (cookie yubormaydi) — demak bu chaqiruvni qilgan JORIY
+ * mobil sessiya ham o'chiriladi. Bu FAKE/BUG emas — chaqiruvchi
+ * (`ChangePasswordScreen.tsx`) buni bilib, muvaffaqiyatdan keyin
+ * ATAYLAB chiqish qiladi va foydalanuvchini qayta kirishga yo'naltiradi.
+ */
+export const changePasswordDirect = (currentPassword: string, newPassword: string) =>
+  apiFetch<{ ok: boolean }>('/settings/change-password-direct', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
+  });
+
 /** GET /api/companies/mine -> {companies} (egasining barcha kompaniyalari) */
 export const getMyCompanies = () =>
   apiFetch<{ companies: Company[] }>('/companies/mine').then((r) => r.companies);
