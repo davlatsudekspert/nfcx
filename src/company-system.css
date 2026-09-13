@@ -754,6 +754,12 @@
    ichida emas, `document.body` ga portal orqali qo'yiladi, ya'ni
    `overflow:hidden` uni kesmaydi. */
 .ma-veil{
+  /* Oltin ranglar SHU YERDA qayta e'lon qilinadi: oyna `document.body`
+     ga portal orqali qo'yiladi, ya'ni `.qp-page` ning ICHIDA emas va
+     uning o'zgaruvchilari bu yerga meros bo'lib o'tmaydi. Ilgari shu
+     sabab qadam raqamlari qora fonda qora bo'lib ko'rinmay qolgan edi. */
+  --gold-1:#fbeec2; --gold-2:#e6c36a; --gold-3:#c39a33;
+  --gold-face:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 34%,var(--gold-3) 62%,var(--gold-1) 100%);
   position:fixed;inset:0;z-index:120;
   display:flex;align-items:flex-end;justify-content:center;
   background:rgba(4,3,2,.72);backdrop-filter:blur(3px);
@@ -792,4 +798,29 @@
   border-radius:13px;border:1px solid rgba(255,255,255,.1);
   background:rgba(255,255,255,.05);
   color:#b9ab8e;font-size:14px;font-weight:600;cursor:pointer;
+}
+
+/* Yo'riqnoma matni va qadamlari — xarita tanlovi bilan bir xil
+   varaqda (`.ma-sheet`) ishlatiladi. */
+.ma-note{
+  margin:0 4px 12px;
+  color:#b9ab8e;font-size:12.5px;line-height:1.5;
+}
+.ma-steps{
+  margin:0 0 12px;padding:0 0 0 4px;
+  list-style:none;counter-reset:ma;
+}
+.ma-steps li{
+  counter-increment:ma;
+  position:relative;
+  padding:0 0 10px 30px;
+  color:#f3e4bf;font-size:13.5px;line-height:1.45;
+}
+.ma-steps li::before{
+  content:counter(ma);
+  position:absolute;left:0;top:-1px;
+  width:21px;height:21px;border-radius:50%;
+  display:grid;place-items:center;
+  background:var(--gold-face);color:#241a05;
+  font-size:11px;font-weight:700;
 }

@@ -228,10 +228,20 @@ checkTrue('18) qoplama emas, niqob', !rule('.qp-quick').includes('::after'));
 // (aks holda istalgan sahifa butun ekranni egallab, tizim oynasiga
 // o'xshab qolardi). Faqat ODAMNING bosishi bilan mumkin.
 checkTrue('19) to‘liq ekran tugmasi bor', page.includes('qp-fsbtn') && page.includes('requestFullscreen'));
-// iPhone Safari'da element uchun to'liq ekran YO'Q — u yerda tugma
-// umuman chizilmasligi kerak (bosilib, hech narsa bo'lmasligidan
-// ko'ra ko'rinmagani yaxshi).
-checkTrue('19) qo‘llab-quvvatlanmasa chizilmaydi', page.includes('fullscreenEnabled') && page.includes('fsOk &&'));
+// Tugma TELEFONDA HAM ko'rinishi SHART. Ilgari u "to'liq ekran
+// qo'llab-quvvatlanmasa" yashirilardi va natijada kompyuterda bor,
+// telefonda yo'q bo'lib qolgan edi — sababi: iOS'dagi hamma brauzer
+// (Safari, Chrome, Yandex — hammasi bir xil WebKit) sahifa uchun
+// to'liq ekranni bermaydi. Ya'ni tugma eng kerak joyda yo'q edi.
+checkTrue('19) tugma qo‘llab-quvvatlashga bog‘liq EMAS', !/setFsOk\(\s*can\b/.test(page));
+checkTrue('19) faqat ilova rejimida yashiriladi', /setFsOk\(!standalone\)/.test(page));
+// Qo'llab-quvvatlanmasa odam bo'sh qolmasligi kerak — "bosh ekranga
+// qo'shish" yo'riqnomasi ochiladi (iPhone'dagi YAGONA yo'l).
+const a2h = readFileSync(new URL('../src/components/AddToHomeSheet.jsx', import.meta.url), 'utf8');
+checkTrue('19) yo‘riqnoma ulangan', page.includes('AddToHomeSheet') && page.includes('setFsHelp(true)'));
+checkTrue('19) va‘da rad etilsa ham yo‘riqnoma', page.includes('.catch(() => setFsHelp(true))'));
+checkTrue('19) yo‘riqnoma qurilmaga qarab', a2h.includes('iPhone|iPad|iPod') && a2h.includes('Bosh ekranga qo‘shish'));
+checkTrue('19) yo‘riqnoma uslubi bor', css.includes('.ma-steps'));
 // Ilova sifatida ochilgan bo'lsa brauzer qatori allaqachon yo'q.
 checkTrue('19) ilova rejimida ham chizilmaydi', page.includes("display-mode: standalone"));
 // Holat brauzerdan kuzatiladi: odam ESC bossa yoki tizim chiqarsa
