@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
+import { isPreviewVisit } from '../lib/preview.js';
 import CloseButton from '../components/CloseButton.jsx';
 import StoryRing from '../components/StoryRing.jsx';
 import { socialUrl } from '../lib/socialLinks.js';
@@ -1475,7 +1476,9 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         setRecord(found);
         const seenKey = 'nfcx:viewed:' + code;
         try {
-          if (!sessionStorage.getItem(seenKey)) {
+          // "?preview=1" — admin ko'rib chiqyapti, sanalmaydi
+          // (izohi src/lib/preview.js da).
+          if (!isPreviewVisit() && !sessionStorage.getItem(seenKey)) {
             sessionStorage.setItem(seenKey, '1');
             const sp = new URLSearchParams(window.location.search);
             const ref = sp.get('t') ? 'nfc' : (['qr', 'link'].includes(sp.get('ref')) ? sp.get('ref') : undefined);
