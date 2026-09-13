@@ -79,13 +79,24 @@ jobs:
       #
       # `nfcstore.jks` faylini YO'QOTMANG va repozitoriyaga QO'YMANG:
       # Play Store yangilanishlari faqat shu kalit bilan imzolanadi.
+      # TEKSHIRUV SKRIPT ICHIDA, `if:` da emas: GitHub Actions `secrets`
+      # kontekstini qadam darajasidagi `if:` da ko'rmaydi ("Unrecognized
+      # named-value: 'secrets'"). Shuning uchun qadam har doim ishlaydi
+      # va kalit bor-yo'qligini o'zi hal qiladi.
       - name: Imzo kalitini tayyorlash
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "Imzo kaliti sozlanmagan — debug kaliti ishlatiladi."
+            exit 0
+          fi
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 bor, lekin PASSWORD yoki ALIAS yo'q."
+            exit 1
+          fi
           echo "$KEYSTORE" | base64 -d > android/app/nfcstore.jks
           cat > android/key.properties <<PROPS
           storeFile=nfcstore.jks
