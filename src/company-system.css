@@ -421,7 +421,13 @@
   font-family:Inter,ui-sans-serif,system-ui,sans-serif;
   display:grid;place-items:center
 }
-.qp-page button{font:inherit}
+/* Brauzerning tugmalar uchun standart shrifti bekor qilinadi — LEKIN
+   FAQAT OILASI. Ilgari bu yerda `font:inherit` turardi va u qisqartma
+   bo'lgani uchun O'LCHAM bilan QALINLIKNI ham qayta yozardi. Natijada
+   `.qp-tab{font-size:10.5px}` kabi qoidalar (0,1,0) undan (0,1,1) zaif
+   bo'lib, HAMMA tugma 16px/400 da chiqardi — egasi aynan shuni
+   ko'rdi: "yozuvlar katta bo'lib ketgan". */
+.qp-page button{font-family:inherit}
 .qp-shell{
   position:relative;width:min(100%,440px);height:100dvh;
   display:flex;flex-direction:column;overflow:hidden;
@@ -465,7 +471,14 @@
 .qp-sidebtn:disabled{opacity:.6}
 
 .qp-ava-wrap{position:relative;display:inline-flex}
+/* ISTORYA HALQASI — Instagram'dagidek rangli aylana. U oltin halqadan
+   TASHQARIDA turishi SHART: `.qp-ava` ning oltin soyasi 10 pikselgacha
+   cho'ziladi va halqa undan ichkarida bo'lsa, soya uni yopib qo'yardi
+   (egasi aynan shuni ko'rmagan — "istorya qo'yilgan bo'lsa bilinsin").
+   Shuning uchun bu yerda halqa ataylab kattaroq insetda. */
 .qp-hero .story-ring{--ring-radius:50%}
+.qp-hero .story-ring-glow{inset:-16px;box-shadow:0 0 22px rgba(255,160,60,.45)}
+.qp-hero .story-ring::before{inset:-11px;background:#0a0806}
 /* Qalin oltin halqa — maketning eng ko'zga tashlanadigan belgisi. */
 .qp-ava{
   width:96px;height:96px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
@@ -554,7 +567,7 @@
 
 /* ── Bo'limlar — oltin tanachali tugmalar ────────────────────────── */
 .qp-tabs{
-  flex:none;display:flex;gap:8px;padding:10px 16px;overflow-x:auto;
+  flex:none;display:flex;gap:7px;padding:9px 16px;overflow-x:auto;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
   border-top:1px solid transparent;border-bottom:1px solid transparent;
   border-image:var(--gold-line) 1;border-left:0;border-right:0
@@ -563,7 +576,7 @@
 .qp-tab{
   flex:0 0 auto;border:1px solid rgba(226,190,110,.42);border-radius:99px;cursor:pointer;
   background:rgba(16,13,8,.6);color:#ddd0ae;
-  padding:9px 14px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1;letter-spacing:.05em;text-transform:uppercase
+  padding:7px 13px;font-family:inherit;font-size:10.5px;font-weight:700;line-height:1;letter-spacing:.05em;text-transform:uppercase
 }
 .qp-tab:hover{border-color:rgba(226,190,110,.8);color:#f7e6b8}
 .qp-tab.is-on{background:var(--gold-face);color:#241a05;border-color:transparent;box-shadow:0 6px 18px rgba(201,161,74,.22)}
@@ -572,11 +585,14 @@
 .qp-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px}
 .qp-body::-webkit-scrollbar{width:0}
 
-.qp-posts{display:grid;gap:14px}
+.qp-posts{display:grid;gap:12px}
 /* Postlar — maketdagidek oltin hoshiyali kartochka. */
 .qp-posts article{border:1px solid rgba(226,190,110,.45);border-radius:16px;overflow:hidden;background:rgba(12,10,7,.85);box-shadow:0 10px 28px rgba(0,0,0,.5)}
-.qp-posts img,.qp-posts video{display:block;width:100%;max-height:320px;object-fit:cover;background:#000}
-.qp-posts p{margin:0;padding:11px 13px;font-size:12.5px;line-height:1.5;color:#b5ab99}
+/* Post rasmi sahifaga MOS: 16:10 kadr. Ilgari `max-height:320px` edi
+   va baland rasm butun oynani egallab, ostidagi hech narsa
+   ko'rinmasdi. */
+.qp-posts img,.qp-posts video{display:block;width:100%;aspect-ratio:16/10;max-height:190px;object-fit:cover;background:#000}
+.qp-posts p{margin:0;padding:9px 12px;font-size:11.5px;line-height:1.45;color:#b5ab99;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 .qp-cards{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .qp-item{border:1px solid rgba(226,190,110,.35);border-radius:15px;overflow:hidden;background:rgba(12,10,7,.85)}
@@ -596,9 +612,9 @@
 .qp-addr{margin:11px 0 0;font-size:12.5px;line-height:1.5;color:#948b7c}
 .qp-body .pf-story-grid{margin-top:0}
 .qp-body .pf-nfcid{margin-top:15px}
-.qp-public{width:100%;margin-top:11px;border:1px solid rgba(226,190,110,.42);border-radius:13px;background:rgba(18,14,8,.8);color:#f0cf7b;padding:12px;font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer}
+.qp-public{width:100%;margin-top:12px;border:0;border-radius:14px;background:var(--gold-face);color:#241a05;padding:13px 16px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(201,161,74,.24),inset 0 1px 0 rgba(255,255,255,.5)}
 .qp-public span{float:right}
-.qp-public:hover{border-color:rgba(226,190,110,.8)}
+.qp-public:hover{filter:brightness(1.05)}
 .qp-foot{display:flex;justify-content:space-between;gap:10px;margin:15px 0 0;color:#5f5a51;font-size:8px;letter-spacing:.11em}
 
 /* Musiqa — yopiq holatda joy egallamaydi, lekin ULANGAN qoladi:
@@ -639,7 +655,7 @@
   .qp-qbtn--share>svg{padding:12px}
   .qp-page .qp-qbtn{font-size:10px}
   .qp-tabs{padding:7px 16px;gap:7px}
-  .qp-tab{padding:7px 12px;font-size:11px}
+  .qp-tab{padding:6px 11px;font-size:10px}
   .qp-body{padding:10px}
   .qp-bottom{padding:8px 16px calc(9px + env(safe-area-inset-bottom,0px))}
   .qp-save{min-height:44px;font-size:14.5px}

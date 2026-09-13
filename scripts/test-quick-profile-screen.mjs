@@ -124,4 +124,50 @@ for (const [net, color] of [['telegram', '#0f7ab0'], ['whatsapp', '#0b8a3c'], ['
 // Oltin ustida belgi o'qilishi uchun yengil oq soya.
 checkTrue('11) belgi oltin ustida o‘qiladi', rule('.qp-qbtn i>svg').includes('drop-shadow'));
 
+
+// ── 12) TUGMA SHRIFTI QISQARTMA BILAN QAYTA YOZILMASIN ───────────────
+// `.qp-page button{font:inherit}` — 0,1,1 aniqlikda va `font` QISQARTMA
+// bo'lgani uchun o'lcham bilan qalinlikni HAM qayta yozadi. Natijada
+// `.qp-tab{font-size:10.5px}` kabi qoidalar (0,1,0) undan zaif bo'lib,
+// HAMMA tugma 16px/400 da chiqardi (egasi: "yozuvlar katta bo'lib
+// ketgan"). Faqat OILA meros qilinishi kerak.
+checkTrue('12) tugma shriftida faqat oila meros qilinadi', rule('.qp-page button').includes('font-family:inherit'));
+check('12) `font` qisqartmasi ishlatilmaydi', (rule('.qp-page button').match(/(^|;)\s*font\s*:/g) || []), []);
+// Bo'limlar va tugmalar o'z o'lchamini BERADI (aks holda yuqoridagi
+// qoida ularni bosib ketgani bilinmay qoladi).
+for (const sel of ['.qp-tab', '.qp-sidebtn', '.qp-save', '.qp-order']) {
+  checkTrue(`12) ${sel} o‘z o‘lchamini beradi`, /font-size:\s*[\d.]+px/.test(rule(sel)));
+}
+
+// ── 13) ISTORYA HALQASI KO'RINADI ────────────────────────────────────
+// Egasining talabi: "istorya qo'yilgan bo'lsa bilinsin-da, Instagramga
+// o'xshab". Halqa OLTIN halqadan TASHQARIDA bo'lishi shart: `.qp-ava`
+// ning oltin soyasi 10 pikselgacha cho'ziladi va halqa undan ichkarida
+// bo'lsa, soya uni butunlay yopib qo'yardi.
+{
+  const glow = rule('.qp-hero .story-ring-glow');
+  const m = /inset:-(\d+)px/.exec(glow);
+  checkTrue('13) istorya halqasi kattaroq insetda', !!m && Number(m[1]) > 10);
+  checkTrue('13) halqa bilan logotip orasida qora bo‘shliq', /inset:-(\d+)px/.test(rule('.qp-hero .story-ring::before')));
+}
+
+// ── 14) BO'LIMLAR TARTIBI: avval KATALOG ─────────────────────────────
+// Egasining qarori: NFC kartani tegizgan odam birinchi navbatda
+// "nima sotasiz" degan savolga javob ko'rishi kerak.
+{
+  const order = ['katalog', 'post', 'lenta', 'haqida'];
+  const tabsBlock = page.slice(page.indexOf('const tabs = ['), page.indexOf('const tabs = [') + 420);
+  const seen = order.filter((id) => tabsBlock.includes(`id: '${id}'`));
+  check('14) bo‘limlar tartibi', seen, order);
+  checkTrue('14) katalog birinchi', tabsBlock.indexOf("id: 'katalog'") < tabsBlock.indexOf("id: 'post'"));
+  // Boshlang'ich bo'lim SHU ro'yxatdan tanlanadi — ikkalasi bir xil
+  // tartibda bo'lmasa, ochilganda boshqa bo'lim faol bo'lib qolardi.
+  const avail = page.slice(page.indexOf('const availableTabs = ['), page.indexOf('const availableTabs = [') + 320);
+  checkTrue('14) boshlang‘ich bo‘lim ham katalogdan boshlanadi', avail.indexOf("'katalog'") < avail.indexOf("'post'"));
+}
+
+// ── 15) "To'liq ochish" — oltin va yaltiroq ──────────────────────────
+checkTrue('15) to‘liq sahifa tugmasi oltin', rule('.qp-public').includes('var(--gold-face)'));
+checkTrue('15) ustidan yaltiroq o‘tadi', page.includes('qp-public tier-shine'));
+
 done();

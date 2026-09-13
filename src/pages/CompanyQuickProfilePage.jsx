@@ -116,9 +116,9 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // keyinroq kelganda yoki bo'lim bo'shab qolganda sahifa bo'sh
   // ko'rinib qolmasin.
   const availableTabs = [
+    items.length > 0 && 'katalog',
     posts.length > 0 && 'post',
     stories.length > 0 && 'lenta',
-    items.length > 0 && 'katalog',
     'haqida',
   ].filter(Boolean);
   const activeTab = availableTabs.includes(tab) ? tab : (availableTabs[0] || '');
@@ -198,10 +198,13 @@ export default function CompanyQuickProfilePage({ companyId }) {
     ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#5a4410', icon: <IconLink width={26} height={26} aria-hidden="true" /> })),
   ].filter(Boolean);
 
+  // TARTIB: avval KATALOG (xizmatlar / mahsulotlar / menyu) — egasining
+  // qarori. NFC kartani tegizgan odam birinchi navbatda "nima sotasiz"
+  // degan savolga javob ko'rishi kerak, post esa ikkinchi darajada.
   const tabs = [
+    items.length > 0 && { id: 'katalog', label: cta.noun },
     posts.length > 0 && { id: 'post', label: 'POST' },
     stories.length > 0 && { id: 'lenta', label: 'STORIES' },
-    items.length > 0 && { id: 'katalog', label: cta.noun },
     { id: 'haqida', label: 'MA’LUMOT' },
   ].filter(Boolean);
 
@@ -370,8 +373,11 @@ export default function CompanyQuickProfilePage({ companyId }) {
                   <small>NFC ID · nfcstore.uz/c/{company.companyId.toLowerCase()}</small>
                 </div>
               </div>
-              <button type="button" className="qp-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
-                {t('Kompaniya saytini to‘liq ochish')} <span>↗</span>
+              {/* To'liq sahifaga o'tish — oltin va ustidan yaltiroq
+                  o'tib turadi (`tier-shine`, saytdagi boshqa premium
+                  kartalar bilan bir xil effekt). */}
+              <button type="button" className="qp-public tier-shine vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
+                {t('Kompaniya saytini to‘liq ochish')} <span aria-hidden="true">↗</span>
               </button>
               <p className="qp-foot"><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></p>
             </section>
