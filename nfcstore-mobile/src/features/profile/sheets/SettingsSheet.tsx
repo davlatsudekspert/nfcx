@@ -38,8 +38,6 @@ export function SettingsSheet({
   /** Hisob, bildirishnoma, til, to'lov, chiqish kabi qatorlar. */
   rows: SettingRow[];
 }) {
-  const { themeKey, setTheme } = useTheme();
-
   return (
     <Sheet
       visible={visible}
@@ -51,6 +49,24 @@ export function SettingsSheet({
         </Text>
       }
     >
+      <SettingsBody rows={rows} />
+    </Sheet>
+  );
+}
+
+/**
+ * Tema tanlagich + qatorlar — `SettingsSheet` (Profil varag'i) va
+ * to'liq ekranli Settings TABI (`app/(tabs)/settings.tsx`) IKKALASI
+ * HAM shu tarkibni ishlatadi, bir joyda saqlangan tarkib ikkalasida
+ * ham bir xil bo'lsin deb (foydalanuvchi so'ragan: "bottombarga
+ * settingsni ham qosh" — sheet ESKI joyida ham qoladi, YANGI tab esa
+ * shu tarkibni to'liq sahifa sifatida ko'rsatadi).
+ */
+export function SettingsBody({ rows }: { rows: SettingRow[] }) {
+  const { themeKey, setTheme } = useTheme();
+
+  return (
+    <>
       <Text
         style={[
           sans(400, 11.5, 1.5),
@@ -120,7 +136,7 @@ export function SettingsSheet({
           );
         })}
       </View>
-    </Sheet>
+    </>
   );
 }
 

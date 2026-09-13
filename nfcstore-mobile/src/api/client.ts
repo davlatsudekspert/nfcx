@@ -23,6 +23,43 @@ import * as SecureStore from 'expo-secure-store';
  */
 
 export const API_BASE = 'https://nfcstore.uz/api';
+const SITE_ORIGIN = 'https://nfcstore.uz';
+
+/**
+ * BUG TUZATISH (audit: rasmlar release-buildda ochilmayapti edi):
+ * backend ko'p rasm maydonini (`imageUrl`, `coverUrl`, `avatarUrl`, ...)
+ * mutlaq havola o'rniga NISBIY yo'l sifatida qaytaradi — masalan
+ * `/uploads/abc123.jpg` (qarang `hosting/worker.js`dagi
+ * `uploadOrSafeUrl()`: tashqi havola bo'lmasa `/uploads/...` yo'lini
+ * o'zgarishsiz qaytaradi). Saytda bu muammo emas — brauzer nisbiy
+ * yo'lni sahifa domeniga (nfcstore.uz) nisbatan hal qiladi. Lekin
+ * React Native'da "joriy domen" degan tushuncha yo'q: `Image` shunday
+ * yo'lni load qila olmaydi va JIM ravishda hech narsa ko'rsatmaydi —
+ * aynan shu holat ilovada "rasm ochilmayapti" deb ko'ringan.
+ *
+ * Tuzatish BITTA joyda: har bir `apiFetch()` javobi qaytarilishidan
+ * oldin butun obyekt chuqur aylanib chiqiladi va `/uploads/` bilan
+ * boshlanadigan har qanday satr qiymati saytning domeni bilan mutlaq
+ * havolaga aylantiriladi. Shunda kelajakda backend yangi maydon
+ * qo'shsa ham (masalan yangi `bannerUrl`), alohida joyni tuzatish
+ * shart bo'lmaydi.
+ */
+function absolutizeUploads<T>(value: T): T {
+  if (typeof value === 'string') {
+    return (value.startsWith('/uploads/') ? SITE_ORIGIN + value : value) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => absolutizeUploads(v)) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = absolutizeUploads(v);
+    }
+    return out as unknown as T;
+  }
+  return value;
+}
 
 const TOKEN_KEY = 'nfcstore.session';
 
@@ -130,7 +167,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     );
   }
 
-  return data as T;
+  return absolutizeUploads(data) as T;
 }
 
 export type AuthedUser = {

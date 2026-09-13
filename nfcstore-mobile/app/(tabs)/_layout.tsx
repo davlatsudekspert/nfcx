@@ -6,14 +6,17 @@ import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeProvider';
 
 /**
- * Pastki navigatsiya — Home / Discover / NFC / Profile.
+ * Pastki navigatsiya — Home / Discover / NFC / Profile / Settings.
  *
  * `design_handoff_nfcstore_app` spetsifikatsiyasi bo'yicha yangilandi:
  * Auction tab YO'Q (saytdan olib tashlangan). Activity tab HAM YO'Q —
  * repository auditida likes/follows/views/order-updates/payment-status'ni
  * bitta oqimga jamlaydigan haqiqiy backend endpoint topilmadi
  * (`/api/notifications` yoki shunga o'xshash yo'q), shuning uchun
- * spetsifikatsiyaning o'z qoidasiga ko'ra 4-tab variant qo'llanadi.
+ * spetsifikatsiyaning o'z qoidasiga ko'ra asl 4-tab variant qo'llangan
+ * edi. Settings — foydalanuvchi ANIQ so'ragan 5-tab (ilgari sozlamalar
+ * faqat Profildagi varaqdan ochilardi; endi PIN kod kabi sozlamalarga
+ * pastki navigatsiyadan ham to'g'ridan-to'g'ri kirish mumkin).
  * Company ENDI TAB EMAS: biznesni boshqarish — identity almashtirish,
  * Profile Switcher orqali (`SwitcherSheet`); Dashboard `/companies`
  * ro'yxati va Business profildan ochiladi.
@@ -51,6 +54,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="discover" options={{ title: 'Discover' }} />
       <Tabs.Screen name="nfc" options={{ title: 'NFC' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
     </Tabs>
   );
 }

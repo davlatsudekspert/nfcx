@@ -18,7 +18,7 @@ import { useSvgId } from '@/lib/svgId';
  * (`stroke="var(--bg)"`), shuning uchun `bg` prop kerak.
  */
 
-export type NavIconName = 'home' | 'discover' | 'nfc' | 'profile';
+export type NavIconName = 'home' | 'discover' | 'nfc' | 'profile' | 'settings';
 
 type ActiveProps = { size?: number; a1: string; a2: string; bg: string };
 type IdleProps = { size?: number; color: string };
@@ -235,6 +235,29 @@ export function ProfileIdle({ size = 21, color }: IdleProps) {
   );
 }
 
+/* ── Settings (gear) ─────────────────────────────────────────────── */
+
+const GEAR_D =
+  'M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm8.4 3.6c0 .55-.05 1.08-.13 1.6l2.02 1.58a.6.6 0 0 1 .14.76l-1.9 3.3a.6.6 0 0 1-.73.26l-2.38-.96c-.5.38-1.04.7-1.63.95l-.36 2.53a.6.6 0 0 1-.6.52h-3.8a.6.6 0 0 1-.6-.52l-.36-2.53c-.59-.25-1.13-.57-1.63-.95l-2.38.96a.6.6 0 0 1-.73-.26l-1.9-3.3a.6.6 0 0 1 .14-.76l2.02-1.58A8.4 8.4 0 0 1 3.6 12c0-.55.05-1.08.13-1.6L1.71 8.82a.6.6 0 0 1-.14-.76l1.9-3.3a.6.6 0 0 1 .73-.26l2.38.96c.5-.38 1.04-.7 1.63-.95l.36-2.53a.6.6 0 0 1 .6-.52h3.8a.6.6 0 0 1 .6.52l.36 2.53c.59.25 1.13.57 1.63.95l2.38-.96a.6.6 0 0 1 .73.26l1.9 3.3a.6.6 0 0 1-.14.76l-2.02 1.58c.08.52.13 1.05.13 1.6Z';
+
+export function SettingsActive({ size = 21, a1, a2 }: ActiveProps) {
+  const id = useGrad();
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <GradDefs id={id} a1={a1} a2={a2} />
+      <Path d={GEAR_D} fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+export function SettingsIdle({ size = 21, color }: IdleProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d={GEAR_D} stroke={color} strokeWidth={1.4} strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
+
 export const NAV_ICONS: Record<
   NavIconName,
   {
@@ -246,4 +269,5 @@ export const NAV_ICONS: Record<
   discover: { Active: DiscoverActive, Idle: DiscoverIdle },
   nfc: { Active: NfcActive, Idle: NfcIdle },
   profile: { Active: ProfileActive, Idle: ProfileIdle },
+  settings: { Active: SettingsActive, Idle: SettingsIdle },
 };

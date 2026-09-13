@@ -21,17 +21,24 @@ import { NAV_ICONS, type NavIconName } from './NavIcons';
 import { NavGlow } from './NavGlow';
 
 /**
- * Yangi tartib (design_handoff_nfcstore_app spetsifikatsiyasi):
- * Home / Discover / NFC / Profile. Auction YO'Q, Activity YO'Q (haqiqiy
- * agregatsiyalangan activity/notifications backend topilmadi — 4-tab
- * variant). Company endi tab EMAS: biznes identity Profile Switcher
- * orqali, Dashboard esa `/companies` va Business profildan ochiladi.
+ * Tartib (design_handoff_nfcstore_app spetsifikatsiyasi + keyingi
+ * so'rov): Home / Discover / NFC / Profile / Settings. Auction YO'Q,
+ * Activity YO'Q (haqiqiy agregatsiyalangan activity/notifications
+ * backend topilmadi — asl 4-tab variant). Company endi tab EMAS:
+ * biznes identity Profile Switcher orqali, Dashboard esa `/companies`
+ * va Business profildan ochiladi.
+ *
+ * Settings — foydalanuvchi ANIQ so'ragan qo'shimcha tab ("bottombarga
+ * settingsni ham qosh"): ilgari sozlamalar faqat Profile'dagi
+ * varaqdan (`SettingsSheet`) ochilardi, endi pastki navigatsiyada ham
+ * to'g'ridan-to'g'ri (shu jumladan PIN kod) — `app/(tabs)/settings.tsx`.
  */
 const TABS: { route: string; icon: NavIconName; label: string }[] = [
   { route: 'index', icon: 'home', label: 'Home' },
   { route: 'discover', icon: 'discover', label: 'Discover' },
   { route: 'nfc', icon: 'nfc', label: 'NFC' },
   { route: 'profile', icon: 'profile', label: 'Profile' },
+  { route: 'settings', icon: 'settings', label: 'Settings' },
 ];
 
 /** NFC — markaziy tab, boshqalardan biroz kattaroq glif oladi. */
@@ -69,10 +76,15 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
   const [width, setWidth] = useState(0);
   const glowId = useSvgId('indGlow');
 
-  // Indikatorning gorizontal o'rni. Maketda:
-  //   left: calc(index*25% + 12.5% - 13px)
+  // Indikatorning gorizontal o'rni. Asl maketda 4 tab uchun qattiq
+  // yozilgan edi (`left: calc(index*25% + 12.5% - 13px)`); Settings
+  // tabi qo'shilgach tablar soni o'zgarishi mumkin bo'lgani uchun
+  // ulush endi `TABS.length`dan hisoblanadi — formula (bir tabning
+  // eni * (index + 0.5)) bir xil natija beradi, faqat 4ga bog'lanib
+  // qolmaydi.
   //   transition: left .34s cubic-bezier(.4,0,.2,1)
   const indicator = useSharedValue(0);
+  const tabFraction = 1 / TABS.length;
 
   const activeIndex = Math.max(
     0,
@@ -81,12 +93,12 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
 
   useEffect(() => {
     if (width <= 0) return;
-    const target = (activeIndex * 0.25 + 0.125) * width - INDICATOR_W / 2;
+    const target = (activeIndex + 0.5) * tabFraction * width - INDICATOR_W / 2;
     indicator.value = withTiming(target, {
       duration: 340,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
     });
-  }, [activeIndex, width, indicator]);
+  }, [activeIndex, width, indicator, tabFraction]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicator.value }],
@@ -98,7 +110,7 @@ export function BottomNav({ state, navigation }: TabBarSlice) {
       setWidth(w);
       // Birinchi o'lchashda indikator joyida TURIB qolsin, chapdan
       // uchib kelmasin.
-      indicator.value = (activeIndex * 0.25 + 0.125) * w - INDICATOR_W / 2;
+      indicator.value = (activeIndex + 0.5) * tabFraction * w - INDICATOR_W / 2;
     }
   };
 
