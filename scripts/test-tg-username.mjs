@@ -63,8 +63,21 @@ checkTrue('sozlamalar: xabar kanalga qarab yoziladi',
   /channel === 'email'/.test(settings) && settings.includes('Kod emailingizga yuborildi'));
 checkTrue('sozlamalar: maydon yozuvi ham kanalga qarab',
   settings.includes("t('Emailga kelgan 6 xonali kod')"));
-// Tugma bosilgunga qadar kanal NOMA'LUM — shuning uchun u neytral
-// bo'lishi kerak, "Telegram'ga kod yuborish" emas.
-checkTrue('sozlamalar: tugma neytral', !settings.includes("Telegram'ga kod yuborish"));
+// Kanal kod yuborilishidan OLDIN ham ma'lum: `/api/auth/me` raqam
+// bilan ro'yxatdan o'tganlarning ichki manzilini bo'sh qaytaradi,
+// ya'ni `user.email` bo'lsa — u haqiqiy. Shuning uchun tavsif va
+// tugma ham to'g'ri kanalni aytadi.
+checkTrue('sozlamalar: kanal oldindan aniqlanadi', /const emailChannel = !!user\?\.email/.test(settings));
+checkTrue('sozlamalar: boshlang‘ich kanal shunga bog‘liq',
+  /useState\(emailChannel \? 'email' : 'telegram'\)/.test(settings));
+checkTrue('sozlamalar: tavsif kanalga qarab',
+  settings.includes('emailingizga yuboriladigan bir martalik kod'));
+checkTrue('sozlamalar: tugma kanalga qarab',
+  settings.includes("t('Emailga kod yuborish')"));
+// Emaili bor odamga "Telegram" so'zi KO'RSATILMASIN — egasining
+// aniq talabi: "o'sha yerdagi telegramni o'rniga emailga kod bordi
+// desin".
+checkTrue('sozlamalar: telegram yozuvlari shartga bog‘langan',
+  !/\{t\("Telegram'ga kod yuborish"\)\}/.test(settings));
 
 done();
