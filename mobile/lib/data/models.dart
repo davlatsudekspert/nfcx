@@ -55,6 +55,7 @@ class Record {
     this.email = '',
     this.address = '',
     this.profileType = 'personal',
+    this.categorySlug = '',
     this.verified = false,
     this.isPrimary = false,
     this.price = 0,
@@ -80,6 +81,7 @@ class Record {
   final String email;
   final String address;
   final String profileType;
+  final String categorySlug;
   final bool verified;
   final bool isPrimary;
   final int price;
@@ -130,6 +132,7 @@ class Record {
         email: _s(j['email']),
         address: _s(j['address']),
         profileType: _s(j['profileType']).isEmpty ? 'personal' : _s(j['profileType']),
+        categorySlug: _s(j['categorySlug']),
         verified: _b(j['verified']),
         isPrimary: _b(j['isPrimary']),
         price: _i(j['price']),

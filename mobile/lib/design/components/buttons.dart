@@ -42,7 +42,17 @@ class PrimaryButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[icon!, const SizedBox(width: S.x8)],
-                    Text(label, style: T.button.copyWith(color: C.ink)),
+                    // YOZUV QISQARA OLISHI KERAK. Aks holda uzun matn
+                    // yoki katta tizim shrifti tugmani chetdan chiqarib
+                    // yuboradi (test aynan shuni ushladi).
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.button.copyWith(color: C.ink),
+                      ),
+                    ),
                   ],
                 ),
         ),
@@ -79,7 +89,14 @@ class SecondaryButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[icon!, const SizedBox(width: S.x8)],
-              Text(label, style: T.button.copyWith(color: C.offWhite)),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.button.copyWith(color: C.offWhite),
+                ),
+              ),
             ],
           ),
         ),
@@ -114,9 +131,14 @@ class GhostButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[icon!, const SizedBox(width: S.x8)],
-            Text(label, style: T.button.copyWith(
-              fontSize: 13.5, color: color ?? C.offWhite,
-            )),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: T.button.copyWith(fontSize: 13.5, color: color ?? C.offWhite),
+              ),
+            ),
           ],
         ),
       ),

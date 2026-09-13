@@ -165,6 +165,22 @@ class Repo {
         'note': note,
       });
 
+  /// Buyurtma holatini o'zgartirish (faqat ega).
+  ///
+  /// `PATCH` — backend aynan shuni kutadi. Ruxsat SERVERDA
+  /// tekshiriladi: mijoz tomonidagi "men egaman" bayrog'iga
+  /// ishonilmaydi.
+  Future<void> setCompanyOrderStatus(String id, int orderId, String status) =>
+      api.patch('/api/companies/$id/orders/$orderId', {'status': status});
+
+  /// Shaxsiy profilni tahrirlash.
+  ///
+  /// Butun yozuv yuboriladi (backend `PUT` da to'liq obyekt kutadi) —
+  /// shuning uchun chaqiruvchi avval mavjud yozuvni o'qib, faqat
+  /// kerakli maydonlarni o'zgartiradi.
+  Future<Record> updateRecord(String code, Map<String, dynamic> body) async =>
+      Record.fromJson(_map(await api.put('/api/records/$code', body)));
+
   /// Kompaniya sahifasidagi hodisa (ko'rish / amal / mahsulot).
   Future<void> companyEvent(String id, {String kind = 'view', String? ref}) async {
     try {

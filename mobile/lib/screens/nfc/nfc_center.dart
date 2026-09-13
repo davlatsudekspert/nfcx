@@ -14,6 +14,7 @@ import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
+import 'gift_id.dart';
 import 'id_catalog.dart';
 import 'qr_share.dart';
 
@@ -93,7 +94,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                 ),
               ),
               const SizedBox(height: S.x16),
-              _Actions(active: active),
+              _Actions(active: active, owned: owned),
             ],
             if (owned.isNotEmpty) ...[
               const SizedBox(height: S.x32),
@@ -127,16 +128,28 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
 }
 
 class _Actions extends StatelessWidget {
-  const _Actions({required this.active});
+  const _Actions({required this.active, required this.owned});
   final Identity active;
+  final List<Record> owned;
 
   @override
   Widget build(BuildContext context) {
+    // Sovg'a qilish — FAQAT o'z shaxsiy ID'sida. Biznes profilini
+    // sovg'a qilish alohida oqim (egalik + katalog + buyurtmalar
+    // ko'chadi) va backend uni `/api/records/:code/gift` orqali
+    // qo'llab-quvvatlamaydi.
+    final card = active.record;
+    final canGift = card != null && owned.any((c) => c.code == card.code);
+
     final items = <({Ico icon, String label, VoidCallback? onTap})>[
       (icon: Ico.qr, label: 'QR', onTap: () => push(context, (_) => QrShareScreen(identity: active))),
       (icon: Ico.share, label: 'Ulashish', onTap: () => shareIdentity(active)),
       (icon: Ico.card, label: 'Karta', onTap: null),
-      (icon: Ico.gift, label: 'Sovg‘a', onTap: null),
+      (
+        icon: Ico.gift,
+        label: 'Sovg‘a',
+        onTap: canGift ? () => push(context, (_) => GiftIdScreen(record: card)) : null,
+      ),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: S.gutter),

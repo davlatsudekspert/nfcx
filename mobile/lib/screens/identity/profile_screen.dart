@@ -12,7 +12,10 @@ import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import '../business/business_stats.dart';
 import '../business/product_detail.dart';
+import '../orders/owner_orders.dart';
+import 'edit_profile.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../content/post_detail.dart';
@@ -204,6 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : Identity.personal(_record!);
                     shareIdentity(id);
                   },
+                  onRefresh: _load,
                 ),
               ),
               SliverToBoxAdapter(
@@ -293,6 +297,7 @@ class _Header extends StatelessWidget {
     required this.busyFollow,
     required this.onFollow,
     required this.onShare,
+    required this.onRefresh,
   });
 
   final Record? record;
@@ -302,6 +307,7 @@ class _Header extends StatelessWidget {
   final bool busyFollow;
   final VoidCallback onFollow;
   final VoidCallback onShare;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +405,12 @@ class _Header extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
           child: isOwner
-              ? _OwnerActions(isBusiness: company != null, onShare: onShare)
+              ? _OwnerActions(
+                  company: company,
+                  record: record,
+                  onShare: onShare,
+                  onChanged: onRefresh,
+                )
               : _PublicActions(
                   following: follow.isFollowing,
                   busy: busyFollow,
@@ -432,33 +443,78 @@ class _Stat extends StatelessWidget {
       );
 }
 
+/// EGA VOSITALARI.
+///
+/// Ishlamaydigan tugma QO'YILMAYDI: backend qo'llab-quvvatlamaydigan
+/// amal (post/story yaratish — rasm yuklash oqimi hali yo'q) umuman
+/// ko'rsatilmaydi. Bosilganda hech narsa qilmaydigan tugma
+/// foydalanuvchini ishonchdan mahrum qiladi.
 class _OwnerActions extends StatelessWidget {
-  const _OwnerActions({required this.isBusiness, required this.onShare});
-  final bool isBusiness;
+  const _OwnerActions({
+    required this.company,
+    required this.record,
+    required this.onShare,
+    required this.onChanged,
+  });
+
+  final Company? company;
+  final Record? record;
   final VoidCallback onShare;
+  final VoidCallback onChanged;
+
+  bool get isBusiness => company != null;
 
   @override
   Widget build(BuildContext context) => Column(
         children: [
           Row(
             children: [
-              Expanded(child: SecondaryButton('Tahrirlash', height: 44, onTap: null)),
+              Expanded(
+                child: SecondaryButton(
+                  'Tahrirlash',
+                  height: 44,
+                  // Biznes profilini tahrirlash alohida oqim (katalog,
+                  // ish vaqti, manzil) — u hali qurilmagan, shuning
+                  // uchun faqat shaxsiy profilda faol.
+                  onTap: record == null
+                      ? null
+                      : () async {
+                          final saved = await push<bool>(
+                            context,
+                            (_) => EditProfileScreen(record: record!),
+                          );
+                          if (saved == true) onChanged();
+                        },
+                ),
+              ),
               const SizedBox(width: S.x8),
-              Expanded(child: SecondaryButton('Statistika', height: 44, onTap: null)),
+              Expanded(
+                child: SecondaryButton(
+                  'Statistika',
+                  height: 44,
+                  onTap: isBusiness
+                      ? () => push(context, (_) => BusinessStatsScreen(companyId: company!.id))
+                      : null,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: S.x8),
           Row(
             children: [
               if (isBusiness) ...[
-                Expanded(child: GhostButton('Mahsulot', icon: const NIcon(Ico.plus, size: 15, color: C.champagne))),
-                const SizedBox(width: S.x8),
-                const Expanded(child: GhostButton('Buyurtmalar')),
-                const SizedBox(width: S.x8),
-              ] else ...[
-                const Expanded(child: GhostButton('Post')),
-                const SizedBox(width: S.x8),
-                const Expanded(child: GhostButton('Story')),
+                Expanded(
+                  child: GhostButton(
+                    'Buyurtmalar',
+                    onTap: () => push(
+                      context,
+                      (_) => OwnerOrdersScreen(
+                        companyId: company!.id,
+                        companyName: company!.name,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: S.x8),
               ],
               Press(
