@@ -40,7 +40,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Object? _error;
   int _filter = 0;
 
-  static final _filters = [tr('Hammasi'), tr('Odamlar'), tr('Biznes'), 'ID'];
+  // Getter, `static final` emas: tarjima til almashganda qayta
+  // hisoblanishi kerak (`NavBar.tabs` dagi bilan bir xil sabab).
+  static List<String> get _filters =>
+      [tr('Hammasi'), tr('Odamlar'), tr('Biznes'), 'ID'];
 
   @override
   void initState() {

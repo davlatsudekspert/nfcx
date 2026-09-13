@@ -25,12 +25,20 @@ class NavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final int unread;
 
-  static final tabs = <({Ico icon, String label})>[
-    (icon: Ico.home, label: tr('Home')),
-    (icon: Ico.search, label: tr('Discover')),
-    (icon: Ico.nfc, label: 'NFC'),
-    (icon: Ico.user, label: tr('Profile')),
-  ];
+  /// FUNKSIYA, `static final` EMAS.
+  ///
+  /// `static final` bir MARTA hisoblanadi va natija abadiy
+  /// saqlanib qoladi. Tarjima esa joriy tilga qarab o'zgaradi:
+  /// til almashtirilganda pastki panel o'zbekcha qolib, qolgan
+  /// hamma narsa ruschaga o'tardi — ya'ni ilovaning eng ko'p
+  /// ko'rinadigan joyi yarim tarjima bo'lib turardi.
+  static List<({Ico icon, String label})> get tabs => [
+        (icon: Ico.home, label: tr('Home')),
+        (icon: Ico.search, label: tr('Discover')),
+        // "NFC" uch tilda ham shunday.
+        (icon: Ico.nfc, label: 'NFC'),
+        (icon: Ico.user, label: tr('Profile')),
+      ];
 
   /// NFC tabining indeksi — u markaziy va boshqacha ko'rinadi.
   static const nfcIndex = 2;

@@ -77,6 +77,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Widget build(BuildContext context) {
     final user = AppScope.of(context).user;
     final active = user?.isPremium ?? false;
+    final features = _features();
 
     return ColoredBox(
       color: C.obsidian,
@@ -100,9 +101,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       shadow: E.e1,
                       child: Column(
                         children: [
-                          for (final f in _features) ...[
+                          // Ro'yxat BIR MARTA olinadi: har murojaatda
+                          // yangi ro'yxat yasalsa, "oxirgimi?" tekshiruvi
+                          // har safar boshqa nusxa bilan solishtirilardi.
+                          for (final f in features) ...[
                             _Feature(f.icon, f.title, f.hint),
-                            if (f != _features.last) const SizedBox(height: S.x16),
+                            if (f != features.last) const SizedBox(height: S.x16),
                           ],
                         ],
                       ),
@@ -136,7 +140,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
 ///
 /// NARX BU YERDA YO'Q: u serverdan keladi. Ilovada yozib qo'yilsa,
 /// saytda narx o'zgarganda ikkalasi mos kelmay qolardi.
-final _features = <({Ico icon, String title, String hint})>[
+/// Funksiya, `final` emas: tarjima til almashganda qayta
+/// hisoblansin.
+List<({Ico icon, String title, String hint})> _features() =>
+    <({Ico icon, String title, String hint})>[
   (
     icon: Ico.star,
     title: tr('Tasdiqlangan nishon'),
@@ -152,12 +159,12 @@ final _features = <({Ico icon, String title, String hint})>[
     title: tr('To‘liq statistika'),
     hint: tr('Kunlik grafik va manbalar.')
   ),
-  (
-    icon: Ico.card,
-    title: tr('Jismoniy karta dizayni'),
-    hint: tr('O‘z maketingiz bilan buyurtma.')
-  ),
-];
+      (
+        icon: Ico.card,
+        title: tr('Jismoniy karta dizayni'),
+        hint: tr('O‘z maketingiz bilan buyurtma.')
+      ),
+    ];
 
 /// TO'LOV OCHILGANDAN KEYIN.
 ///

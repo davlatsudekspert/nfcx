@@ -38,7 +38,11 @@ class CreateCompanyScreen extends StatefulWidget {
 }
 
 /// Backend qabul qiladigan turkumlar (`COMPANY_CATEGORIES`).
-final _categories = <String, String>{
+///
+/// Funksiya, `final` emas: kalitlar serverniki va o'zgarmaydi,
+/// nomlar esa tarjima qilinadi va til almashganda qayta
+/// hisoblanishi kerak.
+Map<String, String> _categories() => <String, String>{
   'restaurant': tr('Restoran'),
   'cafe': tr('Kafe'),
   'market': tr('Market'),
@@ -243,7 +247,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      for (final e in _categories.entries)
+                      for (final e in _categories().entries)
                         Chip(
                           e.value,
                           active: _category == e.key,

@@ -33,11 +33,12 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
   String _filter = 'new';
   final _busy = <int>{};
 
-  static final _tabs = [
-    (key: 'new', label: tr('Yangi')),
-    (key: 'done', label: tr('Bajarilgan')),
-    (key: 'cancelled', label: tr('Bekor')),
-  ];
+  // Getter: tarjima til almashganda qayta hisoblansin.
+  static List<({String key, String label})> get _tabs => [
+        (key: 'new', label: tr('Yangi')),
+        (key: 'done', label: tr('Bajarilgan')),
+        (key: 'cancelled', label: tr('Bekor')),
+      ];
 
   @override
   void initState() {
