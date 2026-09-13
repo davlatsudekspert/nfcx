@@ -465,16 +465,16 @@ async function requestRegisterCode(request, env, H) {
       // Holat kodi esa o'zi aytadi: 401 — kalit noto'g'ri, 403 —
       // yuborishga ruxsat yo'q (masalan jo'natuvchi tasdiqlanmagan
       // manzil), 422 — `from` formati noto'g'ri.
-      // TASHXIS: Resend'ning O'Z xabari ham qaytariladi. U holat
-      // kodidan ancha aniqroq — "domen tasdiqlanmagan", "subject bo'sh"
-      // kabi to'g'ridan-to'g'ri sababni aytadi.
+      // Sabab sifatida faqat HOLAT KODI qaytariladi ("http_400").
+      // Resend'ning to'liq matni `console.error` ga ketadi — uni
+      // ochiq endpointda doimiy ko'rsatib turishning hojati yo'q.
       //
-      // Maxfiy emas: Resend javobida API kalit hech qachon
-      // qaytmaydi, faqat validatsiya xabari. Qisqartiriladi va
-      // ehtiyot uchun kalitga o'xshash bo'laklar ("re_...") olib
-      // tashlanadi.
-      const detail = String(sent?.detail || '').replace(/re_[A-Za-z0-9_-]+/g, '***').slice(0, 200);
-      return H.json({ error: 'email_send_failed', reason: sent?.reason || 'unknown', detail }, 503);
+      // DIQQAT, kelajak uchun: Resend NOTO'G'RI API KALIT uchun ham
+      // 401 emas, 400 qaytaradi ("API key is invalid"). Ya'ni
+      // "400 = so'rov formati noto'g'ri" deb o'ylash xato — kalitni
+      // ham tekshirish kerak. Aynan shu bir necha urinishni yeb
+      // qo'ygan edi.
+      return H.json({ error: 'email_send_failed', reason: sent?.reason || 'unknown' }, 503);
     }
     return H.json({ ok: true, channel: 'email' });
   }
