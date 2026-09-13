@@ -46,7 +46,7 @@ checkTrue('2) kontent oynasi qolgan joyni oladi', body.includes('flex:1'));
 checkTrue('2) flex element kichrayishi mumkin', body.includes('min-height:0'));
 
 // ── 3) Tepa, bo'limlar va pastki qator — surilmaydigan qismlar ───────
-for (const sel of ['.qp-top', '.qp-hero', '.qp-bottom']) {
+for (const sel of ['.qp-hero', '.qp-bottom']) {
   checkTrue(`3) ${sel} qat'iy (flex:none)`, rule(sel).includes('flex:none'));
 }
 checkTrue('3) bo‘limlar qatori ham qat‘iy', rule('.qp-tabs').includes('flex:none'));
@@ -75,17 +75,26 @@ for (const key of ['phone', 'telegram', 'whatsapp', 'instagram', 'facebook', 'we
 }
 checkTrue('5) egasining havolalari joyida', page.includes('extraLinks.map'));
 
-// ── 6) Hech narsa YO'QOLMADI — tavsif, manzil, NFC ID, musiqa ────────
+// ── 6) Hech narsa YO'QOLMADI — tavsif, manzil, xarita, musiqa ───────
 // Ular endi "Ma'lumot" bo'limida; birinchi ekranni band qilmaydi.
 checkTrue('6) "Ma’lumot" bo‘limi bor', page.includes("'haqida'"));
-// Bo'limlar YOZUVSIZ — faqat ikonka (egasining maketi). Shu sababli
-// har birida `aria-label` bo'lishi SHART: aks holda ekran o'quvchi
-// uchun qator to'rtta nomsiz tugmaga aylanadi.
 // Bo'limlar — matnli tugmalar (egasining maketi), faoli OLTIN.
 checkTrue('6) faol bo‘lim oltin', rule('.qp-tab.is-on').includes('var(--gold-face)'));
 checkTrue('6) tavsif joyida', page.includes('qp-desc'));
-checkTrue('6) manzil joyida', page.includes('qp-addr'));
-checkTrue('6) NFC ID joyida', page.includes('pf-nfcid'));
+// XARITA — NFC ID havolasining o'rniga (egasining qarori): havola
+// hech qanday ish bajarmasdi, odam allaqachon o'sha havolada edi.
+checkTrue('6) xarita joyida', page.includes('qp-map') && page.includes('openstreetmap.org/export/embed'));
+// Xarita FAQAT bosilganda yuklanadi. Tashqi xizmat sekin yoki yopiq
+// bo'lganda brauzer bo'm-bo'sh KULRANG kadr chizadi — premium
+// sahifada bu juda xunuk. Shuning uchun yopiq holatda BIZNING
+// kartochkamiz turadi.
+checkTrue('6) xarita bosilgandagina yuklanadi', page.includes('mapOpen && geo') && page.includes('qp-map-card'));
+checkTrue('6) yo‘nalish tugmasi joyida', page.includes('qp-route'));
+// Manzil xarita kartochkasining O'ZIDA — tepada takrorlanmaydi.
+checkTrue('6) manzil takrorlanmaydi', !page.includes('qp-addr'));
+// Tepadagi ID yozuvi OLIB TASHLANDI (egasining qarori).
+checkTrue('6) tepada takroriy ID yozuvi yo‘q', !page.includes('qp-cid'));
+checkTrue('6) manzil joyida', page.includes('company.address || company.city'));
 checkTrue('6) musiqa pleeri joyida', page.includes('CompanyMusicPlayer'));
 checkTrue('6) to‘liq sahifa havolasi joyida', page.includes("navigate(`/company/${company.companyId.toLowerCase()}`)"));
 
@@ -105,7 +114,7 @@ const qpCss = css.slice(css.indexOf('.qp-page{')).replace(/\/\*[\s\S]*?\*\//g, '
 check('8) buzuq font qisqartmasi yo‘q', (qpCss.match(/font:\s*(?!inherit\s*[;}])[^;}]*\binherit\b/g) || []), []);
 
 // ── 9) Telefon "tirnog'i" (safe-area) hisobga olingan ────────────────
-checkTrue('9) tepada safe-area', rule('.qp-top').includes('env(safe-area-inset-top'));
+checkTrue('9) tepada safe-area', rule('.qp-hero').includes('env(safe-area-inset-top'));
 checkTrue('9) pastda safe-area', rule('.qp-bottom').includes('env(safe-area-inset-bottom'));
 
 // ── 10) Past ekranlar uchun kichrayish qoidasi bor ───────────────────

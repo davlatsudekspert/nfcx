@@ -57,6 +57,8 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // Musiqa pleeri — avatar yonidagi belgi bilan ochiladi/yopiladi.
   const [musicOpen, setMusicOpen] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  // Xarita bosilgandagina yuklanadi (izohi pastda).
+  const [mapOpen, setMapOpen] = useState(false);
 
   const load = useCallback(() => {
     let live = true;
@@ -132,7 +134,6 @@ export default function CompanyQuickProfilePage({ companyId }) {
     return (
       <main className="qp-page" aria-busy="true" style={{ '--cq-cover': 'none' }}>
         <div className="qp-shell">
-          <header className="qp-top"><span className="vz-skel" style={{ width: 110, height: 14 }} /></header>
           <section className="qp-hero">
             <div className="qp-hero-row">
               <div className="vz-skel" style={{ width: 64, height: 64, borderRadius: 20, flex: 'none' }} />
@@ -229,11 +230,6 @@ export default function CompanyQuickProfilePage({ companyId }) {
       {/* Bosh ekranga qo'shilganda AYNAN shu kompaniya ochilsin. */}
       <ProfileManifest kind="c" code={company.companyId} name={company.displayName} />
       <div className="qp-shell">
-        {/* Kompaniya ID'si — eng tepada, oltin serif harflarda. */}
-        <header className="qp-top">
-          <span className="qp-cid">{company.companyId}</span>
-        </header>
-
         <section className="qp-hero">
           {/* Uch ustunli qator: logotip AYNAN markazda qoladi, yon
               tugma esa uni surib yubormaydi. */}
@@ -365,17 +361,46 @@ export default function CompanyQuickProfilePage({ companyId }) {
           {activeTab === 'haqida' && (
             <section className="qp-about">
               <p className="qp-desc break-words">{company.description || t('Kompaniya haqida qisqa ma’lumot.')}</p>
-              {company.address && <p className="qp-addr break-words">◎ {company.address}</p>}
-              <div className="pf-nfcid">
-                <i aria-hidden="true">◉</i>
-                <div style={{ textAlign: 'center' }}>
-                  <b>{company.companyId}</b>
-                  <small>NFC ID · nfcstore.uz/c/{company.companyId.toLowerCase()}</small>
+              {/* MANZIL VA XARITA — egasining qarori: bu yerda NFC ID
+                  havolasi turardi va u hech qanday ish bajarmasdi (odam
+                  allaqachon o'sha havolada!).
+
+                  XARITA BOSILGANDA YUKLANADI. Sabab: u tashqi
+                  xizmatdan (OpenStreetMap) keladi va sekin tarmoqda
+                  yoki xizmat yopiq bo'lganda brauzer BO'M-BO'SH
+                  KULRANG kadr chizadi — bu premium sahifada juda
+                  xunuk ko'rinadi. Endi odam ko'radigan narsa har doim
+                  BIZNING kartochkamiz; xaritani xohlasa bir bosishda
+                  ochadi. Yon ta'siri ham foydali: har bir tashrifchi
+                  uchun tashqi so'rov yuborilmaydi — sahifa tezroq. */}
+              {(geo || company.address) && (
+                <div className="qp-map">
+                  {mapOpen && geo ? (
+                    <iframe
+                      title={t('Kompaniya lokatsiyasi')}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(company.longitude) - 0.006}%2C${Number(company.latitude) - 0.0035}%2C${Number(company.longitude) + 0.006}%2C${Number(company.latitude) + 0.0035}&layer=mapnik&marker=${company.latitude}%2C${company.longitude}`}
+                    />
+                  ) : (
+                    <button
+                      type="button" className="qp-map-card vz-tap"
+                      onClick={() => (geo ? setMapOpen(true) : window.open(mapUrl, '_blank', 'noreferrer'))}
+                    >
+                      <i aria-hidden="true"><IconPin width={26} height={26} /></i>
+                      <b className="break-words">{company.address || company.city}</b>
+                      <small>{geo ? t('Xaritani ko‘rish') : t('Xaritada ochish')}</small>
+                    </button>
+                  )}
                 </div>
-              </div>
-              {/* To'liq sahifaga o'tish — oltin va ustidan yaltiroq
-                  o'tib turadi (`tier-shine`, saytdagi boshqa premium
-                  kartalar bilan bir xil effekt). */}
+              )}
+              {mapUrl && (
+                <a
+                  className="qp-route vz-tap" href={mapUrl} target="_blank" rel="noreferrer"
+                  onClick={() => companyEvent(company.companyId, 'action', 'directions')}
+                >
+                  <IconPin width={17} height={17} aria-hidden="true" /> {t('Yo‘nalish olish')}
+                </a>
+              )}
+
               <button type="button" className="qp-public tier-shine vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
                 {t('Kompaniya saytini to‘liq ochish')} <span aria-hidden="true">↗</span>
               </button>
