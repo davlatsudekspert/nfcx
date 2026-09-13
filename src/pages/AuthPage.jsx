@@ -57,8 +57,7 @@ function errText(err, t, botLink) {
     // 422 — `from` formati noto'g'ri. Busiz har safar Cloudflare
     // loglarini ochish kerak bo'lardi.
     const why = err?.reason ? ` (${err.reason})` : '';
-    const what = err?.detail ? ` ${err.detail}` : '';
-    return t("Emailga kod yuborib bo'lmadi. Manzilni tekshiring yoki birozdan so'ng qayta urining.") + why + what;
+    return t("Emailga kod yuborib bo'lmadi. Manzilni tekshiring yoki birozdan so'ng qayta urining.") + why;
   }
   if (key === 'email_required') return t('Email manzilingizni kiriting — tasdiqlash kodi shu manzilga yuboriladi.');
   if (key === 'email_code_required') return t('Emailingizga kelgan 6 xonali kodni kiriting.');
