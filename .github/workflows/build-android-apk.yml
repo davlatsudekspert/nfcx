@@ -2,6 +2,12 @@ name: Build NFCSTORE mobile debug APK
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - claude/dreamy-cerf-hkbsg0
+    paths:
+      - '.github/workflows/build-android-apk.yml'
+      - 'nfcstore-mobile/**'
 
 jobs:
   build:
