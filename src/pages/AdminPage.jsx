@@ -429,6 +429,10 @@ const PIE_COLORS = ['#f5a524', '#3abff8', '#36d399', '#f87272', '#a78bfa', '#fb7
 // manzilni o'zi yozgan yoki havolada belgi bo'lmagan.
 const TRAFFIC_SRC = { nfc: 'NFC karta', qr: 'QR kod', link: 'Havola', direct: "To'g'ridan-to'g'ri" };
 
+// Ro'yxatdan o'tish manbalari. `app` — ilova o'zini umumiy "mobile"
+// deb tanishtirgan holat: Android'mi yoki iOS'mi, aniq emas.
+const SIGNUP_SRC = { web: 'Sayt', android: 'Android ilova', ios: 'iOS ilova', app: 'Mobil ilova' };
+
 // GRAFIK RANGLARI — ikkalasi tekshiruvdan o'tgan (scripts/validate:
 // rang ko'rish buzilishida ham ajraladi, qorong'i fonda kontrast
 // yetarli). Ularni o'zgartirsangiz qaytadan tekshiring: ikkita seriya
@@ -542,6 +546,28 @@ function TrafficTab() {
 
         {/* ENG KO'P OCHILGANLAR — jadval. Aniq raqamlarni solishtirish
             uchun jadval grafikdan aniqroq. */}
+        {/* RO'YXATDAN O'TGANLAR — qayerdan. Egasining so'rovi:
+            "Android ilova orqali ro'yxatdan o'tganlarni" ko'rish.
+            Ilova hali chiqmagan bo'lsa bu blok chizilmaydi — bo'sh
+            jadval "ishlamayapti" degan taassurot qoldirardi. */}
+        {(data.signups || []).length > 0 && (
+          <AdminCard title={`${t('Ro‘yxatdan o‘tganlar')} (${data.days} ${t('kun')})`}>
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead><tr><th>{t('Qayerdan')}</th><th className="text-right">{t('Odam')}</th></tr></thead>
+                <tbody>
+                  {data.signups.map((r) => (
+                    <tr key={r.src}>
+                      <td>{t(SIGNUP_SRC[r.src] || r.src)}</td>
+                      <td className="text-right font-semibold tabular-nums">{fmt(r.count)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </AdminCard>
+        )}
+
         <AdminCard title={t('Eng ko‘p ochilgan profillar')}>
           <div className="overflow-x-auto">
             <table className="table table-sm">

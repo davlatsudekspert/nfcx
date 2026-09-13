@@ -285,23 +285,61 @@ async function hardDeleteUser(env, userId) {
   ]);
 }
 
-async function createUser(env, H, { email, passwordHash, phone, botAck, tosAccepted }) {
+// Akkaunt ochish uchun SHART bo'lgan ustunlar soni. Qolganlari
+// ixtiyoriy va ular yo'q bo'lsa ham ro'yxat ishlayveradi.
+const BASE_USER_COLS = 6;
+
+async function createUser(env, H, { email, passwordHash, phone, botAck, tosAccepted, source }) {
+  // Ustunlar RO'YXAT sifatida yig'iladi. Ilgari bu yerda ikkita
+  // to'liq INSERT yozilgan edi (sinov ustuni bor/yo'q holatlari
+  // uchun) — har yangi ixtiyoriy ustun ularning sonini ikki
+  // barobar oshirardi va biri yangilanmay qolib ketishi oson edi.
+  const cols = ['email', 'password_hash', 'phone', 'bot_ack', 'tos_accepted', 'created_at'];
+  const vals = [email, passwordHash, phone || null, botAck ? 1 : 0, tosAccepted ? 1 : 0, H.nowTs()];
+
   // 30 KUNLIK SINOV (2026-09). Yangi hisob birinchi oy davomida barcha
   // pullik imkoniyatlardan foydalanadi. Muddat tugagach tarifga
   // qaytadi. Ustun bo'lmasa (juda eski baza) — yozilmaydi, hisob
   // avvalgidek ochiladi: sinov "qo'shimcha", "shart" emas.
-  const trial = H.usersHaveTrialColumnsD1 && H.usersHaveTrialColumnsD1() ? H.trialEndsAtD1() : null;
-  if (trial) {
-    return env.DB.prepare(
-      `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, created_at, trial_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (email) DO NOTHING RETURNING id, email`
-    ).bind(email, passwordHash, phone || null, botAck ? 1 : 0, tosAccepted ? 1 : 0, H.nowTs(), trial).first();
+  if (H.usersHaveTrialColumnsD1 && H.usersHaveTrialColumnsD1()) {
+    cols.push('trial_expires_at');
+    vals.push(H.trialEndsAtD1());
   }
-  return env.DB.prepare(
-    `INSERT INTO users (email, password_hash, phone, bot_ack, tos_accepted, created_at) VALUES (?, ?, ?, ?, ?, ?)
+
+  // RO'YXATDAN O'TISH MANBASI — "web" yoki "android"/"ios"/"app".
+  // Xuddi sinov ustuni kabi: bo'lmasa yozilmaydi va ro'yxatdan o'tish
+  // baribir ishlayveradi. Statistika hech qachon akkaunt ochilishiga
+  // to'siq bo'lmasligi kerak.
+  if (H.usersHaveSignupSourceD1 && H.usersHaveSignupSourceD1()) {
+    cols.push('signup_source');
+    vals.push(source || 'web');
+  }
+
+  const insert = (c, v) => env.DB.prepare(
+    `INSERT INTO users (${c.join(', ')}) VALUES (${c.map(() => '?').join(', ')})
      ON CONFLICT (email) DO NOTHING RETURNING id, email`
-  ).bind(email, passwordHash, phone || null, botAck ? 1 : 0, tosAccepted ? 1 : 0, H.nowTs()).first();
+  ).bind(...v).first();
+
+  try {
+    return await insert(cols, vals);
+  } catch (err) {
+    // IXTIYORIY USTUNLAR RO'YXATNI TO'XTATMASIN.
+    //
+    // `trial_expires_at` va `signup_source` — "qo'shimcha": biri
+    // sinov muddati, ikkinchisi statistika. Ularsiz ham akkaunt
+    // to'liq ishlaydi. Lekin ustun bazada yo'q bo'lib qolsa (qo'lda
+    // o'chirilgan, ALTER o'tmagan, kesh eskirgan) INSERT butunlay
+    // yiqilardi va ODAM RO'YXATDAN O'TA OLMASDI — bu test bilan
+    // aniqlandi.
+    //
+    // Shuning uchun bir marta ASOSIY ustunlar bilan qayta uriniladi.
+    // Xato boshqa sababdan bo'lsa (bazaga yozib bo'lmayapti) bu
+    // urinish ham yiqiladi va xato yuqoriga chiqadi — ya'ni haqiqiy
+    // muammo yashirilmaydi.
+    if (cols.length === BASE_USER_COLS) throw err;
+    console.error('createUser ixtiyoriy ustunsiz qayta urinish:', err?.message || err);
+    return insert(cols.slice(0, BASE_USER_COLS), vals.slice(0, BASE_USER_COLS));
+  }
 }
 
 // Har yangi foydalanuvchiga avtomatik, bepul, 8 xonali ID — sovg'a qilib
@@ -604,6 +642,9 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   const user = await createUser(env, H, {
     email, passwordHash: await H.hashPassword(password),
     phone: extra.phone, botAck: extra.botAck, tosAccepted: extra.tosAccepted,
+    // Sayt orqalimi yoki Android ilova orqalimi — `X-Client`
+    // sarlavhasidan aniqlanadi (izohi worker.js `signupSourceD1` da).
+    source: H.signupSourceD1 ? H.signupSourceD1(request) : 'web',
   });
   if (!user) return H.json({ error: 'email_taken' }, 409);
 

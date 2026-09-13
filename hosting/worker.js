@@ -2147,6 +2147,7 @@ async function ensureCoreSchema(env) {
   await ensureCardCompanyColumn(env);
   await ensureCardLikeCompanyColumn(env);
   await ensureTrialColumns(env);
+  await ensureSignupSourceColumn(env);
   // web_orders itself is created just above (inside the shared batch) —
   // this must run AFTER it, not before, or the ALTER TABLE below would
   // target a table that doesn't exist yet on a fresh DB and silently
@@ -2350,10 +2351,39 @@ const ensureTrialColumns = async (env) => {
   await ensureColumnD1(env, 'users', 'trial_expires_at', 'TEXT');
   await ensureColumnD1(env, 'users', 'premium_expires_at', 'TEXT');
 };
+// RO'YXATDAN O'TISH MANBASI — sayt yoki Android ilova.
+//
+// Egasining so'rovi: "Android ilova orqali ro'yxatdan o'tganlarni"
+// ko'rish. Server ilovani allaqachon taniydi (`X-Client` sarlavhasi
+// bo'yicha — kirish javobida token shu asosda qaytariladi), lekin
+// buni hech qayerda saqlamasdi.
+//
+// Ustun AVTOMATIK qo'shiladi — qo'lda migratsiya shart emas. Eski
+// qatorlarda u bo'sh qoladi va "sayt" deb hisoblanadi: ilova hali
+// yo'q edi, ya'ni bu to'g'ri taxmin.
+const ensureSignupSourceColumn = (env) => ensureColumnD1(env, 'users', 'signup_source', 'TEXT');
+
 const ensureCompanyPlanColumns = async (env) => {
   await ensureColumnD1(env, 'companies', 'trial_expires_at', 'TEXT');
   await ensureColumnD1(env, 'companies', 'plan', 'TEXT');
 };
+// `X-Client` sarlavhasidan manbani aniqlaydi.
+//
+// Ilova nima yuborishidan qat'i nazar ishlaydi: "android", "ios" yoki
+// umumiy "mobile". Noma'lum qiymat — "web": yolg'on "android" yozib
+// qo'ygandan ko'ra, taniganini yozgani ma'qul.
+//
+// Ilova tomoni uchun: `X-Client: android` yuborilsa eng aniq bo'ladi.
+export function signupSourceD1(request) {
+  const c = String(request?.headers?.get?.('x-client') || '').toLowerCase();
+  if (c.includes('android')) return 'android';
+  if (c.includes('ios')) return 'ios';
+  if (c.includes('mobile')) return 'app';
+  return 'web';
+}
+
+export function usersHaveSignupSourceD1() { return hasColumnD1('users', 'signup_source'); }
+
 export function usersHaveTrialColumnsD1() {
   return hasColumnD1('users', 'trial_expires_at') && hasColumnD1('users', 'premium_expires_at');
 }
@@ -7130,6 +7160,19 @@ async function adminCoreApi(request, env, url, admin) {
       series.push({ day, opens: r.personal + r.company, visitors: r.visitors });
     }
 
+    // RO'YXATDAN O'TISH MANBASI — sayt yoki Android ilova.
+    // Ustun hali qo'shilmagan bo'lsa (juda eski baza) — bo'sh ro'yxat,
+    // trafik bo'limi baribir ochiladi.
+    let signups = [];
+    if (usersHaveSignupSourceD1()) {
+      const r = await env.DB.prepare(
+        `SELECT COALESCE(NULLIF(signup_source,''),'web') AS src, COUNT(*) AS n FROM users
+         WHERE is_test = 0 AND is_internal = 0 AND deleted_at IS NULL AND created_at >= ?
+         GROUP BY src ORDER BY n DESC`
+      ).bind(since).all().catch(() => null);
+      signups = (r?.results || []).map((x) => ({ src: x.src, count: Number(x.n) }));
+    }
+
     const companyOpens = (coDaily.results || []).reduce((n, r) => n + Number(r.opens), 0);
     return json({
       days,
@@ -7143,6 +7186,7 @@ async function adminCoreApi(request, env, url, admin) {
       series,
       topProfiles: (topCards.results || []).map((r) => ({ code: r.code, opens: Number(r.opens), visitors: Number(r.visitors) })),
       topCompanies: (topCo.results || []).map((r) => ({ code: r.company_id, opens: Number(r.opens) })),
+      signups,
     });
   }
 
@@ -8521,6 +8565,7 @@ const H = {
   emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
+  signupSourceD1, usersHaveSignupSourceD1,
 };
 const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant];
 
