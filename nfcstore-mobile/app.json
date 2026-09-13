@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "uz.nfcstore.app"
+      "bundleIdentifier": "uz.nfcstore.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Ilova qulfini ochish uchun Face ID dan foydalaniladi."
+      }
     },
     "android": {
       "package": "uz.nfcstore.app",
@@ -33,6 +36,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-local-authentication",
       "expo-font",
       [
         "react-native-nfc-manager",

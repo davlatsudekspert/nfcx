@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Switch, Text, View } from 'react-native';
 
 import { BackBar } from '@/components/BackBar';
 import { Card } from '@/components/Card';
@@ -32,6 +32,9 @@ export function PinSettingsScreen() {
   const verify = usePinLockStore((s) => s.verify);
   const setPin = usePinLockStore((s) => s.setPin);
   const removePin = usePinLockStore((s) => s.removePin);
+  const biometricEnabled = usePinLockStore((s) => s.biometricEnabled);
+  const biometricAvailable = usePinLockStore((s) => s.biometricAvailable);
+  const setBiometricEnabled = usePinLockStore((s) => s.setBiometricEnabled);
 
   const [mode, setMode] = useState<Mode>({ step: 'idle' });
   const [value, setValue] = useState('');
@@ -143,6 +146,12 @@ export function PinSettingsScreen() {
 
           {pin ? (
             <>
+              {biometricAvailable ? (
+                <BiometricRow
+                  enabled={biometricEnabled}
+                  onToggle={(v) => setBiometricEnabled(v)}
+                />
+              ) : null}
               <GoldButton
                 label="PIN kodni o’zgartirish"
                 sweep={false}
@@ -171,6 +180,42 @@ export function PinSettingsScreen() {
           )}
         </Card>
       </View>
+    </View>
+  );
+}
+
+/**
+ * Face ID / barmoq izi — FAQAT PIN allaqachon yoqilgan bo'lsagina
+ * ko'rinadi (biometriya PIN'ning tezkor yo'li, mustaqil qulf emas) va
+ * faqat qurilma buni haqiqatan qo'llab-quvvatlasa (`biometricAvailable`
+ * — `hasHardwareAsync` + `isEnrolledAsync`).
+ */
+function BiometricRow({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 4,
+      }}
+    >
+      <Text style={[sans(500, 13), { color: theme.ink }]}>
+        Face ID / Barmoq izi
+      </Text>
+      <Switch
+        value={enabled}
+        onValueChange={onToggle}
+        trackColor={{ false: 'rgba(255,255,255,.12)', true: theme.a2 }}
+        thumbColor={enabled ? theme.a1 : '#8a8580'}
+      />
     </View>
   );
 }
