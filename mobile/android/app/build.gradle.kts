@@ -1,11 +1,25 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// IMZO KALITI — bo'lsa ishlatiladi, bo'lmasa yo'q.
+//
+// `android/key.properties` repozitoriyaga QO'YILMAYDI (.gitignore da).
+// CI uni GitHub secrets'dan yasaydi. Fayl bo'lmasa release debug
+// kaliti bilan imzolanadi: APK o'rnatiladi va ishlaydi, lekin Play
+// Store'ga yaramaydi.
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
+
 android {
-    namespace = "uz.nfcstore.nfcstore"
+    namespace = "uz.nfcstore.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,8 +29,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "uz.nfcstore.nfcstore"
+        // Paket nomi — Play Store'da va qurilmada shu ko'rinadi.
+        // KEYIN O'ZGARTIRILMAYDI: o'zgarsa Play Store uni BOSHQA ilova
+        // deb hisoblaydi va yangilanish o'rnatilmaydi.
+        applicationId = "uz.nfcstore.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,11 +45,29 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Kalit bo'lsa — u bilan. Bo'lmasa debug kaliti bilan,
+            // shunda `flutter run --release` ham, CI dagi sinov APK'si
+            // ham ishlaydi.
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
+            // Kod kichraytirish YOQILMAYDI. Flutter kodi allaqachon
+            // AOT kompilyatsiya qilingan; R8 faqat kichik Java/Kotlin
+            // qatlamiga tegadi va foydasi arzimas, lekin plagin
+            // reflektsiyasini buzish xavfi bor.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
