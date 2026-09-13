@@ -366,7 +366,14 @@ export default function SettingsPage() {
                 className="input input-bordered input-sm min-h-11 w-full bg-base-100"
               />
               <button className="btn btn-gold btn-sm min-h-11" onClick={requestPhoneCode} disabled={phoneBusy}>
-                {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : (emailChannel ? t('Emailga kod yuborish') : t("Telegram'ga kod yuborish"))}
+                {/* BU BLOK DOIM TELEGRAM. Kod yangi raqamning
+                    BOTIGA ketadi — server uni `bot_verifications`
+                    dan topadi, ya'ni email bu yerda umuman
+                    ishtirok etmaydi. Yuqoridagi parol blokining
+                    `emailChannel` sharti bu yerga bexosdan tarqab
+                    ketgan edi va tugma "Emailga kod yuborish" deb
+                    turardi — odam pochtasini ochib kutardi. */}
+                {phoneBusy ? <span className="loading loading-spinner loading-xs"></span> : t("Telegram'ga kod yuborish")}
               </button>
             </div>
           ) : (
@@ -375,7 +382,7 @@ export default function SettingsPage() {
               <input
                 value={phoneCode}
                 onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder={channel === 'email' ? t('Emailga kelgan 6 xonali kod') : t("Telegram'dan kelgan 6 xonali kod")}
+                placeholder={t("Telegram'dan kelgan 6 xonali kod")}
                 className="input input-bordered input-sm min-h-11 w-full bg-base-100 font-mono tracking-widest"
                 maxLength={6}
               />

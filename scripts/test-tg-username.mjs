@@ -80,4 +80,21 @@ checkTrue('sozlamalar: tugma kanalga qarab',
 checkTrue('sozlamalar: telegram yozuvlari shartga bog‘langan',
   !/\{t\("Telegram'ga kod yuborish"\)\}/.test(settings));
 
+// ===== TELEFON O'ZGARTIRISH bloki DOIM TELEGRAM =====
+//
+// Kod yangi raqamning BOTIGA ketadi: server uni `bot_verifications`
+// dan topadi va email bu yerda umuman ishtirok etmaydi.
+//
+// Parol blokining `emailChannel` sharti bu yerga bexosdan tarqab
+// ketgan edi — tugma "Emailga kod yuborish" deb turardi va odam
+// pochtasini ochib kutardi. Ikkala blok bir xil ko'rinadi, shuning
+// uchun bunday aralashuv oson takrorlanadi.
+const phoneBlock = settings.slice(settings.indexOf('phoneBusy'));
+checkTrue('telefon bloki: tugma Telegram deydi',
+  /phoneBusy \?[\s\S]{0,120}t\("Telegram'ga kod yuborish"\)/.test(phoneBlock));
+checkTrue('telefon bloki: emailChannel shartiga BOG‘LANMAGAN',
+  !/phoneBusy \?[\s\S]{0,160}emailChannel/.test(phoneBlock));
+checkTrue('telefon bloki: maydon yozuvi ham Telegram',
+  phoneBlock.includes('placeholder={t("Telegram\'dan kelgan 6 xonali kod")}'));
+
 done();
