@@ -22,6 +22,7 @@ import 'profile_stats.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../content/post_detail.dart';
+import '../content/photo_viewer.dart';
 import '../nfc/qr_share.dart';
 import '../business/edit_business.dart';
 import '../../l10n/strings.dart';
@@ -197,9 +198,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    // TARJIMA QILINADI: bo'lim nomlari ham interfeys matni. Ular
+    // o'zbekcha qolsa, rus va ingliz tilidagi ekran yarim tarjima
+    // bo'lib ko'rinardi. «Story» uch tilda ham shunday yoziladi.
+    // BOSH HARFLAR — dizayn tili shunday: bo'lim nomlari kichik
+    // va keng oraliqli bosh harflarda. Tarjima ham shu qolipga
+    // tushadi.
     final tabs = _isBusiness
-        ? const ['KATALOG', 'POSTLAR', 'STORY', 'HAQIDA']
-        : const ['POSTLAR', 'STORY', 'HAQIDA'];
+        ? [tr('Katalog'), tr('Postlar'), 'Story', tr('Haqida')]
+            .map((t) => t.toUpperCase())
+            .toList()
+        : [tr('Postlar'), 'Story', tr('Haqida')]
+            .map((t) => t.toUpperCase())
+            .toList();
 
     return _Frame(
       code: code,
@@ -856,6 +867,44 @@ class _AddTile extends StatelessWidget {
       );
 }
 
+/// GALEREYA LENTASI — «Ma'lumot» bo'limining tepasida.
+///
+/// NIMA UCHUN SHU YERDA: bu bo'lim biznes HAQIDA. Rasm ham shu
+/// haqda gapiradi — postlar esa yangilik oqimi, ular bilan
+/// aralashsa, ikkalasi ham ma'nosini yo'qotardi.
+class _GalleryStrip extends StatelessWidget {
+  const _GalleryStrip({required this.images, required this.title});
+  final List<String> images;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    // Katak 104px — ikki barobari kifoya, undan ortig'ini
+    // dekodlash xotirani behuda yeydi.
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    return SizedBox(
+      height: 104,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        separatorBuilder: (_, __) => const SizedBox(width: S.x8),
+        itemBuilder: (_, i) => Press(
+          haptic: true,
+          onTap: () => push(
+            context,
+            (_) => PhotoViewerScreen(images: images, initial: i, title: title),
+          ),
+          child: SizedBox(
+            width: 104,
+            child: NetImage(images[i],
+                radius: R.tile, cacheWidth: (104 * dpr).round()),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _About extends StatelessWidget {
   const _About({required this.record, required this.company});
   final Record? record;
@@ -876,8 +925,9 @@ class _About extends StatelessWidget {
         (label: tr('Veb-sayt'), value: company?.website ?? record!.website),
     ];
     final about = company?.about ?? record?.about ?? '';
+    final gallery = company?.gallery ?? const <String>[];
 
-    if (rows.isEmpty && about.isEmpty) {
+    if (rows.isEmpty && about.isEmpty && gallery.isEmpty) {
       return EmptyState(
         tr('Manzil, ish vaqti va aloqa ma‘lumotlari hali kiritilmagan.'),
         title: tr('Ma‘lumot yo‘q'),
@@ -887,6 +937,10 @@ class _About extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(S.gutter),
       children: [
+        if (gallery.isNotEmpty) ...[
+          _GalleryStrip(images: gallery, title: company?.name ?? ''),
+          const SizedBox(height: S.x12),
+        ],
         if (about.isNotEmpty) ...[
           Surface(child: Text(about, style: T.body)),
           const SizedBox(height: S.x12),

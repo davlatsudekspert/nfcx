@@ -192,7 +192,7 @@ class _Row extends StatelessWidget {
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(color: C.hairline),
                   ),
-                  child: Text('BIZNES', style: T.statusLabel.copyWith(color: C.ash)),
+                  child: Text(tr('Biznes').toUpperCase(), style: T.statusLabel.copyWith(color: C.ash)),
                 ),
             ],
           ),

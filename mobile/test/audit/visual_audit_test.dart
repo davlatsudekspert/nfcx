@@ -554,6 +554,17 @@ void main() {
 
   // MAHSULOT SHAKLI ichki ekran: unga faqat «Mahsulot qo'shish»
   // orqali kirish mumkin, ya'ni yo'lning o'zi ham tekshiriladi.
+  // GALEREYA MEHMONGA KO'RINADIMI. Egasi rasm yuklaydi — u
+  // ko'rinmasa, butun bo'lim ma'nosiz bo'lardi. Lenta «Haqida»
+  // bo'limida: u biznes HAQIDA, postlar esa yangilik oqimi.
+  testWidgets('56 biznes profil — haqida va galereya', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const ProfileScreen(companyId: 'DDD333'), state: s);
+    await t.tap(find.text(tr('Haqida').toUpperCase()));
+    await t.pumpAndSettle();
+    await golden(t, '56-haqida-galereya');
+  });
+
   testWidgets('55 mahsulot qo‘shish', (t) async {
     final s = await ready();
     await pumpScreen(t, EditCatalogScreen(company: s.companies.first), state: s);

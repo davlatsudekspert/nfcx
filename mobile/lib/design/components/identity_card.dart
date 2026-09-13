@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import '../tokens.dart';
 import '../type.dart';
 import 'press.dart';
+import '../../l10n/strings.dart';
 
 /// Metall ID kartasi — ilovaning eng "jismoniy" elementi.
 ///
@@ -197,7 +198,7 @@ class _IdentityCardState extends State<IdentityCard>
                             borderRadius: BorderRadius.circular(R.status),
                             border: Border.all(color: C.champagne.withValues(alpha: .32)),
                           ),
-                          child: Text('FAOL', style: T.statusLabel.copyWith(color: C.champagne)),
+                          child: Text(tr('Faol').toUpperCase(), style: T.statusLabel.copyWith(color: C.champagne)),
                         ),
                     ],
                   ),
@@ -245,7 +246,7 @@ class _IdentityCardState extends State<IdentityCard>
                           crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('TEGISHLAR', style: T.eyebrow),
+                            Text(tr('Tegishlar').toUpperCase(), style: T.eyebrow),
                             const SizedBox(height: 2),
                             Text(compact(taps), style: T.price.copyWith(fontSize: 14)),
                           ],
