@@ -26,18 +26,37 @@ export default function AddToHomeSheet({ onClose }) {
   const ios = /iPhone|iPad|iPod/i.test(ua)
     || (/Macintosh/i.test(ua) && typeof document !== 'undefined' && 'ontouchend' in document);
 
-  // Qadamlar qurilmaga qarab — odam o'z ekranida ko'rgan so'zni o'qisin.
-  const steps = ios
-    ? [
+  // iOS'da Safari'DAN BOSHQA brauzerlar — Yandex, Chrome, Firefox,
+  // Edge, Opera. Egasi aynan shu holatga tushdi: Yandex Browser'dan
+  // kirgan, pastda «Ulashish» belgisi yo'q edi va yo'riqnoma uning
+  // ekraniga umuman mos kelmasdi.
+  //
+  // Bu brauzerlarda "bosh ekranga qo'shish" yo ishonchli emas, yo
+  // butunlay yo'q (masalan iOS Chrome'da yo'q). Yagona ishonchli yo'l —
+  // sahifani Safari'da ochish.
+  const iosOther = ios && /CriOS|YaBrowser|FxiOS|EdgiOS|OPiOS|DuckDuckGo/i.test(ua);
+
+  // Qadamlar brauzerga qarab — odam O'Z EKRANIDA ko'rgan so'zni o'qisin.
+  let steps;
+  if (iosOther) {
+    steps = [
+      t('Pastdagi ☰ menyuni oching'),
+      t('«Safari’da ochish» ni tanlang'),
+      t('Safari’da: «Ulashish» → «Bosh ekranga qo‘shish»'),
+    ];
+  } else if (ios) {
+    steps = [
       t('Pastdagi «Ulashish» belgisini bosing'),
       t('Ro‘yxatdan «Bosh ekranga qo‘shish» ni tanlang'),
       t('«Qo‘shish» ni bosing'),
-    ]
-    : [
+    ];
+  } else {
+    steps = [
       t('Brauzerning yuqori o‘ng burchagidagi ⋮ menyusini oching'),
       t('«Ilovani o‘rnatish» yoki «Bosh ekranga qo‘shish» ni tanlang'),
       t('Tasdiqlang'),
     ];
+  }
 
   return createPortal(
     <div className="ma-veil" onClick={onClose}>
@@ -47,9 +66,11 @@ export default function AddToHomeSheet({ onClose }) {
           <b>{t('To‘liq ekranda ochish')}</b>
         </div>
         <p className="ma-note">
-          {ios
-            ? t('iPhone’da brauzer sahifani to‘liq ekranga chiqarishga ruxsat bermaydi. Profilni bosh ekranga qo‘shsangiz — u ilovadek, brauzer qatorlarisiz ochiladi.')
-            : t('Profilni bosh ekranga qo‘shsangiz — u ilovadek, brauzer qatorlarisiz ochiladi.')}
+          {iosOther
+            ? t('iPhone’da brauzer sahifani to‘liq ekranga chiqarishga ruxsat bermaydi. Bosh ekranga qo‘shish esa faqat Safari orqali ishlaydi — qo‘shilgandan keyin profil ilovadek, brauzer qatorlarisiz ochiladi.')
+            : ios
+              ? t('iPhone’da brauzer sahifani to‘liq ekranga chiqarishga ruxsat bermaydi. Profilni bosh ekranga qo‘shsangiz — u ilovadek, brauzer qatorlarisiz ochiladi.')
+              : t('Profilni bosh ekranga qo‘shsangiz — u ilovadek, brauzer qatorlarisiz ochiladi.')}
         </p>
         <ol className="ma-steps">
           {steps.map((s, i) => <li key={i}>{s}</li>)}

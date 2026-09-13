@@ -241,6 +241,10 @@ const a2h = readFileSync(new URL('../src/components/AddToHomeSheet.jsx', import.
 checkTrue('19) yo‘riqnoma ulangan', page.includes('AddToHomeSheet') && page.includes('setFsHelp(true)'));
 checkTrue('19) va‘da rad etilsa ham yo‘riqnoma', page.includes('.catch(() => setFsHelp(true))'));
 checkTrue('19) yo‘riqnoma qurilmaga qarab', a2h.includes('iPhone|iPad|iPod') && a2h.includes('Bosh ekranga qo‘shish'));
+// iOS'da Safari'DAN BOSHQA brauzer (Yandex, Chrome, ...) alohida
+// holat: u yerda pastda «Ulashish» belgisi YO'Q va qadamlar odamning
+// ekraniga mos kelmasdi — egasi aynan Yandex Browser'dan kirgan edi.
+checkTrue('19) iOS’dagi boshqa brauzerlar ajratiladi', /CriOS\|YaBrowser/.test(a2h) && a2h.includes('Safari’da ochish'));
 checkTrue('19) yo‘riqnoma uslubi bor', css.includes('.ma-steps'));
 // Ilova sifatida ochilgan bo'lsa brauzer qatori allaqachon yo'q.
 checkTrue('19) ilova rejimida ham chizilmaydi', page.includes("display-mode: standalone"));
