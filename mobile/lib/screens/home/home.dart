@@ -44,13 +44,23 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   String? _loadedFor;
 
+  /// BIRINCHI YUKLASH BO'LDIMI.
+  ///
+  /// NIMA UCHUN ALOHIDA BAYROQ: ilgari shart faqat
+  /// `code != _loadedFor` edi. Shaxsi YO'Q foydalanuvchida ikkalasi
+  /// ham `null` bo'ladi, ya'ni shart hech qachon bajarilmasdi va
+  /// Home UMUMAN yuklanmasdi — ekranda skeletonlar abadiy turardi.
+  /// Buni sifat darvozasidagi "yangi foydalanuvchi" kadri topdi.
+  bool _loadedOnce = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Shaxs almashsa ma'lumot qayta yuklanadi: Home faol shaxs
     // kontekstida ko'rsatiladi.
     final code = AppScope.of(context).active?.code;
-    if (code != _loadedFor) {
+    if (!_loadedOnce || code != _loadedFor) {
+      _loadedOnce = true;
       _loadedFor = code;
       _load();
     }

@@ -51,8 +51,8 @@ Future<void> loadAuditFonts() async {
 /// Token OLDINDAN qo'yiladi: `boot()` uni topmasa ilova "kirilmagan"
 /// holatga o'tadi va egalik talab qiladigan ekranlar (QR, o'z profili,
 /// karta buyurtmasi) umuman ochilmaydi.
-AppState auditState() => AppState(
-      api: Api(client: auditClient()),
+AppState auditState({AuditMode mode = AuditMode.normal}) => AppState(
+      api: Api(client: auditClient(mode: mode)),
       storage: FakeStore({'nfc_session_token': 'audit-token'}),
     );
 

@@ -206,7 +206,20 @@ class _ComposeScreenState extends State<ComposeScreen> {
                                 Text('Galereyadan', style: T.caption),
                               ],
                             )
-                          : Image.memory(bytes, fit: BoxFit.cover),
+                          : Image.memory(
+                              bytes,
+                              fit: BoxFit.cover,
+                              // XOTIRA CHEGARASI. `Image.memory` rasmni
+                              // TABIIY o'lchamida dekodlaydi: 1600×1600
+                              // JPEG xom holda ~10 MB oladi, holbuki
+                              // ekranda ~380px ko'rinadi. Chegarasiz
+                              // zaif telefonda bu kadr tushishi va
+                              // ba'zan yiqilishga olib keladi.
+                              cacheWidth:
+                                  (MediaQuery.sizeOf(context).width *
+                                          MediaQuery.devicePixelRatioOf(context))
+                                      .round(),
+                            ),
                     ),
                   ),
                 ),

@@ -33,6 +33,7 @@ import 'package:nfcstore/screens/nfc/nfc_scan.dart';
 import 'package:nfcstore/screens/nfc/nfc_write.dart';
 import 'package:nfcstore/screens/nfc/order_card.dart';
 import 'package:nfcstore/screens/nfc/qr_share.dart';
+import 'package:nfcstore/screens/identity/profile_tab.dart';
 import 'package:nfcstore/screens/orders/my_orders.dart';
 import 'package:nfcstore/screens/orders/owner_orders.dart';
 import 'package:nfcstore/screens/payment/payment_screen.dart';
@@ -41,6 +42,7 @@ import 'package:nfcstore/screens/shell.dart';
 import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_state.dart';
 import '../widget_test.dart' show FakeStore;
+import 'fixtures.dart' show AuditMode;
 import 'harness.dart';
 
 /// EKRANMA-EKRAN VIZUAL AUDIT.
@@ -110,8 +112,8 @@ void main() {
   });
 
   // ── Asosiy tablar ──────────────────────────────────────────────────
-  Future<AppState> ready() async {
-    final s = auditState();
+  Future<AppState> ready({AuditMode mode = AuditMode.normal}) async {
+    final s = auditState(mode: mode);
     await s.boot();
     return s;
   }
@@ -395,8 +397,54 @@ void main() {
     );
     await golden(t, '37-post-yaratish');
   });
-}
 
+  // ── SIFAT DARVOZASI ────────────────────────────────────────────────
+  //
+  // Bu kadrlar "chiroylimi?" degan savolga emas, "buzilmaydimi?"
+  // degan savolga javob beradi. Foydalanuvchi ularni ilovaning
+  // birinchi kunidayoq ko'radi: yangi hisob, tarmoq yo'q, server
+  // javob bermadi. Ularni tekshirmasdan "tayyor" deb bo'lmaydi.
+
+  testWidgets('38 yangi foydalanuvchi — home', (t) async {
+    final s = await ready(mode: AuditMode.newUser);
+    await pumpScreen(t, const HomeScreen(), state: s);
+    await golden(t, '38-yangi-home');
+  });
+
+  testWidgets('39 yangi foydalanuvchi — NFC', (t) async {
+    final s = await ready(mode: AuditMode.newUser);
+    await pumpScreen(t, const NfcCenterScreen(), state: s);
+    await golden(t, '39-yangi-nfc');
+  });
+
+  testWidgets('40 yangi foydalanuvchi — profil', (t) async {
+    final s = await ready(mode: AuditMode.newUser);
+    await pumpScreen(t, const ProfileTab(), state: s);
+    await golden(t, '40-yangi-profil');
+  });
+
+  testWidgets('41 tarmoq yo‘q — Discover', (t) async {
+    final s = await ready(mode: AuditMode.offline);
+    await pumpScreen(t, const DiscoverScreen(), state: s);
+    await golden(t, '41-tarmoq-yoq');
+  });
+
+  testWidgets('42 server xatosi — buyurtmalarim', (t) async {
+    final s = await ready(mode: AuditMode.serverError);
+    await pumpScreen(t, const MyOrdersScreen(), state: s);
+    await golden(t, '42-server-xatosi');
+  });
+
+  // KADR NOMI HAQIQATGA MOSLANDI: avval "rasm yo'q" deb atalgan edi,
+  // lekin tarmoq uzilganda profilning O'ZI yuklanmaydi va butun
+  // ekran xato holatiga o'tadi — rasm o'rni umuman ko'rinmaydi.
+  // Noto'g'ri nom auditni yolg'on qilardi.
+  testWidgets('43 biznes profil — tarmoq yo‘q', (t) async {
+    final s = await ready(mode: AuditMode.offline);
+    await pumpScreen(t, const ProfileScreen(companyId: 'QQQ777'), state: s);
+    await golden(t, '43-biznes-tarmoq-yoq');
+  });
+}
 
 /// Audit kadridagi ajratuvchi chiziq — holatlar bir-biriga
 /// qo'shilib ketmasin.

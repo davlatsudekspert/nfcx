@@ -120,8 +120,16 @@ class _MediaPickFieldState extends State<MediaPickField> {
     final preview = _preview;
     final radius = widget.circle ? 999.0 : R.card;
 
+    // XOTIRA CHEGARASI: katak 72–108px, rasm esa 1600px. Chegarasiz
+    // dekodlash ~10 MB oladi va tahrirlash ekranida ikkita shunday
+    // maydon bor.
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     final image = preview != null
-        ? Image.memory(preview, fit: BoxFit.cover)
+        ? Image.memory(
+            preview,
+            fit: BoxFit.cover,
+            cacheWidth: ((widget.circle ? 72 : 108) * dpr).round(),
+          )
         // Yozuvsiz: sarlavha allaqachon tepada turadi va katakda
         // takrorlansa, ikkita bir xil so'z yonma-yon chiqardi.
         : NetImage(widget.url, radius: 0, slotLabel: '');

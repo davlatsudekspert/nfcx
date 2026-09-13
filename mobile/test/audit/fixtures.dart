@@ -9,9 +9,51 @@ import 'package:http/testing.dart';
 /// `test/rules_test.dart` alohida tekshiradi). Maqsad — har bir
 /// ekranni to'ldirilgan holatda ko'rib, dizaynga mosligini baholash.
 /// Bo'sh ekranni ko'rib "chiroylimi?" deb baho berib bo'lmaydi.
-MockClient auditClient() => MockClient((req) async {
-      final p = req.url.path;
-      dynamic body;
+/// AUDIT MIJOZINING HOLATLARI.
+///
+/// `kNormal` — hamma narsa joyida (asosiy kadrlar shu holatda).
+/// Qolganlari — SIFAT DARVOZASI uchun: yangi foydalanuvchi, tarmoq
+/// yo'q, server xatosi. Bularni ko'rmasdan "ilova tayyor" deb
+/// bo'lmaydi: odam ularni kamida bir marta ko'radi.
+enum AuditMode { normal, newUser, offline, serverError }
+
+/// Tarmoq uzilishini taqlid qiladi — `Api` buni `offline` deb
+/// tarjima qiladi.
+MockClient auditClient({AuditMode mode = AuditMode.normal}) => MockClient((req) async {
+      if (mode == AuditMode.offline) {
+        throw http.ClientException('tarmoq yo‘q', req.url);
+      }
+      if (mode == AuditMode.serverError) {
+        return http.Response('{"error":"server_error"}', 500,
+            headers: {'content-type': 'application/json'});
+      }
+      if (mode == AuditMode.newUser) {
+        return _newUserResponse(req.url.path);
+      }
+      return _normalResponse(req);
+    });
+
+/// YANGI FOYDALANUVCHI: hisob bor, lekin hech narsa yo'q.
+http.Response _newUserResponse(String p) {
+  final body = switch (p) {
+    '/api/auth/me' => {
+        'user': {'id': 2, 'email': 'yangi@nfcstore.uz'},
+        'cards': const [],
+      },
+    '/api/companies/mine' || '/api/companies' => {'companies': const []},
+    '/api/records' => const [],
+    '/api/stories/feed' => {'feed': const []},
+    '/api/orders' => {'orders': const []},
+    '/api/gift-offers' => {'incoming': const [], 'outgoing': const []},
+    _ => const <String, dynamic>{},
+  };
+  return http.Response(jsonEncode(body), 200,
+      headers: {'content-type': 'application/json'});
+}
+
+Future<http.Response> _normalResponse(http.Request req) async {
+  final p = req.url.path;
+  dynamic body;
 
       if (p == '/api/auth/me') {
         body = {
@@ -105,9 +147,9 @@ MockClient auditClient() => MockClient((req) async {
       } else {
         body = {'ok': true};
       }
-      return http.Response(jsonEncode(body), 200,
-          headers: {'content-type': 'application/json'});
-    });
+  return http.Response(jsonEncode(body), 200,
+      headers: {'content-type': 'application/json'});
+}
 
 const _card = {
   'code': 'VIP001',
