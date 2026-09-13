@@ -5,6 +5,7 @@ import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import MapAppSheet from '../components/MapAppSheet.jsx';
+import AddToHomeSheet from '../components/AddToHomeSheet.jsx';
 import { downloadVcard } from '../lib/vcard.js';
 import StoryRing from '../components/StoryRing.jsx';
 import StoryGrid from '../components/StoryGrid.jsx';
@@ -72,16 +73,24 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // uchun tugma kerak.
   const [isFs, setIsFs] = useState(false);
   const [fsOk, setFsOk] = useState(false);
+  // To'liq ekran rejimi qo'llab-quvvatlanmasa — "bosh ekranga qo'shish"
+  // yo'riqnomasi (iPhone'dagi yagona yo'l).
+  const [fsHelp, setFsHelp] = useState(false);
   useEffect(() => {
-    // iPhone Safari'da element uchun to'liq ekran YO'Q — u yerda tugma
-    // umuman chizilmaydi (bosilib, hech narsa bo'lmasligidan ko'ra
-    // ko'rinmagani yaxshi). U yerdagi yagona yo'l — "Bosh ekranga
-    // qo'shish", u esa alohida ishlaydi (ProfileManifest).
-    const can = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
-    // Ilova sifatida ochilgan bo'lsa brauzer qatori allaqachon yo'q.
+    // Tugma FAQAT bitta holatda chizilmaydi: sahifa allaqachon ilova
+    // sifatida ochilgan bo'lsa — brauzer qatori o'sha yerda yo'q.
+    //
+    // Ilgari u "to'liq ekran qo'llab-quvvatlanmasa" ham yashirilardi.
+    // Natijada egasi shuni ko'rdi: kompyuterda tugma bor, TELEFONDA
+    // yo'q — ya'ni eng kerak bo'lgan joyda yo'q edi. Sababi: iOS'dagi
+    // HAMMA brauzer (Safari, Chrome, Yandex — hammasi ichkarida bir xil
+    // WebKit) sahifa uchun to'liq ekranni umuman bermaydi.
+    //
+    // Endi tugma doim turadi, faqat bosilganda nima bo'lishi qurilmaga
+    // qarab farq qiladi (pastdagi `toggleFs`).
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches
       || window.navigator.standalone === true;
-    setFsOk(can && !standalone);
+    setFsOk(!standalone);
     const sync = () => setIsFs(!!(document.fullscreenElement || document.webkitFullscreenElement));
     document.addEventListener('fullscreenchange', sync);
     document.addEventListener('webkitfullscreenchange', sync);
@@ -96,9 +105,16 @@ export default function CompanyQuickProfilePage({ companyId }) {
     const el = document.documentElement;
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
-    } else {
-      (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el).catch?.(() => {});
+      return;
     }
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    // `requestFullscreen` iOS'da UMUMAN yo'q; ba'zi brauzerlarda bor,
+    // lekin ruxsat bermaydi (va'da rad etiladi). Ikkala holatda ham
+    // odam bo'sh qolmasligi uchun yo'riqnomani ochamiz.
+    if (!req || !document.fullscreenEnabled) { setFsHelp(true); return; }
+    try {
+      Promise.resolve(req.call(el)).catch(() => setFsHelp(true));
+    } catch { setFsHelp(true); }
   };
 
   const load = useCallback(() => {
@@ -506,6 +522,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
         {orderItem && <CompanyOrderModal companyId={company.companyId} item={orderItem} onClose={() => setOrderItem(null)} />}
         {showCard && <CardNumberModal cardNumber={company.cardNumber} holder={company.displayName} onClose={() => setShowCard(false)} />}
         {mapPick && <MapAppSheet company={company} onClose={() => setMapPick(false)} />}
+        {fsHelp && <AddToHomeSheet onClose={() => setFsHelp(false)} />}
       </div>
     </main>
   );
