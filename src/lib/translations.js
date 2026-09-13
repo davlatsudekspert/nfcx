@@ -302,6 +302,8 @@ const DICT_BASE = {
   'Emailga kod yuborish': { ru: 'Отправить код на почту', en: 'Send code to email' },
   'Profilni yangi oynada ochish': { ru: 'Открыть профиль в новой вкладке', en: 'Open profile in a new tab' },
   'Trafik': { ru: 'Трафик', en: 'Traffic' },
+  'To‘langan buyurtmalar summasi': { ru: 'Сумма оплаченных заказов', en: 'Paid orders total' },
+  'Haqiqatan to‘langan buyurtmalar yig‘indisi. Sinov va ichki akkauntlar hisobga kirmaydi.': { ru: 'Сумма фактически оплаченных заказов. Тестовые и внутренние аккаунты не учитываются.', en: 'Total of actually paid orders. Test and internal accounts are excluded.' },
   'Profil ochilishlari': { ru: 'Открытия профилей', en: 'Profile opens' },
   'Noyob tashrifchilar': { ru: 'Уникальные посетители', en: 'Unique visitors' },
   'Kuniga o‘rtacha': { ru: 'В среднем в день', en: 'Daily average' },

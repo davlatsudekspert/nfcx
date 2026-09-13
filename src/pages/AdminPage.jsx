@@ -359,11 +359,11 @@ function StatsTab() {
       <div className="vz-card p-6">
         <div className="grid items-center gap-6 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
-            <span className="vz-kicker">{t('Platforma daromadi (komissiyalar)')}</span>
+            <span className="vz-kicker">{t("To‘langan buyurtmalar summasi")}</span>
             <div className="mt-2 break-words font-display text-[38px] font-semibold leading-none tracking-tight" style={{ color: 'var(--vz-gold-2)' }}>
               {wallet === null ? '\u2014' : fmt(wallet)} <span className="text-2xl">{t("so'm")}</span>
             </div>
-            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t("Premium obuna va komissiyalardan yig'ilgan real pul.")}</p>
+            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t("Haqiqatan to‘langan buyurtmalar yig‘indisi. Sinov va ichki akkauntlar hisobga kirmaydi.")}</p>
           </div>
           <div className="hidden h-24 lg:block">
             {series && series.length > 1 && (
