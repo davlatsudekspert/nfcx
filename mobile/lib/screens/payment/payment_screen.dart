@@ -13,6 +13,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
+import '../../design/feedback.dart';
 
 /// TO'LOV.
 ///
@@ -111,6 +112,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _order = fresh;
             _phase = _Phase.paid;
           });
+          // To'lov o'tdi — telefonda ham sezilsin: odam bu paytda
+          // ko'pincha ekranga qaramaydi (bank ilovasidan qaytyapti).
+          successHaptic();
           // Yangi ID egalik ro'yxatiga qo'shildi — shaxslarni yangilaymiz.
           AppScope.read(context).refreshIdentities().catchError((_) {});
         } else if (fresh.status == 'cancelled' || fresh.status == 'failed') {
@@ -119,6 +123,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _order = fresh;
             _phase = _Phase.failed;
           });
+          errorHaptic();
         }
       } catch (_) {
         // Tarmoq uzilishi so'rovni to'xtatmaydi — keyingi urinishda

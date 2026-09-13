@@ -7,6 +7,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_lock.dart';
 import '../common/top_bar.dart';
+import '../../design/feedback.dart';
 
 /// PIN O'RNATISH — ikki qadam: kiriting, keyin tasdiqlang.
 ///
@@ -55,6 +56,7 @@ class _SetPinScreenState extends State<SetPinScreen> {
       return;
     }
     await widget.lock.setPin(_pin);
+    successHaptic();
     if (mounted) Navigator.of(context).pop(true);
   }
 

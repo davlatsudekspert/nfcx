@@ -21,6 +21,8 @@ import 'package:nfcstore/screens/lock/set_pin_screen.dart';
 import 'package:nfcstore/screens/nfc/id_catalog.dart';
 import 'package:nfcstore/screens/nfc/id_detail.dart';
 import 'package:nfcstore/screens/nfc/nfc_center.dart';
+import 'package:nfcstore/screens/nfc/nfc_scan.dart';
+import 'package:nfcstore/screens/nfc/nfc_write.dart';
 import 'package:nfcstore/screens/nfc/order_card.dart';
 import 'package:nfcstore/screens/nfc/qr_share.dart';
 import 'package:nfcstore/screens/orders/my_orders.dart';
@@ -259,5 +261,24 @@ void main() {
       state: s,
     );
     await golden(t, '28-shaxsiy-statistika');
+  });
+
+  // NFC APPARATURASI. Testda NFC moduli YO'Q — ya'ni bu goldenlar
+  // aynan "qurilmada NFC yo'q" holatini qamrab oladi. Bu eng ko'p
+  // uchraydigan buzuq holat: matn tushunarli bo'lishi va maket
+  // buzilmasligi shu yerda qo'riqlanadi.
+  testWidgets('29 NFC o‘qish', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const NfcScanScreen(), state: s);
+    // NFC tekshiruvi muddati (3 s) tugasin — aks holda kadrda faqat
+    // aylanuvchi belgi qoladi va audit hech narsani ko'rsatmaydi.
+    await t.pump(const Duration(seconds: 4));
+    await golden(t, '29-nfc-oqish');
+  });
+
+  testWidgets('30 NFC yozish', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const NfcWriteScreen(), state: s);
+    await golden(t, '30-nfc-yozish');
   });
 }

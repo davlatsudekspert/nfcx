@@ -14,6 +14,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
+import '../../design/feedback.dart';
 
 /// JISMONIY KARTA BUYURTMASI.
 ///
@@ -120,6 +121,9 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
           payLink: '${res['payLink'] ?? ''}'.isEmpty ? null : '${res['payLink']}',
         );
       });
+      // Buyurtma serverda yaratildi — to'lovga o'tishdan oldin
+      // tasdiq sezilsin.
+      successHaptic();
       final link = _order?.payLink;
       if (link != null) await openExternal(Uri.parse(link));
     } on ApiError catch (e) {

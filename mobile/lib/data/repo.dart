@@ -88,6 +88,26 @@ class Repo {
     return token;
   }
 
+  /// Parolni tiklash uchun kod so'rash.
+  ///
+  /// Server HAR DOIM `{ok:true}` qaytaradi — hisob bor-yo'qligi
+  /// oshkor qilinmaydi. Shuning uchun ilova ham "kod yuborildi" deb
+  /// yozadi va boshqa hech narsa aytmaydi.
+  Future<void> requestPasswordReset(String login) =>
+      api.post('/api/auth/request-password-reset', {'email': login});
+
+  /// Kod bilan yangi parol o'rnatish.
+  Future<void> resetPassword({
+    required String login,
+    required String code,
+    required String password,
+  }) =>
+      api.post('/api/auth/reset-password', {
+        'email': login,
+        'code': code,
+        'password': password,
+      });
+
   /// Sessiya + egalik qilinadigan shaxsiy ID'lar — bitta so'rovda.
   Future<({AppUser? user, List<Record> cards})> me() async {
     final r = _map(await api.get('/api/auth/me'));

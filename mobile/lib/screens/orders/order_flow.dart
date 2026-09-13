@@ -13,6 +13,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../design/feedback.dart';
 
 /// Katalogdan buyurtma.
 ///
@@ -81,7 +82,10 @@ class _OrderFlowScreenState extends State<OrderFlowScreen> {
             qty: _qty,
             note: _note.text.trim(),
           );
-      if (mounted) setState(() => _done = true);
+      if (mounted) {
+        setState(() => _done = true);
+        successHaptic();
+      }
     } catch (e) {
       if (mounted) setState(() => _error = humanError(e));
     } finally {

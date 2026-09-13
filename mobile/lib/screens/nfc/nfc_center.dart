@@ -16,6 +16,8 @@ import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
 import 'gift_id.dart';
 import 'id_catalog.dart';
+import 'nfc_scan.dart';
+import 'nfc_write.dart';
 import 'order_card.dart';
 import 'qr_share.dart';
 
@@ -102,6 +104,11 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
               const SizedBox(height: S.x16),
               _Actions(active: active, owned: owned),
             ],
+            const SizedBox(height: S.x16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: S.gutter),
+              child: _NfcActions(),
+            ),
             if (owned.isNotEmpty) ...[
               const SizedBox(height: S.x32),
               SectionHeader('Mening ID‘larim', actionLabel: '${owned.length} TA'),
@@ -193,6 +200,79 @@ class _Actions extends StatelessWidget {
       ),
     );
   }
+}
+
+/// NFC apparatura amallari — o'qish va yozish.
+///
+/// NIMA UCHUN tezkor amallar qatoridan ALOHIDA: yuqoridagi to'rtlik
+/// FAOL ID bilan ishlaydi (QR, ulashish, karta, sovg'a), bular esa
+/// telefonning NFC moduli bilan. Aralashtirilsa, qaysi tugma nima
+/// qilishi tushunarsiz bo'lardi.
+class _NfcActions extends StatelessWidget {
+  const _NfcActions();
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          _NfcRow(
+            icon: Ico.nfc,
+            title: 'Kartani o‘qish',
+            sub: 'Begona kartani tegizib, profilini oching',
+            onTap: () => push(context, (_) => const NfcScanScreen()),
+          ),
+          const SizedBox(height: S.x8),
+          _NfcRow(
+            icon: Ico.edit,
+            title: 'Kartaga yozish',
+            sub: 'Bo‘sh kartaga o‘z ID havolangizni yozing',
+            onTap: () => push(context, (_) => const NfcWriteScreen()),
+          ),
+        ],
+      );
+}
+
+class _NfcRow extends StatelessWidget {
+  const _NfcRow({
+    required this.icon,
+    required this.title,
+    required this.sub,
+    required this.onTap,
+  });
+
+  final Ico icon;
+  final String title;
+  final String sub;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        haptic: true,
+        onTap: onTap,
+        child: Surface(
+          padding: const EdgeInsets.all(S.x12),
+          shadow: E.e1,
+          child: Row(
+            children: [
+              NIcon(icon, size: 20, color: C.platinum),
+              const SizedBox(width: S.x12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: T.cardTitle),
+                    const SizedBox(height: 2),
+                    Text(sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.caption.copyWith(fontSize: 11)),
+                  ],
+                ),
+              ),
+              const NIcon(Ico.chevronRight, size: 16, color: C.muted),
+            ],
+          ),
+        ),
+      );
 }
 
 class _OwnedRow extends StatelessWidget {

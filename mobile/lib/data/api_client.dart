@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show SocketException;
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 
 /// API xatosi — server qaytargan KALIT bilan.
@@ -49,6 +50,15 @@ class Api {
   final http.Client _http;
 
   String? _token;
+
+  /// TARMOQ BORMI — butun ilova uchun bitta signal.
+  ///
+  /// NIMA UCHUN ALOHIDA PLAGIN EMAS: `connectivity_plus` faqat
+  /// telefon Wi-Fi/mobil tarmoqqa ULANGANLIGINI aytadi, internet
+  /// HAQIQATAN ishlayotganini emas (mehmonxona Wi-Fi'si, to'lanmagan
+  /// paket). Bu yerdagi haqiqat aniqroq: so'rov serverga YETIB
+  /// BORDIMI yoki yo'q.
+  final ValueNotifier<bool> online = ValueNotifier<bool>(true);
 
   /// Sessiya tokeni. `null` — kirilmagan.
   String? get token => _token;
@@ -108,11 +118,17 @@ class Api {
     http.Response res;
     try {
       res = await run().timeout(_timeout);
+      // Javob KELDI — status kodi qanday bo'lishidan qat'i nazar,
+      // tarmoq ishlayapti.
+      online.value = true;
     } on TimeoutException {
+      online.value = false;
       throw ApiError('timeout');
     } on SocketException {
+      online.value = false;
       throw ApiError('offline');
     } on http.ClientException {
+      online.value = false;
       throw ApiError('offline');
     }
 
@@ -137,7 +153,10 @@ class Api {
     );
   }
 
-  void close() => _http.close();
+  void close() {
+    online.dispose();
+    _http.close();
+  }
 }
 
 /// Nisbiy manzilni to'liq manzilga aylantiradi.

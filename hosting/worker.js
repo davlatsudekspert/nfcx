@@ -8773,6 +8773,41 @@ function schemaErrorDetailD1(error) {
 
 async function handleRequest(request, env, url) {
 
+    // ── ANDROID APP LINKS ──────────────────────────────────────────────
+    // Jismoniy NFC kartani tegizganda Android brauzer o'rniga ilovani
+    // ochishi uchun shu fayl SHU DOMENDA turishi shart.
+    //
+    // NIMA UCHUN ENV'DAN: bu yerda ilovani imzolagan sertifikatning
+    // SHA-256 barmoq izi bo'ladi. Uni kodga yozib qo'ysak, imzo
+    // kaliti almashganda (yoki Play App Signing ishga tushganda)
+    // havolalar jimgina ishlamay qolardi. `ANDROID_APP_FINGERPRINTS`
+    // — vergul bilan ajratilgan bir yoki bir nechta barmoq izi.
+    //
+    // Sozlanmagan bo'lsa 404 — yolg'on, bo'sh ro'yxatli fayl
+    // berishdan ko'ra yo'q bo'lgani yaxshi (Android uni keshlaydi).
+    if (url.pathname === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(request.method)) {
+      const raw = String(env.ANDROID_APP_FINGERPRINTS || '').trim();
+      const prints = raw.split(/[\s,]+/)
+        .map((v) => v.trim().toUpperCase())
+        .filter((v) => /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(v));
+      if (!prints.length) return json({ error: 'not_found' }, 404);
+      return new Response(JSON.stringify([{
+        relation: ['delegate_permission/common.handle_all_urls'],
+        target: {
+          namespace: 'android_app',
+          package_name: String(env.ANDROID_APP_PACKAGE || 'uz.nfcstore.app'),
+          sha256_cert_fingerprints: prints,
+        },
+      }]), {
+        headers: {
+          'content-type': 'application/json',
+          // Android tekshiruvni kamdan-kam qiladi, lekin kalit
+          // almashganda uzoq kesh xalaqit bermasin.
+          'cache-control': 'public, max-age=3600',
+        },
+      });
+    }
+
     const catalogMatch = url.pathname.match(/^\/api\/catalog-meta\/([^/]+)(?:\/items\/([^/]+)\/(view|reaction|promotion))?$/);
     if (catalogMatch) {
       try {

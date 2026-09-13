@@ -44,12 +44,21 @@ class AppLock extends ChangeNotifier {
 
   bool _enabled = false;
   bool _biometricEnabled = false;
+  bool _loaded = false;
   bool _unlocked = false;
   int _attempts = 0;
   DateTime? _lockedUntil;
 
   bool get enabled => _enabled;
   bool get biometricEnabled => _biometricEnabled;
+
+  /// Qulf sozlamasi saqlagichdan O'QIB BO'LINDIMI.
+  ///
+  /// NIMA UCHUN KERAK: `load()` asinxron. Uni kutmasdan turib
+  /// `locked` `false` qaytaradi — ya'ni bir lahza uchun qulflangan
+  /// ilova ochiq ko'rinadi. Tashqi havola (NFC karta) aynan shu
+  /// lahzada kelsa, qulf ustidan o'tib ketardi.
+  bool get loaded => _loaded;
 
   /// Qulf yoqilgan bo'lsa va hali ochilmagan bo'lsa — ekran to'siladi.
   bool get locked => _enabled && !_unlocked;
@@ -75,6 +84,7 @@ class AppLock extends ChangeNotifier {
       _biometricEnabled = false;
     }
     _unlocked = !_enabled;
+    _loaded = true;
     notifyListeners();
   }
 

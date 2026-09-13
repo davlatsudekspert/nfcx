@@ -21,3 +21,6 @@ mobile/ios/Pods/
 mobile/android/key.properties
 mobile/android/app/*.jks
 mobile/web/
+
+# Golden test farqlari — vaqtinchalik chiqim, saqlanmaydi.
+mobile/test/audit/failures/

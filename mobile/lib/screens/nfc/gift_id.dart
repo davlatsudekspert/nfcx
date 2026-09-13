@@ -11,6 +11,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../design/feedback.dart';
 
 /// ID'NI SOVG'A QILISH / O'TKAZISH.
 ///
@@ -74,7 +75,10 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
     });
     try {
       await AppScope.read(context).repo.giftRecord(widget.record.code, {'toCode': to});
-      if (mounted) setState(() => _sent = true);
+      if (mounted) {
+        setState(() => _sent = true);
+        successHaptic();
+      }
     } on ApiError catch (e) {
       if (mounted) setState(() => _error = _giftError(e));
     } catch (e) {

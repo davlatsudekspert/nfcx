@@ -100,10 +100,45 @@ yetmagani uchun, soxta ekran yasashdan ko'ra ochiq aytilgani ma'qul:
 | Post yoqtirish | `/api/records/:code/like` — bu PROFIL layki, post emas |
 | Karta bosma maketi | Sayt kartani 600 DPI PNG qilib chizadi; ilovada chizma dvigateli kerak |
 | Biznes profilini tahrirlash | Katalog, ish vaqti va manzil uchun alohida oqim |
-| NFC kartaga yozish | Qurilma NFC API'si (P2 handoff'da) |
 
 Bu tugmalar ilovada **o'chirilgan holatda** ko'rinadi — bosilganda jim
 turmaydi. `onTap: null` bo'lgan har bir joyda sabab izohda yozilgan.
+
+## NFC va App Links
+
+Ilova NFC moduli bilan ishlaydi (`lib/data/nfc.dart`):
+
+| Amal | Qayerda | Nima qiladi |
+|---|---|---|
+| Kartani o'qish | NFC → «Kartani o'qish» | Tegdan `https://nfcstore.uz/<kod>` o'qiladi, profil ochiladi va `/api/tap/:code` serverga yoziladi |
+| Kartaga yozish | NFC → «Kartaga yozish» | FAQAT o'z ID havolasini yozadi — ixtiyoriy matn yozish imkoni yo'q |
+| Kartani tegizish (ilova yopiq) | Tizim | Android App Links ilovani ochadi va o'sha profilga o'tadi |
+
+**Xavfsizlik qoidalari:**
+
+- Faqat `nfcstore.uz` (va `*.nfcstore.uz`) havolalari qabul qilinadi.
+  Qoida BITTA joyda — `NfcLink.parse()`; NFC ham, App Links ham
+  o'shandan o'tadi (`test/nfc_link_test.dart`).
+- Saytning o'z bo'limlari (`/api`, `/admin`, `/login`, `/pay` …) ID
+  kodi deb o'qilmaydi.
+- Havola **qulf ustidan o'tib ketmaydi**: PIN yopiq bo'lsa, havola
+  saqlanadi va qulf ochilgandan keyin ochiladi
+  (`test/deep_link_test.dart`).
+
+**App Links ishlashi uchun SERVERDA sozlash kerak:**
+
+Worker `https://nfcstore.uz/.well-known/assetlinks.json` ni
+`ANDROID_APP_FINGERPRINTS` env'idan beradi — bu APK'ni imzolagan
+sertifikatning SHA-256 barmoq izi (vergul bilan bir nechta bo'lishi
+mumkin: yuklash kaliti + Play App Signing kaliti).
+
+```bash
+keytool -list -v -keystore upload-keystore.jks -alias upload | grep SHA256
+npx wrangler secret put ANDROID_APP_FINGERPRINTS
+```
+
+Sozlanmaguncha fayl 404 qaytaradi va havolalar avvalgidek brauzerda
+ochiladi — hech narsa buzilmaydi (`scripts/test-assetlinks.mjs`).
 
 ## To'lov
 

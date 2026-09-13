@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import '../design/components/nav_bar.dart';
+import '../design/components/states.dart';
 import '../design/tokens.dart';
+import '../state/app_state.dart';
 import 'discover/discover.dart';
 import 'home/home.dart';
 import 'identity/profile_tab.dart';
@@ -53,6 +55,10 @@ class _ShellState extends State<Shell> {
         color: C.obsidian,
         child: Column(
           children: [
+            // OFFLINE CHIZIG'I — pastki panel USTIDA emas, tarkib
+            // USTIDA: u ekranni bosib turmaydi, lekin nima uchun
+            // ma'lumot yangilanmayotganini darhol tushuntiradi.
+            const _OfflineWatch(),
             Expanded(
               // TAB ALMASHISHI — 200ms xiralik (handoff harakat
               // jadvali). `IndexedStack` holatni saqlaydi (qidiruv
@@ -90,6 +96,25 @@ class _ShellState extends State<Shell> {
       ),
     );
   }
+}
+
+/// Tarmoq signalini kuzatib, uzilganda chiziqni ochadi.
+///
+/// `ValueListenableBuilder` — faqat SHU chiziq qayta quriladi,
+/// tab tarkibi emas.
+class _OfflineWatch extends StatelessWidget {
+  const _OfflineWatch();
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+        valueListenable: AppScope.of(context).api.online,
+        builder: (_, online, __) => AnimatedSize(
+          duration: M.fade,
+          curve: M.curve,
+          alignment: Alignment.topCenter,
+          child: online ? const SizedBox(width: double.infinity) : const OfflineBar(),
+        ),
+      );
 }
 
 class _TabNavigator extends StatelessWidget {

@@ -8,6 +8,7 @@ import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import 'forgot_password.dart';
 import 'register.dart';
 
 /// Kirish — email YOKI telefon, plus parol.
@@ -91,7 +92,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   onSubmitted: (_) => _submit(),
                   error: _error,
                 ),
-                const SizedBox(height: S.x24),
+                const SizedBox(height: S.x12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => push(
+                      context,
+                      (_) => ForgotPasswordScreen(login: _login.text.trim()),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(S.x8),
+                      // Havola ekanligi RANGDAN ko'rinsin: kulrang
+                      // matn oddiy izoh kabi o'qiladi va bosiladigan
+                      // joy ekani sezilmaydi.
+                      child: Text(
+                        'Parolni unutdingizmi?',
+                        style: T.caption.copyWith(color: C.antiqueGold),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: S.x12),
                 PrimaryButton('Kirish', loading: _busy, onTap: _busy ? null : _submit),
                 const SizedBox(height: S.x24),
                 Center(

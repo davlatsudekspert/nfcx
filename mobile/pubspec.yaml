@@ -31,6 +31,12 @@ dependencies:
   # PIN kodni HASH qilish uchun. Kodning o'zi hech qayerda
   # saqlanmaydi — faqat tuz bilan olingan SHA-256.
   crypto: ^3.0.6
+  # NFC o'qish/yozish. Ilova NFCSTORE deb ataladi va NFC tab uning
+  # o'zagi — kartani telefonga tegizish ishlashi SHART.
+  nfc_manager: ^3.5.0
+  # Jismoniy karta tegizilganda ilova o'zi ochilishi uchun (App Links)
+  # kelgan havolani o'qiydi.
+  app_links: ^6.3.2
 
 dev_dependencies:
   flutter_test:

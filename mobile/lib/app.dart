@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'data/deep_link.dart';
+import 'data/nfc.dart';
+import 'design/nav.dart';
 import 'design/theme.dart';
 import 'design/tokens.dart';
 import 'design/type.dart';
 import 'screens/entry/login.dart';
 import 'screens/entry/onboarding.dart';
 import 'screens/entry/splash.dart';
+import 'screens/identity/profile_screen.dart';
 import 'screens/lock/lock_screen.dart';
 import 'screens/shell.dart';
 import 'state/app_lock.dart';
@@ -17,11 +23,14 @@ import 'state/app_state.dart';
 /// Ekranlar orasidagi qolgan navigatsiya har bo'limning o'z
 /// `Navigator`ida qoladi.
 class NfcstoreApp extends StatefulWidget {
-  const NfcstoreApp({super.key, required this.state, this.lock});
+  const NfcstoreApp({super.key, required this.state, this.lock, this.links});
   final AppState state;
 
   /// Testda soxta qulf berish uchun. Odatda `null` — o'zi yaratiladi.
   final AppLock? lock;
+
+  /// Testda soxta havola oqimi berish uchun. Odatda `null`.
+  final DeepLinks? links;
 
   @override
   State<NfcstoreApp> createState() => _NfcstoreAppState();
@@ -29,6 +38,17 @@ class NfcstoreApp extends StatefulWidget {
 
 class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
   late final AppLock _lock = widget.lock ?? AppLock();
+  late final DeepLinks _links = widget.links ?? DeepLinks();
+  final _navKey = GlobalKey<NavigatorState>();
+  StreamSubscription<NfcLink>? _linkSub;
+
+  /// Kelgan, lekin HALI OCHILMAGAN havola.
+  ///
+  /// Karta ilova yopiq yoki qulflangan holatda tegizilishi mumkin.
+  /// Bunday havolani tashlab yuborish — foydalanuvchi uchun "karta
+  /// ishlamadi" degani. Shuning uchun u saqlanadi va ilova tayyor
+  /// bo'lishi bilan ochiladi.
+  NfcLink? _pending;
   /// Tanishtiruv faqat BIRINCHI ochilishda. Keyin to'g'ridan-to'g'ri
   /// kirish ekrani chiqadi.
   bool _onboarded = false;
@@ -39,10 +59,59 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     widget.state.boot();
     _lock.load();
+    _listenLinks();
+    // Kutayotgan havola qulf ochilishi yoki hisobga kirish bilan
+    // ochilsin: bu ikki hodisa ildiz widgetni O'ZI qayta qurmaydi.
+    _lock.addListener(_onReady);
+    widget.state.addListener(_onReady);
+  }
+
+  void _onReady() {
+    if (_pending != null && mounted) setState(() {});
+  }
+
+  Future<void> _listenLinks() async {
+    _linkSub = _links.stream().listen(_queue);
+    final first = await _links.initial();
+    if (first != null) _queue(first);
+  }
+
+  void _queue(NfcLink link) {
+    _pending = link;
+    if (mounted) setState(() {});
+  }
+
+  /// Ilova ochiq va qulfsiz bo'lgandagina profilga o'tiladi.
+  ///
+  /// Qulf ustidan o'tib ketmaslik SHART: aks holda begona odam
+  /// kartani tegizib, qulflangan ilovadan ma'lumot ko'ra olardi.
+  void _flushPending() {
+    final link = _pending;
+    if (link == null) return;
+    // Qulf sozlamasi hali o'qilmagan bo'lsa KUTAMIZ: aks holda
+    // `locked` bir lahza `false` bo'lib turadi va havola qulf
+    // ustidan o'tib ketadi.
+    if (!_lock.loaded) return;
+    if (_lock.locked && widget.state.phase == AuthPhase.signedIn) return;
+    if (widget.state.phase == AuthPhase.loading) return;
+    _pending = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navKey.currentState?.push(SlidePage<void>(
+        builder: (_) => link.company
+            ? ProfileScreen(companyId: link.code)
+            : ProfileScreen(code: link.code),
+      ));
+      if (!link.company) {
+        widget.state.repo.tap(link.code).catchError((_) {});
+      }
+    });
   }
 
   @override
   void dispose() {
+    _linkSub?.cancel();
+    _lock.removeListener(_onReady);
+    widget.state.removeListener(_onReady);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -57,15 +126,24 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
       _lock.lock();
     }
+    // Internet qaytganini bilishning yagona ishonchli yo'li — so'rov
+    // yuborish. Foydalanuvchi odatda aynan tarmoqni tuzatib qaytadi,
+    // shuning uchun FAQAT uzilgan holatda va FAQAT qaytishda bitta
+    // yengil so'rov yuboriladi.
+    if (state == AppLifecycleState.resumed && !widget.state.api.online.value) {
+      widget.state.repo.paymentsEnabled().catchError((_) => <String, dynamic>{});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    _flushPending();
     return AppScope(
       state: widget.state,
       child: AppLockScope(
         lock: _lock,
         child: MaterialApp(
+        navigatorKey: _navKey,
         title: 'NFCSTORE',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
