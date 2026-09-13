@@ -30,6 +30,9 @@ import 'package:nfcstore/screens/settings/payments_history.dart';
 import 'package:nfcstore/screens/settings/premium.dart';
 import 'package:nfcstore/screens/settings/support.dart';
 import 'package:nfcstore/screens/business/edit_business.dart';
+import 'package:nfcstore/screens/business/edit_catalog.dart';
+import 'package:nfcstore/screens/business/edit_gallery.dart';
+import 'package:nfcstore/screens/business/working_hours.dart';
 import 'package:nfcstore/screens/content/compose.dart';
 import 'package:nfcstore/screens/entry/gift_card.dart';
 import 'package:nfcstore/screens/nfc/gift_offers.dart';
@@ -68,6 +71,7 @@ import 'harness.dart';
 /// ham shu yerda baholaymiz.
 void main() {
   setUpAll(loadAuditFonts);
+  setUp(mockImageCacheDir);
 
   Future<void> golden(WidgetTester t, String name) =>
       expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
@@ -502,6 +506,60 @@ void main() {
     final s = await ready();
     await pumpScreen(t, const PremiumScreen(), state: s);
     await golden(t, '49-premium');
+  });
+
+  // ── BIZNES TAHRIRI — YANGI BO'LIMLAR ───────────────────────────────
+  //
+  // Uchalasi ham YETTI/O'N IKKI ta takrorlanuvchi elementdan iborat.
+  // Aynan shunday ekranlarda maket eng oson buziladi (qator uzunligi,
+  // panjara oralig'i), shuning uchun har biri alohida kadrga olinadi.
+  testWidgets('50 ish vaqti', (t) async {
+    final s = await ready();
+    await pumpScreen(t, WorkingHoursScreen(company: s.companies.first), state: s);
+    await golden(t, '50-ish-vaqti');
+  });
+
+  testWidgets('51 katalog tahriri', (t) async {
+    final s = await ready();
+    await pumpScreen(t, EditCatalogScreen(company: s.companies.first), state: s);
+    await golden(t, '51-katalog-tahriri');
+  });
+
+  testWidgets('52 galereya', (t) async {
+    final s = await ready();
+    await pumpScreen(t, EditGalleryScreen(company: s.companies.first), state: s);
+    await golden(t, '52-galereya');
+  });
+
+  // GALEREYA BO'SH HOLATI — ikkinchi kompaniyada rasm yo'q.
+  // Bo'sh holat eng ko'p ko'riladigan birinchi kadr, lekin uni
+  // tekshirish eng oson unutiladigan narsa.
+  testWidgets('53 galereya — bo‘sh', (t) async {
+    final s = await ready();
+    await pumpScreen(t, EditGalleryScreen(company: s.companies.last), state: s);
+    await golden(t, '53-galereya-bosh');
+  });
+
+  // YANGI BO'LIMLAR RO'YXATI shaklning ENG PASTIDA. Kadr faqat
+  // birinchi ekranni ko'rsatgani uchun, u yerga yetib borish uchun
+  // ro'yxat aylantiriladi — aks holda yangi qism auditda umuman
+  // ko'rinmasdi.
+  testWidgets('54 biznes tahriri — bo‘limlar', (t) async {
+    final s = await ready();
+    await pumpScreen(t, EditBusinessScreen(company: s.companies.first), state: s);
+    await t.drag(find.byType(ListView).first, const Offset(0, -1400));
+    await t.pumpAndSettle();
+    await golden(t, '54-biznes-bolimlar');
+  });
+
+  // MAHSULOT SHAKLI ichki ekran: unga faqat «Mahsulot qo'shish»
+  // orqali kirish mumkin, ya'ni yo'lning o'zi ham tekshiriladi.
+  testWidgets('55 mahsulot qo‘shish', (t) async {
+    final s = await ready();
+    await pumpScreen(t, EditCatalogScreen(company: s.companies.first), state: s);
+    await t.tap(find.text(tr('Mahsulot qo‘shish')));
+    await t.pumpAndSettle();
+    await golden(t, '55-mahsulot-shakli');
   });
 }
 

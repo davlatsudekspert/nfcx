@@ -428,6 +428,32 @@ class Repo {
     return company(id);
   }
 
+  /// Ish vaqtini saqlash.
+  ///
+  /// Server 7 ta elementni kutadi va o'zi normallashtiradi
+  /// (`normalizeHoursD1`): ochilish yoki yopilish bo'sh bo'lsa kun
+  /// YOPIQ bo'lib yoziladi.
+  Future<Company> updateHours(String id, List<DayHours> hours) =>
+      updateCompany(id, {'hours': hours.map((d) => d.toJson()).toList()});
+
+  /// Galereya — 12 tagacha manzil. Server ortig'ini kesadi.
+  Future<Company> updateGallery(String id, List<String> urls) =>
+      updateCompany(id, {'gallery': urls});
+
+  // ── Biznes katalogi ────────────────────────────────────────────────
+
+  /// Yangi mahsulot. Server butun kompaniyani qaytaradi, lekin
+  /// ekranga faqat katalog kerak — shuning uchun ro'yxat qayta
+  /// so'raladi va bitta shakldan o'qiladi (`companyCatalog`).
+  Future<void> addProduct(String id, Map<String, dynamic> body) =>
+      api.post('/api/companies/$id/catalog', body);
+
+  Future<void> updateProduct(String id, String itemId, Map<String, dynamic> body) =>
+      api.patch('/api/companies/$id/catalog/$itemId', body);
+
+  Future<void> deleteProduct(String id, String itemId) =>
+      api.delete('/api/companies/$id/catalog/$itemId');
+
   /// Company ID bandmi va narxi qancha.
   Future<Map<String, dynamic>> checkCompanyId(String id) async =>
       _map(await api.get('/api/companies/check', query: {'id': id}));

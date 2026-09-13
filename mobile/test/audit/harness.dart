@@ -1,5 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle, FontLoader;
+import 'package:flutter/services.dart' show MethodChannel, rootBundle, FontLoader;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore/app.dart';
 import 'package:nfcstore/data/api_client.dart';
@@ -45,6 +47,29 @@ Future<void> loadAuditFonts() async {
     }
     await loader.load();
   }
+}
+
+/// RASM KESHI UCHUN PAPKA.
+///
+/// `cached_network_image` ish boshlashi bilan `path_provider` dan
+/// vaqtinchalik papka so'raydi. Testda plagin yo'q va so'rov
+/// istisno bilan tugaydi — natijada galereya kabi HAQIQIY manzilli
+/// rasmlar bor ekran umuman chizilmasdi.
+///
+/// Tarmoq baribir yo'q: rasm kelmaydi va o'rniga bo'sh joy
+/// ko'rinadi — auditda aynan shu holat ham baholanadi.
+void mockImageCacheDir() {
+  final dir = Directory.systemTemp.createTempSync('nfcstore-audit');
+  addTearDown(() {
+    try {
+      dir.deleteSync(recursive: true);
+    } catch (_) {}
+  });
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('plugins.flutter.io/path_provider'),
+    (call) async => dir.path,
+  );
 }
 
 /// Audit uchun holat — soxta server bilan.

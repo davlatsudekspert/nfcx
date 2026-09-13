@@ -5,16 +5,22 @@ import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/models.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/media_picker.dart';
 import '../../design/components/press.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/feedback.dart';
+import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import 'edit_catalog.dart';
+import 'edit_gallery.dart';
+import 'working_hours.dart';
 import '../../l10n/strings.dart';
 
 /// BIZNES PROFILINI TAHRIRLASH.
@@ -26,9 +32,14 @@ import '../../l10n/strings.dart';
 ///
 /// FAQAT YUBORILGAN MAYDONLAR O'ZGARADI: server `PATCH` da
 /// `body[key] == null` bo'lsa joriy qiymatni qoldiradi. Shuning
-/// uchun bu yerda ko'rsatilmagan narsalar (musiqa, galereya, o'z
-/// domeni, koordinatalar) TEGILMAYDI — ular saytdan sozlanadi va
-/// bu ekran ularni jimgina tozalab yubormaydi.
+/// uchun bu yerda ko'rsatilmagan narsalar (musiqa, o'z domeni,
+/// koordinatalar) TEGILMAYDI — bu ekran ularni jimgina tozalab
+/// yubormaydi.
+///
+/// ISH VAQTI, KATALOG VA GALEREYA ALOHIDA EKRANDA va o'zlari
+/// saqlanadi: ularning har biri kattaroq va bu shaklga sig'sa,
+/// eng ko'p ishlatiladigan maydonlar (nom, telefon) pastga
+/// tushib ketardi.
 class EditBusinessScreen extends StatefulWidget {
   const EditBusinessScreen({super.key, required this.company});
   final Company company;
@@ -64,15 +75,64 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  /// Shaklda saqlanmagan o'zgarish bormi.
+  ///
+  /// NIMA UCHUN KERAK: ish vaqti / katalog / galereya ALOHIDA
+  /// ekran. Odam nomni o'zgartirib, saqlamasdan o'sha ekranga
+  /// o'tsa, qaytganda yozgani yo'qolgan bo'lardi.
+  bool get _dirty =>
+      _name.text.trim() != widget.company.name ||
+      _about.text.trim() != widget.company.about ||
+      _city.text.trim() != widget.company.city ||
+      _address.text.trim() != widget.company.address ||
+      _phone.text.trim() != widget.company.phone ||
+      _tg.text.trim() != widget.company.tg ||
+      _instagram.text.trim() != widget.company.instagram ||
+      _website.text.trim() != widget.company.website ||
+      _orders != widget.company.ordersEnabled ||
+      _logo != null ||
+      _cover != null;
+
+  /// Boshqa bo'limga o'tish. Saqlanmagan o'zgarish bo'lsa —
+  /// oldin so'raladi, jimgina yo'qotilmaydi.
+  Future<void> _open(Widget Function(Company) screen) async {
+    final company = _current;
+    if (_dirty) {
+      final go = await showSheet<bool>(
+        context,
+        title: tr('Saqlanmagan o‘zgarishlar'),
+        subtitle: tr('Bu bo‘lim alohida saqlanadi. O‘tishdan oldin '
+            'shakldagi o‘zgarishlarni saqlaysizmi?'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+          child: Column(
+            children: [
+              PrimaryButton(tr('Saqlab, o‘tish'),
+                  onTap: () => Navigator.of(context).pop(true)),
+              const SizedBox(height: S.x8),
+              SecondaryButton(tr('Bekor qilish'),
+                  onTap: () => Navigator.of(context).pop(false)),
+            ],
+          ),
+        ),
+      );
+      if (go != true || !mounted) return;
+      final ok = await _save(close: false);
+      if (!ok || !mounted) return;
+    }
+    if (!mounted) return;
+    await push<bool>(context, (_) => screen(company));
+  }
+
+  Future<bool> _save({bool close = true}) async {
     final name = _name.text.trim();
     if (name.isEmpty) {
       setState(() => _error = tr('Nomi bo‘sh bo‘lmasin.'));
-      return;
+      return false;
     }
     if (_about.text.trim().length < 20) {
       setState(() => _error = tr('Tavsif kamida 20 ta belgidan iborat bo‘lsin.'));
-      return;
+      return false;
     }
 
     setState(() {
@@ -99,7 +159,8 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       successHaptic();
       // Shaxslar ro'yxatidagi nom va logotip ham yangilansin.
       await state.refreshIdentities();
-      if (mounted) Navigator.of(context).pop(true);
+      if (close && mounted) Navigator.of(context).pop(true);
+      return true;
     } on ApiError catch (e) {
       errorHaptic();
       if (mounted) {
@@ -116,6 +177,18 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+    return false;
+  }
+
+  /// ENG YANGI NUSXA: ish vaqti yoki galereya o'zgargandan keyin
+  /// `widget.company` eskirgan bo'ladi. Alohida ekranlarga eski
+  /// ma'lumot berilsa, odam o'zi kiritgan vaqtni yo'q holda ko'rardi.
+  Company get _current {
+    final list = AppScope.of(context).companies;
+    for (final c in list) {
+      if (c.id == widget.company.id) return c;
+    }
+    return widget.company;
   }
 
   @override
@@ -225,14 +298,46 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     onChanged: _busy ? null : (v) => setState(() => _orders = v),
                   ),
                   const SizedBox(height: S.x24),
-                  PrimaryButton(tr('Saqlash'), loading: _busy, onTap: _busy ? null : _save),
+                  PrimaryButton(tr('Saqlash'),
+                      loading: _busy, onTap: _busy ? null : () => _save()),
+                  const SizedBox(height: S.x24),
+                  Eyebrow(tr('Bo‘limlar')),
+                  const SizedBox(height: S.x12),
+                  Surface(
+                    padding: EdgeInsets.zero,
+                    shadow: E.e1,
+                    child: Column(
+                      children: [
+                        _Link(
+                          label: tr('Ish vaqti'),
+                          hint: _hoursHint(_current),
+                          icon: Ico.clock,
+                          onTap: () => _open((c) => WorkingHoursScreen(company: c)),
+                        ),
+                        _Link(
+                          label: tr('Katalog'),
+                          hint: trf('{n} ta mahsulot',
+                              {'n': '${_current.itemCount}'}),
+                          icon: Ico.bag,
+                          onTap: () => _open((c) => EditCatalogScreen(company: c)),
+                        ),
+                        _Link(
+                          label: tr('Galereya'),
+                          hint: trf('{n} ta rasm',
+                              {'n': '${_current.gallery.length}'}),
+                          icon: Ico.image,
+                          last: true,
+                          onTap: () => _open((c) => EditGalleryScreen(company: c)),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: S.x12),
                   // HALOL BO'LISH: ilovada hamma narsa yo'q va bu
                   // ochiq aytiladi — odam yo'q tugmani qidirib
                   // vaqtini yo'qotmasin.
                   Text(
-                    tr('Ish vaqti, katalog, galereya va o‘z domeni saytdan '
-                        'sozlanadi.'),
+                    tr('Musiqa va o‘z domeni saytdan sozlanadi.'),
                     textAlign: TextAlign.center,
                     style: T.caption.copyWith(fontSize: 11),
                   ),
@@ -244,6 +349,64 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       ),
     );
   }
+}
+
+/// Ish vaqti qatoridagi qisqa izoh.
+///
+/// Kun soni ko'rsatiladi, chunki eng ko'p qilinadigan xato —
+/// dam olish kunini belgilashni unutish.
+String _hoursHint(Company c) {
+  if (c.hours.isEmpty) return tr('Kiritilmagan');
+  final open = c.hours.where((d) => !d.closed).length;
+  if (open == 0) return tr('Hamma kun yopiq');
+  return trf('Haftasiga {n} kun', {'n': '$open'});
+}
+
+/// Alohida ekranga olib boruvchi qator.
+class _Link extends StatelessWidget {
+  const _Link({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.onTap,
+    this.last = false,
+  });
+
+  final String label;
+  final String hint;
+  final Ico icon;
+  final VoidCallback onTap;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        haptic: true,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
+          decoration: BoxDecoration(
+            border: last ? null : Border(bottom: BorderSide(color: C.hairline)),
+          ),
+          child: Row(
+            children: [
+              NIcon(icon, size: 19, color: C.ash),
+              const SizedBox(width: S.x12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                    const SizedBox(height: 2),
+                    Text(hint, style: T.caption.copyWith(fontSize: 11)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: S.x8),
+              NIcon(Ico.chevronRight, size: 17, color: C.ash),
+            ],
+          ),
+        ),
+      );
 }
 
 class _Toggle extends StatelessWidget {

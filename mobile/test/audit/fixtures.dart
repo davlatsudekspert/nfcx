@@ -221,6 +221,25 @@ const _company = {
   'ordersEnabled': true,
   'isOpen': true,
   'hoursLabel': '10:00 – 19:00',
+  // ISH VAQTI VA GALEREYA — auditda ko'rinishi uchun. Yakshanba
+  // ataylab yopiq: "Dam olish" qatorining ko'rinishi ham
+  // tekshirilsin.
+  'hours': [
+    {'closed': false, 'open': '10:00', 'close': '19:00'},
+    {'closed': false, 'open': '10:00', 'close': '19:00'},
+    {'closed': false, 'open': '10:00', 'close': '19:00'},
+    {'closed': false, 'open': '10:00', 'close': '19:00'},
+    {'closed': false, 'open': '10:00', 'close': '19:00'},
+    {'closed': false, 'open': '11:00', 'close': '17:00'},
+    {'closed': true, 'open': '', 'close': ''},
+  ],
+  'gallery': [
+    '/uploads/gallery-1.jpg',
+    '/uploads/gallery-2.jpg',
+    '/uploads/gallery-3.jpg',
+    '/uploads/gallery-4.jpg',
+    '/uploads/gallery-5.jpg',
+  ],
   'followers': 1843,
   'views': 12400,
   'itemCount': 36,

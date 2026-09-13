@@ -175,6 +175,8 @@ class Company {
     this.ordersEnabled = false,
     this.isOpen,
     this.hoursLabel = '',
+    this.hours = const [],
+    this.gallery = const [],
     this.followers = 0,
     this.views = 0,
     this.itemCount = 0,
@@ -201,6 +203,16 @@ class Company {
   /// `null` — ish vaqti kiritilmagan, "Ochiq/Yopiq" ko'rsatilmaydi.
   final bool? isOpen;
   final String hoursLabel;
+
+  /// Haftaning yetti kuni — `[{closed, open, close}]`.
+  ///
+  /// Server HAR DOIM 7 ta element qaytaradi (`normalizeHoursD1`),
+  /// shuning uchun indeks bo'yicha murojaat xavfsiz. Bo'sh bo'lsa
+  /// ish vaqti umuman kiritilmagan.
+  final List<DayHours> hours;
+
+  /// Fotogalereya — 12 tagacha to'liq manzil.
+  final List<String> gallery;
   final int followers;
   final int views;
   final int itemCount;
@@ -226,7 +238,19 @@ class Company {
       verified: _b(j['verified']),
       ordersEnabled: _b(j['ordersEnabled']),
       isOpen: j['isOpen'] is bool ? j['isOpen'] as bool : null,
-      hoursLabel: _s(j['hoursLabel'] ?? j['hours']),
+      hoursLabel: _s(j['hoursLabel']),
+      hours: (j['hours'] is List)
+          ? (j['hours'] as List)
+              .whereType<Map>()
+              .map((d) => DayHours.fromJson(d.cast<String, dynamic>()))
+              .toList()
+          : const [],
+      gallery: (j['gallery'] is List)
+          ? (j['gallery'] as List)
+              .map((g) => absUrl('$g'))
+              .whereType<String>()
+              .toList()
+          : const [],
       followers: _i(j['followers']),
       views: _i(j['views']),
       itemCount: j['itemCount'] != null ? _i(j['itemCount']) : items.length,
@@ -572,5 +596,35 @@ class SupportMessage {
         status: _s(j['status']),
         createdAt: _s(j['createdAt']),
         repliedAt: _s(j['repliedAt']),
+      );
+}
+
+/// BITTA KUNNING ISH VAQTI.
+///
+/// `closed` — dam olish kuni. Server ochilish yoki yopilish vaqti
+/// bo'sh bo'lsa ham kunni YOPIQ deb belgilaydi, shuning uchun
+/// "ochiq, lekin vaqtsiz" degan holat umuman bo'lmaydi.
+class DayHours {
+  const DayHours({this.closed = true, this.open = '', this.close = ''});
+
+  final bool closed;
+
+  /// `HH:MM`.
+  final String open;
+  final String close;
+
+  factory DayHours.fromJson(Map<String, dynamic> j) => DayHours(
+        closed: _b(j['closed']) || _s(j['open']).isEmpty || _s(j['close']).isEmpty,
+        open: _s(j['open']),
+        close: _s(j['close']),
+      );
+
+  Map<String, dynamic> toJson() =>
+      {'closed': closed, 'open': closed ? '' : open, 'close': closed ? '' : close};
+
+  DayHours copyWith({bool? closed, String? open, String? close}) => DayHours(
+        closed: closed ?? this.closed,
+        open: open ?? this.open,
+        close: close ?? this.close,
       );
 }
