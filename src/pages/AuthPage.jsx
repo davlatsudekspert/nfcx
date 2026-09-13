@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { authLogin, authRegister, useAuth } from '../lib/auth.jsx';
+import { authLogin, authRegister, authRequestRegisterCode, useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { normalizePhone, prettyPhone } from '../lib/phone.js';
 import { useLanguage } from '../lib/i18n.jsx';
@@ -42,6 +42,11 @@ function errText(err, t, botLink) {
   if (key === 'bot_not_configured') return t('Telegram bot hozir sozlanmagan. Birozdan so‘ng urinib ko‘ring.');
   if (key === 'bad_phone') return t("Telefon raqamini to'g'ri kiriting.");
   if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
+  // ---- Emailga kod yuborish xatolari ----
+  if (key === 'email_send_failed') return t("Emailga kod yuborib bo'lmadi. Manzilni tekshiring yoki birozdan so'ng qayta urining.");
+  if (key === 'email_required') return t('Email manzilingizni kiriting — tasdiqlash kodi shu manzilga yuboriladi.');
+  if (key === 'email_code_required') return t('Emailingizga kelgan 6 xonali kodni kiriting.');
+  if (key === 'bad_email_code') return t("Kod noto'g'ri yoki muddati o'tgan. «Qaytadan yuborish» ni bosing.");
   // Backend validatsiya xabarlari — t() orqali (topilsa) tarjima qilinadi.
   if (key && /telefon|bot|kamida|format/i.test(key)) return t(key);
   return t("Xatolik yuz berdi. Ma'lumotlarni tekshirib qayta urinib ko'ring.");
@@ -72,6 +77,17 @@ export default function AuthPage({ mode }) {
   const [tosAccepted, setTosAccepted] = useState(false);
   // Telegram tasdig'i — raqam ham, token ham BOTDAN keladi.
   const [linkToken, setLinkToken] = useState('');
+  // RO'YXATDAN O'TISH — EMAIL KODI.
+  //
+  // Egasining qarori: "ro'yxatdan o'tishda emailga kod kelsin, lekin
+  // telefon raqam ham yozilsin". Shuning uchun ro'yxat endi ikki
+  // qadamda: avval kod so'raladi, keyin kod bilan akkaunt ochiladi.
+  //
+  // `codeSent` — kod maydoni ko'rsatiladimi. Server "channel:'none'"
+  // desa (email xizmati o'chiq) bu qadam UMUMAN o'tkazib yuboriladi:
+  // egasining qoidasi — xizmat ishlamasa ham ro'yxat to'xtamasin.
+  const [emailCode, setEmailCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
   // Ketma-ket noto'g'ri parol. 3 tadan keyin odamga parolni tiklash
   // yo'li ochiq taklif qilinadi: u yerda ham kod yozilmaydi, botda
   // bitta tugma bosiladi.
@@ -147,8 +163,31 @@ export default function AuthPage({ mode }) {
     }
     setBusy(true);
     try {
-      if (isRegister) await authRegister(email.trim(), password, { phone: phone.trim(), tosAccepted, promoCode: promoCode.trim() });
-      else await authLogin(email.trim(), password);
+      if (isRegister) {
+        // 1-QADAM: kod hali so'ralmagan bo'lsa — uni so'raymiz va
+        // shu yerda to'xtaymiz. Akkaunt HALI OCHILMAYDI.
+        if (!codeSent) {
+          const res = await authRequestRegisterCode({ email: email.trim(), phone: phone.trim() });
+          // `channel:'none'` — email xizmati o'chiq, kod kerak emas.
+          // Bu holatda qadamni o'tkazib yuborib, darhol ro'yxatga
+          // o'tamiz (egasining qoidasi: ro'yxat hech qachon
+          // to'xtamasin).
+          if (res?.channel && res.channel !== 'none') {
+            setCodeSent(true);
+            setBusy(false);
+            setMsg({
+              type: 'ok',
+              text: res.channel === 'email'
+                ? t('Tasdiqlash kodi emailingizga yuborildi. Pochtangizni oching (spam papkasini ham tekshiring).')
+                : t('Tasdiqlash kodi Telegram botga yuborildi.'),
+            });
+            return;
+          }
+        }
+        await authRegister(email.trim(), password, {
+          phone: phone.trim(), tosAccepted, promoCode: promoCode.trim(), emailCode: emailCode.trim(),
+        });
+      } else await authLogin(email.trim(), password);
       setFailCount(0);
       await refresh();
       // `?next=` — qayerdan kelgan bo'lsa, o'sha yerga qaytadi.
@@ -411,19 +450,36 @@ export default function AuthPage({ mode }) {
                   className="input input-bordered mt-1 w-full bg-base-100" />
               </label>
             )}
-            {/* EMAIL — IXTIYORIY. Ko'p odam email ishlatmaydi va uni
-                majburlash bekorga to'siq bo'lardi. Lekin u parolni
-                tiklashda kerak bo'ladi, shuning uchun buni shu yerda
-                ochiq aytamiz — keyin emas. */}
+            {/* EMAIL — endi MAJBURIY: tasdiqlash kodi aynan shu
+                manzilga keladi. Ilgari u ixtiyoriy edi va odam uni
+                tashlab ketsa, parolini tiklay olmay qolardi.
+                Telefon esa baribir yoziladi — uni keyin sozlamalarda
+                Telegram bot orqali tasdiqlanadi. */}
             {isRegister && (
               <label className="form-control">
-                <span className="text-xs font-semibold text-base-content/70">{t('Email (ixtiyoriy)')}</span>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ism@gmail.com" autoComplete="email"
+                <span className="text-xs font-semibold text-base-content/70">{t('Email')}</span>
+                <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setCodeSent(false); }}
+                  placeholder="ism@gmail.com" autoComplete="email" required
                   className="input input-bordered mt-1 w-full bg-base-100" />
                 <span className="mt-1 block text-xs text-base-content/40">
-                  {t('Parolni unutsangiz tiklash uchun kerak bo‘ladi.')}
+                  {t('Tasdiqlash kodi shu manzilga yuboriladi.')}
                 </span>
+              </label>
+            )}
+            {/* TASDIQLASH KODI — faqat kod yuborilgandan KEYIN
+                ko'rinadi. Oldindan ko'rsatilsa, odam bo'sh maydonga
+                qarab "qayerdan olaman?" deb turib qolardi. */}
+            {isRegister && codeSent && (
+              <label className="form-control">
+                <span className="text-xs font-semibold text-base-content/70">{t('Emailga kelgan kod')}</span>
+                <input type="text" inputMode="numeric" value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456" maxLength={6} autoComplete="one-time-code" required
+                  className="input input-bordered mt-1 w-full bg-base-100 text-center font-mono text-lg tracking-[.35em]" />
+                <button type="button" className="mt-1 self-start text-xs text-accent underline underline-offset-2"
+                  onClick={() => { setCodeSent(false); setEmailCode(''); setMsg(null); }}>
+                  {t('Kod kelmadimi? Qaytadan yuborish')}
+                </button>
               </label>
             )}
             {isRegister && (
@@ -445,7 +501,8 @@ export default function AuthPage({ mode }) {
               </label>
             )}
             <button className="btn btn-gold w-full" disabled={busy}>
-              {busy ? <span className="loading loading-spinner loading-sm"></span> : isRegister ? t('Akkaunt ochish') : t('Kirish')}
+              {busy ? <span className="loading loading-spinner loading-sm"></span>
+                : isRegister ? (codeSent ? t('Akkaunt ochish') : t('Davom etish')) : t('Kirish')}
             </button>
           </form>
 

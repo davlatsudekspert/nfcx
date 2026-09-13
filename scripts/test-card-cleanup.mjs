@@ -39,7 +39,7 @@ const schema = readFileSync(new URL('../db/d1-migration/0001-schema.sql', import
     'web_orders', 'bot_orders',                // moliyaviy tarix saqlanadi
     'nfc_gifts', 'gift_offers',                // sovg'a tarixi (pending bekor qilinadi)
     'physical_cards',                          // boshqa odamniki bo'lishi mumkin — uziladi
-    'password_reset_codes', 'phone_otp_codes', // bu yerdagi `code` — SMS kodi, karta emas
+    'password_reset_codes', 'phone_otp_codes', 'email_otp_codes', // bu yerdagi `code` — tasdiqlash kodi, karta emas
   ]);
 
   const missing = withCode.filter((t) => !INTENTIONALLY_KEPT.has(t) && !CARD_CONTENT_TABLES.includes(t));

@@ -76,7 +76,9 @@ check('parol maydoni `isRegister` shartidan TASHQARIDA', registerOnlyDepthAt(src
 
 // ── 2) Login/email maydoni va yuborish tugmasi ham ────────────────────
 // 2026-09: "yaratish" so'zi diniy sabab bilan "ochish" ga almashtirildi.
-const submitIdx = src.indexOf("isRegister ? t('Akkaunt ochish') : t('Kirish')");
+// Ro'yxat endi IKKI QADAM (emailga kod) — shuning uchun tugma yozuvi
+// qadamga qarab o'zgaradi: "Davom etish" -> "Akkaunt ochish".
+const submitIdx = src.indexOf("isRegister ? (codeSent ? t('Akkaunt ochish') : t('Davom etish')) : t('Kirish')");
 checkTrue('yuborish tugmasi topildi', submitIdx > 0);
 check('yuborish tugmasi shartdan tashqarida', registerOnlyDepthAt(src, submitIdx), 0);
 

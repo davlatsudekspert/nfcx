@@ -33,7 +33,9 @@ const post = (path, json, init = {}) => worker.fetch(req(path, { method: 'POST',
 
   await env.DB.prepare(`INSERT INTO bot_verifications (phone, tg_user_id, tg_name) VALUES ('+998901234567', 777001, 'Ali')`).run();
   res = await post('/api/auth/request-register-code', { phone: '+998 90 123-45-67' });
-  check('request-code: verified -> 200 {ok:true}', [res.status, await res.json()], [200, { ok: true }]);
+  // Javobda `channel` bor: kod QAYERGA ketganini frontend biladi
+  // (emailga yoki Telegramga). Email berilmagani uchun — Telegram.
+  check('request-code: verified -> 200 {ok:true,channel:telegram}', [res.status, await res.json()], [200, { ok: true, channel: 'telegram' }]);
   check('request-code: telegram send captured to tg_user_id', [tgSends.length, tgSends[0].chat_id], [1, 777001]);
   checkTrue('request-code: message contains 6-digit code', /^\d{6}$/.test(lastCode() || ''));
   const otpRow = sqlite.prepare(`SELECT phone, purpose, used, length(code) AS len FROM phone_otp_codes ORDER BY id DESC LIMIT 1`).get();

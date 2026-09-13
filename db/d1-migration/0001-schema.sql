@@ -441,6 +441,16 @@ CREATE TABLE IF NOT EXISTS "password_reset_codes" (
   FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS "email_otp_codes" (
+  "id" INTEGER PRIMARY KEY NOT NULL,
+  "email" TEXT (160) NOT NULL,
+  "code" TEXT (64) NOT NULL,
+  "purpose" TEXT (20) DEFAULT 'register' NOT NULL,
+  "expires_at" TEXT NOT NULL,
+  "used" INTEGER DEFAULT 0 NOT NULL,
+  "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS "phone_otp_codes" (
   "id" INTEGER PRIMARY KEY NOT NULL,
   "phone" TEXT (32) NOT NULL,
@@ -712,6 +722,7 @@ CREATE INDEX IF NOT EXISTS "messages_conv_idx" ON "messages" ("conversation_id",
 
 CREATE INDEX IF NOT EXISTS "messages_unread_idx" ON "messages" ("conversation_id") WHERE "is_read" = 0;
 
+CREATE INDEX IF NOT EXISTS "email_otp_codes_lookup_idx" ON "email_otp_codes" ("email", "purpose", "created_at" DESC);
 CREATE INDEX IF NOT EXISTS "phone_otp_codes_lookup_idx" ON "phone_otp_codes" ("phone", "purpose", "created_at" DESC);
 
 CREATE INDEX IF NOT EXISTS "physical_cards_code_idx" ON "physical_cards" ("linked_code");

@@ -4,10 +4,12 @@ import { cardContentCleanupStmts } from './card-cleanup.js';
 //
 // Javob shakllari server/index.js (Express) bilan BIR XIL — frontend
 // src/pages/AuthPage.jsx + src/lib/auth.jsx shunga bog'langan:
-//   POST /api/auth/request-register-code {phone}        → {ok:true} | 422 {error:'bad_phone'|'phone_not_verified'} | 429 | 503 {error:'tg_send_failed'}
+//   POST /api/auth/request-register-code {email}|{phone} → {ok:true,channel:'email'|'telegram'|'none'}
+//                                                        | 422 {error:'bad_phone'|'phone_not_verified'} | 429
+//                                                        | 503 {error:'email_send_failed'|'tg_send_failed'}
 //   POST /api/auth/tg-link/start                        → {token,url} | 429 | 503 {error:'bot_not_configured'}
 //   GET  /api/auth/tg-link/status?token=                → {status:'pending'|'linked'|'expired', phone?}
-//   POST /api/auth/register {email,password,phone,tosAccepted,promoCode,
+//   POST /api/auth/register {email,emailCode,password,phone,tosAccepted,promoCode,
 //                            linkToken}  ← yangi, tugmali oqim
 //                           {…,code,botAck}  ← eski, kodli oqim (hali qabul qilinadi)
 //                                                        → 201 {user:{id,email}} + Set-Cookie | 422 | 409 {error:'email_taken'}
@@ -31,6 +33,35 @@ const RESET_WINDOW_MS = 15 * 60 * 1000;
 const OTP_TEXT = {
   register: (code) => `✅ NFCSTORE ro'yxatdan o'tish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 5 daqiqa ichida amal qiladi.`,
   password_reset: (code) => `🔐 Parolni o'zgartirish kodi: <b>${code}</b>\n\nBu kodni hech kimga bermang. 10 daqiqa ichida amal qiladi.`,
+};
+
+// EMAILGA yuboriladigan kod xati. Telegram matnidan farqli: HTML,
+// va kod KATTA qilib ko'rsatiladi — odam uni pochta ilovasidan
+// ko'chirib olishi kerak.
+function emailCodeHtml(H, { title, intro, code, ttlText }) {
+  return H.emailShellD1({
+    title,
+    body: `<p style="margin:0 0 14px">${intro}</p>`
+      + `<div style="margin:0;padding:16px 0;text-align:center;background:#0f0f12;border:1px solid #2a2a30;border-radius:12px">`
+      + `<span style="font:700 30px/1 'Courier New',monospace;letter-spacing:.22em;color:#e8c977">${code}</span></div>`,
+    footer: `${ttlText} Bu kodni HECH KIMGA bermang \u2014 NFCSTORE xodimlari ham uni hech qachon so\u2018ramaydi.`
+      + `<br />Agar bu siz bo\u2018lmasangiz, xatni e\u2019tiborsiz qoldiring.`,
+  });
+}
+
+const EMAIL_OTP_TEXT = {
+  register: (code) => ({
+    subject: 'NFCSTORE — ro\u2018yxatdan o\u2018tish kodi: ' + code,
+    intro: 'NFCSTORE\u2019da ro\u2018yxatdan o\u2018tishni yakunlash uchun quyidagi kodni kiriting:',
+    title: 'Ro\u2018yxatdan o\u2018tish kodi',
+    ttl: 'Kod 5 daqiqa ichida amal qiladi.',
+  }),
+  password_reset: (code) => ({
+    subject: 'NFCSTORE — parolni o\u2018zgartirish kodi: ' + code,
+    intro: 'Parolingizni o\u2018zgartirish uchun quyidagi kodni kiriting:',
+    title: 'Parolni o\u2018zgartirish kodi',
+    ttl: 'Kod 10 daqiqa ichida amal qiladi.',
+  }),
 };
 
 // ---------- kichik yordamchilar ----------
@@ -144,6 +175,54 @@ async function verifyAndConsumePhoneOtpCode(env, H, phone, code, purpose) {
   const consumed = await env.DB.prepare(`UPDATE phone_otp_codes SET used = 1 WHERE id = ? AND used = 0`).bind(row.id).run();
   if (!consumed?.meta?.changes) return false; // parallel so'rov allaqachon ishlatgan
   return (await H.sha256Hex(code)) === row.code;
+}
+
+// ---------- email_otp_codes (emailga yuborilgan kodlar) ----------
+//
+// Tuzilishi telefon kodlariniki bilan ataylab bir xil: ikkala kanal
+// ham bir xil qoidalarga bo'ysunadi (kod hash bo'lib saqlanadi, bitta
+// urinish, tezlik cheklovi).
+
+async function countRecentEmailOtps(env, email, purpose, sinceTs) {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM email_otp_codes WHERE email = ? AND purpose = ? AND created_at > ?`
+  ).bind(email, purpose, sinceTs).first();
+  return Number(row?.n || 0);
+}
+
+async function createEmailOtpCode(env, H, email, purpose, ttlMs) {
+  const code = sixDigitCode();
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO email_otp_codes (email, code, purpose, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, ?)`
+  ).bind(email, await H.sha256Hex(code), purpose, tsAt(now + ttlMs), tsAt(now)).run();
+  return code;
+}
+
+// Eng so'nggi faol kodni tekshiradi va ISHLATILGAN deb belgilaydi. Kod
+// noto'g'ri bo'lsa ham o'sha kod kuydiriladi — 6 xonali kodni taxmin
+// qilib bo'lmasin (har kodga 1 urinish, kod olish esa cheklangan).
+async function verifyAndConsumeEmailOtpCode(env, H, email, code, purpose) {
+  const row = await env.DB.prepare(
+    `SELECT id, code FROM email_otp_codes WHERE email = ? AND purpose = ? AND used = 0 AND expires_at > ?
+     ORDER BY id DESC LIMIT 1`
+  ).bind(email, purpose, H.nowTs()).first();
+  if (!row) return false;
+  const consumed = await env.DB.prepare(`UPDATE email_otp_codes SET used = 1 WHERE id = ? AND used = 0`).bind(row.id).run();
+  if (!consumed?.meta?.changes) return false; // parallel so'rov allaqachon ishlatgan
+  return (await H.sha256Hex(code)) === row.code;
+}
+
+// Kodni emailga yuboradi. `true` — ketdi.
+async function sendEmailOtp(env, H, email, purpose, code) {
+  const t = EMAIL_OTP_TEXT[purpose](code);
+  const res = await H.sendEmailD1(env, {
+    to: email,
+    subject: t.subject,
+    html: emailCodeHtml(H, { title: t.title, intro: t.intro, code, ttlText: t.ttl }),
+    text: `${t.intro}\n\n${code}\n\n${t.ttl}`,
+  });
+  return !!res?.ok;
 }
 
 // ---------- password_reset_codes ----------
@@ -338,8 +417,50 @@ async function tgLinkStatus(request, env, H, url) {
 
 // ---------- route'lar ----------
 
+// RO'YXATDAN O'TISH KODI — endi EMAILGA.
+//
+// Egasining qarori: "ro'yxatdan o'tishda emailga kod kelsin, lekin
+// telefon raqam ham yozilsin; telefonni ichkarida (sozlamalarda) TG
+// bot orqali tasdiqlasin".
+//
+// Nima uchun email BIRINCHI kanal: Telegram kodini olish uchun odam
+// AVVAL botga kirib kontaktini ulashi kerak edi — ya'ni ro'yxatdan
+// o'tishdan oldin butunlay boshqa ilovada ish bajarishi kerak edi.
+// Email esa hammada bor va hech qanday oldindan tayyorgarlik
+// talab qilmaydi.
+//
+// Telefon/Telegram yo'li OLIB TASHLANMADI: email xizmati o'chirilgan
+// yoki xat ketmagan bo'lsa, eski yo'l zaxira sifatida ishlaydi.
+// Javobdagi `channel` frontendga kod QAYERGA ketganini aytadi.
 async function requestRegisterCode(request, env, H) {
   const body = await request.json().catch(() => ({}));
+  const email = H.cleanStr(body?.email, 120).toLowerCase();
+
+  // Email yozilgan, lekin xizmat O'CHIQ: kod umuman kerak emas
+  // (`register` ham o'sha holatda kod so'ramaydi). Frontendga shuni
+  // ochiq aytamiz — aks holda u Telegram yo'liga tushib, botni
+  // ulamagan odamga "phone_not_verified" degan chalkash xato
+  // ko'rsatilardi.
+  if (email && EMAIL_RE.test(email) && !H.emailEnabledD1(env)) {
+    return H.json({ ok: true, channel: 'none' });
+  }
+
+  if (email && EMAIL_RE.test(email) && H.emailEnabledD1(env)) {
+    // Limit EMAIL bo'yicha: bitta manzilga 10 daqiqada 3 ta kod.
+    const recent = await countRecentEmailOtps(env, email, 'register', tsAt(Date.now() - REGISTER_OTP_WINDOW_MS));
+    if (recent >= REGISTER_OTP_MAX) return H.json({ error: 'too_many_requests' }, 429);
+    // Begona manzilga xat yog'dirmaslik uchun IP bo'yicha ham cheklov.
+    if (await H.rateLimitD1(env, 'regcode:ip:' + H.reqIp(request), 10, REGISTER_OTP_WINDOW_MS)) {
+      return H.json({ error: 'too_many_requests' }, 429);
+    }
+    const code = await createEmailOtpCode(env, H, email, 'register', REGISTER_OTP_TTL_MS);
+    if (!(await sendEmailOtp(env, H, email, 'register', code))) {
+      return H.json({ error: 'email_send_failed' }, 503);
+    }
+    return H.json({ ok: true, channel: 'email' });
+  }
+
+  // ---- Zaxira yo'l: Telegram (eski oqim, bitma-bit avvalgidek) ----
   const phone = normPhone(body?.phone, H);
   if (!PHONE_RE.test(phone)) return H.json({ error: 'bad_phone' }, 422);
 
@@ -353,7 +474,7 @@ async function requestRegisterCode(request, env, H) {
   const code = await createPhoneOtpCode(env, H, phone, 'register');
   const sent = await H.sendTelegramTo(env, tgUserId, OTP_TEXT.register(code));
   if (!sent) return H.json({ error: 'tg_send_failed' }, 503);
-  return H.json({ ok: true });
+  return H.json({ ok: true, channel: 'telegram' });
 }
 
 // Ro'yxatdan o'tish. 2026-09 dan beri: TELEFON majburiy, EMAIL ixtiyoriy,
@@ -376,12 +497,29 @@ async function register(request, env, H) {
     return H.json({ error: 'too_many_requests' }, 429);
   }
 
-  // Email BO'SH bo'lishi mumkin. Yozilgan bo'lsa — formati tekshiriladi
-  // (xato yozilgan email jim qabul qilinsa, odam keyin parolini tiklay
-  // olmay qolardi).
+  // EMAIL VA UNING KODI.
+  //
+  // Egasining qarori: ro'yxatdan o'tishda kod EMAILGA keladi. Demak
+  // email endi majburiy va u TASDIQLANGAN bo'lishi kerak.
+  //
+  // Lekin bu FAQAT email xizmati yoqilgan bo'lsa amal qiladi. Xizmat
+  // o'chiq bo'lsa (kalit tugadi, Resend uzildi) eski qoida ishlaydi:
+  // email ixtiyoriy, kod so'ralmaydi. Egasining tanlovi shu edi —
+  // "ro'yxat to'xtamasin". Aks holda xizmatdagi bitta uzilish butun
+  // sayt uchun yangi mijozlarni yopib qo'yardi.
+  const emailOn = H.emailEnabledD1(env);
   const rawEmail = H.cleanStr(body?.email, 120).toLowerCase();
   if (rawEmail && !EMAIL_RE.test(rawEmail)) return H.json({ error: 'Email formati noto’g’ri.' }, 422);
+  if (emailOn && !rawEmail) return H.json({ error: 'email_required' }, 422);
   const email = rawEmail || H.placeholderEmailForD1(extra.phone);
+
+  if (emailOn) {
+    const emailCode = H.cleanStr(body?.emailCode, 6);
+    if (!emailCode) return H.json({ error: 'email_code_required' }, 422);
+    if (!(await verifyAndConsumeEmailOtpCode(env, H, rawEmail, emailCode, 'register'))) {
+      return H.json({ error: 'bad_email_code' }, 422);
+    }
+  }
 
   // Token yuborilgan bo'lsa — raqam FORMDAN emas, TOKENDAN tasdiqlanadi.
   if (extra.linkToken) {
