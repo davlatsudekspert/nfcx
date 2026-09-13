@@ -8,6 +8,7 @@ import { getGiftOffers, getPaymentsSettings, getPhysicalPricing } from '@/api/en
 import { Card } from '@/components/Card';
 import { TapScale } from '@/components/TapScale';
 import { HandleChip } from '@/features/profile/header/ActionButtons';
+import { TierStrip } from '@/features/nfc/TierStrip';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
 import { money } from '@/lib/format';
@@ -138,7 +139,12 @@ export function HomeScreen() {
         />
 
         {/* Tarif chizig'i — maketda Home'da, ikkala profil turida ham. */}
-        <TierStrip />
+        <View style={{ gap: 10, marginTop: 2 }}>
+          <Text style={[mono(600, 11), { color: theme.a1, letterSpacing: 1.1 }]}>
+            YANGI NFC ID
+          </Text>
+          <TierStrip onPressTier={() => openUrl(`${SITE}/narxlar`)} />
+        </View>
       </ScrollView>
 
       <SwitcherSheet
@@ -190,101 +196,6 @@ function ActionCard({
         <Text style={[sans(400, 12, 1.5), { color: 'rgba(255,255,255,.48)' }]}>{sub}</Text>
       </Card>
     </TapScale>
-  );
-}
-
-/**
- * Tarif chizig'i — metall gradientli "medal" nishonlari
- * (spetsifikatsiya 7-bo'lim: embossed medal look, flat pill emas).
- *
- * Narxlar spetsifikatsiyada qat'iy berilgan, shuning uchun ular shu
- * yerda: Bronze 49k / Silver 99k / Gold 149k / Premium 199k /
- * Exclusive 490k dan. Xarid oqimi veb orqali ochiladi.
- */
-function TierStrip() {
-  const { theme } = useTheme();
-
-  const TIERS = [
-    { name: 'Bronze', price: 49_000, m1: '#e0b083', m2: '#7d4a1e' },
-    { name: 'Silver', price: 99_000, m1: '#eef2f6', m2: '#8b949c' },
-    { name: 'Gold', price: 149_000, m1: '#f0cf7a', m2: '#a87c0d' },
-    { name: 'Premium', price: 199_000, m1: '#d8c6f0', m2: '#6b4fa0' },
-    { name: 'Exclusive', price: 490_000, m1: '#f6ead0', m2: '#5a4a22', from: true },
-  ];
-
-  return (
-    <View style={{ gap: 10, marginTop: 2 }}>
-      <Text style={[mono(600, 11), { color: theme.a1, letterSpacing: 1.1 }]}>
-        YANGI NFC ID
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingRight: 4 }}
-      >
-        {TIERS.map((t) => (
-          <TapScale
-            key={t.name}
-            radius={14}
-            onPress={() => openUrl(`${SITE}/narxlar`)}
-            accessibilityLabel={`${t.name} tarifi`}
-            style={{ borderRadius: 14 }}
-          >
-            <Card
-              radius={14}
-              shadow="tier"
-              style={{
-                alignItems: 'flex-start',
-                gap: 7,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-              }}
-            >
-              <TierMedal m1={t.m1} m2={t.m2} />
-              <Text style={[sans(700, 11.5), { color: theme.ink }]}>{t.name}</Text>
-              <Text style={[mono(500, 10), { color: 'rgba(255,255,255,.5)' }]}>
-                {t.from ? `${money(t.price)} dan` : money(t.price)}
-              </Text>
-            </Card>
-          </TapScale>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-/**
- * Metall nishon — ichki soya bilan "bosma medal" ko'rinishi.
- * Maketda bu `inset` box-shadow bilan qilingan; RN da inset soya yo'q,
- * shuning uchun effekt ikki qatlam gradient bilan taqlid qilinadi.
- */
-function TierMedal({ m1, m2 }: { m1: string; m2: string }) {
-  return (
-    <View
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        overflow: 'hidden',
-        borderWidth: 0.5,
-        borderColor: 'rgba(255,255,255,.35)',
-      }}
-    >
-      <View style={{ flex: 1, backgroundColor: m2 }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: -2,
-            left: -2,
-            right: 6,
-            bottom: 8,
-            borderRadius: 11,
-            backgroundColor: m1,
-            opacity: 0.9,
-          }}
-        />
-      </View>
-    </View>
   );
 }
 
