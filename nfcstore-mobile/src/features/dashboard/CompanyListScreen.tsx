@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
@@ -14,7 +13,6 @@ import { GoldCircle, IconCircle } from '@/components/IconCircle';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
-import { SITE } from '@/features/profile/profileVM';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
 import { compactCount } from '@/lib/format';
@@ -62,9 +60,9 @@ export function CompanyListScreen() {
             <CompanyCard key={company.companyId} company={company} />
           ))}
 
-          <CreateCompanyCard
-            onPress={() => WebBrowser.openBrowserAsync(`${SITE}/business`).catch(() => {})}
-          />
+          {/* Ilova ICHIDAGI forma — ilgari brauzerda nfcstore.uz/business
+              ochilardi. */}
+          <CreateCompanyCard onPress={() => router.push('/company/new')} />
 
           {!list.length ? (
             <Text

@@ -180,6 +180,80 @@ export type StoryAuthor = {
 
 export type TapInfo = { active: boolean; linkedCode: string | null };
 
+/* ══ Yozuvni yaratish / yangilash ════════════════════════════════════
+   `validateRecordBody()` (worker.js:4819) qabul qiladigan maydonlar.
+   Ro'yxatda faqat ILOVA ishlatadiganlari bor — qolganlari (tema,
+   ranglar, kartaning dizayni) veb tahrirlagichida qoladi.
+
+   DIQQAT: `PUT /api/records/:code` yozuvni TO'LIQ ALMASHTIRADI.
+   Yuborilmagan maydon o'chadi, shuning uchun har doim `recordToInput()`
+   bilan mavjud qiymatlar ustiga yoziladi.                             */
+
+export type RecordInput = {
+  /** Majburiy — bo'sh bo'lsa server 422 qaytaradi. */
+  name: string;
+  role?: string;
+  avatarUrl?: string;
+  phone?: string;
+  email?: string;
+  /** Telegram — `@` siz saqlanadi. */
+  tg?: string;
+  instagram?: string;
+  facebook?: string;
+  twitter?: string;
+  linkedin?: string;
+  website?: string;
+  about?: string;
+  city?: string;
+  address?: string;
+  profileType?: 'personal' | 'expert' | 'business';
+  hidePhone?: boolean;
+  musicUrls?: string[];
+  extraLinks?: ExtraLink[];
+};
+
+/**
+ * `POST /api/records/:code` ning 202 javobi — buyurtma yaratildi, endi
+ * to'lov kutilmoqda. `payLink` Payme checkout manzili.
+ */
+export type PurchasePending = {
+  pending: true;
+  orderId: number;
+  code: string;
+  price: number;
+  payLink: string;
+};
+
+/** `GET /api/companies/check?id=` javobi. */
+export type CompanyAvailability = {
+  available: boolean;
+  /** Band bo'lsa yoki admin qoidasi bilan to'silgan bo'lsa sabab. */
+  rule?: string | null;
+  tier?: string;
+  price?: number;
+};
+
+/** `POST /api/companies` tanasi. */
+export type CompanyInput = {
+  /** `true` — server tasodifiy BEPUL ID beradi, to'lov so'ralmaydi. */
+  auto?: boolean;
+  /** `auto` bo'lmaganda majburiy. */
+  companyId?: string;
+  displayName: string;
+  city: string;
+  phone: string;
+  /** Kamida 20 belgi — server shart qilib qo'ygan. */
+  description: string;
+  category?: string;
+  subcategory?: string;
+  address?: string;
+  telegram?: string;
+  whatsapp?: string;
+  website?: string;
+  /** Mavjud shaxsiy kartadan ma'lumot ko'chirish uchun. */
+  sourceCardCode?: string;
+};
+
 /* ══ Katalog (ochiq direktoriya) ═════════════════════════════════════
    GET /api/records        -> catalogCard[] (YALANG'OCH massiv, {records} emas)
    GET /api/records/search -> { records: catalogCard[] }

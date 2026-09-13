@@ -130,6 +130,13 @@ function Shell({ ready }: { ready: boolean }) {
           name="dashboard/[companyId]"
           options={{ animation: 'slide_from_right' }}
         />
+        {/* Ilova ICHIDAGI oqimlar. Ilgari bu uchalasi brauzerda
+            ochilardi; endi forma ilovada va to'g'ridan-to'g'ri API'ga
+            yozadi. To'lov qismigina tashqarida qoladi (Payme checkout
+            havolasi) — bu kelishilgan qoida. */}
+        <Stack.Screen name="buy" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="company/new" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="edit/[code]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen
           name="post/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { type ReactNode, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -41,10 +42,15 @@ import { mono, sans } from '@/theme/type';
  * MA'LUMOT MANBALARI — hammasi jonli API dan, maketdagi sonlar
  * (120 000, "284 marta o'qildi", "9 TA") faqat o'rin egallovchi:
  *   ID holati       -> faol profil javobi (ko'rishlar, ochiq havola)
- *   Jismoniy karta  -> GET /api/settings/physical-nfc-pricing
  *   Havolalar soni  -> profil javobidagi havolalar ro'yxati
  *   Sovg'a          -> GET /api/gift-offers
  *   To'lovlar       -> GET /api/settings/payments-enabled + /auth/me
+ *   Jismoniy karta  -> pastdagi izohga qarang (ikki xil narx bor)
+ *
+ * QAYERGA OLIB BORADI: "Havolalarni tahrirlash", "Mahsulot qo'shish" va
+ * tarif medallari endi ILOVA ICHIDAGI ekranlarga o'tadi. Brauzerda
+ * faqat ochiq profil havolasi, sovg'a va to'lovlar qoladi — ular ko'p
+ * qadamli veb oqimlari.
  */
 export function HomeScreen() {
   const { theme } = useTheme();
@@ -60,8 +66,22 @@ export function HomeScreen() {
 
   const isBusiness = vm?.kind === 'business';
 
-  // Bir dona karta narxi — birinchi tarif (1–9 dona) bo'yicha.
-  const unitPrice = pricing.data?.tiers?.[0]?.pricePerUnit ?? null;
+  // JISMONIY KARTA NARXI.
+  //
+  // Bu yerda ILGARI `/api/settings/physical-nfc-pricing` ning birinchi
+  // tarifi (120 000) ko'rsatilardi va bu XATO edi: o'sha endpoint
+  // KOMPANIYALAR uchun ko'p donali ulgurji kalkulyator
+  // (src/lib/db.js `dbGetPhysicalNfcPricing`, 1–9 / 10–49 / 50+).
+  // Bitta odam buyurtma qiladigan kartaning narxi esa alohida
+  // konstanta: `PHYSICAL_CARD_FEE` — saytda ham, backendda ham
+  // 200 000 so'm (src/lib/pricing.js:264, hosting/api/account.js:24).
+  //
+  // Shuning uchun: shaxsiy ID da qat'iy narx, biznes ID da ulgurji
+  // tarif. Bu qiymatni ochiq beradigan endpoint yo'q — qo'shilsa, shu
+  // konstanta o'chiriladi.
+  const PHYSICAL_CARD_FEE = 200_000;
+  const bulkPrice = pricing.data?.tiers?.[0]?.pricePerUnit ?? null;
+  const unitPrice = isBusiness ? bulkPrice : PHYSICAL_CARD_FEE;
   const delivery = pricing.data?.delivery;
   const pendingGifts = (gifts.data?.incoming?.length ?? 0) + (gifts.data?.outgoing?.length ?? 0);
 
@@ -110,7 +130,9 @@ export function HomeScreen() {
             title="Mahsulot qo’shish"
             sub="Nom, narx va rasm bilan katalogni to’ldiring"
             meta={`${vm?.third.value ?? 0} TA`}
-            onPress={vm?.companyId ? () => openUrl(`${SITE}/c/${vm.companyId}`) : undefined}
+            onPress={
+              vm?.companyId ? () => router.push(`/dashboard/${vm.companyId}`) : undefined
+            }
           />
         ) : (
           <ActionCard
@@ -118,7 +140,7 @@ export function HomeScreen() {
             title="Havolalarni tahrirlash"
             sub="Veb-sayt, Telegram, portfolio, kalendar"
             meta={`${vm?.third.value ?? 0} TA`}
-            onPress={vm?.code ? () => openUrl(`${SITE}/${vm.code}`) : undefined}
+            onPress={vm?.code ? () => router.push(`/edit/${vm.code}`) : undefined}
           />
         )}
 
@@ -275,7 +297,7 @@ function TierStrip() {
           <TapScale
             key={t.key}
             radius={16}
-            onPress={() => openUrl(`${SITE}/narxlar`)}
+            onPress={() => router.push('/buy')}
             accessibilityLabel={`${metal.name} tarifi, ${money(t.price)}`}
             style={[
               {
