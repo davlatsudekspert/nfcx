@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 import { toggleFollowCompany } from '@/api/endpoints';
 import type { Company } from '@/api/types';
 import { BackBar } from '@/components/BackBar';
 import { ProfileView } from '@/features/profile/ProfileView';
+import { SITE } from '@/features/profile/profileVM';
 import type { ProfileTab } from '@/features/profile/tabs/ProfileTabBar';
 import { useCompanyProfile } from '@/features/profile/useProfileTargets';
 import { useSeenRing } from '@/features/profile/useSeenRing';
@@ -25,7 +27,7 @@ export default function CompanyProfileRoute() {
   const { theme } = useTheme();
   const id = companyId ?? '';
 
-  const { vm, posts, loading, notFound } = useCompanyProfile(id || null);
+  const { vm, posts, stories, loading, notFound } = useCompanyProfile(id || null);
   const [tab, setTab] = useState<ProfileTab>('catalog');
   const { hasNewContent, seen, latest, markSeen } = useSeenRing(vm?.key ?? 'none', posts);
 
@@ -98,6 +100,7 @@ export default function CompanyProfileRoute() {
     <ProfileView
       vm={vm}
       posts={posts}
+      stories={stories}
       tab={tab}
       onTabChange={setTab}
       hasNewContent={hasNewContent}
@@ -114,6 +117,19 @@ export default function CompanyProfileRoute() {
       onFollow={vm.isOwner ? undefined : () => follow.mutate()}
       onDashboard={vm.isOwner ? () => router.push(`/dashboard/${id}`) : undefined}
       onManageCatalog={vm.isOwner ? () => router.push(`/dashboard/${id}`) : undefined}
+      onOpenProduct={(itemId) => router.push(`/product/${id}/${itemId}`)}
+      onCreateStory={
+        vm.isOwner
+          ? () => WebBrowser.openBrowserAsync(`${SITE}/kompaniyalar/${id.toLowerCase()}`).catch(() => {})
+          : undefined
+      }
+      // "Edit Business" — Dashboard bilan bir xil ish maydoniga olib
+      // boradi (mobilda alohida tahrirlash formasi hali yo'q).
+      onEdit={
+        vm.isOwner
+          ? () => WebBrowser.openBrowserAsync(`${SITE}/kompaniyalar/${id.toLowerCase()}`).catch(() => {})
+          : undefined
+      }
     />
   );
 }

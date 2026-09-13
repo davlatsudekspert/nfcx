@@ -1,7 +1,9 @@
+import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
 
+import { StripeFill } from '@/components/StripeFill';
 import { useTheme } from '@/theme/ThemeProvider';
-import { sans } from '@/theme/type';
+import { mono, sans } from '@/theme/type';
 
 import type { ProfileVM } from '../useProfileData';
 import { ActionButtons } from './ActionButtons';
@@ -39,15 +41,22 @@ export function ProfileHeader({
   const { theme } = useTheme();
 
   return (
-    <View
-      style={{
-        alignItems: 'center',
-        paddingTop: 2,
-        paddingHorizontal: 22,
-        paddingBottom: 14,
-      }}
-    >
-      <OrnamentLines />
+    <View style={{ alignItems: 'center' }}>
+      {/* Storefront banner — faqat biznesda (handoff: "COVER 16:7").
+          Egasining rasmi bo'lmasa ham joy ushlab turadi (placeholder
+          chiziqlar), shunda profil "bo'sh" ko'rinmaydi. */}
+      {vm.kind === 'business' ? <CoverBanner url={vm.coverUrl} /> : null}
+
+      <View
+        style={{
+          width: '100%',
+          alignItems: 'center',
+          paddingTop: 2,
+          paddingHorizontal: 22,
+          paddingBottom: 14,
+        }}
+      >
+        <OrnamentLines />
 
       <AvatarRing
         photoUrl={vm.photoUrl}
@@ -74,6 +83,7 @@ export function ProfileHeader({
         {vm.verified ? <VerifiedBadge /> : null}
       </View>
 
+      {vm.kind === 'business' && vm.category ? <RoleLine role={vm.category} /> : null}
       {vm.kind === 'business' && vm.openNow != null ? (
         <OpenNowBadge openNow={vm.openNow} hours={vm.hoursShort} />
       ) : null}
@@ -124,7 +134,36 @@ export function ProfileHeader({
         shareTitle={vm.name}
       />
 
-      <ContactIconRow {...vm.contacts} />
+      <ContactIconRow
+        {...vm.contacts}
+        address={vm.kind === 'business' ? vm.address : undefined}
+      />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Storefront banneri — 16:7, edge-to-edge (chetlarsiz). Rasm bo'lmasa
+ * ham chiziqli placeholder ko'rsatiladi ("COVER 16:7" — handoff'dagi
+ * aynan shu belgi), shunda layout HECH QACHON sakramaydi (spec: "skeletons
+ * matching the real layout so nothing shifts" — bo'sh holat ham shu
+ * qoidaga amal qiladi).
+ */
+function CoverBanner({ url }: { url?: string }) {
+  const { theme } = useTheme();
+
+  return (
+    <View style={{ width: '100%', aspectRatio: 16 / 7 }}>
+      {url ? (
+        <Image source={{ uri: url }} contentFit="cover" style={{ flex: 1 }} />
+      ) : (
+        <StripeFill step={10} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[mono(400, 9, 1.4), { color: theme.phInk, letterSpacing: 0.4 }]}>
+            COVER 16:7
+          </Text>
+        </StripeFill>
+      )}
     </View>
   );
 }

@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 import {
   getCompany,
   getCompanyPosts,
+  getCompanyStories,
   getFollowStats,
   getMe,
   getRecord,
 } from '@/api/endpoints';
-import type { CompanyPost } from '@/api/types';
+import type { CompanyPost, CompanyStory } from '@/api/types';
 import { useRoleStore } from '@/store/roleStore';
 
 import { businessVM, cardVM, type ProfileVM } from './profileVM';
@@ -77,8 +78,15 @@ export function useCardProfile(code: string | null) {
 
   return {
     vm,
-    /** Shaxsiy kartada post/feed tushunchasi yo'q — bo'sh ro'yxat. */
+    /**
+     * Bo'sh ro'yxat — QASDAN, "backend yo'q" degani EMAS. Audit
+     * (`hosting/worker.js`) shaxsiy kartada ham real `/api/records/:code/posts`
+     * va `/api/records/:code/stories` borligini tasdiqladi, lekin bu
+     * SLICE faqat Business Profile qamrovida — shaxsiy post/story
+     * ekranga ulash keyingi (Personal profile) slice'ga qoldirildi.
+     */
     posts: [] as CompanyPost[],
+    stories: [] as CompanyStory[],
     loading: recordQuery.isLoading,
     error: recordQuery.error,
     notFound: !!recordQuery.error && !recordQuery.data,
@@ -101,6 +109,12 @@ export function useCompanyProfile(companyId: string | null) {
     enabled: !!companyId,
   });
 
+  const storiesQuery = useQuery({
+    queryKey: ['stories', 'company', companyId],
+    queryFn: () => getCompanyStories(companyId!),
+    enabled: !!companyId,
+  });
+
   const meQuery = useQuery({ queryKey: ['me'], queryFn: getMe });
 
   const vm = useMemo<ProfileVM | null>(
@@ -114,6 +128,7 @@ export function useCompanyProfile(companyId: string | null) {
   return {
     vm,
     posts: postsQuery.data ?? [],
+    stories: (storiesQuery.data ?? []) as CompanyStory[],
     loading: companyQuery.isLoading,
     error: companyQuery.error,
     notFound: !!companyQuery.error && !companyQuery.data,

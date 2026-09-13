@@ -4,7 +4,7 @@ import { ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
-import type { CompanyPost } from '@/api/types';
+import type { CompanyPost, CompanyStory } from '@/api/types';
 import { Card } from '@/components/Card';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
@@ -18,6 +18,7 @@ import { FeedGrid } from './tabs/FeedGrid';
 import { InfoList, LinksList } from './tabs/InfoList';
 import { ProfileTabBar, type ProfileTab } from './tabs/ProfileTabBar';
 import { ReelsGrid, selectReels } from './tabs/ReelsGrid';
+import { StoriesGrid } from './tabs/StoriesGrid';
 
 /**
  * Profil tanasi — sarlavha, tab bar va tab kontenti.
@@ -34,6 +35,7 @@ import { ReelsGrid, selectReels } from './tabs/ReelsGrid';
 export function ProfileView({
   vm,
   posts,
+  stories = [],
   tab,
   onTabChange,
   hasNewContent,
@@ -44,11 +46,14 @@ export function ProfileView({
   onEdit,
   onOpenCompany,
   onManageCatalog,
+  onOpenProduct,
+  onCreateStory,
   topBar,
   banner,
 }: {
   vm: ProfileVM;
   posts: CompanyPost[];
+  stories?: CompanyStory[];
   tab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
   hasNewContent: boolean;
@@ -59,6 +64,9 @@ export function ProfileView({
   onEdit?: () => void;
   onOpenCompany?: (companyId: string) => void;
   onManageCatalog?: () => void;
+  onOpenProduct?: (itemId: string) => void;
+  /** Egasi uchun "Story yaratish" — haqiqiy veb yaratish sahifasini ochadi. */
+  onCreateStory?: () => void;
   topBar: ReactNode;
   /** Masalan "bu karta faol emas" ogohlantirishi. */
   banner?: ReactNode;
@@ -114,6 +122,7 @@ export function ProfileView({
               items={vm.catalog}
               plan={vm.plan}
               isOwner={vm.isOwner}
+              onOpen={onOpenProduct ? (item) => onOpenProduct(item.id) : undefined}
               onManage={onManageCatalog}
             />
           ) : null}
@@ -122,6 +131,10 @@ export function ProfileView({
           ) : null}
 
           {tab === 'reels' ? <ReelsGrid reels={reels} /> : null}
+
+          {tab === 'stories' && vm.kind === 'business' ? (
+            <StoriesGrid stories={stories} isOwner={vm.isOwner} onCreate={onCreateStory} />
+          ) : null}
 
           {tab === 'info' ? <InfoList about={vm.about} rows={vm.infoRows} /> : null}
         </Animated.View>

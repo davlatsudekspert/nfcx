@@ -4,12 +4,13 @@ import { useEffect, useMemo } from 'react';
 import {
   getCompany,
   getCompanyPosts,
+  getCompanyStories,
   getFollowStats,
   getMe,
   getMyCompanies,
   getRecord,
 } from '@/api/endpoints';
-import type { CompanyPost } from '@/api/types';
+import type { CompanyPost, CompanyStory } from '@/api/types';
 import { useActiveIdStore, type ActiveId } from '@/store/activeIdStore';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleStore } from '@/store/roleStore';
@@ -119,7 +120,18 @@ export function useProfileData() {
     enabled: !!bizId,
   });
 
+  // Business Stories — `GET /api/companies/:id/stories`, production
+  // Worker'da tasdiqlangan (hosting/worker.js:1209). Shaxsiy kartada
+  // ham real story backend bor, lekin bu SLICE Business Profile
+  // qamrovida, shuning uchun shaxsiyga bu yerda tegilmadi.
+  const storiesQuery = useQuery({
+    queryKey: ['stories', 'company', bizId],
+    queryFn: () => getCompanyStories(bizId!),
+    enabled: !!bizId,
+  });
+
   const posts: CompanyPost[] = postsQuery.data ?? [];
+  const stories: CompanyStory[] = storiesQuery.data ?? [];
 
   const vm = useMemo<ProfileVM | null>(() => {
     if (bizId && companyQuery.data) {
@@ -151,6 +163,7 @@ export function useProfileData() {
     accounts,
     active: resolved,
     posts,
+    stories,
     loading:
       meQuery.isLoading ||
       companiesQuery.isLoading ||

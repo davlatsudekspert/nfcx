@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 import { followCard, unfollowCard } from '@/api/endpoints';
 import type { FollowStats } from '@/api/types';
 import { BackBar, TapInactiveBanner } from '@/components/BackBar';
 import { ProfileView } from '@/features/profile/ProfileView';
+import { SITE } from '@/features/profile/profileVM';
 import type { ProfileTab } from '@/features/profile/tabs/ProfileTabBar';
 import { useCardProfile } from '@/features/profile/useProfileTargets';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -102,6 +104,10 @@ export default function CardProfileRoute() {
       banner={inactive === '1' ? <TapInactiveBanner /> : undefined}
       onFollow={vm.isOwner ? undefined : () => follow.mutate()}
       onOpenCompany={(companyId) => router.push(`/c/${companyId}`)}
+      // Profilni tahrirlash flow'i mobilda hali qurilmagan (rasm
+      // yuklash, forma) — shuning uchun haqiqiy veb tahrirlash sahifasi
+      // ochiladi, fake/bo'sh forma emas.
+      onEdit={vm.isOwner ? () => WebBrowser.openBrowserAsync(`${SITE}/account`).catch(() => {}) : undefined}
     />
   );
 }

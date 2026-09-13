@@ -33,7 +33,7 @@ export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const setActive = useActiveIdStore((s) => s.setActive);
 
-  const { vm, accounts, active, posts, loading, error } = useProfileData();
+  const { vm, accounts, active, posts, stories, loading, error } = useProfileData();
 
   const [tab, setTab] = useState<ProfileTab>('catalog');
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -126,6 +126,7 @@ export function ProfileScreen() {
       <ProfileView
         vm={vm}
         posts={posts}
+        stories={stories}
         tab={tab}
         onTabChange={setTab}
         hasNewContent={hasNewContent}
@@ -147,6 +148,32 @@ export function ProfileScreen() {
           vm.companyId ? () => router.push(`/dashboard/${vm.companyId}`) : undefined
         }
         onOpenCompany={(companyId) => router.push(`/c/${companyId}`)}
+        onOpenProduct={
+          vm.companyId
+            ? (itemId) => router.push(`/product/${vm.companyId}/${itemId}`)
+            : undefined
+        }
+        onCreateStory={
+          vm.companyId
+            ? () =>
+                WebBrowser.openBrowserAsync(
+                  `${SITE}/kompaniyalar/${vm.companyId!.toLowerCase()}`,
+                ).catch(() => {})
+            : undefined
+        }
+        // Profilni tahrirlash — mobilda alohida forma hali yo'q, shuning
+        // uchun haqiqiy veb sahifa ochiladi (biznesda ish maydoni,
+        // shaxsiyda hisob sozlamalari).
+        onEdit={
+          vm.isOwner
+            ? () =>
+                WebBrowser.openBrowserAsync(
+                  vm.companyId
+                    ? `${SITE}/kompaniyalar/${vm.companyId.toLowerCase()}`
+                    : `${SITE}/account`,
+                ).catch(() => {})
+            : undefined
+        }
       />
       {sheets}
     </>

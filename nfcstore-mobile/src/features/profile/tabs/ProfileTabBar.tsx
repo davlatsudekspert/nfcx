@@ -6,7 +6,7 @@ import { GoldSweep } from '@/components/GoldSweep';
 import { A145 } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 
-export type ProfileTab = 'feed' | 'catalog' | 'reels' | 'info';
+export type ProfileTab = 'feed' | 'catalog' | 'reels' | 'stories' | 'info';
 
 /**
  * Profil tab bari — spetsifikatsiya 4-bo'limi.
@@ -35,6 +35,62 @@ export function ProfileTabBar({
   isOwner: boolean;
   isBusiness: boolean;
 }) {
+  const catalogTab = (
+    <TabButton
+      key="catalog"
+      tab="catalog"
+      active={active}
+      onChange={onChange}
+      label={isBusiness ? 'Katalog' : 'Havolalar'}
+      // Shaxsiy profilda ikonka zanjirga o'zgaradi (maketda ham
+      // shunday), chunki bu tab mahsulot emas, havolalar ro'yxati.
+      icon={(color) => (isBusiness ? <BoxIcon color={color} /> : <ChainIcon color={color} />)}
+      // "+" faqat biznesda: shaxsiy havolalar "Profilni tahrirlash"
+      // orqali o'zgartiriladi, tab ikonkasidan emas.
+      plusBadge={isOwner && isBusiness}
+    />
+  );
+  const feedTab = (
+    <TabButton key="feed" tab="feed" active={active} onChange={onChange} label="Postlar" />
+  );
+  const infoTab = (
+    <TabButton key="info" tab="info" active={active} onChange={onChange} label="Ma’lumot" />
+  );
+
+  // Handoff'dagi tartib turlicha: Biznes — Catalog · Posts · Stories ·
+  // About; Shaxsiy — Posts · Links · Reels · About. Biznesda haqiqiy
+  // Story backend borligi tasdiqlangan (`GET /api/companies/:id/stories`),
+  // shuning uchun "Reels" o'rniga haqiqiy "Stories" tabi ko'rsatiladi.
+  // Shaxsiy profilda ham story/post backend real (audit topilmasi), lekin
+  // bu SLICE faqat Business Profile qamrovida — shaxsiyga tegilmadi.
+  if (isBusiness) {
+    return (
+      <TabBarRow>
+        {catalogTab}
+        {feedTab}
+        <TabButton
+          tab="stories"
+          active={active}
+          onChange={onChange}
+          label="Stories"
+          plusBadge={isOwner}
+        />
+        {infoTab}
+      </TabBarRow>
+    );
+  }
+
+  return (
+    <TabBarRow>
+      {feedTab}
+      {catalogTab}
+      <TabButton tab="reels" active={active} onChange={onChange} label="Reels" />
+      {infoTab}
+    </TabBarRow>
+  );
+}
+
+function TabBarRow({ children }: { children: React.ReactNode }) {
   return (
     <View
       style={{
@@ -45,27 +101,7 @@ export function ProfileTabBar({
         borderBottomColor: 'rgba(255,255,255,.07)',
       }}
     >
-      <TabButton tab="feed" active={active} onChange={onChange} label="Postlar" />
-      <TabButton
-        tab="catalog"
-        active={active}
-        onChange={onChange}
-        label={isBusiness ? 'Katalog' : 'Havolalar'}
-        // Shaxsiy profilda ikonka zanjirga o'zgaradi (maketda ham
-        // shunday), chunki bu tab mahsulot emas, havolalar ro'yxati.
-        icon={(color) => (isBusiness ? <BoxIcon color={color} /> : <ChainIcon color={color} />)}
-        // "+" faqat biznesda: shaxsiy havolalar "Profilni tahrirlash"
-        // orqali o'zgartiriladi, tab ikonkasidan emas.
-        plusBadge={isOwner && isBusiness}
-      />
-      <TabButton
-        tab="reels"
-        active={active}
-        onChange={onChange}
-        label="Reels"
-        plusBadge={isOwner && isBusiness}
-      />
-      <TabButton tab="info" active={active} onChange={onChange} label="Ma’lumot" />
+      {children}
     </View>
   );
 }
@@ -202,6 +238,15 @@ function TabIcon({ tab, color }: { tab: ProfileTab; color: string }) {
         <Rect x={3} y={3} width={18} height={18} rx={5} stroke={color} strokeWidth={1.7} fill="none" />
         <Path d="M3.6 8.5h16.8M9.2 3.3l3 5.2M14.6 3.3l3 5.2" stroke={color} strokeWidth={1.5} fill="none" />
         <Path d="M10.4 12.3l4.4 2.5-4.4 2.5v-5z" fill={color} />
+      </Svg>
+    );
+  }
+
+  if (tab === 'stories') {
+    return (
+      <Svg width={s} height={s} viewBox="0 0 24 24">
+        <Circle cx={12} cy={12} r={8.4} stroke={color} strokeWidth={1.7} fill="none" />
+        <Circle cx={12} cy={12} r={3.6} stroke={color} strokeWidth={1.7} fill="none" />
       </Svg>
     );
   }

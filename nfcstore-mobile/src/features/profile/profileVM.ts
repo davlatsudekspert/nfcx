@@ -22,12 +22,18 @@ export type ProfileVM = {
   name: string;
   handle: string;
   photoUrl?: string;
+  /** Faqat biznesda — storefront ustidagi katta banner (handoff: "COVER 16:7"). */
+  coverUrl?: string;
   verified: boolean;
   openNow: boolean | null;
   hoursShort: string;
   role: string;
+  /** Faqat biznesda — category/subcategory (handoff: storefront sarlavhasi). */
+  category?: string;
   phone: string;
   city: string;
+  /** Faqat biznesda — xarita havolasi uchun (handoff: "location/map action"). */
+  address?: string;
   views: string;
   followers: string;
   third: { value: string; label: string };
@@ -85,14 +91,17 @@ export function businessVM(
     name: c.displayName || c.companyId,
     handle: `@${id}`,
     photoUrl: c.logoUrl || undefined,
+    coverUrl: c.coverUrl || undefined,
     // Biznesda tasdiqlash nishoni HOZIRCHA yo'q — Badges.tsx dagi izohga
     // qarang (`companies.verified` ustuni kutilmoqda).
     verified: businessVerified(c),
     openNow: c.openNow,
     hoursShort: todayWindow(c.hours),
     role: '',
+    category: [c.category, c.subcategory].filter(Boolean).join(' · ') || undefined,
     phone: prettyPhone(c.phone),
     city: c.city,
+    address: c.address || undefined,
     views: compactCount(c.views),
     followers: compactCount(c.followers),
     third: { value: String(c.catalog.length), label: 'mahsulot' },

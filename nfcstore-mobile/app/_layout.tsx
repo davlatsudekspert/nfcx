@@ -120,6 +120,11 @@ function Shell({ ready }: { ready: boolean }) {
         <Stack.Screen name="companies/index" options={{ animation: 'slide_from_right' }} />
         {/* FAOL identity'ning QR + ulashish ekrani (NFC Center). */}
         <Stack.Screen name="nfc/qr" options={{ animation: 'slide_from_right' }} />
+        {/* Mahsulot/xizmat detali va buyurtma berish. */}
+        <Stack.Screen
+          name="product/[companyId]/[itemId]"
+          options={{ animation: 'slide_from_right' }}
+        />
         <Stack.Screen
           name="post/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}

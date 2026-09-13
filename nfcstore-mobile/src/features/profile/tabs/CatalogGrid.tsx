@@ -165,10 +165,38 @@ function ProductCard({
         )}
       </View>
 
+      {item.available === false ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            paddingVertical: 3,
+            paddingHorizontal: 7,
+            borderRadius: 7,
+            backgroundColor: 'rgba(10,8,5,.72)',
+            borderWidth: 1,
+            borderColor: theme.signal,
+          }}
+        >
+          <Text style={[mono(600, 8.5), { color: theme.signal, letterSpacing: 0.4 }]}>
+            MAVJUD EMAS
+          </Text>
+        </View>
+      ) : null}
+
       <View style={{ paddingHorizontal: 11, paddingTop: 10, paddingBottom: 12, gap: 4 }}>
         <Text style={[sans(600, 12.5, 1.3), { color: theme.ink }]} numberOfLines={2}>
           {item.name}
         </Text>
+        {item.category ? (
+          <Text
+            style={[mono(500, 9.5), { color: theme.ash, letterSpacing: 0.3 }]}
+            numberOfLines={1}
+          >
+            {item.category}
+          </Text>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={[mono(600, 11.5), { color: theme.a1 }]}>
             {money(hasPromo ? item.promotionPrice! : item.price)}

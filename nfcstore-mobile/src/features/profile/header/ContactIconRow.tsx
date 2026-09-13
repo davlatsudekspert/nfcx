@@ -34,7 +34,7 @@ import { SHADOW } from '@/theme/css';
  */
 
 type Contact = {
-  key: 'call' | 'telegram' | 'whatsapp' | 'instagram' | 'facebook';
+  key: 'call' | 'telegram' | 'whatsapp' | 'instagram' | 'facebook' | 'location';
   url: string;
   label: string;
 };
@@ -45,12 +45,15 @@ export function ContactIconRow({
   whatsapp,
   instagram,
   facebook,
+  address,
 }: {
   phone?: string;
   telegram?: string;
   whatsapp?: string;
   instagram?: string;
   facebook?: string;
+  /** Faqat biznesda — xarita havolasi (handoff: "location/map action"). */
+  address?: string;
 }) {
   const contacts: Contact[] = [];
 
@@ -59,6 +62,13 @@ export function ContactIconRow({
   if (whatsapp) contacts.push({ key: 'whatsapp', url: waUrl(whatsapp), label: 'WhatsApp' });
   if (instagram) contacts.push({ key: 'instagram', url: igUrl(instagram), label: 'Instagram' });
   if (facebook) contacts.push({ key: 'facebook', url: fbUrl(facebook), label: 'Facebook' });
+  if (address) {
+    contacts.push({
+      key: 'location',
+      url: `https://maps.google.com/?q=${encodeURIComponent(address)}`,
+      label: 'Xaritada ko’rish',
+    });
+  }
 
   if (!contacts.length) return null;
 
@@ -207,15 +217,31 @@ function ContactGlyph({
     );
   }
 
+  if (kind === 'facebook') {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d="M14.5 21v-7.3h2.5l.4-2.9h-2.9V9c0-.85.25-1.4 1.45-1.4H17.5V5a19 19 0 0 0-2.3-.12c-2.3 0-3.85 1.4-3.85 3.95v2.2H8.8v2.9h2.55V21"
+          stroke={BRAND.facebook}
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </Svg>
+    );
+  }
+
+  // location — brendsiz, temaning aksent rangida (qo'ng'iroq bilan bir xil qoida).
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
-        d="M14.5 21v-7.3h2.5l.4-2.9h-2.9V9c0-.85.25-1.4 1.45-1.4H17.5V5a19 19 0 0 0-2.3-.12c-2.3 0-3.85 1.4-3.85 3.95v2.2H8.8v2.9h2.55V21"
-        stroke={BRAND.facebook}
-        strokeWidth={1.5}
+        d="M12 21s-6.8-6.2-6.8-11a6.8 6.8 0 1113.6 0c0 4.8-6.8 11-6.8 11z"
+        stroke={accent}
+        strokeWidth={1.6}
         strokeLinejoin="round"
         fill="none"
       />
+      <Circle cx={12} cy={10} r={2.4} stroke={accent} strokeWidth={1.5} fill="none" />
     </Svg>
   );
 }

@@ -57,6 +57,26 @@ export const toggleFollowCompany = (companyId: string) =>
     method: 'POST',
   });
 
+/**
+ * POST /api/companies/:id/orders — katalogdan buyurtma (production
+ * Worker'da tasdiqlangan, `hosting/worker.js`, egalik talab qilinmaydi:
+ * har qanday tashrifchi buyurtma bera oladi). Nom va narx SERVERDA
+ * katalogdan olinadi — bu yerda faqat `itemId` yuboriladi.
+ */
+export type PlaceOrderInput = {
+  itemId: string;
+  name: string;
+  phone: string;
+  qty?: number;
+  note?: string;
+};
+
+export const placeCompanyOrder = (companyId: string, input: PlaceOrderInput) =>
+  apiFetch<{ ok: boolean; orderId: number | null }>(
+    `/companies/${encodeURIComponent(companyId)}/orders`,
+    { method: 'POST', body: input },
+  );
+
 /* ══ Shaxsiy karta profili ══════════════════════════════════════════ */
 
 /** GET /api/records/:code -> shaxsiy karta (ochiq profil) */
