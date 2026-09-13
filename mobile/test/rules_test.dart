@@ -34,7 +34,18 @@ void main() {
 
   test('Auksion yo‘q', () {
     // Saytdan olib tashlangan, ilovaga qaytarilmaydi.
-    expect(hits(RegExp(r'[Aa]uction|[Aa]uksion|[Bb]id\b')), isEmpty);
+    //
+    // ISTISNO — `nfc.dart` DAGI TAQIQ RO'YXATI. U yerda "auksion"
+    // so'zi funksiya sifatida emas, aksincha: bu sayt bo'limlari
+    // ro'yxati va ilova ularni PROFIL KODI deb OCHMAYDI. Saytda
+    // eski `/auksion` havolalari hali narxlar sahifasiga
+    // yo'naltiriladi, ya'ni ular tashqarida qolgan — App Links
+    // tasdiqlangandan keyin ular ham ilovaga kelib, "profil
+    // topilmadi" ekranini ochardi.
+    final found = hits(RegExp(r'[Aa]uction|[Aa]uksion|[Bb]id\b'))
+        .where((p) => !p.replaceAll(r'\', '/').endsWith('data/nfc.dart'))
+        .toList();
+    expect(found, isEmpty, reason: 'Auksion izi: $found');
   });
 
   test('Ichki messenjer yo‘q', () {

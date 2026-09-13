@@ -58,8 +58,12 @@ jobs:
           channel: stable
           cache: true
 
+      # `--enforce-lockfile` — RELIZ QAYTARILUVCHI BO'LSIN.
+      # Oddiy `pub get` cheklovlar ichida yangi versiyani olib
+      # kelishi mumkin, ya'ni bir xil commit'dan ikki xil APK
+      # chiqardi va xatoni takrorlash imkonsiz bo'lardi.
       - name: Bog'liqliklar
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       # Kod tekshiruvi va testlar APK dan OLDIN: buzuq kodni paketlab
       # qo'yishdan ko'ra, qurilishni shu yerda to'xtatish ma'qul.
@@ -68,6 +72,22 @@ jobs:
 
       - name: Testlar
         run: flutter test
+
+      # GOLDEN TEST YIQILSA — KADRNI KO'RSATISH.
+      #
+      # Vizual testning butun ma'nosi ko'rishda. CI da esa faqat
+      # "pixels differ" degan qator qolardi va odam farqni ko'rmay,
+      # kadrni ko'r-ko'rona yangilashga majbur bo'lardi. Endi
+      # `failures/` papkasi (kutilgan / chiqqan / farq) artifact
+      # bo'lib yuklanadi.
+      - name: Yiqilgan kadrlar
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-farqlari
+          path: mobile/test/audit/failures/
+          if-no-files-found: ignore
+          retention-days: 7
 
       # HAQIQIY IMZO — faqat sozlangan bo'lsa.
       #
@@ -108,33 +128,145 @@ jobs:
           PROPS
           echo "HAQIQIY KALIT bilan imzolanadi."
 
+      # VERSIYA RAQAMI — HAR QURILISHDA KATTAROQ.
+      #
+      # `pubspec.yaml` da `1.0.0+1` yozilgan va u O'ZGARMAYDI:
+      # `+1` ni har safar qo'lda oshirish unutiladi. Play Store esa
+      # bir xil `versionCode` li ikkinchi faylni QABUL QILMAYDI va
+      # telefon ham "yangilanish" deb ko'rmaydi. Shuning uchun raqam
+      # CI dan keladi: `github.run_number` hech qachon kamaymaydi.
+      #
+      # Ko'rinadigan versiya (`versionName`) pubspec'dan olinadi —
+      # uni odam o'zi, ma'no bilan qo'yadi.
+      - name: Versiya raqami
+        id: ver
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          NAME=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$RUN" >> "$GITHUB_OUTPUT"
+          echo "Versiya: $NAME ($RUN)"
+
       - name: APK qurish
-        run: flutter build apk --release --split-per-abi
+        run: |
+          flutter build apk --release --split-per-abi \
+            --build-name=${{ steps.ver.outputs.name }} \
+            --build-number=${{ steps.ver.outputs.code }}
 
       # Universal APK ham: qaysi protsessor ekanini bilmasdan
       # o'rnatish uchun (fayl kattaroq, lekin har qurilmada ishlaydi).
       - name: Universal APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --build-name=${{ steps.ver.outputs.name }} \
+            --build-number=${{ steps.ver.outputs.code }}
+
+      # AAB — PLAY STORE UCHUN YAGONA QABUL QILINADIGAN FORMAT.
+      #
+      # 2021-yildan beri Play Store yangi ilovadan faqat `.aab`
+      # oladi. APK esa to'g'ridan-to'g'ri tarqatish uchun qoladi
+      # (sayt, Telegram, sinov). Shuning uchun IKKALASI ham
+      # quriladi — reliz kuni "aa, AAB yo'q ekan" degan holat
+      # bo'lmasin.
+      - name: AAB qurish (Play Store)
+        run: |
+          flutter build appbundle --release \
+            --build-name=${{ steps.ver.outputs.name }} \
+            --build-number=${{ steps.ver.outputs.code }}
+
+      # IMZONI HAQIQATAN TEKSHIRISH.
+      #
+      # "key.properties bor" degani APK o'sha kalit bilan imzolangan
+      # degani EMAS: Gradle sozlamasi noto'g'ri bo'lsa, fayl jimgina
+      # debug kaliti bilan chiqib ketardi va buni faqat Play Store
+      # rad etganda bilardik. Shuning uchun tayyor fayl `apksigner`
+      # bilan OCHIB ko'riladi.
+      #
+      # SHA-256 BARMOQ IZI SHU YERDA CHIQADI — App Links aynan shuni
+      # talab qiladi (`ANDROID_APP_FINGERPRINTS`). Uni qo'lda
+      # `keytool` bilan qidirib yurish shart emas.
+      - name: Imzoni tekshirish
+        id: sign
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner topilmadi — imzo tekshirilmadi."
+            exit 0
+          fi
+          "$APKSIGNER" verify --print-certs "$APK" > certs.txt || {
+            echo "::error::APK imzosi yaroqsiz."
+            exit 1
+          }
+          # Chiqishdagi ikki nuqtali bo'lmagan olti burchakli qator
+          # assetlinks kutadigan ko'rinishga o'tkaziladi:
+          # AA:BB:CC:... (katta harf, ikki nuqta bilan).
+          RAW=$(grep -i 'SHA-256 digest' certs.txt | head -1 | awk '{print $NF}')
+          FP=$(echo "$RAW" | tr -d ':' | tr 'a-z' 'A-Z' | sed 's/../&:/g; s/:$//')
+          SUBJECT=$(grep -i 'Signer #1 certificate DN' certs.txt | head -1)
+          echo "fingerprint=$FP" >> "$GITHUB_OUTPUT"
+          echo "## Imzo" >> "$GITHUB_STEP_SUMMARY"
+          echo "$SUBJECT" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f android/key.properties ]; then
+            echo "release=1" >> "$GITHUB_OUTPUT"
+            echo "HAQIQIY kalit — Play Store uchun yaroqli." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "release=0" >> "$GITHUB_OUTPUT"
+            echo "DIQQAT: DEBUG kaliti. Play Store'ga yaramaydi va har" >> "$GITHUB_STEP_SUMMARY"
+            echo "qurilishda kalit yangi bo'ladi (eski versiya ustiga" >> "$GITHUB_STEP_SUMMARY"
+            echo "o'rnatilmaydi — avval o'chiring)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "App Links uchun barmoq izi (ANDROID_APP_FINGERPRINTS):" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$FP\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Barmoq izi: $FP"
+
+      # RUXSATLAR AUDITI — HAR QURILISHDA.
+      #
+      # Manifestda ikkita ruxsat yozilgan, lekin TAYYOR APK dagi
+      # ro'yxat undan uzunroq bo'lishi mumkin: har bir plagin o'z
+      # manifestini qo'shadi. Yangi kutubxona jimgina kamera yoki
+      # joylashuvni so'rab qo'ysa, buni do'kon sharhida yoki
+      # foydalanuvchi shikoyatida bilib olish juda kech bo'lardi.
+      #
+      # RO'YXAT EMAS, XAVFLILARI to'xtatadi: har bir yangi zararsiz
+      # ruxsat qurilishni yiqitsa, ogohlantirish qiymatini yo'qotardi.
+      - name: Ruxsatlar auditi
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          if [ -z "$AAPT" ]; then
+            echo "::warning::aapt2 topilmadi — ruxsatlar tekshirilmadi."
+            exit 0
+          fi
+          "$AAPT" dump permissions "$APK" | grep -o "android.permission.[A-Z_]*" | sort -u > perms.txt || true
+          echo "## Ruxsatlar" >> "$GITHUB_STEP_SUMMARY"
+          sed 's/^/- /' perms.txt >> "$GITHUB_STEP_SUMMARY"
+          cat perms.txt
+          # Shaxsiy ma'lumotga tegadigan ruxsatlar. NFCSTORE ularning
+          # BIRORTASINI ishlatmaydi: rasm `image_picker` ning tizim
+          # tanlagichi orqali keladi (ruxsat kerak emas).
+          BAD='ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|RECORD_AUDIO|READ_CONTACTS|WRITE_CONTACTS|READ_SMS|SEND_SMS|READ_PHONE_STATE|READ_CALL_LOG|BODY_SENSORS|ACTIVITY_RECOGNITION|READ_CALENDAR'
+          if grep -Eq "android.permission.($BAD)" perms.txt; then
+            echo "::error::Kutilmagan xavfli ruxsat qo'shilgan — quyidagi ro'yxatga qarang."
+            grep -E "android.permission.($BAD)" perms.txt
+            exit 1
+          fi
+          echo "Xavfli ruxsat yo'q."
 
       - name: Qurilgan fayllar
         run: |
-          ls -la build/app/outputs/flutter-apk/
+          ls -la build/app/outputs/flutter-apk/ build/app/outputs/bundle/release/
           echo "--- SHA-256 ---"
-          sha256sum build/app/outputs/flutter-apk/*.apk
-          echo "--- IMZO ---"
-          if [ -f android/key.properties ]; then
-            echo "HAQIQIY kalit bilan imzolangan — Play Store uchun yaroqli."
-          else
-            echo "DIQQAT: debug kaliti bilan imzolangan."
-            echo "O'rnatiladi va ishlaydi, lekin Play Store'ga yaramaydi."
-            echo "Har qurilishda kalit YANGI bo'ladi, shuning uchun eski"
-            echo "versiya ustiga o'rnatilmaydi — avval o'chirib tashlang."
-          fi
+          sha256sum build/app/outputs/flutter-apk/*.apk build/app/outputs/bundle/release/*.aab
 
       - uses: actions/upload-artifact@v4
         with:
           name: nfcstore-apk
-          path: mobile/build/app/outputs/flutter-apk/*.apk
+          path: |
+            mobile/build/app/outputs/flutter-apk/*.apk
+            mobile/build/app/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 30
 
@@ -153,29 +285,48 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           COMMIT: ${{ github.sha }}
           REPO: ${{ github.repository }}
+          VERSION: ${{ steps.ver.outputs.name }}+${{ steps.ver.outputs.code }}
+          FINGERPRINT: ${{ steps.sign.outputs.fingerprint }}
+          RELEASE_KEY: ${{ steps.sign.outputs.release }}
         run: |
-          cd build/app/outputs/flutter-apk
+          OUT=build/app/outputs
+          # AAB boshqa papkada yotadi — bitta joyga yig'ib yuboriladi.
+          cp "$OUT"/bundle/release/*.aab "$OUT"/flutter-apk/ || true
+          cd "$OUT/flutter-apk"
           # Izohni FAYLGA yozamiz: ko'p qatorli matnni to'g'ridan
           # to'g'ri buyruqqa qo'yish YAML va qobiqda chalkashtiradi.
           cat > notes.md <<'NOTES'
-          Avtomatik qurilgan APK. Har yangi qurilishda shu yerdagi fayl yangilanadi.
+          Avtomatik qurilgan fayllar. Har yangi qurilishda shu yerdagilar yangilanadi.
 
           - `app-release.apk` — universal, har qanday telefonga.
           - `app-arm64-v8a-release.apk` — zamonaviy telefonlar, kichikroq fayl.
-
-          **Imzo.** Kalit sozlanmagan bo'lsa APK debug kaliti bilan imzolanadi:
-          o'rnatiladi va to'liq ishlaydi, lekin Play Store'ga yaramaydi va
-          yangi versiyani o'rnatishdan oldin eskisini o'chirish kerak.
+          - `app-release.aab` — **faqat Play Store uchun**. Telefonga
+            to'g'ridan-to'g'ri o'rnatilmaydi.
           NOTES
+          echo "" >> notes.md
+          echo "**Versiya:** $VERSION" >> notes.md
+          if [ "$RELEASE_KEY" = "1" ]; then
+            echo "**Imzo:** haqiqiy kalit — Play Store uchun yaroqli." >> notes.md
+          else
+            echo "**Imzo:** DEBUG kaliti. O'rnatiladi va ishlaydi, lekin Play" >> notes.md
+            echo "Store'ga yaramaydi va yangi versiyadan oldin eskisini o'chirish" >> notes.md
+            echo "kerak (har qurilishda kalit yangi bo'ladi)." >> notes.md
+          fi
+          if [ -n "$FINGERPRINT" ]; then
+            echo "" >> notes.md
+            echo "**Sertifikat SHA-256** (App Links uchun \`ANDROID_APP_FINGERPRINTS\`):" >> notes.md
+            echo "\`$FINGERPRINT\`" >> notes.md
+          fi
+          echo "" >> notes.md
           echo "Commit: $COMMIT" >> notes.md
 
           if gh release view apk-latest >/dev/null 2>&1; then
-            gh release upload apk-latest ./*.apk --clobber
+            gh release upload apk-latest ./*.apk ./*.aab --clobber
             gh release edit apk-latest --notes-file notes.md
           else
-            gh release create apk-latest ./*.apk \
+            gh release create apk-latest ./*.apk ./*.aab \
               --prerelease \
-              --title "NFCSTORE — oxirgi APK" \
+              --title "NFCSTORE — oxirgi qurilish" \
               --notes-file notes.md
           fi
           echo "Havola: https://github.com/$REPO/releases/tag/apk-latest"

@@ -45,10 +45,41 @@ void main() {
       expect(NfcLink.parse('https://evil.com/nfcstore.uz/vip001'), isNull);
     });
 
+    // APP LINKS TASDIQLANGANDAN KEYINGI ENG KATTA XAVF.
+    //
+    // O'sha paytdan boshlab saytning HAR QANDAY havolasi ilovaga
+    // keladi. Bo'lim nomi kod shabloniga (`^[A-Z0-9]{3,16}$`)
+    // tushib qolsa, odam «Narxlar» ni bosib «profil topilmadi»
+    // ekraniga tushardi — brauzerda esa hammasi joyida ishlagani
+    // uchun buni sezish qiyin.
+    //
+    // Ro'yxat saytnikiga (`src/App.jsx` dagi `RESERVED`) mos
+    // bo'lishi SHART: saytga yangi bo'lim qo'shilsa, shu test
+    // qatoriga ham qo'shiladi.
     test('saytning o‘z bo‘limlari kod deb o‘qilmaydi', () {
-      for (final p in ['api', 'admin', 'login', 'cabinet', 'pay', 'terms']) {
+      const pages = [
+        'api', 'admin', 'login', 'register', 'account', 'cabinet',
+        'pay', 'payme', 'click', 'tolovlar',
+        'terms', 'shartlar', 'privacy', 'maxfiylik',
+        'narxlar', 'yangiliklar', 'katalog', 'savollar', 'aloqa',
+        'qollanma', 'reyting', 'gifts', 'xabarlar', 'kompaniyalar',
+        'sozlamalar', 'bildirishnomalar', 'business', 'workspace',
+        'company', 'auksion',
+      ];
+      for (final p in pages) {
         expect(NfcLink.parse('https://nfcstore.uz/$p'), isNull, reason: p);
+        // Bosh harflar bilan ham — havola qanday yozilganiga
+        // bog'liq bo'lmasin.
+        expect(NfcLink.parse('https://nfcstore.uz/${p.toUpperCase()}'),
+            isNull, reason: p);
       }
+    });
+
+    // Bo'lim nomi bilan bir xil boshlangan HAQIQIY kod ishlashi
+    // kerak: taqiq faqat aynan tenglikda.
+    test('bo‘limga o‘xshash kod ochiladi', () {
+      expect(NfcLink.parse('https://nfcstore.uz/admin1')?.code, 'ADMIN1');
+      expect(NfcLink.parse('https://nfcstore.uz/id/narxlar')?.code, 'NARXLAR');
     });
 
     test('bo‘sh yo‘l', () {

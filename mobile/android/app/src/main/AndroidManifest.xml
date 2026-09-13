@@ -13,9 +13,20 @@
     <uses-permission android:name="android.permission.NFC"/>
     <uses-feature android:name="android.hardware.nfc" android:required="false"/>
 
+    <!-- ZAXIRA NUSXA O'CHIRILGAN.
+         Ilova xotirasida sessiya tokeni va ilova qulfining PIN'i
+         turadi. Ular Android Keystore kaliti bilan shifrlangan,
+         KALIT esa telefonni tark etmaydi. Ya'ni Google'ning
+         avtomatik zaxirasi ma'lumotni bulutga ko'chirsa ham, uni
+         boshqa telefonda OCHIB BO'LMAYDI — faqat foydalanuvchi
+         "nega kirolmayapman" degan holatga tushardi.
+         Shuning uchun zaxira umuman olinmaydi: xavfsizroq ham,
+         tushunarliroq ham (yangi telefonda oddiy qayta kirish). -->
     <application
         android:label="NFCSTORE"
         android:name="${applicationName}"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

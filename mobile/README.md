@@ -179,13 +179,22 @@ Worker `https://nfcstore.uz/.well-known/assetlinks.json` ni
 sertifikatning SHA-256 barmoq izi (vergul bilan bir nechta bo'lishi
 mumkin: yuklash kaliti + Play App Signing kaliti).
 
+Barmoq izini qo'lda qidirish shart emas: uni har qurilish o'zi
+chiqaradi (Actions → qurilish xulosasi, va `apk-latest` reliz
+izohi). Keyin:
+
 ```bash
-keytool -list -v -keystore upload-keystore.jks -alias upload | grep SHA256
-npx wrangler secret put ANDROID_APP_FINGERPRINTS
+npx wrangler secret put ANDROID_APP_FINGERPRINTS --name nfcstore-api
 ```
 
 Sozlanmaguncha fayl 404 qaytaradi va havolalar avvalgidek brauzerda
 ochiladi — hech narsa buzilmaydi (`scripts/test-assetlinks.mjs`).
+
+Mosligini **Actions → «App Links tekshiruvi»** tekshiradi: oxirgi
+APK ning sertifikatini serverdagi fayl bilan solishtiradi (haftada
+bir marta o'zi ham ishlaydi).
+
+To'liq reliz tartibi — [RELEASE.md](RELEASE.md).
 
 ## To'lov
 
@@ -201,11 +210,12 @@ belgilamaydi** — yagona haqiqat manbai provayder tasdig'i va backend.
 
 ## Sifat darvozasi
 
-`test/audit/` — 43 ta golden kadr. Ular ikki savolga javob beradi:
+`test/audit/` — 61 ta golden kadr. Ular ikki savolga javob beradi:
 
-1. **Chiroylimi?** — 01–37: har ekran to'ldirilgan holatda.
-2. **Buzilmaydimi?** — 38–43: yangi foydalanuvchi (hisob bor, hech
-   narsa yo'q), tarmoq yo'q, server xatosi.
+1. **Chiroylimi?** — 01–37, 44–56: har ekran to'ldirilgan holatda,
+   to'rt mavzu, uch til, biznes tahririning yangi bo'limlari.
+2. **Buzilmaydimi?** — 38–43 va 53: yangi foydalanuvchi (hisob bor,
+   hech narsa yo'q), tarmoq yo'q, server xatosi, bo'sh galereya.
 
 Ikkinchi guruh bo'lmasa auditning ma'nosi yarim: odam bu holatlarni
 ilovaning birinchi kunidayoq ko'radi. U darhol haqiqiy xato topdi —

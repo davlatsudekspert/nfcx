@@ -207,10 +207,35 @@ class NfcLink {
     if (parts.isEmpty) return null;
 
     final first = parts.first.toLowerCase();
-    // Ilova ochmaydigan sahifalar: bular kod emas, sayt bo'limlari.
+    // ILOVA OCHMAYDIGAN SAHIFALAR: bular kod emas, sayt bo'limlari.
+    //
+    // NIMA UCHUN BU RO'YXAT UZUN. App Links tasdiqlangandan keyin
+    // `nfcstore.uz` ning HAR QANDAY havolasi ilovaga keladi —
+    // saytning o'z sahifalari ham. Ro'yxatda bo'lmagan nom esa
+    // `^[A-Z0-9]{3,16}$` ga tushadi va PROFIL KODI deb o'qiladi:
+    // odam «Narxlar» havolasini bosib, «profil topilmadi» degan
+    // ekranga tushardi. Brauzerda hammasi joyida ishlagani uchun
+    // buni faqat telefonda, reliz kunidan keyin sezish mumkin edi.
+    //
+    // MANBA — SAYTNING O'Z RO'YXATI (`src/App.jsx`, `RESERVED`).
+    // Saytga yangi bo'lim qo'shilsa, shu yerga ham qo'shiladi.
+    // Chiziqchali nomlar (`qanday-ishlaydi`) baribir kod shabloniga
+    // tushmaydi, lekin bir joyda tursin.
     const reserved = {
-      'api', 'admin', 'login', 'register', 'cabinet', 'dashboard',
-      'assets', 'static', 'pay', 'payme', 'click', 'terms', 'privacy',
+      // Texnik
+      'api', 'admin', 'assets', 'static', 'cabinet', 'dashboard',
+      // Kirish va hisob
+      'login', 'register', 'account', 'sozlamalar', 'bildirishnomalar',
+      // To'lov
+      'pay', 'payme', 'click', 'tolovlar',
+      // Sayt bo'limlari
+      'narxlar', 'qanday-ishlaydi', 'yangiliklar', 'katalog', 'savollar',
+      'aloqa', 'shartlar', 'terms', 'maxfiylik', 'privacy', 'qollanma',
+      'reyting', 'gifts', 'xabarlar', 'kompaniyalar',
+      'business', 'workspace', 'company', 'biznes-namuna', 'karta-dizayni',
+      // Auksion bekor qilingan, lekin havolalar tashqarida qolgan
+      // va ular narxlar sahifasiga yo'naltiriladi.
+      'auksion', 'auksion-qoidalari',
     };
 
     final company = first == 'c';

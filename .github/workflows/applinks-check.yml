@@ -1,0 +1,126 @@
+# APP LINKS TEKSHIRUVI
+#
+# NIMA UCHUN ALOHIDA WORKFLOW: App Links ikki tomonlama shartnoma —
+# ILOVA tomonida manifest, SERVER tomonida
+# `https://nfcstore.uz/.well-known/assetlinks.json`. Ikkalasi
+# BOSHQA-BOSHQA joyda o'zgaradi (biri koddan, biri Cloudflare
+# secret'idan), shuning uchun ular bir-biriga mos kelmay qolishi
+# juda oson — va buzilgani JIMGINA bo'ladi: karta tegizilganda ilova
+# o'rniga brauzer ochiladi, hech qanday xato ko'rinmaydi.
+#
+# Bu tekshiruv aynan shuni ushlaydi: oxirgi qurilgan APK ning
+# sertifikat barmoq izini olib, serverdagi fayl bilan solishtiradi.
+#
+# QO'LDA: Actions -> "App Links tekshiruvi" -> Run workflow.
+# O'ZI: haftada bir marta (kalit yoki domen sozlamasi o'zgarib
+# ketsa, buni reliz kuni emas, oldinroq bilamiz).
+name: App Links tekshiruvi
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Har dushanba 04:00 UTC (Toshkentda 09:00).
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Manifestdagi hostlar ro'yxati SHU YERDAN o'qiladi, qo'lda
+      # ko'chirilmaydi: manifestga yangi host qo'shilsa, tekshiruv
+      # uni o'zi ham tekshiradi.
+      - name: Manifestdagi hostlar
+        id: hosts
+        run: |
+          M=mobile/android/app/src/main/AndroidManifest.xml
+          HOSTS=$(grep -o 'android:host="[^"]*"' "$M" | sed 's/.*"\(.*\)"/\1/' | sort -u | tr '\n' ' ')
+          PKG=$(grep -o 'applicationId = "[^"]*"' mobile/android/app/build.gradle.kts | sed 's/.*"\(.*\)"/\1/')
+          echo "hosts=$HOSTS" >> "$GITHUB_OUTPUT"
+          echo "pkg=$PKG" >> "$GITHUB_OUTPUT"
+          echo "Hostlar: $HOSTS"
+          echo "Paket: $PKG"
+
+      # APK ning HAQIQIY barmoq izi — reliz faylidan.
+      #
+      # `key.properties` yoki secret'ga qarab xulosa chiqarib
+      # bo'lmaydi: muhim bo'lgani telefondagi FAYL nima bilan
+      # imzolangani.
+      - name: Oxirgi APK ning barmoq izi
+        id: apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release download apk-latest --pattern 'app-release.apk' --dir /tmp 2>/dev/null; then
+            echo "::warning::apk-latest relizi topilmadi — avval APK qurilsin."
+            echo "fp=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner topilmadi."
+            echo "fp=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RAW=$("$APKSIGNER" verify --print-certs /tmp/app-release.apk \
+            | grep -i 'SHA-256 digest' | head -1 | awk '{print $NF}')
+          FP=$(echo "$RAW" | tr -d ':' | tr 'a-z' 'A-Z' | sed 's/../&:/g; s/:$//')
+          echo "fp=$FP" >> "$GITHUB_OUTPUT"
+          echo "APK barmoq izi: $FP"
+
+      - name: Serverdagi assetlinks.json
+        env:
+          HOSTS: ${{ steps.hosts.outputs.hosts }}
+          PKG: ${{ steps.hosts.outputs.pkg }}
+          FP: ${{ steps.apk.outputs.fp }}
+        run: |
+          FAIL=0
+          for H in $HOSTS; do
+            URL="https://$H/.well-known/assetlinks.json"
+            echo "=== $URL"
+            # `-L` YO'Q va bu ATAYLAB: Android yo'naltirishga
+            # ERGASHMAYDI. www dan apex'ga 301 qo'yilgan bo'lsa,
+            # brauzerda hammasi joyida ko'rinadi, App Links esa
+            # o'sha host uchun tasdiqlanmaydi.
+            CODE=$(curl -s -o /tmp/al.json -w '%{http_code}' --max-time 20 "$URL" || echo 000)
+            if [ "$CODE" != "200" ]; then
+              echo "::error::$H — HTTP $CODE (200 kutilgan, yo'naltirish ham yaramaydi)."
+              FAIL=1
+              continue
+            fi
+            if ! jq -e '.[0].target.namespace == "android_app"' /tmp/al.json >/dev/null; then
+              echo "::error::$H — fayl formati noto'g'ri."
+              FAIL=1
+              continue
+            fi
+            GOT_PKG=$(jq -r '.[0].target.package_name' /tmp/al.json)
+            if [ "$GOT_PKG" != "$PKG" ]; then
+              echo "::error::$H — paket nomi mos emas: $GOT_PKG (kutilgan $PKG)."
+              FAIL=1
+            fi
+            if [ -n "$FP" ]; then
+              if jq -e --arg fp "$FP" '.[0].target.sha256_cert_fingerprints | index($fp)' /tmp/al.json >/dev/null; then
+                echo "$H — barmoq izi mos."
+              else
+                echo "::error::$H — APK barmoq izi ro'yxatda yo'q."
+                echo "APK:    $FP"
+                echo "Server: $(jq -r '.[0].target.sha256_cert_fingerprints | join(", ")' /tmp/al.json)"
+                FAIL=1
+              fi
+            else
+              echo "::warning::$H — APK barmoq izi olinmadi, faqat format tekshirildi."
+            fi
+          done
+          if [ "$FAIL" = "1" ]; then
+            echo ""
+            echo "TUZATISH: barmoq izini Cloudflare secret'iga yozing —"
+            echo "  npx wrangler secret put ANDROID_APP_FINGERPRINTS --name nfcstore-api"
+            echo "Bir nechta kalit bo'lsa (masalan Play App Signing) vergul bilan."
+            exit 1
+          fi
+          echo "App Links to'g'ri sozlangan."
