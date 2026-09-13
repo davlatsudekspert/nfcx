@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { fmt, timeAgo, dateTime } from '../lib/format.js';
+import { adminPreviewUrl } from '../lib/preview.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
 import { idTier, effectiveAccess } from '../lib/access.js';
@@ -660,7 +661,29 @@ function UsersTab() {
             <tr key={u.id} className={u.isTest ? 'opacity-50' : ''}>
               <td className="text-xs tabular-nums text-base-content/40">{i + 1}</td>
               <td>
-                {u.email} {u.isTest && <span className="badge badge-ghost badge-xs ml-1">{t("SINOV")}</span>}
+                {/* EMAIL BOSILSA — o'sha odamning profili YANGI OYNADA.
+                    Egasining talabi: "ustiga bossa target blank bilan
+                    o'sha odamning profiliga otishi kerak, faqat ko'rish
+                    bo'lsin".
+
+                    FAQAT KO'RISH o'z-o'zidan ta'minlanadi: ochilgan
+                    sahifa oddiy ommaviy profil, admin uning egasi emas
+                    — tahrirlash tugmalari umuman chizilmaydi.
+
+                    `?preview=1` — ko'rish hisobiga tushmasin (izohi
+                    src/lib/preview.js da).
+
+                    Kartasi yo'q odamning profili ham yo'q, shuning
+                    uchun havola chizilmaydi — bosilib "topilmadi"
+                    sahifasiga tushmasin. */}
+                {u.codes?.length ? (
+                  <a href={adminPreviewUrl(u.codes[0])} target="_blank" rel="noopener noreferrer"
+                    className="link link-hover font-medium text-accent"
+                    title={t('Profilni yangi oynada ochish')}>
+                    {u.email} <span aria-hidden="true" className="text-xs opacity-60">↗</span>
+                  </a>
+                ) : u.email}
+                {' '}{u.isTest && <span className="badge badge-ghost badge-xs ml-1">{t("SINOV")}</span>}
                 {/* ICHKI AKKAUNT — egasining o'z akkaunti. Buyurtmalari
                     ro'yxatda ko'rinadi, lekin pul hisobiga kirmaydi. */}
                 {u.isInternal && <span className="badge badge-warning badge-xs ml-1">{t("ICHKI")}</span>}
@@ -673,7 +696,20 @@ function UsersTab() {
               <td>{u.botAck ? <span className="vz-badge vz-badge--ok">{t('Ha')}</span> : <span className="vz-badge vz-badge--muted">{t("Yo'q")}</span>}</td>
               <td className="font-semibold">{fmt(u.balance)}</td>
               <td className="text-base-content/50">{fmt(u.heldBalance)}</td>
-              <td>{u.cardCount}</td>
+              {/* Har bir karta ALOHIDA havola: bitta odamda bir nechta
+                  profil bo'lishi mumkin va emaildagi havola faqat
+                  birinchisini ochadi. */}
+              <td>
+                {u.codes?.length ? (
+                  <span className="flex flex-wrap gap-1">
+                    {u.codes.map((c) => (
+                      <a key={c} href={adminPreviewUrl(c)} target="_blank" rel="noopener noreferrer"
+                        className="badge badge-ghost badge-sm font-mono hover:badge-accent"
+                        title={t('Profilni yangi oynada ochish')}>{c}</a>
+                    ))}
+                  </span>
+                ) : <span className="text-base-content/40">{u.cardCount}</span>}
+              </td>
               <td className="text-xs text-base-content/50">{timeAgo(new Date(u.createdAt).getTime())}</td>
               <td className="flex flex-wrap gap-1">
                 {isSuper && <button className="btn btn-ghost btn-xs min-h-9" onClick={() => setAdjustFor(u.id)}>{t('Balansni tuzatish')}</button>}

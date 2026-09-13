@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { directionsUrl, hasCoords } from '../lib/mapLink.js';
+import { isPreviewVisit } from '../lib/preview.js';
 import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
 import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
@@ -154,7 +155,9 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // NFC tegish — egasi uchun eng muhim raqam. Ma'lumot kelgach bir
   // marta sanaladi (yiqilgan so'rov statistikani shishirmasin).
   useEffect(() => {
-    if (company?.companyId) companyEvent(company.companyId, 'view');
+    // "?preview=1" — admin ko'rib chiqyapti, sanalmaydi
+    // (izohi src/lib/preview.js da).
+    if (company?.companyId && !isPreviewVisit()) companyEvent(company.companyId, 'view');
   }, [company?.companyId]);
 
   // Obuna — kirmagan odam avval tizimga kiradi va SHU sahifaga qaytadi.
