@@ -75,23 +75,56 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
     super.dispose();
   }
 
+  /// SAQLANGAN HOLAT — shakl shunga solishtiriladi.
+  ///
+  /// `widget.company` ga solishtirib bo'lmaydi: u hech qachon
+  /// yangilanmaydi, ya'ni bir marta saqlagandan keyin ham shakl
+  /// abadiy "o'zgargan" bo'lib qolardi va har safar qayta saqlash
+  /// so'ralardi.
+  ///
+  /// `late` EMAS, `initState` da: `late` birinchi MUROJAATDA
+  /// hisoblanadi, ya'ni odam allaqachon yozib bo'lgandan keyin.
+  /// U holda yozilgani "boshlang'ich holat" deb olinardi va
+  /// o'zgarish umuman sezilmasdi.
+  late final List<String> _base;
+
+  @override
+  void initState() {
+    super.initState();
+    _base = _snapshot();
+  }
+
+  List<String> _snapshot() => [
+        _name.text.trim(),
+        _about.text.trim(),
+        _city.text.trim(),
+        _address.text.trim(),
+        _phone.text.trim(),
+        _tg.text.trim(),
+        _instagram.text.trim(),
+        _website.text.trim(),
+        '$_orders',
+        _logo ?? '',
+        _cover ?? '',
+      ];
+
   /// Shaklda saqlanmagan o'zgarish bormi.
   ///
   /// NIMA UCHUN KERAK: ish vaqti / katalog / galereya ALOHIDA
   /// ekran. Odam nomni o'zgartirib, saqlamasdan o'sha ekranga
   /// o'tsa, qaytganda yozgani yo'qolgan bo'lardi.
-  bool get _dirty =>
-      _name.text.trim() != widget.company.name ||
-      _about.text.trim() != widget.company.about ||
-      _city.text.trim() != widget.company.city ||
-      _address.text.trim() != widget.company.address ||
-      _phone.text.trim() != widget.company.phone ||
-      _tg.text.trim() != widget.company.tg ||
-      _instagram.text.trim() != widget.company.instagram ||
-      _website.text.trim() != widget.company.website ||
-      _orders != widget.company.ordersEnabled ||
-      _logo != null ||
-      _cover != null;
+  /// Muvaffaqiyatli saqlashdan keyingi holat. `null` — hali
+  /// saqlanmagan.
+  List<String>? _saved;
+
+  bool get _dirty {
+    final now = _snapshot();
+    final base = _saved ?? _base;
+    for (var i = 0; i < now.length; i++) {
+      if (now[i] != base[i]) return true;
+    }
+    return false;
+  }
 
   /// Boshqa bo'limga o'tish. Saqlanmagan o'zgarish bo'lsa —
   /// oldin so'raladi, jimgina yo'qotilmaydi.
@@ -159,6 +192,7 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       successHaptic();
       // Shaxslar ro'yxatidagi nom va logotip ham yangilansin.
       await state.refreshIdentities();
+      _saved = _snapshot();
       if (close && mounted) Navigator.of(context).pop(true);
       return true;
     } on ApiError catch (e) {
