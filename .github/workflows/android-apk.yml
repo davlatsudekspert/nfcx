@@ -28,8 +28,10 @@ concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
 
+# `write` — APK ni Release'ga biriktirish uchun. Kod o'zgartirilmaydi:
+# faqat `apk-latest` tegiga fayl qo'yiladi.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -135,3 +137,45 @@ jobs:
           path: mobile/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # DOIMIY YUKLAB OLISH HAVOLASI.
+      #
+      # Artifact uchun GitHub'ga kirish, Actions'ni ochish, ZIP ni
+      # yuklab, ochish kerak — telefondan bu og'ir. Release'dagi APK
+      # to'g'ridan-to'g'ri bosib o'rnatiladi va havola O'ZGARMAYDI:
+      # har qurilishda shu yerdagi fayl yangilanadi.
+      #
+      # `apk-latest` — oxirgi qurilish. Bu RELIZ EMAS (prerelease),
+      # ya'ni versiya tarixini ifloslantirmaydi.
+      - name: Release'ga biriktirish
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          cd build/app/outputs/flutter-apk
+          # Izohni FAYLGA yozamiz: ko'p qatorli matnni to'g'ridan
+          # to'g'ri buyruqqa qo'yish YAML va qobiqda chalkashtiradi.
+          cat > notes.md <<'NOTES'
+          Avtomatik qurilgan APK. Har yangi qurilishda shu yerdagi fayl yangilanadi.
+
+          - `app-release.apk` — universal, har qanday telefonga.
+          - `app-arm64-v8a-release.apk` — zamonaviy telefonlar, kichikroq fayl.
+
+          **Imzo.** Kalit sozlanmagan bo'lsa APK debug kaliti bilan imzolanadi:
+          o'rnatiladi va to'liq ishlaydi, lekin Play Store'ga yaramaydi va
+          yangi versiyani o'rnatishdan oldin eskisini o'chirish kerak.
+          NOTES
+          echo "Commit: $COMMIT" >> notes.md
+
+          if gh release view apk-latest >/dev/null 2>&1; then
+            gh release upload apk-latest ./*.apk --clobber
+            gh release edit apk-latest --notes-file notes.md
+          else
+            gh release create apk-latest ./*.apk \
+              --prerelease \
+              --title "NFCSTORE — oxirgi APK" \
+              --notes-file notes.md
+          fi
+          echo "Havola: https://github.com/$REPO/releases/tag/apk-latest"
