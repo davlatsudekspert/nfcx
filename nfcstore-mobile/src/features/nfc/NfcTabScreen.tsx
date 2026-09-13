@@ -103,6 +103,43 @@ export function NfcTabScreen() {
       >
         <NfcScanCard />
 
+        <TapScale
+          radius={16}
+          onPress={() => router.push('/nfc/qr')}
+          accessibilityLabel="QR kod va ulashish"
+          style={{ borderRadius: 16 }}
+        >
+          <Card
+            radius={16}
+            style={{
+              padding: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: 'rgba(201,204,210,.08)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <QrGlyph color={theme.platinum} />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[sans(700, 13.5), { color: theme.ink }]}>QR va ulashish</Text>
+              <Text style={[sans(400, 11.5, 1.4), { color: theme.ash }]}>
+                {vm ? `${vm.handle} — faol ID` : 'Faol ID uchun QR kod'}
+              </Text>
+            </View>
+            <ChevronIcon />
+          </Card>
+        </TapScale>
+
         <Text style={[mono(600, 11), { color: theme.platinum, letterSpacing: 1.1 }]}>
           MENING ID&apos;LARIM
         </Text>
@@ -282,6 +319,20 @@ function VerifiedDot() {
         stroke={theme.bg}
         strokeWidth={1.6}
         strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+function QrGlyph({ color }: { color: string }) {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24">
+      <Path
+        d="M4 4h6v6H4V4zM4 14h6v6H4v-6zM14 4h6v6h-6V4zM14 14h2.5v2.5H14V14zM17.5 14H20v2.5h-2.5V14zM14 17.5h2.5V20H14v-2.5zM17.5 17.5H20V20h-2.5v-2.5z"
+        stroke={color}
+        strokeWidth={1.3}
         strokeLinejoin="round"
         fill="none"
       />

@@ -118,6 +118,8 @@ function Shell({ ready }: { ready: boolean }) {
         {/* Company ENDI TAB EMAS (spetsifikatsiya) — ro'yxat Profile
             Switcher'dan ochiladigan alohida stack ekrani. */}
         <Stack.Screen name="companies/index" options={{ animation: 'slide_from_right' }} />
+        {/* FAOL identity'ning QR + ulashish ekrani (NFC Center). */}
+        <Stack.Screen name="nfc/qr" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen
           name="post/[id]"
           options={{ presentation: 'fullScreenModal', animation: 'fade' }}
