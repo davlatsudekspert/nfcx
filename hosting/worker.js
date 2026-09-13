@@ -7121,6 +7121,18 @@ async function adminCoreApi(request, env, url, admin) {
                                WHERE u.is_test = 0 AND u.is_internal = 0)`;
     const EV = `FROM card_events WHERE event_type = 'profile_view' AND created_at >= ? AND ${NOT_TEST}`;
 
+    // KOMPANIYALAR uchun ham xuddi shunday. `companies.owner_user_id`
+    // MATN, `users.id` esa SON — shuning uchun CAST shart, aks holda
+    // solishtirish hech qachon mos kelmaydi va filtr JIM ishlamaydi
+    // (hamma kompaniya o'tib ketaveradi).
+    //
+    // Egasi o'z akkauntini "Sinov" deb belgilaganda uning KOMPANIYA
+    // profili ham statistikadan chiqishi kerak — aks holda "Sinov"
+    // belgisi yarim ishlagan bo'lardi.
+    const NOT_TEST_CO = `company_id IN (SELECT c.company_id FROM companies c
+                          JOIN users u ON u.id = CAST(c.owner_user_id AS INTEGER)
+                          WHERE u.is_test = 0 AND u.is_internal = 0)`;
+
     const [daily, sources, topCards, coDaily, topCo, totals] = await Promise.all([
       env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COUNT(*) AS opens,
                              COUNT(DISTINCT visitor_hash) AS visitors ${EV}
@@ -7130,10 +7142,11 @@ async function adminCoreApi(request, env, url, admin) {
       env.DB.prepare(`SELECT code, COUNT(*) AS opens, COUNT(DISTINCT visitor_hash) AS visitors ${EV}
                       GROUP BY code ORDER BY opens DESC LIMIT 10`).bind(since).all(),
       env.DB.prepare(`SELECT day, COALESCE(SUM(hits),0) AS opens FROM company_stats
-                      WHERE kind = 'view' AND day >= ? GROUP BY day ORDER BY day`).bind(since).all(),
+                      WHERE kind = 'view' AND day >= ? AND ${NOT_TEST_CO}
+                      GROUP BY day ORDER BY day`).bind(since).all(),
       env.DB.prepare(`SELECT company_id, COALESCE(SUM(hits),0) AS opens FROM company_stats
-                      WHERE kind = 'view' AND day >= ? GROUP BY company_id
-                      ORDER BY opens DESC LIMIT 10`).bind(since).all(),
+                      WHERE kind = 'view' AND day >= ? AND ${NOT_TEST_CO}
+                      GROUP BY company_id ORDER BY opens DESC LIMIT 10`).bind(since).all(),
       // Noyob tashrifchi BUTUN davr bo'yicha — kunlik raqamlarni qo'shib
       // bo'lmaydi: bir odam uch kun kirsa, u uch kunda ham sanaladi,
       // lekin u BITTA odam.
