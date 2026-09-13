@@ -156,7 +156,10 @@ async function webhook(request, env, H) {
 export async function handle(request, env, url, H) {
   if (url.pathname === '/api/telegram/webhook' && request.method === 'POST') return webhook(request, env, H);
   if (url.pathname === '/api/telegram/bot' && request.method === 'GET') {
-    return H.json({ username: env.TELEGRAM_BOT_USERNAME || null });
+    // `@` olib tashlanadi — frontend bu qiymatdan "t.me/<username>"
+    // havolasini yasaydi, "@" bilan u ochilmaydi.
+    const username = String(env.TELEGRAM_BOT_USERNAME || '').trim().replace(/^@+/, '');
+    return H.json({ username: username || null });
   }
   return null;
 }

@@ -66,6 +66,13 @@ const EMAIL_OTP_TEXT = {
 
 // ---------- kichik yordamchilar ----------
 
+// Bot username'i: bo'sh joy va boshidagi "@" olib tashlanadi.
+// `hosting/api/telegram.js` dagi nusxasi bilan bir xil bo'lishi shart
+// (ikkalasi ham shu qiymatdan havola yasaydi).
+export function tgUsername(env) {
+  return String(env?.TELEGRAM_BOT_USERNAME || '').trim().replace(/^@+/, '');
+}
+
 // nowTs() formatida ("YYYY-MM-DD HH:MM:SS.mmm+00") — jadval ustunlari bilan
 // lexikografik solishtirish to'g'ri ishlashi uchun.
 const tsAt = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');
@@ -399,7 +406,15 @@ async function startTgLink(request, env, H) {
   if (await H.rateLimitD1(env, 'tglink:ip:' + H.reqIp(request), TG_LINK_IP_MAX, TG_LINK_WINDOW_MS)) {
     return H.json({ error: 'too_many_requests' }, 429);
   }
-  const username = env.TELEGRAM_BOT_USERNAME || '';
+  // `@` OLIB TASHLANADI. Telegram bot username'ini hamma joyda "@" bilan
+  // ko'rsatadi (BotFather ham, botning o'zi ham), shuning uchun uni
+  // sozlamaga ham "@nfcsalebot" deb yozib qo'yish juda tabiiy. Havola
+  // esa "t.me/@nfcsalebot" bo'lib buziladi va tugma jim ishlamay
+  // qoladi — xato ham chiqmaydi, shunchaki ochilmaydi.
+  //
+  // Egasi aynan shunday yozdi. Sozlamani to'g'rilashni talab qilish
+  // o'rniga kod ikkala ko'rinishni ham qabul qiladi.
+  const username = tgUsername(env);
   if (!username) return H.json({ error: 'bot_not_configured' }, 503);
   const token = await createTgLinkToken(env, H);
   return H.json({ token, url: `https://t.me/${username}?start=${token}` });
