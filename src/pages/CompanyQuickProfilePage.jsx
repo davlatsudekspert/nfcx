@@ -19,8 +19,8 @@ import { TIER_COLOR, TIER_LABEL } from '../lib/pricing.js';
 import ShareButton from '../components/ShareButton.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import {
-  IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconChip, IconLink,
-  IconNote, IconPin,
+  IconPhone, IconTelegram, IconGlobe, IconWhatsApp, IconInstagram, IconFacebook, IconLink,
+  IconNote, IconPin, IconBankCard,
 } from '../components/Icons.jsx';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
@@ -187,6 +187,18 @@ export default function CompanyQuickProfilePage({ companyId }) {
   // tarmoqning o'z rangida — ko'z Telegramni qidirmaydi, darrov topadi.
   const quick = [
     company.phone && { k: 'phone', href: contactUrl('phone', company.phone), label: t('Qo‘ng‘iroq'), color: '#0e7a3d', icon: <IconPhone width={26} height={26} aria-hidden="true" /> },
+    // KARTA RAQAMI — QO'NG'IROQDAN KEYIN, IKKINCHI O'RINDA (egasining
+    // savoli: "buni kim pul tashlayman desa"). Ilgari u ro'yxatning
+    // oxirida edi va telefon ekranida UMUMAN KO'RINMASDI — odam uni
+    // topish uchun qatorni surishi kerak edi. Endi surmasdan ko'rinadi.
+    //
+    // Nega birinchi emas: qo'ng'iroq — biznes kartadan kutiladigan eng
+    // oddiy harakat, pul o'tkazish esa undan keyin keladi.
+    //
+    // Raqamning O'ZI ro'yxatda YASHIRIN: bosilganda QR bilan oyna
+    // ochiladi. Ochiq tursa u tasodifan ekranga tushadi (skrinshot,
+    // video, yonidagi odam).
+    company.cardNumber && { k: 'card', label: t('Karta'), color: '#3d2e08', icon: <IconBankCard width={25} height={25} aria-hidden="true" />, onClick: () => setShowCard(true) },
     company.telegram && { k: 'telegram', href: contactUrl('telegram', company.telegram), label: 'Telegram', color: '#0f7ab0', icon: <IconTelegram width={26} height={26} aria-hidden="true" /> },
     company.whatsapp && { k: 'whatsapp', href: contactUrl('whatsapp', company.whatsapp), label: 'WhatsApp', color: '#0b8a3c', icon: <IconWhatsApp width={26} height={26} aria-hidden="true" /> },
     company.instagram && { k: 'instagram', href: socialUrl('ig', company.instagram), label: 'Instagram', color: '#b3175a', icon: <IconInstagram width={26} height={26} aria-hidden="true" /> },
@@ -194,8 +206,6 @@ export default function CompanyQuickProfilePage({ companyId }) {
     mapUrl && { k: 'directions', href: mapUrl, label: t('Manzil'), color: '#b83a1e', icon: <IconPin width={26} height={26} aria-hidden="true" /> },
     geo && { k: 'yandex', href: yandexDirectionsUrl(company), label: 'Yandex', color: '#b31217', icon: <IconPin width={26} height={26} aria-hidden="true" /> },
     company.website && { k: 'website', href: contactUrl('website', company.website), label: t('Sayt'), color: '#5a4410', icon: <IconGlobe width={26} height={26} aria-hidden="true" /> },
-    // KARTA RAQAMI — ro'yxatda YASHIRIN: bosilganda QR bilan oyna ochiladi.
-    company.cardNumber && { k: 'card', label: t('Karta'), color: '#5a4410', icon: <IconChip width={28} height={22} aria-hidden="true" />, onClick: () => setShowCard(true) },
     ...extraLinks.map((l, i) => ({ k: `x${i}`, href: l.url, label: l.label, color: '#5a4410', icon: <IconLink width={26} height={26} aria-hidden="true" /> })),
   ].filter(Boolean);
 

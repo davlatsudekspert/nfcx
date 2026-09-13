@@ -266,3 +266,19 @@ export function IconPin(props) {
     </svg>
   );
 }
+
+// Bank kartasi — "pul o'tkazish" tugmasi uchun.
+//
+// `IconChip` BU YERDA YARAMAYDI: uning rangi ichkarida qat'iy oltin
+// gradient bilan berilgan, aloqa qatoridagi katakcha esa o'zi oltin —
+// natijada belgi oltin ustida oltin bo'lib, deyarli ko'rinmasdi.
+// Bu esa chiziqli: rangi tashqaridan beriladi.
+export function IconBankCard(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.8" />
+      <path d="M2.5 9.6h19" />
+      <path d="M6 14.4h3.4" />
+    </svg>
+  );
+}

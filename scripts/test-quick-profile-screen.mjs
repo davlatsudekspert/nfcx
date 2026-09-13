@@ -73,6 +73,16 @@ checkTrue('5) eski ustun olib tashlandi', !page.includes('className="cq-actions"
 for (const key of ['phone', 'telegram', 'whatsapp', 'instagram', 'facebook', 'website', 'directions', 'yandex', 'card']) {
   checkTrue(`5) ${key} aloqasi joyida`, page.includes(`k: '${key}'`));
 }
+// KARTA — qo'ng'iroqdan keyin, IKKINCHI o'rinda (egasining savoli:
+// "buni kim pul tashlayman desa"). Ilgari u ro'yxatning oxirida edi va
+// telefon ekranida umuman ko'rinmasdi — odam uni topish uchun qatorni
+// surishi kerak edi.
+checkTrue('5) karta qo‘ng‘iroqdan keyin', page.indexOf("k: 'card'") < page.indexOf("k: 'telegram'"));
+checkTrue('5) qo‘ng‘iroq birinchi', page.indexOf("k: 'phone'") < page.indexOf("k: 'card'"));
+// Karta belgisi OLTIN katakcha ustida ko'rinishi kerak: `IconChip` ning
+// rangi ichkarida qat'iy oltin gradient bilan berilgan va u oltin
+// ustida oltin bo'lib yo'qolib ketardi.
+checkTrue('5) karta belgisi oltin ustida ko‘rinadi', page.includes('IconBankCard') && !page.includes('IconChip'));
 checkTrue('5) egasining havolalari joyida', page.includes('extraLinks.map'));
 
 // ── 6) Hech narsa YO'QOLMADI — tavsif, manzil, xarita, musiqa ───────
