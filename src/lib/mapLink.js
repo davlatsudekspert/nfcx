@@ -52,3 +52,46 @@ export function googleDirectionsUrl({ latitude, longitude, address } = {}) {
   const q = coords || String(address || '').trim();
   return q ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}` : '';
 }
+
+// Yandex Navigator — ILOVA sxemasi. O'zbekistonda yo'nalish uchun eng
+// ko'p ishlatiladigan ilova, lekin uning veb-versiyasi yo'q: sxema
+// ochilmasa odam bo'sh ekranda qoladi. Shuning uchun `openMapApp()`
+// zaxira havola bilan birga ishlatiladi.
+export function yandexNaviUrl({ latitude, longitude } = {}) {
+  if (!hasCoords(latitude, longitude)) return '';
+  return `yandexnavi://build_route_on_map?lat_to=${latitude}&lon_to=${longitude}`;
+}
+
+// Qurilmada MAVJUD bo'lishi mumkin bo'lgan xarita ilovalari ro'yxati.
+//
+// Nima uchun O'ZIMIZNING ro'yxat, `geo:` havolasi emas: `geo:` da
+// Android tizimning o'z tanlovini ko'rsatadi (bu yaxshi), lekin
+// iPhone'da u UMUMAN ishlamaydi — odam bosadi va hech narsa bo'lmaydi.
+// O'z ro'yxatimiz har ikkala tizimda ham bir xil ishlaydi.
+export function mapApps(company) {
+  const apple = isApple();
+  const navi = yandexNaviUrl(company);
+  return [
+    navi && {
+      id: 'navi', label: 'Yandex Navigator', url: navi,
+      // Ilova o'rnatilmagan bo'lsa — Yandex Kartaning veb-versiyasi.
+      fallback: yandexDirectionsUrl(company),
+    },
+    { id: 'ymaps', label: 'Yandex Xarita', url: yandexDirectionsUrl(company) },
+    { id: 'gmaps', label: 'Google Maps', url: googleDirectionsUrl(company) },
+    apple && { id: 'amaps', label: 'Apple Xarita', url: directionsUrl(company) },
+  ].filter((x) => x && x.url);
+}
+
+// Ilovani ochadi. Sxemali havola (yandexnavi://) ochilmasa — brauzer
+// hech narsa qilmaydi va odam bo'sh ekranda qoladi. Shuning uchun
+// qisqa kutishdan keyin, sahifa HALI HAM ko'rinib tursa (ya'ni ilova
+// ochilmagan bo'lsa), zaxira havolaga o'tamiz.
+export function openMapApp(app) {
+  if (!app?.url) return;
+  if (!app.fallback) { window.open(app.url, '_blank', 'noreferrer'); return; }
+  window.location.href = app.url;
+  setTimeout(() => {
+    if (!document.hidden) window.location.href = app.fallback;
+  }, 1500);
+}

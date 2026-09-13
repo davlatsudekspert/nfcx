@@ -70,7 +70,7 @@ checkTrue('5) qator boshi kesilmaydi (ichki o‘ram)', page.includes('qp-quick-i
 checkTrue('5) qatorning o‘zi markazlamaydi', !rule('.qp-quick').includes('justify-content:center'));
 checkTrue('5) eski ustun olib tashlandi', !page.includes('className="cq-actions"'));
 // Hech bir aloqa turi yo'qolmasligi kerak.
-for (const key of ['phone', 'telegram', 'whatsapp', 'instagram', 'facebook', 'website', 'directions', 'yandex', 'card']) {
+for (const key of ['phone', 'telegram', 'whatsapp', 'instagram', 'facebook', 'website', 'directions', 'card']) {
   checkTrue(`5) ${key} aloqasi joyida`, page.includes(`k: '${key}'`));
 }
 // KARTA — qo'ng'iroqdan keyin, IKKINCHI o'rinda (egasining savoli:
@@ -83,6 +83,10 @@ checkTrue('5) qo‘ng‘iroq birinchi', page.indexOf("k: 'phone'") < page.indexO
 // rangi ichkarida qat'iy oltin gradient bilan berilgan va u oltin
 // ustida oltin bo'lib yo'qolib ketardi.
 checkTrue('5) karta belgisi oltin ustida ko‘rinadi', page.includes('IconBankCard') && !page.includes('IconChip'));
+// Yandex ENDI alohida ikonka emas: u "Manzil" bosilganda chiqadigan
+// tanlov oynasida — ikkita xarita ikonkasi qator joyini yeb qo'yardi.
+checkTrue('5) yandex alohida ikonka emas', !page.includes("k: 'yandex'"));
+checkTrue('5) manzil tanlov oynasini ochadi', page.includes('setMapPick(true)'));
 checkTrue('5) egasining havolalari joyida', page.includes('extraLinks.map'));
 
 // ── 6) Hech narsa YO'QOLMADI — tavsif, manzil, xarita, musiqa ───────
@@ -213,5 +217,53 @@ checkTrue('17) yopiq — qizg‘ish', css.includes('.qp-hero .ch-box:not(:has(.c
 // qolgan edi.
 checkTrue('18) o‘ng chet so‘nadi', rule('.qp-quick').includes('mask-image'));
 checkTrue('18) qoplama emas, niqob', !rule('.qp-quick').includes('::after'));
+
+
+// ── 19) TO'LIQ EKRAN TUGMASI ─────────────────────────────────────────
+// Egasining talabi: "NFC kartani urganda telefon ekranini to'liq
+// egallab chiqsin" — ya'ni brauzerning manzil qatori va pastki
+// tugmalari ko'rinmasin.
+//
+// Sayt buni O'ZICHA qila olmaydi: bu brauzerning xavfsizlik qoidasi
+// (aks holda istalgan sahifa butun ekranni egallab, tizim oynasiga
+// o'xshab qolardi). Faqat ODAMNING bosishi bilan mumkin.
+checkTrue('19) to‘liq ekran tugmasi bor', page.includes('qp-fsbtn') && page.includes('requestFullscreen'));
+// iPhone Safari'da element uchun to'liq ekran YO'Q — u yerda tugma
+// umuman chizilmasligi kerak (bosilib, hech narsa bo'lmasligidan
+// ko'ra ko'rinmagani yaxshi).
+checkTrue('19) qo‘llab-quvvatlanmasa chizilmaydi', page.includes('fullscreenEnabled') && page.includes('fsOk &&'));
+// Ilova sifatida ochilgan bo'lsa brauzer qatori allaqachon yo'q.
+checkTrue('19) ilova rejimida ham chizilmaydi', page.includes("display-mode: standalone"));
+// Holat brauzerdan kuzatiladi: odam ESC bossa yoki tizim chiqarsa
+// tugma belgisi ham qaytishi kerak.
+checkTrue('19) holat brauzerdan kuzatiladi', page.includes("addEventListener('fullscreenchange'"));
+
+
+// ── 20) XARITA ILOVASINI TANLASH ─────────────────────────────────────
+// Egasining talabi: "xaritani tanlashda telefonda Yandex Navigator va
+// boshqalarga yo'naltirishi kerak, faqat Google Maps'ni ochmoqchi
+// emas". Ilgari "Yo'nalish olish" to'g'ridan-to'g'ri bitta xaritaga
+// olib borardi.
+const sheet = readFileSync(new URL('../src/components/MapAppSheet.jsx', import.meta.url), 'utf8');
+const lib = readFileSync(new URL('../src/lib/mapLink.js', import.meta.url), 'utf8');
+checkTrue('20) tanlov oynasi ulangan', page.includes('MapAppSheet') && page.includes('mapPick'));
+checkTrue('20) yo‘nalish tugmasi oynani ochadi', page.includes("companyEvent(company.companyId, 'action', 'directions')") && page.includes('setMapPick(true)'));
+// Yandex Navigator — O'zbekistonda yo'nalish uchun asosiy ilova.
+checkTrue('20) yandex navigator bor', lib.includes('yandexnavi://build_route_on_map'));
+checkTrue('20) yandex xarita bor', lib.includes('yandexDirectionsUrl'));
+checkTrue('20) google maps bor', lib.includes('googleDirectionsUrl'));
+// Ilova o'rnatilmagan bo'lsa sxemali havola HECH NARSA qilmaydi va
+// odam bo'sh ekranda qoladi — zaxira havola shart.
+checkTrue('20) ilova yo‘q bo‘lsa zaxira havola', lib.includes('fallback') && lib.includes('document.hidden'));
+// `geo:` havolasi EMAS: Android'da ishlaydi, iPhone'da umuman yo'q.
+// Izohlar olib tashlanadi — aks holda shu qarorni TUSHUNTIRGAN izohning
+// o'zi topilib qolardi.
+const libCode = lib.replace(/^\s*\/\/.*$/gm, '');
+checkTrue('20) geo: havolasiga tayanmaydi', !libCode.includes('geo:'));
+checkTrue('20) oyna body ga portal qilinadi', sheet.includes('createPortal') && sheet.includes('document.body'));
+// Portal `.qp-shell` dan tashqarida — uni `overflow:hidden` kesmasligi
+// uchun uslubi ham fixed bo'lishi shart.
+checkTrue('20) oyna uslubi bor', rule('.ma-veil').includes('position:fixed') && css.includes('.ma-item'));
+checkTrue('20) bekor qilish tugmasi bor', sheet.includes('ma-close'));
 
 done();
