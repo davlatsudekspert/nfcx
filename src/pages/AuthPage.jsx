@@ -43,6 +43,13 @@ function errText(err, t, botLink) {
   if (key === 'bad_phone') return t("Telefon raqamini to'g'ri kiriting.");
   if (key === 'tg_send_failed') return t("Telegram orqali kod yuborib bo'lmadi. Birozdan so'ng qayta urining.");
   // ---- Emailga kod yuborish xatolari ----
+  // Jo'natuvchi manzil noto'g'ri sozlangan — bu MIJOZNING xatosi emas,
+  // sayt sozlamasi. Shuning uchun "manzilingizni tekshiring" deyish
+  // chalkash bo'lardi: odam o'z emailini qayta-qayta tekshirib,
+  // aybni o'zidan qidirardi.
+  if (key === 'bad_from' || err?.reason === 'bad_from') {
+    return t('Saytning pochta sozlamasida xatolik bor. Biz xabardormiz — birozdan so‘ng qayta urinib ko‘ring.');
+  }
   if (key === 'email_send_failed') {
     // SABAB ham ko'rsatiladi. U maxfiy emas (faqat "http_403" kabi
     // holat kodi) va aynan shu narsa muammoni bir qarashda ochadi:

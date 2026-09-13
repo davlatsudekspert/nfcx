@@ -136,6 +136,37 @@ const lastMailCode = () => (String(mails[mails.length - 1]?.html || '').match(/>
   mailStatus = 200;
 }
 
+// ===== 5b) JO'NATUVCHI manzili noto'g'ri bo'lsa =====
+//
+// Jonli muhitda aynan shu sodir bo'ldi: Windows PowerShell'da
+// `wrangler secret put` ga yozilgan qiymat oxirida ko'rinmas `\r`
+// qolgan edi. Qiymat ko'zga to'g'ri ko'rinardi, Resend esa butun
+// so'rovni 400 bilan rad etardi va sabab noma'lum qolardi.
+{
+  const savedFrom = env.RESEND_FROM;
+  const beforeMail = mails.length;
+
+  // Ko'rinmas `\r` — TOZALANISHI va xat NORMAL ketishi kerak.
+  env.RESEND_FROM = 'NFCSTORE <no-reply@nfcstore.uz>\r';
+  clearLimits();
+  let res = await post('/api/auth/request-register-code', { email: 'crlf@example.com' });
+  check('5b) oxiridagi \\r tozalanadi -> 200', [res.status, (await res.json()).channel], [200, 'email']);
+  check('5b) xat yuborildi', mails.length - beforeMail, 1);
+  // Resend'ga TOZA qiymat ketishi shart.
+  check('5b) resend toza qiymat oldi', mails[mails.length - 1].from, 'NFCSTORE <no-reply@nfcstore.uz>');
+
+  // HAQIQATAN buzuq qiymat — so'rov Resend'ga UMUMAN yuborilmasin.
+  env.RESEND_FROM = 'NFCSTORE no-reply@nfcstore.uz';
+  const beforeBad = mails.length;
+  clearLimits();
+  res = await post('/api/auth/request-register-code', { email: 'badfrom@example.com' });
+  const body = await res.json();
+  check('5b) buzuq jo‘natuvchi -> 503 bad_from', [res.status, body.error, body.reason], [503, 'email_send_failed', 'bad_from']);
+  check('5b) bekorga so‘rov yuborilmadi', mails.length - beforeBad, 0);
+
+  env.RESEND_FROM = savedFrom;
+}
+
 // ===== 6) ZAXIRA: email xizmati O'CHIQ bo'lsa ro'yxat to'xtamaydi =====
 //
 // Egasining aniq tanlovi. Alohida muhit: RESEND kalitlari YO'Q.
