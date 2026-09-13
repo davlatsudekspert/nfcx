@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'design/theme.dart';
 import 'design/tokens.dart';
+import 'design/type.dart';
 import 'screens/entry/login.dart';
 import 'screens/entry/onboarding.dart';
 import 'screens/entry/splash.dart';
@@ -50,7 +51,27 @@ class _NfcstoreAppState extends State<NfcstoreApp> {
           maxScaleFactor: 1.3,
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: systemOverlay,
-            child: ColoredBox(color: C.obsidian, child: child ?? const SizedBox()),
+            // MATERIAL AJDODI — BUTUN ILOVA UCHUN SHU YERDA.
+            //
+            // Ekranlar `Scaffold` ishlatmaydi (ular o'z maketini o'zi
+            // quradi), `MaterialApp` esa Material qatlamini O'ZI
+            // qo'shmaydi. Natijada har bir `Text` "uslub meros
+            // qilinmagan" deb SARIQ IKKI CHIZIQ bilan chiziladi —
+            // ya'ni ilovaning HAMMA ekrani buzuq ko'rinardi. Buni
+            // faqat ilovani haqiqatan ochib ko'rgandagina bilish
+            // mumkin edi: testlar ham, `flutter analyze` ham buni
+            // xato deb hisoblamaydi.
+            //
+            // Bitta joyda hal qilinadi: shu builder `Navigator` ni
+            // o'raydi, demak barcha ekranlar uning ichida.
+            child: Material(
+              type: MaterialType.canvas,
+              color: C.obsidian,
+              // Standart matn uslubi ham shu yerdan — uslubsiz
+              // qolgan `Text` ilovaning o'z shriftini oladi.
+              textStyle: T.body.copyWith(color: C.offWhite),
+              child: child ?? const SizedBox(),
+            ),
           ),
         ),
         home: _Root(onboarded: _onboarded, onOnboarded: () => setState(() => _onboarded = true)),
@@ -77,6 +98,18 @@ class _Root extends StatelessWidget {
     // bo'lmaydi.
     return AnimatedSwitcher(
       duration: M.fade,
+      // MAKETNI EKRANGA TO'LDIRAMIZ.
+      //
+      // `AnimatedSwitcher` ning standart joylashuvi bolani `Stack`
+      // ichida MARKAZGA qo'yadi va unga bo'sh (loose) o'lcham beradi.
+      // Natijada ekranlar o'z tarkibi bo'yicha kichrayib, ekran
+      // o'rtasida osilib qolardi — kirish ekrani aynan shunday
+      // ko'rinardi. `StackFit.expand` bilan har bir ekran to'liq
+      // balandlikni oladi.
+      layoutBuilder: (current, previous) => Stack(
+        fit: StackFit.expand,
+        children: [...previous, if (current != null) current],
+      ),
       child: KeyedSubtree(key: ValueKey(state.phase.name + (onboarded ? '1' : '0')), child: child),
     );
   }
