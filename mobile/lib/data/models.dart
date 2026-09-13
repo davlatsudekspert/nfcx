@@ -1,0 +1,391 @@
+import '../design/tokens.dart';
+import 'api_client.dart';
+
+/// Xavfsiz o'qish yordamchilari.
+///
+/// Backend JSON'i vaqt o'tishi bilan o'zgaradi (yangi maydon qo'shiladi,
+/// eskisi `null` bo'lib qoladi). Model to'g'ridan-to'g'ri `map['x'] as
+/// String` yozsa, bitta kutilmagan `null` butun ekranni yiqitadi.
+String _s(dynamic v) => v == null ? '' : '$v';
+int _i(dynamic v) => v is num ? v.round() : int.tryParse('$v') ?? 0;
+bool _b(dynamic v) => v == true || v == 1 || v == '1';
+List<Map<String, dynamic>> _list(dynamic v) => v is List
+    ? v.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList()
+    : const [];
+
+/// Hisob egasi.
+class AppUser {
+  AppUser({required this.id, required this.email, this.phone = '', this.isPremium = false});
+
+  final int id;
+  final String email;
+  final String phone;
+  final bool isPremium;
+
+  factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
+        id: _i(j['id']),
+        email: _s(j['email']),
+        phone: _s(j['phone']),
+        isPremium: _b(j['isPremium']),
+      );
+
+  /// Emailni niqoblash: `aziz@gmail.com` -> `a***@gmail.com`.
+  /// Tasdiqlash ekranida to'liq manzil ko'rsatilmaydi.
+  static String mask(String email) {
+    final at = email.indexOf('@');
+    if (at < 1) return email;
+    return '${email[0]}***${email.substring(at)}';
+  }
+}
+
+/// Shaxsiy profil / NFC ID (`cards` jadvali).
+class Record {
+  Record({
+    required this.code,
+    required this.name,
+    this.role = '',
+    this.avatarUrl,
+    this.bgUrl,
+    this.about = '',
+    this.city = '',
+    this.phone = '',
+    this.tg = '',
+    this.instagram = '',
+    this.website = '',
+    this.email = '',
+    this.address = '',
+    this.profileType = 'personal',
+    this.verified = false,
+    this.isPrimary = false,
+    this.price = 0,
+    this.views = 0,
+    this.tierOverride = '',
+    this.companyId = '',
+    this.isGift = false,
+    this.notForSale = false,
+    this.extraLinks = const [],
+  });
+
+  final String code;
+  final String name;
+  final String role;
+  final String? avatarUrl;
+  final String? bgUrl;
+  final String about;
+  final String city;
+  final String phone;
+  final String tg;
+  final String instagram;
+  final String website;
+  final String email;
+  final String address;
+  final String profileType;
+  final bool verified;
+  final bool isPrimary;
+  final int price;
+  final int views;
+  final String tierOverride;
+  final String companyId;
+  final bool isGift;
+  final bool notForSale;
+  final List<Map<String, dynamic>> extraLinks;
+
+  bool get isBusiness => profileType == 'business';
+  bool get isExpert => profileType == 'expert';
+
+  /// Tarif KODDAN kelib chiqadi — backend'dagi `personalIdTierD1` bilan
+  /// bir xil qoida. `tierOverride` bo'lsa u ustun turadi.
+  ///
+  /// NIMA UCHUN MIJOZ TOMONDA HAM: katalog javobida tarif maydoni yo'q,
+  /// faqat kod va narx bor. Qoida oddiy va o'zgarmas, shuning uchun uni
+  /// takrorlash xavfsiz; har bir karta uchun alohida so'rov yuborish esa
+  /// ro'yxatni sekinlashtirardi.
+  Tier get tier {
+    if (tierOverride.isNotEmpty) return TierStyle.parse(tierOverride);
+    if (isGift) return Tier.exclusive;
+    final c = code.toUpperCase();
+    if (RegExp(r'^[A-Z]+$').hasMatch(c)) return Tier.exclusive;
+    if (c.length != 6) return Tier.free;
+    // Narx oralig'i — katalogdagi tarif narxlari bilan bir xil.
+    if (price >= 490000) return Tier.exclusive;
+    if (price >= 199000) return Tier.premium;
+    if (price >= 149000) return Tier.gold;
+    if (price >= 99000) return Tier.silver;
+    if (price >= 49000) return Tier.bronze;
+    return Tier.free;
+  }
+
+  factory Record.fromJson(Map<String, dynamic> j) => Record(
+        code: _s(j['code']).toUpperCase(),
+        name: _s(j['name']),
+        role: _s(j['role']),
+        avatarUrl: absUrl(_s(j['avatarUrl'])),
+        bgUrl: absUrl(_s(j['bgUrl'])),
+        about: _s(j['about']),
+        city: _s(j['city']),
+        phone: _s(j['phone']),
+        tg: _s(j['tg']),
+        instagram: _s(j['instagram']),
+        website: _s(j['website']),
+        email: _s(j['email']),
+        address: _s(j['address']),
+        profileType: _s(j['profileType']).isEmpty ? 'personal' : _s(j['profileType']),
+        verified: _b(j['verified']),
+        isPrimary: _b(j['isPrimary']),
+        price: _i(j['price']),
+        views: _i(j['views']),
+        tierOverride: _s(j['tierOverride']),
+        companyId: _s(j['companyId']),
+        isGift: _b(j['isGift']),
+        notForSale: _b(j['notForSale']),
+        extraLinks: _list(j['extraLinks']),
+      );
+}
+
+/// Biznes profil (`companies` jadvali).
+class Company {
+  Company({
+    required this.id,
+    required this.name,
+    this.logoUrl,
+    this.coverUrl,
+    this.about = '',
+    this.city = '',
+    this.address = '',
+    this.phone = '',
+    this.tg = '',
+    this.instagram = '',
+    this.website = '',
+    this.status = '',
+    this.tier = '',
+    this.verified = false,
+    this.ordersEnabled = false,
+    this.isOpen,
+    this.hoursLabel = '',
+    this.followers = 0,
+    this.views = 0,
+    this.itemCount = 0,
+    this.following = false,
+    this.items = const [],
+  });
+
+  final String id;
+  final String name;
+  final String? logoUrl;
+  final String? coverUrl;
+  final String about;
+  final String city;
+  final String address;
+  final String phone;
+  final String tg;
+  final String instagram;
+  final String website;
+  final String status;
+  final String tier;
+  final bool verified;
+  final bool ordersEnabled;
+
+  /// `null` — ish vaqti kiritilmagan, "Ochiq/Yopiq" ko'rsatilmaydi.
+  final bool? isOpen;
+  final String hoursLabel;
+  final int followers;
+  final int views;
+  final int itemCount;
+  final bool following;
+  final List<Product> items;
+
+  factory Company.fromJson(Map<String, dynamic> j) {
+    final items = _list(j['items'] ?? j['catalog']).map(Product.fromJson).toList();
+    return Company(
+      id: _s(j['companyId'] ?? j['id']).toUpperCase(),
+      name: _s(j['displayName'] ?? j['name']),
+      logoUrl: absUrl(_s(j['logoUrl'])),
+      coverUrl: absUrl(_s(j['coverUrl'])),
+      about: _s(j['about'] ?? j['description']),
+      city: _s(j['city']),
+      address: _s(j['address']),
+      phone: _s(j['phone']),
+      tg: _s(j['tg'] ?? j['telegram']),
+      instagram: _s(j['instagram']),
+      website: _s(j['website']),
+      status: _s(j['status']),
+      tier: _s(j['tier']),
+      verified: _b(j['verified']),
+      ordersEnabled: _b(j['ordersEnabled']),
+      isOpen: j['isOpen'] is bool ? j['isOpen'] as bool : null,
+      hoursLabel: _s(j['hoursLabel'] ?? j['hours']),
+      followers: _i(j['followers']),
+      views: _i(j['views']),
+      itemCount: j['itemCount'] != null ? _i(j['itemCount']) : items.length,
+      following: _b(j['following']),
+      items: items,
+    );
+  }
+}
+
+/// Katalog mahsuloti yoki xizmati.
+class Product {
+  Product({
+    required this.id,
+    required this.name,
+    this.description = '',
+    this.price = 0,
+    this.salePrice,
+    this.imageUrl,
+    this.images = const [],
+    this.categoryName = '',
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final int price;
+
+  /// Chegirma narxi. `null` — chegirma yo'q.
+  final int? salePrice;
+  final String? imageUrl;
+  final List<String> images;
+  final String categoryName;
+
+  /// To'lanadigan narx.
+  int get effectivePrice => salePrice ?? price;
+
+  /// Chegirma foizi — faqat haqiqiy chegirmada.
+  int? get discountPct {
+    final sp = salePrice;
+    if (sp == null || price <= 0 || sp >= price) return null;
+    return (((price - sp) / price) * 100).round();
+  }
+
+  factory Product.fromJson(Map<String, dynamic> j) {
+    final imgs = <String>[];
+    final raw = j['images'];
+    if (raw is List) {
+      for (final e in raw) {
+        final u = absUrl(_s(e));
+        if (u != null) imgs.add(u);
+      }
+    }
+    final main = absUrl(_s(j['imageUrl'] ?? j['image']));
+    if (main != null && !imgs.contains(main)) imgs.insert(0, main);
+    final sale = j['promotionPrice'] ?? j['salePrice'];
+    return Product(
+      id: _s(j['id']),
+      name: _s(j['name']),
+      description: _s(j['description'] ?? j['about']),
+      price: _i(j['price']),
+      salePrice: sale == null ? null : _i(sale),
+      imageUrl: imgs.isEmpty ? null : imgs.first,
+      images: imgs,
+      categoryName: _s(j['categoryName'] ?? j['category']),
+    );
+  }
+}
+
+/// Post yoki story.
+class Post {
+  Post({
+    required this.id,
+    this.caption = '',
+    this.images = const [],
+    this.createdAt,
+    this.likes = 0,
+    this.views = 0,
+    this.liked = false,
+    this.authorName = '',
+    this.authorAvatar,
+    this.authorCode = '',
+  });
+
+  final String id;
+  final String caption;
+  final List<String> images;
+  final DateTime? createdAt;
+  final int likes;
+  final int views;
+  final bool liked;
+  final String authorName;
+  final String? authorAvatar;
+  final String authorCode;
+
+  factory Post.fromJson(Map<String, dynamic> j) {
+    final imgs = <String>[];
+    for (final key in ['images', 'media', 'photos']) {
+      final raw = j[key];
+      if (raw is List) {
+        for (final e in raw) {
+          final u = absUrl(e is Map ? _s(e['url']) : _s(e));
+          if (u != null && !imgs.contains(u)) imgs.add(u);
+        }
+      }
+    }
+    final single = absUrl(_s(j['imageUrl'] ?? j['url'] ?? j['mediaUrl']));
+    if (single != null && !imgs.contains(single)) imgs.insert(0, single);
+    return Post(
+      id: _s(j['id']),
+      caption: _s(j['caption'] ?? j['text'] ?? j['body']),
+      images: imgs,
+      createdAt: DateTime.tryParse(_s(j['createdAt'] ?? j['created_at'] ?? j['ts'])),
+      likes: _i(j['likes'] ?? j['likeCount']),
+      views: _i(j['views'] ?? j['viewCount']),
+      liked: _b(j['liked']),
+      authorName: _s(j['authorName'] ?? j['name']),
+      authorAvatar: absUrl(_s(j['authorAvatar'] ?? j['avatarUrl'])),
+      authorCode: _s(j['code'] ?? j['authorCode']).toUpperCase(),
+    );
+  }
+}
+
+/// Buyurtma (`web_orders` — ID/karta xaridi).
+class Order {
+  Order({
+    required this.id,
+    required this.code,
+    required this.price,
+    required this.status,
+    this.kind = '',
+    this.createdAt,
+    this.payLink,
+    this.expiresAtMs,
+  });
+
+  final int id;
+  final String code;
+  final int price;
+  final String status;
+  final String kind;
+  final DateTime? createdAt;
+
+  /// Kutilayotgan buyurtmani DAVOM ETTIRISH havolasi (Payme).
+  final String? payLink;
+  final int? expiresAtMs;
+
+  bool get isPending => status == 'pending';
+  bool get isPaid => status == 'paid';
+
+  factory Order.fromJson(Map<String, dynamic> j) => Order(
+        id: _i(j['id']),
+        code: _s(j['code']).toUpperCase(),
+        price: _i(j['price']),
+        status: _s(j['status']),
+        kind: _s(j['kind']),
+        createdAt: DateTime.tryParse(_s(j['createdAt'])),
+        payLink: _s(j['payLink']).isEmpty ? null : _s(j['payLink']),
+        expiresAtMs: j['expiresAtMs'] == null ? null : _i(j['expiresAtMs']),
+      );
+}
+
+/// Obuna raqamlari.
+class FollowStats {
+  const FollowStats({this.followers = 0, this.following = 0, this.isFollowing = false});
+
+  final int followers;
+  final int following;
+  final bool isFollowing;
+
+  factory FollowStats.fromJson(Map<String, dynamic> j) => FollowStats(
+        followers: _i(j['followers']),
+        following: _i(j['following']),
+        isFollowing: _b(j['isFollowing'] ?? j['following_by_me'] ?? j['followed']),
+      );
+}

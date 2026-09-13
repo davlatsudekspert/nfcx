@@ -2374,7 +2374,17 @@ const ensureCompanyPlanColumns = async (env) => {
 // qo'ygandan ko'ra, taniganini yozgani ma'qul.
 //
 // Ilova tomoni uchun: `X-Client: android` yuborilsa eng aniq bo'ladi.
-export function signupSourceD1(request) {
+export // Mobil ilova o'zini shu nomlardan biri bilan tanishtiradi. Ro'yxat
+// `signupSourceD1` bilan bir xil manbadan — ikkalasi ajralib ketmasin.
+const MOBILE_CLIENTS_D1 = new Set(['mobile', 'android', 'ios']);
+
+// Modullar (hosting/api/*) worker.js dan import QILMAYDI — ular hamma
+// narsani `H` orqali oladi. Shuning uchun tekshiruv funksiya shaklida.
+function isMobileClientD1(request) {
+  return MOBILE_CLIENTS_D1.has(String(request?.headers?.get?.('x-client') || '').toLowerCase());
+}
+
+function signupSourceD1(request) {
   const c = String(request?.headers?.get?.('x-client') || '').toLowerCase();
   if (c.includes('android')) return 'android';
   if (c.includes('ios')) return 'ios';
@@ -5014,7 +5024,17 @@ async function authApi(request, env, url) {
     // (`createUserSession` uni allaqachon qaytaradi — ilgari u faqat
     // Set-Cookie ga ketib, tanadan tashlab yuborilardi). Veb bu
     // sarlavhani yubormaydi, demak uning javobi bitma-bit avvalgidek.
-    const wantsToken = (request.headers.get('x-client') || '').toLowerCase() === 'mobile';
+    // MOBIL ILOVA: token javob TANASIDA qaytadi.
+    //
+    // `mobile` dan tashqari `android` va `ios` ham qabul qilinadi:
+    // ilova bu sarlavhada o'z platformasini yozadi (ro'yxatdan o'tish
+    // manbasi admin "Trafik" bo'limida shundan ajratiladi). Ilgari
+    // faqat `mobile` tekshirilardi va Android ilova to'g'ri manba
+    // yuborganida tokensiz qolardi.
+    //
+    // Veb uchun HECH NARSA o'zgarmaydi: brauzer bu sarlavhani umuman
+    // yubormaydi, demak javobi bitma-bit avvalgidek.
+    const wantsToken = isMobileClientD1(request);
     return jsonWithCookie({
       user: { id: row.id, email: publicEmailD1(row.email) },
       ...(wantsToken ? { token: session.token } : {}),
@@ -8694,7 +8714,7 @@ const H = {
   emailEnabledD1, sendEmailD1, emailShellD1,
   personalPriceForCode, personalTierFromCode, personalCodeTierOverride, isPersonalCodePurchasable,
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
-  signupSourceD1, usersHaveSignupSourceD1,
+  signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
 };
 const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant];
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ishga tushish foni.
+     Shabloni OQ edi: ilova ochilganda bir lahza oq ekran chaqnab,
+     keyin qora dizaynga o'tardi. Fon ilovaning o'z foniga (Obsidian)
+     tenglashtirildi — ochilish silliq ko'rinadi. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+</layer-list>

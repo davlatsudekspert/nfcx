@@ -10,3 +10,11 @@ server/uploads/
 # dizayn prototiplari screenshotlari (36MB, tools/screenshot.mjs bilan qayta olinadi)
 design-proposals/screenshots/
 .wrangler/
+
+# Flutter mobil ilova
+mobile/build/
+mobile/.dart_tool/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/

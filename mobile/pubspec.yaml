@@ -1,0 +1,67 @@
+name: nfcstore
+description: "NFCSTORE — raqamli profil va NFC karta."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Tarmoq. `http` — oddiy va yengil; API klienti bitta joyda
+  # (lib/data/api_client.dart) o'ralgan, shuning uchun kerak bo'lsa
+  # boshqasiga almashtirish bir faylni o'zgartiradi.
+  http: ^1.2.2
+  # Rasm keshi — brief talabi. Xotira + disk keshi, skeletondan
+  # yumshoq o'tish (240ms) shu paketning placeholder/fade imkoniyati
+  # bilan beriladi.
+  cached_network_image: ^3.4.1
+  # Sessiya tokeni — Keystore/Keychain ichida. SharedPreferences EMAS:
+  # token bu — hisobga to'liq kirish.
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.2
+  # QR — sof Dart, native bog'liqliksiz.
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.2
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/img/
+  fonts:
+    - family: InstrumentSerif
+      fonts:
+        - asset: assets/fonts/InstrumentSerif-400.ttf
+          weight: 400
+        - asset: assets/fonts/InstrumentSerif-400Italic.ttf
+          weight: 400
+          style: italic
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-400.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-500.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-600.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-700.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-800.ttf
+          weight: 800
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-400.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-500.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-600.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexMono-700.ttf
+          weight: 700

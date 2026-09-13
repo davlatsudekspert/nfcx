@@ -665,7 +665,17 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
   // javob tanasida ham qaytadi, aks holda javob avvalgidek qoladi.
   // Shunda ilova ro'yxatdan o'tgandan keyin darhol kirgan holatda
   // bo'ladi va qayta login so'ralmaydi.
-  const wantsToken = (request.headers.get('x-client') || '').toLowerCase() === 'mobile';
+  // MOBIL ILOVA: token javob TANASIDA qaytadi.
+  //
+  // `mobile` dan tashqari `android` va `ios` ham qabul qilinadi:
+  // ilova bu sarlavhada o'z platformasini yozadi (ro'yxatdan o'tish
+  // manbasi admin "Trafik" bo'limida shundan ajratiladi). Ilgari
+  // faqat `mobile` tekshirilardi va Android ilova to'g'ri manba
+  // yuborganida tokensiz qolardi.
+  //
+  // Veb uchun HECH NARSA o'zgarmaydi: brauzer bu sarlavhani umuman
+  // yubormaydi, demak javobi bitma-bit avvalgidek.
+  const wantsToken = H.isMobileClientD1(request);
   return H.jsonWithCookie({
     user: { id: user.id, email: H.publicEmailD1(user.email) },
     ...(wantsToken ? { token: s.token } : {}),
