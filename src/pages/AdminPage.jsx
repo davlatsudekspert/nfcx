@@ -445,12 +445,31 @@ function TrafficTab() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState(null);
   const [loadErr, setLoadErr] = useState(null);
+  // Sinov/ichki akkauntlarni QAYTARIB ko'rsatish — buyurtmalar
+  // ro'yxatidagi bilan bir xil mantiq. Standart holat: yashirin.
+  const [includeTest, setIncludeTest] = useState(false);
+  const [startDraft, setStartDraft] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoadErr(null); setData(null);
-    adminApi(`/traffic?days=${days}`).then(setData).catch((e) => setLoadErr(e));
-  }, [days]);
+    adminApi(`/traffic?days=${days}${includeTest ? '&includeTest=1' : ''}`)
+      .then((d) => { setData(d); setStartDraft(d.startDay || ''); })
+      .catch((e) => setLoadErr(e));
+  }, [days, includeTest]);
   useEffect(() => { load(); }, [load]);
+
+  // BOSHLANISH SANASINI SAQLASH. Bu O'CHIRISH EMAS — hech bir yozuv
+  // yo'qolmaydi, sana faqat shu bo'limning chegarasi. Shuning uchun
+  // "ishonchingiz komilmi?" so'ralmaydi: har qanday vaqtda bo'shatib
+  // butun tarixni qaytarish mumkin.
+  const saveStart = async (value) => {
+    setSaving(true);
+    try {
+      await adminApi('/traffic/start-day', { method: 'POST', body: JSON.stringify({ startDay: value }) });
+      load();
+    } catch (e) { setLoadErr(e); } finally { setSaving(false); }
+  };
 
   const ranges = (
     <div className="flex flex-wrap gap-1.5">
@@ -467,7 +486,11 @@ function TrafficTab() {
   if (!data) return <><div className="mb-4">{ranges}</div><AdminLoading rows={6} /></>;
 
   const { totals } = data;
-  const avg = totals.opens ? Math.round(totals.opens / data.days) : 0;
+  // O'RTACHA — HAQIQATDA ko'rsatilgan kunlar soniga bo'linadi.
+  // Boshlanish sanasi qo'yilganda davr qisqaradi; `data.days` ga
+  // bo'lsak o'rtacha sun'iy ravishda pasayib ketardi.
+  const shownDays = (data.series || []).length || data.days;
+  const avg = totals.opens ? Math.round(totals.opens / shownDays) : 0;
   const sources = (data.sources || []).map((r) => ({ ...r, label: t(TRAFFIC_SRC[r.src] || r.src) }));
   const hasAny = totals.opens > 0;
 
@@ -475,10 +498,39 @@ function TrafficTab() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {ranges}
-        <span className="text-xs" style={{ color: 'var(--vz-ink-2)' }}>
-          {t('Sinov va ichki akkauntlar hisobga kirmaydi.')}
-        </span>
+        <label className="flex cursor-pointer items-center gap-2 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
+          <input type="checkbox" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} />
+          <span>{includeTest
+            ? t('Sinov va ichki akkauntlar ham ko‘rsatilyapti')
+            : t('Sinov va ichki akkauntlar hisobga kirmaydi.')}</span>
+        </label>
       </div>
+
+      {/* TOZA BOSHLASH — tarixni o'chirmasdan.
+          Sana qo'yilsa, undan oldingi yozuvlar shu bo'limda
+          ko'rsatilmaydi, lekin bazada qoladi: mijozning o'z profilidagi
+          90 kunlik statistikasi butunligicha saqlanadi. Sanani
+          bo'shatish kifoya — hammasi qaytadi. */}
+      <AdminCard title={t('Hisobning boshlanish sanasi')}>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--vz-ink-2)' }}>
+            <span>{t('Shu sanadan boshlab hisoblansin')}</span>
+            <input type="date" className="vz-input w-auto py-1" value={startDraft}
+              onChange={(e) => setStartDraft(e.target.value)} aria-label={t('Hisobning boshlanish sanasi')} />
+          </label>
+          <button type="button" className="btn btn-sm btn-gold" disabled={saving || startDraft === (data.startDay || '')}
+            onClick={() => saveStart(startDraft)}>{t('Saqlash')}</button>
+          {data.startDay ? (
+            <button type="button" className="btn btn-sm btn-ghost" disabled={saving}
+              onClick={() => { setStartDraft(''); saveStart(''); }}>{t('Butun tarixni qaytarish')}</button>
+          ) : null}
+        </div>
+        <p className="mt-2 max-w-xl text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>
+          {data.startDay
+            ? `${t('Hozir hisob shu sanadan boshlanadi')}: ${data.startDay}. ${t('Undan oldingi yozuvlar o‘chirilmagan — ular shunchaki bu bo‘limda ko‘rsatilmaydi va mijozlarning o‘z statistikasida joyida turibdi.')}`
+            : t('Chegara qo‘yilmagan — butun tarix hisobga kiradi. Sana qo‘ysangiz, bu bo‘lim o‘sha kundan boshlab hisoblaydi; hech narsa o‘chirilmaydi.')}
+        </p>
+      </AdminCard>
 
       {!hasAny ? (
         <EmptyState icon="activity" title={t("Bu davrda hech kim profil ochmagan.")}
@@ -498,12 +550,12 @@ function TrafficTab() {
         <KpiCard icon="users" tone="ok" label={t('Noyob tashrifchilar')} value={fmt(totals.visitors)}
           sub={t('Faqat shaxsiy va NFC profillar bo‘yicha')} />
         <KpiCard icon="chart" tone="muted" label={t('Kuniga o‘rtacha')} value={fmt(avg)}
-          sub={`${data.days} ${t('kun ichida')}`} />
+          sub={`${shownDays} ${t('kun ichida')}`} />
       </div>
 
       {/* KUNLAR BO'YICHA. Ikkita seriya — shuning uchun izoh (legend)
           bor: rang yolg'iz o'zi nimani anglatishini aytmasligi kerak. */}
-      <AdminCard title={`${t('Kunlar bo‘yicha')} (${data.days} ${t('kun')})`}>
+      <AdminCard title={`${t('Kunlar bo‘yicha')} (${shownDays} ${t('kun')})`}>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data.series} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>

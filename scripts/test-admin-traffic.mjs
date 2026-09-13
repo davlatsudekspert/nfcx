@@ -103,8 +103,63 @@ check('kompaniyalar ro‘yxati', d.topCompanies[0], { code: 'NFCSTORE', opens: 7
 // o'tib ketadi), shuning uchun alohida tekshiriladi.
 checkTrue('sinov kompaniyasi ro‘yxatda yo‘q', !d.topCompanies.some((c) => c.code === 'SINOVCO'));
 
-// ── 6) Faqat admin uchun ─────────────────────────────────────────────
+// ── 6) SINOVNI QAYTARIB KO'RSATISH (?includeTest=1) ──────────────────
+// Sinov yozuvlari O'CHIRILMAGAN — faqat yashirilgan. Shuni isbotlaymiz:
+// belgi yoqilganda ular joyidan chiqib kelishi kerak.
+const withTest = await (await worker.fetch(
+  req('/api/admin/traffic?days=30&includeTest=1', { cookie: cookie.admin }), env)).json();
+check('sinov bilan: shaxsiy ochilishlar = 8', withTest.totals.personalOpens, 8);
+check('sinov bilan: kompaniya ochilishlari = 106', withTest.totals.companyOpens, 106);
+checkTrue('sinov profili qaytdi', withTest.topProfiles.some((p) => p.code === 'OTH222'));
+checkTrue('sinov kompaniyasi qaytdi', withTest.topCompanies.some((c) => c.code === 'SINOVCO'));
+check('belgi javobda ham bor', withTest.includeTest, true);
+
+// ── 7) BOSHLANISH SANASI — tarixni o'chirmasdan "toza boshlash" ──────
+// Egasining talabi: admin bo'limini toza boshlash kerak bo'lsa,
+// DELETE emas — chegara sanasi. Bazadagi yozuvlar joyida qolishi
+// SHART (mijozning o'z 90 kunlik statistikasi shundan oziqlanadi).
+const rowsBefore = sqlite.prepare(`SELECT COUNT(*) AS n FROM card_events`).get().n;
+
+const setRes = await worker.fetch(req('/api/admin/traffic/start-day', {
+  method: 'POST', cookie: cookie.admin, json: { startDay: dayAgo(1) },
+}), env);
+check('sana saqlandi', setRes.status, 200);
+check('javobda sana bor', (await setRes.json()).startDay, dayAgo(1));
+
+const cut = await (await worker.fetch(req('/api/admin/traffic?days=30', { cookie: cookie.admin }), env)).json();
+check('qator faqat 2 kun', cut.series.length, 2);
+check('birinchi kun — chegara sanasi', cut.series[0].day, dayAgo(1));
+// Chegaradan oldingi kun (stamp(2)) endi hisobga kirmaydi:
+// VIP001 dan 5 ta edi, biri 2 kun oldin — 4 qoladi. BIZ777 (1 kun
+// oldin) qoladi. Jami 5.
+check('shaxsiy ochilishlar = 5', cut.totals.personalOpens, 5);
+check('noyob tashrifchi = 4', cut.totals.visitors, 4);
+check('javobda boshlanish sanasi', cut.startDay, dayAgo(1));
+
+// ENG MUHIMI: BAZA TEGILMAGAN.
+check('card_events qatorlari o‘chmagan', sqlite.prepare(`SELECT COUNT(*) AS n FROM card_events`).get().n, rowsBefore);
+
+// Sanani bo'shatish — butun tarix qaytadi.
+await worker.fetch(req('/api/admin/traffic/start-day', {
+  method: 'POST', cookie: cookie.admin, json: { startDay: '' },
+}), env);
+const back = await (await worker.fetch(req('/api/admin/traffic?days=30', { cookie: cookie.admin }), env)).json();
+check('tarix qaytdi: 30 kun', back.series.length, 30);
+check('tarix qaytdi: ochilishlar = 6', back.totals.personalOpens, 6);
+check('chegara bo‘sh', back.startDay, '');
+
+// Buzuq sana qabul qilinmaydi — aks holda butun bo'lim bo'shab qolardi.
+const bad = await worker.fetch(req('/api/admin/traffic/start-day', {
+  method: 'POST', cookie: cookie.admin, json: { startDay: 'kecha' },
+}), env);
+check('buzuq sana rad etiladi', bad.status, 422);
+
+// ── 8) Faqat admin uchun ─────────────────────────────────────────────
 const anon = await worker.fetch(req('/api/admin/traffic'), env);
 checkTrue('adminsiz ochilmaydi', anon.status === 401 || anon.status === 403);
+const anonSet = await worker.fetch(req('/api/admin/traffic/start-day', {
+  method: 'POST', json: { startDay: dayAgo(1) },
+}), env);
+checkTrue('adminsiz sana qo‘yib bo‘lmaydi', anonSet.status === 401 || anonSet.status === 403);
 
 done();

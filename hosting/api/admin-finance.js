@@ -66,7 +66,11 @@ function monthsInRange(fromIso, toIso) {
 // ?range=today|7d|30d|month|prev_month|custom&from=YYYY-MM-DD&to=YYYY-MM-DD
 // `from`/`to` berilgan bo'lsa (range qiymatidan qat'i nazar) custom deb
 // olinadi; noto'g'ri sana → {error:'bad_date'} (chaqiruvchi 422 qaytaradi).
-// Chegara: inclusive (`datetime(created_at) BETWEEN datetime(?) AND datetime(?)`).
+// Chegara: KUN darajasida inklyuziv (`substr(created_at,1,10) BETWEEN
+// date(?) AND date(?)`). `datetime(created_at)` ATAYLAB ishlatilmaydi:
+// bazada "+00" (daqiqasiz mintaqa) shaklidagi vaqtlar bor va SQLite
+// ularni parse qila olmay NULL qaytaradi — bunday qatorlar hisobdan
+// jimgina tushib qolardi.
 function parseRange(url) {
   const range = String(url.searchParams.get('range') || '30d');
   const f = url.searchParams.get('from') || '';
@@ -139,8 +143,8 @@ async function getRates(env) {
 const paymeFeeFor = (price, p) => Math.round(price * (Number(p.pct) || 0) / 100) + (Number(p.fixed) || 0);
 async function computePeriod(env, fromIso, toIso) {
   const [web, bot] = await Promise.all([
-    env.DB.prepare(`SELECT kind, price, substr(created_at,1,10) AS day FROM web_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN datetime(?) AND datetime(?)`).bind(fromIso, toIso).all(),
-    env.DB.prepare(`SELECT price, substr(created_at,1,10) AS day FROM bot_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN datetime(?) AND datetime(?)`).bind(fromIso, toIso).all().catch(() => ({ results: [] })),
+    env.DB.prepare(`SELECT kind, price, substr(created_at,1,10) AS day FROM web_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?)`).bind(fromIso, toIso).all(),
+    env.DB.prepare(`SELECT price, substr(created_at,1,10) AS day FROM bot_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?)`).bind(fromIso, toIso).all().catch(() => ({ results: [] })),
   ]);
   const orders = [
     ...(web.results || []).map((r) => ({ price: Number(r.price) || 0, kind: r.kind || 'card_purchase', day: r.day })),
@@ -191,7 +195,7 @@ async function computePeriod(env, fromIso, toIso) {
   };
 }
 async function dailyBreakdown(env, fromIso, toIso) {
-  const rows = (await env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross, COUNT(*) AS orders FROM web_orders WHERE status = 'paid' AND datetime(created_at) BETWEEN datetime(?) AND datetime(?) GROUP BY substr(created_at,1,10) ORDER BY day`).bind(fromIso, toIso).all()).results || [];
+  const rows = (await env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross, COUNT(*) AS orders FROM web_orders WHERE status = 'paid' AND substr(created_at,1,10) BETWEEN date(?) AND date(?) GROUP BY substr(created_at,1,10) ORDER BY day`).bind(fromIso, toIso).all()).results || [];
   const paymeOn = rateCache(env, 'payme');
   const out = [];
   for (const r of rows) {
@@ -234,23 +238,23 @@ async function listTransactions(env, { fromIso, toIso, type = '', status = '', q
   const pg = Math.max(1, Number(page) || 1);
   const off = (pg - 1) * lim;
   const args = [fromIso, toIso];
-  const where = [`w.status <> 'pending'`, `datetime(w.created_at) BETWEEN datetime(?) AND datetime(?)`];
+  const where = [`w.status <> 'pending'`, `substr(w.created_at,1,10) BETWEEN date(?) AND date(?)`];
   if (type) { args.push(type); where.push(`w.kind = ?`); }
   if (status) { args.push(status); where.push(`w.status = ?`); }
   if (q) { const like = `%${q}%`; args.push(like, like, like); where.push(`(LOWER(w.code) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(w.payme_transaction_id) LIKE LOWER(?))`); }
   const [web, cnt] = await Promise.all([
     env.DB.prepare(`SELECT w.id, 'web' AS source, w.kind, w.code, w.price AS amount, w.status, w.payme_transaction_id AS paymeTxnId, u.email AS userEmail, w.created_at AS createdAt
-      FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${where.join(' AND ')} ORDER BY datetime(w.created_at) DESC, w.id DESC LIMIT ? OFFSET ?`).bind(...args, lim, off).all(),
+      FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${where.join(' AND ')} ORDER BY w.created_at DESC, w.id DESC LIMIT ? OFFSET ?`).bind(...args, lim, off).all(),
     env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders w LEFT JOIN users u ON u.id = w.user_id WHERE ${where.join(' AND ')}`).bind(...args).first(),
   ]);
   let bot = [];
   if (!type || type === 'card_purchase') {
     const bArgs = [fromIso, toIso];
-    const bWhere = [`status <> 'pending'`, `datetime(created_at) BETWEEN datetime(?) AND datetime(?)`];
+    const bWhere = [`status <> 'pending'`, `substr(created_at,1,10) BETWEEN date(?) AND date(?)`];
     if (status) { bArgs.push(status); bWhere.push(`status = ?`); }
     if (q) { bArgs.push(`%${q}%`); bWhere.push(`LOWER(code) LIKE LOWER(?)`); }
     const r = await env.DB.prepare(`SELECT id, 'bot' AS source, 'card_purchase' AS kind, code, price AS amount, status, NULL AS paymeTxnId, tg_name AS userEmail, created_at AS createdAt
-      FROM bot_orders WHERE ${bWhere.join(' AND ')} ORDER BY datetime(created_at) DESC LIMIT 100`).bind(...bArgs).all().catch(() => ({ results: [] }));
+      FROM bot_orders WHERE ${bWhere.join(' AND ')} ORDER BY created_at DESC LIMIT 100`).bind(...bArgs).all().catch(() => ({ results: [] }));
     bot = r.results || [];
   }
   const items = [...(web.results || []), ...bot]

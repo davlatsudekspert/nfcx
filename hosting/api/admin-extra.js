@@ -95,17 +95,41 @@ async function exportStats(env, days, opts) {
   const toIso = to.toISOString();
   const byCreated = (sql) => env.DB.prepare(sql).bind(fromIso, toIso).all().then((r) => r.results || []);
   const DAY = `substr(created_at, 1, 10)`;
-  // SQLite datetime() soniyagacha kesadi — yuqori chegara inklyuziv (<=), aks holda
-  // shu soniyada yaratilgan yozuvlar tushib qoladi.
-  const WIN = `datetime(created_at) >= datetime(?) AND datetime(created_at) <= datetime(?)`;
+  // SANA SOLISHTIRISH — `datetime(created_at)` ISHLATILMAYDI.
+  //
+  // TOPILGAN XATO (2026-09): bazadagi vaqtlar IKKI XIL yozilgan —
+  //   "2026-09-13 09:00:00.000+00"   <- nowTs() va eski Postgres ko'chirmasi
+  //   "2026-09-13 09:00:00"          <- CURRENT_TIMESTAMP
+  // SQLite birinchisini PARSE QILA OLMAYDI (soat mintaqasida daqiqa
+  // yo'q: "+00", "+00:00" emas) va `datetime(...)` NULL qaytaradi.
+  // NULL har qanday solishtiruvda FALSE beradi — ya'ni bunday qatorlar
+  // JIMGINA tushib qolardi. Natijada "Statistika" dagi ro'yxatdan o'tish
+  // grafigi va moliya davri hisoblari bo'sh yoki kam ko'rsatardi.
+  //
+  // Har ikkala shakl ham "YYYY-MM-DD" bilan BOSHLANADI, shuning uchun
+  // KUN bo'yicha (substr) solishtiramiz: ikkalasi uchun ham to'g'ri.
+  // Chegaralar KUN darajasida inklyuziv.
+  const WIN = `${DAY} >= date(?) AND ${DAY} <= date(?)`;
+  // SINOV VA ICHKI AKKAUNTLAR CSV ga ham kirmaydi.
+  //
+  // Ilgari bu yer yarim filtrlangan edi: ro'yxatdan o'tishlar faqat
+  // `is_test` bo'yicha tozalanardi, buyurtma/to'lov/daromad qatorlari
+  // esa umuman tozalanmasdi. Natijada eksport qilingan jadval admin
+  // ekranidagi raqamlarga MOS KELMASDI. Hech narsa o'chirilmaydi —
+  // faqat hisobga kirmaydi.
+  const TEST_IDS = '(SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)';
+  const NOT_TEST_USER = `(is_test = 0 AND is_internal = 0)`;
+  const NOT_TEST_OWNER = ` AND user_id NOT IN ${TEST_IDS}`;
+  // Egasi biriktirilmagan karta sinov emas — uni tashlab yubormaymiz.
+  const NOT_TEST_CARD = `(user_id IS NULL OR user_id NOT IN ${TEST_IDS})`;
   const [signups, cards, premiums, orders, payments, revenue, auctionsCreated, auctionsSold] = await Promise.all([
-    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM users WHERE ${WIN} AND is_test = 0 GROUP BY 1`),
-    env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS n FROM cards WHERE ts >= ? AND ts < ? AND price > 0 GROUP BY 1`)
+    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM users WHERE ${WIN} AND ${NOT_TEST_USER} GROUP BY 1`),
+    env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS n FROM cards WHERE ts >= ? AND ts < ? AND price > 0 AND ${NOT_TEST_CARD} GROUP BY 1`)
       .bind(from.getTime(), to.getTime()).all().then((r) => r.results || []),
-    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM transactions WHERE kind = 'premium_upgrade' AND ${WIN} GROUP BY 1`),
-    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM web_orders WHERE ${WIN} GROUP BY 1`),
-    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM web_orders WHERE status = 'paid' AND ${WIN} GROUP BY 1`),
-    byCreated(`SELECT ${DAY} AS day, COALESCE(SUM(amount), 0) AS n FROM transactions WHERE kind = 'platform_commission' AND ${WIN} GROUP BY 1`),
+    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM transactions WHERE kind = 'premium_upgrade'${NOT_TEST_OWNER} AND ${WIN} GROUP BY 1`),
+    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM web_orders WHERE 1 = 1${NOT_TEST_OWNER} AND ${WIN} GROUP BY 1`),
+    byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM web_orders WHERE status = 'paid'${NOT_TEST_OWNER} AND ${WIN} GROUP BY 1`),
+    byCreated(`SELECT ${DAY} AS day, COALESCE(SUM(amount), 0) AS n FROM transactions WHERE kind = 'platform_commission'${NOT_TEST_OWNER} AND ${WIN} GROUP BY 1`),
     byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM auctions WHERE ${WIN} GROUP BY 1`),
     byCreated(`SELECT ${DAY} AS day, COUNT(*) AS n FROM auctions WHERE status = 'sold' AND ${WIN} GROUP BY 1`),
   ]);
@@ -119,8 +143,8 @@ async function exportStats(env, days, opts) {
   const rows = Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date));
   const sum = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
   const [tu, tp, ta] = await Promise.all([
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE is_test = 0 AND datetime(created_at) <= datetime(?)`).bind(toIso).first(),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE is_test = 0 AND is_premium = 1`).first(),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE ${NOT_TEST_USER} AND ${DAY} <= date(?)`).bind(toIso).first(),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE ${NOT_TEST_USER} AND is_premium = 1`).first(),
     env.DB.prepare(`SELECT COUNT(*) AS n FROM auctions WHERE status = 'active'`).first(),
   ]);
   const summary = {

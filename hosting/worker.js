@@ -2431,6 +2431,12 @@ async function ensureCompanyExtrasSchema(env) {
       // hali yaratilmagan bo'lsa butun to'plam (stories, story_likes,
       // company_posts...) birdaniga yiqilardi.
       `CREATE INDEX IF NOT EXISTS idx_company_domain ON companies(custom_domain)`,
+      // `admin_settings` eski migratsiyadan keladi va kod uni
+      // YARATMASDAN o'qiyverardi (IP whitelist, narxlar, yetkazish
+      // muddati). Ya'ni jadval yo'q bo'lsa o'sha so'rovlar yiqilardi.
+      // CREATE TABLE IF NOT EXISTS mavjud jadvalga umuman tegmaydi —
+      // production'dagi qiymatlar joyida qoladi.
+      `CREATE TABLE IF NOT EXISTS "admin_settings" ("key" TEXT PRIMARY KEY NOT NULL, "value" TEXT)`,
     ].map((sql) => env.DB.prepare(sql).run().catch(() => {}));
     const tables = env.DB.batch([
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS "company_stats" (
@@ -7020,10 +7026,60 @@ function newsRow(r) {
   };
 }
 
-// Sinov foydalanuvchilarni moliyaviy hisoblardan chiqaradigan shart.
-// Bir joyda turadi: har bir so'rovga qo'lda yozilsa, biri unutilib
-// qolar va hisoblar bir-biriga mos kelmay qolardi.
-const TEST_USER_FILTER_D1 = ' AND user_id NOT IN (SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)';
+// SINOV VA ICHKI AKKAUNTLAR — BITTA MANBA.
+//
+// Egasining qoidasi: "o'zimiz qilgan ishlar statistikaga kirmasin".
+// Buning uchun hech narsa O'CHIRILMAYDI — buyurtma, to'lov, karta va
+// trafik yozuvlari bazada joyida qoladi, shunchaki admin hisobiga
+// kirmaydi. "Sinov" belgisini olib tashlasangiz hammasi qaytadi.
+//
+// NIMA UCHUN SHART SHU YERDA: har bir so'rovga qo'lda yozilsa, biri
+// unutilib qolardi — aynan shunday ham bo'lgan edi: buyurtmalar
+// ro'yxati `is_internal` ni tekshirmasdi, `analytics` (tranzaksiya va
+// karta grafiklari) esa umuman tekshirmasdi.
+const TEST_USER_IDS_D1 = '(SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)';
+// `user_id` ustuni bor jadvallar uchun: web_orders, transactions...
+const TEST_USER_FILTER_D1 = ` AND user_id NOT IN ${TEST_USER_IDS_D1}`;
+// `cards` uchun ALOHIDA: egasi biriktirilmagan karta (user_id NULL)
+// sinov EMAS. `NOT IN` NULL ustida NULL qaytaradi va bunday qatorlar
+// jimgina tushib qolardi — ya'ni haqiqiy raqam kamayib ketardi.
+const NOT_TEST_CARD_D1 = `(user_id IS NULL OR user_id NOT IN ${TEST_USER_IDS_D1})`;
+
+// "SINOV" VA "ICHKI" — IKKI XIL BELGI, IKKI XIL QOIDA (buzmang):
+//   is_test     — akkaunt UMUMAN yashiriladi (buyurtmalar ro'yxatidan ham);
+//   is_internal — egasining o'z akkaunti: buyurtmalari ro'yxatda
+//                 KO'RINADI (ular haqiqiy ish), lekin PUL VA STATISTIKA
+//                 hisobiga kirmaydi.
+// Yuqoridagi filtrlar HISOB uchun (ikkalasini ham chiqaradi). Quyidagi
+// esa KO'RINISH uchun — faqat sinovni yashiradi.
+const HIDDEN_USER_IDS_D1 = '(SELECT id FROM users WHERE is_test = 1)';
+
+// SANA SOLISHTIRISH — `datetime(created_at)` ISHLATILMAYDI.
+//
+// TOPILGAN XATO (2026-09): bazadagi vaqtlar IKKI XIL yozilgan —
+//   "2026-09-13 09:00:00.000+00"   <- nowTs() va eski Postgres ko'chirmasi
+//   "2026-09-13 09:00:00"          <- CURRENT_TIMESTAMP
+// SQLite birinchisini PARSE QILA OLMAYDI (soat mintaqasida daqiqa
+// yo'q: "+00", "+00:00" emas) va `datetime(...)` NULL qaytaradi.
+// NULL har qanday solishtiruvda FALSE beradi — ya'ni bunday qatorlar
+// JIMGINA tushib qolardi. Natijada "Statistika" dagi ro'yxatdan o'tish
+// grafigi va moliya davri hisoblari bo'sh yoki kam ko'rsatardi.
+//
+// Har ikkala shakl ham "YYYY-MM-DD" bilan BOSHLANADI, shuning uchun
+// KUN bo'yicha (substr) solishtiramiz: ikkalasi uchun ham to'g'ri.
+// Chegaralar KUN darajasida inklyuziv.
+const DAY_COL_D1 = 'substr(created_at, 1, 10)';
+
+// Trafik bo'limining boshlanish sanasi. Bo'sh bo'lsa — chegara yo'q.
+const TRAFFIC_START_KEY = 'traffic_start_day';
+async function trafficStartDayD1(env) {
+  const row = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = ?`)
+    .bind(TRAFFIC_START_KEY).first().catch(() => null);
+  const v = String(row?.value || '').slice(0, 10);
+  // Faqat to'g'ri shakl qabul qilinadi: buzuq qiymat butun Trafik
+  // bo'limini bo'shatib qo'ymasin.
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
+}
 
 async function adminCoreApi(request, env, url, admin) {
   const path = url.pathname;
@@ -7032,10 +7088,15 @@ async function adminCoreApi(request, env, url, admin) {
   if (path === '/api/admin/stats' && request.method === 'GET') {
     const [u, c, a, p] = await Promise.all([
       env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(balance),0) AS total_balance FROM users WHERE is_test = 0 AND is_internal = 0`).first(),
-      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(price),0) AS total_price FROM cards c
-                       WHERE c.user_id IS NULL OR c.user_id NOT IN (SELECT id FROM users WHERE is_test = 1 OR is_internal = 1)`).first(),
+      env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(price),0) AS total_price FROM cards
+                       WHERE ${NOT_TEST_CARD_D1}`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n FROM auctions WHERE status = 'active'`).first(),
-      env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders WHERE status = 'pending'`).first(),
+      // Kutilayotgan buyurtmalar — bu SUMMA emas, "bajariladigan ish"
+      // sanoqchisi. Shuning uchun bu yerda faqat SINOV chiqariladi:
+      // ichki akkauntning buyurtmasi ro'yxatda ko'rinadi, demak
+      // sanoqchida ham ko'rinishi kerak — aks holda ro'yxatda 2 ta
+      // turib, sanoqchi 1 deb turardi.
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM web_orders WHERE status = 'pending' AND user_id NOT IN ${HIDDEN_USER_IDS_D1}`).first(),
     ]);
     return json({
       userCount: Number(u.n), totalWalletBalance: Number(u.total_balance), cardCount: Number(c.n),
@@ -7073,10 +7134,14 @@ async function adminCoreApi(request, env, url, admin) {
 
   if (path === '/api/admin/analytics' && request.method === 'GET') {
     const [breakdownRows, commissions, signups, cards] = await Promise.all([
-      env.DB.prepare(`SELECT kind, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE amount > 0 AND kind <> 'admin_adjust' GROUP BY kind ORDER BY total DESC`).all(),
-      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'platform_commission' AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
-      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM users WHERE is_test = 0 AND is_internal = 0 AND datetime(created_at) >= datetime('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
-      env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS count FROM cards WHERE ts >= (unixepoch('now', '-29 days') * 1000) GROUP BY strftime('%Y-%m-%d', ts / 1000, 'unixepoch') ORDER BY day`).all(),
+      // Bu ikkisi ilgari sinovni UMUMAN tekshirmasdi: o'z sinov
+      // to'lovlaringiz "Daromad turlari" va komissiya grafigiga
+      // qo'shilib ketardi, ro'yxatdan o'tish grafigi esa toza edi —
+      // ya'ni bitta ekranda ikki xil haqiqat ko'rinardi.
+      env.DB.prepare(`SELECT kind, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE amount > 0 AND kind <> 'admin_adjust'${TEST_USER_FILTER_D1} GROUP BY kind ORDER BY total DESC`).all(),
+      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COALESCE(SUM(amount), 0) AS total FROM transactions WHERE kind = 'platform_commission'${TEST_USER_FILTER_D1} AND ${DAY_COL_D1} >= date('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS count FROM users WHERE is_test = 0 AND is_internal = 0 AND ${DAY_COL_D1} >= date('now', '-29 days') GROUP BY substr(created_at, 1, 10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day, COUNT(*) AS count FROM cards WHERE ts >= (unixepoch('now', '-29 days') * 1000) AND ${NOT_TEST_CARD_D1} GROUP BY strftime('%Y-%m-%d', ts / 1000, 'unixepoch') ORDER BY day`).all(),
     ]);
     return json({
       breakdown: (breakdownRows.results || []).map((r) => ({ kind: r.kind, count: Number(r.count), total: Number(r.total) })),
@@ -7113,11 +7178,28 @@ async function adminCoreApi(request, env, url, admin) {
     // Kun chegarasi JS'da hisoblanadi: ikkala jadvalda ham sana MATN
     // ("YYYY-MM-DD...") bo'lgani uchun leksikografik solishtirish
     // to'g'ri ishlaydi va SQL ikkala formatga ham bir xil qo'llanadi.
-    const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+    const windowStart = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+
+    // BOSHLANISH SANASI — "Trafik bo'limini toza boshlash" uchun.
+    //
+    // Tarixni O'CHIRISH O'RNIGA shu sana qo'yiladi. Undan oldingi
+    // yozuvlar admin hisobiga kirmaydi, lekin bazada QOLADI:
+    //   - mijozning o'z profilidagi statistikasi va 90 kunlik tarixi
+    //     hech narsa yo'qotmaydi (bu Gold/Premium imkoniyati);
+    //   - sanani olib tashlash kifoya — butun tarix qaytadi.
+    // Ikkisidan KECHROG'I olinadi: "oxirgi 30 kun" so'ralganda ham
+    // boshlanish sanasidan oldingi kunlar chiqmaydi.
+    const startDay = await trafficStartDayD1(env);
+    const since = startDay && startDay > windowStart ? startDay : windowStart;
+
+    // SINOVNI KO'RSATISH — buyurtmalar ro'yxatidagi kabi (?includeTest=1).
+    // Standart holatda sinov/ichki akkauntlar chiqarib tashlanadi;
+    // tekshirish kerak bo'lganda admin ularni qaytarib ko'ra oladi.
+    const includeTest = url.searchParams.get('includeTest') === '1';
 
     // Sinov/ichki akkaunt profillarini chiqaramiz. `card_events.code`
     // -> `cards.user_id` -> `users`.
-    const NOT_TEST = `code IN (SELECT c.code FROM cards c JOIN users u ON u.id = c.user_id
+    const NOT_TEST = includeTest ? '1 = 1' : `code IN (SELECT c.code FROM cards c JOIN users u ON u.id = c.user_id
                                WHERE u.is_test = 0 AND u.is_internal = 0)`;
     const EV = `FROM card_events WHERE event_type = 'profile_view' AND created_at >= ? AND ${NOT_TEST}`;
 
@@ -7129,7 +7211,7 @@ async function adminCoreApi(request, env, url, admin) {
     // Egasi o'z akkauntini "Sinov" deb belgilaganda uning KOMPANIYA
     // profili ham statistikadan chiqishi kerak — aks holda "Sinov"
     // belgisi yarim ishlagan bo'lardi.
-    const NOT_TEST_CO = `company_id IN (SELECT c.company_id FROM companies c
+    const NOT_TEST_CO = includeTest ? '1 = 1' : `company_id IN (SELECT c.company_id FROM companies c
                           JOIN users u ON u.id = CAST(c.owner_user_id AS INTEGER)
                           WHERE u.is_test = 0 AND u.is_internal = 0)`;
 
@@ -7166,9 +7248,13 @@ async function adminCoreApi(request, env, url, admin) {
       cur.company = Number(r.opens);
       byDay.set(r.day, cur);
     }
+    // Boshlanish sanasidan OLDINGI kunlar grafikka ham tushmaydi —
+    // aks holda chap tomonda uzun nol quyruq qolib, "trafik yo'q"
+    // degan yolg'on taassurot berardi.
     const series = [];
     for (let i = 0; i < days; i++) {
       const day = new Date(Date.now() - (days - 1 - i) * 86400000).toISOString().slice(0, 10);
+      if (day < since) continue;
       const r = byDay.get(day) || { day, personal: 0, visitors: 0, company: 0 };
       series.push({ day, opens: r.personal + r.company, visitors: r.visitors });
     }
@@ -7180,7 +7266,8 @@ async function adminCoreApi(request, env, url, admin) {
     if (usersHaveSignupSourceD1()) {
       const r = await env.DB.prepare(
         `SELECT COALESCE(NULLIF(signup_source,''),'web') AS src, COUNT(*) AS n FROM users
-         WHERE is_test = 0 AND is_internal = 0 AND deleted_at IS NULL AND created_at >= ?
+         WHERE ${includeTest ? '1 = 1' : '(is_test = 0 AND is_internal = 0)'}
+           AND deleted_at IS NULL AND created_at >= ?
          GROUP BY src ORDER BY n DESC`
       ).bind(since).all().catch(() => null);
       signups = (r?.results || []).map((x) => ({ src: x.src, count: Number(x.n) }));
@@ -7189,6 +7276,11 @@ async function adminCoreApi(request, env, url, admin) {
     const companyOpens = (coDaily.results || []).reduce((n, r) => n + Number(r.opens), 0);
     return json({
       days,
+      // Frontend shu ikkisini ekranda ochiq yozadi: raqam nimani
+      // qamrayotgani ko'rinib tursin.
+      startDay,
+      since,
+      includeTest,
       totals: {
         opens: Number(totals?.opens || 0) + companyOpens,
         personalOpens: Number(totals?.opens || 0),
@@ -7201,6 +7293,24 @@ async function adminCoreApi(request, env, url, admin) {
       topCompanies: (topCo.results || []).map((r) => ({ code: r.company_id, opens: Number(r.opens) })),
       signups,
     });
+  }
+
+  // TRAFIK BOSHLANISH SANASI — "toza boshlash" tugmasi shu yerga yozadi.
+  //
+  // BU O'CHIRISH EMAS. Hech bir yozuv yo'qolmaydi: sana faqat admin
+  // ko'rinishining chegarasi. Bo'sh qiymat yuborilsa chegara olib
+  // tashlanadi va butun tarix qaytadi — qaytarib bo'lmaydigan qadam
+  // yo'q. Shu sababli mijozlarning 90 kunlik statistikasiga ham
+  // umuman ta'sir qilmaydi.
+  if (path === '/api/admin/traffic/start-day' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const raw = String(body.startDay == null ? '' : body.startDay).slice(0, 10);
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+    if (raw && !day) return json({ error: 'bad_day' }, 422);
+    await env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(TRAFFIC_START_KEY, day).run();
+    await logAdminActivity(env, { action: 'traffic_start_day_set', details: day || "(olib tashlandi)", ip });
+    return json({ startDay: day });
   }
 
   if (path === '/api/admin/orders' && request.method === 'GET') {
@@ -7217,7 +7327,11 @@ async function adminCoreApi(request, env, url, admin) {
     // Statistika bo'limi allaqachon shunday ishlagan (is_test = 0),
     // buyurtmalar ro'yxati esa e'tiborsiz qolgan edi.
     const includeTest = url.searchParams.get('includeTest') === '1';
-    const testFilter = includeTest ? '' : ' WHERE user_id NOT IN (SELECT id FROM users WHERE is_test = 1)';
+    // ATAYLAB faqat `is_test`: ichki akkaunt buyurtmalari HAQIQIY va
+    // ular bilan ishlash kerak, shuning uchun ro'yxatdan yashirilmaydi
+    // — faqat pul va statistika hisobiga kirmaydi (yuqoridagi
+    // HIDDEN_USER_IDS_D1 izohiga qarang).
+    const testFilter = includeTest ? '' : ` WHERE user_id NOT IN ${HIDDEN_USER_IDS_D1}`;
     const [web, bot] = await Promise.all([
       env.DB.prepare(`SELECT id, 'web' AS source, user_id, code, price AS amount, status, created_at, kind, payload FROM web_orders${testFilter} ORDER BY created_at DESC LIMIT 100`).all(),
       env.DB.prepare(`SELECT id, 'bot' AS source, tg_user_id AS user_id, code, price AS amount, status, created_at, tg_username, tg_name FROM bot_orders ORDER BY created_at DESC LIMIT 100`).all(),
@@ -7421,13 +7535,15 @@ async function adminCoreApi(request, env, url, admin) {
     const to = url.searchParams.get('to');
     const start = range === 'today' ? "datetime('now','start of day')" : range === '7d' ? "datetime('now','-6 days','start of day')" : range === '30d' ? "datetime('now','-29 days','start of day')" : range === 'prev_month' ? "datetime('now','start of month','-1 month')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(from || '') ? `datetime('${from}T00:00:00')` : "datetime('now','start of month')";
     const end = range === 'prev_month' ? "datetime('now','start of month','-1 second')" : range === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(to || '') ? `datetime('${to}T23:59:59')` : "datetime('now')";
+    // Kun darajasidagi chegara (yuqoridagi DAY_COL_D1 izohiga qarang).
+    const WIN = `${DAY_COL_D1} BETWEEN date(${start}) AND date(${end})`;
     const [sales, daily, expenses, bank] = await Promise.all([
       // SINOV FOYDALANUVCHILAR HISOBGA OLINMAYDI (2026-09). Egasining
       // o'z sinov to'lovlari umumiy hisobni buzardi — statistika buni
       // allaqachon chiqarib tashlardi, moliya bo'limi esa yo'q.
       // Yozuvlar O'CHIRILMAYDI, faqat hisobga kirmaydi.
-      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND datetime(created_at) BETWEEN ${start} AND ${end}`).first(),
-      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND datetime(created_at) BETWEEN ${start} AND ${end} GROUP BY substr(created_at,1,10) ORDER BY day`).all(),
+      env.DB.prepare(`SELECT COUNT(*) AS order_count, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND ${WIN}`).first(),
+      env.DB.prepare(`SELECT substr(created_at,1,10) AS day, COALESCE(SUM(price),0) AS gross FROM web_orders WHERE status = 'paid'${TEST_USER_FILTER_D1} AND ${WIN} GROUP BY substr(created_at,1,10) ORDER BY day`).all(),
       env.DB.prepare(`SELECT COALESCE(SUM(amount),0) AS total FROM finance_expenses WHERE datetime(spent_on) BETWEEN ${start} AND ${end}`).first(),
       env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(actual_amount),0) AS total FROM finance_bank_actuals WHERE period BETWEEN substr(${start},1,7) AND substr(${end},1,7)`).first(),
     ]);
@@ -7574,7 +7690,7 @@ async function adminCoreApi(request, env, url, admin) {
         SUM(CASE WHEN EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code) THEN 1 ELSE 0 END) AS with_products,
         SUM(CASE WHEN EXISTS (SELECT 1 FROM menu_categories mc WHERE mc.code = cards.code)
                   AND EXISTS (SELECT 1 FROM product_categories pc WHERE pc.code = cards.code) THEN 1 ELSE 0 END) AS with_both
-      FROM cards WHERE profile_type = 'business'`).first();
+      FROM cards WHERE profile_type = 'business' AND ${NOT_TEST_CARD_D1}`).first();
     return json({
       total: Number(row?.total || 0), active: Number(row?.active || 0), suspended: Number(row?.suspended || 0),
       withMenu: Number(row?.with_menu || 0), withProducts: Number(row?.with_products || 0), withBoth: Number(row?.with_both || 0),
