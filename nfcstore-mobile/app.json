@@ -41,7 +41,8 @@
           "nfcPermission": "NFCSTORE kartani o'qish uchun NFC dan foydalanadi.",
           "includeNdefEntitlement": true
         }
-      ]
+      ],
+      "./plugins/withAndroidBuildTuning"
     ],
     "experiments": {
       "typedRoutes": true
