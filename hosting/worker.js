@@ -4494,8 +4494,23 @@ async function handleClickRequestD1(env, request, forced) {
 // ya'ni bu kod deploy qilingani bilan hech narsa o'zi ochilib ketmaydi
 // va hech qanday oqim buzilmaydi.
 
+// SIRLAR TOZALANADI. Windows PowerShell'da `wrangler secret put` ga
+// yozilgan qiymat oxirida ko'rinmas `\r` (karetka qaytishi) qolishi
+// mumkin. "no-reply@nfcstore.uz\r" esa Resend uchun HAQIQIY manzil
+// emas — u butun so'rovni 400 bilan rad etadi, xato sababi esa
+// ko'rinmaydi: qiymat ko'zga to'g'ri ko'rinib turadi.
+//
+// Aynan shu jonli muhitda sodir bo'ldi. Shuning uchun bu yerda har
+// doim tozalanadi: bir marta yozilgan tozalash butun oqimni
+// qo'riqlaydi.
+const cleanSecret = (v) => String(v == null ? '' : v).trim();
+
+// Jo'natuvchi manzil Resend kutgan ikki shakldan birida bo'lishi
+// kerak: "email@example.com" yoki "Nomi <email@example.com>".
+const RESEND_FROM_RE = /^(?:[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+|[^<>]+<[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+>)$/;
+
 function emailEnabledD1(env) {
-  return !!(env.RESEND_API_KEY && env.RESEND_FROM);
+  return !!(cleanSecret(env.RESEND_API_KEY) && cleanSecret(env.RESEND_FROM));
 }
 
 async function sendEmailD1(env, { to, subject, html, text }) {
@@ -4507,15 +4522,22 @@ async function sendEmailD1(env, { to, subject, html, text }) {
   if (!address || isPlaceholderEmailD1(address) || !/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(address)) {
     return { ok: false, reason: 'bad_address' };
   }
+  // Jo'natuvchi manzilni SO'ROVDAN OLDIN tekshiramiz. Aks holda
+  // Resend'dan tushunarsiz 400 keladi va sabab noma'lum qoladi.
+  const from = cleanSecret(env.RESEND_FROM);
+  if (!RESEND_FROM_RE.test(from)) {
+    console.error('resend from noto\'g\'ri formatda');
+    return { ok: false, reason: 'bad_from' };
+  }
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        authorization: `Bearer ${env.RESEND_API_KEY}`,
+        authorization: `Bearer ${cleanSecret(env.RESEND_API_KEY)}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        from: env.RESEND_FROM,
+        from,
         to: [address],
         subject: String(subject || '').slice(0, 200),
         html: String(html || ''),
