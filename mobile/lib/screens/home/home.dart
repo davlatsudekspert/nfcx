@@ -21,6 +21,7 @@ import '../nfc/gift_offers.dart';
 import '../nfc/qr_share.dart';
 import '../orders/my_orders.dart';
 import '../settings/settings_screen.dart';
+import '../nfc/id_catalog.dart';
 
 /// HOME — "menga o'z shaxsimni ko'rsat".
 ///
@@ -141,7 +142,12 @@ class _HomeScreenState extends State<HomeScreen> {
             if (active == null)
               SliverToBoxAdapter(
                 child: EmptyState(
-                  'Hali NFC ID‘ingiz yo‘q. NFC bo‘limidan o‘zingizga ID tanlang.',
+                  'NFC ID — bu sizning raqamli vizitkangiz: bitta '
+                  'tegizish bilan ulashiladi.',
+                  title: 'Boshlaymizmi?',
+                  icon: Ico.nfc,
+                  actionLabel: 'ID tanlash',
+                  onAction: () => push(context, (_) => const IdCatalogScreen()),
                 ),
               )
             else

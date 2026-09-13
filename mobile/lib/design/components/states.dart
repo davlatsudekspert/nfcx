@@ -2,16 +2,43 @@ import 'package:flutter/widgets.dart';
 import '../tokens.dart';
 import '../type.dart';
 import 'buttons.dart';
+import 'icons.dart';
 
-/// BO'SH holat — bitta oddiy qator va uni to'ldiradigan BITTA amal.
+/// BO'SH holat — belgi, sarlavha, izoh va (kerak bo'lsa) BITTA amal.
 ///
-/// Rasm ham, illyustratsiya ham yo'q: handoff buni ataylab taqiqlaydi.
-/// Bo'sh ekranga chizilgan odam qo'shish uni to'ldirmaydi, faqat
-/// e'tiborni kerakli tugmadan chalg'itadi.
+/// NIMA UCHUN QAYTA YOZILDI: avval bu faqat bitta qator matn edi
+/// ("Hali post yo'q"). Auditda ko'rindiki, yangi foydalanuvchi
+/// ilovaning yarmida shunday quruq qatorlarni ko'radi va KEYINGI
+/// QADAM nima ekani hech qayerda aytilmaydi.
+///
+/// RASM YO'Q va bo'lmaydi: handoff buni ataylab taqiqlaydi va
+/// to'g'ri qiladi — bo'sh ekranga chizilgan odam uni to'ldirmaydi,
+/// faqat e'tiborni kerakli tugmadan chalg'itadi. Buning o'rniga
+/// dizayn tilidagi CHIZILGAN belgi ishlatiladi: u tarkibning bir
+/// qismi, bezak emas.
+///
+/// MEHMONDA CTA BO'LMAYDI: begona profildagi "Post qo'shing" —
+/// bajarib bo'lmaydigan taklif. Shuning uchun `onAction` ixtiyoriy
+/// va chaqiruvchi joy EGALIKNI o'zi hal qiladi.
 class EmptyState extends StatelessWidget {
-  const EmptyState(this.message, {super.key, this.actionLabel, this.onAction});
+  const EmptyState(
+    this.message, {
+    super.key,
+    this.title,
+    this.icon,
+    this.actionLabel,
+    this.onAction,
+  });
 
+  /// Foydali izoh — nima uchun bo'sh va nima qilish mumkin.
   final String message;
+
+  /// Qisqa sarlavha. Berilmasa faqat izoh chiqadi (eski xulq).
+  final String? title;
+
+  /// Dizayn tilidagi chizilgan belgi.
+  final Ico? icon;
+
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -21,11 +48,59 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center, style: T.body),
+            if (icon != null) ...[
+              _Glyph(icon!),
+              const SizedBox(height: S.x20),
+            ],
+            if (title != null) ...[
+              Text(title!, textAlign: TextAlign.center, style: T.section),
+              const SizedBox(height: S.x8),
+            ],
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: title == null ? T.body : T.caption,
+            ),
             if (actionLabel != null) ...[
               const SizedBox(height: S.x20),
               SizedBox(width: 220, child: SecondaryButton(actionLabel!, onTap: onAction)),
             ],
+          ],
+        ),
+      );
+}
+
+/// Bo'sh holat belgisi — ikki halqa ichidagi ikonka.
+///
+/// Halqalar CHIZIQ bilan: to'ldirilgan shakl qorong'i fonda "dog'"
+/// bo'lib qolardi va e'tiborni matndan tortib olardi.
+class _Glyph extends StatelessWidget {
+  const _Glyph(this.icon);
+  final Ico icon;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 72,
+        height: 72,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: C.hairline),
+              ),
+            ),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: C.slate.withValues(alpha: .55),
+                border: Border.all(color: C.warmHairline),
+              ),
+            ),
+            NIcon(icon, size: 22, color: C.antiqueGold),
           ],
         ),
       );

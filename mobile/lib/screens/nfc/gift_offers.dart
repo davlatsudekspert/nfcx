@@ -108,9 +108,10 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
                           ],
                           if (incoming.isEmpty && _outgoing.isEmpty)
                             const EmptyState(
-                              'Hozircha sovg‘a taklifi yo‘q.\n'
                               'Kimdir sizga ID sovg‘a qilsa, u shu yerda '
                               'tasdiqlashni kutib turadi.',
+                              title: 'Sovg‘a taklifi yo‘q',
+                              icon: Ico.gift,
                             ),
                           if (incoming.isNotEmpty) ...[
                             const Eyebrow('Sizga sovg‘a qilinyapti'),

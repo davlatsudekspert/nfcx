@@ -111,7 +111,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
           child: Center(
             child: _error != null
                 ? ErrorState(humanError(_error), onRetry: _load)
-                : const EmptyState('Bu profilda hali story yo‘q.'),
+                : const EmptyState(
+                    'Story 24 soat turadi va keyin o‘zi o‘chadi.',
+                    title: 'Story yo‘q',
+                    icon: Ico.camera,
+                  ),
           ),
         ),
       );

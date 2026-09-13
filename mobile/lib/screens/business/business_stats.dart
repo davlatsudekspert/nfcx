@@ -7,6 +7,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../design/components/icons.dart';
 
 /// BIZNES STATISTIKASI — ko'rishlar, amallar, buyurtmalar, top mahsulot.
 ///
@@ -173,7 +174,12 @@ class _BusinessStatsScreenState extends State<BusinessStatsScreen> {
           ],
         ],
         if (views == 0 && taps == 0 && orders == 0)
-          const EmptyState('Bu davrda hali ma‘lumot to‘planmagan.'),
+          const EmptyState(
+            'Profil ochilishi, tegishlar va buyurtmalar shu yerda '
+            'to‘planadi.',
+            title: 'Ma‘lumot to‘planmagan',
+            icon: Ico.chart,
+          ),
       ],
     );
   }

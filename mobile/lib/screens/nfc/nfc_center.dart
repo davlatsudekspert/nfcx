@@ -164,7 +164,12 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                 child: Column(
                   children: [
-                    const EmptyState('Hali NFC ID‘ingiz yo‘q.'),
+                    const EmptyState(
+                      'ID — bu sizning raqamli vizitkangiz. Katalogdan '
+                      'bo‘sh kod tanlab boshlang.',
+                      title: 'Hali NFC ID‘ingiz yo‘q',
+                      icon: Ico.nfc,
+                    ),
                     _NewIdCard(onTap: () => push(context, (_) => const IdCatalogScreen())),
                   ],
                 ),

@@ -256,7 +256,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 _PostGrid(
                   posts: _stories,
-                  empty: 'Hali story yo‘q.',
+                  empty: 'Hali story yo‘q',
+                  emptyHint: 'Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.',
+                  emptyIcon: Ico.camera,
                   addLabel: 'Story qo‘shish',
                   onAdd: isOwner && !_isBusiness
                       ? () => _compose(code, ComposeKind.story)
@@ -723,7 +725,11 @@ class _CatalogGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const EmptyState('Katalogda hali mahsulot yo‘q.');
+      return const EmptyState(
+        'Bu biznes hali mahsulot joylamagan. Keyinroq kirib ko‘ring.',
+        title: 'Katalog bo‘sh',
+        icon: Ico.bag,
+      );
     }
     return GridView.builder(
       padding: const EdgeInsets.all(S.gutter),
@@ -742,12 +748,20 @@ class _CatalogGrid extends StatelessWidget {
 class _PostGrid extends StatelessWidget {
   const _PostGrid({
     required this.posts,
-    this.empty = 'Hali post yo‘q.',
+    this.empty = 'Hali post yo‘q',
+    this.emptyHint = 'Bu profilda hali post joylanmagan.',
+    this.emptyIcon = Ico.image,
     this.onAdd,
     this.addLabel = 'Post qo‘shish',
   });
   final List<Post> posts;
+
+  /// Bo'sh holat sarlavhasi.
   final String empty;
+
+  /// MEHMONGA ko'rsatiladigan izoh (egada boshqacha yoziladi).
+  final String emptyHint;
+  final Ico emptyIcon;
 
   /// Faqat EGADA bo'ladi. `null` — mehmon ko'rinishi.
   final VoidCallback? onAdd;
@@ -760,7 +774,13 @@ class _PostGrid extends StatelessWidget {
       // ochib "bo'sh" yozuvini ko'rsa, keyingi qadam nima ekani
       // ko'rinmasdi va kontent qo'shish yo'li umuman yo'q edi.
       return EmptyState(
-        empty,
+        // MEHMONGA va EGAGA boshqa izoh: mehmon hech narsa qila
+        // olmaydi, egaga esa keyingi qadam aytiladi.
+        onAdd == null
+            ? emptyHint
+            : 'Birinchisini joylang — profilingiz shu bilan jonlanadi.',
+        title: empty,
+        icon: emptyIcon,
         actionLabel: onAdd == null ? null : addLabel,
         onAction: onAdd,
       );
@@ -861,7 +881,11 @@ class _About extends StatelessWidget {
     final about = company?.about ?? record?.about ?? '';
 
     if (rows.isEmpty && about.isEmpty) {
-      return const EmptyState('Ma‘lumot hali to‘ldirilmagan.');
+      return const EmptyState(
+        'Manzil, ish vaqti va aloqa ma‘lumotlari hali kiritilmagan.',
+        title: 'Ma‘lumot yo‘q',
+        icon: Ico.user,
+      );
     }
     return ListView(
       padding: const EdgeInsets.all(S.gutter),

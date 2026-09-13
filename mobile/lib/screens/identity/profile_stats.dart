@@ -7,6 +7,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import '../../design/components/icons.dart';
 
 /// SHAXSIY PROFIL STATISTIKASI — `/api/records/:code/analytics`.
 ///
@@ -208,7 +209,12 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
           ],
         ],
         if (total == 0 && uniq == 0)
-          const EmptyState('Bu davrda hali ma‘lumot to‘planmagan.'),
+          const EmptyState(
+            'Profilingiz ochilgani va kartangiz tegizilgani shu yerda '
+            'ko‘rinadi.',
+            title: 'Ma‘lumot to‘planmagan',
+            icon: Ico.chart,
+          ),
       ],
     );
   }

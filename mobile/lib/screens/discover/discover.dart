@@ -187,7 +187,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     if (rows.isEmpty) {
-      return const EmptyState('Hech narsa topilmadi. Boshqa so‘z bilan qidirib ko‘ring.');
+      return const EmptyState(
+        'Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.',
+        title: 'Hech narsa topilmadi',
+        icon: Ico.search,
+      );
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),

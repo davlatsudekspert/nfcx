@@ -20,6 +20,9 @@ import 'package:nfcstore/screens/lock/lock_screen.dart';
 import 'package:nfcstore/screens/lock/set_pin_screen.dart';
 import 'package:nfcstore/screens/nfc/id_catalog.dart';
 import 'package:nfcstore/screens/nfc/id_detail.dart';
+import 'package:nfcstore/design/components/icons.dart';
+import 'package:nfcstore/design/components/identity_card.dart';
+import 'package:nfcstore/design/components/states.dart';
 import 'package:nfcstore/screens/nfc/nfc_center.dart';
 import 'package:nfcstore/screens/nfc/nfc_scan.dart';
 import 'package:nfcstore/screens/nfc/nfc_write.dart';
@@ -281,4 +284,85 @@ void main() {
     await pumpScreen(t, const NfcWriteScreen(), state: s);
     await golden(t, '30-nfc-yozish');
   });
+
+  // TARIFLAR YONMA-YON.
+  //
+  // NIMA UCHUN ALOHIDA KADR: tariflar farqini bitta ekranda ko'rmasa,
+  // "Bronze bilan Exclusive bir xil ko'rinadi" degan muammoni
+  // aniqlashning yo'li yo'q. Bu kadr aynan shu savolga javob beradi.
+  testWidgets('31 tariflar yonma-yon', (t) async {
+    final s = await ready();
+    await pumpScreen(
+      t,
+      ColoredBox(
+        color: C.obsidian,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            IdentityCard(code: 'KTB482', holder: 'Bronze', tier: Tier.bronze, dense: true),
+            SizedBox(height: 10),
+            IdentityCard(code: 'SLV220', holder: 'Silver', tier: Tier.silver, dense: true),
+            SizedBox(height: 10),
+            IdentityCard(code: 'GLD100', holder: 'Gold', tier: Tier.gold, dense: true),
+            SizedBox(height: 10),
+            IdentityCard(code: 'PRM777', holder: 'Premium', tier: Tier.premium, dense: true),
+            SizedBox(height: 10),
+            IdentityCard(code: 'VIP001', holder: 'Exclusive', tier: Tier.exclusive, dense: true),
+          ],
+        ),
+      ),
+      state: s,
+    );
+    await golden(t, '31-tariflar');
+  });
+
+  // BO'SH HOLATLAR — ega va mehmon uchun yonma-yon.
+  //
+  // Audit shuni ko'rsatdiki, yangi foydalanuvchi ilovaning yarmida
+  // aynan shu kadrlarni ko'radi. Ular dizaynning eng ko'p
+  // ko'riladigan, lekin eng kam e'tibor beriladigan qismi.
+  testWidgets('32 bo‘sh holatlar', (t) async {
+    final s = await ready();
+    await pumpScreen(
+      t,
+      ColoredBox(
+        color: C.obsidian,
+        child: ListView(
+          children: [
+            EmptyState(
+              'Birinchisini joylang — profilingiz shu bilan jonlanadi.',
+              title: 'Hali post yo‘q',
+              icon: Ico.image,
+              actionLabel: 'Post qo‘shish',
+              onAction: () {},
+            ),
+            const _Rule(),
+            const EmptyState(
+              'Bu profilda hali post joylanmagan.',
+              title: 'Hali post yo‘q',
+              icon: Ico.image,
+            ),
+            const _Rule(),
+            const EmptyState(
+              'Kimdir sizga ID sovg‘a qilsa, u shu yerda tasdiqlashni '
+              'kutib turadi.',
+              title: 'Sovg‘a taklifi yo‘q',
+              icon: Ico.gift,
+            ),
+          ],
+        ),
+      ),
+      state: s,
+    );
+    await golden(t, '32-bosh-holatlar');
+  });
+}
+
+/// Audit kadridagi ajratuvchi chiziq — holatlar bir-biriga
+/// qo'shilib ketmasin.
+class _Rule extends StatelessWidget {
+  const _Rule();
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: 1, color: C.hairline);
 }

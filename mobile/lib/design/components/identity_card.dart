@@ -103,17 +103,41 @@ class _IdentityCardState extends State<IdentityCard>
         child: Container(
           padding: EdgeInsets.all(dense ? S.x12 : S.x16),
           decoration: BoxDecoration(
-            gradient: C.metalSurface,
+            // TARIF MATERIALI. Yuza, qirra va yaltirash tarifdan
+            // keladi — ekranning qolgan rangi TEGILMAYDI.
+            gradient: t.surface,
             borderRadius: BorderRadius.circular(R.hero),
-            border: Border.all(color: C.metalBorder),
+            border: Border.all(color: t.edge),
             boxShadow: E.e3,
           ),
           child: Stack(
             children: [
+              // ICHKI QIRRA — faqat Premium va Exclusive'da.
+              // Ikki qavatli chegara qimmat buyumlarning belgisi:
+              // rang emas, ISHLOV farqi.
+              if (t.innerRule)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      margin: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(R.hero - 3),
+                        border: Border.all(
+                          color: t.accent.withValues(alpha: .16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               // Yuqoridagi ichki yorug'lik — metallga "qirra" beradi.
+              // Rangi tarifning urg'usidan: bronzada issiq, kumushda
+              // sovuq, Exclusive'da oltin.
               Positioned(
                 top: 0, left: 0, right: 0,
-                child: Container(height: 1, color: const Color(0x14FFFFFF)),
+                child: Container(
+                  height: 1,
+                  color: t.accent.withValues(alpha: .14),
+                ),
               ),
               // Bir martalik yaltirash. `IgnorePointer` — bosishga
               // to'sqinlik qilmasin.
@@ -131,10 +155,10 @@ class _IdentityCardState extends State<IdentityCard>
                             gradient: LinearGradient(
                               begin: Alignment(-1.8 + v * 3.6, -1),
                               end: Alignment(-1.2 + v * 3.6, 1),
-                              colors: const [
-                                Color(0x00FFFFFF),
-                                Color(0x1AFFFFFF),
-                                Color(0x00FFFFFF),
+                              colors: [
+                                const Color(0x00FFFFFF),
+                                Color(t.sheen << 24 | 0xFFFFFF),
+                                const Color(0x00FFFFFF),
                               ],
                             ),
                           ),
@@ -162,7 +186,8 @@ class _IdentityCardState extends State<IdentityCard>
                         ),
                       ),
                       const SizedBox(width: S.x8),
-                      Text(t.label.toUpperCase(), style: T.eyebrow),
+                      Text(t.label.toUpperCase(),
+                          style: T.eyebrow.copyWith(color: t.accent)),
                       const Spacer(),
                       if (active)
                         Container(
@@ -180,7 +205,13 @@ class _IdentityCardState extends State<IdentityCard>
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(code.toUpperCase(), style: T.nfcId(dense ? 28 : 38)),
+                    // KOD — tarif urg'usi bilan. Bu kartadagi eng
+                    // katta element, ya'ni tarif farqi shu yerda
+                    // birinchi bo'lib ko'zga tashlanadi.
+                    child: Text(
+                      code.toUpperCase(),
+                      style: T.nfcId(dense ? 28 : 38).copyWith(color: t.accent),
+                    ),
                   ),
                   if (!dense && url != null && url.isNotEmpty) ...[
                     const SizedBox(height: 5),

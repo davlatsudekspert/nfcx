@@ -10,6 +10,7 @@ import '../../state/app_state.dart';
 import '../settings/settings_screen.dart';
 import 'profile_screen.dart';
 import 'switcher.dart';
+import '../nfc/id_catalog.dart';
 
 /// PROFILE tabi — faol shaxsning profili.
 ///
@@ -30,8 +31,12 @@ class ProfileTab extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: S.x44),
-            const EmptyState(
-              'Hali shaxsingiz yo‘q. NFC bo‘limidan ID tanlab, profil oching.',
+            EmptyState(
+              'ID tanlaganingizdan keyin profil shu yerda ochiladi.',
+              title: 'Shaxsingiz yo‘q',
+              icon: Ico.user,
+              actionLabel: 'ID tanlash',
+              onAction: () => push(context, (_) => const IdCatalogScreen()),
             ),
             const Spacer(),
             Padding(
