@@ -25,6 +25,12 @@ dependencies:
   qr_flutter: ^4.1.0
   share_plus: ^10.1.2
   url_launcher: ^6.3.1
+  # Barmoq izi / yuz bilan ochish. Biometrik ma'lumot ilovaga
+  # BERILMAYDI — tizim faqat "tasdiqlandi/yo'q" javobini qaytaradi.
+  local_auth: ^2.3.0
+  # PIN kodni HASH qilish uchun. Kodning o'zi hech qayerda
+  # saqlanmaydi — faqat tuz bilan olingan SHA-256.
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

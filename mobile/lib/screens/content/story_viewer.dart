@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/states.dart';
@@ -136,6 +137,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // Story — to'liq ekran, shuning uchun chegara ekran eni
+            // bo'yicha (NetImage ichidagi standart) qoladi: bundan
+            // kattaroq dekodlash ko'zga ko'rinmaydi, lekin xotirani
+            // yeydi.
             NetImage(
               story.images.isEmpty ? null : story.images.first,
               radius: 0,
@@ -196,7 +201,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           behavior: HitTestBehavior.opaque,
                           child: const Padding(
                             padding: EdgeInsets.all(6),
-                            child: Text('✕', style: TextStyle(color: C.offWhite, fontSize: 17)),
+                            child: NIcon(Ico.close, size: 18, color: C.offWhite),
                           ),
                         ),
                       ],

@@ -8,7 +8,7 @@ import 'press.dart';
 /// Nisbat 16:10, metall gradient, ichki yorug'lik chizig'i va ID serif
 /// champagne bilan. Bu YAGONA joyda gold og'irroq ishlatiladi, chunki
 /// karta mahsulotning o'zi.
-class IdentityCard extends StatelessWidget {
+class IdentityCard extends StatefulWidget {
   const IdentityCard({
     super.key,
     required this.code,
@@ -16,8 +16,10 @@ class IdentityCard extends StatelessWidget {
     this.subtitle,
     this.taps,
     this.tier = Tier.free,
+    this.url,
     this.onTap,
     this.active = false,
+    this.dense = false,
   });
 
   final String code;
@@ -25,21 +27,81 @@ class IdentityCard extends StatelessWidget {
   final String? subtitle;
   final int? taps;
   final Tier tier;
+
+  /// Ommaviy havola — kartaning "jismoniy" hissini kuchaytiradi
+  /// (handoff: kod ostida `nfcstore.uz/id/vip001`). Ixcham
+  /// ko'rinishda ko'rsatilmaydi: u yerda joy yo'q.
+  final String? url;
   final VoidCallback? onTap;
 
   /// Faol ID — o'ng yuqorida "FAOL" belgisi.
   final bool active;
 
+  /// Ixcham ko‘rinish — Home ekrani uchun.
+  ///
+  /// To'liq o'lchamdagi karta (16:10) Home'ning yarmini egallab
+  /// olardi va ostidagi tezkor amallar bilan story qatori ekrandan
+  /// chiqib ketardi. Ixcham variantda nisbat 2:1 va yozuvlar
+  /// kichikroq — karta baribir "jismoniy" ko'rinadi, lekin ekranni
+  /// bosib qolmaydi.
+  final bool dense;
+
+  @override
+  State<IdentityCard> createState() => _IdentityCardState();
+}
+
+class _IdentityCardState extends State<IdentityCard>
+    with SingleTickerProviderStateMixin {
+  /// METALL YALTIRASHI — BIR MARTALIK, TAKRORLANMAYDI.
+  ///
+  /// Karta ekranda paydo bo'lganda yuzasidan bir marta nozik
+  /// yorug'lik o'tadi — xuddi haqiqiy metall kartani qo'lda
+  /// burgandek. Bu YAGONA joyda va FAQAT bir marta: uzluksiz
+  /// yaltirash qorong'i interfeysni "kazino"ga aylantiradi va
+  /// batareyani behuda yeydi.
+  late final AnimationController _sheen = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Ekran o'tishi tugagach boshlanadi — ikkala animatsiya bir
+    // vaqtda ketsa, ikkalasi ham silliq ko'rinmaydi.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Future<void>.delayed(M.push, () {
+          if (mounted) _sheen.forward();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _sheen.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tier = widget.tier;
+    final code = widget.code;
+    final holder = widget.holder;
+    final subtitle = widget.subtitle;
+    final taps = widget.taps;
+    final dense = widget.dense;
+    final active = widget.active;
+    final url = widget.url;
     final t = TierStyle.of(tier);
     return Press(
-      onTap: onTap,
+      onTap: widget.onTap,
       haptic: true,
       child: AspectRatio(
-        aspectRatio: 16 / 10,
+        aspectRatio: dense ? 2 : 16 / 10,
         child: Container(
-          padding: const EdgeInsets.all(S.x16),
+          padding: EdgeInsets.all(dense ? S.x12 : S.x16),
           decoration: BoxDecoration(
             gradient: C.metalSurface,
             borderRadius: BorderRadius.circular(R.hero),
@@ -53,6 +115,35 @@ class IdentityCard extends StatelessWidget {
                 top: 0, left: 0, right: 0,
                 child: Container(height: 1, color: const Color(0x14FFFFFF)),
               ),
+              // Bir martalik yaltirash. `IgnorePointer` — bosishga
+              // to'sqinlik qilmasin.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _sheen,
+                    builder: (context, _) {
+                      if (_sheen.isDismissed) return const SizedBox.shrink();
+                      final v = Curves.easeInOut.transform(_sheen.value);
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(R.hero),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment(-1.8 + v * 3.6, -1),
+                              end: Alignment(-1.2 + v * 3.6, 1),
+                              colors: const [
+                                Color(0x00FFFFFF),
+                                Color(0x1AFFFFFF),
+                                Color(0x00FFFFFF),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -60,7 +151,7 @@ class IdentityCard extends StatelessWidget {
                     children: [
                       // Tarif medali.
                       Container(
-                        width: 22, height: 22,
+                        width: dense ? 17 : 22, height: dense ? 17 : 22,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: t.gradient,
@@ -89,8 +180,17 @@ class IdentityCard extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(code.toUpperCase(), style: T.nfcId(38)),
+                    child: Text(code.toUpperCase(), style: T.nfcId(dense ? 28 : 38)),
                   ),
+                  if (!dense && url != null && url.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      url,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.meta.copyWith(fontSize: 11, color: C.muted),
+                    ),
+                  ],
                   const SizedBox(height: S.x4),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -103,7 +203,7 @@ class IdentityCard extends StatelessWidget {
                             Text(holder, maxLines: 1, overflow: TextOverflow.ellipsis,
                                 style: T.cardTitle.copyWith(fontSize: 13.5)),
                             if (subtitle != null)
-                              Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
                                   style: T.caption.copyWith(fontSize: 11)),
                           ],
                         ),
@@ -116,7 +216,7 @@ class IdentityCard extends StatelessWidget {
                           children: [
                             const Text('TEGISHLAR', style: T.eyebrow),
                             const SizedBox(height: 2),
-                            Text(compact(taps!), style: T.price.copyWith(fontSize: 14)),
+                            Text(compact(taps), style: T.price.copyWith(fontSize: 14)),
                           ],
                         ),
                       ],

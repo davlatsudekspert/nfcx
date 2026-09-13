@@ -82,6 +82,15 @@ class NetImage extends StatelessWidget {
     final u = (url ?? '').trim();
     if (u.isEmpty) return MediaSlot(label: slotLabel, radius: radius);
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
+    // XOTIRA CHEGARASI — HAR DOIM.
+    //
+    // Foydalanuvchi yuklagan rasm 3000px bo'lishi mumkin. Uni xom
+    // holda dekodlash ~36 MB xotira oladi va ro'yxat aylanganda
+    // kadrlar tushib ketadi. `cacheWidth` berilmagan joylarda ham
+    // ekran enidan kattaroq dekodlash MA'NOSIZ, shuning uchun
+    // chegara qo'yiladi: rasm ekranga sig'adigan o'lchamda
+    // dekodlanadi.
+    final logicalCap = cacheWidth ?? MediaQuery.sizeOf(context).width.round();
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: CachedNetworkImage(
@@ -89,7 +98,7 @@ class NetImage extends StatelessWidget {
         fit: fit,
         fadeInDuration: M.image,
         fadeOutDuration: Duration.zero,
-        memCacheWidth: cacheWidth == null ? null : (cacheWidth! * dpr).round(),
+        memCacheWidth: (logicalCap * dpr).round(),
         placeholder: (_, __) => const ColoredBox(color: C.placeholder),
         errorWidget: (_, __, ___) => MediaSlot(label: slotLabel, radius: 0),
       ),

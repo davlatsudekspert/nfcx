@@ -51,14 +51,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _load() async {
+  /// `force` — "tortib yangilash". Keshni chetlab o'tadi; oddiy
+  /// ochilishda esa kesh ishlatiladi va so'rov takrorlanmaydi.
+  Future<void> _load({bool force = false}) async {
     final state = AppScope.read(context);
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final catalog = await state.repo.catalog();
+      final catalog = await state.repo.catalog(force: force);
       // TUGALLANMAGAN TO'LOV — vaqtga bog'liq: kod 24 soat band
       // bo'lib turadi va shu muddatda to'lanmasa bekor qilinadi.
       // Shuning uchun u Home'da ko'rinadi, sozlamalar ichida
@@ -100,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => _load(force: true),
         color: C.champagne,
         backgroundColor: C.slate,
         displacement: 28,
@@ -192,6 +194,7 @@ class _ActiveCard extends StatelessWidget {
             taps: taps is num ? taps.round() : null,
             tier: active.isBusiness ? Tier.gold : (active.record?.tier ?? Tier.free),
             active: true,
+            dense: true,
             onTap: () => push(context, (_) => ProfileScreen(identity: active)),
           ),
         ],

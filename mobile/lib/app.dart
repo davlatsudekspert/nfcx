@@ -6,7 +6,9 @@ import 'design/type.dart';
 import 'screens/entry/login.dart';
 import 'screens/entry/onboarding.dart';
 import 'screens/entry/splash.dart';
+import 'screens/lock/lock_screen.dart';
 import 'screens/shell.dart';
+import 'state/app_lock.dart';
 import 'state/app_state.dart';
 
 /// Ilova ildizi.
@@ -15,14 +17,18 @@ import 'state/app_state.dart';
 /// Ekranlar orasidagi qolgan navigatsiya har bo'limning o'z
 /// `Navigator`ida qoladi.
 class NfcstoreApp extends StatefulWidget {
-  const NfcstoreApp({super.key, required this.state});
+  const NfcstoreApp({super.key, required this.state, this.lock});
   final AppState state;
+
+  /// Testda soxta qulf berish uchun. Odatda `null` — o'zi yaratiladi.
+  final AppLock? lock;
 
   @override
   State<NfcstoreApp> createState() => _NfcstoreAppState();
 }
 
-class _NfcstoreAppState extends State<NfcstoreApp> {
+class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
+  late final AppLock _lock = widget.lock ?? AppLock();
   /// Tanishtiruv faqat BIRINCHI ochilishda. Keyin to'g'ridan-to'g'ri
   /// kirish ekrani chiqadi.
   bool _onboarded = false;
@@ -30,14 +36,36 @@ class _NfcstoreAppState extends State<NfcstoreApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.state.boot();
+    _lock.load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// ILOVA FONGA O'TSA — QAYTA QULFLANADI.
+  ///
+  /// Aks holda qulf faqat birinchi ochilishda so'ralardi va telefon
+  /// birov qo'liga tushganda ilova allaqachon ochiq bo'lardi.
+  /// `paused` — ekran o'chdi yoki boshqa ilovaga o'tildi.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _lock.lock();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScope(
       state: widget.state,
-      child: MaterialApp(
+      child: AppLockScope(
+        lock: _lock,
+        child: MaterialApp(
         title: 'NFCSTORE',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
@@ -75,8 +103,27 @@ class _NfcstoreAppState extends State<NfcstoreApp> {
           ),
         ),
         home: _Root(onboarded: _onboarded, onOnboarded: () => setState(() => _onboarded = true)),
+        ),
       ),
     );
+  }
+}
+
+/// Qulf holatiga kirish — `AppLockScope.of(context)`.
+class AppLockScope extends InheritedNotifier<AppLock> {
+  const AppLockScope({super.key, required AppLock lock, required super.child})
+      : super(notifier: lock);
+
+  static AppLock of(BuildContext context) {
+    final s = context.dependOnInheritedWidgetOfExactType<AppLockScope>();
+    assert(s?.notifier != null, 'AppLockScope topilmadi.');
+    return s!.notifier!;
+  }
+
+  static AppLock read(BuildContext context) {
+    final s = context.getInheritedWidgetOfExactType<AppLockScope>();
+    assert(s?.notifier != null, 'AppLockScope topilmadi.');
+    return s!.notifier!;
   }
 }
 
@@ -88,6 +135,12 @@ class _Root extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final lock = AppLockScope.of(context);
+    // QULF ENG USTIDA: hisobga kirilgan bo'lsa va qulf yopiq bo'lsa,
+    // boshqa hech narsa ko'rinmaydi.
+    if (state.phase == AuthPhase.signedIn && lock.locked) {
+      return LockScreen(lock: lock);
+    }
     final child = switch (state.phase) {
       AuthPhase.loading => const SplashScreen(),
       AuthPhase.signedIn => const Shell(),

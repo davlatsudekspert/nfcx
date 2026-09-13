@@ -54,7 +54,16 @@ class _ShellState extends State<Shell> {
         child: Column(
           children: [
             Expanded(
-              child: IndexedStack(
+              // TAB ALMASHISHI — 200ms xiralik (handoff harakat
+              // jadvali). `IndexedStack` holatni saqlaydi (qidiruv
+              // matni, aylantirish joyi, yuklangan ma'lumot), lekin
+              // o'zi keskin almashadi. `AnimatedSwitcher` bilan
+              // o'rasak butun stek qayta quriladi va holat yo'qoladi —
+              // shuning uchun xiralik STEKNING O'ZIGA emas, uning
+              // indeksiga bog'langan yengil qatlam orqali beriladi.
+              child: _CrossFade(
+                index: _tab,
+                child: IndexedStack(
                 index: _tab,
                 children: [
                   _TabNavigator(navKey: _keys[0], child: const HomeScreen()),
@@ -62,6 +71,7 @@ class _ShellState extends State<Shell> {
                   _TabNavigator(navKey: _keys[2], child: const NfcCenterScreen()),
                   _TabNavigator(navKey: _keys[3], child: const ProfileTab()),
                 ],
+                ),
               ),
             ),
             NavBar(
@@ -95,5 +105,48 @@ class _TabNavigator extends StatelessWidget {
           pageBuilder: (_, __, ___) => child,
           transitionDuration: Duration.zero,
         ),
+      );
+}
+
+/// Tab almashganda tarkibni 200ms da xiralashtirib ko'rsatadi.
+///
+/// Bola HAR DOIM bitta (`IndexedStack`), shuning uchun holat
+/// yo'qolmaydi: faqat shaffoflik animatsiya qilinadi.
+class _CrossFade extends StatefulWidget {
+  const _CrossFade({required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  State<_CrossFade> createState() => _CrossFadeState();
+}
+
+class _CrossFadeState extends State<_CrossFade> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: M.fade,
+    value: 1,
+  );
+
+  @override
+  void didUpdateWidget(_CrossFade old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        // 0.55 dan boshlanadi: to'liq shaffoflikdan chiqish "yonib
+        // ketgandek" ko'rinadi va ko'zni charchatadi.
+        opacity: Tween(begin: 0.55, end: 1.0).animate(
+          CurvedAnimation(parent: _c, curve: Curves.easeOut),
+        ),
+        child: widget.child,
       );
 }

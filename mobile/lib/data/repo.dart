@@ -11,6 +11,30 @@ class Repo {
 
   final Api api;
 
+  // ── SO'ROVNI TAKRORLAMASLIK ────────────────────────────────────────
+  //
+  // Katalog (`/api/records`) 500 tagacha yozuv qaytaradi va uni HAM
+  // Home, HAM Discover so'raydi. Qobiq tablarni bir vaqtda tirik
+  // saqlaydi, ya'ni ilova ochilishida ikkalasi deyarli bir vaqtda
+  // so'rab, bir xil 500 qatorni IKKI MARTA yuklab olardi. Shaxs
+  // almashtirilganda yana takrorlanardi.
+  //
+  // Ikki qatlamli himoya:
+  //   1) UCHIB KETAYOTGAN so'rov qayta so'ralsa — o'sha `Future`
+  //      qaytariladi (ikkinchi so'rov umuman ketmaydi);
+  //   2) natija qisqa muddat saqlanadi — tab almashganda qayta
+  //      yuklanmaydi, lekin ma'lumot ham eskirib qolmaydi.
+  static const _catalogTtl = Duration(seconds: 90);
+  Future<List<Record>>? _catalogInFlight;
+  List<Record>? _catalogCache;
+  DateTime? _catalogAt;
+
+  /// Keshni majburan bo'shatish — "tortib yangilash" uchun.
+  void invalidateCatalog() {
+    _catalogCache = null;
+    _catalogAt = null;
+  }
+
   Map<String, dynamic> _map(dynamic v) =>
       v is Map ? v.cast<String, dynamic>() : <String, dynamic>{};
 
@@ -212,10 +236,34 @@ class Repo {
   }
 
   /// Katalog — barcha ochiq profillar va sotuvdagi ID'lar.
-  Future<List<Record>> catalog() async {
-    final r = await api.get('/api/records');
-    return _rows(r).map(Record.fromJson).toList();
+  ///
+  /// `force: true` — keshni chetlab o'tadi (tortib yangilash).
+  Future<List<Record>> catalog({bool force = false}) {
+    if (!force) {
+      final cached = _catalogCache;
+      final at = _catalogAt;
+      if (cached != null && at != null && DateTime.now().difference(at) < _catalogTtl) {
+        return Future.value(cached);
+      }
+      final inFlight = _catalogInFlight;
+      if (inFlight != null) return inFlight;
+    }
+    final future = api.get('/api/records').then((r) {
+      final list = _rows(r).map(Record.fromJson).toList();
+      _catalogCache = list;
+      _catalogAt = DateTime.now();
+      return list;
+    }).whenComplete(() => _catalogInFlight = null);
+    _catalogInFlight = future;
+    return future;
   }
+
+  /// Ochiq kompaniyalar ro'yxati — Discover uchun.
+  ///
+  /// Faqat FAOL kompaniyalar keladi va maxfiy maydonlar (egasi,
+  /// telefoni, to'lov holati) javobda umuman yo'q.
+  Future<List<Company>> companies() async =>
+      _rows(await api.get('/api/companies'), 'companies').map(Company.fromJson).toList();
 
   Future<List<Map<String, dynamic>>> categories() async =>
       _rows(await api.get('/api/categories'), 'categories');

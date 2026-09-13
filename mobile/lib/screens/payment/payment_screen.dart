@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
@@ -414,7 +415,7 @@ class _MethodTile extends StatelessWidget {
                   ),
                   child: selected
                       ? const Center(
-                          child: Text('✓', style: TextStyle(color: C.ink, fontSize: 11, height: 1)))
+                          child: NIcon(Ico.check, size: 12, color: C.ink))
                       : null,
                 ),
               ],

@@ -1,0 +1,178 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+/// VIZUAL AUDIT UCHUN NAMUNA JAVOBLAR.
+///
+/// DIQQAT: bu ma'lumot FAQAT shu testlarda ishlatiladi va ilova
+/// kodiga umuman kirmaydi (`lib/` da soxta ma'lumot yo'qligini
+/// `test/rules_test.dart` alohida tekshiradi). Maqsad — har bir
+/// ekranni to'ldirilgan holatda ko'rib, dizaynga mosligini baholash.
+/// Bo'sh ekranni ko'rib "chiroylimi?" deb baho berib bo'lmaydi.
+MockClient auditClient() => MockClient((req) async {
+      final p = req.url.path;
+      dynamic body;
+
+      if (p == '/api/auth/me') {
+        body = {
+          'user': {'id': 1, 'email': 'egasi@nfcstore.uz', 'phone': '+998901234567'},
+          'cards': [_card, _secondCard],
+        };
+      } else if (p == '/api/companies/mine' || p == '/api/companies') {
+        body = {'companies': [_company, _company2]};
+      } else if (p == '/api/records') {
+        body = [_card, _secondCard, _freeId, _freeId2, _expert];
+      } else if (p == '/api/records/search') {
+        body = {'records': [_card, _expert, _freeId]};
+      } else if (p == '/api/companies/search') {
+        body = {'companies': [_company]};
+      } else if (p.startsWith('/api/records/') && p.endsWith('/posts')) {
+        body = {'posts': _posts};
+      } else if (p.startsWith('/api/records/') && p.endsWith('/stories')) {
+        body = {'stories': _posts};
+      } else if (p.startsWith('/api/records/') && p.endsWith('/analytics')) {
+        body = {'profileViews': 12480, 'totalViews': 12480};
+      } else if (p.startsWith('/api/follow-stats/')) {
+        body = {'followers': 1843, 'following': 312, 'isFollowing': false};
+      } else if (p.startsWith('/api/follow-list/')) {
+        body = {
+          'list': [
+            {'kind': 'person', 'code': 'AAA512', 'name': 'Jasur Tolipov', 'verified': false},
+            {'kind': 'company', 'code': 'DDD333', 'name': 'NFCSTORE', 'verified': true,
+             'personCode': 'ZZZ100', 'personName': 'Karim Rashidov'},
+          ],
+        };
+      } else if (p.startsWith('/api/records/')) {
+        body = _card;
+      } else if (p.startsWith('/api/companies/') && p.endsWith('/catalog')) {
+        body = {'items': _products};
+      } else if (p.startsWith('/api/companies/') && p.endsWith('/orders')) {
+        body = {'orders': _orders};
+      } else if (p.startsWith('/api/companies/') && p.endsWith('/stats')) {
+        body = {
+          'days': 30, 'views': 12400, 'taps': 842, 'orders': 42,
+          'series': List.generate(30, (i) => {
+            'day': '2026-09-${(i + 1).toString().padLeft(2, '0')}',
+            'views': [12, 48, 30, 71, 22, 55, 90][i % 7],
+          }),
+          'actions': [
+            {'key': 'phone', 'hits': 320},
+            {'key': 'telegram', 'hits': 210},
+            {'key': 'website', 'hits': 96},
+          ],
+          'items': [
+            {'id': '1', 'name': 'Qora metall karta', 'hits': 180},
+            {'id': '2', 'name': 'Tilla nashr', 'hits': 120},
+          ],
+        };
+      } else if (p.startsWith('/api/companies/')) {
+        body = {'company': _company};
+      } else if (p == '/api/orders') {
+        body = {'orders': _webOrders};
+      } else if (p == '/api/settings/payments-enabled') {
+        body = {'payme': true, 'click': true};
+      } else if (p == '/api/settings/physical-nfc-pricing') {
+        body = {'physicalCardFee': 200000, 'delivery': {'minDays': 3, 'maxDays': 5},
+                'tiers': [{'minQty': 1, 'maxQty': 9, 'pricePerUnit': 120000}]};
+      } else if (p == '/api/categories') {
+        body = {'categories': []};
+      } else {
+        body = {'ok': true};
+      }
+      return http.Response(jsonEncode(body), 200,
+          headers: {'content-type': 'application/json'});
+    });
+
+const _card = {
+  'code': 'VIP001',
+  'name': 'Muhammad Yusuf',
+  'role': 'Davlat sud eksperti',
+  'about': 'Davlat sud eksperti — ko‘zga ko‘rinmas izlarga til kirituvchi '
+      'mutaxassis. Har bir ilmiy xulosamiz ortida adolat turadi.',
+  'city': 'Toshkent',
+  'phone': '+998901234567',
+  'tg': 'muhammad',
+  'website': 'nfcstore.uz',
+  'profileType': 'personal',
+  'verified': true,
+  'isPrimary': true,
+  'price': 0,
+  'views': 12480,
+  'tier': 'exclusive',
+};
+
+const _secondCard = {
+  'code': 'AAA111', 'name': 'Ikkinchi profil', 'profileType': 'personal',
+  'price': 99000, 'views': 340, 'tier': 'silver',
+};
+
+const _freeId = {'code': 'GLD100', 'name': '', 'price': 149000, 'tier': 'gold'};
+const _freeId2 = {'code': 'KTB482', 'name': '', 'price': 49000, 'tier': 'bronze'};
+
+const _expert = {
+  'code': 'EXP318', 'name': 'Dr. Shahnoza', 'role': 'Ekspert',
+  'city': 'Samarqand', 'profileType': 'expert', 'verified': true,
+  'price': 199000, 'views': 48200, 'tier': 'premium',
+};
+
+const _company = {
+  'companyId': 'DDD333',
+  'displayName': 'NFCSTORE',
+  'about': 'Premium NFC biznes kartalar va smart teglar. Bir tegish bilan '
+      'kontakt, katalog va havolalarni ulashing.',
+  'city': 'Toshkent',
+  'address': 'Amir Temur 42',
+  'phone': '+998901112233',
+  'tg': 'nfcstore',
+  'status': 'active',
+  'tier': 'gold',
+  'verified': true,
+  'ordersEnabled': true,
+  'isOpen': true,
+  'hoursLabel': '10:00 – 19:00',
+  'followers': 1843,
+  'views': 12400,
+  'itemCount': 36,
+};
+
+const _company2 = {
+  'companyId': 'BBB222',
+  'displayName': 'Ali Market',
+  'city': 'Toshkent',
+  'status': 'active',
+  'isOpen': false,
+  'itemCount': 12,
+};
+
+const _products = [
+  {'id': '1', 'name': 'Qora metall karta', 'price': 1200000,
+   'description': 'Lazer bilan ishlangan qora metall karta.'},
+  {'id': '2', 'name': 'Tilla nashr', 'price': 1750000, 'promotionPrice': 1487000},
+  {'id': '3', 'name': 'Smart teg · kalit', 'price': 290000},
+  {'id': '4', 'name': 'Stol standi', 'price': 540000},
+];
+
+final _posts = List.generate(9, (i) => {
+      'id': '$i',
+      'caption': 'Tilla nashr kartalar omborda. Lazer gravyura, 24 oy kafolat.',
+      'likes': 248,
+      'views': 4120,
+      'authorName': 'NFCSTORE',
+      'createdAt': '2026-09-13T08:00:00.000Z',
+    });
+
+const _orders = [
+  {'id': 2096, 'itemName': 'Qora metall karta', 'qty': 1, 'price': 1200000,
+   'name': 'Aziz Karimov', 'phone': '+998901112233', 'status': 'new'},
+  {'id': 2095, 'itemName': 'Smart teg', 'qty': 2, 'price': 580000,
+   'name': 'Karim Rashidov', 'status': 'new'},
+];
+
+final _webOrders = [
+  {
+    'id': 2096, 'code': 'GLD100', 'price': 149000, 'status': 'pending',
+    'kind': 'card_purchase', 'payLink': 'https://checkout.paycom.uz/x',
+    'expiresAtMs': DateTime.now().add(const Duration(hours: 7)).millisecondsSinceEpoch,
+  },
+  {'id': 2090, 'code': 'VIP001', 'price': 490000, 'status': 'paid', 'kind': 'card_purchase'},
+];

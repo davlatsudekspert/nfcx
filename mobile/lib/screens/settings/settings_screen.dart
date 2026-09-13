@@ -11,7 +11,9 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
+import '../../app.dart';
 import '../common/top_bar.dart';
+import '../lock/set_pin_screen.dart';
 import '../orders/my_orders.dart';
 
 /// SOZLAMALAR — va IKKI XIL TASDIQLASH.
@@ -33,6 +35,17 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _busyTg = false;
   String? _tgError;
+  bool _bioAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Qurilmada barmoq izi/yuz sozlanganmi — shunga qarab belgi
+    // ko'rsatiladi. Sozlanmagan bo'lsa uni umuman taklif qilmaymiz.
+    AppLockScope.read(context).biometricAvailable().then((v) {
+      if (mounted) setState(() => _bioAvailable = v);
+    });
+  }
 
   Future<void> _startTelegram() async {
     setState(() {
@@ -140,6 +153,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   const SizedBox(height: S.x24),
+                  const Eyebrow('Xavfsizlik'),
+                  const SizedBox(height: S.x12),
+                  _LockCard(available: _bioAvailable),
+
+                  const SizedBox(height: S.x24),
                   const Eyebrow('Akkaunt'),
                   const SizedBox(height: S.x12),
                   _Row(
@@ -202,11 +220,159 @@ class _Row extends StatelessWidget {
               Expanded(child: Text(label, style: T.cardTitle.copyWith(fontSize: 13.5))),
               if (value != null) ...[
                 Text(value!, style: T.caption.copyWith(fontSize: 11.5)),
-                const SizedBox(width: S.x8),
+                if (onTap != null) const SizedBox(width: S.x8),
               ],
-              NIcon(Ico.chevronRight, size: 17, color: onTap == null ? C.muted : C.ash),
+              // Strelka FAQAT bosiladigan qatorda. Aks holda odam
+              // bosadi va hech narsa bo'lmaydi — bu ishonchni
+              // yo'qotadi.
+              if (onTap != null) const NIcon(Ico.chevronRight, size: 17, color: C.ash),
             ],
           ),
+          ),
+        ),
+      );
+}
+
+/// ILOVA QULFI — PIN va barmoq izi / yuz.
+///
+/// NIMA UCHUN KERAK: hisobda odamning shaxsiy kontaktlari, biznesi va
+/// to'lov tarixi turadi. Telefon birov qo'liga tushsa, ilova ochiq
+/// qolgan bo'lsa — hammasi ochiq.
+class _LockCard extends StatefulWidget {
+  const _LockCard({required this.available});
+
+  /// Qurilmada barmoq izi/yuz sozlanganmi.
+  final bool available;
+
+  @override
+  State<_LockCard> createState() => _LockCardState();
+}
+
+class _LockCardState extends State<_LockCard> {
+  @override
+  Widget build(BuildContext context) {
+    final lock = AppLockScope.of(context);
+
+    return Surface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const NIcon(Ico.lock, size: 20, color: C.champagne),
+              const SizedBox(width: S.x12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('PIN kod', style: T.cardTitle),
+                    SizedBox(height: 3),
+                    Text('Ilova ochilganda kod so‘raladi', style: T.caption),
+                  ],
+                ),
+              ),
+              _Switch(
+                value: lock.enabled,
+                onChanged: (on) async {
+                  if (on) {
+                    await push<bool>(context, (_) => SetPinScreen(lock: lock));
+                  } else {
+                    await lock.disable();
+                  }
+                  if (mounted) setState(() {});
+                },
+              ),
+            ],
+          ),
+          if (lock.enabled) ...[
+            const SizedBox(height: S.x12),
+            Container(height: 1, color: C.hairline),
+            const SizedBox(height: S.x12),
+            Row(
+              children: [
+                NIcon(Ico.fingerprint, size: 20,
+                    color: widget.available ? C.champagne : C.muted),
+                const SizedBox(width: S.x12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Barmoq izi yoki yuz', style: T.cardTitle),
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.available
+                            ? 'Kod o‘rniga tezroq ochish'
+                            : 'Qurilmada sozlanmagan',
+                        style: T.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                _Switch(
+                  value: lock.biometricEnabled,
+                  // Qurilmada sozlanmagan bo'lsa belgi ishlamaydi —
+                  // yoqib bo'lmaydigan narsani taklif qilmaymiz.
+                  onChanged: widget.available
+                      ? (on) async {
+                          await lock.setBiometric(on);
+                          if (mounted) setState(() {});
+                        }
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: S.x12),
+            SecondaryButton(
+              'Kodni o‘zgartirish',
+              height: 44,
+              onTap: () async {
+                await push<bool>(context, (_) => SetPinScreen(lock: lock));
+                if (mounted) setState(() {});
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Yoqish/o'chirish belgisi.
+///
+/// Material'ning `Switch` i o'z rang sxemasini oladi va bu dizaynda
+/// begona ko'rinadi — shuning uchun o'zimizniki.
+class _Switch extends StatelessWidget {
+  const _Switch({required this.value, this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        scale: .94,
+        child: Opacity(
+          opacity: onChanged == null ? .45 : 1,
+          child: AnimatedContainer(
+            duration: M.fade,
+            curve: M.curve,
+            width: 46,
+            height: 27,
+            padding: const EdgeInsets.all(3),
+            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+            decoration: BoxDecoration(
+              color: value ? C.champagne : C.graphite,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: value ? C.champagne : C.hairline),
+            ),
+            child: Container(
+              width: 21,
+              height: 21,
+              decoration: BoxDecoration(
+                color: value ? C.ink : C.muted,
+                shape: BoxShape.circle,
+              ),
+            ),
           ),
         ),
       );

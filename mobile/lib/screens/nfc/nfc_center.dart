@@ -88,6 +88,11 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                       holder: active.name,
                       subtitle: active.isBusiness ? 'Biznes' : 'Shaxsiy',
                       tier: active.isBusiness ? Tier.gold : (active.record?.tier ?? Tier.free),
+                      // Havola va ko'rishlar soni — bu ekran
+                      // mahsulotning o'zagi, karta shu yerda eng to'liq
+                      // ko'rinishda bo'lishi kerak.
+                      url: active.publicUrl.replaceFirst('https://', ''),
+                      taps: active.record?.views,
                       active: true,
                       onTap: () => push(context, (_) => ProfileScreen(identity: active)),
                     ),

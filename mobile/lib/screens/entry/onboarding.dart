@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/media.dart';
@@ -233,7 +234,7 @@ class _IdRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (active) const Text('✓', style: TextStyle(color: C.champagne, fontSize: 16)),
+            if (active) const NIcon(Ico.check, size: 16, color: C.champagne),
           ],
         ),
       );

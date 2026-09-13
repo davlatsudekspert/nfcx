@@ -9,6 +9,7 @@ import '../tokens.dart';
 /// mos kelsa ishlating.
 enum Ico {
   home, search, nfc, user, qr, share, phone, chart, chevronRight, chevronLeft,
+  chevronDown, backspace, minus, lock, fingerprint,
   plus, check, close, heart, eye, bell, settings, gift, card, bag, star, image,
   telegram, edit, logout, globe, clock, pin, refresh, camera, arrowUp,
 }
@@ -112,6 +113,43 @@ class _IconPainter extends CustomPainter {
       case Ico.chevronLeft:
         p.moveTo(14.5, 5); p.lineTo(8, 12); p.lineTo(14.5, 19);
         canvas.drawPath(p, stroke);
+        return;
+      case Ico.chevronDown:
+        p.moveTo(5, 9.5); p.lineTo(12, 16); p.lineTo(19, 9.5);
+        canvas.drawPath(p, stroke);
+        return;
+      case Ico.minus:
+        canvas.drawLine(const Offset(5, 12), const Offset(19, 12), stroke);
+        return;
+      case Ico.lock:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(const Rect.fromLTWH(4.5, 10.5, 15, 9.5), const Radius.circular(2.2)),
+          stroke,
+        );
+        // Qulf yoyi.
+        canvas.drawArc(
+          Rect.fromCircle(center: const Offset(12, 10.5), radius: 4.2),
+          3.14, 3.14, false, stroke,
+        );
+        canvas.drawCircle(const Offset(12, 15.2), 1.3, fill);
+        return;
+      case Ico.fingerprint:
+        // Uchta konsentrik yoy — barmoq izi belgisi.
+        for (var i = 0; i < 3; i++) {
+          canvas.drawArc(
+            Rect.fromCircle(center: const Offset(12, 13), radius: 3.4 + i * 3.2),
+            3.34, 2.6, false, stroke,
+          );
+        }
+        canvas.drawCircle(const Offset(12, 13), 1.2, fill);
+        return;
+      case Ico.backspace:
+        // O'chirish tugmasi: strelkali to'rtburchak.
+        p.moveTo(8.5, 5); p.lineTo(20, 5); p.lineTo(20, 19); p.lineTo(8.5, 19);
+        p.lineTo(3.2, 12); p.close();
+        canvas.drawPath(p, stroke);
+        canvas.drawLine(const Offset(11.6, 9.6), const Offset(16.4, 14.4), stroke);
+        canvas.drawLine(const Offset(16.4, 9.6), const Offset(11.6, 14.4), stroke);
         return;
       case Ico.arrowUp:
         canvas.drawLine(const Offset(12, 19), const Offset(12, 5.5), stroke);

@@ -30,6 +30,8 @@ void main() {
           if (re.hasMatch(codeOf(f))) f.path,
       ];
 
+  glyphTests();
+
   test('Auksion yo‘q', () {
     // Saytdan olib tashlangan, ilovaga qaytarilmaydi.
     expect(hits(RegExp(r'[Aa]uction|[Aa]uksion|[Bb]id\b')), isEmpty);
@@ -84,5 +86,31 @@ void main() {
         .where((p) => !p.endsWith('api_client.dart') && !p.endsWith('app_state.dart'))
         .toList();
     expect(found, isEmpty, reason: 'Manzil yana yozilgan: $found');
+  });
+}
+
+/// SHRIFTDA YO'Q BELGILAR — EKRANDA BO'SH TO'RTBURCHAK.
+///
+/// Manrope va IBM Plex Mono da `⌄ ⌫ ✓ ✕ ← → −` kabi belgilar YO'Q va
+/// telefonda ular "▯" bo'lib chiqadi. Vizual audit buni Home
+/// ekranidagi ID chipida topgan edi. Barcha shunday belgilar chizilgan
+/// ikonkaga (`NIcon`) o'tkazildi; bu test ular qaytib kelmasligini
+/// qo'riqlaydi.
+void glyphTests() {
+  final files = Directory('lib')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'))
+      .toList();
+
+  test('shriftda yo‘q belgilar UI da ishlatilmagan', () {
+    // Matn ichidagi belgi emas, `Text('⌄')` kabi YOLG'IZ belgi
+    // qidiriladi — o'zbekcha matndagi tire yoki qo'shtirnoq emas.
+    final bad = RegExp(r'''Text\(\s*'[⌄⌃⌫✓✕✖←→↑↓−·•]'\s*[,)]''');
+    final hits = [
+      for (final f in files)
+        if (bad.hasMatch(f.readAsStringSync())) f.path,
+    ];
+    expect(hits, isEmpty, reason: 'Shriftda yo‘q belgi ishlatilgan: $hits');
   });
 }

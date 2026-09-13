@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart' show RefreshIndicator;
+import 'package:flutter/material.dart' show TextField, InputDecoration, InputBorder, Material, MaterialType;
+import 'package:flutter/services.dart' show TextInputAction;
 import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
@@ -31,6 +34,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<Record> _catalog = const [];
   List<Record> _results = const [];
   List<Company> _companies = const [];
+  List<Company> _allCompanies = const [];
   bool _loading = true;
   bool _searching = false;
   Object? _error;
@@ -51,16 +55,25 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCatalog() async {
+  /// `force` — "tortib yangilash". Keshni chetlab o'tadi.
+  Future<void> _loadCatalog({bool force = false}) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final list = await AppScope.read(context).repo.catalog();
+      final repo = AppScope.read(context).repo;
+      // Ikkalasi BIR VAQTDA — ketma-ket so'rasak ekran ikki barobar
+      // uzoq bo'sh turardi.
+      final results = await Future.wait([
+        repo.catalog(force: force),
+        // Kompaniyalar ixtiyoriy: ular kelmasa ham katalog ko'rinadi.
+        repo.companies().catchError((_) => <Company>[]),
+      ]);
       if (!mounted) return;
       setState(() {
-        _catalog = list;
+        _catalog = results[0] as List<Record>;
+        _allCompanies = results[1] as List<Company>;
         _loading = false;
       });
     } catch (e) {
@@ -203,12 +216,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ..sort((a, b) => a.price.compareTo(b.price));
 
     return RefreshIndicator(
-      onRefresh: _loadCatalog,
+      onRefresh: () => _loadCatalog(force: true),
       color: C.champagne,
       backgroundColor: C.slate,
       child: ListView(
         padding: const EdgeInsets.only(bottom: S.x32),
         children: [
+          // BIZNESLAR — rasmli qator (handoff: "Bizneslar").
+          //
+          // Muqova rasmi bo'lgan kompaniya birinchi turadi: rasmli
+          // blok bo'sh o'rindan ancha jonli ko'rinadi.
+          if (_allCompanies.isNotEmpty) ...[
+            const SectionHeader('Bizneslar'),
+            SizedBox(
+              height: 140,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                itemCount: _allCompanies.length > 10 ? 10 : _allCompanies.length,
+                separatorBuilder: (_, __) => const SizedBox(width: S.x12),
+                itemBuilder: (_, i) => _CompanyCard(company: _allCompanies[i]),
+              ),
+            ),
+            const SizedBox(height: S.x24),
+          ],
           if (freeIds.isNotEmpty) ...[
             const SectionHeader('Bo‘sh NFC ID‘lar'),
             SizedBox(
@@ -241,37 +272,99 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 }
 
-class _SearchBar extends StatelessWidget {
+/// QIDIRUV MAYDONI.
+///
+/// IKKITA NOSOZLIK TUZATILDI (vizual audit topdi):
+///   1) `EditableText` da HINT YO'Q edi — maydon bo'm-bo'sh turardi
+///      va nima qidirish mumkinligi bilinmasdi;
+///   2) `focusNode: FocusNode()` HAR QAYTA CHIZISHDA yangi tugun
+///      yasardi — fokus yo'qolardi va eski tugunlar tozalanmasdi.
+class _SearchBar extends StatefulWidget {
   const _SearchBar({required this.controller, required this.onChanged});
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: C.graphite,
-          borderRadius: BorderRadius.circular(R.input),
-          border: Border.all(color: C.hairline),
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => setState(() {}));
+    widget.controller.addListener(_onText);
+  }
+
+  void _onText() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onText);
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasText = widget.controller.text.isNotEmpty;
+    return AnimatedContainer(
+      duration: M.fade,
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: C.graphite,
+        borderRadius: BorderRadius.circular(R.input),
+        border: Border.all(
+          color: _focus.hasFocus ? C.champagne.withValues(alpha: .4) : C.hairline,
         ),
-        child: Row(
-          children: [
-            const _SearchGlyph(),
-            const SizedBox(width: S.x8),
-            Expanded(
-              child: EditableText(
-                controller: controller,
-                focusNode: FocusNode(),
-                style: T.cardTitle.copyWith(fontWeight: FontWeight.w500, fontSize: 14.5),
+      ),
+      child: Row(
+        children: [
+          const _SearchGlyph(),
+          const SizedBox(width: S.x8),
+          Expanded(
+            child: Material(
+              type: MaterialType.transparency,
+              child: TextField(
+                controller: widget.controller,
+                focusNode: _focus,
+                onChanged: widget.onChanged,
+                textInputAction: TextInputAction.search,
                 cursorColor: C.champagne,
-                backgroundCursorColor: C.muted,
-                onChanged: onChanged,
+                cursorWidth: 1.6,
+                style: T.cardTitle.copyWith(fontWeight: FontWeight.w500, fontSize: 14.5),
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'ID, ism, biznes yoki mahsulot',
+                  hintStyle: T.cardTitle.copyWith(
+                    fontWeight: FontWeight.w400, fontSize: 14.5, color: C.muted,
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
-      );
+          ),
+          if (hasText)
+            Press(
+              onTap: () {
+                widget.controller.clear();
+                widget.onChanged('');
+              },
+              child: const Padding(
+                padding: EdgeInsets.only(left: S.x8),
+                child: NIcon(Ico.close, size: 17, color: C.muted),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SearchGlyph extends StatelessWidget {
@@ -453,6 +546,83 @@ class _FreeIdCard extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      );
+}
+
+/// Biznes kartochkasi — muqova, logotip, nom, kategoriya.
+///
+/// `RepaintBoundary`: gorizontal ro'yxat aylanganda har kartochka
+/// alohida qatlamda qayta chiziladi va qo'shnilarini qayta
+/// chizishga majburlamaydi.
+class _CompanyCard extends StatelessWidget {
+  const _CompanyCard({required this.company});
+  final Company company;
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+        child: Press(
+          onTap: () => push(context, (_) => ProfileScreen(companyId: company.id)),
+          child: SizedBox(
+            width: 168,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    SizedBox(
+                      height: 92,
+                      width: double.infinity,
+                      child: NetImage(
+                        company.coverUrl,
+                        slotLabel: 'COVER',
+                        cacheWidth: 200,
+                      ),
+                    ),
+                    Positioned(
+                      left: S.x8,
+                      bottom: S.x8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: C.obsidian,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Avatar(url: company.logoUrl, name: company.name, size: 30),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: S.x8),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        company.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.cardTitle.copyWith(fontSize: 13),
+                      ),
+                    ),
+                    if (company.verified) ...[
+                      const SizedBox(width: 4),
+                      const VerifiedBadge(size: 12),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (company.city.isNotEmpty) company.city,
+                    if (company.itemCount > 0) '${company.itemCount} mahsulot',
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.caption.copyWith(fontSize: 11),
+                ),
+              ],
+            ),
           ),
         ),
       );

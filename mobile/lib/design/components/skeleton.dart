@@ -20,12 +20,64 @@ class Skeleton extends StatelessWidget {
   final double radius;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1B1A21),
-          borderRadius: BorderRadius.circular(radius),
+  Widget build(BuildContext context) => _Shimmer(
+        child: Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1A21),
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        ),
+      );
+}
+
+/// NOZIK SHIMMER.
+///
+/// Yorug'lik juda past kontrastda (5%) va sekin (1.4s) o'tadi: maqsad
+/// "ma'lumot kelyapti" degan belgi berish, e'tiborni tortish emas.
+/// Kuchli shimmer qorong'i interfeysda arzon ko'rinadi va handoff
+/// uni aynan shu sababdan chiqarib tashlagan edi.
+///
+/// TEZLIK: `ShaderMask` faqat shu g'ishtni qayta chizadi va
+/// animatsiya butun daraxtni qayta QURMAYDI (`AnimatedBuilder` ichida
+/// `child` qayta ishlatiladi).
+class _Shimmer extends StatefulWidget {
+  const _Shimmer({required this.child});
+  final Widget child;
+
+  @override
+  State<_Shimmer> createState() => _ShimmerState();
+}
+
+class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _c,
+        child: widget.child,
+        builder: (context, child) => ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (rect) => LinearGradient(
+            begin: Alignment(-1.6 + _c.value * 3.2, 0),
+            end: Alignment(-1.1 + _c.value * 3.2, 0),
+            colors: const [
+              Color(0x00FFFFFF),
+              Color(0x0DFFFFFF),
+              Color(0x00FFFFFF),
+            ],
+          ).createShader(rect),
+          child: child,
         ),
       );
 }

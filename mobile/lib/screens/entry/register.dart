@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/states.dart';
@@ -167,7 +168,7 @@ class _BackBar extends StatelessWidget {
             onTap: () => Navigator.of(context).maybePop(),
             child: const Padding(
               padding: EdgeInsets.all(S.x8),
-              child: Text('←', style: TextStyle(color: C.offWhite, fontSize: 22, height: 1)),
+              child: NIcon(Ico.chevronLeft, size: 22, color: C.offWhite),
             ),
           ),
         ),

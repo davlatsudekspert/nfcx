@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/media.dart';
@@ -218,16 +219,16 @@ class _QtyStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          _btn('−', () => onChange(value > 1 ? value - 1 : 1)),
+          _btn(Ico.minus, () => onChange(value > 1 ? value - 1 : 1)),
           SizedBox(
             width: 30,
             child: Text('$value', textAlign: TextAlign.center, style: T.cardTitle),
           ),
-          _btn('+', () => onChange(value < 999 ? value + 1 : 999)),
+          _btn(Ico.plus, () => onChange(value < 999 ? value + 1 : 999)),
         ],
       );
 
-  Widget _btn(String label, VoidCallback onTap) => Press(
+  Widget _btn(Ico icon, VoidCallback onTap) => Press(
         onTap: onTap,
         child: Container(
           width: 30, height: 30,
@@ -236,7 +237,7 @@ class _QtyStepper extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: C.hairline),
           ),
-          child: Text(label, style: T.cardTitle.copyWith(color: C.champagne, fontSize: 15)),
+          child: NIcon(icon, size: 15, color: C.champagne),
         ),
       );
 }

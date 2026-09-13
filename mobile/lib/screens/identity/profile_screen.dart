@@ -17,6 +17,7 @@ import '../business/product_detail.dart';
 import '../orders/owner_orders.dart';
 import 'edit_profile.dart';
 import 'follow_list.dart';
+import 'profile_stats.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../content/post_detail.dart';
@@ -325,24 +326,60 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Muqova — biznesda 16:7, shaxsiyda ham bor bo'lsa ko'rsatiladi.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: AspectRatio(
-            aspectRatio: 16 / 7,
-            child: NetImage(cover, slotLabel: 'COVER 16:7', radius: R.card),
-          ),
+        // MUQOVA VA AVATAR USTMA-UST.
+        //
+        // Ilgari muqova va avatar alohida qatorlarda turardi va
+        // o'rtada bo'sh joy qolib, sahifa "yig'ilmagan" ko'rinardi.
+        // Avatar muqovaning pastki chetiga chiqib turishi — profil
+        // sahifalarining tanish shakli va ikkalasini bitta blokka
+        // bog'laydi.
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+              child: AspectRatio(
+                aspectRatio: 16 / 7,
+                child: NetImage(cover, slotLabel: 'COVER 16:7', radius: R.card),
+              ),
+            ),
+            // Muqova ostidagi yumshoq qorong'ilashuv — avatar va
+            // yozuvlar har qanday rasm ustida o'qiladi.
+            Positioned(
+              left: S.gutter, right: S.gutter, bottom: 0,
+              child: IgnorePointer(
+                child: Container(
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(R.card)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0x8C0A0805)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: S.gutter + S.x4,
+              bottom: -26,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
+                child: Avatar(url: avatar, name: name, size: 72),
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 34),
         Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, 0),
+          padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Avatar(url: avatar, name: name, size: 66),
-              const SizedBox(width: S.x16),
               Expanded(
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Obunachi va obuna raqamlari BOSILADI — ro'yxatni
                     // ochadi. Ko'rishlar soni esa bosilmaydi: uning
@@ -380,7 +417,7 @@ class _Header extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, 0),
+          padding: const EdgeInsets.fromLTRB(S.gutter, S.x20, S.gutter, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -396,10 +433,20 @@ class _Header extends StatelessWidget {
                   ],
                 ],
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  Text(code, style: T.code),
+                  // ID kodi — mahsulotning o'zi, shuning uchun u
+                  // shunchaki matn emas, belgi shaklida.
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: S.x8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: C.champagne.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(R.status),
+                      border: Border.all(color: C.champagne.withValues(alpha: .25)),
+                    ),
+                    child: Text(code, style: T.code.copyWith(fontSize: 11.5)),
+                  ),
                   if (company?.isOpen != null) ...[
                     const SizedBox(width: S.x8),
                     StatusChip(
@@ -418,13 +465,15 @@ class _Header extends StatelessWidget {
                 Text(role, style: T.caption),
               ],
               if (about.isNotEmpty) ...[
-                const SizedBox(height: S.x8),
-                Text(about, style: T.body),
+                const SizedBox(height: S.x12),
+                // Uch qator — uzun bio amal tugmalarini ekrandan
+                // surib yubormasin.
+                Text(about, style: T.body, maxLines: 3, overflow: TextOverflow.ellipsis),
               ],
             ],
           ),
         ),
-        const SizedBox(height: S.x16),
+        const SizedBox(height: S.x20),
         // AMAL SLOTLARI — ega va mehmon uchun bir xil joyda.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -524,9 +573,22 @@ class _OwnerActions extends StatelessWidget {
                 child: SecondaryButton(
                   'Statistika',
                   height: 44,
+                  // Ikkala tur uchun ham ishlaydi: biznesda
+                  // `/api/companies/:id/stats`, shaxsiyda
+                  // `/api/records/:code/analytics`. Ikkalasi bir xil
+                  // ko'rinishda — ilova ikki xil mahsulotdek
+                  // his qilinmasin.
                   onTap: isBusiness
                       ? () => push(context, (_) => BusinessStatsScreen(companyId: company!.id))
-                      : null,
+                      : record == null
+                          ? null
+                          : () => push(
+                                context,
+                                (_) => ProfileStatsScreen(
+                                  code: record!.code,
+                                  name: record!.name,
+                                ),
+                              ),
                 ),
               ),
             ],
@@ -538,6 +600,7 @@ class _OwnerActions extends StatelessWidget {
                 Expanded(
                   child: GhostButton(
                     'Buyurtmalar',
+                    icon: const NIcon(Ico.bag, size: 15, color: C.champagne),
                     onTap: () => push(
                       context,
                       (_) => OwnerOrdersScreen(
@@ -549,16 +612,16 @@ class _OwnerActions extends StatelessWidget {
                 ),
                 const SizedBox(width: S.x8),
               ],
-              Press(
-                onTap: onShare,
-                child: Container(
-                  width: 44, height: 44,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(R.button),
-                    border: Border.all(color: C.hairline),
-                  ),
-                  child: const NIcon(Ico.share, size: 18, color: C.offWhite),
+              // Ulashish — ENDI TO'LIQ QATOR (biznesda yarim).
+              //
+              // Ilgari u alohida qatorda yolg'iz turgan 44×44 kvadrat
+              // edi va o'ng tomonda katta bo'sh joy qolib, maket
+              // "tugallanmagan" ko'rinardi.
+              Expanded(
+                child: GhostButton(
+                  'Ulashish',
+                  icon: const NIcon(Ico.share, size: 15, color: C.champagne),
+                  onTap: onShare,
                 ),
               ),
             ],
@@ -597,6 +660,9 @@ class _PublicActions extends StatelessWidget {
                     : PrimaryButton('Obuna bo‘lish', loading: busy, onTap: busy ? null : onFollow),
               ),
               const SizedBox(width: S.x8),
+              // Ikonkali kvadrat: "Obuna bo'lish" ekrandagi YAGONA
+              // asosiy tugma bo'lib qolishi kerak, shuning uchun
+              // ulashish yozuvsiz.
               Press(
                 onTap: onShare,
                 child: Container(
@@ -651,21 +717,28 @@ class _PostGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (posts.isEmpty) return EmptyState(empty);
     return GridView.builder(
-      padding: const EdgeInsets.all(3),
+      // Oraliq 3 -> 2 va nisbat 4:5 (dizayndagi POST MEDIA bilan bir
+      // xil). Ilgari 0.8 nisbat rasmlarni qirqib, to'r notekis
+      // ko'rinardi.
+      padding: const EdgeInsets.all(2),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 3,
-        mainAxisSpacing: 3,
-        childAspectRatio: .8,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+        childAspectRatio: 4 / 5,
       ),
       itemCount: posts.length,
-      itemBuilder: (context, i) => Press(
-        onTap: () => push(context, (_) => PostDetailScreen(post: posts[i])),
-        child: NetImage(
-          posts[i].images.isEmpty ? null : posts[i].images.first,
-          radius: 4,
-          cacheWidth: 160,
-          slotLabel: 'POST',
+      itemBuilder: (context, i) => RepaintBoundary(
+        child: Press(
+          onTap: () => push(context, (_) => PostDetailScreen(post: posts[i])),
+          child: NetImage(
+            posts[i].images.isEmpty ? null : posts[i].images.first,
+            radius: 4,
+            // Uch ustunli to'rda har rasm ~130px — undan kattaroq
+            // dekodlash xotirani behuda yeydi.
+            cacheWidth: 160,
+            slotLabel: 'POST',
+          ),
         ),
       ),
     );

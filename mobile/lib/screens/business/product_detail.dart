@@ -34,14 +34,27 @@ class ProductCard extends StatelessWidget {
           companyName: companyName,
         ),
       ),
-      child: Column(
+      // `RepaintBoundary` — to'r aylanganda har kartochka o'z
+      // qatlamida qayta chiziladi va qo'shnilarini majburlamaydi.
+      child: RepaintBoundary(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Stack(
               children: [
+                // HERO — rasm ro'yxatdan tafsilotga "o'tib" boradi
+                // (handoff: shared element, 320ms). Bu ikki ekran
+                // orasidagi bog'lanishni ko'rsatadi va o'tish
+                // "sakrash"dek emas, davomiy his qilinadi.
+                //
+                // Teg mahsulot ID si bo'yicha: bir ekranda bir nechta
+                // mahsulot bor, ular aralashib ketmasligi kerak.
                 Positioned.fill(
-                  child: NetImage(product.imageUrl, slotLabel: '1:1', cacheWidth: 300),
+                  child: Hero(
+                    tag: 'product-${product.id}',
+                    child: NetImage(product.imageUrl, slotLabel: '1:1', cacheWidth: 300),
+                  ),
                 ),
                 if (off != null)
                   Positioned(
@@ -83,6 +96,7 @@ class ProductCard extends StatelessWidget {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -132,11 +146,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         PageView.builder(
                           itemCount: images.length,
                           onPageChanged: (i) => setState(() => _page = i),
-                          itemBuilder: (_, i) => NetImage(
-                            images[i].isEmpty ? null : images[i],
-                            slotLabel: 'MAHSULOT 1:1',
-                            radius: R.card,
-                          ),
+                          itemBuilder: (_, i) {
+                            final img = NetImage(
+                              images[i].isEmpty ? null : images[i],
+                              slotLabel: 'MAHSULOT 1:1',
+                              radius: R.card,
+                            );
+                            // Faqat BIRINCHI rasm Hero: qolganlari
+                            // ro'yxatda umuman ko'rinmagan, ya'ni
+                            // ularning "kelib chiqish joyi" yo'q.
+                            return i == 0
+                                ? Hero(tag: 'product-${p.id}', child: img)
+                                : img;
+                          },
                         ),
                         if (images.length > 1)
                           Positioned(

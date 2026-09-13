@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
@@ -92,7 +93,7 @@ class _SwitcherBody extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Text('+', style: TextStyle(color: C.champagne, fontSize: 20, height: 1)),
+                  const NIcon(Ico.plus, size: 18, color: C.champagne),
                   const SizedBox(width: S.x12),
                   Text('Yangi Company ID yaratish',
                       style: T.cardTitle.copyWith(color: C.champagne)),
@@ -164,7 +165,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
               if (active)
-                const Text('✓', style: TextStyle(color: C.champagne, fontSize: 17, height: 1)),
+                const NIcon(Ico.check, size: 17, color: C.champagne),
             ],
           ),
         ),

@@ -1,5 +1,5 @@
 import 'dart:ui' show ImageFilter;
-import 'package:flutter/material.dart' show showModalBottomSheet;
+import 'package:flutter/material.dart' show showModalBottomSheet, AnimationStyle, Curves;
 import 'package:flutter/widgets.dart';
 import '../tokens.dart';
 import '../type.dart';
@@ -19,6 +19,14 @@ Future<Tr?> showSheet<Tr>(
     isScrollControlled: true,
     backgroundColor: const Color(0x00000000),
     barrierColor: C.backdrop.withValues(alpha: .72),
+    // 280ms va yumshoq egri — handoff harakat jadvali. Material'ning
+    // standarti 250ms/decelerate, ya'ni biroz "quruq" chiqadi.
+    sheetAnimationStyle: AnimationStyle(
+      duration: M.sheet,
+      reverseDuration: M.fade,
+      curve: M.curve,
+      reverseCurve: Curves.easeIn,
+    ),
     builder: (_) => SheetBody(title: title, subtitle: subtitle, child: child),
   );
 }

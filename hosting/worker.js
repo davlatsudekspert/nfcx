@@ -3055,6 +3055,16 @@ function rowToRecord(row) {
     // bunga bog'liq emas.
     price: catalogPriceD1({ code: row.code, tierOverride: row.tier_override || '', price: Number(row.price) }, null),
     ts: Number(row.ts), views: Number(row.views),
+    // TARIF — SERVERDAN (2026-09, mobil ilova uchun).
+    //
+    // Ilgari javobda tarif umuman yo'q edi va mijozlar uni NARXDAN
+    // taxmin qilardi. Bu sovg'a qilingan yoki narxi 0 bo'lgan ID'da
+    // xato beradi: VIP001 ekranda "Free" bo'lib ko'rinardi, holbuki u
+    // ekslyuziv. Endi qoida bitta joyda — `personalIdTierD1`.
+    //
+    // Qo'shimcha maydon: sayt uni o'qimaydi va javobning qolgan qismi
+    // bitma-bit avvalgidek.
+    tier: personalIdTierD1({ code: row.code, tierOverride: row.tier_override || '' }),
   };
 }
 

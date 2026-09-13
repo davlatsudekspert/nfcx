@@ -112,7 +112,14 @@ class _FieldState extends State<Field> {
                   keyboardType: widget.keyboardType,
                   maxLength: widget.maxLength,
                   maxLines: widget.maxLines,
-                  minLines: widget.maxLines > 1 ? 3 : 1,
+                  // `minLines` HECH QACHON `maxLines` dan katta
+                  // bo'lmasligi kerak — Flutter buni assertion bilan
+                  // to'xtatadi va EKRAN YIQILADI. `maxLines: 2`
+                  // berilgan joyda (jismoniy karta manzili) aynan
+                  // shunday bo'lgan edi.
+                  minLines: widget.maxLines > 1
+                      ? (widget.maxLines < 3 ? widget.maxLines : 3)
+                      : 1,
                   enabled: widget.enabled,
                   inputFormatters: widget.inputFormatters,
                   onChanged: widget.onChanged,

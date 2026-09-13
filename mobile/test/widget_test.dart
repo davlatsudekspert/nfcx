@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nfcstore/data/api_client.dart';
 import 'package:nfcstore/data/models.dart';
+import 'package:nfcstore/design/components/input.dart';
 import 'package:nfcstore/design/components/nav_bar.dart';
 import 'package:nfcstore/design/components/states.dart';
 import 'package:nfcstore/design/theme.dart';
@@ -16,7 +17,10 @@ import 'package:nfcstore/state/app_state.dart';
 
 /// Xotiradagi soxta saqlagich — testda haqiqiy Keystore yo'q.
 class FakeStore extends FlutterSecureStorage {
-  FakeStore([this._data = const {}]);
+  /// DIQQAT: standart qiymat `const {}` EMAS — u o'zgartirib
+  /// bo'lmaydigan xarita va unga yozishga urinish "Cannot modify
+  /// unmodifiable map" bilan yiqiladi.
+  FakeStore([Map<String, String>? data]) : _data = data ?? <String, String>{};
   final Map<String, String> _data;
 
   @override
@@ -275,6 +279,8 @@ void main() {
     });
   });
 
+  fieldLineTests();
+
   group('Dizayn tokenlari', () {
     test('ranglar handoff bilan bir xil', () {
       // Bu qiymatlar dizayn hujjatidan. O‘zgartirilsa — ataylab
@@ -291,5 +297,28 @@ void main() {
         expect(d.inMilliseconds, lessThanOrEqualTo(400));
       }
     });
+  });
+}
+
+/// `Field` — qator soni chegaralari.
+///
+/// Bu yerda AYNAN bitta narsa qo'riqlanadi: `minLines` hech qachon
+/// `maxLines` dan katta bo'lmasligi kerak. Aks holda Flutter assertion
+/// bilan to'xtaydi va EKRAN YIQILADI — vizual audit buni jismoniy
+/// karta ekranida topgan edi.
+void fieldLineTests() {
+  group('Field qatorlari', () {
+    for (final max in [1, 2, 3, 5]) {
+      testWidgets('maxLines: $max — yiqilmaydi', (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: buildTheme(),
+          home: Scaffold(
+            body: Field(label: 'Sinov', maxLines: max, controller: TextEditingController()),
+          ),
+        ));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }

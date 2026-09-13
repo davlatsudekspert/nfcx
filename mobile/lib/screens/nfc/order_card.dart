@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/press.dart';
@@ -325,16 +326,16 @@ class _Stepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          _btn('−', () => onChange(value > 1 ? value - 1 : 1)),
+          _btn(Ico.minus, () => onChange(value > 1 ? value - 1 : 1)),
           SizedBox(
             width: 36,
             child: Text('$value', textAlign: TextAlign.center, style: T.cardTitle),
           ),
-          _btn('+', () => onChange(value < max ? value + 1 : max)),
+          _btn(Ico.plus, () => onChange(value < max ? value + 1 : max)),
         ],
       );
 
-  Widget _btn(String label, VoidCallback onTap) => Press(
+  Widget _btn(Ico icon, VoidCallback onTap) => Press(
         onTap: onTap,
         child: Container(
           width: 32, height: 32,
@@ -343,7 +344,7 @@ class _Stepper extends StatelessWidget {
             borderRadius: BorderRadius.circular(9),
             border: Border.all(color: C.hairline),
           ),
-          child: Text(label, style: T.cardTitle.copyWith(color: C.champagne, fontSize: 16)),
+          child: NIcon(icon, size: 16, color: C.champagne),
         ),
       );
 }

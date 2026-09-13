@@ -81,7 +81,11 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
             ),
           );
 
-    return Press(
+    // `RepaintBoundary` — halqa AYLANADI. Usiz uning har kadri
+    // butun gorizontal ro'yxatni qayta chizishga majburlaydi va
+    // aylantirish tutila boshlaydi.
+    return RepaintBoundary(
+      child: Press(
       onTap: widget.onTap,
       child: SizedBox(
         width: widget.size + 8,
@@ -128,6 +132,7 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
             ),
           ],
         ),
+      ),
       ),
     );
   }

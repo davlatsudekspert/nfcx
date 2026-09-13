@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/states.dart';
@@ -252,7 +253,7 @@ class _Success extends StatelessWidget {
                         width: 26, height: 26,
                         decoration: const BoxDecoration(color: C.verdant, shape: BoxShape.circle),
                         child: const Center(
-                          child: Text('✓', style: TextStyle(color: C.obsidian, fontSize: 15, height: 1)),
+                          child: NIcon(Ico.check, size: 15, color: C.obsidian),
                         ),
                       ),
                       const SizedBox(width: S.x12),

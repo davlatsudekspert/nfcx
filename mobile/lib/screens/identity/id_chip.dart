@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/press.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
@@ -33,7 +34,7 @@ class IdChip extends StatelessWidget {
           children: [
             Text(code, style: T.code.copyWith(fontSize: 11.5)),
             const SizedBox(width: 6),
-            const Text('⌄', style: TextStyle(color: C.ash, fontSize: 12, height: 1)),
+            const NIcon(Ico.chevronDown, size: 13, color: C.ash),
           ],
         ),
       ),

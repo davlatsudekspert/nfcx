@@ -61,6 +61,7 @@ class Record {
     this.price = 0,
     this.views = 0,
     this.tierOverride = '',
+    this.serverTier = '',
     this.companyId = '',
     this.isGift = false,
     this.notForSale = false,
@@ -87,6 +88,10 @@ class Record {
   final int price;
   final int views;
   final String tierOverride;
+
+  /// Serverdan kelgan tarif. BO'SH BO'LISHI MUMKIN — eski javoblarda
+  /// bu maydon yo'q edi.
+  final String serverTier;
   final String companyId;
   final bool isGift;
   final bool notForSale;
@@ -95,14 +100,18 @@ class Record {
   bool get isBusiness => profileType == 'business';
   bool get isExpert => profileType == 'expert';
 
-  /// Tarif KODDAN kelib chiqadi — backend'dagi `personalIdTierD1` bilan
-  /// bir xil qoida. `tierOverride` bo'lsa u ustun turadi.
+  /// Tarif.
   ///
-  /// NIMA UCHUN MIJOZ TOMONDA HAM: katalog javobida tarif maydoni yo'q,
-  /// faqat kod va narx bor. Qoida oddiy va o'zgarmas, shuning uchun uni
-  /// takrorlash xavfsiz; har bir karta uchun alohida so'rov yuborish esa
-  /// ro'yxatni sekinlashtirardi.
+  /// BIRINCHI NAVBATDA SERVERDAN. Server `personalIdTierD1` ni
+  /// hisoblab yuboradi va bu yagona to'g'ri manba: sovg'a qilingan
+  /// yoki narxi 0 bo'lgan ID'ni narxdan taxmin qilib bo'lmaydi —
+  /// VIP001 shu sababli ekranda "Free" bo'lib ko'rinardi.
+  ///
+  /// Quyidagi taxmin FAQAT ZAXIRA: katalog ro'yxati (`/api/records`)
+  /// tarif maydonini qaytarmaydi va u yerda har karta uchun alohida
+  /// so'rov yuborish ro'yxatni sekinlashtirardi.
   Tier get tier {
+    if (serverTier.isNotEmpty) return TierStyle.parse(serverTier);
     if (tierOverride.isNotEmpty) return TierStyle.parse(tierOverride);
     if (isGift) return Tier.exclusive;
     final c = code.toUpperCase();
@@ -138,6 +147,7 @@ class Record {
         price: _i(j['price']),
         views: _i(j['views']),
         tierOverride: _s(j['tierOverride']),
+        serverTier: _s(j['tier']),
         companyId: _s(j['companyId']),
         isGift: _b(j['isGift']),
         notForSale: _b(j['notForSale']),
