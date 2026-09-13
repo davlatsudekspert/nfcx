@@ -80,11 +80,18 @@ export function ProfileTabBar({
     );
   }
 
+  // Shaxsiy: `GET /api/records/:code/stories` real (audit topilmasi,
+  // ilgari ulanmagan edi) — shuning uchun Stories ham qo'shildi. Reels
+  // OLIB TASHLANMADI: video postlar hozir FAQAT shu tabda ko'rinadi
+  // (`ProfileView`da Feed videoni chiqarib tashlaydi), uni olib tashlash
+  // video kontentni butunlay yashirib qo'yardi — bu alohida qaror talab
+  // qiladi, shuning uchun bu slice'da tegilmadi.
   return (
     <TabBarRow>
       {feedTab}
       {catalogTab}
       <TabButton tab="reels" active={active} onChange={onChange} label="Reels" />
+      <TabButton tab="stories" active={active} onChange={onChange} label="Stories" />
       {infoTab}
     </TabBarRow>
   );

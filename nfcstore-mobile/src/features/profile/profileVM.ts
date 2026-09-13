@@ -1,4 +1,13 @@
-import type { CatalogItem, Card, Company, CompanyPlan } from '@/api/types';
+import type {
+  CatalogItem,
+  Card,
+  Company,
+  CompanyPlan,
+  CompanyPost,
+  CompanyStory,
+  PersonalPost,
+  PersonalStory,
+} from '@/api/types';
 import { compactCount, hoursSummary, prettyPhone, todayWindow } from '@/lib/format';
 import { resolveIsOwner, type RoleOverride } from '@/store/roleStore';
 
@@ -190,6 +199,36 @@ export function cardVM(card: Card, opts: CardVMOptions): ProfileVM {
     shareUrl: `${SITE}/${card.code}`,
     code: card.code,
     featuredCompany: opts.featuredCompany,
+  };
+}
+
+/**
+ * Shaxsiy karta post/story javoblarini `ProfileView`ning kutgan umumiy
+ * shakliga o'giradi (`CompanyPost`/`CompanyStory` — ikkalasi ham
+ * FeedGrid/ReelsGrid/StoriesGrid'ning kerak qiladigan maydonlarigina:
+ * id/imageUrl/videoUrl/caption/createdAt). Layk/expiresAt kabi qo'shimcha
+ * maydonlar hozircha ekranda ishlatilmagani uchun tashlab yuboriladi —
+ * kelajakda layk tugmasi qo'shilsa shu yerga qaytiladi.
+ */
+export function personalPostToCompanyShape(p: PersonalPost): CompanyPost {
+  return {
+    id: p.id,
+    imageUrl: p.imageUrl,
+    videoUrl: p.videoUrl,
+    caption: p.caption,
+    createdAt: new Date(p.createdAt).toISOString(),
+  };
+}
+
+export function personalStoryToCompanyShape(s: PersonalStory): CompanyStory {
+  return {
+    id: s.id,
+    imageUrl: s.imageUrl || undefined,
+    videoUrl: s.videoUrl || undefined,
+    createdAt: s.createdAt,
+    expiresAt: s.expiresAt,
+    likeCount: s.likeCount,
+    liked: s.liked,
   };
 }
 

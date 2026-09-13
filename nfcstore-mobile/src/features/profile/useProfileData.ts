@@ -9,13 +9,21 @@ import {
   getMe,
   getMyCompanies,
   getRecord,
+  getRecordPosts,
+  getRecordStories,
 } from '@/api/endpoints';
 import type { CompanyPost, CompanyStory } from '@/api/types';
 import { useActiveIdStore, type ActiveId } from '@/store/activeIdStore';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleStore } from '@/store/roleStore';
 
-import { businessVM, cardVM, type ProfileVM } from './profileVM';
+import {
+  businessVM,
+  cardVM,
+  personalPostToCompanyShape,
+  personalStoryToCompanyShape,
+  type ProfileVM,
+} from './profileVM';
 
 export type AccountEntry = {
   id: ActiveId;
@@ -114,24 +122,38 @@ export function useProfileData() {
     enabled: !!cardCode,
   });
 
-  const postsQuery = useQuery({
+  const businessPostsQuery = useQuery({
     queryKey: ['posts', bizId],
     queryFn: () => getCompanyPosts(bizId!),
     enabled: !!bizId,
   });
 
-  // Business Stories — `GET /api/companies/:id/stories`, production
-  // Worker'da tasdiqlangan (hosting/worker.js:1209). Shaxsiy kartada
-  // ham real story backend bor, lekin bu SLICE Business Profile
-  // qamrovida, shuning uchun shaxsiyga bu yerda tegilmadi.
-  const storiesQuery = useQuery({
+  const businessStoriesQuery = useQuery({
     queryKey: ['stories', 'company', bizId],
     queryFn: () => getCompanyStories(bizId!),
     enabled: !!bizId,
   });
 
-  const posts: CompanyPost[] = postsQuery.data ?? [];
-  const stories: CompanyStory[] = storiesQuery.data ?? [];
+  // Shaxsiy karta uchun ham real endpoint (`GET /api/records/:code/posts`
+  // va `/stories`, worker.js:5222/5256) — biznes bilan bir xil naqsh.
+  const personalPostsQuery = useQuery({
+    queryKey: ['record-posts', cardCode],
+    queryFn: () => getRecordPosts(cardCode!),
+    enabled: !!cardCode,
+  });
+
+  const personalStoriesQuery = useQuery({
+    queryKey: ['stories', 'card', cardCode],
+    queryFn: () => getRecordStories(cardCode!),
+    enabled: !!cardCode,
+  });
+
+  const posts: CompanyPost[] = bizId
+    ? (businessPostsQuery.data ?? [])
+    : (personalPostsQuery.data ?? []).map(personalPostToCompanyShape);
+  const stories: CompanyStory[] = bizId
+    ? (businessStoriesQuery.data ?? [])
+    : (personalStoriesQuery.data ?? []).map(personalStoryToCompanyShape);
 
   const vm = useMemo<ProfileVM | null>(() => {
     if (bizId && companyQuery.data) {

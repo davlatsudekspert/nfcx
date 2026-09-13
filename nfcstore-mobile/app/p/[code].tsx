@@ -11,6 +11,7 @@ import { ProfileView } from '@/features/profile/ProfileView';
 import { SITE } from '@/features/profile/profileVM';
 import type { ProfileTab } from '@/features/profile/tabs/ProfileTabBar';
 import { useCardProfile } from '@/features/profile/useProfileTargets';
+import { useSeenRing } from '@/features/profile/useSeenRing';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -30,8 +31,9 @@ export default function CardProfileRoute() {
   const { theme } = useTheme();
   const normalized = (code ?? '').toUpperCase();
 
-  const { vm, posts, loading, notFound } = useCardProfile(normalized || null);
+  const { vm, posts, stories, loading, notFound } = useCardProfile(normalized || null);
   const [tab, setTab] = useState<ProfileTab>('catalog');
+  const { hasNewContent, seen, latest, markSeen } = useSeenRing(vm?.key ?? 'none', posts);
 
   const queryClient = useQueryClient();
   const follow = useMutation({
@@ -94,12 +96,19 @@ export default function CardProfileRoute() {
     <ProfileView
       vm={vm}
       posts={posts}
+      stories={stories}
       tab={tab}
       onTabChange={setTab}
-      // Shaxsiy kartada 24 soatlik post tushunchasi yo'q — halqa
-      // yonmaydi va avatar bosilganda hech narsa ochilmaydi.
-      hasNewContent={false}
-      seen
+      hasNewContent={hasNewContent}
+      seen={seen}
+      onOpenPost={
+        latest
+          ? () => {
+              markSeen();
+              router.push(`/post/${latest.id}?code=${encodeURIComponent(normalized)}`);
+            }
+          : undefined
+      }
       topBar={<BackBar title={vm.name} subtitle={vm.handle} />}
       banner={inactive === '1' ? <TapInactiveBanner /> : undefined}
       onFollow={vm.isOwner ? undefined : () => follow.mutate()}
@@ -108,6 +117,9 @@ export default function CardProfileRoute() {
       // yuklash, forma) — shuning uchun haqiqiy veb tahrirlash sahifasi
       // ochiladi, fake/bo'sh forma emas.
       onEdit={vm.isOwner ? () => WebBrowser.openBrowserAsync(`${SITE}/account`).catch(() => {}) : undefined}
+      onCreateStory={
+        vm.isOwner ? () => WebBrowser.openBrowserAsync(`${SITE}/account`).catch(() => {}) : undefined
+      }
     />
   );
 }

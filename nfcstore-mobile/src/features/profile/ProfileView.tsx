@@ -132,7 +132,7 @@ export function ProfileView({
 
           {tab === 'reels' ? <ReelsGrid reels={reels} /> : null}
 
-          {tab === 'stories' && vm.kind === 'business' ? (
+          {tab === 'stories' ? (
             <StoriesGrid stories={stories} isOwner={vm.isOwner} onCreate={onCreateStory} />
           ) : null}
 

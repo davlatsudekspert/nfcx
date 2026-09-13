@@ -8,11 +8,19 @@ import {
   getFollowStats,
   getMe,
   getRecord,
+  getRecordPosts,
+  getRecordStories,
 } from '@/api/endpoints';
 import type { CompanyPost, CompanyStory } from '@/api/types';
 import { useRoleStore } from '@/store/roleStore';
 
-import { businessVM, cardVM, type ProfileVM } from './profileVM';
+import {
+  businessVM,
+  cardVM,
+  personalPostToCompanyShape,
+  personalStoryToCompanyShape,
+  type ProfileVM,
+} from './profileVM';
 
 /**
  * ISTALGAN shaxsiy kartani kod bo'yicha ochish — NFC teginish va Katalog
@@ -35,6 +43,21 @@ export function useCardProfile(code: string | null) {
   const followQuery = useQuery({
     queryKey: ['follow-stats', code],
     queryFn: () => getFollowStats(code!),
+    enabled: !!code,
+  });
+
+  // `GET /api/records/:code/posts` va `/stories` — real, ochiq
+  // o'qiladigan endpointlar (worker.js:5222, 5256). Avvalgi izoh
+  // ("shaxsiy kartada post tushunchasi yo'q") noto'g'ri edi.
+  const postsQuery = useQuery({
+    queryKey: ['record-posts', code],
+    queryFn: () => getRecordPosts(code!),
+    enabled: !!code,
+  });
+
+  const storiesQuery = useQuery({
+    queryKey: ['stories', 'card', code],
+    queryFn: () => getRecordStories(code!),
     enabled: !!code,
   });
 
@@ -78,15 +101,8 @@ export function useCardProfile(code: string | null) {
 
   return {
     vm,
-    /**
-     * Bo'sh ro'yxat — QASDAN, "backend yo'q" degani EMAS. Audit
-     * (`hosting/worker.js`) shaxsiy kartada ham real `/api/records/:code/posts`
-     * va `/api/records/:code/stories` borligini tasdiqladi, lekin bu
-     * SLICE faqat Business Profile qamrovida — shaxsiy post/story
-     * ekranga ulash keyingi (Personal profile) slice'ga qoldirildi.
-     */
-    posts: [] as CompanyPost[],
-    stories: [] as CompanyStory[],
+    posts: (postsQuery.data ?? []).map(personalPostToCompanyShape) as CompanyPost[],
+    stories: (storiesQuery.data ?? []).map(personalStoryToCompanyShape) as CompanyStory[],
     loading: recordQuery.isLoading,
     error: recordQuery.error,
     notFound: !!recordQuery.error && !recordQuery.data,

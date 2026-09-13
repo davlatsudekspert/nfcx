@@ -153,13 +153,12 @@ export function ProfileScreen() {
             ? (itemId) => router.push(`/product/${vm.companyId}/${itemId}`)
             : undefined
         }
-        onCreateStory={
-          vm.companyId
-            ? () =>
-                WebBrowser.openBrowserAsync(
-                  `${SITE}/kompaniyalar/${vm.companyId!.toLowerCase()}`,
-                ).catch(() => {})
-            : undefined
+        // Story yaratish — mobilda media yuklash oqimi hali yo'q, shuning
+        // uchun haqiqiy veb sahifa ochiladi (fake/bo'sh forma emas).
+        onCreateStory={() =>
+          WebBrowser.openBrowserAsync(
+            vm.companyId ? `${SITE}/kompaniyalar/${vm.companyId.toLowerCase()}` : `${SITE}/account`,
+          ).catch(() => {})
         }
         // Profilni tahrirlash — mobilda alohida forma hali yo'q, shuning
         // uchun haqiqiy veb sahifa ochiladi (biznesda ish maydoni,

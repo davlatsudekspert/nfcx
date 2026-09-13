@@ -141,9 +141,49 @@ export type CompanyStory = {
   imageUrl?: string;
   videoUrl?: string;
   createdAt: string;
-  /** Tashrifchi ko'rganmi — halqa rangini shu belgilaydi. */
+  expiresAt?: string;
+  likeCount?: number;
+  liked?: boolean;
+  /**
+   * Tashrifchi ko'rganmi — halqa rangini shu belgilaydi.
+   *
+   * AUDIT (2026-09, bu slice): `hosting/worker.js`dagi `listStoriesD1()`
+   * bu maydonni HOZIRCHA qaytarmaydi (faqat id/imageUrl/videoUrl/
+   * caption/createdAt/expiresAt/likeCount/liked) — shuning uchun bu ikki
+   * maydon amalda doim `undefined` bo'ladi va halqa doim "yangi" (ko'rilmagan)
+   * ko'rinishida chiziladi. Bu FAKE EMAS (client hech narsani "ko'rilgan"
+   * deb o'ylab topmaydi), lekin MISSING BACKEND CAPABILITY: seen-tracking
+   * qo'shilsa, shu ikki maydonning nomi shu yerda saqlanadi.
+   */
   seen?: boolean;
   viewed?: boolean;
+};
+
+/**
+ * Shaxsiy karta posti — `GET /api/records/:code/posts`. `CompanyPost`dan
+ * farqli: `createdAt` EPOCH MS (son), ISO satr emas (`postRowToJson()`,
+ * worker.js:8060) va layk maydonlari bor.
+ */
+export type PersonalPost = {
+  id: number;
+  imageUrl: string;
+  videoUrl: string;
+  caption: string;
+  createdAt: number;
+  likeCount: number;
+  liked: boolean;
+};
+
+/** Shaxsiy karta storysi — `GET /api/records/:code/stories`. */
+export type PersonalStory = {
+  id: number;
+  imageUrl: string;
+  videoUrl: string;
+  caption: string;
+  createdAt: string;
+  expiresAt: string;
+  likeCount: number;
+  liked: boolean;
 };
 
 export type FollowResult = { following: boolean; followers: number };

@@ -7,9 +7,10 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import type { CompanyPost } from '@/api/types';
+import type { CompanyPost, PersonalPost } from '@/api/types';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { personalPostToCompanyShape } from '@/features/profile/profileVM';
 import { relativeTime } from '@/lib/format';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { A140 } from '@/theme/css';
@@ -28,17 +29,33 @@ const LOGO = require('../../assets/logo.png');
  * ekran darhol ochiladi, kutish holati ko'rinmaydi.
  */
 export default function PostScreen() {
-  const { id, company } = useLocalSearchParams<{ id: string; company?: string }>();
+  const { id, company, code } = useLocalSearchParams<{
+    id: string;
+    company?: string;
+    code?: string;
+  }>();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const active = useActiveIdStore((s) => s.active);
 
-  // `?company=` — tashqi kompaniya profilidan ochilganda. Bo'lmasa faol
-  // ID dan olinadi (Profil tabidan ochilgan holat).
+  // `?company=` / `?code=` — tashqi profildan ochilganda (Discover,
+  // `/c/[companyId]`, `/p/[code]`). Bo'lmasa faol ID dan olinadi (Profil
+  // tabidan ochilgan holat).
   const companyId =
     company ?? (active?.kind === 'business' ? active.companyId : null);
-  const posts = queryClient.getQueryData<CompanyPost[]>(['posts', companyId]) ?? [];
+  const cardCode = code ?? (active?.kind === 'personal' ? active.code : null);
+
+  // Kompaniya postlari ALLAQACHON `CompanyPost` shaklida keshda turadi.
+  // Shaxsiy postlar esa `PersonalPost` xom shaklida (`useProfileData`/
+  // `useCardProfile` ekranga chiqarishdan oldin o'giradi) — shuning
+  // uchun bu yerda ham xuddi shu o'girish qo'llaniladi, aks holda
+  // `createdAt` (epoch son) ISO satr kutgan `relativeTime()`ni buzardi.
+  const posts: CompanyPost[] = companyId
+    ? queryClient.getQueryData<CompanyPost[]>(['posts', companyId]) ?? []
+    : (
+        queryClient.getQueryData<PersonalPost[]>(['record-posts', cardCode]) ?? []
+      ).map(personalPostToCompanyShape);
   const post = posts.find((p) => String(p.id) === String(id)) ?? null;
 
   return (

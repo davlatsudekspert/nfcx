@@ -13,6 +13,8 @@ import type {
   FollowStats,
   GiftOffers,
   PaymentsSettings,
+  PersonalPost,
+  PersonalStory,
   PhysicalPricing,
   PublicCompany,
   TapInfo,
@@ -82,6 +84,22 @@ export const placeCompanyOrder = (companyId: string, input: PlaceOrderInput) =>
 /** GET /api/records/:code -> shaxsiy karta (ochiq profil) */
 export const getRecord = (code: string) =>
   apiFetch<{ record: Card }>(`/records/${encodeURIComponent(code)}`).then((r) => r.record);
+
+/**
+ * GET /api/records/:code/posts -> {posts} — OCHIQ o'qiladi (worker.js:5222).
+ * Bu slice'gacha ilovada UMUMAN ulanmagan edi: shaxsiy kartada "post/feed
+ * tushunchasi yo'q" degan ESKI izoh noto'g'ri edi — backend real.
+ */
+export const getRecordPosts = (code: string) =>
+  apiFetch<{ posts: PersonalPost[] }>(`/records/${encodeURIComponent(code)}/posts`).then(
+    (r) => r.posts,
+  );
+
+/** GET /api/records/:code/stories -> {stories} — OCHIQ o'qiladi (worker.js:5256). */
+export const getRecordStories = (code: string) =>
+  apiFetch<{ stories: PersonalStory[] }>(`/records/${encodeURIComponent(code)}/stories`).then(
+    (r) => r.stories,
+  );
 
 /**
  * Obuna statistikasi. Kompaniyadan FARQLI: shaxsiy kartada uchta alohida
@@ -215,6 +233,8 @@ export type {
   FollowStats,
   GiftOffers,
   PaymentsSettings,
+  PersonalPost,
+  PersonalStory,
   PhysicalPricing,
   PublicCompany,
   TapInfo,
