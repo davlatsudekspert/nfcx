@@ -120,7 +120,9 @@ void main() {
           )));
       await tester.pumpWidget(host(const BusinessStatsScreen(companyId: 'X'), state));
       await tester.pumpAndSettle();
-      expect(find.text('Bu davrda hali ma‘lumot to‘planmagan.'), findsOneWidget);
+      // Bo'sh holat endi sarlavha + izoh (audit talabi).
+      expect(find.text('Ma‘lumot to‘planmagan'), findsOneWidget);
+      expect(find.textContaining('shu yerda'), findsOneWidget);
     });
 
     testWidgets('xatoda kod emas, jumla va Qayta urinish', (tester) async {

@@ -147,7 +147,7 @@ void main() {
 
       await tester.pumpWidget(wrap(const GiftOffersScreen(), state));
       await tester.pumpAndSettle();
-      expect(find.textContaining('sovg‘a taklifi yo‘q'), findsOneWidget);
+      expect(find.text('Sovg‘a taklifi yo‘q'), findsOneWidget);
     });
   });
 

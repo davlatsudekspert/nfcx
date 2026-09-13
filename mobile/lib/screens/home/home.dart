@@ -128,7 +128,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final state = AppScope.of(context);
     final active = state.active;
 
-    return SafeArea(
+    // BOSH EKRAN — "xush kelibsiz" hissi.
+    //
+    // Nur CHAP YUQORIDAN va ISSIQ (champagne): salomlashuv shu
+    // burchakda turadi va yorug'lik unga tushadi. NFC bo'limida nur
+    // o'ng yuqoridan va sovuq — ikki ekran bir xil ko'rinmaydi.
+    return ScreenAura(
+      origin: const Alignment(-0.75, -1),
+      strength: .075,
+      child: SafeArea(
       bottom: false,
       child: RefreshIndicator(
         onRefresh: () => _load(force: true),
@@ -177,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: S.x32)),
           ],
         ),
+      ),
       ),
     );
   }

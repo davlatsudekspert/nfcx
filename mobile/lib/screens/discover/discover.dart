@@ -14,7 +14,6 @@ import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
-import '../common/top_bar.dart';
 import '../identity/id_chip.dart';
 import '../identity/profile_screen.dart';
 
@@ -128,14 +127,42 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     final hasQuery = _query.text.trim().length >= 2;
-    return SafeArea(
+    // DISCOVER — QIDIRUVGA QARATILGAN EKRAN.
+    //
+    // Ilgari bu yerda ham Home va NFC'dagi kabi katta serif
+    // sarlavha turardi — uchala ekranning tepasi bir xil edi.
+    // Endi bu bo'limning BOSH ELEMENTI qidiruv maydoni: sarlavha
+    // kichik yozuvga tushirildi, qidiruv esa kattalashdi va eng
+    // tepaga chiqdi. Nur ham boshqacha: tepadan, sovuq va eng zaif —
+    // e'tibor natijalardagi rasmlarga qolsin.
+    return ScreenAura(
+      color: C.platinum,
+      origin: const Alignment(0, -1),
+      strength: .05,
+      radius: 1.3,
+      child: SafeArea(
       bottom: false,
       child: Column(
         children: [
-          ScreenTitle(
-            'Discover',
-            subtitle: 'Odamlar, bizneslar, mahsulotlar',
-            trailing: const IdChip(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, S.x12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Eyebrow('Kashf qilish'),
+                      const SizedBox(height: 3),
+                      Text('Odamlar, bizneslar, mahsulotlar',
+                          style: T.caption.copyWith(fontSize: 11.5)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: S.x12),
+                const IdChip(),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x16),
@@ -160,6 +187,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             child: hasQuery ? _buildResults() : _buildBrowse(),
           ),
         ],
+      ),
       ),
     );
   }
@@ -316,7 +344,9 @@ class _SearchBarState extends State<_SearchBar> {
     final hasText = widget.controller.text.isNotEmpty;
     return AnimatedContainer(
       duration: M.fade,
-      height: 50,
+      // 50 -> 56: bu ekranning BOSH elementi, shuning uchun u
+      // oddiy maydon emas, "hero" o'lchamida.
+      height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: C.graphite,

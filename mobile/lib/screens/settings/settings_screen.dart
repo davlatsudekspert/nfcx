@@ -162,6 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: S.x24),
                   const Eyebrow('Akkaunt'),
                   const SizedBox(height: S.x12),
+                  _Group([
                   _Row(
                     label: 'Buyurtmalarim',
                     icon: Ico.bag,
@@ -190,7 +191,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // umuman yo'q. Mavjud bo'lmagan imkoniyatni va'da
                   // qilishdan ko'ra, uni ko'rsatmagan ma'qul.
                   _Row(label: 'Til', icon: Ico.globe, value: 'O‘zbekcha'),
-                  _Row(label: 'To‘lovlar', icon: Ico.card, value: 'Payme · Click'),
+                  _Row(label: 'To‘lovlar', icon: Ico.card, value: 'Payme · Click', last: true),
+                  ]),
 
                   const SizedBox(height: S.x24),
                   Press(
@@ -220,21 +222,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+/// SOZLAMALAR QATORI — KARTA EMAS, RO'YXAT.
+///
+/// NIMA UCHUN QAYTA YOZILDI: har qator alohida soya bilan karta
+/// edi va ekran o'nta suzuvchi to'rtburchakka aylanardi. Sozlamalar
+/// esa boshqa ekranlar kabi "boy" bo'lmasligi kerak — u eng toza
+/// va eng sokin bo'lim. Endi qatorlar BITTA yuzada, orasida
+/// ingichka chiziq bilan: tizim sozlamalari qanday ko'rinsa,
+/// shunday.
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.icon, this.value, this.onTap});
+  const _Row({
+    required this.label,
+    required this.icon,
+    this.value,
+    this.onTap,
+    this.last = false,
+  });
+
   final String label;
   final Ico icon;
   final String? value;
   final VoidCallback? onTap;
 
+  /// Guruhdagi oxirgi qator — ostiga chiziq chizilmaydi.
+  final bool last;
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: S.x8),
-        child: Press(
-          onTap: onTap,
-          child: Surface(
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
-          shadow: E.e1,
+          decoration: BoxDecoration(
+            border: last
+                ? null
+                : const Border(bottom: BorderSide(color: C.hairline)),
+          ),
           child: Row(
             children: [
               NIcon(icon, size: 19, color: C.ash),
@@ -250,8 +272,20 @@ class _Row extends StatelessWidget {
               if (onTap != null) const NIcon(Ico.chevronRight, size: 17, color: C.ash),
             ],
           ),
-          ),
         ),
+      );
+}
+
+/// Qatorlar guruhi — bitta yuza.
+class _Group extends StatelessWidget {
+  const _Group(this.rows);
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        padding: EdgeInsets.zero,
+        shadow: E.e1,
+        child: Column(children: rows),
       );
 }
 

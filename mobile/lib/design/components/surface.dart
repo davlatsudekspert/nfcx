@@ -183,3 +183,87 @@ class _VerifiedPainter extends CustomPainter {
   @override
   bool shouldRepaint(_VerifiedPainter old) => false;
 }
+
+/// EKRAN IMZOSI — tepadagi juda zaif nur.
+///
+/// NIMA UCHUN: auditda topilgan eng katta vizual muammo —
+/// ekranlar bir-biriga juda o'xshab ketgan. Sarlavhani yopib
+/// qo'ysangiz, qaysi bo'limda turganingizni bilib bo'lmasdi.
+///
+/// YECHIM RANG MAVZUSI EMAS: har bo'limga boshqa rang berish
+/// dizayn tizimini buzardi. Buning o'rniga har ekranning tepasida
+/// nurning QAYERDAN tushishi va qanchalik issiq bo'lishi farq
+/// qiladi. Bu ongsiz darajada ishlaydi: odam "rang boshqa" demaydi,
+/// lekin ekranni ajratadi.
+///
+/// Kuchi ataylab juda past (6–10%): sezilsa — ortiqcha.
+class ScreenAura extends StatelessWidget {
+  const ScreenAura({
+    super.key,
+    required this.child,
+    this.color = C.champagne,
+    this.origin = const Alignment(-0.7, -1),
+    this.strength = .07,
+    this.radius = 1.1,
+  });
+
+  final Widget child;
+
+  /// Nur rangi — champagne (issiq) yoki platinum (sovuq).
+  final Color color;
+
+  /// Nur manbai. Har ekranda boshqa joyda.
+  final Alignment origin;
+
+  /// 0–1. 0.10 dan oshirmang.
+  final double strength;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        children: [
+          // `IgnorePointer` — nur bosishni to'smaydi.
+          // `RepaintBoundary` yo'q: bu statik gradient, animatsiya
+          // qilinmaydi va qatlam yaratish ortiqcha xarajat bo'lardi.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: origin,
+                    radius: radius,
+                    colors: [
+                      color.withValues(alpha: strength),
+                      color.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      );
+}
+
+/// Bo'lim ostidagi ingichka chiziq — NFC bo'limining imzo detali.
+///
+/// Chapdan o'ngga so'nadi: metall qirrasi shunday tutadi.
+class FadeRule extends StatelessWidget {
+  const FadeRule({super.key, this.color = C.platinum, this.width = 120});
+
+  final Color color;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 1,
+        width: width,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color.withValues(alpha: .55), color.withValues(alpha: 0)],
+          ),
+        ),
+      );
+}

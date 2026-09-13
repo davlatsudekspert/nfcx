@@ -148,7 +148,19 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
     final active = state.active;
     final owned = state.cards;
 
-    return SafeArea(
+    // NFC — NFCSTORE'NING IMZO EKRANI.
+    //
+    // Nur O'NG YUQORIDAN va platina tusda: bu yerda mahsulotning
+    // o'zi — metall karta — turadi, shuning uchun yorug'lik ham
+    // metallga tushgandek sovuq. Home'da nur chapdan va issiq,
+    // Discover'da tepadan va zaif. Sarlavhani yopib qo'ysangiz ham
+    // uchalasi farq qiladi.
+    return ScreenAura(
+      color: C.platinum,
+      origin: const Alignment(0.85, -1),
+      strength: .08,
+      radius: 1.0,
+      child: SafeArea(
       bottom: false,
       child: RefreshIndicator(
         onRefresh: _refresh,
@@ -159,6 +171,12 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
           padding: const EdgeInsets.only(bottom: S.x32),
           children: [
             ScreenTitle('NFC', subtitle: 'ID‘laringiz va kartalar', trailing: const IdChip()),
+            // IMZO DETALI — faqat shu ekranda. Metall qirrasi kabi
+            // chapdan o'ngga so'nadi.
+            const Padding(
+              padding: EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x20),
+              child: FadeRule(width: 96),
+            ),
             if (active == null && !_refreshing)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -238,6 +256,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
