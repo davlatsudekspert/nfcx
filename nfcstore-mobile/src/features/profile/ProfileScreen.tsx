@@ -11,6 +11,7 @@ import type { Company, FollowStats } from '@/api/types';
 import { SITE } from '@/features/profile/profileVM';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useAuthStore } from '@/store/authStore';
+import { usePinLockStore } from '@/store/pinLockStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
 
@@ -34,6 +35,7 @@ export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const setActive = useActiveIdStore((s) => s.setActive);
   const authUser = useAuthStore((s) => s.user);
+  const pinSet = usePinLockStore((s) => !!s.pin);
 
   const { vm, accounts, active, posts, stories, loading, error } = useProfileData();
 
@@ -86,6 +88,7 @@ export function ProfileScreen() {
         rows={settingRows({
           handle: vm?.handle,
           telegramLinked: authUser?.telegramLinked,
+          pinSet,
           onOpenVerification: () => {
             setSettingsOpen(false);
             router.push('/settings/verification');
@@ -97,6 +100,10 @@ export function ProfileScreen() {
           onOpenPayments: () => {
             setSettingsOpen(false);
             router.push('/settings/payments');
+          },
+          onOpenPin: () => {
+            setSettingsOpen(false);
+            router.push('/settings/pin');
           },
           onSignOut: () => {
             // `(tabs)/_layout.tsx` gate `user === null` bo'lganda o'zi
@@ -284,16 +291,21 @@ function useFollowMutation(
 export function settingRows({
   handle,
   telegramLinked,
+  pinSet,
   onOpenVerification,
   onOpenChangePassword,
   onOpenPayments,
+  onOpenPin,
   onSignOut,
 }: {
   handle: string | undefined;
   telegramLinked: boolean | undefined;
+  /** PIN kod hozir yoqilganmi (`usePinLockStore`) — qatorda holat ko'rsatiladi. */
+  pinSet: boolean;
   onOpenVerification: () => void;
   onOpenChangePassword: () => void;
   onOpenPayments: () => void;
+  onOpenPin: () => void;
   /** Haqiqiy chiqish — `authStore.signOut()` (avval hech qayerga ulanmagan edi). */
   onSignOut: () => void;
 }): SettingRow[] {
@@ -305,6 +317,7 @@ export function settingRows({
       onPress: onOpenVerification,
     },
     { k: 'Parolni o’zgartirish', v: '', onPress: onOpenChangePassword },
+    { k: 'PIN kod', v: pinSet ? 'Yoqilgan' : 'O’chirilgan', onPress: onOpenPin },
     { k: 'Bildirishnomalar', v: 'Yoniq' },
     { k: 'Til', v: "O'zbekcha" },
     { k: "To'lovlar", v: 'Payme', onPress: onOpenPayments },

@@ -15,14 +15,16 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/api/client';
+import { PinLockScreen } from '@/features/settings/PinLockScreen';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useAuthStore } from '@/store/authStore';
+import { usePinLockStore } from '@/store/pinLockStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -52,11 +54,13 @@ export default function RootLayout() {
 
   const restoreAuth = useAuthStore((s) => s.restore);
   const restoreActiveId = useActiveIdStore((s) => s.restore);
+  const restorePinLock = usePinLockStore((s) => s.restore);
 
   useEffect(() => {
     restoreAuth();
     restoreActiveId();
-  }, [restoreAuth, restoreActiveId]);
+    restorePinLock();
+  }, [restoreAuth, restoreActiveId, restorePinLock]);
 
   // Shrift yuklanmasa ham ilova ochiladi (tizim shrifti bilan) —
   // splash ekranida abadiy qolib ketmasin.
@@ -81,13 +85,39 @@ export default function RootLayout() {
  */
 function Shell({ ready }: { ready: boolean }) {
   const { theme, ready: themeReady } = useTheme();
+  const locked = usePinLockStore((s) => s.locked);
+  const lock = usePinLockStore((s) => s.lock);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     if (ready && themeReady) SplashScreen.hideAsync().catch(() => {});
   }, [ready, themeReady]);
 
+  // Foydalanuvchi so'ragan xatti-harakat: PIN o'rnatilgan bo'lsa, ilova
+  // fonga o'tib qaytganda ham qayta so'ralishi kerak — faqat sovuq
+  // ishga tushishda emas. Aks holda PIN "faqat bir marta" bo'lib qolib,
+  // amaliy foydasi yo'qolardi.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (appState.current === 'active' && next.match(/inactive|background/)) {
+        lock();
+      }
+      appState.current = next;
+    });
+    return () => sub.remove();
+  }, [lock]);
+
   if (!ready || !themeReady) {
     return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
+  }
+
+  if (locked) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <PinLockScreen />
+      </>
+    );
   }
 
   return (
@@ -124,6 +154,8 @@ function Shell({ ready }: { ready: boolean }) {
           name="settings/change-password"
           options={{ animation: 'slide_from_right' }}
         />
+        {/* Sozlamalar → PIN kod (ilova qulfi, mahalliy, backendsiz). */}
+        <Stack.Screen name="settings/pin" options={{ animation: 'slide_from_right' }} />
         {/* Tashqi profillar — NFC teginish va Discover shu ekranlarga
             olib boradi. Ular tab navigatorining TASHQARISIDA: pastki
             navigatsiya ko'rinmaydi, chunki bu "mening ID'larim" emas. */}
