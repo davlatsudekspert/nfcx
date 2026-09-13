@@ -274,6 +274,12 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 
 // ---------- Dashboard ----------
 
+// DIQQAT: bu ro'yxatdan element OLIB TASHLAMANG. Indekslar
+// `ADMIN_NAV` da qattiq yozilgan va sarlavha shu massivdan olinadi
+// (`TABS[tab]`) — bitta element olib tashlansa, undan keyingi HAMMA
+// bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
+// ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
+// bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
 const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar'];
 
 function StatsTab() {
@@ -357,7 +363,7 @@ function StatsTab() {
             <div className="mt-2 break-words font-display text-[38px] font-semibold leading-none tracking-tight" style={{ color: 'var(--vz-gold-2)' }}>
               {wallet === null ? '\u2014' : fmt(wallet)} <span className="text-2xl">{t("so'm")}</span>
             </div>
-            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t("Auksion va premium obuna komissiyalaridan yig'ilgan real pul.")}</p>
+            <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--vz-ink-2)' }}>{t("Premium obuna va komissiyalardan yig'ilgan real pul.")}</p>
           </div>
           <div className="hidden h-24 lg:block">
             {series && series.length > 1 && (
@@ -376,7 +382,6 @@ function StatsTab() {
         <KpiCard icon="users" tone="info" label={t("Foydalanuvchilar")} value={fmt(stats.userCount)} />
         <KpiCard icon="idcard" tone="success" label={t("Band qilingan NFC ID")} value={fmt(stats.cardCount)} />
         <KpiCard icon="bag" tone="accent" label={t("Jami savdo (NFC ID)")} value={`${fmt(stats.totalCardSalesValue)} ${t("so'm")}`} />
-        <KpiCard icon="hammer" tone="pending" label={t("Faol auksionlar")} value={fmt(stats.activeAuctions)} />
         <KpiCard icon="clipboard" tone="muted" label={t("Kutilayotgan buyurtmalar")} value={fmt(stats.pendingWebOrders)} />
       </div>
 
@@ -4016,7 +4021,9 @@ const ADMIN_NAV = [
   // va indekslar (5, 6) ham o'zgartirilmadi: eski auksionlar tarixi
   // kerak bo'lsa, /admin?tab=5 orqali baribir ochiladi. Indekslarni
   // siljitish esa qolgan hamma bo'limning manzilini buzardi.
-  { index: 17, label: 'Talab', icon: 'flame' },
+  // "Talab" ham auksionning bir qismi (kodga talab yig'ib, auksion
+  // boshlanadi). Auksion bekor qilingani uchun u ham menyudan
+  // olindi — bo'limning o'zi va bazadagi ma'lumot joyida.
   { index: 7, label: 'Jismoniy kartalar', icon: 'idcard' },
   { index: 8, label: 'Bildirishnomalar', icon: 'bell' },
   { index: 9, label: 'Tashqi analitika', icon: 'activity' },

@@ -301,6 +301,7 @@ const DICT_BASE = {
   'Emailga kelgan 6 xonali kod': { ru: '6-значный код из письма', en: '6-digit code from the email' },
   'Emailga kod yuborish': { ru: 'Отправить код на почту', en: 'Send code to email' },
   'Profilni yangi oynada ochish': { ru: 'Открыть профиль в новой вкладке', en: 'Open profile in a new tab' },
+  "Premium obuna va komissiyalardan yig'ilgan real pul.": { ru: 'Реальные деньги, собранные с премиум-подписок и комиссий.', en: 'Real money collected from premium subscriptions and commissions.' },
   'Joriy parolni eslay olmasangiz — emailingizga yuboriladigan bir martalik kod bilan yangilaysiz.': { ru: 'Если не помните текущий пароль — обновите его одноразовым кодом, который придёт на вашу почту.', en: 'If you do not remember your current password, update it with a one-time code sent to your email.' },
   'Joriy parolni eslay olmasangiz — emailingizga yoki Telegram botingizga yuboriladigan bir martalik kod bilan yangilaysiz.': { ru: 'Если не помните текущий пароль — обновите его одноразовым кодом, который придёт на почту или в Telegram-бот.', en: 'If you do not remember your current password, update it with a one-time code sent to your email or Telegram bot.' },
   'Kodni kiriting.': { ru: 'Введите код.', en: 'Enter the code.' },
