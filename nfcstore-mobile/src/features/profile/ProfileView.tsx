@@ -8,6 +8,7 @@ import type { CompanyPost } from '@/api/types';
 import { Card } from '@/components/Card';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
 
@@ -185,7 +186,7 @@ function FeaturedCompanyBlock({
         >
           {company.logoUrl ? (
             <Image
-              source={{ uri: company.logoUrl }}
+              source={{ uri: mediaUrl(company.logoUrl) }}
               contentFit="cover"
               style={{ width: 44, height: 44, borderRadius: 12 }}
             />

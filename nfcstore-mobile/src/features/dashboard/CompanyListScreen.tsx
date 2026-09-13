@@ -15,6 +15,7 @@ import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
+import { mediaUrl } from '@/lib/media';
 import { compactCount } from '@/lib/format';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { A120, A165, SH } from '@/theme/css';
@@ -131,7 +132,7 @@ function CompanyCard({ company }: { company: Company }) {
         <IconCircle size={48}>
           {company.logoUrl ? (
             <Image
-              source={{ uri: company.logoUrl }}
+              source={{ uri: mediaUrl(company.logoUrl) }}
               contentFit="cover"
               style={{ width: 48, height: 48, borderRadius: 24 }}
             />

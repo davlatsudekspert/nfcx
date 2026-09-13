@@ -10,6 +10,7 @@ import type { StoryAuthor } from '@/api/types';
 import { ShimmerRing } from '@/components/ShimmerRing';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { sans } from '@/theme/type';
@@ -138,7 +139,7 @@ function StoryBubble({
         >
           {author.avatarUrl ? (
             <Image
-              source={{ uri: author.avatarUrl }}
+              source={{ uri: mediaUrl(author.avatarUrl) }}
               contentFit="cover"
               style={{ width: photo, height: photo, borderRadius: photo / 2 }}
             />

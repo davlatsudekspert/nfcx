@@ -25,6 +25,7 @@ import { TapScale } from '@/components/TapScale';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SwitcherSheet } from '@/features/profile/sheets/SwitcherSheet';
 import { useProfileData } from '@/features/profile/useProfileData';
+import { mediaUrl } from '@/lib/media';
 import { A120, SH } from '@/theme/css';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -388,7 +389,7 @@ function MiniNfcCard({ entry, onPress }: { entry: Entry; onPress: () => void }) 
 
       {entry.photo ? (
         <Image
-          source={{ uri: entry.photo }}
+          source={{ uri: mediaUrl(entry.photo) }}
           contentFit="cover"
           style={{
             width: 54,

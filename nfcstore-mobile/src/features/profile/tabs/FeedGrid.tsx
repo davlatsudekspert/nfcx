@@ -4,6 +4,7 @@ import { Text, useWindowDimensions, View } from 'react-native';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
 import type { CompanyPost } from '@/api/types';
+import { mediaUrl } from '@/lib/media';
 import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
@@ -74,7 +75,7 @@ export function FeedGrid({
         >
           {post.imageUrl ? (
             <Image
-              source={{ uri: post.imageUrl }}
+              source={{ uri: mediaUrl(post.imageUrl) }}
               contentFit="cover"
               style={{ flex: 1 }}
             />

@@ -10,6 +10,7 @@ import Svg, { Path } from 'react-native-svg';
 import type { CompanyPost } from '@/api/types';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { relativeTime } from '@/lib/format';
 import { useActiveIdStore } from '@/store/activeIdStore';
 import { A140 } from '@/theme/css';
@@ -103,7 +104,7 @@ export default function PostScreen() {
 
       {post?.imageUrl ? (
         <Image
-          source={{ uri: post.imageUrl }}
+          source={{ uri: mediaUrl(post.imageUrl) }}
           contentFit="contain"
           style={{ flex: 1 }}
         />

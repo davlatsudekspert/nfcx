@@ -7,6 +7,7 @@ import { CardSurface } from '@/components/Card';
 import { Sheet } from '@/components/Sheet';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { A120 } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono, sans } from '@/theme/type';
@@ -82,7 +83,7 @@ export function SwitcherSheet({
 
               {account.photoUrl ? (
                 <Image
-                  source={{ uri: account.photoUrl }}
+                  source={{ uri: mediaUrl(account.photoUrl) }}
                   contentFit="cover"
                   style={{ width: 42, height: 42, borderRadius: 21 }}
                 />

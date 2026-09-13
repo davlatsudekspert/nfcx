@@ -5,6 +5,7 @@ import type { CatalogItem, CompanyPlan } from '@/api/types';
 import { CardSurface } from '@/components/Card';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { money } from '@/lib/format';
 import { SH } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -147,7 +148,7 @@ function ProductCard({
         }}
       >
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} contentFit="cover" style={{ flex: 1 }} />
+          <Image source={{ uri: mediaUrl(item.imageUrl) }} contentFit="cover" style={{ flex: 1 }} />
         ) : (
           <StripeFill
             step={8}

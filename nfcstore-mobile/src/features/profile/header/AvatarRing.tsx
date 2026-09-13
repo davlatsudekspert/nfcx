@@ -6,6 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { ShimmerRing } from '@/components/ShimmerRing';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { A145 } from '@/theme/css';
 import { useTheme } from '@/theme/ThemeProvider';
 import { mono } from '@/theme/type';
@@ -87,7 +88,7 @@ export function AvatarRing({
       >
         {photoUrl ? (
           <Image
-            source={{ uri: photoUrl }}
+            source={{ uri: mediaUrl(photoUrl) }}
             contentFit="cover"
             style={{ flex: 1, borderRadius: photoSize / 2 }}
           />

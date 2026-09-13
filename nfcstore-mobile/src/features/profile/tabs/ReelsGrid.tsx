@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import type { CompanyPost } from '@/api/types';
 import { StripeFill } from '@/components/StripeFill';
 import { TapScale } from '@/components/TapScale';
+import { mediaUrl } from '@/lib/media';
 import { mono } from '@/theme/type';
 
 import { EmptyState } from './FeedGrid';
@@ -47,7 +48,7 @@ export function ReelsGrid({
           style={{ width: tile, height: (tile * 16) / 9 }}
         >
           {reel.imageUrl ? (
-            <Image source={{ uri: reel.imageUrl }} contentFit="cover" style={{ flex: 1 }} />
+            <Image source={{ uri: mediaUrl(reel.imageUrl) }} contentFit="cover" style={{ flex: 1 }} />
           ) : (
             <StripeFill step={8} style={{ flex: 1 }} />
           )}
