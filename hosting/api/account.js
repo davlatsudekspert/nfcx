@@ -5,7 +5,8 @@ import { cardContentCleanupStmts } from './card-cleanup.js';
 // shakllari frontend (src/lib/db.js) bog'langan legacy bilan BIR XIL:
 //   POST /api/settings/change-password-direct {currentPassword,newPassword}
 //   POST /api/settings/link-telegram {linkToken}
-//   POST /api/settings/request-password-code | change-password
+//   POST /api/settings/request-password-code  → {ok:true,channel:'email'|'telegram'}
+//   POST /api/settings/change-password {code,newPassword}
 //   POST /api/settings/request-phone-change-code | confirm-phone-change
 //   POST/GET /api/support
 //   POST /api/premium/request
@@ -167,16 +168,36 @@ export async function handle(request, env, url, H) {
     return H.json({ ok: true, phone: link.phone });
   }
 
-  // ---------- Sozlamalar: Telegram OTP orqali parol o'zgartirish ----------
+  // ---------- Sozlamalar: kod orqali parol o'zgartirish ----------
+  //
+  // KANAL AKKAUNTGA QARAB TANLANADI (egasining qarori): "email bilan
+  // kirsa email orqali tasdiqlash, telefon bilan kirsa Telegram
+  // orqali".
+  //
+  // Ilgari bu yerda FAQAT Telegram bor edi: botni ulamagan odam
+  // umuman kod ololmasdi va `tg_not_linked` devoriga urilardi. Endi
+  // haqiqiy emaili bor odam kodni pochtasidan oladi.
+  //
+  // Tartib: avval EMAIL (agar haqiqiy manzil bor va xizmat yoqilgan
+  // bo'lsa), keyin Telegram. Javobdagi `channel` frontendga kod
+  // qayerga ketganini aytadi — odam qayerga qarashini bilishi kerak.
   if (path === '/api/settings/request-password-code' && method === 'POST') {
     const user = await H.getCurrentUser(request, env);
     if (!user) return H.json({ error: 'unauthorized' }, 401);
     const info = await env.DB.prepare(
-      `SELECT u.phone, bv.tg_user_id AS tgUserId FROM users u
+      `SELECT u.phone, u.email, bv.tg_user_id AS tgUserId FROM users u
        LEFT JOIN bot_verifications bv ON bv.phone = u.phone WHERE u.id = ?`
     ).bind(user.id).first();
-    if (!info || !info.phone) return H.json({ error: 'no_phone' }, 422);
-    if (!info.tgUserId) return H.json({ error: 'tg_not_linked' }, 422);
+    if (!info) return H.json({ error: 'unauthorized' }, 401);
+
+    // Raqam bilan ro'yxatdan o'tganlarning emaili KO'RINMAS (ichki)
+    // manzil — unga xat yuborish "bounce" bo'lib domen obro'sini
+    // tushiradi, shuning uchun u email deb hisoblanmaydi.
+    const realEmail = info.email && !H.isPlaceholderEmailD1(info.email) ? info.email : '';
+    const canEmail = !!realEmail && H.emailEnabledD1(env);
+    if (!canEmail && !info.tgUserId) {
+      return H.json({ error: info.phone ? 'tg_not_linked' : 'no_phone' }, 422);
+    }
 
     const recent = await env.DB.prepare(
       `SELECT COUNT(*) AS n FROM password_reset_codes WHERE user_id = ? AND created_at > ?`
@@ -187,9 +208,31 @@ export async function handle(request, env, url, H) {
     await env.DB.prepare(
       `INSERT INTO password_reset_codes (user_id, code, expires_at, used, created_at) VALUES (?, ?, ?, 0, ?)`
     ).bind(user.id, code, tsFromMs(Date.now() + OTP_TTL_MS), H.nowTs()).run();
+
+    if (canEmail) {
+      const res = await H.sendEmailD1(env, {
+        to: realEmail,
+        subject: 'NFCSTORE \u2014 parolni o\u2018zgartirish kodi: ' + code,
+        html: H.emailShellD1({
+          title: 'Parolni o\u2018zgartirish kodi',
+          body: '<p style="margin:0 0 14px">Parolingizni o\u2018zgartirish uchun quyidagi kodni kiriting:</p>'
+            + '<div style="margin:0;padding:16px 0;text-align:center;background:#0f0f12;border:1px solid #2a2a30;border-radius:12px">'
+            + `<span style="font:700 30px/1 'Courier New',monospace;letter-spacing:.22em;color:#e8c977">${code}</span></div>`,
+          footer: 'Kod 10 daqiqa ichida amal qiladi. Bu kodni HECH KIMGA bermang \u2014 NFCSTORE xodimlari ham uni hech qachon so\u2018ramaydi.'
+            + '<br />Agar bu siz bo\u2018lmasangiz, xatni e\u2019tiborsiz qoldiring.',
+        }),
+        text: `Parolni o\u2018zgartirish kodi: ${code}\n\nKod 10 daqiqa ichida amal qiladi.`,
+      });
+      // Email ketmasa — Telegram bo'lsa o'shanga o'tamiz. Kod
+      // allaqachon bazada, ya'ni ikkinchi kanal ham o'sha kodni
+      // yuboradi (yangi kod yaratilmaydi).
+      if (res?.ok) return H.json({ ok: true, channel: 'email' });
+      if (!info.tgUserId) return H.json({ error: 'email_send_failed' }, 503);
+    }
+
     const sent = await H.sendTelegramTo(env, info.tgUserId, OTP_MESSAGES.password_reset(code));
     if (!sent) return H.json({ error: 'tg_send_failed' }, 503);
-    return H.json({ ok: true });
+    return H.json({ ok: true, channel: 'telegram' });
   }
 
   if (path === '/api/settings/change-password' && method === 'POST') {

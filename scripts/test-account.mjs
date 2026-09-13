@@ -49,7 +49,9 @@ const call = async (path, init) => {
 await env.DB.prepare(`INSERT INTO bot_verifications (phone, tg_user_id, tg_name) VALUES ('+998901111111', 5001, 'M')`).run();
 {
   const r = await call('/api/settings/request-password-code', { method: 'POST', cookie: cookie.user });
-  check('request-password-code -> 200 ok', [r.status, r.body], [200, { ok: true }]);
+  // Javobda `channel` bor: kod QAYERGA ketganini frontend biladi. Bu
+// muhitda Resend kaliti yo'q, ya'ni kanal — Telegram.
+  check('request-password-code -> 200 ok', [r.status, r.body], [200, { ok: true, channel: 'telegram' }]);
   check('OTP sent to linked tg user', [tgSent.at(-1)?.chat_id, /\d{6}/.test(lastOtp() || '')], [5001, true]);
 }
 {

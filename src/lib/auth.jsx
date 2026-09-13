@@ -53,11 +53,14 @@ export const authLogin = (email, password) =>
 export const authRegister = (email, password, extra = {}) =>
   api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, ...extra }) });
 
-// Ro'yxatdan o'tishdan oldin — botga ulangan telefon raqamiga tasdiqlash
-// kodi yuborishni so'raydi (Telegram orqali). ESKI oqim; yangi oqim
-// quyidagi tugmali `authTgLinkStart`/`authTgLinkStatus`.
-export const authRequestRegisterCode = (phone) =>
-  api('/auth/request-register-code', { method: 'POST', body: JSON.stringify({ phone }) });
+// Ro'yxatdan o'tish kodini so'raydi.
+//
+// EMAIL berilsa kod EMAILGA ketadi (asosiy yo'l). Email xizmati
+// o'chiq bo'lsa yoki faqat telefon berilsa — server eski yo'lga,
+// Telegramga o'tadi. Javobdagi `channel` kod QAYERGA ketganini
+// aytadi, shunda odamga "pochtangizni oching" deb aniq aytamiz.
+export const authRequestRegisterCode = ({ email, phone } = {}) =>
+  api('/auth/request-register-code', { method: 'POST', body: JSON.stringify({ email, phone }) });
 
 // ── Telegram bilan BIR BOSISHDA bog'lanish ────────────────────────────
 // Sayt bir martalik token oladi va odamni botga yuboradi. Odam botda
