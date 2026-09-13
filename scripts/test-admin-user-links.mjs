@@ -41,11 +41,19 @@ const blanks = [...admin.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)].map((m) =>
 checkTrue('yangi oynada ochiladigan havola bor', blanks.length >= 2);
 check('hammasida noopener yoki noreferrer bor',
   blanks.filter((a) => !/rel="[^"]*(noopener|noreferrer)[^"]*"/.test(a)).length, 0);
-// Mening yangi havolalarim ikkalasini ham yozadi.
-const mine = blanks.filter((a) => a.includes('adminPreviewUrl('));
-check('yangi havolalar: 2 ta', mine.length, 2);
-check('yangi havolalarda to‘liq rel',
+// Profil havolalari — soni emas, QOIDASI tekshiriladi: yangi joyda
+// havola qo'shilsa test bekorga yiqilmasin, lekin `rel` yoki
+// "preview" belgisi tushib qolsa DARHOL ushlansin.
+const mine = blanks.filter((a) => /adminPreviewUrl\(|adminCompanyPreviewUrl\(/.test(a));
+checkTrue('profil havolalari bor', mine.length >= 2);
+check('hammasida to‘liq rel',
   mine.filter((a) => !/rel="noopener noreferrer"/.test(a)).length, 0);
+// Xom satr bilan yozilgan havola bo'lmasin — "preview" belgisini
+// unutib qoldirish aynan shunday sodir bo'ladi.
+checkTrue('kompaniya havolasi ham yordamchi orqali',
+  !/href=\{`\/c\/\$\{/.test(admin));
+checkTrue('kompaniya yordamchisi preview qo‘shadi',
+  /adminCompanyPreviewUrl/.test(preview) && preview.includes('/c/${encodeURIComponent(c)}?preview=1'));
 
 // ── 2) Ko'rish hisobi shishmaydi ─────────────────────────────────────
 checkTrue('havolaga preview belgisi qo‘shiladi', preview.includes("?preview=1"));
