@@ -451,7 +451,11 @@
    nomning ostidagi ma'lumot bilan takrorlanardi va faqat joy egallardi.
    Uning o'rniga logotip yuqoriroq turadi va kontent oynasiga joy
    qo'shildi. Telefon "tirnog'i" endi hero'ning o'zida hisobga olinadi. */
-.qp-hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 10px;text-align:center}
+/* Tepadagi bo'shliq ISTORYA HALQASINI hisobga oladi: halqa
+   logotipdan 16 piksel tashqariga chiqadi, shuning uchun 14px kam
+   edi va halqa ekran chetiga qadalib qolardi (egasi aynan shuni
+   ko'rdi). 30px — halqa uchun 16px + yengil nafas. */
+.qp-hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:calc(30px + env(safe-area-inset-top,0px)) 16px 10px;text-align:center}
 
 /* Uch ustun: logotip AYNAN markazda qoladi, yon tugma uni surmaydi. */
 .qp-ava-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
@@ -524,8 +528,8 @@
   border-image:var(--gold-line) 1;border-left:0;border-right:0
 }
 .qp-stats>div{flex:1;min-width:0;padding:0 4px}
-.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:25px;font-weight:600;line-height:1.1;color:#f5efe2}
-.qp-stats small{display:block;margin-top:3px;font-size:12px;line-height:1.2;color:#b9b0a0}
+.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:21px;font-weight:600;line-height:1.1;color:#f5efe2}
+.qp-stats small{display:block;margin-top:3px;font-size:10.5px;line-height:1.2;color:#b9b0a0}
 
 /* ── Aloqa: OLTIN katakcha, belgi O'Z FIRMA RANGIDA ──────────────── */
 .qp-quick{display:flex;width:100%;margin-top:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px 16px 0;margin-inline:-16px}
@@ -656,7 +660,7 @@
 /* Past ekranlar (360×640 va shunga o'xshash) — hamma narsa biroz
    kichrayadi, shunda o'rtadagi kontent oynasiga joy qoladi. */
 @media(max-height:740px){
-  .qp-hero{padding:calc(10px + env(safe-area-inset-top,0px)) 16px 7px}
+  .qp-hero{padding:calc(22px + env(safe-area-inset-top,0px)) 16px 7px}
   .qp-ava{width:74px;height:74px;font-size:20px;box-shadow:0 0 0 2px #0d0b07,0 0 0 6px rgba(201,161,74,.92),0 0 0 7px rgba(120,92,24,.9),0 10px 26px rgba(0,0,0,.7)}
   .qp-ava-note{width:24px;height:24px}
   .qp-sidebtn{padding:7px 10px;font-size:11px}
@@ -667,8 +671,8 @@
   .qp-hero .ch-box{margin-top:7px}
   .qp-hero .ch-head{padding:5px 13px;font-size:11px}
   .qp-stats{margin-top:8px;padding:6px 0}
-  .qp-stats b{font-size:19px}
-  .qp-stats small{font-size:10.5px}
+  .qp-stats b{font-size:17px}
+  .qp-stats small{font-size:9.5px}
   .qp-quick{margin-top:8px}
   .qp-qbtn{width:54px}
   .qp-qbtn i,.qp-qbtn--share>svg{width:44px;height:44px}
