@@ -2852,6 +2852,54 @@ const DICT_HOME = {
   'Kartaning orqa tomonida, NFCSTORE yozuvi tepasida turadi. Joyini kartadan sudrab o‘zgartiring. Harfning o‘zi o‘zgarmaydi va belgini o‘chirib bo‘lmaydi.': {
     ru: 'Находится на обратной стороне карты, над надписью NFCSTORE. Перетащите его прямо на карте. Сама буква не меняется, и знак нельзя убрать.',
     en: 'It sits on the back of the card, above the NFCSTORE text. Drag it on the card to move it. The letter itself cannot be changed and the mark cannot be removed.' },
+  'Shikoyat qilish':
+    { ru: 'Пожаловаться', en: 'Report' },
+  'Shikoyat yuborildi':
+    { ru: 'Жалоба отправлена', en: 'Report sent' },
+  'Shikoyatni yuborish':
+    { ru: 'Отправить жалобу', en: 'Send report' },
+  'Moderator tekshiradi. Rahmat.':
+    { ru: 'Модератор проверит. Спасибо.', en: 'A moderator will review it. Thank you.' },
+  'Sabab tanlang. Shikoyat moderatorga yuboriladi va kontent tekshiriladi.':
+    { ru: 'Выберите причину. Жалоба будет отправлена модератору, и контент проверят.', en: 'Choose a reason. The report goes to a moderator and the content will be reviewed.' },
+  'Avval sababni tanlang.':
+    { ru: 'Сначала выберите причину.', en: 'Choose a reason first.' },
+  'Juda ko‘p shikoyat yubordingiz. Ertaga qayta urining.':
+    { ru: 'Вы отправили слишком много жалоб. Попробуйте завтра.', en: 'You have sent too many reports. Try again tomorrow.' },
+  'Yuborib bo‘lmadi. Birozdan keyin qayta urining.':
+    { ru: 'Не удалось отправить. Попробуйте чуть позже.', en: 'Could not send. Try again shortly.' },
+  'Yuborilmoqda…':
+    { ru: 'Отправляется…', en: 'Sending…' },
+  'Pornografik yoki jinsiy xarakterdagi':
+    { ru: 'Порнография или материалы сексуального характера', en: 'Pornographic or sexually explicit' },
+  'Diniy targ‘ibot yoki ekstremistik mazmun':
+    { ru: 'Религиозная пропаганда или экстремистские материалы', en: 'Religious propaganda or extremist material' },
+  'Siyosiy targ‘ibot':
+    { ru: 'Политическая пропаганда', en: 'Political propaganda' },
+  'Zo‘ravonlik yoki shafqatsizlik':
+    { ru: 'Насилие или жестокость', en: 'Violence or cruelty' },
+  'Haqorat, so‘kinish, kamsitish':
+    { ru: 'Оскорбления, брань, дискриминация', en: 'Insults, abusive language, discrimination' },
+  'Spam yoki aldov':
+    { ru: 'Спам или обман', en: 'Spam or deception' },
+  'Qonunga zid boshqa material':
+    { ru: 'Иные материалы, противоречащие закону', en: 'Other unlawful material' },
+  'Mualliflik huquqi buzilgan':
+    { ru: 'Нарушение авторских прав', en: 'Copyright infringement' },
+  'Boshqa sabab':
+    { ru: 'Другая причина', en: 'Another reason' },
+  'Shikoyatlar':
+    { ru: 'Жалобы', en: 'Reports' },
+  'Bu holatda shikoyat yo‘q.':
+    { ru: 'В этом статусе жалоб нет.', en: 'No reports in this status.' },
+  'Shikoyatlarni yuklab bo\'lmadi.':
+    { ru: 'Не удалось загрузить жалобы.', en: 'Could not load reports.' },
+  'Hal qilindi':
+    { ru: 'Решено', en: 'Resolved' },
+  'Ko‘rilmoqda':
+    { ru: 'На рассмотрении', en: 'Reviewing' },
+  'Nishon':
+    { ru: 'Объект', en: 'Target' },
 };
 
 export const DICT = { ...DICT_BASE, ...DICT_HOME, ...DICT_SITE, ...DICT_ACCOUNT, ...DICT_ADMIN };

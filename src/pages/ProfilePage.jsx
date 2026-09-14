@@ -15,6 +15,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ShareButton from '../components/ShareButton.jsx';
+import ReportButton from '../components/ReportButton.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
@@ -1702,6 +1703,15 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             url={`${window.location.origin}/${record.code.toLowerCase()}`}
             title={record.name || 'NFCSTORE'}
             text={t('Mening raqamli tashrif qog‘ozim')}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
+          />
+          {/* SHIKOYAT — ochiq profilda har qanday tashrifchi uchun.
+              Kirish shart emas: profilni ko'rayotganlarning ko'pi
+              ro'yxatdan o'tmagan va ularni majburlash shikoyatlar
+              sonini nolga tushirardi. */}
+          <ReportButton
+            targetKind="record"
+            targetId={record.code}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
           />
         </div>

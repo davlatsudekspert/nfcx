@@ -8322,6 +8322,35 @@ async function followListRows(env, ownerId, dir) {
   }));
 }
 
+/// KOMPANIYAGA OBUNA BO'LGANLAR.
+///
+/// `company_follows` jadvali (kompaniya_id, user_id). Har
+/// foydalanuvchining KO'RINADIGAN yuzi — asosiy shaxsiy kartasi;
+/// katalogdan yashiringan kartalar ro'yxatga tushmaydi (shaxsiy
+/// profil ro'yxati bilan bir xil qoida).
+async function companyFollowerRows(env, companyId) {
+  const rows = await env.DB.prepare(`
+    WITH ranked AS (
+      SELECT u.id AS uid, c.code AS code, c.name AS name,
+             c.avatar_url AS avatar_url, c.verified AS verified,
+             ROW_NUMBER() OVER (PARTITION BY u.id ORDER BY c.is_primary DESC, c.ts ASC) AS rn
+      FROM company_follows cf
+      JOIN users u ON u.id = cf.user_id
+      JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      WHERE cf.company_id = ?
+    )
+    SELECT code, name, avatar_url, verified FROM ranked
+     WHERE rn = 1 ORDER BY uid LIMIT 200
+  `).bind(companyId).all();
+  return (rows.results || []).map((r) => ({
+    kind: 'person',
+    code: r.code,
+    name: r.name,
+    avatarUrl: r.avatar_url || '',
+    verified: !!r.verified,
+  }));
+}
+
 // ── KIM YOQTIRDI ─────────────────────────────────────────────────────
 // Ilgari layk faqat SON edi — kim bosgani hech qayerda ko'rinmasdi va
 // shu sabab "biznes nomidan layk" degan tushunchaning ma'nosi ham yo'q
@@ -8770,12 +8799,26 @@ async function followApi(request, env, url) {
   const listMatch = path.match(/^\/api\/follow-list\/([A-Za-z0-9]{1,32})$/);
   if (listMatch && request.method === 'GET') {
     const code = decodeURIComponent(listMatch[1]).toUpperCase();
-    const ownerId = await getRecordOwner(env, code);
-    if (!ownerId) return json({ list: [] });
     const dir = url.searchParams.get('dir') === 'following' ? 'following' : 'followers';
     try {
-      const list = await followListRows(env, ownerId, dir);
-      return json({ list });
+      const ownerId = await getRecordOwner(env, code);
+      if (ownerId) return json({ list: await followListRows(env, ownerId, dir) });
+
+      // KOMPANIYA OBUNACHILARI — alohida jadval.
+      //
+      // Ilgari bu yerda faqat `getRecordOwner()` bor edi: u SHAXSIY
+      // karta egasini topadi va kompaniya ID'si uchun `null`
+      // qaytaradi. Natijada biznes profilida "1843 obunachi" deb
+      // turardi-yu, raqam bosilganda ro'yxat BO'SH ochilardi.
+      //
+      // Kompaniya kimgadir obuna bo'lolmaydi (faqat odam obuna
+      // bo'ladi), shuning uchun `following` yo'nalishi bo'sh.
+      const co = await env.DB.prepare(
+        `SELECT company_id FROM companies WHERE company_id = ? AND status = 'active'`
+      ).bind(code).first().catch(() => null);
+      if (!co) return json({ list: [] });
+      if (dir === 'following') return json({ list: [] });
+      return json({ list: await companyFollowerRows(env, code) });
     } catch (err) {
       console.error('[worker] follow-list:', err.message);
       return json({ list: [] });

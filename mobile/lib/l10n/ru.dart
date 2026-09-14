@@ -371,6 +371,7 @@ const ruStrings = <String, String>{
   'Noyob tashrifchi': 'Уникальные посетители',
   'Obuna bo‘lingan': 'Вы подписаны',
   'Obuna bo‘lish': 'Подписаться',
+  'Obunachilar': 'Подписчики',
   'Ochiq': 'Открыто',
   'Odamlar': 'Люди',
   'Odamlar, bizneslar, mahsulotlar': 'Люди, бизнесы, товары',

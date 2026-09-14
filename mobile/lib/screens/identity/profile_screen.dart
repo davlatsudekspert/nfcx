@@ -663,7 +663,13 @@ class _Header extends StatelessWidget {
                       label: tr('obunachi'),
                       onTap: () => push(
                         context,
-                        (_) => FollowListScreen(code: code, title: name),
+                        (_) => FollowListScreen(
+                          code: code,
+                          title: name,
+                          // Bu _Header ichida — u yerda holat emas,
+                          // `company` maydoni bor.
+                          isCompany: company != null,
+                        ),
                       ),
                     ),
                     if (company != null)

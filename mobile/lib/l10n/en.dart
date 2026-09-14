@@ -371,6 +371,7 @@ const enStrings = <String, String>{
   'Noyob tashrifchi': 'Unique visitors',
   'Obuna bo‘lingan': 'Following',
   'Obuna bo‘lish': 'Follow',
+  'Obunachilar': 'Followers',
   'Ochiq': 'Open',
   'Odamlar': 'People',
   'Odamlar, bizneslar, mahsulotlar': 'People, businesses, products',
