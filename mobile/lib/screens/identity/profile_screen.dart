@@ -7,6 +7,7 @@ import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
@@ -64,6 +65,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Company? _company;
   List<Post> _posts = const [];
   List<Post> _stories = const [];
+
+  /// Istoryalar ro'yxati KELMADI (so'rov tushdi).
+  ///
+  /// "Bo'sh" va "bilmaymiz" — BOSHQA holat. Farqlanmaganida ega
+  /// o'z profilida "+" ni ko'rardi, ya'ni ilova "sizda istorya
+  /// yo'q" deb TASDIQLARDI — aslida shunchaki so'rov tushgan
+  /// bo'lishi mumkin edi.
+  bool _storiesFailed = false;
   List<Product> _catalog = const [];
   FollowStats _follow = const FollowStats();
   bool _loading = true;
@@ -98,6 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loading = true;
       _error = null;
     });
+    var storiesFailed = false;
     try {
       final id = widget.identity;
       final businessId = widget.companyId ?? (id?.isBusiness == true ? id!.code : null);
@@ -107,7 +117,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final results = await Future.wait([
           state.repo.companyCatalog(businessId).catchError((_) => <Product>[]),
           state.repo.companyPosts(businessId).catchError((_) => <Post>[]),
-          state.repo.companyStories(businessId).catchError((_) => <Post>[]),
+          state.repo.companyStories(businessId).catchError((_) {
+            storiesFailed = true;
+            return <Post>[];
+          }),
         ]);
         state.repo.companyEvent(businessId);
         if (!mounted) return;
@@ -117,6 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _posts = results[1] as List<Post>;
           _stories = results[2] as List<Post>;
           _follow = FollowStats(followers: company.followers, isFollowing: company.following);
+          _storiesFailed = storiesFailed;
           _loading = false;
         });
         return;
@@ -127,7 +141,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final record = await state.repo.record(code);
       final results = await Future.wait([
         state.repo.recordPosts(code).catchError((_) => <Post>[]),
-        state.repo.recordStories(code).catchError((_) => <Post>[]),
+        state.repo.recordStories(code).catchError((_) {
+          storiesFailed = true;
+          return <Post>[];
+        }),
         state.repo.followStats(code).catchError((_) => const FollowStats()),
       ]);
       // Ko'rishlar hisobi — FAQAT begona profilda. O'z profilingni
@@ -139,6 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _posts = results[0] as List<Post>;
         _stories = results[1] as List<Post>;
         _follow = results[2] as FollowStats;
+        _storiesFailed = storiesFailed;
         _loading = false;
       });
     } catch (e) {
@@ -171,13 +189,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else {
         await repo.follow(code);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _follow = FollowStats(
               followers: _follow.followers + (wasFollowing ? 1 : -1),
               following: _follow.following,
               isFollowing: wasFollowing,
             ));
+        // SABABI AYTILADI. Ilgari tugma jimgina eski holatiga
+        // qaytardi va odam o'zi tasodifan ikki marta bosdim deb
+        // o'ylardi — obuna esa aslida yozilmagan edi.
+        await showError(context, humanError(e));
       }
     } finally {
       if (mounted) setState(() => _busyFollow = false);
@@ -232,6 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   isOwner: isOwner,
                   busyFollow: _busyFollow,
                   hasStory: _stories.isNotEmpty,
+                  storiesUnknown: _storiesFailed,
                   // Mehmonda istorya bo'lmasa halqa umuman
                   // ko'rsatilmaydi — bosiladigan, lekin hech narsa
                   // qilmaydigan element ishonchni yo'qotadi.
@@ -354,6 +377,7 @@ class _Header extends StatelessWidget {
     required this.onShare,
     required this.onRefresh,
     required this.hasStory,
+    this.storiesUnknown = false,
     required this.onStory,
   });
 
@@ -368,6 +392,9 @@ class _Header extends StatelessWidget {
 
   /// Profilda FAOL istorya bormi (24 soat ichida).
   final bool hasStory;
+
+  /// Istoryalar ro'yxati kelmadi — "yo'q" deb TASDIQLAMAYMIZ.
+  final bool storiesUnknown;
 
   /// Halqa bosilganda: istorya bo'lsa — ko'ruvchi, egada istorya
   /// yo'q bo'lsa — qo'shish.
@@ -435,7 +462,7 @@ class _Header extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
-                child: hasStory || (isOwner && onStory != null)
+                child: hasStory || (isOwner && !storiesUnknown && onStory != null)
                     ? StoryRing(
                         // Ism avatar ichidagi harf uchun kerak
                         // (rasm kelmasa), lekin halqa ostida

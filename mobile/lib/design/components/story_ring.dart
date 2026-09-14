@@ -105,13 +105,19 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                 children: [
                   ring,
                   // Halqa bilan avatar orasida fon rangidagi bo'shliq.
+                  //
+                  // 5 -> 8: halqa QALINLASHDI (2.4 -> 3.4) va eski
+                  // bo'shliqda uning ichki yarmi avatar ostida
+                  // qolib ketardi. Profil sarlavhasida, muqova
+                  // rasmi ustida bu halqani oddiy chegaradan
+                  // ajratib bo'lmasdi.
                   Container(
-                    width: widget.size - 5, height: widget.size - 5,
+                    width: widget.size - 8, height: widget.size - 8,
                     decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
                   ),
                   if (widget.addButton)
                     Container(
-                      width: widget.size - 9, height: widget.size - 9,
+                      width: widget.size - 12, height: widget.size - 12,
                       decoration: BoxDecoration(color: C.graphite, shape: BoxShape.circle),
                       child: Center(
                         child: Text('+', style: TextStyle(
@@ -121,7 +127,7 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                       ),
                     )
                   else
-                    Avatar(url: widget.avatarUrl, name: widget.name, size: widget.size - 9),
+                    Avatar(url: widget.avatarUrl, name: widget.name, size: widget.size - 12),
                 ],
               ),
             ),
@@ -156,7 +162,7 @@ class _FlatRing extends StatelessWidget {
         width: size, height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: color, width: 2.2),
+          border: Border.all(color: color, width: 3),
         ),
       );
 }
@@ -167,12 +173,18 @@ class _ConicRingPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final p = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4
+      // 2.4 -> 3.4 va och ranglar ustunligi.
+      //
+      // Telefonda sinovda halqa "umuman yo'q" deb baholandi: 2.4px
+      // to'q oltin chiziq muqova rasmi ustida oddiy avatar
+      // chegarasidan farq qilmasdi. Instagram'dagi halqa ham
+      // taxminan shu qalinlikda.
+      ..strokeWidth = 3.4
       ..shader = SweepGradient(
-        colors: [C.antiqueGold, C.champagne, Color(0xFFF3E3C4), C.antiqueGold],
-        stops: [0, .35, .6, 1],
+        colors: [C.champagne, Color(0xFFF3E3C4), C.champagne, C.antiqueGold, C.champagne],
+        stops: [0, .28, .52, .78, 1],
       ).createShader(rect);
-    canvas.drawCircle(rect.center, size.width / 2 - 1.2, p);
+    canvas.drawCircle(rect.center, size.width / 2 - 1.7, p);
   }
 
   @override

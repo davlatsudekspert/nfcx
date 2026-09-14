@@ -5,7 +5,6 @@ import '../../data/api_client.dart';
 import '../../data/models.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
-import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
@@ -44,8 +43,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String? _error;
   bool _busy = false;
   Timer? _poll;
-  int _method = 0; // 0 — Payme, 1 — Click
-  Map<String, dynamic> _enabled = const {};
+  /// Payme yoqilganmi — SERVER aytadi. `null` — hali so'ralmagan.
+  bool? _paymeOn;
+
+  /// So'rov 5 daqiqa davomida javob bermadi.
+  ///
+  /// Ilgari bu holatda taymer jimgina to'xtardi va ekranda
+  /// "Bankdan javob olinmoqda…" aylanmasi ABADIY qolib ketardi —
+  /// odam uchun bu ilova osilib qolgani bilan bir xil.
+  bool _stalled = false;
 
   @override
   void initState() {
@@ -56,8 +62,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _loadMethods() async {
     try {
       final e = await AppScope.read(context).repo.paymentsEnabled();
-      if (mounted) setState(() => _enabled = e);
-    } catch (_) {}
+      if (mounted) {
+        setState(() => _paymeOn = _providerOn(e, 'payme'));
+      }
+    } catch (_) {
+      // Jimgina: to'lov usullari ro'yxati kelmasa ham tugma
+      // ishlaydi va haqiqiy javobni server beradi.
+    }
+  }
+
+  /// `/api/settings/payments-enabled` javobini O'QISH.
+  ///
+  /// Javob shakli: `{enabled, sandbox, providers: {payme: {enabled},
+  /// click: {enabled}}}`. Ilova ilgari YUQORI QAVATDAN `e['payme']`
+  /// va `e['click']` ni izlardi — bunday kalitlar umuman yo'q.
+  /// Natijada Payme server tomonda O'CHIRILGAN bo'lsa ham ekranda
+  /// ishlaydigan "to'lash" tugmasi turardi va faqat bosgandan keyin
+  /// `payments_disabled` xatosi chiqardi.
+  ///
+  /// `providers` bo'lmasa (eski server) eski `enabled` kalitiga
+  /// qaytamiz — aks holda yangilanmagan serverda to'lov butunlay
+  /// bloklanib qolardi.
+  static bool _providerOn(Map<String, dynamic> e, String name) {
+    final p = e['providers'];
+    if (p is Map && p[name] is Map) return (p[name] as Map)['enabled'] == true;
+    return e['enabled'] != false;
   }
 
   @override
@@ -101,7 +130,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
     var ticks = 0;
     _poll = Timer.periodic(const Duration(seconds: 3), (t) async {
       ticks++;
-      if (ticks > 100 || !mounted) return t.cancel();
+      if (!mounted) return t.cancel();
+      if (ticks > 100) {
+        t.cancel();
+        // Aylanmani TO'XTATAMIZ va nima bo'lganini AYTAMIZ. To'lov
+        // baribir o'tgan bo'lishi mumkin (webhook kechikkan) —
+        // shuning uchun "amalga oshmadi" demaymiz, qo'lda
+        // tekshirish tugmasini beramiz.
+        setState(() => _stalled = true);
+        return;
+      }
       final id = _order?.id;
       if (id == null || id == 0) return t.cancel();
       try {
@@ -133,6 +171,43 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
   }
 
+  /// QO'LDA TEKSHIRISH — kutish cho'zilib ketganda.
+  Future<void> _recheck() async {
+    final id = _order?.id;
+    if (id == null || id == 0 || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final fresh = await AppScope.read(context).repo.order(id);
+      if (!mounted) return;
+      setState(() {
+        _order = fresh;
+        if (fresh.isPaid) {
+          _phase = _Phase.paid;
+          _stalled = false;
+        } else if (fresh.status == 'cancelled' || fresh.status == 'failed') {
+          _phase = _Phase.failed;
+          _stalled = false;
+        } else {
+          // Hali `pending` — kuzatishni QAYTA boshlaymiz.
+          _stalled = false;
+        }
+      });
+      if (fresh.isPaid) {
+        successHaptic();
+        AppScope.read(context).refreshIdentities().catchError((_) {});
+      } else if (!_stalled && _phase == _Phase.waiting) {
+        _startPolling();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = humanError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   String _payError(ApiError e) => switch (e.key) {
         'payments_disabled' => tr('To‘lov tizimi hozir o‘chirilgan.'),
         'already_taken' => tr('Bu ID allaqachon band qilingan.'),
@@ -157,8 +232,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
 
   Widget _buildChoose() {
-    final paymeOn = _enabled['payme'] != false;
-    final clickOn = _enabled['click'] == true;
+    // `null` — hali so'ralmagan: tugma bloklanmaydi, aks holda
+    // sekin tarmoqda ekran bir necha soniya "o'lik" ko'rinardi.
+    final paymeOn = _paymeOn ?? true;
     final price = widget.record.price;
 
     return Column(
@@ -208,22 +284,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
               const SizedBox(height: S.x24),
               Eyebrow(tr('To‘lov usuli')),
               const SizedBox(height: S.x12),
+              // BITTA USUL — TANLOV YO'Q.
+              //
+              // Ilgari bu yerda "Click" ham tanlanadigan qatorda
+              // turardi va kvitansiyada "Usul: Click" deb yozilardi.
+              // Lekin server ID xaridi uchun FAQAT Payme havolasini
+              // yasaydi — ya'ni tanlov soxta edi va odamga noto'g'ri
+              // ma'lumot ko'rsatilardi. Click qatori qoldi, lekin
+              // ochiqchasiga "hozir mavjud emas" deb turadi.
               _MethodTile(
                 name: 'Payme',
-                note: tr('Payme ilovasi orqali'),
+                note: paymeOn
+                    ? tr('Payme ilovasi orqali')
+                    : tr('Hozir vaqtincha o‘chirilgan'),
                 color: C.payme,
-                selected: _method == 0,
+                selected: paymeOn,
                 enabled: paymeOn,
-                onTap: () => setState(() => _method = 0),
               ),
               const SizedBox(height: S.x8),
               _MethodTile(
                 name: 'Click',
-                note: clickOn ? tr('Click ilovasi orqali') : tr('Hozir mavjud emas'),
+                note: tr('Hozir mavjud emas'),
                 color: C.click,
-                selected: _method == 1,
-                enabled: clickOn,
-                onTap: clickOn ? () => setState(() => _method = 1) : null,
+                selected: false,
+                enabled: false,
               ),
               if (_error != null) ...[
                 const SizedBox(height: S.x16),
@@ -244,14 +328,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
           child: Column(
             children: [
               PrimaryButton(
-                '${som(price)} so‘m to‘lash',
+                paymeOn
+                    ? '${som(price)} so‘m to‘lash'
+                    : tr('To‘lov hozir ishlamayapti'),
                 loading: _busy,
-                onTap: _busy ? null : _start,
+                onTap: (_busy || !paymeOn) ? null : _start,
               ),
               const SizedBox(height: 7),
               Text(
-                trf('To‘lov {tizim} tomonidan himoyalangan',
-                    {'tizim': _method == 0 ? 'Payme' : 'Click'}),
+                trf('To‘lov {tizim} tomonidan himoyalangan', {'tizim': 'Payme'}),
                 style: T.caption.copyWith(fontSize: 11, color: C.muted),
               ),
             ],
@@ -270,20 +355,34 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Text(tr('To‘lov\nkutilmoqda'), style: T.display),
             const SizedBox(height: S.x12),
             Text(
-              '${trf('To‘lovni {tizim} ilovasida yakunlang.', {
-                'tizim': _method == 0 ? 'Payme' : 'Click'
-              })} ${tr('Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.')}',
+              _stalled
+                  ? tr('Bankdan tasdiq hali kelmadi. To‘lovni qilgan '
+                      'bo‘lsangiz, u biroz kechikishi mumkin — quyidagi '
+                      'tugma bilan tekshiring.')
+                  : '${trf('To‘lovni {tizim} ilovasida yakunlang.', {'tizim': 'Payme'})} '
+                      '${tr('Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.')}',
               style: T.body,
             ),
             const SizedBox(height: S.x24),
-            Row(
-              children: [
-                Spinner(size: 16),
-                SizedBox(width: S.x12),
-                Text(tr('Bankdan javob olinmoqda…'), style: T.caption),
-              ],
-            ),
+            if (!_stalled)
+              Row(
+                children: [
+                  const Spinner(size: 16),
+                  const SizedBox(width: S.x12),
+                  Text(tr('Bankdan javob olinmoqda…'), style: T.caption),
+                ],
+              ),
+            if (_error != null)
+              Text(_error!, style: T.caption.copyWith(color: C.signal)),
             const Spacer(),
+            if (_stalled) ...[
+              PrimaryButton(
+                tr('Holatni tekshirish'),
+                loading: _busy,
+                onTap: _busy ? null : _recheck,
+              ),
+              const SizedBox(height: S.x8),
+            ],
             if ((_order?.payLink ?? '').isNotEmpty)
               SecondaryButton(
                 tr('To‘lov sahifasini qayta ochish'),
@@ -318,7 +417,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 children: [
                   _Line(tr('To‘langan'), '${som(_order?.price ?? widget.record.price)} so‘m'),
                   const SizedBox(height: S.x8),
-                  _Line(tr('Usul'), _method == 0 ? 'Payme' : 'Click'),
+                  _Line(tr('Usul'), 'Payme'),
                   const SizedBox(height: S.x8),
                   _Line(tr('Buyurtma'), '#${_order?.id ?? '—'}'),
                 ],
@@ -375,7 +474,6 @@ class _MethodTile extends StatelessWidget {
     required this.color,
     required this.selected,
     required this.enabled,
-    this.onTap,
   });
 
   final String name;
@@ -383,54 +481,50 @@ class _MethodTile extends StatelessWidget {
   final Color color;
   final bool selected;
   final bool enabled;
-  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        child: Opacity(
-          opacity: enabled ? 1 : .45,
-          child: Surface(
-            border: selected ? C.champagne.withValues(alpha: .4) : null,
-            child: Row(
-              children: [
-                Container(
-                  width: 38, height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: .14),
-                    borderRadius: BorderRadius.circular(R.tile),
-                  ),
-                  child: Text(
-                    name[0],
-                    style: T.cardTitle.copyWith(color: color, fontSize: 17),
-                  ),
+  Widget build(BuildContext context) => Opacity(
+        opacity: enabled ? 1 : .45,
+        child: Surface(
+          border: selected ? C.champagne.withValues(alpha: .4) : null,
+          child: Row(
+            children: [
+              Container(
+                width: 38, height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(R.tile),
                 ),
-                const SizedBox(width: S.x12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: T.cardTitle),
-                      const SizedBox(height: 2),
-                      Text(note, style: T.caption.copyWith(fontSize: 11)),
-                    ],
-                  ),
+                child: Text(
+                  name[0],
+                  style: T.cardTitle.copyWith(color: color, fontSize: 17),
                 ),
-                Container(
-                  width: 19, height: 19,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: selected ? C.champagne : C.hairline, width: 1.6),
-                    color: selected ? C.champagne : null,
-                  ),
-                  child: selected
-                      ? Center(
-                          child: NIcon(Ico.check, size: 12, color: C.ink))
-                      : null,
+              ),
+              const SizedBox(width: S.x12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: T.cardTitle),
+                    const SizedBox(height: 2),
+                    Text(note, style: T.caption.copyWith(fontSize: 11)),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Container(
+                width: 19, height: 19,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: selected ? C.champagne : C.hairline, width: 1.6),
+                  color: selected ? C.champagne : null,
+                ),
+                child: selected
+                    ? Center(
+                        child: NIcon(Ico.check, size: 12, color: C.ink))
+                    : null,
+              ),
+            ],
           ),
         ),
       );

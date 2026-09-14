@@ -3,6 +3,9 @@ import 'package:flutter/material.dart' show showModalBottomSheet, AnimationStyle
 import 'package:flutter/widgets.dart';
 import '../tokens.dart';
 import '../type.dart';
+import '../feedback.dart';
+import 'buttons.dart';
+import '../../l10n/strings.dart';
 
 /// Pastki varaq — radius 28, blur 22, tepada 40×4 tutqich.
 ///
@@ -28,6 +31,29 @@ Future<Tr?> showSheet<Tr>(
       reverseCurve: Curves.easeIn,
     ),
     builder: (_) => SheetBody(title: title, subtitle: subtitle, child: child),
+  );
+}
+
+/// XATO VARAG'I — amal bajarilmaganini AYTADI.
+///
+/// NIMA UCHUN KERAK: auditda bir nechta joyda amal jimgina
+/// yiqilardi. Masalan biznes egasi buyurtma holatini
+/// o'zgartirganda so'rov tushsa, ekranda HECH NARSA
+/// o'zgarmasdi — ega esa holat almashdi deb o'ylab ketaverardi.
+/// Endi shunday joylarda bu varaq chiqadi.
+///
+/// Alohida komponent: har ekranda o'z "toast"ini yozish bir xil
+/// kodni takrorlash va matnni har joyda boshqacha qilish demakdi.
+Future<void> showError(BuildContext context, String message) {
+  errorHaptic();
+  return showSheet<void>(
+    context,
+    title: tr('Bajarilmadi'),
+    subtitle: message,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+      child: SecondaryButton(tr('Yopish'), onTap: () => Navigator.of(context).pop()),
+    ),
   );
 }
 

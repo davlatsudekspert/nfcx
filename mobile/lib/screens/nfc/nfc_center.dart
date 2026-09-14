@@ -77,8 +77,7 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
         successHaptic();
         await state.refreshIdentities();
       } catch (e) {
-        errorHaptic();
-        if (mounted) _toast(humanError(e));
+        if (mounted) showError(context, humanError(e));
       }
       return;
     }
@@ -108,29 +107,14 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
       successHaptic();
       await state.refreshIdentities();
     } on ApiError catch (e) {
-      errorHaptic();
       if (mounted) {
-        _toast(e.key == 'last_card'
+        showError(context, e.key == 'last_card'
             ? tr('Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.')
             : humanError(e));
       }
     } catch (e) {
-      errorHaptic();
-      if (mounted) _toast(humanError(e));
+      if (mounted) showError(context, humanError(e));
     }
-  }
-
-  void _toast(String message) {
-    showSheet<void>(
-      context,
-      title: tr('Bajarilmadi'),
-      subtitle: message,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: SecondaryButton(tr('Yopish'),
-            onTap: () => Navigator.of(context).pop()),
-      ),
-    );
   }
 
   Future<void> _refresh() async {

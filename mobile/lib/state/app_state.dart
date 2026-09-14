@@ -86,6 +86,20 @@ class AppState extends ChangeNotifier {
       // chiqib ketish uchun sabab emas.
       phase = e.isOffline || e.key == 'timeout' ? AuthPhase.signedIn : AuthPhase.signedOut;
       if (phase == AuthPhase.signedOut) await _clearToken();
+    } catch (_) {
+      // HAR QANDAY BOSHQA XATO HAM TUTILADI.
+      //
+      // Ilgari bu yerda faqat `ApiError` tutilardi. Server kutilmagan
+      // javob qaytarsa (JSON buzilgan, maydon turi boshqacha) istisno
+      // shu yerdan CHIQIB ketardi, `boot()` esa `app.dart` da
+      // kutilmasdan chaqiriladi — natijada `phase` abadiy `loading`
+      // bo'lib qolardi va ILOVA SPLASH EKRANIDA OSILIB qolardi,
+      // hech qanday xabarsiz va chiqish yo'lisiz.
+      //
+      // Tokenni O'CHIRMAYMIZ: muammo tarmoqda yoki javob shaklida
+      // bo'lishi mumkin, odamni bekordan chiqarib yuborish xato
+      // bo'lardi. Kirish ekrani ochiladi va u qaytadan urinadi.
+      phase = AuthPhase.signedOut;
     }
     notifyListeners();
   }

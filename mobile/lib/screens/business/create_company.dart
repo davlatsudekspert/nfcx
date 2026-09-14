@@ -69,6 +69,11 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 
   Timer? _debounce;
   Map<String, dynamic>? _check;
+
+  /// Bandlik so'rovi TUSHDI. "Band emas" bilan adashtirmaslik
+  /// uchun alohida: ilgari xato jimgina yutilar va qator umuman
+  /// yo'qolardi — odam ID bo'shmi yoki yo'qmi bilmasdan qolardi.
+  bool _checkFailed = false;
   bool _checking = false;
 
   bool _busy = false;
@@ -90,10 +95,14 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       setState(() {
         _check = null;
         _checking = false;
+        _checkFailed = false;
       });
       return;
     }
-    setState(() => _checking = true);
+    setState(() {
+      _checking = true;
+      _checkFailed = false;
+    });
     _debounce = Timer(const Duration(milliseconds: 400), () => _runCheck(id));
   }
 
@@ -104,12 +113,14 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       setState(() {
         _check = res;
         _checking = false;
+        _checkFailed = false;
       });
     } catch (_) {
       if (mounted) {
         setState(() {
           _check = null;
           _checking = false;
+          _checkFailed = true;
         });
       }
     }
@@ -219,6 +230,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                     const SizedBox(height: S.x8),
                     _CheckLine(
                       checking: _checking,
+                      failed: _checkFailed,
                       check: check,
                       available: available,
                       price: price,
@@ -299,12 +311,16 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 class _CheckLine extends StatelessWidget {
   const _CheckLine({
     required this.checking,
+    required this.failed,
     required this.check,
     required this.available,
     required this.price,
   });
 
   final bool checking;
+
+  /// So'rov tushdi — javob yo'q, "band emas" DEGANI EMAS.
+  final bool failed;
   final Map<String, dynamic>? check;
   final bool available;
   final int price;
@@ -319,6 +335,10 @@ class _CheckLine extends StatelessWidget {
           Text(tr('Tekshirilmoqda…'), style: T.caption.copyWith(fontSize: 11.5)),
         ],
       );
+    }
+    if (failed) {
+      return Text(tr('Tekshirib bo‘lmadi. Ulanishni tekshiring.'),
+          style: T.caption.copyWith(fontSize: 11.5, color: C.muted));
     }
     if (check == null) return const SizedBox.shrink();
     if (!available) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/skeleton.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
@@ -74,10 +75,11 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
       // Ro'yxatni SERVERDAN qayta o'qiymiz: holatni faqat mahalliy
       // o'zgartirsak, boshqa qurilmadagi o'zgarish ko'rinmay qolardi.
       await _load();
-    } catch (_) {
-      if (mounted) {
-        setState(() => _error = null);
-      }
+    } catch (e) {
+      // JIM YIQILMAYDI. Ilgari bu yerda `_error = null` turardi:
+      // so'rov tushsa ekranda MUTLAQO hech narsa o'zgarmasdi va
+      // ega buyurtma holati almashdi deb o'ylab ketaverardi.
+      if (mounted) await showError(context, humanError(e));
     } finally {
       if (mounted) setState(() => _busy.remove(id));
     }
