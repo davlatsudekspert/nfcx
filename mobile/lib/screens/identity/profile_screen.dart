@@ -257,24 +257,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted || choice == null) return;
 
     if (choice == 'report') {
-      final sent = await showReportSheet(
+      await reportAndConfirm(
         context,
         targetKind: kind,
         targetId: code,
         ownerCode: code,
       );
-      if (sent && mounted) {
-        await showSheet<void>(
-          context,
-          title: tr('Shikoyat yuborildi'),
-          subtitle: tr('Moderator tekshiradi. Rahmat.'),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-            child: SecondaryButton(tr('Yopish'),
-                onTap: () => Navigator.of(context).pop()),
-          ),
-        );
-      }
       return;
     }
 
@@ -523,7 +511,7 @@ class _Frame extends StatelessWidget {
                         onTap: onMore,
                         child: const Padding(
                           padding: EdgeInsets.all(S.x8),
-                          child: NIcon(Ico.flag, size: 20, color: C.ash),
+                          child: NIcon(Ico.more, size: 20, color: C.ash),
                         ),
                       ),
               ),

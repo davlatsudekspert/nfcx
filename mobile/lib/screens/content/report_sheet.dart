@@ -208,3 +208,79 @@ class _ReportBodyState extends State<_ReportBody> {
         ),
       );
 }
+
+/// SHIKOYAT + TASDIQ — bitta joyda.
+///
+/// Ilgari bu ikki qadam (varaqni ochish va "yuborildi" xabari) uchta
+/// ekranda so'zma-so'z takrorlangan edi: profil, post va story.
+/// Endi bittasi bor.
+Future<void> reportAndConfirm(
+  BuildContext context, {
+  required String targetKind,
+  required String targetId,
+  String ownerCode = '',
+}) async {
+  final sent = await showReportSheet(
+    context,
+    targetKind: targetKind,
+    targetId: targetId,
+    ownerCode: ownerCode,
+  );
+  if (!sent || !context.mounted) return;
+  await showSheet<void>(
+    context,
+    title: tr('Shikoyat yuborildi'),
+    subtitle: tr('Moderator tekshiradi. Rahmat.'),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+      child: SecondaryButton(tr('Yopish'),
+          onTap: () => Navigator.of(context).pop()),
+    ),
+  );
+}
+
+/// "⋯" TUGMASI ORTIDAGI MENYU — begona kontentda.
+///
+/// NIMA UCHUN MENYU, NIMA UCHUN BAYROQ EMAS.
+///
+/// Egasi bayroq belgisini ekrandan olib tashlashni so'radi: u
+/// postning va story'ning ustida doim ko'rinib turardi va ilovani
+/// "shikoyat qilinadigan joy" qilib ko'rsatardi.
+///
+/// Shikoyatning O'ZI esa olib tashlanmaydi. Google Play
+/// foydalanuvchi kontenti bo'lgan ilovadan ilova ICHIDA nomaqbul
+/// kontent haqida xabar berish yo'lini TALAB qiladi; uni butunlay
+/// olib tashlash ilovani do'kondan chiqarib yuborish xavfini
+/// tug'diradi. Shuning uchun u ko'zga tashlanmaydigan "⋯" menyusiga
+/// ko'chdi: ekran toza, yo'l esa joyida.
+Future<void> showContentMenu(
+  BuildContext context, {
+  required String title,
+  required String targetKind,
+  required String targetId,
+  String ownerCode = '',
+}) async {
+  final choice = await showSheet<String>(
+    context,
+    title: title,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+      child: Column(
+        children: [
+          SecondaryButton(tr('Shikoyat qilish'),
+              onTap: () => Navigator.of(context).pop('report')),
+          const SizedBox(height: S.x8),
+          GhostButton(tr('Bekor qilish'),
+              onTap: () => Navigator.of(context).pop()),
+        ],
+      ),
+    ),
+  );
+  if (choice != 'report' || !context.mounted) return;
+  await reportAndConfirm(
+    context,
+    targetKind: targetKind,
+    targetId: targetId,
+    ownerCode: ownerCode,
+  );
+}

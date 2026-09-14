@@ -6,9 +6,7 @@ import '../../design/components/media.dart';
 import '../../design/components/video_view.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../design/components/buttons.dart';
 import '../../design/components/press.dart';
-import '../../design/components/sheet.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import 'report_sheet.dart';
@@ -65,10 +63,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         )
                       : null)
                   : Press(
-                      onTap: () => _report(context, p),
+                      onTap: () => _more(context, p),
                       child: const Padding(
                         padding: EdgeInsets.all(S.x8),
-                        child: NIcon(Ico.flag, size: 20, color: C.ash),
+                        child: NIcon(Ico.more, size: 20, color: C.ash),
                       ),
                     ),
             ),
@@ -127,25 +125,14 @@ bool _isOwner(BuildContext context, Post p) {
       state.companies.any((c) => c.id.toUpperCase() == code.toUpperCase());
 }
 
-Future<void> _report(BuildContext context, Post p) async {
-  final sent = await showReportSheet(
-    context,
-    targetKind: 'post',
-    targetId: p.id,
-    ownerCode: p.authorCode,
-  );
-  if (!sent || !context.mounted) return;
-  await showSheet<void>(
-    context,
-    title: tr('Shikoyat yuborildi'),
-    subtitle: tr('Moderator tekshiradi. Rahmat.'),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-      child: SecondaryButton(tr('Yopish'),
-          onTap: () => Navigator.of(context).pop()),
-    ),
-  );
-}
+/// Begona postda — "⋯" menyusi (izohi `report_sheet.dart` da).
+Future<void> _more(BuildContext context, Post p) => showContentMenu(
+      context,
+      title: p.authorName.isEmpty ? tr('Post') : p.authorName,
+      targetKind: 'post',
+      targetId: p.id,
+      ownerCode: p.authorCode,
+    );
 
 /// Bir nechta rasmli post — suriladigan galereya va "2/5" hisoblagichi.
 class _Gallery extends StatelessWidget {
