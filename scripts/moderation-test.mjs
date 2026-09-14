@@ -24,7 +24,10 @@ function fakeDb() {
     calls,
     DB: {
       prepare: stmt,
-      async batch() { return []; },
+      // Har bir so'rov bitta qatorga tegdi deb faraz qilamiz —
+      // o'chirish ishlovchisi OXIRGI so'rovning `changes` iga
+      // qarab "topildimi" degan qarorni qabul qiladi.
+      async batch(list) { return (list || []).map(() => ({ meta: { changes: 1 } })); },
     },
   };
 }
@@ -182,6 +185,64 @@ await check('admin: noto‘g‘ri holat rad etiladi', async () => {
     req('PATCH', { status: 'nimadir' }), env, u('/api/admin/reports/1'), H,
   );
   assert.equal(res.status, 422);
+});
+
+// ── ADMIN: KONTENTNI O'CHIRISH ──────────────────────────────────
+//
+// NIMA UCHUN BU TESTLAR BOR — HAQIQIY XATODAN.
+//
+// Shikoyat navbati bor edi, lekin admin undan faqat HOLATNI
+// o'zgartira olardi. Kontentning o'zini o'chirish yo'li YO'Q edi,
+// ya'ni moderatsiya tizimi hech narsani moderatsiya qilmasdi.
+// Egasi Reels'dagi istoryani hech qanday yo'l bilan olib tashlay
+// olmadi.
+
+await check('admin: kontent o‘chirish faqat adminga', async () => {
+  const env = fakeDb();
+  const res = await mod.handle(
+    req('DELETE'), env, u('/api/admin/content/story/9'),
+    { ...H, requireAdmin: async () => null },
+  );
+  assert.equal(res.status, 401);
+});
+
+await check('admin: istorya o‘chiriladi, layk va ko‘rishlari bilan', async () => {
+  const env = fakeDb();
+  const res = await mod.handle(req('DELETE'), env, u('/api/admin/content/story/9'), H);
+  assert.equal(res.status, 200);
+  const sqls = env.calls.map((c) => c.sql);
+  assert.ok(sqls.some((q) => /DELETE FROM story_likes/.test(q)), 'layklar o‘chmadi');
+  assert.ok(sqls.some((q) => /DELETE FROM story_views/.test(q)), 'ko‘rishlar o‘chmadi');
+  assert.ok(sqls.some((q) => /DELETE FROM stories/.test(q)), 'istoryaning o‘zi o‘chmadi');
+  // Tartib: bog'liq yozuvlar asosiy qatordan OLDIN.
+  assert.ok(sqls.findIndex((q) => /DELETE FROM story_likes/.test(q))
+    < sqls.findIndex((q) => /DELETE FROM stories/.test(q)), 'tartib noto‘g‘ri');
+});
+
+await check('admin: post o‘chiriladi', async () => {
+  const env = fakeDb();
+  const res = await mod.handle(req('DELETE'), env, u('/api/admin/content/post/7'), H);
+  assert.equal(res.status, 200);
+  const sqls = env.calls.map((c) => c.sql);
+  assert.ok(sqls.some((q) => /DELETE FROM post_likes/.test(q)));
+  assert.ok(sqls.some((q) => /DELETE FROM posts/.test(q)));
+});
+
+await check('admin: o‘chirilgach shikoyatlar avtomatik yopiladi', async () => {
+  const env = fakeDb();
+  await mod.handle(req('DELETE'), env, u('/api/admin/content/post/7'), H);
+  const upd = env.calls.find((c) => /UPDATE content_reports SET status = 'resolved'/.test(c.sql));
+  assert.ok(upd, 'shikoyatlar yopilmadi');
+  assert.equal(upd.args[2], 'post');
+  assert.equal(upd.args[3], '7');
+});
+
+await check('admin: noma‘lum kontent turi tanilmaydi', async () => {
+  const env = fakeDb();
+  assert.equal(
+    await mod.handle(req('DELETE'), env, u('/api/admin/content/kitob/7'), H),
+    null,
+  );
 });
 
 await check('sabablar ro‘yxati yopiq va to‘liq', () => {

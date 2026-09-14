@@ -494,6 +494,32 @@ function ReportsTab() {
     }
   };
 
+  // KONTENTNI O'CHIRISH.
+  //
+  // Ilgari admin faqat shikoyatning HOLATINI o'zgartira olardi —
+  // ya'ni "ko'rib chiqildi" deb belgilardi, kontent esa joyida
+  // qolaverardi. Moderatsiya tizimi hech narsani moderatsiya
+  // qilmasdi. Endi qoidabuzar post yoki istoryani shu yerdan
+  // o'chirish mumkin; shu kontentga tegishli shikoyatlar serverda
+  // avtomatik yopiladi.
+  const removeContent = async (r) => {
+    // `record` va `company` — PROFILning o'zi haqidagi shikoyat:
+    // uni bu yerdan o'chirib bo'lmaydi (butun profilni o'chirish
+    // boshqa, ancha jiddiy amal va bu yerga sig'maydi).
+    const kind = r.targetKind;
+    if (!['post', 'story', 'company_post'].includes(kind)) return;
+    if (!confirm(t('Bu kontent butunlay o‘chiriladi. Davom etasizmi?'))) return;
+    setBusy(r.id);
+    try {
+      await adminApi(`/content/${kind}/${encodeURIComponent(r.targetId)}`, { method: 'DELETE' });
+      setRows((list) => (list || []).filter((x) => x.id !== r.id));
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(0);
+    }
+  };
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-2">
@@ -545,6 +571,16 @@ function ReportsTab() {
                   <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
                   <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>
                   <td className="whitespace-nowrap">
+                    {['post', 'story', 'company_post'].includes(r.targetKind) && (
+                      <button
+                        type="button"
+                        disabled={busy === r.id}
+                        onClick={() => removeContent(r)}
+                        className="btn btn-error btn-xs mr-1 min-h-9"
+                      >
+                        {t('Kontentni o‘chirish')}
+                      </button>
+                    )}
                     {r.status !== 'resolved' && (
                       <button
                         type="button"

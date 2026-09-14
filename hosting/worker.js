@@ -8485,7 +8485,15 @@ async function postsApi(request, env, url) {
   if (!user) return json({ error: 'unauthorized' }, 401);
 
   if (!m[2] && request.method === 'DELETE') {
-    const res = await env.DB.prepare(`DELETE FROM posts WHERE id = ? AND user_id = ?`).bind(postId, user.id).run();
+    // Egalik profil bo'yicha ham tekshiriladi — istoryadagi bilan
+    // bir xil sabab (`posts.user_id` eski yozuvlarda bo'lmasligi
+    // mumkin, profil esa `posts.code` orqali aniq bog'langan).
+    const res = await env.DB.prepare(
+      `DELETE FROM posts
+        WHERE id = ?
+          AND ( user_id = ?
+             OR code IN (SELECT code FROM cards WHERE user_id = ?) )`
+    ).bind(postId, user.id, user.id).run();
     const changed = Number(res?.meta?.changes || 0);
     if (!changed) return json({ error: 'not_found' }, 404);
     return json({ ok: true });
@@ -8596,8 +8604,33 @@ async function storiesApi(request, env, url) {
   if (!m || request.method !== 'DELETE') return null;
   const user = await getCurrentUser(request, env);
   if (!user) return json({ error: 'unauthorized' }, 401);
-  const res = await env.DB.prepare(`DELETE FROM stories WHERE id = ? AND user_id = ?`).bind(Number(m[1]), user.id).run();
+  // EGALIK IKKI YO'L BILAN TEKSHIRILADI.
+  //
+  // Ilgari shart faqat `user_id = ?` edi. Muammo shundaki,
+  // `stories.user_id` NULL BO'LISHI MUMKIN (qarang: istorya
+  // yaratish — `userId || null`). Bunday istoryani EGASI HAM
+  // o'chira olmasdi: so'rov hech qanday qatorga tushmaydi va
+  // server `not_found` qaytaradi. Egasi buni shunday ko'rdi —
+  // "o'chirdim, o'chmadi".
+  //
+  // Endi asosiy mezon — PROFIL EGALIGI: istorya `owner_id` da
+  // profil kodini saqlaydi, profil esa `cards.user_id` da egasini.
+  // `user_id` sharti ham qoldi (eski, kodsiz yozuvlar uchun).
+  const res = await env.DB.prepare(
+    `DELETE FROM stories
+      WHERE id = ?
+        AND ( user_id = ?
+           OR (owner_kind = 'card'
+               AND owner_id IN (SELECT code FROM cards WHERE user_id = ?))
+           OR (owner_kind = 'company'
+               AND owner_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)) )`
+  ).bind(Number(m[1]), user.id, user.id, String(user.id)).run();
   if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+  // Layk va ko'rishlar ham ketadi — aks holda ular yetim qoladi.
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM story_likes WHERE story_id = ?`).bind(Number(m[1])),
+    env.DB.prepare(`DELETE FROM story_views WHERE story_id = ?`).bind(Number(m[1])),
+  ]).catch(() => {});
   return json({ ok: true });
 }
 
