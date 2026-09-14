@@ -1659,53 +1659,16 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         <button onClick={() => navigate('/')} aria-label={t('Bosh sahifaga')} title={t('Bosh sahifaga')} className={`${pillBtn} inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !rounded-[10px] border border-[color:var(--vz-line)] !bg-[color:var(--vz-card)] !font-semibold !normal-case text-[color:var(--vz-ink)]`}>
           <IconArrowLeft /> <span className="hidden sm:inline">{t('Bosh sahifaga')}</span>
         </button>
-        <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] pl-3.5 pr-1.5">
-          <input readOnly value={`nfcstore.uz/ ${record.code.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-2.5 text-[16px] text-[color:var(--vz-ink)] outline-none" />
-          <button onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white/10 text-[color:var(--vz-ink-dim)] hover:text-[color:var(--vz-ink)]"><IconSearch /></button>
-        </div>
-        <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
-          <LanguageSwitcher />
-        </div>
-      </div>
-
-      <div className="mx-auto flex max-w-[640px] flex-wrap items-center justify-between gap-2.5 px-[18px] pt-3.5">
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5">
-          <span className="rounded-full border border-[color:var(--vz-ink)] bg-[color:var(--vz-card)] px-7 py-2 font-mono text-[30px] font-extrabold tracking-wide text-[color:var(--vz-ink)] ring-1 ring-inset ring-[color:var(--vz-ink)]"># {record.code}</span>
-          {/* Egaga: boshqa raqamli tashrif qog'ozlari — tepada, ixcham
-              select ro'yxat; tanlansa o'sha profilga o'tadi. */}
-          {otherCodes.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
-              aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
-              // `max-w-full min-w-0 truncate` — `select` elementining ichki
-              // (intrinsic) kengligi eng uzun `option` matnidan kelib chiqadi;
-              // 390px telefonda u 392px bo'lib sahifadan chiqib ketardi va
-              // gorizontal scroll hosil qilardi (faqat karta EGASIGA
-              // ko'rinadigan element bo'lgani uchun ilgari sezilmagan).
-              className="min-w-0 max-w-full cursor-pointer truncate rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
-            >
-              <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
-              {otherCodes.map((c) => (
-                <option key={c.code} value={c.code}>nfcstore.uz/{c.code.toLowerCase()}</option>
-              ))}
-            </select>
-          )}
-          {/* Summasiz ID — «Sovg'a» (katalogdagi karta bilan bir xil
-              qoida, CatalogCard izohiga qarang). */}
-          {(record.isGift || record.notForSale) ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1.5 text-[15px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
-              {'\u{1F381}'} {t("Sovg'a")}
-            </span>
-          ) : (
-            <span className="text-[16px] font-bold text-[color:var(--vz-accent)]">{t("{n} so'm", { n: fmt(record.price) })}</span>
-          )}
-        </div>
-        <div className="flex gap-1">
+        {/* HAVOLA MAYDONI OLIB TASHLANDI (egasining qarori).
+            U ekranning yarmini egallardi va ichida turgan matn —
+            "nfcstore.uz/vip001" — brauzerning manzil qatorida
+            allaqachon ko'rinib turadi. Nusxalash esa yo'qolmadi:
+            o'ng tomondagi ikonka aynan shu ishni qiladi. */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <button title={t('Nusxalash')} aria-label={t('Nusxalash')} onClick={() => copyText(`${window.location.origin}/${record.code.toLowerCase()}`, t('Havola nusxalandi!'))} className="flex h-10 w-10 cursor-pointer items-center justify-center text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"><IconCopy /></button>
           {/* Yangiliklardagi bilan AYNAN bir xil tugma: telefonda
               tizim oynasi, ish stolida esa Telegram/WhatsApp/Facebook/X
-              menyusi. Avval bu yerda faqat nusxalash bo'lardi. */}
+              menyusi. */}
           <ShareButton
             url={`${window.location.origin}/${record.code.toLowerCase()}`}
             title={record.name || 'NFCSTORE'}
@@ -1721,9 +1684,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             targetId={record.code}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
           />
+          <div className="shrink-0 rounded-[10px] border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] text-[color:var(--vz-ink-dim)]">
+            <LanguageSwitcher />
+          </div>
         </div>
       </div>
-
 
       <div
         className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] ${
@@ -1742,6 +1707,30 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {topRank && <span className={`${badge} bg-[color:var(--vz-pill)] text-white [&_svg]:text-[#ffd76a]`}><IconStar /> {t('TOP #{n} bu hafta', { n: topRank })}</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* EGA VOSITALARI BITTA JOYDA.
+                "Boshqa raqamli tashrif qog'ozlaringiz" ro'yxati ilgari
+                sahifaning TEPASIDA, katta kod pillasi yonida turardi
+                va mehmonga ham joy egallab ko'rinardi. U faqat EGAGA
+                kerak — endi egaga tegishli qolgan tugmalar bilan
+                yonma-yon. */}
+            {otherCodes.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value) navigate('/' + e.target.value); }}
+                aria-label={t("Boshqa raqamli tashrif qog'ozlaringiz")}
+                // `max-w-full min-w-0 truncate` — `select` elementining ichki
+                // (intrinsic) kengligi eng uzun `option` matnidan kelib chiqadi;
+                // 390px telefonda u 392px bo'lib sahifadan chiqib ketardi va
+                // gorizontal scroll hosil qilardi (faqat karta EGASIGA
+                // ko'rinadigan element bo'lgani uchun ilgari sezilmagan).
+                className="min-w-0 max-w-full cursor-pointer truncate rounded-full border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] px-3 py-1.5 font-mono text-[14px] text-[color:var(--vz-ink-dim)] outline-none hover:border-[color:var(--vz-ink-dim)]"
+              >
+                <option value="">{t("Boshqa raqamli tashrif qog'ozlaringiz")} ({otherCodes.length})</option>
+                {otherCodes.map((c) => (
+                  <option key={c.code} value={c.code}>nfcstore.uz/{c.code.toLowerCase()}</option>
+                ))}
+              </select>
+            )}
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
             {/* ISTORYA — ALOHIDA TUGMA, ATAYLAB.
                 Ilgari istorya faqat kabinet ichidagi bo'limda edi va
@@ -1917,6 +1906,27 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             <div className="mb-1 rounded-full px-2.5 py-0.5 text-[13px] font-extrabold uppercase tracking-wider" style={{ color: tierColor, border: `1px solid ${tierColor}55`, background: `${tierColor}15` }}>
               {t('{tier} tarif', { tier: t(TIER_LABEL[tier]) })}
             </div>
+          )}
+          {/* SOVG'A YOKI NARX — endi profil kartasining ICHIDA, kod va
+              tarif belgisi bilan yonma-yon. Ilgari u sahifaning
+              tepasida, katta kod pillasi yonida turardi; u pilla esa
+              olib tashlandi — kod shu yerda, tarif rangida va
+              kattaroq yozilgan, takrorlashning ma'nosi yo'q edi
+              (egasi: "tepadagi #VIP001 kerak emas, pastda turibdi").
+
+              SOVG'A BO'LSA — SUMMA YOZILMAYDI (egasining talabi).
+              Sovg'a qilingan ID sotuvda emas: unga narx qo'yilsa,
+              odam uni sotib olsa bo'ladi deb o'ylardi. */}
+          {(record.isGift || record.notForSale) ? (
+            <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-3.5 py-1 text-[14px] font-extrabold uppercase tracking-wide text-[#c81e1e] shadow-[0_2px_10px_rgba(212,175,90,0.45)]">
+              {'\u{1F381}'} {t("Sovg'a")}
+            </div>
+          ) : (
+            record.price > 0 && (
+              <div className="mb-1 text-[15px] font-bold text-[color:var(--vz-accent)]">
+                {t("{n} so'm", { n: fmt(record.price) })}
+              </div>
+            )
           )}
           <div className="mb-1.5 text-xs text-[color:var(--vz-ink-faint)]">{t('Faol bo‘lgan: {when}', { when: timeAgo(record.ts) })}</div>
           {record.role && <div className="mx-auto mt-0.5 max-w-[420px] text-center text-sm text-[color:var(--vz-ink-dim)]">{record.role}</div>}
@@ -2229,7 +2239,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           biznes profildagi `.qp-bottom` bilan bir xil yechim. */}
       <div className="vz-savebar mx-auto max-w-[640px]">
         <div className="flex gap-2.5">
-          <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="vz-sweep flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
+          <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="vz-sweep flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Kontaktni saqlash')}</button>
           {!isOwner && MESSAGING_ENABLED && (
             <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
           )}

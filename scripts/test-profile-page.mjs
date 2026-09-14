@@ -22,6 +22,11 @@ import { readFileSync } from 'node:fs';
 import { makeChecker } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
+
+// Profil panelining JSX dagi boshlanishi. `rounded-[22px]` ning o'zi
+// izohlarda ham uchraydi, shuning uchun langar to'liq sinf qatoridan
+// olinadi.
+const PANEL = 'mt-[22px] max-w-[640px] overflow-hidden rounded-[22px]';
 const page = readFileSync(new URL('../src/pages/ProfilePage.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../src/theme.css', import.meta.url), 'utf8');
 const companyCss = readFileSync(new URL('../src/company-system.css', import.meta.url), 'utf8');
@@ -121,6 +126,52 @@ checkTrue('6) prefers-reduced-motion hisobga olingan',
   checkTrue('7) havolalar orasi kengroq', !!links && Number(links[1]) >= 3.5);
   checkTrue('7) havola tugmasi balandroq', /min-h-\[(5[89]|[6-9]\d)px\]/.test(page));
 }
+
+// ── 9) TEPA QISM — BITTA QATOR (egasining tanlovi) ───────────────────
+// Ilgari profil kartasigacha TO'RTTA qator bor edi: havola maydoni,
+// katta "# VIP001" pillasi, uchta ikonka va egaga tegishli qator.
+// Telefon ekranining yarmi shunga ketardi, biznes profilda esa
+// tepada bitta qator.
+{
+  // Havola maydoni olib tashlandi: undagi matn brauzerning manzil
+  // qatorida allaqachon turadi. Nusxalash ikonkasi qoldi.
+  checkTrue('9) havola maydoni yo‘q', !page.includes('input readOnly value={`nfcstore.uz/'));
+  checkTrue('9) nusxalash ikonkasi qoldi', page.includes("title={t('Nusxalash')}"));
+  // Katta kod pillasi ham olib tashlandi — kod profil kartasi ichida
+  // tarif rangida va kattaroq yozilgan (egasi: "tepadagi #VIP001
+  // kerak emas, pastda turibdi").
+  checkTrue('9) katta kod pillasi yo‘q', !page.includes('"# {record.code}"') && !page.includes('># {record.code}<'));
+  // Amallar (nusxalash, ulashish, "⋯") va til tugmasi BITTA qatorda.
+  const top = page.slice(page.indexOf("t('Bosh sahifaga')"), page.indexOf(PANEL));
+  checkTrue('9) amallar tepa qatorda', top.includes('ShareButton') && top.includes('ContentMenuButton'));
+  checkTrue('9) til tugmasi ham shu qatorda', top.includes('LanguageSwitcher'));
+  // "Boshqa raqamli tashrif qog'ozlaringiz" — faqat egaga kerak,
+  // shuning uchun u egaga tegishli tugmalar yoniga ko'chdi.
+  checkTrue('9) boshqa profillar ro‘yxati ega qismida',
+    page.indexOf('otherCodes.length > 0') > page.indexOf(PANEL));
+}
+
+// ── 10) SOVG'A BO'LSA — SUMMA YOZILMAYDI ─────────────────────────────
+// Egasining talabi. Sovg'a qilingan ID sotuvda emas: unga narx
+// qo'yilsa, odam uni sotib olsa bo'ladi deb o'ylardi.
+{
+  const i = page.indexOf('record.isGift || record.notForSale');
+  checkTrue('10) sovg‘a sharti bor', i > 0);
+  const block = page.slice(i, i + 900);
+  checkTrue('10) sovg‘ada faqat "Sovg\'a" yozuvi', block.includes('Sovg‘a') || block.includes("Sovg'a"));
+  // Narx FAQAT `else` shoxida va faqat noldan katta bo'lsa.
+  checkTrue('10) narx boshqa shoxda', block.includes("record.price > 0"));
+  // Sovg'a shoxi ichida summa umuman chiqmaydi.
+  const giftBranch = block.slice(0, block.indexOf(') : ('));
+  checkTrue('10) sovg‘a shoxida summa yo‘q', !giftBranch.includes("so'm"));
+  // Belgi profil kartasining ICHIDA — kod va tarif yonida.
+  checkTrue('10) belgi profil kartasida', i > page.indexOf(PANEL) && i < page.indexOf('<ProfileTabs'));
+}
+
+// ── 11) "KONTAKTNI SAQLASH" — IKKALA PROFILDA BIR XIL ────────────────
+// Ilgari shaxsiy profilda shunchaki "Saqlash" edi va odam nima
+// saqlanishini bilmasdi.
+checkTrue('11) tugma matni biznes profildagidek', page.includes("t('Kontaktni saqlash')"));
 
 // ── 8) AI TUGMASI QATOR OSTIDA QOLMAYDI ──────────────────────────────
 // U `position:fixed` va sahifadan TASHQARIDA chiziladi, ya'ni
