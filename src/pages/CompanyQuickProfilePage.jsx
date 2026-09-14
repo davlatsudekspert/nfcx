@@ -358,9 +358,20 @@ export default function CompanyQuickProfilePage({ companyId }) {
               emas: u to'rt qatorga cho'zilib, pastdagi kontent oynasini
               yeb qo'yardi. To'liq tavsif "Ma'lumot" bo'limida. */}
           <p className="qp-sub break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')}</p>
-          {company.city && <p className="qp-city">{company.city}</p>}
 
-          <CompanyHours hours={company.hours} openNow={company.openNow} compact />
+          {/* META QATOR — shahar va ish vaqti yonma-yon. Ilgari ular
+              ikki alohida satr edi va nom ostida uchta kulrang qator
+              ketma-ket turardi; sahifa "to'ldirilgan forma"ga
+              o'xshardi. Endi bu bitta ixcham belgilar qatori. */}
+          <div className="qp-meta">
+            {company.city && (
+              <span className="qp-city">
+                <IconPin width={13} height={13} aria-hidden="true" />
+                {company.city}
+              </span>
+            )}
+            <CompanyHours hours={company.hours} openNow={company.openNow} compact />
+          </div>
 
           <div className="qp-stats">
             <div><b>{fmt(company.views || 0)}</b><small>{t('Ko‘rildi')}</small></div>
@@ -409,16 +420,25 @@ export default function CompanyQuickProfilePage({ companyId }) {
 
         {tabs.length > 1 && (
           <nav className="qp-tabs" role="tablist">
-            {tabs.map((tb) => (
-              <button
-                key={tb.id} type="button" role="tab"
-                aria-selected={activeTab === tb.id}
-                className={`qp-tab${activeTab === tb.id ? ' is-on' : ''}`}
-                onClick={() => setTab(tb.id)}
-              >
-                {t(tb.label)}
-              </button>
-            ))}
+            {/* Ichki o'ram — `.qp-quick` dagi bilan bir xil sabab:
+                `justify-content:center` bo'lgan suriladigan qatorda
+                kontent sig'masa BOSHI kesiladi va unga yetib
+                bo'lmaydi. `margin:auto` esa sig'sa markazlaydi,
+                sig'masa chapdan boshlaydi. Markazlash muhim: sahifada
+                qolgan HAMMA narsa markazda, faqat shu qator chapga
+                yopishib turardi. */}
+            <div className="qp-tabs-in">
+              {tabs.map((tb) => (
+                <button
+                  key={tb.id} type="button" role="tab"
+                  aria-selected={activeTab === tb.id}
+                  className={`qp-tab${activeTab === tb.id ? ' is-on' : ''}`}
+                  onClick={() => setTab(tb.id)}
+                >
+                  {t(tb.label)}
+                </button>
+              ))}
+            </div>
           </nav>
         )}
 
@@ -503,7 +523,11 @@ export default function CompanyQuickProfilePage({ companyId }) {
                 </button>
               )}
 
-              <button type="button" className="qp-public tier-shine vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
+              {/* `tier-shine` OLIB TASHLANDI: tugma endi to'ldirilgan oltin
+                  emas va yaltirash qorong'i yuzada oltin emas, KULRANG
+                  chiziq bo'lib ko'rinardi — dog'ga o'xshardi. Yaltirash
+                  sahifada bitta joyda qoldi: "Kontaktni saqlash". */}
+              <button type="button" className="qp-public vz-tap" onClick={() => navigate(`/company/${company.companyId.toLowerCase()}`)}>
                 {t('Kompaniya saytini to‘liq ochish')} <span aria-hidden="true">↗</span>
               </button>
               <p className="qp-foot"><span>{t('NFC orqali ochildi')}</span><b>NFCSTORE BUSINESS</b></p>
