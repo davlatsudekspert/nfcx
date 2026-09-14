@@ -57,13 +57,31 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
 
   /// Kontroller FAQAT ko'rilmagan story uchun yaratiladi va ishga
   /// tushadi — ko'rilganida umuman yo'q.
+  ///
+  /// `AnimationBehavior.preserve` — MAJBURIY.
+  ///
+  /// Qurilmada halqa KO'RINARDI, lekin QOTIB turardi. Sabab:
+  /// Android'da "Animator duration scale" o'chirilgan yoki batareya
+  /// tejash rejimi yoqilgan bo'lsa, tizim ilovaga "animatsiyalarni
+  /// o'chir" deb aytadi va Flutter'ning `AnimationController` i buni
+  /// hurmat qilib animatsiyani DARHOL oxiriga tashlaydi. Halqa esa
+  /// aylanishdan to'xtaydi.
+  ///
+  /// `preserve` aynan shu holat uchun: animatsiya BEZAK emas,
+  /// ma'no tashiydi — u "bu profilda yangi istorya bor" deb turadi.
+  /// Hujjat ham shuni aytadi: ma'noli animatsiyalar `preserve`
+  /// bo'lishi kerak.
   void _sync() {
     if (widget.seen || widget.addButton) {
       _c?.dispose();
       _c = null;
       return;
     }
-    _c ??= AnimationController(vsync: this, duration: M.storyRing)..repeat();
+    _c ??= AnimationController(
+      vsync: this,
+      duration: M.storyRing,
+      animationBehavior: AnimationBehavior.preserve,
+    )..repeat();
   }
 
   @override
@@ -74,16 +92,17 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // `RotationTransition` — `AnimatedBuilder` + `Transform.rotate`
+    // O'RNIGA. Farqi: bu yerda bola HAR KADRDA QAYTA QURILMAYDI,
+    // faqat burilish qatlami yangilanadi. Ya'ni `CustomPaint` bir
+    // marta chiziladi va keyin shunchaki buriladi.
     final ring = _c == null
         ? _FlatRing(size: widget.size, color: widget.addButton ? C.hairline : const Color(0xFF35322C))
-        : AnimatedBuilder(
-            animation: _c!,
-            builder: (_, __) => Transform.rotate(
-              angle: _c!.value * 6.2831853,
-              child: CustomPaint(
-                size: Size.square(widget.size),
-                painter: _ConicRingPainter(),
-              ),
+        : RotationTransition(
+            turns: _c!,
+            child: CustomPaint(
+              size: Size.square(widget.size),
+              painter: _ConicRingPainter(),
             ),
           );
 
@@ -180,9 +199,22 @@ class _ConicRingPainter extends CustomPainter {
       // chegarasidan farq qilmasdi. Instagram'dagi halqa ham
       // taxminan shu qalinlikda.
       ..strokeWidth = 3.4
+      // GRADIENT KONTRASTI — AYLANISH KO'RINISHI UCHUN.
+      //
+      // Halqa aylanadi, lekin AYLANAYOTGANI faqat rang o'zgarishi
+      // orqali ko'rinadi: bir xil rangli doira aylansa ham qotib
+      // turgandek. Oldingi to'plamda uchta och ton yonma-yon edi va
+      // harakat deyarli bilinmasdi. Endi to'q va och qism aniq
+      // almashadi — dizayn manbasidagi "shimmer" shunday ishlaydi.
       ..shader = SweepGradient(
-        colors: [C.champagne, Color(0xFFF3E3C4), C.champagne, C.antiqueGold, C.champagne],
-        stops: [0, .28, .52, .78, 1],
+        colors: [
+          C.antiqueGold,
+          C.champagne,
+          Color(0xFFFFF4DC),
+          C.champagne,
+          C.antiqueGold,
+        ],
+        stops: [0, .22, .38, .58, 1],
       ).createShader(rect);
     canvas.drawCircle(rect.center, size.width / 2 - 1.7, p);
   }

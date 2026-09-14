@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -68,9 +69,27 @@ class VideoView extends StatefulWidget {
 }
 
 class _VideoViewState extends State<VideoView> {
+  /// Video ochilishini eng ko'p kutish.
+  ///
+  /// `initialize()` da MUDDAT YO'Q: manzil yetib bormasa, format
+  /// qo'llab-quvvatlanmasa yoki server javob bermasa, u shunchaki
+  /// HECH QACHON tugamaydi. Istisno ham chiqmaydi — ya'ni
+  /// `try/catch` yordam bermaydi.
+  ///
+  /// Qurilmada "video istorya QORA EKRAN" holati aynan shu edi:
+  /// video istoryada muqova rasmi bo'lmaydi, shuning uchun kutish
+  /// ko'rinishi qoraygan fon va kichkina aylanuvchi belgidan iborat
+  /// bo'lardi va u abadiy turardi.
+  static const _openTimeout = Duration(seconds: 15);
+
   VideoPlayerController? _c;
   bool _ready = false;
   bool _failed = false;
+
+  /// Nima uchun ochilmagani. Odamga ko'rsatiladi: "ochib bo'lmadi"
+  /// deb qo'yib qo'yish keyingi safar ham nima bo'lganini
+  /// bilmaslikka olib keladi.
+  String? _reason;
 
   @override
   void initState() {
@@ -88,6 +107,7 @@ class _VideoViewState extends State<VideoView> {
       _c = null;
       _ready = false;
       _failed = false;
+      _reason = null;
       _open();
       return;
     }
@@ -110,15 +130,29 @@ class _VideoViewState extends State<VideoView> {
   Future<void> _open() async {
     final url = widget.url.trim();
     if (url.isEmpty) {
-      setState(() => _failed = true);
+      setState(() {
+        _failed = true;
+        _reason = tr('Video manzili bo‘sh.');
+      });
       return;
     }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      setState(() {
+        _failed = true;
+        _reason = tr('Video manzili noto‘g‘ri.');
+      });
+      return;
+    }
+
     final c = widget.isLocalFile
         ? VideoPlayerController.file(File(url))
-        : VideoPlayerController.networkUrl(Uri.parse(url));
+        : VideoPlayerController.networkUrl(uri);
     _c = c;
     try {
-      await c.initialize();
+      // MUDDAT BILAN. Usiz bu qator abadiy kutishi mumkin.
+      await c.initialize().timeout(_openTimeout);
       if (!mounted) {
         await c.dispose();
         return;
@@ -127,10 +161,35 @@ class _VideoViewState extends State<VideoView> {
       if (widget.autoPlay && widget.active) await c.play();
       widget.onDuration?.call(c.value.duration);
       setState(() => _ready = true);
-    } catch (_) {
+    } on TimeoutException {
       if (!mounted) return;
-      setState(() => _failed = true);
+      setState(() {
+        _failed = true;
+        _reason = tr('Video juda sekin ochilyapti. Ulanishni tekshiring.');
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _failed = true;
+        // Pleyerning o'z xabari qisqartirilgan holda ko'rsatiladi:
+        // "format qo'llab-quvvatlanmaydi" bilan "tarmoq yo'q"
+        // butunlay boshqa muammo va ularni ajratib bo'lmasa,
+        // keyingi safar ham qorong'uda qolamiz.
+        _reason = _shortError(e);
+      });
     }
+  }
+
+  /// Pleyer xatosidan odam o'qiy oladigan qisqa sabab.
+  static String _shortError(Object e) {
+    final s = e.toString();
+    if (s.contains('Source error') || s.contains('MEDIA_ERR_SRC')) {
+      return tr('Bu video formati qo‘llab-quvvatlanmaydi.');
+    }
+    if (s.contains('SocketException') || s.contains('Failed host lookup')) {
+      return tr('Internet aloqasi yo‘q. Ulanishni tekshiring.');
+    }
+    return tr('Videoni ochib bo‘lmadi.');
   }
 
   @override
@@ -144,24 +203,40 @@ class _VideoViewState extends State<VideoView> {
     final c = _c;
 
     if (_failed) {
-      // Muqova bo'lsa — u ko'rsatiladi; bo'lmasa aniq yozuv.
-      // Ikkalasi ham qora ekrandan yaxshiroq.
+      // SABAB HAR DOIM YOZILADI — muqova ustida ham.
+      //
+      // Ilgari muqova bo'lsa faqat u ko'rsatilardi va odam
+      // videoning umuman ochilmaganini bilmasdi: u shunchaki
+      // qimirlamaydigan rasmga qarab o'tirardi.
       final poster = (widget.poster ?? '').trim();
-      if (poster.isNotEmpty) {
-        return NetImage(poster, radius: 0, fit: widget.fit, slotLabel: '');
-      }
-      return ColoredBox(
-        color: C.placeholder,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(S.gutter),
-            child: Text(
-              tr('Videoni ochib bo‘lmadi.'),
-              textAlign: TextAlign.center,
-              style: T.caption,
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (poster.isNotEmpty)
+            NetImage(poster, radius: 0, fit: widget.fit, slotLabel: '')
+          else
+            ColoredBox(color: C.placeholder),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(S.gutter),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: C.backdrop.withValues(alpha: .72),
+                  borderRadius: BorderRadius.circular(R.tile),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: S.x16, vertical: S.x12),
+                  child: Text(
+                    _reason ?? tr('Videoni ochib bo‘lmadi.'),
+                    textAlign: TextAlign.center,
+                    style: T.caption.copyWith(color: C.offWhite),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       );
     }
 

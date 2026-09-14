@@ -452,7 +452,8 @@ class M {
   static const push = Duration(milliseconds: 280);
   static const sheet = Duration(milliseconds: 280);
   static const shared = Duration(milliseconds: 320);
-  static const storyRing = Duration(seconds: 11);
+  // Dizayn manbasi: `shimmerSpin 9s linear infinite`.
+  static const storyRing = Duration(seconds: 9);
   static const storySegment = Duration(seconds: 5);
 
   /// Handoff dagi yagona egri chiziq.

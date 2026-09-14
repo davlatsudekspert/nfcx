@@ -66,7 +66,7 @@ class AppState extends ChangeNotifier {
   Future<void> boot() async {
     String? token;
     try {
-      token = await _storage.read(key: _tokenKey);
+      token = await _storage.read(key: _tokenKey).timeout(_storageTimeout);
     } catch (_) {
       // Ba'zi qurilmalarda Keystore vaqtincha ochilmaydi — bu kirishni
       // butunlay to'xtatmasligi kerak.
@@ -104,16 +104,40 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Tokenni qurilmada saqlash uchun eng ko'p kutish.
+  ///
+  /// `flutter_secure_storage` Android'da Keystore bilan ishlaydi va
+  /// ba'zi qurilmalarda BIRINCHI murojaatda javob qaytarmay qolishi
+  /// mumkin. Muddat qo'yilmasa, uni kutayotgan oqim abadiy osilib
+  /// qoladi.
+  static const _storageTimeout = Duration(seconds: 6);
+
+  /// TOKENNI SAQLASH — VA U OSILIB QOLSA HAM DAVOM ETISH.
+  ///
+  /// ILGARI RO'YXATDAN O'TISH SHU YERDA OSILIB QOLARDI.
+  ///
+  /// `completeRegistration()` avval shu funksiyani `await` qilardi.
+  /// Keystore javob qaytarmasa, `await` hech qachon tugamasdi:
+  /// istisno ham chiqmasdi, ya'ni `try/catch` yordam bermasdi.
+  /// Ekranda esa "Email tasdiqlandi" va abadiy aylanuvchi belgi
+  /// qolardi — aynan qurilmada ko'rilgan holat.
+  ///
+  /// Muddat tugasa NIMA BO'LADI: token XOTIRADA (`api.token`)
+  /// allaqachon turibdi, ya'ni joriy sessiya to'liq ishlaydi. Faqat
+  /// ilova qayta ochilganda odam yana kirishi kerak bo'ladi. Bu —
+  /// umuman kira olmaslikdan ko'ra ancha yaxshi.
   Future<void> _saveToken(String token) async {
     try {
-      await _storage.write(key: _tokenKey, value: token);
-    } catch (_) {}
+      await _storage.write(key: _tokenKey, value: token).timeout(_storageTimeout);
+    } catch (_) {
+      // Muddat tugashi ham, Keystore xatosi ham bir xil: davom etamiz.
+    }
   }
 
   Future<void> _clearToken() async {
     api.token = null;
     try {
-      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _tokenKey).timeout(_storageTimeout);
     } catch (_) {}
   }
 

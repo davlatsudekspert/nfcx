@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,7 +8,29 @@ import 'package:nfcstore/data/api_client.dart';
 import 'package:nfcstore/design/theme.dart';
 import 'package:nfcstore/screens/entry/verify_email.dart';
 import 'package:nfcstore/state/app_state.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'widget_test.dart' show FakeStore;
+
+/// JAVOB QAYTARMAYDIGAN XAVFSIZ XOTIRA.
+///
+/// Android'da `flutter_secure_storage` Keystore bilan ishlaydi va
+/// ba'zi qurilmalarda BIRINCHI yozishda javob qaytarmay qolishi
+/// mumkin. Bu stub aynan shu holatni yaratadi: `write()` hech
+/// qachon tugamaydi va HECH QANDAY istisno chiqarmaydi — ya'ni
+/// `try/catch` ni ham chetlab o'tadi.
+class HangingStore extends FakeStore {
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    IOSOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    MacOsOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) => Completer<void>().future;
+}
 
 /// RO'YXATDAN O'TISH OQIMINING OXIRI.
 ///
@@ -87,6 +110,34 @@ void main() {
     expect(find.byType(VerifyEmailScreen), findsNothing);
     expect(find.text('ILDIZ'), findsOneWidget);
     expect(state.phase, AuthPhase.signedIn);
+  });
+
+  testWidgets('xavfsiz xotira javob bermasa ham oqim TO‘XTAMAYDI',
+      (tester) async {
+    // QURILMADA KO'RILGAN XATO: "Email tasdiqlandi" chiqadi va
+    // pastidagi belgi abadiy aylanaveradi.
+    //
+    // Sabab `completeRegistration()` ichida edi: u tokenni
+    // saqlashni MUDDATSIZ kutardi. Keystore javob bermasa, u
+    // `await` hech qachon tugamasdi — istisno ham chiqmasdi, ya'ni
+    // xato ekrani ham ko'rinmasdi.
+    //
+    // Bu test tuzatishsiz YIQILADI: ekran stekda qolib ketadi.
+    final state = AppState(api: Api(client: okClient()), storage: HangingStore());
+    await pumpFlow(tester, state);
+
+    await tester.enterText(find.byType(EditableText).first, '123456');
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    // Saqlash muddati (6s) tugashini kutamiz.
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(VerifyEmailScreen), findsNothing,
+        reason: 'Tasdiqlash ekrani yopilishi kerak edi');
+    expect(state.phase, AuthPhase.signedIn);
+    // Token xotirada — joriy sessiya to'liq ishlaydi.
+    expect(state.api.token, 'yangi-token');
   });
 
   testWidgets('sessiya ochilmasa xato ko‘rinadi, belgi aylanavermaydi',
