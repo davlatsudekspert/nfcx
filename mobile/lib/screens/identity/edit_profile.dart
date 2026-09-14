@@ -129,7 +129,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(S.x8),
                           child: Text(tr('Saqlash'),
-                              style: T.button.copyWith(fontSize: 13.5, color: C.champagne)),
+                              style: T.button.copyWith(fontSize: 15, color: C.champagne)),
                         ),
                       ),
               ),

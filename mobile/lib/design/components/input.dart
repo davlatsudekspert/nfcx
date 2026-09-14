@@ -127,7 +127,7 @@ class _FieldState extends State<Field> {
                   textInputAction: widget.textInputAction,
                   cursorColor: C.champagne,
                   cursorWidth: 1.6,
-                  style: T.cardTitle.copyWith(fontWeight: FontWeight.w500, fontSize: 14.5),
+                  style: T.cardTitle.copyWith(fontWeight: FontWeight.w500, fontSize: 16),
                   decoration: InputDecoration(
                     isDense: true,
                     counterText: '',
@@ -138,7 +138,7 @@ class _FieldState extends State<Field> {
                     contentPadding: EdgeInsets.symmetric(vertical: widget.maxLines > 1 ? 14 : 0),
                     hintText: widget.hint,
                     hintStyle: T.cardTitle.copyWith(
-                      fontWeight: FontWeight.w400, fontSize: 14.5, color: C.muted,
+                      fontWeight: FontWeight.w400, fontSize: 16, color: C.muted,
                     ),
                   ),
                   ),
@@ -151,7 +151,7 @@ class _FieldState extends State<Field> {
           const SizedBox(height: 6),
           Text(
             hasError ? widget.error! : widget.helper!,
-            style: T.caption.copyWith(color: hasError ? C.signal : C.muted, fontSize: 11),
+            style: T.caption.copyWith(color: hasError ? C.signal : C.muted, fontSize: 12.5),
           ),
         ],
       ],

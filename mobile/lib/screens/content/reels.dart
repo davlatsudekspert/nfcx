@@ -158,7 +158,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                     children: [
                       const SizedBox(height: 120),
                       EmptyState(
-                        tr('Hali hech kim post yoki istorya joylamagan. '
+                        tr('Hali hech kim post yoki story joylamagan. '
                             'Birinchi bo‘ling.'),
                         title: tr('Lenta bo‘sh'),
                         icon: Ico.play,
@@ -322,20 +322,20 @@ class _Author extends StatelessWidget {
                     entry.name.isEmpty ? entry.code : entry.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: T.cardTitle.copyWith(fontSize: 14),
+                    style: T.cardTitle.copyWith(fontSize: 15.5),
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Text(entry.code, style: T.code.copyWith(fontSize: 11)),
+                      Text(entry.code, style: T.code.copyWith(fontSize: 12.5)),
                       // ISTORYA EKANI AYTILADI: u 24 soatdan keyin
                       // yo'qoladi va odam nega topolmayotganini
                       // bilishi kerak.
                       if (entry.isStory) ...[
                         const SizedBox(width: 6),
-                        Text(tr('Istorya'),
+                        Text(tr('Stories'),
                             style: T.statusLabel
-                                .copyWith(fontSize: 9.5, color: C.champagne)),
+                                .copyWith(fontSize: 11, color: C.champagne)),
                       ],
                     ],
                   ),
@@ -364,7 +364,7 @@ class _Like extends StatelessWidget {
             NIcon(Ico.heart,
                 size: 26, color: liked ? C.signal : C.offWhite, filled: liked),
             const SizedBox(height: 3),
-            Text('$count', style: T.caption.copyWith(fontSize: 11)),
+            Text('$count', style: T.caption.copyWith(fontSize: 12.5)),
           ],
         ),
       );

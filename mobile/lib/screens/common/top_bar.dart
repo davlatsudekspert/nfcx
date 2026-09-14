@@ -65,7 +65,7 @@ class TopBar extends StatelessWidget {
                       Text(subtitle!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: T.caption.copyWith(fontSize: 11)),
+                          style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),

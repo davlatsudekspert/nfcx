@@ -18,7 +18,7 @@ export default function StoryGrid({ stories = [], title = '', avatarUrl = '', ca
   const list = Array.isArray(stories) ? stories.filter(Boolean) : [];
 
   if (!list.length) {
-    return <div className="pf-empty">{t('Hozircha lenta bo‘sh — 24 soatlik istorya shu yerda chiqadi.')}</div>;
+    return <div className="pf-empty">{t('Hozircha lenta bo‘sh — 24 soatlik story shu yerda chiqadi.')}</div>;
   }
 
   return (

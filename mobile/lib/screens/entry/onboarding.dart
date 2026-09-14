@@ -230,8 +230,8 @@ class _IdRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: T.cardTitle.copyWith(fontSize: 13)),
-                  Text('$code · $type', style: T.meta.copyWith(fontSize: 10.5)),
+                  Text(name, style: T.cardTitle.copyWith(fontSize: 14.5)),
+                  Text('$code · $type', style: T.meta.copyWith(fontSize: 12)),
                 ],
               ),
             ),

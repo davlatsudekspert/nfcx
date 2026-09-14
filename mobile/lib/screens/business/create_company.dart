@@ -295,7 +295,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                         ? tr('Hisob darhol ochiladi va admin ko‘rigidan o‘tadi.')
                         : tr('Tanlangan nom to‘lovdan keyin faollashadi.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(fontSize: 11),
+                    style: T.caption.copyWith(fontSize: 12.5),
                   ),
                 ],
               ),
@@ -332,22 +332,22 @@ class _CheckLine extends StatelessWidget {
         children: [
           const Spinner(size: 14),
           const SizedBox(width: S.x8),
-          Text(tr('Tekshirilmoqda…'), style: T.caption.copyWith(fontSize: 11.5)),
+          Text(tr('Tekshirilmoqda…'), style: T.caption.copyWith(fontSize: 13)),
         ],
       );
     }
     if (failed) {
       return Text(tr('Tekshirib bo‘lmadi. Ulanishni tekshiring.'),
-          style: T.caption.copyWith(fontSize: 11.5, color: C.muted));
+          style: T.caption.copyWith(fontSize: 13, color: C.muted));
     }
     if (check == null) return const SizedBox.shrink();
     if (!available) {
       return Text(tr('Bu Company ID band.'),
-          style: T.caption.copyWith(fontSize: 11.5, color: C.signal));
+          style: T.caption.copyWith(fontSize: 13, color: C.signal));
     }
     return Text(
       price == 0 ? tr('Bo‘sh — bepul') : 'Bo‘sh — ${som(price)}',
-      style: T.caption.copyWith(fontSize: 11.5, color: C.verdant),
+      style: T.caption.copyWith(fontSize: 13, color: C.verdant),
     );
   }
 }
@@ -378,9 +378,9 @@ class _Choice extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                    Text(title, style: T.cardTitle.copyWith(fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text(hint, style: T.caption.copyWith(fontSize: 11)),
+                    Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),

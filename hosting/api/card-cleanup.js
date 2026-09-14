@@ -15,7 +15,8 @@
 // Bu maxfiylik muammosi.
 //
 // Shu sababli foydalanuvchi/karta o'chirilayotgan HAR BIR joyda shu
-// yordamchi ishlatiladi. `scripts/test-card-cleanup.mjs` sxemadagi
+// yordamchi ishlatiladi — UCHALA yo'lda ham (auth.js hardDeleteUser,
+// account.js qayta ro'yxatdan o'tish, account.js egasi o'chirishi). `scripts/test-card-cleanup.mjs` sxemadagi
 // kod-bog'liq jadvallar ro'yxatini shu ro'yxat bilan solishtiradi —
 // kelajakda yangi jadval qo'shilsa, test darhol ogohlantiradi.
 
@@ -36,6 +37,21 @@ export function cardContentCleanupStmts(env, codeSelect, binds, nowTs) {
   const stmts = [
     // post_likes → posts orqali; postlar o'chirilishidan OLDIN.
     env.DB.prepare(`DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE code IN (${codeSelect}))`).bind(...binds),
+    // ISTORYALAR — ALOHIDA, chunki ular kartaga `code` orqali EMAS,
+    // `owner_id` orqali bog'langan.
+    //
+    // Aynan shu sabab ular yillar davomida tozalanmay kelgan:
+    // `CARD_CONTENT_TABLES` "code ustuni bor jadvallar" ro'yxati va
+    // `stories` unga tushmaydi. Natijada profil o'chirilgach istorya
+    // bazada qolardi, 8 xonali kod esa qayta sotuvga chiqadi — ya'ni
+    // o'sha kodni olgan BEGONA odam avvalgi egasining istoryalarini
+    // o'z profilida va Reels lentasida ko'rardi.
+    //
+    // Layk va ko'rishlar istoryaning O'ZIDAN OLDIN o'chadi (ular
+    // `story_id` orqali bog'langan).
+    env.DB.prepare(`DELETE FROM story_likes WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
+    env.DB.prepare(`DELETE FROM story_views WHERE story_id IN (SELECT id FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect}))`).bind(...binds),
+    env.DB.prepare(`DELETE FROM stories WHERE owner_kind = 'card' AND owner_id IN (${codeSelect})`).bind(...binds),
   ];
   for (const t of CARD_CONTENT_TABLES) {
     stmts.push(env.DB.prepare(`DELETE FROM ${t} WHERE code IN (${codeSelect})`).bind(...binds));

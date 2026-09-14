@@ -80,7 +80,7 @@ class IdDetailScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(t.label, style: T.cardTitle.copyWith(fontSize: 15)),
+                              Text(t.label, style: T.cardTitle.copyWith(fontSize: 16.5)),
                               const SizedBox(height: 2),
                               Text('${som(record.price)} so‘m', style: T.price),
                             ],
@@ -102,7 +102,7 @@ class IdDetailScreen extends StatelessWidget {
                             f.label,
                             style: T.body.copyWith(
                               color: f.on ? C.offWhite : C.muted,
-                              fontSize: 13,
+                              fontSize: 14.5,
                             ),
                           ),
                         ),
@@ -130,7 +130,7 @@ class IdDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 7),
                   Text(tr('Payme yoki Click orqali to‘lov'),
-                      style: T.caption.copyWith(fontSize: 11, color: C.muted)),
+                      style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
                 ],
               ),
             ),

@@ -184,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (id == null) return;
     final sure = await showSheet<bool>(
       context,
-      title: isStory ? tr('Istoryani o‘chirish') : tr('Postni o‘chirish'),
+      title: isStory ? tr('Storyni o‘chirish') : tr('Postni o‘chirish'),
       subtitle: tr('Bu amalni qaytarib bo‘lmaydi.'),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
@@ -282,7 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final sure = await showSheet<bool>(
       context,
       title: tr('Bloklash'),
-      subtitle: tr('Bu profilning postlari va istoryalari sizning '
+      subtitle: tr('Bu profilning postlari va storylari sizning '
           'lentangizda ko‘rinmaydi.'),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
@@ -368,11 +368,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // BOSH HARFLAR — dizayn tili shunday: bo'lim nomlari kichik
     // va keng oraliqli bosh harflarda. Tarjima ham shu qolipga
     // tushadi.
+    // "Stories" TARJIMA QILINMAYDI — ataylab.
+    //
+    // Ilovada "Reels" ham, "NFC" ham, "Premium" ham inglizcha
+    // turibdi. "Istorya" esa ruscha o'zlashma va yozuvda qo'pol
+    // ko'rinadi; "hikoya" boshqa ma'no beradi, "lavha" esa tanish
+    // emas. Instagram o'zbek tilida ham "Stories" deydi — ya'ni
+    // hech kimga tushuntirish kerak emas.
     final tabs = _isBusiness
-        ? [tr('Katalog'), tr('Postlar'), 'Story', tr('Haqida')]
+        ? [tr('Katalog'), tr('Postlar'), 'Stories', tr('Haqida')]
             .map((t) => t.toUpperCase())
             .toList()
-        : [tr('Postlar'), 'Story', tr('Haqida')]
+        : [tr('Postlar'), 'Stories', tr('Haqida')]
             .map((t) => t.toUpperCase())
             .toList();
 
@@ -426,8 +433,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   dividerColor: C.hairline,
                   labelColor: C.offWhite,
                   unselectedLabelColor: C.muted,
-                  labelStyle: T.statusLabel.copyWith(fontSize: 10.5, fontWeight: FontWeight.w700),
-                  unselectedLabelStyle: T.statusLabel.copyWith(fontSize: 10.5),
+                  labelStyle: T.statusLabel.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                  unselectedLabelStyle: T.statusLabel.copyWith(fontSize: 12),
                   tabs: [for (final t in tabs) Tab(height: 42, text: t)],
                 ),
               ),
@@ -741,7 +748,7 @@ class _Header extends StatelessWidget {
                       borderRadius: BorderRadius.circular(R.status),
                       border: Border.all(color: C.champagne.withValues(alpha: .25)),
                     ),
-                    child: Text(code, style: T.code.copyWith(fontSize: 11.5)),
+                    child: Text(code, style: T.code.copyWith(fontSize: 13)),
                   ),
                   if (company?.isOpen != null) ...[
                     const SizedBox(width: S.x8),
@@ -751,14 +758,14 @@ class _Header extends StatelessWidget {
                     ),
                     if (company!.hoursLabel.isNotEmpty) ...[
                       const SizedBox(width: 6),
-                      Text(company!.hoursLabel, style: T.meta.copyWith(fontSize: 11)),
+                      Text(company!.hoursLabel, style: T.meta.copyWith(fontSize: 12.5)),
                     ],
                   ],
                 ],
               ),
               if (role.isNotEmpty) ...[
                 const SizedBox(height: S.x8),
-                Text(role, style: T.caption.copyWith(fontSize: 12.5)),
+                Text(role, style: T.caption.copyWith(fontSize: 14)),
               ],
               if (about.isNotEmpty) ...[
                 const SizedBox(height: S.x16),
@@ -1071,13 +1078,22 @@ class _PostGrid extends StatelessWidget {
 
   Widget _tile(BuildContext context, Post post) => RepaintBoundary(
         child: Press(
-          onTap: () => push(context, (_) => PostDetailScreen(post: post)),
-          // UZOQ BOSISH — O'CHIRISH.
+          onTap: () async {
+            // Tafsilot ekrani `true` qaytarsa — egasi u yerdagi
+            // o'chirish tugmasini bosgan. Tasdiqlash oynasi va API
+            // chaqiruvi SHU YERDA (`_delete`), ya'ni bitta joyda.
+            final wantDelete = await push<bool>(
+              context,
+              (_) => PostDetailScreen(post: post, canDelete: onDelete != null),
+            );
+            if (wantDelete == true) onDelete?.call(post);
+          },
+          // UZOQ BOSISH — TEZ YO'L.
           //
-          // NIMA UCHUN alohida tugma emas: to'rda har katak ~130px
-          // va ustiga qo'yilgan "x" belgisi rasmning uchdan birini
-          // yopib, to'rni g'ijimlab tashlardi. Uzoq bosish esa
-          // telefonda tanish harakat. Egaga tagida yozuv ham bor.
+          // To'rda har katak ~130px va ustiga qo'yilgan "x" belgisi
+          // rasmning uchdan birini yopib, to'rni g'ijimlab tashlardi.
+          // Shuning uchun ko'rinadigan tugma KATAKDA emas, tafsilot
+          // ekranining tepasida.
           onLongPress: onDelete == null ? null : () => onDelete!(post),
           haptic: onDelete != null,
           child: Stack(
@@ -1139,7 +1155,7 @@ class _AddTile extends StatelessWidget {
                   label,
                   textAlign: TextAlign.center,
                   maxLines: 2,
-                  style: T.caption.copyWith(fontSize: 10),
+                  style: T.caption.copyWith(fontSize: 11.5),
                 ),
               ),
             ],
@@ -1234,7 +1250,7 @@ class _About extends StatelessWidget {
               children: [
                 SizedBox(width: 96, child: Text(r.label, style: T.caption)),
                 Expanded(
-                  child: Text(r.value, style: T.cardTitle.copyWith(fontSize: 13)),
+                  child: Text(r.value, style: T.cardTitle.copyWith(fontSize: 14.5)),
                 ),
               ],
             ),

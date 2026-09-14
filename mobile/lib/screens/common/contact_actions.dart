@@ -201,7 +201,7 @@ class _CoinAction extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: T.caption.copyWith(fontSize: 11.5, color: C.offWhite),
+                style: T.caption.copyWith(fontSize: 13, color: C.offWhite),
               ),
             ],
           ),

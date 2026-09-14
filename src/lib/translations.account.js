@@ -2,30 +2,30 @@
 // Kabinet (AccountPage), Auth, Sozlamalar, Bildirishnomalar, To'lovlar,
 // Business Workspace va src/lib/db.js xato matnlari uchun tarjimalar.
 export const DICT_ACCOUNT = {
-  // ── "Istorya va post" bo'limi: ikkisi MUSTAQIL (2026-09) ──
+  // ── "Stories va post" bo'limi: ikkisi MUSTAQIL (2026-09) ──
   '1-bo‘lim': { ru: 'Раздел 1', en: 'Section 1' },
   '2-bo‘lim': { ru: 'Раздел 2', en: 'Section 2' },
-  'Istorya va post — ikki alohida ish. Faqat istorya yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.': {
+  'Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.': {
     ru: 'История и пост — два отдельных действия. Можно опубликовать только историю или только пост: у каждого своя кнопка сохранения.',
     en: 'Story and post are two separate things. You can publish just a story or just a post — each has its own save button.' },
-  'Faqat istorya qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.': {
+  'Faqat story qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.': {
     ru: 'Можно опубликовать только историю — заполнять пост не обязательно.',
     en: 'You can publish a story on its own — filling in a post is not required.' },
-  'Faqat post qo‘ysangiz ham bo‘ladi — istorya qo‘yish shart emas.': {
+  'Faqat post qo‘ysangiz ham bo‘ladi — story qo‘yish shart emas.': {
     ru: 'Можно опубликовать только пост — публиковать историю не обязательно.',
     en: 'You can publish a post on its own — publishing a story is not required.' },
-  'Istoryani saqlash': { ru: 'Сохранить историю', en: 'Save story' },
+  'Storyni saqlash': { ru: 'Сохранить историю', en: 'Save story' },
   'Postni saqlash': { ru: 'Сохранить пост', en: 'Save post' },
-  'Istorya joylandi.': { ru: 'История опубликована.', en: 'Story published.' },
+  'Story joylandi.': { ru: 'История опубликована.', en: 'Story published.' },
   'Saqlanmoqda…': { ru: 'Сохранение…', en: 'Saving…' },
-  'Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Istoryani saqlash" ni bosasiz.': {
+  'Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Storyni saqlash" ni bosasiz.': {
     ru: 'Фото или видео, до 100 МБ. После выбора посмотрите результат и нажмите «Сохранить историю».',
     en: 'Photo or video, up to 100 MB. After picking it, review it and press "Save story".' },
   "Profil formasida saqlanmagan o'zgarishlar bor": {
     ru: 'В форме профиля есть несохранённые изменения',
     en: 'The profile form has unsaved changes' },
   'Profil bo‘limiga o‘tish': { ru: 'Перейти в раздел профиля', en: 'Go to the profile section' },
-  'Bu istorya va postga aloqador emas — ular yuqorida o‘z tugmalari bilan saqlanadi.': {
+  'Bu story va postga aloqador emas — ular yuqorida o‘z tugmalari bilan saqlanadi.': {
     ru: 'К истории и посту это не относится — они сохраняются своими кнопками выше.',
     en: 'This does not affect the story or the post — they are saved with their own buttons above.' },
   // ───────────── Auth: kirish / ro'yxat / parolni tiklash ─────────────

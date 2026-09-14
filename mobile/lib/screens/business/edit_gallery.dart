@@ -178,7 +178,7 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
                     Text(
                       trf('{n} / {max} rasm.',
                           {'n': '${_urls.length}', 'max': '$_maxPhotos'}),
-                      style: T.caption.copyWith(fontSize: 11),
+                      style: T.caption.copyWith(fontSize: 12.5),
                     ),
                   ],
                   if (_error != null) ...[

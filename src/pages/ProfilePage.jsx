@@ -1779,7 +1779,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 className={pillBtn}
                 onClick={() => navigate('/account#lenta')}
               >
-                {t('Istorya qo‘shish')}
+                {t('Story qo‘shish')}
               </button>
             )}
             {!isOwner && (

@@ -272,7 +272,7 @@ class _FaqRow extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(item.q, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                    child: Text(item.q, style: T.cardTitle.copyWith(fontSize: 15)),
                   ),
                   const SizedBox(width: S.x8),
                   // Strelka ochilganda buriladi — bu yagona

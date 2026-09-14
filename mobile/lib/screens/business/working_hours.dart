@@ -169,7 +169,7 @@ class _WorkingHoursScreenState extends State<WorkingHoursScreen> {
                   Text(
                     tr('Tungacha cho‘zilgan vaqt ham qabul qilinadi: '
                         '18:00–02:00 to‘g‘ri hisoblanadi.'),
-                    style: T.caption.copyWith(fontSize: 11),
+                    style: T.caption.copyWith(fontSize: 12.5),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: S.x12),
@@ -215,12 +215,12 @@ class _DayRow extends StatelessWidget {
           children: [
             SizedBox(
               width: 96,
-              child: Text(name, style: T.cardTitle.copyWith(fontSize: 13)),
+              child: Text(name, style: T.cardTitle.copyWith(fontSize: 14.5)),
             ),
             Expanded(
               child: day.closed
                   ? Text(tr('Dam olish'),
-                      style: T.caption.copyWith(fontSize: 11.5))
+                      style: T.caption.copyWith(fontSize: 13))
                   : Row(
                       children: [
                         _TimeChip(day.open, onTap: onOpen),
@@ -262,7 +262,7 @@ class _TimeChip extends StatelessWidget {
             border: Border.all(color: C.hairline),
           ),
           child: Text(value.isEmpty ? '--:--' : value,
-              style: T.code.copyWith(fontSize: 12.5)),
+              style: T.code.copyWith(fontSize: 14)),
         ),
       );
 }

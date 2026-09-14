@@ -240,7 +240,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_cleanCode, style: T.code.copyWith(fontSize: 15)),
+                      Text(_cleanCode, style: T.code.copyWith(fontSize: 16.5)),
                       if (_recipient.isNotEmpty) ...[
                         const SizedBox(height: 3),
                         Text('$_recipient uchun', style: T.caption),

@@ -55,6 +55,16 @@ jobs:
       - name: Sahifa ishlatayotgan CSS unga yuklanadimi
         run: node scripts/css-scope-test.mjs
 
+      # PROFIL O'CHIRILGANDA HAMMASI O'CHADIMI.
+      #
+      # Jadvallar `cards` ga FK bilan bog'lanmagan, ya'ni CASCADE
+      # yo'q va tozalash qo'lda qilinadi. Yangi jadval ro'yxatdan
+      # tushib qolsa hech qanday xato chiqmaydi — faqat ma'lumot
+      # qoladi. Istorya aynan shunday qolib ketgan va 8 xonali kod
+      # qayta sotilganda yangi egaga "meros" bo'lib o'tardi.
+      - name: Profil o'chirilganda ma'lumot qolmaydimi
+        run: node scripts/test-card-cleanup.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

@@ -213,7 +213,7 @@ class _ProductRow extends StatelessWidget {
                     Text(product.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: T.cardTitle.copyWith(fontSize: 13.5)),
+                        style: T.cardTitle.copyWith(fontSize: 15)),
                     const SizedBox(height: 3),
                     // CHEGIRMA RO'YXATDA HAM KO'RINSIN: egasi qaysi
                     // mahsulotda aksiya turganini ochmasdan bilsin.
@@ -221,13 +221,13 @@ class _ProductRow extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(som(product.effectivePrice),
-                            style: T.price.copyWith(fontSize: 12.5)),
+                            style: T.price.copyWith(fontSize: 14)),
                         if (product.salePrice != null) ...[
                           const SizedBox(width: 6),
                           Text(
                             som(product.price),
                             style: T.meta.copyWith(
-                              fontSize: 11,
+                              fontSize: 12.5,
                               color: C.muted,
                               decoration: TextDecoration.lineThrough,
                               decorationColor: C.muted,

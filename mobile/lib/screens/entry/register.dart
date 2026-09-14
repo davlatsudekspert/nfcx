@@ -125,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        prefix: Text('+998', style: T.meta.copyWith(color: C.ash, fontSize: 14)),
+                        prefix: Text('+998', style: T.meta.copyWith(color: C.ash, fontSize: 15.5)),
                       ),
                       const SizedBox(height: S.x16),
                       Field(
@@ -142,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: Text(
                           tr('Ro‘yxatdan o‘tish orqali shartlarga rozilik bildirasiz'),
                           textAlign: TextAlign.center,
-                          style: T.caption.copyWith(color: C.muted, fontSize: 11),
+                          style: T.caption.copyWith(color: C.muted, fontSize: 12.5),
                         ),
                       ),
                     ],

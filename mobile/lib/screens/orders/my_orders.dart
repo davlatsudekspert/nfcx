@@ -161,9 +161,9 @@ class _OrderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('#${order.id}', style: T.code.copyWith(fontSize: 11.5, color: C.ash)),
+              Text('#${order.id}', style: T.code.copyWith(fontSize: 13, color: C.ash)),
               const SizedBox(width: S.x8),
-              Text(_kind, style: T.caption.copyWith(fontSize: 11)),
+              Text(_kind, style: T.caption.copyWith(fontSize: 12.5)),
               const Spacer(),
               StatusChip(st.label, tone: st.tone),
             ],
@@ -173,7 +173,7 @@ class _OrderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(child: Text(order.code, style: T.nfcId(22))),
-              Text('${som(order.price)} so‘m', style: T.price.copyWith(fontSize: 14)),
+              Text('${som(order.price)} so‘m', style: T.price.copyWith(fontSize: 15.5)),
             ],
           ),
           if (order.isPending) ...[
@@ -181,12 +181,12 @@ class _OrderCard extends StatelessWidget {
             if (left != null)
               Text(
                 'Band qilish tugashi: $left',
-                style: T.caption.copyWith(fontSize: 11, color: C.champagne),
+                style: T.caption.copyWith(fontSize: 12.5, color: C.champagne),
               )
             else
               Text(
                 tr('To‘lov yakunlanmagan.'),
-                style: T.caption.copyWith(fontSize: 11, color: C.champagne),
+                style: T.caption.copyWith(fontSize: 12.5, color: C.champagne),
               ),
             if (link != null) ...[
               const SizedBox(height: S.x12),

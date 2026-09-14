@@ -220,7 +220,7 @@ class _IdentityCardState extends State<IdentityCard>
                       url,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: T.meta.copyWith(fontSize: 11, color: C.muted),
+                      style: T.meta.copyWith(fontSize: 12.5, color: C.muted),
                     ),
                   ],
                   const SizedBox(height: S.x4),
@@ -233,10 +233,10 @@ class _IdentityCardState extends State<IdentityCard>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(holder, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: T.cardTitle.copyWith(fontSize: 13.5)),
+                                style: T.cardTitle.copyWith(fontSize: 15)),
                             if (subtitle != null)
                               Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: T.caption.copyWith(fontSize: 11)),
+                                  style: T.caption.copyWith(fontSize: 12.5)),
                           ],
                         ),
                       ),
@@ -248,7 +248,7 @@ class _IdentityCardState extends State<IdentityCard>
                           children: [
                             Text(tr('Tegishlar').toUpperCase(), style: T.eyebrow),
                             const SizedBox(height: 2),
-                            Text(compact(taps), style: T.price.copyWith(fontSize: 14)),
+                            Text(compact(taps), style: T.price.copyWith(fontSize: 15.5)),
                           ],
                         ),
                       ],
