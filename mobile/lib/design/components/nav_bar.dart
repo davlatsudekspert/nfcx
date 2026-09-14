@@ -37,10 +37,17 @@ class NavBar extends StatelessWidget {
         (icon: Ico.search, label: tr('Discover')),
         // "NFC" uch tilda ham shunday.
         (icon: Ico.nfc, label: 'NFC'),
+        // "Reels" — atama sifatida tarjima qilinmaydi, u odamlarga
+        // shu nom bilan tanish.
+        (icon: Ico.play, label: 'Reels'),
         (icon: Ico.user, label: tr('Profile')),
       ];
 
   /// NFC tabining indeksi — u markaziy va boshqacha ko'rinadi.
+  ///
+  /// BESH TAB BO'LGANDA HAM O'RTADA: 0,1,[2],3,4 — ya'ni Reels
+  /// qo'shilgani NFC ning markaziy o'rnini buzmadi. Bu ataylab,
+  /// chunki NFC mahsulotning o'zagi.
   static const nfcIndex = 2;
 
   @override

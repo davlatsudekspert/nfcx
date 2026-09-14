@@ -5,6 +5,7 @@ import '../design/tokens.dart';
 import '../state/app_state.dart';
 import 'discover/discover.dart';
 import 'home/home.dart';
+import 'content/reels.dart';
 import 'identity/profile_tab.dart';
 import 'nfc/nfc_center.dart';
 
@@ -25,7 +26,11 @@ class _ShellState extends State<Shell> {
 
   /// Har tabning o'z `Navigator`i — ichki ekranlar tab almashganda
   /// yopilmaydi va pastki panel joyida qoladi.
-  final _keys = List.generate(4, (_) => GlobalKey<NavigatorState>());
+  /// Tab soni NavBar'dan olinadi — ikki joyda ikki xil raqam
+  /// qolib ketsa, beshinchi tab bosilganda ilova indeks
+  /// chegarasidan chiqib yiqilardi.
+  final _keys =
+      List.generate(NavBar.tabs.length, (_) => GlobalKey<NavigatorState>());
 
   Future<bool> _onBack() async {
     final nav = _keys[_tab].currentState;
@@ -75,7 +80,8 @@ class _ShellState extends State<Shell> {
                   _TabNavigator(navKey: _keys[0], child: const HomeScreen()),
                   _TabNavigator(navKey: _keys[1], child: const DiscoverScreen()),
                   _TabNavigator(navKey: _keys[2], child: const NfcCenterScreen()),
-                  _TabNavigator(navKey: _keys[3], child: const ProfileTab()),
+                  _TabNavigator(navKey: _keys[3], child: const ReelsScreen()),
+                  _TabNavigator(navKey: _keys[4], child: const ProfileTab()),
                 ],
                 ),
               ),

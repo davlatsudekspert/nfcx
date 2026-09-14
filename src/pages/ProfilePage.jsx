@@ -1757,6 +1757,21 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && <button className={pillBtn} onClick={() => navigate('/account')}>{t('Tahrirlash')}</button>}
+            {/* ISTORYA — ALOHIDA TUGMA, ATAYLAB.
+                Ilgari istorya faqat kabinet ichidagi bo'limda edi va
+                egasi uni "Tahrirlash" ortidan qidirib topishi kerak
+                edi. Istorya 24 soatlik ish: u qo'yiladigan joy eng
+                ko'p ochiladigan sahifada, profil rasmining yonida
+                turishi kerak. `#lenta` — kabinet o'sha bo'limdan
+                ochiladi. */}
+            {isOwner && (
+              <button
+                className={pillBtn}
+                onClick={() => navigate('/account#lenta')}
+              >
+                {t('Istorya qo‘shish')}
+              </button>
+            )}
             {!isOwner && (
               <>
                 {MESSAGING_ENABLED && <button className={pillBtn} onClick={startChat}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>}

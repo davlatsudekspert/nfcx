@@ -9,6 +9,18 @@ import 'api_client.dart';
 String _s(dynamic v) => v == null ? '' : '$v';
 int _i(dynamic v) => v is num ? v.round() : int.tryParse('$v') ?? 0;
 bool _b(dynamic v) => v == true || v == 1 || v == '1';
+
+/// Sana. Server IKKI SHAKLDA beradi: millisekund (raqam) yoki ISO
+/// satr. Ikkalasi ham qabul qilinadi — aks holda bitta endpoint
+/// almashganda sana jimgina yo'qolardi.
+DateTime? _ts(dynamic v) {
+  if (v is num) return DateTime.fromMillisecondsSinceEpoch(v.round());
+  final raw = _s(v);
+  if (raw.isEmpty) return null;
+  final millis = int.tryParse(raw);
+  if (millis != null) return DateTime.fromMillisecondsSinceEpoch(millis);
+  return DateTime.tryParse(raw);
+}
 List<Map<String, dynamic>> _list(dynamic v) => v is List
     ? v.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList()
     : const [];
@@ -495,6 +507,87 @@ class StoryFeedEntry {
       count: stories is List ? stories.length : 0,
     );
   }
+}
+
+/// UMUMIY LENTA YOZUVI — postlar va istoryalar bir oqimda.
+///
+/// NIMA UCHUN BITTA MODEL: ekranda ular AYNAN bir xil ko'rinadi —
+/// to'liq ekran rasm, muallif, izoh. Farqi faqat manbada va
+/// yashash muddatida (istorya 24 soat). Ikkita model yasash
+/// ekranda ikkita bir xil kod yo'lini yaratardi.
+class FeedEntry {
+  const FeedEntry({
+    required this.kind,
+    required this.id,
+    required this.code,
+    required this.authorKind,
+    required this.name,
+    this.avatarUrl,
+    this.imageUrl,
+    this.videoUrl,
+    this.caption = '',
+    this.createdAt,
+    this.likeCount = 0,
+    this.liked = false,
+    this.likeable = false,
+  });
+
+  /// `post` yoki `story`.
+  final String kind;
+  final int id;
+
+  /// Muallif profili kodi — bosilganda o'sha profil ochiladi.
+  final String code;
+
+  /// `card` yoki `company`.
+  final String authorKind;
+  final String name;
+  final String? avatarUrl;
+  final String? imageUrl;
+  final String? videoUrl;
+  final String caption;
+  final DateTime? createdAt;
+  final int likeCount;
+  final bool liked;
+
+  /// Yoqtirish MUMKINMI. Kompaniya postida server tomonda
+  /// yoqtirish jadvali yo'q — bunda tugma umuman ko'rsatilmaydi.
+  final bool likeable;
+
+  bool get isStory => kind == 'story';
+  bool get isCompany => authorKind == 'company';
+
+  factory FeedEntry.fromJson(Map<String, dynamic> j) => FeedEntry(
+        kind: _s(j['kind']),
+        id: _i(j['id']),
+        code: _s(j['code']).toUpperCase(),
+        authorKind: _s(j['authorKind']),
+        name: _s(j['name']),
+        avatarUrl: absUrl(_s(j['avatarUrl'])),
+        imageUrl: absUrl(_s(j['imageUrl'])),
+        videoUrl: absUrl(_s(j['videoUrl'])),
+        caption: _s(j['caption']),
+        createdAt: _ts(j['createdAt']),
+        likeCount: _i(j['likeCount']),
+        liked: _b(j['liked']),
+        likeable: _b(j['likeable']),
+      );
+
+  FeedEntry copyWith({int? likeCount, bool? liked}) => FeedEntry(
+        kind: kind,
+        id: id,
+        code: code,
+        authorKind: authorKind,
+        name: name,
+        avatarUrl: avatarUrl,
+        imageUrl: imageUrl,
+        videoUrl: videoUrl,
+        caption: caption,
+        createdAt: createdAt,
+        likeCount: likeCount ?? this.likeCount,
+        liked: liked ?? this.liked,
+        likeable: likeable,
+      );
 }
 
 /// SOVG'A TAKLIFI.

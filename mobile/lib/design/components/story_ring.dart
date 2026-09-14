@@ -19,6 +19,7 @@ class StoryRing extends StatefulWidget {
     this.size = 60,
     this.onTap,
     this.addButton = false,
+    this.showLabel = true,
   });
 
   final String name;
@@ -29,6 +30,11 @@ class StoryRing extends StatefulWidget {
 
   /// "Qo'shish" varianti — o'z story'ingni joylash.
   final bool addButton;
+
+  /// Halqa ostidagi nom. Profil sahifasida O'CHIRILADI: u yerda ism
+  /// allaqachon avatar ostida katta harflarda turibdi va ikkinchi
+  /// marta takrorlanishi maketni buzardi.
+  final bool showLabel;
 
   @override
   State<StoryRing> createState() => _StoryRingState();
@@ -119,17 +125,19 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                 ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              widget.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: T.caption.copyWith(
-                fontSize: 10.5,
-                color: widget.seen ? C.muted : C.ash,
+            if (widget.showLabel) ...[
+              const SizedBox(height: 6),
+              Text(
+                widget.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: T.caption.copyWith(
+                  fontSize: 10.5,
+                  color: widget.seen ? C.muted : C.ash,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

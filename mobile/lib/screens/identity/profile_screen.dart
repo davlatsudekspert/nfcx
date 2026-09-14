@@ -6,6 +6,7 @@ import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
+import '../../design/components/story_ring.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
@@ -22,6 +23,7 @@ import 'profile_stats.dart';
 import '../common/contact_actions.dart';
 import '../common/top_bar.dart';
 import '../content/post_detail.dart';
+import '../content/story_viewer.dart';
 import '../content/photo_viewer.dart';
 import '../nfc/qr_share.dart';
 import '../business/edit_business.dart';
@@ -229,6 +231,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   follow: _follow,
                   isOwner: isOwner,
                   busyFollow: _busyFollow,
+                  hasStory: _stories.isNotEmpty,
+                  // Mehmonda istorya bo'lmasa halqa umuman
+                  // ko'rsatilmaydi — bosiladigan, lekin hech narsa
+                  // qilmaydigan element ishonchni yo'qotadi.
+                  onStory: _stories.isNotEmpty
+                      ? () => push(
+                            context,
+                            (_) => StoryViewerScreen(
+                                code: code, isCompany: _isBusiness),
+                          )
+                      : (isOwner ? () => _compose(code, ComposeKind.story) : null),
                   onFollow: _toggleFollow,
                   onShare: () {
                     final id = _company != null
@@ -340,6 +353,8 @@ class _Header extends StatelessWidget {
     required this.onFollow,
     required this.onShare,
     required this.onRefresh,
+    required this.hasStory,
+    required this.onStory,
   });
 
   final Record? record;
@@ -350,6 +365,13 @@ class _Header extends StatelessWidget {
   final VoidCallback onFollow;
   final VoidCallback onShare;
   final VoidCallback onRefresh;
+
+  /// Profilda FAOL istorya bormi (24 soat ichida).
+  final bool hasStory;
+
+  /// Halqa bosilganda: istorya bo'lsa — ko'ruvchi, egada istorya
+  /// yo'q bo'lsa — qo'shish.
+  final VoidCallback? onStory;
 
   @override
   Widget build(BuildContext context) {
@@ -400,13 +422,34 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ),
+            // ISTORYA HALQASI — AVATAR ATROFIDA.
+            //
+            // Ilgari o'z istoryangizni joylagandan keyin ilovada uni
+            // ko'rsatadigan joy YO'Q edi: bosh sahifadagi lenta faqat
+            // OBUNA BO'LGANLARNI beradi, o'zingizniki esa "Story"
+            // yorlig'i ichida ko'milib qolardi. Endi u profil rasmi
+            // atrofidagi halqada — saytdagi bilan bir xil joyda.
             Positioned(
               left: S.gutter + S.x4,
               bottom: -26,
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
-                child: Avatar(url: avatar, name: name, size: 72),
+                child: hasStory || (isOwner && onStory != null)
+                    ? StoryRing(
+                        // Ism avatar ichidagi harf uchun kerak
+                        // (rasm kelmasa), lekin halqa ostida
+                        // takrorlanmaydi.
+                        name: name,
+                        showLabel: false,
+                        avatarUrl: avatar,
+                        size: 72,
+                        // Halqa FAQAT haqiqiy istoryada aylanadi.
+                        // Egasida istorya bo'lmasa — oddiy "+" .
+                        addButton: !hasStory,
+                        onTap: onStory,
+                      )
+                    : Avatar(url: avatar, name: name, size: 72),
               ),
             ),
           ],

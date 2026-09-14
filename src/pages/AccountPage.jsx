@@ -2378,7 +2378,17 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   const [geoMsg, setGeoMsg] = useState('');
   // Business Workspace navigatsiyasi: 'asosiy' | 'katalog' | 'lokatsiya' | 'sozlamalar'.
   // Shaxsiy/expert profillar uchun ishlatilmaydi (ular eski flat accordion'da qoladi).
-  const [wsTab, setWsTab] = useState(() => (card.profileType === 'business' ? 'asosiy' : 'boshqaruv'));
+  // BOSHLANG'ICH BO'LIM — manzildagi `#lenta` bo'lsa istorya/post.
+  //
+  // Nima uchun: profil sahifasidagi "Istorya qo'shish" tugmasi shu
+  // yerga olib keladi. Usiz odam kabinetga tushib, kerakli bo'limni
+  // yana o'zi qidirishi kerak edi — ya'ni tugma va'da qilgan ishni
+  // oxirigacha bajarmasdi.
+  const [wsTab, setWsTab] = useState(() => {
+    const hash = typeof window === 'undefined' ? '' : window.location.hash;
+    if (hash === '#lenta') return 'lenta';
+    return card.profileType === 'business' ? 'asosiy' : 'boshqaruv';
+  });
   const [form, setForm] = useState({
     name: card.name,
     role: card.role || '',

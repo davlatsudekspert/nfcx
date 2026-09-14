@@ -43,6 +43,7 @@ http.Response _newUserResponse(String p) {
     '/api/companies/mine' || '/api/companies' => {'companies': const []},
     '/api/records' => const [],
     '/api/stories/feed' => {'feed': const []},
+    '/api/feed' => {'feed': const [], 'hasMore': false},
     '/api/orders' => {'orders': const []},
     '/api/gift-offers' => {'incoming': const [], 'outgoing': const []},
     _ => const <String, dynamic>{},
@@ -64,6 +65,39 @@ Future<http.Response> _normalResponse(http.Request req) async {
         body = {'companies': [_company, _company2]};
       } else if (p == '/api/records') {
         body = [_card, _secondCard, _freeId, _freeId2, _expert];
+      } else if (p == '/api/feed') {
+        // REELS — shaxsiy va biznes, post va istorya aralash.
+        // Aralashtirilgani ataylab: ekran to'rt holatni ham bir
+        // kadrda ko'rsatsin (yoqtirilgan, yoqtirilmagan,
+        // yoqtirib bo'lmaydigan kompaniya posti, istorya).
+        body = {
+          'feed': [
+            {
+              'kind': 'post', 'id': 501, 'code': 'AAA512', 'authorKind': 'card',
+              'name': 'Jasur Tolipov', 'avatarUrl': '/uploads/a1.jpg',
+              'imageUrl': '/uploads/p1.jpg',
+              'caption': 'Yangi karta keldi — qora metall.',
+              'createdAt': 1757800000000, 'likeCount': 24, 'liked': true,
+              'likeable': true,
+            },
+            {
+              'kind': 'story', 'id': 77, 'code': 'DDD333', 'authorKind': 'company',
+              'name': 'NFCSTORE', 'avatarUrl': '/uploads/logo.jpg',
+              'imageUrl': '/uploads/s1.jpg',
+              'caption': 'Bugun ustaxonada.',
+              'createdAt': 1757799000000, 'likeCount': 0, 'liked': false,
+              'likeable': false,
+            },
+            {
+              'kind': 'post', 'id': 502, 'code': 'BBB222', 'authorKind': 'company',
+              'name': 'Ali Market', 'avatarUrl': '',
+              'imageUrl': '/uploads/p2.jpg', 'caption': '',
+              'createdAt': 1757798000000, 'likeCount': 0, 'liked': false,
+              'likeable': false,
+            },
+          ],
+          'hasMore': false,
+        };
       } else if (p == '/api/stories/feed') {
         // HAQIQIY LENTA: obuna bo'lingan odamlarning istoryalari.
         // Bo'sh qoldirilsa, audit bosh ekrandagi story qatorini

@@ -69,18 +69,23 @@ Widget wrap(Widget child, AppState state) => AppScope(
 
 void main() {
   group('NavBar', () {
-    testWidgets('to‘rt tab: Activity YO‘Q', (tester) async {
-      // Handoff besh tabni ko‘rsatadi, lekin Activity uchun real
-      // backend feed yo‘q. Soxta tab yasashdan ko‘ra 4 tabga tushamiz.
-      // Backend `GET /api/activity` qo‘shsa — shu ro‘yxatga bitta qator.
+    testWidgets('besh tab: Activity YO‘Q', (tester) async {
+      // ACTIVITY HALI HAM YO‘Q va bu qoida o‘zgarmadi: uning ortida
+      // real backend feed bo‘lmaguncha soxta tab yasalmaydi.
+      //
+      // REELS esa qo‘shildi, chunki uning ortida HAQIQIY manba bor —
+      // `GET /api/feed` (postlar va faol istoryalar). Ya‘ni tab soni
+      // 4 dan 5 ga chiqqani "handoffga qaytish" emas: har bir tab
+      // faqat ishlaydigan ma‘lumot ustiga qo‘yiladi.
       await tester.pumpWidget(MaterialApp(
         theme: buildTheme(),
         home: Scaffold(body: NavBar(active: 0, onSelect: (_) {})),
       ));
-      expect(NavBar.tabs.length, 4);
+      expect(NavBar.tabs.length, 5);
       expect(find.text('Home'), findsOneWidget);
       expect(find.text('Discover'), findsOneWidget);
       expect(find.text('NFC'), findsOneWidget);
+      expect(find.text('Reels'), findsOneWidget);
       expect(find.text('Profile'), findsOneWidget);
       expect(find.text('Activity'), findsNothing);
     });

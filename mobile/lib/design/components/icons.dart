@@ -11,7 +11,7 @@ enum Ico {
   home, search, nfc, user, qr, share, phone, chart, chevronRight, chevronLeft,
   chevronDown, backspace, minus, lock, fingerprint,
   plus, check, close, heart, eye, bell, settings, gift, card, bag, star, image,
-  telegram, edit, logout, globe, clock, pin, refresh, camera, arrowUp,
+  telegram, edit, logout, globe, clock, pin, refresh, camera, arrowUp, play,
 }
 
 class NIcon extends StatelessWidget {
@@ -219,6 +219,17 @@ class _IconPainter extends CustomPainter {
         p.lineTo(16.2, 14.6); p.lineTo(17.3, 20.5); p.lineTo(12, 17.6);
         p.lineTo(6.7, 20.5); p.lineTo(7.8, 14.6); p.lineTo(3.4, 10.4);
         p.lineTo(9.4, 9.6); p.close();
+        canvas.drawPath(p, filled ? fill : stroke);
+        return;
+      // REELS — yumaloq to'rtburchak ichida o'ynatish uchburchagi.
+      // Kadr chegarasi post/istorya ekranini, uchburchak esa
+      // "ko'rish" ni bildiradi.
+      case Ico.play:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(const Rect.fromLTWH(3.5, 3.5, 17, 17), const Radius.circular(4.5)),
+          stroke,
+        );
+        p.moveTo(10, 8.6); p.lineTo(16, 12); p.lineTo(10, 15.4); p.close();
         canvas.drawPath(p, filled ? fill : stroke);
         return;
       case Ico.image:

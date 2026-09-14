@@ -8522,6 +8522,107 @@ async function storiesApi(request, env, url) {
   return json({ ok: true });
 }
 
+// ── UMUMIY LENTA (Reels) ─────────────────────────────────────────────
+//
+// GET /api/feed?page=1
+//
+// NIMA UCHUN YANGI ENDPOINT KERAK BO'LDI: mavjud ikkita lenta bu
+// vazifani BAJARA OLMAYDI. `/api/stories/feed` faqat SIZ OBUNA
+// BO'LGANLARNI beradi (yangi odam uchun u doim bo'sh), postlar esa
+// umuman faqat profil bo'yicha olinadi. Ya'ni "hamma joylagan
+// kontent" degan ko'rinish uchun manba yo'q edi.
+//
+// NIMA CHIQADI: postlar (doimiy) va FAOL istoryalar (24 soat),
+// yangisidan eskisiga. Shaxsiy va biznes profillar birga.
+//
+// MAXFIYLIK — IKKI QOIDA:
+//   1. Katalogdan yashiringan shaxsiy profil (`hidden_from_directory`)
+//      bu yerda ham ko'rinmaydi. Odam o'zini ro'yxatdan olib
+//      tashlagan bo'lsa, uni boshqa eshikdan ko'rsatish aldov
+//      bo'lardi.
+//   2. Kompaniya faqat `active` holatda. Qoralama yoki to'lanmagan
+//      biznesning posti ommaga chiqmaydi.
+//
+// YOQTIRISH: shaxsiy post va istoryada bor (`post_likes`,
+// `story_likes`), kompaniya postida esa jadval YO'Q — shuning uchun
+// u yerda nol qaytariladi va ilova tugmani ko'rsatmaydi. Soxta
+// raqam chiqarishdan ko'ra, yo'qligini aytish to'g'ri.
+async function feedApi(request, env, url) {
+  if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
+
+  const user = await getCurrentUser(request, env);
+  const viewerId = user ? user.id : 0;
+  const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+  const limit = Math.min(30, Math.max(1, Number(url.searchParams.get('limit')) || 15));
+  const offset = (page - 1) * limit;
+  const now = new Date().toISOString();
+
+  // `limit + 1` — keyingi sahifa bor-yo'qligini BITTA so'rov bilan
+  // bilish uchun (alohida COUNT so'rovi butun jadvalni sanardi).
+  const rows = await env.DB.prepare(
+    `SELECT * FROM (
+        SELECT 'post' AS kind, p.id AS id, p.code AS code, 'card' AS author_kind,
+               c.name AS name, c.avatar_url AS avatar_url,
+               p.image_url AS image_url, p.video_url AS video_url,
+               p.caption AS caption, p.created_at AS created_at,
+               (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
+          FROM posts p JOIN cards c ON c.code = p.code
+         WHERE COALESCE(c.hidden_from_directory, 0) = 0
+        UNION ALL
+        SELECT 'post', cp.id, cp.company_id, 'company',
+               co.display_name, co.logo_url,
+               cp.image_url, cp.video_url, cp.caption, cp.created_at,
+               0, 0
+          FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
+         WHERE co.status = 'active'
+        UNION ALL
+        SELECT 'story', s.id, s.owner_id, 'card',
+               c.name, c.avatar_url,
+               s.image_url, s.video_url, s.caption, s.created_at,
+               (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id),
+               EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?)
+          FROM stories s JOIN cards c ON c.code = s.owner_id
+         WHERE s.owner_kind = 'card' AND s.expires_at > ?
+           AND COALESCE(c.hidden_from_directory, 0) = 0
+        UNION ALL
+        SELECT 'story', s.id, s.owner_id, 'company',
+               co.display_name, co.logo_url,
+               s.image_url, s.video_url, s.caption, s.created_at,
+               0, 0
+          FROM stories s JOIN companies co ON co.company_id = s.owner_id
+         WHERE s.owner_kind = 'company' AND s.expires_at > ?
+           AND co.status = 'active'
+     )
+     ORDER BY created_at DESC, id DESC
+     LIMIT ? OFFSET ?`
+  ).bind(viewerId, viewerId, now, now, limit + 1, offset).all();
+
+  const all = rows.results || [];
+  const feed = all.slice(0, limit).map((r) => {
+    const d = parseDbDate(r.created_at);
+    return {
+      kind: String(r.kind),
+      id: Number(r.id),
+      code: String(r.code || '').toUpperCase(),
+      authorKind: String(r.author_kind),
+      name: r.name || String(r.code || ''),
+      avatarUrl: r.avatar_url || '',
+      imageUrl: r.image_url || '',
+      videoUrl: r.video_url || '',
+      caption: r.caption || '',
+      createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
+      likeCount: Number(r.like_count || 0),
+      liked: !!r.liked,
+      // Kompaniya postida yoqtirish jadvali yo'q — ilova tugmani
+      // umuman ko'rsatmasligi uchun aniq bayroq.
+      likeable: String(r.author_kind) === 'card',
+    };
+  });
+
+  return json({ feed, hasMore: all.length > limit });
+}
+
 async function followApi(request, env, url) {
   const path = url.pathname;
 
@@ -8645,6 +8746,10 @@ async function coreApi(request, env, url) {
   }
   if (url.pathname.startsWith('/api/stories/')) {
     const res = await storiesApi(request, env, url);
+    if (res) return res;
+  }
+  if (url.pathname === '/api/feed') {
+    const res = await feedApi(request, env, url);
     if (res) return res;
   }
   if (url.pathname.startsWith('/api/orders')) {
