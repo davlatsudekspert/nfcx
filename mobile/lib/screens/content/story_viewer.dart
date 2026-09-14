@@ -24,7 +24,20 @@ import '../../l10n/strings.dart';
 ///   - UZOQ BOSISH — pauza (o'qish uchun);
 ///   - pastga surish — yopish.
 class StoryViewerScreen extends StatefulWidget {
-  const StoryViewerScreen({super.key, required this.code, this.isCompany = false});
+  const StoryViewerScreen({
+    super.key,
+    required this.code,
+    this.isCompany = false,
+    this.owned,
+  });
+
+  /// Chaqiruvchi EGALIKNI ANIQ BILSA — shu yerda aytadi.
+  ///
+  /// Profil ekrani buni biladi: Profile tabi faol shaxsni beradi,
+  /// ya'ni u ta'rifi bo'yicha egasiniki. Ro'yxatdan qidirish esa
+  /// taxminiy — ro'yxat hali yuklanmagan bo'lishi mumkin va o'shanda
+  /// odam O'Z story'sida o'chirish tugmasini ko'rmasdi.
+  final bool? owned;
 
   final String code;
   final bool isCompany;
@@ -281,6 +294,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   /// Bu istorya MENIKIMI — ko'rishlar soni faqat egasiga.
   bool get _isOwner {
+    if (widget.owned != null) return widget.owned!;
     final state = AppScope.read(context);
     return widget.isCompany
         ? state.companies.any((c) => c.id.toUpperCase() == widget.code.toUpperCase())

@@ -411,7 +411,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? () => push(
                             context,
                             (_) => StoryViewerScreen(
-                                code: code, isCompany: _isBusiness),
+                                code: code,
+                                isCompany: _isBusiness,
+                                // Egalik SHU YERDA aniq ma'lum —
+                                // taxminga qoldirilmaydi.
+                                owned: isOwner),
                           )
                       : (isOwner ? () => _compose(code, ComposeKind.story) : null),
                   onFollow: _toggleFollow,
