@@ -332,6 +332,67 @@
   border-color: color-mix(in srgb, var(--vz-ink) 32%, transparent) !important;
 }
 
+/* ═══ SHAXSIY PROFIL (/:code) — BIZNES PROFIL BILAN BIR DARAJADA ═══
+   Biznes profilda (`/c/:id`, src/company-system.css dagi `.qp-*`)
+   qilingan uchta narsa shu yerga ham keltirildi. NIMA UCHUN BU YERDA,
+   `company-system.css` da emas: u fayl GLOBAL EMAS — faqat uni
+   import qilgan sahifa bilan yuklanadi, shaxsiy profil esa uni
+   import qilmaydi. Sinf u yerga yozilsa, sahifa uslubsiz chiqardi
+   (bu xato loyihada uch marta takrorlangan — scripts/css-scope-test.mjs). */
+
+/* 1) NFC KARTA — PROFIL ICHIDA VA KATTAROQ.
+   Karta endi profil kartasining ICHIDA, ism va statistikaning
+   yonida turadi (ilgari u panel TASHQARISIDA, tepada osilib
+   turardi — egasi "tartibsiz" deb baholadi).
+
+   Kattalashtirish `transform` orqali: karta ichidagi barcha
+   o'lchamlar (yozuv, NFC belgisi, joylashuv) nisbatini saqlaydi.
+   Ota-blokda `overflow:hidden` bor, shuning uchun kenglik
+   ekranga QARAB tanlanadi — aks holda karta chetidan kesilardi.
+   Balandlik `calc` bilan qoplanadi: `transform` maketdagi joyni
+   o'zgartirmaydi va usiz kartaning ostiga bo'sh joy qolardi. */
+.vz-nfc-zoom { --k: 1.05; height: calc(176px * var(--k)); display: flex; justify-content: center; }
+.vz-nfc-zoom > * { transform: scale(var(--k)); transform-origin: top center; }
+@media (max-width: 359px) { .vz-nfc-zoom { --k: .88 } }
+@media (min-width: 640px) { .vz-nfc-zoom { --k: 1.3 } }
+
+/* 2) PREMIUM CHUQURLIK — yumshoq oltin "rim-glow" va yengil
+   balandlik soyasi. Biznes profildagi qiymatning AYNAN o'zi
+   (`0 0 18px -6px`): ikki sahifa yonma-yon qo'yilganda farq
+   sezilmasligi kerak. */
+.vz-rim { box-shadow: 0 0 18px -6px rgba(226,190,110,.5), 0 12px 30px rgba(0,0,0,.45) }
+.vz-rim-soft { box-shadow: 0 0 14px -6px rgba(226,190,110,.42), 0 8px 22px rgba(0,0,0,.35) }
+
+/* 3) "SAQLASH" — PASTDA YOPISHIB TURADI.
+   Ilgari u kontentning eng oxirida edi: NFC kartani teккan odam
+   kontaktni saqlash uchun butun sahifani oxirigacha aylantirishi
+   kerak edi. NFC kartaning butun ma'nosi shu tugmada.
+
+   DIQQAT: `position:sticky` ota-blokda `overflow:hidden` bo'lsa
+   ISHLAMAYDI, profil paneli esa aynan shunday. Shuning uchun
+   qator panel ICHIDA emas, sahifa darajasida chiziladi. */
+.vz-savebar {
+  position: sticky; bottom: 0; z-index: 14;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.55) 38%, rgba(0,0,0,.78));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+/* Ustidan o'tadigan yorug'lik — biznes profildagi `qp-sweep` bilan
+   bir xil ritm (4.2s). Nomi boshqacha: global `sweep` nomi boshqa
+   joyda qayta belgilanib, animatsiyani jimgina o'chirib qo'yishi
+   mumkin. */
+@keyframes vzSweep { 0% { transform: translateX(-120%) skewX(-18deg) } 55%, 100% { transform: translateX(220%) skewX(-18deg) } }
+.vz-sweep { position: relative; overflow: hidden; isolation: isolate }
+.vz-sweep::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 38%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent);
+  pointer-events: none; animation: vzSweep 4.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .vz-sweep::after { animation: none; opacity: 0 } }
+/* AI tugmasi yopishgan qator OSTIDA qolmasin — biznes profilda ham
+   aynan shunday qilingan (`body:has(.qp-page) .ai-fab`). */
+body:has(.vz-profile-page) .ai-fab { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) }
+
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;

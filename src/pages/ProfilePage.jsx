@@ -848,7 +848,7 @@ function PostsFeed({ posts, onLike, t }) {
         </div>
       )}
       {posts.map((p) => (
-        <div key={p.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
+        <div key={p.id} className="vz-rim-soft overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
           {p.videoUrl ? (
             <button type="button" onClick={() => setZoom(p)} className="group relative block w-full cursor-pointer bg-black">
               <video src={p.videoUrl} muted playsInline preload="metadata" className="block max-h-[520px] w-full bg-black object-contain" />
@@ -1037,7 +1037,7 @@ function ProfileGallery({ gallery, t }) {
       <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Galereya')}</div>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {gallery.map((g) => (
-          <div key={g.id} className="overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
+          <div key={g.id} className="vz-rim-soft overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)]">
             <div className="aspect-square">
               <img src={g.imageUrl} alt={g.caption || ''} loading="lazy" className="h-full w-full object-cover" />
             </div>
@@ -1063,7 +1063,7 @@ function MenuView({ menu, t }) {
           <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
           <div className="flex flex-col gap-2.5">
             {cat.items.map((it) => (
-              <div key={it.id} className={`flex gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 ${it.available ? '' : 'opacity-45'}`}>
+              <div key={it.id} className={`vz-rim-soft flex gap-3 rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] p-3 ${it.available ? '' : 'opacity-45'}`}>
                 {it.imageUrl && (
                   <img src={it.imageUrl} alt="" loading="lazy" className="h-[74px] w-[74px] shrink-0 rounded-xl object-cover" />
                 )}
@@ -1111,7 +1111,7 @@ function ProductsView({ products, t }) {
           <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {cat.items.map((it) => (
-              <div key={it.id} className={`flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
+              <div key={it.id} className={`vz-rim-soft flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
                 <div className="flex aspect-square items-center justify-center overflow-hidden bg-black/20">
                   {it.imageUrl
                     ? <img src={it.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -1163,7 +1163,7 @@ function ServicesView({ services, t }) {
           <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink)]">{cat.name}</div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {cat.items.map((it) => (
-              <div key={it.id} className={`flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
+              <div key={it.id} className={`vz-rim-soft flex flex-col overflow-hidden rounded-2xl border border-[color:var(--vz-line)] bg-[color:var(--vz-card)] ${it.available ? '' : 'opacity-45'}`}>
                 <div className="flex aspect-square items-center justify-center overflow-hidden bg-black/20">
                   {it.imageUrl
                     ? <img src={it.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -1631,7 +1631,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
   // 2026-09: `text-center` + `min-h-[52px]` qo'shildi — yorliq ikki qatorga
   // o'tganda ham matn tugma ichida gorizontal VA vertikal markazda qoladi,
   // barcha aloqa tugmalari bir xil tekislikda turadi (touch maydoni >=44px).
-  const linkBtn = `vz-link${linkStyleCls} flex min-h-[52px] items-center justify-center gap-2 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-3.5 text-center text-[16px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
+  // `vz-rim` — yumshoq oltin halqa va yengil balandlik soyasi
+  // (theme.css). Biznes profildagi qiymatning aynan o'zi, shunda
+  // ikki sahifa yonma-yon qo'yilganda bir xil "chuqurlik"ka ega
+  // bo'ladi. Balandlik 52 -> 58: barmoq uchun ham qulayroq.
+  const linkBtn = `vz-link vz-rim${linkStyleCls} flex min-h-[58px] items-center justify-center gap-2.5 rounded-xl border border-transparent bg-[color:var(--vz-pill)] px-4 py-4 text-center text-[16.5px] font-bold uppercase tracking-wide text-white no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:brightness-125`;
   const badge = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[14px] font-extrabold uppercase tracking-wide';
 
   return (
@@ -1639,7 +1643,10 @@ export default function ProfilePage({ code, catalog, initialTab }) {
     // qolmasligi uchun kontent oxiriga qo'shimcha bo'sh joy (mobil ekranda
     // muhim). Pleer yopiq bo'lsa odatdagi 60px qoladi.
     <div
-      className={`min-h-screen pb-[60px] text-[color:var(--vz-ink)]${musicOpen ? ' vz-music-open' : ''}`}
+      // `vz-profile-page` — langar sinf: pastda yopishib turadigan
+      // "Saqlash" qatori borligini boshqa qatlamlarga bildiradi
+      // (AI tugmasi uning ostiga tushib qolmasin — theme.css).
+      className={`vz-profile-page min-h-screen pb-[60px] text-[color:var(--vz-ink)]${musicOpen ? ' vz-music-open' : ''}`}
       style={outerPageStyle(record.theme || 'classic', record, tier)}
     >
       {/* Bosh ekranga qo'shilganda AYNAN shu profil ochilsin. */}
@@ -1717,37 +1724,6 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         </div>
       </div>
 
-      {record.isPremium && (
-        <div className="mt-2 flex justify-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-4 py-1 font-mono text-[14px] font-extrabold tracking-[0.12em] text-[#1a1206] shadow-[0_2px_10px_rgba(212,175,90,0.4)]">
-            {'\u{1F451}'} PREMIUM
-          </span>
-        </div>
-      )}
-
-      <div className="pt-[18px]">
-        <div className="flex animate-[floatY_5s_ease-in-out_infinite] justify-center">
-          <FlipNfcCard finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)} t={t}>
-          <NfcCard
-            hideBrand
-            code={record.code}
-            name={design.name || record.name}
-            since={record.ts}
-            finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)}
-            bgImage={design.bgUrl || ''}
-            namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
-            nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
-            nameColor={design.nameColor || ''}
-            codePos={Number.isFinite(design.codeX) && Number.isFinite(design.codeY) ? { x: design.codeX, y: design.codeY } : null}
-            codeScale={Number.isFinite(design.codeScale) ? design.codeScale : 1}
-            brandPos={Number.isFinite(design.brandX) && Number.isFinite(design.brandY) ? { x: design.brandX, y: design.brandY } : null}
-            brandScale={Number.isFinite(design.brandScale) ? design.brandScale : 1}
-            brandColor={design.brandColor || ''}
-            size="md"
-          />
-          </FlipNfcCard>
-        </div>
-      </div>
 
       <div
         className={`relative mx-auto mt-[22px] max-w-[640px] overflow-hidden rounded-[22px] px-7 pb-[30px] ${
@@ -1904,7 +1880,9 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             {/* Istorya bo'lsa — profil rasmi atrofida halqa. Rasmning
                 O'ZI qayta chizilmaydi: StoryRing uni o'rab oladi. */}
             <StoryRing stories={stories} title={record.name} avatarUrl={record.avatarUrl}>
-              <div className="font-display z-10 flex h-[132px] w-[132px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[38px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
+              {/* Avatar 132 -> 152: biznes profildagi logotip bilan bir
+                  darajada. U sahifaning asosiy vizual langari. */}
+              <div className="font-display z-10 flex h-[152px] w-[152px] items-center justify-center overflow-hidden rounded-full border-[3px] bg-gradient-to-br from-[#dfe3e6] to-[#cfd4d8] text-[44px] font-bold text-[#565c62] shadow-[0_0_0_1px_var(--vz-line),0_10px_30px_rgba(20,25,30,0.18)]"
                 style={{ borderColor: tier === 'free' ? 'var(--vz-card)' : tierColor }}>
                 {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="block h-full w-full object-cover" /> : initials(record.name)}
               </div>
@@ -1916,7 +1894,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               (src/index.css: 44px, margin 0 0 18px, max-width 640px)
               ko'rinishni buzmasligi uchun mb-0 va max-w-none ochiq
               berilgan; o'lcham/vazn/shrift avvalgidek utilitalardan. */}
-          <h1 className="font-display mb-0 mt-4 flex max-w-none items-center justify-center gap-1.5 text-[23px] font-bold">
+          <h1 className="font-display mb-0 mt-5 flex max-w-none items-center justify-center gap-1.5 text-[29px] font-bold leading-tight">
             {record.name}
             {record.verified && (
               <span title={t('Tasdiqlangan profil')} className="inline-flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-[#1d9bf0] text-[15px] font-black text-white">✓</span>
@@ -2008,9 +1986,51 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           )}
         </div>
 
-        <div className="mt-[22px] flex justify-center gap-11">
-          <div className="text-center"><b className="font-display block text-[19px] font-bold">{fmt(record.views || 0)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t("Ko'rishlar")}</span></div>
-          <div className="text-center"><b className="font-display block text-[19px] font-bold">{dateTime(record.ts)}</b><span className="text-xs text-[color:var(--vz-ink-faint)]">{t('Band qilingan')}</span></div>
+        <div className="mt-[26px] flex justify-center gap-12">
+          <div className="text-center"><b className="font-display block text-[21px] font-bold">{fmt(record.views || 0)}</b><span className="text-[13px] text-[color:var(--vz-ink-faint)]">{t("Ko'rishlar")}</span></div>
+          <div className="text-center"><b className="font-display block text-[21px] font-bold">{dateTime(record.ts)}</b><span className="text-[13px] text-[color:var(--vz-ink-faint)]">{t('Band qilingan')}</span></div>
+        </div>
+
+        {/* NFC KARTA — ENDI PROFIL KARTASINING ICHIDA.
+            Ilgari u panel TASHQARISIDA, sahifaning tepasida alohida
+            osilib turardi: ekranda ikkita bir-biriga bog'lanmagan
+            blok ko'rinardi va tartibsiz tuyulardi (egasining
+            baholashi). Endi u o'z joyida — ism va statistika ostida,
+            ya'ni "bu shaxs va uning kartasi" bitta butun.
+
+            KATTAROQ ham: bu odam SOTIB OLGAN mahsuloti va tarif
+            belgisi, shuning uchun ko'zga tashlanishi kerak
+            (o'lchamlar `theme.css` dagi `.vz-nfc-zoom` da — u
+            ekran kengligiga qarab moslashadi). */}
+        <div className="mt-[26px]">
+          {record.isPremium && (
+            <div className="mb-3 flex justify-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-4 py-1 font-mono text-[14px] font-extrabold tracking-[0.12em] text-[#1a1206] shadow-[0_2px_10px_rgba(212,175,90,0.4)]">
+                {'\u{1F451}'} PREMIUM
+              </span>
+            </div>
+          )}
+          <div className="vz-nfc-zoom animate-[floatY_5s_ease-in-out_infinite]">
+            <FlipNfcCard finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)} t={t}>
+          <NfcCard
+            hideBrand
+            code={record.code}
+            name={design.name || record.name}
+            since={record.ts}
+            finish={design.finish && design.finish !== 'auto' ? design.finish : ('tier-' + tier)}
+            bgImage={design.bgUrl || ''}
+            namePos={Number.isFinite(design.nameX) && Number.isFinite(design.nameY) ? { x: design.nameX, y: design.nameY } : null}
+            nameScale={Number.isFinite(design.nameScale) ? design.nameScale : 1}
+            nameColor={design.nameColor || ''}
+            codePos={Number.isFinite(design.codeX) && Number.isFinite(design.codeY) ? { x: design.codeX, y: design.codeY } : null}
+            codeScale={Number.isFinite(design.codeScale) ? design.codeScale : 1}
+            brandPos={Number.isFinite(design.brandX) && Number.isFinite(design.brandY) ? { x: design.brandX, y: design.brandY } : null}
+            brandScale={Number.isFinite(design.brandScale) ? design.brandScale : 1}
+            brandColor={design.brandColor || ''}
+            size="md"
+          />
+            </FlipNfcCard>
+          </div>
         </div>
 
         {/* Tor ekranda tab qatori SIG'MAY qolardi: 4-5 ta tabli biznes
@@ -2048,7 +2068,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
         {tab === 'vizitka' && (
           <>
             {record.hashtags && record.hashtags.length > 0 && (
-              <div className="mt-5 flex flex-wrap justify-center gap-4 text-[16px] font-semibold text-[color:var(--vz-accent)]">
+              <div className="mt-7 flex flex-wrap justify-center gap-4 text-[16px] font-semibold text-[color:var(--vz-accent)]">
                 {record.hashtags.map((h) => <span key={h}>#{h}</span>)}
               </div>
             )}
@@ -2067,7 +2087,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
               coverUrl={record.avatarUrl || ''}
             />
 
-            <div className="mt-[22px] flex flex-col gap-2.5">
+            {/* Tugmalar orasi 10 -> 14px va har birida yumshoq oltin
+                halqa (`vz-rim`, theme.css). Ilgari qator juda zich
+                edi: beshta tugma bitta kulrang blokka qo'shilib
+                ketardi va ko'z ularni ajratmasdi. */}
+            <div className="mt-[26px] flex flex-col gap-3.5">
               {record.phone && (!record.hidePhone || isOwner) && (
                 // Ikonka `shrink-0`, matn esa alohida markazlashgan blok —
                 // avval ikkalasi ham to'g'ridan-to'g'ri flex bola edi, shu
@@ -2135,8 +2159,8 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             <ProfileGallery gallery={gallery} t={t} />
 
             {files.length > 0 && (
-              <div className="mt-5">
-                <div className="mb-2 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Fayllar')}</div>
+              <div className="mt-7">
+                <div className="mb-2.5 text-[15px] font-extrabold uppercase tracking-[0.09em] text-[color:var(--vz-ink-faint)]">{t('Fayllar')}</div>
                 <div className="flex flex-col gap-2">
                   {files.map((f) => (
                     <a key={f.id} href={f.fileUrl} target="_blank" rel="noreferrer" download
@@ -2152,7 +2176,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             )}
 
             {record.leadCapture && !isOwner && (
-              <button type="button" onClick={() => setLeadOpen(true)} className={`${linkBtn} mt-5 w-full cursor-pointer`}>
+              <button type="button" onClick={() => setLeadOpen(true)} className={`${linkBtn} mt-7 w-full cursor-pointer`}>
                 {'✉️'} {t('Kontakt qoldirish')}
               </button>
             )}
@@ -2165,7 +2189,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 Endi u har bir profilda BITTA joyda — butun ro'yxatdan
                 keyin, rasmiy kanallar chizig'idan oldin. */}
             {(tgUrl || igUrl) && (
-              <div className="mt-5 text-center text-[16px] text-[color:var(--vz-ink-faint)]">
+              <div className="mt-7 text-center text-[16px] text-[color:var(--vz-ink-faint)]">
                 #{String(record.tg || record.instagram).replace('@', '')}
               </div>
             )}
@@ -2188,15 +2212,28 @@ export default function ProfilePage({ code, catalog, initialTab }) {
                 TAKRORLANMAYDI — yuqorida (sarlavha qatorida, kod belgisi
                 yonida) allaqachon ko'rsatilgan, shu yetarli. */}
 
-            <div className="my-6 h-px bg-[color:var(--vz-line)]"></div>
-            <div className="flex gap-2.5">
-              <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
-              {!isOwner && MESSAGING_ENABLED && (
-                <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
-              )}
-            </div>
           </>
         )}
+      </div>
+
+      {/* "SAQLASH" — PASTDA YOPISHIB TURADI.
+          Ilgari bu qator panelning eng oxirida edi: NFC kartani
+          teккan odam kontaktni saqlash uchun butun sahifani
+          oxirigacha aylantirishi kerak edi, holbuki kartaning butun
+          ma'nosi shu tugmada.
+
+          NIMA UCHUN PANELDAN TASHQARIDA: `position:sticky` ota-blokda
+          `overflow:hidden` bo'lsa ISHLAMAYDI, profil paneli esa aynan
+          shunday (u rasm va videoni yumaloq burchaklar ichida ushlab
+          turadi). Shuning uchun qator sahifa darajasida chiziladi —
+          biznes profildagi `.qp-bottom` bilan bir xil yechim. */}
+      <div className="vz-savebar mx-auto max-w-[640px]">
+        <div className="flex gap-2.5">
+          <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="vz-sweep flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
+          {!isOwner && MESSAGING_ENABLED && (
+            <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
+          )}
+        </div>
       </div>
 
       <div className="mt-[18px] text-center text-xs text-[color:var(--vz-ink-faint)]">{t("{n} ko'rishlar", { n: fmt(record.views || 1) })}</div>

@@ -78,6 +78,19 @@ jobs:
       - name: O'chirilgan hisob kontenti ommaga chiqmaydimi
         run: node scripts/test-deleted-user-content.mjs
 
+      # PROFIL SAHIFALARINING MAKETI.
+      #
+      # Ikkala profilda ham (shaxsiy `/:code` va biznes `/c/:id`)
+      # "Kontaktni saqlash" pastda YOPISHIB turadi. `position:sticky`
+      # esa ota-blokda `overflow:hidden` bo'lsa JIMGINA ishlamay
+      # qoladi — hech qanday xato chiqmaydi, tugma shunchaki pastga
+      # tushib ketadi. Bu ikki test o'sha maketni qo'riqlaydi.
+      - name: Shaxsiy profil maketi
+        run: node scripts/test-profile-page.mjs
+
+      - name: Biznes profil maketi
+        run: node scripts/test-quick-profile-screen.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
