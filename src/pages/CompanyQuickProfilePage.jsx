@@ -298,20 +298,23 @@ export default function CompanyQuickProfilePage({ companyId }) {
   };
 
   return (
-    // BITTA EKRANLIK QOBIQ: balandligi aynan telefon ekrani, o'zi
-    // SURILMAYDI — faqat o'rtadagi kontent qismi suriladi.
+    // SAHIFA TABIIY SURILADI: kontent o'z o'lchamida turadi, qobiq
+    // esa kontentiga qarab o'sadi. "Kontaktni saqlash" tugmasi pastda
+    // yopishib turadi (`position:sticky` — src/company-system.css).
     <main className="qp-page" style={{ '--cq-cover': `url("${company.coverUrl || fallbackCover}")`, '--tier': tierColor }}>
       {/* Bosh ekranga qo'shilganda AYNAN shu kompaniya ochilsin. */}
       <ProfileManifest kind="c" code={company.companyId} name={company.displayName} />
       <div className="qp-shell">
         <section className="qp-hero">
-          {/* Uch ustunli qator: logotip AYNAN markazda qoladi, yon
-              tugma esa uni surib yubormaydi. */}
-          <div className="qp-ava-row">
-            {/* Chap ustun: to'liq ekran tugmasi. O'ng ustunda egasiga
-                "Tahrirlash" turadi — ikkalasi logotipni markazda
-                ushlab turadi. */}
-            <div className="qp-side qp-side--left">
+          {/* XIZMAT QATORI — logotipdan YUQORIDA, alohida satrda.
+              Ilgari u logotip bilan BIR QATORDA, uch ustunli panjarada
+              turardi. Logotip kattalashgach (104 -> 128px) yon
+              ustunlarga atigi ~90px qoldi va "To'liq ekran" yozuvi
+              oltin halqaga kirib, kesilib qoldi. Endi qator o'zining
+              butun kengligiga ega va logotip markazda yolg'iz turadi —
+              u sahifaning asosiy vizual langari. */}
+          <div className="qp-topbar">
+            <div className="qp-topbar-side">
               {fsOk && (
                 <button
                   type="button" className="qp-fsbtn" onClick={toggleFs}
@@ -323,29 +326,28 @@ export default function CompanyQuickProfilePage({ companyId }) {
                 </button>
               )}
             </div>
-            <div className="qp-ava-wrap">
-              <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
-                <div className="qp-ava">
-                  {company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}
-                </div>
-              </StoryRing>
-              {(company.music || []).length > 0 && (
-                <button type="button" className={`qp-ava-note${musicOpen ? ' is-on' : ''}`} onClick={() => setMusicOpen((v) => !v)} aria-label={t('Musiqa')}>
-                  <IconNote width={15} height={15} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-            <div className="qp-side">
+            <div className="qp-topbar-side qp-topbar-side--right">
               {/* Egasiga — "Tahrirlash": kamdan-kam bosiladigan, ikkinchi
-                  darajali harakat, shuning uchun logotip yonida. Mehmonga
-                  bu joy BO'SH qoladi va "Obuna bo'lish" pastda, butun
-                  kenglikda turadi (pastga qarang). */}
+                  darajali harakat. Mehmonga bu joy BO'SH qoladi va
+                  "Obuna bo'lish" pastda, butun kenglikda turadi. */}
               {isOwner && (
                 <button type="button" className="qp-sidebtn" onClick={() => navigate(`/workspace/${company.companyId.toLowerCase()}`)}>
                   ✎ {t('Tahrirlash')}
                 </button>
               )}
             </div>
+          </div>
+          <div className="qp-ava-wrap">
+            <StoryRing stories={stories} freshPost={hasFreshPost} title={company.displayName} avatarUrl={company.logoUrl}>
+              <div className="qp-ava">
+                {company.logoUrl ? <img src={company.logoUrl} alt="" /> : (company.displayName || 'N').slice(0, 2).toUpperCase()}
+              </div>
+            </StoryRing>
+            {(company.music || []).length > 0 && (
+              <button type="button" className={`qp-ava-note${musicOpen ? ' is-on' : ''}`} onClick={() => setMusicOpen((v) => !v)} aria-label={t('Musiqa')}>
+                <IconNote width={15} height={15} aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           <h1 className="qp-name break-words">
@@ -420,7 +422,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
           </nav>
         )}
 
-        {/* YAGONA SURILADIGAN QISM. */}
+        {/* Bo'lim kontenti — balandligi KONTENTIGA qarab. */}
         <div className="qp-body">
           {activeTab === 'katalog' && items.length > 0 && (
             <section className="qp-cards" id="catalog">
@@ -515,9 +517,10 @@ export default function CompanyQuickProfilePage({ companyId }) {
           <CompanyMusicPlayer tracks={company.music} companyName={company.displayName} coverUrl={company.logoUrl || company.coverUrl} />
         </div>
 
-        {/* KONTAKTNI SAQLASH — doim ko'rinib turadigan oltin qator.
-            NFC kartaning butun ma'nosi shu: odam sahifani yopgandan
-            keyin ham raqamingiz uning telefonida qoladi. */}
+        {/* KONTAKTNI SAQLASH — pastga YOPISHGAN oltin qator, sahifa
+            qayerda bo'lmasin ko'rinib turadi. NFC kartaning butun
+            ma'nosi shu: odam sahifani yopgandan keyin ham raqamingiz
+            uning telefonida qoladi. */}
         <div className="qp-bottom">
           <button type="button" className="qp-save vz-tap" onClick={saveContact}>{t('Kontaktni saqlash')}</button>
         </div>

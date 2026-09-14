@@ -1898,8 +1898,11 @@ function PostsManager({ code }) {
 
         <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 600))} placeholder={t('Izoh (ixtiyoriy)')} rows={2} className="textarea textarea-bordered textarea-sm mt-2 w-full bg-base-100" />
 
+        {/* SHU BLOKNING O'Z saqlash tugmasi. Istoryanikidan mustaqil:
+            istorya qo'yilgan-qo'yilmagani bu tugmaga hech qanday
+            ta'sir qilmaydi. */}
         <button type="button" className="btn btn-gold btn-sm mt-3 min-h-11 w-full" onClick={publish} disabled={!agreed || (!imageUrl && !videoUrl) || busy}>
-          {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Joylash')}
+          {busy ? <span className="loading loading-spinner loading-xs"></span> : t('Postni saqlash')}
         </button>
         {msg && <div className={`alert mt-3 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
       </div>
@@ -3635,16 +3638,44 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           </Section>
         )}
 
-        {/* ISTORYA VA POST — bitta bo'limda, shaxsiy va biznes profilda
-            ham bir xil. Ilgari istorya "Umumiy" ichida, post esa
-            ro'yxatning oxirida alohida turardi; endi ikkalasi ham shu
-            yerda va ro'yxatda oltin bilan ajralib turadi. */}
+        {/* ISTORYA VA POST — bir sahifada, lekin IKKI MUSTAQIL ISH.
+            Har birining o'z "Saqlash" tugmasi va o'z natija xabari
+            bor; biri ikkinchisini KUTMAYDI va biri ikkinchisiga
+            hech narsa yubormaydi.
+
+            Ilgari egasi shuni ko'rgan: faqat istorya qo'ymoqchi
+            bo'lsa ham "post to'ldirilmasa saqlanmaydi" degan taassurot
+            qolardi. Sababi ikkita edi — (1) istorya tugmasining CSS'i
+            bu sahifada umuman yuklanmasdi va u tugmaga o'xshamasdi
+            (uslublar endi src/theme.css da), (2) pastda profil
+            formasining "Profilni saqlash" paneli turardi va u shu
+            bo'limning saqlash tugmasi deb o'qilardi (u endi bu yerda
+            chizilmaydi — pastga qarang). */}
         {wsTab === 'lenta' && (
           <div className="space-y-5">
+            <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3 text-xs leading-relaxed text-base-content/70">
+              {t('Istorya va post — ikki alohida ish. Faqat istorya yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+            </div>
             <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Istorya joylashtirish'))} t={t} />
-            <Section title={t('Postlar / Media')} subtitle={t('Rasm va izohlarni joylashtiring')} defaultOpen>
-              <PostsManager code={card.code} />
-            </Section>
+            {/* Post bloki istorya bloki bilan BIR XIL ko'rinishda —
+                yig'iladigan panel emas: yig'ilgan holatda "Joylash"
+                tugmasi ko'rinmasdi va bo'lim boshqarilmaydigandek
+                tuyulardi. */}
+            <section className="vz-card p-5">
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('2-bo‘lim')}</span>
+                <h3 className="font-display text-lg font-semibold">{t('Postlar / Media')}</h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
+                  {t('Rasm va izohlarni joylashtiring')}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-base-content/40">
+                  {t('Faqat post qo‘ysangiz ham bo‘ladi — istorya qo‘yish shart emas.')}
+                </p>
+              </div>
+              <div className="mt-4">
+                <PostsManager code={card.code} />
+              </div>
+            </section>
           </div>
         )}
 
@@ -3746,8 +3777,31 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           )}
 
           {/* Yagona asosiy CTA — .btn-gold. Hech narsa o'zgarmagan bo'lsa o'chiq;
-              mobil ekranda o'zgarish bo'lsa pastga yopishgan panel. */}
-          {(isFormTab || dirty) && (
+              mobil ekranda o'zgarish bo'lsa pastga yopishgan panel.
+
+              "Istorya va post" bo'limida bu panel UMUMAN chizilmaydi:
+              u PROFIL FORMASINI saqlaydi, istorya yoki postni emas.
+              Ilgari u shu bo'limda ham pastga yopishib turardi va
+              egasi uni "istoryani saqlash" tugmasi deb o'qigan —
+              bosgan, hech narsa bo'lmagan (u faqat profil o'zgarganda
+              ishlaydi) va "istorya postsiz saqlanmayapti" degan
+              xulosaga kelgan. */}
+          {wsTab === 'lenta' && dirty && (
+            <div className="mt-5 rounded-2xl border border-warning/30 bg-warning/5 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning">
+                  <IconWarn width={14} height={14} /> {t("Profil formasida saqlanmagan o'zgarishlar bor")}
+                </span>
+                <button type="button" className="btn btn-outline-gold btn-xs min-h-9" onClick={() => setWsTab(isBusiness ? 'asosiy' : 'profil')}>
+                  {t('Profil bo‘limiga o‘tish')}
+                </button>
+              </div>
+              <p className="mt-1.5 text-xs leading-relaxed text-base-content/45">
+                {t('Bu istorya va postga aloqador emas — ular yuqorida o‘z tugmalari bilan saqlanadi.')}
+              </p>
+            </div>
+          )}
+          {wsTab !== 'lenta' && (isFormTab || dirty) && (
             <div className={dirty ? 'fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--vz-line)] bg-[color:var(--vz-bg)] p-3 lg:static lg:mt-5 lg:border-0 lg:bg-transparent lg:p-0' : 'mt-5'}>
               <div className="flex flex-wrap items-center gap-3">
                 <button type="button" className="btn btn-gold min-h-11 w-full sm:w-auto" onClick={submit} disabled={busy || !dirty}>
@@ -3759,7 +3813,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               </div>
             </div>
           )}
-          {dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
+          {wsTab !== 'lenta' && dirty && <div className="h-20 lg:hidden" aria-hidden="true"></div>}
           {msg && <div className={`alert mt-4 py-2 text-sm ${msg.type === 'ok' ? 'alert-success' : 'alert-error'}`}><span>{t(msg.text)}</span></div>}
         </div>
 
@@ -4378,6 +4432,9 @@ function ProfileCompanyPicker({ form, setForm, t }) {
 // ekan" deb o'ylardi.
 function StorySection({ code, allowed, onLocked, t }) {
   const [list, setList] = useState([]);
+  // Natija xabari — SHU blokning o'ziniki. Ilgari istoryada umuman
+  // xabar yo'q edi: odam tugmani bosardi va hech narsa "aytilmasdi".
+  const [msg, setMsg] = useState('');
   const load = () => dbListStories(code).then(setList).catch(() => setList([]));
   useEffect(() => { if (allowed) load(); }, [code, allowed]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4387,12 +4444,19 @@ function StorySection({ code, allowed, onLocked, t }) {
   };
 
   return (
-    <section className="vz-card mb-6 p-5">
+    <section className="vz-card p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
+          {/* Bo'lim raqami — istorya va post IKKI ALOHIDA ish ekani
+              bir qarashda ko'rinsin (egasi ilgari ularni bitta,
+              bir-biriga bog'liq forma deb o'ylagan). */}
+          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('1-bo‘lim')}</span>
           <h3 className="font-display text-lg font-semibold">{t('Istorya')}</h3>
           <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
             {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-base-content/40">
+            {t('Faqat istorya qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
           </p>
         </div>
         {allowed && list.length > 0 && <span className="shrink-0 text-xs text-base-content/45">{list.length}/10</span>}
@@ -4430,9 +4494,17 @@ function StorySection({ code, allowed, onLocked, t }) {
             <StoryUploader
               label={t('Istorya qo‘shish')}
               disabled={list.length >= 10}
-              onSubmit={async (payload) => { await dbCreateStory(code, payload); load(); }}
+              confirm
+              saveLabel={t('Istoryani saqlash')}
+              hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Istoryani saqlash" ni bosasiz.')}
+              onSubmit={async (payload) => {
+                await dbCreateStory(code, payload);
+                setMsg(t('Istorya joylandi.'));
+                load();
+              }}
             />
           </div>
+          {msg && <div className="alert alert-success mt-3 py-2 text-sm"><span>{msg}</span></div>}
         </>
       )}
     </section>
