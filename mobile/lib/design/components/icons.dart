@@ -12,7 +12,7 @@ enum Ico {
   chevronDown, backspace, minus, lock, fingerprint,
   plus, check, close, heart, eye, bell, settings, gift, card, bag, star, image,
   telegram, edit, logout, globe, clock, pin, refresh, camera, arrowUp, play,
-  trash,
+  trash, flag,
 }
 
 class NIcon extends StatelessWidget {
@@ -151,6 +151,17 @@ class _IconPainter extends CustomPainter {
         canvas.drawPath(p, stroke);
         canvas.drawLine(const Offset(11.6, 9.6), const Offset(16.4, 14.4), stroke);
         canvas.drawLine(const Offset(16.4, 9.6), const Offset(11.6, 14.4), stroke);
+        return;
+      case Ico.flag:
+        // Bayroq — SHIKOYAT. `bell` (qo'ng'iroq) BILDIRISHNOMA
+        // belgisi: shikoyat tugmasida u "xabarnoma" deb o'qilardi.
+        canvas.drawLine(const Offset(5.5, 3.6), const Offset(5.5, 20.4), stroke);
+        p.moveTo(5.5, 4.6);
+        p.cubicTo(9.5, 2.6, 13.5, 6.6, 18.5, 4.6);
+        p.lineTo(18.5, 13.2);
+        p.cubicTo(13.5, 15.2, 9.5, 11.2, 5.5, 13.2);
+        p.close();
+        canvas.drawPath(p, filled ? fill : stroke);
         return;
       case Ico.trash:
         // Chiqindi qutisi. `backspace` (strelkali to'rtburchak)

@@ -8,6 +8,7 @@ import '../../design/components/media.dart';
 import '../../design/components/video_view.dart';
 import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
+import 'report_sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
@@ -184,6 +185,35 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       await showError(context, humanError(e));
       if (mounted) _progress.forward();
     }
+  }
+
+  /// SHIKOYAT. Varaq ochilguncha progress TO'XTAYDI — aks holda
+  /// odam sabab tanlayotganda istorya o'zi keyingisiga o'tib
+  /// ketardi va shikoyat boshqa yozuvga ketardi.
+  Future<void> _report() async {
+    if (_index >= _stories.length) return;
+    final story = _stories[_index];
+    _progress.stop();
+    final sent = await showReportSheet(
+      context,
+      targetKind: widget.isCompany ? 'company_post' : 'story',
+      targetId: story.id,
+      ownerCode: widget.code,
+    );
+    if (!mounted) return;
+    if (sent) {
+      await showSheet<void>(
+        context,
+        title: tr('Shikoyat yuborildi'),
+        subtitle: tr('Moderator tekshiradi. Rahmat.'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+          child: SecondaryButton(tr('Yopish'),
+              onTap: () => Navigator.of(context).pop()),
+        ),
+      );
+    }
+    if (mounted) _progress.forward();
   }
 
   /// YURAK. Bosilishi bilan ko'rinadi, keyin server tasdiqlaydi —
@@ -394,6 +424,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             child: const Padding(
                               padding: EdgeInsets.all(8),
                               child: NIcon(Ico.trash, size: 19, color: C.offWhite),
+                            ),
+                          )
+                        else
+                          // MEHMONGA — SHIKOYAT.
+                          //
+                          // O'z istoryasiga shikoyat qilish
+                          // ma'nosiz, shuning uchun tugma egada
+                          // ko'rsatilmaydi va o'rnida o'chirish
+                          // turadi.
+                          GestureDetector(
+                            onTap: _report,
+                            behavior: HitTestBehavior.opaque,
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: NIcon(Ico.flag, size: 19, color: C.offWhite),
                             ),
                           ),
                         GestureDetector(

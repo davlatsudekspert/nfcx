@@ -18,6 +18,7 @@ import '../../state/app_state.dart';
 import '../business/business_stats.dart';
 import '../business/product_detail.dart';
 import '../content/compose.dart';
+import '../content/report_sheet.dart';
 import '../orders/owner_orders.dart';
 import 'edit_profile.dart';
 import 'follow_list.dart';
@@ -225,6 +226,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// SHIKOYAT VA BLOKLASH — begona profilda.
+  ///
+  /// Ikkalasi bitta varaqda: odam nomaqbul profilni ko'rganda
+  /// odatda ikkisidan birini xohlaydi va ularni ikki xil joyga
+  /// yashirish qidiruvga majbur qilardi.
+  Future<void> _moderationSheet(String code) async {
+    final kind = _isBusiness ? 'company' : 'record';
+    final choice = await showSheet<String>(
+      context,
+      title: code,
+      subtitle: tr('Bu profil bilan nima qilamiz?'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            SecondaryButton(tr('Shikoyat qilish'),
+                onTap: () => Navigator.of(context).pop('report')),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bloklash'),
+                onTap: () => Navigator.of(context).pop('block')),
+            const SizedBox(height: S.x8),
+            GhostButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop()),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+
+    if (choice == 'report') {
+      final sent = await showReportSheet(
+        context,
+        targetKind: kind,
+        targetId: code,
+        ownerCode: code,
+      );
+      if (sent && mounted) {
+        await showSheet<void>(
+          context,
+          title: tr('Shikoyat yuborildi'),
+          subtitle: tr('Moderator tekshiradi. Rahmat.'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+            child: SecondaryButton(tr('Yopish'),
+                onTap: () => Navigator.of(context).pop()),
+          ),
+        );
+      }
+      return;
+    }
+
+    // BLOKLASH — nima bo'lishini OLDIN aytamiz.
+    final sure = await showSheet<bool>(
+      context,
+      title: tr('Bloklash'),
+      subtitle: tr('Bu profilning postlari va istoryalari sizning '
+          'lentangizda ko‘rinmaydi.'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            PrimaryButton(tr('Bloklash'),
+                onTap: () => Navigator.of(context).pop(true)),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop(false)),
+          ],
+        ),
+      ),
+    );
+    if (sure != true || !mounted) return;
+    try {
+      await AppScope.read(context).repo.block(kind: kind, id: code);
+      if (!mounted) return;
+      successHaptic();
+      Navigator.of(context).maybePop();
+    } catch (e) {
+      if (mounted) await showError(context, humanError(e));
+    }
+  }
+
   Future<void> _toggleFollow() async {
     final code = _company?.id ?? _record?.code;
     if (code == null || _busyFollow) return;
@@ -295,6 +377,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return _Frame(
       code: code,
+      // MEHMONGA — shikoyat va bloklash. O'z profilida bularning
+      // ma'nosi yo'q.
+      onMore: isOwner ? null : () => _moderationSheet(code),
       child: DefaultTabController(
         length: tabs.length,
         child: RefreshIndicator(
@@ -408,9 +493,12 @@ class _ProfileSkeleton extends StatelessWidget {
 }
 
 class _Frame extends StatelessWidget {
-  const _Frame({required this.code, required this.child});
+  const _Frame({required this.code, required this.child, this.onMore});
   final String code;
   final Widget child;
+
+  /// Faqat MEHMON ko'rinishida — shikoyat va bloklash.
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) => ColoredBox(
@@ -419,7 +507,18 @@ class _Frame extends StatelessWidget {
           bottom: false,
           child: Column(
             children: [
-              TopBar(title: code),
+              TopBar(
+                title: code,
+                trailing: onMore == null
+                    ? null
+                    : Press(
+                        onTap: onMore,
+                        child: const Padding(
+                          padding: EdgeInsets.all(S.x8),
+                          child: NIcon(Ico.flag, size: 20, color: C.ash),
+                        ),
+                      ),
+              ),
               Expanded(child: child),
             ],
           ),

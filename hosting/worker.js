@@ -13,6 +13,7 @@ import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL } from './api/order-window
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
+import * as apiModeration from './api/moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -8647,7 +8648,23 @@ async function feedApi(request, env, url) {
      LIMIT ? OFFSET ?`
   ).bind(viewerId, viewerId, now, now, limit + 1, offset).all();
 
-  const all = rows.results || [];
+  // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
+  //
+  // Bloklash tugmasi bor, lekin lenta uni hisobga olmasa — tugma
+  // YOLG'ON bo'lardi: odam bloklaydi, kontent esa baribir
+  // ko'rinaveradi.
+  //
+  // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
+  // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
+  // sezilarli murakkablashtirardi.
+  const blocked = viewerId
+    ? new Set((await apiModeration.blockedByUser(env, viewerId))
+      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
+    : new Set();
+
+  const all = (rows.results || []).filter(
+    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
+  );
   const feed = all.slice(0, limit).map((r) => {
     const d = parseDbDate(r.created_at);
     return {
@@ -8887,7 +8904,7 @@ const H = {
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

@@ -456,6 +456,37 @@ class Repo {
   /// O'z istoryasini o'chirish (24 soat tugashini kutmasdan).
   Future<void> deleteStory(int id) => api.delete('/api/stories/$id');
 
+  // ── Shikoyat va bloklash ───────────────────────────────────────────
+  //
+  // Nomaqbul kontentni ko'rgan odam qo'lidan biror narsa kelishi
+  // kerak, bizga esa u haqda xabar yetib borishi kerak. Google Play
+  // ham foydalanuvchi kontenti bor ilovalardan aynan shuni talab
+  // qiladi.
+
+  /// Shikoyat yuborish. `targetKind`: post | story | company_post |
+  /// record | company. `reason` — `ReportReason` kaliti.
+  Future<void> report({
+    required String targetKind,
+    required String targetId,
+    required String reason,
+    String ownerCode = '',
+    String note = '',
+  }) =>
+      api.post('/api/reports', {
+        'targetKind': targetKind,
+        'targetId': targetId,
+        'reason': reason,
+        if (ownerCode.isNotEmpty) 'ownerCode': ownerCode,
+        if (note.isNotEmpty) 'note': note,
+      });
+
+  /// Profilni bloklash — uning kontenti lentada ko'rinmaydi.
+  Future<void> block({required String kind, required String id}) =>
+      api.post('/api/blocks', {'kind': kind, 'id': id});
+
+  Future<void> unblock({required String kind, required String id}) =>
+      api.delete('/api/blocks/$kind/$id');
+
   // ── Biznes kontenti ────────────────────────────────────────────────
   //
   // Shaxsiy profil bilan BIR XIL oqim, boshqa endpoint. Yaratish

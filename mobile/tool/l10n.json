@@ -87,6 +87,10 @@
   "Сначала выберите фото или видео.",
   "Choose a photo or video first."
  ],
+ "Avval sababni tanlang.": [
+  "Сначала выберите причину.",
+  "Choose a reason first."
+ ],
  "Bajarildi": [
   "Выполнено",
   "Done"
@@ -215,6 +219,10 @@
   "Редактировать бизнес",
   "Edit business"
  ],
+ "Bloklash": [
+  "Заблокировать",
+  "Block"
+ ],
  "Boshlash": [
   "Начать",
   "Get started"
@@ -226,6 +234,10 @@
  "Boshqa": [
   "Другое",
   "Other"
+ ],
+ "Boshqa sabab": [
+  "Другая причина",
+  "Another reason"
  ],
  "Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.": [
   "Попробуйте другое слово или поиск по коду ID.",
@@ -351,9 +363,17 @@
   "Это имя использовать нельзя.",
   "This name cannot be used."
  ],
+ "Bu profil bilan nima qilamiz?": [
+  "Что сделать с этим профилем?",
+  "What would you like to do with this profile?"
+ ],
  "Bu profilda hali post joylanmagan.": [
   "В этом профиле ещё нет постов.",
   "This profile has no posts yet."
+ ],
+ "Bu profilning postlari va istoryalari sizning lentangizda ko‘rinmaydi.": [
+  "Посты и истории этого профиля не будут показываться в вашей ленте.",
+  "This profile’s posts and stories will no longer appear in your feed."
  ],
  "Bu qurilmada NFC yo‘q": [
   "На этом устройстве нет NFC",
@@ -486,6 +506,10 @@
  "Davom etish": [
   "Продолжить",
   "Continue"
+ ],
+ "Diniy targ‘ibot yoki ekstremistik mazmun": [
+  "Религиозная пропаганда или экстремистские материалы",
+  "Religious propaganda or extremist material"
  ],
  "Discover": [
   "Поиск",
@@ -682,6 +706,10 @@
  "Haqida": [
   "О нас",
   "About"
+ ],
+ "Haqorat, so‘kinish, kamsitish": [
+  "Оскорбления, брань, дискриминация",
+  "Insults, abusive language, discrimination"
  ],
  "Havola bosildi": [
   "Переходы по ссылке",
@@ -922,6 +950,10 @@
  "Juda ko‘p murojaat. Birozdan keyin qayta urining.": [
   "Слишком много обращений. Повторите чуть позже.",
   "Too many requests. Try again shortly."
+ ],
+ "Juda ko‘p shikoyat yubordingiz. Ertaga qayta urining.": [
+  "Вы отправили слишком много жалоб. Попробуйте завтра.",
+  "You have sent too many reports. Try again tomorrow."
  ],
  "Juda ko‘p urinish. Bir necha daqiqadan so‘ng qayta urining.": [
   "Слишком много попыток. Повторите через несколько минут.",
@@ -1283,6 +1315,14 @@
   "Клиент считывает карту и делает заказ напрямую.",
   "The customer taps the card and orders directly."
  ],
+ "Moderator tekshiradi. Rahmat.": [
+  "Модератор проверит. Спасибо.",
+  "A moderator will review it. Thank you."
+ ],
+ "Mualliflik huquqi buzilgan": [
+  "Нарушение авторских прав",
+  "Copyright infringement"
+ ],
  "Muammo yoki taklif": [
   "Проблема или предложение",
   "Problem or suggestion"
@@ -1527,6 +1567,10 @@
   "Четверг",
   "Thursday"
  ],
+ "Pornografik yoki jinsiy xarakterdagi": [
+  "Порнография или материалы сексуального характера",
+  "Pornographic or sexually explicit"
+ ],
  "Post": [
   "Пост",
   "Post"
@@ -1671,6 +1715,10 @@
   "Краткое описание — необязательно",
   "Short description — optional"
  ],
+ "Qonunga zid boshqa material": [
+  "Иные материалы, противоречащие закону",
+  "Other unlawful material"
+ ],
  "Qo‘ng‘iroq": [
   "Позвонить",
   "Call"
@@ -1730,6 +1778,10 @@
  "STORY MEDIA 9:16": [
   "STORY MEDIA 9:16",
   "STORY MEDIA 9:16"
+ ],
+ "Sabab tanlang. Shikoyat moderatorga yuboriladi va kontent tekshiriladi.": [
+  "Выберите причину. Жалоба будет отправлена модератору, и контент проверят.",
+  "Choose a reason. The report goes to a moderator and the content will be reviewed."
  ],
  "Sana": [
   "Дата",
@@ -1794,6 +1846,22 @@
  "Shaxsni almashtirish": [
   "Сменить личность",
   "Switch identity"
+ ],
+ "Shikoyat qilish": [
+  "Пожаловаться",
+  "Report"
+ ],
+ "Shikoyat yuborildi": [
+  "Жалоба отправлена",
+  "Report sent"
+ ],
+ "Shikoyatni yuborish": [
+  "Отправить жалобу",
+  "Send report"
+ ],
+ "Siyosiy targ‘ibot": [
+  "Политическая пропаганда",
+  "Political propaganda"
  ],
  "Siz": [
   "Вы",
@@ -1878,6 +1946,10 @@
  "Sozlamalardan NFC‘ni yoqib, qayta tekshiring.": [
   "Включите NFC в настройках и проверьте снова.",
   "Turn NFC on in settings, then check again."
+ ],
+ "Spam yoki aldov": [
+  "Спам или обман",
+  "Spam or deception"
  ],
  "Statistika": [
   "Статистика",
@@ -2342,6 +2414,10 @@
  "Yuborish": [
   "Отправить",
   "Send"
+ ],
+ "Zo‘ravonlik yoki shafqatsizlik": [
+  "Насилие или жестокость",
+  "Violence or cruelty"
  ],
  "bermang — kod bilan ID faollashtiriladi.": [
   "не сообщайте — этим кодом активируется ID.",

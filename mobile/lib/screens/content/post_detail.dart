@@ -6,7 +6,12 @@ import '../../design/components/media.dart';
 import '../../design/components/video_view.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../design/components/buttons.dart';
+import '../../design/components/press.dart';
+import '../../design/components/sheet.dart';
+import '../../state/app_state.dart';
 import '../common/top_bar.dart';
+import 'report_sheet.dart';
 import '../../l10n/strings.dart';
 
 /// Post tafsiloti — to'liq media, tavsif, yoqtirish va ko'rish soni.
@@ -33,6 +38,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             TopBar(
               title: p.authorName.isEmpty ? tr('Post') : p.authorName,
               subtitle: p.createdAt == null ? null : _ago(p.createdAt!),
+              // SHIKOYAT — faqat BEGONA postda.
+              //
+              // O'z postiga shikoyat qilish ma'nosiz; uni o'chirish
+              // profil to'rida (katakni uzoq bosish) qilinadi.
+              trailing: _isOwner(context, p)
+                  ? null
+                  : Press(
+                      onTap: () => _report(context, p),
+                      child: const Padding(
+                        padding: EdgeInsets.all(S.x8),
+                        child: NIcon(Ico.flag, size: 20, color: C.ash),
+                      ),
+                    ),
             ),
             Expanded(
               child: ListView(
@@ -78,6 +96,35 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     );
   }
+}
+
+/// Post MENIKIMI — shikoyat tugmasi faqat begonada chiqadi.
+bool _isOwner(BuildContext context, Post p) {
+  final code = p.authorCode.trim();
+  if (code.isEmpty) return false;
+  final state = AppScope.read(context);
+  return state.ownsRecord(code) ||
+      state.companies.any((c) => c.id.toUpperCase() == code.toUpperCase());
+}
+
+Future<void> _report(BuildContext context, Post p) async {
+  final sent = await showReportSheet(
+    context,
+    targetKind: 'post',
+    targetId: p.id,
+    ownerCode: p.authorCode,
+  );
+  if (!sent || !context.mounted) return;
+  await showSheet<void>(
+    context,
+    title: tr('Shikoyat yuborildi'),
+    subtitle: tr('Moderator tekshiradi. Rahmat.'),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+      child: SecondaryButton(tr('Yopish'),
+          onTap: () => Navigator.of(context).pop()),
+    ),
+  );
 }
 
 /// Bir nechta rasmli post — suriladigan galereya va "2/5" hisoblagichi.
