@@ -1129,6 +1129,10 @@ body.pricing-bg footer{background:var(--color-page-bg);}
    Shakl rasmga moslashadi (`--ring-radius`): dumaloq avatar uchun 50%,
    yumaloq-kvadrat logotip uchun mos radius. */
 .story-ring{position:relative;display:inline-flex;padding:0;border:0;background:none;cursor:pointer;line-height:0}
+/* Istorya YO'Q holat — halqa chizilmaydi, lekin o'ram baribir kerak
+   (ichidagi avatar joyida qolsin). Bu qoida avval company-system.css
+   da edi, ya'ni shaxsiy kabinet va profil sahifasida YUKLANMASDI. */
+.story-ring--static{display:inline-block;position:relative;cursor:default}
 .story-ring>*{position:relative;z-index:1}
 .story-ring-glow{
   position:absolute;inset:-6px;z-index:0;pointer-events:none;
@@ -1323,3 +1327,78 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .pp-perks{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;position:relative;z-index:2}
 .pp-perks i{font-style:normal;font-size:11.5px;font-weight:700;color:var(--vz-ink-2);border:1px solid var(--vz-line);border-radius:999px;padding:5px 10px;background:rgba(0,0,0,.35)}
 .pp-cta{display:block;margin-top:14px;font-size:13.5px;font-weight:800;color:var(--vz-gold-2);position:relative;z-index:2}
+
+/* ── RASM/VIDEO YUKLASH MAYDONI (ImageUploadField, StoryUploader) ─────
+   Bu uslublar avval FAQAT src/company-system.css da edi, u esa faqat
+   kompaniya sahifalarida yuklanadi. `StoryUploader` esa SHAXSIY
+   KABINETDA ham ishlatiladi (Istorya bo'limi) — natijada u yerda
+   "＋ Istorya qo'shish" tugmasi UMUMAN uslubsiz, brauzerning kulrang
+   standart tugmasi bo'lib chiqardi. Yonidagi post bloki esa oltin
+   "Joylash" tugmasiga ega edi, shuning uchun egasi istoryani ham
+   o'sha tugma saqlaydi deb o'ylagan.
+
+   Xuddi shu xato bu faylda avval ikki marta bo'lgan (`.co-modal`,
+   `.cn-modal` izohlariga qarang) — shuning uchun endi uslublar
+   UMUMIY faylda, company-system.css da esa YO'Q (takror emas). */
+.cw-upload { display: flex; flex-direction: column; gap: 8px; }
+.cw-upload-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cw-upload-thumb {
+  width: 58px; height: 58px; flex: none;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 162, 75, 0.35);
+  background: #000;
+}
+.cw-upload-empty {
+  display: grid; place-items: center;
+  font-size: 20px; color: rgba(201, 162, 75, 0.45);
+}
+.cw-upload-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cw-upload-btn {
+  min-height: 44px; padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 162, 75, 0.45);
+  background: rgba(201, 162, 75, 0.1);
+  color: #f0cf7a;
+  font-family: inherit;
+  font-size: 13.5px; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.cw-upload-btn:hover:not(:disabled) { background: rgba(201, 162, 75, 0.18); border-color: rgba(201, 162, 75, 0.7); }
+.cw-upload-btn:disabled { opacity: 0.55; cursor: default; }
+.cw-upload-btn.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.14); color: #b9b5ad; }
+.cw-upload-btn.ghost:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.04); }
+.cw-upload-url { width: 100%; }
+.cw-upload-err { color: #ff7b81; }
+.cw-upload-hint { color: rgba(255, 255, 255, 0.4); }
+
+/* StoryUploader — tugma, izoh va xato bir ustunda. Ilgari bu sinfga
+   HECH QANDAY qoida yo'q edi: element `display:block` bo'lib, ichidagi
+   `<small>` lar tugmaga yopishib turardi. */
+.story-upload { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.story-upload > .cw-upload-btn { width: 100%; }
+.story-upload .cw-upload-hint,
+.story-upload .cw-upload-err { font-size: 12px; line-height: 1.45; }
+
+/* TASDIQLASH REJIMI (`confirm`) — yuklangan fayl darhol e'lon
+   QILINMAYDI: avval ko'rinadi, keyin odam "Saqlash" ni bosadi.
+   Egasining talabi: "Har birining o'z alohida 'Saqlash' tugmasi
+   bo'lsin". */
+.story-upload-preview {
+  width: 100%;
+  display: flex; flex-direction: column; gap: 9px;
+  border: 1px solid rgba(201, 162, 75, 0.3);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 10px;
+}
+.story-upload-preview > img,
+.story-upload-preview > video {
+  width: 100%; max-height: 220px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #000;
+}
+.story-upload-preview .story-upload-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.story-upload-preview .story-upload-row > .cw-upload-btn { flex: 1 1 140px; }

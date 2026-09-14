@@ -30,39 +30,6 @@
 @media(max-width:600px){.cc-header>span{display:none}.cc-header{justify-content:space-between}.cc-layout{padding-inline:16px}.cc-intro h1{font-size:48px}.cc-grid,.cw-fields,.cw-item-form{grid-template-columns:1fr}.cc-grid .wide,.cw-fields .wide,.cw-item-form .wide{grid-column:auto}.cc-flow i{display:none}.cc-flow{display:grid;grid-template-columns:1fr 1fr} .cc-flow,.cc-flow>div,.cc-grid,.cc-grid label,.cc-intro,.cc-form,.cc-existing>button{min-width:0}.cw-main{padding:26px 16px}.cw-title h1{font-size:27px}.cw-metrics{grid-template-columns:1fr}.cw-head-actions button:first-child{display:block}.cw-iphone{width:270px;height:552px}.cp-hero{min-height:470px;padding-inline:22px}.cp-title-row{align-items:flex-start}.cp-hero-logo{width:58px;height:58px}.cp-title-row h1{font-size:37px}.cp-content{width:calc(100% - 24px)}.cp-product-grid{grid-template-columns:1fr}.cp-tabs{justify-content:flex-start;overflow:auto}.cp-about>div,.cp-contact{padding:22px}.cp-facts{flex-direction:column;gap:8px}.cp-gallery>div:last-child{grid-template-columns:1fr}.cq-page{padding:0}.cq-shell{border:0;border-radius:0;min-height:100vh}}
 
 
-/* ── Rasm yuklash maydoni (ImageUploadField) ───────────────────────── */
-.cw-upload { display: flex; flex-direction: column; gap: 8px; }
-.cw-upload-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.cw-upload-thumb {
-  width: 58px; height: 58px; flex: none;
-  object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid rgba(201, 162, 75, 0.35);
-  background: #000;
-}
-.cw-upload-empty {
-  display: grid; place-items: center;
-  font-size: 20px; color: rgba(201, 162, 75, 0.45);
-}
-.cw-upload-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.cw-upload-btn {
-  min-height: 40px; padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(201, 162, 75, 0.45);
-  background: rgba(201, 162, 75, 0.1);
-  color: #f0cf7a;
-  font-size: 13.5px; font-weight: 700;
-  cursor: pointer;
-  transition: background 0.16s ease, border-color 0.16s ease;
-}
-.cw-upload-btn:hover:not(:disabled) { background: rgba(201, 162, 75, 0.18); border-color: rgba(201, 162, 75, 0.7); }
-.cw-upload-btn:disabled { opacity: 0.55; cursor: default; }
-.cw-upload-btn.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.14); color: #b9b5ad; }
-.cw-upload-btn.ghost:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.04); }
-.cw-upload-url { width: 100%; }
-.cw-upload-err { color: #ff7b81; }
-.cw-upload-hint { color: rgba(255, 255, 255, 0.4); }
-
 /* ── Aloqa bo'limidagi qo'shimcha bloklar ──────────────────────────── */
 .cw-sub {
   display: flex; flex-direction: column; gap: 10px;
@@ -374,7 +341,6 @@
 .cq-actions a:hover .cq-brandicon{filter:brightness(1.18)}
 
 /* Istorya yo'q, lekin yangi post bor — halqa jilvalanadi, bosilmaydi. */
-.story-ring--static{display:inline-block;position:relative;cursor:default}
 
 /* Biznes hisob ochish: "nom tanlayman" yoki "bepul" tanlovi. */
 .cc-mode{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
@@ -408,8 +374,13 @@
             (suriladigan kontent)
         [   Kontaktni saqlash   ]
 
-   Qobiq balandligi aynan ekran (100dvh) va O'ZI SURILMAYDI: faqat
-   o'rtadagi kontent oynasi suriladi. */
+   SAHIFA TABIIY SURILADI. Ilgari qobiq balandligi AYNAN ekran
+   (100dvh) qilib qotirilgan va faqat o'rtadagi kichik oyna
+   surilardi. Natijada hamma narsa bitta ekranga sig'ishi uchun
+   kichraytirilgan edi — egasi aynan shuni ko'rdi: "siqilgan va
+   kichkina, premium his qilinmayapti". Endi kontent o'z o'lchamida
+   turadi, sahifa esa oddiy sahifa kabi suriladi; "Kontaktni saqlash"
+   tugmasi pastda YOPISHIB turadi (`position:sticky`). */
 
 /* Oltin — bitta joyda belgilanadi va hamma yerda ishlatiladi, shunda
    tugma, chiziq va yozuv bir xil metalldan bo'ladi. */
@@ -417,9 +388,11 @@
   --gold-1:#fbeec2; --gold-2:#e6c36a; --gold-3:#c39a33; --gold-4:#8a6712;
   --gold-face:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 34%,var(--gold-3) 62%,var(--gold-1) 100%);
   --gold-line:linear-gradient(90deg,transparent,rgba(226,190,110,.55) 18%,rgba(226,190,110,.75) 50%,rgba(226,190,110,.55) 82%,transparent);
-  height:100dvh;overflow:hidden;background:#060504;color:#f2ece0;
+  min-height:100dvh;overflow-x:clip;background:#060504;color:#f2ece0;
   font-family:Inter,ui-sans-serif,system-ui,sans-serif;
-  display:grid;place-items:center
+  /* `place-items:center` EMAS: markazlashtirish balandlikni ham
+     qotirar va uzun kontent kesilib qolardi. */
+  display:flex;justify-content:center;align-items:flex-start
 }
 /* Brauzerning tugmalar uchun standart shrifti bekor qilinadi — LEKIN
    FAQAT OILASI. Ilgari bu yerda `font:inherit` turardi va u qisqartma
@@ -429,21 +402,57 @@
    ko'rdi: "yozuvlar katta bo'lib ketgan". */
 .qp-page button{font-family:inherit}
 .qp-shell{
-  position:relative;width:min(100%,440px);height:100dvh;
-  display:flex;flex-direction:column;overflow:hidden;
-  /* Muqova rasmi SAQLANADI, lekin juda xira: maketdagi fon deyarli
-     qop-qora, ustida yengil oltin yaltirash bor. */
+  position:relative;width:min(100%,440px);min-height:100dvh;
+  /* `overflow:hidden` OLIB TASHLANDI: u qobiqni surish idishiga
+     aylantirar va ichidagi `position:sticky` ni buzardi. Fonni
+     `border-radius` ning o'zi kesadi. */
+  display:flex;flex-direction:column;
+  /* `isolation` SHART: bezak qatlamlari (::before/::after) `z-index:-1`
+     bilan chiziladi — ular kontent ostida, lekin qobiq fonidan
+     yuqorida turishi kerak. Alohida stacking kontekst bo'lmasa ular
+     sahifa fonining ostiga tushib, umuman ko'rinmasdi. */
+  isolation:isolate;
   background:
-    radial-gradient(120% 60% at 50% 0%,rgba(201,161,74,.13),transparent 62%),
-    radial-gradient(90% 50% at 50% 100%,rgba(201,161,74,.08),transparent 60%),
-    linear-gradient(180deg,rgba(6,5,4,.84) 0%,rgba(6,5,4,.9) 45%,rgba(6,5,4,.95) 100%),
-    var(--cq-cover) center center/cover no-repeat,
-    #0a0806
+    radial-gradient(120% 70% at 50% 0%,rgba(201,161,74,.10),transparent 60%),
+    linear-gradient(180deg,#0b0907 0%,#080706 38%,#060504 100%)
+}
+/* MUQOVA RASMI — faqat TEPADA, xiralashgan va pastga qarab to'liq
+   so'nadi.
+   Ilgari rasm butun qobiq foni edi va ustiga shaffof qora qatlam
+   tashlanardi. Natijada matn va oltin tugmalar TINIQ fotosurat ustida
+   turardi, rasmning chekkasi esa statistika qatorida keskin ko'rinib
+   qolardi (egasining telefon skrinshotida chaqmoqli daraxt aynan shu
+   joyda paydo bo'lgan). Bu — premium emas, shovqin.
+
+   Endi rasm: kuchli xiralashtirilgan, to'yinganligi va yorqinligi
+   pasaytirilgan, `mask` bilan yumshoq nolga tushadi. Kompaniya
+   muqovasi saqlanadi — lekin ATMOSFERA sifatida, fon bezagi bo'lib. */
+.qp-shell::before{
+  content:'';position:absolute;z-index:-1;left:0;right:0;top:0;height:min(52vh,460px);
+  /* Ish stolidagi telefon ramkasining yumaloq burchaklari saqlansin —
+     qobiqda `overflow:hidden` yo'q (u yopishgan tugmani buzardi). */
+  border-radius:inherit;
+  background:var(--cq-cover) center top/cover no-repeat;
+  filter:blur(26px) saturate(.7) brightness(.42);
+  transform:scale(1.12);transform-origin:50% 0;
+  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.55) 38%,rgba(0,0,0,.18) 68%,transparent 100%);
+  mask-image:linear-gradient(180deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.55) 38%,rgba(0,0,0,.18) 68%,transparent 100%)
+}
+/* Nozik don (grain) — qorong'i gradientlarda paydo bo'ladigan
+   "halqalar" (banding) ni sindiradi. Qimmat qorong'i interfeyslarda
+   shu bitta qatlam matnga tegmasdan butun sahifani "chuqur" qiladi. */
+.qp-shell::after{
+  content:'';position:absolute;z-index:-1;inset:0;pointer-events:none;opacity:.05;border-radius:inherit;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:160px 160px
 }
 /* Ish stolida — telefon shaklidagi ramka; telefonda butun ekran. */
 @media(min-width:601px){
   .qp-page{padding:22px}
-  .qp-shell{height:min(calc(100dvh - 44px),880px);border-radius:38px;box-shadow:0 40px 100px #000,0 0 0 1px rgba(201,161,74,.34)}
+  .qp-shell{min-height:calc(100dvh - 44px);border-radius:38px;box-shadow:0 40px 100px #000,0 0 0 1px rgba(201,161,74,.34)}
+  /* Yopishgan qator sahifaning 22px chetlashiga moslashadi va ramka
+     pastki burchaklaridan chiqib ketmaydi. */
+  .qp-bottom{bottom:22px;border-radius:0 0 38px 38px}
 }
 
 /* ── Hero ────────────────────────────────────────────────────────── */
@@ -455,12 +464,15 @@
    logotipdan 16 piksel TASHQARIGA chiqadi. 30px da halqa uchun atigi
    14px nafas qolardi va tepa siqilib ko'rinardi — 40px da bo'shliq
    24px bo'ladi. */
-.qp-hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:calc(34px + env(safe-area-inset-top,0px)) 16px 9px;text-align:center}
+.qp-hero{flex:none;display:flex;flex-direction:column;align-items:center;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 26px;text-align:center}
 
-/* Uch ustun: logotip AYNAN markazda qoladi, yon tugma uni surmaydi. */
-.qp-ava-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;width:100%}
-.qp-side{display:flex;justify-content:flex-start;min-width:0}
-.qp-side--left{justify-content:flex-end;padding-right:16px}
+/* Xizmat qatori — logotipdan YUQORIDA, alohida satrda. Har ikki
+   tugma o'z chetiga yopishadi; o'rtasi bo'sh qoladi. */
+.qp-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:30px;margin-bottom:20px}
+.qp-topbar-side{display:flex;justify-content:flex-start;min-width:0}
+.qp-topbar-side--right{justify-content:flex-end}
+/* Yuklanish skeleti uchun qator (ma'lumot kelgunicha ko'rinadi). */
+.qp-hero-row{display:flex;align-items:center;gap:12px;width:100%}
 /* TO'LIQ EKRAN tugmasi — brauzerning manzil va pastki qatorini
    yashiradi.
    Faqat ikonka emas, YOZUVI bilan: egasining talabi — "nimaligi
@@ -495,10 +507,17 @@
    "Kontaktni saqlash"ga — qoldirilgan, aks holda ikkalasi bir-biri
    bilan raqobatlashib, ko'z hech qaysisida to'xtamasdi. */
 .qp-follow{
-  width:100%;min-height:40px;margin-top:10px;border-radius:99px;cursor:pointer;font-family:inherit;
-  border:1px solid rgba(226,190,110,.55);
-  background:linear-gradient(160deg,rgba(44,36,19,.92),rgba(22,18,10,.92));
-  color:#f0d69a;font-size:13.5px;font-weight:700;letter-spacing:.02em
+  /* KENGLIK BO'YICHA CHO'ZILMAYDI. Butun kenglikdagi bo'sh hoshiyali
+     tugma sahifaning eng zaif elementi edi — katta, quruq va hech
+     narsa bilan to'ldirilmagan qatorga o'xshardi. Endi u o'z
+     o'lchamidagi ixcham tugma: ko'rinadi, lekin "Kontaktni saqlash"
+     bilan raqobatlashmaydi. */
+  min-width:200px;max-width:100%;min-height:46px;margin-top:22px;padding:0 30px;
+  border-radius:99px;cursor:pointer;font-family:inherit;
+  border:1px solid rgba(226,190,110,.5);
+  background:linear-gradient(160deg,rgba(48,39,20,.92),rgba(20,17,10,.92));
+  color:#f0d69a;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.45)
 }
 .qp-follow:hover{border-color:rgba(226,190,110,.9);color:#f9e9bd}
 .qp-follow.is-on{background:rgba(226,190,110,.13);color:#e9cf92}
@@ -510,22 +529,30 @@
    cho'ziladi va halqa undan ichkarida bo'lsa, soya uni yopib qo'yardi
    (egasi aynan shuni ko'rmagan — "istorya qo'yilgan bo'lsa bilinsin").
    Shuning uchun bu yerda halqa ataylab kattaroq insetda. */
+/* Logotip 128px ga o'sgach halqa geometriyasi ham qayta o'lchandi:
+   oltin soya 150px da tugaydi, shuning uchun qora bo'shliq 154px da,
+   rangli halqa esa 170px da. Natijada rangli chiziq 8px kenglikda —
+   avvalgi 5px da u oltin hoshiyaning tasodifiy chekkasidek
+   ko'rinardi. */
 .qp-hero .story-ring{--ring-radius:50%}
-.qp-hero .story-ring-glow{inset:-16px;box-shadow:0 0 22px rgba(255,160,60,.45)}
-.qp-hero .story-ring::before{inset:-11px;background:#0a0806}
+.qp-hero .story-ring-glow{inset:-21px;box-shadow:0 0 28px rgba(255,160,60,.4)}
+.qp-hero .story-ring::before{inset:-13px;background:#0a0806}
 /* Qalin oltin halqa — maketning eng ko'zga tashlanadigan belgisi. */
 .qp-ava{
-  width:104px;height:104px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
-  background:#0d0b07;color:#efc65b;font-weight:900;font-size:29px;
+  /* Oltin halqa — sahifaning asosiy vizual langari, shuning uchun
+     eng katta element. 104px da u "bor, lekin sezilmaydi" edi. */
+  width:128px;height:128px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
+  background:#0d0b07;color:#efc65b;font-weight:900;font-size:36px;
   box-shadow:
     0 0 0 3px #0d0b07,
-    0 0 0 9px rgba(201,161,74,.92),
-    0 0 0 10px rgba(120,92,24,.9),
-    0 14px 40px rgba(0,0,0,.75)
+    0 0 0 10px rgba(201,161,74,.95),
+    0 0 0 11px rgba(120,92,24,.9),
+    0 0 34px -4px rgba(226,190,110,.45),
+    0 18px 48px rgba(0,0,0,.78)
 }
 .qp-ava img{width:100%;height:100%;object-fit:cover}
 .qp-ava-note{
-  position:absolute;right:-1px;bottom:3px;width:30px;height:30px;border-radius:50%;
+  position:absolute;right:-1px;bottom:5px;width:34px;height:34px;border-radius:50%;
   display:grid;place-items:center;cursor:pointer;z-index:2;
   border:1px solid rgba(226,190,110,.5);background:#12100a;color:#e6c169
 }
@@ -536,21 +563,32 @@
    "dumaloqqa NFCSTORE yopishib qolgan"). 26px = 16px halqa + 10px
    nafas. */
 .qp-name{
-  display:flex;align-items:center;justify-content:center;gap:9px;margin:23px 0 0;
-  font-family:var(--font-display,Georgia),serif;font-size:29px;font-weight:600;line-height:1.15;letter-spacing:.02em;
-  background:var(--gold-face);-webkit-background-clip:text;background-clip:text;color:transparent
+  display:flex;align-items:center;justify-content:center;gap:11px;margin:28px 0 0;
+  font-family:var(--font-display,Georgia),serif;font-size:34px;font-weight:600;line-height:1.18;letter-spacing:.045em;
+  background:var(--gold-face);-webkit-background-clip:text;background-clip:text;color:transparent;
+  /* Metall harflar ostida yengil issiq nur — tilla "yonib turadi". */
+  filter:drop-shadow(0 2px 10px rgba(201,161,74,.22))
 }
 /* Tasdiqlangan belgisi — matn gradienti unga tegmasligi uchun alohida. */
 .qp-verified{
-  flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
-  background:var(--gold-face);color:#1d1405;font-style:normal;font-size:13px;font-weight:900;line-height:1;
+  flex:none;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;
+  background:var(--gold-face);color:#1d1405;font-style:normal;font-size:15px;font-weight:900;line-height:1;
   -webkit-text-fill-color:#1d1405;box-shadow:0 2px 8px rgba(0,0,0,.5)
 }
-.qp-sub{margin:6px 0 0;max-width:330px;font-size:14px;line-height:1.45;color:#cfc6b4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.qp-city{margin:2px 0 0;font-size:14px;line-height:1.45;color:#cfc6b4}
+.qp-sub{margin:12px 0 0;max-width:340px;font-size:15px;line-height:1.45;color:#cfc6b4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Shahar va ish vaqti — BITTA meta qatorda. Ilgari ular ikki alohida
+   satr edi va nom ostida uchta kulrang qator ketma-ket turardi. */
+.qp-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;margin-top:16px}
+.qp-city{
+  display:inline-flex;align-items:center;gap:6px;margin:0;
+  border:1px solid rgba(226,190,110,.26);border-radius:99px;padding:7px 14px;
+  background:rgba(255,255,255,.03);
+  font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;line-height:1;color:#cfc6b4
+}
+.qp-city>svg{flex:none;color:#c9a14a}
 
 /* Ish vaqti — metall tanachali tugma (maketdagi kabi). */
-.qp-hero .ch-box{position:relative;margin:8px 0 0;display:block}
+.qp-hero .ch-box{position:relative;margin:0;display:block}
 .qp-hero .ch-head{
   padding:7px 16px;gap:8px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   border:1px solid rgba(226,190,110,.4);
@@ -574,13 +612,13 @@
 
 /* Raqamlar — ikki oltin chiziq orasida. */
 .qp-stats{
-  display:flex;align-items:center;justify-content:center;width:100%;margin-top:9px;padding:7px 0;
+  display:flex;align-items:center;justify-content:center;width:100%;margin-top:22px;padding:17px 0;
   border-top:1px solid transparent;border-bottom:1px solid transparent;
   border-image:var(--gold-line) 1;border-left:0;border-right:0
 }
 .qp-stats>div{flex:1;min-width:0;padding:0 4px}
-.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:21px;font-weight:600;line-height:1.1;color:#f5efe2}
-.qp-stats small{display:block;margin-top:3px;font-size:10.5px;line-height:1.2;color:#b9b0a0}
+.qp-stats b{display:block;font-family:var(--font-display,Georgia),serif;font-size:27px;font-weight:600;line-height:1.1;color:#f5efe2}
+.qp-stats small{display:block;margin-top:7px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;line-height:1.2;color:#8e8676}
 
 /* ── Aloqa: OLTIN katakcha, belgi O'Z FIRMA RANGIDA ──────────────── */
 /* O'ng chet yumshoq so'nadi — qator DAVOM ETISHINI bildiradi.
@@ -589,25 +627,37 @@
    edi va u muqova rasmi ustida aniq ko'rinadigan dog' bo'lib qolgan. */
 .qp-quick{
   display:flex;width:100%;overflow-x:auto;scrollbar-width:none;
-  -webkit-overflow-scrolling:touch;padding:2px 16px 0;margin-inline:-16px;margin-top:8px;
-  -webkit-mask-image:linear-gradient(90deg,#000 87%,transparent 99%);
-  mask-image:linear-gradient(90deg,#000 87%,transparent 99%)
+  -webkit-overflow-scrolling:touch;padding:2px 18px 0;margin-inline:-18px;margin-top:22px;
+  /* So'nish faqat OXIRGI 26 pikselda. Ilgari u 87% dan boshlanardi va
+     qator ekranga SIG'GANDA ham oxirgi yozuvni ("Ulashish") yarim
+     o'chirib qo'yardi. */
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent 100%)
 }
 .qp-quick::-webkit-scrollbar{display:none}
 /* Ichki o'ram: sig'sa markazda, sig'masa chapdan boshlanadi va to'liq
    suriladi. `justify-content:center` bilan qatorning BOSHI kesilib
    qolardi va unga umuman yetib bo'lmasdi. */
-.qp-quick-in{display:flex;gap:12px;margin:0 auto}
+/* Aloqa ikonkalari orasi — 12px da ular bir-biriga yopishib, zich
+   ko'rinardi (egasi: "juda zich"). */
+.qp-quick-in{display:flex;gap:20px;margin:0 auto}
 .qp-qbtn{
-  flex:0 0 auto;width:62px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  flex:0 0 auto;width:68px;display:flex;flex-direction:column;align-items:center;gap:9px;
   border:0;background:none;padding:0;cursor:pointer;text-decoration:none;text-align:center;
   font-family:inherit;color:#e6ddcc
 }
-.qp-page .qp-qbtn{font-size:11px;font-weight:500;line-height:1.2}
+.qp-page .qp-qbtn{font-size:11.5px;font-weight:500;line-height:1.25}
 .qp-qbtn i{
-  width:56px;height:56px;border-radius:50%;display:grid;place-items:center;
+  width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
   background:var(--gold-face);
-  box-shadow:0 0 0 1px rgba(120,92,24,.75),0 6px 16px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6);
+  /* Metall his: tepada oq aks, pastda issiq soya, tashqarisida nozik
+     qorong'i hoshiya. Ilgari bu shunchaki sariq disk edi. */
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.72),
+    inset 0 -8px 12px -6px rgba(110,82,18,.55),
+    0 0 0 1px rgba(95,72,18,.85),
+    0 0 16px -6px rgba(226,190,110,.7),
+    0 8px 20px rgba(0,0,0,.6);
   transition:transform .16s,filter .16s
 }
 /* Belgi o'z rangida — oltin ustida o'qilishi uchun yengil oq soya. */
@@ -617,60 +667,107 @@
 /* "Ulashish" — ShareButton ichida <i> yo'q, belgi to'g'ridan-to'g'ri
    <svg>. Shuning uchun dumaloq katak SVGning o'ziga beriladi.
    Ikki sinf (0,2,0) Tailwind'ning `gap-2` sidan kuchliroq. */
-.qp-qbtn.qp-qbtn--share{gap:7px}
+.qp-qbtn.qp-qbtn--share{gap:9px}
 .qp-qbtn--share>svg{
-  width:56px;height:56px;padding:15px;box-sizing:border-box;border-radius:50%;color:#5a4410;
+  width:62px;height:62px;padding:17px;box-sizing:border-box;border-radius:50%;color:#5a4410;
   background:var(--gold-face);
-  box-shadow:0 0 0 1px rgba(120,92,24,.75),0 6px 16px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.6)
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.72),
+    inset 0 -8px 12px -6px rgba(110,82,18,.55),
+    0 0 0 1px rgba(95,72,18,.85),
+    0 0 16px -6px rgba(226,190,110,.7),
+    0 8px 20px rgba(0,0,0,.6)
 }
 .qp-qbtn--share:hover>svg{filter:brightness(1.07)}
 
 /* ── Bo'limlar — oltin tanachali tugmalar ────────────────────────── */
 .qp-tabs{
-  flex:none;display:flex;gap:7px;padding:9px 16px;overflow-x:auto;
+  flex:none;display:flex;padding:15px 18px;overflow-x:auto;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
   border-top:1px solid transparent;border-bottom:1px solid transparent;
   border-image:var(--gold-line) 1;border-left:0;border-right:0
 }
 .qp-tabs::-webkit-scrollbar{display:none}
+.qp-tabs-in{display:flex;gap:9px;margin:0 auto}
 .qp-tab{
   flex:0 0 auto;border:1px solid rgba(226,190,110,.42);border-radius:99px;cursor:pointer;
   background:rgba(16,13,8,.6);color:#ddd0ae;
-  padding:7px 13px;font-family:inherit;font-size:10.5px;font-weight:700;line-height:1;letter-spacing:.05em;text-transform:uppercase
+  padding:10px 16px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1;letter-spacing:.06em;text-transform:uppercase
 }
 .qp-tab:hover{border-color:rgba(226,190,110,.8);color:#f7e6b8}
-.qp-tab.is-on{background:var(--gold-face);color:#241a05;border-color:transparent;box-shadow:0 6px 18px rgba(201,161,74,.22)}
+/* Faol bo'lim — oltin, lekin "Kontaktni saqlash" dan SO'NIQROQ.
+   Sahifada eng yorqin element bitta bo'lishi kerak, aks holda ko'z
+   qayerga qarashni bilmaydi. */
+.qp-tab.is-on{
+  background:linear-gradient(160deg,#e8cf8e 0%,#cfa94f 45%,#b28c33 100%);
+  color:#241a05;border-color:rgba(95,72,18,.7);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 16px rgba(0,0,0,.45)
+}
 
-/* ── YAGONA suriladigan qism ─────────────────────────────────────── */
-.qp-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px}
-.qp-body::-webkit-scrollbar{width:0}
+/* ── Bo'lim kontenti ─────────────────────────────────────────────────
+   Bu qism endi ALOHIDA SURILMAYDI — butun sahifa suriladi. Shuning
+   uchun `overflow` ham, `min-height:0` ham yo'q:
 
-.qp-posts{display:grid;gap:12px}
+     `flex:1 1 auto` + `min-height:auto` — kontent kam bo'lsa qism
+     bo'sh joyni to'ldiradi (tugma pastda qoladi), ko'p bo'lsa
+     kontentiga qarab O'SADI va qobiqni cho'zadi.
+
+   Ilgari bu yerda `overflow-y:auto` turardi: bo'limda bitta mahsulot
+   bo'lsa ham maydon balandligi o'zgarmas edi va ostida katta bo'sh
+   joy qolardi (egasi: "tugallanmagandek ko'rinadi"). */
+/* Kontent — hero ustidagi ALOHIDA sath: bir oz to'qroq fon va tepada
+   nozik yorug' chiziq. Shu bitta qatlam sahifani "bitta rasm ustidagi
+   matn" dan "qatlamlangan interfeys" ga aylantiradi. */
+.qp-body{
+  flex:1 1 auto;overflow-x:clip;padding:22px 18px 28px;
+  background:linear-gradient(180deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,.5) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)
+}
+
+.qp-posts{display:grid;gap:16px}
 /* Postlar — maketdagidek oltin hoshiyali kartochka. */
-.qp-posts article{border:1px solid rgba(226,190,110,.45);border-radius:16px;overflow:hidden;background:rgba(12,10,7,.85);box-shadow:0 10px 28px rgba(0,0,0,.5)}
+/* PREMIUM CHUQURLIK: yumshoq oltin "rim-glow" + yengil balandlik
+   soyasi. Manfiy tarqalish (-6px) SHART — usiz yorug'lik kartochkani
+   o'rab, arzon neonga o'xshab qolardi. */
+.qp-posts article{border:1px solid rgba(226,190,110,.45);border-radius:18px;overflow:hidden;background:rgba(12,10,7,.85);
+  box-shadow:0 0 18px -6px rgba(226,190,110,.6),0 14px 34px rgba(0,0,0,.55)}
 /* Post rasmi sahifaga MOS: 16:10 kadr. Ilgari `max-height:320px` edi
    va baland rasm butun oynani egallab, ostidagi hech narsa
    ko'rinmasdi. */
-.qp-posts img,.qp-posts video{display:block;width:100%;aspect-ratio:16/10;max-height:190px;object-fit:cover;background:#000}
-.qp-posts p{margin:0;padding:9px 12px;font-size:11.5px;line-height:1.45;color:#b5ab99;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* `max-height` OLIB TASHLANDI: sahifa endi suriladi, ya'ni rasmni
+   kichraytirib siqishning hojati yo'q. */
+.qp-posts img,.qp-posts video{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#000}
+.qp-posts p{margin:0;padding:13px 15px;font-size:13px;line-height:1.55;color:#bcb2a0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
-.qp-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.qp-item{border:1px solid rgba(226,190,110,.35);border-radius:15px;overflow:hidden;background:rgba(12,10,7,.85)}
+.qp-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* BITTA element qolganda yonida teshik qolmasin — kartochka butun
+   kenglikni egallaydi va bo'lim tugallangan ko'rinadi. */
+.qp-cards:has(>:only-child){grid-template-columns:1fr}
+.qp-cards:has(>:only-child) .qp-item-pic{aspect-ratio:16/10}
+.qp-item{border:1px solid rgba(226,190,110,.35);border-radius:17px;overflow:hidden;background:rgba(12,10,7,.85);
+  box-shadow:0 0 18px -6px rgba(226,190,110,.55),0 12px 30px rgba(0,0,0,.5);
+  transition:transform .18s ease,box-shadow .18s ease}
+.qp-item:hover{transform:translateY(-2px);box-shadow:0 0 22px -5px rgba(226,190,110,.75),0 18px 38px rgba(0,0,0,.58)}
 /* 4:3 kadr — kvadrat rasm kartochkani juda baland qilardi va
    ekranda bitta qator ham to'liq sig'masdi. */
+/* Rasm YO'Q holat. Ilgari bu yerda qiya sariq-qora yo'llar bor edi va
+   u qurilish ogohlantirish lentasiga o'xshardi — mahsulot kartochkasi
+   uchun eng noto'g'ri assotsiatsiya. Endi tinch oltin nur. */
 .qp-item-pic{position:relative;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;
-  background:repeating-linear-gradient(135deg,rgba(226,190,110,.1) 0 6px,transparent 6px 12px),#100d08}
+  background:
+    radial-gradient(70% 70% at 50% 38%,rgba(226,190,110,.13),transparent 72%),
+    linear-gradient(160deg,#14110b,#0b0907)}
 .qp-item-pic img{width:100%;height:100%;object-fit:cover}
-.qp-item-pic span{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:rgba(226,190,110,.5)}
-.qp-item-txt{padding:9px}
-.qp-item-txt b{display:block;font-size:11.5px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.qp-item-txt strong{display:block;margin-top:4px;font-family:'Space Mono',monospace;font-size:11.5px;font-weight:700;color:#e3b44a}
+.qp-item-pic span{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.18em;color:rgba(226,190,110,.38)}
+.qp-item-txt{padding:13px}
+.qp-item-txt b{display:block;font-size:13.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qp-item-txt strong{display:block;margin-top:6px;font-family:'Space Mono',monospace;font-size:13.5px;font-weight:700;color:#e3b44a}
 /* DIQQAT: `font:700 10px/1 inherit` YOZMANG — `font` qisqartmasi ichida
    oila sifatida `inherit` bo'lmaydi va butun qoida tashlab yuboriladi. */
-.qp-order{width:100%;margin-top:7px;border:1px solid rgba(226,190,110,.42);border-radius:9px;background:rgba(226,190,110,.1);color:#f0cf7b;padding:7px;font-family:inherit;font-size:10px;font-weight:700;line-height:1.2;cursor:pointer}
+.qp-order{width:100%;min-height:40px;margin-top:11px;border:1px solid rgba(226,190,110,.42);border-radius:11px;background:rgba(226,190,110,.1);color:#f0cf7b;padding:9px;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.2;cursor:pointer}
 .qp-order:hover{background:rgba(226,190,110,.2)}
 
-.qp-desc{margin:0;font-size:13.5px;line-height:1.65;color:#b9b0a0}
+.qp-desc{margin:0;font-size:15px;line-height:1.75;color:#c1b8a6}
 .qp-addr{margin:11px 0 0;font-size:12.5px;line-height:1.5;color:#948b7c}
 .qp-body .pf-story-grid{margin-top:0}
 /* XARITA — oltin hoshiyali kadr. Balandligi o'lchamga moslashadi:
@@ -679,74 +776,105 @@
    kartochkamiz (manzil + belgi), bosilganda o'rniga haqiqiy xarita
    yuklanadi. Shu sababli tashqi xizmat sekin bo'lsa ham sahifa hech
    qachon bo'sh kulrang kadr ko'rsatmaydi. */
-.qp-map{margin-top:12px;border:1px solid rgba(226,190,110,.45);border-radius:15px;overflow:hidden;background:#0c0a07;box-shadow:0 10px 28px rgba(0,0,0,.5)}
-.qp-map iframe{display:block;width:100%;height:170px;border:0;background:#0c0a07;color-scheme:dark;filter:grayscale(.2) contrast(1.05)}
+.qp-map{margin-top:20px;border:1px solid rgba(226,190,110,.45);border-radius:17px;overflow:hidden;background:#0c0a07;
+  box-shadow:0 0 18px -6px rgba(226,190,110,.5),0 12px 30px rgba(0,0,0,.5)}
+.qp-map iframe{display:block;width:100%;height:210px;border:0;background:#0c0a07;color-scheme:dark;filter:grayscale(.2) contrast(1.05)}
 .qp-map-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
   width:100%;min-height:112px;padding:16px 14px;border:0;cursor:pointer;text-align:center;
+  /* Qiya sariq-qora yo'llar OLIB TASHLANDI — mahsulot o'rni bilan bir
+     xil sabab: ular qurilish ogohlantirish lentasiga o'xshardi. */
   background:
-    radial-gradient(60% 80% at 50% 0%,rgba(226,190,110,.1),transparent 70%),
-    repeating-linear-gradient(125deg,rgba(226,190,110,.05) 0 10px,transparent 10px 22px),
-    #0c0a07;
+    radial-gradient(75% 85% at 50% 10%,rgba(226,190,110,.12),transparent 72%),
+    linear-gradient(160deg,#14110b,#0a0806);
   color:#e6ddcc;font-family:inherit
 }
 .qp-map-card i{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--gold-face);color:#5a4410;box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.55)}
-.qp-map-card b{font-size:12.5px;font-weight:600;line-height:1.4;max-width:280px}
-.qp-map-card small{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e0b45c}
+.qp-map-card b{font-size:14px;font-weight:600;line-height:1.45;max-width:290px}
+.qp-map-card small{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#cfa14c}
 .qp-map-card:hover{filter:brightness(1.06)}
 .qp-route{
-  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;
-  border:1px solid rgba(226,190,110,.42);border-radius:13px;background:rgba(18,14,8,.8);
-  color:#f0cf7b;padding:12px;font-size:12.5px;font-weight:700;text-decoration:none
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;margin-top:16px;
+  border:1px solid rgba(226,190,110,.42);border-radius:14px;background:rgba(18,14,8,.8);
+  color:#f0cf7b;padding:14px;font-size:14px;font-weight:700;text-decoration:none
 }
 .qp-route:hover{border-color:rgba(226,190,110,.8);color:#f7e6b8}
-.qp-public{width:100%;margin-top:12px;border:0;border-radius:14px;background:var(--gold-face);color:#241a05;padding:13px 16px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(201,161,74,.24),inset 0 1px 0 rgba(255,255,255,.5)}
+/* TO'LDIRILGAN OLTIN EMAS. Sahifada to'ldirilgan oltin FAQAT bitta
+   tugmada — "Kontaktni saqlash" da. Ikkita yorqin oltin qator bir
+   ekranda turganda ko'z qay birini tanlashni bilmaydi va ikkalasi
+   ham "asosiy" bo'lishdan to'xtaydi. */
+.qp-public{
+  width:100%;min-height:54px;margin-top:16px;border-radius:15px;padding:15px 18px;cursor:pointer;
+  border:1px solid rgba(226,190,110,.45);
+  background:linear-gradient(160deg,rgba(46,38,20,.9),rgba(18,15,9,.92));
+  color:#f0cf7b;font-family:inherit;font-weight:700;font-size:14.5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 22px rgba(0,0,0,.45)
+}
 .qp-public span{float:right}
-.qp-public:hover{filter:brightness(1.05)}
-.qp-foot{display:flex;justify-content:space-between;gap:10px;margin:15px 0 0;color:#5f5a51;font-size:8px;letter-spacing:.11em}
+.qp-public:hover{border-color:rgba(226,190,110,.85);color:#f9e9bd}
+.qp-foot{display:flex;justify-content:space-between;gap:10px;margin:26px 0 0;color:#6b655b;font-size:9px;letter-spacing:.13em}
 
 /* Musiqa — yopiq holatda joy egallamaydi, lekin ULANGAN qoladi:
    ekran o'chsa ham ijro to'xtamaydi (MediaSession). */
 .qp-music{flex:none;overflow:hidden;max-height:0;transition:max-height .22s ease}
 .qp-music.is-open{max-height:180px;padding:0 14px 8px}
 
-/* ── Kontaktni saqlash — doim ko'rinadigan oltin qator ───────────── */
-.qp-bottom{flex:none;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+/* ── Kontaktni saqlash — doim ko'rinadigan oltin qator ─────────────
+   Sahifa endi suriladi, shuning uchun tugma PASTGA YOPISHADI
+   (`position:sticky`). NFC kartaning butun ma'nosi shu tugmada, ya'ni
+   u hech qachon surilib ko'rinmay qolmasligi kerak. Ostidagi fon
+   shart: usiz kontent tugma ostidan "o'tib ketayotgandek" ko'rinardi. */
+.qp-bottom{
+  flex:none;position:sticky;bottom:0;z-index:14;
+  padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,rgba(6,5,4,0) 0%,rgba(6,5,4,.82) 26%,rgba(6,5,4,.97) 62%);
+  backdrop-filter:blur(6px)
+}
 .qp-save{
-  width:100%;min-height:52px;border:0;border-radius:15px;cursor:pointer;font-family:inherit;
-  background:var(--gold-face);color:#241a05;font-size:16px;font-weight:700;letter-spacing:.01em;
-  box-shadow:0 10px 30px rgba(201,161,74,.26),inset 0 1px 0 rgba(255,255,255,.55)
+  position:relative;overflow:hidden;
+  width:100%;min-height:58px;border:0;border-radius:16px;cursor:pointer;font-family:inherit;
+  background:var(--gold-face);color:#241a05;font-size:17px;font-weight:700;letter-spacing:.02em;
+  box-shadow:0 0 22px -6px rgba(226,190,110,.8),0 12px 34px rgba(201,161,74,.28),inset 0 1px 0 rgba(255,255,255,.55)
 }
 .qp-save:hover{filter:brightness(1.05)}
-
-/* Past ekranlar (360×640 va shunga o'xshash) — hamma narsa biroz
-   kichrayadi, shunda o'rtadagi kontent oynasiga joy qoladi. */
-@media(max-height:740px){
-  .qp-hero{padding:calc(26px + env(safe-area-inset-top,0px)) 16px 6px}
-  .qp-ava{width:82px;height:82px;font-size:23px;box-shadow:0 0 0 2px #0d0b07,0 0 0 6px rgba(201,161,74,.92),0 0 0 7px rgba(120,92,24,.9),0 10px 26px rgba(0,0,0,.7)}
-  .qp-ava-note{width:24px;height:24px}
-  .qp-sidebtn{padding:7px 10px;font-size:11px}
-  .qp-name{margin-top:20px;font-size:21px}
-  .qp-follow{min-height:36px;margin-top:8px;font-size:12.5px}
-  .qp-verified{width:18px;height:18px;font-size:11px}
-  .qp-sub,.qp-city{font-size:12px}
-  .qp-sub{margin-top:5px}
-  .qp-hero .ch-box{margin-top:7px}
-  .qp-hero .ch-head{padding:5px 13px;font-size:11px}
-  .qp-stats{margin-top:8px;padding:6px 0}
-  .qp-stats b{font-size:17px}
-  .qp-stats small{font-size:9.5px}
-  .qp-quick{margin-top:8px}
-  .qp-qbtn{width:54px}
-  .qp-qbtn i,.qp-qbtn--share>svg{width:44px;height:44px}
-  .qp-qbtn--share>svg{padding:12px}
-  .qp-page .qp-qbtn{font-size:10px}
-  .qp-tabs{padding:7px 16px;gap:7px}
-  .qp-tab{padding:6px 11px;font-size:10px}
-  .qp-body{padding:10px}
-  .qp-bottom{padding:8px 16px calc(9px + env(safe-area-inset-bottom,0px))}
-  .qp-save{min-height:44px;font-size:14.5px}
+/* YORUG'LIK O'TISHI — metall yuzada sekin yuruvchi aks. Nomi
+   `qp-sweep`: global `sweep` nomi boshqa bir joyda qayta
+   e'lon qilinsa, ikkalasi bir-birini bekor qilardi. */
+@keyframes qp-sweep{
+  0%{transform:translateX(-160%) skewX(-18deg)}
+  /* Yorug'lik o'tib bo'lgach uzoq PAUZA — takrorlanish bezovta
+     qilmasin (`.cq-save` dagi bilan bir xil ruh). */
+  38%,100%{transform:translateX(320%) skewX(-18deg)}
 }
+.qp-save::after{
+  content:'';position:absolute;top:0;bottom:0;left:0;width:38%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.42) 50%,transparent);
+  pointer-events:none;animation:qp-sweep 4.2s ease-in-out infinite
+}
+@media (prefers-reduced-motion:reduce){
+  .qp-save::after{animation:none;opacity:0}
+  .qp-item{transition:none}
+}
+
+/* AI YORDAMCHI TUGMASI — "Kontaktni saqlash" ustiga tushmasin.
+   U `position:fixed` va `.qp-page` dan TASHQARIDA chiziladi (App.jsx),
+   shuning uchun oddiy ichki selektor unga yetmaydi — sahifa borligini
+   `body:has(...)` orqali aniqlaymiz.
+
+   96px = saqlash qatorining balandligi (58px tugma + 26px to'ldirish)
+   ustiga bir oz nafas. */
+body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+@media(min-width:601px){
+  /* Ish stolida qator sahifaning 22px chetlashi ustida turadi. */
+  body:has(.qp-page) .ai-fab{bottom:118px}
+}
+
+/* PAST EKRANLAR UCHUN SIQISH BLOKI OLIB TASHLANDI.
+   Unda avatar 82px ga, nom 21px ga, raqamlar 17px ga va "Kontaktni
+   saqlash" 44px ga kichrayardi — hammasi BITTA EKRANGA sig'ishi
+   uchun. Egasining e'tirozi aynan shu edi: sahifa siqilgan va
+   kichkina ko'rinardi. Sahifa endi suriladi, ya'ni siqishning
+   sababi ham qolmadi. */
 
 /* ── XARITA ILOVASINI TANLASH OYNASI ────────────────────────────────
    Pastdan chiqadigan varaq (bottom sheet) — telefonda barmoq shu

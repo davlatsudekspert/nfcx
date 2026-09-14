@@ -44,6 +44,17 @@ jobs:
       - name: API marshrutlari yetib boradimi
         run: node scripts/api-route-reachability-test.mjs
 
+      # CSS QAMROVI TEKSHIRUVI.
+      #
+      # `src/company-system.css` global emas — u faqat uni import
+      # qilgan sahifa bilan birga yuklanadi. Undagi sinfni boshqa
+      # sahifada ishlatish JIM xato beradi: element brauzerning
+      # uslubsiz standart ko'rinishida chiqadi. Bu loyihada shu xato
+      # uch marta takrorlangan (oxirgisi — shaxsiy kabinetdagi
+      # "＋ Istorya qo'shish" tugmasi).
+      - name: Sahifa ishlatayotgan CSS unga yuklanadimi
+        run: node scripts/css-scope-test.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

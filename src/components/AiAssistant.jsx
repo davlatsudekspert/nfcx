@@ -70,11 +70,15 @@ export default function AiAssistant() {
 
   return (
     <>
+      {/* `ai-fab` — sahifaga qarab tugmani ko'tarish uchun langar. NFC
+          profilida (/c/:id) pastda doim ko'rinadigan "Kontaktni saqlash"
+          qatori bor va bu tugma uning ustiga tushib qolardi
+          (qoida: src/company-system.css). */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
           aria-label={t('AI yordamchi')}
-          className="fixed bottom-4 right-4 z-[120] flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl text-accent-content shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition hover:brightness-110"
+          className="ai-fab fixed bottom-4 right-4 z-[120] flex h-14 w-14 items-center justify-center rounded-full bg-accent text-2xl text-accent-content shadow-[0_10px_30px_rgba(0,0,0,0.4)] transition hover:brightness-110"
         >
           {'\u{1F4AC}'}
         </button>
