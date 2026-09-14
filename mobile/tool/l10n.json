@@ -83,6 +83,10 @@
   "Сначала выберите изображение.",
   "Pick an image first."
  ],
+ "Avval rasm yoki video tanlang.": [
+  "Сначала выберите фото или видео.",
+  "Choose a photo or video first."
+ ],
  "Bajarildi": [
   "Выполнено",
   "Done"
@@ -102,6 +106,10 @@
  "Bankdan javob olinmoqda…": [
   "Ожидаем ответ банка…",
   "Waiting for the bank…"
+ ],
+ "Bankdan tasdiq hali kelmadi. To‘lovni qilgan bo‘lsangiz, u biroz kechikishi mumkin — quyidagi tugma bilan tekshiring.": [
+  "Подтверждение от банка пока не пришло. Если вы оплатили, оно может немного задержаться — проверьте кнопкой ниже.",
+  "The bank has not confirmed yet. If you have paid, it may be slightly delayed — check with the button below."
  ],
  "Barcha imkoniyatlar ochiq. Rahmat!": [
   "Все возможности открыты. Спасибо!",
@@ -319,6 +327,10 @@
   "Этот файл не изображение.",
   "This file is not an image."
  ],
+ "Bu fayl rasm yoki video emas.": [
+  "Этот файл не фото и не видео.",
+  "This file is not a photo or a video."
+ ],
  "Bu hisob o‘chirilgan.": [
   "Этот аккаунт удалён.",
   "This account has been deleted."
@@ -362,6 +374,10 @@
  "Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.": [
   "Это ваш единственный ID — его нельзя удалить.",
   "This is your only ID — it cannot be deleted."
+ ],
+ "Bunday ID topilmadi.": [
+  "Такой ID не найден.",
+  "No such ID was found."
  ],
  "Bunday ID topilmadi. Kodni tekshiring.": [
   "Такой ID не найден. Проверьте код.",
@@ -587,6 +603,10 @@
   "Активировать",
   "Activate"
  ],
+ "Fayl juda katta (100 MB dan ortiq).": [
+  "Файл слишком большой (больше 100 МБ).",
+  "The file is too large (over 100 MB)."
+ ],
  "Galereya": [
   "Галерея",
   "Gallery"
@@ -687,9 +707,17 @@
   "Создать аккаунт",
   "Create account"
  ],
+ "Hisobingiz yaratildi. Agar davom etmasa, kirish sahifasidan kiring.": [
+  "Аккаунт создан. Если не продолжается, войдите со страницы входа.",
+  "Your account was created. If it does not continue, sign in from the login page."
+ ],
  "Holat": [
   "Статус",
   "Status"
+ ],
+ "Holatni tekshirish": [
+  "Проверить статус",
+  "Check status"
  ],
  "Home": [
   "Главная",
@@ -710,6 +738,10 @@
  "Hozir mavjud emas": [
   "Сейчас недоступно",
   "Not available right now"
+ ],
+ "Hozir vaqtincha o‘chirilgan": [
+  "Сейчас временно отключено",
+  "Temporarily switched off"
  ],
  "ID kodi": [
   "Код ID",
@@ -1655,6 +1687,10 @@
   "Выбрать изображение",
   "Pick an image"
  ],
+ "Rasm yoki video tanlash": [
+  "Выбрать фото или видео",
+  "Choose a photo or video"
+ ],
  "Restoran": [
   "Ресторан",
   "Restaurant"
@@ -1919,6 +1955,10 @@
   "Касания",
   "Taps"
  ],
+ "Tekshirib bo‘lmadi. Ulanishni tekshiring.": [
+  "Не удалось проверить. Проверьте соединение.",
+  "Could not check. Check your connection."
+ ],
  "Tekshirilmoqda…": [
   "Проверяем…",
   "Checking…"
@@ -2010,6 +2050,10 @@
  "To‘lov Payme orqali. Narx to‘lov ekranida ko‘rsatiladi.": [
   "Оплата через Payme. Цена показывается на экране оплаты.",
   "Payment via Payme. The price is shown on the payment page."
+ ],
+ "To‘lov hozir ishlamayapti": [
+  "Оплата сейчас не работает",
+  "Payment is not working right now"
  ],
  "To‘lov kutilmoqda": [
   "Ожидание платежа",
@@ -2118,6 +2162,22 @@
  "Veb-sayt": [
   "Веб-сайт",
   "Website"
+ ],
+ "Video": [
+  "Видео",
+  "Video"
+ ],
+ "Video eng ko‘pi 60 soniya. Tarifga qarab cheklangan bo‘lishi mumkin.": [
+  "Видео не длиннее 60 секунд. В зависимости от тарифа может быть ограничено.",
+  "Video is 60 seconds at most. It may be limited depending on your plan."
+ ],
+ "Video juda katta (100 MB dan ortiq).": [
+  "Видео слишком большое (больше 100 МБ).",
+  "The video is too large (over 100 MB)."
+ ],
+ "Videoni ochib bo‘lmadi.": [
+  "Не удалось открыть видео.",
+  "The video could not be opened."
  ],
  "WhatsApp bosildi": [
   "Нажатия на WhatsApp",

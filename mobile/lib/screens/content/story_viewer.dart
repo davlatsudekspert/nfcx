@@ -38,6 +38,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       if (s == AnimationStatus.completed) _next();
     });
 
+  /// Video istorya uchun eng uzun segment.
+  static const _maxSegment = Duration(seconds: 60);
+
   List<Post> _stories = const [];
   int _index = 0;
   bool _loading = true;
@@ -74,12 +77,34 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
   }
 
+  /// VIDEO UZUNLIGI — progress chizig'i shunga moslanadi.
+  ///
+  /// Ilgari har istorya qat'iy 5 soniya edi (`M.storySegment`).
+  /// Video ishlay boshlagach bu darhol sezildi: uzunroq video
+  /// beshinchi soniyada uzilib, keyingisiga o'tib ketardi.
+  ///
+  /// YUQORI CHEGARA bor: juda uzun video butun ko'ruvchini
+  /// bloklab qo'ymasin — odam baribir tegib oldinga o'ta oladi,
+  /// lekin o'zi ham oxiri kelishini bilishi kerak.
+  void _videoDuration(Duration d) {
+    if (!mounted) return;
+    final capped = d > _maxSegment ? _maxSegment : d;
+    if (capped <= Duration.zero) return;
+    setState(() => _progress.duration = capped);
+    _progress.forward(from: 0);
+  }
+
   void _next() {
     if (_index >= _stories.length - 1) {
       Navigator.of(context).maybePop();
       return;
     }
-    setState(() => _index++);
+    setState(() {
+      _index++;
+      // Keyingi istorya rasm bo'lsa — yana standart 5 soniya.
+      // Video bo'lsa `_videoDuration` uni qayta sozlaydi.
+      _progress.duration = M.storySegment;
+    });
     _progress.forward(from: 0);
   }
 
@@ -88,7 +113,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _progress.forward(from: 0);
       return;
     }
-    setState(() => _index--);
+    setState(() {
+      _index--;
+      _progress.duration = M.storySegment;
+    });
     _progress.forward(from: 0);
   }
 
@@ -155,9 +183,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             // ya'ni rasm ko'rsatgich ko'rsatadigan narsa topmasdi.
             if ((story.videoUrl ?? '').isNotEmpty)
               VideoView(
+                // Kalit MUHIM: `PageView` emas, oddiy almashish —
+                // kalitsiz Flutter eski holatni qayta ishlatib,
+                // keyingi istoryada eski videoni ko'rsatib qo'yardi.
+                key: ValueKey(story.id),
                 url: story.videoUrl!,
                 poster: story.images.isEmpty ? null : story.images.first,
                 fit: BoxFit.contain,
+                loop: false,
+                onDuration: _videoDuration,
               )
             else
               NetImage(

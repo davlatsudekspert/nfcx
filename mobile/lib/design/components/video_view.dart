@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:video_player/video_player.dart';
 
@@ -27,14 +29,20 @@ class VideoView extends StatefulWidget {
   const VideoView({
     super.key,
     required this.url,
+    this.isLocalFile = false,
     this.poster,
     this.fit = BoxFit.cover,
     this.autoPlay = true,
     this.loop = true,
     this.active = true,
+    this.onDuration,
   });
 
   final String url;
+
+  /// `url` — qurilmadagi fayl yo'li (tarmoq manzili emas).
+  /// Joylashdan OLDIN ko'rib chiqish uchun kerak.
+  final bool isLocalFile;
 
   /// Video ochilguncha (va ochilmasa) ko'rsatiladigan rasm.
   final String? poster;
@@ -47,6 +55,13 @@ class VideoView extends StatefulWidget {
   /// oldindan quradi — busiz ekranda bitta video turgani holda
   /// ikkitasining ovozi birdan eshitilardi.
   final bool active;
+
+  /// Video ochilgach uning UZUNLIGI aytiladi.
+  ///
+  /// Istorya ko'ruvchisi buni kutadi: progress chizig'i qat'iy 5
+  /// soniyaga sozlangan va usiz 30 soniyalik video beshinchi
+  /// soniyada uzilib, keyingi istoryaga o'tib ketardi.
+  final ValueChanged<Duration>? onDuration;
 
   @override
   State<VideoView> createState() => _VideoViewState();
@@ -68,7 +83,7 @@ class _VideoViewState extends State<VideoView> {
     super.didUpdateWidget(old);
     // Reels'da bitta widget qayta ishlatilishi mumkin — manzil
     // o'zgarsa eski video qolib ketmasin.
-    if (old.url != widget.url) {
+    if (old.url != widget.url || old.isLocalFile != widget.isLocalFile) {
       _c?.dispose();
       _c = null;
       _ready = false;
@@ -98,7 +113,9 @@ class _VideoViewState extends State<VideoView> {
       setState(() => _failed = true);
       return;
     }
-    final c = VideoPlayerController.networkUrl(Uri.parse(url));
+    final c = widget.isLocalFile
+        ? VideoPlayerController.file(File(url))
+        : VideoPlayerController.networkUrl(Uri.parse(url));
     _c = c;
     try {
       await c.initialize();
@@ -108,6 +125,7 @@ class _VideoViewState extends State<VideoView> {
       }
       await c.setLooping(widget.loop);
       if (widget.autoPlay && widget.active) await c.play();
+      widget.onDuration?.call(c.value.duration);
       setState(() => _ready = true);
     } catch (_) {
       if (!mounted) return;

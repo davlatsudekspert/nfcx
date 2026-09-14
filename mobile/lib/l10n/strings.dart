@@ -32,8 +32,9 @@ enum AppLocale {
 ///  2. Kod O'QILADIGAN bo'lib qoladi: `tr('Saqlash')` nima
 ///     yozilishini ko'rsatadi, `tr(K.s_042)` esa yo'q.
 ///  3. Yangi satr qo'shganda kalit o'ylab topish shart emas —
-///     unutilgan tarjima esa skript bilan topiladi
-///     (`dart run tool/l10n_check.dart`).
+///     unutilgan tarjima esa TEST bilan topiladi
+///     (`test/l10n_coverage_test.dart`). Jadval manbasi
+///     `tool/l10n.json`, yig'ish: `python3 tool/l10n_build.py`.
 ///
 /// MAVZU BILAN BIR XIL MEXANIZM: `tr()` — funksiya chaqiruvi, ya'ni
 /// uni ishlatgan widget `const` bo'la olmaydi va til almashganda

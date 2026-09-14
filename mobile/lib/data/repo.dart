@@ -392,10 +392,21 @@ class Repo {
     return url;
   }
 
-  /// Yangi post. `imageUrl` — `uploadMedia` qaytargan manzil.
-  Future<Post> addPost(String code, {required String imageUrl, String caption = ''}) async =>
+  /// Yangi post. Manzil `uploadMedia` dan keladi.
+  ///
+  /// RASM YOKI VIDEO — bittasi. Server ikkalasini ham qabul qiladi
+  /// (`posts.video_url` ustuni 2026-09 dan beri bor), ilova esa
+  /// faqat rasm yuborardi: saytdan qo'yilgan video postni ko'rish
+  /// mumkin edi, ilovadan qo'yish esa yo'q edi.
+  Future<Post> addPost(
+    String code, {
+    String? imageUrl,
+    String? videoUrl,
+    String caption = '',
+  }) async =>
       Post.fromJson(_map(await api.post('/api/records/$code/posts', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
       })));
 
@@ -407,12 +418,14 @@ class Repo {
   /// bu yerda `true` shunchaki yozib qo'yilmaydi.
   Future<void> addStory(
     String code, {
-    required String imageUrl,
+    String? imageUrl,
+    String? videoUrl,
     String caption = '',
     required bool agreed,
   }) =>
       api.post('/api/records/$code/stories', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
         'agreed': agreed,
       });
@@ -426,21 +439,29 @@ class Repo {
   // ekrani (`ComposeScreen`) ikkalasiga ham xizmat qiladi —
   // nusxalangan kod yozilmadi.
 
-  Future<void> addCompanyPost(String id, {required String imageUrl, String caption = ''}) =>
+  Future<void> addCompanyPost(
+    String id, {
+    String? imageUrl,
+    String? videoUrl,
+    String caption = '',
+  }) =>
       api.post('/api/companies/$id/posts', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
         'agreed': true,
       });
 
   Future<void> addCompanyStory(
     String id, {
-    required String imageUrl,
+    String? imageUrl,
+    String? videoUrl,
     String caption = '',
     required bool agreed,
   }) =>
       api.post('/api/companies/$id/stories', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
         'agreed': agreed,
       });
