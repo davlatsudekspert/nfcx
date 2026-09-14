@@ -395,6 +395,10 @@
   "На этом тарифе сейчас нет свободных ID.",
   "No available IDs on this tier right now."
  ],
+ "Bu video formati qo‘llab-quvvatlanmaydi.": [
+  "Этот формат видео не поддерживается.",
+  "This video format is not supported."
+ ],
  "Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.": [
   "Это ваш единственный ID — его нельзя удалить.",
   "This is your only ID — it cannot be deleted."
@@ -2274,6 +2278,18 @@
  "Video juda katta ({hajm} MB). Chegara — {chegara} MB.": [
   "Видео слишком большое ({hajm} МБ). Лимит — {chegara} МБ.",
   "The video is too large ({hajm} MB). The limit is {chegara} MB."
+ ],
+ "Video juda sekin ochilyapti. Ulanishni tekshiring.": [
+  "Видео открывается слишком долго. Проверьте соединение.",
+  "The video is taking too long to open. Check your connection."
+ ],
+ "Video manzili bo‘sh.": [
+  "Адрес видео пуст.",
+  "The video address is empty."
+ ],
+ "Video manzili noto‘g‘ri.": [
+  "Адрес видео некорректен.",
+  "The video address is not valid."
  ],
  "Videoni ochib bo‘lmadi.": [
   "Не удалось открыть видео.",
