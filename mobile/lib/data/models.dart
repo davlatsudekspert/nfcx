@@ -337,6 +337,7 @@ class Post {
     required this.id,
     this.caption = '',
     this.images = const [],
+    this.videoUrl,
     this.createdAt,
     this.likes = 0,
     this.views = 0,
@@ -349,6 +350,12 @@ class Post {
   final String id;
   final String caption;
   final List<String> images;
+
+  /// VIDEO manzili. Server 2026-09 dan beri story va post uchun
+  /// `videoUrl` qaytaradi; modelda u O'QILMAS edi va video yozuv
+  /// ekranda QORA bo'lib chiqardi (rasm ro'yxati bo'sh, video esa
+  /// tashlab yuborilgan).
+  final String? videoUrl;
   final DateTime? createdAt;
   final int likes;
   final int views;
@@ -374,7 +381,13 @@ class Post {
       id: _s(j['id']),
       caption: _s(j['caption'] ?? j['text'] ?? j['body']),
       images: imgs,
-      createdAt: DateTime.tryParse(_s(j['createdAt'] ?? j['created_at'] ?? j['ts'])),
+      videoUrl: absUrl(_s(j['videoUrl'] ?? j['video_url'])),
+      // MILLISEKUND HAM, ISO HAM. Post endpointlari vaqtni son
+      // qilib qaytaradi (`postRowToJson`), istorya endpointlari esa
+      // ISO satr. Ilgari bu yerda faqat `DateTime.tryParse` turardi
+      // va sonli vaqt JIMGINA `null` bo'lib qolardi — post ostida
+      // "4 soat oldin" umuman chiqmasdi.
+      createdAt: _ts(j['createdAt'] ?? j['created_at'] ?? j['ts']),
       likes: _i(j['likes'] ?? j['likeCount']),
       views: _i(j['views'] ?? j['viewCount']),
       liked: _b(j['liked']),

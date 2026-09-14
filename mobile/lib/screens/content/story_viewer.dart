@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/media.dart';
+import '../../design/components/video_view.dart';
 import '../../design/components/states.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
@@ -146,12 +147,25 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             // bo'yicha (NetImage ichidagi standart) qoladi: bundan
             // kattaroq dekodlash ko'zga ko'rinmaydi, lekin xotirani
             // yeydi.
-            NetImage(
-              story.images.isEmpty ? null : story.images.first,
-              radius: 0,
-              fit: BoxFit.contain,
-              slotLabel: tr('STORY MEDIA 9:16'),
-            ),
+            // VIDEO YOKI RASM.
+            //
+            // Ilgari bu yerda faqat `NetImage` turardi va VIDEO
+            // istorya QORA EKRAN bo'lib ochilardi: server
+            // `videoUrl` ni qaytaradi, `imageUrl` esa bo'sh bo'ladi,
+            // ya'ni rasm ko'rsatgich ko'rsatadigan narsa topmasdi.
+            if ((story.videoUrl ?? '').isNotEmpty)
+              VideoView(
+                url: story.videoUrl!,
+                poster: story.images.isEmpty ? null : story.images.first,
+                fit: BoxFit.contain,
+              )
+            else
+              NetImage(
+                story.images.isEmpty ? null : story.images.first,
+                radius: 0,
+                fit: BoxFit.contain,
+                slotLabel: tr('STORY MEDIA 9:16'),
+              ),
             // Yuqori va pastki qorong'i gradient — oq matn har qanday
             // rasm ustida o'qiladi.
             const Positioned(

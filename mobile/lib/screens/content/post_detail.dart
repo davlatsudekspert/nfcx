@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
+import '../../design/components/video_view.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../common/top_bar.dart';
@@ -39,31 +40,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 children: [
                   AspectRatio(
                     aspectRatio: 4 / 5,
-                    child: Stack(
-                      children: [
-                        PageView.builder(
-                          itemCount: images.length,
-                          onPageChanged: (i) => setState(() => _page = i),
-                          itemBuilder: (_, i) => NetImage(
-                            images[i].isEmpty ? null : images[i],
-                            slotLabel: tr('POST MEDIA 4:5'),
+                    // VIDEO POST. Ilgari bu ekran faqat rasm
+                    // ko'rsatardi: video postda `images` bo'sh
+                    // bo'ladi va joy bo'm-bo'sh chiqardi.
+                    child: (p.videoUrl ?? '').isNotEmpty
+                        ? VideoView(
+                            url: p.videoUrl!,
+                            poster: p.images.isEmpty ? null : p.images.first,
+                          )
+                        : _Gallery(
+                            images: images,
+                            page: _page,
+                            onPage: (i) => setState(() => _page = i),
                           ),
-                        ),
-                        if (images.length > 1)
-                          Positioned(
-                            right: S.x12, top: S.x12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: C.backdrop.withValues(alpha: .6),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text('${_page + 1}/${images.length}',
-                                  style: T.statusLabel.copyWith(color: C.offWhite)),
-                            ),
-                          ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: S.x16),
                   Row(
@@ -89,6 +78,43 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     );
   }
+}
+
+/// Bir nechta rasmli post — suriladigan galereya va "2/5" hisoblagichi.
+class _Gallery extends StatelessWidget {
+  const _Gallery({required this.images, required this.page, required this.onPage});
+
+  final List<String> images;
+  final int page;
+  final ValueChanged<int> onPage;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        children: [
+          PageView.builder(
+            itemCount: images.length,
+            onPageChanged: onPage,
+            itemBuilder: (_, i) => NetImage(
+              images[i].isEmpty ? null : images[i],
+              slotLabel: tr('POST MEDIA 4:5'),
+            ),
+          ),
+          if (images.length > 1)
+            Positioned(
+              right: S.x12,
+              top: S.x12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: C.backdrop.withValues(alpha: .6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('${page + 1}/${images.length}',
+                    style: T.statusLabel.copyWith(color: C.offWhite)),
+              ),
+            ),
+        ],
+      );
 }
 
 /// "4 soat oldin" ko'rinishidagi vaqt. Aniq sana kerak emas —

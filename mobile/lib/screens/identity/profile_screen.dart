@@ -857,13 +857,28 @@ class _PostGrid extends StatelessWidget {
   Widget _tile(BuildContext context, Post post) => RepaintBoundary(
         child: Press(
           onTap: () => push(context, (_) => PostDetailScreen(post: post)),
-          child: NetImage(
-            post.images.isEmpty ? null : post.images.first,
-            radius: 4,
-            // Uch ustunli to'rda har rasm ~130px — undan kattaroq
-            // dekodlash xotirani behuda yeydi.
-            cacheWidth: 160,
-            slotLabel: 'POST',
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              NetImage(
+                post.images.isEmpty ? null : post.images.first,
+                radius: 4,
+                // Uch ustunli to'rda har rasm ~130px — undan kattaroq
+                // dekodlash xotirani behuda yeydi.
+                cacheWidth: 160,
+                slotLabel: 'POST',
+              ),
+              // VIDEO EKANI KO'RINSIN. To'rda videoning muqovasi
+              // yo'q (server uni yaratmaydi), shuning uchun bu
+              // katak bo'm-bo'sh ko'rinardi va odam uni "buzilgan"
+              // deb o'ylardi. Belgi bosishga arzishini aytadi.
+              if ((post.videoUrl ?? '').isNotEmpty)
+                const Positioned(
+                  right: 5,
+                  top: 5,
+                  child: NIcon(Ico.play, size: 15, color: C.offWhite),
+                ),
+            ],
           ),
         ),
       );
