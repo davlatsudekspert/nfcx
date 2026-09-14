@@ -190,29 +190,22 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   /// SHIKOYAT. Varaq ochilguncha progress TO'XTAYDI — aks holda
   /// odam sabab tanlayotganda istorya o'zi keyingisiga o'tib
   /// ketardi va shikoyat boshqa yozuvga ketardi.
-  Future<void> _report() async {
+  /// "⋯" MENYUSI — begona story'da. Ilgari bu yerda bayroq
+  /// turardi; izohi `report_sheet.dart` da.
+  ///
+  /// Menyu ochilganda taymer TO'XTAYDI: aks holda odam sabab
+  /// tanlab ulgurmay, story keyingisiga o'tib ketardi.
+  Future<void> _more() async {
     if (_index >= _stories.length) return;
     final story = _stories[_index];
     _progress.stop();
-    final sent = await showReportSheet(
+    await showContentMenu(
       context,
+      title: story.authorName.isEmpty ? widget.code : story.authorName,
       targetKind: widget.isCompany ? 'company_post' : 'story',
       targetId: story.id,
       ownerCode: widget.code,
     );
-    if (!mounted) return;
-    if (sent) {
-      await showSheet<void>(
-        context,
-        title: tr('Shikoyat yuborildi'),
-        subtitle: tr('Moderator tekshiradi. Rahmat.'),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-          child: SecondaryButton(tr('Yopish'),
-              onTap: () => Navigator.of(context).pop()),
-        ),
-      );
-    }
     if (mounted) _progress.forward();
   }
 
@@ -427,18 +420,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             ),
                           )
                         else
-                          // MEHMONGA — SHIKOYAT.
-                          //
-                          // O'z istoryasiga shikoyat qilish
-                          // ma'nosiz, shuning uchun tugma egada
-                          // ko'rsatilmaydi va o'rnida o'chirish
-                          // turadi.
+                          // MEHMONGA — "⋯" MENYUSI (ichida
+                          // shikoyat). O'z story'siga shikoyat
+                          // qilish ma'nosiz, shuning uchun egada
+                          // uning o'rnida o'chirish turadi.
                           GestureDetector(
-                            onTap: _report,
+                            onTap: _more,
                             behavior: HitTestBehavior.opaque,
                             child: const Padding(
                               padding: EdgeInsets.all(8),
-                              child: NIcon(Ico.flag, size: 19, color: C.offWhite),
+                              child: NIcon(Ico.more, size: 19, color: C.offWhite),
                             ),
                           ),
                         GestureDetector(

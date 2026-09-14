@@ -13,20 +13,26 @@ import { useLanguage } from '../lib/i18n.jsx';
 // bo'lishi shart: profillar OCHIQ, ya'ni ularni ko'radiganlarning
 // ko'pi ilovani umuman o'rnatmagan.
 //
-// Sabablar ro'yxati SERVERDAGI `REPORT_REASONS` bilan bir xil
-// (hosting/api/moderation.js) va saytdagi kontent qoidalari matni
-// bilan bir xil narsalarni nomlaydi: odam qoidada o'qigan narsani
-// shikoyatda ham topishi kerak.
+// Kalitlar SERVERDAGI `REPORT_REASONS` bilan bir xil
+// (hosting/api/moderation.js).
+//
+// YOZUVLAR QISQA — ATAYLAB. Ilgari bu yerda kontent qoidalarining
+// to'liq jumlalari turardi va oyna butun ekranni egallagan qoidalar
+// ro'yxatiga o'xshab qolgandi. Qoidalar matni O'Z JOYIDA bor: u
+// rasm yoki video YUKLASHDAN OLDIN ko'rsatiladi
+// (`ContentRulesGate`), ya'ni odam joylashdan avval o'qiydi. Bu
+// yerda esa boshqa vazifa — allaqachon joylangan kontentni bir
+// so'z bilan turkumlash.
 const REASONS = [
-  ['porn', 'Pornografik yoki jinsiy xarakterdagi'],
-  ['religious', 'Diniy targ‘ibot yoki ekstremistik mazmun'],
-  ['political', 'Siyosiy targ‘ibot'],
-  ['violence', 'Zo‘ravonlik yoki shafqatsizlik'],
-  ['insult', 'Haqorat, so‘kinish, kamsitish'],
-  ['spam', 'Spam yoki aldov'],
-  ['illegal', 'Qonunga zid boshqa material'],
-  ['copyright', 'Mualliflik huquqi buzilgan'],
-  ['other', 'Boshqa sabab'],
+  ['porn', 'Pornografiya'],
+  ['religious', 'Diniy targ‘ibot'],
+  ['political', 'Siyosat'],
+  ['violence', 'Zo‘ravonlik'],
+  ['insult', 'Haqorat'],
+  ['spam', 'Spam'],
+  ['illegal', 'Qonunga zid'],
+  ['copyright', 'Mualliflik huquqi'],
+  ['other', 'Boshqa'],
 ];
 
 export default function ReportButton({ targetKind, targetId, className = '' }) {
@@ -100,17 +106,23 @@ function ReportModal({ targetKind, targetId, onClose }) {
             <p className="cr-warn">
               {t('Sabab tanlang. Shikoyat moderatorga yuboriladi va kontent tekshiriladi.')}
             </p>
-            <div className="mt-2 max-h-[46vh] overflow-y-auto">
+            {/* Qator emas, CHIPLAR: to'qqizta sabab butun kenglikdagi
+                qatorlarda turganda oyna surilishi kerak bo'lardi. */}
+            <div className="mt-3 flex flex-wrap gap-2">
               {REASONS.map(([key, label]) => (
-                <label key={key} className="cr-check">
-                  <input
-                    type="radio"
-                    name="report-reason"
-                    checked={reason === key}
-                    onChange={() => { setReason(key); setErr(''); }}
-                  />
-                  <span>{t(label)}</span>
-                </label>
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { setReason(key); setErr(''); }}
+                  aria-pressed={reason === key}
+                  className={`min-h-11 rounded-xl border px-4 py-2 text-[13px] transition ${
+                    reason === key
+                      ? 'border-[color:var(--vz-gold)] bg-[color:var(--vz-gold)]/12 font-bold text-[color:var(--vz-gold-2)]'
+                      : 'border-white/12 text-base-content/80 hover:border-white/30'
+                  }`}
+                >
+                  {t(label)}
+                </button>
               ))}
             </div>
             {err && <p className="mt-2 text-[13px] text-[color:var(--vz-danger,#e5484d)]">{err}</p>}

@@ -229,6 +229,63 @@ export async function handle(request, env, url, H) {
     return H.json({ ok: true, report: reportRowToJson(row) });
   }
 
+  // ── ADMIN: KONTENTNI O'CHIRISH ─────────────────────────────────
+  //
+  // NIMA UCHUN KERAK: shikoyat navbati bor edi, lekin admin undan
+  // faqat HOLATNI o'zgartira olardi ("ko'rib chiqildi"). Kontentning
+  // o'zini o'chirish yo'li YO'Q edi — ya'ni moderatsiya tizimi
+  // hech narsani moderatsiya qilmasdi. Egasi aynan shunga duch
+  // keldi: Reels'dagi istoryani hech qanday yo'l bilan olib
+  // tashlab bo'lmadi.
+  //
+  // Bu FAQAT ADMIN uchun: oddiy foydalanuvchi o'z kontentini
+  // o'zining endpointlari orqali o'chiradi (u yerda egalik
+  // tekshiriladi).
+  const del = path.match(/^\/api\/admin\/content\/(post|story|company_post)\/(\d+)$/);
+  if (del && request.method === 'DELETE') {
+    const admin = await H.requireAdmin(request, env);
+    if (!admin) return H.json({ error: 'unauthorized' }, 401);
+    const kind = del[1];
+    const id = Number(del[2]);
+
+    // Har bir tur uchun O'ZINING jadvali va bog'liq yozuvlari.
+    // Layk va ko'rishlar asosiy qatordan OLDIN o'chadi.
+    const plan = {
+      post: [
+        `DELETE FROM post_likes WHERE post_id = ?`,
+        `DELETE FROM posts WHERE id = ?`,
+      ],
+      // `owner_kind` sharti ATAYLAB yo'q: `stories.id` yagona va
+      // admin uchun istorya kimniki ekani (shaxsiy yoki kompaniya)
+      // farq qilmaydi — u baribir o'chirishga haqli.
+      story: [
+        `DELETE FROM story_likes WHERE story_id = ?`,
+        `DELETE FROM story_views WHERE story_id = ?`,
+        `DELETE FROM stories WHERE id = ?`,
+      ],
+      company_post: [
+        `DELETE FROM company_posts WHERE id = ?`,
+      ],
+    }[kind];
+
+    const res = await env.DB.batch(plan.map((sql) => env.DB.prepare(sql).bind(id)));
+    // Oxirgi so'rov — asosiy qatorniki. O'zgarish bo'lmasa, bunday
+    // kontent umuman yo'q.
+    const changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
+    if (!changed) return H.json({ error: 'not_found' }, 404);
+
+    // Shu kontentga tegishli shikoyatlar avtomatik yopiladi —
+    // admin ularni qo'lda bosib chiqmasin.
+    await env.DB.prepare(
+      `UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+        WHERE target_kind = ? AND target_id = ? AND status <> 'resolved'`
+    ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, String(id))
+      .run().catch(() => {});
+
+    H.logAdminActivity?.(env, admin, 'content_delete', `${kind}#${id}`)?.catch?.(() => {});
+    return H.json({ ok: true });
+  }
+
   return null;
 }
 

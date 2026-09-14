@@ -17,6 +17,7 @@ import '../../design/type.dart';
 import '../../state/app_state.dart';
 import '../common/top_bar.dart';
 import '../../l10n/strings.dart';
+import 'content_rules_gate.dart';
 
 /// Nima yaratilyapti.
 enum ComposeKind { post, story }
@@ -90,7 +91,26 @@ class _ComposeScreenState extends State<ComposeScreen> {
   /// `maxDuration` — 60 soniya: istorya ko'ruvchisidagi segment
   /// chegarasi ham shuncha. Undan uzunini qabul qilib, keyin
   /// yarmida uzib qo'yish odamni aldash bo'lardi.
+  /// QOIDALAR — FAYL TANLAGICHIDAN OLDIN.
+  ///
+  /// Ilgari ular formaning PASTIDA, oddiy belgilash katakchasi
+  /// sifatida turardi: odam rasmni tanlab, izoh yozib, keyin
+  /// pastdagi katakchani ko'rardi — yoki ko'rmasdi. Saytda esa
+  /// oyna fayl tanlashdan OLDIN chiqadi; ilova endi shunga mos.
+  ///
+  /// Bir marta rozilik bildirilgach qayta so'ralmaydi: bitta
+  /// ekranda uch marta bir xil matnni ko'rsatish rozilikni
+  /// formallikka aylantirardi.
+  Future<bool> _agreeFirst() async {
+    if (_agreed) return true;
+    final ok = await askContentRules(context);
+    if (ok && mounted) setState(() => _agreed = true);
+    return ok;
+  }
+
   Future<void> _pickVideo(ImageSource source) async {
+    if (!await _agreeFirst()) return;
+    if (!mounted) return;
     setState(() => _error = null);
     try {
       final file = await _picker.pickVideo(
@@ -130,6 +150,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
   }
 
   Future<void> _pick(ImageSource source) async {
+    if (!await _agreeFirst()) return;
+    if (!mounted) return;
     setState(() => _error = null);
     try {
       // O'LCHAM SHU YERDA CHEGARALANADI: zamonaviy telefon 4000px
@@ -363,11 +385,15 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   hint: tr('Ixtiyoriy'),
                   maxLines: 4,
                 ),
-                const SizedBox(height: S.x16),
-                _Rules(
-                  value: _agreed,
-                  onChanged: _busy ? null : (v) => setState(() => _agreed = v),
-                ),
+                // ROZILIK BERILGANI KO'RINIB TURSIN.
+                //
+                // Katakcha olib tashlandi (qoidalar endi yuklashdan
+                // oldin ko'rsatiladi), lekin odam nimaga rozi
+                // bo'lganini keyin ham ko'ra olishi kerak.
+                if (_agreed) ...[
+                  const SizedBox(height: S.x16),
+                  _AgreedNote(onReopen: _busy ? null : () => askContentRules(context)),
+                ],
                 if (_error != null) ...[
                   const SizedBox(height: S.x16),
                   Text(_error!, style: T.caption.copyWith(color: C.signal)),
@@ -392,76 +418,32 @@ class _ComposeScreenState extends State<ComposeScreen> {
   }
 }
 
-/// KONTENT QOIDALARI — SAYTDAGI AYNAN SHU MATN.
+/// ROZILIK BERILGANI HAQIDAGI QATOR.
 ///
-/// Manba: `src/components/ContentRulesGate.jsx` (`CONTENT_RULES_TEXT`).
-/// U yerda "MATN EGASI BERGAN TAHRIRDA — o'zgartirilmaydi,
-/// qisqartirilmaydi" deb yozilgan.
-///
-/// Ilovada ilgari butunlay BOSHQA, qisqa jumla turardi: "Joylayotgan
-/// kontentim uchun javobgarlikni olaman...". Unda na diniy targ'ibot,
-/// na pornografiya, na siyosiy targ'ibot, na qonunchilik tilga
-/// olinardi — ya'ni ilova orqali joylagan odam nimaga rozi
-/// bo'layotganini BILMASDI va bu rozilikning yuridik qiymati yo'q edi.
-String get contentRulesText => tr(
-      'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi '
-      'shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik '
-      'yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, '
-      'shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har '
-      'qanday material. Ushbu qoidalar buzilgan taqdirda kontent '
-      'ogohlantirishsiz o‘chiriladi.',
-    );
+/// Qoidalar oynasi (`askContentRules`) fayl tanlashdan oldin
+/// ko'rsatiladi va rozilik o'sha yerda olinadi. Bu yerda faqat
+/// natija: "rozilik berildi" + matnni qayta o'qish imkoni. Server
+/// rozilikni `agreed` maydoni orqali TALAB QILADI, ya'ni u haqiqiy.
+class _AgreedNote extends StatelessWidget {
+  const _AgreedNote({required this.onReopen});
 
-/// Rozilik qatori — saytdagi `CONTENT_RULES_ACCEPT`.
-String get contentRulesAccept => tr('Men qoidalarni o‘qidim va roziman');
-
-/// KONTENT QOIDALARIGA ROZILIK.
-///
-/// Server buni `agreed` maydoni orqali TALAB QILADI. Ilova uni
-/// avtomatik `true` qilib yuborishi mumkin edi — lekin o'shanda
-/// rozilik degan narsa qolmasdi. Shuning uchun odam o'zi belgilaydi.
-class _Rules extends StatelessWidget {
-  const _Rules({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool>? onChanged;
+  final VoidCallback? onReopen;
 
   @override
   Widget build(BuildContext context) => Press(
-        haptic: true,
-        onTap: onChanged == null ? null : () => onChanged!(!value),
+        onTap: onReopen,
         child: Surface(
           padding: const EdgeInsets.all(S.x12),
-          border: value ? C.champagne.withValues(alpha: .35) : null,
+          border: C.verdant.withValues(alpha: .3),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 20,
-                height: 20,
-                margin: const EdgeInsets.only(top: 1),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
-                  color: value ? C.champagne : C.slate,
-                  border: Border.all(color: value ? C.champagne : C.warmHairline),
-                ),
-                alignment: Alignment.center,
-                child: value
-                    ? NIcon(Ico.check, size: 13, color: C.ink)
-                    : null,
-              ),
+              const NIcon(Ico.check, size: 18, color: C.verdant),
               const SizedBox(width: S.x12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(contentRulesText, style: T.caption.copyWith(color: C.offWhite)),
-                    const SizedBox(height: 6),
-                    Text(contentRulesAccept,
-                        style: T.caption.copyWith(color: C.champagne)),
-                  ],
-                ),
+                child: Text(tr('Kontent qoidalariga rozilik berildi'),
+                    style: T.caption.copyWith(color: C.offWhite)),
               ),
+              Text(tr('Qayta o‘qish'), style: T.caption.copyWith(color: C.champagne)),
             ],
           ),
         ),

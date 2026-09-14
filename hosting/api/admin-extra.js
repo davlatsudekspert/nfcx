@@ -1,4 +1,5 @@
 import { PENDING_ORDER_TTL_MS } from './order-window.js';
+import { cardContentCleanupStmts } from './card-cleanup.js';
 // hosting/api/admin-extra.js — CONTRACT.md ga qarang. Route topilmasa null qaytaradi.
 //
 // server/admin.js (Express) dagi quyidagi admin route'larning D1 porti.
@@ -164,6 +165,7 @@ export async function handle(request, env, url, H) {
 
   // Faqat shu modul biladigan yo'llar — boshqalar uchun auth'ga ham tegmaymiz (null).
   const catId = path.match(/^\/api\/admin\/categories\/(\d+)$/);
+  const recDelete = path.match(/^\/api\/admin\/records\/([A-Za-z0-9]+)$/);
   const recVerify = path.match(/^\/api\/admin\/records\/([A-Za-z0-9]+)\/verify$/);
   const recViews = path.match(/^\/api\/admin\/records\/([A-Za-z0-9]+)\/views$/);
   const userDelete = path.match(/^\/api\/admin\/users\/(\d+)\/delete$/);
@@ -234,6 +236,44 @@ export async function handle(request, env, url, H) {
     await env.DB.prepare(`DELETE FROM categories WHERE id = ?`).bind(id).run();
     await H.logAdminActivity(env, { action: 'category_deleted', details: `#${id}`, ip });
     return H.json({ ok: true });
+  }
+
+  // ---------- PROFILNI BUTUNLAY O'CHIRISH (admin) ----------
+  //
+  // NIMA UCHUN KERAK: adminda profilni o'chirish yo'li UMUMAN
+  // YO'Q edi — faqat "tasdiqlash" va "ko'rishlar soni". Egasi
+  // qoidabuzar profilni o'chirmoqchi bo'lganda hech qanday vosita
+  // topmadi va profil ilovada ham, Reels lentasida ham turaverdi.
+  //
+  // Egalik oqimidan (`account.js` deleteOwnCard) ikki farqi bor:
+  //   1. egalik tekshirilmaydi — admin istalgan profilni o'chiradi;
+  //   2. "oxirgi karta" cheklovi yo'q — u foydalanuvchini o'z
+  //      profilisiz qoldirmaslik uchun, adminga tegishli emas.
+  //
+  // Kontent aynan O'SHA yordamchi bilan tozalanadi
+  // (`cardContentCleanupStmts`), ya'ni yangi jadval qo'shilsa bu
+  // yo'l ham darhol uni tozalaydi.
+  if (recDelete && method === 'DELETE') {
+    const code = recDelete[1].toUpperCase();
+    const card = await env.DB.prepare(`SELECT code, is_primary AS isPrimary, user_id AS userId FROM cards WHERE code = ?`)
+      .bind(code).first();
+    if (!card) return H.json({ error: 'not_found' }, 404);
+
+    await env.DB.batch([
+      ...cardContentCleanupStmts(env, '?', [code], H.nowTs()),
+      env.DB.prepare(`DELETE FROM cards WHERE code = ?`).bind(code),
+    ]);
+    // Asosiy profil o'chirilgan bo'lsa, egasida boshqasi qolsa —
+    // o'sha asosiy bo'ladi, aks holda odam "asosiy profilsiz"
+    // holatga tushib qolardi.
+    if (card.isPrimary && card.userId) {
+      await env.DB.prepare(
+        `UPDATE cards SET is_primary = 1 WHERE code = (SELECT code FROM cards WHERE user_id = ? ORDER BY ts ASC LIMIT 1)`
+      ).bind(card.userId).run().catch(() => {});
+    }
+    await H.logAdminActivity(env, { action: 'card_deleted', details: code, ip });
+    // 8 xonali kod qayta sotuvga chiqadi — egasi buni bilishi kerak.
+    return H.json({ ok: true, code, freeId: /^[0-9]{8}$/.test(code) });
   }
 
   // ---------- Profil tasdiqlash / ko'rishlar (server/admin.js /records/:code/*) ----------

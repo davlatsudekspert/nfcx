@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../data/api_client.dart';
 import '../../data/repo.dart';
+import '../../screens/content/content_rules_gate.dart';
 import '../tokens.dart';
 import '../type.dart';
 import 'buttons.dart';
@@ -63,6 +64,13 @@ class _MediaPickFieldState extends State<MediaPickField> {
 
   Future<void> _pick() async {
     if (_busy) return;
+    // QOIDALAR — FAYL TANLAGICHIDAN OLDIN.
+    //
+    // Ilgari bu oqimda (avatar, muqova, logo, mahsulot rasmi)
+    // ogohlantirish UMUMAN yo'q edi: odam istalgan rasmni
+    // hech narsa o'qimasdan yuklardi.
+    if (!await askContentRules(context)) return;
+    if (!mounted) return;
     setState(() => _error = null);
     try {
       // O'lcham shu yerda chegaralanadi: telefon 4000px rasm beradi,
