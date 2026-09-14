@@ -2756,7 +2756,6 @@ const DICT_HOME = {
     en: 'The QR code holds only the card number — it is not a payment link.' },
   'Kontaktni saqlash': { ru: 'Сохранить контакт', en: 'Save contact' },
   // ── Stories va postlar (2026-09) ──
-  'Stories': { ru: 'История', en: 'Story' },
   'Story qo‘shish': { ru: 'Добавить историю', en: 'Add story' },
   'Storyni ko‘rish': { ru: 'Смотреть историю', en: 'View story' },
   'Story joylandi': { ru: 'История опубликована', en: 'Story published' },

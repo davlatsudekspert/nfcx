@@ -17,6 +17,11 @@ export const DICT_ACCOUNT = {
   'Storyni saqlash': { ru: 'Сохранить историю', en: 'Save story' },
   'Postni saqlash': { ru: 'Сохранить пост', en: 'Save post' },
   'Story joylandi.': { ru: 'История опубликована.', en: 'Story published.' },
+  '{n}/10 story': { ru: '{n}/10 историй', en: '{n}/10 stories' },
+  'Stories va postlar': { ru: 'Истории и посты', en: 'Stories & posts' },
+  'Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Postni saqlash" ni bosasiz.': {
+    ru: 'Фото или видео, до 100 МБ. После выбора посмотрите результат и нажмите «Сохранить пост».',
+    en: 'Photo or video, up to 100 MB. After picking it, review it and press "Save post".' },
   'Saqlanmoqda…': { ru: 'Сохранение…', en: 'Saving…' },
   'Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Storyni saqlash" ni bosasiz.': {
     ru: 'Фото или видео, до 100 МБ. После выбора посмотрите результат и нажмите «Сохранить историю».',

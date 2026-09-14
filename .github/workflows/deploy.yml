@@ -101,6 +101,17 @@ jobs:
       - name: Sahifa foni va kontrast
         run: node scripts/test-page-background.mjs
 
+      # STORY VA POST MUSTAQILLIGI.
+      #
+      # Haqiqiy xato: story yuklash bloki IKKI JOYDA ikki xil yozilgan
+      # edi va tuzatish faqat bittasiga tushgan. Ikkinchisida saqlash
+      # tugmasi umuman yo'q edi — fayl tanlangan zahoti e'lon
+      # qilinardi, yonidagi post blokida esa "Postni saqlash" turardi.
+      # Egasi shundan "story postsiz saqlanmaydi" degan xulosaga
+      # kelgan. Test nusxa qaytib kelishiga yo'l qo'ymaydi.
+      - name: Story va post mustaqilligi
+        run: node scripts/test-story-post-separate.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

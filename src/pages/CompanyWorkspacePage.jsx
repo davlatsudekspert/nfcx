@@ -514,13 +514,19 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
 
   return (
     <div className="cw-panel">
+      {/* Panel sarlavhasi ilgari faqat "Stories" edi, ichida esa
+          postlar ham bor edi — ikkisi bitta ish deb o'qilardi. */}
       <div className="cw-panel-head">
         <span>01</span>
         <div>
-          <h2>{t('Stories')}</h2>
+          <h2>{t('Stories va postlar')}</h2>
           <p>{t('Post kompaniya sahifasida qoladi. Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')}</p>
         </div>
       </div>
+
+      <p className="cw-note">
+        {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+      </p>
 
       <div className="cw-sub">
         <div className="cw-sub-head">
@@ -530,14 +536,26 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
         <div className="cw-feed-strip">
           {stories.map((st) => (
             <div key={st.id} className="cw-feed-item is-story">
-              <img src={st.imageUrl} alt="" />
+              {/* Video story ham ko'rinsin — ilgari bu yerda faqat
+                  `<img>` bor edi va video singan rasm bo'lib chiqardi. */}
+              {st.videoUrl
+                ? <video src={st.videoUrl} muted playsInline preload="metadata" />
+                : <img src={st.imageUrl} alt="" />}
               <button type="button" onClick={() => removeStory(st.id)} aria-label={t('O‘chirish')}>×</button>
             </div>
           ))}
           {!stories.length && <p className="cw-empty">{t('Hozircha story yo‘q.')}</p>}
         </div>
+        {/* TASDIQLASH REJIMI — fayl tanlangan zahoti e'lon qilinmaydi:
+            avval ko'rinadi, ostida esa SHU blokning o'z "Storyni
+            saqlash" tugmasi turadi. Shaxsiy kabinetdagi story bloki
+            bilan bir xil xulq. */}
         <StoryUploader
           label={t('Story qo‘shish')}
+          disabled={stories.length >= 10}
+          confirm
+          saveLabel={t('Storyni saqlash')}
+          hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Storyni saqlash" ni bosasiz.')}
           onSubmit={async (payload) => { await createCompanyStory(companyId, payload); setNotice(t('Story joylandi')); load(); }}
         />
       </div>
@@ -550,7 +568,9 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
         <div className="cw-feed-grid">
           {posts.map((p) => (
             <div key={p.id} className="cw-feed-item">
-              <img src={p.imageUrl} alt="" />
+              {p.videoUrl
+                ? <video src={p.videoUrl} muted playsInline preload="metadata" />
+                : <img src={p.imageUrl} alt="" />}
               {p.caption && <span>{p.caption}</span>}
               <button type="button" onClick={() => removePost(p.id)} aria-label={t('O‘chirish')}>×</button>
             </div>
@@ -559,6 +579,9 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
         </div>
         <StoryUploader
           label={t('Post qo‘shish')}
+          confirm
+          saveLabel={t('Postni saqlash')}
+          hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Postni saqlash" ni bosasiz.')}
           onSubmit={async (payload) => { await createCompanyPost(companyId, payload); setNotice(t('Post joylandi')); load(); }}
         />
       </div>

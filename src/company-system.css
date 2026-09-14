@@ -211,7 +211,7 @@
 .cw-feed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:10px}
 .cw-feed-item{position:relative;border:1px solid #27241e;border-radius:12px;overflow:hidden;background:#0a0a09}
 .cw-feed-item.is-story{flex:0 0 82px;width:82px}
-.cw-feed-item img{display:block;width:100%;height:110px;object-fit:cover}
+.cw-feed-item img,.cw-feed-item video{display:block;width:100%;height:110px;object-fit:cover}
 .cw-feed-item span{display:block;padding:7px 9px;font-size:var(--fs-2xs);color:#a29a8d;line-height:1.45}
 .cw-feed-item>button{position:absolute;right:5px;top:5px;width:24px;height:24px;border:0;border-radius:50%;background:rgba(0,0,0,.72);color:#ff9b9b;cursor:pointer;font-size:14px;line-height:1}
 .cp-posts{margin-top:28px}
@@ -952,3 +952,7 @@ body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   background:var(--gold-face);color:#241a05;
   font-size:11px;font-weight:700;
 }
+
+/* Bo'limdagi izoh qatori: story va post ikki alohida ish ekanini
+   aytadi. Panel ichida, sarlavhadan keyin turadi. */
+.cw-note{margin:12px 0 0;padding:10px 13px;border:1px solid rgba(212,175,55,.24);border-radius:13px;background:rgba(212,175,55,.06);font-size:12.5px;line-height:1.6;color:rgba(255,255,255,.66)}
