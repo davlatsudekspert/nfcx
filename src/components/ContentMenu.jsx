@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import AnchoredMenu, { anchorTo } from './AnchoredMenu.jsx';
 import { backdropProps } from '../lib/backdrop.js';
 import { useLanguage } from '../lib/i18n.jsx';
 
-// SHIKOYAT TUGMASI — ommaviy profil sahifalarida.
+// KONTENT MENYUSI ("⋯") — ommaviy profil sahifalarida.
 //
-// NIMA UCHUN KERAK: platformada foydalanuvchi joylagan kontent bor,
-// lekin uni ko'rgan odam qo'lidan hech narsa kelmasdi va bizga u
-// haqda xabar ham yetib kelmasdi.
+// NIMA UCHUN SHIKOYAT KERAK: platformada foydalanuvchi joylagan
+// kontent bor, lekin uni ko'rgan odam qo'lidan hech narsa kelmasdi
+// va bizga u haqda xabar ham yetib kelmasdi. Profillar OCHIQ, ya'ni
+// ularni ko'radiganlarning ko'pi ilovani umuman o'rnatmagan.
 //
-// Ilovada bu allaqachon bor (`report_sheet.dart`) — saytda ham
-// bo'lishi shart: profillar OCHIQ, ya'ni ularni ko'radiganlarning
-// ko'pi ilovani umuman o'rnatmagan.
+// NIMA UCHUN BAYROQ EMAS, MENYU: ilgari bu yerda bayroq belgisi
+// turardi va u sahifada doim ko'rinib, saytni "shikoyat qilinadigan
+// joy" qilib ko'rsatardi — egasi uni olib tashlashni so'radi.
+//
+// Shikoyatning O'ZI qoladi: Google Play foydalanuvchi kontenti
+// bo'lgan ilovadan ilova ichida xabar berish yo'lini talab qiladi
+// va ilova aynan shu sayt bilan bitta hisobga ishlaydi. Shuning
+// uchun belgi emas, JOY o'zgardi — ilovadagi bilan bir xil
+// (`report_sheet.dart` dagi `showContentMenu`).
 //
 // Kalitlar SERVERDAGI `REPORT_REASONS` bilan bir xil
 // (hosting/api/moderation.js).
@@ -35,26 +43,47 @@ const REASONS = [
   ['other', 'Boshqa'],
 ];
 
-export default function ReportButton({ targetKind, targetId, className = '' }) {
+export default function ContentMenuButton({ targetKind, targetId, className = '' }) {
   const { t } = useLanguage();
+  const [menu, setMenu] = useState(null);
   const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
 
   return (
     <>
       <button
+        ref={btnRef}
         type="button"
-        title={t('Shikoyat qilish')}
-        aria-label={t('Shikoyat qilish')}
-        onClick={() => setOpen(true)}
+        title={t('Yana')}
+        aria-label={t('Yana')}
+        aria-haspopup="menu"
+        aria-expanded={menu ? true : undefined}
+        onClick={() => setMenu(menu ? null : anchorTo(btnRef.current, { width: 200, height: 64 }))}
         className={className}
       >
-        {/* Bayroq — shikoyat belgisi. Qo'ng'iroq BILDIRISHNOMA deb
-            o'qilardi. */}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M5.5 21V4" />
-          <path d="M5.5 4.6c4-2 8 2 13 0v8.6c-5 2-9-2-13 0z" />
+        {/* Uchta nuqta. Bitta band uchun menyu ortiqchadek
+            tuyulishi mumkin, lekin gap ko'rinishda: shikoyat
+            sahifada o'zini ko'rsatib turmasligi kerak. */}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="12" cy="5" r="1.8" />
+          <circle cx="12" cy="12" r="1.8" />
+          <circle cx="12" cy="19" r="1.8" />
         </svg>
       </button>
+
+      <AnchoredMenu at={menu} onClose={closeMenu}>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => { setMenu(null); setOpen(true); }}
+          className="flex min-h-11 w-full items-center whitespace-nowrap rounded-[10px] px-3 text-left text-[14px] font-semibold hover:bg-white/5"
+          style={{ color: 'inherit' }}
+        >
+          {t('Shikoyat qilish')}
+        </button>
+      </AnchoredMenu>
+
       {open && <ReportModal targetKind={targetKind} targetId={targetId} onClose={() => setOpen(false)} />}
     </>
   );
