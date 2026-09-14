@@ -1,14 +1,15 @@
-import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
+
+import '../../design/components/backdrop.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
-import '../common/top_bar.dart';
-import '../../design/components/icons.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
 
 /// SHAXSIY PROFIL STATISTIKASI — `/api/records/:code/analytics`.
 ///
@@ -17,9 +18,11 @@ import '../../l10n/strings.dart';
 /// ekrani va ular boshqa-boshqa ko'rinsa, ilova ikki xil mahsulotdek
 /// his qilinardi.
 ///
-/// Bu yerda biznesda yo'q ikkita raqam bor: NOYOB TASHRIFCHI va
-/// HODISA TURLARI — chunki `card_events` kim kirganini belgilaydi,
-/// `company_stats` esa oldindan yig'ilgan sanoq.
+/// JAVOB IKKI SHAKLDA KELADI. Oddiy javobda faqat `totalViews`
+/// bo'lishi mumkin; kengaytirilganida `uniqueVisitors`, `byDay`,
+/// `byType` va `byRef` ham bo'ladi. Shuning uchun har maydon
+/// ALOHIDA tekshiriladi va yo'q bo'lsa o'sha bo'lim chizilmaydi —
+/// bitta yo'q maydon butun ekranni yiqitmaydi.
 class ProfileStatsScreen extends StatefulWidget {
   const ProfileStatsScreen({super.key, required this.code, this.name = ''});
 
@@ -64,29 +67,29 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
   }
 
   /// Hodisa turlarini odam tiliga o'girish.
-  static final _eventNames = {
-    'profile_view': tr('Profil ko‘rildi'),
-    'phone': tr('Telefon bosildi'),
-    'telegram': tr('Telegram bosildi'),
-    'whatsapp': tr('WhatsApp bosildi'),
-    'instagram': tr('Instagram bosildi'),
-    'website': tr('Sayt bosildi'),
-    'vcard': tr('Kontakt saqlandi'),
-    'link': tr('Havola bosildi'),
-    'share': tr('Ulashildi'),
-  };
+  ///
+  /// GETTER, `static final` EMAS: tarjima qilingan jadval bir marta
+  /// qurilsa, til almashganda muzlab qolardi.
+  Map<String, String> get _eventNames => {
+        'profile_view': tr('Profil ko‘rildi'),
+        'phone': tr('Telefon bosildi'),
+        'telegram': tr('Telegram bosildi'),
+        'whatsapp': tr('WhatsApp bosildi'),
+        'instagram': tr('Instagram bosildi'),
+        'website': tr('Sayt bosildi'),
+        'vcard': tr('Kontakt saqlandi'),
+        'link': tr('Havola bosildi'),
+        'share': tr('Ulashildi'),
+      };
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: C.obsidian,
-        body: SafeArea(
+  Widget build(BuildContext context) => ScreenBackdrop(
+        aura: Aura.none,
+        child: SafeArea(
           bottom: false,
           child: Column(
             children: [
-              TopBar(
-                title: tr('Statistika'),
-                subtitle: widget.name.isEmpty ? widget.code : widget.name,
-              ),
+              const TopBar(),
               Expanded(
                 child: AsyncView<Map<String, dynamic>>(
                   loading: _loading,
@@ -94,11 +97,12 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                   data: _data,
                   onRetry: _load,
                   skeleton: ListView(
-                    padding: const EdgeInsets.all(S.gutter),
-                    children: const [
-                      SkeletonCard(aspect: 2.4),
-                      SizedBox(height: S.x12),
-                      SkeletonCard(aspect: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                    children: [
+                      ScreenTitle(tr('Statistika')),
+                      const SkeletonCard(aspect: 3.4),
+                      const SizedBox(height: S.x12),
+                      const SkeletonCard(aspect: 2.2),
                     ],
                   ),
                   builder: _build,
@@ -127,109 +131,189 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
         .toList()
       ..sort((a, b) => b.n.compareTo(a.n));
 
+    final actionTotal = actions.fold<int>(0, (a, e) => a + e.n);
+    final delta = _delta(byDay);
+    final names = _eventNames;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+      padding: const EdgeInsets.only(bottom: S.x32),
       children: [
-        Row(
-          children: [
-            for (final v in [7, 30, 90]) ...[
-              if (v != 7) const SizedBox(width: 6),
-              Chip('$v kun', active: _days == v, onTap: () {
-                setState(() => _days = v);
-                _load();
-              }),
-            ],
-          ],
+        ScreenTitle(
+          tr('Statistika'),
+          subtitle: widget.name.isEmpty ? widget.code : widget.name,
         ),
-        const SizedBox(height: S.x16),
-        Surface(
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Eyebrow(tr('Profil ko‘rishlari')),
-              const SizedBox(height: 6),
-              Text(compact(total), style: T.displaySm),
-              const SizedBox(height: S.x16),
-              SizedBox(height: 86, child: _Bars(series: byDay)),
-              if (byDay.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(byDay.first.day, style: T.eyebrow),
-                    Text(byDay.last.day, style: T.eyebrow),
+              // ── DAVR ──────────────────────────────────────────
+              Row(
+                children: [
+                  for (final v in [7, 30, 90]) ...[
+                    if (v != 7) const SizedBox(width: S.x8),
+                    FilterChip(
+                      trf('{son} kun', {'son': '$v'}),
+                      active: _days == v,
+                      onTap: () {
+                        setState(() => _days = v);
+                        _load();
+                      },
+                    ),
                   ],
+                ],
+              ),
+              const SizedBox(height: S.x20),
+
+              // ── UCHTA RAQAM ───────────────────────────────────
+              StatRow(
+                tiles: [
+                  StatTile(
+                    value: compact(total),
+                    label: tr('Ko‘rish'),
+                    accent: true,
+                  ),
+                  StatTile(value: compact(uniq), label: tr('Noyob')),
+                  StatTile(value: compact(actionTotal), label: tr('Amal')),
+                ],
+              ),
+              const SizedBox(height: S.x12),
+
+              // ── KUNLIK GRAFIK ────────────────────────────────
+              if (byDay.isNotEmpty)
+                Surface(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: Eyebrow(tr('Kunlik ko‘rish'))),
+                          if (delta != null)
+                            StatusChip(delta.label, tone: delta.tone),
+                        ],
+                      ),
+                      const SizedBox(height: S.x16),
+                      SizedBox(height: 92, child: _Bars(series: byDay)),
+                      // HAIRLINE — ustunlar qayerdan o'sayotgani
+                      // ko'rinib tursin.
+                      Container(height: 1, color: C.line),
+                      const SizedBox(height: 7),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(byDay.first.day, style: T.meta),
+                          Text(byDay.last.day, style: T.meta),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: S.x12),
-        Surface(
-          shadow: E.e1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Eyebrow(tr('Noyob tashrifchi')),
-              const SizedBox(height: 6),
-              Text(compact(uniq), style: T.cardTitle.copyWith(fontSize: 20)),
-              const SizedBox(height: 4),
+
+              if (byDay.isNotEmpty) const SizedBox(height: S.x12),
+
               // Farqni ochiq yozamiz: aks holda ikkita raqam
               // bir-biriga zid ko'rinadi.
-              Text(
-                tr('Bir odam bir necha marta kirsa ham bitta hisoblanadi'),
-                style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
+              Surface(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: S.x16,
+                  vertical: S.x12,
+                ),
+                shadow: C.e1,
+                child: Text(
+                  tr('Bir odam bir necha marta kirsa ham bitta hisoblanadi'),
+                  style: T.caption.copyWith(fontSize: 12.5, color: C.ink3),
+                ),
               ),
+
+              // ── NIMALAR BOSILDI ──────────────────────────────
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: S.x32),
+                Eyebrow(tr('Nimalar bosildi')),
+                const SizedBox(height: S.x12),
+                for (final a in actions.take(8)) ...[
+                  _Bar(
+                    label: names[a.key] ?? a.key,
+                    value: a.n,
+                    max: actions.first.n,
+                  ),
+                  const SizedBox(height: S.x12),
+                ],
+              ],
+
+              // ── MANBALAR ─────────────────────────────────────
+              if (byRef.isNotEmpty) ...[
+                const SizedBox(height: S.x24),
+                Eyebrow(tr('Manbalar')),
+                const SizedBox(height: S.x12),
+                for (final r in byRef.take(6)) ...[
+                  _Bar(
+                    label: '${r['ref']}',
+                    value: (r['n'] as num? ?? 0).round(),
+                    max: (byRef.first['n'] as num? ?? 1).round(),
+                  ),
+                  const SizedBox(height: S.x12),
+                ],
+              ],
+
+              if (total == 0 && uniq == 0)
+                EmptyState(
+                  tr('Profilingiz ochilgani va kartangiz tegizilgani shu '
+                      'yerda ko‘rinadi.'),
+                  title: tr('Ma‘lumot to‘planmagan'),
+                  icon: Ico.chart,
+                ),
             ],
           ),
         ),
-        if (actions.isNotEmpty) ...[
-          const SizedBox(height: S.x24),
-          Eyebrow(tr('Nimalar bosildi')),
-          const SizedBox(height: S.x12),
-          for (final a in actions.take(8)) ...[
-            _Bar(
-              label: _eventNames[a.key] ?? a.key,
-              value: a.n,
-              max: actions.first.n,
-            ),
-            const SizedBox(height: S.x8),
-          ],
-        ],
-        if (byRef.isNotEmpty) ...[
-          const SizedBox(height: S.x24),
-          Eyebrow(tr('Manbalar')),
-          const SizedBox(height: S.x12),
-          for (final r in byRef.take(6)) ...[
-            _Bar(
-              label: '${r['ref']}',
-              value: (r['n'] as num? ?? 0).round(),
-              max: (byRef.first['n'] as num? ?? 1).round(),
-            ),
-            const SizedBox(height: S.x8),
-          ],
-        ],
-        if (total == 0 && uniq == 0)
-          EmptyState(
-            tr('Profilingiz ochilgani va kartangiz tegizilgani shu yerda ') +
-            tr('ko‘rinadi.'),
-            title: tr('Ma‘lumot to‘planmagan'),
-            icon: Ico.chart,
-          ),
       ],
+    );
+  }
+
+  /// OXIRGI 7 KUN AVVALGI 7 KUNGA NISBATAN.
+  ///
+  /// Ma'lumot yetmasa (`null`) chip umuman chizilmaydi — noto'g'ri
+  /// "+0%" ko'rsatgandan ko'ra hech narsa demagan ma'qul.
+  ({String label, StatusTone tone})? _delta(
+    List<({String day, int n})> series,
+  ) {
+    final window = series.length ~/ 2 < 7 ? series.length ~/ 2 : 7;
+    if (window < 2) return null;
+
+    var recent = 0;
+    var prev = 0;
+    for (var i = 0; i < window; i++) {
+      recent += series[series.length - 1 - i].n;
+      prev += series[series.length - 1 - window - i].n;
+    }
+    if (prev == 0 && recent == 0) return null;
+
+    final pct = prev == 0
+        ? 100
+        : (((recent - prev) / prev) * 100).round();
+    final sign = pct > 0 ? '+' : '';
+    return (
+      label: '$sign$pct%',
+      tone: pct > 0
+          ? StatusTone.ok
+          : pct < 0
+              ? StatusTone.fail
+              : StatusTone.neutral,
     );
   }
 }
 
-/// Kunlik ustunlar — biznes statistikasidagi bilan bir xil ko'rinish.
+/// Kunlik ustunlar — oltin gradient, past qismida hairline.
 class _Bars extends StatelessWidget {
   const _Bars({required this.series});
+
   final List<({String day, int n})> series;
 
   @override
   Widget build(BuildContext context) {
     if (series.isEmpty) return const SizedBox.shrink();
     final max = series.map((e) => e.n).fold<int>(1, (a, b) => b > a ? b : a);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -239,10 +323,13 @@ class _Bars extends StatelessWidget {
             child: FractionallySizedBox(
               heightFactor: (series[i].n / max).clamp(0.02, 1.0),
               alignment: Alignment.bottomCenter,
-              child: Container(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: series[i].n == 0 ? C.hairline : C.champagne,
-                  borderRadius: BorderRadius.circular(2),
+                  gradient: series[i].n == 0 ? null : C.actionFace,
+                  color: series[i].n == 0 ? C.line : null,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(2),
+                  ),
                 ),
               ),
             ),
@@ -253,40 +340,50 @@ class _Bars extends StatelessWidget {
   }
 }
 
+/// Bitta hodisa turi: nomi, ulush chizig'i va MONO sanoq.
 class _Bar extends StatelessWidget {
   const _Bar({required this.label, required this.value, required this.max});
+
   final String label;
   final int value;
   final int max;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 128,
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.caption),
-          ),
-          Expanded(
-            child: Container(
-              height: 8,
-              decoration: BoxDecoration(
-                color: C.graphite,
-                borderRadius: BorderRadius.circular(4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.bodyStrong.copyWith(fontSize: 14),
+                ),
               ),
-              child: FractionallySizedBox(
-                widthFactor: (value / (max == 0 ? 1 : max)).clamp(0.02, 1.0),
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: C.champagne,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
+              const SizedBox(width: S.x8),
+              Text(som(value), style: T.amount),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            height: 6,
+            decoration: BoxDecoration(
+              color: C.surfaceHigh,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: FractionallySizedBox(
+              widthFactor: (value / (max == 0 ? 1 : max)).clamp(0.02, 1.0),
+              alignment: Alignment.centerLeft,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: C.actionFace,
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: S.x8),
-          SizedBox(width: 38, child: Text(compact(value), textAlign: TextAlign.right, style: T.meta)),
         ],
       );
 }

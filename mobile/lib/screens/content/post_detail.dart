@@ -1,26 +1,41 @@
-import 'package:flutter/material.dart' show Scaffold;
+import 'package:cached_network_image/cached_network_image.dart'
+    show CachedNetworkImageProvider;
 import 'package:flutter/widgets.dart';
+
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
+import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/components/video_view.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../design/components/press.dart';
-import '../../state/app_state.dart';
-import '../common/top_bar.dart';
-import 'report_sheet.dart';
+import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
+import '../home/home.dart' show LikeButton;
+import 'report_sheet.dart';
 
-/// Post tafsiloti — to'liq media, tavsif, yoqtirish va ko'rish soni.
+/// POST TAFSILOTI (dizayn 5d).
+///
+/// TARTIB: muallif → media → izoh → yurak va ko'rishlar. Media
+/// ekranning markazi, shuning uchun u ustida hech qanday boshqaruv
+/// turmaydi: "⋯" tepa panelda, yurak esa pastda.
+///
+/// IZOH TIZIMI YO'Q. Serverda izoh jadvali ham, endpointi ham yo'q —
+/// shuning uchun bu yerda izoh soni ham, "izoh yozish" ham
+/// ko'rsatilmaydi. Bo'sh raqam ko'rsatish ilovani yolg'onchi
+/// qilardi.
 class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.post, this.canDelete = false});
+
   final Post post;
 
-  /// O'chirish tugmasi ko'rsatiladimi. Tugma bosilganda ekran
-  /// `true` qaytarib yopiladi — O'CHIRISHNING O'ZI profil ekranida
-  /// bajariladi (tasdiqlash oynasi va API chaqiruvi o'sha yerda,
-  /// bir joyda).
+  /// Postni OCHGAN ekran uni "meniki" deb biladimi (o'z profilidagi
+  /// to'rdan ochilgan). Shu bayroq "⋯" menyusiga `owned` bo'lib
+  /// uzatiladi: menyuda "O'chirish" chiqadi va "Shikoyat qilish"
+  /// yo'qoladi.
   final bool canDelete;
 
   @override
@@ -28,93 +43,107 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
-  int _page = 0;
+  late bool _liked = widget.post.liked;
+  late int _likes = widget.post.likes;
+
+  /// YURAK — OPTIMISTIK.
+  ///
+  /// Bosilishi bilan to'ladi, so'rov fonda ketadi va server javobi
+  /// ustiga yoziladi. Xato bo'lsa avvalgi holat qaytariladi:
+  /// raqamni mijoz o'zi sanab qolsa, ikkita qurilmada ikki xil son
+  /// chiqardi.
+  Future<void> _toggleLike() async {
+    final repo = AppScope.read(context).repo;
+    final wasLiked = _liked;
+    final wasLikes = _likes;
+    setState(() {
+      _liked = !wasLiked;
+      _likes = wasLikes + (wasLiked ? -1 : 1);
+    });
+    try {
+      final r = await repo.likePost(int.tryParse(widget.post.id) ?? 0);
+      if (!mounted) return;
+      setState(() {
+        _liked = r.liked;
+        _likes = r.count;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _liked = wasLiked;
+        _likes = wasLikes;
+      });
+    }
+  }
+
+  /// "⋯" — egalikka qarab o'zgaradigan menyu (`report_sheet.dart`).
+  ///
+  /// EGALIK IKKI MANBADAN. `canDelete` — chaqiruvchi ekranning
+  /// bilgani, `_isOwner` — ma'lumotdan chiqarilgani (lentadan
+  /// ochilgan post). Ikkinchisisiz odam O'Z postini lentadan ochsa
+  /// menyuda "Shikoyat qilish" chiqardi.
+  Future<void> _menu() async {
+    final p = widget.post;
+    await showContentMenu(
+      context,
+      title: p.authorName.isEmpty ? tr('Post') : p.authorName,
+      targetKind: 'post',
+      targetId: p.id,
+      ownerCode: p.authorCode,
+      owned: widget.canDelete || _isOwner(context, p),
+      // O'chirilgan postning tafsiloti ochiq qolishi mumkin emas —
+      // ekran yopiladi va ro'yxat ekrani o'zini yangilaydi.
+      onDeleted: () => Navigator.of(context).pop(true),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = widget.post;
-    final images = p.images.isEmpty ? <String>[''] : p.images;
-    return Scaffold(
-      backgroundColor: C.obsidian,
-      body: SafeArea(
+
+    return ScreenBackdrop(
+      aura: Aura.none,
+      child: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             TopBar(
-              title: p.authorName.isEmpty ? tr('Post') : p.authorName,
-              subtitle: p.createdAt == null ? null : _ago(p.createdAt!),
-              // BEGONA postda — SHIKOYAT, o'zinikida — O'CHIRISH.
-              //
-              // Ilgari o'z postini o'chirishning YAGONA yo'li profil
-              // to'ridagi katakni UZOQ BOSISH edi. Uni hech kim
-              // topmasdi: ko'rinmaydigan harakat — yo'q funksiya
-              // bilan barobar. Egasi aynan shu sababdan "rasmni
-              // o'chirsam o'chmadi" deb xabar bergan.
-              //
-              // Uzoq bosish qoldirildi (tez yo'l), lekin endi
-              // ko'rinadigan tugma ham bor.
-              // EGA BO'LSA — O'CHIRISH, aks holda "⋯".
-              //
-              // Ikki manba ataylab: `canDelete` — postni OCHGAN
-              // ekranning bilgani (o'z profilidagi to'rdan ochilgan),
-              // `_isOwner` — ma'lumotdan chiqarilgani (lentadan
-              // ochilgan bo'lishi mumkin). Ilgari faqat `_isOwner`
-              // tekshirilardi va server post javobida profil kodini
-              // yubormagani uchun u DOIM "yo'q" derdi: odam o'z
-              // postini ochsa ham shikoyat menyusini ko'rardi.
-              trailing: (widget.canDelete || _isOwner(context, p))
-                  ? (widget.canDelete
-                      ? Press(
-                          onTap: () => Navigator.of(context).pop(true),
-                          child: Padding(
-                            padding: const EdgeInsets.all(S.x8),
-                            child: NIcon(Ico.trash, size: 20, color: C.signal),
-                          ),
-                        )
-                      : null)
-                  : Press(
-                      onTap: () => _more(context, p),
-                      child: const Padding(
-                        padding: EdgeInsets.all(S.x8),
-                        child: NIcon(Ico.more, size: 20, color: C.ash),
-                      ),
-                    ),
+              title: tr('Post'),
+              trailing: RoundButton(Ico.more, onTap: _menu),
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x8,
+                  S.gutter,
+                  S.x32,
+                ),
                 children: [
-                  AspectRatio(
-                    aspectRatio: 4 / 5,
-                    // VIDEO POST. Ilgari bu ekran faqat rasm
-                    // ko'rsatardi: video postda `images` bo'sh
-                    // bo'ladi va joy bo'm-bo'sh chiqardi.
-                    child: (p.videoUrl ?? '').isNotEmpty
-                        ? VideoView(
-                            url: p.videoUrl!,
-                            poster: p.images.isEmpty ? null : p.images.first,
-                          )
-                        : _Gallery(
-                            images: images,
-                            page: _page,
-                            onPage: (i) => setState(() => _page = i),
-                          ),
-                  ),
+                  _AuthorRow(post: p),
                   const SizedBox(height: S.x16),
-                  Row(
-                    children: [
-                      const NIcon(Ico.heart, size: 20, color: C.ash),
-                      const SizedBox(width: 6),
-                      Text(compact(p.likes), style: T.meta),
-                      const SizedBox(width: S.x20),
-                      const NIcon(Ico.eye, size: 20, color: C.ash),
-                      const SizedBox(width: 6),
-                      Text(compact(p.views), style: T.meta),
-                    ],
-                  ),
-                  if (p.caption.isNotEmpty) ...[
+                  _Media(post: p),
+                  if (p.caption.trim().isNotEmpty) ...[
                     const SizedBox(height: S.x16),
                     Text(p.caption, style: T.body),
                   ],
+                  const SizedBox(height: S.x20),
+                  Row(
+                    children: [
+                      LikeButton(
+                        liked: _liked,
+                        count: _likes,
+                        onTap: _toggleLike,
+                      ),
+                      const SizedBox(width: S.x20),
+                      NIcon(Ico.eye, size: 17, color: C.ink2),
+                      const SizedBox(width: 7),
+                      Text(
+                        compact(p.views),
+                        style: T.meta.copyWith(fontSize: 12.5, color: C.ink2),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -134,16 +163,147 @@ bool _isOwner(BuildContext context, Post p) {
       state.companies.any((c) => c.id.toUpperCase() == code.toUpperCase());
 }
 
-/// Begona postda — "⋯" menyusi (izohi `report_sheet.dart` da).
-Future<void> _more(BuildContext context, Post p) => showContentMenu(
-      context,
-      title: p.authorName.isEmpty ? tr('Post') : p.authorName,
-      targetKind: 'post',
-      targetId: p.id,
-      ownerCode: p.authorCode,
-    );
+// ─────────────────────────────────────────────────────────────
+// MUALLIF
+// ─────────────────────────────────────────────────────────────
 
-/// Bir nechta rasmli post — suriladigan galereya va "2/5" hisoblagichi.
+class _AuthorRow extends StatelessWidget {
+  const _AuthorRow({required this.post});
+
+  final Post post;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Avatar(url: post.authorAvatar, name: post.authorName, size: 44),
+          const SizedBox(width: S.x12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  post.authorName.isEmpty ? tr('Post') : post.authorName,
+                  style: T.cardTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (post.createdAt != null) ...[
+                  const SizedBox(height: 3),
+                  // Nisbiy vaqt — mono, KATTA HARF. Aniq sana
+                  // lentada keraksiz: "4 SOAT" tezroq o'qiladi.
+                  Text(
+                    ago(post.createdAt).toUpperCase(),
+                    style: T.meta.copyWith(fontSize: 10),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────
+// MEDIA
+// ─────────────────────────────────────────────────────────────
+
+/// POST MEDIASI — TABIIY NISBATDA.
+///
+/// NIMA UCHUN QAT'IY 4:5 EMAS: post kvadrat ham, bo'yiga ham,
+/// eniga ham bo'lishi mumkin. Qat'iy ramka kengroq rasmning
+/// chetlarini kesib tashlardi.
+///
+/// O'LCHAM KESHDAN O'QILADI: bu yerdagi provayder `NetImage`
+/// ishlatadigani bilan bir xil (`CachedNetworkImageProvider`),
+/// shuning uchun rasm IKKI MARTA yuklanmaydi — nisbat aniqlangach
+/// o'sha kesh kadri chiziladi.
+class _Media extends StatefulWidget {
+  const _Media({required this.post});
+
+  final Post post;
+
+  @override
+  State<_Media> createState() => _MediaState();
+}
+
+class _MediaState extends State<_Media> {
+  /// Nisbat kelmaguncha — 4:5. Ilovada post media shu nisbatda
+  /// tayyorlanadi, ya'ni ko'pchilik postda ramka umuman sakramaydi.
+  static const double _fallback = 4 / 5;
+
+  double _aspect = _fallback;
+  int _page = 0;
+
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  String get _first =>
+      widget.post.images.isEmpty ? '' : widget.post.images.first;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveAspect();
+  }
+
+  void _resolveAspect() {
+    final url = _first.trim();
+    if (url.isEmpty) return;
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      final w = info.image.width.toDouble();
+      final h = info.image.height.toDouble();
+      if (w <= 0 || h <= 0) return;
+      setState(() {
+        // Juda cho'zilgan rasm butun ekranni egallab olmasligi
+        // kerak — chegara qo'yiladi.
+        _aspect = (w / h).clamp(.5, 1.8);
+      });
+    });
+    final stream = CachedNetworkImageProvider(url).resolve(
+      ImageConfiguration.empty,
+    );
+    stream.addListener(listener);
+    _stream = stream;
+    _listener = listener;
+  }
+
+  @override
+  void dispose() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.post;
+    final video = (p.videoUrl ?? '').trim();
+
+    return AspectRatio(
+      aspectRatio: _aspect,
+      // VIDEO POST. Ilgari bu ekran faqat rasm ko'rsatardi: video
+      // postda `images` bo'sh bo'ladi va joy bo'm-bo'sh chiqardi.
+      child: video.isNotEmpty
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(R.card),
+              child: VideoView(
+                url: video,
+                poster: _first.isEmpty ? null : _first,
+              ),
+            )
+          : _Gallery(
+              images: p.images.isEmpty ? const [''] : p.images,
+              page: _page,
+              onPage: (i) => setState(() => _page = i),
+            ),
+    );
+  }
+}
+
+/// Bir nechta rasmli post — suriladigan galereya va "2 / 5"
+/// hisoblagichi. Bitta rasmda hisoblagich umuman chizilmaydi.
 class _Gallery extends StatelessWidget {
   const _Gallery({required this.images, required this.page, required this.onPage});
 
@@ -154,39 +314,45 @@ class _Gallery extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Stack(
         children: [
-          PageView.builder(
-            itemCount: images.length,
-            onPageChanged: onPage,
-            itemBuilder: (_, i) => NetImage(
-              images[i].isEmpty ? null : images[i],
-              slotLabel: tr('POST MEDIA 4:5'),
+          Positioned.fill(
+            child: PageView.builder(
+              itemCount: images.length,
+              onPageChanged: onPage,
+              itemBuilder: (_, i) => NetImage(
+                images[i].isEmpty ? null : images[i],
+                radius: R.card,
+                slotIcon: Ico.image,
+              ),
             ),
           ),
           if (images.length > 1)
             Positioned(
               right: S.x12,
               top: S.x12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: C.backdrop.withValues(alpha: .6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text('${page + 1}/${images.length}',
-                    style: T.statusLabel.copyWith(color: C.offWhite)),
-              ),
+              child: _Counter(page: page, total: images.length),
             ),
         ],
       );
 }
 
-/// "4 soat oldin" ko'rinishidagi vaqt. Aniq sana kerak emas —
-/// yangilik lentasida nisbiy vaqt tezroq o'qiladi.
-String _ago(DateTime t) {
-  final d = DateTime.now().difference(t);
-  if (d.inMinutes < 1) return 'hozir';
-  if (d.inMinutes < 60) return '${d.inMinutes} daqiqa oldin';
-  if (d.inHours < 24) return '${d.inHours} soat oldin';
-  if (d.inDays < 30) return '${d.inDays} kun oldin';
-  return '${t.day}.${t.month.toString().padLeft(2, '0')}.${t.year}';
+/// "2 / 5" — media ustidagi shisha yorliq.
+class _Counter extends StatelessWidget {
+  const _Counter({required this.page, required this.total});
+
+  final int page;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: S.x8, vertical: 4),
+        decoration: BoxDecoration(
+          color: C.backdrop.withValues(alpha: .55),
+          borderRadius: BorderRadius.circular(R.status),
+          border: Border.all(color: C.lineCool),
+        ),
+        child: Text(
+          '${page + 1} / $total',
+          style: T.statusLabel.copyWith(color: C.ink),
+        ),
+      );
 }

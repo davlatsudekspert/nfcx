@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../data/api_client.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/press.dart';
@@ -15,7 +16,7 @@ import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
-import '../common/top_bar.dart';
+import '../../design/components/top_bar.dart';
 import '../../l10n/strings.dart';
 import 'content_rules_gate.dart';
 
@@ -280,10 +281,25 @@ class _ComposeScreenState extends State<ComposeScreen> {
   Widget build(BuildContext context) {
     final bytes = _bytes;
 
-    return SafeArea(
+    // FORMA EKRANI — nur yo'q, sokin fon. Diqqat tanlangan
+    // mediada bo'lishi kerak.
+    return ScreenBackdrop(
+      aura: Aura.none,
+      child: SafeArea(
       child: Column(
         children: [
-          TopBar(title: _isStory ? tr('Yangi story') : tr('Yangi post')),
+          // YOPISH — orqaga emas. Bu oqim: boshlangan ish
+          // tashlab yuboriladi, oldingi ekranga "qaytilmaydi".
+          TopBar(
+            title: _isStory ? tr('Story') : tr('Yangi post'),
+            showBack: false,
+            leading: RoundButton(
+              Ico.close,
+              size: 42,
+              iconSize: 17,
+              onTap: () => Navigator.of(context).maybePop(),
+            ),
+          ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
@@ -297,7 +313,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(R.card),
                         color: C.placeholder,
-                        border: Border.all(color: C.warmHairline),
+                        border: Border.all(color: C.line),
                       ),
                       clipBehavior: Clip.antiAlias,
                       alignment: Alignment.center,
@@ -305,7 +321,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                           ? Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                NIcon(Ico.image, size: 30, color: C.champagne),
+                                NIcon(Ico.image, size: 30, color: C.accent),
                                 const SizedBox(height: S.x12),
                                 Text(tr('Rasm yoki video tanlash'), style: T.cardTitle),
                                 const SizedBox(height: 3),
@@ -345,8 +361,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     Expanded(
                       child: SecondaryButton(
                         tr('Rasm'),
-                        icon: NIcon(Ico.image, size: 17, color: C.platinum),
-                        height: 46,
+                        icon: Ico.image,
+                        size: BtnSize.m,
                         onTap: _busy ? null : () => _pick(ImageSource.gallery),
                       ),
                     ),
@@ -354,8 +370,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     Expanded(
                       child: SecondaryButton(
                         tr('Video'),
-                        icon: NIcon(Ico.play, size: 17, color: C.platinum),
-                        height: 46,
+                        icon: Ico.play,
+                        size: BtnSize.m,
                         onTap: _busy ? null : () => _pickVideo(ImageSource.gallery),
                       ),
                     ),
@@ -363,8 +379,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     Expanded(
                       child: SecondaryButton(
                         tr('Kamera'),
-                        icon: NIcon(Ico.camera, size: 17, color: C.platinum),
-                        height: 46,
+                        icon: Ico.camera,
+                        size: BtnSize.m,
                         onTap: _busy ? null : () => _pick(ImageSource.camera),
                       ),
                     ),
@@ -375,7 +391,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   Text(
                     tr('Video eng ko‘pi 60 soniya va 50 MB. Tarifga qarab '
                         'cheklangan bo‘lishi mumkin.'),
-                    style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
+                    style: T.caption.copyWith(fontSize: 12.5, color: C.ink3),
                   ),
                 ],
                 const SizedBox(height: S.x20),
@@ -384,6 +400,9 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   controller: _caption,
                   hint: tr('Ixtiyoriy'),
                   maxLines: 4,
+                  // Server chegarasi: post 600, story 300 belgi.
+                  maxLength: _isStory ? 300 : 600,
+                  counter: true,
                 ),
                 // ROZILIK BERILGANI KO'RINIB TURSIN.
                 //
@@ -396,23 +415,49 @@ class _ComposeScreenState extends State<ComposeScreen> {
                 ],
                 if (_error != null) ...[
                   const SizedBox(height: S.x16),
-                  Text(_error!, style: T.caption.copyWith(color: C.signal)),
-                ],
-                const SizedBox(height: S.x20),
-                PrimaryButton(
-                  _isStory ? tr('Story joylash') : tr('Postni joylash'),
-                  loading: _busy,
-                  onTap: _busy ? null : _submit,
-                ),
-                if (_isStory) ...[
-                  const SizedBox(height: S.x12),
-                  Text(tr('Story 24 soatdan keyin o‘zi o‘chadi.'),
-                      textAlign: TextAlign.center, style: T.caption),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NIcon(Ico.warning, size: 15, color: C.fail),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: T.caption.copyWith(color: C.fail),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ],
             ),
           ),
+
+          // SAQLASH TUGMASI YOPISHGAN — klaviatura ochilganda ham
+          // ko'rinib turadi. Dizayn qoidasi: "Klaviatura forma
+          // tugmasini yopmasin."
+          StickyBar(
+            child: Column(
+              children: [
+                PrimaryButton(
+                  _isStory ? tr('Storyni saqlash') : tr('Postni saqlash'),
+                  loading: _busy,
+                  onTap: _busy ? null : _submit,
+                ),
+                const SizedBox(height: S.x8),
+                Text(
+                  _isStory
+                      ? tr('Story 24 soatdan keyin o‘chadi · post alohida '
+                          'saqlanadi')
+                      : tr('Post profilingizda doimiy qoladi'),
+                  textAlign: TextAlign.center,
+                  style: T.meta.copyWith(fontSize: 10.5),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
       ),
     );
   }
@@ -434,16 +479,16 @@ class _AgreedNote extends StatelessWidget {
         onTap: onReopen,
         child: Surface(
           padding: const EdgeInsets.all(S.x12),
-          border: C.verdant.withValues(alpha: .3),
+          border: Border.all(color: C.ok.withValues(alpha: .3)),
           child: Row(
             children: [
-              const NIcon(Ico.check, size: 18, color: C.verdant),
+              const NIcon(Ico.check, size: 18, color: C.ok),
               const SizedBox(width: S.x12),
               Expanded(
                 child: Text(tr('Kontent qoidalariga rozilik berildi'),
-                    style: T.caption.copyWith(color: C.offWhite)),
+                    style: T.caption.copyWith(color: C.ink)),
               ),
-              Text(tr('Qayta o‘qish'), style: T.caption.copyWith(color: C.champagne)),
+              Text(tr('Qayta o‘qish'), style: T.caption.copyWith(color: C.accent)),
             ],
           ),
         ),

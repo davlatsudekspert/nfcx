@@ -1,27 +1,33 @@
 import 'package:flutter/widgets.dart';
 
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
+import '../../design/components/surface.dart';
+import '../../design/components/toast.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../common/share.dart';
 
-/// SHIKOYAT VA BLOKLASH.
+/// SHIKOYAT, BLOKLASH VA O'CHIRISH — "⋯" menyusi ortidagi hamma
+/// narsa.
 ///
-/// NIMA UCHUN KERAK: platformada foydalanuvchi joylagan kontent bor,
-/// lekin uni ko'rgan odam qo'lidan hech narsa kelmasdi va bizga u
-/// haqda xabar ham yetib kelmasdi. Google Play foydalanuvchi
-/// kontenti bor ilovalardan ilova ICHIDA shikoyat qilish va
-/// bloklashni TALAB qiladi.
+/// NIMA UCHUN MENYU, NIMA UCHUN BAYROQ EMAS: bayroq belgisi post va
+/// story ustida doim ko'rinib turardi va ilovani "shikoyat
+/// qilinadigan joy" qilib ko'rsatardi. Shikoyatning O'ZI esa
+/// qoladi — Google Play foydalanuvchi kontenti bor ilovadan ilova
+/// ICHIDA xabar berish yo'lini TALAB qiladi.
 ///
-/// SABAB RO'YXATI YOPIQ va u saytdagi kontent qoidalari matni bilan
-/// bir xil narsalarni nomlaydi: odam qoidada o'qigan narsani
-/// shikoyatda ham topishi kerak. Erkin matn faqat qo'shimcha izoh
-/// uchun — sabab sifatida emas, aks holda adminda saralash imkonsiz
-/// bo'lardi.
+/// MENYU EGALIKKA QARAB O'ZGARADI (dizayn 5d va 10b):
+/// • boshqa odamning kontenti — "Shikoyat qilish" bor, "O'chirish"
+///   YO'Q;
+/// • o'z kontentingiz — "O'chirish" bor, "Shikoyat qilish" YO'Q.
+/// Foydalanuvchiga tegishli bo'lmagan boshqaruv hech qachon
+/// chiqmaydi.
 
 /// Serverdagi `REPORT_REASONS` bilan BIR XIL kalitlar.
 ///
@@ -39,18 +45,13 @@ const _reasonKeys = <String>[
   'other',
 ];
 
-/// TILGA BOG'LIQ, ya'ni `const` bo'la olmaydi — har chaqiruvda
-/// joriy tilda quriladi.
 /// YORLIQLAR QISQA — ATAYLAB.
 ///
-/// Ilgari bu yerda kontent qoidalarining to'liq jumlalari turardi
-/// ("Diniy targ'ibot yoki ekstremistik mazmun" kabi) va varaq
-/// butun ekranni egallagan qoidalar ro'yxatiga o'xshab qolgandi.
+/// Qoidalar to'liq matni O'Z JOYIDA bor: u post yoki story
+/// yuklashdan OLDIN ko'rsatiladi. Bu yerda esa boshqa vazifa —
+/// allaqachon joylangan kontentni bir so'z bilan turkumlash.
 ///
-/// Qoidalar matni O'Z JOYIDA bor: u post yoki story yuklashdan
-/// OLDIN ko'rsatiladi, ya'ni odam joylashdan avval o'qiydi
-/// (`compose.dart`). Bu yerda esa boshqa vazifa — allaqachon
-/// joylangan kontentni bir so'z bilan turkumlash, xolos.
+/// TILGA BOG'LIQ, ya'ni `const` bo'la olmaydi.
 String _reasonLabel(String key) => switch (key) {
       'porn' => tr('Pornografiya'),
       'religious' => tr('Diniy targ‘ibot'),
@@ -63,7 +64,11 @@ String _reasonLabel(String key) => switch (key) {
       _ => tr('Boshqa'),
     };
 
-/// Shikoyat varag'ini ochadi. Yuborilsa `true` qaytaradi.
+// ─────────────────────────────────────────────────────────────
+// SHIKOYAT
+// ─────────────────────────────────────────────────────────────
+
+/// Shikoyat oynasini ochadi. Yuborilsa `true` qaytaradi.
 ///
 /// [targetKind] — `post` | `story` | `company_post` | `record` |
 /// `company`. [ownerCode] adminga kimning kontenti ekanini tez
@@ -140,80 +145,61 @@ class _ReportBodyState extends State<_ReportBody> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // QATOR EMAS, CHIPLAR.
-            //
-            // To'qqizta sabab butun kenglikdagi qatorlarda turganda
-            // varaq ekranni to'ldirib, "qoidalar ro'yxati" ga
-            // o'xshab qolardi. Yorug'liklar qisqargach ular bitta
-            // to'plamga sig'adi va varaq ikki barobar past bo'ladi.
-            Wrap(
-              spacing: S.x8,
-              runSpacing: S.x8,
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // QATOR EMAS, CHIPLAR: to'qqizta sabab butun kenglikdagi
+          // qatorlarda turganda oyna ekranni to'ldirib, "qoidalar
+          // ro'yxati" ga o'xshab qolardi.
+          Wrap(
+            spacing: S.x8,
+            runSpacing: S.x8,
+            children: [
+              for (final key in _reasonKeys)
+                FilterChip(
+                  _reasonLabel(key),
+                  active: _reason == key,
+                  onTap: () => setState(() {
+                    _reason = key;
+                    _error = null;
+                  }),
+                ),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: S.x12),
+            Row(
               children: [
-                for (final key in _reasonKeys)
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() {
-                      _reason = key;
-                      _error = null;
-                    }),
-                    child: Container(
-                      constraints: const BoxConstraints(minHeight: 44),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: S.x16, vertical: S.x12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(R.chip),
-                        color: _reason == key
-                            ? C.champagne.withValues(alpha: .13)
-                            : null,
-                        border: Border.all(
-                          color: _reason == key ? C.champagne : C.hairline,
-                          width: _reason == key ? 1.4 : 1,
-                        ),
-                      ),
-                      child: Text(
-                        _reasonLabel(key),
-                        style: T.body.copyWith(
-                          color: _reason == key ? C.champagne : C.offWhite,
-                          fontWeight:
-                              _reason == key ? FontWeight.w700 : FontWeight.w500,
-                        ),
-                      ),
-                    ),
+                NIcon(Ico.warning, size: 14, color: C.fail),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: T.caption.copyWith(color: C.fail),
                   ),
+                ),
               ],
             ),
-            if (_error != null) ...[
-              const SizedBox(height: S.x8),
-              Text(_error!, style: T.caption.copyWith(color: C.signal)),
-            ],
-            const SizedBox(height: S.x12),
-            PrimaryButton(
-              tr('Shikoyatni yuborish'),
-              loading: _busy,
-              onTap: _busy ? null : _send,
-            ),
-            const SizedBox(height: S.x8),
-            SecondaryButton(
-              tr('Bekor qilish'),
-              onTap: () => Navigator.of(context).pop(false),
-            ),
           ],
-        ),
+          const SizedBox(height: S.x20),
+          PrimaryButton(
+            tr('Shikoyatni yuborish'),
+            loading: _busy,
+            onTap: _busy ? null : _send,
+          ),
+          const SizedBox(height: S.x8),
+          GhostButton(
+            tr('Bekor qilish'),
+            expand: true,
+            color: C.ink2,
+            onTap: () => Navigator.of(context).pop(false),
+          ),
+        ],
       );
 }
 
 /// SHIKOYAT + TASDIQ — bitta joyda.
-///
-/// Ilgari bu ikki qadam (varaqni ochish va "yuborildi" xabari) uchta
-/// ekranda so'zma-so'z takrorlangan edi: profil, post va story.
-/// Endi bittasi bor.
 Future<void> reportAndConfirm(
   BuildContext context, {
   required String targetKind,
@@ -227,60 +213,169 @@ Future<void> reportAndConfirm(
     ownerCode: ownerCode,
   );
   if (!sent || !context.mounted) return;
-  await showSheet<void>(
-    context,
-    title: tr('Shikoyat yuborildi'),
-    subtitle: tr('Moderator tekshiradi. Rahmat.'),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-      child: SecondaryButton(tr('Yopish'),
-          onTap: () => Navigator.of(context).pop()),
-    ),
-  );
+  showToast(context, tr('Shikoyat yuborildi. Moderator tekshiradi.'));
 }
 
-/// "⋯" TUGMASI ORTIDAGI MENYU — begona kontentda.
+// ─────────────────────────────────────────────────────────────
+// "⋯" MENYUSI
+// ─────────────────────────────────────────────────────────────
+
+/// Kontent menyusi.
 ///
-/// NIMA UCHUN MENYU, NIMA UCHUN BAYROQ EMAS.
+/// [owned] — kontent SHU foydalanuvchiniki. Shunda "O'chirish"
+/// ko'rinadi va "Shikoyat qilish" yo'qoladi.
 ///
-/// Egasi bayroq belgisini ekrandan olib tashlashni so'radi: u
-/// postning va story'ning ustida doim ko'rinib turardi va ilovani
-/// "shikoyat qilinadigan joy" qilib ko'rsatardi.
-///
-/// Shikoyatning O'ZI esa olib tashlanmaydi. Google Play
-/// foydalanuvchi kontenti bo'lgan ilovadan ilova ICHIDA nomaqbul
-/// kontent haqida xabar berish yo'lini TALAB qiladi; uni butunlay
-/// olib tashlash ilovani do'kondan chiqarib yuborish xavfini
-/// tug'diradi. Shuning uchun u ko'zga tashlanmaydigan "⋯" menyusiga
-/// ko'chdi: ekran toza, yo'l esa joyida.
+/// [onDeleted] o'chirish MUVAFFAQIYATLI bo'lganda chaqiriladi —
+/// chaqiruvchi ekran elementni ro'yxatdan olib tashlaydi.
 Future<void> showContentMenu(
   BuildContext context, {
-  required String title,
   required String targetKind,
   required String targetId,
   String ownerCode = '',
+  bool owned = false,
+  String? title,
+  VoidCallback? onDeleted,
+  VoidCallback? onUnfollow,
 }) async {
+  // `endsWith` — `company_story` ham story hisoblanadi.
+  // `==` bo'lganda kompaniya storysi POST endpointiga ketib,
+  // bir xil raqamli ID'li boshqa yozuvni o'chirib yuborardi.
+  final isStory = targetKind.endsWith('story');
+  final isCompany = targetKind.startsWith('company');
+
   final choice = await showSheet<String>(
     context,
-    title: title,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-      child: Column(
-        children: [
-          SecondaryButton(tr('Shikoyat qilish'),
-              onTap: () => Navigator.of(context).pop('report')),
-          const SizedBox(height: S.x8),
-          GhostButton(tr('Bekor qilish'),
-              onTap: () => Navigator.of(context).pop()),
-        ],
-      ),
+    title: title ?? (isStory ? tr('Story') : tr('Post')),
+    subtitle: owned
+        ? tr('Bu sizning kontentingiz')
+        : tr('Boshqa odamning kontenti'),
+    child: Column(
+      children: [
+        SheetAction(
+          label: tr('Havolani nusxalash'),
+          icon: Ico.link,
+          onTap: () => Navigator.of(context).pop('copy'),
+        ),
+        if (!owned && onUnfollow != null)
+          SheetAction(
+            label: tr('Obunani bekor qilish'),
+            icon: Ico.close,
+            onTap: () => Navigator.of(context).pop('unfollow'),
+          ),
+        const RowDivider(indent: 0),
+        if (owned)
+          SheetAction(
+            label: isStory ? tr('Storyni o‘chirish') : tr('Postni o‘chirish'),
+            icon: Ico.trash,
+            danger: true,
+            onTap: () => Navigator.of(context).pop('delete'),
+          )
+        else
+          SheetAction(
+            label: tr('Shikoyat qilish'),
+            icon: Ico.warning,
+            danger: true,
+            onTap: () => Navigator.of(context).pop('report'),
+          ),
+      ],
     ),
   );
-  if (choice != 'report' || !context.mounted) return;
-  await reportAndConfirm(
+
+  if (choice == null || !context.mounted) return;
+
+  switch (choice) {
+    case 'copy':
+      await shareText(
+        context,
+        profileUrl(context, ownerCode, company: isCompany),
+      );
+      return;
+
+    case 'unfollow':
+      onUnfollow?.call();
+      return;
+
+    case 'report':
+      await reportAndConfirm(
+        context,
+        targetKind: targetKind,
+        targetId: targetId,
+        ownerCode: ownerCode,
+      );
+      return;
+
+    case 'delete':
+      await _delete(
+        context,
+        targetKind: targetKind,
+        targetId: targetId,
+        ownerCode: ownerCode,
+        onDeleted: onDeleted,
+      );
+      return;
+  }
+}
+
+/// O'CHIRISH — IKKI QADAM.
+///
+/// 1. Oqibati aniq yozilgan tasdiq oynasi.
+/// 2. O'chgandan keyin 5 soniyalik "Bekor" toasti.
+///
+/// Ikkinchi qadam serverdagi amalni qaytarmaydi — u foydalanuvchiga
+/// nima bo'lganini ko'rsatadi va xato bosgan bo'lsa darhol
+/// bilishiga imkon beradi. Shuning uchun toast matnida "bekor
+/// qilish" emas, nima o'chganini aytamiz.
+Future<void> _delete(
+  BuildContext context, {
+  required String targetKind,
+  required String targetId,
+  required String ownerCode,
+  VoidCallback? onDeleted,
+}) async {
+  // `endsWith` — `company_story` ham story hisoblanadi.
+  // `==` bo'lganda kompaniya storysi POST endpointiga ketib,
+  // bir xil raqamli ID'li boshqa yozuvni o'chirib yuborardi.
+  final isStory = targetKind.endsWith('story');
+  final isCompany = targetKind.startsWith('company');
+
+  final sure = await confirmSheet(
     context,
-    targetKind: targetKind,
-    targetId: targetId,
-    ownerCode: ownerCode,
+    title: isStory ? tr('Storyni o‘chirasizmi?') : tr('Postni o‘chirasizmi?'),
+    message: isStory
+        ? tr('Story va uning layklari profilingizdan olib tashlanadi. '
+            'Bu amalni qaytarib bo‘lmaydi.')
+        : tr('Post va uning layklari profilingizdan olib tashlanadi. '
+            'Bu amalni qaytarib bo‘lmaydi.'),
+    confirmLabel: tr('Ha, o‘chirish'),
   );
+  if (!sure || !context.mounted) return;
+
+  final repo = AppScope.read(context).repo;
+  final id = int.tryParse(targetId) ?? 0;
+
+  try {
+    if (isCompany) {
+      if (isStory) {
+        await repo.deleteCompanyStory(ownerCode, id);
+      } else {
+        await repo.deleteCompanyPost(ownerCode, id);
+      }
+    } else {
+      if (isStory) {
+        await repo.deleteStory(id);
+      } else {
+        await repo.deletePost(id);
+      }
+    }
+    if (!context.mounted) return;
+    successHaptic();
+    onDeleted?.call();
+    showToast(
+      context,
+      isStory ? tr('Story o‘chirildi') : tr('Post o‘chirildi'),
+      tone: StatusTone.neutral,
+    );
+  } catch (e) {
+    if (context.mounted) showError(context, humanError(e));
+  }
 }

@@ -1,20 +1,25 @@
-import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import '../../design/components/icons.dart';
-import '../../design/components/press.dart';
+
+import '../../design/components/backdrop.dart';
+import '../../design/components/logo.dart';
+import '../../design/components/top_bar.dart';
+import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_lock.dart';
-import '../common/top_bar.dart';
-import '../../design/feedback.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_lock.dart';
+import 'lock_screen.dart';
 
 /// PIN O'RNATISH — ikki qadam: kiriting, keyin tasdiqlang.
 ///
 /// Tasdiqlash QADAMI SHART: bitta marta terilgan kodda xato bo'lsa,
 /// odam o'z ilovasidan chiqib qolardi va uni faqat qayta o'rnatish
 /// bilan ochish mumkin bo'lardi.
+///
+/// Klaviatura va nuqtalar QULF EKRANIDAGI bilan bir xil
+/// (`PinPad`, `PinDots`): kod o'rnatish va kod kiritish bir xil
+/// harakat bo'lishi kerak.
 class SetPinScreen extends StatefulWidget {
   const SetPinScreen({super.key, required this.lock});
   final AppLock lock;
@@ -67,98 +72,48 @@ class _SetPinScreenState extends State<SetPinScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: C.obsidian,
-        body: SafeArea(
+  Widget build(BuildContext context) => ScreenBackdrop(
+        aura: Aura.center,
+        child: SafeArea(
           child: Column(
             children: [
-              TopBar(title: tr('PIN kod')),
+              const TopBar(),
               const Spacer(),
-              Text(_confirming ? tr('Kodni takrorlang') : tr('Yangi kod'), style: T.displaySm),
-              const SizedBox(height: S.x8),
+              const BrandMark(size: 72, glow: true),
+              const SizedBox(height: S.x24),
               Text(
-                _error
-                    ? tr('Kodlar mos kelmadi. Qaytadan boshlang.')
-                    : _confirming
-                        ? tr('Xato bo‘lmasligi uchun yana bir marta')
-                        : '${AppLock.pinLength} xonali kod o‘ylab toping',
-                style: T.caption.copyWith(color: _error ? C.signal : C.ash),
+                _confirming
+                    ? tr('Kodni takrorlang')
+                    : tr('Yangi PIN kod o‘ylab toping'),
+                textAlign: TextAlign.center,
+                style: T.titleSm,
               ),
+              const SizedBox(height: S.x12),
+              if (_error)
+                Text(
+                  tr('Kodlar mos kelmadi. Qaytadan boshlang.'),
+                  textAlign: TextAlign.center,
+                  style: T.caption.copyWith(color: C.fail),
+                )
+              else if (_confirming)
+                Text(
+                  tr('Xato bo‘lmasligi uchun yana bir marta'),
+                  textAlign: TextAlign.center,
+                  style: T.caption.copyWith(color: C.ink3),
+                )
+              else
+                Text(
+                  '${AppLock.pinLength} ${tr('xonali kod')}',
+                  textAlign: TextAlign.center,
+                  style: T.caption.copyWith(color: C.ink3),
+                ),
               const SizedBox(height: S.x32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < AppLock.pinLength; i++)
-                    AnimatedContainer(
-                      duration: M.press,
-                      margin: const EdgeInsets.symmetric(horizontal: 9),
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: i < _pin.length ? C.champagne : const Color(0x00000000),
-                        border: Border.all(
-                          color: i < _pin.length ? C.champagne : C.hairline,
-                          width: 1.6,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              PinDots(filled: _pin.length, error: _error),
               const Spacer(),
-              _Pad(onDigit: _add, onBack: _back),
+              PinPad(onDigit: _add, onBack: _back),
               const SizedBox(height: S.x24),
             ],
           ),
         ),
       );
-}
-
-class _Pad extends StatelessWidget {
-  const _Pad({required this.onDigit, required this.onBack});
-  final ValueChanged<String> onDigit;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget key(Widget child, VoidCallback? onTap) => Press(
-          onTap: onTap,
-          scale: .9,
-          child: Container(height: 66, alignment: Alignment.center, child: child),
-        );
-    Widget digit(String d) => key(
-          Text(
-            d,
-            style: T.displaySm.copyWith(fontFamily: 'Manrope', fontWeight: FontWeight.w500),
-          ),
-          () => onDigit(d),
-        );
-    const rows = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 44),
-      child: Column(
-        children: [
-          for (final row in rows)
-            Row(children: [for (final d in row) Expanded(child: digit(d))]),
-          Row(
-            children: [
-              const Expanded(child: SizedBox(height: 66)),
-              Expanded(child: digit('0')),
-              Expanded(
-                child: key(
-                  const NIcon(Ico.backspace, size: 22, color: C.ash),
-                  onBack,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

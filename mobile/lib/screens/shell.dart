@@ -79,57 +79,74 @@ class _ShellState extends State<Shell> {
         }
       },
       child: ColoredBox(
-        color: C.obsidian,
-        child: Column(
+        color: C.bg,
+        // PANEL KONTENT USTIDA SUZADI.
+        //
+        // Dizaynda lenta va grid pastki panel ostidan o'tib ketadi
+        // va uning gradientiga singiydi — shunda ekran to'liqroq
+        // ko'rinadi. Shu sababli `Column` emas, `Stack`: panel
+        // kontentdan joy olmaydi, ekranlar esa `NavBar.inset` qadar
+        // bo'sh joy qoldiradi.
+        child: Stack(
           children: [
-            // OFFLINE CHIZIG'I — pastki panel USTIDA emas, tarkib
-            // USTIDA: u ekranni bosib turmaydi, lekin nima uchun
-            // ma'lumot yangilanmayotganini darhol tushuntiradi.
-            const _OfflineWatch(),
-            Expanded(
-              // TAB ALMASHISHI — 200ms xiralik (handoff harakat
-              // jadvali). `IndexedStack` holatni saqlaydi (qidiruv
-              // matni, aylantirish joyi, yuklangan ma'lumot), lekin
-              // o'zi keskin almashadi. `AnimatedSwitcher` bilan
-              // o'rasak butun stek qayta quriladi va holat yo'qoladi —
-              // shuning uchun xiralik STEKNING O'ZIGA emas, uning
-              // indeksiga bog'langan yengil qatlam orqali beriladi.
-              child: _CrossFade(
-                index: _tab,
-                // KO'RINMAYOTGAN TAB — "TO'XTATILGAN".
-                //
-                // `IndexedStack` tanlanmagan tabni daraxtda
-                // QOLDIRADI (holati saqlanishi uchun) va u ishlashda
-                // davom etardi. Reels'da bu quloqqa eshitilardi:
-                // boshqa tabga o'tilsa ham video ovozi kelaverardi.
-                //
-                // `TickerMode` — Flutter'ning shu maqsaddagi standart
-                // belgisi: o'chirilganda animatsiyalar to'xtaydi va
-                // `VideoView` uni o'qib videoni pauza qiladi. Har bir
-                // widgetga alohida "sen ko'rinyapsanmi" deb uzatish
-                // kerak emas.
-                child: IndexedStack(
-                index: _tab,
-                children: [
-                  for (var i = 0; i < NavBar.tabs.length; i++)
-                    TickerMode(
-                      enabled: i == _tab,
-                      child: _TabNavigator(navKey: _keys[i], child: _tabs[i]),
+            Column(
+              children: [
+                // OFFLINE CHIZIG'I — pastki panel USTIDA emas, tarkib
+                // USTIDA: u ekranni bosib turmaydi, lekin nima uchun
+                // ma'lumot yangilanmayotganini darhol tushuntiradi.
+                const _OfflineWatch(),
+                Expanded(
+                  // TAB ALMASHISHI — 200ms xiralik. `IndexedStack`
+                  // holatni saqlaydi (qidiruv matni, aylantirish
+                  // joyi, yuklangan ma'lumot), lekin o'zi keskin
+                  // almashadi. `AnimatedSwitcher` bilan o'rasak butun
+                  // stek qayta quriladi va holat yo'qoladi — shuning
+                  // uchun xiralik STEKNING O'ZIGA emas, uning
+                  // indeksiga bog'langan yengil qatlam orqali
+                  // beriladi.
+                  child: _CrossFade(
+                    index: _tab,
+                    // KO'RINMAYOTGAN TAB — "TO'XTATILGAN".
+                    //
+                    // `IndexedStack` tanlanmagan tabni daraxtda
+                    // QOLDIRADI (holati saqlanishi uchun) va u
+                    // ishlashda davom etardi. Reels'da bu quloqqa
+                    // eshitilardi: boshqa tabga o'tilsa ham video
+                    // ovozi kelaverardi. `TickerMode` — Flutter'ning
+                    // shu maqsaddagi standart belgisi.
+                    child: IndexedStack(
+                      index: _tab,
+                      children: [
+                        for (var i = 0; i < NavBar.tabs.length; i++)
+                          TickerMode(
+                            enabled: i == _tab,
+                            child: _TabNavigator(
+                              navKey: _keys[i],
+                              child: _tabs[i],
+                            ),
+                          ),
+                      ],
                     ),
-                ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            NavBar(
-              active: _tab,
-              onSelect: (i) {
-                // Faol tabga qayta bosish — o'sha tabning ildiziga qaytaradi.
-                if (i == _tab) {
-                  _keys[i].currentState?.popUntil((r) => r.isFirst);
-                } else {
-                  setState(() => _tab = i);
-                }
-              },
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: NavBar(
+                active: _tab,
+                onSelect: (i) {
+                  // Faol tabga qayta bosish — o'sha tabning ildiziga
+                  // qaytaradi.
+                  if (i == _tab) {
+                    _keys[i].currentState?.popUntil((r) => r.isFirst);
+                  } else {
+                    setState(() => _tab = i);
+                  }
+                },
+              ),
             ),
           ],
         ),

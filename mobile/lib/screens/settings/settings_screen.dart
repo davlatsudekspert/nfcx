@@ -1,40 +1,50 @@
-import 'package:flutter/material.dart' show Scaffold;
+import 'package:flutter/material.dart' show showLicensePage;
 import 'package:flutter/widgets.dart';
+
+import '../../app.dart';
+import '../../app_version.dart';
 import '../../data/api_client.dart' show absUrl;
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
-import '../../design/components/press.dart';
+import '../../design/components/input.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../../design/components/sheet.dart';
 import '../common/contact_actions.dart';
-import '../../app.dart';
-import '../common/top_bar.dart';
+import '../identity/edit_profile.dart';
 import '../lock/set_pin_screen.dart';
 import '../orders/my_orders.dart';
-import '../identity/edit_profile.dart';
-import 'change_password.dart';
-import '../../l10n/strings.dart';
-import '../../app_version.dart';
 import 'appearance.dart';
-import 'support.dart';
-import 'premium.dart';
+import 'change_password.dart';
 import 'payments_history.dart';
+import 'premium.dart';
+import 'support.dart';
 
-/// SOZLAMALAR — va IKKI XIL TASDIQLASH.
+/// SOZLAMALAR — bir xil ritmdagi qatorlar guruhi.
 ///
-/// Ular hech qachon birlashtirilmaydi:
-///   HISOB   — email. Ro'yxatdan o'tishda bir marta bajariladi.
-///   PROFIL  — mavjud NFCSTORE Telegram boti. Tasdiqlangan nishonni
-///             shu beradi.
+/// EKRANNING TARTIBI ODAMNING SAVOLIGA QARAB: "men kimman"
+/// (PROFIL) → "hisobim" (HISOB) → "kim ochadi" (XAVFSIZLIK) →
+/// "nima to'ladim" (BUYURTMA VA TO'LOV) → "kimga murojaat
+/// qilaman" (YORDAM VA HUQUQ). Eng oxirida — buzuvchi amallar,
+/// ATAYLAB ajratilgan holda.
 ///
-/// NISHON HOLATI SERVERDAN. Bu ekran uni hech qachon o'zi
-/// "tasdiqlangan" deb ko'rsatmaydi — faqat backend aytganini yozadi.
+/// IKKI XIL TASDIQLASH HECH QACHON BIRLASHTIRILMAYDI:
+///   HISOB   — email. Ro'yxatdan o'tishda bir marta bajariladi va
+///             sarlavha ostida yashirilgan holda ko'rinadi.
+///   PROFIL  — mavjud NFCSTORE Telegram boti. Telefon raqamini
+///             tasdiqlash va parolni tiklash shu orqali.
+///
+/// NISHON VA HOLAT SERVERDAN. Bu ekran hech qachon o'zi
+/// "tasdiqlangan" deb ko'rsatmaydi — faqat backend aytganini
+/// yozadi.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -77,244 +87,298 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// ILOVA QULFI — PIN va barmoq izi / yuz.
+  ///
+  /// NIMA UCHUN ALOHIDA OYNADA: sozlamalar ro'yxati bir xil
+  /// ritmdagi qatorlardan iborat va uning o'rtasida ikki kalitli
+  /// katta karta turmaydi. Qulfning o'z joyi bor va u shu yerda
+  /// to'liq ochiladi.
+  Future<void> _lockSheet() async {
+    final lock = AppLockScope.read(context);
+    await showSheet<void>(
+      context,
+      title: tr('Ilova qulfi'),
+      subtitle: tr('Ilova ochilganda kod so‘raladi'),
+      child: StatefulBuilder(
+        builder: (sheetContext, setSheet) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _LockLine(
+              icon: Ico.lock,
+              title: tr('PIN kod'),
+              subtitle: tr('Ilova ochilganda kod so‘raladi'),
+              value: lock.enabled,
+              onChanged: (on) async {
+                if (on) {
+                  await push<bool>(context, (_) => SetPinScreen(lock: lock));
+                } else {
+                  await lock.disable();
+                }
+                setSheet(() {});
+              },
+            ),
+            if (lock.enabled) ...[
+              const SizedBox(height: S.x16),
+              _LockLine(
+                icon: Ico.fingerprint,
+                title: tr('Barmoq izi yoki yuz'),
+                subtitle: _bioAvailable
+                    ? tr('Kod o‘rniga tezroq ochish')
+                    : tr('Qurilmada sozlanmagan'),
+                value: lock.biometricEnabled,
+                // Qurilmada sozlanmagan bo'lsa belgi ishlamaydi —
+                // yoqib bo'lmaydigan narsani taklif qilmaymiz.
+                onChanged: _bioAvailable
+                    ? (on) async {
+                        await lock.setBiometric(on);
+                        setSheet(() {});
+                      }
+                    : null,
+              ),
+              const SizedBox(height: S.x20),
+              SecondaryButton(
+                tr('Kodni o‘zgartirish'),
+                size: BtnSize.m,
+                onTap: () async {
+                  await push<bool>(context, (_) => SetPinScreen(lock: lock));
+                  setSheet(() {});
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final prefs = AppPrefsScope.of(context);
+    final lock = AppLockScope.of(context);
     final email = state.user?.email ?? '';
     final active = state.active;
 
-    return Scaffold(
-      backgroundColor: C.obsidian,
-      body: SafeArea(
+    return ScreenBackdrop(
+      aura: Aura.none,
+      child: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            TopBar(title: tr('Sozlamalar')),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
-                children: [
-                  Eyebrow(tr('Tasdiqlash')),
-                  const SizedBox(height: S.x12),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: TopBar()),
+            SliverToBoxAdapter(
+              child: ScreenTitle(
+                tr('Sozlamalar'),
+                // HISOB — EMAIL: ro'yxatdan o'tishda bir marta
+                // tasdiqlangan va shu yerda yashirilgan holda
+                // ko'rinadi.
+                subtitle: email.isEmpty ? null : AppUser.mask(email),
+              ),
+            ),
 
-                  // 1) HISOB — EMAIL. Ro'yxatdan o'tishda bajarilgan.
-                  Surface(
-                    child: Row(
-                      children: [
-                        const NIcon(Ico.check, size: 20, color: C.verdant),
-                        const SizedBox(width: S.x12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(tr('Akkaunt — email'), style: T.cardTitle),
-                              const SizedBox(height: 2),
-                              Text(
-                                email.isEmpty ? '—' : AppUser.mask(email),
-                                style: T.meta.copyWith(fontSize: 12.5),
-                              ),
-                            ],
+            // ── PROFIL ────────────────────────────────────────
+            _Group(
+              eyebrow: tr('Profil'),
+              rows: [
+                ListRow(
+                  title: tr('Profilni tahrirlash'),
+                  leading: NIcon(Ico.user, size: 19, color: C.ink2),
+                  onTap: active?.record == null
+                      ? null
+                      : () => push(
+                            context,
+                            (_) => EditProfileScreen(record: active!.record!),
                           ),
-                        ),
-                        StatusChip(tr('Tasdiqlangan'), tone: StatusTone.ok),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: S.x12),
+                ),
+                ListRow(
+                  title: tr('Ko‘rinish'),
+                  subtitle: prefs.palette.label,
+                  leading: NIcon(Ico.palette, size: 19, color: C.ink2),
+                  onTap: () => push(context, (_) => const AppearanceScreen()),
+                ),
+                ListRow(
+                  title: tr('Til'),
+                  subtitle: prefs.locale.label,
+                  leading: NIcon(Ico.language, size: 19, color: C.ink2),
+                  onTap: () => push(context, (_) => const AppearanceScreen()),
+                ),
+              ],
+            ),
 
-                  // 2) PROFIL — TELEGRAM BOT. Bu boshqa narsa.
-                  Surface(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(tr('Profilni tasdiqlash'), style: T.cardTitle),
-                            ),
-                            if (active?.verified == true)
-                              StatusChip(tr('Tasdiqlangan'), tone: StatusTone.ok),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          tr('Telegram bot orqali profilingizni tasdiqlang. Tasdiqlangan ') +
-                          tr('nishon profilingizda ko‘rinadi.'),
-                          style: T.caption,
-                        ),
-                        const SizedBox(height: S.x12),
-                        SecondaryButton(
-                          tr('Telegram orqali tasdiqlash'),
-                          height: 46,
-                          icon: const NIcon(Ico.telegram, size: 17, color: C.telegram),
-                          onTap: _busyTg ? null : _startTelegram,
-                        ),
-                        if (_tgError != null) ...[
-                          const SizedBox(height: S.x8),
-                          Text(_tgError!, style: T.caption.copyWith(color: C.signal)),
-                        ],
-                        const SizedBox(height: S.x8),
-                        Text(
-                          tr('Tasdiqlash holati NFCSTORE serverida saqlanadi'),
-                          style: T.caption.copyWith(fontSize: 12, color: C.muted),
-                        ),
-                      ],
-                    ),
-                  ),
+            // ── HISOB ─────────────────────────────────────────
+            _Group(
+              eyebrow: tr('Hisob'),
+              rows: [
+                ListRow(
+                  title: tr('Profil Premium'),
+                  // NARX JADVALI MIJOZDA YO'Q. Premium summasini
+                  // faqat server aytadi (`POST /api/premium/request`
+                  // javobidagi `amount`) va u Premium ekranida
+                  // ko'rsatiladi.
+                  subtitle: state.user?.isPremium == true
+                      ? null
+                      : tr('Narxni server aytadi'),
+                  leading: NIcon(Ico.star, size: 19, color: C.ink2),
+                  trailing: state.user?.isPremium == true
+                      ? StatusChip(tr('Faol'), tone: StatusTone.ok)
+                      : null,
+                  onTap: () => push(context, (_) => const PremiumScreen()),
+                ),
+                ListRow(
+                  title: tr('Telefon raqamini tasdiqlash'),
+                  subtitle: tr('Ixtiyoriy. Parolni tiklashda kerak bo‘ladi.'),
+                  leading: NIcon(Ico.phone, size: 19, color: C.ink2),
+                  trailing: StatusChip(tr('Telegram bot')),
+                  onTap: _busyTg ? null : _startTelegram,
+                ),
+                ListRow(
+                  title: tr('Parolni o‘zgartirish'),
+                  leading: NIcon(Ico.key, size: 19, color: C.ink2),
+                  onTap: () =>
+                      push(context, (_) => const ChangePasswordScreen()),
+                ),
+              ],
+              note: _tgError,
+            ),
 
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Xavfsizlik')),
-                  const SizedBox(height: S.x12),
-                  _LockCard(available: _bioAvailable),
+            // ── XAVFSIZLIK ────────────────────────────────────
+            _Group(
+              eyebrow: tr('Xavfsizlik'),
+              rows: [
+                ListRow(
+                  title: tr('PIN · barmoq izi · Face ID'),
+                  subtitle: tr('Ilova ochilganda kod so‘raladi'),
+                  leading: NIcon(Ico.shield, size: 19, color: C.ink2),
+                  // HOLAT FAQAT RANG BILAN EMAS: belgi va matn ham
+                  // bor (`StatusChip` shunday qilingan).
+                  trailing: StatusChip(
+                    lock.enabled ? tr('Yoqilgan') : tr('O‘chiq'),
+                    tone: lock.enabled ? StatusTone.ok : StatusTone.neutral,
+                  ),
+                  onTap: _lockSheet,
+                ),
+              ],
+            ),
 
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Akkaunt')),
-                  const SizedBox(height: S.x12),
-                  _Group([
-                  _Row(
-                    label: tr('Buyurtmalarim'),
-                    icon: Ico.bag,
-                    onTap: () => push(context, (_) => const MyOrdersScreen()),
-                  ),
-                  // "Shaxsiy ma'lumotlar" ilgari BOSILMAYDIGAN qator
-                  // edi — ko'rinishi tugma, xulqi esa yo'q. Endi u
-                  // faol shaxsning tahrirlash ekranini ochadi.
-                  _Row(
-                    label: tr('Shaxsiy ma‘lumotlar'),
-                    icon: Ico.user,
-                    onTap: state.active?.record == null
-                        ? null
-                        : () => push(
-                              context,
-                              (_) => EditProfileScreen(record: state.active!.record!),
-                            ),
-                  ),
-                  _Row(
-                    label: tr('Parolni o‘zgartirish'),
-                    icon: Ico.lock,
-                    onTap: () => push(context, (_) => const ChangePasswordScreen()),
-                  ),
-                  // BILDIRISHNOMALAR QATORI OLIB TASHLANDI: u "Yoniq"
-                  // deb yozib turardi, lekin ilovada push bildirishnoma
-                  // umuman yo'q. Mavjud bo'lmagan imkoniyatni va'da
-                  // qilishdan ko'ra, uni ko'rsatmagan ma'qul.
-                  // KO'RINISH — mavzu va til bitta ekranda: ikkalasi
-                  // ham "ilova qanday ko'rinadi" degan savolga
-                  // tegishli va ikkalasi ham darhol qo'llanadi.
-                  _Row(
-                    label: tr('Ko‘rinish'),
-                    icon: Ico.globe,
-                    value: AppPrefsScope.of(context).locale.label,
-                    onTap: () => push(context, (_) => const AppearanceScreen()),
-                  ),
-                  _Row(
-                    label: tr('To‘lovlar'),
-                    icon: Ico.card,
-                    onTap: () => push(context, (_) => const PaymentsHistoryScreen()),
-                  ),
-                  _Row(
-                    label: tr('Premium obuna'),
-                    icon: Ico.star,
-                    onTap: () => push(context, (_) => const PremiumScreen()),
-                  ),
-                  _Row(
-                    label: tr('Yordam'),
-                    icon: Ico.bell,
-                    onTap: () => push(context, (_) => const SupportScreen()),
-                    last: true,
-                  ),
-                  ]),
+            // ── BUYURTMA VA TO'LOV ────────────────────────────
+            _Group(
+              eyebrow: tr('Buyurtma va to‘lov'),
+              rows: [
+                ListRow(
+                  title: tr('Buyurtmalarim'),
+                  leading: NIcon(Ico.bag, size: 19, color: C.ink2),
+                  onTap: () => push(context, (_) => const MyOrdersScreen()),
+                ),
+                ListRow(
+                  title: tr('To‘lovlar tarixi'),
+                  leading: NIcon(Ico.card, size: 19, color: C.ink2),
+                  onTap: () =>
+                      push(context, (_) => const PaymentsHistoryScreen()),
+                ),
+              ],
+            ),
 
-                  // HUQUQIY HUJJATLAR — ILOVA ICHIDAN.
-                  //
-                  // Google Play ilova ichida maxfiylik siyosatiga
-                  // havola bo'lishini kutadi, ilovada esa u umuman
-                  // yo'q edi: hujjatlar faqat saytda turardi va
-                  // ularga ilovadan borish yo'li yo'q edi.
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Hujjatlar')),
-                  const SizedBox(height: S.x12),
-                  _Group([
-                    _Row(
-                      label: tr('Maxfiylik siyosati'),
-                      icon: Ico.lock,
-                      // Manzil BITTA MANBADAN: `absUrl` bazasi
-                      // (`api_client.dart`). Qo'lda yozilsa, domen
-                      // o'zgarganda havolalar o'lik qolardi.
-                      onTap: () => openExternal(Uri.parse(absUrl('/maxfiylik')!)),
-                    ),
-                    _Row(
-                      label: tr('Foydalanish shartlari'),
-                      icon: Ico.card,
-                      onTap: () => openExternal(Uri.parse(absUrl('/shartlar')!)),
-                      last: true,
-                    ),
-                  ]),
-
-                  const SizedBox(height: S.x24),
-                  Press(
-                    haptic: true,
-                    onTap: () async {
-                      await state.signOut();
-                      if (context.mounted) Navigator.of(context).maybePop();
-                    },
-                    child: Surface(
-                      shadow: E.e1,
-                      child: Row(
-                        children: [
-                          const NIcon(Ico.logout, size: 19, color: C.signal),
-                          const SizedBox(width: S.x12),
-                          Text(tr('Chiqish'), style: T.cardTitle.copyWith(color: C.signal)),
-                        ],
-                      ),
-                    ),
+            // ── YORDAM VA HUQUQ ───────────────────────────────
+            //
+            // Google Play ilova ichida maxfiylik siyosatiga havola
+            // bo'lishini kutadi. Manzil BITTA MANBADAN: `absUrl`
+            // bazasi (`api_client.dart`). Qo'lda yozilsa, domen
+            // o'zgarganda havolalar o'lik qolardi.
+            _Group(
+              eyebrow: tr('Yordam va huquq'),
+              rows: [
+                ListRow(
+                  title: tr('Maxfiylik siyosati · Oferta'),
+                  leading: NIcon(Ico.shield, size: 19, color: C.ink2),
+                  onTap: () => openExternal(Uri.parse(absUrl('/maxfiylik')!)),
+                ),
+                ListRow(
+                  title: tr('Foydalanish shartlari'),
+                  leading: NIcon(Ico.doc, size: 19, color: C.ink2),
+                  onTap: () => openExternal(Uri.parse(absUrl('/shartlar')!)),
+                ),
+                ListRow(
+                  title: tr('Litsenziyalar'),
+                  leading: NIcon(Ico.info, size: 19, color: C.ink2),
+                  onTap: () => showLicensePage(
+                    context: context,
+                    applicationName: 'NFCSTORE',
+                    applicationVersion: appVersion,
                   ),
+                ),
+                ListRow(
+                  title: tr('Bog‘lanish · Telegram bot, admin'),
+                  leading: NIcon(Ico.telegram, size: 19, color: C.ink2),
+                  onTap: () => push(context, (_) => const SupportScreen()),
+                ),
+              ],
+            ),
 
-                  // HISOBNI O'CHIRISH.
-                  //
-                  // NIMA UCHUN BOR: Google Play "User Data" siyosati
-                  // hisob yaratishga ruxsat beradigan ilovadan
-                  // hisobni O'CHIRISH YO'LINI ILOVA ICHIDA talab
-                  // qiladi. Ilovada ham, saytda ham bunday yo'l
-                  // umuman yo'q edi — ya'ni ilovani do'konga
-                  // qo'yishning iloji bo'lmasdi.
-                  //
-                  // "Chiqish" dan PASTDA va boshqa ko'rinishda:
-                  // ikkalasi yonma-yon bir xil tursa, chiqmoqchi
-                  // bo'lgan odam xato bosishi mumkin.
-                  const SizedBox(height: S.x12),
-                  Press(
-                    haptic: true,
-                    onTap: () => _deleteAccount(context, state),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: S.x12),
-                      child: Center(
-                        child: Text(
-                          tr('Hisobni o‘chirish'),
-                          style: T.caption.copyWith(
-                            fontSize: 13.5,
-                            color: C.signal,
-                            decoration: TextDecoration.underline,
-                            decorationColor: C.signal,
-                          ),
-                        ),
-                      ),
+            // ── BUZUVCHI AMALLAR ──────────────────────────────
+            //
+            // "Chiqish" dan ham YUQORIDA emas, quyida va alohida
+            // guruhda: ikkalasi yonma-yon bir xil tursa, chiqmoqchi
+            // bo'lgan odam xato bosishi mumkin.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x32,
+                  S.gutter,
+                  0,
+                ),
+                child: RowGroup(
+                  children: [
+                    ListRow(
+                      title: tr('Hisobni o‘chirish'),
+                      danger: true,
+                      leading: NIcon(Ico.trash, size: 19, color: C.fail),
+                      onTap: () => _deleteAccount(context, state),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ),
 
-                  const SizedBox(height: S.x20),
-                  // VERSIYA. Qurilmada sinashda "bu o'zgarish
-                  // ko'rinmayapti" deyilganda birinchi savol —
-                  // ilovaning qaysi build'i o'rnatilgan. Ilgari
-                  // buni bilishning YO'LI yo'q edi.
-                  Center(
-                    child: Text(
-                      'NFCSTORE $appVersion',
-                      style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
-                    ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x16,
+                  S.gutter,
+                  0,
+                ),
+                child: GhostButton(
+                  tr('Chiqish'),
+                  icon: Ico.logout,
+                  expand: true,
+                  color: C.ink2,
+                  onTap: () async {
+                    await state.signOut();
+                    if (context.mounted) Navigator.of(context).maybePop();
+                  },
+                ),
+              ),
+            ),
+
+            // VERSIYA. Qurilmada sinashda "bu o'zgarish ko'rinmayapti"
+            // deyilganda birinchi savol — ilovaning qaysi build'i
+            // o'rnatilgan.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x24,
+                  S.gutter,
+                  S.x32,
+                ),
+                child: Center(
+                  child: Text(
+                    'NFCSTORE $appVersion',
+                    style: T.meta.copyWith(color: C.ink3),
                   ),
-                  const SizedBox(height: S.x8),
-                ],
+                ),
               ),
             ),
           ],
@@ -324,54 +388,182 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+/// Bo'lim — eyebrow va bitta yuzadagi qatorlar.
+class _Group extends StatelessWidget {
+  const _Group({required this.eyebrow, required this.rows, this.note});
+
+  final String eyebrow;
+  final List<Widget> rows;
+
+  /// Guruh ostidagi xato yoki izoh (Telegram ulash xatosi).
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(S.gutter, S.x24, S.gutter, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Eyebrow(eyebrow),
+              const SizedBox(height: S.x12),
+              RowGroup(children: rows),
+              if ((note ?? '').isNotEmpty) ...[
+                const SizedBox(height: S.x8),
+                Text(note!, style: T.caption.copyWith(color: C.fail)),
+              ],
+            ],
+          ),
+        ),
+      );
+}
+
+/// Qulf oynasidagi bitta kalit.
+class _LockLine extends StatelessWidget {
+  const _LockLine({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final Ico icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          NIcon(
+            icon,
+            size: 20,
+            color: onChanged == null ? C.ink3 : C.accent,
+          ),
+          const SizedBox(width: S.x12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: T.cardTitle),
+                const SizedBox(height: 3),
+                Text(subtitle, style: T.caption.copyWith(color: C.ink3)),
+              ],
+            ),
+          ),
+          const SizedBox(width: S.x12),
+          Toggle(value: value, onChanged: onChanged),
+        ],
+      );
+}
+
 /// HISOBNI O'CHIRISH — IKKI QADAM.
 ///
-/// Birinchi varaqda NIMA BO'LISHI aniq yoziladi: bu buzuvchi amal
-/// va uni ilovadan qaytarib bo'lmaydi. Ikkinchi bosishda amal
-/// bajariladi va odam hisobdan chiqariladi.
+/// NIMA UCHUN BOR: Google Play "User Data" siyosati hisob yaratishga
+/// ruxsat beradigan ilovadan hisobni O'CHIRISH YO'LINI ILOVA ICHIDA
+/// talab qiladi.
 ///
-/// NIMA QOLADI VA NIMA KETADI — ochiq aytiladi. To'lov va buyurtma
-/// yozuvlari saqlanadi (qonun va hisobot talabi), profil va kontent
-/// esa darhol ko'rinmay qoladi. Buni yashirish keyinchalik
-/// "nega mening to'lovlarim turibdi" degan savolga olib kelardi.
+/// NIMA UCHUN IKKI QADAM: birinchi varaqda NIMA KETISHI ro'yxat
+/// bilan ko'rsatiladi, ikkinchisida esa odam so'zni QO'LDA yozadi.
+/// Bitta tugma bilan o'chiriladigan hisob — tasodifiy bosishdan
+/// himoyasiz.
 Future<void> _deleteAccount(BuildContext context, AppState state) async {
-  final sure = await showSheet<bool>(
+  // ID'LAR RO'YXATI — nima ketayotganini aniq ko'rsatadi. Odam
+  // o'zining qaysi kodlari yo'qolishini varaqda ko'radi.
+  final codes = [
+    ...state.cards.map((c) => c.code),
+    ...state.companies.map((c) => c.id),
+  ].where((c) => c.isNotEmpty).join(' · ');
+
+  final go = await showSheet<bool>(
     context,
     title: tr('Hisobni o‘chirish'),
     subtitle: tr('Bu amalni ilovadan qaytarib bo‘lmaydi.'),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(S.x16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(R.card),
-              color: C.signal.withValues(alpha: .07),
-              border: Border.all(color: C.signal.withValues(alpha: .3)),
-            ),
-            child: Text(
-              tr('Hisobingiz o‘chiriladi va siz undan chiqasiz. '
-                  'Profillaringiz, postlaringiz va storylaringiz '
-                  'saytda ham, ilovada ham ko‘rinmay qoladi. '
-                  'To‘lov va buyurtma yozuvlari hisobot uchun '
-                  'saqlanadi. Qaytarish kerak bo‘lsa — yordam '
-                  'xizmatiga murojaat qiling.'),
-              style: T.body.copyWith(color: C.offWhite),
-            ),
-          ),
-          const SizedBox(height: S.x16),
-          PrimaryButton(tr('Ha, o‘chirilsin'),
-              onTap: () => Navigator.of(context).pop(true)),
-          const SizedBox(height: S.x8),
-          SecondaryButton(tr('Bekor qilish'),
-              onTap: () => Navigator.of(context).pop(false)),
-        ],
-      ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(tr('Nimalar yo‘qoladi'), style: T.cardTitle),
+        const SizedBox(height: S.x12),
+        _Loss(tr('Ochiq profil va uning havolasi')),
+        _Loss(tr('Story, postlar va Reels')),
+        _Loss(tr('Obunachilar va statistika')),
+        if (codes.isNotEmpty)
+          _Loss(tr('Mening ID‘larim'), value: codes)
+        else
+          _Loss(tr('Mening ID‘larim')),
+        const SizedBox(height: S.x24),
+        PrimaryButton(
+          tr('Davom etish'),
+          onTap: () => Navigator.of(context).pop(true),
+        ),
+        const SizedBox(height: S.x8),
+        GhostButton(
+          tr('Bekor qilish'),
+          expand: true,
+          color: C.ink2,
+          onTap: () => Navigator.of(context).pop(false),
+        ),
+      ],
     ),
   );
-  if (sure != true || !context.mounted) return;
+  if (go != true || !context.mounted) return;
+
+  final word = tr('O‘CHIRISH');
+  final typed = TextEditingController();
+  var agreed = false;
+
+  final confirmed = await showSheet<bool>(
+    context,
+    title: tr('Tasdiqlash uchun yozing'),
+    child: StatefulBuilder(
+      builder: (sheetContext, setSheet) {
+        final ready = typed.text.trim().toUpperCase() == word && agreed;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              tr('Quyidagi maydonga O‘CHIRISH so‘zini kiriting.'),
+              style: T.body,
+            ),
+            const SizedBox(height: S.x16),
+            Field(
+              label: tr('Tasdiq so‘zi'),
+              controller: typed,
+              hint: word,
+              keyboardType: TextInputType.text,
+              onChanged: (_) => setSheet(() {}),
+            ),
+            const SizedBox(height: S.x8),
+            CheckBox(
+              value: agreed,
+              label: tr('Tushundim: hisobim va ID‘larim o‘chiriladi'),
+              onChanged: (v) => setSheet(() => agreed = v),
+            ),
+            const SizedBox(height: S.x16),
+            DangerButton(
+              tr('Hisobni o‘chirish'),
+              filled: true,
+              onTap: ready
+                  ? () => Navigator.of(sheetContext).pop(true)
+                  : null,
+            ),
+            const SizedBox(height: S.x8),
+            GhostButton(
+              tr('Bekor qilish'),
+              expand: true,
+              color: C.ink2,
+              onTap: () => Navigator.of(sheetContext).pop(false),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  typed.dispose();
+  if (confirmed != true || !context.mounted) return;
+
   try {
     await state.repo.deleteAccount();
     await state.signOut();
@@ -381,214 +573,33 @@ Future<void> _deleteAccount(BuildContext context, AppState state) async {
   }
 }
 
-/// SOZLAMALAR QATORI — KARTA EMAS, RO'YXAT.
-///
-/// NIMA UCHUN QAYTA YOZILDI: har qator alohida soya bilan karta
-/// edi va ekran o'nta suzuvchi to'rtburchakka aylanardi. Sozlamalar
-/// esa boshqa ekranlar kabi "boy" bo'lmasligi kerak — u eng toza
-/// va eng sokin bo'lim. Endi qatorlar BITTA yuzada, orasida
-/// ingichka chiziq bilan: tizim sozlamalari qanday ko'rinsa,
-/// shunday.
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.label,
-    required this.icon,
-    this.value,
-    this.onTap,
-    this.last = false,
-  });
-
+/// O'chirishda yo'qoladigan bitta narsa.
+class _Loss extends StatelessWidget {
+  const _Loss(this.label, {this.value});
   final String label;
-  final Ico icon;
   final String? value;
-  final VoidCallback? onTap;
-
-  /// Guruhdagi oxirgi qator — ostiga chiziq chizilmaydi.
-  final bool last;
 
   @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
-          decoration: BoxDecoration(
-            border: last
-                ? null
-                : Border(bottom: BorderSide(color: C.hairline)),
-          ),
-          child: Row(
-            children: [
-              NIcon(icon, size: 19, color: C.ash),
-              const SizedBox(width: S.x12),
-              Expanded(child: Text(label, style: T.cardTitle.copyWith(fontSize: 15))),
-              if (value != null) ...[
-                Text(value!, style: T.caption.copyWith(fontSize: 13)),
-                if (onTap != null) const SizedBox(width: S.x8),
-              ],
-              // Strelka FAQAT bosiladigan qatorda. Aks holda odam
-              // bosadi va hech narsa bo'lmaydi — bu ishonchni
-              // yo'qotadi.
-              if (onTap != null) const NIcon(Ico.chevronRight, size: 17, color: C.ash),
-            ],
-          ),
-        ),
-      );
-}
-
-/// Qatorlar guruhi — bitta yuza.
-class _Group extends StatelessWidget {
-  const _Group(this.rows);
-  final List<Widget> rows;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: EdgeInsets.zero,
-        shadow: E.e1,
-        child: Column(children: rows),
-      );
-}
-
-/// ILOVA QULFI — PIN va barmoq izi / yuz.
-///
-/// NIMA UCHUN KERAK: hisobda odamning shaxsiy kontaktlari, biznesi va
-/// to'lov tarixi turadi. Telefon birov qo'liga tushsa, ilova ochiq
-/// qolgan bo'lsa — hammasi ochiq.
-class _LockCard extends StatefulWidget {
-  const _LockCard({required this.available});
-
-  /// Qurilmada barmoq izi/yuz sozlanganmi.
-  final bool available;
-
-  @override
-  State<_LockCard> createState() => _LockCardState();
-}
-
-class _LockCardState extends State<_LockCard> {
-  @override
-  Widget build(BuildContext context) {
-    final lock = AppLockScope.of(context);
-
-    return Surface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              NIcon(Ico.lock, size: 20, color: C.champagne),
-              const SizedBox(width: S.x12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(tr('PIN kod'), style: T.cardTitle),
-                    SizedBox(height: 3),
-                    Text(tr('Ilova ochilganda kod so‘raladi'), style: T.caption),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: S.x12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            NIcon(Ico.close, size: 15, color: C.fail),
+            const SizedBox(width: S.x12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: T.bodyStrong.copyWith(fontSize: 14)),
+                  if ((value ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(value!, style: T.code(12.5, color: C.ink2)),
                   ],
-                ),
+                ],
               ),
-              _Switch(
-                value: lock.enabled,
-                onChanged: (on) async {
-                  if (on) {
-                    await push<bool>(context, (_) => SetPinScreen(lock: lock));
-                  } else {
-                    await lock.disable();
-                  }
-                  if (mounted) setState(() {});
-                },
-              ),
-            ],
-          ),
-          if (lock.enabled) ...[
-            const SizedBox(height: S.x12),
-            Container(height: 1, color: C.hairline),
-            const SizedBox(height: S.x12),
-            Row(
-              children: [
-                NIcon(Ico.fingerprint, size: 20,
-                    color: widget.available ? C.champagne : C.muted),
-                const SizedBox(width: S.x12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(tr('Barmoq izi yoki yuz'), style: T.cardTitle),
-                      const SizedBox(height: 3),
-                      Text(
-                        widget.available
-                            ? tr('Kod o‘rniga tezroq ochish')
-                            : tr('Qurilmada sozlanmagan'),
-                        style: T.caption,
-                      ),
-                    ],
-                  ),
-                ),
-                _Switch(
-                  value: lock.biometricEnabled,
-                  // Qurilmada sozlanmagan bo'lsa belgi ishlamaydi —
-                  // yoqib bo'lmaydigan narsani taklif qilmaymiz.
-                  onChanged: widget.available
-                      ? (on) async {
-                          await lock.setBiometric(on);
-                          if (mounted) setState(() {});
-                        }
-                      : null,
-                ),
-              ],
-            ),
-            const SizedBox(height: S.x12),
-            SecondaryButton(
-              tr('Kodni o‘zgartirish'),
-              height: 44,
-              onTap: () async {
-                await push<bool>(context, (_) => SetPinScreen(lock: lock));
-                if (mounted) setState(() {});
-              },
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Yoqish/o'chirish belgisi.
-///
-/// Material'ning `Switch` i o'z rang sxemasini oladi va bu dizaynda
-/// begona ko'rinadi — shuning uchun o'zimizniki.
-class _Switch extends StatelessWidget {
-  const _Switch({required this.value, this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        onTap: onChanged == null ? null : () => onChanged!(!value),
-        scale: .94,
-        child: Opacity(
-          opacity: onChanged == null ? .45 : 1,
-          child: AnimatedContainer(
-            duration: M.fade,
-            curve: M.curve,
-            width: 46,
-            height: 27,
-            padding: const EdgeInsets.all(3),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            decoration: BoxDecoration(
-              color: value ? C.champagne : C.graphite,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: value ? C.champagne : C.hairline),
-            ),
-            child: Container(
-              width: 21,
-              height: 21,
-              decoration: BoxDecoration(
-                color: value ? C.ink : C.muted,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
         ),
       );
 }

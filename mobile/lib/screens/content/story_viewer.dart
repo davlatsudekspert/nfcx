@@ -1,12 +1,13 @@
 import 'dart:async';
-import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/surface.dart';
+import '../home/home.dart' show LikeButton;
+import '../../l10n/dates.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/video_view.dart';
-import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import 'report_sheet.dart';
 import '../../design/components/states.dart';
@@ -304,15 +305,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
-        backgroundColor: C.backdrop,
-        body: Center(child: Spinner()),
+      return ColoredBox(
+        color: C.backdrop,
+        child: const Center(child: Spinner()),
       );
     }
     if (_error != null || _stories.isEmpty) {
-      return Scaffold(
-        backgroundColor: C.backdrop,
-        body: SafeArea(
+      return ColoredBox(
+        color: C.backdrop,
+        child: SafeArea(
           child: Center(
             child: _error != null
                 ? ErrorState(humanError(_error), onRetry: _load)
@@ -327,9 +328,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     }
 
     final story = _stories[_index];
-    return Scaffold(
-      backgroundColor: C.backdrop,
-      body: GestureDetector(
+    return ColoredBox(
+      color: C.backdrop,
+      child: GestureDetector(
         onTapUp: (d) {
           final w = MediaQuery.sizeOf(context).width;
           if (d.localPosition.dx < w * .32) {
@@ -372,11 +373,20 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               NetImage(
                 story.images.isEmpty ? null : story.images.first,
                 radius: 0,
-                fit: BoxFit.contain,
-                slotLabel: tr('STORY MEDIA 9:16'),
+                fit: BoxFit.contain
               ),
-            // Yuqori va pastki qorong'i gradient — oq matn har qanday
-            // rasm ustida o'qiladi.
+            // Pastki scrim — izoh va tugmalar har qanday rasm
+            // ustida o'qilsin.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 260,
+              child: DecoratedBox(
+                decoration: BoxDecoration(gradient: C.bottomScrim),
+              ),
+            ),
+            // Yuqori gradient — progress va muallif qatori uchun.
             const Positioned(
               top: 0, left: 0, right: 0, height: 160,
               child: DecoratedBox(
@@ -419,40 +429,43 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         Avatar(url: story.authorAvatar, name: story.authorName, size: 32),
                         const SizedBox(width: S.x8),
                         Expanded(
-                          child: Text(
-                            story.authorName.isEmpty ? widget.code : story.authorName,
-                            style: T.cardTitle.copyWith(fontSize: 14.5),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                story.authorName.isEmpty
+                                    ? widget.code
+                                    : story.authorName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: T.cardTitle.copyWith(fontSize: 14.5),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                ago(story.createdAt).toUpperCase(),
+                                style: T.meta.copyWith(fontSize: 9.5),
+                              ),
+                            ],
                           ),
                         ),
-                        if (_isOwner)
-                          GestureDetector(
-                            onTap: _delete,
-                            behavior: HitTestBehavior.opaque,
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: NIcon(Ico.trash, size: 19, color: C.offWhite),
-                            ),
-                          )
-                        else
-                          // MEHMONGA — "⋯" MENYUSI (ichida
-                          // shikoyat). O'z story'siga shikoyat
-                          // qilish ma'nosiz, shuning uchun egada
-                          // uning o'rnida o'chirish turadi.
-                          GestureDetector(
-                            onTap: _more,
-                            behavior: HitTestBehavior.opaque,
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: NIcon(Ico.more, size: 19, color: C.offWhite),
-                            ),
-                          ),
-                        GestureDetector(
+                        // EGADA — o'chirish, mehmonda — "⋯"
+                        // menyusi (ichida shikoyat). O'z story'siga
+                        // shikoyat qilish ma'nosiz.
+                        RoundButton(
+                          _isOwner ? Ico.trash : Ico.more,
+                          size: 38,
+                          iconSize: 17,
+                          glass: true,
+                          onTap: _isOwner ? _delete : _more,
+                        ),
+                        const SizedBox(width: S.x8),
+                        RoundButton(
+                          Ico.close,
+                          size: 38,
+                          iconSize: 17,
+                          glass: true,
                           onTap: () => Navigator.of(context).maybePop(),
-                          behavior: HitTestBehavior.opaque,
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: NIcon(Ico.close, size: 19, color: C.offWhite),
-                          ),
                         ),
                       ],
                     ),
@@ -463,7 +476,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                       padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x12),
                       child: Text(
                         story.caption,
-                        style: T.body.copyWith(color: C.offWhite),
+                        style: T.body.copyWith(color: C.ink),
                       ),
                     ),
                   // YURAK VA KO'RISHLAR.
@@ -476,26 +489,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x20),
                     child: Row(
                       children: [
-                        Press(
+                        // Yurak 220 ms spring bilan 1 → 1.25 → 1
+                        // bo'ladi — dizayn shuni aniq belgilaydi.
+                        LikeButton(
+                          liked: story.liked,
+                          count: story.likes,
                           onTap: _like,
-                          scale: .86,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: S.x8),
-                            child: Row(
-                              children: [
-                                NIcon(Ico.heart,
-                                    size: 26,
-                                    color: story.liked ? C.signal : C.offWhite,
-                                    filled: story.liked),
-                                if (story.likes > 0) ...[
-                                  const SizedBox(width: 7),
-                                  Text('${story.likes}',
-                                      style: T.meta.copyWith(color: C.offWhite)),
-                                ],
-                              ],
-                            ),
-                          ),
+                          size: 26,
+                          color: C.ink,
                         ),
                         const Spacer(),
                         // KO'RISHLAR — FAQAT EGASIGA.
@@ -505,11 +506,24 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         // Instagram ham buni faqat egasiga
                         // ko'rsatadi. Egasi uchun esa bu istorya
                         // qo'yishning asosiy o'lchovi.
+                        // KO'RISHLAR — FAQAT EGASIGA, va qolgan
+                        // vaqt bilan birga. Server ko'ruvchilar
+                        // RO'YXATINI bermaydi, faqat sonini —
+                        // shuning uchun avatarlar chizilmaydi.
                         if (_isOwner) ...[
-                          const NIcon(Ico.eye, size: 20, color: C.ash),
+                          StatusChip(
+                            remaining(
+                              story.createdAt?.add(const Duration(hours: 24)),
+                            ),
+                            tone: StatusTone.neutral,
+                          ),
+                          const SizedBox(width: S.x8),
+                          NIcon(Ico.eye, size: 18, color: C.ink2),
                           const SizedBox(width: 6),
-                          Text('${story.views}',
-                              style: T.meta.copyWith(color: C.ash)),
+                          Text(
+                            '${story.views}',
+                            style: T.meta.copyWith(color: C.ink2),
+                          ),
                         ],
                       ],
                     ),
@@ -536,7 +550,7 @@ class _Segment extends StatelessWidget {
             const Positioned.fill(child: ColoredBox(color: Color(0x4DFFFFFF))),
             FractionallySizedBox(
               widthFactor: fill.clamp(0.0, 1.0),
-              child: const ColoredBox(color: C.offWhite),
+              child: const ColoredBox(color: C.ink),
             ),
           ],
         ),

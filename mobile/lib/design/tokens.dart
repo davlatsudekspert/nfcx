@@ -179,8 +179,8 @@ class C {
   /// `background.cool` — sovuq asos (NFC markazi, Qidiruv).
   /// Bu ekranlarning o'z yorug'lik manbai bor va ular Home'dan
   /// ATAYLAB farq qiladi.
-  static const Color bgCool = Color(0xFF080A0E);
-  static const Color bgCoolTop = Color(0xFF0E1017);
+  static const Color bgCool = Color(0xFF07080B);
+  static const Color bgCoolTop = Color(0xFF0C0D12);
 
   /// Modal orqa fon — sheet ostidagi xiralik.
   static const Color backdrop = Color(0xFF050508);
@@ -375,13 +375,14 @@ class C {
       );
 
   /// TAB BAR foni — pastga qarab quyuqlashadi.
+  ///
+  /// SHAFFOFMAS: panel ostidan o'tayotgan kontent panel ICHIDA
+  /// ko'rinib qolmasligi kerak. Yumshoq o'tish esa panel ustidagi
+  /// alohida scrim bilan beriladi (`nav_bar.dart`).
   static LinearGradient get navBar => LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          _p.baseMid.withValues(alpha: .92),
-          _p.baseBottom.withValues(alpha: .99),
-        ],
+        colors: [_p.baseMid, _p.baseBottom],
       );
 
   /// YORUG'LIK CHIZIG'I — metall yuzadan o'tuvchi aks.

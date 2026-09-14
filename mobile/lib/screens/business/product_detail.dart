@@ -1,23 +1,31 @@
-import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
+
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../common/top_bar.dart';
-import '../orders/order_flow.dart';
 import '../../l10n/strings.dart';
+import '../orders/order_flow.dart';
 
 /// Mahsulot kartochkasi — 1:1 rasm, nom, narx.
 ///
-/// Chegirma: yangi narx champagne mono bilan, eskisi ustidan chizilgan
-/// kulrang bilan, chap yuqorida `-15%` signal rangida.
+/// Chegirma bo'lsa rasm ustida foiz belgisi turadi, narx qatorida
+/// esa eski narx ustidan chizilgan holda qoladi: ikkalasi birga
+/// "arzonlashdi" degan ma'noni rangsiz ham beradi.
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, this.companyId, this.companyName = ''});
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.companyId,
+    this.companyName = '',
+  });
 
   final Product product;
   final String? companyId;
@@ -26,6 +34,7 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final off = product.discountPct;
+
     return Press(
       onTap: () => push(
         context,
@@ -35,72 +44,86 @@ class ProductCard extends StatelessWidget {
           companyName: companyName,
         ),
       ),
+      minSize: 0,
       // `RepaintBoundary` — to'r aylanganda har kartochka o'z
       // qatlamida qayta chiziladi va qo'shnilarini majburlamaydi.
       child: RepaintBoundary(
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                // HERO — rasm ro'yxatdan tafsilotga "o'tib" boradi
-                // (handoff: shared element, 320ms). Bu ikki ekran
-                // orasidagi bog'lanishni ko'rsatadi va o'tish
-                // "sakrash"dek emas, davomiy his qilinadi.
-                //
-                // Teg mahsulot ID si bo'yicha: bir ekranda bir nechta
-                // mahsulot bor, ular aralashib ketmasligi kerak.
-                Positioned.fill(
-                  child: Hero(
-                    tag: 'product-${product.id}',
-                    child: NetImage(product.imageUrl, slotLabel: '1:1', cacheWidth: 300),
-                  ),
-                ),
-                if (off != null)
-                  Positioned(
-                    left: S.x8, top: S.x8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: C.signal,
-                        borderRadius: BorderRadius.circular(5),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  // HERO — rasm ro'yxatdan tafsilotga "o'tib" boradi.
+                  // Teg mahsulot ID si bo'yicha: bir ekranda bir
+                  // nechta mahsulot bor, ular aralashib ketmasligi
+                  // kerak.
+                  Positioned.fill(
+                    child: Hero(
+                      tag: 'product-${product.id}',
+                      child: NetImage(
+                        product.imageUrl,
+                        radius: R.tile,
+                        cacheWidth: 300,
+                        slotIcon: Ico.bag,
                       ),
-                      child: Text('-$off%',
-                          style: T.statusLabel.copyWith(color: C.offWhite)),
                     ),
                   ),
-              ],
+                  if (off != null)
+                    Positioned(
+                      left: S.x8,
+                      top: S.x8,
+                      child: StatusChip('-$off%', tone: StatusTone.accent),
+                    ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: S.x8),
-          Text(product.name,
+            const SizedBox(height: S.x8),
+            Text(
+              product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: T.cardTitle.copyWith(fontSize: 14, height: 1.3)),
-          const SizedBox(height: 3),
-          Row(
-            children: [
-              Text(som(product.effectivePrice), style: T.price.copyWith(fontSize: 13.5)),
-              if (product.salePrice != null) ...[
-                const SizedBox(width: 6),
-                Text(
-                  som(product.price),
-                  style: T.meta.copyWith(
-                    fontSize: 12.5,
-                    color: C.muted,
-                    decoration: TextDecoration.lineThrough,
-                    decorationColor: C.muted,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
+              style: T.cardTitle,
+            ),
+            const SizedBox(height: 3),
+            _Price(product: product),
+          ],
         ),
       ),
     );
   }
+}
+
+/// NARX — har doim SERVERDAN kelgan obyektdan.
+class _Price extends StatelessWidget {
+  const _Price({required this.product});
+
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Text(
+              som(product.effectivePrice),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: T.amount,
+            ),
+          ),
+          if (product.salePrice != null) ...[
+            const SizedBox(width: 6),
+            Text(
+              som(product.price),
+              style: T.meta.copyWith(
+                decoration: TextDecoration.lineThrough,
+                decorationColor: C.ink3,
+              ),
+            ),
+          ],
+        ],
+      );
 }
 
 /// Mahsulot tafsiloti — rasm karuseli, narx, tavsif, biznes qatori,
@@ -128,17 +151,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final p = widget.product;
     final images = p.images.isEmpty ? <String>[''] : p.images;
+    final off = p.discountPct;
 
-    return Scaffold(
-      backgroundColor: C.obsidian,
-      body: SafeArea(
+    return ScreenBackdrop(
+      aura: Aura.spotlight,
+      child: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            TopBar(title: p.name),
+            const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x24),
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
                 children: [
                   AspectRatio(
                     aspectRatio: 1,
@@ -150,8 +174,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           itemBuilder: (_, i) {
                             final img = NetImage(
                               images[i].isEmpty ? null : images[i],
-                              slotLabel: tr('MAHSULOT 1:1'),
-                              radius: R.card,
+                              radius: R.hero,
+                              slotIcon: Ico.bag,
                             );
                             // Faqat BIRINCHI rasm Hero: qolganlari
                             // ro'yxatda umuman ko'rinmagan, ya'ni
@@ -161,19 +185,65 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 : img;
                           },
                         ),
+                        if (off != null)
+                          Positioned(
+                            left: S.x12,
+                            top: S.x12,
+                            child: StatusChip(
+                              '-$off%',
+                              tone: StatusTone.accent,
+                            ),
+                          ),
+                        // NARX RASM USTIDA — shisha panelda, ya'ni
+                        // rasm qanday bo'lsa ham o'qiladi.
+                        Positioned(
+                          left: S.x12,
+                          bottom: S.x12,
+                          child: GlassPanel(
+                            radius: R.chip,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: S.x12,
+                              vertical: S.x8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${som(p.effectivePrice)} so‘m',
+                                  style: T.amount,
+                                ),
+                                if (p.salePrice != null) ...[
+                                  const SizedBox(width: S.x8),
+                                  Text(
+                                    som(p.price),
+                                    style: T.meta.copyWith(
+                                      decoration: TextDecoration.lineThrough,
+                                      decorationColor: C.ink3,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                         if (images.length > 1)
                           Positioned(
-                            bottom: S.x12, left: 0, right: 0,
+                            bottom: S.x12,
+                            left: 0,
+                            right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 for (var i = 0; i < images.length; i++)
                                   Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                    ),
                                     width: i == _page ? 16 : 5,
                                     height: 5,
                                     decoration: BoxDecoration(
-                                      color: i == _page ? C.champagne : C.muted,
+                                      color: i == _page ? C.accent : C.ink3,
                                       borderRadius: BorderRadius.circular(3),
                                     ),
                                   ),
@@ -188,26 +258,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     Eyebrow(p.categoryName),
                     const SizedBox(height: 6),
                   ],
-                  Text(p.name, style: T.displaySm),
-                  const SizedBox(height: S.x8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('${som(p.effectivePrice)} so‘m',
-                          style: T.price.copyWith(fontSize: 19)),
-                      if (p.salePrice != null) ...[
-                        const SizedBox(width: S.x8),
-                        Text(
-                          som(p.price),
-                          style: T.meta.copyWith(
-                            color: C.muted,
-                            decoration: TextDecoration.lineThrough,
-                            decorationColor: C.muted,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  Text(p.name, style: T.titleSm),
+                  const SizedBox(height: S.x12),
+                  const AccentRule(),
                   if (p.description.isNotEmpty) ...[
                     const SizedBox(height: S.x16),
                     Text(p.description, style: T.body),
@@ -217,29 +270,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     Surface(
                       child: Row(
                         children: [
-                          Avatar(name: widget.companyName, size: 38),
+                          Avatar(
+                            name: widget.companyName,
+                            size: 38,
+                            square: true,
+                          ),
                           const SizedBox(width: S.x12),
                           Expanded(
-                            child: Text(widget.companyName, style: T.cardTitle),
+                            child: Text(
+                              widget.companyName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: T.cardTitle,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
+                  SizedBox(height: StickyBar.inset(context)),
                 ],
               ),
             ),
             // Buyurtma tugmasi HAR DOIM ko'rinib turadi — uzun tavsifda
             // ham pastga aylantirish shart emas.
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                S.gutter, S.x12, S.gutter,
-                MediaQuery.paddingOf(context).bottom + S.x12,
-              ),
-              decoration: BoxDecoration(
-                color: C.obsidian,
-                border: Border(top: BorderSide(color: C.hairline)),
-              ),
+            StickyBar(
               child: PrimaryButton(
                 tr('Buyurtma berish'),
                 onTap: widget.companyId == null

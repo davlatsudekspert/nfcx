@@ -312,17 +312,25 @@ String som(num value) {
   return neg ? '-$out' : out.toString();
 }
 
-/// Katta sonni qisqartiradi: `12.4k`, `3.1M`.
+/// Katta sonni qisqartiradi: `12.4k`, `31.4M`.
 ///
-/// Statistika kartalarida joy cheklangan; to'liq son esa
-/// tafsilot ekranida ko'rsatiladi.
+/// Statistika kartalarida joy cheklangan; to'liq son esa tafsilot
+/// ekranida ko'rsatiladi.
+///
+/// QOIDALAR:
+/// • 100 dan kichik qisqartmada bitta kasr qoladi (`12.4k`) —
+///   aks holda `12k` va `12.9k` farqi yo'qoladi;
+/// • 100 dan katta qisqartmada kasr tashlanadi (`125k`) — u yerda
+///   bitta raqamning ahamiyati yo'q;
+/// • ortiqcha `.0` hech qachon chiqmaydi (`12k`, `12.0k` emas).
 String compact(num value) {
   final n = value.abs();
   if (n < 1000) return value.round().toString();
-  if (n < 1000000) {
-    final v = value / 1000;
-    return '${v.toStringAsFixed(v.abs() < 10 ? 1 : 0)}k';
-  }
-  final v = value / 1000000;
-  return '${v.toStringAsFixed(v.abs() < 10 ? 1 : 0)}M';
+
+  final divisor = n < 1000000 ? 1000 : 1000000;
+  final suffix = n < 1000000 ? 'k' : 'M';
+  final v = value / divisor;
+  final text = v.abs() < 100 ? v.toStringAsFixed(1) : v.toStringAsFixed(0);
+  return '${text.endsWith('.0') ? text.substring(0, text.length - 2) : text}'
+      '$suffix';
 }

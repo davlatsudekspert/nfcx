@@ -1,16 +1,20 @@
 import 'dart:async';
+
 import 'package:flutter/widgets.dart';
+
 import '../../data/api_client.dart';
 import '../../data/models.dart';
-import '../../design/components/icons.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
 
 /// HISOB TASDIQLASH — EMAIL.
 ///
@@ -21,6 +25,9 @@ import '../../l10n/strings.dart';
 ///
 /// Barcha holatlar shu yerda: yuklanish, kod xato, muddati tugagan,
 /// offline, muvaffaqiyat.
+///
+/// ASOSIY TUGMA YOPISHGAN PANELDA: kod maydoni raqamli klaviaturani
+/// ochadi va tugma uning ostida qolib ketmasligi kerak.
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({
     super.key,
@@ -202,67 +209,105 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     }
 
     final masked = AppUser.mask(widget.email);
-    final mm = (_left ~/ 60).toString().padLeft(2, '0');
-    final ss = (_left % 60).toString().padLeft(2, '0');
+    // "0:42" — daqiqa nol bilan to'ldirilmaydi, mono shriftda
+    // raqamlar baribir tekis turadi.
+    final clock = '${_left ~/ 60}:${(_left % 60).toString().padLeft(2, '0')}';
 
-    return ColoredBox(
-      color: C.obsidian,
+    return ScreenBackdrop(
+      aura: Aura.none,
+      // Pastki xavfsiz maydonni `StickyBar` ning o'zi hisobga oladi.
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x32, S.gutter, S.x32),
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _expired ? tr('Kod muddati\ntugadi') : tr('Emailingizni\ntasdiqlang'),
-                style: T.display,
-              ),
-              const SizedBox(height: S.x12),
-              Text(
-                _expired
-                    ? 'Kod 10 daqiqa amal qiladi. $masked manziliga yangi kod so‘rang.'
-                    : '6 xonali kod yubordik: $masked',
-                style: T.body,
-              ),
-              const SizedBox(height: S.x32),
-              CodeField(
-                controller: _code,
-                hasError: (_error != null) && !_expired,
-                onCompleted: (_) => _verify(),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: S.x12),
-                Text(_error!, style: T.caption.copyWith(color: C.signal)),
-              ],
-              const SizedBox(height: S.x20),
-              Row(
-                children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _left > 0 ? null : _resend,
-                    child: Text(
-                      tr('Qayta yuborish'),
-                      style: T.caption.copyWith(
-                        color: _left > 0 ? C.muted : C.champagne,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+              const TopBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    S.gutter,
+                    S.x12,
+                    S.gutter,
+                    S.x24,
                   ),
-                  const SizedBox(width: S.x8),
-                  if (_resending)
-                    const Spinner(size: 12)
-                  else
-                    Text('$mm:$ss', style: T.meta.copyWith(color: C.muted)),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _expired
+                            ? tr('Kod muddati\ntugadi')
+                            : tr('Emailni\ntasdiqlang'),
+                        style: T.display,
+                      ),
+                      const SizedBox(height: S.x12),
+                      Text(
+                        _expired
+                            ? '${tr('Kod 10 daqiqa amal qiladi. Yangi kod so‘rang:')} $masked'
+                            : '${tr('6 xonali kod yubordik:')} $masked',
+                        style: T.body,
+                      ),
+                      const SizedBox(height: S.x32),
+                      CodeField(
+                        controller: _code,
+                        hasError: (_error != null) && !_expired,
+                        onCompleted: (_) => _verify(),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: S.x16),
+                        _ErrorNote(message: _error!, expired: _expired),
+                      ],
+                      const SizedBox(height: S.x24),
+                      // QAYTA YUBORISH — kutish vaqti MONO yozuvda
+                      // ko'rinadi, ya'ni raqam sanashda sakramaydi.
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(tr('Kod kelmadimi?'), style: T.caption),
+                          const SizedBox(height: S.x4),
+                          if (_resending)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: S.x12),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Spinner(size: 16),
+                              ),
+                            )
+                          else if (_left > 0)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: S.x12,
+                              ),
+                              child: Text(
+                                '${tr('QAYTA YUBORISH')} · $clock',
+                                style: T.statusLabel.copyWith(color: C.ink3),
+                              ),
+                            )
+                          else
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: GhostButton(
+                                tr('Qayta yuborish'),
+                                size: BtnSize.s,
+                                onTap: _resend,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: S.x24),
-              PrimaryButton(
-                tr('Tasdiqlash'),
-                loading: _busy,
-                onTap: _busy || _code.text.length != 6 ? null : _verify,
+              StickyBar(
+                child: PrimaryButton(
+                  tr('Tasdiqlash'),
+                  loading: _busy,
+                  onTap: _busy || _code.text.length != 6 ? null : _verify,
+                ),
               ),
-              const SizedBox(height: S.x12),
-              GhostButton(tr('Emailni o‘zgartirish'), onTap: () => Navigator.of(context).maybePop()),
             ],
           ),
         ),
@@ -271,6 +316,58 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// XATO
+// ─────────────────────────────────────────────────────────────
+
+/// Xato — BELGI, matn va keyingi qadam.
+///
+/// Faqat qizil chegara yetmaydi: odam nima qilishini bilishi kerak,
+/// shuning uchun spam papkasi haqidagi maslahat xatoning ichida
+/// turadi.
+class _ErrorNote extends StatelessWidget {
+  const _ErrorNote({required this.message, required this.expired});
+
+  final String message;
+  final bool expired;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        color: C.fail.withValues(alpha: .10),
+        border: Border.all(color: C.fail.withValues(alpha: .38)),
+        padding: const EdgeInsets.all(S.x12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            NIcon(Ico.warning, size: 16, color: C.fail),
+            const SizedBox(width: S.x8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message,
+                    style: T.caption.copyWith(color: C.fail, fontSize: 13),
+                  ),
+                  if (!expired) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      tr('Spam papkasini ham tekshiring.'),
+                      style: T.caption.copyWith(fontSize: 12.5),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────
+// MUVAFFAQIYAT
+// ─────────────────────────────────────────────────────────────
+
 /// Muvaffaqiyat — va DARHOL keyingi qadam haqida eslatma.
 ///
 /// Bu yerda PROFIL tasdiqlash (Telegram) alohida kartochka sifatida
@@ -278,6 +375,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 /// hozir majburiy emas.
 class _Success extends StatelessWidget {
   const _Success({required this.email, this.error, this.onRetry});
+
   final String email;
 
   /// Hisob yaratildi, lekin sessiya ochilmadi. `null` — hammasi
@@ -286,20 +384,20 @@ class _Success extends StatelessWidget {
   final VoidCallback? onRetry;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: C.obsidian,
+  Widget build(BuildContext context) => ScreenBackdrop(
+        aura: Aura.center,
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(S.gutter),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Spacer(),
                 Text(tr('Email\ntasdiqlandi'), style: T.display),
                 const SizedBox(height: S.x12),
                 Text(
-                  tr('Akkauntingiz tayyor. Endi NFC ID tanlab, profilingizni ') +
-                  tr('to‘ldirishingiz mumkin.'),
+                  tr('Akkauntingiz tayyor. Endi NFC ID tanlab, profilingizni '
+                      'to‘ldirishingiz mumkin.'),
                   style: T.body,
                 ),
                 const SizedBox(height: S.x24),
@@ -307,27 +405,53 @@ class _Success extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        width: 26, height: 26,
-                        decoration: const BoxDecoration(color: C.verdant, shape: BoxShape.circle),
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: C.ok.withValues(alpha: .16),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: C.ok.withValues(alpha: .5),
+                          ),
+                        ),
                         child: Center(
-                          child: NIcon(Ico.check, size: 15, color: C.obsidian),
+                          child: NIcon(Ico.check, size: 15, color: C.ok),
                         ),
                       ),
                       const SizedBox(width: S.x12),
-                      Expanded(child: Text(AppUser.mask(email), style: T.meta.copyWith(color: C.offWhite))),
+                      Expanded(
+                        child: Text(
+                          AppUser.mask(email),
+                          style: T.meta.copyWith(color: C.ink),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                SizedBox(height: S.x12),
+                const SizedBox(height: S.x12),
                 Surface(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(tr('Profilni tasdiqlash — keyinroq'), style: T.cardTitle),
-                      SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              tr('Profilni tasdiqlash — keyinroq'),
+                              style: T.cardTitle,
+                            ),
+                          ),
+                          const SizedBox(width: S.x8),
+                          StatusChip(
+                            tr('Telegram bot'),
+                            tone: StatusTone.neutral,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
                       Text(
-                        tr('Telegram bot orqali profilingizni tasdiqlab, tasdiqlangan ') +
-                        tr('nishonga ega bo‘lasiz.'),
+                        tr('Telegram bot orqali profilingizni tasdiqlab, tasdiqlangan '
+                            'nishonga ega bo‘lasiz.'),
                         style: T.caption,
                       ),
                     ],
@@ -342,10 +466,8 @@ class _Success extends StatelessWidget {
                 if (error == null)
                   const Center(child: Spinner())
                 else ...[
-                  Text(error!,
-                      textAlign: TextAlign.center,
-                      style: T.caption.copyWith(color: C.signal)),
-                  const SizedBox(height: S.x12),
+                  _ErrorNote(message: error!, expired: true),
+                  const SizedBox(height: S.x16),
                   PrimaryButton(tr('Davom etish'), onTap: onRetry),
                   const SizedBox(height: S.x8),
                   Text(

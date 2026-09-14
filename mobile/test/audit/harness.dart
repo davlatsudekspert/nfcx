@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show MethodChannel, rootBundle, FontLoade
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore/app.dart';
 import 'package:nfcstore/data/api_client.dart';
+import 'package:nfcstore/design/components/toast.dart';
 import 'package:nfcstore/design/theme.dart';
 import 'package:nfcstore/design/tokens.dart';
 import 'package:nfcstore/design/type.dart';
@@ -13,6 +14,7 @@ import 'package:nfcstore/state/app_prefs.dart';
 import 'package:nfcstore/state/app_state.dart';
 import '../widget_test.dart' show FakeStore;
 import 'fixtures.dart';
+import '../settle.dart';
 
 /// Dizayn kadri — handoffdagi 390×844.
 const auditSize = Size(390, 844);
@@ -108,9 +110,11 @@ Widget auditApp(Widget child, AppState state,
             maxScaleFactor: 1.3,
             child: Material(
               type: MaterialType.canvas,
-              color: C.obsidian,
-              textStyle: T.body.copyWith(color: C.offWhite),
-              child: inner ?? const SizedBox(),
+              color: C.bg,
+              textStyle: T.body.copyWith(color: C.ink),
+              // Haqiqiy ilovada toast qatlami shu yerda turadi —
+              // audit kadri undan farq qilmasligi kerak.
+              child: ToastHost(child: inner ?? const SizedBox()),
             ),
           ),
           home: child,
@@ -149,9 +153,6 @@ Future<void> pumpScreen(
   await tester.pump();
   navKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => screen));
 
-  // Soxta server javoblari va animatsiyalar tugasin.
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 50));
-  await tester.pump(const Duration(milliseconds: 400));
-  await tester.pump(const Duration(seconds: 2));
+  // Soxta server javoblari va o'tish animatsiyasi tugasin.
+  await settle(tester);
 }

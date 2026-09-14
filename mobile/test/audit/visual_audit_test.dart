@@ -50,6 +50,7 @@ import 'package:nfcstore/screens/settings/settings_screen.dart';
 import 'package:nfcstore/screens/shell.dart';
 import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_state.dart';
+import '../settle.dart';
 import '../widget_test.dart' show FakeStore;
 import 'fixtures.dart' show AuditMode;
 import 'harness.dart';
@@ -175,7 +176,7 @@ void main() {
   // ── Profillar ──────────────────────────────────────────────────────
   testWidgets('15 shaxsiy profil — ega', (t) async {
     final s = await ready();
-    await pumpScreen(t, ProfileScreen(identity: s.active!), state: s);
+    await pumpScreen(t, ProfileScreen(code: s.active!.code), state: s);
     await golden(t, '15-profil-ega');
   });
 
@@ -258,12 +259,12 @@ void main() {
       t,
       Builder(builder: (c) => GestureDetector(
         onTap: () => showIdentitySwitcher(c),
-        child: ColoredBox(color: C.obsidian, child: SizedBox.expand()),
+        child: ColoredBox(color: C.bg, child: SizedBox.expand()),
       )),
       state: s,
     );
     await t.tap(find.byType(GestureDetector).first);
-    await t.pumpAndSettle();
+    await settle(t);
     await golden(t, '26-shaxs-almashtirgich');
   });
 
@@ -312,19 +313,19 @@ void main() {
     await pumpScreen(
       t,
       ColoredBox(
-        color: C.obsidian,
+        color: C.bg,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: const [
-            IdentityCard(code: 'KTB482', holder: 'Bronze', tier: Tier.bronze, dense: true),
+            IdentityCard(code: 'KTB482', holder: 'Bronze', tier: Tier.bronze, sweep: false),
             SizedBox(height: 10),
-            IdentityCard(code: 'SLV220', holder: 'Silver', tier: Tier.silver, dense: true),
+            IdentityCard(code: 'SLV220', holder: 'Silver', tier: Tier.silver, sweep: false),
             SizedBox(height: 10),
-            IdentityCard(code: 'GLD100', holder: 'Gold', tier: Tier.gold, dense: true),
+            IdentityCard(code: 'GLD100', holder: 'Gold', tier: Tier.gold, sweep: false),
             SizedBox(height: 10),
-            IdentityCard(code: 'PRM777', holder: 'Premium', tier: Tier.premium, dense: true),
+            IdentityCard(code: 'PRM777', holder: 'Premium', tier: Tier.premium, sweep: false),
             SizedBox(height: 10),
-            IdentityCard(code: 'VIP001', holder: 'Exclusive', tier: Tier.exclusive, dense: true),
+            IdentityCard(code: 'VIP001', holder: 'Exclusive', tier: Tier.exclusive, sweep: false),
           ],
         ),
       ),
@@ -343,7 +344,7 @@ void main() {
     await pumpScreen(
       t,
       ColoredBox(
-        color: C.obsidian,
+        color: C.bg,
         child: ListView(
           children: [
             EmptyState(
@@ -549,7 +550,7 @@ void main() {
     final s = await ready();
     await pumpScreen(t, EditBusinessScreen(company: s.companies.first), state: s);
     await t.drag(find.byType(ListView).first, const Offset(0, -1400));
-    await t.pumpAndSettle();
+    await settle(t);
     await golden(t, '54-biznes-bolimlar');
   });
 
@@ -561,8 +562,16 @@ void main() {
   testWidgets('56 biznes profil — haqida va galereya', (t) async {
     final s = await ready();
     await pumpScreen(t, const ProfileScreen(companyId: 'DDD333'), state: s);
-    await t.tap(find.text(tr('Haqida').toUpperCase()));
-    await t.pumpAndSettle();
+
+    // TAB YO'Q, BO'LIMLAR BOR. Ilgari biznes profili "Lenta /
+    // Haqida" tablariga bo'lingan edi va bu test tabni bosardi.
+    // Yangi dizaynda bo'linish olib tashlandi: ish vaqti, manzil va
+    // galereya bitta uzluksiz ustunda ketma-ket turadi — odam
+    // qidirayotgan narsasini tab tanlamasdan, shunchaki pastga
+    // surib topadi. Shuning uchun test ham suradi.
+    await t.drag(find.byType(ListView).first, const Offset(0, -1600));
+    await settle(t);
+    expect(find.text(tr('Galereya')), findsOneWidget);
     await golden(t, '56-haqida-galereya');
   });
 
@@ -587,7 +596,7 @@ void main() {
     final s = await ready();
     await pumpScreen(t, EditCatalogScreen(company: s.companies.first), state: s);
     await t.tap(find.text(tr('Mahsulot qo‘shish')));
-    await t.pumpAndSettle();
+    await settle(t);
     await golden(t, '55-mahsulot-shakli');
   });
 }
@@ -598,5 +607,5 @@ class _Rule extends StatelessWidget {
   const _Rule();
   @override
   Widget build(BuildContext context) =>
-      Container(height: 1, color: C.hairline);
+      Container(height: 1, color: C.line);
 }

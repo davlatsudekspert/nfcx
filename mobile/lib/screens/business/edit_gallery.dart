@@ -1,35 +1,38 @@
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../content/content_rules_gate.dart';
-
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
+import '../../design/components/toast.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../common/top_bar.dart';
+import '../content/content_rules_gate.dart';
 
 /// FOTOGALEREYA — biznes profilidagi rasmlar to'plami.
 ///
 /// SERVER CHEGARASI 12 TA: ortig'i jimgina kesib tashlanadi
 /// (`gallery.slice(0, 12)`). Shuning uchun bu yerda ham 12 dan
-/// keyin qo'shish tugmasi ko'rinmaydi — odam rasm yuklab, keyin
+/// keyin qo'shish katagi ko'rinmaydi — odam rasm yuklab, keyin
 /// uning yo'qolganini ko'rmasin.
 ///
 /// RASM DARHOL YUKLANADI, LEKIN GALEREYA SAQLASHDA YOZILADI:
 /// yuklash sekin (fayl katta), tartib esa bir necha marta
 /// o'zgarishi mumkin. Ikkalasini birga qilsak, har bir o'chirish
-/// serverga so'rov bo'lardi.
+/// serverga so'rov bo'lardi. Shu sababli o'chirishni QAYTARIB
+/// bo'ladi — tasdiq oynasi emas, "Bekor" tugmali toast.
 class EditGalleryScreen extends StatefulWidget {
   const EditGalleryScreen({super.key, required this.company});
+
   final Company company;
 
   @override
@@ -121,6 +124,21 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
     return 'image/jpeg';
   }
 
+  /// O'chirish faqat RO'YXATDAN — server bilan hech narsa bo'lmaydi.
+  /// Shuning uchun tasdiq so'ralmaydi: qaytarish bir bosishda.
+  void _remove(int index) {
+    final url = _urls[index];
+    setState(() => _urls.removeAt(index));
+    showUndoToast(
+      context,
+      tr('Rasm ro‘yxatdan olindi'),
+      onUndo: () {
+        if (!mounted) return;
+        setState(() => _urls.insert(index.clamp(0, _urls.length), url));
+      },
+    );
+  }
+
   Future<void> _save() async {
     setState(() {
       _busy = true;
@@ -144,16 +162,23 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
   Widget build(BuildContext context) {
     final canAdd = _urls.length + _uploading < _maxPhotos;
 
-    return ColoredBox(
-      color: C.obsidian,
+    return ScreenBackdrop(
+      aura: Aura.none,
       child: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            TopBar(title: tr('Galereya'), subtitle: widget.company.name),
+            const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
                 children: [
+                  ScreenTitle(
+                    tr('Galereya'),
+                    eyebrow: widget.company.name,
+                    subtitle: trf('Galereyaga {n} tagacha rasm sig‘adi.',
+                        {'n': '$_maxPhotos'}),
+                  ),
                   if (_urls.isEmpty && _uploading == 0)
                     EmptyState(
                       tr('Ish jarayoni, ichki ko‘rinish yoki mahsulot '
@@ -174,7 +199,7 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
                         for (var i = 0; i < _urls.length; i++)
                           _Tile(
                             url: _urls[i],
-                            onRemove: () => setState(() => _urls.removeAt(i)),
+                            onRemove: () => _remove(i),
                           ),
                         for (var i = 0; i < _uploading; i++) const _Pending(),
                         if (canAdd) _AddTile(onTap: _add),
@@ -184,17 +209,22 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
                     Text(
                       trf('{n} / {max} rasm.',
                           {'n': '${_urls.length}', 'max': '$_maxPhotos'}),
-                      style: T.caption.copyWith(fontSize: 12.5),
+                      style: T.meta,
                     ),
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: S.x12),
-                    Text(_error!, style: T.caption.copyWith(color: C.signal)),
+                    Text(_error!, style: T.caption.copyWith(color: C.fail)),
                   ],
-                  const SizedBox(height: S.x24),
-                  PrimaryButton(tr('Saqlash'),
-                      loading: _busy, onTap: _busy ? null : _save),
+                  SizedBox(height: StickyBar.inset(context)),
                 ],
+              ),
+            ),
+            StickyBar(
+              child: PrimaryButton(
+                tr('Saqlash'),
+                loading: _busy,
+                onTap: _busy ? null : _save,
               ),
             ),
           ],
@@ -206,68 +236,100 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
 
 class _Tile extends StatelessWidget {
   const _Tile({required this.url, required this.onRemove});
+
   final String url;
   final VoidCallback onRemove;
 
   @override
-  Widget build(BuildContext context) {
-    // Katak ekran enining uchdan biri (~150px). `NetImage` bu
-    // mantiqiy o'lchamni qurilma zichligiga o'zi ko'paytiradi.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        NetImage(url, radius: R.tile, cacheWidth: 150),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: Press(
-            haptic: true,
-            onTap: onRemove,
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: C.backdrop.withValues(alpha: .72),
-                border: Border.all(color: C.hairline),
-              ),
-              child: NIcon(Ico.close, size: 13, color: C.offWhite),
+  Widget build(BuildContext context) => Stack(
+        fit: StackFit.expand,
+        children: [
+          // Katak ekran enining uchdan biri (~150px). `NetImage` bu
+          // mantiqiy o'lchamni qurilma zichligiga o'zi ko'paytiradi.
+          NetImage(url, radius: R.tile, cacheWidth: 150),
+          Positioned(
+            top: 0,
+            right: 0,
+            // Rasm USTIDAGI tugma shisha bo'ladi: har xil rangdagi
+            // rasmda ham ko'rinib tursin.
+            child: RoundButton(
+              Ico.close,
+              size: 32,
+              iconSize: 14,
+              glass: true,
+              color: C.ink,
+              onTap: onRemove,
             ),
           ),
-        ),
-      ],
-    );
-  }
+        ],
+      );
 }
 
+/// Yuklanayotgan rasm o'rni.
 class _Pending extends StatelessWidget {
   const _Pending();
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
-          color: C.placeholder,
+          gradient: C.raisedSurface,
           borderRadius: BorderRadius.circular(R.tile),
-          border: Border.all(color: C.warmHairline),
+          border: Border.all(color: C.line),
         ),
         child: const Center(child: Spinner(size: 18)),
       );
 }
 
+/// QO'SHISH KATAGI — uzuq chiziqli, ya'ni "bu yerda hali rasm yo'q"
+/// degani ko'rinib turadi.
 class _AddTile extends StatelessWidget {
   const _AddTile({required this.onTap});
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Press(
         haptic: true,
         onTap: onTap,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: C.graphite,
-            borderRadius: BorderRadius.circular(R.tile),
-            border: Border.all(color: C.hairline),
-          ),
-          child: Center(child: NIcon(Ico.plus, size: 20, color: C.champagne)),
+        minSize: 0,
+        child: CustomPaint(
+          painter: _DashedBorder(C.lineStrong),
+          child: Center(child: NIcon(Ico.plus, size: 20, color: C.accent)),
         ),
       );
+}
+
+/// Uzuq chegara — `BoxDecoration` da bunday chiziq yo'q.
+class _DashedBorder extends CustomPainter {
+  _DashedBorder(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = color;
+
+    final rect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(R.tile),
+    );
+
+    final path = Path()..addRRect(rect);
+
+    // Yo'l bo'ylab 6 dp chiziq, 5 dp bo'shliq.
+    for (final metric in path.computeMetrics()) {
+      var start = 0.0;
+      while (start < metric.length) {
+        final end = start + 6 < metric.length ? start + 6 : metric.length;
+        canvas.drawPath(metric.extractPath(start, end), paint);
+        start = end + 5;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorder old) => old.color != color;
 }

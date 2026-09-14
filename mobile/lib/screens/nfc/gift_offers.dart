@@ -2,16 +2,20 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/identity_card.dart';
+import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/toast.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
-import '../common/top_bar.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
 
 /// SOVG'A TAKLIFLARI — qabul qilish, rad etish, qaytarib olish.
 ///
@@ -67,6 +71,12 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
         // ID endi menga tegishli — egalik ro'yxati yangilanmasa,
         // yangi ID ilovada umuman ko'rinmaydi.
         await state.refreshIdentities();
+        if (mounted) {
+          showToast(
+            context,
+            trf('{kod} endi sizniki', {'kod': offer.code}),
+          );
+        }
       }
       await _load();
     } on ApiError catch (e) {
@@ -88,76 +98,123 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
   Widget build(BuildContext context) {
     final incoming = _incoming;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          TopBar(title: tr('Sovg‘a takliflari')),
-          Expanded(
-            child: incoming == null && _error != null
-                ? ErrorState(humanError(_error!), onRetry: _load)
-                : incoming == null
-                    ? const Center(child: Spinner(size: 22))
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                            S.gutter, 0, S.gutter, S.x32),
-                        children: [
-                          if (_error != null) ...[
-                            _Banner(_error is String
-                                ? _error! as String
-                                : humanError(_error!)),
-                            const SizedBox(height: S.x16),
+    return ScreenBackdrop(
+      aura: Aura.spotlight,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const TopBar(),
+            Expanded(
+              child: incoming == null && _error != null
+                  ? ErrorState(humanError(_error!), onRetry: _load)
+                  : incoming == null
+                      ? ListView(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: S.gutter,
+                          ),
+                          children: [
+                            ScreenTitle(tr('Sovg‘a takliflari')),
+                            const SkeletonCard(aspect: 2.6),
+                            const SizedBox(height: S.x12),
+                            const SkeletonCard(aspect: 2.6),
                           ],
-                          if (incoming.isEmpty && _outgoing.isEmpty)
-                            EmptyState(
-                              tr('Kimdir sizga ID sovg‘a qilsa, u shu yerda ') +
-                              tr('tasdiqlashni kutib turadi.'),
-                              title: tr('Sovg‘a taklifi yo‘q'),
-                              icon: Ico.gift,
-                            ),
-                          if (incoming.isNotEmpty) ...[
-                            Eyebrow(tr('Sizga sovg‘a qilinyapti')),
-                            const SizedBox(height: S.x8),
-                            for (final o in incoming) ...[
-                              _OfferCard(
-                                offer: o,
-                                busy: _busy == o.id,
-                                onAccept: () => _act(o, 'accept'),
-                                onReject: () => _act(o, 'reject'),
-                              ),
-                              const SizedBox(height: S.x8),
-                            ],
-                          ],
-                          if (_outgoing.isNotEmpty) ...[
-                            const SizedBox(height: S.x16),
-                            Eyebrow(tr('Siz yuborgan')),
-                            const SizedBox(height: S.x8),
-                            for (final o in _outgoing) ...[
-                              _OfferCard(
-                                offer: o,
-                                busy: _busy == o.id,
-                                onCancel: () => _act(o, 'cancel'),
-                              ),
-                              const SizedBox(height: S.x8),
-                            ],
-                          ],
-                        ],
-                      ),
-          ),
-        ],
+                        )
+                      : _list(incoming),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _list(List<GiftOffer> incoming) => ListView(
+        padding: const EdgeInsets.only(bottom: S.x32),
+        children: [
+          ScreenTitle(
+            tr('Sovg‘a takliflari'),
+            subtitle: tr('ID faqat qabul qilinganda o‘tadi.'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_error != null) ...[
+                  _Banner(_error is String
+                      ? _error! as String
+                      : humanError(_error!)),
+                  const SizedBox(height: S.x16),
+                ],
+
+                if (incoming.isEmpty && _outgoing.isEmpty)
+                  EmptyState(
+                    tr('Kimdir sizga ID sovg‘a qilsa, u shu yerda '
+                        'tasdiqlashni kutib turadi.'),
+                    title: tr('Sovg‘a taklifi yo‘q'),
+                    icon: Ico.gift,
+                  ),
+
+                if (incoming.isNotEmpty) ...[
+                  SectionHeader(
+                    tr('Kelgan'),
+                    trailing: Text('${incoming.length}', style: T.statValue),
+                  ),
+                  const SizedBox(height: S.x12),
+                  for (final o in incoming) ...[
+                    _OfferCard(
+                      offer: o,
+                      busy: _busy == o.id,
+                      onAccept: () => _act(o, 'accept'),
+                      onReject: () => _act(o, 'reject'),
+                    ),
+                    const SizedBox(height: S.x8),
+                  ],
+                ],
+
+                if (_outgoing.isNotEmpty) ...[
+                  const SizedBox(height: S.x24),
+                  SectionHeader(
+                    tr('Yuborilgan'),
+                    trailing: Text('${_outgoing.length}', style: T.statValue),
+                  ),
+                  const SizedBox(height: S.x12),
+                  for (final o in _outgoing) ...[
+                    _OfferCard(
+                      offer: o,
+                      busy: _busy == o.id,
+                      onCancel: () => _act(o, 'cancel'),
+                    ),
+                    const SizedBox(height: S.x8),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
 }
 
 class _Banner extends StatelessWidget {
   const _Banner(this.text);
+
   final String text;
 
   @override
   Widget build(BuildContext context) => Surface(
         padding: const EdgeInsets.all(S.x12),
-        border: C.signal.withValues(alpha: .35),
-        child: Text(text, style: T.caption.copyWith(color: C.signal)),
+        border: Border.all(color: C.fail.withValues(alpha: .38)),
+        shadow: C.e1,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            NIcon(Ico.warning, size: 15, color: C.fail),
+            const SizedBox(width: S.x8),
+            Expanded(
+              child: Text(text, style: T.caption.copyWith(color: C.fail)),
+            ),
+          ],
+        ),
       );
 }
 
@@ -176,22 +233,29 @@ class _OfferCard extends StatelessWidget {
   final VoidCallback? onReject;
   final VoidCallback? onCancel;
 
+  /// TAKLIFDA TARIF MAYDONI YO'Q — `/api/gift-offers` faqat kod va
+  /// email qaytaradi. Shuning uchun tarif KOD SHAKLIDAN taxmin
+  /// qilinadi; bu `Record.tier` dagi zaxira qoidaning o'zi, ya'ni
+  /// ikkinchi joyda takrorlanmaydi.
+  Tier get _tier => Record(code: offer.code, name: '').tier;
+
   @override
   Widget build(BuildContext context) => Surface(
         padding: const EdgeInsets.all(S.x16),
-        shadow: E.e1,
+        shadow: C.e1,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                NIcon(Ico.gift, size: 20, color: C.champagne),
+                TierDot(_tier, size: 16),
                 const SizedBox(width: S.x12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(offer.code, style: T.code.copyWith(fontSize: 16.5)),
+                      Text(offer.code, style: T.code(16.5)),
                       const SizedBox(height: 3),
                       Text(
                         offer.email.isEmpty
@@ -206,6 +270,8 @@ class _OfferCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (!offer.incoming)
+                  StatusChip(tr('Kutilmoqda'), tone: StatusTone.pending),
               ],
             ),
             const SizedBox(height: S.x16),
@@ -213,13 +279,21 @@ class _OfferCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: PrimaryButton(tr('Qabul qilish'),
-                        loading: busy, onTap: busy ? null : onAccept),
+                    child: PrimaryButton(
+                      tr('Qabul qilish'),
+                      size: BtnSize.m,
+                      sweep: false,
+                      loading: busy,
+                      onTap: busy ? null : onAccept,
+                    ),
                   ),
                   const SizedBox(width: S.x8),
                   Expanded(
-                    child: GhostButton(tr('Rad etish'),
-                        onTap: busy ? null : onReject),
+                    child: SecondaryButton(
+                      tr('Rad etish'),
+                      size: BtnSize.m,
+                      onTap: busy ? null : onReject,
+                    ),
                   ),
                 ],
               )
@@ -232,10 +306,11 @@ class _OfferCard extends StatelessWidget {
                       style: T.caption.copyWith(fontSize: 13),
                     ),
                   ),
-                  SizedBox(
-                    width: 150,
-                    child: GhostButton(tr('Qaytarib olish'),
-                        onTap: busy ? null : onCancel),
+                  const SizedBox(width: S.x8),
+                  GhostButton(
+                    tr('Qaytarib olish'),
+                    size: BtnSize.s,
+                    onTap: busy ? null : onCancel,
                   ),
                 ],
               ),

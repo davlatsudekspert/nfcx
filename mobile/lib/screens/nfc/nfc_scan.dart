@@ -1,18 +1,22 @@
-import 'dart:math' as math;
-
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/widgets.dart';
 
 import '../../data/nfc.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/logo.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
-import '../common/top_bar.dart';
-import '../identity/profile_screen.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
+import '../common/contact_actions.dart' show openExternal;
+import '../identity/profile_screen.dart';
+import 'qr_share.dart';
 
 /// NFC SKANER — begona kartani telefonga tegizib, profilini ochish.
 ///
@@ -23,6 +27,15 @@ import '../../l10n/strings.dart';
 /// XULQ: bitta o'qishdan keyin sessiya yopiladi va profil ochiladi.
 /// Ochilganda `/api/tap/:code` chaqiriladi — statistika serverda
 /// hisoblanadi, mijoz tomonda emas.
+///
+/// EKRANNING O'ZAGI — markazdagi medalyon va undan tarqaluvchi
+/// uchta halqa. Ular `M.wave` (1.6 s) bilan navbatma-navbat
+/// chiqadi va "harakatni kamaytirish" rejimida TO'XTAYDI: halqalar
+/// dekorativ, ular kutishni bildirmaydi.
+///
+/// QR HAR DOIM PASTDA. NFC bo'lmagan yoki o'chirilgan qurilmada ham
+/// odam boshi berk ko'chaga tushmasin — profilni ulashishning
+/// ishlaydigan yo'li doim ko'rinib turadi.
 class NfcScanScreen extends StatefulWidget {
   const NfcScanScreen({super.key});
 
@@ -94,130 +107,251 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
     );
   }
 
+  /// QURILMA SOZLAMALARI — ilovada plagin yo'q.
+  ///
+  /// `app_settings` bog'liqligi qo'shilmagan, `url_launcher` esa
+  /// Android sozlamalar intentini ocholmaydi. iOS'da `app-settings:`
+  /// ishlaydi, Android'da esa `openExternal` xatoni jimgina yutadi.
+  /// Har ikki holda ham qaytgandan keyin NFC holati QAYTA
+  /// tekshiriladi — asl foyda shunda: odam NFC'ni yoqib qaytsa,
+  /// ekran o'zi tiklanadi.
+  Future<void> _openSettings() async {
+    await openExternal(Uri.parse('app-settings:'));
+    if (!mounted) return;
+    await _start();
+  }
+
+  void _openQr(Identity? active) {
+    if (active == null) return;
+    push<void>(context, (_) => QrShareScreen(identity: active));
+  }
+
+  /// Yordam sahifasi — SAYTDA.
+  ///
+  /// Manzil `Api.baseUrl` dan olinadi: u ilovada bitta joyda
+  /// turadi va ikkinchi marta yozilsa, ilova bilan sayt ikkiga
+  /// bo'linib ketardi (buni `test/rules_test.dart` qo'riqlaydi).
+  Future<void> _openHelp() => openExternal(
+        Uri.parse('${AppScope.read(context).api.baseUrl}/qollanma'),
+      );
+
   @override
-  Widget build(BuildContext context) => SafeArea(
+  Widget build(BuildContext context) {
+    final active = AppScope.of(context).active;
+
+    return ScreenBackdrop(
+      aura: Aura.nfc,
+      child: SafeArea(
         child: Column(
           children: [
             TopBar(title: tr('Kartani o‘qish')),
-            Expanded(child: Center(child: _body())),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x8,
+                  S.gutter,
+                  S.x32,
+                ),
+                child: Center(child: _body(active)),
+              ),
+            ),
           ],
         ),
-      );
+      ),
+    );
+  }
 
-  Widget _body() {
+  Widget _body(Identity? active) {
     switch (_phase) {
-      case _Phase.checking:
-        return const Spinner(size: 24);
-
+      // ── NFC YO'Q YOKI O'CHIRILGAN ────────────────────────────
+      //
+      // `Nfc.available()` bitta `bool` qaytaradi va u ikki holatni
+      // BIRLASHTIRADI: modul yo'q va modul o'chirilgan. Farqni
+      // platformadan chiqaramiz — iOS'da NFC'ni o'chirish tugmasi
+      // umuman yo'q, ya'ni u yerda `false` faqat "modul yo'q"
+      // degani.
       case _Phase.unsupported:
-        // BOSHI BERK KO'CHA BO'LMASIN: NFC ko'pincha shunchaki
-        // O'CHIRILGAN bo'ladi. Foydalanuvchi tizim sozlamalaridan
-        // yoqib qaytadi — shu yerdayoq qayta tekshira olsin.
-        return _Message(
-          title: tr('Bu qurilmada NFC yo‘q'),
-          text: tr('NFC o‘chirilgan yoki qurilma uni qo‘llab-quvvatlamaydi. ') +
-              tr('Sozlamalardan NFC‘ni yoqib, qayta tekshiring.'),
-          actionLabel: tr('Qayta tekshirish'),
-          onAction: _start,
-        );
+        final noModule = defaultTargetPlatform == TargetPlatform.iOS;
+        return noModule
+            ? _Fix(
+                icon: Ico.ban,
+                title: tr('NFC qo‘llanmaydi'),
+                text: tr('Bu qurilmada NFC moduli yo‘q. Profilni QR yoki '
+                    'havola bilan ulashing.'),
+                primaryLabel: tr('QR kodni ko‘rsatish'),
+                onPrimary: active == null ? null : () => _openQr(active),
+              )
+            : _Fix(
+                icon: Ico.nfc,
+                title: tr('NFC o‘chirilgan'),
+                text: tr('Kartani o‘qish uchun qurilma sozlamalarida '
+                    'NFC‘ni yoqing.'),
+                primaryLabel: tr('Sozlamalarni ochish'),
+                onPrimary: _openSettings,
+                secondaryLabel: tr('QR bilan ulashish'),
+                onSecondary: active == null ? null : () => _openQr(active),
+              );
 
+      // ── KARTA TEGIZILDI, LEKIN O'QILMADI ─────────────────────
+      //
+      // `unknown` — bizniki bo'lmagan teg, `error` — teg umuman
+      // sezilmadi (tegizish uzildi yoki vaqt tugadi). Sabab bitta
+      // jumlada ikkalasini ham qamraydi.
       case _Phase.unknown:
-        return _Message(
-          title: tr('Karta tanilmadi'),
-          text: tr('Bu karta NFCSTORE kartasi emas yoki hali faollashtirilmagan.'),
-          actionLabel: tr('Qayta urinish'),
-          onAction: _start,
-        );
-
       case _Phase.error:
-        return _Message(
-          title: tr('Karta sezilmadi'),
-          text: tr('Kartani telefon orqasining yuqori qismiga yaqinroq ') +
-              tr('tuting va bir necha soniya ushlab turing.'),
-          actionLabel: tr('Qayta urinish'),
-          onAction: _start,
+        return _Fix(
+          icon: Ico.card,
+          title: tr('Karta o‘qilmadi'),
+          text: tr('Bu karta NFCSTORE ID‘siga ulanmagan yoki tegizish '
+              'uzilgan.'),
+          primaryLabel: tr('Qayta urinish'),
+          onPrimary: _start,
+          secondaryLabel: tr('Yordam'),
+          onSecondary: _openHelp,
         );
 
+      // ── KUTISH ───────────────────────────────────────────────
+      case _Phase.checking:
       case _Phase.waiting:
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const _Pulse(),
-              const SizedBox(height: S.x32),
-              Text(tr('Kartani telefonga tegizing'),
-                  textAlign: TextAlign.center, style: T.section),
-              const SizedBox(height: S.x8),
-              Text(
-                tr('Kartani telefon orqasining yuqori qismiga yaqinlashtiring ') +
-                tr('va bir necha soniya ushlab turing.'),
-                textAlign: TextAlign.center,
-                style: T.caption,
-              ),
-              const SizedBox(height: S.x32),
-              SizedBox(
-                width: 200,
-                child: GhostButton(tr('Bekor qilish'),
-                    onTap: () => Navigator.of(context).maybePop()),
-              ),
-            ],
-          ),
+        final polling = _phase == _Phase.waiting;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: S.x20),
+            _ScanPulse(active: polling),
+            const SizedBox(height: S.x32),
+            Text(
+              polling ? tr('O‘QILMOQDA') : tr('TAYYOR · TEGIZING'),
+              textAlign: TextAlign.center,
+              style: T.statusLabel.copyWith(color: C.accent),
+            ),
+            const SizedBox(height: S.x12),
+            Text(
+              tr('Kartani telefon orqasiga tegizing — profil ochiladi.'),
+              textAlign: TextAlign.center,
+              style: T.caption,
+            ),
+            const SizedBox(height: S.x32),
+            SecondaryButton(
+              tr('QR bilan ulashish'),
+              icon: Ico.qr,
+              onTap: active == null ? null : () => _openQr(active),
+            ),
+          ],
         );
     }
   }
 }
 
-class _Message extends StatelessWidget {
-  const _Message({
+// ─────────────────────────────────────────────────────────────
+// XATO BLOKI
+// ─────────────────────────────────────────────────────────────
+
+/// Belgi · sarlavha · BITTA jumla sabab · bitta asosiy yechim.
+///
+/// Uch xato holati ham shu bitta blok bilan chiziladi: ular bir xil
+/// ko'rinishi kerak, aks holda odam har safar yangi ekranga tushgandek
+/// his qiladi.
+class _Fix extends StatelessWidget {
+  const _Fix({
+    required this.icon,
     required this.title,
     required this.text,
-    this.actionLabel,
-    this.onAction,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.secondaryLabel,
+    this.onSecondary,
   });
 
+  final Ico icon;
   final String title;
   final String text;
-  final String? actionLabel;
-  final VoidCallback? onAction;
+  final String primaryLabel;
+  final VoidCallback? onPrimary;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title, textAlign: TextAlign.center, style: T.section),
-            const SizedBox(height: S.x8),
-            Text(text, textAlign: TextAlign.center, style: T.caption),
-            if (actionLabel != null) ...[
-              const SizedBox(height: S.x20),
-              SizedBox(
-                width: 200,
-                child: SecondaryButton(actionLabel!, onTap: onAction),
-              ),
-            ],
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: S.x24),
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              gradient: C.raisedSurface,
+              shape: BoxShape.circle,
+              border: Border.all(color: C.line),
+            ),
+            alignment: Alignment.center,
+            child: NIcon(icon, size: 30, color: C.ink2),
+          ),
+          const SizedBox(height: S.x20),
+          Text(title, textAlign: TextAlign.center, style: T.section),
+          const SizedBox(height: S.x8),
+          Text(text, textAlign: TextAlign.center, style: T.caption),
+          const SizedBox(height: S.x24),
+          PrimaryButton(primaryLabel, onTap: onPrimary),
+          if (secondaryLabel != null) ...[
+            const SizedBox(height: S.x12),
+            SecondaryButton(secondaryLabel!, onTap: onSecondary),
           ],
-        ),
+        ],
       );
 }
 
-/// Kutish belgisi — markazda NFC ikonkasi, atrofida tarqaladigan ikki halqa.
+// ─────────────────────────────────────────────────────────────
+// TO'LQIN
+// ─────────────────────────────────────────────────────────────
+
+/// Markazda brend medalyoni, atrofida uchta tarqaluvchi halqa.
 ///
-/// `RepaintBoundary` ichida: uzluksiz animatsiya butun ekranni qayta
-/// chizishga majburlamasin.
-class _Pulse extends StatefulWidget {
-  const _Pulse();
+/// Halqalar `M.wave` sikli bo'yicha 1/3 dan siljib chiqadi — ko'z
+/// uzluksiz oqim ko'radi. `RepaintBoundary` ichida: uzluksiz
+/// animatsiya butun ekranni qayta chizishga majburlamasin.
+///
+/// HARAKATNI KAMAYTIRISH rejimida kontroller to'xtaydi va halqalar
+/// qimirlamaydigan uch doira bo'lib qoladi — ma'lumot yo'qolmaydi.
+class _ScanPulse extends StatefulWidget {
+  const _ScanPulse({required this.active});
+
+  /// Faqat o'qish ketayotganda harakatlanadi.
+  final bool active;
 
   @override
-  State<_Pulse> createState() => _PulseState();
+  State<_ScanPulse> createState() => _ScanPulseState();
 }
 
-class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+class _ScanPulseState extends State<_ScanPulse>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  )..repeat();
+    duration: M.wave,
+  );
+
+  void _sync() {
+    final should = widget.active && !reduceMotion(context);
+    if (should && !_c.isAnimating) {
+      _c.repeat();
+    } else if (!should && _c.isAnimating) {
+      _c.stop();
+      _c.value = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScanPulse old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
 
   @override
   void dispose() {
@@ -228,53 +362,42 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => RepaintBoundary(
         child: SizedBox(
-          width: 180,
-          height: 180,
+          width: 240,
+          height: 240,
           child: Stack(
             alignment: Alignment.center,
             children: [
               AnimatedBuilder(
                 animation: _c,
-                builder: (_, __) => CustomPaint(
-                  size: const Size(180, 180),
-                  painter: _PulsePainter(_c.value),
+                builder: (context, _) => CustomPaint(
+                  size: const Size(240, 240),
+                  painter: _WavePainter(_c.value, C.accent),
                 ),
               ),
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [C.slate, C.graphite],
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: NIcon(Ico.nfc, size: 30, color: C.champagne),
-              ),
+              const BrandMark(size: 104, glow: true),
             ],
           ),
         ),
       );
 }
 
-class _PulsePainter extends CustomPainter {
-  _PulsePainter(this.t);
+class _WavePainter extends CustomPainter {
+  _WavePainter(this.t, this.color);
+
   final double t;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
-    const minR = 40.0;
+    const minR = 58.0;
     final maxR = size.shortestSide / 2;
 
-    for (var i = 0; i < 2; i++) {
-      final p = (t + i * .5) % 1.0;
+    for (var i = 0; i < 3; i++) {
+      final p = (t + i / 3) % 1.0;
       final r = minR + (maxR - minR) * p;
       // Chetga borgan sari yo'qoladi — "tarqalish" hissi.
-      final a = (1 - p) * .45;
+      final a = (1 - p) * .5;
       if (a <= 0) continue;
       canvas.drawCircle(
         center,
@@ -282,11 +405,11 @@ class _PulsePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.2
-          ..color = C.champagne.withValues(alpha: math.max(0, a)),
+          ..color = color.withValues(alpha: a),
       );
     }
   }
 
   @override
-  bool shouldRepaint(_PulsePainter old) => old.t != t;
+  bool shouldRepaint(_WavePainter old) => old.t != t || old.color != color;
 }

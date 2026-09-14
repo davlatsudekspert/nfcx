@@ -1,36 +1,40 @@
-import 'dart:ui' show ImageFilter;
-
-import 'package:flutter/material.dart' show RefreshIndicator;
 import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/logo.dart';
 import '../../design/components/media.dart';
+import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
+import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/video_view.dart';
-import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../home/home.dart' show LikeButton;
+import '../common/share.dart';
 import '../identity/profile_screen.dart';
 import '../shell.dart';
+import 'report_sheet.dart';
 
-/// REELS — butun platformadagi post va istoryalar bitta oqimda.
+/// REELS — to'liq ekran vertikal lenta.
 ///
-/// NIMA UCHUN ALOHIDA TAB: qolgan uch tab SIZNIKI haqida — o'z
-/// profilingiz, o'z ID'laringiz, qidiruv. Bu esa BOSHQALARNIKI:
-/// odam hech narsa qidirmasdan, hech kimga obuna bo'lmasdan ham
-/// ilovada ko'radigan narsa topadi. Yangi foydalanuvchida bosh
-/// sahifadagi istorya lentasi doim bo'sh bo'lardi (u faqat obuna
-/// bo'lganlarni ko'rsatadi) — bu tab shu bo'shliqni yopadi.
+/// YORUG'LIK PASTDAN: bu ekranning o'z manbai va u boshqa
+/// ekranlardan ajralib turadi.
 ///
-/// TIK OQIM, GORIZONTAL EMAS: har yozuv butun ekranni egallaydi va
-/// barmoq bilan yuqoriga suriladi. Bu odamga tanish harakat va
-/// rasmni eng katta o'lchamda ko'rsatadi.
+/// MAJBURIY ELEMENTLAR (Google Play talabi va dizayn qoidasi):
+/// orqaga tugmasi va "⋯" menyusi. Menyu ichida boshqa odamning
+/// kontentida "Shikoyat qilish", o'z kontentingizda "O'chirish"
+/// bo'ladi.
+///
+/// Reels TAB ILDIZI, ya'ni `Navigator.pop` qiladigan joyi yo'q —
+/// orqaga tugmasi `ShellScope.goHome` ni chaqiradi.
 class ReelsScreen extends StatefulWidget {
   const ReelsScreen({super.key});
 
@@ -41,20 +45,22 @@ class ReelsScreen extends StatefulWidget {
 class _ReelsScreenState extends State<ReelsScreen> {
   final _pages = PageController();
 
-  List<FeedEntry>? _items;
-  Object? _error;
-  bool _loading = true;
-  bool _hasMore = false;
-  bool _loadingMore = false;
+  List<FeedEntry> _items = const [];
   int _page = 1;
-
-  /// Ko'rinib turgan kadr. Faqat shu kadrdagi video o'ynaydi.
-  int _current = 0;
+  bool _hasMore = true;
+  bool _loading = true;
+  bool _loadingMore = false;
+  Object? _error;
+  int _index = 0;
+  bool _loadedOnce = false;
 
   @override
-  void initState() {
-    super.initState();
-    _load();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loadedOnce) {
+      _loadedOnce = true;
+      _load();
+    }
   }
 
   @override
@@ -69,11 +75,11 @@ class _ReelsScreenState extends State<ReelsScreen> {
       _error = null;
     });
     try {
-      final res = await AppScope.read(context).repo.feed();
+      final r = await AppScope.read(context).repo.feed(page: 1);
       if (!mounted) return;
       setState(() {
-        _items = res.items;
-        _hasMore = res.hasMore;
+        _items = r.items;
+        _hasMore = r.hasMore;
         _page = 1;
         _loading = false;
       });
@@ -86,387 +92,345 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
-  /// KEYINGI SAHIFA — oxiriga YETMASDAN oldin so'raladi.
-  ///
-  /// Oxirgi kadrga kelib kutib turish "oqim tugadi" degan taassurot
-  /// qoldirardi. Ikki kadr qolganda so'ralsa, odam uzilishni
-  /// sezmaydi.
-  Future<void> _more() async {
+  /// Oxiridan ikki kadr qolganda keyingi sahifa yuklanadi — odam
+  /// yuklanishni sezmaydi.
+  Future<void> _loadMore() async {
     if (_loadingMore || !_hasMore) return;
     _loadingMore = true;
     try {
-      final res = await AppScope.read(context).repo.feed(page: _page + 1);
+      final r = await AppScope.read(context).repo.feed(page: _page + 1);
       if (!mounted) return;
       setState(() {
-        _items = [...?_items, ...res.items];
-        _hasMore = res.hasMore;
+        _items = [..._items, ...r.items];
+        _hasMore = r.hasMore;
         _page += 1;
       });
     } catch (_) {
-      // Jimgina: oqim ishlab turibdi, keyingi surishda qayta
-      // urinadi. Xato oynasi bu yerda halaqit berardi.
+      // Keyingi sahifa kelmasa joriy lenta ishlashda davom etadi.
     } finally {
       _loadingMore = false;
     }
   }
 
-  Future<void> _like(int index) async {
-    final list = _items;
-    if (list == null) return;
-    final item = list[index];
+  Future<void> _toggleLike(int i) async {
+    final item = _items[i];
     if (!item.likeable) return;
-
-    // Bosilishi BILAN ko'rinadi, keyin server tasdiqlaydi. Aks
-    // holda yurak yarim soniya kechikib yonardi.
+    final repo = AppScope.read(context).repo;
     setState(() {
-      list[index] = item.copyWith(
-        liked: !item.liked,
-        likeCount: item.likeCount + (item.liked ? -1 : 1),
-      );
+      _items = [..._items]..[i] = item.copyWith(
+          liked: !item.liked,
+          likeCount: item.likeCount + (item.liked ? -1 : 1),
+        );
     });
-    successHaptic();
-
     try {
-      final repo = AppScope.read(context).repo;
-      final res = item.isStory
+      final r = item.isStory
           ? await repo.likeStory(item.id)
           : await repo.likePost(item.id);
       if (!mounted) return;
-      // HAQIQAT SERVERDA: mijozdagi taxmin ustiga yoziladi.
-      setState(() => list[index] = item.copyWith(liked: res.liked, likeCount: res.count));
+      setState(() {
+        _items = [..._items]..[i] =
+            _items[i].copyWith(liked: r.liked, likeCount: r.count);
+      });
     } catch (_) {
       if (!mounted) return;
-      setState(() => list[index] = item);
+      setState(() => _items = [..._items]..[i] = item);
     }
   }
 
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: C.backdrop,
-        child: Stack(
-          children: [
-            Positioned.fill(child: _feed(context)),
-            // QAYTISH TUGMASI.
-            //
-            // Reels — ILDIZ ekran: uning ustida `Navigator` da hech
-            // narsa yo'q, ya'ni "orqaga" qiladigan joyi yo'q va
-            // odam tik oqim ichida qamalib qolgandek his qilardi.
-            // Egasi shuni so'radi. Tugma Android'ning orqaga
-            // tugmasi bilan BIR XIL ishni bajaradi — bosh sahifaga
-            // qaytaradi.
-            //
-            // Tarkib ustida turgani uchun ORQASIDA quyuq doira
-            // bor: och rangli kadrda oq strelka yo'qolib ketardi.
-            Positioned(
-              top: MediaQuery.paddingOf(context).top + S.x8,
-              left: S.x8,
-              child: Press(
-                haptic: true,
-                onTap: () => ShellScope.maybeOf(context)?.goHome(),
-                child: Container(
-                  padding: const EdgeInsets.all(S.x12),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: C.backdrop.withValues(alpha: .45),
-                  ),
-                  child: NIcon(Ico.chevronLeft, size: 22, color: C.offWhite),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+  Future<void> _menu(FeedEntry item) async {
+    final state = AppScope.read(context);
+    final mine = item.isCompany
+        ? state.ownsCompany(item.code)
+        : state.ownsRecord(item.code);
 
-  Widget _feed(BuildContext context) => AsyncView<List<FeedEntry>>(
-          loading: _loading,
-          error: _error,
-          data: _items,
-          onRetry: _load,
-          skeleton: const Center(child: Spinner(size: 22)),
-          builder: (data) {
-            if (data.isEmpty) {
-              return SafeArea(
-                child: RefreshIndicator(
-                  onRefresh: _load,
-                  color: C.champagne,
-                  backgroundColor: C.slate,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      const SizedBox(height: 120),
-                      EmptyState(
-                        tr('Hali hech kim post yoki story joylamagan. '
-                            'Birinchi bo‘ling.'),
-                        title: tr('Lenta bo‘sh'),
-                        icon: Ico.play,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            return PageView.builder(
-              controller: _pages,
-              scrollDirection: Axis.vertical,
-              itemCount: data.length,
-              onPageChanged: (i) {
-                setState(() => _current = i);
-                if (i >= data.length - 2) _more();
-              },
-              itemBuilder: (context, i) => _Slide(
-                entry: data[i],
-                active: i == _current,
-                onLike: () => _like(i),
-              ),
-            );
-          },
-      );
-}
-
-/// Bitta kadr — butun ekran rasm va uning ustida ma'lumot.
-class _Slide extends StatelessWidget {
-  const _Slide({required this.entry, required this.onLike, this.active = false});
-
-  final FeedEntry entry;
-  final VoidCallback onLike;
-
-  /// Shu kadr ekranda turibdimi — videoni o'ynatish shartisi.
-  final bool active;
+    await showContentMenu(
+      context,
+      targetKind: item.isStory
+          ? 'story'
+          : (item.isCompany ? 'company_post' : 'post'),
+      targetId: '${item.id}',
+      ownerCode: item.code,
+      owned: mine,
+      onDeleted: () async {
+        if (!mounted) return;
+        setState(() => _items = [..._items]..removeWhere(
+              (e) => e.id == item.id && e.kind == item.kind,
+            ));
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final dpr = MediaQuery.devicePixelRatioOf(context);
+    if (_loading && _items.isEmpty) {
+      return ScreenBackdrop(
+        aura: Aura.reels,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(S.gutter),
+            child: SkeletonCard(aspect: 9 / 19, radius: R.hero),
+          ),
+        ),
+      );
+    }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // RASM TO'LIQ KO'RINADI, QIRQILMAYDI.
-        //
-        // Ilgari bu yerda `BoxFit.cover` turardi: kadr tik (9:19),
-        // lentadagi rasmlarning ko'pi esa yotiq yoki kvadrat.
-        // `cover` ularni ekranga sig'dirish uchun KATTALASHTIRIB,
-        // chetini qirqib tashlardi — egasi shuni xabar qildi:
-        // "reelsda rasmlar katta bo'lib ketyapti". Afishaning yozuvi
-        // ham, mahsulotning o'zi ham kadrdan chiqib ketardi.
-        //
-        // Endi `contain`: rasm butunligicha ko'rinadi. Yon tomonda
-        // qoladigan bo'shliqni esa O'SHA rasmning qoraytirilgan va
-        // xiralashtirilgan nusxasi to'ldiradi — qora chiziq
-        // qolmaydi va ko'z rasmning o'zida qoladi.
-        _Backdrop(url: entry.imageUrl, active: active, size: size, dpr: dpr),
-        if ((entry.videoUrl ?? '').isNotEmpty)
-          VideoView(
-            url: entry.videoUrl!,
-            poster: entry.imageUrl,
-            fit: BoxFit.contain,
-            active: active,
-          )
-        else
-          NetImage(
-            entry.imageUrl,
-            radius: 0,
-            fit: BoxFit.contain,
-            // `cacheWidth` — ekran kengligi: undan kattaroq
-            // dekodlash xotirani behuda yeydi va tik oqimda bu
-            // darhol sezilardi.
-            cacheWidth: size.width.round(),
-            slotLabel: '',
+    if (_error != null && _items.isEmpty) {
+      return ScreenBackdrop(
+        aura: Aura.reels,
+        child: SafeArea(
+          child: Center(child: ErrorState(humanError(_error), onRetry: _load)),
+        ),
+      );
+    }
+
+    if (_items.isEmpty) {
+      return ScreenBackdrop(
+        aura: Aura.reels,
+        child: SafeArea(
+          child: Center(
+            child: EmptyState(
+              tr('Obuna bo‘lgan odamlaringiz video qo‘shsa, shu yerda '
+                  'ko‘rinadi.'),
+              title: tr('Reels hozircha bo‘sh'),
+              icon: Ico.play,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ScreenBackdrop(
+      aura: Aura.reels,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _pages,
+            scrollDirection: Axis.vertical,
+            itemCount: _items.length,
+            onPageChanged: (i) {
+              setState(() => _index = i);
+              if (i >= _items.length - 2) _loadMore();
+            },
+            itemBuilder: (context, i) => _Reel(
+              item: _items[i],
+              // FAQAT KO'RINIB TURGAN KADR IJRO ETILADI. `PageView`
+              // qo'shni kadrlarni oldindan quradi — busiz ikki
+              // videoning ovozi birdan eshitilardi.
+              active: i == _index,
+              onLike: () => _toggleLike(i),
+              onMenu: () => _menu(_items[i]),
+              onAuthor: () => push<void>(
+                context,
+                (_) => _items[i].isCompany
+                    ? ProfileScreen(companyId: _items[i].code)
+                    : ProfileScreen(code: _items[i].code),
+              ),
+            ),
           ),
 
-        // MATN O'QILSIN: rasm och bo'lsa oq yozuv yo'qolardi.
-        // Pastdan yuqoriga qorayadigan parda faqat matn turgan
-        // joyni qoplaydi, rasmning o'zini emas.
-        Positioned(
-          left: 0, right: 0, bottom: 0,
-          child: IgnorePointer(
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    C.backdrop.withValues(alpha: .92),
-                    C.backdrop.withValues(alpha: .55),
-                    C.backdrop.withValues(alpha: 0),
+          // TEPA QATOR — orqaga, brend, menyu. Media ustida
+          // turgani uchun shisha tugmalar.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(S.x16, S.x8, S.x16, 0),
+                child: Row(
+                  children: [
+                    RoundButton(
+                      Ico.back,
+                      size: 42,
+                      iconSize: 17,
+                      glass: true,
+                      onTap: () => ShellScope.maybeOf(context)?.goHome(),
+                    ),
+                    const Spacer(),
+                    const BrandMark(size: 34),
+                    const SizedBox(width: S.x8),
+                    Text('Reels', style: T.cardTitle),
+                    const Spacer(),
+                    RoundButton(
+                      Ico.more,
+                      size: 42,
+                      iconSize: 17,
+                      glass: true,
+                      onTap: () => _menu(_items[_index]),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
-        ),
-
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(child: _Author(entry: entry)),
-                    if (entry.likeable) ...[
-                      const SizedBox(width: S.x12),
-                      _Like(
-                        liked: entry.liked,
-                        count: entry.likeCount,
-                        onTap: onLike,
-                      ),
-                    ],
-                  ],
-                ),
-                if (entry.caption.isNotEmpty) ...[
-                  const SizedBox(height: S.x12),
-                  Text(
-                    entry.caption,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.body.copyWith(color: C.offWhite),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// ORQA FON — o'sha rasmning qoraytirilgan nusxasi.
-///
-/// NIMA UCHUN XIRALIK FAQAT FAOL KADRDA: `PageView` qo'shni
-/// kadrlarni oldindan quradi, ya'ni bir vaqtda uchta fon bo'ladi.
-/// Xiralik (`ImageFilter.blur`) — GPU uchun eng qimmat amallardan
-/// biri va uchtasi birga arzon telefonda oqimni sekinlashtirardi.
-/// Ko'rinmayotgan kadrga esa u umuman kerak emas.
-class _Backdrop extends StatelessWidget {
-  const _Backdrop({
-    required this.url,
+// ─────────────────────────────────────────────────────────────
+
+class _Reel extends StatelessWidget {
+  const _Reel({
+    required this.item,
     required this.active,
-    required this.size,
-    required this.dpr,
+    required this.onLike,
+    required this.onMenu,
+    required this.onAuthor,
   });
 
-  final String? url;
+  final FeedEntry item;
   final bool active;
-  final Size size;
-  final double dpr;
+  final VoidCallback onLike;
+  final VoidCallback onMenu;
+  final VoidCallback onAuthor;
 
   @override
   Widget build(BuildContext context) {
-    final u = url ?? '';
-    if (u.trim().isEmpty) return ColoredBox(color: C.backdrop);
-    // Fon xira — ya'ni katta o'lchamda dekodlashning ma'nosi yo'q.
-    // Ekran kengligining chorakda biri yetarli va bu xotirani
-    // to'rt baravar tejaydi.
-    final image = NetImage(
-      u,
-      radius: 0,
-      fit: BoxFit.cover,
-      cacheWidth: (size.width / 4).round(),
-      slotLabel: '',
-    );
+    final video = (item.videoUrl ?? '').trim();
+    final bottom = NavBar.inset(context);
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: C.backdrop),
-        if (active)
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-            child: image,
+        // MEDIA.
+        if (video.isNotEmpty)
+          VideoView(
+            url: video,
+            poster: item.imageUrl,
+            active: active,
+            fit: BoxFit.cover,
           )
-        else
-          image,
-        // Qoraytirish — aks holda fon oldingi rasm bilan raqobat
-        // qilib, ko'zni chalg'itardi.
-        ColoredBox(color: C.backdrop.withValues(alpha: .68)),
+        else ...[
+          // RASM QIRQILMAYDI.
+          //
+          // Reels kadri tik (9:19), lentadagi rasmlar esa ko'pincha
+          // yotiq. `cover` ularni kattalashtirib chetini kesardi —
+          // odamning boshi yoki mahsulotning yarmi kadrdan chiqib
+          // ketardi. Shuning uchun asosiy rasm `contain`: u
+          // BUTUNLIGICHA ko'rinadi.
+          //
+          // Yon tomonda qolgan bo'shliq qora chiziq bo'lib turmasin
+          // deb, ORQADA O'SHA RASMNING O'ZI `cover` bilan
+          // qoraytirilgan holda chiziladi — kadr to'la, diqqat esa
+          // baribir o'rtadagi rasmda qoladi.
+          NetImage(item.imageUrl, radius: 0, slotIcon: Ico.play),
+          if ((item.imageUrl ?? '').trim().isNotEmpty) ...[
+            const Positioned.fill(
+              child: ColoredBox(color: Color(0xCC0B0805)),
+            ),
+            NetImage(item.imageUrl, radius: 0, fit: BoxFit.contain),
+          ],
+        ],
+
+        // SUV BELGISI — markazda 10% shaffof brend.
+        Center(
+          child: Opacity(
+            opacity: .10,
+            child: BrandMark(size: 150, ring: false),
+          ),
+        ),
+
+        // PASTKI SCRIM — matn har qanday rasmda o'qilsin.
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            height: 320,
+            decoration: BoxDecoration(gradient: C.bottomScrim),
+          ),
+        ),
+
+        // O'NG USTUN — layk va ulashish.
+        Positioned(
+          right: S.x12,
+          bottom: bottom + 96,
+          child: Column(
+            children: [
+              LikeButton(
+                liked: item.liked,
+                count: item.likeCount,
+                onTap: onLike,
+                size: 28,
+                color: C.ink,
+              ),
+              const SizedBox(height: S.x20),
+              RoundButton(
+                Ico.share,
+                size: 46,
+                iconSize: 20,
+                glass: true,
+                onTap: () => shareText(
+                  context,
+                  profileUrl(context, item.code, company: item.isCompany),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // PASTKI BLOK — izoh va muallif.
+        Positioned(
+          left: S.gutter,
+          right: 72,
+          bottom: bottom + S.x12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (item.caption.trim().isNotEmpty) ...[
+                Text(
+                  item.caption,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.body.copyWith(color: C.ink, fontSize: 14),
+                ),
+                const SizedBox(height: S.x12),
+              ],
+              Press(
+                onTap: onAuthor,
+                minSize: 0,
+                scale: .97,
+                child: Row(
+                  children: [
+                    Avatar(
+                      url: item.avatarUrl,
+                      name: item.name,
+                      size: 40,
+                      square: item.isCompany,
+                    ),
+                    const SizedBox(width: S.x12),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: T.cardTitle,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            ago(item.createdAt).toUpperCase(),
+                            style: T.meta.copyWith(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 }
 
-class _Author extends StatelessWidget {
-  const _Author({required this.entry});
-  final FeedEntry entry;
 
-  @override
-  Widget build(BuildContext context) => Press(
-        haptic: true,
-        // Muallif bosilsa — profili. Lentaning butun ma'nosi shu:
-        // yoqqan kontentdan odamga borish.
-        onTap: () => push(
-          context,
-          (_) => entry.isCompany
-              ? ProfileScreen(companyId: entry.code)
-              : ProfileScreen(code: entry.code),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 38,
-              height: 38,
-              child: ClipOval(
-                child: NetImage(entry.avatarUrl, radius: 999, cacheWidth: 114),
-              ),
-            ),
-            const SizedBox(width: S.x12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    entry.name.isEmpty ? entry.code : entry.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.cardTitle.copyWith(fontSize: 15.5),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Text(entry.code, style: T.code.copyWith(fontSize: 12.5)),
-                      // ISTORYA EKANI AYTILADI: u 24 soatdan keyin
-                      // yo'qoladi va odam nega topolmayotganini
-                      // bilishi kerak.
-                      if (entry.isStory) ...[
-                        const SizedBox(width: 6),
-                        Text(tr('Stories'),
-                            style: T.statusLabel
-                                .copyWith(fontSize: 11, color: C.champagne)),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-class _Like extends StatelessWidget {
-  const _Like({required this.liked, required this.count, required this.onTap});
-
-  final bool liked;
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        scale: .88,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            NIcon(Ico.heart,
-                size: 26, color: liked ? C.signal : C.offWhite, filled: liked),
-            const SizedBox(height: 3),
-            Text('$count', style: T.caption.copyWith(fontSize: 12.5)),
-          ],
-        ),
-      );
-}

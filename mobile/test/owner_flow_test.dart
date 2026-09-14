@@ -10,6 +10,7 @@ import 'package:nfcstore/screens/business/business_stats.dart';
 import 'package:nfcstore/screens/orders/owner_orders.dart';
 import 'package:nfcstore/state/app_state.dart';
 import 'widget_test.dart' show FakeStore;
+import 'settle.dart';
 
 Widget host(Widget child, AppState state) => AppScope(
       state: state,
@@ -33,7 +34,7 @@ void main() {
           )));
 
       await tester.pumpWidget(host(OwnerOrdersScreen(companyId: 'DDD333'), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       // Standart filtr — "Yangi": faqat birinchi buyurtma ko‘rinadi.
       expect(find.text('Qora karta · 1 dona'), findsOneWidget);
@@ -41,7 +42,7 @@ void main() {
       expect(find.text('Yangi · 1'), findsOneWidget);
 
       await tester.tap(find.text('Bajarilgan · 1'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('Smart teg · 2 dona'), findsOneWidget);
       expect(find.text('Qora karta · 1 dona'), findsNothing);
     });
@@ -64,10 +65,10 @@ void main() {
       }));
 
       await tester.pumpWidget(host(OwnerOrdersScreen(companyId: 'DDD333'), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       await tester.tap(find.text('Bajarildi'));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       final patch = sent.firstWhere((r) => r.method == 'PATCH');
       expect(patch.url.path, '/api/companies/DDD333/orders/77');
@@ -81,7 +82,7 @@ void main() {
         (_) async => http.Response(jsonEncode({'orders': []}), 200),
       ));
       await tester.pumpWidget(host(OwnerOrdersScreen(companyId: 'X'), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('Yangi buyurtma yo‘q.'), findsOneWidget);
     });
   });
@@ -105,7 +106,7 @@ void main() {
           )));
 
       await tester.pumpWidget(host(const BusinessStatsScreen(companyId: 'DDD333'), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('12.4k'), findsOneWidget);
       expect(find.text('842'), findsOneWidget);
@@ -119,7 +120,7 @@ void main() {
             200,
           )));
       await tester.pumpWidget(host(const BusinessStatsScreen(companyId: 'X'), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
       // Bo'sh holat endi sarlavha + izoh (audit talabi).
       expect(find.text('Ma‘lumot to‘planmagan'), findsOneWidget);
       expect(find.textContaining('shu yerda'), findsOneWidget);
@@ -128,7 +129,7 @@ void main() {
     testWidgets('xatoda kod emas, jumla va Qayta urinish', (tester) async {
       final state = stateWith(MockClient((_) async => http.Response('{"error":"boom"}', 500)));
       await tester.pumpWidget(host(const BusinessStatsScreen(companyId: 'X'), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('Qayta urinish'), findsOneWidget);
       expect(find.textContaining('500'), findsNothing);

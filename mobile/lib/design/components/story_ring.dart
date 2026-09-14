@@ -133,15 +133,16 @@ class _StoryRingState extends State<StoryRing>
                 ),
               )
             else
-              AnimatedBuilder(
-                animation: _c,
-                builder: (context, _) => Transform.rotate(
-                  angle: _c.value * 6.2831853,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: gradient,
-                    ),
+              // `RotationTransition` — burilishni o'lchash mumkin
+              // bo'lgan standart widget. `Transform.rotate` bilan
+              // ham bo'lardi, lekin unda tashqaridan (masalan
+              // testdan) burilish qiymatini o'qib bo'lmaydi.
+              RotationTransition(
+                turns: _c,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: gradient,
                   ),
                 ),
               ),

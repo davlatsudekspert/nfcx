@@ -1,15 +1,19 @@
-import 'package:flutter/material.dart' show Scaffold;
+import 'package:flutter/services.dart' show TextInputAction;
 import 'package:flutter/widgets.dart';
+
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
+import '../../design/components/media_picker.dart';
 import '../../design/components/states.dart';
+import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
-import '../common/top_bar.dart';
-import '../../design/components/media_picker.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
 
 /// PROFILNI TAHRIRLASH.
 ///
@@ -18,12 +22,16 @@ import '../../l10n/strings.dart';
 /// yoziladi. Aks holda bu ekranda ko'rsatilmaydigan maydonlar
 /// (mavzu, havolalar, karta dizayni) jimgina tozalanib ketardi.
 ///
-/// RASM YUKLASH ENDI BOR: avatar va muqova `MediaPickField` orqali
-/// tanlanadi va DARHOL yuklanadi (`/api/upload-media`). Ilgari bu
-/// yerda "rasmni saytdan almashtirasiz" degan yozuv turardi —
-/// ya'ni ilovada profilni to'liq sozlab bo'lmasdi.
+/// RASM YUKLASH: avatar va muqova `MediaPickField` orqali tanlanadi
+/// va DARHOL yuklanadi (`/api/upload-media`).
+///
+/// TELEGRAM MAYDONI HAVOLA SHAKLIDA ko'rsatiladi (`t.me/nom`), lekin
+/// serverga AVVALGIDEK faqat nom yuboriladi: profil sahifasi
+/// `https://t.me/<nom>` ni o'zi yig'adi va u yerga "t.me/" tushib
+/// qolsa havola buzilardi.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.record});
+
   final Record record;
 
   @override
@@ -36,7 +44,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final _about = TextEditingController(text: widget.record.about);
   late final _city = TextEditingController(text: widget.record.city);
   late final _phone = TextEditingController(text: widget.record.phone);
-  late final _tg = TextEditingController(text: widget.record.tg);
+  late final _tg = TextEditingController(
+    text: widget.record.tg.trim().isEmpty ? '' : 't.me/${widget.record.tg.trim()}',
+  );
   late final _website = TextEditingController(text: widget.record.website);
 
   /// Yuklangan yangi rasmlar. `null` — o'zgarmagan, ya'ni eski
@@ -55,9 +65,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  /// Havoladan faqat NOMNI ajratib olish — server shuni kutadi.
+  String get _tgName {
+    var v = _tg.text.trim();
+    if (v.isEmpty) return '';
+    v = v.replaceFirst(RegExp('^https?://', caseSensitive: false), '');
+    v = v.replaceFirst(RegExp(r'^(www\.)?t\.me/', caseSensitive: false), '');
+    return v.replaceAll('@', '').trim();
+  }
+
+  /// Maydon xatosi — xato FAQAT rang bilan emas, jumla bilan
+  /// ko'rsatiladi (`Field` buni o'zi belgi bilan chizadi).
+  String? get _tgError {
+    final v = _tg.text.trim();
+    if (v.isEmpty) return null;
+    final bare = v.replaceFirst(RegExp('^https?://', caseSensitive: false), '');
+    return bare.toLowerCase().startsWith('t.me/')
+        ? null
+        : tr('Havola "t.me/" bilan boshlanishi kerak');
+  }
+
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) {
       setState(() => _error = tr('Ism bo‘sh bo‘lmasin.'));
+      return;
+    }
+    if (_tgError != null) {
+      setState(() => _error = _tgError);
       return;
     }
     setState(() {
@@ -77,7 +111,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'about': _about.text.trim(),
         'city': _city.text.trim(),
         'phone': _phone.text.trim(),
-        'tg': _tg.text.trim().replaceAll('@', ''),
+        'tg': _tgName,
         'website': _website.text.trim(),
       });
       if (!mounted) return;
@@ -113,82 +147,197 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       };
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: C.obsidian,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              TopBar(
-                title: tr('Tahrirlash'),
-                trailing: _busy
-                    ? const Padding(padding: EdgeInsets.all(S.x8), child: Spinner(size: 16))
-                    : GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _save,
-                        child: Padding(
-                          padding: const EdgeInsets.all(S.x8),
-                          child: Text(tr('Saqlash'),
-                              style: T.button.copyWith(fontSize: 15, color: C.champagne)),
+  Widget build(BuildContext context) {
+    final repo = AppScope.of(context).repo;
+    final url = 'nfcstore.uz/${widget.record.code.toLowerCase()}';
+
+    return ScreenBackdrop(
+      // Forma — sokin ekran, nur yo'q.
+      aura: Aura.none,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const TopBar(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: S.x24),
+                children: [
+                  ScreenTitle(tr('Profilni tahrirlash')),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ── RASM ────────────────────────────────
+                        MediaPickField(
+                          label: tr('Rasmni o‘zgartirish'),
+                          repo: repo,
+                          url: widget.record.avatarUrl,
+                          circle: true,
+                          hint: tr('Kvadrat rasm eng yaxshi ko‘rinadi.'),
+                          onUploaded: (u) => setState(() => _avatar = u),
                         ),
-                      ),
+                        const SizedBox(height: S.x24),
+
+                        // ── ASOSIY ──────────────────────────────
+                        Field(
+                          label: tr('Ism va familiya'),
+                          controller: _name,
+                          hint: tr('Ismingiz'),
+                          keyboardType: TextInputType.name,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: S.x16),
+                        Field(
+                          label: tr('Lavozim'),
+                          controller: _role,
+                          hint: tr('Masalan: Founder · NFC Studio'),
+                          maxLength: 60,
+                          counter: true,
+                          keyboardType: TextInputType.text,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: S.x16),
+                        Field(
+                          label: 'Telegram',
+                          controller: _tg,
+                          hint: 't.me/foydalanuvchi',
+                          helper: tr('Havola "t.me/" bilan boshlanishi kerak'),
+                          error: _tgError,
+                          keyboardType: TextInputType.url,
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        const SizedBox(height: S.x16),
+                        Field(
+                          label: tr('Haqida'),
+                          controller: _about,
+                          maxLines: 4,
+                          maxLength: 160,
+                          counter: true,
+                          hint: tr('O‘zingiz haqingizda qisqacha'),
+                        ),
+
+                        const SizedBox(height: S.x32),
+
+                        // ── ALOQA VA MUQOVA ─────────────────────
+                        //
+                        // Dizayn maketida bu maydonlar ko'rinmaydi,
+                        // lekin ular ilovadagi YAGONA tahrirlash
+                        // joyi: olib tashlansa, odam shahar yoki
+                        // telefonini faqat saytdan o'zgartira olardi.
+                        Eyebrow(tr('Aloqa')),
+                        const SizedBox(height: S.x12),
+                        Field(
+                          label: tr('Shahar'),
+                          controller: _city,
+                          hint: tr('Toshkent'),
+                          keyboardType: TextInputType.text,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: S.x16),
+                        Field(
+                          label: tr('Telefon'),
+                          controller: _phone,
+                          hint: '+998 90 123 45 67',
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: S.x16),
+                        Field(
+                          label: tr('Veb-sayt'),
+                          controller: _website,
+                          hint: 'sayt.uz',
+                          keyboardType: TextInputType.url,
+                        ),
+                        const SizedBox(height: S.x24),
+                        MediaPickField(
+                          label: tr('Muqova'),
+                          repo: repo,
+                          url: widget.record.bgUrl,
+                          aspect: 16 / 7,
+                          hint: tr('Profil tepasidagi keng rasm.'),
+                          onUploaded: (u) => setState(() => _bg = u),
+                        ),
+
+                        const SizedBox(height: S.x32),
+
+                        // ── OMMAVIY HAVOLA ──────────────────────
+                        Surface(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: S.x16,
+                            vertical: S.x12,
+                          ),
+                          shadow: C.e1,
+                          child: Row(
+                            children: [
+                              NIcon(Ico.globe, size: 18, color: C.ink3),
+                              const SizedBox(width: S.x12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      url,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: T.code(13),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      trf('{url} hammaga ko‘rinadi',
+                                          {'url': url}),
+                                      maxLines: 2,
+                                      style: T.caption.copyWith(
+                                        fontSize: 12.5,
+                                        color: C.ink3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        if (_error != null) ...[
+                          const SizedBox(height: S.x16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              NIcon(Ico.warning, size: 14, color: C.fail),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: T.caption.copyWith(
+                                    color: C.fail,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
-                  children: [
-                    MediaPickField(
-                      label: tr('Muqova'),
-                      repo: AppScope.of(context).repo,
-                      url: widget.record.bgUrl,
-                      aspect: 16 / 7,
-                      hint: tr('Profil tepasidagi keng rasm.'),
-                      onUploaded: (u) => setState(() => _bg = u),
-                    ),
-                    const SizedBox(height: S.x20),
-                    MediaPickField(
-                      label: tr('Profil rasmi'),
-                      repo: AppScope.of(context).repo,
-                      url: widget.record.avatarUrl,
-                      circle: true,
-                      hint: tr('Kvadrat rasm eng yaxshi ko‘rinadi.'),
-                      onUploaded: (u) => setState(() => _avatar = u),
-                    ),
-                    const SizedBox(height: S.x20),
-                    Field(label: tr('Ism'), controller: _name, hint: tr('Ismingiz')),
-                    const SizedBox(height: S.x16),
-                    Field(label: tr('Kasb · kompaniya'), controller: _role, hint: tr('Masalan: Founder · NFC Studio')),
-                    const SizedBox(height: S.x16),
-                    Field(
-                      label: tr('Bio'),
-                      controller: _about,
-                      maxLines: 4,
-                      maxLength: 160,
-                      hint: tr('O‘zingiz haqingizda qisqacha'),
-                    ),
-                    const SizedBox(height: S.x16),
-                    Field(label: tr('Shahar'), controller: _city, hint: tr('Toshkent')),
-                    const SizedBox(height: S.x16),
-                    Field(
-                      label: tr('Telefon'),
-                      controller: _phone,
-                      hint: '+998 90 123 45 67',
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: S.x16),
-                    Field(label: 'Telegram', controller: _tg, hint: 'foydalanuvchi_nomi'),
-                    const SizedBox(height: S.x16),
-                    Field(
-                      label: tr('Veb-sayt'),
-                      controller: _website,
-                      hint: 'sayt.uz',
-                      error: _error,
-                    ),
-                  ],
-                ),
+            ),
+            StickyBar(
+              child: PrimaryButton(
+                tr('Saqlash'),
+                loading: _busy,
+                onTap: _busy ? null : _save,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }

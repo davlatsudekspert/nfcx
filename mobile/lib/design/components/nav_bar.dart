@@ -37,6 +37,18 @@ class NavBar extends StatelessWidget {
   /// Markazdagi NFC tabining indeksi.
   static const int nfcIndex = 2;
 
+  /// Panelning o'z balandligi (tizim navigatsiyasisiz).
+  static const double barHeight = 68;
+
+  /// AYLANTIRILADIGAN KONTENT OXIRIGA QO'SHILADIGAN JOY.
+  ///
+  /// Panel kontent USTIDA suzadi (dizaynda uning ostidan kontent
+  /// o'tib ketadi va gradientga singiydi), shuning uchun ro'yxatning
+  /// oxirgi elementi panel ostida qolib ketmasligi uchun shuncha
+  /// bo'sh joy qo'shiladi.
+  static double inset(BuildContext context) =>
+      barHeight + MediaQuery.of(context).padding.bottom + S.x16;
+
   static List<({Ico icon, String label})> get tabs => [
         (icon: Ico.home, label: tr('Bosh sahifa')),
         (icon: Ico.search, label: tr('Qidiruv')),
@@ -58,6 +70,32 @@ class NavBar extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
         children: [
+          // PANEL USTIDAGI SCRIM.
+          //
+          // Kontent panel ostidan o'tib ketadi, shuning uchun
+          // panelning yuqori qirrasi keskin kesim bo'lib
+          // ko'rinmasligi kerak: matn unga yetganda asta so'nadi.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 68 + bottom,
+            height: 28,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      C.bg.withValues(alpha: 0),
+                      C.bg.withValues(alpha: .92),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Panel.
           Positioned(
             left: 0,

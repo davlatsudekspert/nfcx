@@ -1,27 +1,26 @@
-import 'package:flutter/material.dart' show Scaffold;
-import 'package:flutter/services.dart' show TextInputAction;
+import 'package:flutter/services.dart' show TextInputAction, TextInputType;
 import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/media_picker.dart';
-import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../common/top_bar.dart';
 import 'edit_catalog.dart';
 import 'edit_gallery.dart';
 import 'working_hours.dart';
-import '../../l10n/strings.dart';
 
 /// BIZNES PROFILINI TAHRIRLASH.
 ///
@@ -42,6 +41,7 @@ import '../../l10n/strings.dart';
 /// tushib ketardi.
 class EditBusinessScreen extends StatefulWidget {
   const EditBusinessScreen({super.key, required this.company});
+
   final Company company;
 
   @override
@@ -69,7 +69,16 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _about, _city, _address, _phone, _tg, _instagram, _website]) {
+    for (final c in [
+      _name,
+      _about,
+      _city,
+      _address,
+      _phone,
+      _tg,
+      _instagram,
+      _website,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -108,15 +117,15 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
         _cover ?? '',
       ];
 
+  /// Muvaffaqiyatli saqlashdan keyingi holat. `null` — hali
+  /// saqlanmagan.
+  List<String>? _saved;
+
   /// Shaklda saqlanmagan o'zgarish bormi.
   ///
   /// NIMA UCHUN KERAK: ish vaqti / katalog / galereya ALOHIDA
   /// ekran. Odam nomni o'zgartirib, saqlamasdan o'sha ekranga
   /// o'tsa, qaytganda yozgani yo'qolgan bo'lardi.
-  /// Muvaffaqiyatli saqlashdan keyingi holat. `null` — hali
-  /// saqlanmagan.
-  List<String>? _saved;
-
   bool get _dirty {
     final now = _snapshot();
     final base = _saved ?? _base;
@@ -136,17 +145,18 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
         title: tr('Saqlanmagan o‘zgarishlar'),
         subtitle: tr('Bu bo‘lim alohida saqlanadi. O‘tishdan oldin '
             'shakldagi o‘zgarishlarni saqlaysizmi?'),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-          child: Column(
-            children: [
-              PrimaryButton(tr('Saqlab, o‘tish'),
-                  onTap: () => Navigator.of(context).pop(true)),
-              const SizedBox(height: S.x8),
-              SecondaryButton(tr('Bekor qilish'),
-                  onTap: () => Navigator.of(context).pop(false)),
-            ],
-          ),
+        child: Column(
+          children: [
+            PrimaryButton(
+              tr('Saqlab, o‘tish'),
+              onTap: () => Navigator.of(context).pop(true),
+            ),
+            const SizedBox(height: S.x8),
+            SecondaryButton(
+              tr('Bekor qilish'),
+              onTap: () => Navigator.of(context).pop(false),
+            ),
+          ],
         ),
       );
       if (go != true || !mounted) return;
@@ -164,7 +174,8 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       return false;
     }
     if (_about.text.trim().length < 20) {
-      setState(() => _error = tr('Tavsif kamida 20 ta belgidan iborat bo‘lsin.'));
+      setState(
+          () => _error = tr('Tavsif kamida 20 ta belgidan iborat bo‘lsin.'));
       return false;
     }
 
@@ -200,7 +211,8 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
       if (mounted) {
         setState(() => _error = switch (e.key) {
               'name_not_allowed' => tr('Bu nomni ishlatib bo‘lmaydi.'),
-              'required_fields' => tr('Nom, shahar, telefon va tavsif to‘ldirilsin.'),
+              'required_fields' =>
+                tr('Nom, shahar, telefon va tavsif to‘ldirilsin.'),
               'forbidden' => tr('Bu biznes sizga tegishli emas.'),
               _ => humanError(e),
             });
@@ -228,37 +240,29 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
   @override
   Widget build(BuildContext context) {
     final repo = AppScope.of(context).repo;
+    final current = _current;
 
-    return Scaffold(
-      backgroundColor: C.obsidian,
-      body: SafeArea(
+    return ScreenBackdrop(
+      aura: Aura.none,
+      child: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            TopBar(title: tr('Biznesni tahrirlash'), subtitle: widget.company.id),
+            const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
                 children: [
-                  MediaPickField(
-                    label: tr('Muqova'),
-                    repo: repo,
-                    url: widget.company.coverUrl,
-                    aspect: 16 / 7,
-                    hint: tr('Keng rasm — profil tepasida ko‘rinadi.'),
-                    onUploaded: (u) => setState(() => _cover = u),
+                  ScreenTitle(
+                    tr('Biznesni tahrirlash'),
+                    eyebrow: widget.company.id,
+                    subtitle: tr('Mijoz profilingizda ko‘radigan hamma narsa '
+                        'shu yerdan sozlanadi.'),
                   ),
-                  const SizedBox(height: S.x20),
-                  MediaPickField(
-                    label: tr('Logotip'),
-                    repo: repo,
-                    url: widget.company.logoUrl,
-                    circle: true,
-                    hint: tr('Kvadrat rasm eng yaxshi ko‘rinadi.'),
-                    onUploaded: (u) => setState(() => _logo = u),
-                  ),
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Asosiy')),
-                  const SizedBox(height: S.x12),
+
+                  // ── ASOSIY ────────────────────────────────────
+                  SectionHeader(tr('Asosiy')),
+                  const SizedBox(height: S.x16),
                   Field(
                     label: tr('Nomi'),
                     controller: _name,
@@ -270,11 +274,10 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     label: tr('Tavsif'),
                     controller: _about,
                     hint: tr('Nima bilan shug‘ullanasiz'),
+                    helper: tr('Kamida 20 ta belgi'),
                     maxLines: 5,
                   ),
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Manzil')),
-                  const SizedBox(height: S.x12),
+                  const SizedBox(height: S.x16),
                   Field(
                     label: tr('Shahar'),
                     controller: _city,
@@ -286,11 +289,14 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     label: tr('Manzil'),
                     controller: _address,
                     hint: tr('Ko‘cha, uy'),
+                    helper: tr('Mijoz sizni shu manzildan topadi.'),
                     maxLines: 2,
                   ),
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Aloqa')),
-                  const SizedBox(height: S.x12),
+
+                  // ── ALOQA ─────────────────────────────────────
+                  const SizedBox(height: S.x32),
+                  SectionHeader(tr('Aloqa')),
+                  const SizedBox(height: S.x16),
                   Field(
                     label: tr('Telefon'),
                     controller: _phone,
@@ -303,6 +309,7 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     label: 'Telegram',
                     controller: _tg,
                     hint: 'foydalanuvchi',
+                    helper: tr('@ belgisisiz.'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
@@ -310,6 +317,7 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     label: 'Instagram',
                     controller: _instagram,
                     hint: 'foydalanuvchi',
+                    helper: tr('@ belgisisiz.'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
@@ -321,61 +329,101 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                     textInputAction: TextInputAction.done,
                     error: _error,
                   ),
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Buyurtmalar')),
-                  const SizedBox(height: S.x12),
-                  _Toggle(
-                    label: tr('Katalogdan buyurtma qabul qilish'),
-                    hint: tr('O‘chirilsa mahsulotlar ko‘rinadi, lekin ') +
-                        tr('buyurtma tugmasi bo‘lmaydi.'),
-                    value: _orders,
-                    onChanged: _busy ? null : (v) => setState(() => _orders = v),
+
+                  // ── KO'RINISH ─────────────────────────────────
+                  const SizedBox(height: S.x32),
+                  SectionHeader(tr('Ko‘rinish')),
+                  const SizedBox(height: S.x16),
+                  MediaPickField(
+                    label: tr('Logotip'),
+                    repo: repo,
+                    url: widget.company.logoUrl,
+                    circle: true,
+                    hint: tr('Kvadrat rasm eng yaxshi ko‘rinadi.'),
+                    onUploaded: (u) => setState(() => _logo = u),
                   ),
-                  const SizedBox(height: S.x24),
-                  PrimaryButton(tr('Saqlash'),
-                      loading: _busy, onTap: _busy ? null : () => _save()),
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Bo‘limlar')),
-                  const SizedBox(height: S.x12),
-                  Surface(
-                    padding: EdgeInsets.zero,
-                    shadow: E.e1,
-                    child: Column(
-                      children: [
-                        _Link(
-                          label: tr('Ish vaqti'),
-                          hint: _hoursHint(_current),
-                          icon: Ico.clock,
-                          onTap: () => _open((c) => WorkingHoursScreen(company: c)),
-                        ),
-                        _Link(
-                          label: tr('Katalog'),
-                          hint: trf('{n} ta mahsulot',
-                              {'n': '${_current.itemCount}'}),
-                          icon: Ico.bag,
-                          onTap: () => _open((c) => EditCatalogScreen(company: c)),
-                        ),
-                        _Link(
-                          label: tr('Galereya'),
-                          hint: trf('{n} ta rasm',
-                              {'n': '${_current.gallery.length}'}),
-                          icon: Ico.image,
-                          last: true,
-                          onTap: () => _open((c) => EditGalleryScreen(company: c)),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: S.x20),
+                  MediaPickField(
+                    label: tr('Muqova'),
+                    repo: repo,
+                    url: widget.company.coverUrl,
+                    aspect: 16 / 7,
+                    hint: tr('Keng rasm — profil tepasida ko‘rinadi.'),
+                    onUploaded: (u) => setState(() => _cover = u),
                   ),
-                  const SizedBox(height: S.x12),
+
+                  // ── BUYURTMA ──────────────────────────────────
+                  const SizedBox(height: S.x32),
+                  SectionHeader(tr('Buyurtmalar')),
+                  const SizedBox(height: S.x16),
+                  RowGroup(
+                    children: [
+                      ListRow(
+                        title: tr('Katalogdan buyurtma qabul qilish'),
+                        subtitle: tr('O‘chirilsa mahsulotlar ko‘rinadi, lekin ') +
+                            tr('buyurtma tugmasi bo‘lmaydi.'),
+                        chevron: false,
+                        onTap: _busy ? null : () => setState(() => _orders = !_orders),
+                        trailing: Toggle(
+                          value: _orders,
+                          onChanged:
+                              _busy ? null : (v) => setState(() => _orders = v),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // ── BOSHQARUV ─────────────────────────────────
+                  const SizedBox(height: S.x32),
+                  SectionHeader(tr('Bo‘limlar')),
+                  const SizedBox(height: S.x16),
+                  RowGroup(
+                    children: [
+                      ListRow(
+                        title: tr('Ish vaqti'),
+                        subtitle: _hoursHint(current),
+                        leading: NIcon(Ico.clock, size: 19, color: C.ink2),
+                        onTap: () => _open((c) => WorkingHoursScreen(company: c)),
+                      ),
+                      ListRow(
+                        title: tr('Katalog'),
+                        subtitle:
+                            trf('{n} ta mahsulot', {'n': '${current.itemCount}'}),
+                        leading: NIcon(Ico.bag, size: 19, color: C.ink2),
+                        onTap: () => _open((c) => EditCatalogScreen(company: c)),
+                      ),
+                      ListRow(
+                        title: tr('Galereya'),
+                        subtitle: trf(
+                            '{n} ta rasm', {'n': '${current.gallery.length}'}),
+                        leading: NIcon(Ico.image, size: 19, color: C.ink2),
+                        onTap: () => _open((c) => EditGalleryScreen(company: c)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: S.x16),
                   // HALOL BO'LISH: ilovada hamma narsa yo'q va bu
                   // ochiq aytiladi — odam yo'q tugmani qidirib
                   // vaqtini yo'qotmasin.
                   Text(
                     tr('Musiqa va o‘z domeni saytdan sozlanadi.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(fontSize: 12.5),
+                    style: T.caption,
                   ),
+                  SizedBox(height: StickyBar.inset(context)),
                 ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: StickyBar(
+                child: PrimaryButton(
+                  tr('Saqlash'),
+                  loading: _busy,
+                  onTap: _busy ? null : () => _save(),
+                ),
               ),
             ),
           ],
@@ -394,112 +442,4 @@ String _hoursHint(Company c) {
   final open = c.hours.where((d) => !d.closed).length;
   if (open == 0) return tr('Hamma kun yopiq');
   return trf('Haftasiga {n} kun', {'n': '$open'});
-}
-
-/// Alohida ekranga olib boruvchi qator.
-class _Link extends StatelessWidget {
-  const _Link({
-    required this.label,
-    required this.hint,
-    required this.icon,
-    required this.onTap,
-    this.last = false,
-  });
-
-  final String label;
-  final String hint;
-  final Ico icon;
-  final VoidCallback onTap;
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        haptic: true,
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
-          decoration: BoxDecoration(
-            border: last ? null : Border(bottom: BorderSide(color: C.hairline)),
-          ),
-          child: Row(
-            children: [
-              NIcon(icon, size: 19, color: C.ash),
-              const SizedBox(width: S.x12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: T.cardTitle.copyWith(fontSize: 15)),
-                    const SizedBox(height: 2),
-                    Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: S.x8),
-              NIcon(Ico.chevronRight, size: 17, color: C.ash),
-            ],
-          ),
-        ),
-      );
-}
-
-class _Toggle extends StatelessWidget {
-  const _Toggle({
-    required this.label,
-    required this.hint,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String hint;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        haptic: true,
-        onTap: onChanged == null ? null : () => onChanged!(!value),
-        child: Surface(
-          padding: const EdgeInsets.all(S.x16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: T.cardTitle.copyWith(fontSize: 15)),
-                    const SizedBox(height: 3),
-                    Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: S.x12),
-              AnimatedContainer(
-                duration: M.fade,
-                curve: M.curve,
-                width: 44,
-                height: 26,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(13),
-                  color: value ? C.champagne.withValues(alpha: .28) : C.graphite,
-                  border: Border.all(
-                    color: value ? C.champagne.withValues(alpha: .5) : C.hairline,
-                  ),
-                ),
-                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: value ? C.champagne : C.muted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
 }

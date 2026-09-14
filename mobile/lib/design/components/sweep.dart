@@ -187,7 +187,16 @@ class _SweepPainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
 
+  /// TINCHLIK PAYTIDA QAYTA CHIZILMAYDI.
+  ///
+  /// Sikl uzunligining ~60% ida chiziq umuman yo'q (`paint` darhol
+  /// qaytadi). Agar shu paytda ham har kadrda qayta chizsak,
+  /// ekranda o'nlab tugma bo'lganda bekorga ish bajarilardi.
+  /// Ikkala kadr ham tinchlik zonasida bo'lsa — chizish shart emas.
   @override
-  bool shouldRepaint(_SweepPainter old) =>
-      old.progress != progress || old.opacity != opacity;
+  bool shouldRepaint(_SweepPainter old) {
+    if (old.opacity != opacity) return true;
+    if (old.progress > old.travel && progress > travel) return false;
+    return old.progress != progress;
+  }
 }

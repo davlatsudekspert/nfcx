@@ -10,6 +10,7 @@ import 'package:nfcstore/screens/business/edit_business.dart';
 import 'package:nfcstore/screens/business/working_hours.dart';
 import 'package:nfcstore/state/app_state.dart';
 import 'widget_test.dart' show FakeStore;
+import 'settle.dart';
 
 /// BIZNES TAHRIRI — SAQLANMAGAN MA'LUMOT YO'QOLMASLIGI.
 ///
@@ -44,7 +45,7 @@ void main() {
       find.byType(ListView).first,
       const Offset(0, -300),
     );
-    await tester.pumpAndSettle();
+    await settle(tester);
   }
 
   testWidgets('o‘zgarishsiz — bo‘lim darhol ochiladi', (tester) async {
@@ -52,11 +53,11 @@ void main() {
         (_) async => http.Response(jsonEncode({'company': {}}), 200)));
 
     await tester.pumpWidget(host(EditBusinessScreen(company: company), state));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await toSections(tester);
 
     await tester.tap(find.text('Ish vaqti'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.byType(WorkingHoursScreen), findsOneWidget);
   });
@@ -69,14 +70,14 @@ void main() {
     }));
 
     await tester.pumpWidget(host(EditBusinessScreen(company: company), state));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.enterText(find.byType(EditableText).first, 'YANGI NOM');
-    await tester.pumpAndSettle();
+    await settle(tester);
     await toSections(tester);
 
     await tester.tap(find.text('Ish vaqti'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     // Ekran ALMASHMAYDI: oldin savol chiqadi.
     expect(find.byType(WorkingHoursScreen), findsNothing);

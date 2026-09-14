@@ -1,16 +1,22 @@
 import 'package:flutter/widgets.dart';
 
+import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../common/top_bar.dart';
-import '../../l10n/strings.dart';
 
 /// GALEREYA RASMINI TO'LIQ KO'RISH.
 ///
-/// NIMA UCHUN ALOHIDA: post tafsilotidagi ko'rgich yoqtirish, ko'rish
-/// soni va izohga bog'liq — galereya rasmida bularning hech biri
+/// NIMA UCHUN ALOHIDA EKRAN: post tafsilotidagi ko'rgich yurak va
+/// ko'rishlar soniga bog'liq — galereya rasmida bularning hech biri
 /// yo'q. O'sha ekranni qayta ishlatsak, bo'sh raqamlar chiqardi.
+/// Shu sababli bu yerda YURAK HAM, "⋯" MENYUSI HAM YO'Q: bu faqat
+/// ko'rgich.
+///
+/// FON QORA VA BOSHQARUV SHISHA: rasm yagona kontent bo'lgani uchun
+/// atrofdagi hamma narsa undan chekinadi. Yopish tugmasi va
+/// hisoblagich rasm ustida "suzib" turadi.
 class PhotoViewerScreen extends StatefulWidget {
   const PhotoViewerScreen({
     super.key,
@@ -28,8 +34,10 @@ class PhotoViewerScreen extends StatefulWidget {
 }
 
 class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
-  late final _controller = PageController(initialPage: widget.initial);
-  late int _page = widget.initial;
+  late final int _start =
+      widget.images.isEmpty ? 0 : widget.initial.clamp(0, widget.images.length - 1);
+  late final PageController _controller = PageController(initialPage: _start);
+  late int _page = _start;
 
   @override
   void dispose() {
@@ -42,36 +50,76 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     final total = widget.images.length;
 
     return ColoredBox(
-      color: C.obsidian,
-      child: SafeArea(
-        child: Column(
-          children: [
-            TopBar(
-              title: widget.title.isEmpty ? tr('Galereya') : widget.title,
-              // Sanoq sarlavhada: rasm ustida turgan raqam
-              // suratning o'zini to'sib qo'yardi.
-              subtitle: total > 1 ? '${_page + 1} / $total' : null,
-            ),
-            Expanded(
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: total,
-                onPageChanged: (i) => setState(() => _page = i),
-                itemBuilder: (_, i) => Padding(
+      color: C.backdrop,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: total,
+              onPageChanged: (i) => setState(() => _page = i),
+              // CHIMDIB KATTALASHTIRISH. Hujjat, chek yoki menyu
+              // suratida mayda yozuv bo'ladi va uni o'qish uchun
+              // rasmni yaqinlashtirish SHART.
+              itemBuilder: (_, i) => InteractiveViewer(
+                minScale: 1,
+                maxScale: 4,
+                child: Padding(
                   padding: const EdgeInsets.all(S.gutter),
-                  child: Center(
-                    child: NetImage(widget.images[i], fit: BoxFit.contain),
+                  child: NetImage(
+                    widget.images[i],
+                    radius: 0,
+                    fit: BoxFit.contain,
+                    slotIcon: Ico.image,
                   ),
                 ),
               ),
             ),
-            if (total > 1) ...[
-              const SizedBox(height: S.x8),
-              Text(tr('Chapga suring'), style: T.caption.copyWith(fontSize: 12.5)),
-              const SizedBox(height: S.x16),
-            ],
-          ],
-        ),
+          ),
+
+          // BOSHQARUV QATORI — yopish va hisoblagich.
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: S.x12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RoundButton(
+                    Ico.close,
+                    glass: true,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: S.x12),
+                      child: Column(
+                        children: [
+                          if (total > 1)
+                            Text(
+                              '${_page + 1} / $total',
+                              style: T.statusLabel.copyWith(color: C.ink),
+                            ),
+                          if (widget.title.trim().isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              widget.title,
+                              style: T.caption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Hisoblagich AYNAN o'rtada tursin — o'ngda
+                  // yopish tugmasi bilan bir xil bo'shliq.
+                  const SizedBox(width: S.tap, height: S.tap),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

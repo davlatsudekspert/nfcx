@@ -1,18 +1,20 @@
-import 'package:flutter/material.dart' show showTimePicker, TimeOfDay;
 import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/input.dart';
 import '../../design/components/press.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../common/top_bar.dart';
 
 /// ISH VAQTI — haftaning yetti kuni.
 ///
@@ -30,6 +32,7 @@ import '../common/top_bar.dart';
 /// hisoblaydi.
 class WorkingHoursScreen extends StatefulWidget {
   const WorkingHoursScreen({super.key, required this.company});
+
   final Company company;
 
   @override
@@ -67,10 +70,14 @@ class _WorkingHoursScreenState extends State<WorkingHoursScreen> {
   Future<void> _pick(int index, {required bool opening}) async {
     final day = _days[index];
     final current = _parse(opening ? day.open : day.close) ??
-        (opening ? const TimeOfDay(hour: 9, minute: 0)
-                 : const TimeOfDay(hour: 18, minute: 0));
+        (opening ? (hour: 9, minute: 0) : (hour: 18, minute: 0));
 
-    final picked = await showTimePicker(context: context, initialTime: current);
+    final picked = await showTimeSheet(
+      context,
+      title: opening ? tr('Ochilish') : tr('Yopilish'),
+      hour: current.hour,
+      minute: current.minute,
+    );
     if (picked == null || !mounted) return;
 
     final value = '${_two(picked.hour)}:${_two(picked.minute)}';
@@ -90,13 +97,13 @@ class _WorkingHoursScreenState extends State<WorkingHoursScreen> {
 
   static String _two(int v) => v.toString().padLeft(2, '0');
 
-  static TimeOfDay? _parse(String hhmm) {
+  static ({int hour, int minute})? _parse(String hhmm) {
     final parts = hhmm.split(':');
     if (parts.length != 2) return null;
     final h = int.tryParse(parts[0]);
     final m = int.tryParse(parts[1]);
     if (h == null || m == null) return null;
-    return TimeOfDay(hour: h, minute: m);
+    return (hour: h, minute: m);
   }
 
   Future<void> _save() async {
@@ -125,60 +132,64 @@ class _WorkingHoursScreenState extends State<WorkingHoursScreen> {
   Widget build(BuildContext context) {
     final names = _dayNames();
 
-    return ColoredBox(
-      color: C.obsidian,
+    return ScreenBackdrop(
+      aura: Aura.none,
       child: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            TopBar(title: tr('Ish vaqti'), subtitle: widget.company.name),
+            const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
                 children: [
-                  Surface(
-                    padding: EdgeInsets.zero,
-                    shadow: E.e1,
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < 7; i++)
-                          _DayRow(
-                            name: names[i],
-                            day: _days[i],
-                            last: i == 6,
-                            onToggle: () => setState(() {
-                              final d = _days[i];
-                              _days[i] = d.closed
-                                  // Ochayotganda standart vaqt: bo'sh
-                                  // qoldirsak server kunni yana yopib
-                                  // qo'yardi va kalit "ishlamagandek"
-                                  // ko'rinardi.
-                                  ? d.copyWith(
-                                      closed: false,
-                                      open: d.open.isEmpty ? '09:00' : d.open,
-                                      close: d.close.isEmpty ? '18:00' : d.close,
-                                    )
-                                  : d.copyWith(closed: true);
-                            }),
-                            onOpen: () => _pick(i, opening: true),
-                            onClose: () => _pick(i, opening: false),
-                          ),
-                      ],
-                    ),
+                  ScreenTitle(
+                    tr('Ish vaqti'),
+                    eyebrow: widget.company.name,
+                    subtitle: tr('Har kun uchun ochilish va yopilish vaqti.'),
                   ),
+                  for (var i = 0; i < 7; i++) ...[
+                    if (i > 0) const SizedBox(height: S.x8),
+                    _DayCard(
+                      name: names[i],
+                      day: _days[i],
+                      onToggle: (open) => setState(() {
+                        final d = _days[i];
+                        _days[i] = open
+                            // Ochayotganda standart vaqt: bo'sh
+                            // qoldirsak server kunni yana yopib
+                            // qo'yardi va kalit "ishlamagandek"
+                            // ko'rinardi.
+                            ? d.copyWith(
+                                closed: false,
+                                open: d.open.isEmpty ? '09:00' : d.open,
+                                close: d.close.isEmpty ? '18:00' : d.close,
+                              )
+                            : d.copyWith(closed: true);
+                      }),
+                      onOpen: () => _pick(i, opening: true),
+                      onClose: () => _pick(i, opening: false),
+                    ),
+                  ],
                   const SizedBox(height: S.x16),
                   Text(
                     tr('Tungacha cho‘zilgan vaqt ham qabul qilinadi: '
                         '18:00–02:00 to‘g‘ri hisoblanadi.'),
-                    style: T.caption.copyWith(fontSize: 12.5),
+                    style: T.caption,
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: S.x12),
-                    Text(_error!, style: T.caption.copyWith(color: C.signal)),
+                    Text(_error!, style: T.caption.copyWith(color: C.fail)),
                   ],
-                  const SizedBox(height: S.x24),
-                  PrimaryButton(tr('Saqlash'),
-                      loading: _busy, onTap: _busy ? null : _save),
+                  SizedBox(height: StickyBar.inset(context)),
                 ],
+              ),
+            ),
+            StickyBar(
+              child: PrimaryButton(
+                tr('Saqlash'),
+                loading: _busy,
+                onTap: _busy ? null : _save,
               ),
             ),
           ],
@@ -188,11 +199,11 @@ class _WorkingHoursScreenState extends State<WorkingHoursScreen> {
   }
 }
 
-class _DayRow extends StatelessWidget {
-  const _DayRow({
+/// BITTA KUN — nom, kalit va ikki vaqt.
+class _DayCard extends StatelessWidget {
+  const _DayCard({
     required this.name,
     required this.day,
-    required this.last,
     required this.onToggle,
     required this.onOpen,
     required this.onClose,
@@ -200,46 +211,37 @@ class _DayRow extends StatelessWidget {
 
   final String name;
   final DayHours day;
-  final bool last;
-  final VoidCallback onToggle;
+  final ValueChanged<bool> onToggle;
   final VoidCallback onOpen;
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
-        decoration: BoxDecoration(
-          border: last ? null : Border(bottom: BorderSide(color: C.hairline)),
-        ),
-        child: Row(
+  Widget build(BuildContext context) => Surface(
+        padding: const EdgeInsets.fromLTRB(S.x16, S.x12, S.x12, S.x12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 96,
-              child: Text(name, style: T.cardTitle.copyWith(fontSize: 14.5)),
+            Row(
+              children: [
+                Expanded(child: Text(name, style: T.cardTitle)),
+                const SizedBox(width: S.x12),
+                Toggle(value: !day.closed, onChanged: onToggle),
+              ],
             ),
-            Expanded(
-              child: day.closed
-                  ? Text(tr('Dam olish'),
-                      style: T.caption.copyWith(fontSize: 13))
-                  : Row(
-                      children: [
-                        _TimeChip(day.open, onTap: onOpen),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Text('–', style: T.caption),
-                        ),
-                        _TimeChip(day.close, onTap: onClose),
-                      ],
-                    ),
-            ),
-            Press(
-              haptic: true,
-              onTap: onToggle,
-              child: Padding(
-                padding: const EdgeInsets.only(left: S.x8),
-                child: _Switch(on: !day.closed),
+            const SizedBox(height: S.x4),
+            if (day.closed)
+              Text(tr('Dam olish'), style: T.caption)
+            else
+              Row(
+                children: [
+                  _TimeChip(day.open, onTap: onOpen),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: S.x8),
+                    child: Text('–', style: T.meta),
+                  ),
+                  _TimeChip(day.close, onTap: onClose),
+                ],
               ),
-            ),
           ],
         ),
       );
@@ -247,6 +249,7 @@ class _DayRow extends StatelessWidget {
 
 class _TimeChip extends StatelessWidget {
   const _TimeChip(this.value, {required this.onTap});
+
   final String value;
   final VoidCallback onTap;
 
@@ -254,44 +257,104 @@ class _TimeChip extends StatelessWidget {
   Widget build(BuildContext context) => Press(
         haptic: true,
         onTap: onTap,
+        minSize: S.tap,
+        scale: .95,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: S.x16),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(R.status),
-            color: C.graphite,
-            border: Border.all(color: C.hairline),
+            color: C.surface,
+            borderRadius: BorderRadius.circular(R.chip),
+            border: Border.all(color: C.line),
           ),
-          child: Text(value.isEmpty ? '--:--' : value,
-              style: T.code.copyWith(fontSize: 14)),
+          child: Text(
+            value.isEmpty ? '--:--' : value,
+            style: T.code(15),
+          ),
         ),
       );
 }
 
-class _Switch extends StatelessWidget {
-  const _Switch({required this.on});
-  final bool on;
+/// VAQT TANLASH OYNASI.
+///
+/// Material'ning soat dialogi ISHLATILMAYDI: u boshqa dizayn
+/// tilida gapiradi (dumaloq siferblat, boshqa shrift va ranglar) va
+/// ilovaning qolgan qismidan ajralib turardi. Bu yerda esa oddiy
+/// ikkita g'ildirak — daqiqa aniqligi to'liq saqlanadi.
+Future<({int hour, int minute})?> showTimeSheet(
+  BuildContext context, {
+  required String title,
+  required int hour,
+  required int minute,
+}) {
+  var h = hour;
+  var m = minute;
 
-  @override
-  Widget build(BuildContext context) => AnimatedContainer(
-        duration: M.fade,
-        curve: M.curve,
-        width: 40,
-        height: 24,
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: on ? C.champagne.withValues(alpha: .28) : C.graphite,
-          border: Border.all(
-            color: on ? C.champagne.withValues(alpha: .5) : C.hairline,
+  return showSheet<({int hour, int minute})>(
+    context,
+    title: title,
+    child: Column(
+      children: [
+        SizedBox(
+          height: S.x44 * 4,
+          child: Row(
+            children: [
+              Expanded(
+                child: _Wheel(
+                  count: 24,
+                  initial: hour,
+                  onChanged: (v) => h = v,
+                ),
+              ),
+              Text(':', style: T.code(22, color: C.ink3)),
+              Expanded(
+                child: _Wheel(
+                  count: 60,
+                  initial: minute,
+                  onChanged: (v) => m = v,
+                ),
+              ),
+            ],
           ),
         ),
-        alignment: on ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          width: 18,
-          height: 18,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: on ? C.champagne : C.muted,
+        const SizedBox(height: S.x20),
+        PrimaryButton(
+          tr('Tayyor'),
+          onTap: () => Navigator.of(context).pop((hour: h, minute: m)),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Wheel extends StatelessWidget {
+  const _Wheel({
+    required this.count,
+    required this.initial,
+    required this.onChanged,
+  });
+
+  final int count;
+  final int initial;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => ListWheelScrollView.useDelegate(
+        controller: FixedExtentScrollController(
+          initialItem: initial.clamp(0, count - 1),
+        ),
+        itemExtent: S.x44,
+        perspective: .002,
+        physics: const FixedExtentScrollPhysics(),
+        onSelectedItemChanged: onChanged,
+        childDelegate: ListWheelChildBuilderDelegate(
+          childCount: count,
+          builder: (context, i) => Center(
+            child: Text(
+              i.toString().padLeft(2, '0'),
+              style: T.code(22),
+            ),
           ),
         ),
       );

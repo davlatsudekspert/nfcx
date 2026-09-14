@@ -1,16 +1,19 @@
-import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
+
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
-import '../../design/components/skeleton.dart';
+import '../../design/components/icons.dart';
+import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
+import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
-import '../common/top_bar.dart';
-import '../../l10n/strings.dart';
 
 /// BUYURTMALAR — EGA UCHUN.
 ///
@@ -18,7 +21,11 @@ import '../../l10n/strings.dart';
 /// `cancelled`. Boshqa nom o'ylab topilmaydi — aks holda ilova va
 /// admin paneli har xil gapirardi.
 class OwnerOrdersScreen extends StatefulWidget {
-  const OwnerOrdersScreen({super.key, required this.companyId, this.companyName = ''});
+  const OwnerOrdersScreen({
+    super.key,
+    required this.companyId,
+    this.companyName = '',
+  });
 
   final String companyId;
   final String companyName;
@@ -53,7 +60,8 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
       _error = null;
     });
     try {
-      final list = await AppScope.read(context).repo.companyOrders(widget.companyId);
+      final list =
+          await AppScope.read(context).repo.companyOrders(widget.companyId);
       if (!mounted) return;
       setState(() {
         _orders = list;
@@ -71,7 +79,9 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
   Future<void> _setStatus(int id, String status) async {
     setState(() => _busy.add(id));
     try {
-      await AppScope.read(context).repo.setCompanyOrderStatus(widget.companyId, id, status);
+      await AppScope.read(context)
+          .repo
+          .setCompanyOrderStatus(widget.companyId, id, status);
       // Ro'yxatni SERVERDAN qayta o'qiymiz: holatni faqat mahalliy
       // o'zgartirsak, boshqa qurilmadagi o'zgarish ko'rinmay qolardi.
       await _load();
@@ -85,31 +95,53 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
     }
   }
 
+  /// BEKOR QILISH — oqibati bilan so'raladi.
+  ///
+  /// Mijoz allaqachon kutayotgan bo'lishi mumkin, qaytarish esa
+  /// serverda yo'q: bu bir tomonlama amal.
+  Future<void> _cancel(int id) async {
+    final sure = await confirmSheet(
+      context,
+      title: tr('Bekor qilish'),
+      message: tr('Buyurtma bekor qilinadi va mijoz uni tayyor deb kutib '
+          'qolmaydi. Holatni ilovadan qaytarib bo‘lmaydi.'),
+      confirmLabel: tr('Ha, bekor qilinsin'),
+    );
+    if (!sure || !mounted) return;
+    await _setStatus(id, 'cancelled');
+  }
+
   @override
   Widget build(BuildContext context) {
     final all = _orders ?? const [];
     final counts = <String, int>{
-      for (final t in _tabs) t.key: all.where((o) => '${o['status']}' == t.key).length,
+      for (final t in _tabs)
+        t.key: all.where((o) => '${o['status']}' == t.key).length,
     };
     final shown = all.where((o) => '${o['status']}' == _filter).toList();
 
-    return Scaffold(
-      backgroundColor: C.obsidian,
-      body: SafeArea(
+    return ScreenBackdrop(
+      aura: Aura.none,
+      child: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            TopBar(
-              title: tr('Buyurtmalar'),
-              subtitle: widget.companyName.isEmpty ? widget.companyId : widget.companyName,
+            const TopBar(),
+            ScreenTitle(
+              tr('Buyurtmalar'),
+              eyebrow: widget.companyName.isEmpty
+                  ? widget.companyId
+                  : widget.companyName,
+              subtitle: tr('Yangi buyurtmani bajarilgan deb belgilang yoki '
+                  'bekor qiling.'),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x12),
+              padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x16),
               child: Row(
                 children: [
                   for (var i = 0; i < _tabs.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 6),
-                    Chip(
+                    if (i > 0) const SizedBox(width: S.x8),
+                    FilterChip(
                       counts[_tabs[i].key] == 0
                           ? _tabs[i].label
                           : '${_tabs[i].label} · ${counts[_tabs[i].key]}',
@@ -127,21 +159,44 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
                 data: _orders == null ? null : shown,
                 onRetry: _load,
                 isEmpty: (d) => d.isEmpty,
+                emptyIcon: Ico.bag,
                 emptyMessage: _filter == 'new'
                     ? tr('Yangi buyurtma yo‘q.')
                     : tr('Bu ro‘yxat bo‘sh.'),
-                skeleton: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: S.gutter),
-                  child: Column(children: [SkeletonRow(), SkeletonRow(), SkeletonRow()]),
+                // SKELET — RO'YXAT, ustun emas.
+                //
+                // Ustun bo'lsa, past ekranda (yoki kartalar keng
+                // bo'lganda) u joyga sig'masdan "RenderFlex
+                // overflowed" berardi. Ro'yxat esa ortiqchasini
+                // shunchaki kesadi — tayyor kontent ham aynan
+                // shunday ko'rinadi, ya'ni skelet almashganda
+                // maket sakramaydi.
+                skeleton: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: S.gutter,
+                  ),
+                  children: const [
+                    SkeletonCard(aspect: 2.6),
+                    SizedBox(height: S.x8),
+                    SkeletonCard(aspect: 2.6),
+                    SizedBox(height: S.x8),
+                    SkeletonCard(aspect: 2.6),
+                  ],
                 ),
                 builder: (data) => ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                  padding: EdgeInsets.fromLTRB(
+                    S.gutter,
+                    0,
+                    S.gutter,
+                    MediaQuery.paddingOf(context).bottom + S.x32,
+                  ),
                   itemCount: data.length,
                   separatorBuilder: (_, __) => const SizedBox(height: S.x8),
                   itemBuilder: (_, i) => _OrderCard(
                     order: data[i],
                     busy: _busy.contains((data[i]['id'] as num?)?.round() ?? -1),
-                    onStatus: _setStatus,
+                    onDone: _setStatus,
+                    onCancel: _cancel,
                   ),
                 ),
               ),
@@ -154,29 +209,44 @@ class _OwnerOrdersScreenState extends State<OwnerOrdersScreen> {
 }
 
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order, required this.busy, required this.onStatus});
+  const _OrderCard({
+    required this.order,
+    required this.busy,
+    required this.onDone,
+    required this.onCancel,
+  });
 
   final Map<String, dynamic> order;
   final bool busy;
-  final void Function(int id, String status) onStatus;
+  final void Function(int id, String status) onDone;
+  final void Function(int id) onCancel;
 
   @override
   Widget build(BuildContext context) {
     final id = (order['id'] as num?)?.round() ?? 0;
     final status = '${order['status']}';
     final phone = '${order['phone'] ?? ''}';
+    final name = '${order['name'] ?? ''}';
+    final note = '${order['note'] ?? ''}';
     final qty = (order['qty'] as num?)?.round() ?? 1;
     final price = (order['price'] as num?)?.round() ?? 0;
 
     return Surface(
-      shadow: E.e1,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('#$id', style: T.code.copyWith(fontSize: 13.5, color: C.ash)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  name.isEmpty ? tr('Mijoz') : name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.cardTitle,
+                ),
+              ),
+              const SizedBox(width: S.x12),
               StatusChip(
                 switch (status) {
                   'new' => tr('Yangi'),
@@ -193,53 +263,57 @@ class _OrderCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          Text('#$id', style: T.meta),
+          if (phone.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            // RAQAM BOSILADI: eng ko'p qilinadigan ish — mijozga
+            // qo'ng'iroq qilish. Bosish maydoni 48 dp (`Press`).
+            Press(
+              onTap: () => openExternal(
+                Uri.parse('tel:${phone.replaceAll(RegExp(r'[^0-9+]'), '')}'),
+              ),
+              scale: .98,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  NIcon(Ico.phone, size: 13, color: C.accent),
+                  const SizedBox(width: 6),
+                  Text(phone, style: T.meta.copyWith(color: C.accent)),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: S.x12),
           Text(
             '${order['itemName'] ?? 'Mahsulot'} · $qty dona',
-            style: T.cardTitle.copyWith(fontSize: 15),
+            style: T.bodyStrong,
           ),
-          const SizedBox(height: 3),
-          Text(
-            [
-              '${order['name'] ?? ''}',
-              if (phone.isNotEmpty) phone,
-            ].where((s) => s.isNotEmpty).join(' · '),
-            style: T.caption,
-          ),
-          if ('${order['note'] ?? ''}'.isNotEmpty) ...[
+          if (note.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('${order['note']}', style: T.caption.copyWith(color: C.muted)),
+            Text(note, style: T.caption),
           ],
           const SizedBox(height: S.x8),
-          Text('${som(price)} so‘m', style: T.price),
+          Text('${som(price)} so‘m', style: T.amount),
           if (status == 'new') ...[
-            const SizedBox(height: S.x12),
+            const SizedBox(height: S.x16),
             Row(
               children: [
                 Expanded(
                   child: SecondaryButton(
                     tr('Bajarildi'),
-                    height: 42,
-                    onTap: busy ? null : () => onStatus(id, 'done'),
+                    size: BtnSize.m,
+                    icon: Ico.check,
+                    loading: busy,
+                    onTap: busy ? null : () => onDone(id, 'done'),
                   ),
                 ),
                 const SizedBox(width: S.x8),
-                if (phone.isNotEmpty)
-                  Expanded(
-                    child: GhostButton(
-                      tr('Qo‘ng‘iroq'),
-                      onTap: () => openExternal(
-                        Uri.parse('tel:${phone.replaceAll(RegExp(r'[^0-9+]'), '')}'),
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: S.x8),
-                Expanded(
-                  child: GhostButton(
-                    tr('Bekor'),
-                    color: C.signal,
-                    onTap: busy ? null : () => onStatus(id, 'cancelled'),
-                  ),
+                GhostButton(
+                  tr('Bekor'),
+                  size: BtnSize.m,
+                  color: C.fail,
+                  onTap: busy ? null : () => onCancel(id),
                 ),
               ],
             ),

@@ -135,12 +135,28 @@ class Aura {
             center: const Alignment(-.5, -1.1),
             color: const Color(0xFF9CC1EE),
             radius: 1.1,
-            opacity: .14,
+            opacity: .10,
             falloff: .5,
           ),
         ],
         cool: true,
       );
+
+  /// SOVUQ YORUG'LIK O'NGDAN — onboardingning ikkinchi slaydi va
+  /// shisha panel ko'rsatiladigan joylar.
+  ///
+  /// Ketma-ket ekranlar bir xil yoritilsa, ular bir xil ko'rinadi.
+  /// Shuning uchun uch slayd uch xil manbadan yoritiladi: tepadan,
+  /// o'ngdan, pastdan.
+  static Aura get coolRight => Aura([
+        AuraLayer(
+          center: const Alignment(1.05, -.35),
+          color: const Color(0xFF9CC1EE),
+          radius: 1.0,
+          opacity: .18,
+          falloff: .48,
+        ),
+      ]);
 
   /// REELS — yorug'lik PASTDAN. Ekranning o'z manbai.
   static Aura get reels => Aura(

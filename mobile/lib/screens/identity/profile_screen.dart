@@ -1,63 +1,66 @@
-import 'package:flutter/material.dart' show RefreshIndicator, DefaultTabController, TabBar, TabBarView, Tab;
+import 'dart:convert' show utf8;
+
+import 'package:flutter/material.dart' show RefreshIndicator;
 import 'package:flutter/widgets.dart';
+import 'package:share_plus/share_plus.dart' show Share, XFile;
+
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
-import '../../design/components/metal_text.dart';
 import '../../design/components/press.dart';
-import '../../design/components/skeleton.dart';
-import '../../design/components/story_ring.dart';
 import '../../design/components/sheet.dart';
-import '../../design/feedback.dart';
+import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
+import '../../design/components/story_ring.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/toast.dart';
+import '../../design/components/top_bar.dart';
+import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
-import '../business/business_stats.dart';
-import '../business/product_detail.dart';
-import '../content/compose.dart';
-import '../content/report_sheet.dart';
-import '../orders/owner_orders.dart';
-import 'edit_profile.dart';
-import 'follow_list.dart';
-import 'profile_stats.dart';
-import '../common/contact_actions.dart';
-import '../common/top_bar.dart';
-import '../content/post_detail.dart';
-import '../content/story_viewer.dart';
-import '../content/photo_viewer.dart';
-import '../nfc/qr_share.dart';
-import '../business/edit_business.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
+import '../business/product_detail.dart';
+import '../common/contact_actions.dart';
+import '../common/share.dart';
+import '../content/photo_viewer.dart';
+import '../content/post_detail.dart';
+import '../content/report_sheet.dart';
+import '../content/story_viewer.dart';
+import 'follow_list.dart';
 
-/// PROFIL — bitta skelet, to'rt kombinatsiya.
+/// PROFILGA QANDAY KIRILDI.
 ///
-/// Ikki o'q handoff bo'yicha:
-///   TIP    — shaxsiy (bio, kasb, havolalar) yoki biznes (muqova,
-///            ish vaqti, manzil, katalog);
-///   KO'RUVCHI — ega (Tahrirlash, Statistika, Post, Story; biznesda
-///            yana Mahsulot va Buyurtmalar) yoki ommaviy (Obuna,
-///            Ulashish va kontakt amallari).
+/// Bu SHUNCHAKI BELGI EMAS — mahsulot qoidasi. "Kontaktni saqlash"
+/// faqat NFC kartani tegizganda yoki QR skanerlaganda ochiladi:
+/// shunda karta egasi ulashishni O'ZI tasdiqlagan bo'ladi.
+/// Qidiruvdan ochilgan profilda bu tugma bo'lmaydi va sababi
+/// ekranda yozilgan.
+enum ProfileEntry { tap, search }
+
+/// OCHIQ PROFIL — bitta skelet, to'rt holat.
 ///
-/// EGA VOSITALARI OMMAVIY AMALLAR BILAN BIR XIL JOYDA turadi, shuning
-/// uchun rol o'zgarganda maket qayta oqmaydi.
-///
-/// RUXSAT: bu yerdagi `isOwner` faqat KO'RINISH uchun. Har bir
-/// o'zgartirish so'rovini server o'zi qaytadan tekshiradi.
+/// shaxsiy / biznes × tashrifchi / egasi. Har kombinatsiya uchun
+/// alohida ekran yozilsa, to'rttasi bir-biridan asta uzoqlashib
+/// ketardi.
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.identity, this.code, this.companyId});
+  const ProfileScreen({
+    super.key,
+    this.code,
+    this.companyId,
+    this.entry = ProfileEntry.search,
+  });
 
-  /// O'z shaxsi bo'lsa — tayyor obyekt.
-  final Identity? identity;
-
-  /// Ommaviy shaxsiy profil.
+  /// Shaxsiy yoki biznes KARTA kodi.
   final String? code;
 
-  /// Ommaviy biznes profil.
+  /// Kompaniya ID'si.
   final String? companyId;
+
+  final ProfileEntry entry;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -68,100 +71,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Company? _company;
   List<Post> _posts = const [];
   List<Post> _stories = const [];
+  FollowStats? _follow;
 
-  /// Istoryalar ro'yxati KELMADI (so'rov tushdi).
-  ///
-  /// "Bo'sh" va "bilmaymiz" — BOSHQA holat. Farqlanmaganida ega
-  /// o'z profilida "+" ni ko'rardi, ya'ni ilova "sizda istorya
-  /// yo'q" deb TASDIQLARDI — aslida shunchaki so'rov tushgan
-  /// bo'lishi mumkin edi.
-  bool _storiesFailed = false;
-  List<Product> _catalog = const [];
-  FollowStats _follow = const FollowStats();
   bool _loading = true;
   Object? _error;
   bool _busyFollow = false;
 
-  bool get _isBusiness =>
-      widget.companyId != null || (widget.identity?.isBusiness ?? false) || _company != null;
+  bool get _isCompany => (widget.companyId ?? '').isNotEmpty;
+
+  String get _code => widget.companyId ?? widget.code ?? '';
+
+  bool get _owned {
+    final state = AppScope.read(context);
+    return _isCompany ? state.ownsCompany(_code) : state.ownsRecord(_code);
+  }
 
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  /// Yaratish ekranini ochadi va joylangandan keyin profilni
-  /// yangilaydi.
-  ///
-  /// Yangilamasak, joylangan post faqat ilova qayta ochilganda
-  /// ko'rinardi — odam esa "joylanmadi" deb o'ylardi.
-  Future<void> _compose(String code, ComposeKind kind) async {
-    final done = await push<bool>(
-      context,
-      (_) => ComposeScreen(code: code, kind: kind, company: _isBusiness),
-    );
-    if (done == true && mounted) await _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
-    final state = AppScope.read(context);
+    final repo = AppScope.read(context).repo;
     setState(() {
       _loading = true;
       _error = null;
     });
-    var storiesFailed = false;
     try {
-      final id = widget.identity;
-      final businessId = widget.companyId ?? (id?.isBusiness == true ? id!.code : null);
-      if (businessId != null) {
-        final company = await state.repo.company(businessId);
-        // Qolganlari ixtiyoriy: biri tushmasa ham profil ochilishi kerak.
-        final results = await Future.wait([
-          state.repo.companyCatalog(businessId).catchError((_) => <Product>[]),
-          state.repo.companyPosts(businessId).catchError((_) => <Post>[]),
-          state.repo.companyStories(businessId).catchError((_) {
-            storiesFailed = true;
-            return <Post>[];
-          }),
-        ]);
-        state.repo.companyEvent(businessId);
+      if (_isCompany) {
+        final company = await repo.company(_code);
+        List<Post> posts = const [];
+        List<Post> stories = const [];
+        try {
+          posts = await repo.companyPosts(_code);
+        } catch (_) {}
+        try {
+          stories = await repo.companyStories(_code);
+        } catch (_) {}
+        FollowStats? follow;
+        try {
+          follow = await repo.followStats(_code);
+        } catch (_) {}
         if (!mounted) return;
         setState(() {
           _company = company;
-          _catalog = company.items.isNotEmpty ? company.items : results[0] as List<Product>;
-          _posts = results[1] as List<Post>;
-          _stories = results[2] as List<Post>;
-          _follow = FollowStats(followers: company.followers, isFollowing: company.following);
-          _storiesFailed = storiesFailed;
+          _posts = posts;
+          _stories = stories;
+          _follow = follow;
           _loading = false;
         });
-        return;
+        // KO'RISH HODISASI — egasining statistikasi uchun. Xatosi
+        // ekranni buzmaydi.
+        repo.companyEvent(_code).catchError((_) {});
+      } else {
+        final record = await repo.record(_code);
+        List<Post> posts = const [];
+        List<Post> stories = const [];
+        try {
+          posts = await repo.recordPosts(_code);
+        } catch (_) {}
+        try {
+          stories = await repo.recordStories(_code);
+        } catch (_) {}
+        FollowStats? follow;
+        try {
+          follow = await repo.followStats(_code);
+        } catch (_) {}
+        if (!mounted) return;
+        setState(() {
+          _record = record;
+          _posts = posts;
+          _stories = stories;
+          _follow = follow;
+          _loading = false;
+        });
+        repo.markView(_code).catchError((_) {});
       }
-
-      final code = widget.code ?? id?.code;
-      if (code == null || code.isEmpty) throw Exception('no_code');
-      final record = await state.repo.record(code);
-      final results = await Future.wait([
-        state.repo.recordPosts(code).catchError((_) => <Post>[]),
-        state.repo.recordStories(code).catchError((_) {
-          storiesFailed = true;
-          return <Post>[];
-        }),
-        state.repo.followStats(code).catchError((_) => const FollowStats()),
-      ]);
-      // Ko'rishlar hisobi — FAQAT begona profilda. O'z profilingni
-      // ochish statistikani shishirmasligi kerak.
-      if (!state.ownsRecord(code)) state.repo.markView(code);
-      if (!mounted) return;
-      setState(() {
-        _record = record;
-        _posts = results[0] as List<Post>;
-        _stories = results[1] as List<Post>;
-        _follow = results[2] as FollowStats;
-        _storiesFailed = storiesFailed;
-        _loading = false;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -171,1096 +157,868 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// POST YOKI ISTORYANI O'CHIRISH.
-  ///
-  /// Ilgari ilovada o'chirish YO'Q edi: joylangan narsani faqat
-  /// saytdan olib tashlash mumkin edi. Xato rasm qo'ygan odam
-  /// telefonida hech narsa qila olmasdi.
-  ///
-  /// TASDIQ SO'RALADI va u QAYTARIB BO'LMAYDI deb ochiq aytiladi —
-  /// bu buzuvchi amal.
-  Future<void> _delete(Post post, {required bool isStory}) async {
-    final id = int.tryParse(post.id);
-    if (id == null) return;
-    final sure = await showSheet<bool>(
-      context,
-      title: isStory ? tr('Storyni o‘chirish') : tr('Postni o‘chirish'),
-      subtitle: tr('Bu amalni qaytarib bo‘lmaydi.'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: Column(
-          children: [
-            PrimaryButton(tr('O‘chirish'),
-                onTap: () => Navigator.of(context).pop(true)),
-            const SizedBox(height: S.x8),
-            SecondaryButton(tr('Bekor qilish'),
-                onTap: () => Navigator.of(context).pop(false)),
-          ],
-        ),
-      ),
-    );
-    if (sure != true || !mounted) return;
-
-    final repo = AppScope.read(context).repo;
-    final companyId = _company?.id;
-    try {
-      if (companyId != null) {
-        isStory
-            ? await repo.deleteCompanyStory(companyId, id)
-            : await repo.deleteCompanyPost(companyId, id);
-      } else {
-        isStory ? await repo.deleteStory(id) : await repo.deletePost(id);
-      }
-      if (!mounted) return;
-      // SERVERDAN QAYTA O'QIMAYMIZ: ro'yxatdan olib tashlash
-      // yetarli va ekran darhol javob beradi.
-      setState(() {
-        if (isStory) {
-          _stories = _stories.where((p) => p.id != post.id).toList();
-        } else {
-          _posts = _posts.where((p) => p.id != post.id).toList();
-        }
-      });
-      successHaptic();
-    } catch (e) {
-      if (mounted) await showError(context, humanError(e));
-    }
-  }
-
-  /// SHIKOYAT VA BLOKLASH — begona profilda.
-  ///
-  /// Ikkalasi bitta varaqda: odam nomaqbul profilni ko'rganda
-  /// odatda ikkisidan birini xohlaydi va ularni ikki xil joyga
-  /// yashirish qidiruvga majbur qilardi.
-  Future<void> _moderationSheet(String code) async {
-    final kind = _isBusiness ? 'company' : 'record';
-    final choice = await showSheet<String>(
-      context,
-      title: code,
-      subtitle: tr('Bu profil bilan nima qilamiz?'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: Column(
-          children: [
-            SecondaryButton(tr('Shikoyat qilish'),
-                onTap: () => Navigator.of(context).pop('report')),
-            const SizedBox(height: S.x8),
-            SecondaryButton(tr('Bloklash'),
-                onTap: () => Navigator.of(context).pop('block')),
-            const SizedBox(height: S.x8),
-            GhostButton(tr('Bekor qilish'),
-                onTap: () => Navigator.of(context).pop()),
-          ],
-        ),
-      ),
-    );
-    if (!mounted || choice == null) return;
-
-    if (choice == 'report') {
-      await reportAndConfirm(
-        context,
-        targetKind: kind,
-        targetId: code,
-        ownerCode: code,
-      );
-      return;
-    }
-
-    // BLOKLASH — nima bo'lishini OLDIN aytamiz.
-    final sure = await showSheet<bool>(
-      context,
-      title: tr('Bloklash'),
-      subtitle: tr('Bu profilning postlari va storylari sizning '
-          'lentangizda ko‘rinmaydi.'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: Column(
-          children: [
-            PrimaryButton(tr('Bloklash'),
-                onTap: () => Navigator.of(context).pop(true)),
-            const SizedBox(height: S.x8),
-            SecondaryButton(tr('Bekor qilish'),
-                onTap: () => Navigator.of(context).pop(false)),
-          ],
-        ),
-      ),
-    );
-    if (sure != true || !mounted) return;
-    try {
-      await AppScope.read(context).repo.block(kind: kind, id: code);
-      if (!mounted) return;
-      successHaptic();
-      Navigator.of(context).maybePop();
-    } catch (e) {
-      if (mounted) await showError(context, humanError(e));
-    }
-  }
-
   Future<void> _toggleFollow() async {
-    final code = _company?.id ?? _record?.code;
-    if (code == null || _busyFollow) return;
-    final wasFollowing = _follow.isFollowing;
-    setState(() {
-      _busyFollow = true;
-      // Optimistik yangilanish — tugma darhol javob beradi. Xato
-      // bo'lsa pastda qaytariladi.
-      _follow = FollowStats(
-        followers: _follow.followers + (wasFollowing ? -1 : 1),
-        following: _follow.following,
-        isFollowing: !wasFollowing,
-      );
-    });
+    final stats = _follow;
+    if (stats == null || _busyFollow) return;
+    final repo = AppScope.read(context).repo;
+    setState(() => _busyFollow = true);
     try {
-      final repo = AppScope.read(context).repo;
-      if (wasFollowing) {
-        await repo.unfollow(code);
+      if (stats.isFollowing) {
+        await repo.unfollow(_code);
       } else {
-        await repo.follow(code);
+        await repo.follow(_code);
+        successHaptic();
       }
+      final fresh = await repo.followStats(_code);
+      if (!mounted) return;
+      setState(() => _follow = fresh);
     } catch (e) {
-      if (mounted) {
-        setState(() => _follow = FollowStats(
-              followers: _follow.followers + (wasFollowing ? 1 : -1),
-              following: _follow.following,
-              isFollowing: wasFollowing,
-            ));
-        // SABABI AYTILADI. Ilgari tugma jimgina eski holatiga
-        // qaytardi va odam o'zi tasodifan ikki marta bosdim deb
-        // o'ylardi — obuna esa aslida yozilmagan edi.
-        await showError(context, humanError(e));
-      }
+      if (mounted) showError(context, humanError(e));
     } finally {
       if (mounted) setState(() => _busyFollow = false);
     }
   }
 
+  /// KONTAKTNI SAQLASH — vCard fayl sifatida ulashiladi.
+  ///
+  /// NIMA UCHUN PLAGIN EMAS: kontaktlarga to'g'ridan-to'g'ri yozish
+  /// `READ/WRITE_CONTACTS` ruxsatini talab qiladi va bu ruxsat
+  /// qurilish quvuridagi tekshiruvda ATAYLAB taqiqlangan — ilova
+  /// odamning telefon kitobini o'qishi uchun hech qanday sabab
+  /// yo'q.
+  ///
+  /// vCard fayl esa tizimning o'z oynasiga beriladi va Android uni
+  /// "Kontaktlar" ilovasiga import qilishni o'zi taklif etadi.
+  Future<void> _saveContact() async {
+    final r = _record;
+    final c = _company;
+    final name = r?.name ?? c?.name ?? '';
+    if (name.isEmpty) return;
+
+    final url = profileUrl(context, _code, company: _isCompany);
+    final vcard = StringBuffer()
+      ..writeln('BEGIN:VCARD')
+      ..writeln('VERSION:3.0')
+      ..writeln('FN:$name');
+    if ((r?.role ?? '').isNotEmpty) vcard.writeln('TITLE:${r!.role}');
+    if ((c?.name ?? '').isNotEmpty) vcard.writeln('ORG:${c!.name}');
+    final phone = r?.phone ?? c?.phone ?? '';
+    if (phone.isNotEmpty) vcard.writeln('TEL;TYPE=CELL:$phone');
+    final email = r?.email ?? '';
+    if (email.isNotEmpty) vcard.writeln('EMAIL:$email');
+    vcard
+      ..writeln('URL:$url')
+      ..writeln('END:VCARD');
+
+    try {
+      await Share.shareXFiles([
+        XFile.fromData(
+          // vCard UTF-8 da yoziladi: o'zbekcha ismlarda `o'` va
+          // `g'` bor va ular ASCII emas.
+          utf8.encode(vcard.toString()),
+          name: '${_code.toLowerCase()}.vcf',
+          mimeType: 'text/vcard',
+        ),
+      ]);
+      if (!mounted) return;
+      successHaptic();
+      showToast(context, tr('Kontakt saqlandi'));
+    } catch (e) {
+      if (mounted) showError(context, humanError(e));
+    }
+  }
+
+  Future<void> _menu() async {
+    await showContentMenu(
+      context,
+      targetKind: _isCompany ? 'company' : 'record',
+      targetId: _code,
+      ownerCode: _code,
+      owned: _owned,
+      title: _record?.name ?? _company?.name ?? _code,
+      onUnfollow: (_follow?.isFollowing ?? false) ? _toggleFollow : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final code = _company?.id ?? _record?.code ?? widget.code ?? widget.companyId ?? '';
-    // EGALIK — AVVAL ANIQ BILGANIMIZDAN.
-    //
-    // `identity` faqat Profile tabidan keladi va u FAOL SHAXSNING
-    // o'zi: ya'ni bu ekran ta'rifi bo'yicha egasiniki. Ro'yxatdan
-    // qidirish esa taxminiy — `cards`/`companies` hali yuklanmagan
-    // bo'lishi, kod boshqa registrda kelishi yoki shaxs yangi
-    // qo'shilgan bo'lishi mumkin. Shunday paytda odam O'Z profilida
-    // "mehmon" ko'rinishini olardi: post va story'ni o'chirish
-    // tugmasi yo'qolib, o'rniga shikoyat menyusi chiqardi — egasi
-    // aynan shuni xabar qildi.
-    final isOwner = widget.identity != null ||
-        (_isBusiness ? state.ownsCompany(code) : state.ownsRecord(code));
-
     if (_loading && _record == null && _company == null) {
-      return _Frame(code: code, child: const _ProfileSkeleton());
+      return const _ProfileSkeleton();
     }
     if (_error != null && _record == null && _company == null) {
-      return _Frame(
-        code: code,
-        child: ErrorState(humanError(_error), onRetry: _load),
-      );
-    }
-
-    // TARJIMA QILINADI: bo'lim nomlari ham interfeys matni. Ular
-    // o'zbekcha qolsa, rus va ingliz tilidagi ekran yarim tarjima
-    // bo'lib ko'rinardi. «Story» uch tilda ham shunday yoziladi.
-    // BOSH HARFLAR — dizayn tili shunday: bo'lim nomlari kichik
-    // va keng oraliqli bosh harflarda. Tarjima ham shu qolipga
-    // tushadi.
-    // "Stories" TARJIMA QILINMAYDI — ataylab.
-    //
-    // Ilovada "Reels" ham, "NFC" ham, "Premium" ham inglizcha
-    // turibdi. "Istorya" esa ruscha o'zlashma va yozuvda qo'pol
-    // ko'rinadi; "hikoya" boshqa ma'no beradi, "lavha" esa tanish
-    // emas. Instagram o'zbek tilida ham "Stories" deydi — ya'ni
-    // hech kimga tushuntirish kerak emas.
-    final tabs = _isBusiness
-        ? [tr('Katalog'), tr('Postlar'), 'Stories', tr('Haqida')]
-            .map((t) => t.toUpperCase())
-            .toList()
-        : [tr('Postlar'), 'Stories', tr('Haqida')]
-            .map((t) => t.toUpperCase())
-            .toList();
-
-    return _Frame(
-      code: code,
-      // MEHMONGA — shikoyat va bloklash. O'z profilida bularning
-      // ma'nosi yo'q.
-      onMore: isOwner ? null : () => _moderationSheet(code),
-      child: DefaultTabController(
-        length: tabs.length,
-        child: RefreshIndicator(
-          onRefresh: _load,
-          color: C.champagne,
-          backgroundColor: C.slate,
-          child: NestedScrollView(
-            headerSliverBuilder: (_, __) => [
-              SliverToBoxAdapter(
-                child: _Header(
-                  record: _record,
-                  company: _company,
-                  follow: _follow,
-                  isOwner: isOwner,
-                  busyFollow: _busyFollow,
-                  hasStory: _stories.isNotEmpty,
-                  storiesUnknown: _storiesFailed,
-                  // Mehmonda istorya bo'lmasa halqa umuman
-                  // ko'rsatilmaydi — bosiladigan, lekin hech narsa
-                  // qilmaydigan element ishonchni yo'qotadi.
-                  onStory: _stories.isNotEmpty
-                      ? () => push(
-                            context,
-                            (_) => StoryViewerScreen(
-                                code: code,
-                                isCompany: _isBusiness,
-                                // Egalik SHU YERDA aniq ma'lum —
-                                // taxminga qoldirilmaydi.
-                                owned: isOwner),
-                          )
-                      : (isOwner ? () => _compose(code, ComposeKind.story) : null),
-                  onFollow: _toggleFollow,
-                  onShare: () {
-                    final id = _company != null
-                        ? Identity.business(_company!)
-                        : Identity.personal(_record!);
-                    shareIdentity(id);
-                  },
-                  onRefresh: _load,
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: TabBar(
-                  isScrollable: false,
-                  indicatorColor: C.champagne,
-                  indicatorWeight: 2,
-                  dividerColor: C.hairline,
-                  labelColor: C.offWhite,
-                  unselectedLabelColor: C.muted,
-                  labelStyle: T.statusLabel.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
-                  unselectedLabelStyle: T.statusLabel.copyWith(fontSize: 12),
-                  tabs: [for (final t in tabs) Tab(height: 42, text: t)],
+      return ScreenBackdrop(
+        aura: Aura.profile,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const TopBar(),
+              Expanded(
+                child: Center(
+                  child: ErrorState(humanError(_error), onRetry: _load),
                 ),
               ),
             ],
-            body: TabBarView(
+          ),
+        ),
+      );
+    }
+
+    final viaTap = widget.entry == ProfileEntry.tap;
+
+    return ScreenBackdrop(
+      aura: Aura.profile,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            TopBar(
+              center: _EntryChip(entry: widget.entry, owned: _owned),
+              trailing: RoundButton(Ico.more, onTap: _menu),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _load,
+                color: C.accent,
+                backgroundColor: C.surface,
+                displacement: 28,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(bottom: StickyBar.inset(context)),
+                  children: _isCompany ? _companyBody() : _personBody(),
+                ),
+              ),
+            ),
+
+            // YOPISHGAN PASTKI PANEL.
+            //
+            // NFC/QR orqali kelinganda — "Kontaktni saqlash".
+            // Qidiruvdan kelinganda — obuna va ulashish, hamda
+            // sababi yozilgan izoh (u kontent ichida turadi).
+            if (!_owned)
+              StickyBar(
+                child: viaTap
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: PrimaryButton(
+                              tr('Kontaktni saqlash'),
+                              onTap: _saveContact,
+                            ),
+                          ),
+                          const SizedBox(width: S.x8),
+                          RoundButton(
+                            Ico.share,
+                            size: 54,
+                            iconSize: 20,
+                            onTap: () => shareText(
+                              context,
+                              profileUrl(context, _code, company: _isCompany),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: PrimaryButton(
+                              (_follow?.isFollowing ?? false)
+                                  ? tr('Obuna')
+                                  : tr('Obuna bo‘lish'),
+                              loading: _busyFollow,
+                              onTap: _toggleFollow,
+                            ),
+                          ),
+                          const SizedBox(width: S.x8),
+                          RoundButton(
+                            Ico.share,
+                            size: 54,
+                            iconSize: 20,
+                            onTap: () => shareText(
+                              context,
+                              profileUrl(context, _code, company: _isCompany),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── SHAXSIY PROFIL ──────────────────────────────────────────
+
+  List<Widget> _personBody() {
+    final r = _record!;
+    final style = TierStyle.of(r.tier);
+
+    return [
+      const SizedBox(height: S.x8),
+
+      // AVATAR — story bo'lsa halqa bilan.
+      Center(
+        child: StoryRing(
+          avatarUrl: r.avatarUrl,
+          name: r.name,
+          size: 104,
+          showLabel: false,
+          seen: _stories.isEmpty,
+          onTap: _stories.isEmpty
+              ? null
+              : () => push<void>(
+                    context,
+                    (_) => StoryViewerScreen(code: _code),
+                  ),
+        ),
+      ),
+      const SizedBox(height: S.x20),
+
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_isBusiness) _CatalogGrid(items: _catalog),
-                // KONTENT QO'SHISH — EGADA, shaxsiyda ham biznesda
-                // ham. Yaratish ekrani bitta (`ComposeScreen`),
-                // faqat so'rov boshqa endpointga ketadi.
-                _PostGrid(
-                  posts: _posts,
-                  onAdd: isOwner ? () => _compose(code, ComposeKind.post) : null,
-                  // O'CHIRISH FAQAT EGADA — mehmonga bunday amal
-                  // ko'rsatilmaydi.
-                  onDelete: isOwner ? (p) => _delete(p, isStory: false) : null,
+                Flexible(
+                  child: Text(
+                    r.name,
+                    textAlign: TextAlign.center,
+                    style: T.profileName,
+                  ),
                 ),
-                _PostGrid(
-                  posts: _stories,
-                  empty: tr('Hali story yo‘q'),
-                  emptyHint: tr('Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.'),
-                  emptyIcon: Ico.camera,
-                  addLabel: tr('Story qo‘shish'),
-                  onAdd: isOwner ? () => _compose(code, ComposeKind.story) : null,
-                  onDelete: isOwner ? (p) => _delete(p, isStory: true) : null,
+                if (r.verified) ...[
+                  const SizedBox(width: 6),
+                  const VerifiedBadge(size: 17),
+                ],
+              ],
+            ),
+            if (r.role.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                r.role,
+                textAlign: TextAlign.center,
+                style: T.caption.copyWith(color: C.ink2),
+              ),
+            ],
+            const SizedBox(height: S.x12),
+
+            // TARIF — material nomi bilan.
+            _TierBadge(tier: r.tier, label: style.label, code: r.code),
+
+            const SizedBox(height: S.x20),
+            StatRow(
+              tiles: [
+                StatTile(value: som(r.views), label: tr('Ko‘rish')),
+                StatTile(
+                  value: som(_posts.length),
+                  label: tr('Post'),
                 ),
-                _About(record: _record, company: _company),
+                StatTile(
+                  value: som(_follow?.followers ?? 0),
+                  label: tr('Obunachi'),
+                  onTap: () => push<void>(
+                    context,
+                    (_) => FollowListScreen(
+                      code: _code,
+                      title: tr('Obunachilar'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: S.x20),
+            ContactRow(
+              phone: r.phone,
+              telegram: r.tg,
+              instagram: r.instagram,
+              website: r.website,
+              address: r.address,
+            ),
+
+            if (widget.entry == ProfileEntry.search && !_owned) ...[
+              const SizedBox(height: S.x16),
+              _Note(
+                tr('Kontaktni saqlash faqat NFC kartani tegizganda yoki QR '
+                    'skanerlaganda ochiladi — shunda karta egasi '
+                    'ulashishni tasdiqlagan bo‘ladi.'),
+              ),
+            ],
+
+            if (r.about.isNotEmpty) ...[
+              const SizedBox(height: S.x24),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Eyebrow(tr('Haqida')),
+              ),
+              const SizedBox(height: S.x8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(r.about, style: T.body),
+              ),
+            ],
+          ],
+        ),
+      ),
+
+      ..._postsSection(),
+    ];
+  }
+
+  // ── BIZNES PROFIL ───────────────────────────────────────────
+
+  List<Widget> _companyBody() {
+    final c = _company!;
+
+    return [
+      const SizedBox(height: S.x8),
+
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // LOGOTIP KVADRAT — shaxsiy profildagi dumaloq
+            // avatardan ATAYLAB farq qiladi.
+            Avatar(url: c.logoUrl, name: c.name, size: 84, square: true),
+            const SizedBox(height: S.x16),
+            Row(
+              children: [
+                Flexible(child: Text(c.name, style: T.profileName)),
+                if (c.verified) ...[
+                  const SizedBox(width: 6),
+                  const VerifiedBadge(size: 17),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [
+                if (c.about.isNotEmpty) c.about.split('\n').first,
+                if (c.city.isNotEmpty) c.city,
+              ].take(2).join(' · '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: T.caption.copyWith(color: C.ink2),
+            ),
+
+            const SizedBox(height: S.x12),
+            Wrap(
+              spacing: S.x8,
+              runSpacing: S.x8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (c.isOpen != null)
+                  StatusChip(
+                    c.isOpen!
+                        ? (c.hoursLabel.isEmpty
+                            ? tr('Hozir ochiq')
+                            : trf('Hozir ochiq · {time}', {
+                                'time': c.hoursLabel,
+                              }))
+                        : tr('Hozir yopiq'),
+                    tone: c.isOpen! ? StatusTone.ok : StatusTone.neutral,
+                  ),
+                if (c.tier.isNotEmpty)
+                  _TierBadge(
+                    tier: TierStyle.parse(c.tier),
+                    label: TierStyle.of(TierStyle.parse(c.tier)).label,
+                    code: c.id,
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: S.x20),
+            StatRow(
+              tiles: [
+                StatTile(
+                  value: som(c.itemCount),
+                  label: tr('Mahsulot'),
+                ),
+                StatTile(value: som(c.views), label: tr('Ko‘rish')),
+                StatTile(
+                  value: som(_follow?.followers ?? c.followers),
+                  label: tr('Obunachi'),
+                  onTap: () => push<void>(
+                    context,
+                    (_) => FollowListScreen(
+                      code: _code,
+                      title: tr('Obunachilar'),
+                      isCompany: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: S.x20),
+            ContactRow(
+              phone: c.phone,
+              telegram: c.tg,
+              instagram: c.instagram,
+              website: c.website,
+              address: c.address,
+            ),
+          ],
+        ),
+      ),
+
+      // KATALOG — biznes profilida ustun bo'lim.
+      if (c.items.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            S.gutter,
+            S.x32,
+            S.gutter,
+            S.x12,
+          ),
+          child: SectionHeader(
+            tr('Katalog'),
+            trailing: Text(
+              trf('{n} mahsulot', {'n': '${c.items.length}'}),
+              style: T.meta,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            itemCount: c.items.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: S.x12,
+              mainAxisSpacing: S.x12,
+              childAspectRatio: .78,
+            ),
+            itemBuilder: (context, i) => ProductCard(
+              product: c.items[i],
+              companyId: c.id,
+              companyName: c.name,
+            ),
+          ),
+        ),
+      ],
+
+      // ISH VAQTI.
+      if (c.hours.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            S.gutter,
+            S.x32,
+            S.gutter,
+            S.x12,
+          ),
+          child: SectionHeader(tr('Ish vaqti')),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: _Hours(hours: c.hours),
+        ),
+      ],
+
+      // MANZIL.
+      if (c.address.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            S.gutter,
+            S.x32,
+            S.gutter,
+            S.x12,
+          ),
+          child: SectionHeader(tr('Manzil')),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: Surface(
+            padding: const EdgeInsets.all(S.x16),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: C.accent.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(R.status),
+                  ),
+                  alignment: Alignment.center,
+                  child: NIcon(Ico.pin, size: 19, color: C.accent),
+                ),
+                const SizedBox(width: S.x12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(c.address, style: T.cardTitle.copyWith(
+                        fontSize: 14,
+                      )),
+                      if (c.city.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(c.city, style: T.caption.copyWith(fontSize: 12)),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
+      ],
+
+      // GALEREYA.
+      if (c.gallery.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            S.gutter,
+            S.x32,
+            S.gutter,
+            S.x12,
+          ),
+          child: SectionHeader(tr('Galereya')),
+        ),
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            itemCount: c.gallery.length,
+            separatorBuilder: (_, __) => const SizedBox(width: S.x8),
+            itemBuilder: (context, i) => Press(
+              onTap: () => push<void>(
+                context,
+                (_) => PhotoViewerScreen(
+                  images: c.gallery,
+                  initial: i,
+                  title: c.name,
+                ),
+              ),
+              minSize: 0,
+              scale: .97,
+              child: SizedBox(
+                width: 120,
+                child: NetImage(c.gallery[i], radius: R.tile),
+              ),
+            ),
+          ),
+        ),
+      ],
+
+      ..._postsSection(),
+    ];
+  }
+
+  // ── POSTLAR ─────────────────────────────────────────────────
+
+  List<Widget> _postsSection() {
+    if (_loading && _posts.isEmpty) {
+      return [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(S.gutter, S.x32, S.gutter, 0),
+          child: SkeletonGrid(count: 6),
+        ),
+      ];
+    }
+    if (_posts.isEmpty) {
+      return [
+        EmptyState(
+          _owned
+              ? tr('Birinchi postingiz shu yerda ko‘rinadi.')
+              : tr('Bu profilda hali post yo‘q.'),
+          title: tr('Post yo‘q'),
+          icon: Ico.image,
+          compact: true,
+        ),
+      ];
+    }
+
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x32, S.gutter, S.x12),
+        child: SectionHeader(
+          tr('Postlar'),
+          trailing: Text(som(_posts.length), style: T.meta),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          itemCount: _posts.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 3,
+            mainAxisSpacing: 3,
+          ),
+          itemBuilder: (context, i) {
+            final post = _posts[i];
+            return Press(
+              onTap: () async {
+                await push<void>(
+                  context,
+                  (_) => PostDetailScreen(post: post, canDelete: _owned),
+                );
+                if (mounted) await _load();
+              },
+              minSize: 0,
+              scale: .98,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  NetImage(
+                    post.images.isEmpty ? null : post.images.first,
+                    radius: 2,
+                    slotIcon: Ico.image,
+                  ),
+                  if (post.likes > 0)
+                    Positioned(
+                      left: 5,
+                      bottom: 5,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          NIcon(
+                            Ico.heart,
+                            size: 11,
+                            color: C.accent,
+                            filled: true,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            som(post.likes),
+                            style: T.meta.copyWith(
+                              fontSize: 9.5,
+                              color: C.ink,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+
+/// Qanday kirilgani — tepadagi kichik chip.
+class _EntryChip extends StatelessWidget {
+  const _EntryChip({required this.entry, required this.owned});
+
+  final ProfileEntry entry;
+  final bool owned;
+
+  @override
+  Widget build(BuildContext context) {
+    if (owned) {
+      return Text(tr('SIZNING PROFILINGIZ'), style: T.meta.copyWith(
+        letterSpacing: 1.4,
+      ));
+    }
+    final tap = entry == ProfileEntry.tap;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: S.x12, vertical: 6),
+      decoration: BoxDecoration(
+        color: tap ? C.accent.withValues(alpha: .12) : null,
+        borderRadius: BorderRadius.circular(R.status),
+        border: Border.all(color: tap ? C.lineStrong : C.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          NIcon(
+            tap ? Ico.nfc : Ico.search,
+            size: 13,
+            color: tap ? C.accent : C.ink3,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            tap ? tr('NFC TEGIZISHDAN') : tr('QIDIRUVDAN'),
+            style: T.meta.copyWith(
+              fontSize: 10,
+              letterSpacing: 1.3,
+              color: tap ? C.accent : C.ink3,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Profil skeleton'i — HAQIQIY maketning silueti: muqova, avatar,
-/// uchta raqam, ism va amal tugmalari. Ma'lumot kelganda hech narsa
-/// siljimaydi, chunki o'lchamlar bir xil.
+/// Tarif belgisi — kod + material nomi.
+class _TierBadge extends StatelessWidget {
+  const _TierBadge({
+    required this.tier,
+    required this.label,
+    required this.code,
+  });
+
+  final Tier tier;
+  final String label;
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TierStyle.of(tier);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 4, S.x12, 4),
+      decoration: BoxDecoration(
+        gradient: C.raisedSurface,
+        borderRadius: BorderRadius.circular(R.chip),
+        border: Border.all(
+          color: style.hasMaterial
+              ? style.base.withValues(alpha: .45)
+              : C.line,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              gradient: style.hasMaterial ? style.swatch : null,
+              color: style.hasMaterial ? null : C.surfaceHigh,
+              borderRadius: BorderRadius.circular(R.status - 2),
+            ),
+            child: Text(
+              code.toUpperCase(),
+              style: T.code(
+                12,
+                color: style.hasMaterial ? const Color(0xFF17110A) : C.ink2,
+              ),
+            ),
+          ),
+          const SizedBox(width: S.x8),
+          Text(label, style: T.buttonSm.copyWith(color: C.ink2)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Note extends StatelessWidget {
+  const _Note(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        padding: const EdgeInsets.all(S.x12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            NIcon(Ico.info, size: 16, color: C.ink3),
+            const SizedBox(width: S.x12),
+            Expanded(
+              child: Text(text, style: T.caption.copyWith(fontSize: 12.5)),
+            ),
+          ],
+        ),
+      );
+}
+
+/// Ish vaqti jadvali.
+class _Hours extends StatelessWidget {
+  const _Hours({required this.hours});
+
+  final List<DayHours> hours;
+
+  static List<String> get _days => [
+        tr('Dushanba'),
+        tr('Seshanba'),
+        tr('Chorshanba'),
+        tr('Payshanba'),
+        tr('Juma'),
+        tr('Shanba'),
+        tr('Yakshanba'),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final names = _days;
+    return RowGroup(
+      children: [
+        for (var i = 0; i < hours.length && i < names.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: S.x16,
+              vertical: S.x12,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    names[i],
+                    style: T.bodyStrong.copyWith(fontSize: 14),
+                  ),
+                ),
+                Text(
+                  hours[i].closed
+                      ? tr('Yopiq')
+                      : '${hours[i].open} — ${hours[i].close}',
+                  style: T.amount.copyWith(
+                    fontSize: 13,
+                    color: hours[i].closed ? C.ink3 : C.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Profil skeleti — haqiqiy tartibning o'lchamlarida.
 class _ProfileSkeleton extends StatelessWidget {
   const _ProfileSkeleton();
 
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        children: const [
-          SkeletonCard(aspect: 16 / 7),
-          SizedBox(height: S.x16),
-          Row(
-            children: [
-              Skeleton(width: 66, height: 66, radius: 33),
-              SizedBox(width: S.x16),
-              Expanded(child: Skeleton(height: 34)),
-            ],
-          ),
-          SizedBox(height: S.x16),
-          Skeleton(width: 170, height: 21),
-          SizedBox(height: S.x8),
-          Skeleton(width: 110, height: 13),
-          SizedBox(height: S.x16),
-          Skeleton(height: 48, radius: R.button),
-        ],
-      );
-}
-
-class _Frame extends StatelessWidget {
-  const _Frame({required this.code, required this.child, this.onMore});
-  final String code;
-  final Widget child;
-
-  /// Faqat MEHMON ko'rinishida — shikoyat va bloklash.
-  final VoidCallback? onMore;
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: C.obsidian,
+  Widget build(BuildContext context) => ScreenBackdrop(
+        aura: Aura.profile,
         child: SafeArea(
-          bottom: false,
           child: Column(
             children: [
-              TopBar(
-                title: code,
-                trailing: onMore == null
-                    ? null
-                    : Press(
-                        onTap: onMore,
-                        child: const Padding(
-                          padding: EdgeInsets.all(S.x8),
-                          child: NIcon(Ico.more, size: 20, color: C.ash),
-                        ),
-                      ),
-              ),
-              Expanded(child: child),
-            ],
-          ),
-        ),
-      );
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.record,
-    required this.company,
-    required this.follow,
-    required this.isOwner,
-    required this.busyFollow,
-    required this.onFollow,
-    required this.onShare,
-    required this.onRefresh,
-    required this.hasStory,
-    this.storiesUnknown = false,
-    required this.onStory,
-  });
-
-  final Record? record;
-  final Company? company;
-  final FollowStats follow;
-  final bool isOwner;
-  final bool busyFollow;
-  final VoidCallback onFollow;
-  final VoidCallback onShare;
-  final VoidCallback onRefresh;
-
-  /// Profilda FAOL istorya bormi (24 soat ichida).
-  final bool hasStory;
-
-  /// Istoryalar ro'yxati kelmadi — "yo'q" deb TASDIQLAMAYMIZ.
-  final bool storiesUnknown;
-
-  /// Halqa bosilganda: istorya bo'lsa — ko'ruvchi, egada istorya
-  /// yo'q bo'lsa — qo'shish.
-  final VoidCallback? onStory;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = company?.name ?? record?.name ?? '';
-    final code = company?.id ?? record?.code ?? '';
-    final avatar = company?.logoUrl ?? record?.avatarUrl;
-    final cover = company?.coverUrl ?? record?.bgUrl;
-    final verified = company?.verified ?? record?.verified ?? false;
-    final about = company?.about ?? record?.about ?? '';
-    final role = company == null
-        ? record?.role ?? ''
-        : [company!.city, company!.address].where((s) => s.isNotEmpty).join(' · ');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // MUQOVA VA AVATAR USTMA-UST.
-        //
-        // Ilgari muqova va avatar alohida qatorlarda turardi va
-        // o'rtada bo'sh joy qolib, sahifa "yig'ilmagan" ko'rinardi.
-        // Avatar muqovaning pastki chetiga chiqib turishi — profil
-        // sahifalarining tanish shakli va ikkalasini bitta blokka
-        // bog'laydi.
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-              child: AspectRatio(
-                aspectRatio: 16 / 7,
-                child: NetImage(cover, slotLabel: tr('COVER 16:7'), radius: R.card),
-              ),
-            ),
-            // Muqova ostidagi yumshoq qorong'ilashuv — avatar va
-            // yozuvlar har qanday rasm ustida o'qiladi.
-            Positioned(
-              left: S.gutter, right: S.gutter, bottom: 0,
-              child: IgnorePointer(
-                child: Container(
-                  height: 54,
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(R.card)),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                      colors: [Color(0x00000000), Color(0x8C0A0805)],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // ISTORYA HALQASI — AVATAR ATROFIDA.
-            //
-            // Ilgari o'z istoryangizni joylagandan keyin ilovada uni
-            // ko'rsatadigan joy YO'Q edi: bosh sahifadagi lenta faqat
-            // OBUNA BO'LGANLARNI beradi, o'zingizniki esa "Story"
-            // yorlig'i ichida ko'milib qolardi. Endi u profil rasmi
-            // atrofidagi halqada — saytdagi bilan bir xil joyda.
-            // 72 -> 88. Saytda logotip sahifaning asosiy vizual
-            // langari (104 -> 128 px qilingan); ilovada esa u
-            // muqova ostida kichkina bo'lib qolardi.
-            Positioned(
-              left: S.gutter + S.x4,
-              bottom: -32,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
-                child: hasStory || (isOwner && !storiesUnknown && onStory != null)
-                    ? StoryRing(
-                        // Ism avatar ichidagi harf uchun kerak
-                        // (rasm kelmasa), lekin halqa ostida
-                        // takrorlanmaydi.
-                        name: name,
-                        showLabel: false,
-                        avatarUrl: avatar,
-                        size: 88,
-                        // Halqa FAQAT haqiqiy istoryada aylanadi.
-                        // Egasida istorya bo'lmasa — oddiy "+" .
-                        addButton: !hasStory,
-                        onTap: onStory,
-                      )
-                    : Avatar(url: avatar, name: name, size: 88),
-              ),
-            ),
-          ],
-        ),
-        // Avatar muqovadan 32px pastga chiqadi, ostida esa nafas
-        // kerak — statistika unga yopishib turmasin.
-        const SizedBox(height: 46),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                // IKKI NOZIK CHIZIQ ORASIDA — saytdagi `.qp-stats`
-                // bilan bir xil. Ilgari raqamlar hech narsa bilan
-                // ajratilmagan holda osilib turardi.
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: S.x16),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: C.hairline),
-                      bottom: BorderSide(color: C.hairline),
-                    ),
-                  ),
-                  child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Obunachi va obuna raqamlari BOSILADI — ro'yxatni
-                    // ochadi. Ko'rishlar soni esa bosilmaydi: uning
-                    // ortida ro'yxat yo'q (tashrifchi kimligi
-                    // saqlanmaydi) va bosilsa hech narsa bo'lmasligi
-                    // odamni chalg'itardi.
-                    _Stat(
-                      value: follow.followers,
-                      // `tr()` YO'Q EDI: rus va ingliz tilida bu uch
-                      // yorliq o'zbekcha qolib ketardi.
-                      label: tr('obunachi'),
-                      onTap: () => push(
-                        context,
-                        (_) => FollowListScreen(
-                          code: code,
-                          title: name,
-                          // Bu _Header ichida — u yerda holat emas,
-                          // `company` maydoni bor.
-                          isCompany: company != null,
-                        ),
-                      ),
-                    ),
-                    if (company != null)
-                      _Stat(value: company!.itemCount, label: tr('mahsulot'))
-                    else
-                      _Stat(
-                        value: follow.following,
-                        label: tr('obuna'),
-                        onTap: () => push(
-                          context,
-                          (_) => FollowListScreen(
-                            code: code,
-                            title: name,
-                            startWithFollowing: true,
-                          ),
-                        ),
-                      ),
-                    _Stat(value: company?.views ?? record?.views ?? 0, label: tr('ko‘rish')),
-                  ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x24, S.gutter, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    // Nom — METALL gradient bilan, saytdagidek.
-                    child: MetalText(name, style: T.profileName),
-                  ),
-                  if (verified) ...[
-                    const SizedBox(width: S.x8),
-                    const VerifiedBadge(),
-                  ],
-                ],
-              ),
+              const TopBar(),
+              const SizedBox(height: S.x8),
+              const Skeleton(height: 104, circle: true),
+              const SizedBox(height: S.x20),
+              const Skeleton(width: 180, height: 24, radius: 8),
               const SizedBox(height: S.x12),
-              Row(
-                children: [
-                  // ID kodi — mahsulotning o'zi, shuning uchun u
-                  // shunchaki matn emas, belgi shaklida.
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: S.x8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: C.champagne.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(R.status),
-                      border: Border.all(color: C.champagne.withValues(alpha: .25)),
-                    ),
-                    child: Text(code, style: T.code.copyWith(fontSize: 13)),
-                  ),
-                  if (company?.isOpen != null) ...[
-                    const SizedBox(width: S.x8),
-                    StatusChip(
-                      company!.isOpen! ? tr('Ochiq') : tr('Yopiq'),
-                      tone: company!.isOpen! ? StatusTone.ok : StatusTone.neutral,
-                    ),
-                    if (company!.hoursLabel.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text(company!.hoursLabel, style: T.meta.copyWith(fontSize: 12.5)),
-                    ],
+              const Skeleton(width: 120, height: 14, radius: 6),
+              const SizedBox(height: S.x24),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: S.gutter),
+                child: Row(
+                  children: [
+                    Expanded(child: Skeleton(height: 66, radius: R.tile)),
+                    SizedBox(width: S.x8),
+                    Expanded(child: Skeleton(height: 66, radius: R.tile)),
+                    SizedBox(width: S.x8),
+                    Expanded(child: Skeleton(height: 66, radius: R.tile)),
                   ],
-                ],
-              ),
-              if (role.isNotEmpty) ...[
-                const SizedBox(height: S.x8),
-                Text(role, style: T.caption.copyWith(fontSize: 14)),
-              ],
-              if (about.isNotEmpty) ...[
-                const SizedBox(height: S.x16),
-                // Uch qator — uzun bio amal tugmalarini ekrandan
-                // surib yubormasin.
-                Text(about, style: T.body, maxLines: 3, overflow: TextOverflow.ellipsis),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: S.x24),
-        // AMAL SLOTLARI — ega va mehmon uchun bir xil joyda.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: isOwner
-              ? _OwnerActions(
-                  company: company,
-                  record: record,
-                  onShare: onShare,
-                  onChanged: onRefresh,
-                )
-              : _PublicActions(
-                  following: follow.isFollowing,
-                  busy: busyFollow,
-                  onFollow: onFollow,
-                  onShare: onShare,
-                  phone: company?.phone ?? record?.phone ?? '',
-                  tg: company?.tg ?? record?.tg ?? '',
-                  instagram: company?.instagram ?? record?.instagram ?? '',
-                ),
-        ),
-        const SizedBox(height: S.x24),
-      ],
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, this.onTap});
-  final int value;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        scale: onTap == null ? 1 : .95,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(compact(value), style: T.statValue),
-              const SizedBox(height: 7),
-              // Katta harf — yorliq "ma'lumot" emas, "ko'rsatkich"
-              // bo'lib o'qiladi.
-              Text(label.toUpperCase(), style: T.statLabel),
-            ],
-          ),
-        ),
-      );
-}
-
-/// EGA VOSITALARI.
-///
-/// Ishlamaydigan tugma QO'YILMAYDI: backend qo'llab-quvvatlamaydigan
-/// amal (post/story yaratish — rasm yuklash oqimi hali yo'q) umuman
-/// ko'rsatilmaydi. Bosilganda hech narsa qilmaydigan tugma
-/// foydalanuvchini ishonchdan mahrum qiladi.
-class _OwnerActions extends StatelessWidget {
-  const _OwnerActions({
-    required this.company,
-    required this.record,
-    required this.onShare,
-    required this.onChanged,
-  });
-
-  final Company? company;
-  final Record? record;
-  final VoidCallback onShare;
-  final VoidCallback onChanged;
-
-  bool get isBusiness => company != null;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: SecondaryButton(
-                  tr('Tahrirlash'),
-                  height: 44,
-                  // Endi IKKALASI ham: biznes o'z ekraniga boradi
-                  // (`PATCH /api/companies/:id`), shaxsiy — o'zinikiga.
-                  onTap: () async {
-                    final saved = await push<bool>(
-                      context,
-                      (_) => company != null
-                          ? EditBusinessScreen(company: company!)
-                          : EditProfileScreen(record: record!),
-                    );
-                    if (saved == true) onChanged();
-                  },
                 ),
               ),
-              const SizedBox(width: S.x8),
-              Expanded(
-                child: SecondaryButton(
-                  tr('Statistika'),
-                  height: 44,
-                  // Ikkala tur uchun ham ishlaydi: biznesda
-                  // `/api/companies/:id/stats`, shaxsiyda
-                  // `/api/records/:code/analytics`. Ikkalasi bir xil
-                  // ko'rinishda — ilova ikki xil mahsulotdek
-                  // his qilinmasin.
-                  onTap: isBusiness
-                      ? () => push(context, (_) => BusinessStatsScreen(companyId: company!.id))
-                      : record == null
-                          ? null
-                          : () => push(
-                                context,
-                                (_) => ProfileStatsScreen(
-                                  code: record!.code,
-                                  name: record!.name,
-                                ),
-                              ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: S.x8),
-          Row(
-            children: [
-              if (isBusiness) ...[
-                Expanded(
-                  child: GhostButton(
-                    tr('Buyurtmalar'),
-                    icon: NIcon(Ico.bag, size: 15, color: C.champagne),
-                    onTap: () => push(
-                      context,
-                      (_) => OwnerOrdersScreen(
-                        companyId: company!.id,
-                        companyName: company!.name,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: S.x8),
-              ],
-              // Ulashish — ENDI TO'LIQ QATOR (biznesda yarim).
-              //
-              // Ilgari u alohida qatorda yolg'iz turgan 44×44 kvadrat
-              // edi va o'ng tomonda katta bo'sh joy qolib, maket
-              // "tugallanmagan" ko'rinardi.
-              Expanded(
-                child: GhostButton(
-                  tr('Ulashish'),
-                  icon: NIcon(Ico.share, size: 15, color: C.champagne),
-                  onTap: onShare,
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-}
-
-class _PublicActions extends StatelessWidget {
-  const _PublicActions({
-    required this.following,
-    required this.busy,
-    required this.onFollow,
-    required this.onShare,
-    required this.phone,
-    required this.tg,
-    required this.instagram,
-  });
-
-  final bool following;
-  final bool busy;
-  final VoidCallback onFollow;
-  final VoidCallback onShare;
-  final String phone;
-  final String tg;
-  final String instagram;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          // "Obuna bo'lish" — BUTUN kenglikda. Ilgari yonida
-          // ulashish uchun kvadrat tugma turardi va u qatorni ikkiga
-          // bo'lib, asosiy amalni kichraytirardi. Ulashish endi
-          // pastdagi aloqa tangalari qatorida (amalning o'zi
-          // o'zgarmadi — bir xil `onShare`).
-          SizedBox(
-            width: double.infinity,
-            child: following
-                ? SecondaryButton(tr('Obuna bo‘lingan'), height: 52, onTap: busy ? null : onFollow)
-                : PrimaryButton(tr('Obuna bo‘lish'), loading: busy, onTap: busy ? null : onFollow),
-          ),
-          const SizedBox(height: S.x24),
-          // TASHQI KONTAKT — ichki messenjer YO'Q.
-          ContactRow(phone: phone, telegram: tg, instagram: instagram, onShare: onShare),
-        ],
-      );
-}
-
-class _CatalogGrid extends StatelessWidget {
-  const _CatalogGrid({required this.items});
-  final List<Product> items;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return EmptyState(
-        tr('Bu biznes hali mahsulot joylamagan. Keyinroq kirib ko‘ring.'),
-        title: tr('Katalog bo‘sh'),
-        icon: Ico.bag,
-      );
-    }
-    return GridView.builder(
-      padding: EdgeInsets.all(S.gutter),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: S.x12,
-        mainAxisSpacing: S.x12,
-        childAspectRatio: .74,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, i) => ProductCard(product: items[i]),
-    );
-  }
-}
-
-class _PostGrid extends StatelessWidget {
-  // Standart matnlar TILGA BOG'LIQ, ya'ni `const` standart qiymat
-  // bo'la olmaydi. `null` -> build ichida joriy tilda olinadi.
-  const _PostGrid({
-    required this.posts,
-    this.empty,
-    this.emptyHint,
-    this.emptyIcon = Ico.image,
-    this.onAdd,
-    this.addLabel,
-    this.onDelete,
-  });
-  final List<Post> posts;
-
-  /// Faqat EGADA. Katakni uzoq bosganda chaqiriladi.
-  final ValueChanged<Post>? onDelete;
-
-  /// Bo'sh holat sarlavhasi.
-  final String? empty;
-
-  /// MEHMONGA ko'rsatiladigan izoh (egada boshqacha yoziladi).
-  final String? emptyHint;
-  final Ico emptyIcon;
-
-  /// Faqat EGADA bo'ladi. `null` — mehmon ko'rinishi.
-  final VoidCallback? onAdd;
-  final String? addLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    if (posts.isEmpty) {
-      // Bo'sh to'rda amal SHU YERDA bo'lishi kerak: ega profilini
-      // ochib "bo'sh" yozuvini ko'rsa, keyingi qadam nima ekani
-      // ko'rinmasdi va kontent qo'shish yo'li umuman yo'q edi.
-      // SURILADIGAN O'RAM — bo'sh holat balandligi TAB MAYDONIGA
-      // bog'liq emas.
-      //
-      // Bu qat'iy balandlikdagi maydon: sarlavha qancha baland
-      // bo'lsa, tabga shuncha kam joy qoladi. Sarlavha
-      // kattalashtirilgach (avatar 72 -> 88, masofalar kengaydi)
-      // bo'sh holat 51 piksel chetdan chiqib ketdi — testlar aynan
-      // shuni ushladi. Endi u sig'masa suriladi va hech qachon
-      // kesilmaydi.
-      return SingleChildScrollView(
-        child: EmptyState(
-          // MEHMONGA va EGAGA boshqa izoh: mehmon hech narsa qila
-          // olmaydi, egaga esa keyingi qadam aytiladi.
-          onAdd == null
-              ? (emptyHint ?? tr('Bu profilda hali post joylanmagan.'))
-              : tr('Birinchisini joylang — profilingiz shu bilan jonlanadi.'),
-          title: empty ?? tr('Hali post yo‘q'),
-          icon: emptyIcon,
-          actionLabel: onAdd == null ? null : (addLabel ?? tr('Post qo‘shish')),
-          onAction: onAdd,
-        ),
-      );
-    }
-    return GridView.builder(
-      // Oraliq 3 -> 2 va nisbat 4:5 (dizayndagi POST MEDIA bilan bir
-      // xil). Ilgari 0.8 nisbat rasmlarni qirqib, to'r notekis
-      // ko'rinardi.
-      padding: const EdgeInsets.all(2),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
-        childAspectRatio: 4 / 5,
-      ),
-      itemCount: posts.length + (onAdd == null ? 0 : 1),
-      itemBuilder: (context, i) => onAdd != null && i == 0
-          ? _AddTile(label: addLabel ?? tr('Post qo‘shish'), onTap: onAdd!)
-          : _tile(context, posts[i - (onAdd == null ? 0 : 1)]),
-    );
-  }
-
-  Widget _tile(BuildContext context, Post post) => RepaintBoundary(
-        child: Press(
-          onTap: () async {
-            // Tafsilot ekrani `true` qaytarsa — egasi u yerdagi
-            // o'chirish tugmasini bosgan. Tasdiqlash oynasi va API
-            // chaqiruvi SHU YERDA (`_delete`), ya'ni bitta joyda.
-            final wantDelete = await push<bool>(
-              context,
-              (_) => PostDetailScreen(post: post, canDelete: onDelete != null),
-            );
-            if (wantDelete == true) onDelete?.call(post);
-          },
-          // UZOQ BOSISH — TEZ YO'L.
-          //
-          // To'rda har katak ~130px va ustiga qo'yilgan "x" belgisi
-          // rasmning uchdan birini yopib, to'rni g'ijimlab tashlardi.
-          // Shuning uchun ko'rinadigan tugma KATAKDA emas, tafsilot
-          // ekranining tepasida.
-          onLongPress: onDelete == null ? null : () => onDelete!(post),
-          haptic: onDelete != null,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              NetImage(
-                post.images.isEmpty ? null : post.images.first,
-                radius: 4,
-                // Uch ustunli to'rda har rasm ~130px — undan kattaroq
-                // dekodlash xotirani behuda yeydi.
-                cacheWidth: 160,
-                slotLabel: 'POST',
-              ),
-              // VIDEO EKANI KO'RINSIN. To'rda videoning muqovasi
-              // yo'q (server uni yaratmaydi), shuning uchun bu
-              // katak bo'm-bo'sh ko'rinardi va odam uni "buzilgan"
-              // deb o'ylardi. Belgi bosishga arzishini aytadi.
-              if ((post.videoUrl ?? '').isNotEmpty)
-                const Positioned(
-                  right: 5,
-                  top: 5,
-                  child: NIcon(Ico.play, size: 15, color: C.offWhite),
-                ),
-            ],
-          ),
-        ),
-      );
-}
-
-/// To'rdagi birinchi katak — "qo'shish".
-///
-/// NIMA UCHUN SUZUVCHI TUGMA EMAS: suzuvchi tugma oxirgi qatorni
-/// to'sib qoladi va dizayn tilida bunday element yo'q. Katak esa
-/// to'rning o'z ritmida turadi.
-class _AddTile extends StatelessWidget {
-  const _AddTile({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        haptic: true,
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            color: C.placeholder,
-            border: Border.all(color: C.warmHairline),
-          ),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              NIcon(Ico.plus, size: 22, color: C.champagne),
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  style: T.caption.copyWith(fontSize: 11.5),
-                ),
+              const SizedBox(height: S.x24),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: S.gutter),
+                child: SkeletonGrid(count: 6),
               ),
             ],
           ),
         ),
       );
-}
-
-/// GALEREYA LENTASI — «Ma'lumot» bo'limining tepasida.
-///
-/// NIMA UCHUN SHU YERDA: bu bo'lim biznes HAQIDA. Rasm ham shu
-/// haqda gapiradi — postlar esa yangilik oqimi, ular bilan
-/// aralashsa, ikkalasi ham ma'nosini yo'qotardi.
-class _GalleryStrip extends StatelessWidget {
-  const _GalleryStrip({required this.images, required this.title});
-  final List<String> images;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    // Katak 104px — `NetImage` uni qurilma zichligiga o'zi
-    // ko'paytiradi, shuning uchun bu yerda mantiqiy o'lcham
-    // beriladi.
-    return SizedBox(
-      height: 104,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: images.length,
-        separatorBuilder: (_, __) => const SizedBox(width: S.x8),
-        itemBuilder: (_, i) => Press(
-          haptic: true,
-          onTap: () => push(
-            context,
-            (_) => PhotoViewerScreen(images: images, initial: i, title: title),
-          ),
-          child: SizedBox(
-            width: 104,
-            child: NetImage(images[i],
-                radius: R.tile, cacheWidth: 104),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _About extends StatelessWidget {
-  const _About({required this.record, required this.company});
-  final Record? record;
-  final Company? company;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <({String label, String value})>[
-      if ((company?.address ?? record?.address ?? '').isNotEmpty)
-        (label: tr('Manzil'), value: company?.address ?? record!.address),
-      if ((company?.city ?? record?.city ?? '').isNotEmpty)
-        (label: tr('Shahar'), value: company?.city ?? record!.city),
-      if ((company?.hoursLabel ?? '').isNotEmpty)
-        (label: tr('Ish vaqti'), value: company!.hoursLabel),
-      if ((company?.phone ?? record?.phone ?? '').isNotEmpty)
-        (label: tr('Telefon'), value: company?.phone ?? record!.phone),
-      if ((company?.website ?? record?.website ?? '').isNotEmpty)
-        (label: tr('Veb-sayt'), value: company?.website ?? record!.website),
-    ];
-    final about = company?.about ?? record?.about ?? '';
-    final gallery = company?.gallery ?? const <String>[];
-
-    if (rows.isEmpty && about.isEmpty && gallery.isEmpty) {
-      return EmptyState(
-        tr('Manzil, ish vaqti va aloqa ma‘lumotlari hali kiritilmagan.'),
-        title: tr('Ma‘lumot yo‘q'),
-        icon: Ico.user,
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.all(S.gutter),
-      children: [
-        if (gallery.isNotEmpty) ...[
-          _GalleryStrip(images: gallery, title: company?.name ?? ''),
-          const SizedBox(height: S.x12),
-        ],
-        if (about.isNotEmpty) ...[
-          Surface(child: Text(about, style: T.body)),
-          const SizedBox(height: S.x12),
-        ],
-        for (final r in rows) ...[
-          Surface(
-            padding: const EdgeInsets.symmetric(horizontal: S.x16, vertical: S.x12),
-            shadow: E.e1,
-            child: Row(
-              children: [
-                SizedBox(width: 96, child: Text(r.label, style: T.caption)),
-                Expanded(
-                  child: Text(r.value, style: T.cardTitle.copyWith(fontSize: 14.5)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: S.x8),
-        ],
-      ],
-    );
-  }
 }
