@@ -48,7 +48,14 @@ class Palette {
   final Color backdrop;
   final Color graphite;
   final Color slate;
+  /// CHIZIQ. Qiymat ATAYLAB yarim shaffof: to'q fon ustidagi
+  /// qattiq kulrang chiziq "chizilgan" bo'lib ko'rinadi va
+  /// interfeysni qo'pollashtiradi. Yarim shaffof urg'u esa fonning
+  /// o'zidan o'sib chiqqandek — saytdagi `rgba(226,190,110,.35)`
+  /// chiziqlari bilan bir xil mantiq.
   final Color hairline;
+
+  /// Interaktiv/to'ldirilgan elementdagi chegara — biroz quyuqroq.
   final Color warmHairline;
 
   /// Asosiy urg'u — tugma, faol holat, karta kodi.
@@ -71,8 +78,8 @@ class Palette {
     backdrop: Color(0xFF050508),
     graphite: Color(0xFF0E0D11),
     slate: Color(0xFF141318),
-    hairline: Color(0xFF232028),
-    warmHairline: Color(0xFF2A2620),
+    hairline: Color(0x1FE8CFA0),
+    warmHairline: Color(0x3DE8CFA0),
     accent: Color(0xFFE8CFA0),
     accentDeep: Color(0xFFB99A5E),
     accentCool: Color(0xFFC9CCD2),
@@ -91,8 +98,8 @@ class Palette {
     backdrop: Color(0xFF060402),
     graphite: Color(0xFF110E09),
     slate: Color(0xFF181410),
-    hairline: Color(0xFF2A2318),
-    warmHairline: Color(0xFF332A1B),
+    hairline: Color(0x22F0D089),
+    warmHairline: Color(0x42F0D089),
     accent: Color(0xFFF0D089),
     accentDeep: Color(0xFFC9A257),
     accentCool: Color(0xFFD9CFBC),
@@ -110,8 +117,8 @@ class Palette {
     backdrop: Color(0xFF030605),
     graphite: Color(0xFF090F0C),
     slate: Color(0xFF0F1713),
-    hairline: Color(0xFF1B2A22),
-    warmHairline: Color(0xFF1F332A),
+    hairline: Color(0x1F8FD9B4),
+    warmHairline: Color(0x3D8FD9B4),
     accent: Color(0xFF8FD9B4),
     accentDeep: Color(0xFF4E9E77),
     accentCool: Color(0xFFC2D8CD),
@@ -126,8 +133,8 @@ class Palette {
     backdrop: Color(0xFF03040A),
     graphite: Color(0xFF090C14),
     slate: Color(0xFF10141F),
-    hairline: Color(0xFF1D2536),
-    warmHairline: Color(0xFF222B3F),
+    hairline: Color(0x1F9CC1EE),
+    warmHairline: Color(0x3D9CC1EE),
     accent: Color(0xFF9CC1EE),
     accentDeep: Color(0xFF5683BC),
     accentCool: Color(0xFFC6D1E2),
@@ -245,6 +252,83 @@ class C {
       );
 
   static Color get metalBorder => hairline;
+
+  // ── METALL URG'U (saytdagi `--gold-face` ning ilovadagi ekvivalenti)
+  //
+  // Saytdagi biznes profil sahifasida oltin elementlar TEKIS EMAS:
+  // ular gradient bilan to'lgan, tepasida oq aks, pastida issiq soya
+  // bor — ya'ni "tanga" effekti. Ilovada esa ular bir tekis rang edi
+  // va shu sababli yonma-yon qo'yilganda arzonroq ko'rinardi.
+  //
+  // Ranglar MAVZUDAN olinadi, qo'lda yozilmaydi: aks holda Emerald
+  // yoki Sapphire mavzusida ekranda tasodifiy oltin dog' paydo
+  // bo'lardi.
+
+  /// Urg'uning eng yorug' nuqtasi — metallning aks etishi.
+  static Color get accentSheen => Color.lerp(champagne, const Color(0xFFFFFFFF), .5)!;
+
+  /// Urg'uning eng chuqur nuqtasi — soya tushgan qismi.
+  static Color get accentShade => Color.lerp(antiqueGold, const Color(0xFF000000), .38)!;
+
+  /// TEKIS METALL YUZA — tugma va tanachalar uchun.
+  /// Saytdagi `linear-gradient(145deg, ...)` bilan bir xil ruh:
+  /// yorug'lik yuqori-chapdan tushadi va pastki o'ngda yana
+  /// yaltiraydi (qayrilgan metall qirrasi).
+  static LinearGradient get metalFace => LinearGradient(
+        begin: const Alignment(-0.9, -1),
+        end: const Alignment(0.9, 1),
+        colors: [accentSheen, champagne, antiqueGold, accentSheen],
+        stops: const [0, .34, .66, 1],
+      );
+
+  /// METALL MATN. Yuzadan farqi: eng yorug' nuqta BOSHIDA emas,
+  /// o'rtasida. Harflar ingichka, shuning uchun oq boshlanish
+  /// so'zning birinchi yarmini "o'chib qolgan" qilib ko'rsatardi —
+  /// nom oltin emas, oq-kulrang bo'lib o'qilardi.
+  static LinearGradient get metalText => LinearGradient(
+        begin: const Alignment(-1, -0.6),
+        end: const Alignment(1, 0.6),
+        colors: [champagne, accentSheen, antiqueGold, champagne],
+        stops: const [0, .34, .74, 1],
+      );
+
+  /// DUMALOQ TANGA — yorug'lik manbai yuqori-chapda, chekkasi quyuq.
+  /// `RadialGradient` aynan shu uchun: tekis gradient dumaloq yuzani
+  /// yassi qoldirardi.
+  static RadialGradient get metalCoin => RadialGradient(
+        center: const Alignment(-0.42, -0.55),
+        radius: 1.05,
+        colors: [accentSheen, champagne, antiqueGold],
+        stops: const [0, .5, 1],
+      );
+
+  /// Tanga ostidagi soya + nozik issiq nur. Chuqurlik shundan
+  /// keladi, yorqinlikdan emas.
+  static List<BoxShadow> get metalShadow => [
+        BoxShadow(color: champagne.withValues(alpha: .22), blurRadius: 16, spreadRadius: -6),
+        const BoxShadow(color: Color(0x8C000000), blurRadius: 18, offset: Offset(0, 8)),
+      ];
+
+  /// Kartochka atrofidagi yumshoq oltin gardish — saytdagi
+  /// `0 0 18px -6px` rim-glow. Manfiy tarqalish SHART: usiz
+  /// yorug'lik kartochkani o'rab, arzon neonga o'xshab qolardi.
+  static List<BoxShadow> get rimGlow => [
+        BoxShadow(color: champagne.withValues(alpha: .28), blurRadius: 18, spreadRadius: -6),
+        const BoxShadow(color: Color(0x73000000), blurRadius: 26, offset: Offset(0, 10)),
+      ];
+
+  /// BREND GLIFI OLTIN USTIDA.
+  ///
+  /// `C.telegram` (#2AABEE) va `C.whatsapp` (#25D366) — haqiqiy brend
+  /// ranglari, lekin ular OCH va oltin tanga ustida yo'qoladi. Sayt
+  /// shuning uchun to'qroq variantlarni ishlatadi; bu yerda ham
+  /// shunday. Rang ma'nosi saqlanadi (Telegram baribir ko'k), faqat
+  /// yorqinligi fonga moslashtirilgan.
+  static const onGoldPhone = Color(0xFF0E7A3D);
+  static const onGoldTelegram = Color(0xFF0F7AB0);
+  static const onGoldWhatsapp = Color(0xFF0B8A3C);
+  static const onGoldInstagram = Color(0xFFB3175A);
+  static const onGoldNeutral = Color(0xFF5A4410);
 }
 
 /// NFC ID tarifi. Ranglar handoff dagi "tier metals" jadvalidan:
@@ -421,16 +505,20 @@ class S {
 
 /// Radius. Bitta element sinfiga BITTA radius; bitta karta ichida
 /// ikki xil radius aralashmasin.
+/// 2026-09: hamma qiymat 2px ga YUMSHATILDI. Sayt bilan yonma-yon
+/// qo'yilganda ilovaning burchaklari o'tkirroq va shu sababli
+/// "arzonroq" ko'rinardi. Nisbatlar saqlandi — faqat umumiy yumshoqlik
+/// oshdi.
 class R {
   R._();
-  static const chip = 9.0;
-  static const status = 7.0;
-  static const tile = 12.0;
-  static const card = 16.0;
-  static const hero = 20.0;
-  static const sheet = 28.0;
-  static const input = 14.0;
-  static const button = 14.0;
+  static const chip = 11.0;
+  static const status = 9.0;
+  static const tile = 14.0;
+  static const card = 18.0;
+  static const hero = 22.0;
+  static const sheet = 30.0;
+  static const input = 16.0;
+  static const button = 16.0;
 }
 
 /// Ko'tarilish. Chuqurlik soya + 1px chegaradan keladi, YORQINLIKDAN emas.
@@ -442,8 +530,15 @@ class E {
   static const sheet = [BoxShadow(color: Color(0x99000000), blurRadius: 50, offset: Offset(0, -20))];
 }
 
-/// Harakat. Byudjet: hech narsa 400ms dan oshmaydi va ekranda bir vaqtda
-/// faqat BITTA uzluksiz animatsiya bo'ladi (story halqasi).
+/// Harakat. Byudjet: hech narsa 400ms dan oshmaydi.
+///
+/// UZLUKSIZ ANIMATSIYA — IKKITA (ilgari bittasiga ruxsat berilgan edi):
+///   1. story halqasi — "bu profilda yangi istorya bor" degan MA'NO;
+///   2. asosiy tugma ustidagi yorug'lik — u ekrandagi yagona asosiy
+///      amalni ko'rsatadi.
+/// Ikkinchisi byudjetni deyarli yemaydi: davrning atigi ~38 foizida
+/// yorug'lik harakatlanadi, qolgan vaqt kadr umuman o'zgarmaydi
+/// (saytdagi `qp-sweep` bilan bir xil). Uchinchisiga ruxsat yo'q.
 class M {
   M._();
   static const press = Duration(milliseconds: 120);
@@ -454,6 +549,9 @@ class M {
   static const shared = Duration(milliseconds: 320);
   // Dizayn manbasi: `shimmerSpin 9s linear infinite`.
   static const storyRing = Duration(seconds: 9);
+  // Asosiy tugma ustidan o'tadigan yorug'lik. Manba: saytdagi
+  // `qp-sweep 4.2s` — o'tib bo'lgach uzoq pauza.
+  static const sweep = Duration(milliseconds: 4200);
   static const storySegment = Duration(seconds: 5);
 
   /// Handoff dagi yagona egri chiziq.

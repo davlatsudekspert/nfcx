@@ -3,11 +3,15 @@ import 'package:flutter/widgets.dart';
 import '../tokens.dart';
 import '../type.dart';
 
-/// Diagonal chiziqli rasm o'rni.
+/// Rasm o'rni — rasm hali kelmaganda ko'rinadigan yuza.
 ///
-/// Dizayn prototipida hamma rasm shunday ko'rsatilgan va bu ATAYLAB:
-/// rasm hali kelmaganida bo'sh kulrang to'rtburchak "buzilgan" ko'rinadi,
-/// chiziqli yuza esa "bu yerda rasm bo'ladi" deb turadi.
+/// Ilgari bu yerda qiya sariq-qora yo'llar bor edi. Ular "bu yerda
+/// rasm bo'ladi" deb turardi, lekin assotsiatsiyasi noto'g'ri: qurilish
+/// ogohlantirish lentasi. Saytda ham xuddi shu naqsh bor edi va olib
+/// tashlandi — mahsulot kartochkasi uchun eng yaroqsiz fon.
+///
+/// O'rniga tinch oltin nur: yuza baribir "bo'sh emas" deb turadi,
+/// lekin diqqatni o'ziga tortmaydi.
 class MediaSlot extends StatelessWidget {
   const MediaSlot({super.key, this.label, this.radius = R.card});
 
@@ -18,7 +22,11 @@ class MediaSlot extends StatelessWidget {
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: CustomPaint(
-          painter: _StripePainter(),
+          painter: _SlotPainter(
+            C.placeholder,
+            C.placeholderAlt,
+            C.champagne.withValues(alpha: .10),
+          ),
           child: Center(
             child: label == null
                 ? null
@@ -35,21 +43,46 @@ class MediaSlot extends StatelessWidget {
       );
 }
 
-class _StripePainter extends CustomPainter {
+class _SlotPainter extends CustomPainter {
+  _SlotPainter(this.base, this.deep, this.glow);
+
+  /// Ranglar MAVZUGA bog'liq, shuning uchun ular tashqaridan
+  /// beriladi: `shouldRepaint` ularni solishtirib, mavzu almashganda
+  /// yuzani qayta chizadi. Painter ichida `C.…` o'qilsa, eski kadr
+  /// keshda qolib ketardi.
+  final Color base;
+  final Color deep;
+  final Color glow;
+
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = C.placeholder);
-    final p = Paint()
-      ..color = C.placeholderAlt
-      ..strokeWidth = 7;
-    // 45° chiziqlar. Qadam 14 — chiziq va oraliq teng ko'rinadi.
-    for (var x = -size.height; x < size.width; x += 14) {
-      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), p);
-    }
+    final rect = Offset.zero & size;
+    // 1) Asos — yuqoridan pastga sal quyuqlashadigan yuza.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: const Alignment(-0.7, -1),
+          end: const Alignment(0.7, 1),
+          colors: [base, deep],
+        ).createShader(rect),
+    );
+    // 2) Yuqori-o'rtadan tushadigan yumshoq nur.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(0, -0.24),
+          radius: .95,
+          colors: [glow, const Color(0x00000000)],
+          stops: const [0, .72],
+        ).createShader(rect),
+    );
   }
 
   @override
-  bool shouldRepaint(_StripePainter old) => false;
+  bool shouldRepaint(_SlotPainter old) =>
+      old.base != base || old.deep != deep || old.glow != glow;
 }
 
 /// Keshlanadigan rasm.

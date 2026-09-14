@@ -4,6 +4,7 @@ import '../../data/models.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
+import '../../design/components/metal_text.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
@@ -616,9 +617,12 @@ class _Header extends StatelessWidget {
             // OBUNA BO'LGANLARNI beradi, o'zingizniki esa "Story"
             // yorlig'i ichida ko'milib qolardi. Endi u profil rasmi
             // atrofidagi halqada — saytdagi bilan bir xil joyda.
+            // 72 -> 88. Saytda logotip sahifaning asosiy vizual
+            // langari (104 -> 128 px qilingan); ilovada esa u
+            // muqova ostida kichkina bo'lib qolardi.
             Positioned(
               left: S.gutter + S.x4,
-              bottom: -26,
+              bottom: -32,
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
@@ -630,25 +634,38 @@ class _Header extends StatelessWidget {
                         name: name,
                         showLabel: false,
                         avatarUrl: avatar,
-                        size: 72,
+                        size: 88,
                         // Halqa FAQAT haqiqiy istoryada aylanadi.
                         // Egasida istorya bo'lmasa — oddiy "+" .
                         addButton: !hasStory,
                         onTap: onStory,
                       )
-                    : Avatar(url: avatar, name: name, size: 72),
+                    : Avatar(url: avatar, name: name, size: 88),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 34),
+        // Avatar muqovadan 32px pastga chiqadi, ostida esa nafas
+        // kerak — statistika unga yopishib turmasin.
+        const SizedBox(height: 46),
         Padding(
           padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Row(
+                // IKKI NOZIK CHIZIQ ORASIDA — saytdagi `.qp-stats`
+                // bilan bir xil. Ilgari raqamlar hech narsa bilan
+                // ajratilmagan holda osilib turardi.
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: S.x16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: C.hairline),
+                      bottom: BorderSide(color: C.hairline),
+                    ),
+                  ),
+                  child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Obunachi va obuna raqamlari BOSILADI — ro'yxatni
@@ -689,29 +706,30 @@ class _Header extends StatelessWidget {
                       ),
                     _Stat(value: company?.views ?? record?.views ?? 0, label: tr('ko‘rish')),
                   ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(S.gutter, S.x20, S.gutter, 0),
+          padding: const EdgeInsets.fromLTRB(S.gutter, S.x24, S.gutter, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Flexible(
-                    child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: T.profileName),
+                    // Nom — METALL gradient bilan, saytdagidek.
+                    child: MetalText(name, style: T.profileName),
                   ),
                   if (verified) ...[
-                    const SizedBox(width: 6),
+                    const SizedBox(width: S.x8),
                     const VerifiedBadge(),
                   ],
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: S.x12),
               Row(
                 children: [
                   // ID kodi — mahsulotning o'zi, shuning uchun u
@@ -739,11 +757,11 @@ class _Header extends StatelessWidget {
                 ],
               ),
               if (role.isNotEmpty) ...[
-                const SizedBox(height: 5),
-                Text(role, style: T.caption),
+                const SizedBox(height: S.x8),
+                Text(role, style: T.caption.copyWith(fontSize: 12.5)),
               ],
               if (about.isNotEmpty) ...[
-                const SizedBox(height: S.x12),
+                const SizedBox(height: S.x16),
                 // Uch qator — uzun bio amal tugmalarini ekrandan
                 // surib yubormasin.
                 Text(about, style: T.body, maxLines: 3, overflow: TextOverflow.ellipsis),
@@ -751,7 +769,7 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: S.x20),
+        const SizedBox(height: S.x24),
         // AMAL SLOTLARI — ega va mehmon uchun bir xil joyda.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -772,7 +790,7 @@ class _Header extends StatelessWidget {
                   instagram: company?.instagram ?? record?.instagram ?? '',
                 ),
         ),
-        const SizedBox(height: S.x20),
+        const SizedBox(height: S.x24),
       ],
     );
   }
@@ -793,9 +811,11 @@ class _Stat extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(compact(value), style: T.cardTitle.copyWith(fontSize: 16)),
-              const SizedBox(height: 2),
-              Text(label, style: T.caption.copyWith(fontSize: 10.5, color: C.muted)),
+              Text(compact(value), style: T.statValue),
+              const SizedBox(height: 7),
+              // Katta harf — yorliq "ma'lumot" emas, "ko'rsatkich"
+              // bo'lib o'qiladi.
+              Text(label.toUpperCase(), style: T.statLabel),
             ],
           ),
         ),
@@ -929,35 +949,20 @@ class _PublicActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: following
-                    ? SecondaryButton(tr('Obuna bo‘lingan'), height: 48, onTap: busy ? null : onFollow)
-                    : PrimaryButton(tr('Obuna bo‘lish'), loading: busy, onTap: busy ? null : onFollow),
-              ),
-              const SizedBox(width: S.x8),
-              // Ikonkali kvadrat: "Obuna bo'lish" ekrandagi YAGONA
-              // asosiy tugma bo'lib qolishi kerak, shuning uchun
-              // ulashish yozuvsiz.
-              Press(
-                onTap: onShare,
-                child: Container(
-                  width: 48, height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: C.slate,
-                    borderRadius: BorderRadius.circular(R.button),
-                    border: Border.all(color: C.warmHairline),
-                  ),
-                  child: const NIcon(Ico.share, size: 19, color: C.offWhite),
-                ),
-              ),
-            ],
+          // "Obuna bo'lish" — BUTUN kenglikda. Ilgari yonida
+          // ulashish uchun kvadrat tugma turardi va u qatorni ikkiga
+          // bo'lib, asosiy amalni kichraytirardi. Ulashish endi
+          // pastdagi aloqa tangalari qatorida (amalning o'zi
+          // o'zgarmadi — bir xil `onShare`).
+          SizedBox(
+            width: double.infinity,
+            child: following
+                ? SecondaryButton(tr('Obuna bo‘lingan'), height: 52, onTap: busy ? null : onFollow)
+                : PrimaryButton(tr('Obuna bo‘lish'), loading: busy, onTap: busy ? null : onFollow),
           ),
-          SizedBox(height: S.x12),
+          const SizedBox(height: S.x24),
           // TASHQI KONTAKT — ichki messenjer YO'Q.
-          ContactRow(phone: phone, telegram: tg, instagram: instagram),
+          ContactRow(phone: phone, telegram: tg, instagram: instagram, onShare: onShare),
         ],
       );
 }
@@ -1023,16 +1028,27 @@ class _PostGrid extends StatelessWidget {
       // Bo'sh to'rda amal SHU YERDA bo'lishi kerak: ega profilini
       // ochib "bo'sh" yozuvini ko'rsa, keyingi qadam nima ekani
       // ko'rinmasdi va kontent qo'shish yo'li umuman yo'q edi.
-      return EmptyState(
-        // MEHMONGA va EGAGA boshqa izoh: mehmon hech narsa qila
-        // olmaydi, egaga esa keyingi qadam aytiladi.
-        onAdd == null
-            ? (emptyHint ?? tr('Bu profilda hali post joylanmagan.'))
-            : tr('Birinchisini joylang — profilingiz shu bilan jonlanadi.'),
-        title: empty ?? tr('Hali post yo‘q'),
-        icon: emptyIcon,
-        actionLabel: onAdd == null ? null : (addLabel ?? tr('Post qo‘shish')),
-        onAction: onAdd,
+      // SURILADIGAN O'RAM — bo'sh holat balandligi TAB MAYDONIGA
+      // bog'liq emas.
+      //
+      // Bu qat'iy balandlikdagi maydon: sarlavha qancha baland
+      // bo'lsa, tabga shuncha kam joy qoladi. Sarlavha
+      // kattalashtirilgach (avatar 72 -> 88, masofalar kengaydi)
+      // bo'sh holat 51 piksel chetdan chiqib ketdi — testlar aynan
+      // shuni ushladi. Endi u sig'masa suriladi va hech qachon
+      // kesilmaydi.
+      return SingleChildScrollView(
+        child: EmptyState(
+          // MEHMONGA va EGAGA boshqa izoh: mehmon hech narsa qila
+          // olmaydi, egaga esa keyingi qadam aytiladi.
+          onAdd == null
+              ? (emptyHint ?? tr('Bu profilda hali post joylanmagan.'))
+              : tr('Birinchisini joylang — profilingiz shu bilan jonlanadi.'),
+          title: empty ?? tr('Hali post yo‘q'),
+          icon: emptyIcon,
+          actionLabel: onAdd == null ? null : (addLabel ?? tr('Post qo‘shish')),
+          onAction: onAdd,
+        ),
       );
     }
     return GridView.builder(

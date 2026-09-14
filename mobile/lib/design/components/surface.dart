@@ -147,7 +147,11 @@ class StatusChip extends StatelessWidget {
       );
 }
 
-/// Tasdiqlangan nishon — PLATINA, champagne emas.
+/// Tasdiqlangan nishon — METALL OLTIN tanga.
+///
+/// Ilgari u tekis platina (sovuq kulrang) edi. Sabab shu ediki, nom
+/// ham oq-kulrang bo'lgan; endi nom metall oltin va yonidagi sovuq
+/// kulrang doira begona ko'rinardi. Saytdagi ✓ ham oltin.
 ///
 /// Holati HAR DOIM backend'dan keladi. Bu widget'ni "shunchaki
 /// chiroyli bo'lsin" deb qo'shmang: handoff buni alohida taqiqlaydi.
@@ -166,7 +170,14 @@ class _VerifiedPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final r = size.width / 2;
-    canvas.drawCircle(Offset(r, r), r, Paint()..color = C.platinum);
+    // METALL TANGA — ilgari tekis `C.platinum` (sovuq kulrang) edi va
+    // oltin nom yonida begona ko'rinardi. Endi u ham metall: sayt
+    // versiyasidagi oltin ✓ bilan bir xil.
+    canvas.drawCircle(
+      Offset(r, r),
+      r,
+      Paint()..shader = C.metalCoin.createShader(Offset.zero & size),
+    );
     final p = Paint()
       ..color = C.obsidian
       ..style = PaintingStyle.stroke
