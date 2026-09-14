@@ -1027,11 +1027,19 @@ function UsersTab() {
     setModBusy(u.id);
     try { await run(async () => { await adminApi(`/users/${u.id}/unsuspend`, { method: 'POST' }); await load(); }); } finally { setModBusy(null); }
   };
-  // Backend soft-delete qiladi: yozuv `deleted_at` bilan saqlanadi, sessiyalar yopiladi.
+  // Backend soft-delete qiladi: yozuv `deleted_at` bilan saqlanadi,
+  // sessiyalar yopiladi. Qator ataylab qoladi — buyurtma va to'lov
+  // tarixi shu id ga bog'langan.
+  //
+  // MATN NIMA UCHUN SHUNDAY BATAFSIL: ilgari bu yerda faqat "kira
+  // olmaydi" deb yozilgandi va admin o'chirgach profil saytda ham,
+  // ilovada ham turaverishi kutilmagan bo'lardi (endi ko'rinmaydi —
+  // izohi `hosting/worker.js` dagi `ownerAliveSql` tepasida). Kod
+  // bo'shashi uchun esa profilni alohida o'chirish kerak.
   const deleteUser = async (u) => {
     const ok = await confirm({
       title: t("Foydalanuvchini o'chirish"),
-      message: t("{email} akkaunti o'chirilgan deb belgilanadi: foydalanuvchi kira olmaydi, barcha sessiyalari yopiladi. Ma'lumotlar bazada saqlanib qoladi (soft-delete) va bu amalni panel orqali qaytarib bo'lmaydi.", { email: u.email }),
+      message: t("{email} akkaunti o'chirilgan deb belgilanadi: foydalanuvchi kira olmaydi va barcha sessiyalari yopiladi. Uning profillari, postlari va storylari saytda ham, ilovada ham ko'rinmay qoladi — katalog, qidiruv va Reels'dan chiqib ketadi. Ma'lumotlar bazada qoladi (buyurtma va to'lov tarixi uchun). Kodni butunlay bo'shatish kerak bo'lsa, profilni alohida o'chiring.", { email: u.email }),
       confirmLabel: t("O'chirish"),
       danger: true,
     });

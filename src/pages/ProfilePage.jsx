@@ -15,7 +15,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { readFollowAs, rememberFollowAs } from '../lib/followIdentity.js';
 import ShareButton from '../components/ShareButton.jsx';
-import ReportButton from '../components/ReportButton.jsx';
+import ContentMenuButton from '../components/ContentMenu.jsx';
 import ProfileManifest from '../components/ProfileManifest.jsx';
 import CardNumberModal from '../components/CardNumberModal.jsx';
 import ProfileTabs from '../components/ProfileTabs.jsx';
@@ -1705,11 +1705,11 @@ export default function ProfilePage({ code, catalog, initialTab }) {
             text={t('Mening raqamli tashrif qog‘ozim')}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"
           />
-          {/* SHIKOYAT — ochiq profilda har qanday tashrifchi uchun.
-              Kirish shart emas: profilni ko'rayotganlarning ko'pi
-              ro'yxatdan o'tmagan va ularni majburlash shikoyatlar
-              sonini nolga tushirardi. */}
-          <ReportButton
+          {/* "⋯" — ichida shikoyat. Ochiq profilda har qanday
+              tashrifchi uchun; kirish shart emas, chunki profilni
+              ko'rayotganlarning ko'pi ro'yxatdan o'tmagan va ularni
+              majburlash shikoyatlar sonini nolga tushirardi. */}
+          <ContentMenuButton
             targetKind="record"
             targetId={record.code}
             className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[color:var(--vz-ink-faint)] hover:text-[color:var(--vz-ink-dim)]"

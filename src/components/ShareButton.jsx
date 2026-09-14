@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import AnchoredMenu, { anchorTo } from './AnchoredMenu.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { shareLink, canSystemShare, shareTargets } from '../lib/share.js';
 import { IconShare, IconCheck, IconLink, IconCopy, IconTelegram, IconWhatsApp, IconFacebook, IconX } from './Icons.jsx';
@@ -41,29 +41,9 @@ export default function ShareButton({ url, title, text, label, forceCopy = false
   const timerRef = useRef(null);
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  // Menyu ochiq bo'lganda: tashqariga bosish, Escape, sahifa siljishi —
-  // hammasi uni yopadi. Aks holda menyu tugmadan "uzilib" qolardi
-  // (u sahifaga emas, ekranga nisbatan joylashtirilgan).
-  useEffect(() => {
-    if (!menu) return undefined;
-    const close = () => setMenu(null);
-    const onKey = (e) => { if (e.key === 'Escape') close(); };
-    window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
-    window.addEventListener('keydown', onKey);
-    // Bosishni "capture" bosqichida emas, oddiy bosqichda kutamiz —
-    // menyu ichidagi bosish o'z ishini bajarib bo'lgach yopiladi.
-    const onDown = (e) => { if (!e.target.closest?.('[data-share-menu]')) close(); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('touchstart', onDown);
-    return () => {
-      window.removeEventListener('scroll', close, true);
-      window.removeEventListener('resize', close);
-      window.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('touchstart', onDown);
-    };
-  }, [menu]);
+  // Menyuni ochish/yopish va joylashtirish — `AnchoredMenu` da
+  // (u kontent menyusi bilan umumiy).
+  const closeMenu = useCallback(() => setMenu(null), []);
 
   const flash = (ok) => {
     setDone(ok);
@@ -89,16 +69,7 @@ export default function ShareButton({ url, title, text, label, forceCopy = false
       return;
     }
     if (menu) { setMenu(null); return; }
-    // Menyu ekranga nisbatan joylashtiriladi va `document.body` ga
-    // chiziladi: karta ichidagi `overflow: hidden` uni kesib
-    // tashlamasin.
-    const r = btnRef.current?.getBoundingClientRect();
-    if (!r) return;
-    const width = 236;
-    const left = Math.min(Math.max(8, r.left), window.innerWidth - width - 8);
-    // Pastda joy bo'lmasa — tugmaning tepasidan ochiladi.
-    const below = window.innerHeight - r.bottom;
-    setMenu({ left, top: below > 260 ? r.bottom + 8 : Math.max(8, r.top - 268), width });
+    setMenu(anchorTo(btnRef.current, { width: 236, height: 260 }));
   };
 
   const caption = done ? t('Nusxalandi!') : failed ? t('Nusxalab bo‘lmadi') : label;
@@ -120,46 +91,34 @@ export default function ShareButton({ url, title, text, label, forceCopy = false
         {caption && <span>{caption}</span>}
       </button>
 
-      {menu && createPortal(
-        <div
-          data-share-menu
-          role="menu"
-          style={{
-            position: 'fixed', top: menu.top, left: menu.left, width: menu.width, zIndex: 9999,
-            background: 'var(--vz-card-2, #1e1810)', border: '1px solid var(--vz-line, #2d2518)',
-            borderRadius: 'var(--vz-radius, 14px)', boxShadow: 'var(--vz-shadow, 0 12px 30px -16px rgba(0,0,0,.7))',
-            padding: 6, color: 'var(--vz-ink, #f6efe0)',
-          }}
+      <AnchoredMenu at={menu} onClose={closeMenu}>
+        {targets.map((s) => {
+          const Icon = NET_ICON[s.id];
+          return (
+            <a
+              key={s.id}
+              role="menuitem"
+              href={s.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMenu(null)}
+              className="flex min-h-11 items-center gap-2.5 whitespace-nowrap rounded-[10px] px-3 text-[14px] font-semibold no-underline hover:bg-white/5"
+              style={{ color: 'inherit' }}
+            >
+              <Icon /> {s.name}
+            </a>
+          );
+        })}
+        <button
+          type="button"
+          role="menuitem"
+          onClick={copy}
+          className="flex min-h-11 w-full items-center gap-2.5 whitespace-nowrap rounded-[10px] px-3 text-left text-[14px] font-semibold hover:bg-white/5"
+          style={{ color: 'inherit' }}
         >
-          {targets.map((s) => {
-            const Icon = NET_ICON[s.id];
-            return (
-              <a
-                key={s.id}
-                role="menuitem"
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMenu(null)}
-                className="flex min-h-11 items-center gap-2.5 whitespace-nowrap rounded-[10px] px-3 text-[14px] font-semibold no-underline hover:bg-white/5"
-                style={{ color: 'inherit' }}
-              >
-                <Icon /> {s.name}
-              </a>
-            );
-          })}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={copy}
-            className="flex min-h-11 w-full items-center gap-2.5 whitespace-nowrap rounded-[10px] px-3 text-left text-[14px] font-semibold hover:bg-white/5"
-            style={{ color: 'inherit' }}
-          >
-            <IconCopy width={16} height={16} /> {t('Havolani nusxalash')}
-          </button>
-        </div>,
-        document.body,
-      )}
+          <IconCopy width={16} height={16} /> {t('Havolani nusxalash')}
+        </button>
+      </AnchoredMenu>
     </>
   );
 }

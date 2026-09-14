@@ -860,7 +860,8 @@ async function publicContentApi(request, env, url) {
     const q = shortText(url.searchParams.get('q'), 80).toLowerCase();
     if (!q) return json({ results: [] });
     const like = `%${q}%`;
-    const rows = await env.DB.prepare(`SELECT * FROM cards WHERE profile_type = 'business' AND hidden_from_directory = 0 AND
+    const rows = await env.DB.prepare(`SELECT * FROM cards WHERE profile_type = 'business' AND hidden_from_directory = 0
+      AND ${ownerAliveSql('cards')} AND
       (LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(role,'')) LIKE ? OR LOWER(COALESCE(city,'')) LIKE ?)
       ORDER BY verified DESC, ts DESC LIMIT 30`).bind(like, like, like, like).all();
     return json({
@@ -1031,7 +1032,9 @@ async function companyApi(request, env, url) {
   if (path === '/api/companies' && request.method === 'GET') {
     const rows = await env.DB.prepare(
       `SELECT company_id, display_name, logo_url, cover_url, category, subcategory, city, created_at
-         FROM companies WHERE status = 'active' ORDER BY created_at DESC LIMIT 200`
+         FROM companies
+        WHERE status = 'active' AND ${companyOwnerAliveSql('companies')}
+        ORDER BY created_at DESC LIMIT 200`
     ).all();
     return json({
       companies: (rows.results || []).map((r) => ({
@@ -1116,6 +1119,8 @@ async function companyApi(request, env, url) {
     const viewer = await getCurrentUser(request, env).catch(() => null);
     const company = await companyWithItems(env, id, viewer ? viewer.id : null);
     if (!company) return json({ error: 'not_found' }, 404);
+    // Egasi o'chirilgan kompaniya ham ommaga chiqmaydi.
+    if (await ownerDeletedD1(env, company.ownerUserId)) return json({ error: 'not_found' }, 404);
     if (company.status !== 'active') {
       const auth = await upstreamUser(request, env);
       if (!auth || String(auth.user.id) !== String(company.ownerUserId)) return json({ error: 'not_active' }, 404);
@@ -1201,6 +1206,17 @@ async function companyApi(request, env, url) {
 
   // Postlar va istorya — OCHIQ o'qiladi (sahifa mehmonlarga ham
   // ko'rinadi), shuning uchun egalik tekshiruvidan OLDIN.
+  //
+  // Egasi o'chirilgan bo'lsa ikkalasi ham bo'sh qaytadi: sahifaning
+  // o'zi 404 bo'ladi, lekin bu yo'llar to'g'ridan-to'g'ri ham
+  // so'raladi (ilova tablarni alohida yuklaydi).
+  if ((action === 'posts' || action === 'stories') && !itemId && request.method === 'GET') {
+    const co = await env.DB.prepare(`SELECT owner_user_id FROM companies WHERE company_id = ?`)
+      .bind(id).first().catch(() => null);
+    if (co && await ownerDeletedD1(env, co.owner_user_id)) {
+      return json(action === 'posts' ? { posts: [] } : { stories: [] });
+    }
+  }
   if (action === 'posts' && !itemId && request.method === 'GET') {
     const rows = await env.DB.prepare(
       `SELECT id, image_url, video_url, caption, created_at FROM company_posts WHERE company_id = ? ORDER BY created_at DESC LIMIT 60`
@@ -3157,6 +3173,53 @@ function catalogVisibleSql(alias) {
       AND NOT EXISTS (SELECT 1 FROM auctions a2 WHERE a2.code = ${a}.code)
     )
   )`;
+}
+
+// ── EGASI O'CHIRILGAN PROFIL OMMAGA CHIQMAYDI ────────────────────────
+//
+// Admin paneldagi "foydalanuvchini o'chirish" — YUMSHOQ o'chirish:
+// `users.deleted_at` ga vaqt yoziladi va sessiyalari yopiladi
+// (`hosting/api/admin-extra.js`). Qatorning o'zi ataylab qoladi —
+// buyurtma, to'lov va hisobot tarixi shu `id` ga bog'langan va uni
+// yo'qotib bo'lmaydi.
+//
+// LEKIN ommaviy so'rovlarning BIRORTASI ham bu belgini tekshirmasdi.
+// Profil sahifasi, reels lentasi, katalog, qidiruv, biznes katalogi,
+// obunachilar ro'yxati — hammasi faqat `cards` bilan ishlardi, karta
+// qatori esa joyida qolardi. Natijada "o'chirilgan" hisobning profili
+// ham, storysi ham, posti ham ko'rinaverardi. Egasi buni uch marta
+// xabar qildi: "admin paneldan o'chirdim, baribir Reels'da turibdi".
+//
+// NIMA UCHUN FILTR, NIMA UCHUN KARTANI DARHOL O'CHIRISH EMAS:
+// yumshoq o'chirishni qaytarish mumkin bo'lishi kerak, filtr esa
+// qaytariladi — `deleted_at` tozalansa profil o'z joyiga qaytadi.
+// Kontentni butunlay yo'q qilish va kodni sotuvga qaytarish uchun
+// alohida, ataylab bosiladigan tugma bor: admin → "Profilni
+// o'chirish" (`DELETE /api/admin/records/:code`).
+//
+// `NOT EXISTS` ataylab, `JOIN` emas: egasi yo'q karta (hali
+// sotilmagan kod, `user_id IS NULL`) ko'rinishda QOLISHI kerak, JOIN
+// esa uni jimgina yo'qotardi.
+function ownerAliveSql(alias) {
+  return `NOT EXISTS (SELECT 1 FROM users du WHERE du.id = ${alias}.user_id AND du.deleted_at IS NOT NULL)`;
+}
+
+// Kompaniya uchun ayni shu qoida. `owner_user_id` ba'zi eski
+// qatorlarda son, ba'zilarida matn (Postgres migratsiyasidan qolgan —
+// izohi `ownedActiveCompanyD1` tepasida), shuning uchun solishtirish
+// matnga keltirilgan holda: affinity qoidalariga tayanib bo'lmaydi.
+function companyOwnerAliveSql(alias) {
+  return `NOT EXISTS (SELECT 1 FROM users du WHERE CAST(du.id AS TEXT) = CAST(${alias}.owner_user_id AS TEXT) AND du.deleted_at IS NOT NULL)`;
+}
+
+// Bitta profil uchun — ro'yxat emas, alohida tekshiruv.
+// `null`/bo'sh egasi — o'chirilgan emas (egasiz karta).
+async function ownerDeletedD1(env, userId) {
+  if (userId === null || userId === undefined || userId === '') return false;
+  const row = await env.DB.prepare(
+    `SELECT 1 AS x FROM users WHERE CAST(id AS TEXT) = CAST(? AS TEXT) AND deleted_at IS NOT NULL`
+  ).bind(String(userId)).first().catch(() => null);
+  return !!row;
 }
 
 // ── AUKSIONDA SOTILGAN ID'NING YAKUNIY (G'OLIB) NARXI ────────────────────
@@ -5206,6 +5269,7 @@ async function recordsApi(request, env, url) {
       `SELECT ${recordColumnsD1()},
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = cards.code AND g.status = 'activated') AS is_gift
          FROM cards WHERE hidden_from_directory = 0 AND ${catalogVisibleSql('cards')}
+           AND ${ownerAliveSql('cards')}
          ORDER BY ts DESC LIMIT 500`
     ).all();
     const finals = await auctionFinalPricesD1(env);
@@ -5225,7 +5289,8 @@ async function recordsApi(request, env, url) {
               c.profile_type, c.city, c.category_slug, c.verified, c.tier_override,
               EXISTS(SELECT 1 FROM nfc_gifts g WHERE g.code = c.code AND g.status = 'activated') AS is_gift
        FROM cards c LEFT JOIN users u ON u.id = c.user_id
-       WHERE c.hidden_from_directory = 0 AND ${catalogVisibleSql('c')} AND (
+       WHERE c.hidden_from_directory = 0 AND ${catalogVisibleSql('c')}
+         AND ${ownerAliveSql('c')} AND (
          LOWER(c.code) LIKE ? OR LOWER(c.name) LIKE ? OR LOWER(COALESCE(c.role,'')) LIKE ? OR
          LOWER(COALESCE(c.city,'')) LIKE ? OR LOWER(COALESCE(c.email,'')) LIKE ? OR
          LOWER(COALESCE(c.phone,'')) LIKE ? OR LOWER(COALESCE(c.tg,'')) LIKE ? OR
@@ -5332,6 +5397,10 @@ async function recordsApi(request, env, url) {
     }
 
     if (action === 'posts' && request.method === 'GET') {
+      // Egasi o'chirilgan profilning kontenti chiqmaydi — profil
+      // sahifasi 404 bo'lgani bilan bu yo'l TO'G'RIDAN-TO'G'RI ham
+      // so'raladi (ilova tablarni alohida yuklaydi).
+      if (await ownerDeletedD1(env, await getRecordOwner(env, code))) return json({ posts: [] });
       const user = await getCurrentUser(request, env);
       return json({ posts: await listPostsD1(env, code, user ? user.id : null) });
     }
@@ -5374,6 +5443,7 @@ async function recordsApi(request, env, url) {
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
     if (action === 'stories' && request.method === 'GET') {
+      if (await ownerDeletedD1(env, await getRecordOwner(env, code))) return json({ stories: [] });
       const viewer = await getCurrentUser(request, env).catch(() => null);
       return json({ stories: await listStoriesD1(env, 'card', code, viewer ? viewer.id : null) });
     }
@@ -5414,6 +5484,13 @@ async function recordsApi(request, env, url) {
     if (request.method === 'GET') {
       const rec = await getRecord(env, code);
       if (!rec) return json({ error: 'not_found' }, 404);
+      // Egasi o'chirilgan bo'lsa — profil yo'q hisoblanadi (izohi
+      // `ownerAliveSql` tepasida). `getRecord` ning O'ZI o'zgartirilmaydi:
+      // u buyurtma va to'lov oqimlarida ham ishlatiladi va u yerda
+      // kartani "yo'q" deb ko'rsatish to'lovni buzardi.
+      if (await ownerDeletedD1(env, await getRecordOwner(env, code))) {
+        return json({ error: 'not_found' }, 404);
+      }
       // Biriktirilgan kompaniya — nomi va logotipi bilan. Kompaniya
       // keyin to'xtatilgan bo'lsa `company` bo'sh qoladi va profilda
       // blok umuman chizilmaydi (o'lik havola qolmasin).
@@ -5900,15 +5977,19 @@ async function profileManifestApi(request, env, url) {
   if (kind === 'c') {
     const id = companyId(raw);
     if (!id) return json({ error: 'not_found' }, 404);
-    const row = await env.DB.prepare(`SELECT display_name FROM companies WHERE company_id = ? AND status = 'active'`)
-      .bind(id).first().catch(() => null);
+    const row = await env.DB.prepare(
+      `SELECT display_name FROM companies
+        WHERE company_id = ? AND status = 'active' AND ${companyOwnerAliveSql('companies')}`
+    ).bind(id).first().catch(() => null);
     if (!row) return json({ error: 'not_found' }, 404);
     path = `/c/${id.toLowerCase()}`;
     name = row.display_name || id;
   } else {
     const code = String(raw || '').toUpperCase();
     if (!validCode(code)) return json({ error: 'not_found' }, 404);
-    const row = await env.DB.prepare(`SELECT name FROM cards WHERE code = ?`).bind(code).first().catch(() => null);
+    const row = await env.DB.prepare(
+      `SELECT name FROM cards WHERE code = ? AND ${ownerAliveSql('cards')}`
+    ).bind(code).first().catch(() => null);
     if (!row) return json({ error: 'not_found' }, 404);
     path = `/${code.toLowerCase()}`;
     name = row.name || code;
@@ -7042,7 +7123,8 @@ async function companyDomainShellResponse(env, request, url) {
     row = await env.DB.prepare(
       `SELECT company_id, display_name, description, logo_url, cover_url
          FROM companies
-        WHERE LOWER(custom_domain) = ? AND custom_domain_status = 'active' AND status = 'active'`
+        WHERE LOWER(custom_domain) = ? AND custom_domain_status = 'active' AND status = 'active'
+          AND ${companyOwnerAliveSql('companies')}`
     ).bind(host).first();
   } catch (error) {
     console.error('company domain', host, error?.message);
@@ -8302,6 +8384,7 @@ async function followListRows(env, ownerId, dir) {
       FROM follows fw
       JOIN users u ON u.id = ${joinCol}
       JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      AND u.deleted_at IS NULL
       WHERE ${whereCol} = ?
     )
     SELECT r.code, r.name, r.avatar_url, r.verified, r.as_company_id,
@@ -8337,6 +8420,7 @@ async function companyFollowerRows(env, companyId) {
       FROM company_follows cf
       JOIN users u ON u.id = cf.user_id
       JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      AND u.deleted_at IS NULL
       WHERE cf.company_id = ?
     )
     SELECT code, name, avatar_url, verified FROM ranked
@@ -8374,6 +8458,7 @@ async function likeListRowsD1(env, code) {
       FROM card_likes l
       JOIN users u ON u.id = l.user_id
       JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      AND u.deleted_at IS NULL
       WHERE l.code = ?
     )
     SELECT r.code, r.name, r.avatar_url, r.verified, r.as_company_id,
@@ -8531,6 +8616,7 @@ async function storiesApi(request, env, url) {
          FROM stories s
          JOIN cards c ON c.code = s.owner_id
         WHERE s.owner_kind = 'card' AND s.expires_at > ?
+          AND ${ownerAliveSql('c')}
           AND c.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
         ORDER BY s.created_at
         LIMIT 200`
@@ -8681,13 +8767,14 @@ async function feedApi(request, env, url) {
                EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
           FROM posts p JOIN cards c ON c.code = p.code
          WHERE COALESCE(c.hidden_from_directory, 0) = 0
+           AND ${ownerAliveSql('c')}
         UNION ALL
         SELECT 'post', cp.id, cp.company_id, 'company',
                co.display_name, co.logo_url,
                cp.image_url, cp.video_url, cp.caption, cp.created_at,
                0, 0
           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
-         WHERE co.status = 'active'
+         WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'card',
                c.name, c.avatar_url,
@@ -8697,6 +8784,7 @@ async function feedApi(request, env, url) {
           FROM stories s JOIN cards c ON c.code = s.owner_id
          WHERE s.owner_kind = 'card' AND s.expires_at > ?
            AND COALESCE(c.hidden_from_directory, 0) = 0
+           AND ${ownerAliveSql('c')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'company',
                co.display_name, co.logo_url,
@@ -8704,7 +8792,7 @@ async function feedApi(request, env, url) {
                0, 0
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
-           AND co.status = 'active'
+           AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
      )
      ORDER BY created_at DESC, id DESC
      LIMIT ? OFFSET ?`

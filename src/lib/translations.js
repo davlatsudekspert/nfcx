@@ -2852,6 +2852,9 @@ const DICT_HOME = {
   'Kartaning orqa tomonida, NFCSTORE yozuvi tepasida turadi. Joyini kartadan sudrab o‘zgartiring. Harfning o‘zi o‘zgarmaydi va belgini o‘chirib bo‘lmaydi.': {
     ru: 'Находится на обратной стороне карты, над надписью NFCSTORE. Перетащите его прямо на карте. Сама буква не меняется, и знак нельзя убрать.',
     en: 'It sits on the back of the card, above the NFCSTORE text. Drag it on the card to move it. The letter itself cannot be changed and the mark cannot be removed.' },
+  // "⋯" tugmasining nomi — ekranda ko'rinmaydi, faqat
+  // `aria-label` va sichqoncha ostidagi izohda.
+  'Yana': { ru: 'Ещё', en: 'More' },
   'Shikoyat qilish':
     { ru: 'Пожаловаться', en: 'Report' },
   'Shikoyat yuborildi':
