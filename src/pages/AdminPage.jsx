@@ -280,7 +280,7 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik'];
+const TABS = ['Umumiy', 'Statistika', 'Foydalanuvchilar', "Buyurtmalar", "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Bildirishnomalar', 'Tashqi analitika', 'Security', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash', 'Talab', 'Moliya', 'Kompaniyalar', 'Trafik', 'Shikoyatlar'];
 
 function StatsTab() {
   const { t } = useLanguage();
@@ -439,6 +439,142 @@ const SIGNUP_SRC = { web: 'Sayt', android: 'Android ilova', ios: 'iOS ilova', ap
 // bir-biridan farq qilishi SHART, aks holda grafik o'qilmaydi.
 const C_OPENS = '#b08736';     // ochilishlar — oltin
 const C_VISITORS = '#4a90c4';  // noyob tashrifchilar — ko'k
+
+
+// SHIKOYATLAR NAVBATI.
+//
+// Ilovadan va saytdan kelgan shikoyatlar shu yerda ko'riladi.
+// Ularsiz mexanizm yarim edi: odam shikoyat yuborardi, lekin uni
+// ko'rib chiqadigan joy yo'q edi va Telegram xabari o'qilmay
+// ko'milib ketishi mumkin.
+const REPORT_REASON_LABEL = {
+  porn: 'Pornografik',
+  religious: 'Diniy / ekstremistik',
+  political: 'Siyosiy targ‘ibot',
+  violence: 'Zo‘ravonlik',
+  insult: 'Haqorat',
+  spam: 'Spam',
+  illegal: 'Qonunga zid',
+  copyright: 'Mualliflik huquqi',
+  other: 'Boshqa',
+};
+
+const REPORT_STATUS_LABEL = {
+  new: 'Yangi',
+  reviewing: 'Ko‘rilmoqda',
+  resolved: 'Hal qilindi',
+  rejected: 'Rad etildi',
+};
+
+function ReportsTab() {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const [status, setStatus] = useState('new');
+  const [busy, setBusy] = useState(0);
+
+  const load = (s = status) => {
+    setErr(null); setRows(null);
+    adminApi(`/reports?status=${encodeURIComponent(s)}&limit=200`)
+      .then((d) => setRows(d.reports || []))
+      .catch((e) => setErr(e));
+  };
+  useEffect(() => { load(status); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status]);
+
+  const setRowStatus = async (id, next) => {
+    setBusy(id);
+    try {
+      await adminApi(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify({ status: next }) });
+      // Ro'yxatdan olib tashlaymiz: joriy filtrga endi tushmaydi.
+      setRows((list) => (list || []).filter((r) => r.id !== id));
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(0);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {Object.entries(REPORT_STATUS_LABEL).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStatus(key)}
+            className={`btn btn-xs min-h-9 ${status === key ? 'btn-gold' : 'btn-outline'}`}
+          >
+            {t(label)}
+          </button>
+        ))}
+      </div>
+
+      {/* Panelning qolgan bo'limlari bilan BIR XIL komponentlar —
+          o'z xato/yuklanish ko'rinishimni yasash boshqacha
+          ko'rinardi. */}
+      {err && <LoadError err={err} onRetry={() => load(status)} title={t("Shikoyatlarni yuklab bo'lmadi.")} />}
+      {!err && rows === null && <AdminLoading />}
+      {!err && rows !== null && rows.length === 0 && (
+        <EmptyState icon="shield" title={t('Bu holatda shikoyat yo‘q.')} />
+      )}
+
+      {!err && rows !== null && rows.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="table table-sm">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>{t('Sana')}</th>
+                <th>{t('Nishon')}</th>
+                <th>{t('Sabab')}</th>
+                <th>{t('Izoh')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="font-mono text-xs">{r.id}</td>
+                  <td className="whitespace-nowrap text-xs">{String(r.createdAt || '').slice(0, 16)}</td>
+                  <td className="text-xs">
+                    <span className="font-mono">{r.targetKind}</span>
+                    {' · '}
+                    <span className="font-mono font-bold">{r.targetId}</span>
+                    {r.ownerCode ? <div className="opacity-60">{r.ownerCode}</div> : null}
+                  </td>
+                  <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
+                  <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>
+                  <td className="whitespace-nowrap">
+                    {r.status !== 'resolved' && (
+                      <button
+                        type="button"
+                        disabled={busy === r.id}
+                        onClick={() => setRowStatus(r.id, 'resolved')}
+                        className="btn btn-success btn-xs min-h-9"
+                      >
+                        {t('Hal qilindi')}
+                      </button>
+                    )}
+                    {r.status !== 'rejected' && (
+                      <button
+                        type="button"
+                        disabled={busy === r.id}
+                        onClick={() => setRowStatus(r.id, 'rejected')}
+                        className="btn btn-ghost btn-xs ml-1 min-h-9"
+                      >
+                        {t('Rad etish')}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TrafficTab() {
   const { t } = useLanguage();
@@ -4264,6 +4400,7 @@ const ADMIN_NAV = [
   { index: 0, label: 'Umumiy', icon: 'dashboard' },
   { index: 1, label: 'Statistika', icon: 'chart' },
   { index: 20, label: 'Trafik', icon: 'activity' },
+  { index: 21, label: 'Shikoyatlar', icon: 'shield' },
   { index: 2, label: 'Foydalanuvchilar', icon: 'users' },
   { index: 19, label: 'Kompaniyalar', icon: 'building' },
   { index: 3, label: 'Buyurtmalar', icon: 'bag' },
@@ -4339,6 +4476,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
         {tab === 18 && (isSuperAdmin ? <FinanceTab /> : <ForbiddenState />)}
         {tab === 19 && <CompaniesTab />}
         {tab === 20 && <TrafficTab />}
+        {tab === 21 && <ReportsTab />}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

@@ -25,6 +25,7 @@ class FollowListScreen extends StatefulWidget {
     required this.code,
     required this.title,
     this.startWithFollowing = false,
+    this.isCompany = false,
   });
 
   final String code;
@@ -32,6 +33,13 @@ class FollowListScreen extends StatefulWidget {
 
   /// `true` — "Obunalar" tabidan boshlanadi (odam shu raqamni bosgan).
   final bool startWithFollowing;
+
+  /// KOMPANIYADA "OBUNALAR" TABI YO'Q.
+  ///
+  /// Kompaniya hech kimga obuna bo'lolmaydi — faqat odam
+  /// kompaniyaga obuna bo'ladi. Tab ko'rsatilsa, u DOIM bo'sh
+  /// bo'lardi va odam "nega hech kim yo'q" deb o'ylardi.
+  final bool isCompany;
 
   @override
   State<FollowListScreen> createState() => _FollowListScreenState();
@@ -42,10 +50,12 @@ class _FollowListScreenState extends State<FollowListScreen> {
   final _errors = <bool, Object?>{};
   final _loading = <bool>{};
 
+  bool get _twoTabs => !widget.isCompany;
+
   @override
   void initState() {
     super.initState();
-    _load(widget.startWithFollowing);
+    _load(_twoTabs && widget.startWithFollowing);
   }
 
   /// Har tab O'Z ma'lumotini birinchi ochilganda yuklaydi va keyin
@@ -78,8 +88,8 @@ class _FollowListScreenState extends State<FollowListScreen> {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 2,
-        initialIndex: widget.startWithFollowing ? 1 : 0,
+        length: _twoTabs ? 2 : 1,
+        initialIndex: _twoTabs && widget.startWithFollowing ? 1 : 0,
         child: Scaffold(
           backgroundColor: C.obsidian,
           body: SafeArea(
@@ -87,7 +97,8 @@ class _FollowListScreenState extends State<FollowListScreen> {
             child: Column(
               children: [
                 TopBar(title: widget.title, subtitle: widget.code),
-                TabBar(
+                if (_twoTabs)
+                  TabBar(
                   indicatorColor: C.champagne,
                   indicatorWeight: 2,
                   dividerColor: C.hairline,
@@ -100,10 +111,15 @@ class _FollowListScreenState extends State<FollowListScreen> {
                     Tab(height: 42, text: 'OBUNACHILAR'),
                     Tab(height: 42, text: 'OBUNALAR'),
                   ],
-                ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, S.x4),
+                    child: Eyebrow(tr('Obunachilar')),
+                  ),
                 Expanded(
                   child: TabBarView(
-                    children: [_tab(false), _tab(true)],
+                    children: _twoTabs ? [_tab(false), _tab(true)] : [_tab(false)],
                   ),
                 ),
               ],

@@ -35,6 +35,13 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
   final _toCode = TextEditingController();
   Record? _recipient;
   bool _looking = false;
+
+  /// Qidiruv natijasi haqida izoh — "topilmadi" yoki tarmoq xatosi.
+  ///
+  /// Ilgari qidiruv xatosi JIMGINA yutilardi: odam kod yozardi,
+  /// ekranda hech narsa chiqmasdi va u "yuborish" ni bosgunicha
+  /// qabul qiluvchi bor-yo'qligini bilmasdi.
+  String? _lookupNote;
   bool _busy = false;
   bool _sent = false;
   String? _error;
@@ -50,15 +57,33 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
   Future<void> _lookup(String v) async {
     final code = v.trim().toUpperCase();
     if (code.length < 5) {
-      setState(() => _recipient = null);
+      setState(() {
+        _recipient = null;
+        _lookupNote = null;
+      });
       return;
     }
-    setState(() => _looking = true);
+    setState(() {
+      _looking = true;
+      _lookupNote = null;
+    });
     try {
       final r = await AppScope.read(context).repo.record(code);
-      if (mounted) setState(() => _recipient = r);
-    } catch (_) {
-      if (mounted) setState(() => _recipient = null);
+      if (mounted) {
+        setState(() {
+          _recipient = r;
+          _lookupNote = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _recipient = null;
+          _lookupNote = e is ApiError && e.key == 'not_found'
+              ? tr('Bunday ID topilmadi.')
+              : humanError(e);
+        });
+      }
     } finally {
       if (mounted) setState(() => _looking = false);
     }
@@ -171,6 +196,10 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
                         Text(tr('Qidirilmoqda…'), style: T.caption),
                       ],
                     ),
+                  ] else if (_lookupNote != null) ...[
+                    const SizedBox(height: S.x12),
+                    Text(_lookupNote!,
+                        style: T.caption.copyWith(fontSize: 11.5, color: C.signal)),
                   ] else if (_recipient != null) ...[
                     const SizedBox(height: S.x12),
                     Surface(

@@ -12,6 +12,7 @@ enum Ico {
   chevronDown, backspace, minus, lock, fingerprint,
   plus, check, close, heart, eye, bell, settings, gift, card, bag, star, image,
   telegram, edit, logout, globe, clock, pin, refresh, camera, arrowUp, play,
+  trash, flag,
 }
 
 class NIcon extends StatelessWidget {
@@ -150,6 +151,36 @@ class _IconPainter extends CustomPainter {
         canvas.drawPath(p, stroke);
         canvas.drawLine(const Offset(11.6, 9.6), const Offset(16.4, 14.4), stroke);
         canvas.drawLine(const Offset(16.4, 9.6), const Offset(11.6, 14.4), stroke);
+        return;
+      case Ico.flag:
+        // Bayroq — SHIKOYAT. `bell` (qo'ng'iroq) BILDIRISHNOMA
+        // belgisi: shikoyat tugmasida u "xabarnoma" deb o'qilardi.
+        canvas.drawLine(const Offset(5.5, 3.6), const Offset(5.5, 20.4), stroke);
+        p.moveTo(5.5, 4.6);
+        p.cubicTo(9.5, 2.6, 13.5, 6.6, 18.5, 4.6);
+        p.lineTo(18.5, 13.2);
+        p.cubicTo(13.5, 15.2, 9.5, 11.2, 5.5, 13.2);
+        p.close();
+        canvas.drawPath(p, filled ? fill : stroke);
+        return;
+      case Ico.trash:
+        // Chiqindi qutisi. `backspace` (strelkali to'rtburchak)
+        // KLAVIATURA belgisi — post o'chirishda u "matnni
+        // o'chirish" deb o'qilardi.
+        canvas.drawLine(const Offset(4, 6.5), const Offset(20, 6.5), stroke);
+        // Qopqoq ustidagi tutqich.
+        p.moveTo(9.5, 6.5); p.lineTo(9.5, 4.2); p.lineTo(14.5, 4.2); p.lineTo(14.5, 6.5);
+        canvas.drawPath(p, stroke);
+        // Idish — pastga toraygan.
+        final body = Path()
+          ..moveTo(6, 6.5)
+          ..lineTo(7.1, 19.6)
+          ..lineTo(16.9, 19.6)
+          ..lineTo(18, 6.5);
+        canvas.drawPath(body, stroke);
+        // Ichidagi ikki chiziq.
+        canvas.drawLine(const Offset(10.3, 9.8), const Offset(10.6, 16.4), stroke);
+        canvas.drawLine(const Offset(13.7, 9.8), const Offset(13.4, 16.4), stroke);
         return;
       case Ico.arrowUp:
         canvas.drawLine(const Offset(12, 19), const Offset(12, 5.5), stroke);

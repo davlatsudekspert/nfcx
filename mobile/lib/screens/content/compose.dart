@@ -10,6 +10,7 @@ import '../../design/components/input.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/video_view.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
@@ -60,6 +61,18 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   Uint8List? _bytes;
   String _name = '';
+
+  /// Tanlangan fayl VIDEOmi.
+  ///
+  /// Server istorya va postda videoni ALLAQACHON qabul qiladi
+  /// (`stories.video_url`, `posts.video_url`, `/api/upload-media`
+  /// ning `accept: ['image/', 'video/']` ro'yxati). Ilova esa faqat
+  /// rasm yuborardi: saytdan qo'yilgan videoni ko'rish mumkin edi,
+  /// ilovadan qo'yish esa YO'Q edi.
+  bool _isVideo = false;
+
+  /// Ko'rib chiqish uchun vaqtinchalik fayl yo'li (video).
+  String? _videoPath;
   bool _agreed = false;
   bool _busy = false;
   String? _error;
@@ -70,6 +83,50 @@ class _ComposeScreenState extends State<ComposeScreen> {
   void dispose() {
     _caption.dispose();
     super.dispose();
+  }
+
+  /// VIDEO TANLASH.
+  ///
+  /// `maxDuration` — 60 soniya: istorya ko'ruvchisidagi segment
+  /// chegarasi ham shuncha. Undan uzunini qabul qilib, keyin
+  /// yarmida uzib qo'yish odamni aldash bo'lardi.
+  Future<void> _pickVideo(ImageSource source) async {
+    setState(() => _error = null);
+    try {
+      final file = await _picker.pickVideo(
+        source: source,
+        maxDuration: const Duration(seconds: 60),
+      );
+      if (file == null) return;
+      // HAJM BAYTLARNI O'QIMASDAN OLDIN tekshiriladi.
+      //
+      // `pickVideo` videoni qayta siqmaydi: telefondagi 4K yozuv
+      // 200 MB bo'lishi mumkin. Uni avval xotiraga o'qib, keyin
+      // "katta" desak, ilova o'qish paytidayoq xotira yetmay
+      // YIQILARDI.
+      final size = await file.length();
+      if (!mounted) return;
+      if (size > _maxVideoBytes) {
+        setState(() => _error = trf(
+              'Video juda katta ({hajm} MB). Chegara — {chegara} MB.',
+              {
+                'hajm': '${(size / 1048576).round()}',
+                'chegara': '${_maxVideoBytes ~/ 1048576}',
+              },
+            ));
+        return;
+      }
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _bytes = bytes;
+        _name = file.name;
+        _isVideo = true;
+        _videoPath = file.path;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = humanError(e));
+    }
   }
 
   Future<void> _pick(ImageSource source) async {
@@ -90,6 +147,8 @@ class _ComposeScreenState extends State<ComposeScreen> {
       setState(() {
         _bytes = bytes;
         _name = file.name;
+        _isVideo = false;
+        _videoPath = null;
       });
     } catch (e) {
       if (mounted) setState(() => _error = humanError(e));
@@ -99,10 +158,13 @@ class _ComposeScreenState extends State<ComposeScreen> {
   Future<void> _submit() async {
     final bytes = _bytes;
     if (bytes == null) {
-      setState(() => _error = tr('Avval rasm tanlang.'));
+      setState(() => _error = tr('Avval rasm yoki video tanlang.'));
       return;
     }
-    if (_isStory && !_agreed) {
+    // POST DA HAM. Ilgari rozilik FAQAT istoryada so'ralardi, post
+    // esa hech qanday ogohlantirishsiz joylanardi — holbuki saytda
+    // ikkalasida ham bir xil oyna chiqadi.
+    if (!_agreed) {
       setState(() => _error = tr('Kontent qoidalariga rozilik bering.'));
       return;
     }
@@ -115,19 +177,23 @@ class _ComposeScreenState extends State<ComposeScreen> {
       final repo = AppScope.read(context).repo;
       final url = await repo.uploadMedia(bytes, contentType: _mime(_name));
       final caption = _caption.text.trim();
+      final image = _isVideo ? null : url;
+      final video = _isVideo ? url : null;
       if (widget.company) {
         if (_isStory) {
           await repo.addCompanyStory(widget.code,
-              imageUrl: url, caption: caption, agreed: _agreed);
+              imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         } else {
-          await repo.addCompanyPost(widget.code, imageUrl: url, caption: caption);
+          await repo.addCompanyPost(widget.code,
+              imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         }
       } else {
         if (_isStory) {
           await repo.addStory(widget.code,
-              imageUrl: url, caption: caption, agreed: _agreed);
+              imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         } else {
-          await repo.addPost(widget.code, imageUrl: url, caption: caption);
+          await repo.addPost(widget.code,
+              imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         }
       }
       successHaptic();
@@ -156,18 +222,35 @@ class _ComposeScreenState extends State<ComposeScreen> {
         // Biznesda bepul tarifda post va istorya yopiq.
         'plan_locked' => tr('Bepul tarifda post va story yopiq.'),
         'rules_not_accepted' => tr('Kontent qoidalariga rozilik bering.'),
-        'too_large' => tr('Rasm juda katta.'),
-        'bad_image' => tr('Bu fayl rasm emas.'),
+        'too_large' => tr('Fayl juda katta (100 MB dan ortiq).'),
+        'bad_image' => tr('Bu fayl rasm yoki video emas.'),
         'not_owner' => tr('Bu ID sizga tegishli emas.'),
         'too_many_requests' => tr('Juda ko‘p urinish. Birozdan keyin qayta urining.'),
         _ => humanError(e),
       };
+
+  /// VIDEO uchun ilova chegarasi — 50 MB.
+  ///
+  /// Server 100 MB gacha qabul qiladi (`STORY_MEDIA_MAX_BYTES`),
+  /// lekin yuklash OQIM bilan emas: fayl butunlay xotiraga
+  /// o'qiladi va `http` so'rov tanasiga yana bir marta
+  /// ko'chiriladi. 100 MB da bu ikki baravar bo'lib, arzon
+  /// telefonda ilovani yiqitardi. 50 MB — 60 soniyalik istorya
+  /// videosi uchun yetarlidan ortiq.
+  ///
+  /// Chegara oshirilsa, avval yuklash oqimga o'tkazilishi kerak.
+  static const _maxVideoBytes = 50 * 1024 * 1024;
 
   static String _mime(String name) {
     final n = name.toLowerCase();
     if (n.endsWith('.png')) return 'image/png';
     if (n.endsWith('.webp')) return 'image/webp';
     if (n.endsWith('.heic') || n.endsWith('.heif')) return 'image/heic';
+    // VIDEO. Server turni fayl boshidagi baytlar bilan QAYTA
+    // tekshiradi, ya'ni bu yerdagi taxmin faqat birinchi ishora.
+    if (n.endsWith('.mp4') || n.endsWith('.m4v')) return 'video/mp4';
+    if (n.endsWith('.mov')) return 'video/quicktime';
+    if (n.endsWith('.webm')) return 'video/webm';
     return 'image/jpeg';
   }
 
@@ -202,11 +285,21 @@ class _ComposeScreenState extends State<ComposeScreen> {
                               children: [
                                 NIcon(Ico.image, size: 30, color: C.champagne),
                                 const SizedBox(height: S.x12),
-                                Text(tr('Rasm tanlash'), style: T.cardTitle),
+                                Text(tr('Rasm yoki video tanlash'), style: T.cardTitle),
                                 const SizedBox(height: 3),
                                 Text(tr('Galereyadan'), style: T.caption),
                               ],
                             )
+                          : _isVideo && _videoPath != null
+                              // KO'RIB CHIQISH. Video ham xuddi rasm
+                              // kabi joylashdan oldin ko'rinishi
+                              // kerak — aks holda odam nima
+                              // yuborayotganini bilmaydi.
+                              ? VideoView(
+                                  url: _videoPath!,
+                                  isLocalFile: true,
+                                  loop: true,
+                                )
                           : Image.memory(
                               bytes,
                               fit: BoxFit.cover,
@@ -229,10 +322,19 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   children: [
                     Expanded(
                       child: SecondaryButton(
-                        bytes == null ? tr('Galereya') : tr('Boshqasi'),
+                        tr('Rasm'),
                         icon: NIcon(Ico.image, size: 17, color: C.platinum),
                         height: 46,
                         onTap: _busy ? null : () => _pick(ImageSource.gallery),
+                      ),
+                    ),
+                    const SizedBox(width: S.x8),
+                    Expanded(
+                      child: SecondaryButton(
+                        tr('Video'),
+                        icon: NIcon(Ico.play, size: 17, color: C.platinum),
+                        height: 46,
+                        onTap: _busy ? null : () => _pickVideo(ImageSource.gallery),
                       ),
                     ),
                     const SizedBox(width: S.x8),
@@ -246,6 +348,14 @@ class _ComposeScreenState extends State<ComposeScreen> {
                     ),
                   ],
                 ),
+                if (_isVideo) ...[
+                  const SizedBox(height: S.x8),
+                  Text(
+                    tr('Video eng ko‘pi 60 soniya va 50 MB. Tarifga qarab '
+                        'cheklangan bo‘lishi mumkin.'),
+                    style: T.caption.copyWith(fontSize: 11, color: C.muted),
+                  ),
+                ],
                 const SizedBox(height: S.x20),
                 Field(
                   label: tr('Izoh'),
@@ -253,13 +363,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   hint: tr('Ixtiyoriy'),
                   maxLines: 4,
                 ),
-                if (_isStory) ...[
-                  const SizedBox(height: S.x16),
-                  _Rules(
-                    value: _agreed,
-                    onChanged: _busy ? null : (v) => setState(() => _agreed = v),
-                  ),
-                ],
+                const SizedBox(height: S.x16),
+                _Rules(
+                  value: _agreed,
+                  onChanged: _busy ? null : (v) => setState(() => _agreed = v),
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: S.x16),
                   Text(_error!, style: T.caption.copyWith(color: C.signal)),
@@ -283,6 +391,29 @@ class _ComposeScreenState extends State<ComposeScreen> {
     );
   }
 }
+
+/// KONTENT QOIDALARI — SAYTDAGI AYNAN SHU MATN.
+///
+/// Manba: `src/components/ContentRulesGate.jsx` (`CONTENT_RULES_TEXT`).
+/// U yerda "MATN EGASI BERGAN TAHRIRDA — o'zgartirilmaydi,
+/// qisqartirilmaydi" deb yozilgan.
+///
+/// Ilovada ilgari butunlay BOSHQA, qisqa jumla turardi: "Joylayotgan
+/// kontentim uchun javobgarlikni olaman...". Unda na diniy targ'ibot,
+/// na pornografiya, na siyosiy targ'ibot, na qonunchilik tilga
+/// olinardi — ya'ni ilova orqali joylagan odam nimaga rozi
+/// bo'layotganini BILMASDI va bu rozilikning yuridik qiymati yo'q edi.
+String get contentRulesText => tr(
+      'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi '
+      'shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik '
+      'yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, '
+      'shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har '
+      'qanday material. Ushbu qoidalar buzilgan taqdirda kontent '
+      'ogohlantirishsiz o‘chiriladi.',
+    );
+
+/// Rozilik qatori — saytdagi `CONTENT_RULES_ACCEPT`.
+String get contentRulesAccept => tr('Men qoidalarni o‘qidim va roziman');
 
 /// KONTENT QOIDALARIGA ROZILIK.
 ///
@@ -321,10 +452,14 @@ class _Rules extends StatelessWidget {
               ),
               const SizedBox(width: S.x12),
               Expanded(
-                child: Text(
-                  tr('Joylayotgan kontentim uchun javobgarlikni olaman va ') +
-                  tr('u boshqalarning huquqini buzmasligini tasdiqlayman.'),
-                  style: T.caption,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(contentRulesText, style: T.caption.copyWith(color: C.offWhite)),
+                    const SizedBox(height: 6),
+                    Text(contentRulesAccept,
+                        style: T.caption.copyWith(color: C.champagne)),
+                  ],
                 ),
               ),
             ],

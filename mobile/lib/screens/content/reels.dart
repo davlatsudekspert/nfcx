@@ -7,6 +7,7 @@ import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
+import '../../design/components/video_view.dart';
 import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
@@ -43,6 +44,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _hasMore = false;
   bool _loadingMore = false;
   int _page = 1;
+
+  /// Ko'rinib turgan kadr. Faqat shu kadrdagi video o'ynaydi.
+  int _current = 0;
 
   @override
   void initState() {
@@ -169,10 +173,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
               scrollDirection: Axis.vertical,
               itemCount: data.length,
               onPageChanged: (i) {
+                setState(() => _current = i);
                 if (i >= data.length - 2) _more();
               },
               itemBuilder: (context, i) => _Slide(
                 entry: data[i],
+                active: i == _current,
                 onLike: () => _like(i),
               ),
             );
@@ -183,10 +189,13 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
 /// Bitta kadr — butun ekran rasm va uning ustida ma'lumot.
 class _Slide extends StatelessWidget {
-  const _Slide({required this.entry, required this.onLike});
+  const _Slide({required this.entry, required this.onLike, this.active = false});
 
   final FeedEntry entry;
   final VoidCallback onLike;
+
+  /// Shu kadr ekranda turibdimi — videoni o'ynatish shartisi.
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -196,15 +205,26 @@ class _Slide extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Rasm butun ekranni egallaydi. `cacheWidth` — ekran
-        // kengligi: undan kattaroq dekodlash xotirani behuda yeydi
-        // va tik oqimda bu darhol sezilardi.
-        NetImage(
-          entry.imageUrl,
-          radius: 0,
-          cacheWidth: (size.width * dpr).round(),
-          slotLabel: '',
-        ),
+        // VIDEO bo'lsa video, aks holda rasm. Lentada ikkalasi ham
+        // uchraydi va video yozuvda `imageUrl` bo'sh bo'ladi — shu
+        // sababli oldin video kadrlar QORA ko'rinardi.
+        //
+        // `cacheWidth` — ekran kengligi: undan kattaroq dekodlash
+        // xotirani behuda yeydi va tik oqimda bu darhol sezilardi.
+        if ((entry.videoUrl ?? '').isNotEmpty)
+          VideoView(
+            url: entry.videoUrl!,
+            poster: entry.imageUrl,
+            fit: BoxFit.cover,
+            active: active,
+          )
+        else
+          NetImage(
+            entry.imageUrl,
+            radius: 0,
+            cacheWidth: (size.width * dpr).round(),
+            slotLabel: '',
+          ),
 
         // MATN O'QILSIN: rasm och bo'lsa oq yozuv yo'qolardi.
         // Pastdan yuqoriga qorayadigan parda faqat matn turgan

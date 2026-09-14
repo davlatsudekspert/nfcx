@@ -37,6 +37,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<Company> _allCompanies = const [];
   bool _loading = true;
   bool _searching = false;
+
+  /// Qidiruv so'rovi tushgani. `null` — xato yo'q.
+  String? _searchError;
   Object? _error;
   int _filter = 0;
 
@@ -97,6 +100,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _results = const [];
         _companies = const [];
         _searching = false;
+        _searchError = null;
       });
       return;
     }
@@ -104,7 +108,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _search(String q) async {
-    setState(() => _searching = true);
+    setState(() {
+      _searching = true;
+      _searchError = null;
+    });
     final repo = AppScope.read(context).repo;
     try {
       final res = await Future.wait([
@@ -116,9 +123,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _results = res[0] as List<Record>;
         _companies = res[1] as List<Company>;
         _searching = false;
+        _searchError = null;
       });
-    } catch (_) {
-      if (mounted) setState(() => _searching = false);
+    } catch (e) {
+      // Ilgari xato JIMGINA yutilardi va ekranda "hech narsa
+      // topilmadi" chiqardi — ya'ni tarmoq uzilishi "bunday odam
+      // yo'q" bo'lib ko'rinardi. Endi sabab aytiladi.
+      if (mounted) {
+        setState(() {
+          _searching = false;
+          _searchError = humanError(e);
+        });
+      }
     }
   }
 
@@ -202,6 +218,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         padding: EdgeInsets.symmetric(horizontal: S.gutter),
         child: Column(children: [SkeletonRow(), SkeletonRow(), SkeletonRow(), SkeletonRow()]),
       );
+    }
+    final err = _searchError;
+    if (err != null) {
+      return ErrorState(err, onRetry: () => _search(_query.text.trim()));
     }
     final people = _results.where((r) => !r.isBusiness && !_isFreeId(r)).toList();
     final ids = _results.where(_isFreeId).toList();

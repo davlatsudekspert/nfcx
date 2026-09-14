@@ -53,6 +53,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool _expired = false;
   bool _done = false;
 
+  /// Hisob YARATILDI, lekin sessiyani ochishda xato bo'ldi.
+  /// Qayta urinish mumkin — ro'yxatdan o'tishni takrorlash shart
+  /// emas, token qo'lda.
+  String? _finishError;
+  String? _token;
+
   @override
   void initState() {
     super.initState();
@@ -100,10 +106,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         setState(() => _error = tr('Hisob yaratildi. Endi kirish sahifasidan kiring.'));
         return;
       }
-      setState(() => _done = true);
+      setState(() {
+        _done = true;
+        _token = token;
+      });
       await Future<void>.delayed(const Duration(milliseconds: 900));
       if (!mounted) return;
-      await state.completeRegistration(token);
+      await _finish(token);
     } on ApiError catch (e) {
       if (!mounted) return;
       setState(() {
@@ -116,6 +125,37 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       if (mounted) setState(() => _error = humanError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// SESSIYANI OCHISH VA EKRANLARNI YOPISH.
+  ///
+  /// ILGARI SHU YERDA OSILIB QOLARDI. Sabab: kirish va ro'yxatdan
+  /// o'tish ekranlari ildiz `Navigator` iga PUSH qilinadi, ya'ni
+  /// ular `_Root` ning USTIDA turadi. `completeRegistration` holatni
+  /// "kirilgan" ga o'tkazgach `_Root` o'z ichida `Shell` ga
+  /// almashadi — lekin u STEKNING TAGIDA. Ustidagi ikki ekran
+  /// (ro'yxatdan o'tish va tasdiqlash) joyida qolaverardi va odam
+  /// aylanuvchi belgiga qarab o'tirardi.
+  ///
+  /// Kirish ekrani bu muammoni ko'rsatmagan, chunki u PUSH
+  /// qilinmaydi — uni `_Root` ning o'zi chizadi.
+  ///
+  /// Shuning uchun: sessiya ochilgach stek ildizgacha tozalanadi.
+  Future<void> _finish(String token) async {
+    final state = AppScope.read(context);
+    final nav = Navigator.of(context);
+    try {
+      await state.completeRegistration(token);
+      if (!mounted) return;
+      // Ildizgacha: tagda `_Root` turibdi va u endi `Shell` ni
+      // chizadi.
+      nav.popUntil((r) => r.isFirst);
+    } catch (e) {
+      // XATO KO'RINISHI SHART. Ilgari u `_error` ga yozilardi,
+      // lekin muvaffaqiyat ekrani uni umuman ko'rsatmasdi — natijada
+      // aylanuvchi belgi abadiy qolardi.
+      if (mounted) setState(() => _finishError = humanError(e));
     }
   }
 
@@ -148,7 +188,18 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_done) return _Success(email: widget.email);
+    if (_done) {
+      return _Success(
+        email: widget.email,
+        error: _finishError,
+        onRetry: _finishError == null || _token == null
+            ? null
+            : () {
+                setState(() => _finishError = null);
+                _finish(_token!);
+              },
+      );
+    }
 
     final masked = AppUser.mask(widget.email);
     final mm = (_left ~/ 60).toString().padLeft(2, '0');
@@ -226,8 +277,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 /// ko'rsatiladi, lekin "keyinroq" deb — chunki u boshqa narsa va
 /// hozir majburiy emas.
 class _Success extends StatelessWidget {
-  const _Success({required this.email});
+  const _Success({required this.email, this.error, this.onRetry});
   final String email;
+
+  /// Hisob yaratildi, lekin sessiya ochilmadi. `null` — hammasi
+  /// joyida, kutish davom etmoqda.
+  final String? error;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => ColoredBox(
@@ -278,7 +334,27 @@ class _Success extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                const Center(child: Spinner()),
+                // KUTISH YOKI XATO — HECH QACHON IKKALASI HAM EMAS.
+                //
+                // Ilgari bu yerda faqat aylanuvchi belgi turardi va
+                // sessiya ochilmasa u abadiy aylanardi: odam nima
+                // bo'lganini bilmasdi, ortga ham qaytolmasdi.
+                if (error == null)
+                  const Center(child: Spinner())
+                else ...[
+                  Text(error!,
+                      textAlign: TextAlign.center,
+                      style: T.caption.copyWith(color: C.signal)),
+                  const SizedBox(height: S.x12),
+                  PrimaryButton(tr('Davom etish'), onTap: onRetry),
+                  const SizedBox(height: S.x8),
+                  Text(
+                    tr('Hisobingiz yaratildi. Agar davom etmasa, '
+                        'kirish sahifasidan kiring.'),
+                    textAlign: TextAlign.center,
+                    style: T.caption.copyWith(fontSize: 11),
+                  ),
+                ],
                 const SizedBox(height: S.x32),
               ],
             ),

@@ -7,6 +7,8 @@ import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
+import '../../design/components/sheet.dart';
+import '../../design/feedback.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
@@ -16,6 +18,7 @@ import '../../state/app_state.dart';
 import '../business/business_stats.dart';
 import '../business/product_detail.dart';
 import '../content/compose.dart';
+import '../content/report_sheet.dart';
 import '../orders/owner_orders.dart';
 import 'edit_profile.dart';
 import 'follow_list.dart';
@@ -64,6 +67,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Company? _company;
   List<Post> _posts = const [];
   List<Post> _stories = const [];
+
+  /// Istoryalar ro'yxati KELMADI (so'rov tushdi).
+  ///
+  /// "Bo'sh" va "bilmaymiz" — BOSHQA holat. Farqlanmaganida ega
+  /// o'z profilida "+" ni ko'rardi, ya'ni ilova "sizda istorya
+  /// yo'q" deb TASDIQLARDI — aslida shunchaki so'rov tushgan
+  /// bo'lishi mumkin edi.
+  bool _storiesFailed = false;
   List<Product> _catalog = const [];
   FollowStats _follow = const FollowStats();
   bool _loading = true;
@@ -98,6 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loading = true;
       _error = null;
     });
+    var storiesFailed = false;
     try {
       final id = widget.identity;
       final businessId = widget.companyId ?? (id?.isBusiness == true ? id!.code : null);
@@ -107,7 +119,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final results = await Future.wait([
           state.repo.companyCatalog(businessId).catchError((_) => <Product>[]),
           state.repo.companyPosts(businessId).catchError((_) => <Post>[]),
-          state.repo.companyStories(businessId).catchError((_) => <Post>[]),
+          state.repo.companyStories(businessId).catchError((_) {
+            storiesFailed = true;
+            return <Post>[];
+          }),
         ]);
         state.repo.companyEvent(businessId);
         if (!mounted) return;
@@ -117,6 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _posts = results[1] as List<Post>;
           _stories = results[2] as List<Post>;
           _follow = FollowStats(followers: company.followers, isFollowing: company.following);
+          _storiesFailed = storiesFailed;
           _loading = false;
         });
         return;
@@ -127,7 +143,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final record = await state.repo.record(code);
       final results = await Future.wait([
         state.repo.recordPosts(code).catchError((_) => <Post>[]),
-        state.repo.recordStories(code).catchError((_) => <Post>[]),
+        state.repo.recordStories(code).catchError((_) {
+          storiesFailed = true;
+          return <Post>[];
+        }),
         state.repo.followStats(code).catchError((_) => const FollowStats()),
       ]);
       // Ko'rishlar hisobi — FAQAT begona profilda. O'z profilingni
@@ -139,6 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _posts = results[0] as List<Post>;
         _stories = results[1] as List<Post>;
         _follow = results[2] as FollowStats;
+        _storiesFailed = storiesFailed;
         _loading = false;
       });
     } catch (e) {
@@ -147,6 +167,143 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _error = e;
         _loading = false;
       });
+    }
+  }
+
+  /// POST YOKI ISTORYANI O'CHIRISH.
+  ///
+  /// Ilgari ilovada o'chirish YO'Q edi: joylangan narsani faqat
+  /// saytdan olib tashlash mumkin edi. Xato rasm qo'ygan odam
+  /// telefonida hech narsa qila olmasdi.
+  ///
+  /// TASDIQ SO'RALADI va u QAYTARIB BO'LMAYDI deb ochiq aytiladi —
+  /// bu buzuvchi amal.
+  Future<void> _delete(Post post, {required bool isStory}) async {
+    final id = int.tryParse(post.id);
+    if (id == null) return;
+    final sure = await showSheet<bool>(
+      context,
+      title: isStory ? tr('Istoryani o‘chirish') : tr('Postni o‘chirish'),
+      subtitle: tr('Bu amalni qaytarib bo‘lmaydi.'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            PrimaryButton(tr('O‘chirish'),
+                onTap: () => Navigator.of(context).pop(true)),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop(false)),
+          ],
+        ),
+      ),
+    );
+    if (sure != true || !mounted) return;
+
+    final repo = AppScope.read(context).repo;
+    final companyId = _company?.id;
+    try {
+      if (companyId != null) {
+        isStory
+            ? await repo.deleteCompanyStory(companyId, id)
+            : await repo.deleteCompanyPost(companyId, id);
+      } else {
+        isStory ? await repo.deleteStory(id) : await repo.deletePost(id);
+      }
+      if (!mounted) return;
+      // SERVERDAN QAYTA O'QIMAYMIZ: ro'yxatdan olib tashlash
+      // yetarli va ekran darhol javob beradi.
+      setState(() {
+        if (isStory) {
+          _stories = _stories.where((p) => p.id != post.id).toList();
+        } else {
+          _posts = _posts.where((p) => p.id != post.id).toList();
+        }
+      });
+      successHaptic();
+    } catch (e) {
+      if (mounted) await showError(context, humanError(e));
+    }
+  }
+
+  /// SHIKOYAT VA BLOKLASH — begona profilda.
+  ///
+  /// Ikkalasi bitta varaqda: odam nomaqbul profilni ko'rganda
+  /// odatda ikkisidan birini xohlaydi va ularni ikki xil joyga
+  /// yashirish qidiruvga majbur qilardi.
+  Future<void> _moderationSheet(String code) async {
+    final kind = _isBusiness ? 'company' : 'record';
+    final choice = await showSheet<String>(
+      context,
+      title: code,
+      subtitle: tr('Bu profil bilan nima qilamiz?'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            SecondaryButton(tr('Shikoyat qilish'),
+                onTap: () => Navigator.of(context).pop('report')),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bloklash'),
+                onTap: () => Navigator.of(context).pop('block')),
+            const SizedBox(height: S.x8),
+            GhostButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop()),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+
+    if (choice == 'report') {
+      final sent = await showReportSheet(
+        context,
+        targetKind: kind,
+        targetId: code,
+        ownerCode: code,
+      );
+      if (sent && mounted) {
+        await showSheet<void>(
+          context,
+          title: tr('Shikoyat yuborildi'),
+          subtitle: tr('Moderator tekshiradi. Rahmat.'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+            child: SecondaryButton(tr('Yopish'),
+                onTap: () => Navigator.of(context).pop()),
+          ),
+        );
+      }
+      return;
+    }
+
+    // BLOKLASH — nima bo'lishini OLDIN aytamiz.
+    final sure = await showSheet<bool>(
+      context,
+      title: tr('Bloklash'),
+      subtitle: tr('Bu profilning postlari va istoryalari sizning '
+          'lentangizda ko‘rinmaydi.'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            PrimaryButton(tr('Bloklash'),
+                onTap: () => Navigator.of(context).pop(true)),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop(false)),
+          ],
+        ),
+      ),
+    );
+    if (sure != true || !mounted) return;
+    try {
+      await AppScope.read(context).repo.block(kind: kind, id: code);
+      if (!mounted) return;
+      successHaptic();
+      Navigator.of(context).maybePop();
+    } catch (e) {
+      if (mounted) await showError(context, humanError(e));
     }
   }
 
@@ -171,13 +328,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else {
         await repo.follow(code);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _follow = FollowStats(
               followers: _follow.followers + (wasFollowing ? 1 : -1),
               following: _follow.following,
               isFollowing: wasFollowing,
             ));
+        // SABABI AYTILADI. Ilgari tugma jimgina eski holatiga
+        // qaytardi va odam o'zi tasodifan ikki marta bosdim deb
+        // o'ylardi — obuna esa aslida yozilmagan edi.
+        await showError(context, humanError(e));
       }
     } finally {
       if (mounted) setState(() => _busyFollow = false);
@@ -216,6 +377,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return _Frame(
       code: code,
+      // MEHMONGA — shikoyat va bloklash. O'z profilida bularning
+      // ma'nosi yo'q.
+      onMore: isOwner ? null : () => _moderationSheet(code),
       child: DefaultTabController(
         length: tabs.length,
         child: RefreshIndicator(
@@ -232,6 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   isOwner: isOwner,
                   busyFollow: _busyFollow,
                   hasStory: _stories.isNotEmpty,
+                  storiesUnknown: _storiesFailed,
                   // Mehmonda istorya bo'lmasa halqa umuman
                   // ko'rsatilmaydi — bosiladigan, lekin hech narsa
                   // qilmaydigan element ishonchni yo'qotadi.
@@ -275,6 +440,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _PostGrid(
                   posts: _posts,
                   onAdd: isOwner ? () => _compose(code, ComposeKind.post) : null,
+                  // O'CHIRISH FAQAT EGADA — mehmonga bunday amal
+                  // ko'rsatilmaydi.
+                  onDelete: isOwner ? (p) => _delete(p, isStory: false) : null,
                 ),
                 _PostGrid(
                   posts: _stories,
@@ -283,6 +451,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   emptyIcon: Ico.camera,
                   addLabel: tr('Story qo‘shish'),
                   onAdd: isOwner ? () => _compose(code, ComposeKind.story) : null,
+                  onDelete: isOwner ? (p) => _delete(p, isStory: true) : null,
                 ),
                 _About(record: _record, company: _company),
               ],
@@ -324,9 +493,12 @@ class _ProfileSkeleton extends StatelessWidget {
 }
 
 class _Frame extends StatelessWidget {
-  const _Frame({required this.code, required this.child});
+  const _Frame({required this.code, required this.child, this.onMore});
   final String code;
   final Widget child;
+
+  /// Faqat MEHMON ko'rinishida — shikoyat va bloklash.
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) => ColoredBox(
@@ -335,7 +507,18 @@ class _Frame extends StatelessWidget {
           bottom: false,
           child: Column(
             children: [
-              TopBar(title: code),
+              TopBar(
+                title: code,
+                trailing: onMore == null
+                    ? null
+                    : Press(
+                        onTap: onMore,
+                        child: const Padding(
+                          padding: EdgeInsets.all(S.x8),
+                          child: NIcon(Ico.flag, size: 20, color: C.ash),
+                        ),
+                      ),
+              ),
               Expanded(child: child),
             ],
           ),
@@ -354,6 +537,7 @@ class _Header extends StatelessWidget {
     required this.onShare,
     required this.onRefresh,
     required this.hasStory,
+    this.storiesUnknown = false,
     required this.onStory,
   });
 
@@ -368,6 +552,9 @@ class _Header extends StatelessWidget {
 
   /// Profilda FAOL istorya bormi (24 soat ichida).
   final bool hasStory;
+
+  /// Istoryalar ro'yxati kelmadi — "yo'q" deb TASDIQLAMAYMIZ.
+  final bool storiesUnknown;
 
   /// Halqa bosilganda: istorya bo'lsa — ko'ruvchi, egada istorya
   /// yo'q bo'lsa — qo'shish.
@@ -435,7 +622,7 @@ class _Header extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
-                child: hasStory || (isOwner && onStory != null)
+                child: hasStory || (isOwner && !storiesUnknown && onStory != null)
                     ? StoryRing(
                         // Ism avatar ichidagi harf uchun kerak
                         // (rasm kelmasa), lekin halqa ostida
@@ -471,18 +658,26 @@ class _Header extends StatelessWidget {
                     // odamni chalg'itardi.
                     _Stat(
                       value: follow.followers,
-                      label: 'obunachi',
+                      // `tr()` YO'Q EDI: rus va ingliz tilida bu uch
+                      // yorliq o'zbekcha qolib ketardi.
+                      label: tr('obunachi'),
                       onTap: () => push(
                         context,
-                        (_) => FollowListScreen(code: code, title: name),
+                        (_) => FollowListScreen(
+                          code: code,
+                          title: name,
+                          // Bu _Header ichida — u yerda holat emas,
+                          // `company` maydoni bor.
+                          isCompany: company != null,
+                        ),
                       ),
                     ),
                     if (company != null)
-                      _Stat(value: company!.itemCount, label: 'mahsulot')
+                      _Stat(value: company!.itemCount, label: tr('mahsulot'))
                     else
                       _Stat(
                         value: follow.following,
-                        label: 'obuna',
+                        label: tr('obuna'),
                         onTap: () => push(
                           context,
                           (_) => FollowListScreen(
@@ -804,8 +999,12 @@ class _PostGrid extends StatelessWidget {
     this.emptyIcon = Ico.image,
     this.onAdd,
     this.addLabel,
+    this.onDelete,
   });
   final List<Post> posts;
+
+  /// Faqat EGADA. Katakni uzoq bosganda chaqiriladi.
+  final ValueChanged<Post>? onDelete;
 
   /// Bo'sh holat sarlavhasi.
   final String? empty;
@@ -857,13 +1056,36 @@ class _PostGrid extends StatelessWidget {
   Widget _tile(BuildContext context, Post post) => RepaintBoundary(
         child: Press(
           onTap: () => push(context, (_) => PostDetailScreen(post: post)),
-          child: NetImage(
-            post.images.isEmpty ? null : post.images.first,
-            radius: 4,
-            // Uch ustunli to'rda har rasm ~130px — undan kattaroq
-            // dekodlash xotirani behuda yeydi.
-            cacheWidth: 160,
-            slotLabel: 'POST',
+          // UZOQ BOSISH — O'CHIRISH.
+          //
+          // NIMA UCHUN alohida tugma emas: to'rda har katak ~130px
+          // va ustiga qo'yilgan "x" belgisi rasmning uchdan birini
+          // yopib, to'rni g'ijimlab tashlardi. Uzoq bosish esa
+          // telefonda tanish harakat. Egaga tagida yozuv ham bor.
+          onLongPress: onDelete == null ? null : () => onDelete!(post),
+          haptic: onDelete != null,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              NetImage(
+                post.images.isEmpty ? null : post.images.first,
+                radius: 4,
+                // Uch ustunli to'rda har rasm ~130px — undan kattaroq
+                // dekodlash xotirani behuda yeydi.
+                cacheWidth: 160,
+                slotLabel: 'POST',
+              ),
+              // VIDEO EKANI KO'RINSIN. To'rda videoning muqovasi
+              // yo'q (server uni yaratmaydi), shuning uchun bu
+              // katak bo'm-bo'sh ko'rinardi va odam uni "buzilgan"
+              // deb o'ylardi. Belgi bosishga arzishini aytadi.
+              if ((post.videoUrl ?? '').isNotEmpty)
+                const Positioned(
+                  right: 5,
+                  top: 5,
+                  child: NIcon(Ico.play, size: 15, color: C.offWhite),
+                ),
+            ],
           ),
         ),
       );

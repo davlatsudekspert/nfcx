@@ -22,13 +22,25 @@ class TopBar extends StatelessWidget {
   final bool showBack;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) {
+    // ORQAGA TUGMASI FAQAT QAYTADIGAN JOY BO'LSA.
+    //
+    // Ilgari u HAR DOIM chizilardi. Tab ildizida (profil tabi,
+    // Discover) esa qaytadigan ekran yo'q — `maybePop()` hech narsa
+    // qilmasdi va tugma BOSILGANDA JAVOB BERMASDI. Qurilmada
+    // sinovda aynan shu "nazad ishlamayapti" deb xabar qilindi.
+    //
+    // `canPop()` — Navigator'ning o'z javobi: bu ekran stekda
+    // yolg'izmi yoki ostida boshqasi bormi.
+    final canBack = showBack && Navigator.of(context).canPop();
+
+    return SizedBox(
         height: 52,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.x12),
           child: Row(
             children: [
-              if (showBack)
+              if (canBack)
                 Press(
                   onTap: () => Navigator.of(context).maybePop(),
                   child: const Padding(
@@ -62,6 +74,7 @@ class TopBar extends StatelessWidget {
           ),
         ),
       );
+  }
 }
 
 /// Ekran sarlavhasi — tab ildizlarida (Discover, NFC) ishlatiladi.

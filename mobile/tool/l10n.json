@@ -83,6 +83,14 @@
   "Сначала выберите изображение.",
   "Pick an image first."
  ],
+ "Avval rasm yoki video tanlang.": [
+  "Сначала выберите фото или видео.",
+  "Choose a photo or video first."
+ ],
+ "Avval sababni tanlang.": [
+  "Сначала выберите причину.",
+  "Choose a reason first."
+ ],
  "Bajarildi": [
   "Выполнено",
   "Done"
@@ -102,6 +110,10 @@
  "Bankdan javob olinmoqda…": [
   "Ожидаем ответ банка…",
   "Waiting for the bank…"
+ ],
+ "Bankdan tasdiq hali kelmadi. To‘lovni qilgan bo‘lsangiz, u biroz kechikishi mumkin — quyidagi tugma bilan tekshiring.": [
+  "Подтверждение от банка пока не пришло. Если вы оплатили, оно может немного задержаться — проверьте кнопкой ниже.",
+  "The bank has not confirmed yet. If you have paid, it may be slightly delayed — check with the button below."
  ],
  "Barcha imkoniyatlar ochiq. Rahmat!": [
   "Все возможности открыты. Спасибо!",
@@ -207,6 +219,10 @@
   "Редактировать бизнес",
   "Edit business"
  ],
+ "Bloklash": [
+  "Заблокировать",
+  "Block"
+ ],
  "Boshlash": [
   "Начать",
   "Get started"
@@ -218,6 +234,10 @@
  "Boshqa": [
   "Другое",
   "Other"
+ ],
+ "Boshqa sabab": [
+  "Другая причина",
+  "Another reason"
  ],
  "Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.": [
   "Попробуйте другое слово или поиск по коду ID.",
@@ -291,6 +311,10 @@
   "Нет прав на это действие.",
   "You do not have permission for this."
  ],
+ "Bu amalni qaytarib bo‘lmaydi.": [
+  "Это действие нельзя отменить.",
+  "This action cannot be undone."
+ ],
  "Bu biznes hali mahsulot joylamagan. Keyinroq kirib ko‘ring.": [
   "Бизнес ещё не добавил товары. Загляните позже.",
   "This business has not added products yet. Check back later."
@@ -319,6 +343,10 @@
   "Этот файл не изображение.",
   "This file is not an image."
  ],
+ "Bu fayl rasm yoki video emas.": [
+  "Этот файл не фото и не видео.",
+  "This file is not a photo or a video."
+ ],
  "Bu hisob o‘chirilgan.": [
   "Этот аккаунт удалён.",
   "This account has been deleted."
@@ -335,9 +363,17 @@
   "Это имя использовать нельзя.",
   "This name cannot be used."
  ],
+ "Bu profil bilan nima qilamiz?": [
+  "Что сделать с этим профилем?",
+  "What would you like to do with this profile?"
+ ],
  "Bu profilda hali post joylanmagan.": [
   "В этом профиле ещё нет постов.",
   "This profile has no posts yet."
+ ],
+ "Bu profilning postlari va istoryalari sizning lentangizda ko‘rinmaydi.": [
+  "Посты и истории этого профиля не будут показываться в вашей ленте.",
+  "This profile’s posts and stories will no longer appear in your feed."
  ],
  "Bu qurilmada NFC yo‘q": [
   "На этом устройстве нет NFC",
@@ -362,6 +398,10 @@
  "Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.": [
   "Это ваш единственный ID — его нельзя удалить.",
   "This is your only ID — it cannot be deleted."
+ ],
+ "Bunday ID topilmadi.": [
+  "Такой ID не найден.",
+  "No such ID was found."
  ],
  "Bunday ID topilmadi. Kodni tekshiring.": [
   "Такой ID не найден. Проверьте код.",
@@ -466,6 +506,10 @@
  "Davom etish": [
   "Продолжить",
   "Continue"
+ ],
+ "Diniy targ‘ibot yoki ekstremistik mazmun": [
+  "Религиозная пропаганда или экстремистские материалы",
+  "Religious propaganda or extremist material"
  ],
  "Discover": [
   "Поиск",
@@ -587,6 +631,10 @@
   "Активировать",
   "Activate"
  ],
+ "Fayl juda katta (100 MB dan ortiq).": [
+  "Файл слишком большой (больше 100 МБ).",
+  "The file is too large (over 100 MB)."
+ ],
  "Galereya": [
   "Галерея",
   "Gallery"
@@ -659,6 +707,10 @@
   "О нас",
   "About"
  ],
+ "Haqorat, so‘kinish, kamsitish": [
+  "Оскорбления, брань, дискриминация",
+  "Insults, abusive language, discrimination"
+ ],
  "Havola bosildi": [
   "Переходы по ссылке",
   "Link taps"
@@ -687,9 +739,17 @@
   "Создать аккаунт",
   "Create account"
  ],
+ "Hisobingiz yaratildi. Agar davom etmasa, kirish sahifasidan kiring.": [
+  "Аккаунт создан. Если не продолжается, войдите со страницы входа.",
+  "Your account was created. If it does not continue, sign in from the login page."
+ ],
  "Holat": [
   "Статус",
   "Status"
+ ],
+ "Holatni tekshirish": [
+  "Проверить статус",
+  "Check status"
  ],
  "Home": [
   "Главная",
@@ -710,6 +770,10 @@
  "Hozir mavjud emas": [
   "Сейчас недоступно",
   "Not available right now"
+ ],
+ "Hozir vaqtincha o‘chirilgan": [
+  "Сейчас временно отключено",
+  "Temporarily switched off"
  ],
  "ID kodi": [
   "Код ID",
@@ -819,6 +883,10 @@
   "Опубликовать историю",
   "Post story"
  ],
+ "Istoryani o‘chirish": [
+  "Удалить историю",
+  "Delete story"
+ ],
  "Ixtiyoriy": [
   "Необязательно",
   "Optional"
@@ -871,6 +939,10 @@
   "Введите текущий пароль.",
   "Enter your current password."
  ],
+ "Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.": [
+  "Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.",
+  "Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning."
+ ],
  "Joylayotgan kontentim uchun javobgarlikni olaman va ": [
   "Я беру на себя ответственность за публикуемый контент и ",
   "I take responsibility for the content I post and "
@@ -878,6 +950,10 @@
  "Juda ko‘p murojaat. Birozdan keyin qayta urining.": [
   "Слишком много обращений. Повторите чуть позже.",
   "Too many requests. Try again shortly."
+ ],
+ "Juda ko‘p shikoyat yubordingiz. Ertaga qayta urining.": [
+  "Вы отправили слишком много жалоб. Попробуйте завтра.",
+  "You have sent too many reports. Try again tomorrow."
  ],
  "Juda ko‘p urinish. Bir necha daqiqadan so‘ng qayta urining.": [
   "Слишком много попыток. Повторите через несколько минут.",
@@ -1223,6 +1299,10 @@
   "Нет данных",
   "No information"
  ],
+ "Men qoidalarni o‘qidim va roziman": [
+  "Я прочитал(а) правила и согласен(на)",
+  "I have read the rules and agree"
+ ],
  "Menda sovg‘a kartasi bor": [
   "У меня есть подарочная карта",
   "I have a gift card"
@@ -1234,6 +1314,14 @@
  "Mijoz kartani o‘qiydi va to‘g‘ridan-to‘g‘ri buyurtma beradi.": [
   "Клиент считывает карту и делает заказ напрямую.",
   "The customer taps the card and orders directly."
+ ],
+ "Moderator tekshiradi. Rahmat.": [
+  "Модератор проверит. Спасибо.",
+  "A moderator will review it. Thank you."
+ ],
+ "Mualliflik huquqi buzilgan": [
+  "Нарушение авторских прав",
+  "Copyright infringement"
  ],
  "Muammo yoki taklif": [
   "Проблема или предложение",
@@ -1355,6 +1443,10 @@
   "Подписаться",
   "Follow"
  ],
+ "Obunachilar": [
+  "Подписчики",
+  "Followers"
+ ],
  "Ochiq": [
   "Открыто",
   "Open"
@@ -1374,6 +1466,10 @@
  "O‘chirilsa mahsulotlar ko‘rinadi, lekin ": [
   "Если выключить, товары видны, но ",
   "When off, products are visible but "
+ ],
+ "O‘chirish": [
+  "Удалить",
+  "Delete"
  ],
  "O‘tkazish": [
   "Передать",
@@ -1475,6 +1571,10 @@
   "Четверг",
   "Thursday"
  ],
+ "Pornografik yoki jinsiy xarakterdagi": [
+  "Порнография или материалы сексуального характера",
+  "Pornographic or sexually explicit"
+ ],
  "Post": [
   "Пост",
   "Post"
@@ -1498,6 +1598,10 @@
  "Postni joylash": [
   "Опубликовать пост",
   "Publish post"
+ ],
+ "Postni o‘chirish": [
+  "Удалить пост",
+  "Delete post"
  ],
  "Premium faol": [
   "Premium активен",
@@ -1615,6 +1719,10 @@
   "Краткое описание — необязательно",
   "Short description — optional"
  ],
+ "Qonunga zid boshqa material": [
+  "Иные материалы, противоречащие закону",
+  "Other unlawful material"
+ ],
  "Qo‘ng‘iroq": [
   "Позвонить",
   "Call"
@@ -1655,6 +1763,10 @@
   "Выбрать изображение",
   "Pick an image"
  ],
+ "Rasm yoki video tanlash": [
+  "Выбрать фото или видео",
+  "Choose a photo or video"
+ ],
  "Restoran": [
   "Ресторан",
   "Restaurant"
@@ -1670,6 +1782,10 @@
  "STORY MEDIA 9:16": [
   "STORY MEDIA 9:16",
   "STORY MEDIA 9:16"
+ ],
+ "Sabab tanlang. Shikoyat moderatorga yuboriladi va kontent tekshiriladi.": [
+  "Выберите причину. Жалоба будет отправлена модератору, и контент проверят.",
+  "Choose a reason. The report goes to a moderator and the content will be reviewed."
  ],
  "Sana": [
   "Дата",
@@ -1734,6 +1850,22 @@
  "Shaxsni almashtirish": [
   "Сменить личность",
   "Switch identity"
+ ],
+ "Shikoyat qilish": [
+  "Пожаловаться",
+  "Report"
+ ],
+ "Shikoyat yuborildi": [
+  "Жалоба отправлена",
+  "Report sent"
+ ],
+ "Shikoyatni yuborish": [
+  "Отправить жалобу",
+  "Send report"
+ ],
+ "Siyosiy targ‘ibot": [
+  "Политическая пропаганда",
+  "Political propaganda"
  ],
  "Siz": [
   "Вы",
@@ -1818,6 +1950,10 @@
  "Sozlamalardan NFC‘ni yoqib, qayta tekshiring.": [
   "Включите NFC в настройках и проверьте снова.",
   "Turn NFC on in settings, then check again."
+ ],
+ "Spam yoki aldov": [
+  "Спам или обман",
+  "Spam or deception"
  ],
  "Statistika": [
   "Статистика",
@@ -1919,6 +2055,10 @@
   "Касания",
   "Taps"
  ],
+ "Tekshirib bo‘lmadi. Ulanishni tekshiring.": [
+  "Не удалось проверить. Проверьте соединение.",
+  "Could not check. Check your connection."
+ ],
  "Tekshirilmoqda…": [
   "Проверяем…",
   "Checking…"
@@ -2010,6 +2150,10 @@
  "To‘lov Payme orqali. Narx to‘lov ekranida ko‘rsatiladi.": [
   "Оплата через Payme. Цена показывается на экране оплаты.",
   "Payment via Payme. The price is shown on the payment page."
+ ],
+ "To‘lov hozir ishlamayapti": [
+  "Оплата сейчас не работает",
+  "Payment is not working right now"
  ],
  "To‘lov kutilmoqda": [
   "Ожидание платежа",
@@ -2118,6 +2262,22 @@
  "Veb-sayt": [
   "Веб-сайт",
   "Website"
+ ],
+ "Video": [
+  "Видео",
+  "Video"
+ ],
+ "Video eng ko‘pi 60 soniya va 50 MB. Tarifga qarab cheklangan bo‘lishi mumkin.": [
+  "Видео не длиннее 60 секунд и не больше 50 МБ. В зависимости от тарифа может быть ограничено.",
+  "Video is at most 60 seconds and 50 MB. It may be limited depending on your plan."
+ ],
+ "Video juda katta ({hajm} MB). Chegara — {chegara} MB.": [
+  "Видео слишком большое ({hajm} МБ). Лимит — {chegara} МБ.",
+  "The video is too large ({hajm} MB). The limit is {chegara} MB."
+ ],
+ "Videoni ochib bo‘lmadi.": [
+  "Не удалось открыть видео.",
+  "The video could not be opened."
  ],
  "WhatsApp bosildi": [
   "Нажатия на WhatsApp",
@@ -2259,6 +2419,10 @@
   "Отправить",
   "Send"
  ],
+ "Zo‘ravonlik yoki shafqatsizlik": [
+  "Насилие или жестокость",
+  "Violence or cruelty"
+ ],
  "bermang — kod bilan ID faollashtiriladi.": [
   "не сообщайте — этим кодом активируется ID.",
   "it — the code activates the ID."
@@ -2291,6 +2455,10 @@
   "просмотров",
   "views"
  ],
+ "mahsulot": [
+  "товар",
+  "products"
+ ],
  "ma‘lumotlaringizni bitta raqamli profilda jamlang va NFC karta ": [
   "данные соберите в одном цифровом профиле и делитесь ",
   "details in one digital profile and share it with an NFC "
@@ -2302,6 +2470,14 @@
  "nishonga ega bo‘lasiz.": [
   "получите значок.",
   "you get the badge."
+ ],
+ "obuna": [
+  "подписки",
+  "following"
+ ],
+ "obunachi": [
+  "подписчик",
+  "followers"
  ],
  "orqali ulashing.": [
   "через карту.",

@@ -72,24 +72,36 @@ class ProfileTab extends StatelessWidget {
             identity: active,
           ),
         ),
+        // IKKI TUGMA — KATTA VA TUSHUNARLI.
+        //
+        // Ilgari ikkalasi 20px, atrofida 8px bo'shliq edi: ya'ni
+        // bosiladigan joy 36px, Android tavsiya qiladigan 48px dan
+        // ancha kichik. Qurilmada sinovda "juda kichkina" deb
+        // xabar qilindi.
+        //
+        // ALMASHTIRISH ikonkasi ham o'zgardi: ilgari `refresh`
+        // (aylanma strelka) turardi va odamlar uni "yangilash" deb
+        // o'qirdi — aslida u SHAXS ALMASHTIRADI. Endi `user`.
         Positioned(
-          top: MediaQuery.paddingOf(context).top + 8,
-          right: S.x12,
+          top: MediaQuery.paddingOf(context).top + 6,
+          right: S.x8,
           child: Row(
             children: [
               Press(
                 haptic: true,
                 onTap: () => showIdentitySwitcher(context),
+                // `const` YO'Q: `C.champagne` mavzuga qarab
+                // o'zgaradigan getter, ya'ni compile-time doimiy emas.
                 child: Padding(
-                  padding: EdgeInsets.all(S.x8),
-                  child: NIcon(Ico.refresh, size: 20, color: C.champagne),
+                  padding: const EdgeInsets.all(S.x12),
+                  child: NIcon(Ico.user, size: 24, color: C.champagne),
                 ),
               ),
               Press(
                 onTap: () => push(context, (_) => const SettingsScreen()),
                 child: const Padding(
-                  padding: EdgeInsets.all(S.x8),
-                  child: NIcon(Ico.settings, size: 20, color: C.offWhite),
+                  padding: EdgeInsets.all(S.x12),
+                  child: NIcon(Ico.settings, size: 24, color: C.offWhite),
                 ),
               ),
             ],

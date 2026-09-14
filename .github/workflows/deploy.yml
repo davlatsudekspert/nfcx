@@ -33,6 +33,17 @@ jobs:
       - name: Dependency'larni o'rnatish
         run: npm ci
 
+      # MARSHRUTLAR TEKSHIRUVI — DEPLOY'DAN OLDIN.
+      #
+      # `hosting/worker.js` da marshrutlash ikki qavat: tashqi `if`
+      # `coreApi()` ni chaqiradimi, ichkarisi esa qaysi ishlovchiga
+      # berishni hal qiladi. Ichkariga yozib, tashqariga qo'shishni
+      # unutish oson va natija JIM: so'rov umumiy tutqichga tushib
+      # `{"error":"not_found"}` qaytaradi. `GET /api/feed` aynan
+      # shunday bo'ldi va ilovadagi Reels tabi ishlamay turdi.
+      - name: API marshrutlari yetib boradimi
+        run: node scripts/api-route-reachability-test.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

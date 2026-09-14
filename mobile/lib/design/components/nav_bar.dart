@@ -74,13 +74,25 @@ class NavBar extends StatelessWidget {
                 AnimatedPositioned(
                   duration: M.push,
                   curve: M.curve,
-                  left: active * w + (w - 24) / 2,
+                  left: active * w + (w - 30) / 2,
                   top: 0,
                   child: Container(
-                    width: 24, height: 2,
+                    width: 30,
+                    height: 3,
                     decoration: BoxDecoration(
-                      color: active == nfcIndex ? C.platinum : C.champagne,
-                      borderRadius: BorderRadius.circular(1),
+                      // Chetlari so'nadigan gradient — yassi
+                      // to'rtburchak chiziq arzon ko'rinardi.
+                      gradient: LinearGradient(
+                        colors: [
+                          (active == nfcIndex ? C.platinum : C.champagne)
+                              .withValues(alpha: 0),
+                          active == nfcIndex ? C.platinum : C.champagne,
+                          (active == nfcIndex ? C.platinum : C.champagne)
+                              .withValues(alpha: 0),
+                        ],
+                        stops: const [0, .5, 1],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
@@ -128,11 +140,15 @@ class _Tab extends StatelessWidget {
     // orqasida yumshoq plastinka. Suzuvchi tugma (FAB) EMAS.
     final accent = isNfc ? C.platinum : C.champagne;
     final color = active ? accent : C.muted;
-    final size = isNfc ? 26.0 : 23.0;
+    // Faol tab bir oz KATTAROQ — ko'z uni darhol topadi.
+    final size = (isNfc ? 26.0 : 23.0) + (active ? 1.5 : 0);
 
     return Press(
       onTap: onTap,
-      scale: .93,
+      // 1.12x sakrash dizayn manbasida bor edi; bu yerda bosilganda
+      // ichkariga bosiladi — ikkalasi ham javob beradi, lekin
+      // kichrayish qo'shni tablarni surib yubormaydi.
+      scale: .92,
       child: SizedBox(
         height: 58,
         child: Column(
@@ -148,8 +164,67 @@ class _Tab extends StatelessWidget {
                   : null,
               child: Stack(
                 clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
-                  NIcon(data.icon, size: size, color: color, filled: active && !isNfc),
+                  // ORTIDAGI YORUG'LIK — faqat faol tabda.
+                  //
+                  // Dizayn manbasida bu bor edi va Flutter'ga
+                  // ko'chirilganda tushib qolgan: natijada panel
+                  // "oddiy" ko'rinib turardi. Yumshoq radial
+                  // yorug'lik ikonkani fonidan ajratadi va butun
+                  // panelga chuqurlik beradi.
+                  if (active)
+                    // `Positioned.fill` + `OverflowBox`: yorug'lik
+                    // ikonkadan KATTA, lekin Stack o'lchamiga
+                    // TA'SIR QILMAYDI. Oddiy bola sifatida
+                    // qo'yilsa, u Stack'ni kengaytirib panelni
+                    // toshirib yuborardi (sinovda aynan shunday
+                    // bo'ldi: "RenderFlex overflowed by 7.5px").
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: OverflowBox(
+                          maxWidth: size * 2.1,
+                          maxHeight: size * 2.1,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  accent.withValues(alpha: .22),
+                                  accent.withValues(alpha: .07),
+                                  accent.withValues(alpha: 0),
+                                ],
+                                stops: const [0, .55, 1],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // FAOL GLIF GRADIENT BILAN TO'LDIRILADI.
+                  //
+                  // Bitta tekis rang metall taassurotini bermaydi.
+                  // `ShaderMask` glifning O'ZIGA gradient beradi —
+                  // ortiga rasm qo'shilmaydi, ya'ni qo'shimcha
+                  // qatlam ham, xotira ham sarflanmaydi.
+                  if (active)
+                    ShaderMask(
+                      blendMode: BlendMode.srcIn,
+                      shaderCallback: (r) => LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          isNfc ? C.offWhite : const Color(0xFFF6E7C6),
+                          accent,
+                          isNfc ? C.platinum : C.antiqueGold,
+                        ],
+                        stops: const [0, .55, 1],
+                      ).createShader(r),
+                      child: NIcon(data.icon,
+                          size: size, color: C.offWhite, filled: !isNfc),
+                    )
+                  else
+                    NIcon(data.icon, size: size, color: color),
                   if (unread > 0)
                     Positioned(
                       right: -3, top: -2,

@@ -18,6 +18,7 @@ import '../orders/my_orders.dart';
 import '../identity/edit_profile.dart';
 import 'change_password.dart';
 import '../../l10n/strings.dart';
+import '../../app_version.dart';
 import 'appearance.dart';
 import 'support.dart';
 import 'premium.dart';
@@ -240,6 +241,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: S.x20),
+                  // VERSIYA. Qurilmada sinashda "bu o'zgarish
+                  // ko'rinmayapti" deyilganda birinchi savol —
+                  // ilovaning qaysi build'i o'rnatilgan. Ilgari
+                  // buni bilishning YO'LI yo'q edi.
+                  Center(
+                    child: Text(
+                      'NFCSTORE $appVersion',
+                      style: T.caption.copyWith(fontSize: 11, color: C.muted),
+                    ),
+                  ),
+                  const SizedBox(height: S.x8),
                 ],
               ),
             ),

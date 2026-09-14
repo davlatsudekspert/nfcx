@@ -174,9 +174,27 @@ class Repo {
     return (liked: r['liked'] == true, count: r["count"] is num ? (r["count"] as num).round() : 0);
   }
 
+  /// ISTORYANI YOQTIRISH.
+  ///
+  /// `count` VA `likeCount` — ikkalasi ham o'qiladi. Server post
+  /// uchun `count`, istorya uchun `likeCount` qaytaradi (ikki
+  /// endpoint vaqt o'tib bir-biridan uzoqlashib ketgan). Ilgari bu
+  /// yerda faqat `count` o'qilardi, ya'ni istoryaga yurak bosilgach
+  /// hisob HAR DOIM 0 ga tushardi.
   Future<({bool liked, int count})> likeStory(int id) async {
     final r = _map(await api.post('/api/stories/$id/like'));
-    return (liked: r['liked'] == true, count: r["count"] is num ? (r["count"] as num).round() : 0);
+    final n = r['count'] ?? r['likeCount'];
+    return (liked: r['liked'] == true, count: n is num ? n.round() : 0);
+  }
+
+  /// Istorya OCHILGANI — egasi "nechta odam ko'rdi" ni bilishi uchun.
+  ///
+  /// Natijasi kutilmaydi va xatosi yutiladi: hisob yozilmagani
+  /// uchun istoryani ko'rsatmaslik mantiqsiz bo'lardi.
+  Future<int> viewStory(int id) async {
+    final r = _map(await api.post('/api/stories/$id/view'));
+    final n = r['viewCount'];
+    return n is num ? n.round() : 0;
   }
 
   Future<List<StoryFeedEntry>> storyFeed() async {
@@ -392,11 +410,24 @@ class Repo {
     return url;
   }
 
-  /// Yangi post. `imageUrl` — `uploadMedia` qaytargan manzil.
-  Future<Post> addPost(String code, {required String imageUrl, String caption = ''}) async =>
+  /// Yangi post. Manzil `uploadMedia` dan keladi.
+  ///
+  /// RASM YOKI VIDEO — bittasi. Server ikkalasini ham qabul qiladi
+  /// (`posts.video_url` ustuni 2026-09 dan beri bor), ilova esa
+  /// faqat rasm yuborardi: saytdan qo'yilgan video postni ko'rish
+  /// mumkin edi, ilovadan qo'yish esa yo'q edi.
+  Future<Post> addPost(
+    String code, {
+    String? imageUrl,
+    String? videoUrl,
+    String caption = '',
+    required bool agreed,
+  }) async =>
       Post.fromJson(_map(await api.post('/api/records/$code/posts', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
+        'agreed': agreed,
       })));
 
   /// Yangi istorya. 24 soatdan keyin serverda o'zi o'chadi.
@@ -407,12 +438,14 @@ class Repo {
   /// bu yerda `true` shunchaki yozib qo'yilmaydi.
   Future<void> addStory(
     String code, {
-    required String imageUrl,
+    String? imageUrl,
+    String? videoUrl,
     String caption = '',
     required bool agreed,
   }) =>
       api.post('/api/records/$code/stories', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
         'agreed': agreed,
       });
@@ -420,33 +453,85 @@ class Repo {
   /// O'z postini o'chirish.
   Future<void> deletePost(int id) => api.delete('/api/posts/$id');
 
+  /// O'z istoryasini o'chirish (24 soat tugashini kutmasdan).
+  Future<void> deleteStory(int id) => api.delete('/api/stories/$id');
+
+  // ── Shikoyat va bloklash ───────────────────────────────────────────
+  //
+  // Nomaqbul kontentni ko'rgan odam qo'lidan biror narsa kelishi
+  // kerak, bizga esa u haqda xabar yetib borishi kerak. Google Play
+  // ham foydalanuvchi kontenti bor ilovalardan aynan shuni talab
+  // qiladi.
+
+  /// Shikoyat yuborish. `targetKind`: post | story | company_post |
+  /// record | company. `reason` — `ReportReason` kaliti.
+  Future<void> report({
+    required String targetKind,
+    required String targetId,
+    required String reason,
+    String ownerCode = '',
+    String note = '',
+  }) =>
+      api.post('/api/reports', {
+        'targetKind': targetKind,
+        'targetId': targetId,
+        'reason': reason,
+        if (ownerCode.isNotEmpty) 'ownerCode': ownerCode,
+        if (note.isNotEmpty) 'note': note,
+      });
+
+  /// Profilni bloklash — uning kontenti lentada ko'rinmaydi.
+  Future<void> block({required String kind, required String id}) =>
+      api.post('/api/blocks', {'kind': kind, 'id': id});
+
+  Future<void> unblock({required String kind, required String id}) =>
+      api.delete('/api/blocks/$kind/$id');
+
   // ── Biznes kontenti ────────────────────────────────────────────────
   //
   // Shaxsiy profil bilan BIR XIL oqim, boshqa endpoint. Yaratish
   // ekrani (`ComposeScreen`) ikkalasiga ham xizmat qiladi —
   // nusxalangan kod yozilmadi.
 
-  Future<void> addCompanyPost(String id, {required String imageUrl, String caption = ''}) =>
+  /// `agreed` — EKRANDAN keladi, qotib yozilmaydi.
+  ///
+  /// Ilgari bu yerda `'agreed': true` turardi: odam hech qanday
+  /// ogohlantirish ko'rmasdan post joylardi, serverda esa "u rozilik
+  /// bergan" degan yozuv qolardi. Ya'ni rozilik SOXTA edi va uning
+  /// yuridik qiymati yo'q edi.
+  Future<void> addCompanyPost(
+    String id, {
+    String? imageUrl,
+    String? videoUrl,
+    String caption = '',
+    required bool agreed,
+  }) =>
       api.post('/api/companies/$id/posts', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
-        'agreed': true,
+        'agreed': agreed,
       });
 
   Future<void> addCompanyStory(
     String id, {
-    required String imageUrl,
+    String? imageUrl,
+    String? videoUrl,
     String caption = '',
     required bool agreed,
   }) =>
       api.post('/api/companies/$id/stories', {
-        'imageUrl': imageUrl,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
         'agreed': agreed,
       });
 
   Future<void> deleteCompanyPost(String id, int postId) =>
       api.delete('/api/companies/$id/posts/$postId');
+
+  Future<void> deleteCompanyStory(String id, int storyId) =>
+      api.delete('/api/companies/$id/stories/$storyId');
 
   // ── Biznes profili ─────────────────────────────────────────────────
 

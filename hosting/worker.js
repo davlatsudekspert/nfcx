@@ -13,6 +13,7 @@ import { PENDING_ORDER_TTL_MS, PENDING_EXPIRES_MS_SQL } from './api/order-window
 import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
+import * as apiModeration from './api/moderation.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -2508,6 +2509,20 @@ async function ensureCompanyExtrasSchema(env) {
         created_at TEXT NOT NULL,
         PRIMARY KEY (story_id, user_id)
       )`),
+      // ISTORYA KO'RISHLARI. Egasi "nechta odam ko'rdi" degan
+      // savolga javob olishi kerak — Instagram'dagi kabi. Birlamchi
+      // kalit takroriy ko'rishni hisoblamaydi: bitta odam istoryani
+      // o'n marta ochsa ham bitta ko'rish.
+      //
+      // `viewer` — kirgan foydalanuvchi id'si yoki mehmon uchun
+      // tashrifchi hash'i (`newsVisitorHash`). Ya'ni raqam
+      // to'qilmaydi: har bir birlik haqiqiy ochilish.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "story_views" (
+        story_id INTEGER NOT NULL,
+        viewer TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (story_id, viewer)
+      )`),
       // Kompaniya postlari — shaxsiy `posts` jadvalidan ALOHIDA.
       // Sabab yuqoridagi bilan bir xil: `posts.code` va company_id
       // bir maydonga sig'sa ham, ular BOSHQA nomlar makoni.
@@ -2572,6 +2587,7 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const rows = await env.DB.prepare(
     `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
             (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
+            (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) AS view_count,
             EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
        FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
       ORDER BY s.created_at`
@@ -2580,6 +2596,7 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
     id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
     caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
     likeCount: Number(r.like_count || 0), liked: !!r.liked,
+    viewCount: Number(r.view_count || 0),
   }));
 }
 
@@ -5323,6 +5340,14 @@ async function recordsApi(request, env, url) {
       const user = await getCurrentUser(request, env);
       if (!user) return json({ error: 'unauthorized' }, 401);
       const body = await request.json().catch(() => ({}));
+      // KONTENT QOIDALARIGA ROZILIK — shu yerda ham.
+      //
+      // Kompaniya posti, kompaniya istoryasi va shaxsiy istorya
+      // buni allaqachon talab qilardi; shaxsiy profil POSTI esa
+      // YAGONA istisno bo'lib qolgan edi. Ya'ni platformadagi eng
+      // ko'p ishlatiladigan joyda "u rozilik bergan" degan hech
+      // qanday dalil saqlanmasdi.
+      if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
       const imageUrl = String(body?.imageUrl || '');
       const videoUrl = String(body?.videoUrl || '');
       const caption = String(body?.caption || '').slice(0, 600);
@@ -8297,6 +8322,35 @@ async function followListRows(env, ownerId, dir) {
   }));
 }
 
+/// KOMPANIYAGA OBUNA BO'LGANLAR.
+///
+/// `company_follows` jadvali (kompaniya_id, user_id). Har
+/// foydalanuvchining KO'RINADIGAN yuzi — asosiy shaxsiy kartasi;
+/// katalogdan yashiringan kartalar ro'yxatga tushmaydi (shaxsiy
+/// profil ro'yxati bilan bir xil qoida).
+async function companyFollowerRows(env, companyId) {
+  const rows = await env.DB.prepare(`
+    WITH ranked AS (
+      SELECT u.id AS uid, c.code AS code, c.name AS name,
+             c.avatar_url AS avatar_url, c.verified AS verified,
+             ROW_NUMBER() OVER (PARTITION BY u.id ORDER BY c.is_primary DESC, c.ts ASC) AS rn
+      FROM company_follows cf
+      JOIN users u ON u.id = cf.user_id
+      JOIN cards c ON c.user_id = u.id AND c.hidden_from_directory = 0
+      WHERE cf.company_id = ?
+    )
+    SELECT code, name, avatar_url, verified FROM ranked
+     WHERE rn = 1 ORDER BY uid LIMIT 200
+  `).bind(companyId).all();
+  return (rows.results || []).map((r) => ({
+    kind: 'person',
+    code: r.code,
+    name: r.name,
+    avatarUrl: r.avatar_url || '',
+    verified: !!r.verified,
+  }));
+}
+
 // ── KIM YOQTIRDI ─────────────────────────────────────────────────────
 // Ilgari layk faqat SON edi — kim bosgani hech qayerda ko'rinmasdi va
 // shu sabab "biznes nomidan layk" degan tushunchaning ma'nosi ham yo'q
@@ -8491,6 +8545,31 @@ async function storiesApi(request, env, url) {
     return json({ feed: [...byCode.values()] });
   }
 
+  // POST /api/stories/:id/view — istoryani ochgan odam qayd etiladi.
+  //
+  // TAKRORLANMAYDI: birlamchi kalit (story_id, viewer) bitta odamni
+  // bir marta hisoblaydi. Ya'ni ekrandagi raqam "nechta ODAM ko'rdi",
+  // "necha marta ochildi" emas — egasi uchun ma'nolisi shu.
+  //
+  // MEHMON HAM HISOBLANADI: profil sahifasi ochiq va istoryani
+  // kirmasdan ham ko'rish mumkin. Uni tashlab ketsak raqam
+  // haqiqatdan kichik bo'lardi.
+  const viewMatch = url.pathname.match(/^\/api\/stories\/(\d+)\/view$/);
+  if (viewMatch && request.method === 'POST') {
+    const storyId = Number(viewMatch[1]);
+    const user = await getCurrentUser(request, env).catch(() => null);
+    const viewer = user ? `u${user.id}` : `g${await newsVisitorHash(request)}`;
+    const story = await env.DB.prepare(`SELECT id FROM stories WHERE id = ? AND expires_at > ?`)
+      .bind(storyId, new Date().toISOString()).first();
+    if (!story) return json({ error: 'not_found' }, 404);
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO story_views (story_id, viewer, created_at) VALUES (?,?,?)`
+    ).bind(storyId, viewer, new Date().toISOString()).run();
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM story_views WHERE story_id = ?`)
+      .bind(storyId).first();
+    return json({ ok: true, viewCount: Number(cnt?.n || 0) });
+  }
+
   // POST /api/stories/:id/like — bosilganda holat teskarisiga o'giriladi.
   const likeMatch = url.pathname.match(/^\/api\/stories\/(\d+)\/like$/);
   if (likeMatch && request.method === 'POST') {
@@ -8598,7 +8677,23 @@ async function feedApi(request, env, url) {
      LIMIT ? OFFSET ?`
   ).bind(viewerId, viewerId, now, now, limit + 1, offset).all();
 
-  const all = rows.results || [];
+  // BLOKLANGAN PROFILLAR LENTADAN CHIQARILADI.
+  //
+  // Bloklash tugmasi bor, lekin lenta uni hisobga olmasa — tugma
+  // YOLG'ON bo'lardi: odam bloklaydi, kontent esa baribir
+  // ko'rinaveradi.
+  //
+  // Filtr SQL da emas, shu yerda: bloklanganlar soni odatda bir
+  // nechta va ularni har bir UNION shoxiga qo'shish so'rovni
+  // sezilarli murakkablashtirardi.
+  const blocked = viewerId
+    ? new Set((await apiModeration.blockedByUser(env, viewerId))
+      .map((b) => `${b.kind === 'company' ? 'company' : 'card'}:${b.id.toUpperCase()}`))
+    : new Set();
+
+  const all = (rows.results || []).filter(
+    (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
+  );
   const feed = all.slice(0, limit).map((r) => {
     const d = parseDbDate(r.created_at);
     return {
@@ -8704,12 +8799,26 @@ async function followApi(request, env, url) {
   const listMatch = path.match(/^\/api\/follow-list\/([A-Za-z0-9]{1,32})$/);
   if (listMatch && request.method === 'GET') {
     const code = decodeURIComponent(listMatch[1]).toUpperCase();
-    const ownerId = await getRecordOwner(env, code);
-    if (!ownerId) return json({ list: [] });
     const dir = url.searchParams.get('dir') === 'following' ? 'following' : 'followers';
     try {
-      const list = await followListRows(env, ownerId, dir);
-      return json({ list });
+      const ownerId = await getRecordOwner(env, code);
+      if (ownerId) return json({ list: await followListRows(env, ownerId, dir) });
+
+      // KOMPANIYA OBUNACHILARI — alohida jadval.
+      //
+      // Ilgari bu yerda faqat `getRecordOwner()` bor edi: u SHAXSIY
+      // karta egasini topadi va kompaniya ID'si uchun `null`
+      // qaytaradi. Natijada biznes profilida "1843 obunachi" deb
+      // turardi-yu, raqam bosilganda ro'yxat BO'SH ochilardi.
+      //
+      // Kompaniya kimgadir obuna bo'lolmaydi (faqat odam obuna
+      // bo'ladi), shuning uchun `following` yo'nalishi bo'sh.
+      const co = await env.DB.prepare(
+        `SELECT company_id FROM companies WHERE company_id = ? AND status = 'active'`
+      ).bind(code).first().catch(() => null);
+      if (!co) return json({ list: [] });
+      if (dir === 'following') return json({ list: [] });
+      return json({ list: await companyFollowerRows(env, code) });
     } catch (err) {
       console.error('[worker] follow-list:', err.message);
       return json({ list: [] });
@@ -8838,7 +8947,7 @@ const H = {
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -9001,7 +9110,19 @@ async function handleRequest(request, env, url) {
       || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
       || url.pathname === '/api/referrals' || url.pathname === '/api/auctions/won/pending'
       || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')
-      || url.pathname.startsWith('/api/posts/') || url.pathname.startsWith('/api/stories/')) {
+      || url.pathname.startsWith('/api/posts/') || url.pathname.startsWith('/api/stories/')
+      // `/api/feed` SHU RO'YXATDA BO'LISHI SHART.
+      //
+      // Marshrut `coreApi()` ICHIDA yozilgan edi, lekin `coreApi()`
+      // ning O'ZI faqat shu ro'yxatdagi yo'llar uchun chaqiriladi.
+      // `/api/feed` ro'yxatga qo'shilmagani uchun so'rov u yerga
+      // umuman yetib bormasdi va pastdagi umumiy tutqich
+      // `{"error":"not_found"}` qaytarardi.
+      //
+      // Natijasi: ilovadagi Reels tabi BIRINCHI KUNDAN BERI
+      // "Topilmadi" ko'rsatib kelgan. Brauzerda sinalmagani uchun
+      // sezilmagan — Reels faqat ilovada bor.
+      || url.pathname === '/api/feed') {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;

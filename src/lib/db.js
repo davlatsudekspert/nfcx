@@ -1111,12 +1111,20 @@ export async function dbDeleteStory(id) {
   return true;
 }
 
+// `agreed: true` — kontent qoidalariga rozilik. Ekranda belgilanmasa
+// yuklash tugmalari o'chiq turadi (AccountPage), ya'ni bu yergacha
+// faqat rozilik bergan odam yetib keladi.
+//
+// NIMA UCHUN SERVERGA YUBORILADI: kompaniya posti va istoryalarda
+// server buni ALLAQACHON talab qilardi, shaxsiy profil postida esa
+// yo'q edi — ya'ni yagona joy, qayerda rozilikning hech qanday
+// dalili saqlanmasdi.
 export async function dbCreatePost(code, { imageUrl, caption, videoUrl }) {
   const res = await fetch(`/api/records/${encodeURIComponent(code)}/posts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ imageUrl, caption, videoUrl }),
+    body: JSON.stringify({ imageUrl, caption, videoUrl, agreed: true }),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
@@ -1124,6 +1132,7 @@ export async function dbCreatePost(code, { imageUrl, caption, videoUrl }) {
       unauthorized: 'Avval tizimga kiring.',
       bad_image: 'Avval rasm yoki video yuklang.',
       not_owner: 'Bu profil sizga tegishli emas.',
+      rules_not_accepted: 'Avval kontent qoidalariga rozilik bering.',
       limit_reached: data?.limit
         ? `Bu tarifda ${data.limit} tagacha post joylash mumkin.`
         : 'Postlar soni chegarasiga yetdingiz.',
