@@ -364,6 +364,25 @@ class Post {
   final String? authorAvatar;
   final String authorCode;
 
+  /// Faqat o'zgaradigan maydonlar — yurak va ko'rishlar hisobi.
+  ///
+  /// Istorya ko'ruvchisida yurak bosilishi BILAN ko'rinishi kerak
+  /// (server javobini kutmasdan), keyin server tasdig'i ustiga
+  /// yoziladi. Usiz yurak yarim soniya kechikib yonardi.
+  Post copyWith({bool? liked, int? likes, int? views}) => Post(
+        id: id,
+        caption: caption,
+        images: images,
+        videoUrl: videoUrl,
+        createdAt: createdAt,
+        likes: likes ?? this.likes,
+        views: views ?? this.views,
+        liked: liked ?? this.liked,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        authorCode: authorCode,
+      );
+
   factory Post.fromJson(Map<String, dynamic> j) {
     final imgs = <String>[];
     for (final key in ['images', 'media', 'photos']) {

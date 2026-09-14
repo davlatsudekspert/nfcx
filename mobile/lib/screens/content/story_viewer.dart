@@ -6,7 +6,10 @@ import '../../design/components/icons.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/media.dart';
 import '../../design/components/video_view.dart';
+import '../../design/components/press.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
+import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
@@ -43,6 +46,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   List<Post> _stories = const [];
   int _index = 0;
+
+  /// Ayni damda serverga ketayotgan yurak so'rovi.
+  final _liking = <String>{};
+
+  /// Ko'rish hisobi YUBORILGAN istoryalar — bitta ochilishda bir
+  /// marta. Aks holda har `setState` da qayta yuborilardi.
+  final _viewed = <String>{};
   bool _loading = true;
   Object? _error;
 
@@ -67,7 +77,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         _stories = list;
         _loading = false;
       });
-      if (list.isNotEmpty) _progress.forward(from: 0);
+      if (list.isNotEmpty) {
+        _progress.forward(from: 0);
+        _markViewed();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -94,6 +107,121 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _progress.forward(from: 0);
   }
 
+  /// KO'RILDI deb belgilash. Natija kutilmaydi — ekran bundan
+  /// to'xtab turmasligi kerak. Xatosi ham yutiladi: hisob
+  /// yozilmagani uchun istoryani ko'rsatmaslik mantiqsiz.
+  void _markViewed() {
+    if (_index >= _stories.length) return;
+    final story = _stories[_index];
+    final id = int.tryParse(story.id);
+    if (id == null || !_viewed.add(story.id)) return;
+    AppScope.read(context).repo.viewStory(id).then((count) {
+      if (!mounted) return;
+      // Egasi o'z istoryasini ochganda raqam DARHOL to'g'ri
+      // ko'rinsin — qayta yuklashni kutmasdan.
+      setState(() {
+        final i = _stories.indexWhere((p) => p.id == story.id);
+        if (i >= 0) _stories[i] = _stories[i].copyWith(views: count);
+      });
+    }).catchError((_) {});
+  }
+
+  /// O'Z ISTORYASINI O'CHIRISH — 24 soat tugashini kutmasdan.
+  ///
+  /// Ilgari ilovada bunday yo'l yo'q edi: xato qo'yilgan istoryani
+  /// faqat saytdan yoki bir sutkani kutib olib tashlash mumkin edi.
+  Future<void> _delete() async {
+    if (_index >= _stories.length) return;
+    final story = _stories[_index];
+    final id = int.tryParse(story.id);
+    if (id == null) return;
+
+    _progress.stop();
+    final sure = await showSheet<bool>(
+      context,
+      title: tr('Istoryani o‘chirish'),
+      subtitle: tr('Bu amalni qaytarib bo‘lmaydi.'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            PrimaryButton(tr('O‘chirish'),
+                onTap: () => Navigator.of(context).pop(true)),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop(false)),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (sure != true) {
+      _progress.forward();
+      return;
+    }
+
+    final repo = AppScope.read(context).repo;
+    try {
+      widget.isCompany
+          ? await repo.deleteCompanyStory(widget.code, id)
+          : await repo.deleteStory(id);
+      if (!mounted) return;
+      successHaptic();
+      final left = _stories.where((p) => p.id != story.id).toList();
+      // OXIRGISI O'CHIRILSA — ko'ruvchining ma'nosi qolmaydi.
+      if (left.isEmpty) {
+        Navigator.of(context).maybePop();
+        return;
+      }
+      setState(() {
+        _stories = left;
+        if (_index >= left.length) _index = left.length - 1;
+        _progress.duration = M.storySegment;
+      });
+      _progress.forward(from: 0);
+    } catch (e) {
+      if (!mounted) return;
+      await showError(context, humanError(e));
+      if (mounted) _progress.forward();
+    }
+  }
+
+  /// YURAK. Bosilishi bilan ko'rinadi, keyin server tasdiqlaydi —
+  /// Reels'dagi bilan bir xil xulq.
+  Future<void> _like() async {
+    if (_index >= _stories.length) return;
+    final story = _stories[_index];
+    final id = int.tryParse(story.id);
+    if (id == null || !_liking.add(story.id)) return;
+
+    final before = story;
+    setState(() {
+      _stories[_index] = story.copyWith(
+        liked: !story.liked,
+        likes: story.likes + (story.liked ? -1 : 1),
+      );
+    });
+    successHaptic();
+
+    try {
+      final res = await AppScope.read(context).repo.likeStory(id);
+      if (!mounted) return;
+      setState(() {
+        final i = _stories.indexWhere((p) => p.id == story.id);
+        if (i >= 0) _stories[i] = before.copyWith(liked: res.liked, likes: res.count);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      // HAQIQAT SERVERDA: tasdiq kelmasa eski holat qaytariladi.
+      setState(() {
+        final i = _stories.indexWhere((p) => p.id == story.id);
+        if (i >= 0) _stories[i] = before;
+      });
+    } finally {
+      _liking.remove(story.id);
+    }
+  }
+
   void _next() {
     if (_index >= _stories.length - 1) {
       Navigator.of(context).maybePop();
@@ -106,6 +234,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _progress.duration = M.storySegment;
     });
     _progress.forward(from: 0);
+    _markViewed();
   }
 
   void _prev() {
@@ -118,12 +247,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _progress.duration = M.storySegment;
     });
     _progress.forward(from: 0);
+    _markViewed();
   }
 
   @override
   void dispose() {
     _progress.dispose();
     super.dispose();
+  }
+
+  /// Bu istorya MENIKIMI — ko'rishlar soni faqat egasiga.
+  bool get _isOwner {
+    final state = AppScope.read(context);
+    return widget.isCompany
+        ? state.companies.any((c) => c.id.toUpperCase() == widget.code.toUpperCase())
+        : state.ownsRecord(widget.code);
   }
 
   @override
@@ -249,12 +387,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             style: T.cardTitle.copyWith(fontSize: 13),
                           ),
                         ),
+                        if (_isOwner)
+                          GestureDetector(
+                            onTap: _delete,
+                            behavior: HitTestBehavior.opaque,
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: NIcon(Ico.trash, size: 19, color: C.offWhite),
+                            ),
+                          ),
                         GestureDetector(
                           onTap: () => Navigator.of(context).maybePop(),
                           behavior: HitTestBehavior.opaque,
                           child: const Padding(
-                            padding: EdgeInsets.all(6),
-                            child: NIcon(Ico.close, size: 18, color: C.offWhite),
+                            padding: EdgeInsets.all(8),
+                            child: NIcon(Ico.close, size: 19, color: C.offWhite),
                           ),
                         ),
                       ],
@@ -263,12 +410,60 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                   const Spacer(),
                   if (story.caption.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x20),
+                      padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x12),
                       child: Text(
                         story.caption,
                         style: T.body.copyWith(color: C.offWhite),
                       ),
                     ),
+                  // YURAK VA KO'RISHLAR.
+                  //
+                  // Ilgari istoryani ko'rish mumkin edi, lekin unga
+                  // JAVOB BERIB bo'lmasdi: yurak tugmasi yo'q edi,
+                  // egasi esa "nechta odam ko'rdi" ni bilolmasdi.
+                  // Server ikkalasini ham beradi.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x20),
+                    child: Row(
+                      children: [
+                        Press(
+                          onTap: _like,
+                          scale: .86,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: S.x8),
+                            child: Row(
+                              children: [
+                                NIcon(Ico.heart,
+                                    size: 26,
+                                    color: story.liked ? C.signal : C.offWhite,
+                                    filled: story.liked),
+                                if (story.likes > 0) ...[
+                                  const SizedBox(width: 7),
+                                  Text('${story.likes}',
+                                      style: T.meta.copyWith(color: C.offWhite)),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        // KO'RISHLAR — FAQAT EGASIGA.
+                        //
+                        // Begona odamga "sizdan oldin 40 kishi
+                        // ko'rgan" deyishning ma'nosi yo'q va
+                        // Instagram ham buni faqat egasiga
+                        // ko'rsatadi. Egasi uchun esa bu istorya
+                        // qo'yishning asosiy o'lchovi.
+                        if (_isOwner) ...[
+                          const NIcon(Ico.eye, size: 20, color: C.ash),
+                          const SizedBox(width: 6),
+                          Text('${story.views}',
+                              style: T.meta.copyWith(color: C.ash)),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

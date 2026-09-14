@@ -174,9 +174,27 @@ class Repo {
     return (liked: r['liked'] == true, count: r["count"] is num ? (r["count"] as num).round() : 0);
   }
 
+  /// ISTORYANI YOQTIRISH.
+  ///
+  /// `count` VA `likeCount` — ikkalasi ham o'qiladi. Server post
+  /// uchun `count`, istorya uchun `likeCount` qaytaradi (ikki
+  /// endpoint vaqt o'tib bir-biridan uzoqlashib ketgan). Ilgari bu
+  /// yerda faqat `count` o'qilardi, ya'ni istoryaga yurak bosilgach
+  /// hisob HAR DOIM 0 ga tushardi.
   Future<({bool liked, int count})> likeStory(int id) async {
     final r = _map(await api.post('/api/stories/$id/like'));
-    return (liked: r['liked'] == true, count: r["count"] is num ? (r["count"] as num).round() : 0);
+    final n = r['count'] ?? r['likeCount'];
+    return (liked: r['liked'] == true, count: n is num ? n.round() : 0);
+  }
+
+  /// Istorya OCHILGANI — egasi "nechta odam ko'rdi" ni bilishi uchun.
+  ///
+  /// Natijasi kutilmaydi va xatosi yutiladi: hisob yozilmagani
+  /// uchun istoryani ko'rsatmaslik mantiqsiz bo'lardi.
+  Future<int> viewStory(int id) async {
+    final r = _map(await api.post('/api/stories/$id/view'));
+    final n = r['viewCount'];
+    return n is num ? n.round() : 0;
   }
 
   Future<List<StoryFeedEntry>> storyFeed() async {
@@ -435,6 +453,9 @@ class Repo {
   /// O'z postini o'chirish.
   Future<void> deletePost(int id) => api.delete('/api/posts/$id');
 
+  /// O'z istoryasini o'chirish (24 soat tugashini kutmasdan).
+  Future<void> deleteStory(int id) => api.delete('/api/stories/$id');
+
   // ── Biznes kontenti ────────────────────────────────────────────────
   //
   // Shaxsiy profil bilan BIR XIL oqim, boshqa endpoint. Yaratish
@@ -477,6 +498,9 @@ class Repo {
 
   Future<void> deleteCompanyPost(String id, int postId) =>
       api.delete('/api/companies/$id/posts/$postId');
+
+  Future<void> deleteCompanyStory(String id, int storyId) =>
+      api.delete('/api/companies/$id/stories/$storyId');
 
   // ── Biznes profili ─────────────────────────────────────────────────
 

@@ -87,7 +87,8 @@ AppState auditState({AuditMode mode = AuditMode.normal}) => AppState(
 /// `app.dart` dagi builder bilan AYNAN bir xil: Material qatlami,
 /// mavzu, matn masshtabi chegarasi. Aks holda audit ekranni haqiqiy
 /// ilovadagidan boshqacha ko'rsatardi va xulosa yolg'on bo'lardi.
-Widget auditApp(Widget child, AppState state, {AppLock? lock, AppPrefs? prefs}) =>
+Widget auditApp(Widget child, AppState state,
+        {AppLock? lock, AppPrefs? prefs, GlobalKey<NavigatorState>? navKey}) =>
     AppScope(
       state: state,
       // KO'RINISH SOZLAMALARI ham o'ralishi SHART: haqiqiy ilovada
@@ -100,6 +101,7 @@ Widget auditApp(Widget child, AppState state, {AppLock? lock, AppPrefs? prefs}) 
         lock: lock ?? AppLock(storage: FakeStore()),
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
+          navigatorKey: navKey,
           theme: buildTheme(),
           builder: (context, inner) => MediaQuery.withClampedTextScaling(
             minScaleFactor: 1,
@@ -129,8 +131,24 @@ Future<void> pumpScreen(
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
-  await tester.pumpWidget(
-      auditApp(screen, state ?? auditState(), lock: lock, prefs: prefs));
+  // EKRAN ILDIZ USTIGA QO'YILADI — `home:` ga tashlanmaydi.
+  //
+  // Sabab: `TopBar` orqaga tugmasini `Navigator.canPop()` ga qarab
+  // chizadi (tab ildizida qaytadigan joy yo'q va tugma bosilganda
+  // javob bermasdi — qurilmada aynan shu xato topildi). Ekran
+  // stekda yolg'iz tursa, auditda orqaga tugmasi hech qachon
+  // ko'rinmasdi, holbuki haqiqiy ilovada bu ekranlar ustiga
+  // qo'yiladi va tugma bor. Ya'ni kadr ilovadan farq qilardi.
+  //
+  // Tab ildizlari (Shell, ProfileTab) bundan ta'sirlanmaydi:
+  // ularning ichida o'z Navigator'i bor va u yerda `canPop()`
+  // baribir `false`.
+  final navKey = GlobalKey<NavigatorState>();
+  await tester.pumpWidget(auditApp(const SizedBox.shrink(), state ?? auditState(),
+      lock: lock, prefs: prefs, navKey: navKey));
+  await tester.pump();
+  navKey.currentState!.push(MaterialPageRoute<void>(builder: (_) => screen));
+
   // Soxta server javoblari va animatsiyalar tugasin.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));

@@ -299,6 +299,10 @@
   "Нет прав на это действие.",
   "You do not have permission for this."
  ],
+ "Bu amalni qaytarib bo‘lmaydi.": [
+  "Это действие нельзя отменить.",
+  "This action cannot be undone."
+ ],
  "Bu biznes hali mahsulot joylamagan. Keyinroq kirib ko‘ring.": [
   "Бизнес ещё не добавил товары. Загляните позже.",
   "This business has not added products yet. Check back later."
@@ -850,6 +854,10 @@
  "Istoryani joylash": [
   "Опубликовать историю",
   "Post story"
+ ],
+ "Istoryani o‘chirish": [
+  "Удалить историю",
+  "Delete story"
  ],
  "Ixtiyoriy": [
   "Необязательно",
@@ -1415,6 +1423,10 @@
   "Если выключить, товары видны, но ",
   "When off, products are visible but "
  ],
+ "O‘chirish": [
+  "Удалить",
+  "Delete"
+ ],
  "O‘tkazish": [
   "Передать",
   "Transfer"
@@ -1538,6 +1550,10 @@
  "Postni joylash": [
   "Опубликовать пост",
   "Publish post"
+ ],
+ "Postni o‘chirish": [
+  "Удалить пост",
+  "Delete post"
  ],
  "Premium faol": [
   "Premium активен",
@@ -2359,6 +2375,10 @@
   "просмотров",
   "views"
  ],
+ "mahsulot": [
+  "товар",
+  "products"
+ ],
  "ma‘lumotlaringizni bitta raqamli profilda jamlang va NFC karta ": [
   "данные соберите в одном цифровом профиле и делитесь ",
   "details in one digital profile and share it with an NFC "
@@ -2370,6 +2390,14 @@
  "nishonga ega bo‘lasiz.": [
   "получите значок.",
   "you get the badge."
+ ],
+ "obuna": [
+  "подписки",
+  "following"
+ ],
+ "obunachi": [
+  "подписчик",
+  "followers"
  ],
  "orqali ulashing.": [
   "через карту.",

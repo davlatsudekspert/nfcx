@@ -8,6 +8,7 @@ import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
 import '../../design/components/sheet.dart';
+import '../../design/feedback.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
@@ -168,6 +169,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// POST YOKI ISTORYANI O'CHIRISH.
+  ///
+  /// Ilgari ilovada o'chirish YO'Q edi: joylangan narsani faqat
+  /// saytdan olib tashlash mumkin edi. Xato rasm qo'ygan odam
+  /// telefonida hech narsa qila olmasdi.
+  ///
+  /// TASDIQ SO'RALADI va u QAYTARIB BO'LMAYDI deb ochiq aytiladi —
+  /// bu buzuvchi amal.
+  Future<void> _delete(Post post, {required bool isStory}) async {
+    final id = int.tryParse(post.id);
+    if (id == null) return;
+    final sure = await showSheet<bool>(
+      context,
+      title: isStory ? tr('Istoryani o‘chirish') : tr('Postni o‘chirish'),
+      subtitle: tr('Bu amalni qaytarib bo‘lmaydi.'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+        child: Column(
+          children: [
+            PrimaryButton(tr('O‘chirish'),
+                onTap: () => Navigator.of(context).pop(true)),
+            const SizedBox(height: S.x8),
+            SecondaryButton(tr('Bekor qilish'),
+                onTap: () => Navigator.of(context).pop(false)),
+          ],
+        ),
+      ),
+    );
+    if (sure != true || !mounted) return;
+
+    final repo = AppScope.read(context).repo;
+    final companyId = _company?.id;
+    try {
+      if (companyId != null) {
+        isStory
+            ? await repo.deleteCompanyStory(companyId, id)
+            : await repo.deleteCompanyPost(companyId, id);
+      } else {
+        isStory ? await repo.deleteStory(id) : await repo.deletePost(id);
+      }
+      if (!mounted) return;
+      // SERVERDAN QAYTA O'QIMAYMIZ: ro'yxatdan olib tashlash
+      // yetarli va ekran darhol javob beradi.
+      setState(() {
+        if (isStory) {
+          _stories = _stories.where((p) => p.id != post.id).toList();
+        } else {
+          _posts = _posts.where((p) => p.id != post.id).toList();
+        }
+      });
+      successHaptic();
+    } catch (e) {
+      if (mounted) await showError(context, humanError(e));
+    }
+  }
+
   Future<void> _toggleFollow() async {
     final code = _company?.id ?? _record?.code;
     if (code == null || _busyFollow) return;
@@ -298,6 +355,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _PostGrid(
                   posts: _posts,
                   onAdd: isOwner ? () => _compose(code, ComposeKind.post) : null,
+                  // O'CHIRISH FAQAT EGADA — mehmonga bunday amal
+                  // ko'rsatilmaydi.
+                  onDelete: isOwner ? (p) => _delete(p, isStory: false) : null,
                 ),
                 _PostGrid(
                   posts: _stories,
@@ -306,6 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   emptyIcon: Ico.camera,
                   addLabel: tr('Story qo‘shish'),
                   onAdd: isOwner ? () => _compose(code, ComposeKind.story) : null,
+                  onDelete: isOwner ? (p) => _delete(p, isStory: true) : null,
                 ),
                 _About(record: _record, company: _company),
               ],
@@ -498,18 +559,20 @@ class _Header extends StatelessWidget {
                     // odamni chalg'itardi.
                     _Stat(
                       value: follow.followers,
-                      label: 'obunachi',
+                      // `tr()` YO'Q EDI: rus va ingliz tilida bu uch
+                      // yorliq o'zbekcha qolib ketardi.
+                      label: tr('obunachi'),
                       onTap: () => push(
                         context,
                         (_) => FollowListScreen(code: code, title: name),
                       ),
                     ),
                     if (company != null)
-                      _Stat(value: company!.itemCount, label: 'mahsulot')
+                      _Stat(value: company!.itemCount, label: tr('mahsulot'))
                     else
                       _Stat(
                         value: follow.following,
-                        label: 'obuna',
+                        label: tr('obuna'),
                         onTap: () => push(
                           context,
                           (_) => FollowListScreen(
@@ -831,8 +894,12 @@ class _PostGrid extends StatelessWidget {
     this.emptyIcon = Ico.image,
     this.onAdd,
     this.addLabel,
+    this.onDelete,
   });
   final List<Post> posts;
+
+  /// Faqat EGADA. Katakni uzoq bosganda chaqiriladi.
+  final ValueChanged<Post>? onDelete;
 
   /// Bo'sh holat sarlavhasi.
   final String? empty;
@@ -884,6 +951,14 @@ class _PostGrid extends StatelessWidget {
   Widget _tile(BuildContext context, Post post) => RepaintBoundary(
         child: Press(
           onTap: () => push(context, (_) => PostDetailScreen(post: post)),
+          // UZOQ BOSISH — O'CHIRISH.
+          //
+          // NIMA UCHUN alohida tugma emas: to'rda har katak ~130px
+          // va ustiga qo'yilgan "x" belgisi rasmning uchdan birini
+          // yopib, to'rni g'ijimlab tashlardi. Uzoq bosish esa
+          // telefonda tanish harakat. Egaga tagida yozuv ham bor.
+          onLongPress: onDelete == null ? null : () => onDelete!(post),
+          haptic: onDelete != null,
           child: Stack(
             fit: StackFit.expand,
             children: [

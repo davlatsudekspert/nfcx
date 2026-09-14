@@ -2508,6 +2508,20 @@ async function ensureCompanyExtrasSchema(env) {
         created_at TEXT NOT NULL,
         PRIMARY KEY (story_id, user_id)
       )`),
+      // ISTORYA KO'RISHLARI. Egasi "nechta odam ko'rdi" degan
+      // savolga javob olishi kerak — Instagram'dagi kabi. Birlamchi
+      // kalit takroriy ko'rishni hisoblamaydi: bitta odam istoryani
+      // o'n marta ochsa ham bitta ko'rish.
+      //
+      // `viewer` — kirgan foydalanuvchi id'si yoki mehmon uchun
+      // tashrifchi hash'i (`newsVisitorHash`). Ya'ni raqam
+      // to'qilmaydi: har bir birlik haqiqiy ochilish.
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "story_views" (
+        story_id INTEGER NOT NULL,
+        viewer TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (story_id, viewer)
+      )`),
       // Kompaniya postlari — shaxsiy `posts` jadvalidan ALOHIDA.
       // Sabab yuqoridagi bilan bir xil: `posts.code` va company_id
       // bir maydonga sig'sa ham, ular BOSHQA nomlar makoni.
@@ -2572,6 +2586,7 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const rows = await env.DB.prepare(
     `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
             (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
+            (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) AS view_count,
             EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
        FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
       ORDER BY s.created_at`
@@ -2580,6 +2595,7 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
     id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '',
     caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
     likeCount: Number(r.like_count || 0), liked: !!r.liked,
+    viewCount: Number(r.view_count || 0),
   }));
 }
 
@@ -8499,6 +8515,31 @@ async function storiesApi(request, env, url) {
     return json({ feed: [...byCode.values()] });
   }
 
+  // POST /api/stories/:id/view — istoryani ochgan odam qayd etiladi.
+  //
+  // TAKRORLANMAYDI: birlamchi kalit (story_id, viewer) bitta odamni
+  // bir marta hisoblaydi. Ya'ni ekrandagi raqam "nechta ODAM ko'rdi",
+  // "necha marta ochildi" emas — egasi uchun ma'nolisi shu.
+  //
+  // MEHMON HAM HISOBLANADI: profil sahifasi ochiq va istoryani
+  // kirmasdan ham ko'rish mumkin. Uni tashlab ketsak raqam
+  // haqiqatdan kichik bo'lardi.
+  const viewMatch = url.pathname.match(/^\/api\/stories\/(\d+)\/view$/);
+  if (viewMatch && request.method === 'POST') {
+    const storyId = Number(viewMatch[1]);
+    const user = await getCurrentUser(request, env).catch(() => null);
+    const viewer = user ? `u${user.id}` : `g${await newsVisitorHash(request)}`;
+    const story = await env.DB.prepare(`SELECT id FROM stories WHERE id = ? AND expires_at > ?`)
+      .bind(storyId, new Date().toISOString()).first();
+    if (!story) return json({ error: 'not_found' }, 404);
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO story_views (story_id, viewer, created_at) VALUES (?,?,?)`
+    ).bind(storyId, viewer, new Date().toISOString()).run();
+    const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM story_views WHERE story_id = ?`)
+      .bind(storyId).first();
+    return json({ ok: true, viewCount: Number(cnt?.n || 0) });
+  }
+
   // POST /api/stories/:id/like — bosilganda holat teskarisiga o'giriladi.
   const likeMatch = url.pathname.match(/^\/api\/stories\/(\d+)\/like$/);
   if (likeMatch && request.method === 'POST') {
@@ -9009,7 +9050,19 @@ async function handleRequest(request, env, url) {
       || url.pathname === '/api/conversations/unread-count' || url.pathname.startsWith('/api/gift-offers')
       || url.pathname === '/api/referrals' || url.pathname === '/api/auctions/won/pending'
       || url.pathname.startsWith('/api/follow') || url.pathname.startsWith('/api/unfollow')
-      || url.pathname.startsWith('/api/posts/') || url.pathname.startsWith('/api/stories/')) {
+      || url.pathname.startsWith('/api/posts/') || url.pathname.startsWith('/api/stories/')
+      // `/api/feed` SHU RO'YXATDA BO'LISHI SHART.
+      //
+      // Marshrut `coreApi()` ICHIDA yozilgan edi, lekin `coreApi()`
+      // ning O'ZI faqat shu ro'yxatdagi yo'llar uchun chaqiriladi.
+      // `/api/feed` ro'yxatga qo'shilmagani uchun so'rov u yerga
+      // umuman yetib bormasdi va pastdagi umumiy tutqich
+      // `{"error":"not_found"}` qaytarardi.
+      //
+      // Natijasi: ilovadagi Reels tabi BIRINCHI KUNDAN BERI
+      // "Topilmadi" ko'rsatib kelgan. Brauzerda sinalmagani uchun
+      // sezilmagan — Reels faqat ilovada bor.
+      || url.pathname === '/api/feed') {
       try {
         const coreRes = await coreApi(request, env, url);
         if (coreRes) return coreRes;
