@@ -153,7 +153,11 @@ export default function Header() {
   const go = (href) => { setOpen(false); navigate(href); };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(0,0,0,0.86)] backdrop-blur-md">
+    // `vz-safe-top` — iPhone'da sayt bosh ekranga qo'shilganda (standalone)
+    // iOS status qatori sahifa USTIDA turadi va sarlavha soat bilan
+    // ustma-ust tushardi. Sinf qoidasi src/theme.css da; oddiy brauzerda
+    // qiymat 0 ga teng, ya'ni hech narsa o'zgarmaydi.
+    <header className="vz-safe-top sticky top-0 z-40 border-b border-[color:var(--vz-line)] bg-[rgba(0,0,0,0.86)] backdrop-blur-md">
       {/* 2026-09: BETA e'lon lentasi olib tashlandi — sayt rasman ishga
           tushdi. Matn kaliti src/lib/translations.js da qoldirildi (kelajakda
           shunday e'lon kerak bo'lsa qaytarish oson). `marqueeScroll`

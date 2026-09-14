@@ -1402,3 +1402,53 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 }
 .story-upload-preview .story-upload-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .story-upload-preview .story-upload-row > .cw-upload-btn { flex: 1 1 140px; }
+
+/* ═══ iOS — "BOSH EKRANGA QO'SHILGAN" (standalone) REJIM ═══════════════
+   index.html da ikkita narsa turibdi:
+
+     <meta name="viewport" content="... viewport-fit=cover">
+     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+   Ular BIRGALIKDA sahifani butun ekranga yoyadi va iOS status qatorini
+   (soat, aloqa, batareya) sahifa USTIGA chizadi. Bu ataylab shunday:
+   NFC profil sahifasi butun ekranni egallashi kerak.
+
+   Lekin uning evaziga har bir TEPA element `env(safe-area-inset-top)`
+   ni o'zi hisobga olishi SHART. Shuni qiladigan qoidalar
+   `src/index.css` ga yozilgan edi — u fayl esa hech qayerdan import
+   qilinmaydi, ya'ni brauzerga umuman yetib bormaydi. Natijada sayt
+   Safari orqali bosh ekranga qo'yilganda sarlavha soat va batareya
+   ostida qolib ketdi (egasining iPhone skrinshoti).
+
+   Qiymat ODDIY brauzerda 0 ga teng (u yerda status qatori ostida
+   brauzerning o'z paneli turadi), shuning uchun bu qoidalar faqat
+   kerak bo'lganda ishlaydi va oddiy ko'rinishni o'zgartirmaydi. */
+:root{ --vz-safe-top:env(safe-area-inset-top,0px) }
+
+/* Chap/o'ng chetlar — landshaft rejimida "tirnoq" tomonidagi kontent
+   kesilmasin. */
+body{
+  padding-left:env(safe-area-inset-left,0px);
+  padding-right:env(safe-area-inset-right,0px)
+}
+
+/* Tepaga yopishgan sarlavha uchun yordamchi sinf. Bo'shliq sarlavha
+   FONI bilan to'ladi, ya'ni status qatori ostida qorong'i chiziq
+   bo'ladi — matn esa uning ostiga tushmaydi. */
+.vz-safe-top{ padding-top:var(--vz-safe-top) }
+
+/* Balandligi QAT'IY berilgan tepa qatorlar. `box-sizing:border-box`
+   bo'lgani uchun `height` ni o'zgarishsiz qoldirib bo'lmaydi:
+   to'ldirish kontentni siqib qo'yardi. Shuning uchun `height:auto` +
+   `min-height`. */
+.bp-topbar{ height:auto;min-height:calc(70px + var(--vz-safe-top));padding-top:var(--vz-safe-top) }
+.bw-topbar{ height:auto;min-height:calc(68px + var(--vz-safe-top));padding-top:var(--vz-safe-top) }
+@media(max-width:640px){
+  .bp-topbar{ min-height:calc(60px + var(--vz-safe-top)) }
+}
+/* Bo'limlar qatori tepaga yopishadi; `top:0` qoladi, bo'shliq esa
+   uning O'Z foni bilan to'ladi. */
+.bp-tabs{ padding-top:calc(10px + var(--vz-safe-top)) }
+@media(max-width:640px){
+  .bp-tabs{ padding-top:calc(9px + var(--vz-safe-top)) }
+}
