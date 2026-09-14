@@ -1,3 +1,52 @@
+> # ⛔ ARXIV — to'xtatilgan
+>
+> **Asosiy mobil ilova — [`mobile/`](../../mobile/) (Flutter).**
+>
+> Bu Expo versiyasi **2026-09-12** da to'xtatilgan. Kod tarixi bilan
+> saqlanmoqda, lekin **ishlab chiqilmaydi, qurilmaydi va
+> tarqatilmaydi**. Quyidagi hujjat o'sha sanadagi holatni tasvirlaydi.
+>
+> ## Nima uchun to'xtatildi
+>
+> 2026-09-13 da mobil ilova Flutter'da noldan qayta qurildi va butun
+> keyingi ish o'sha yerda davom etdi:
+>
+> | | Bu arxiv (Expo) | `mobile/` (Flutter) |
+> |---|---|---|
+> | Oxirgi o'zgarish | 2026-09-12 | faol |
+> | Kod hajmi | ~8 800 qator | ~21 500 qator |
+> | Ekranlar | 10 marshrut | 51 ekran |
+> | Testlar | yo'q | 184 ta + 63 golden kadr |
+> | CI | yo'q | APK + AAB, imzo va ruxsat auditi |
+> | Play Store | — | imzolangan, tayyor |
+>
+> Bu yerda **yo'q**, Flutter'da esa bor: kirish/ro'yxatdan o'tish,
+> to'lov, buyurtmalar, sovg'a oqimi, NFC yozish, QR, PIN qulfi,
+> sozlamalar, rang mavzulari, uch tillilik, story/post yaratish, Reels.
+>
+> ## Paket nomi O'ZGARTIRILGAN
+>
+> `app.json` dagi identifikator `uz.nfcstore.app.archived` ga
+> almashtirilgan — Android `package` ham, iOS `bundleIdentifier` ham.
+>
+> Asl nomi `uz.nfcstore.app` edi, ya'ni **jonli ilovaning** nomi.
+> Play Store'da ham, telefonda ham bitta nom faqat bitta ilovaga
+> tegishli bo'ladi: arxiv nusxasi tasodifan qurilsa, u jonli ilovani
+> almashtirib yuborishi mumkin edi. Endi bu papkadan qurilgan har
+> qanday build **boshqa ilova** bo'lib chiqadi va hech narsani
+> buzmaydi.
+>
+> ## Tarixni ko'rish
+>
+> ```bash
+> git log --follow -- archive/nfcstore-mobile-expo/
+> ```
+>
+> `--follow` MUHIM: fayllar `nfcstore-mobile/` dan ko'chirilgan va
+> usiz tarix ko'chirish nuqtasida uzilib qoladi.
+
+---
+
 # NFCSTORE Mobile
 
 NFCSTORE Android ilovasi (iOS'ga tayyor arxitektura). Expo SDK 57 + React
