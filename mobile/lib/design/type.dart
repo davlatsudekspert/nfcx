@@ -1,152 +1,328 @@
 import 'package:flutter/widgets.dart';
+
 import 'tokens.dart';
 
-/// Tipografika — handoff jadvalining aynan o'zi.
+/// TIPOGRAFIKA — dizaynning o'zi.
 ///
-/// UCH SHRIFT, uchta aniq vazifa:
-///   InstrumentSerif — FAQAT display sarlavha, hero matn va NFC ID o'qilishi.
-///                     Boshqa joyda ishlatilsa u "bezak" ga aylanadi va
-///                     interfeys o'qilishini yo'qotadi.
-///   Manrope         — funksional hamma narsa: nav, tugma, ro'yxat, matn.
-///   IBMPlexMono     — ID kodlari, narx, vaqt, eyebrow yozuvlari.
+/// UCH SHRIFT, UCH VAZIFA. Aralashtirilmaydi:
+///
+/// • **Instrument Serif** — display va bo'lim sarlavhalari. Bu
+///   ilovaning "ovozi": katta, nafis, kursiv urg'u bilan. Faqat
+///   sarlavha va raqamli urg'u (narx). Tugma yoki forma matnida
+///   ISHLATILMAYDI.
+/// • **Manrope** — butun funksional matn: tugma, tana matni,
+///   yorliq, navigatsiya. O'zbek lotin belgilarini (o', g', sh,
+///   ch) to'liq qamraydi.
+/// • **IBM Plex Mono** — ID kodlari, narx raqamlari, meta va
+///   holat yozuvlari. Mono tanlanishining sababi: `GLD777` va
+///   `149 000` kabi qiymatlar ustma-ust turganda tekis
+///   ko'rinsin va raqamlar sakramasin.
+///
+/// SARLAVHA BILAN TANA MATNI ORASIDA KESKIN FARQ BO'LSIN — bu
+/// dizaynning asosiy qoidasi. Oraliq o'lchamlar shkalada yo'q.
+///
+/// MAVZUGA BOG'LIQ USLUBLAR `static get` — `const` emas (sabab
+/// `tokens.dart` da yozilgan).
 class T {
-  T._();
+  const T._();
 
   static const _serif = 'InstrumentSerif';
   static const _sans = 'Manrope';
   static const _mono = 'IBMPlexMono';
 
-  // ── Display (Instrument Serif) ─────────────────────────────────────
-  static const display = TextStyle(
-    fontFamily: _serif, fontSize: 38, height: 1.06, letterSpacing: -0.38,
-    color: C.offWhite,
-  );
-  static const displaySm = TextStyle(
-    fontFamily: _serif, fontSize: 30, height: 1.08, letterSpacing: -0.3,
-    color: C.offWhite,
+  // ── Display · Instrument Serif ──────────────────────────────
+
+  /// Onboarding va hero sarlavhalari. 46/1.02.
+  static const TextStyle display = TextStyle(
+    fontFamily: _serif,
+    fontSize: 46,
+    height: 1.02,
+    letterSpacing: -.4,
+    color: C.ink,
   );
 
-  /// NFC ID o'qilishi — har doim champagne, harflar orasi ochiq.
-  static TextStyle nfcId(double size) => TextStyle(
-        fontFamily: _serif, fontSize: size, height: 1,
-        letterSpacing: size * 0.045, color: C.champagne,
-      );
-
-  // ── Manrope ────────────────────────────────────────────────────────
-  static const screenTitle = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w800, fontSize: 29, height: 1.1,
-    letterSpacing: -0.87, color: C.offWhite,
-  );
-  static const screenSub = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w500, fontSize: 13.5, color: C.ash,
-  );
-  /// PROFIL NOMI — serif, katta, harflar orasi OCHIQ.
-  ///
-  /// Ilgari bu Manrope w800 21px, `letterSpacing: -0.42` edi —
-  /// ya'ni qalin va SIQILGAN. Saytdagi nom esa serif, 34px va
-  /// harflari ochiq; yonma-yon qo'yilganda ilovaniki "ilova
-  /// sarlavhasi", saytniki "brend" bo'lib ko'rinardi.
-  ///
-  /// Serif shriftga o'tish handoff qoidasiga zid emas:
-  /// InstrumentSerif "display sarlavha va hero matn" uchun
-  /// ajratilgan, brend nomi esa aynan shu.
-  static const profileName = TextStyle(
-    fontFamily: _serif, fontWeight: FontWeight.w400, fontSize: 30, height: 1.14,
-    letterSpacing: 0.6, color: C.offWhite,
+  /// Ekran sarlavhasi — "NFC markazi", "Qidiruv", "ID katalogi".
+  static const TextStyle title = TextStyle(
+    fontFamily: _serif,
+    fontSize: 34,
+    height: 1.04,
+    letterSpacing: -.3,
+    color: C.ink,
   );
 
-  /// Statistika raqami — serif, katta. Saytdagi `.qp-stats b`.
-  static const statValue = TextStyle(
-    fontFamily: _serif, fontWeight: FontWeight.w400, fontSize: 25, height: 1.05,
-    color: C.offWhite,
+  /// Ixcham ekran sarlavhasi (forma va sozlamalar ekranlari).
+  static const TextStyle titleSm = TextStyle(
+    fontFamily: _serif,
+    fontSize: 27,
+    height: 1.06,
+    letterSpacing: -.2,
+    color: C.ink,
   );
 
-  /// Statistika yorlig'i — KICHIK, katta harfda, oraliq keng.
-  /// Saytda aynan shu ishlov raqamlarni "ma'lumot" dan "ko'rsatkich"
-  /// ga aylantiradi.
-  static const statLabel = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 11, height: 1.2,
-    letterSpacing: 1.5, color: C.muted,
-  );
-  static const section = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 17.5, height: 1,
-    color: C.offWhite,
-  );
-  static const cardTitle = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 15.5, height: 1.25,
-    color: C.offWhite,
-  );
-  static const body = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w400, fontSize: 15, height: 1.62,
-    color: C.ash,
-  );
-  static const caption = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w400, fontSize: 13, height: 1.45,
-    color: C.ash,
-  );
-  static const button = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 16.5, height: 1,
-    letterSpacing: -0.1,
-  );
-  static const navLabel = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w600, fontSize: 11, height: 1,
+  /// Bo'lim sarlavhasi — "Lenta", "Katalog", "Postlarim".
+  static const TextStyle section = TextStyle(
+    fontFamily: _serif,
+    fontSize: 22,
+    height: 1.1,
+    color: C.ink,
   );
 
-  // ── IBM Plex Mono ──────────────────────────────────────────────────
-  /// Eyebrow — bo'lim ustidagi kichik antiqua-oltin yozuv.
-  /// MAVZUGA BOG'LIQ uslublar `get` — `const` bo'la olmaydi, chunki
-  /// rangi ish vaqtida o'zgaradi. Ularni ishlatadigan widget ham
-  /// `const` bo'lmaydi va mavzu almashganda qayta quriladi.
+  /// Profil ismi.
+  static const TextStyle profileName = TextStyle(
+    fontFamily: _serif,
+    fontSize: 30,
+    height: 1.08,
+    letterSpacing: .2,
+    color: C.ink,
+  );
+
+  /// Kursiv urg'u so'zi — "Assalom, *Dilshod*".
+  /// Rang chaqiruv joyida beriladi (odatda `C.accent`).
+  static const TextStyle displayItalic = TextStyle(
+    fontFamily: _serif,
+    fontSize: 46,
+    height: 1.02,
+    letterSpacing: -.4,
+    fontStyle: FontStyle.italic,
+  );
+
+  /// Katta narx — "149 000".
+  static const TextStyle price = TextStyle(
+    fontFamily: _serif,
+    fontSize: 42,
+    height: 1,
+    letterSpacing: -.5,
+    color: C.ink,
+  );
+
+  // ── Funksional · Manrope ────────────────────────────────────
+
+  /// Kuchli sarlavha — sheet va dialog ustida.
+  static const TextStyle h1 = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w800,
+    fontSize: 26,
+    height: 1.14,
+    letterSpacing: -.7,
+    color: C.ink,
+  );
+
+  static const TextStyle h2 = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w800,
+    fontSize: 21,
+    height: 1.18,
+    letterSpacing: -.45,
+    color: C.ink,
+  );
+
+  /// Karta va qator sarlavhasi.
+  static const TextStyle cardTitle = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w700,
+    fontSize: 15.5,
+    height: 1.24,
+    letterSpacing: -.1,
+    color: C.ink,
+  );
+
+  /// Tana matni. Qator balandligi 1.55 — uzun o'zbekcha jumlalar
+  /// siqilib qolmasin.
+  static const TextStyle body = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w400,
+    fontSize: 15,
+    height: 1.55,
+    color: C.ink2,
+  );
+
+  /// Kuchliroq tana matni — asosiy qiymat, javob matni.
+  static const TextStyle bodyStrong = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w500,
+    fontSize: 15,
+    height: 1.45,
+    color: C.ink,
+  );
+
+  /// Izoh va ikkilamchi tushuntirish.
+  static const TextStyle caption = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w400,
+    fontSize: 13,
+    height: 1.5,
+    color: C.ink2,
+  );
+
+  /// Forma yorliqlari — KATTA HARFDA yoziladi.
+  static const TextStyle label = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w700,
+    fontSize: 11,
+    height: 1.2,
+    letterSpacing: 1.3,
+    color: C.ink3,
+  );
+
+  /// Asosiy tugma matni.
+  static const TextStyle button = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w700,
+    fontSize: 16.5,
+    height: 1.1,
+    letterSpacing: -.1,
+    color: C.ink,
+  );
+
+  /// Kichik tugma va chip matni.
+  static const TextStyle buttonSm = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w700,
+    fontSize: 13.5,
+    height: 1.1,
+    color: C.ink,
+  );
+
+  /// Tab yorlig'i.
+  static const TextStyle navLabel = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w600,
+    fontSize: 10.5,
+    height: 1.1,
+    letterSpacing: .1,
+    color: C.ink3,
+  );
+
+  /// Statistika yorlig'i — "Ko'rish", "Kontakt", "Obunachi".
+  static const TextStyle statLabel = TextStyle(
+    fontFamily: _sans,
+    fontWeight: FontWeight.w600,
+    fontSize: 10.5,
+    height: 1.2,
+    letterSpacing: .3,
+    color: C.ink3,
+  );
+
+  // ── Mono · IBM Plex Mono ────────────────────────────────────
+
+  /// Statistika qiymati — "4 812".
+  static const TextStyle statValue = TextStyle(
+    fontFamily: _mono,
+    fontWeight: FontWeight.w600,
+    fontSize: 21,
+    height: 1.1,
+    letterSpacing: -.3,
+    color: C.ink,
+  );
+
+  /// Meta yozuvi — sana, vaqt, holat.
+  static const TextStyle meta = TextStyle(
+    fontFamily: _mono,
+    fontWeight: FontWeight.w500,
+    fontSize: 11.5,
+    height: 1.3,
+    letterSpacing: .2,
+    color: C.ink3,
+  );
+
+  /// Mono summa — to'lov tarixidagi raqamlar ustma-ust tekis
+  /// turishi uchun.
+  static const TextStyle amount = TextStyle(
+    fontFamily: _mono,
+    fontWeight: FontWeight.w600,
+    fontSize: 15,
+    height: 1.2,
+    letterSpacing: -.2,
+    color: C.ink,
+  );
+
+  /// Holat yorlig'i — "TAYYOR · TEGIZING", "HOLAT: KUTILMOQDA".
+  static const TextStyle statusLabel = TextStyle(
+    fontFamily: _mono,
+    fontWeight: FontWeight.w600,
+    fontSize: 11,
+    height: 1.2,
+    letterSpacing: 1.6,
+    color: C.ink2,
+  );
+
+  /// EYEBROW — bo'lim ustidagi kichik oltin yozuv.
+  /// Mavzuga bog'liq, shuning uchun getter.
   static TextStyle get eyebrow => TextStyle(
-        fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 11.5,
-        letterSpacing: 1.6, color: C.antiqueGold,
+        fontFamily: _mono,
+        fontWeight: FontWeight.w500,
+        fontSize: 10.5,
+        height: 1.2,
+        letterSpacing: 1.8,
+        color: C.accent.withValues(alpha: .9),
       );
-  static const meta = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 13, color: C.ash,
-  );
-  static TextStyle get price => TextStyle(
-        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 14,
-        color: C.champagne,
+
+  /// Wordmark — "N F C S T O R E".
+  static TextStyle get wordmark => TextStyle(
+        fontFamily: _mono,
+        fontWeight: FontWeight.w600,
+        fontSize: 11,
+        height: 1.2,
+        letterSpacing: 3.4,
+        color: C.accent.withValues(alpha: .85),
       );
-  static TextStyle get code => TextStyle(
-        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 13.5,
-        letterSpacing: 0.6, color: C.champagne,
+
+  /// ID KODI — kartaning va profilning o'zagi. O'lcham chaqiruv
+  /// joyida beriladi, chunki u joyiga qarab 13 dan 34 gacha
+  /// o'zgaradi.
+  static TextStyle code(double size, {Color? color, FontWeight? weight}) =>
+      TextStyle(
+        fontFamily: _mono,
+        fontWeight: weight ?? FontWeight.w600,
+        fontSize: size,
+        height: 1.05,
+        letterSpacing: size >= 24 ? 1.4 : .6,
+        color: color ?? C.ink,
       );
-  static const statusLabel = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 11,
-    letterSpacing: 0.76,
-  );
+
+  /// Profil havolasi — `nfcstore.uz/gld777`.
+  static TextStyle get link => TextStyle(
+        fontFamily: _mono,
+        fontWeight: FontWeight.w400,
+        fontSize: 12,
+        height: 1.3,
+        letterSpacing: .2,
+        color: C.ink2,
+      );
 }
 
-/// Narxni o'zbekcha yozish: 1200000 -> "1 200 000".
+// ─────────────────────────────────────────────────────────────
+// RAQAM FORMATLARI
+// ─────────────────────────────────────────────────────────────
+
+/// Summani o'zbekcha ko'rinishda yozadi: `149 000`.
 ///
-/// Ajratgich — TOR BO'SHLIQ (U+202F), oddiy probel emas: oddiy probelda
-/// raqam qator oxirida ikkiga bo'linib ketishi mumkin.
+/// Ajratgich sifatida ODDIY probel emas, U+202F (tor uzilmas
+/// probel) ishlatiladi: shunda raqam qator oxirida ikkiga
+/// bo'linib ketmaydi va mono shriftda ham ixcham ko'rinadi.
 String som(num value) {
-  final s = value.round().abs().toString();
-  final b = StringBuffer(value < 0 ? '-' : '');
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) b.write(' ');
-    b.write(s[i]);
+  final n = value.round();
+  final neg = n < 0;
+  final digits = n.abs().toString();
+  final out = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write(' ');
+    out.write(digits[i]);
   }
-  return b.toString();
+  return neg ? '-$out' : out.toString();
 }
 
-/// Katta sonni qisqartirish: 12400 -> "12.4k", 31400000 -> "31.4M".
+/// Katta sonni qisqartiradi: `12.4k`, `3.1M`.
 ///
-/// Statistika kartochkalari uchun — to'liq son u yerda sig'maydi va
-/// o'qilmaydi ham.
-///
-/// BITTA KASR RAQAM 100 dan kichik qiymatlarda saqlanadi: dizaynda
-/// "12.4k" va "48.2k" ko'rsatilgan, ya'ni aniqlik muhim. 100 dan
-/// kattasida kasr ortiqcha ("124.6k" o'rniga "125k" tinchroq
-/// o'qiladi). Ortiqcha ".0" hech qachon chiqmaydi.
+/// Statistika kartalarida joy cheklangan; to'liq son esa
+/// tafsilot ekranida ko'rsatiladi.
 String compact(num value) {
-  if (value.abs() < 1000) return value.round().toString();
-  final (v, suffix) = value.abs() < 1000000
-      ? (value / 1000, 'k')
-      : (value / 1000000, 'M');
-  if (v.abs() >= 100) return '${v.round()}$suffix';
-  final one = v.toStringAsFixed(1);
-  return '${one.endsWith('.0') ? one.substring(0, one.length - 2) : one}$suffix';
+  final n = value.abs();
+  if (n < 1000) return value.round().toString();
+  if (n < 1000000) {
+    final v = value / 1000;
+    return '${v.toStringAsFixed(v.abs() < 10 ? 1 : 0)}k';
+  }
+  final v = value / 1000000;
+  return '${v.toStringAsFixed(v.abs() < 10 ? 1 : 0)}M';
 }

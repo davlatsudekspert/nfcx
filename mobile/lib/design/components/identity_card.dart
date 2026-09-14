@@ -1,51 +1,72 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
+
 import '../tokens.dart';
 import '../type.dart';
+import 'icons.dart';
+import 'logo.dart';
 import 'press.dart';
-import '../../l10n/strings.dart';
+import 'sweep.dart';
 
-/// Metall ID kartasi — ilovaning eng "jismoniy" elementi.
+/// NFC ID KARTASI — ilovaning qahramoni.
 ///
-/// Nisbat 16:10, metall gradient, ichki yorug'lik chizig'i va ID serif
-/// champagne bilan. Bu YAGONA joyda gold og'irroq ishlatiladi, chunki
-/// karta mahsulotning o'zi.
+/// Bu shunchaki karta emas: mahsulotning o'zi. Foydalanuvchi uni
+/// do'stiga ko'rsatadi, shuning uchun u eng nafis element bo'lishi
+/// kerak.
+///
+/// METALL HIS QANDAY QURILGAN — to'rt qatlam:
+/// 1. **Asos gradienti** — yetti to'xtash nuqta. Haqiqiy metallda
+///    yorug'lik bir tekis tarqalmaydi: quyuq qirra → yorug' aks →
+///    to'yingan rang → yana quyuq. Ikki nuqtali gradient
+///    "plastmassa" bo'lib ko'rinadi.
+/// 2. **Burchak yorug'ligi** — yuqori chapdan tushadigan radial oq
+///    dog'. Butun ilovada yorug'lik bitta tomondan keladi.
+/// 3. **Yorug'lik chizig'i** — 4.2 s da bir marta o'tadi.
+/// 4. **Qirra va soya** — tepada 1 px yorug' chiziq (metall kesimi),
+///    ostida issiq soya va oltin nur.
+///
+/// Ekslyuziv tarifda qirra IKKI QAVATLI — bu uning mahsulotdagi
+/// eng yuqori daraja ekanini ko'rsatadi.
+///
+/// JISMONIY KARTA BILAN BIR XIL: old tomonda brend va kod, orqa
+/// tomonda medalyon va profil manzili. Kartani bosganda u
+/// o'giriladi (720 ms).
+
 class IdentityCard extends StatefulWidget {
   const IdentityCard({
     super.key,
     required this.code,
-    required this.holder,
-    this.subtitle,
-    this.taps,
-    this.tier = Tier.free,
+    required this.tier,
+    this.holder = '',
     this.url,
     this.onTap,
-    this.active = false,
-    this.dense = false,
+    this.flippable = true,
+    this.sweep = true,
+    this.aspect = 1.585,
   });
 
+  /// ID kodi — `GLD777`.
   final String code;
-  final String holder;
-  final String? subtitle;
-  final int? taps;
+
   final Tier tier;
 
-  /// Ommaviy havola — kartaning "jismoniy" hissini kuchaytiradi
-  /// (handoff: kod ostida `nfcstore.uz/id/vip001`). Ixcham
-  /// ko'rinishda ko'rsatilmaydi: u yerda joy yo'q.
+  /// Egasining ismi.
+  final String holder;
+
+  /// `nfcstore.uz/gld777`.
   final String? url;
+
+  /// Berilsa — bosish kartani o'girmaydi, shu amalni bajaradi.
   final VoidCallback? onTap;
 
-  /// Faol ID — o'ng yuqorida "FAOL" belgisi.
-  final bool active;
+  /// Bosilganda orqa tomoni ochiladi.
+  final bool flippable;
 
-  /// Ixcham ko‘rinish — Home ekrani uchun.
-  ///
-  /// To'liq o'lchamdagi karta (16:10) Home'ning yarmini egallab
-  /// olardi va ostidagi tezkor amallar bilan story qatori ekrandan
-  /// chiqib ketardi. Ixcham variantda nisbat 2:1 va yozuvlar
-  /// kichikroq — karta baribir "jismoniy" ko'rinadi, lekin ekranni
-  /// bosib qolmaydi.
-  final bool dense;
+  final bool sweep;
+
+  /// CR80 jismoniy kartaning nisbati — 85.6 × 54 mm.
+  final double aspect;
 
   @override
   State<IdentityCard> createState() => _IdentityCardState();
@@ -53,208 +74,473 @@ class IdentityCard extends StatefulWidget {
 
 class _IdentityCardState extends State<IdentityCard>
     with SingleTickerProviderStateMixin {
-  /// METALL YALTIRASHI — BIR MARTALIK, TAKRORLANMAYDI.
-  ///
-  /// Karta ekranda paydo bo'lganda yuzasidan bir marta nozik
-  /// yorug'lik o'tadi — xuddi haqiqiy metall kartani qo'lda
-  /// burgandek. Bu YAGONA joyda va FAQAT bir marta: uzluksiz
-  /// yaltirash qorong'i interfeysni "kazino"ga aylantiradi va
-  /// batareyani behuda yeydi.
-  late final AnimationController _sheen = AnimationController(
+  late final AnimationController _flip = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: M.flip,
   );
 
   @override
-  void initState() {
-    super.initState();
-    // Ekran o'tishi tugagach boshlanadi — ikkala animatsiya bir
-    // vaqtda ketsa, ikkalasi ham silliq ko'rinmaydi.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Future<void>.delayed(M.push, () {
-          if (mounted) _sheen.forward();
-        });
-      }
-    });
+  void dispose() {
+    _flip.dispose();
+    super.dispose();
   }
 
-  @override
-  void dispose() {
-    _sheen.dispose();
-    super.dispose();
+  void _tap() {
+    if (widget.onTap != null) {
+      widget.onTap!();
+      return;
+    }
+    if (!widget.flippable) return;
+    if (_flip.status == AnimationStatus.completed ||
+        _flip.status == AnimationStatus.forward) {
+      _flip.reverse();
+    } else {
+      _flip.forward();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final tier = widget.tier;
-    final code = widget.code;
-    final holder = widget.holder;
-    final subtitle = widget.subtitle;
-    final taps = widget.taps;
-    final dense = widget.dense;
-    final active = widget.active;
-    final url = widget.url;
-    final t = TierStyle.of(tier);
+    final style = TierStyle.of(widget.tier);
+
     return Press(
-      onTap: widget.onTap,
-      haptic: true,
+      onTap: (widget.onTap != null || widget.flippable) ? _tap : null,
+      minSize: 0,
+      scale: .985,
       child: AspectRatio(
-        aspectRatio: dense ? 2 : 16 / 10,
-        child: Container(
-          padding: EdgeInsets.all(dense ? S.x12 : S.x16),
+        aspectRatio: widget.aspect,
+        child: AnimatedBuilder(
+          animation: _flip,
+          builder: (context, _) {
+            final t = M.curve.transform(_flip.value);
+            final angle = t * math.pi;
+            final showBack = t > .5;
+
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                // Perspektiva — busiz o'girilish yassi va sun'iy
+                // ko'rinadi.
+                ..setEntry(3, 2, .0012)
+                ..rotateY(angle),
+              child: showBack
+                  // Orqa tomon teskari chizilmasligi uchun uni
+                  // qayta o'giramiz.
+                  ? Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..rotateY(math.pi),
+                      child: _CardShell(
+                        style: style,
+                        sweep: false,
+                        child: _BackFace(
+                          url: widget.url,
+                          style: style,
+                        ),
+                      ),
+                    )
+                  : _CardShell(
+                      style: style,
+                      sweep: widget.sweep && _flip.value == 0,
+                      child: _FrontFace(
+                        code: widget.code,
+                        holder: widget.holder,
+                        url: widget.url,
+                        style: style,
+                        tier: widget.tier,
+                      ),
+                    ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// KORPUS
+// ─────────────────────────────────────────────────────────────
+
+/// Metall yuza, qirra, soya — ikkala tomon uchun umumiy.
+class _CardShell extends StatelessWidget {
+  const _CardShell({
+    required this.style,
+    required this.child,
+    this.sweep = true,
+  });
+
+  final TierStyle style;
+  final Widget child;
+  final bool sweep;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget face = Stack(
+      fit: StackFit.expand,
+      children: [
+        // 1 — metall asos.
+        DecoratedBox(
           decoration: BoxDecoration(
-            // TARIF MATERIALI. Yuza, qirra va yaltirash tarifdan
-            // keladi — ekranning qolgan rangi TEGILMAYDI.
-            gradient: t.surface,
-            borderRadius: BorderRadius.circular(R.hero),
-            border: Border.all(color: t.edge),
-            boxShadow: E.e3,
+            gradient: style.hasMaterial ? style.surface : C.raisedSurface,
+            borderRadius: BorderRadius.circular(R.metalCard),
           ),
-          child: Stack(
-            children: [
-              // ICHKI QIRRA — faqat Premium va Exclusive'da.
-              // Ikki qavatli chegara qimmat buyumlarning belgisi:
-              // rang emas, ISHLOV farqi.
-              if (t.innerRule)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Container(
-                      margin: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(R.hero - 3),
-                        border: Border.all(
-                          color: t.accent.withValues(alpha: .16),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              // Yuqoridagi ichki yorug'lik — metallga "qirra" beradi.
-              // Rangi tarifning urg'usidan: bronzada issiq, kumushda
-              // sovuq, Exclusive'da oltin.
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: Container(
-                  height: 1,
-                  color: t.accent.withValues(alpha: .14),
-                ),
+        ),
+
+        // 2 — yuqori chap burchakdagi aks (specular).
+        //
+        // Gradient o'sha burchakda ATAYLAB quyuq: aks quyuq yuzaga
+        // tushgandagina "yaltirash" bo'lib ko'rinadi. Yorug' joyga
+        // tushsa, karta shunchaki oqarib ketadi.
+        if (style.hasMaterial)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(R.metalCard),
+              gradient: const RadialGradient(
+                center: Alignment(-.72, -.92),
+                radius: .95,
+                colors: [Color(0x42FFFFFF), Color(0x00FFFFFF)],
+                stops: [0, .62],
               ),
-              // Bir martalik yaltirash. `IgnorePointer` — bosishga
-              // to'sqinlik qilmasin.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _sheen,
-                    builder: (context, _) {
-                      if (_sheen.isDismissed) return const SizedBox.shrink();
-                      final v = Curves.easeInOut.transform(_sheen.value);
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(R.hero),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment(-1.8 + v * 3.6, -1),
-                              end: Alignment(-1.2 + v * 3.6, 1),
-                              colors: [
-                                const Color(0x00FFFFFF),
-                                Color(t.sheen << 24 | 0xFFFFFF),
-                                const Color(0x00FFFFFF),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+            ),
+          ),
+
+        // 3 — pastki o'ng burchakdagi quyuqlashuv. Metall
+        // yuzaning "og'irligi" shundan keladi.
+        if (style.hasMaterial)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(R.metalCard),
+              gradient: const RadialGradient(
+                center: Alignment(.9, 1),
+                radius: .9,
+                colors: [Color(0x54000000), Color(0x00000000)],
+                stops: [0, .7],
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Tarif medali.
-                      Container(
-                        width: dense ? 17 : 22, height: dense ? 17 : 22,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: t.gradient,
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x80FFFFFF), blurRadius: 5, offset: Offset(0, 3), blurStyle: BlurStyle.inner),
-                            BoxShadow(color: Color(0x8C000000), blurRadius: 7, offset: Offset(0, -4), blurStyle: BlurStyle.inner),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: S.x8),
-                      Text(t.label.toUpperCase(),
-                          style: T.eyebrow.copyWith(color: t.accent)),
-                      const Spacer(),
-                      if (active)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: C.champagne.withValues(alpha: .14),
-                            borderRadius: BorderRadius.circular(R.status),
-                            border: Border.all(color: C.champagne.withValues(alpha: .32)),
-                          ),
-                          child: Text(tr('Faol').toUpperCase(), style: T.statusLabel.copyWith(color: C.champagne)),
-                        ),
-                    ],
-                  ),
-                  const Spacer(),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    // KOD — tarif urg'usi bilan. Bu kartadagi eng
-                    // katta element, ya'ni tarif farqi shu yerda
-                    // birinchi bo'lib ko'zga tashlanadi.
-                    child: Text(
-                      code.toUpperCase(),
-                      style: T.nfcId(dense ? 28 : 38).copyWith(color: t.accent),
-                    ),
-                  ),
-                  if (!dense && url != null && url.isNotEmpty) ...[
-                    const SizedBox(height: 5),
-                    Text(
-                      url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: T.meta.copyWith(fontSize: 12.5, color: C.muted),
-                    ),
-                  ],
-                  const SizedBox(height: S.x4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(holder, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: T.cardTitle.copyWith(fontSize: 15)),
-                            if (subtitle != null)
-                              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: T.caption.copyWith(fontSize: 12.5)),
-                          ],
-                        ),
-                      ),
-                      if (taps != null) ...[
-                        const SizedBox(width: S.x12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(tr('Tegishlar').toUpperCase(), style: T.eyebrow),
-                            const SizedBox(height: 2),
-                            Text(compact(taps), style: T.price.copyWith(fontSize: 15.5)),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
+            ),
+          ),
+
+        // 4 — kontent.
+        Padding(
+          padding: const EdgeInsets.all(S.x20),
+          child: child,
+        ),
+
+        // 5 — tepadagi metall kesimi.
+        Positioned(
+          left: S.x20,
+          right: S.x20,
+          top: 0,
+          child: Container(
+            height: 1,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0x00FFFFFF),
+                  Color(0x8CFFFFFF),
+                  Color(0x00FFFFFF),
                 ],
+              ),
+            ),
+          ),
+        ),
+
+        // 6 — EKSLYUZIVNING IKKI QAVATLI QIRRASI.
+        //
+        // Ustiga chiziladi, korpusni ichkariga surmaydi: aks holda
+        // metall karta chekkasigacha yetmay, orada qora halqa
+        // ko'rinib qolardi.
+        if (style.doubleEdge)
+          Padding(
+            padding: const EdgeInsets.all(3.5),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(R.metalCard - 3.5),
+                border: Border.all(
+                  color: style.dark.withValues(alpha: .72),
+                  width: 1,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    if (sweep) {
+      face = LightSweep(radius: R.metalCard, opacity: .55, child: face);
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(R.metalCard),
+        boxShadow: [
+          const BoxShadow(
+            color: Color(0xD9000000),
+            blurRadius: 44,
+            spreadRadius: -20,
+            offset: Offset(0, 26),
+          ),
+          if (style.hasMaterial)
+            BoxShadow(
+              color: style.base.withValues(alpha: .38),
+              blurRadius: 30,
+              spreadRadius: -10,
+            ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(R.metalCard),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            face,
+            // Tashqi qirra — metall kesimining yorug' chizig'i.
+            IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(R.metalCard),
+                  border: Border.all(
+                    color: style.hasMaterial
+                        ? style.light.withValues(alpha: .5)
+                        : C.line,
+                    width: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// OLD TOMON
+// ─────────────────────────────────────────────────────────────
+
+class _FrontFace extends StatelessWidget {
+  const _FrontFace({
+    required this.code,
+    required this.holder,
+    required this.url,
+    required this.style,
+    required this.tier,
+  });
+
+  final String code;
+  final String holder;
+  final String? url;
+  final TierStyle style;
+  final Tier tier;
+
+  /// Metall yuzada matn QUYUQ bo'ladi — oq matn oltin ustida
+  /// o'qilmaydi (kontrast 4.5:1 dan past).
+  Color get _ink =>
+      style.hasMaterial ? const Color(0xFF17110A) : C.ink;
+
+  /// Ikkilamchi matn ham yetarlicha quyuq: kumush yuzada ochroq
+  /// rang 4.5:1 chegarasidan o'tmaydi.
+  Color get _inkSoft =>
+      style.hasMaterial ? const Color(0xCC17110A) : C.ink2;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                style.hasMaterial
+                    ? 'NFCSTORE · ${style.label.toUpperCase()}'
+                    : 'NFCSTORE',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: T.meta.copyWith(
+                  color: _inkSoft,
+                  letterSpacing: 1.5,
+                  fontSize: 10.5,
+                ),
+              ),
+            ),
+            // NFC belgisi — jismoniy kartadagi chip o'rni.
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: const Color(0x2E000000),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: NIcon(Ico.nfc, size: 17, color: _ink),
+            ),
+          ],
+        ),
+        const Spacer(),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            code.toUpperCase(),
+            style: T.code(30, color: _ink, weight: FontWeight.w600),
+          ),
+        ),
+        if (holder.isNotEmpty || (url ?? '').isNotEmpty) ...[
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              if (holder.isNotEmpty)
+                Flexible(
+                  child: Text(
+                    holder,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.cardTitle.copyWith(color: _ink, fontSize: 14),
+                  ),
+                ),
+              if (holder.isNotEmpty && (url ?? '').isNotEmpty)
+                Text('  ·  ', style: T.meta.copyWith(color: _inkSoft)),
+              if ((url ?? '').isNotEmpty)
+                Flexible(
+                  child: Text(
+                    url!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.link.copyWith(color: _inkSoft, fontSize: 11),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// ORQA TOMON
+// ─────────────────────────────────────────────────────────────
+
+class _BackFace extends StatelessWidget {
+  const _BackFace({required this.url, required this.style});
+
+  final String? url;
+  final TierStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = style.hasMaterial ? const Color(0xFF1C1405) : C.ink2;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const BrandMark(size: 44, ring: false),
+        const SizedBox(height: S.x12),
+        Text(
+          'NFCSTORE',
+          style: T.meta.copyWith(
+            color: ink,
+            fontSize: 11,
+            letterSpacing: 3.2,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if ((url ?? '').isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            url!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: T.link.copyWith(
+              color: ink.withValues(alpha: .7),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// KICHIK KARTA
+// ─────────────────────────────────────────────────────────────
+
+/// Ro'yxatdagi ixcham karta — "Mening ID'larim".
+///
+/// Kattasidan farqi: o'girilmaydi, yorug'lik chizig'i yo'q
+/// (ro'yxatda bir nechta karta bo'ladi va hammasi harakatlansa
+/// ekran bezovta bo'ladi).
+class MiniIdCard extends StatelessWidget {
+  const MiniIdCard({
+    super.key,
+    required this.code,
+    required this.tier,
+    this.onTap,
+    this.active = false,
+    this.width = 158,
+  });
+
+  final String code;
+  final Tier tier;
+  final VoidCallback? onTap;
+
+  /// Faol ID — oltin halqa bilan belgilanadi.
+  final bool active;
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TierStyle.of(tier);
+    final ink = style.hasMaterial ? const Color(0xFF1C1405) : C.ink;
+
+    return Press(
+      onTap: onTap,
+      minSize: 0,
+      scale: .97,
+      child: Container(
+        width: width,
+        padding: EdgeInsets.all(active ? 2 : 0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(R.card + 2),
+          border: active
+              ? Border.all(color: C.accent.withValues(alpha: .85), width: 1.5)
+              : null,
+        ),
+        child: Container(
+          height: 84,
+          padding: const EdgeInsets.all(S.x12),
+          decoration: BoxDecoration(
+            gradient: style.hasMaterial ? style.surface : C.raisedSurface,
+            borderRadius: BorderRadius.circular(R.card),
+            border: Border.all(
+              color: style.hasMaterial
+                  ? style.light.withValues(alpha: .45)
+                  : C.line,
+            ),
+            boxShadow: C.e1,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                style.label.toUpperCase(),
+                style: T.meta.copyWith(
+                  color: ink.withValues(alpha: .72),
+                  fontSize: 9.5,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const Spacer(),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  code.toUpperCase(),
+                  style: T.code(19, color: ink),
+                ),
               ),
             ],
           ),
@@ -264,18 +550,27 @@ class _IdentityCardState extends State<IdentityCard>
   }
 }
 
-/// Tarif medali — ro'yxat qatorlarida yolg'iz ishlatiladi.
+/// Tarif nuqtasi — ro'yxat va chiplarda materialni ko'rsatadi.
 class TierDot extends StatelessWidget {
   const TierDot(this.tier, {super.key, this.size = 16});
+
   final Tier tier;
   final double size;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: TierStyle.of(tier).gradient,
-        ),
-      );
+  Widget build(BuildContext context) {
+    final style = TierStyle.of(tier);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: style.hasMaterial ? style.swatch : null,
+        color: style.hasMaterial ? null : const Color(0x00000000),
+        shape: BoxShape.circle,
+        border: style.hasMaterial
+            ? null
+            : Border.all(color: C.ink3, width: 1),
+      ),
+    );
+  }
 }

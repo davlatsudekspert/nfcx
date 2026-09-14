@@ -284,7 +284,7 @@ class _VideoViewState extends State<VideoView>
         fit: StackFit.expand,
         children: [
           if (poster.isNotEmpty)
-            NetImage(poster, radius: 0, fit: widget.fit, slotLabel: '')
+            NetImage(poster, radius: 0, fit: widget.fit)
           else
             ColoredBox(color: C.placeholder),
           Center(
@@ -301,7 +301,7 @@ class _VideoViewState extends State<VideoView>
                   child: Text(
                     _reason ?? tr('Videoni ochib bo‘lmadi.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(color: C.offWhite),
+                    style: T.caption.copyWith(color: C.ink),
                   ),
                 ),
               ),
@@ -318,7 +318,7 @@ class _VideoViewState extends State<VideoView>
         fit: StackFit.expand,
         children: [
           if (poster.isNotEmpty)
-            NetImage(poster, radius: 0, fit: widget.fit, slotLabel: '')
+            NetImage(poster, radius: 0, fit: widget.fit)
           else
             ColoredBox(color: C.placeholder),
           const Center(child: Spinner(size: 20)),

@@ -1,354 +1,477 @@
-import 'dart:async';
-
 import 'package:flutter/widgets.dart';
+
 import '../tokens.dart';
 import '../type.dart';
+import 'icons.dart';
 import 'press.dart';
+import 'sweep.dart';
 
-/// Asosiy tugma — METALL OLTIN to'ldirma, EKRANDA BITTA.
+/// TUGMALAR — uch o'lcham, bitta asosiy urg'u.
 ///
-/// Balandlik 52, radius R.button. `loading` holatida yozuv o'rnini
-/// kichik aylana egallaydi, LEKIN tugma o'lchami o'zgarmaydi — aks holda
-/// bosilgan payt maket sakrab ketardi.
+/// EKRANDA BITTA `PrimaryButton`. Qolgan amallar `SecondaryButton`
+/// yoki `GhostButton`. Ikkita oltin tugma yonma-yon turganda
+/// foydalanuvchi qaysi biri asosiy ekanini bilmaydi.
 ///
-/// 2026-09 — TEKIS RANGDAN METALLGA.
-///
-/// Ilgari tugma bir tekis `C.champagne` edi. Saytdagi "Kontaktni
-/// saqlash" bilan yonma-yon qo'yilganda u yassi va o'chiq
-/// ko'rinardi. Endi uch qatlam:
-///   1. gradient to'ldirma (`C.metalFace`) — yorug'lik yuqori-chapdan;
-///   2. tepadagi oq aks — qavariq yuza tuyg'usi;
-///   3. ustidan sekin o'tadigan yorug'lik (`M.sweep`).
-///
-/// Yorug'lik CHEKSIZ TAKRORLANMAYDI: u bir marta o'tadi, keyin
-/// kontroller TO'XTAYDI va taymer uni bir necha soniyadan keyin
-/// qaytadan yoqadi. Ikki sabab bor:
-///
-///   1. BATAREYA. Pauza vaqtida kadr umuman rejalashtirilmaydi —
-///      `repeat()` bo'lsa ekran har kadrda qayta chizilardi.
-///   2. TESTLAR. `repeat()` bilan `pumpAndSettle()` hech qachon
-///      qaytmaydi ("animatsiya tugashini kut" — u tugamaydi) va
-///      ilovaning sakkizta testi shu sababdan yiqildi. Pauza esa
-///      "kadr rejalashtirilmagan" holat, ya'ni testlar tinch
-///      yakunlanadi.
-///
-/// O'chiq tugmada animatsiya UMUMAN yaratilmaydi.
-class PrimaryButton extends StatefulWidget {
-  const PrimaryButton(this.label, {super.key, this.onTap, this.loading = false, this.icon});
+/// BOSISH MAYDONI hamma o'lchamda kamida 48 dp: kichik tugmaning
+/// KO'RINADIGAN balandligi 38 dp, lekin `Press` uni 48 gacha
+/// kengaytiradi.
+
+enum BtnSize { l, m, s }
+
+double _height(BtnSize s) => switch (s) {
+      BtnSize.l => 54,
+      BtnSize.m => 46,
+      BtnSize.s => 38,
+    };
+
+TextStyle _labelStyle(BtnSize s) =>
+    s == BtnSize.l ? T.button : T.buttonSm.copyWith(
+          fontSize: s == BtnSize.m ? 15 : 13.5,
+        );
+
+double _pad(BtnSize s) => switch (s) {
+      BtnSize.l => S.x24,
+      BtnSize.m => S.x20,
+      BtnSize.s => S.x16,
+    };
+
+// ─────────────────────────────────────────────────────────────
+// ASOSIY
+// ─────────────────────────────────────────────────────────────
+
+/// Asosiy amal — metall oltin yuza.
+class PrimaryButton extends StatelessWidget {
+  const PrimaryButton(
+    this.label, {
+    super.key,
+    this.onTap,
+    this.loading = false,
+    this.icon,
+    this.size = BtnSize.l,
+    this.expand = true,
+    this.sweep = true,
+  });
 
   final String label;
   final VoidCallback? onTap;
+
+  /// Yuklanish — tugma o'lchamini SAQLAB qoladi, matn o'rniga
+  /// aylana chiqadi. Aks holda tartib sakraydi.
   final bool loading;
-  final Widget? icon;
 
-  @override
-  State<PrimaryButton> createState() => _PrimaryButtonState();
-}
+  final Ico? icon;
+  final BtnSize size;
 
-class _PrimaryButtonState extends State<PrimaryButton>
-    with SingleTickerProviderStateMixin {
-  AnimationController? _sweep;
-  Timer? _idle;
+  /// `false` — kontent kengligicha (chip kabi).
+  final bool expand;
 
-  /// Yorug'lik yuzani kesib o'tish vaqti.
-  static const _travel = Duration(milliseconds: 1500);
-
-  /// Ikki o'tish orasidagi tinchlik. `_travel + _pause == M.sweep`.
-  static const _pause = Duration(milliseconds: 2700);
-
-  bool get _enabled => widget.onTap != null && !widget.loading;
-
-  @override
-  void initState() {
-    super.initState();
-    _sync();
-  }
-
-  @override
-  void didUpdateWidget(PrimaryButton old) {
-    super.didUpdateWidget(old);
-    _sync();
-  }
-
-  /// Kontroller FAQAT yoqilgan tugmada yashaydi. O'chiq tugma
-  /// e'tiborni tortmasligi kerak, ya'ni unda yorug'lik ham
-  /// bo'lmaydi — va batareya behuda sarflanmaydi.
-  ///
-  /// `AnimationBehavior.preserve` — istorya halqasidagi bilan bir xil
-  /// sabab: Android'da tizim animatsiyalari o'chirilgan bo'lsa
-  /// Flutter animatsiyani darhol oxiriga tashlaydi va yorug'lik
-  /// umuman ko'rinmay qolardi.
-  void _sync() {
-    if (!_enabled) {
-      _idle?.cancel();
-      _idle = null;
-      _sweep?.dispose();
-      _sweep = null;
-      return;
-    }
-    if (_sweep != null) return;
-    _sweep = AnimationController(
-      vsync: this,
-      duration: _travel,
-      animationBehavior: AnimationBehavior.preserve,
-    )..addStatusListener(_rearm);
-    _sweep!.forward();
-  }
-
-  /// O'tish tugadi — pauza, keyin yana boshidan.
-  void _rearm(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-    _idle?.cancel();
-    _idle = Timer(_pause, () {
-      if (!mounted) return;
-      _sweep?.forward(from: 0);
-    });
-  }
-
-  @override
-  void dispose() {
-    // Taymer AVVAL to'xtatiladi: aks holda u tarqatilgan
-    // kontrollerni yoqmoqchi bo'lardi.
-    _idle?.cancel();
-    _sweep?.dispose();
-    super.dispose();
-  }
+  /// Yorug'lik chizig'i. Ro'yxat ichidagi ko'p tugmada o'chiriladi.
+  final bool sweep;
 
   @override
   Widget build(BuildContext context) {
-    final content = widget.loading
-        ? SizedBox(
-            width: 18, height: 18,
-            child: _Spinner(color: C.ink),
-          )
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.icon != null) ...[widget.icon!, const SizedBox(width: S.x8)],
-              // YOZUV QISQARA OLISHI KERAK. Aks holda uzun matn
-              // yoki katta tizim shrifti tugmani chetdan chiqarib
-              // yuboradi (test aynan shuni ushladi).
-              Flexible(
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: T.button.copyWith(color: C.ink),
-                ),
-              ),
-            ],
-          );
+    final enabled = onTap != null && !loading;
+    final h = _height(size);
 
-    // TUGMA KENGLIGI — `alignment` SHART.
-    //
-    // Bu yerda avval `Stack` turardi va u O'ZINING eng katta
-    // bolasiga qarab o'lchanardi, ya'ni tugma yozuvning atrofiga
-    // SIQILIB qolardi: "Tasdiqlash" va "Keyingisi" tugmalari
-    // ekranning chap chekkasida kichkina bo'lib chiqdi (egasi
-    // telefonda aynan shuni ko'rdi).
-    //
-    // `Container(alignment: ...)` esa OTASI bergan kenglikni to'liq
-    // egallaydi. Yorug'lik va aks endi `CustomPaint` orqali
-    // BOLANING ORQASIGA chiziladi — shuning uchun ular ham butun
-    // tugma bo'ylab yotadi, faqat yozuv atrofida emas.
-    final face = CustomPaint(
-      painter: _FacePainter(_sweep?.value ?? -1),
-      child: Container(
-        height: 52,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: S.x16),
-        child: content,
+    Widget face = Container(
+      height: h,
+      // DIQQAT: `alignment` QO'YILMAYDI. `Container` ga alignment
+      // berilsa u mavjud bo'sh joyni TO'LIQ egallaydi — `Wrap`
+      // yoki `Row` ichida tugma butun kenglikka cho'zilib ketardi.
+      // O'rtaga tekislash `Align(widthFactor)` bilan qilinadi:
+      // `expand: false` da u bolasining kengligini oladi.
+      padding: EdgeInsets.symmetric(horizontal: _pad(size)),
+      decoration: BoxDecoration(
+        gradient: enabled ? C.actionFace : null,
+        color: enabled ? null : C.surfaceHigh,
+        borderRadius: BorderRadius.circular(R.button),
+        boxShadow: enabled ? C.actionGlow : null,
       ),
-    );
-
-    return Press(
-      haptic: true,
-      onTap: _enabled ? widget.onTap : null,
-      child: Opacity(
-        opacity: _enabled ? 1 : .5,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: C.metalFace,
-            borderRadius: BorderRadius.circular(R.button),
-            boxShadow: _enabled
-                ? [
-                    BoxShadow(color: C.champagne.withValues(alpha: .26), blurRadius: 22, spreadRadius: -6),
-                    ...E.e2,
-                  ]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(R.button),
-            child: _sweep == null
-                ? face
-                : AnimatedBuilder(
-                    animation: _sweep!,
-                    builder: (_, child) => CustomPaint(
-                      painter: _FacePainter(_sweep!.value),
-                      child: child,
+      child: Align(
+        alignment: Alignment.center,
+        widthFactor: expand ? null : 1,
+        child: loading
+            ? Spinner(size: size == BtnSize.l ? 20 : 16, color: C.onAccent)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    NIcon(
+                      icon!,
+                      size: size == BtnSize.l ? 19 : 16,
+                      color: enabled ? C.onAccent : C.ink3,
                     ),
-                    // Bola BIR MARTA quriladi va har kadrda qayta
-                    // ishlatiladi — faqat chizish qatlami yangilanadi.
-                    child: Container(
-                      height: 52,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: S.x16),
-                      child: content,
+                    const SizedBox(width: S.x8),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _labelStyle(size).copyWith(
+                        color: enabled ? C.onAccent : C.ink3,
+                      ),
                     ),
                   ),
-          ),
-        ),
+                ],
+              ),
       ),
     );
+
+    if (enabled) {
+      // Yuqori qirradagi yorug' chiziq — metall yuzaning "qirrasi".
+      face = Stack(
+        children: [
+          face,
+          Positioned(
+            left: S.x16,
+            right: S.x16,
+            top: 0,
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0x00FFFFFF),
+                    const Color(0xFFFFFFFF).withValues(alpha: .55),
+                    const Color(0x00FFFFFF),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+
+      if (sweep) {
+        face = LightSweep(radius: R.button, opacity: .5, child: face);
+      }
+    }
+
+    final button = Press(
+      onTap: enabled ? onTap : null,
+      haptic: true,
+      minSize: S.tap,
+      scale: .975,
+      child: face,
+    );
+
+    return expand ? SizedBox(width: double.infinity, child: button) : button;
   }
 }
 
-/// Metall yuza: tepadagi oq aks + ustidan o'tadigan yorug'lik.
-///
-/// `t` 0 dan 1 gacha — yorug'lik chap chetdan o'ng chetga o'tadi.
-/// `t < 0` — yorug'lik umuman chizilmaydi (o'chiq tugma).
-/// Pauza kontroller darajasida (u shunchaki to'xtab turadi), shuning
-/// uchun bu yerda vaqtni bo'lish shart emas.
-class _FacePainter extends CustomPainter {
-  _FacePainter(this.t);
-  final double t;
+// ─────────────────────────────────────────────────────────────
+// IKKILAMCHI VA GHOST
+// ─────────────────────────────────────────────────────────────
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    // Tepadagi oq aks — metall yuzaning qavariqligi.
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0x66FFFFFF), Color(0x00FFFFFF)],
-          stops: [0, .55],
-        ).createShader(rect),
-    );
-    if (t < 0) return;
-    final p = t.clamp(0.0, 1.0);
-    final bandW = size.width * .34;
-    // Chapdagi kadr tashqarisidan o'ngdagi kadr tashqarisiga.
-    final x = -bandW + p * (size.width + bandW * 2);
-    final band = Rect.fromLTWH(x, -size.height, bandW, size.height * 3);
-    canvas.save();
-    // Qiyalik — to'g'ri burchakli chiziq "qog'oz chetiga" o'xshardi.
-    canvas.transform(Matrix4.skewX(-0.32).storage);
-    canvas.drawRect(
-      band,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0x00FFFFFF), Color(0x73FFFFFF), Color(0x00FFFFFF)],
-        ).createShader(band),
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_FacePainter old) => old.t != t;
-}
-
-/// Ikkilamchi — bir xil o'lcham, to'q to'ldirma, iliq chegara.
+/// Ikkilamchi amal — ko'tarilgan yuza, oltin emas.
 class SecondaryButton extends StatelessWidget {
-  const SecondaryButton(this.label, {super.key, this.onTap, this.icon, this.height = 52});
+  const SecondaryButton(
+    this.label, {
+    super.key,
+    this.onTap,
+    this.icon,
+    this.size = BtnSize.l,
+    this.expand = true,
+    this.loading = false,
+  });
 
   final String label;
   final VoidCallback? onTap;
-  final Widget? icon;
-  final double height;
+  final Ico? icon;
+  final BtnSize size;
+  final bool expand;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    return Press(
-      onTap: onTap,
-      child: Opacity(
-        opacity: onTap == null ? .5 : 1,
-        child: Container(
-          height: height,
+    final enabled = onTap != null && !loading;
+    final button = Press(
+      onTap: enabled ? onTap : null,
+      minSize: S.tap,
+      scale: .975,
+      child: Container(
+        height: _height(size),
+        padding: EdgeInsets.symmetric(horizontal: _pad(size)),
+        decoration: BoxDecoration(
+          gradient: C.raisedSurface,
+          borderRadius: BorderRadius.circular(R.button),
+          border: Border.all(color: enabled ? C.line : C.lineCool),
+        ),
+        child: Align(
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: C.slate,
-            borderRadius: BorderRadius.circular(R.button),
-            border: Border.all(color: C.warmHairline),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[icon!, const SizedBox(width: S.x8)],
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: T.button.copyWith(color: C.offWhite),
-                ),
+          widthFactor: expand ? null : 1,
+          child: loading
+            ? Spinner(size: size == BtnSize.l ? 20 : 16, color: C.ink)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    NIcon(
+                      icon!,
+                      size: size == BtnSize.l ? 19 : 16,
+                      color: enabled ? C.ink : C.ink3,
+                    ),
+                    const SizedBox(width: S.x8),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _labelStyle(size).copyWith(
+                        color: enabled ? C.ink : C.ink3,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
         ),
       ),
     );
+    return expand ? SizedBox(width: double.infinity, child: button) : button;
   }
 }
 
-/// Ghost — balandlik 44, to'ldirmasiz.
+/// Uchinchi darajali amal — faqat chegara.
 class GhostButton extends StatelessWidget {
-  const GhostButton(this.label, {super.key, this.onTap, this.icon, this.color});
+  const GhostButton(
+    this.label, {
+    super.key,
+    this.onTap,
+    this.icon,
+    this.size = BtnSize.m,
+    this.expand = false,
+    this.color,
+  });
 
   final String label;
   final VoidCallback? onTap;
-  final Widget? icon;
+  final Ico? icon;
+  final BtnSize size;
+  final bool expand;
+
+  /// Matn rangi — standart urg'u.
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Press(
+    final tint = color ?? C.accent;
+    final enabled = onTap != null;
+    final button = Press(
       onTap: onTap,
+      minSize: S.tap,
+      scale: .97,
       child: Container(
-        height: 44,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: S.x16),
+        height: _height(size),
+        padding: EdgeInsets.symmetric(horizontal: _pad(size)),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(R.button),
-          border: Border.all(color: C.hairline),
+          border: Border.all(
+            color: enabled ? tint.withValues(alpha: .35) : C.lineCool,
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Align(
+          alignment: Alignment.center,
+          widthFactor: expand ? null : 1,
+          child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[icon!, const SizedBox(width: S.x8)],
+            if (icon != null) ...[
+              NIcon(icon!, size: 16, color: enabled ? tint : C.ink3),
+              const SizedBox(width: S.x8),
+            ],
             Flexible(
               child: Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: T.button.copyWith(fontSize: 15, color: color ?? C.offWhite),
+                style: _labelStyle(size).copyWith(
+                  color: enabled ? tint : C.ink3,
+                ),
               ),
             ),
           ],
+          ),
         ),
       ),
     );
+    return expand ? SizedBox(width: double.infinity, child: button) : button;
   }
 }
 
-/// Yagona spinner. Material'niki emas: u o'z rang sxemasini oladi va
-/// bu yerda noto'g'ri rangda chiqadi.
-class _Spinner extends StatefulWidget {
-  const _Spinner({required this.color});
-  final Color color;
+/// Xavfli amal — o'chirish, chiqish.
+///
+/// Qizil, lekin to'ldirilgan emas: to'ldirilgan qizil tugma
+/// tasodifan bosilishga chaqiradi. Tasdiq oynasida esa
+/// to'ldirilgan bo'ladi (`filled: true`).
+class DangerButton extends StatelessWidget {
+  const DangerButton(
+    this.label, {
+    super.key,
+    this.onTap,
+    this.loading = false,
+    this.filled = false,
+    this.size = BtnSize.l,
+    this.expand = true,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final bool loading;
+  final bool filled;
+  final BtnSize size;
+  final bool expand;
 
   @override
-  State<_Spinner> createState() => _SpinnerState();
+  Widget build(BuildContext context) {
+    final enabled = onTap != null && !loading;
+    final button = Press(
+      onTap: enabled ? onTap : null,
+      haptic: true,
+      minSize: S.tap,
+      scale: .975,
+      child: Container(
+        height: _height(size),
+        padding: EdgeInsets.symmetric(horizontal: _pad(size)),
+        decoration: BoxDecoration(
+          color: filled
+              ? C.fail.withValues(alpha: enabled ? .92 : .3)
+              : C.fail.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(R.button),
+          border: Border.all(color: C.fail.withValues(alpha: filled ? 0 : .4)),
+        ),
+        child: Align(
+          alignment: Alignment.center,
+          widthFactor: expand ? null : 1,
+          child: loading
+              ? Spinner(size: 20, color: filled ? C.ink : C.fail)
+              : Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _labelStyle(size).copyWith(
+                    color: filled ? const Color(0xFF1A0A08) : C.fail,
+                  ),
+                ),
+        ),
+      ),
+    );
+    return expand ? SizedBox(width: double.infinity, child: button) : button;
+  }
 }
 
-class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin {
+// ─────────────────────────────────────────────────────────────
+// IKONKA TUGMASI
+// ─────────────────────────────────────────────────────────────
+
+/// Dumaloq ikonka tugmasi — top bar, media boshqaruvi.
+class RoundButton extends StatelessWidget {
+  const RoundButton(
+    this.icon, {
+    super.key,
+    this.onTap,
+    this.size = 44,
+    this.iconSize = 18,
+    this.color,
+    this.glass = false,
+    this.accent = false,
+    this.badge = 0,
+  });
+
+  final Ico icon;
+  final VoidCallback? onTap;
+  final double size;
+  final double iconSize;
+  final Color? color;
+
+  /// Media ustida turganda shisha yuza kerak.
+  final bool glass;
+
+  /// Oltin to'ldirilgan holat.
+  final bool accent;
+
+  /// O'qilmagan soni — 0 bo'lsa ko'rsatilmaydi.
+  final int badge;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget circle = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: accent ? C.actionFace : (glass ? null : C.raisedSurface),
+        color: glass ? const Color(0x3D000000) : null,
+        shape: BoxShape.circle,
+        border: Border.all(color: accent ? const Color(0x00000000) : C.line),
+      ),
+      alignment: Alignment.center,
+      child: NIcon(
+        icon,
+        size: iconSize,
+        color: color ?? (accent ? C.onAccent : C.ink),
+      ),
+    );
+
+    if (badge > 0) {
+      circle = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          circle,
+          Positioned(
+            right: -1,
+            top: -1,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: C.fail,
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: C.bg, width: 1.5),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                badge > 99 ? '99+' : '$badge',
+                style: T.meta.copyWith(
+                  fontSize: 9.5,
+                  color: C.ink,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Press(onTap: onTap, minSize: S.tap, scale: .92, child: circle);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// YUKLANISH AYLANASI
+// ─────────────────────────────────────────────────────────────
+
+/// Aylanuvchi yoy.
+///
+/// Material'ning `CircularProgressIndicator` i o'rniga o'zimizniki:
+/// u qalinroq va boshqa tezlikda aylanadi, dizaynga mos kelmaydi.
+class Spinner extends StatefulWidget {
+  const Spinner({super.key, this.size = 18, this.color, this.stroke = 2});
+
+  final double size;
+  final Color? color;
+  final double stroke;
+
+  @override
+  State<Spinner> createState() => _SpinnerState();
+}
+
+class _SpinnerState extends State<Spinner> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-    vsync: this, duration: const Duration(milliseconds: 700),
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
   )..repeat();
 
   @override
@@ -358,45 +481,59 @@ class _SpinnerState extends State<_Spinner> with SingleTickerProviderStateMixin 
   }
 
   @override
-  Widget build(BuildContext context) => RotationTransition(
-        turns: _c,
-        child: CustomPaint(painter: _ArcPainter(widget.color)),
+  Widget build(BuildContext context) => SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) => CustomPaint(
+            painter: _SpinnerPainter(
+              _c.value,
+              widget.color ?? C.accent,
+              widget.stroke,
+            ),
+          ),
+        ),
       );
 }
 
-class _ArcPainter extends CustomPainter {
-  _ArcPainter(this.color);
+class _SpinnerPainter extends CustomPainter {
+  _SpinnerPainter(this.t, this.color, this.stroke);
+
+  final double t;
   final Color color;
+  final double stroke;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final radius = (size.shortestSide - stroke) / 2;
+
+    // Orqa halqa — aylana qayerda ekani ko'rinib tursin.
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = color.withValues(alpha: .18),
+    );
+
     canvas.drawArc(
-      Offset.zero & size, -1.57, 4.2, false, p,
+      Rect.fromCircle(center: center, radius: radius),
+      t * 6.2831853 - 1.5708,
+      1.9,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = color,
     );
   }
 
   @override
-  bool shouldRepaint(_ArcPainter old) => old.color != color;
-}
-
-/// Ochiq spinner — yuklanish holatlarida kerak bo'lganda.
-class Spinner extends StatelessWidget {
-  // Rang MAVZUGA bog'liq, ya'ni `const` standart qiymat bo'la
-  // olmaydi. `null` -> build ichida joriy urg'u olinadi.
-  const Spinner({super.key, this.size = 18, this.color});
-  final double size;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) =>
-      SizedBox(
-        width: size,
-        height: size,
-        child: _Spinner(color: color ?? C.champagne),
-      );
+  bool shouldRepaint(_SpinnerPainter old) =>
+      old.t != t || old.color != color || old.stroke != stroke;
 }

@@ -1,51 +1,46 @@
 import 'package:flutter/widgets.dart';
+
 import '../tokens.dart';
 
-/// METALL MATN — gradient bilan bo'yalgan yozuv.
+/// METALL MATN — oltin gradient bilan bo'yalgan yozuv.
 ///
-/// Saytdagi brend nomi `background:var(--gold-face)` + `background-clip:text`
-/// bilan chiziladi, ya'ni harflar tekis oltin emas: ular bo'ylab
-/// yorug'lik o'zgaradi. Ilovada esa nom oddiy oq matn edi va yonma-yon
-/// qo'yilganda sayt boy, ilova quruq ko'rinardi.
+/// Faqat URG'U so'zlarda: narx, ID kodi, hero sarlavhasidagi bitta
+/// so'z. Butun paragrafda ishlatilsa matn o'qilmay qoladi —
+/// gradient kontrastni tushiradi.
 ///
-/// Flutter'da buning yagona yo'li — `ShaderMask`: matn OQ chiziladi,
-/// ustiga gradient shader qo'yiladi va `srcIn` rejimi faqat harflar
-/// turgan joyni bo'yaydi.
-///
-/// DIQQAT: `style` ning rangi ahamiyatsiz, lekin SHAFFOFMAS bo'lishi
-/// shart — `srcIn` matnning alfa qiymatini saqlaydi, shaffof matn
-/// gradientni ham ko'rinmas qilardi.
+/// `ShaderMask` matnni rastrga aylantiradi, shuning uchun u
+/// `saveLayer` ishlatadi. Ro'yxat ichida har qatorda emas, bitta
+/// ekranda bir-ikki joyda.
 class MetalText extends StatelessWidget {
   const MetalText(
     this.text, {
     super.key,
     required this.style,
+    this.gradient,
     this.maxLines = 1,
     this.overflow = TextOverflow.ellipsis,
     this.textAlign,
-    this.gradient,
   });
 
   final String text;
   final TextStyle style;
+  final Gradient? gradient;
   final int maxLines;
   final TextOverflow overflow;
   final TextAlign? textAlign;
 
-  /// Standarti `C.metalText` — matn uchun sozlangan gradient.
-  /// Boshqa metall kerak bo'lsa (masalan tarif rangi) shu yerdan
-  /// beriladi.
-  final Gradient? gradient;
-
   @override
   Widget build(BuildContext context) => ShaderMask(
         blendMode: BlendMode.srcIn,
-        shaderCallback: (rect) => (gradient ?? C.metalText).createShader(rect),
+        shaderCallback: (bounds) =>
+            (gradient ?? C.accentText).createShader(bounds),
         child: Text(
           text,
           maxLines: maxLines,
           overflow: overflow,
           textAlign: textAlign,
+          // Rang oq bo'lishi SHART: `srcIn` maskasi matnning
+          // shaffofligini oladi, rangi esa gradientdan keladi.
           style: style.copyWith(color: const Color(0xFFFFFFFF)),
         ),
       );
