@@ -161,7 +161,10 @@ class _ComposeScreenState extends State<ComposeScreen> {
       setState(() => _error = tr('Avval rasm yoki video tanlang.'));
       return;
     }
-    if (_isStory && !_agreed) {
+    // POST DA HAM. Ilgari rozilik FAQAT istoryada so'ralardi, post
+    // esa hech qanday ogohlantirishsiz joylanardi — holbuki saytda
+    // ikkalasida ham bir xil oyna chiqadi.
+    if (!_agreed) {
       setState(() => _error = tr('Kontent qoidalariga rozilik bering.'));
       return;
     }
@@ -182,7 +185,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
               imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         } else {
           await repo.addCompanyPost(widget.code,
-              imageUrl: image, videoUrl: video, caption: caption);
+              imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         }
       } else {
         if (_isStory) {
@@ -190,7 +193,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
               imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         } else {
           await repo.addPost(widget.code,
-              imageUrl: image, videoUrl: video, caption: caption);
+              imageUrl: image, videoUrl: video, caption: caption, agreed: _agreed);
         }
       }
       successHaptic();
@@ -360,13 +363,11 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   hint: tr('Ixtiyoriy'),
                   maxLines: 4,
                 ),
-                if (_isStory) ...[
-                  const SizedBox(height: S.x16),
-                  _Rules(
-                    value: _agreed,
-                    onChanged: _busy ? null : (v) => setState(() => _agreed = v),
-                  ),
-                ],
+                const SizedBox(height: S.x16),
+                _Rules(
+                  value: _agreed,
+                  onChanged: _busy ? null : (v) => setState(() => _agreed = v),
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: S.x16),
                   Text(_error!, style: T.caption.copyWith(color: C.signal)),
@@ -390,6 +391,29 @@ class _ComposeScreenState extends State<ComposeScreen> {
     );
   }
 }
+
+/// KONTENT QOIDALARI — SAYTDAGI AYNAN SHU MATN.
+///
+/// Manba: `src/components/ContentRulesGate.jsx` (`CONTENT_RULES_TEXT`).
+/// U yerda "MATN EGASI BERGAN TAHRIRDA — o'zgartirilmaydi,
+/// qisqartirilmaydi" deb yozilgan.
+///
+/// Ilovada ilgari butunlay BOSHQA, qisqa jumla turardi: "Joylayotgan
+/// kontentim uchun javobgarlikni olaman...". Unda na diniy targ'ibot,
+/// na pornografiya, na siyosiy targ'ibot, na qonunchilik tilga
+/// olinardi — ya'ni ilova orqali joylagan odam nimaga rozi
+/// bo'layotganini BILMASDI va bu rozilikning yuridik qiymati yo'q edi.
+String get contentRulesText => tr(
+      'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi '
+      'shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik '
+      'yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, '
+      'shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har '
+      'qanday material. Ushbu qoidalar buzilgan taqdirda kontent '
+      'ogohlantirishsiz o‘chiriladi.',
+    );
+
+/// Rozilik qatori — saytdagi `CONTENT_RULES_ACCEPT`.
+String get contentRulesAccept => tr('Men qoidalarni o‘qidim va roziman');
 
 /// KONTENT QOIDALARIGA ROZILIK.
 ///
@@ -428,10 +452,14 @@ class _Rules extends StatelessWidget {
               ),
               const SizedBox(width: S.x12),
               Expanded(
-                child: Text(
-                  tr('Joylayotgan kontentim uchun javobgarlikni olaman va ') +
-                  tr('u boshqalarning huquqini buzmasligini tasdiqlayman.'),
-                  style: T.caption,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(contentRulesText, style: T.caption.copyWith(color: C.offWhite)),
+                    const SizedBox(height: 6),
+                    Text(contentRulesAccept,
+                        style: T.caption.copyWith(color: C.champagne)),
+                  ],
                 ),
               ),
             ],

@@ -903,6 +903,10 @@
   "Введите текущий пароль.",
   "Enter your current password."
  ],
+ "Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.": [
+  "Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.",
+  "Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning."
+ ],
  "Joylayotgan kontentim uchun javobgarlikni olaman va ": [
   "Я беру на себя ответственность за публикуемый контент и ",
   "I take responsibility for the content I post and "
@@ -1254,6 +1258,10 @@
  "Ma‘lumot yo‘q": [
   "Нет данных",
   "No information"
+ ],
+ "Men qoidalarni o‘qidim va roziman": [
+  "Я прочитал(а) правила и согласен(на)",
+  "I have read the rules and agree"
  ],
  "Menda sovg‘a kartasi bor": [
   "У меня есть подарочная карта",

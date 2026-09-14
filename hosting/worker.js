@@ -5323,6 +5323,14 @@ async function recordsApi(request, env, url) {
       const user = await getCurrentUser(request, env);
       if (!user) return json({ error: 'unauthorized' }, 401);
       const body = await request.json().catch(() => ({}));
+      // KONTENT QOIDALARIGA ROZILIK — shu yerda ham.
+      //
+      // Kompaniya posti, kompaniya istoryasi va shaxsiy istorya
+      // buni allaqachon talab qilardi; shaxsiy profil POSTI esa
+      // YAGONA istisno bo'lib qolgan edi. Ya'ni platformadagi eng
+      // ko'p ishlatiladigan joyda "u rozilik bergan" degan hech
+      // qanday dalil saqlanmasdi.
+      if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
       const imageUrl = String(body?.imageUrl || '');
       const videoUrl = String(body?.videoUrl || '');
       const caption = String(body?.caption || '').slice(0, 600);

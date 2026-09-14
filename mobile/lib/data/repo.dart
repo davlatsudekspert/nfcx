@@ -403,11 +403,13 @@ class Repo {
     String? imageUrl,
     String? videoUrl,
     String caption = '',
+    required bool agreed,
   }) async =>
       Post.fromJson(_map(await api.post('/api/records/$code/posts', {
         if (imageUrl != null) 'imageUrl': imageUrl,
         if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
+        'agreed': agreed,
       })));
 
   /// Yangi istorya. 24 soatdan keyin serverda o'zi o'chadi.
@@ -439,17 +441,24 @@ class Repo {
   // ekrani (`ComposeScreen`) ikkalasiga ham xizmat qiladi —
   // nusxalangan kod yozilmadi.
 
+  /// `agreed` — EKRANDAN keladi, qotib yozilmaydi.
+  ///
+  /// Ilgari bu yerda `'agreed': true` turardi: odam hech qanday
+  /// ogohlantirish ko'rmasdan post joylardi, serverda esa "u rozilik
+  /// bergan" degan yozuv qolardi. Ya'ni rozilik SOXTA edi va uning
+  /// yuridik qiymati yo'q edi.
   Future<void> addCompanyPost(
     String id, {
     String? imageUrl,
     String? videoUrl,
     String caption = '',
+    required bool agreed,
   }) =>
       api.post('/api/companies/$id/posts', {
         if (imageUrl != null) 'imageUrl': imageUrl,
         if (videoUrl != null) 'videoUrl': videoUrl,
         if (caption.isNotEmpty) 'caption': caption,
-        'agreed': true,
+        'agreed': agreed,
       });
 
   Future<void> addCompanyStory(
