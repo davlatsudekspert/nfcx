@@ -23,27 +23,57 @@ const page = readFileSync(new URL('../src/pages/CompanyQuickProfilePage.jsx', im
 const css = readFileSync(new URL('../src/company-system.css', import.meta.url), 'utf8');
 
 // Bitta CSS qoidasining tanasini ajratib oladi (`.qp-body{...}`).
+//
+// BIR XIL NOMLI QOIDALAR BIRLASHTIRILADI. Ilgari bu funksiya FAQAT
+// birinchi uchraganini qaytarardi va `.qp-bottom` uchun `@media
+// (min-width:601px)` ichidagi kichik ustma-ust yozuv birinchi kelardi
+// (u yerda atigi `bottom` va `border-radius` bor). Natijada test
+// "`flex:none` yo'q" deb YOLG'ON xato berardi. Endi hamma nusxasi
+// qo'shib o'qiladi.
 function rule(selector) {
-  const i = css.indexOf(selector + '{');
-  if (i < 0) return '';
-  return css.slice(i + selector.length + 1, css.indexOf('}', i));
+  let out = '';
+  let i = css.indexOf(selector + '{');
+  while (i >= 0) {
+    out += css.slice(i + selector.length + 1, css.indexOf('}', i)) + ';';
+    i = css.indexOf(selector + '{', i + 1);
+  }
+  // IZOHLAR OLIB TASHLANADI. Bu faylda izohlar qoidaning O'ZI qanday
+  // bo'lgani haqida yozilgan ("`overflow:hidden` OLIB TASHLANDI") —
+  // ya'ni izohdagi matn tekshiruvni chalg'itadi va qoida yo'q bo'lsa
+  // ham "bor" deb ko'rsatardi.
+  return out.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-// ── 1) Qobiq ekran balandligida va o'zi surilmaydi ───────────────────
+// ── 1) SAHIFA TABIIY SURILADI ────────────────────────────────────────
+//
+// QAROR O'ZGARDI — VA TEST HAM SHUNGA MOS KELISHI KERAK.
+//
+// Boshida qobiq AYNAN ekran balandligida (`height:100dvh`) qotirilgan
+// va faqat o'rtadagi kichik oyna surilardi. Egasi buni qurilmada
+// ko'rib rad etdi: "siqilgan va kichkina, premium his qilinmayapti" —
+// hamma narsa bitta ekranga sig'ishi uchun kichraytirilgan edi.
+//
+// Endi kontent O'Z o'lchamida turadi va sahifa oddiy sahifa kabi
+// suriladi; "Kontaktni saqlash" esa pastda YOPISHIB turadi.
+//
+// Shuning uchun bu yerdagi tekshiruvlar TESKARISIGA o'girildi: qat'iy
+// balandlik va `overflow:hidden` QAYTIB KELMASLIGI kerak — ular
+// qaytsa, yopishgan tugma ham buziladi (`position:sticky` ota-blokda
+// `overflow:hidden` bo'lsa ishlamaydi).
 const shell = rule('.qp-shell');
-checkTrue('1) qobiq ekran balandligida', shell.includes('height:100dvh'));
-checkTrue('1) qobiq o‘zi surilmaydi', shell.includes('overflow:hidden'));
+checkTrue('1) qobiq kontentga qarab o‘sadi', shell.includes('min-height:100dvh'));
+checkTrue('1) qobiq qat‘iy balandlikda EMAS', !/(^|;)height:100dvh/.test(shell));
+checkTrue('1) qobiqda overflow:hidden YO‘Q (sticky buzilmasin)', !shell.includes('overflow:hidden'));
 checkTrue('1) qobiq ustun bo‘lib tizilgan', shell.includes('flex-direction:column'));
-checkTrue('1) sahifa ham surilmaydi', rule('.qp-page').includes('overflow:hidden'));
+checkTrue('1) sahifa suriladi', !rule('.qp-page').includes('overflow:hidden'));
 
-// ── 2) YAGONA suriladigan qism — o'rtadagi kontent ───────────────────
+// ── 2) KONTENT ALOHIDA SURILMAYDI ────────────────────────────────────
+// Ichki oyna o'z scroll'iga ega bo'lsa, sahifada IKKITA surish joyi
+// paydo bo'ladi va telefonda barmoq qaysi biriga tushgani noaniq
+// bo'lardi. Endi surish bitta — sahifaning o'zi.
 const body = rule('.qp-body');
-checkTrue('2) kontent oynasi suriladi', body.includes('overflow-y:auto'));
-checkTrue('2) kontent oynasi qolgan joyni oladi', body.includes('flex:1'));
-// `min-height:0` BO'LMASA flex element ichidagi kontentdan kichrayolmaydi
-// va scroll o'rniga qobiqni cho'zib yuboradi — bu eng tez unutiladigan
-// qator, shuning uchun alohida tekshiriladi.
-checkTrue('2) flex element kichrayishi mumkin', body.includes('min-height:0'));
+checkTrue('2) kontentda ichki scroll YO‘Q', !body.includes('overflow-y:auto'));
+checkTrue('2) kontent qolgan joyni oladi', body.includes('flex:1'));
 
 // ── 3) Tepa, bo'limlar va pastki qator — surilmaydigan qismlar ───────
 for (const sel of ['.qp-hero', '.qp-bottom']) {
@@ -93,7 +123,12 @@ checkTrue('5) egasining havolalari joyida', page.includes('extraLinks.map'));
 // Ular endi "Ma'lumot" bo'limida; birinchi ekranni band qilmaydi.
 checkTrue('6) "Ma’lumot" bo‘limi bor', page.includes("'haqida'"));
 // Bo'limlar — matnli tugmalar (egasining maketi), faoli OLTIN.
-checkTrue('6) faol bo‘lim oltin', rule('.qp-tab.is-on').includes('var(--gold-face)'));
+// Faol bo'lim OLTIN. `var(--gold-face)` o'rniga to'g'ridan-to'g'ri
+// gradient yozilgan: bu yerda boshqa (quyuqroq) oltin kerak edi —
+// tugma kichkina va ochiq oltin ustida qora yozuv o'qilmasdi.
+// Tekshiruv "oltin gradientmi" degan savolga qaraydi, aniq qiymatga
+// emas.
+checkTrue('6) faol bo‘lim oltin', /linear-gradient|var\(--gold-face\)/.test(rule('.qp-tab.is-on')));
 checkTrue('6) tavsif joyida', page.includes('qp-desc'));
 // XARITA — NFC ID havolasining o'rniga (egasining qarori): havola
 // hech qanday ish bajarmasdi, odam allaqachon o'sha havolada edi.
@@ -128,11 +163,21 @@ const qpCss = css.slice(css.indexOf('.qp-page{')).replace(/\/\*[\s\S]*?\*\//g, '
 check('8) buzuq font qisqartmasi yo‘q', (qpCss.match(/font:\s*(?!inherit\s*[;}])[^;}]*\binherit\b/g) || []), []);
 
 // ── 9) Telefon "tirnog'i" (safe-area) hisobga olingan ────────────────
-checkTrue('9) tepada safe-area', rule('.qp-hero').includes('env(safe-area-inset-top'));
+// Tepada — `--vz-safe-top` orqali. U butun loyihada bitta joyda
+// belgilanadi (`:root{--vz-safe-top:env(safe-area-inset-top,0px)}`,
+// theme.css) — bosh ekranga qo'shilgan ilovada sarlavha status
+// qatori ostida qolib ketmasin uchun (PR #60). Shuning uchun bu yerda
+// `env(...)` ning O'ZI emas, o'sha o'zgaruvchi kutiladi.
+checkTrue('9) tepada safe-area', /var\(--vz-safe-top|env\(safe-area-inset-top/.test(rule('.qp-hero')));
 checkTrue('9) pastda safe-area', rule('.qp-bottom').includes('env(safe-area-inset-bottom'));
 
-// ── 10) Past ekranlar uchun kichrayish qoidasi bor ───────────────────
-checkTrue('10) past ekran uchun media so‘rov', css.includes('@media(max-height:740px)'));
+// ── 10) PAST EKRAN UCHUN KICHRAYTIRISH ENDI KERAK EMAS ───────────────
+// U qat'iy balandlikdagi maketning yamog'i edi: hamma narsa bitta
+// ekranga sig'ishi kerak bo'lgani uchun past ekranda o'lchamlar
+// kichraytirilardi. Sahifa suriladigan bo'lgach bu yamoq o'z-o'zidan
+// keraksiz qoldi — va u QAYTMASLIGI kerak, chunki aynan shu
+// kichraytirish "premium emas" degan bahoga olib kelgan edi.
+checkTrue('10) kichraytirish yamog‘i qaytmagan', !css.includes('@media(max-height:740px)'));
 
 
 
@@ -189,9 +234,20 @@ for (const sel of ['.qp-tab', '.qp-sidebtn', '.qp-save', '.qp-order']) {
   checkTrue('14) boshlang‘ich bo‘lim ham katalogdan boshlanadi', avail.indexOf("'katalog'") < avail.indexOf("'post'"));
 }
 
-// ── 15) "To'liq ochish" — oltin va yaltiroq ──────────────────────────
-checkTrue('15) to‘liq sahifa tugmasi oltin', rule('.qp-public').includes('var(--gold-face)'));
-checkTrue('15) ustidan yaltiroq o‘tadi', page.includes('qp-public tier-shine'));
+// ── 15) "To'liq ochish" — IKKINCHI DARAJALI tugma ────────────────────
+// Ilgari u ham oltin to'ldirilgan va yaltiroq edi. Sahifada ikkita
+// bir xil yorqin tugma bo'lib qoldi va ko'z qaysisiga qarashni
+// bilmasdi. To'ldirilgan oltin BITTA tugmaga — "Kontaktni saqlash"ga
+// qoldirildi; bu esa hoshiyali bo'ldi. Shuning uchun tekshiruv
+// "oltinmi" emas, "ikkinchi darajalimi" degan savolga qaraydi.
+{
+  const pub = rule('.qp-public');
+  checkTrue('15) to‘liq sahifa tugmasi bor', pub.length > 0);
+  checkTrue('15) u to‘ldirilgan oltin EMAS', !pub.includes('var(--gold-face)'));
+  checkTrue('15) hoshiyasi oltin rangda', /border[^;]*rgba\(226,190,110/.test(pub));
+  // Yagona to'ldirilgan oltin — saqlash tugmasi, va yaltiroq faqat unda.
+  checkTrue('15) yaltiroq faqat saqlash tugmasida', rule('.qp-save::after').includes('qp-sweep 4.2s'));
+}
 
 
 // ── 16) OBUNA TUGMASI — butun kenglikda, ALOHIDA qatorda ─────────────
