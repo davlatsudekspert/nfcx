@@ -757,6 +757,19 @@
   .qp-item{transition:none}
 }
 
+/* AI YORDAMCHI TUGMASI — "Kontaktni saqlash" ustiga tushmasin.
+   U `position:fixed` va `.qp-page` dan TASHQARIDA chiziladi (App.jsx),
+   shuning uchun oddiy ichki selektor unga yetmaydi — sahifa borligini
+   `body:has(...)` orqali aniqlaymiz.
+
+   96px = saqlash qatorining balandligi (58px tugma + 26px to'ldirish)
+   ustiga bir oz nafas. */
+body:has(.qp-page) .ai-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+@media(min-width:601px){
+  /* Ish stolida qator sahifaning 22px chetlashi ustida turadi. */
+  body:has(.qp-page) .ai-fab{bottom:118px}
+}
+
 /* PAST EKRANLAR UCHUN SIQISH BLOKI OLIB TASHLANDI.
    Unda avatar 82px ga, nom 21px ga, raqamlar 17px ga va "Kontaktni
    saqlash" 44px ga kichrayardi — hammasi BITTA EKRANGA sig'ishi
