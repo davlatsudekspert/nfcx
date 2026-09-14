@@ -511,6 +511,10 @@
   "Продолжить",
   "Continue"
  ],
+ "Diniy targ‘ibot": [
+  "Религиозная пропаганда",
+  "Religious propaganda"
+ ],
  "Diniy targ‘ibot yoki ekstremistik mazmun": [
   "Религиозная пропаганда или экстремистские материалы",
   "Religious propaganda or extremist material"
@@ -710,6 +714,10 @@
  "Haqida": [
   "О нас",
   "About"
+ ],
+ "Haqorat": [
+  "Оскорбление",
+  "Insult"
  ],
  "Haqorat, so‘kinish, kamsitish": [
   "Оскорбления, брань, дискриминация",
@@ -1171,6 +1179,14 @@
   "Контакт сохранён",
   "Contact saved"
  ],
+ "Kontent qoidalari": [
+  "Правила контента",
+  "Content rules"
+ ],
+ "Kontent qoidalariga rozilik berildi": [
+  "Согласие с правилами контента дано",
+  "Content rules accepted"
+ ],
  "Kontent qoidalariga rozilik bering.": [
   "Примите правила публикации контента.",
   "Accept the content rules."
@@ -1302,6 +1318,10 @@
  "Moderator tekshiradi. Rahmat.": [
   "Модератор проверит. Спасибо.",
   "A moderator will review it. Thank you."
+ ],
+ "Mualliflik huquqi": [
+  "Авторское право",
+  "Copyright"
  ],
  "Mualliflik huquqi buzilgan": [
   "Нарушение авторских прав",
@@ -1559,6 +1579,10 @@
   "Порнография или материалы сексуального характера",
   "Pornographic or sexually explicit"
  ],
+ "Pornografiya": [
+  "Порнография",
+  "Pornography"
+ ],
  "Post": [
   "Пост",
   "Post"
@@ -1679,6 +1703,10 @@
   "Какой ID записать",
   "Which ID to write"
  ],
+ "Qayta o‘qish": [
+  "Прочитать снова",
+  "Read again"
+ ],
  "Qayta tekshirish": [
   "Проверить снова",
   "Check again"
@@ -1702,6 +1730,10 @@
  "Qisqacha tavsif — ixtiyoriy": [
   "Краткое описание — необязательно",
   "Short description — optional"
+ ],
+ "Qonunga zid": [
+  "Противозаконное",
+  "Unlawful"
  ],
  "Qonunga zid boshqa material": [
   "Иные материалы, противоречащие закону",
@@ -1847,6 +1879,10 @@
   "Отправить жалобу",
   "Send report"
  ],
+ "Siyosat": [
+  "Политика",
+  "Politics"
+ ],
  "Siyosiy targ‘ibot": [
   "Политическая пропаганда",
   "Political propaganda"
@@ -1934,6 +1970,10 @@
  "Sozlamalardan NFC‘ni yoqib, qayta tekshiring.": [
   "Включите NFC в настройках и проверьте снова.",
   "Turn NFC on in settings, then check again."
+ ],
+ "Spam": [
+  "Спам",
+  "Spam"
  ],
  "Spam yoki aldov": [
   "Спам или обман",
@@ -2434,6 +2474,14 @@
  "Yuborish": [
   "Отправить",
   "Send"
+ ],
+ "Yuklashdan oldin o‘qing.": [
+  "Прочитайте перед загрузкой.",
+  "Read before uploading."
+ ],
+ "Zo‘ravonlik": [
+  "Насилие",
+  "Violence"
  ],
  "Zo‘ravonlik yoki shafqatsizlik": [
   "Насилие или жестокость",

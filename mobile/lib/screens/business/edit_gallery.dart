@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../content/content_rules_gate.dart';
+
 import '../../data/api_client.dart';
 import '../../data/models.dart';
 import '../../design/components/buttons.dart';
@@ -50,6 +52,10 @@ class _EditGalleryScreenState extends State<EditGalleryScreen> {
 
   Future<void> _add() async {
     if (_urls.length >= _maxPhotos) return;
+    // Qoidalar — fayl tanlagichidan oldin (izohi
+    // `content_rules_gate.dart` da).
+    if (!await askContentRules(context)) return;
+    if (!mounted) return;
     setState(() => _error = null);
     try {
       // Bir nechtasini birdan tanlash — o'n ikki rasmni bittalab

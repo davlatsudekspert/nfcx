@@ -3037,6 +3037,31 @@ function VerificationTab() {
     } catch (e) { setErr(apiErrText(e, t)); }
     finally { setBusy(false); }
   };
+  // PROFILNI BUTUNLAY O'CHIRISH.
+  //
+  // Ilgari adminda bunday yo'l umuman yo'q edi — faqat
+  // "tasdiqlash" va "ko'rishlar soni". Qoidabuzar profilni
+  // o'chirish uchun hech qanday vosita topilmasdi va u ilovada
+  // ham, Reels lentasida ham turaverardi.
+  const removeProfile = async () => {
+    if (!found) return;
+    const free = /^[0-9]{8}$/.test(found.code);
+    const warn = free
+      ? t('Profil va uning butun kontenti (post, story, galereya, katalog) BUTUNLAY o‘chiriladi. Kod qayta sotuvga chiqadi. Davom etasizmi?')
+      : t('Profil va uning butun kontenti (post, story, galereya, katalog) BUTUNLAY o‘chiriladi. Davom etasizmi?');
+    if (!confirm(warn)) return;
+    // Ikkinchi tasdiq — bu amal qaytarilmaydi.
+    if (!confirm(t('Bu amalni qaytarib bo‘lmaydi. Aniqmisiz?'))) return;
+    setBusy(true);
+    try {
+      await adminApi(`/records/${encodeURIComponent(found.code)}`, { method: 'DELETE' });
+      setFound(null);
+      setCode('');
+      setErr('');
+    } catch (e) { setErr(apiErrText(e, t)); }
+    finally { setBusy(false); }
+  };
+
   const [viewsInput, setViewsInput] = useState('');
   const saveViews = async () => {
     if (!found) return;
@@ -3070,6 +3095,10 @@ function VerificationTab() {
                   <span>{found.role || '—'}</span> · {found.verified ? <span className="vz-badge vz-badge--ok">{t('Tasdiqlangan')}</span> : <span className="vz-badge vz-badge--muted">{t('Tasdiqlanmagan')}</span>} · <span className="inline-flex items-center gap-1"><AdminIcon name="eye" className="h-3.5 w-3.5" /> {fmt(found.views ?? 0)}</span>
                 </div>
               </div>
+              <button className="btn btn-error btn-sm min-h-11"
+                disabled={busy} onClick={removeProfile}>
+                {t('Profilni o‘chirish')}
+              </button>
               <button className={`btn btn-sm min-h-11 ${found.verified ? 'btn-ghost-vz' : 'btn-gold'}`}
                 disabled={busy} onClick={() => toggle(found.code, !found.verified)}>
                 {found.verified ? t('Tasdiqni olib tashlash') : t('Tasdiqlash')}

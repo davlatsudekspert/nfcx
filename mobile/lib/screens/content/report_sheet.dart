@@ -1,10 +1,8 @@
 import 'package:flutter/widgets.dart';
 
 import '../../design/components/buttons.dart';
-import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
-import '../../design/components/surface.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
@@ -43,16 +41,26 @@ const _reasonKeys = <String>[
 
 /// TILGA BOG'LIQ, ya'ni `const` bo'la olmaydi — har chaqiruvda
 /// joriy tilda quriladi.
+/// YORLIQLAR QISQA — ATAYLAB.
+///
+/// Ilgari bu yerda kontent qoidalarining to'liq jumlalari turardi
+/// ("Diniy targ'ibot yoki ekstremistik mazmun" kabi) va varaq
+/// butun ekranni egallagan qoidalar ro'yxatiga o'xshab qolgandi.
+///
+/// Qoidalar matni O'Z JOYIDA bor: u post yoki story yuklashdan
+/// OLDIN ko'rsatiladi, ya'ni odam joylashdan avval o'qiydi
+/// (`compose.dart`). Bu yerda esa boshqa vazifa — allaqachon
+/// joylangan kontentni bir so'z bilan turkumlash, xolos.
 String _reasonLabel(String key) => switch (key) {
-      'porn' => tr('Pornografik yoki jinsiy xarakterdagi'),
-      'religious' => tr('Diniy targ‘ibot yoki ekstremistik mazmun'),
-      'political' => tr('Siyosiy targ‘ibot'),
-      'violence' => tr('Zo‘ravonlik yoki shafqatsizlik'),
-      'insult' => tr('Haqorat, so‘kinish, kamsitish'),
-      'spam' => tr('Spam yoki aldov'),
-      'illegal' => tr('Qonunga zid boshqa material'),
-      'copyright' => tr('Mualliflik huquqi buzilgan'),
-      _ => tr('Boshqa sabab'),
+      'porn' => tr('Pornografiya'),
+      'religious' => tr('Diniy targ‘ibot'),
+      'political' => tr('Siyosat'),
+      'violence' => tr('Zo‘ravonlik'),
+      'insult' => tr('Haqorat'),
+      'spam' => tr('Spam'),
+      'illegal' => tr('Qonunga zid'),
+      'copyright' => tr('Mualliflik huquqi'),
+      _ => tr('Boshqa'),
     };
 
 /// Shikoyat varag'ini ochadi. Yuborilsa `true` qaytaradi.
@@ -138,43 +146,49 @@ class _ReportBodyState extends State<_ReportBody> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final key in _reasonKeys) ...[
-              Press(
-                onTap: _busy ? null : () => setState(() {
-                  _reason = key;
-                  _error = null;
-                }),
-                child: Surface(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: S.x12, vertical: S.x12),
-                  border: _reason == key
-                      ? C.champagne.withValues(alpha: .45)
-                      : null,
-                  child: Row(
-                    children: [
-                      // Tanlov belgisi — radio, chunki sabab BITTA.
-                      Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _reason == key ? C.champagne : C.hairline,
-                            width: 1.6,
-                          ),
-                          color: _reason == key ? C.champagne : null,
+            // QATOR EMAS, CHIPLAR.
+            //
+            // To'qqizta sabab butun kenglikdagi qatorlarda turganda
+            // varaq ekranni to'ldirib, "qoidalar ro'yxati" ga
+            // o'xshab qolardi. Yorug'liklar qisqargach ular bitta
+            // to'plamga sig'adi va varaq ikki barobar past bo'ladi.
+            Wrap(
+              spacing: S.x8,
+              runSpacing: S.x8,
+              children: [
+                for (final key in _reasonKeys)
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      _reason = key;
+                      _error = null;
+                    }),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: S.x16, vertical: S.x12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(R.chip),
+                        color: _reason == key
+                            ? C.champagne.withValues(alpha: .13)
+                            : null,
+                        border: Border.all(
+                          color: _reason == key ? C.champagne : C.hairline,
+                          width: _reason == key ? 1.4 : 1,
                         ),
                       ),
-                      const SizedBox(width: S.x12),
-                      Expanded(
-                        child: Text(_reasonLabel(key), style: T.body),
+                      child: Text(
+                        _reasonLabel(key),
+                        style: T.body.copyWith(
+                          color: _reason == key ? C.champagne : C.offWhite,
+                          fontWeight:
+                              _reason == key ? FontWeight.w700 : FontWeight.w500,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 6),
-            ],
+              ],
+            ),
             if (_error != null) ...[
               const SizedBox(height: S.x8),
               Text(_error!, style: T.caption.copyWith(color: C.signal)),
