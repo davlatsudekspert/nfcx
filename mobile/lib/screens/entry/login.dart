@@ -38,6 +38,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
   String? _error;
 
+  /// Xatoning texnik qatori — kalit, HTTP holati va javob boshi.
+  /// Odamga mo'ljallangan jumla sababni aytmaydi; bu qator esa
+  /// aynan shuni aytadi va uni surat qilib yuborish mumkin.
+  String? _detail;
+
   @override
   void dispose() {
     _login.dispose();
@@ -54,6 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _detail = null;
     });
     try {
       await AppScope.read(context).signIn(login, _password.text);
@@ -61,9 +67,19 @@ class _LoginScreenState extends State<LoginScreen> {
       // o'zgartiradi va ildiz qayta quriladi) — bu yerda navigatsiya
       // qilinmaydi, aks holda ikkita boshqaruv manbai paydo bo'lardi.
     } on ApiError catch (e) {
-      if (mounted) setState(() => _error = humanError(e));
+      if (mounted) {
+        setState(() {
+          _error = humanError(e);
+          _detail = errorDetail(e);
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => _error = humanError(e));
+      if (mounted) {
+        setState(() {
+          _error = humanError(e);
+          _detail = errorDetail(e);
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -139,6 +155,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     onSubmitted: (_) => _submit(),
                     error: _error,
                   ),
+                  if (_detail != null) ...[
+                    const SizedBox(height: 6),
+                    // TEXNIK QATOR — faqat xato bo'lganda.
+                    //
+                    // Ataylab kichik va kulrang: u odamga emas,
+                    // muammoni hal qiladiganga qaratilgan. Lekin
+                    // EKRANDA turadi — shunda "ilova ishlamayapti"
+                    // degan xabar o'rniga aniq sabab keladi.
+                    Text(
+                      _detail!,
+                      style: T.meta.copyWith(fontSize: 10.5, color: C.ink3),
+                    ),
+                  ],
                   const SizedBox(height: S.x8),
                   Align(
                     alignment: Alignment.centerRight,

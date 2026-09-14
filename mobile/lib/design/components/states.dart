@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import '../../data/api_client.dart';
 
 import '../../l10n/strings.dart';
 import '../tokens.dart';
@@ -276,6 +277,14 @@ String humanError(Object? e) {
     'required_fields': tr('Barcha majburiy maydonlarni to‘ldiring.'),
     'offline': tr('Internet aloqasi yo‘q. Ulanishni tekshiring.'),
     'timeout': tr('Server javob bermadi. Qayta urinib ko‘ring.'),
+    // SERVER SESSIYA OCHMADI. Javob 200 keldi, lekin ichida token
+    // yo'q — ilova esa faqat token bilan ishlaydi (cookie emas).
+    'no_token': tr('Server sessiya ochmadi. Ilova yangilanishi kerak '
+        'bo‘lishi mumkin.'),
+    // SERTIFIKAT. "Internet yo'q" bilan adashtirmaslik kerak:
+    // bu yerda tarmoq bor, lekin xavfsiz ulanish tuzilmadi.
+    'tls': tr('Xavfsiz ulanish o‘rnatilmadi. Telefondagi sana-vaqtni '
+        'va tarmoqni tekshiring.'),
   };
   for (final k in map.keys) {
     if (s.contains(k)) return map[k]!;
@@ -283,5 +292,45 @@ String humanError(Object? e) {
   if (s.contains('SocketException') || s.contains('Failed host lookup')) {
     return map['offline']!;
   }
-  return tr('Nimadir noto‘g‘ri ketdi. Qayta urinib ko‘ring.');
+
+  // STATUS BO'YICHA — kalit tanilmasa ham javobning ma'nosi ma'lum.
+  if (e is ApiError) {
+    final byStatus = {
+      401: tr('Sessiya tugagan. Qaytadan kiring.'),
+      403: tr('So‘rov rad etildi. Tarmoq yoki himoya qatlami to‘sgan '
+          'bo‘lishi mumkin.'),
+      404: tr('Bunday manzil topilmadi.'),
+      408: map['timeout']!,
+      429: map['too_many_requests']!,
+    }[e.status];
+    if (byStatus != null) return byStatus;
+    if (e.status >= 500) {
+      return tr('Serverda xatolik. Birozdan so‘ng qayta urining.');
+    }
+  }
+
+  // ENG OXIRGI HOLAT — AMMO KO'R HOLAT EMAS.
+  //
+  // Ilgari bu yerda faqat "Nimadir noto'g'ri ketdi" turardi va u
+  // HAQIQIY SABABNI YASHIRARDI: qurilmada xato ko'rgan odam ham,
+  // tuzatuvchi ham nima bo'lganini bilmasdi. Endi tanilmagan
+  // kalitning o'zi qavs ichida yoziladi — u qisqa, lekin aniq.
+  final key = e is ApiError ? e.key : s.split('\n').first;
+  final short = key.length <= 40 ? key : '${key.substring(0, 37)}...';
+  return trf('Kutilmagan xato: {code}', {'code': short});
 }
+
+/// XATONING TEXNIK QATORI — ekranda kichik kulrang yozuv uchun.
+///
+/// Odamga mo'ljallangan jumla sababni AYTMAYDI (va aytmasligi ham
+/// kerak). Lekin xatoni surat qilib yuborgan odam bilan tuzatuvchi
+/// o'rtasida aynan shu qator ko'prik bo'ladi: kalit, status va
+/// javobning boshi. Hech qanday shaxsiy ma'lumot yo'q.
+String? errorDetail(Object? e) {
+  if (e is ApiError) return e.technical;
+  if (e == null) return null;
+  final s = e.toString();
+  if (s.isEmpty) return null;
+  return s.length <= 120 ? s : '${s.substring(0, 117)}...';
+}
+

@@ -20,6 +20,7 @@ import '../../design/type.dart';
 import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../../state/seen_stories.dart';
 import '../content/compose.dart';
 import '../content/post_detail.dart';
 import '../content/story_viewer.dart';
@@ -50,6 +51,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// Qaysi istorya ko'rilgani — QURILMADA saqlanadi (serverda
+  /// bunday jadval yo'q). Halqaning rangi shunga qarab belgilanadi.
+  late final SeenStories _seen = SeenStories();
+
   List<StoryFeedEntry> _stories = const [];
   List<FeedEntry> _feed = const [];
   List<Order> _pending = const [];
@@ -59,6 +64,24 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   bool _loadedOnce = false;
   String? _loadedFor;
+
+  @override
+  void initState() {
+    super.initState();
+    _seen.addListener(_onSeenChanged);
+    _seen.load();
+  }
+
+  void _onSeenChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _seen.removeListener(_onSeenChanged);
+    _seen.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -131,6 +154,25 @@ class _HomeScreenState extends State<HomeScreen> {
       (_) => ComposeScreen(code: code, kind: ComposeKind.story),
     );
     if (done == true && mounted) await _load(force: true);
+  }
+
+  /// KO'RILMAGANLAR OLDINDA.
+  ///
+  /// Qator uzun bo'lsa, yangi istorya o'ntanchi bo'lib qolishi
+  /// mumkin edi va odam uni umuman ko'rmasdi. Tartib ichida
+  /// serverning tartibi saqlanadi — faqat ikki guruhga ajraladi.
+  List<StoryFeedEntry> get _orderedStories => [
+        ..._stories.where(_seen.hasUnseen),
+        ..._stories.where((e) => !_seen.hasUnseen(e)),
+      ];
+
+  Future<void> _openStory(StoryFeedEntry e) async {
+    await push<void>(context, (_) => StoryViewerScreen(code: e.code));
+    // KO'RILDI DEB SHU YERDA BELGILANADI — ekran YOPILGANDA.
+    //
+    // Ochilish paytida belgilansa, odam adashib bosib darhol
+    // chiqqanida ham halqa so'nardi.
+    await _seen.markSeen(e.ids);
   }
 
   Future<void> _toggleLike(FeedEntry item) async {
@@ -219,13 +261,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: S.x20),
                   child: _StoryStrip(
-                    entries: _stories,
+                    entries: _orderedStories,
                     loading: _loading && _stories.isEmpty,
+                    unseen: _seen.hasUnseen,
                     onAdd: active == null ? null : () => _addStory(active.code),
-                    onOpen: (e) => push<void>(
-                      context,
-                      (_) => StoryViewerScreen(code: e.code),
-                    ),
+                    onOpen: _openStory,
                   ),
                 ),
               ),
@@ -488,12 +528,18 @@ class _StoryStrip extends StatelessWidget {
   const _StoryStrip({
     required this.entries,
     required this.loading,
+    required this.unseen,
     required this.onAdd,
     required this.onOpen,
   });
 
   final List<StoryFeedEntry> entries;
   final bool loading;
+
+  /// Shu odamda ko'rilmagan istorya bormi — halqa shunga qarab
+  /// yonadi yoki so'nadi.
+  final bool Function(StoryFeedEntry) unseen;
+
   final VoidCallback? onAdd;
   final ValueChanged<StoryFeedEntry> onOpen;
 
@@ -516,6 +562,9 @@ class _StoryStrip extends StatelessWidget {
           return StoryRing(
             avatarUrl: e.avatarUrl,
             name: e.name,
+            // KO'RILGAN BO'LSA HALQA SO'NADI va aylanishi to'xtaydi:
+            // ma'no rangda, harakat esa faqat YANGI kontent uchun.
+            seen: !unseen(e),
             onTap: () => onOpen(e),
           );
         },

@@ -297,10 +297,24 @@ void main() {
       expect(humanError(ApiError('offline')), contains('Internet'));
     });
 
-    test('noma‘lum kalit xom holda chiqmaydi', () {
+    test('NOMA‘LUM KALIT ENDI YASHIRILMAYDI', () {
+      // QAROR O‘ZGARDI. Ilgari tanilmagan kalit yashirilardi va
+      // ekranda "Nimadir noto‘g‘ri ketdi" turardi. Qurilmada kirish
+      // ishlamaganda aynan shu jumla chiqdi va u HECH NARSA
+      // aytmadi: sertifikat xatosimi, himoya qatlami bloklaganmi,
+      // server tokensiz javob berganmi — hammasi bir xil ko‘rindi.
+      //
+      // Egasining talabi: "umumiy xato o‘rniga ANIQ sababni
+      // ko‘rsating". Kalit — mashina nomi, unda shaxsiy ma‘lumot
+      // yo‘q; uning o‘rniga taxmin qilish ancha qimmatga tushadi.
       final msg = humanError(ApiError('qandaydir_yangi_kalit'));
-      expect(msg, isNot(contains('qandaydir_yangi_kalit')));
-      expect(msg, contains('Nimadir'));
+      expect(msg, contains('qandaydir_yangi_kalit'));
+
+      // Tanilgan kalitlar avvalgidek odam tilida qoladi.
+      expect(
+        humanError(ApiError('bad_credentials', status: 401)),
+        'Login yoki parol noto‘g‘ri.',
+      );
     });
   });
 

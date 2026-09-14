@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show SocketException;
+import 'dart:io' show HandshakeException, IOException, SocketException;
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 
@@ -14,10 +14,24 @@ class ApiError implements Exception {
 
   final String key;
   final int status;
+
+  /// TEXNIK TAFSILOT — odamga emas, TUZATUVCHIGA.
+  ///
+  /// Server `detail` yuborsa o'sha; yubormasa javobning boshi
+  /// (masalan Cloudflare bloklaganda HTML sarlavhasi) yoki
+  /// istisnoning matni. Ekranda kichik kulrang qatorda ko'rsatiladi:
+  /// usiz har xatoda taxmin qilishga to'g'ri kelardi.
   final String? detail;
 
   bool get isAuth => status == 401 || key == 'unauthorized';
   bool get isOffline => key == 'offline';
+
+  /// Bir qatorli texnik tavsif — ekranda va logda bir xil ko'rinadi.
+  String get technical => [
+        key,
+        if (status > 0) 'HTTP $status',
+        if ((detail ?? '').isNotEmpty) detail,
+      ].join(' · ');
 
   @override
   String toString() => key;
@@ -159,20 +173,48 @@ class Api {
     } on TimeoutException {
       online.value = false;
       throw ApiError('timeout');
-    } on SocketException {
+    } on SocketException catch (e) {
       online.value = false;
-      throw ApiError('offline');
-    } on http.ClientException {
+      throw ApiError('offline', detail: e.message);
+    } on HandshakeException catch (e) {
+      // XAVFSIZ ULANISH O'RNATILMADI — bu "internet yo'q" EMAS.
+      //
+      // Eng ko'p uchraydigan sababi: telefondagi ildiz sertifikatlar
+      // ro'yxati eskirgan (Android 7 va undan pastlarda) yoki
+      // qurilmadagi sana-vaqt noto'g'ri. Brauzer o'z ro'yxati bilan
+      // ishlagani uchun sayt ochiladi, ilova esa tizimnikini
+      // ishlatadi va aynan shu yerda to'xtaydi.
+      //
+      // Ilgari bu istisno hech qayerda tutilmasdi va ekranda
+      // "Nimadir noto'g'ri ketdi" chiqardi — ya'ni eng aniq
+      // belgi yo'qolardi.
       online.value = false;
-      throw ApiError('offline');
+      throw ApiError('tls', detail: e.message);
+    } on http.ClientException catch (e) {
+      online.value = false;
+      throw ApiError('offline', detail: e.message);
+    } on IOException catch (e) {
+      // Qolgan barcha kiritish-chiqarish xatolari ham tarmoqniki:
+      // ular ushlanmasa yuqoriga xom holda chiqib ketardi.
+      online.value = false;
+      throw ApiError('offline', detail: '$e');
     }
 
     dynamic body;
+    String? raw;
     if (res.body.isNotEmpty) {
       try {
         body = jsonDecode(utf8.decode(res.bodyBytes));
       } catch (_) {
         body = null;
+        // JSON EMAS — DEMAK JAVOB SERVERDAN EMAS, ORADAN keldi.
+        //
+        // Bunday javob odatda himoya qatlamining HTML sahifasi
+        // ("Attention Required! | Cloudflare") yoki operator
+        // portalining yo'naltirishi bo'ladi. Uni yo'qotib yuborsak,
+        // ekranda faqat "HTTP 403" qolardi va sabab noma'lum
+        // bo'lardi. Shuning uchun boshini saqlaymiz.
+        raw = _snippet(res.body);
       }
     }
 
@@ -184,8 +226,17 @@ class Api {
     throw ApiError(
       key,
       status: res.statusCode,
-      detail: body is Map && body['detail'] is String ? body['detail'] as String : null,
+      detail: body is Map && body['detail'] is String
+          ? body['detail'] as String
+          : raw,
     );
+  }
+
+  /// Javobning boshini bir qatorga siqadi — logda ham, ekranda ham
+  /// o'qish mumkin bo'lsin.
+  static String _snippet(String body) {
+    final one = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return one.length <= 120 ? one : '${one.substring(0, 117)}...';
   }
 
   void close() {

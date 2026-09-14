@@ -35,6 +35,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
+
+  /// PAROLNI TAKRORLASH.
+  ///
+  /// Parol yopiq yoziladi va odam nima yozganini KO'RMAYDI. Bitta
+  /// maydon bo'lsa, xato bosilgan bitta harf keyin faqat kirish
+  /// paytida — parolni tiklash orqali — aniqlanardi. Ikkinchi
+  /// maydon shu xatoni yozilayotgan paytida ushlaydi.
+  final _password2 = TextEditingController();
   bool _busy = false;
   String? _error;
 
@@ -44,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _email.dispose();
     _phone.dispose();
     _password.dispose();
+    _password2.dispose();
     super.dispose();
   }
 
@@ -62,6 +71,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     if (_password.text.length < 8) {
       setState(() => _error = tr('Parol kamida 8 belgi bo‘lsin.'));
+      return;
+    }
+    if (_password2.text != _password.text) {
+      setState(() => _error = tr('Parollar bir xil emas. Qaytadan kiriting.'));
       return;
     }
     setState(() {
@@ -171,8 +184,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 obscure: true,
                                 helper: tr('Kamida 8 belgi'),
                                 keyboardType: TextInputType.visiblePassword,
+                                textInputAction: TextInputAction.next,
+                              ),
+                              const SizedBox(height: S.x16),
+                              Field(
+                                label: tr('Parolni takrorlang'),
+                                controller: _password2,
+                                hint: '••••••••',
+                                obscure: true,
+                                keyboardType: TextInputType.visiblePassword,
                                 textInputAction: TextInputAction.done,
                                 onSubmitted: (_) => _submit(),
+                                // XATO SHU YERDA CHIQADI: oxirgi maydon
+                                // — tugmaga eng yaqin joy, ya'ni odam
+                                // uni ko'rmasdan bosib yuborolmaydi.
                                 error: _error,
                               ),
                               const SizedBox(height: S.x24),

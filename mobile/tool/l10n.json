@@ -575,6 +575,10 @@
     "Такой ID не найден. Проверьте код.",
     "No such ID. Check the code."
   ],
+  "Bunday manzil topilmadi.": [
+    "Такой адрес не найден.",
+    "That address was not found."
+  ],
   "Bunday sovg‘a kartasi topilmadi yoki ": [
     "Такая подарочная карта не найдена или ",
     "No such gift card was found, or "
@@ -1759,6 +1763,10 @@
     "Просмотры по дням",
     "Daily views"
   ],
+  "Kutilmagan xato: {code}": [
+    "Неожиданная ошибка: {code}",
+    "Unexpected error: {code}"
+  ],
   "Kutilmoqda": [
     "В ожидании",
     "Pending"
@@ -2307,9 +2315,17 @@
     "Я забыл пароль",
     "I forgot my password"
   ],
+  "Parollar bir xil emas. Qaytadan kiriting.": [
+    "Пароли не совпадают. Введите ещё раз.",
+    "The passwords do not match. Enter them again."
+  ],
   "Parolni o‘zgartirish": [
     "Изменить пароль",
     "Change password"
+  ],
+  "Parolni takrorlang": [
+    "Повторите пароль",
+    "Repeat password"
   ],
   "Parolni tiklash": [
     "Восстановить пароль",
@@ -2823,13 +2839,25 @@
     "Сервер не ответил. Попробуйте ещё раз.",
     "The server did not respond. Please try again."
   ],
+  "Server sessiya ochmadi. Ilova yangilanishi kerak bo‘lishi mumkin.": [
+    "Сервер не открыл сессию. Возможно, приложение нужно обновить.",
+    "The server did not open a session. The app may need an update."
+  ],
   "Server to‘lovni tasdiqladi. {code} profilingizga ulandi.": [
     "Сервер подтвердил оплату. {code} подключён к вашему профилю.",
     "The server confirmed the payment. {code} is linked to your profile."
   ],
+  "Serverda xatolik. Birozdan so‘ng qayta urining.": [
+    "Ошибка на сервере. Повторите чуть позже.",
+    "Server error. Try again shortly."
+  ],
   "Seshanba": [
     "Вторник",
     "Tuesday"
+  ],
+  "Sessiya tugagan. Qaytadan kiring.": [
+    "Сессия истекла. Войдите заново.",
+    "Your session expired. Sign in again."
   ],
   "Shahar": [
     "Город",
@@ -3010,6 +3038,10 @@
   "Sozlamalarni ochish": [
     "Открыть настройки",
     "Open settings"
+  ],
+  "So‘rov rad etildi. Tarmoq yoki himoya qatlami to‘sgan bo‘lishi mumkin.": [
+    "Запрос отклонён. Возможно, его заблокировала сеть или защитный слой.",
+    "The request was rejected. Your network or a protection layer may have blocked it."
   ],
   "Spam": [
     "Спам",
@@ -3546,6 +3578,10 @@
   "Xato bo‘lmasligi uchun yana bir marta": [
     "Ещё раз, чтобы не ошибиться",
     "Once more, to be sure"
+  ],
+  "Xavfsiz ulanish o‘rnatilmadi. Telefondagi sana-vaqtni va tarmoqni tekshiring.": [
+    "Защищённое соединение не установлено. Проверьте дату и время на телефоне и сеть.",
+    "Could not establish a secure connection. Check the date and time on your phone and your network."
   ],
   "Xavfsizlik": [
     "Безопасность",
