@@ -65,6 +65,19 @@ jobs:
       - name: Profil o'chirilganda ma'lumot qolmaydimi
         run: node scripts/test-card-cleanup.mjs
 
+      # O'CHIRILGAN HISOB KONTENTI KO'RINMAYDIMI.
+      #
+      # Admin paneldagi "foydalanuvchini o'chirish" — yumshoq
+      # o'chirish (`users.deleted_at`), qator esa buyurtma va to'lov
+      # tarixi uchun ataylab qoladi. Ommaviy so'rovlarning birortasi
+      # ham bu belgini tekshirmasdi: o'chirilgan hisobning profili,
+      # posti va storysi katalogda ham, Reels'da ham turaverardi —
+      # egasi buni uch marta xabar qildi. Test har bir ommaviy yo'lni
+      # (profil, postlar, storylar, lenta, story lentasi, katalog,
+      # qidiruv, kompaniya sahifasi) alohida tekshiradi.
+      - name: O'chirilgan hisob kontenti ommaga chiqmaydimi
+        run: node scripts/test-deleted-user-content.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
