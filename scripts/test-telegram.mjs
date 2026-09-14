@@ -76,6 +76,59 @@ await seedBasic(env);
   res = await worker.fetch(req('/api/auth/request-register-code', { method: 'POST', json: { phone: '+998907777777' } }), env);
   check('webhook -> register code: verified phone gets a code', [res.status, tgSends[tgSends.length - 1].chat_id], [200, 6002]);
 
+  // ── MUAMMO VA TAKLIF XABARI ────────────────────────────────────
+  //
+  // Ilgari bot har qanday matnga yo'riqnomani QAYTA ko'rsatardi:
+  // odam "ilovada shu ishlamadi" deb yozsa, xabar hech kimga
+  // bormasdi. Endi u adminga yetkaziladi va bazaga yoziladi.
+  // ADMIN_CHAT_ID SHU YERDA QO'YILADI: usiz `sendTelegramMessage`
+  // hech narsa yubormaydi va bu PRODUCTION uchun ham shunday —
+  // o'zgaruvchi sozlanmagan bo'lsa xabar faqat bazaga tushadi.
+  env.ADMIN_CHAT_ID = '9999';
+  tgSends.length = 0;
+  res = await webhook(env, update({
+    chat: { id: 5001 },
+    from: { id: 5001, first_name: 'Dilshod', username: 'dil' },
+    text: 'Reels ochilmayapti, qora ekran chiqyapti',
+  }));
+  check('bot xabari: webhook 200', res.status, 200);
+  checkTrue('bot xabari: adminga yuborildi',
+    tgSends.some((m) => String(m.text).includes('Reels ochilmayapti')));
+  checkTrue('bot xabari: kim yozgani ko‘rsatilgan',
+    tgSends.some((m) => String(m.text).includes('Dilshod') && String(m.text).includes('@dil')));
+  checkTrue('bot xabari: odamga tasdiq qaytdi',
+    tgSends.some((m) => m.chat_id === 5001 && String(m.text).includes('qabul qilindi')));
+  {
+    const rows = sqlite.prepare('SELECT tg_user_id, text FROM bot_messages').all();
+    check('bot xabari: bazaga yozildi', rows.length, 1);
+    check('bot xabari: matn saqlandi', rows[0].text, 'Reels ochilmayapti, qora ekran chiqyapti');
+  }
+
+  // HTML tozalanishi: `<` bilan kelgan matn Telegram xabarini
+  // buzmasligi kerak (parse_mode: HTML).
+  tgSends.length = 0;
+  await webhook(env, update({
+    chat: { id: 5002 }, from: { id: 5002, first_name: 'Ali' },
+    text: 'sahifa <b>buzuq</b> & ochilmaydi',
+  }));
+  checkTrue('bot xabari: HTML tozalanadi',
+    tgSends.some((m) => String(m.text).includes('&lt;b&gt;') && String(m.text).includes('&amp;')));
+
+  // Juda qisqa matn xabar emas — admin bo'sh bildirishnomaga
+  // ko'milmasligi kerak.
+  tgSends.length = 0;
+  await webhook(env, update({ chat: { id: 5003 }, from: { id: 5003 }, text: 'ok' }));
+  checkTrue('bot: juda qisqa matn xabar sifatida yuborilmaydi',
+    !tgSends.some((m) => String(m.text).includes('Botga xabar')));
+
+  // Buyruq ham xabar emas.
+  tgSends.length = 0;
+  await webhook(env, update({ chat: { id: 5004 }, from: { id: 5004 }, text: '/help' }));
+  checkTrue('bot: buyruq xabar sifatida yuborilmaydi',
+    !tgSends.some((m) => String(m.text).includes('Botga xabar')));
+
+  delete env.ADMIN_CHAT_ID;
+
   // Noma'lum matn / bo'sh update — baribir 200
   res = await webhook(env, update({ chat: { id: 5001 }, from: { id: 5001 }, text: 'salom' }));
   check('webhook: other text -> 200', res.status, 200);

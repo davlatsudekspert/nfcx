@@ -21,8 +21,67 @@ const WELCOME_TEXT = [
   '',
   '📇 Pastdagi <b>"Kontaktni ulashish"</b> tugmasini bosing — shu orqali ism va telefon raqamingiz tasdiqlanadi. Bu jismoniy NFC kartangizni to’g’ri manzilga yetkazib berishimiz uchun kerak.',
   '',
+  '✍️ <b>Muammo yoki taklifingiz bormi?</b> Shu yerga yozib yuboravering — xabaringiz to’g’ridan-to’g’ri jamoaga boradi.',
+  '',
   '🔒 <b>Biz sizdan hech qachon kod so’ramaymiz.</b> Kim bo’lishidan qat’i nazar, Telegramga kelgan kodni hech kimga bermang.',
 ].join('\n');
+
+// ── MUAMMO VA TAKLIFLAR ──────────────────────────────────────────
+//
+// Ilgari bot faqat raqam tasdiqlardi: boshqa har qanday matnga u
+// yo'riqnomani QAYTA ko'rsatardi. Ya'ni odam "ilovada shu ishlamadi"
+// deb yozsa, xabar HECH KIMGA bormasdi va odam javob kutib qolardi.
+//
+// Endi bunday matn adminga yetkaziladi va bazaga yoziladi. Bazaga
+// ham yozilishi MUHIM: Telegram xabari o'qilmay ko'milib ketishi
+// mumkin, yozuv esa qoladi.
+const BOT_MSG_MIN = 4;
+const BOT_MSG_MAX = 2000;
+const BOT_MSG_WINDOW_MS = 60 * 60_000;
+const BOT_MSG_MAX_PER_WINDOW = 10;
+
+let botMsgSchema = null;
+async function ensureBotMessages(env) {
+  if (!botMsgSchema) {
+    botMsgSchema = env.DB.prepare(`CREATE TABLE IF NOT EXISTS "bot_messages" (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tg_user_id TEXT NOT NULL,
+      tg_name TEXT NOT NULL DEFAULT '',
+      username TEXT NOT NULL DEFAULT '',
+      text TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`).run().catch(() => {});
+  }
+  await botMsgSchema;
+}
+
+async function forwardToAdmin(env, H, from, text) {
+  await ensureBotMessages(env);
+
+  // Bir odam soatiga 10 ta — bot ochiq va uni spam bilan to'ldirish
+  // oson bo'lardi.
+  if (await H.rateLimitD1(env, `botmsg:${from.id}`, BOT_MSG_MAX_PER_WINDOW, BOT_MSG_WINDOW_MS)) {
+    return 'limit';
+  }
+
+  const name = [from.first_name, from.last_name].filter(Boolean).join(' ')
+    || from.username || String(from.id);
+  await env.DB.prepare(
+    `INSERT INTO bot_messages (tg_user_id, tg_name, username, text, created_at) VALUES (?,?,?,?,?)`
+  ).bind(String(from.id), name, String(from.username || ''), text, H.nowTs()).run().catch(() => {});
+
+  const who = from.username ? `@${from.username}` : `id ${from.id}`;
+  H.sendTelegramMessage(
+    env,
+    `✍️ <b>Botga xabar</b>\n${escapeHtml(name)} (${escapeHtml(who)})\n\n${escapeHtml(text)}`,
+  ).catch(() => {});
+  return 'ok';
+}
+
+// Telegram HTML rejimida `<` va `&` xabarni buzadi — foydalanuvchi
+// matni har doim tozalanadi.
+const escapeHtml = (v) => String(v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // Saytdan kelgan bir martalik token bilan kirganda ko'rsatiladigan matn.
 // Bu yerda odam saytga HECH NARSA ko'chirmasligini alohida aytamiz —
@@ -134,8 +193,25 @@ async function handleMessage(env, H, msg) {
     }
     return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
   }
-  // Boshqa har qanday matn — yana yo'riqnoma (bot faqat raqam tasdiqlaydi).
-  return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
+  // Buyruq (`/nimadir`) — yo'riqnoma. Ular xabar emas.
+  if (raw.startsWith('/')) {
+    return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
+  }
+
+  // Juda qisqa matn ("ha", "ok") — xabar deb yubormaymiz, aks holda
+  // admin bo'sh bildirishnomalarga ko'milardi.
+  if (raw.length < BOT_MSG_MIN) {
+    return reply(env, chatId, WELCOME_TEXT, { reply_markup: CONTACT_KB });
+  }
+
+  // MUAMMO YOKI TAKLIF — jamoaga yetkaziladi.
+  const res = await forwardToAdmin(env, H, from, raw.slice(0, BOT_MSG_MAX));
+  if (res === 'limit') {
+    return reply(env, chatId,
+      '⏳ Ketma-ket juda ko’p xabar yubordingiz. Bir soatdan keyin qayta urinib ko’ring.');
+  }
+  return reply(env, chatId,
+    '✅ <b>Xabaringiz qabul qilindi</b>\n\nJamoa uni ko’rib chiqadi. Javob shu yerga yoziladi.');
 }
 
 async function webhook(request, env, H) {
