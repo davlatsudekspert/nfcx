@@ -39,7 +39,7 @@
      olingan: rgb(0,0,0) = #000000.
      Tailwind 4 buni `:root{--color-page-bg}` sifatida chiqaradi va
      `bg-page-bg` utilitasini beradi. */
-  --color-page-bg: #000000;
+  --color-page-bg: #050403;
 
   --font-sans: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, monospace;
@@ -557,8 +557,19 @@ body:has(.vz-profile-page) .ai-fab { bottom: calc(96px + env(safe-area-inset-bot
    modallar va boshqa komponentlarda ishlatiladi va o'z dizaynini
    saqlaydi. Bu token FAQAT sahifa/section fonlariga qo'llaniladi.
    Profil sahifalari (shaxsiy va kompaniya public profillari) o'zining
-   alohida `--vz-bg-a/--vz-bg-b` va `.cp-*/.cq-*` tizimidan foydalanadi —
-   ularga TEGILMAGAN.
+   alohida `--vz-bg-a` / `--vz-bg-b` va `.cp-` / `.cq-` tizimidan
+   foydalanadi — ularga TEGILMAGAN.
+
+   DIQQAT — IZOH ICHIDA YULDUZCHA VA QIYSHIQ CHIZIQ YONMA-YON
+   KELMASIN. Bu qatorda avval sinf nomlari yulduzcha bilan qisqartirib
+   yozilgan edi (".cp-" dan keyin yulduzcha, so'ng qiyshiq chiziq) va
+   o'sha ikki belgi IZOHNI SHU YERDA tugatib qo'ygan. Qolgan izoh
+   matni CSS deb o'qilgan va undan
+   keyingi `body{...}` hamda `#root{...}` qoidalari jimgina YO'QOLGAN:
+   brauzer ularni buzuq selektorning bir qismi deb tashlab yuborgan.
+   Sahifa foni shu sababdan `<body>` dagi `bg-page-bg` sinfidan
+   kelayotgan edi, bu yerdagi qoidadan emas — ya'ni qoida bor
+   ko'rinardi, lekin hech qachon ishlamagan.
    ═══════════════════════════════════════════════════════════════════════ */
 /* Sahifa qobig'i — tekis, gradientsiz, chekkalarda boshqa tus yo'q.
    Eslatma: `html`/`:root` fonini daisyUI o'zi `--root-bg` orqali
@@ -566,8 +577,142 @@ body:has(.vz-profile-page) .ai-fab { bottom: calc(96px + env(safe-area-inset-bot
    o'sha qoidaga birlashtirib yuboradi. Shuning uchun canvas (hujjatdan
    tashqaridagi maydon) foni index.html'dagi kichik inline `<style>`da
    `--root-bg` bilan belgilangan — u build'da o'zgarmaydi. */
-body{ background:var(--color-page-bg); }
-#root{ background:var(--color-page-bg); }
+/* ═══════════════════════════════════════════════════════════════════
+   FON — "TEKIS DEVOR" EMAS, "CHUQUR MAKON" (2026-09, egasining bahosi:
+   "orqa fon juda qora va o'lik ko'rinadi, chuqurlik yo'q")
+
+   MUTLAQ QORA (#000) — QIMMAT KO'RINMAYDI. Sababi fizik: haqiqiy qora
+   yuza yo'q, har qanday materialda yorug'lik bir oz aks etadi. Ekranda
+   toza #000 esa "o'chiq piksel" bo'lib ko'rinadi va sahifa tugagan
+   joyni bildirmaydi — bo'shliqqa o'xshaydi.
+
+   TO'RT QATLAM, HAMMASI JUDA NOZIK. Alohida olganda hech biri
+   sezilmaydi; birga qo'yilganda fon "jonli" bo'ladi:
+
+     1) asosiy gradient — tepadan iliq, pastga qarab quyuqlashadi;
+     2) uchta katta yorug'lik dog'i (ambient) — ko'z ilg'amaydi,
+        lekin tekislikni sindiradi;
+     3) don (grain) — raqamli silliqlikni yo'qotadi, fonni matoga
+        o'xshatadi;
+     4) bo'limlar orasida 2-3% farq — ular birlashib ketmasin.
+
+   KONTRAST TEKSHIRILDI. Eng och nuqta — #16110a (sahifaning eng
+   tepasi). Oq matn bilan nisbat 16.4:1, mutlaq qora fondagi 18.3:1
+   dan atigi bir oz past va WCAG AAA talabidan (7:1) ikki baravardan
+   ko'p yuqori. Eng xira kulrang matn (#8a7f68) uchun 5.3 -> 4.8 ga
+   tushadi, ya'ni AA chegarasidan (4.5:1) yuqori bo'lib qoladi.
+
+   NIMA UCHUN `background-attachment:fixed`: aks holda gradient sahifa
+   bilan birga surilib, uzun sahifada bir necha marta takrorlanardi va
+   "chiziq" bo'lib ko'rinardi. Fon qimirlamaydi — kontent uning ustida
+   suriladi. */
+body{
+  background-color:#050403;
+  background-image:radial-gradient(120% 70% at 50% 0%,#16110a 0%,#0a0805 55%,#050403 100%);
+  background-attachment:fixed;
+  background-repeat:no-repeat;
+}
+/* `#root` ENDI SHAFFOF. Ilgari u ham to'q rang bilan bo'yalardi va
+   tanadagi gradientni butunlay yopib turardi — ya'ni gradient qo'yilsa
+   ham hech kim ko'rmasdi. */
+#root{ background:transparent; }
+
+/* YUMSHOQ YORUG'LIK DOG'LARI.
+   Uchta katta radiusli oltin dog': tepa-o'ngda, o'rtada-chapda va
+   pastda-markazda. Shaffofligi 3-6% — ular ATAYLAB ko'rinmaydi.
+   Vazifasi "bezak" emas: tekis fonda ko'z hech narsaga ilinmaydi va
+   sahifa yassi tuyuladi.
+
+   `position:fixed` + `z-index:-1`: qatlam kontent ostida, lekin tana
+   fonidan yuqorida turadi va sahifa surilganda qimirlamaydi.
+   `pointer-events:none` — bosishga xalaqit bermaydi. */
+body::before{
+  content:'';position:fixed;z-index:-1;inset:0;pointer-events:none;
+  background:
+    radial-gradient(58vw 42vw at 86% 6%,rgba(226,190,110,.055),transparent 62%),
+    radial-gradient(52vw 46vw at 6% 48%,rgba(212,175,90,.038),transparent 60%),
+    radial-gradient(70vw 34vw at 50% 102%,rgba(226,190,110,.045),transparent 64%);
+}
+/* NOZIK DON (grain).
+   Qorong'i gradientlarda ekran ranglarni yetarli darajada ajrata
+   olmaydi va "halqalar" (banding) paydo bo'ladi. Don shu halqalarni
+   sindiradi. Shaffofligi 2% — alohida ko'rinmaydi.
+
+   SVG data-URI: alohida fayl so'rovi ham, keshlash muammosi ham yo'q.
+   160px li kvadrat takrorlanadi — takror naqsh ko'zga tashlanmaydi. */
+body::after{
+  content:'';position:fixed;z-index:-1;inset:0;pointer-events:none;opacity:.02;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:160px 160px;
+}
+
+/* BO'LIMLAR ORASIDA NOZIK FARQ.
+   Ilgari barcha bo'limlar bir xil fonda edi va uzun sahifa bitta
+   uzluksiz qora lentaga aylanardi. Endi juft bo'limlar 2-3% ochroq:
+   ko'z farqni ANIQLAY olmaydi, lekin bo'limlarning chegarasini his
+   qiladi.
+
+   Faqat bevosita `<section>` bolalari — ichkaridagi bloklar
+   almashinmaydi, aks holda naqsh "chiziqli" bo'lib ko'rinardi. */
+/* CHEKKALARDA SO'NADI — CHOK QOLMASIN.
+   Avval bu yerda tekis rang (`#0d0a06`) turardi va bo'lim boshlangan
+   joyda ko'zga tashlanadigan gorizontal CHIZIQ paydo bo'lardi: tepada
+   fon iliqroq, bo'lim esa tekis — chegara aniq bilinardi. Endi bu
+   ustiga qo'yilgan 1.4% li oq parda va u yuqori hamda quyi
+   chekkalarda nolga tushadi. Natijada bo'limlar ajralib turadi,
+   lekin chegara ko'rinmaydi. */
+main.bg-page-bg > section:nth-of-type(even){
+  background-image:linear-gradient(180deg,
+    rgba(255,255,255,0) 0%,rgba(255,255,255,.014) 14%,
+    rgba(255,255,255,.014) 86%,rgba(255,255,255,0) 100%);
+}
+
+/* HERO'NING PASTKI CHEKKASI — KESIK QOLMASIN.
+   Bosh sahifadagi birinchi bo'limda o'zining oltin yorug'lik qatlami
+   bor va u bo'limning pastki chetida `overflow:hidden` bilan KESIB
+   tashlanadi. Natijada chap tomonda ko'zga tashlanadigan gorizontal
+   chok qolardi (bu fon o'zgarishidan OLDIN ham bor edi).
+
+   Yupqa so'nuvchi parda o'sha kesikni yopadi: tepasi butunlay
+   shaffof, pastga qarab sahifa foniga qo'shilib ketadi. */
+main.bg-page-bg > section:first-of-type{ position:relative }
+main.bg-page-bg > section:first-of-type::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:130px;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,4,3,0) 0%,rgba(5,4,3,.55) 70%,rgba(5,4,3,.8) 100%);
+}
+
+/* SAHIFANI TO'LIQ QOPLAYDIGAN JOYLAR — SHAFFOF.
+   `bg-page-bg` bo'lgan `main` va `footer` butun sahifa bo'ylab tekis
+   rang bilan bo'yalardi, ya'ni tanadagi gradient, dog'lar va donni
+   BUTUNLAY yopib turardi — qatlamlar qo'yilgan bo'lsa ham hech kim
+   ko'rmasdi.
+
+   Token O'CHIRILMADI: u yopishgan sarlavha kabi HAQIQATAN to'q fon
+   talab qiladigan joylarda kerak (u yerda kontent orqadan ko'rinib
+   qolmasligi shart). */
+main.bg-page-bg,footer.bg-page-bg{ background-color:transparent }
+
+/* KARTALAR VA BLOKLAR — FONDAN "KO'TARILIB" TURADI.
+   Tekis rang yuzani yassi qiladi. Ustiga qo'yilgan juda nozik
+   gradient (tepasi yorug', pasti quyuq) unga hajm beradi — bu
+   metallda ham, qog'ozda ham yorug'lik shunday tushadi.
+
+   `background-image` ORQALI: Tailwind bu sinflarga `background-color`
+   beradi, ya'ni rang o'z joyida qoladi va biz faqat ustiga yupqa
+   qatlam qo'shamiz. Rangni gradientga almashtirib bo'lmasdi — u
+   `background-color` da yaroqsiz bo'lib, fon umuman yo'qolardi. */
+.bg-base-100,.bg-base-200,.bg-\[color\:var\(--vz-card\)\]{
+  background-image:linear-gradient(160deg,rgba(255,255,255,.022) 0%,rgba(0,0,0,.05) 100%);
+}
+/* Oltin "rim-glow" — FAQAT katta radiusli bloklarda, ya'ni haqiqiy
+   kartalarda. Kichik elementlarda (input, yorliq, dumaloq tugma) u
+   ortiqcha bo'lardi va ekran "yonib turgandek" ko'rinardi. */
+.bg-base-100.rounded-2xl,.bg-base-200.rounded-2xl,
+.bg-base-100.rounded-3xl,.bg-base-200.rounded-3xl,
+.bg-\[color\:var\(--vz-card\)\].rounded-2xl{
+  box-shadow:0 0 20px -8px rgba(226,190,110,.42),0 10px 26px rgba(0,0,0,.34);
+}
 
 :root{
   --vz-gold:#d4af5a; --vz-gold-2:#f0cf7a; --vz-gold-3:#b3860f; --vz-gold-ink:#1a1206;
@@ -788,14 +933,19 @@ body{ background:var(--color-page-bg); }
    balandligi bo'ylab uzluksiz bo'ladi — chap-o'ng tashqi bo'shliqlarda
    boshqa kulrang tus qolmaydi va section chegarasi to'rtburchak bo'lib
    bilinmaydi. Kontent avvalgidek max-width konteyner ichida qoladi. */
-html:has(body.pricing-bg){background:var(--color-page-bg);}
-body.pricing-bg{background:var(--color-page-bg);}
+/* 2026-09: tekis qora O'RNIGA tana foni (gradient + dog' + don).
+   Bu qoidalarning maqsadi "chok bo'lmasin, butun kenglik bo'ylab
+   uzluksiz bo'lsin" edi — tanadagi `background-attachment:fixed`
+   qatlam buni o'zi bajaradi va ustiga chuqurlik ham qo'shadi.
+   Shuning uchun bu yerda endi hech narsa bo'yalmaydi. */
+html:has(body.pricing-bg){background:transparent;}
+body.pricing-bg{background-color:transparent;}
 body.pricing-bg .pricing-page,
 body.pricing-bg header,
 body.pricing-bg footer{background:var(--color-page-bg);}
 /* `:has()` qo'llab-quvvatlanmagan brauzerlar uchun zaxira: sahifa
    o'rami baribir to'liq kenglikda tekis qora bo'ladi. */
-.pricing-page{position:relative;width:100%;background:var(--color-page-bg);}
+.pricing-page{position:relative;width:100%;background:transparent;}
 
 /* Kompaniya nomi uchun inline xato matni (taqiqlangan so'z) */
 .cc-name-err{

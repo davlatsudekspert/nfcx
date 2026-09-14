@@ -91,6 +91,16 @@ jobs:
       - name: Biznes profil maketi
         run: node scripts/test-quick-profile-screen.mjs
 
+      # SAHIFA FONI.
+      #
+      # Bu ishda topilgan haqiqiy xato: `theme.css` dagi bitta izohda
+      # yulduzcha va qiyshiq chiziq yonma-yon kelib qolgan va IZOHNI
+      # ERTA TUGATGAN. Undan keyingi `body{...}` qoidalari jimgina
+      # yo'qolgan — faylda bor, brauzerda yo'q, xato ham chiqmaydi.
+      # Test shu holatni va fon qatlamlarining o'rnini qo'riqlaydi.
+      - name: Sahifa foni va kontrast
+        run: node scripts/test-page-background.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
