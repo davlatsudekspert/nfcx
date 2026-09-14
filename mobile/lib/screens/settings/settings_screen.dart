@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show Scaffold;
 import 'package:flutter/widgets.dart';
+import '../../data/api_client.dart' show absUrl;
 import '../../data/models.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
@@ -10,6 +11,7 @@ import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../state/app_state.dart';
+import '../../design/components/sheet.dart';
 import '../common/contact_actions.dart';
 import '../../app.dart';
 import '../common/top_bar.dart';
@@ -223,6 +225,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   ]),
 
+                  // HUQUQIY HUJJATLAR — ILOVA ICHIDAN.
+                  //
+                  // Google Play ilova ichida maxfiylik siyosatiga
+                  // havola bo'lishini kutadi, ilovada esa u umuman
+                  // yo'q edi: hujjatlar faqat saytda turardi va
+                  // ularga ilovadan borish yo'li yo'q edi.
+                  const SizedBox(height: S.x24),
+                  Eyebrow(tr('Hujjatlar')),
+                  const SizedBox(height: S.x12),
+                  _Group([
+                    _Row(
+                      label: tr('Maxfiylik siyosati'),
+                      icon: Ico.lock,
+                      // Manzil BITTA MANBADAN: `absUrl` bazasi
+                      // (`api_client.dart`). Qo'lda yozilsa, domen
+                      // o'zgarganda havolalar o'lik qolardi.
+                      onTap: () => openExternal(Uri.parse(absUrl('/maxfiylik')!)),
+                    ),
+                    _Row(
+                      label: tr('Foydalanish shartlari'),
+                      icon: Ico.card,
+                      onTap: () => openExternal(Uri.parse(absUrl('/shartlar')!)),
+                      last: true,
+                    ),
+                  ]),
+
                   const SizedBox(height: S.x24),
                   Press(
                     haptic: true,
@@ -238,6 +266,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(width: S.x12),
                           Text(tr('Chiqish'), style: T.cardTitle.copyWith(color: C.signal)),
                         ],
+                      ),
+                    ),
+                  ),
+
+                  // HISOBNI O'CHIRISH.
+                  //
+                  // NIMA UCHUN BOR: Google Play "User Data" siyosati
+                  // hisob yaratishga ruxsat beradigan ilovadan
+                  // hisobni O'CHIRISH YO'LINI ILOVA ICHIDA talab
+                  // qiladi. Ilovada ham, saytda ham bunday yo'l
+                  // umuman yo'q edi — ya'ni ilovani do'konga
+                  // qo'yishning iloji bo'lmasdi.
+                  //
+                  // "Chiqish" dan PASTDA va boshqa ko'rinishda:
+                  // ikkalasi yonma-yon bir xil tursa, chiqmoqchi
+                  // bo'lgan odam xato bosishi mumkin.
+                  const SizedBox(height: S.x12),
+                  Press(
+                    haptic: true,
+                    onTap: () => _deleteAccount(context, state),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: S.x12),
+                      child: Center(
+                        child: Text(
+                          tr('Hisobni o‘chirish'),
+                          style: T.caption.copyWith(
+                            fontSize: 13.5,
+                            color: C.signal,
+                            decoration: TextDecoration.underline,
+                            decorationColor: C.signal,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -261,6 +321,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+}
+
+/// HISOBNI O'CHIRISH — IKKI QADAM.
+///
+/// Birinchi varaqda NIMA BO'LISHI aniq yoziladi: bu buzuvchi amal
+/// va uni ilovadan qaytarib bo'lmaydi. Ikkinchi bosishda amal
+/// bajariladi va odam hisobdan chiqariladi.
+///
+/// NIMA QOLADI VA NIMA KETADI — ochiq aytiladi. To'lov va buyurtma
+/// yozuvlari saqlanadi (qonun va hisobot talabi), profil va kontent
+/// esa darhol ko'rinmay qoladi. Buni yashirish keyinchalik
+/// "nega mening to'lovlarim turibdi" degan savolga olib kelardi.
+Future<void> _deleteAccount(BuildContext context, AppState state) async {
+  final sure = await showSheet<bool>(
+    context,
+    title: tr('Hisobni o‘chirish'),
+    subtitle: tr('Bu amalni ilovadan qaytarib bo‘lmaydi.'),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(S.x16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(R.card),
+              color: C.signal.withValues(alpha: .07),
+              border: Border.all(color: C.signal.withValues(alpha: .3)),
+            ),
+            child: Text(
+              tr('Hisobingiz o‘chiriladi va siz undan chiqasiz. '
+                  'Profillaringiz, postlaringiz va storylaringiz '
+                  'saytda ham, ilovada ham ko‘rinmay qoladi. '
+                  'To‘lov va buyurtma yozuvlari hisobot uchun '
+                  'saqlanadi. Qaytarish kerak bo‘lsa — yordam '
+                  'xizmatiga murojaat qiling.'),
+              style: T.body.copyWith(color: C.offWhite),
+            ),
+          ),
+          const SizedBox(height: S.x16),
+          PrimaryButton(tr('Ha, o‘chirilsin'),
+              onTap: () => Navigator.of(context).pop(true)),
+          const SizedBox(height: S.x8),
+          SecondaryButton(tr('Bekor qilish'),
+              onTap: () => Navigator.of(context).pop(false)),
+        ],
+      ),
+    ),
+  );
+  if (sure != true || !context.mounted) return;
+  try {
+    await state.repo.deleteAccount();
+    await state.signOut();
+    if (context.mounted) Navigator.of(context).maybePop();
+  } catch (e) {
+    if (context.mounted) await showError(context, humanError(e));
   }
 }
 

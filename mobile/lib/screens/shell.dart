@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import '../design/components/nav_bar.dart';
+import '../design/route_watch.dart';
 import '../design/components/states.dart';
 import '../design/tokens.dart';
 import '../state/app_state.dart';
@@ -32,6 +33,15 @@ class _ShellState extends State<Shell> {
   final _keys =
       List.generate(NavBar.tabs.length, (_) => GlobalKey<NavigatorState>());
 
+  /// Tab ekranlari — tartibi `NavBar.tabs` bilan bir xil.
+  static const _tabs = <Widget>[
+    HomeScreen(),
+    DiscoverScreen(),
+    NfcCenterScreen(),
+    ReelsScreen(),
+    ProfileTab(),
+  ];
+
   Future<bool> _onBack() async {
     final nav = _keys[_tab].currentState;
     if (nav != null && nav.canPop()) {
@@ -46,9 +56,21 @@ class _ShellState extends State<Shell> {
     return true;
   }
 
+  /// Bosh sahifaga qaytaradi — Reels'dagi qaytish tugmasi shuni
+  /// chaqiradi. Android'ning "orqaga" tugmasi bilan BIR XIL yo'l:
+  /// ikki xil xulq bo'lsa, odam qaysi biri nima qilishini
+  /// bilmasdi.
+  void _goHome() {
+    final nav = _keys[_tab].currentState;
+    if (nav != null && nav.canPop()) nav.popUntil((r) => r.isFirst);
+    if (_tab != 0) setState(() => _tab = 0);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return ShellScope(
+      goHome: _goHome,
+      child: PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
@@ -74,14 +96,26 @@ class _ShellState extends State<Shell> {
               // indeksiga bog'langan yengil qatlam orqali beriladi.
               child: _CrossFade(
                 index: _tab,
+                // KO'RINMAYOTGAN TAB — "TO'XTATILGAN".
+                //
+                // `IndexedStack` tanlanmagan tabni daraxtda
+                // QOLDIRADI (holati saqlanishi uchun) va u ishlashda
+                // davom etardi. Reels'da bu quloqqa eshitilardi:
+                // boshqa tabga o'tilsa ham video ovozi kelaverardi.
+                //
+                // `TickerMode` — Flutter'ning shu maqsaddagi standart
+                // belgisi: o'chirilganda animatsiyalar to'xtaydi va
+                // `VideoView` uni o'qib videoni pauza qiladi. Har bir
+                // widgetga alohida "sen ko'rinyapsanmi" deb uzatish
+                // kerak emas.
                 child: IndexedStack(
                 index: _tab,
                 children: [
-                  _TabNavigator(navKey: _keys[0], child: const HomeScreen()),
-                  _TabNavigator(navKey: _keys[1], child: const DiscoverScreen()),
-                  _TabNavigator(navKey: _keys[2], child: const NfcCenterScreen()),
-                  _TabNavigator(navKey: _keys[3], child: const ReelsScreen()),
-                  _TabNavigator(navKey: _keys[4], child: const ProfileTab()),
+                  for (var i = 0; i < NavBar.tabs.length; i++)
+                    TickerMode(
+                      enabled: i == _tab,
+                      child: _TabNavigator(navKey: _keys[i], child: _tabs[i]),
+                    ),
                 ],
                 ),
               ),
@@ -100,8 +134,27 @@ class _ShellState extends State<Shell> {
           ],
         ),
       ),
+      ),
     );
   }
+}
+
+/// QOBIQQA MUROJAAT — ekranlar uchun.
+///
+/// Hozircha bitta amal bor: bosh sahifaga qaytish. U Reels'ga
+/// kerak bo'ldi — Reels ILDIZ ekran, ya'ni `Navigator.pop` qiladigan
+/// narsasi yo'q va oddiy "orqaga" tugmasi u yerda ishlamasdi.
+/// Egasi shuni so'radi: "reelsda qaytish tugmasi bo'lsin".
+class ShellScope extends InheritedWidget {
+  const ShellScope({super.key, required this.goHome, required super.child});
+
+  final VoidCallback goHome;
+
+  static ShellScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellScope>();
+
+  @override
+  bool updateShouldNotify(ShellScope old) => old.goHome != goHome;
 }
 
 /// Tarmoq signalini kuzatib, uzilganda chiziqni ochadi.
@@ -123,17 +176,29 @@ class _OfflineWatch extends StatelessWidget {
       );
 }
 
-class _TabNavigator extends StatelessWidget {
+class _TabNavigator extends StatefulWidget {
   const _TabNavigator({required this.navKey, required this.child});
   final GlobalKey<NavigatorState> navKey;
   final Widget child;
 
   @override
+  State<_TabNavigator> createState() => _TabNavigatorState();
+}
+
+class _TabNavigatorState extends State<_TabNavigator> {
+  /// SHU tabning kuzatuvchisi. Bitta nusxani bir nechta navigatorga
+  /// ulab bo'lmaydi — izohi `route_watch.dart` da.
+  final _observer = RouteObserver<ModalRoute<void>>();
+
+  @override
   Widget build(BuildContext context) => Navigator(
-        key: navKey,
+        key: widget.navKey,
+        // Tab ichida ekran ustiga ekran ochilsa — video to'xtasin.
+        observers: [_observer],
         onGenerateRoute: (settings) => PageRouteBuilder(
           settings: settings,
-          pageBuilder: (_, __, ___) => child,
+          pageBuilder: (_, __, ___) =>
+              RouteWatchScope(observer: _observer, child: widget.child),
           transitionDuration: Duration.zero,
         ),
       );

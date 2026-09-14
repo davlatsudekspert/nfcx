@@ -137,6 +137,10 @@ class _MediaPickFieldState extends State<MediaPickField> {
         ? Image.memory(
             preview,
             fit: BoxFit.cover,
+            // FIZIK piksel: `Image.memory` `cacheWidth` ni aynan
+            // shunday tushunadi (`NetImage` esa mantiqiy o'lchamni
+            // kutadi va dpr ga o'zi ko'paytiradi — ikkisini
+            // aralashtirmaslik kerak).
             cacheWidth: ((widget.circle ? 72 : 108) * dpr).round(),
           )
         // Yozuvsiz: sarlavha allaqachon tepada turadi va katakda

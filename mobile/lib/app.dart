@@ -6,6 +6,7 @@ import 'data/deep_link.dart';
 import 'data/nfc.dart';
 import 'design/nav.dart';
 import 'design/theme.dart';
+import 'design/route_watch.dart';
 import 'design/tokens.dart';
 import 'design/type.dart';
 import 'screens/entry/login.dart';
@@ -175,6 +176,9 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
         lock: _lock,
         child: MaterialApp(
         navigatorKey: _navKey,
+        // Ekran ustiga ekran ochilganini kuzatadi — video shunda
+        // to'xtaydi (izohi `route_watch.dart` da).
+        navigatorObservers: [rootRouteObserver],
         title: 'NFCSTORE',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
@@ -201,13 +205,18 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
             //
             // Bitta joyda hal qilinadi: shu builder `Navigator` ni
             // o'raydi, demak barcha ekranlar uning ichida.
-            child: Material(
+            // Ildiz navigatorining kuzatuvchisi — ekranlar shu
+            // orqali "ustimga ekran ochildimi" ni biladi.
+            child: RouteWatchScope(
+              observer: rootRouteObserver,
+              child: Material(
               type: MaterialType.canvas,
               color: C.obsidian,
               // Standart matn uslubi ham shu yerdan — uslubsiz
               // qolgan `Text` ilovaning o'z shriftini oladi.
               textStyle: T.body.copyWith(color: C.offWhite),
               child: child ?? const SizedBox(),
+            ),
             ),
           ),
         ),

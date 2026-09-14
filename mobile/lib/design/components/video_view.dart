@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:video_player/video_player.dart';
 
+import '../route_watch.dart';
 import '../tokens.dart';
 import '../type.dart';
 import 'buttons.dart';
@@ -68,7 +69,8 @@ class VideoView extends StatefulWidget {
   State<VideoView> createState() => _VideoViewState();
 }
 
-class _VideoViewState extends State<VideoView> {
+class _VideoViewState extends State<VideoView>
+    with WidgetsBindingObserver, RouteAware {
   /// Video ochilishini eng ko'p kutish.
   ///
   /// `initialize()` da MUDDAT YO'Q: manzil yetib bormasa, format
@@ -86,6 +88,22 @@ class _VideoViewState extends State<VideoView> {
   bool _ready = false;
   bool _failed = false;
 
+  /// EKRAN USTIGA BOSHQA EKRAN OCHILGANMI.
+  ///
+  /// Reels'da muallif profiliga o'tilsa, Reels daraxtdan chiqmaydi —
+  /// u yangi ekran ostida qolib o'ynashda davom etardi: ekranda
+  /// boshqa sahifa, quloqda oldingi videoning ovozi. Egasi shuni
+  /// xabar qildi.
+  bool _covered = false;
+
+  /// Ilova old planda turibdimi. Fonga o'tganda (boshqa ilova, ekran
+  /// o'chishi, qo'ng'iroq) video ovozi davom etardi.
+  bool _foreground = true;
+
+  /// Qaysi kuzatuvchiga ulanganmiz — yopilganda aynan shundan
+  /// uzilish uchun.
+  RouteObserver<ModalRoute<void>>? _observer;
+
   /// Nima uchun ochilmagani. Odamga ko'rsatiladi: "ochib bo'lmadi"
   /// deb qo'yib qo'yish keyingi safar ham nima bo'lganini
   /// bilmaslikka olib keladi.
@@ -94,8 +112,59 @@ class _VideoViewState extends State<VideoView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _open();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Kuzatuvchiga ulanish — har safar, chunki ekran boshqa
+    // navigatorga ko'chishi mumkin. `unsubscribe` takroriy
+    // obunani o'zi tozalaydi.
+    final observer = RouteWatchScope.maybeOf(context);
+    final route = ModalRoute.of(context);
+    if (observer != null && route is ModalRoute<void>) {
+      _observer?.unsubscribe(this);
+      _observer = observer;
+      observer.subscribe(this, route);
+    }
+    // `TickerMode` — tanlanmagan tab (`IndexedStack`) shu belgi
+    // orqali "to'xtatilgan" deb aytiladi. U o'zgarganda shu
+    // metod chaqiriladi, ya'ni pauza avtomatik ishlaydi.
+    _sync();
+  }
+
+  /// Ustiga boshqa ekran ochildi.
+  @override
+  void didPushNext() {
+    _covered = true;
+    _sync();
+  }
+
+  /// Ustidagi ekran yopildi — qaytdik.
+  @override
+  void didPopNext() {
+    _covered = false;
+    _sync();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final fg = state == AppLifecycleState.resumed;
+    if (fg == _foreground) return;
+    _foreground = fg;
+    _sync();
+  }
+
+  /// Video HOZIR o'ynashi kerakmi.
+  bool get _shouldPlay => videoShouldPlay(
+        active: widget.active,
+        autoPlay: widget.autoPlay,
+        covered: _covered,
+        foreground: _foreground,
+        tabVisible: TickerMode.valuesOf(context).enabled,
+      );
 
   @override
   void didUpdateWidget(VideoView old) {
@@ -119,7 +188,7 @@ class _VideoViewState extends State<VideoView> {
   void _sync() {
     final c = _c;
     if (c == null || !_ready) return;
-    if (widget.active && widget.autoPlay) {
+    if (_shouldPlay) {
       c.play();
     } else {
       c.pause();
@@ -158,7 +227,7 @@ class _VideoViewState extends State<VideoView> {
         return;
       }
       await c.setLooping(widget.loop);
-      if (widget.autoPlay && widget.active) await c.play();
+      if (_shouldPlay) await c.play();
       widget.onDuration?.call(c.value.duration);
       setState(() => _ready = true);
     } on TimeoutException {
@@ -194,6 +263,8 @@ class _VideoViewState extends State<VideoView> {
 
   @override
   void dispose() {
+    _observer?.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _c?.dispose();
     super.dispose();
   }
@@ -266,3 +337,27 @@ class _VideoViewState extends State<VideoView> {
     );
   }
 }
+
+/// VIDEO O'YNASHI KERAKMI — BARCHA SHARTLAR BITTA JOYDA.
+///
+/// Ilgari faqat [active] tekshirilardi va qolgan uchtasi "ovoz
+/// davom etyapti" degan xatoning uch xil ko'rinishi bo'lgan:
+///
+///   • [tabVisible] — boshqa tabga o'tilsa. `IndexedStack`
+///     ko'rinmayotgan tabni daraxtda qoldiradi va u ishlashda davom
+///     etardi (egasi: "boshqa punktga o'tsam ham o'chmayapti");
+///   • [covered] — ustiga boshqa ekran ochilsa (masalan Reels'dan
+///     muallif profiliga o'tish);
+///   • [foreground] — ilova fonga ketsa (boshqa ilova, ekran
+///     o'chishi, qo'ng'iroq).
+///
+/// Alohida funksiya — testdan tekshirish uchun: bu mantiqni
+/// haqiqiy pleyer bilan sinash qurilmasiz imkonsiz.
+bool videoShouldPlay({
+  required bool active,
+  required bool autoPlay,
+  required bool covered,
+  required bool foreground,
+  required bool tabVisible,
+}) =>
+    active && autoPlay && !covered && foreground && tabVisible;
