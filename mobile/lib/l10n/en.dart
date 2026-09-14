@@ -513,7 +513,7 @@ const enStrings = <String, String>{
   'Spam yoki aldov': 'Spam or deception',
   'Statistika': 'Statistics',
   'Statistika va tahlil': 'Statistics and insights',
-  'Stories': 'Story',
+  'Stories': 'Stories',
   'Story 24 soat turadi va keyin o‘zi o‘chadi.': 'A story lasts 24 hours, then disappears.',
   'Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.': 'A story lasts 24 hours. There is nothing here right now.',
   'Story 24 soatdan keyin o‘zi o‘chadi.': 'The story disappears on its own after 24 hours.',

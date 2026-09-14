@@ -4314,14 +4314,28 @@ export default function AccountPage({ refreshCatalog }) {
   );
 }
 
-// ── ISTORYA (shaxsiy profil) ─────────────────────────────────────────
+// ── STORIES (shaxsiy profil) ─────────────────────────────────────────
 // 24 soatdan keyin o'zi yo'qoladi va profil rasmi atrofida halqa bo'lib
 // ko'rinadi. Joylashdan oldin kontent qoidalari ko'rsatiladi
 // (StoryUploader ichida) va rozilik SERVERGA ham yuboriladi.
+//
+// BITTA NUSXA. Ilgari shu bo'lim IKKI JOYDA ikki xil yozilgan edi:
+// "Stories va post" sahifasida — tasdiqlash tugmasi bilan, "Stories"
+// tugmasi ochadigan oynada esa — usiz. Oynadagi nusxada fayl tanlangan
+// zahoti e'lon qilinardi va SAQLASH TUGMASI UMUMAN KO'RINMASDI. Egasi
+// aynan shuni xabar qildi: "story qo'ysam saqlash bo'lmayapti, shuning
+// uchun post ham qo'yishga to'g'ri kelyapti" — yonidagi "Post" oynasida
+// esa "Postni saqlash" tugmasi bor edi.
+//
+// Endi ikkala joy ham SHU komponentni chaqiradi: bitta xulq, bitta
+// tugma, bitta xabar.
 function StoriesManager({ code }) {
   const { t } = useLanguage();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Natija xabari — SHU blokning o'ziniki. Usiz odam tugmani bosardi
+  // va hech narsa "aytilmasdi".
+  const [msg, setMsg] = useState('');
 
   const load = () => dbListStories(code)
     .then((s) => setList(s))
@@ -4336,37 +4350,54 @@ function StoriesManager({ code }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs leading-relaxed text-base-content/55">
-        {t('Story profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
-      </p>
-
       {loading ? (
         <div className="vz-skel" style={{ height: 90 }} />
       ) : list.length ? (
-        <div className="flex flex-wrap gap-2">
-          {list.map((st) => (
-            <div key={st.id} className="relative h-24 w-20 overflow-hidden rounded-xl border border-white/10">
-              <img src={st.imageUrl} alt="" className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={() => remove(st.id)}
-                aria-label={t('O‘chirish')}
-                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="text-xs text-base-content/45">{t('{n}/10 story', { n: list.length })}</div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {list.map((st) => (
+              <div key={st.id} className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10">
+                {/* VIDEO STORY ham ko'rinsin: ilgari bu yerda faqat
+                    `<img>` bor edi va video story singan rasm bo'lib
+                    chiqardi. */}
+                {st.videoUrl
+                  ? <video src={st.videoUrl} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                  : <img src={st.imageUrl} alt="" className="h-full w-full object-cover" />}
+                <button
+                  type="button"
+                  onClick={() => remove(st.id)}
+                  aria-label={t('O‘chirish')}
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
         <p className="text-xs text-base-content/40">{t('Hozircha story yo‘q.')}</p>
       )}
 
+      {/* TASDIQLASH REJIMI (`confirm`) — fayl tanlangan zahoti e'lon
+          qilinmaydi: avval ko'rinadi, ostida esa SHU blokning o'z
+          "Storyni saqlash" tugmasi turadi. Postniki bilan bir xil
+          tartib, shuning uchun biri ikkinchisini kutayotgandek
+          tuyulmaydi. */}
       <StoryUploader
         label={t('Story qo‘shish')}
         disabled={list.length >= 10}
-        onSubmit={async (payload) => { await dbCreateStory(code, payload); load(); }}
+        confirm
+        saveLabel={t('Storyni saqlash')}
+        hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Storyni saqlash" ni bosasiz.')}
+        onSubmit={async (payload) => {
+          await dbCreateStory(code, payload);
+          setMsg(t('Story joylandi.'));
+          load();
+        }}
       />
+      {msg && <div className="alert alert-success py-2 text-sm"><span>{msg}</span></div>}
     </div>
   );
 }
@@ -4423,43 +4454,32 @@ function ProfileCompanyPicker({ form, setForm, t }) {
   );
 }
 
-// ── ISTORYA BO'LIMI (shaxsiy kabinet) ────────────────────────────────
+// ── STORIES BO'LIMI (shaxsiy kabinet) ────────────────────────────────
 // Kompaniya kabinetidagi "Stories" bilan bir xil ko'rinish: mavjud
-// istoryalar lentasi va qo'shish tugmasi.
+// storylar lentasi va qo'shish tugmasi.
+//
+// Bo'limning O'ZI faqat sarlavha va tarif darvozasi. Ichki qismi —
+// `StoriesManager`: ilgari bu yerda uning to'liq nusxasi yozilgan edi
+// va ikkinchi nusxa (oynadagi) tuzatishsiz qolib ketgan edi.
 //
 // Yopiq tarifda ham bo'lim KO'RINADI — nima ochilishini va nima
 // kerakligini aniq aytadi. Yashirilsa, odam "menda bunday narsa yo'q
 // ekan" deb o'ylardi.
 function StorySection({ code, allowed, onLocked, t }) {
-  const [list, setList] = useState([]);
-  // Natija xabari — SHU blokning o'ziniki. Ilgari istoryada umuman
-  // xabar yo'q edi: odam tugmani bosardi va hech narsa "aytilmasdi".
-  const [msg, setMsg] = useState('');
-  const load = () => dbListStories(code).then(setList).catch(() => setList([]));
-  useEffect(() => { if (allowed) load(); }, [code, allowed]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const remove = async (id) => {
-    setList((old) => old.filter((x) => x.id !== id));
-    try { await dbDeleteStory(id); } catch { load(); }
-  };
-
   return (
     <section className="vz-card p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          {/* Bo'lim raqami — istorya va post IKKI ALOHIDA ish ekani
-              bir qarashda ko'rinsin (egasi ilgari ularni bitta,
-              bir-biriga bog'liq forma deb o'ylagan). */}
-          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('1-bo‘lim')}</span>
-          <h3 className="font-display text-lg font-semibold">{t('Stories')}</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
-            {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-            {t('Faqat story qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
-          </p>
-        </div>
-        {allowed && list.length > 0 && <span className="shrink-0 text-xs text-base-content/45">{list.length}/10</span>}
+      <div className="min-w-0">
+        {/* Bo'lim raqami — story va post IKKI ALOHIDA ish ekani bir
+            qarashda ko'rinsin (egasi ilgari ularni bitta, bir-biriga
+            bog'liq forma deb o'ylagan). */}
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('1-bo‘lim')}</span>
+        <h3 className="font-display text-lg font-semibold">{t('Stories')}</h3>
+        <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
+          {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-base-content/40">
+          {t('Faqat story qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
+        </p>
       </div>
 
       {!allowed ? (
@@ -4472,40 +4492,9 @@ function StorySection({ code, allowed, onLocked, t }) {
           </button>
         </div>
       ) : (
-        <>
-          {list.length > 0 && (
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-              {list.map((st) => (
-                <div key={st.id} className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10">
-                  {st.videoUrl
-                    ? <video src={st.videoUrl} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                    : <img src={st.imageUrl} alt="" className="h-full w-full object-cover" />}
-                  <button
-                    type="button" onClick={() => remove(st.id)} aria-label={t('O‘chirish')}
-                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="mt-4">
-            <StoryUploader
-              label={t('Story qo‘shish')}
-              disabled={list.length >= 10}
-              confirm
-              saveLabel={t('Storyni saqlash')}
-              hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Storyni saqlash" ni bosasiz.')}
-              onSubmit={async (payload) => {
-                await dbCreateStory(code, payload);
-                setMsg(t('Story joylandi.'));
-                load();
-              }}
-            />
-          </div>
-          {msg && <div className="alert alert-success mt-3 py-2 text-sm"><span>{msg}</span></div>}
-        </>
+        <div className="mt-4">
+          <StoriesManager code={code} />
+        </div>
       )}
     </section>
   );

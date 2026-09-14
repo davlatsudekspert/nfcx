@@ -513,7 +513,7 @@ const ruStrings = <String, String>{
   'Spam yoki aldov': 'Спам или обман',
   'Statistika': 'Статистика',
   'Statistika va tahlil': 'Статистика и аналитика',
-  'Stories': 'История',
+  'Stories': 'Истории',
   'Story 24 soat turadi va keyin o‘zi o‘chadi.': 'История живёт 24 часа и затем исчезает.',
   'Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.': 'История живёт 24 часа. Сейчас здесь ничего нет.',
   'Story 24 soatdan keyin o‘zi o‘chadi.': 'История исчезнет сама через 24 часа.',
