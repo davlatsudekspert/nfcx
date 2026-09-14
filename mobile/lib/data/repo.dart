@@ -451,6 +451,13 @@ class Repo {
       });
 
   /// O'z postini o'chirish.
+  /// HISOBNI O'CHIRISH — foydalanuvchining o'zi.
+  ///
+  /// Google Play hisob yaratishga ruxsat beradigan ilovadan shu
+  /// yo'lni ILOVA ICHIDA talab qiladi (izohi serverda,
+  /// `hosting/api/account.js`).
+  Future<void> deleteAccount() => api.delete('/api/account');
+
   Future<void> deletePost(int id) => api.delete('/api/posts/$id');
 
   /// O'z istoryasini o'chirish (24 soat tugashini kutmasdan).

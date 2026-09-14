@@ -174,16 +174,28 @@ class AppState extends ChangeNotifier {
   /// yoki xato berishi mumkin, lekin uning shaxsiy ID'lari baribir
   /// ko'rinishi kerak.
   Future<void> refreshIdentities() async {
-    final res = await repo.me();
+    // IKKI SO'ROV BIRGA KETADI.
+    //
+    // Ilgari ular navbatma-navbat edi: avval `me()` tugashi
+    // kutilardi, keyingina kompaniyalar so'ralardi. Ikkalasi
+    // bir-biriga bog'liq EMAS — ikkalasi ham faqat tokenni talab
+    // qiladi. Ketma-ket bo'lgani uchun ilova ochilishi ikki
+    // aylanma sayohat (round-trip) kutardi; sekin tarmoqda bu
+    // splash ekranida ortiqcha soniya degani.
+    //
+    // Kompaniyalar xatosi yutiladi: biznes profili yo'q odamda bu
+    // so'rov bo'sh qaytishi normal va u butun kirishni to'xtatmasligi
+    // kerak.
+    final results = await Future.wait([
+      repo.me(),
+      repo.myCompanies().catchError((_) => <Company>[]),
+    ]);
+    final res = results[0] as ({AppUser? user, List<Record> cards});
     user = res.user;
     cards = res.cards;
-    if (user != null) {
-      try {
-        companies = await repo.myCompanies();
-      } catch (_) {
-        companies = const [];
-      }
-    }
+    // Kirmagan odamda kompaniya ro'yxati ma'nosiz — tozalab
+    // qo'yamiz (eski sessiyadan qolgan ro'yxat ko'rinib qolmasin).
+    companies = user == null ? const [] : results[1] as List<Company>;
     _ensureActive();
     notifyListeners();
   }

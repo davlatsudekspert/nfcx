@@ -5436,7 +5436,7 @@ async function recordsApi(request, env, url) {
       if (Number(cnt?.n || 0) >= limit) return json({ error: 'limit_reached', limit }, 409);
       const row = await env.DB.prepare(
         `INSERT INTO posts (code, user_id, image_url, video_url, caption) VALUES (?, ?, ?, ?, ?)
-         RETURNING id, image_url, video_url, caption, created_at`
+         RETURNING id, code, image_url, video_url, caption, created_at`
       ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null).first();
       return json(postRowToJson(row, 0, false), 201);
     }
@@ -8540,10 +8540,22 @@ function featureAllowedD1(feature, access) {
   return min ? (ACCESS_RANK_D1[access] ?? 0) >= (ACCESS_RANK_D1[min] ?? 99) : true;
 }
 
+// POST JAVOBIDA PROFIL KODI BO'LISHI SHART.
+//
+// Ilgari bu yerda `code` yo'q edi va ilova postning KIMNIKI ekanini
+// bilolmasdi: `Post.authorCode` bo'sh qolardi, egalik tekshiruvi esa
+// aynan shunga qaraydi. Natijada odam O'Z postini ochganda ham
+// "begona" deb hisoblanardi — o'chirish tugmasi o'rniga shikoyat
+// menyusi chiqardi. Egasi shuni xabar qildi: "postni ham, story'ni
+// ham profil egasi o'chira olsin".
+//
+// Lentada (`/api/feed`) kod allaqachon bor edi, shuning uchun xato
+// faqat profil sahifasidan ochilganda ko'rinardi.
 function postRowToJson(r, likeCount, liked) {
   const d = parseDbDate(r.created_at);
   return {
-    id: Number(r.id), imageUrl: r.image_url || '', videoUrl: r.video_url || '', caption: r.caption || '',
+    id: Number(r.id), code: String(r.code || '').toUpperCase(),
+    imageUrl: r.image_url || '', videoUrl: r.video_url || '', caption: r.caption || '',
     createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
     likeCount: Number(likeCount || 0), liked: !!liked,
   };
@@ -8551,7 +8563,7 @@ function postRowToJson(r, likeCount, liked) {
 
 async function listPostsD1(env, code, viewerUserId) {
   const rows = await env.DB.prepare(
-    `SELECT p.id, p.image_url, p.video_url, p.caption, p.created_at,
+    `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
             EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
      FROM posts p WHERE p.code = ? ORDER BY p.created_at DESC, p.id DESC`

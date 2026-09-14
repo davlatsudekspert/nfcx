@@ -211,13 +211,12 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Katak ekran enining uchdan biri — 300px dan ortig'ini
-    // dekodlash behuda.
-    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Katak ekran enining uchdan biri (~150px). `NetImage` bu
+    // mantiqiy o'lchamni qurilma zichligiga o'zi ko'paytiradi.
     return Stack(
       fit: StackFit.expand,
       children: [
-        NetImage(url, radius: R.tile, cacheWidth: (150 * dpr).round()),
+        NetImage(url, radius: R.tile, cacheWidth: 150),
         Positioned(
           top: 4,
           right: 4,

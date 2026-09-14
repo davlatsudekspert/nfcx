@@ -338,7 +338,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final code = _company?.id ?? _record?.code ?? widget.code ?? widget.companyId ?? '';
-    final isOwner = _isBusiness ? state.ownsCompany(code) : state.ownsRecord(code);
+    // EGALIK — AVVAL ANIQ BILGANIMIZDAN.
+    //
+    // `identity` faqat Profile tabidan keladi va u FAOL SHAXSNING
+    // o'zi: ya'ni bu ekran ta'rifi bo'yicha egasiniki. Ro'yxatdan
+    // qidirish esa taxminiy — `cards`/`companies` hali yuklanmagan
+    // bo'lishi, kod boshqa registrda kelishi yoki shaxs yangi
+    // qo'shilgan bo'lishi mumkin. Shunday paytda odam O'Z profilida
+    // "mehmon" ko'rinishini olardi: post va story'ni o'chirish
+    // tugmasi yo'qolib, o'rniga shikoyat menyusi chiqardi — egasi
+    // aynan shuni xabar qildi.
+    final isOwner = widget.identity != null ||
+        (_isBusiness ? state.ownsCompany(code) : state.ownsRecord(code));
 
     if (_loading && _record == null && _company == null) {
       return _Frame(code: code, child: const _ProfileSkeleton());
@@ -400,7 +411,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? () => push(
                             context,
                             (_) => StoryViewerScreen(
-                                code: code, isCompany: _isBusiness),
+                                code: code,
+                                isCompany: _isBusiness,
+                                // Egalik SHU YERDA aniq ma'lum —
+                                // taxminga qoldirilmaydi.
+                                owned: isOwner),
                           )
                       : (isOwner ? () => _compose(code, ComposeKind.story) : null),
                   onFollow: _toggleFollow,
@@ -1164,9 +1179,9 @@ class _GalleryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Katak 104px — ikki barobari kifoya, undan ortig'ini
-    // dekodlash xotirani behuda yeydi.
-    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Katak 104px — `NetImage` uni qurilma zichligiga o'zi
+    // ko'paytiradi, shuning uchun bu yerda mantiqiy o'lcham
+    // beriladi.
     return SizedBox(
       height: 104,
       child: ListView.separated(
@@ -1182,7 +1197,7 @@ class _GalleryStrip extends StatelessWidget {
           child: SizedBox(
             width: 104,
             child: NetImage(images[i],
-                radius: R.tile, cacheWidth: (104 * dpr).round()),
+                radius: R.tile, cacheWidth: 104),
           ),
         ),
       ),

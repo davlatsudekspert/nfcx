@@ -429,4 +429,38 @@ check('unrelated path -> module returns null (404)', (await call('/api/account-n
   await env.DB.prepare(`UPDATE users SET is_premium = 0 WHERE id = 1`).run();
 }
 
+// ── HISOBNI O'CHIRISH — FOYDALANUVCHINING O'ZI ────────────────────────
+//
+// Google Play hisob yaratishga ruxsat beradigan ilovadan hisobni
+// o'chirish yo'lini ILOVA ICHIDA talab qiladi. Bunday yo'l umuman
+// yo'q edi — ya'ni ilovani do'konga qo'yib bo'lmasdi.
+{
+  const anon = await call('/api/account', { method: 'DELETE' });
+  check('hisobni o‘chirish: kirmagan odamga 401', anon.status, 401);
+
+  const before = await env.DB.prepare(`SELECT deleted_at FROM users WHERE id = 2`).first();
+  checkTrue('boshida o‘chirilmagan', !before?.deleted_at);
+
+  const res = await call('/api/account', { method: 'DELETE', cookie: cookie.other });
+  check('o‘chirildi', [res.status, res.body?.ok], [200, true]);
+
+  const after = await env.DB.prepare(`SELECT deleted_at FROM users WHERE id = 2`).first();
+  checkTrue('deleted_at qo‘yildi', !!after?.deleted_at);
+
+  // Sessiya darhol yopiladi: boshqa qurilmadagi ilova o'chirilgan
+  // hisob bilan ishlashda davom etmasin.
+  const sess = await env.DB.prepare(`SELECT COUNT(*) AS n FROM sessions WHERE user_id = 2`).first();
+  check('sessiyalari yopildi', Number(sess?.n || 0), 0);
+
+  // Qator ataylab qoladi — to'lov va buyurtma tarixi shu id ga
+  // bog'langan.
+  const row = await env.DB.prepare(`SELECT id FROM users WHERE id = 2`).first();
+  checkTrue('foydalanuvchi qatori qoldi (hisobot uchun)', !!row);
+
+  // Kartasi ham qoladi, lekin ommaga ko'rinmaydi — buni
+  // test-deleted-user-content.mjs to'liq tekshiradi.
+  const card = await env.DB.prepare(`SELECT code FROM cards WHERE code = 'OTH222'`).first();
+  checkTrue('kartasi bazada qoldi', !!card);
+}
+
 done();

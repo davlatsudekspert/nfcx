@@ -571,6 +571,35 @@ export async function handle(request, env, url, H) {
     }
   }
 
+  // ---------- HISOBNI O'CHIRISH — FOYDALANUVCHINING O'ZI ----------
+  //
+  // NIMA UCHUN SHART: Google Play "User Data" siyosati hisob
+  // yaratishga ruxsat beradigan ilovadan hisobni O'CHIRISH YO'LINI
+  // ILOVA ICHIDA talab qiladi. Bu yo'l bo'lmasa ilova do'konga
+  // qo'yilmaydi. Ilovada ham, saytda ham bunday yo'l umuman yo'q edi.
+  //
+  // YUMSHOQ O'CHIRISH, ADMINDAGI BILAN BIR XIL: `deleted_at`
+  // qo'yiladi va sessiyalar yopiladi. Qator ataylab qoladi —
+  // buyurtma va to'lov tarixi (Payme/Click yozuvlari) shu `id` ga
+  // bog'langan va ularni yo'qotish moliyaviy hisobotni buzardi.
+  //
+  // Odam uchun natija esa TO'LIQ: hisobga kira olmaydi, profillari
+  // va butun kontenti saytdan ham, ilovadan ham darhol yo'qoladi
+  // (izohi `hosting/worker.js` dagi `ownerAliveSql` tepasida).
+  if (path === '/api/account' && method === 'DELETE') {
+    const user = await H.getCurrentUser(request, env);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    const now = H.nowTs();
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE users SET deleted_at = COALESCE(deleted_at, ?) WHERE id = ?`)
+        .bind(now, user.id),
+      // Sessiyalar darhol yopiladi: boshqa qurilmada ochiq qolgan
+      // ilova o'chirilgan hisob bilan ishlashda davom etmasin.
+      env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id),
+    ]);
+    return H.json({ ok: true });
+  }
+
   // Foydalanuvchi O'Z NFC ID'sini butunlay o'chiradi (server/db.js deleteOwnCard).
   const deleteMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)$/);
   if (deleteMatch && method === 'DELETE') {

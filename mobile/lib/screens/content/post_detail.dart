@@ -52,7 +52,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               //
               // Uzoq bosish qoldirildi (tez yo'l), lekin endi
               // ko'rinadigan tugma ham bor.
-              trailing: _isOwner(context, p)
+              // EGA BO'LSA — O'CHIRISH, aks holda "⋯".
+              //
+              // Ikki manba ataylab: `canDelete` — postni OCHGAN
+              // ekranning bilgani (o'z profilidagi to'rdan ochilgan),
+              // `_isOwner` — ma'lumotdan chiqarilgani (lentadan
+              // ochilgan bo'lishi mumkin). Ilgari faqat `_isOwner`
+              // tekshirilardi va server post javobida profil kodini
+              // yubormagani uchun u DOIM "yo'q" derdi: odam o'z
+              // postini ochsa ham shikoyat menyusini ko'rardi.
+              trailing: (widget.canDelete || _isOwner(context, p))
                   ? (widget.canDelete
                       ? Press(
                           onTap: () => Navigator.of(context).pop(true),

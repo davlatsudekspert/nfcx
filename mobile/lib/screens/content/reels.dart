@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart' show RefreshIndicator;
 import 'package:flutter/widgets.dart';
 
@@ -15,6 +17,7 @@ import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../identity/profile_screen.dart';
+import '../shell.dart';
 
 /// REELS — butun platformadagi post va istoryalar bitta oqimda.
 ///
@@ -140,7 +143,41 @@ class _ReelsScreenState extends State<ReelsScreen> {
   @override
   Widget build(BuildContext context) => ColoredBox(
         color: C.backdrop,
-        child: AsyncView<List<FeedEntry>>(
+        child: Stack(
+          children: [
+            Positioned.fill(child: _feed(context)),
+            // QAYTISH TUGMASI.
+            //
+            // Reels — ILDIZ ekran: uning ustida `Navigator` da hech
+            // narsa yo'q, ya'ni "orqaga" qiladigan joyi yo'q va
+            // odam tik oqim ichida qamalib qolgandek his qilardi.
+            // Egasi shuni so'radi. Tugma Android'ning orqaga
+            // tugmasi bilan BIR XIL ishni bajaradi — bosh sahifaga
+            // qaytaradi.
+            //
+            // Tarkib ustida turgani uchun ORQASIDA quyuq doira
+            // bor: och rangli kadrda oq strelka yo'qolib ketardi.
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + S.x8,
+              left: S.x8,
+              child: Press(
+                haptic: true,
+                onTap: () => ShellScope.maybeOf(context)?.goHome(),
+                child: Container(
+                  padding: const EdgeInsets.all(S.x12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: C.backdrop.withValues(alpha: .45),
+                  ),
+                  child: NIcon(Ico.chevronLeft, size: 22, color: C.offWhite),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _feed(BuildContext context) => AsyncView<List<FeedEntry>>(
           loading: _loading,
           error: _error,
           data: _items,
@@ -183,7 +220,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
               ),
             );
           },
-        ),
       );
 }
 
@@ -205,24 +241,36 @@ class _Slide extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // VIDEO bo'lsa video, aks holda rasm. Lentada ikkalasi ham
-        // uchraydi va video yozuvda `imageUrl` bo'sh bo'ladi — shu
-        // sababli oldin video kadrlar QORA ko'rinardi.
+        // RASM TO'LIQ KO'RINADI, QIRQILMAYDI.
         //
-        // `cacheWidth` — ekran kengligi: undan kattaroq dekodlash
-        // xotirani behuda yeydi va tik oqimda bu darhol sezilardi.
+        // Ilgari bu yerda `BoxFit.cover` turardi: kadr tik (9:19),
+        // lentadagi rasmlarning ko'pi esa yotiq yoki kvadrat.
+        // `cover` ularni ekranga sig'dirish uchun KATTALASHTIRIB,
+        // chetini qirqib tashlardi — egasi shuni xabar qildi:
+        // "reelsda rasmlar katta bo'lib ketyapti". Afishaning yozuvi
+        // ham, mahsulotning o'zi ham kadrdan chiqib ketardi.
+        //
+        // Endi `contain`: rasm butunligicha ko'rinadi. Yon tomonda
+        // qoladigan bo'shliqni esa O'SHA rasmning qoraytirilgan va
+        // xiralashtirilgan nusxasi to'ldiradi — qora chiziq
+        // qolmaydi va ko'z rasmning o'zida qoladi.
+        _Backdrop(url: entry.imageUrl, active: active, size: size, dpr: dpr),
         if ((entry.videoUrl ?? '').isNotEmpty)
           VideoView(
             url: entry.videoUrl!,
             poster: entry.imageUrl,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             active: active,
           )
         else
           NetImage(
             entry.imageUrl,
             radius: 0,
-            cacheWidth: (size.width * dpr).round(),
+            fit: BoxFit.contain,
+            // `cacheWidth` — ekran kengligi: undan kattaroq
+            // dekodlash xotirani behuda yeydi va tik oqimda bu
+            // darhol sezilardi.
+            cacheWidth: size.width.round(),
             slotLabel: '',
           ),
 
@@ -283,6 +331,59 @@ class _Slide extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// ORQA FON — o'sha rasmning qoraytirilgan nusxasi.
+///
+/// NIMA UCHUN XIRALIK FAQAT FAOL KADRDA: `PageView` qo'shni
+/// kadrlarni oldindan quradi, ya'ni bir vaqtda uchta fon bo'ladi.
+/// Xiralik (`ImageFilter.blur`) — GPU uchun eng qimmat amallardan
+/// biri va uchtasi birga arzon telefonda oqimni sekinlashtirardi.
+/// Ko'rinmayotgan kadrga esa u umuman kerak emas.
+class _Backdrop extends StatelessWidget {
+  const _Backdrop({
+    required this.url,
+    required this.active,
+    required this.size,
+    required this.dpr,
+  });
+
+  final String? url;
+  final bool active;
+  final Size size;
+  final double dpr;
+
+  @override
+  Widget build(BuildContext context) {
+    final u = url ?? '';
+    if (u.trim().isEmpty) return ColoredBox(color: C.backdrop);
+    // Fon xira — ya'ni katta o'lchamda dekodlashning ma'nosi yo'q.
+    // Ekran kengligining chorakda biri yetarli va bu xotirani
+    // to'rt baravar tejaydi.
+    final image = NetImage(
+      u,
+      radius: 0,
+      fit: BoxFit.cover,
+      cacheWidth: (size.width / 4).round(),
+      slotLabel: '',
+    );
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: C.backdrop),
+        if (active)
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: image,
+          )
+        else
+          image,
+        // Qoraytirish — aks holda fon oldingi rasm bilan raqobat
+        // qilib, ko'zni chalg'itardi.
+        ColoredBox(color: C.backdrop.withValues(alpha: .68)),
       ],
     );
   }
