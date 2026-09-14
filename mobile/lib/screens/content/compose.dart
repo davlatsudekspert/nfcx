@@ -98,15 +98,26 @@ class _ComposeScreenState extends State<ComposeScreen> {
         maxDuration: const Duration(seconds: 60),
       );
       if (file == null) return;
-      final bytes = await file.readAsBytes();
+      // HAJM BAYTLARNI O'QIMASDAN OLDIN tekshiriladi.
+      //
+      // `pickVideo` videoni qayta siqmaydi: telefondagi 4K yozuv
+      // 200 MB bo'lishi mumkin. Uni avval xotiraga o'qib, keyin
+      // "katta" desak, ilova o'qish paytidayoq xotira yetmay
+      // YIQILARDI.
+      final size = await file.length();
       if (!mounted) return;
-      // SERVER CHEGARASI 100 MB. Uni bu yerda ham tekshiramiz:
-      // 100 MB ni mobil internetda yuklab, keyin serverdan rad
-      // javob olish — bir necha daqiqa behuda kutish.
-      if (bytes.length > _maxUploadBytes) {
-        setState(() => _error = tr('Video juda katta (100 MB dan ortiq).'));
+      if (size > _maxVideoBytes) {
+        setState(() => _error = trf(
+              'Video juda katta ({hajm} MB). Chegara — {chegara} MB.',
+              {
+                'hajm': '${(size / 1048576).round()}',
+                'chegara': '${_maxVideoBytes ~/ 1048576}',
+              },
+            ));
         return;
       }
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
       setState(() {
         _bytes = bytes;
         _name = file.name;
@@ -215,8 +226,17 @@ class _ComposeScreenState extends State<ComposeScreen> {
         _ => humanError(e),
       };
 
-  /// `/api/upload-media` chegarasi (`STORY_MEDIA_MAX_BYTES`).
-  static const _maxUploadBytes = 100 * 1024 * 1024;
+  /// VIDEO uchun ilova chegarasi — 50 MB.
+  ///
+  /// Server 100 MB gacha qabul qiladi (`STORY_MEDIA_MAX_BYTES`),
+  /// lekin yuklash OQIM bilan emas: fayl butunlay xotiraga
+  /// o'qiladi va `http` so'rov tanasiga yana bir marta
+  /// ko'chiriladi. 100 MB da bu ikki baravar bo'lib, arzon
+  /// telefonda ilovani yiqitardi. 50 MB — 60 soniyalik istorya
+  /// videosi uchun yetarlidan ortiq.
+  ///
+  /// Chegara oshirilsa, avval yuklash oqimga o'tkazilishi kerak.
+  static const _maxVideoBytes = 50 * 1024 * 1024;
 
   static String _mime(String name) {
     final n = name.toLowerCase();
@@ -328,7 +348,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                 if (_isVideo) ...[
                   const SizedBox(height: S.x8),
                   Text(
-                    tr('Video eng ko‘pi 60 soniya. Tarifga qarab '
+                    tr('Video eng ko‘pi 60 soniya va 50 MB. Tarifga qarab '
                         'cheklangan bo‘lishi mumkin.'),
                     style: T.caption.copyWith(fontSize: 11, color: C.muted),
                   ),
