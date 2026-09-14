@@ -518,13 +518,13 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
         <span>01</span>
         <div>
           <h2>{t('Stories')}</h2>
-          <p>{t('Post kompaniya sahifasida qoladi. Istorya logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')}</p>
+          <p>{t('Post kompaniya sahifasida qoladi. Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.')}</p>
         </div>
       </div>
 
       <div className="cw-sub">
         <div className="cw-sub-head">
-          <b>{t('Istorya')}</b>
+          <b>{t('Stories')}</b>
           <small>{t('{n} tadan {max} tagacha', { n: stories.length, max: 10 })} · {t('24 soat')}</small>
         </div>
         <div className="cw-feed-strip">
@@ -534,11 +534,11 @@ function CompanyFeedPanel({ companyId, name, logoUrl, t }) {
               <button type="button" onClick={() => removeStory(st.id)} aria-label={t('O‘chirish')}>×</button>
             </div>
           ))}
-          {!stories.length && <p className="cw-empty">{t('Hozircha istorya yo‘q.')}</p>}
+          {!stories.length && <p className="cw-empty">{t('Hozircha story yo‘q.')}</p>}
         </div>
         <StoryUploader
-          label={t('Istorya qo‘shish')}
-          onSubmit={async (payload) => { await createCompanyStory(companyId, payload); setNotice(t('Istorya joylandi')); load(); }}
+          label={t('Story qo‘shish')}
+          onSubmit={async (payload) => { await createCompanyStory(companyId, payload); setNotice(t('Story joylandi')); load(); }}
         />
       </div>
 

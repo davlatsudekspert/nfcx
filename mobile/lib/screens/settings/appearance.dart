@@ -82,7 +82,7 @@ class AppearanceScreen extends StatelessWidget {
                     tr('Tanlov darhol butun ilovaga qo‘llanadi va '
                         'qurilmada saqlanadi.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(fontSize: 11),
+                    style: T.caption.copyWith(fontSize: 12.5),
                   ),
                 ],
               ),
@@ -127,7 +127,7 @@ class _ThemeRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   palette.id == 'original' ? tr('Asl') : palette.label,
-                  style: T.cardTitle.copyWith(fontSize: 13.5),
+                  style: T.cardTitle.copyWith(fontSize: 15),
                 ),
               ),
               if (selected) NIcon(Ico.check, size: 16, color: C.champagne),
@@ -192,7 +192,7 @@ class _LocaleRow extends StatelessWidget {
               // Har til O'Z NOMINI o'z tilida ko'rsatadi — aks holda
               // rus tilidagi odam ro'yxatdan o'z tilini topa olmasdi.
               Expanded(
-                child: Text(locale.label, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                child: Text(locale.label, style: T.cardTitle.copyWith(fontSize: 15)),
               ),
               if (selected) NIcon(Ico.check, size: 16, color: C.champagne),
             ],

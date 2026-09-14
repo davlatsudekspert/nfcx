@@ -109,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 email.isEmpty ? '—' : AppUser.mask(email),
-                                style: T.meta.copyWith(fontSize: 11),
+                                style: T.meta.copyWith(fontSize: 12.5),
                               ),
                             ],
                           ),
@@ -154,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: S.x8),
                         Text(
                           tr('Tasdiqlash holati NFCSTORE serverida saqlanadi'),
-                          style: T.caption.copyWith(fontSize: 10.5, color: C.muted),
+                          style: T.caption.copyWith(fontSize: 12, color: C.muted),
                         ),
                       ],
                     ),
@@ -250,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Center(
                     child: Text(
                       'NFCSTORE $appVersion',
-                      style: T.caption.copyWith(fontSize: 11, color: C.muted),
+                      style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
                     ),
                   ),
                   const SizedBox(height: S.x8),
@@ -303,9 +303,9 @@ class _Row extends StatelessWidget {
             children: [
               NIcon(icon, size: 19, color: C.ash),
               const SizedBox(width: S.x12),
-              Expanded(child: Text(label, style: T.cardTitle.copyWith(fontSize: 13.5))),
+              Expanded(child: Text(label, style: T.cardTitle.copyWith(fontSize: 15))),
               if (value != null) ...[
-                Text(value!, style: T.caption.copyWith(fontSize: 11.5)),
+                Text(value!, style: T.caption.copyWith(fontSize: 13)),
                 if (onTap != null) const SizedBox(width: S.x8),
               ],
               // Strelka FAQAT bosiladigan qatorda. Aks holda odam

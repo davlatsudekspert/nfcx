@@ -22,7 +22,7 @@ export default function CompanyPublicPage({ companyId }) {
   const [orderItem, setOrderItem] = useState(null);
   const [stories, setStories] = useState([]);
   const [posts, setPosts] = useState([]);
-  // Istorya va postlar — asosiy ma'lumotdan ALOHIDA so'rov: ular tez
+  // Stories va postlar — asosiy ma'lumotdan ALOHIDA so'rov: ular tez
   // o'zgaradi, profil javobi esa keshlanadi.
   useEffect(() => {
     if (!company?.companyId) return undefined;

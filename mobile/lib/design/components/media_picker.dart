@@ -189,11 +189,11 @@ class _MediaPickFieldState extends State<MediaPickField> {
                   ),
                   if (widget.hint != null) ...[
                     const SizedBox(height: 6),
-                    Text(widget.hint!, style: T.caption.copyWith(fontSize: 11)),
+                    Text(widget.hint!, style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 6),
-                    Text(_error!, style: T.caption.copyWith(fontSize: 11, color: C.signal)),
+                    Text(_error!, style: T.caption.copyWith(fontSize: 12.5, color: C.signal)),
                   ],
                 ],
               ),

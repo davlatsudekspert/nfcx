@@ -175,7 +175,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       Eyebrow(tr('Kashf qilish')),
                       const SizedBox(height: 3),
                       Text(tr('Odamlar, bizneslar, mahsulotlar'),
-                          style: T.caption.copyWith(fontSize: 11.5)),
+                          style: T.caption.copyWith(fontSize: 13)),
                     ],
                   ),
                 ),
@@ -393,7 +393,7 @@ class _SearchBarState extends State<_SearchBar> {
                 textInputAction: TextInputAction.search,
                 cursorColor: C.champagne,
                 cursorWidth: 1.6,
-                style: T.cardTitle.copyWith(fontWeight: FontWeight.w500, fontSize: 14.5),
+                style: T.cardTitle.copyWith(fontWeight: FontWeight.w500, fontSize: 16),
                 decoration: InputDecoration(
                   isDense: true,
                   border: InputBorder.none,
@@ -402,7 +402,7 @@ class _SearchBarState extends State<_SearchBar> {
                   contentPadding: EdgeInsets.zero,
                   hintText: tr('ID, ism, biznes yoki mahsulot'),
                   hintStyle: T.cardTitle.copyWith(
-                    fontWeight: FontWeight.w400, fontSize: 14.5, color: C.muted,
+                    fontWeight: FontWeight.w400, fontSize: 16, color: C.muted,
                   ),
                 ),
               ),
@@ -517,16 +517,16 @@ class _RecordRow extends StatelessWidget {
                             ].join(' · '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: T.caption.copyWith(fontSize: 11),
+                      style: T.caption.copyWith(fontSize: 12.5),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: S.x8),
               if (freeId)
-                Text(som(record.price), style: T.price.copyWith(fontSize: 11.5))
+                Text(som(record.price), style: T.price.copyWith(fontSize: 13))
               else
-                Text(record.code, style: T.code.copyWith(fontSize: 10.5, color: C.muted)),
+                Text(record.code, style: T.code.copyWith(fontSize: 12, color: C.muted)),
             ],
           ),
         ),
@@ -559,7 +559,7 @@ class _CompanyRow extends StatelessWidget {
                         tr('Biznes'),
                         if (company.city.isNotEmpty) company.city,
                       ].join(' · '),
-                      style: T.caption.copyWith(fontSize: 11),
+                      style: T.caption.copyWith(fontSize: 12.5),
                     ),
                   ],
                 ),
@@ -600,7 +600,7 @@ class _FreeIdCard extends StatelessWidget {
                 children: [
                   Eyebrow(TierStyle.of(record.tier).label),
                   const SizedBox(height: 2),
-                  Text('${som(record.price)} so‘m', style: T.price.copyWith(fontSize: 11)),
+                  Text('${som(record.price)} so‘m', style: T.price.copyWith(fontSize: 12.5)),
                 ],
               ),
             ],
@@ -660,7 +660,7 @@ class _CompanyCard extends StatelessWidget {
                         company.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: T.cardTitle.copyWith(fontSize: 13),
+                        style: T.cardTitle.copyWith(fontSize: 14.5),
                       ),
                     ),
                     if (company.verified) ...[
@@ -677,7 +677,7 @@ class _CompanyCard extends StatelessWidget {
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: T.caption.copyWith(fontSize: 11),
+                  style: T.caption.copyWith(fontSize: 12.5),
                 ),
               ],
             ),

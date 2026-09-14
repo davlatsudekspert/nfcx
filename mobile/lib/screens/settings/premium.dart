@@ -123,7 +123,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       tr('To‘lov Payme orqali. Narx to‘lov ekranida '
                           'ko‘rsatiladi.'),
                       textAlign: TextAlign.center,
-                      style: T.caption.copyWith(fontSize: 11),
+                      style: T.caption.copyWith(fontSize: 12.5),
                     ),
                   ],
                 ],
@@ -243,9 +243,9 @@ class _Feature extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                Text(title, style: T.cardTitle.copyWith(fontSize: 15)),
                 const SizedBox(height: 2),
-                Text(hint, style: T.caption.copyWith(fontSize: 11.5)),
+                Text(hint, style: T.caption.copyWith(fontSize: 13)),
               ],
             ),
           ),

@@ -257,14 +257,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(widget.record.code, style: T.code.copyWith(fontSize: 15)),
+                              Text(widget.record.code, style: T.code.copyWith(fontSize: 16.5)),
                               const SizedBox(height: 3),
                               Text('${TierStyle.of(widget.record.tier).label} · NFC ID',
                                   style: T.caption),
                             ],
                           ),
                         ),
-                        Text(som(price), style: T.price.copyWith(fontSize: 14)),
+                        Text(som(price), style: T.price.copyWith(fontSize: 15.5)),
                       ],
                     ),
                     const Padding(
@@ -275,7 +275,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       children: [
                         Text(tr('Jami'), style: T.cardTitle),
                         const Spacer(),
-                        Text('${som(price)} so‘m', style: T.price.copyWith(fontSize: 16)),
+                        Text('${som(price)} so‘m', style: T.price.copyWith(fontSize: 17.5)),
                       ],
                     ),
                   ],
@@ -337,7 +337,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               const SizedBox(height: 7),
               Text(
                 trf('To‘lov {tizim} tomonidan himoyalangan', {'tizim': 'Payme'}),
-                style: T.caption.copyWith(fontSize: 11, color: C.muted),
+                style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
               ),
             ],
           ),
@@ -508,7 +508,7 @@ class _MethodTile extends StatelessWidget {
                   children: [
                     Text(name, style: T.cardTitle),
                     const SizedBox(height: 2),
-                    Text(note, style: T.caption.copyWith(fontSize: 11)),
+                    Text(note, style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),

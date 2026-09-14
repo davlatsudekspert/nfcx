@@ -140,7 +140,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _progress.stop();
     final sure = await showSheet<bool>(
       context,
-      title: tr('Istoryani o‘chirish'),
+      title: tr('Storyni o‘chirish'),
       subtitle: tr('Bu amalni qaytarib bo‘lmaydi.'),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
@@ -414,7 +414,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                         Expanded(
                           child: Text(
                             story.authorName.isEmpty ? widget.code : story.authorName,
-                            style: T.cardTitle.copyWith(fontSize: 13),
+                            style: T.cardTitle.copyWith(fontSize: 14.5),
                           ),
                         ),
                         if (_isOwner)

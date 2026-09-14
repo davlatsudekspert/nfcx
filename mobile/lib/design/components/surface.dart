@@ -104,7 +104,7 @@ class Chip extends StatelessWidget {
           child: Text(
             label,
             style: T.caption.copyWith(
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               color: active ? C.ink : C.ash,
             ),

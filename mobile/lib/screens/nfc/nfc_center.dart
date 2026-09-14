@@ -295,7 +295,7 @@ class _Actions extends StatelessWidget {
                         NIcon(items[i].icon, size: 21, color: C.platinum),
                         const SizedBox(height: 7),
                         Text(items[i].label,
-                            style: T.caption.copyWith(fontSize: 10.5, color: C.ash)),
+                            style: T.caption.copyWith(fontSize: 12, color: C.ash)),
                       ],
                     ),
                   ),
@@ -380,7 +380,7 @@ class _NfcRow extends StatelessWidget {
                     Text(sub,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: T.caption.copyWith(fontSize: 11)),
+                        style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),
@@ -419,14 +419,14 @@ class _OwnedRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(record.code, style: T.code.copyWith(fontSize: 13.5)),
+                    Text(record.code, style: T.code.copyWith(fontSize: 15)),
                     const SizedBox(height: 2),
                     Text(
                       '${TierStyle.of(record.tier).label} · '
                       '${record.name.isEmpty ? (record.isBusiness ? 'Biznes' : 'Shaxsiy') : record.name}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: T.caption.copyWith(fontSize: 11),
+                      style: T.caption.copyWith(fontSize: 12.5),
                     ),
                   ],
                 ),

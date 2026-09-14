@@ -199,7 +199,7 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
                   ] else if (_lookupNote != null) ...[
                     const SizedBox(height: S.x12),
                     Text(_lookupNote!,
-                        style: T.caption.copyWith(fontSize: 11.5, color: C.signal)),
+                        style: T.caption.copyWith(fontSize: 13, color: C.signal)),
                   ] else if (_recipient != null) ...[
                     const SizedBox(height: S.x12),
                     Surface(
@@ -221,7 +221,7 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
                                     _recipient!.code,
                                     if (_recipient!.city.isNotEmpty) _recipient!.city,
                                   ].join(' · '),
-                                  style: T.caption.copyWith(fontSize: 11),
+                                  style: T.caption.copyWith(fontSize: 12.5),
                                 ),
                               ],
                             ),

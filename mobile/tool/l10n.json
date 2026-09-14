@@ -371,7 +371,7 @@
   "В этом профиле ещё нет постов.",
   "This profile has no posts yet."
  ],
- "Bu profilning postlari va istoryalari sizning lentangizda ko‘rinmaydi.": [
+ "Bu profilning postlari va storylari sizning lentangizda ko‘rinmaydi.": [
   "Посты и истории этого профиля не будут показываться в вашей ленте.",
   "This profile’s posts and stories will no longer appear in your feed."
  ],
@@ -679,7 +679,7 @@
   "У вас пока нет заказов.",
   "You have no orders yet."
  ],
- "Hali hech kim post yoki istorya joylamagan. Birinchi bo‘ling.": [
+ "Hali hech kim post yoki story joylamagan. Birinchi bo‘ling.": [
   "Пока никто не опубликовал пост или историю. Будьте первым.",
   "Nobody has posted yet. Be the first."
  ],
@@ -870,26 +870,6 @@
  "Ismingizni kiriting.": [
   "Введите ваше имя.",
   "Enter your name."
- ],
- "Istorya": [
-  "История",
-  "Story"
- ],
- "Istorya 24 soatdan keyin o‘zi o‘chadi.": [
-  "История исчезнет сама через 24 часа.",
-  "The story disappears on its own after 24 hours."
- ],
- "Istorya yuqoriroq tarifda ochiladi.": [
-  "Истории доступны на более высоком тарифе.",
-  "Stories unlock on a higher tier."
- ],
- "Istoryani joylash": [
-  "Опубликовать историю",
-  "Post story"
- ],
- "Istoryani o‘chirish": [
-  "Удалить историю",
-  "Delete story"
  ],
  "Ixtiyoriy": [
   "Необязательно",
@@ -1967,6 +1947,10 @@
   "Статистика и аналитика",
   "Statistics and insights"
  ],
+ "Stories": [
+  "История",
+  "Story"
+ ],
  "Story 24 soat turadi va keyin o‘zi o‘chadi.": [
   "История живёт 24 часа и затем исчезает.",
   "A story lasts 24 hours, then disappears."
@@ -1974,6 +1958,14 @@
  "Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.": [
   "История живёт 24 часа. Сейчас здесь ничего нет.",
   "A story lasts 24 hours. There is nothing here right now."
+ ],
+ "Story 24 soatdan keyin o‘zi o‘chadi.": [
+  "История исчезнет сама через 24 часа.",
+  "The story disappears on its own after 24 hours."
+ ],
+ "Story joylash": [
+  "Опубликовать историю",
+  "Post story"
  ],
  "Story qo‘shish": [
   "Добавить историю",
@@ -1986,6 +1978,14 @@
  "Story yo‘q": [
   "Нет историй",
   "No stories"
+ ],
+ "Story yuqoriroq tarifda ochiladi.": [
+  "Истории доступны на более высоком тарифе.",
+  "Stories unlock on a higher tier."
+ ],
+ "Storyni o‘chirish": [
+  "Удалить историю",
+  "Delete story"
  ],
  "Summa": [
   "Сумма",
@@ -2347,10 +2347,6 @@
   "Новых заказов нет.",
   "No new orders."
  ],
- "Yangi istorya": [
-  "Новая история",
-  "New story"
- ],
  "Yangi kod": [
   "Новый код",
   "New code"
@@ -2386,6 +2382,10 @@
  "Yangi post": [
   "Новый пост",
   "New post"
+ ],
+ "Yangi story": [
+  "Новая история",
+  "New story"
  ],
  "Yetkazish manzili": [
   "Адрес доставки",

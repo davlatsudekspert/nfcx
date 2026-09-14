@@ -373,7 +373,7 @@ class _EditBusinessScreenState extends State<EditBusinessScreen> {
                   Text(
                     tr('Musiqa va o‘z domeni saytdan sozlanadi.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(fontSize: 11),
+                    style: T.caption.copyWith(fontSize: 12.5),
                   ),
                 ],
               ),
@@ -429,9 +429,9 @@ class _Link extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                    Text(label, style: T.cardTitle.copyWith(fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text(hint, style: T.caption.copyWith(fontSize: 11)),
+                    Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),
@@ -468,9 +468,9 @@ class _Toggle extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: T.cardTitle.copyWith(fontSize: 13.5)),
+                    Text(label, style: T.cardTitle.copyWith(fontSize: 15)),
                     const SizedBox(height: 3),
-                    Text(hint, style: T.caption.copyWith(fontSize: 11)),
+                    Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),

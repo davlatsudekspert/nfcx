@@ -191,7 +191,7 @@ class _OfferCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(offer.code, style: T.code.copyWith(fontSize: 15)),
+                      Text(offer.code, style: T.code.copyWith(fontSize: 16.5)),
                       const SizedBox(height: 3),
                       Text(
                         offer.email.isEmpty
@@ -201,7 +201,7 @@ class _OfferCard extends StatelessWidget {
                                 : '${offer.email} uchun'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: T.caption.copyWith(fontSize: 11.5),
+                        style: T.caption.copyWith(fontSize: 13),
                       ),
                     ],
                   ),
@@ -229,7 +229,7 @@ class _OfferCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       tr('Tasdiqlash kutilmoqda.'),
-                      style: T.caption.copyWith(fontSize: 11.5),
+                      style: T.caption.copyWith(fontSize: 13),
                     ),
                   ),
                   SizedBox(

@@ -12,7 +12,7 @@ import { fmt } from '../lib/format.js';
 //
 // Bosilganda to'lov bo'limiga olib boradi — to'lov oqimining O'ZIGA
 // TEGILMAYDI (mavjud Payme oqimi, PremiumPanel ichida).
-const PERKS = ['Profil musiqasi', 'Animatsion fon', 'Istorya va post', 'Maxsus ranglar', 'Video'];
+const PERKS = ['Profil musiqasi', 'Animatsion fon', 'Stories va post', 'Maxsus ranglar', 'Video'];
 
 export default function PremiumPreviewCard({ user }) {
   const { t } = useLanguage();

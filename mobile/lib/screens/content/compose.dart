@@ -216,7 +216,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
   /// umumiy yozuv esa hech narsa aytmaydi.
   String _composeError(ApiError e) => switch (e.key) {
         'feature_locked' => _isStory
-            ? tr('Istorya yuqoriroq tarifda ochiladi.')
+            ? tr('Story yuqoriroq tarifda ochiladi.')
             : tr('Post yuqoriroq tarifda ochiladi.'),
         'limit_reached' => tr('Post chegarasiga yetdingiz.'),
         // Biznesda bepul tarifda post va istorya yopiq.
@@ -261,7 +261,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          TopBar(title: _isStory ? tr('Yangi istorya') : tr('Yangi post')),
+          TopBar(title: _isStory ? tr('Yangi story') : tr('Yangi post')),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
@@ -353,7 +353,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   Text(
                     tr('Video eng ko‘pi 60 soniya va 50 MB. Tarifga qarab '
                         'cheklangan bo‘lishi mumkin.'),
-                    style: T.caption.copyWith(fontSize: 11, color: C.muted),
+                    style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
                   ),
                 ],
                 const SizedBox(height: S.x20),
@@ -374,13 +374,13 @@ class _ComposeScreenState extends State<ComposeScreen> {
                 ],
                 const SizedBox(height: S.x20),
                 PrimaryButton(
-                  _isStory ? tr('Istoryani joylash') : tr('Postni joylash'),
+                  _isStory ? tr('Story joylash') : tr('Postni joylash'),
                   loading: _busy,
                   onTap: _busy ? null : _submit,
                 ),
                 if (_isStory) ...[
                   const SizedBox(height: S.x12),
-                  Text(tr('Istorya 24 soatdan keyin o‘zi o‘chadi.'),
+                  Text(tr('Story 24 soatdan keyin o‘zi o‘chadi.'),
                       textAlign: TextAlign.center, style: T.caption),
                 ],
               ],

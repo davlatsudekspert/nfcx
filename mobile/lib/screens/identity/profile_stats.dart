@@ -178,7 +178,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
               // bir-biriga zid ko'rinadi.
               Text(
                 tr('Bir odam bir necha marta kirsa ham bitta hisoblanadi'),
-                style: T.caption.copyWith(fontSize: 11, color: C.muted),
+                style: T.caption.copyWith(fontSize: 12.5, color: C.muted),
               ),
             ],
           ),

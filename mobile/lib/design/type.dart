@@ -38,7 +38,7 @@ class T {
     letterSpacing: -0.87, color: C.offWhite,
   );
   static const screenSub = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w500, fontSize: 12, color: C.ash,
+    fontFamily: _sans, fontWeight: FontWeight.w500, fontSize: 13.5, color: C.ash,
   );
   /// PROFIL NOMI — serif, katta, harflar orasi OCHIQ.
   ///
@@ -65,31 +65,31 @@ class T {
   /// Saytda aynan shu ishlov raqamlarni "ma'lumot" dan "ko'rsatkich"
   /// ga aylantiradi.
   static const statLabel = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 9.5, height: 1.2,
+    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 11, height: 1.2,
     letterSpacing: 1.5, color: C.muted,
   );
   static const section = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 16, height: 1,
+    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 17.5, height: 1,
     color: C.offWhite,
   );
   static const cardTitle = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 14, height: 1.25,
+    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 15.5, height: 1.25,
     color: C.offWhite,
   );
   static const body = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w400, fontSize: 13.5, height: 1.62,
+    fontFamily: _sans, fontWeight: FontWeight.w400, fontSize: 15, height: 1.62,
     color: C.ash,
   );
   static const caption = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w400, fontSize: 11.5, height: 1.45,
+    fontFamily: _sans, fontWeight: FontWeight.w400, fontSize: 13, height: 1.45,
     color: C.ash,
   );
   static const button = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 15, height: 1,
+    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 16.5, height: 1,
     letterSpacing: -0.1,
   );
   static const navLabel = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w600, fontSize: 9.5, height: 1,
+    fontFamily: _sans, fontWeight: FontWeight.w600, fontSize: 11, height: 1,
   );
 
   // ── IBM Plex Mono ──────────────────────────────────────────────────
@@ -98,22 +98,22 @@ class T {
   /// rangi ish vaqtida o'zgaradi. Ularni ishlatadigan widget ham
   /// `const` bo'lmaydi va mavzu almashganda qayta quriladi.
   static TextStyle get eyebrow => TextStyle(
-        fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 10,
+        fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 11.5,
         letterSpacing: 1.6, color: C.antiqueGold,
       );
   static const meta = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 11.5, color: C.ash,
+    fontFamily: _mono, fontWeight: FontWeight.w500, fontSize: 13, color: C.ash,
   );
   static TextStyle get price => TextStyle(
-        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 12.5,
+        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 14,
         color: C.champagne,
       );
   static TextStyle get code => TextStyle(
-        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 12,
+        fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 13.5,
         letterSpacing: 0.6, color: C.champagne,
       );
   static const statusLabel = TextStyle(
-    fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 9.5,
+    fontFamily: _mono, fontWeight: FontWeight.w600, fontSize: 11,
     letterSpacing: 0.76,
   );
 }

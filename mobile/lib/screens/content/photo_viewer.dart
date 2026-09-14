@@ -67,7 +67,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             ),
             if (total > 1) ...[
               const SizedBox(height: S.x8),
-              Text(tr('Chapga suring'), style: T.caption.copyWith(fontSize: 11)),
+              Text(tr('Chapga suring'), style: T.caption.copyWith(fontSize: 12.5)),
               const SizedBox(height: S.x16),
             ],
           ],

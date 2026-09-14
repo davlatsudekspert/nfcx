@@ -62,12 +62,52 @@ const schema = readFileSync(new URL('../db/d1-migration/0001-schema.sql', import
   check('eski xato da\'vo olib tashlangan', /qo'lda tozalanadi; qolganlari CASCADE/.test(auth), false);
 }
 
-// ═══ 4. Egasi o'z kartasini o'chirgan yo'l ham to'liq tozalaydi ═══
+// ═══ 4. Egasi o'z kartasini o'chirgan yo'l ham yordamchini chaqiradi ═══
+//
+// Ilgari bu yo'lda jadvallarning QO'LDA YOZILGAN nusxasi turardi va
+// test o'sha nusxani tekshirardi. Ikki ro'yxat vaqt o'tib
+// bir-biridan uzoqlashdi — istoryalar aynan shu yerda tushib qoldi.
+// Endi manba bitta, test ham shuni talab qiladi.
 {
   const account = readFileSync(new URL('../hosting/api/account.js', import.meta.url), 'utf8');
   const del = account.slice(account.indexOf('deleteOwnCard'), account.indexOf('GIFT NFC ID'));
-  const missing = CARD_CONTENT_TABLES.filter((t) => !new RegExp(`DELETE FROM ${t} WHERE code`).test(del));
-  check('egasi o\'chirgan yo\'lda ham hamma jadval tozalanadi', missing, []);
+  checkTrue('egasi o\'chirgan yo\'l tozalash yordamchisini chaqiradi',
+    /cardContentCleanupStmts\(/.test(del));
+  checkTrue('jadvallar ro\'yxati bu yerda TAKRORLANMAYDI',
+    !/DELETE FROM posts WHERE code/.test(del));
+}
+
+// ═══ 5. `code` EMAS, `owner_id` orqali bog'langan jadvallar ═══
+//
+// NIMA UCHUN ALOHIDA BAND: yuqoridagi 2-band sxemadan "code ustuni
+// bor" jadvallarni topadi. `stories` esa kartaga `owner_id` orqali
+// bog'langan va shu sababli ro'yxatga HECH QACHON tushmagan —
+// profil o'chirilgach istoryalar bazada qolib ketardi.
+//
+// 8 xonali kodlar qayta sotuvga chiqadi, ya'ni qolib ketgan istorya
+// keyinchalik BEGONA odamning profilida paydo bo'ladi. Egasi buni
+// o'z telefonida ko'rgan: profil o'chirilgan, istorya Reels'da
+// turibdi.
+{
+  const cleanup = readFileSync(new URL('../hosting/api/card-cleanup.js', import.meta.url), 'utf8');
+  const OWNER_ID_TABLES = [
+    ['stories', 'istoryalar'],
+    ['story_likes', 'istorya layklari'],
+    ['story_views', 'istorya ko\u2018rishlari'],
+  ];
+  const missing = OWNER_ID_TABLES
+    .filter(([t]) => !new RegExp(`DELETE FROM ${t} WHERE`).test(cleanup))
+    .map(([t]) => t);
+  check('`owner_id` orqali bog\'langan jadvallar ham tozalanadi', missing, []);
+
+  // Tartib: layk va ko'rishlar istoryaning O'ZIDAN OLDIN o'chishi
+  // kerak, aks holda ular qaysi istoryaga tegishli ekanini
+  // aniqlab bo'lmay qoladi.
+  const iStories = cleanup.indexOf("DELETE FROM stories WHERE owner_kind");
+  const iLikes = cleanup.indexOf('DELETE FROM story_likes');
+  const iViews = cleanup.indexOf('DELETE FROM story_views');
+  checkTrue('story_likes istoryadan OLDIN o\'chadi', iLikes >= 0 && iLikes < iStories);
+  checkTrue('story_views istoryadan OLDIN o\'chadi', iViews >= 0 && iViews < iStories);
 }
 
 done();

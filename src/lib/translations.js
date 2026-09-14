@@ -847,13 +847,13 @@ const DICT_BASE = {
   'Yoqtirganlar': { ru: 'Понравилось', en: 'Likes' },
   'Yoqtirish': { ru: 'Нравится', en: 'Like' },
   '{name} nomidan yoqtirdingiz': { ru: 'Вы поставили лайк от имени {name}', en: 'You liked as {name}' },
-  'Istorya va post': { ru: 'История и пост', en: 'Story & post' },
+  'Stories va post': { ru: 'История и пост', en: 'Story & post' },
   'Brauzer nusxalashga ruxsat bermadi — raqam ustiga bosib, qo‘lda nusxalang.': { ru: 'Браузер не разрешил копирование — нажмите на номер и скопируйте вручную.', en: 'The browser blocked copying — tap the number and copy it manually.' },
   'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.': { ru: 'Размещаемый контент не должен содержать: религиозную пропаганду или экстремистские материалы, порнографические изображения или материалы сексуального характера, политическую пропаганду, а также любые материалы, противоречащие законодательству Республики Узбекистан. При нарушении этих правил контент удаляется без предупреждения.', en: 'Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning.' },
   'Men qoidalarni o‘qidim va roziman': { ru: 'Я прочитал(а) правила и согласен(на)', en: 'I have read the rules and agree' },
   'Lenta': { ru: 'Лента', en: 'Feed' },
   'Post': { ru: 'Посты', en: 'Posts' },
-  'Hozircha lenta bo‘sh — 24 soatlik istorya shu yerda chiqadi.': { ru: 'Лента пока пуста — здесь появятся истории на 24 часа.', en: 'The feed is empty — 24-hour stories appear here.' },
+  'Hozircha lenta bo‘sh — 24 soatlik story shu yerda chiqadi.': { ru: 'Лента пока пуста — здесь появятся истории на 24 часа.', en: 'The feed is empty — 24-hour stories appear here.' },
   'Sinov: {n} kun qoldi': { ru: 'Пробный период: осталось {n} дн.', en: 'Trial: {n} days left' },
   'Sinov muddati: yana {n} kun barcha imkoniyatlar ochiq. Keyin tarifga qaytadi.': { ru: 'Пробный период: ещё {n} дн. все возможности открыты. Затем — по тарифу.', en: 'Trial: all features stay open for {n} more days, then tier limits apply.' },
   'Premium faol. Muddati: {d} ({n} kun qoldi).': { ru: 'Premium активен. До {d} ({n} дн.).', en: 'Premium active until {d} ({n} days left).' },
@@ -865,7 +865,7 @@ const DICT_BASE = {
   'Premium olish': { ru: 'Получить Premium', en: 'Get Premium' },
   'Boshqarish': { ru: 'Управление', en: 'Manage' },
   'Animatsion fon': { ru: 'Анимированный фон', en: 'Animated background' },
-  'Istorya va post': { ru: 'История и посты', en: 'Stories & posts' },
+  'Stories va post': { ru: 'История и посты', en: 'Stories & posts' },
   'Saqlashda xatolik yuz berdi.': { ru: 'Произошла ошибка при сохранении.', en: 'An error occurred while saving.' },
   'Asosiy profil sifatida belgilandi.': { ru: 'Отмечено как основной профиль.', en: 'Marked as the primary profile.' },
   'Adminga murojaat': { ru: 'Обращение к администратору', en: 'Contact admin' },
@@ -2755,14 +2755,14 @@ const DICT_HOME = {
     ru: 'В QR-коде записан только номер карты — это не платёжная ссылка.',
     en: 'The QR code holds only the card number — it is not a payment link.' },
   'Kontaktni saqlash': { ru: 'Сохранить контакт', en: 'Save contact' },
-  // ── Istorya va postlar (2026-09) ──
-  'Istorya': { ru: 'История', en: 'Story' },
-  'Istorya qo‘shish': { ru: 'Добавить историю', en: 'Add story' },
-  'Istoryani ko‘rish': { ru: 'Смотреть историю', en: 'View story' },
-  'Istorya joylandi': { ru: 'История опубликована', en: 'Story published' },
-  'Istorya joylashtirish': { ru: 'Публикация историй', en: 'Posting stories' },
-  'Hozircha istorya yo‘q.': { ru: 'Пока историй нет.', en: 'No stories yet.' },
-  'Istorya profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.': {
+  // ── Stories va postlar (2026-09) ──
+  'Stories': { ru: 'История', en: 'Story' },
+  'Story qo‘shish': { ru: 'Добавить историю', en: 'Add story' },
+  'Storyni ko‘rish': { ru: 'Смотреть историю', en: 'View story' },
+  'Story joylandi': { ru: 'История опубликована', en: 'Story published' },
+  'Story joylashtirish': { ru: 'Публикация историй', en: 'Posting stories' },
+  'Hozircha story yo‘q.': { ru: 'Пока историй нет.', en: 'No stories yet.' },
+  'Story profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.': {
     ru: 'История появляется кольцом вокруг фото профиля и исчезает через 24 часа. До 10 штук.',
     en: 'A story shows as a ring around your profile photo and disappears after 24 hours. Up to 10.' },
   '24 soat': { ru: '24 часа', en: '24 hours' },
@@ -2773,7 +2773,7 @@ const DICT_HOME = {
   'Post joylandi': { ru: 'Пост опубликован', en: 'Post published' },
   'Post o‘chirilsinmi?': { ru: 'Удалить пост?', en: 'Delete this post?' },
   'Hozircha post yo‘q.': { ru: 'Пока постов нет.', en: 'No posts yet.' },
-  'Post kompaniya sahifasida qoladi. Istorya logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.': {
+  'Post kompaniya sahifasida qoladi. Story logotip atrofida chiqadi va 24 soatdan keyin o‘zi yo‘qoladi.': {
     ru: 'Пост остаётся на странице компании. История появляется вокруг логотипа и исчезает через 24 часа.',
     en: 'A post stays on the company page. A story appears around the logo and disappears after 24 hours.' },
   'Faqat rasm tanlanadi.': { ru: 'Можно выбрать только изображение.', en: 'Only an image can be selected.' },
@@ -2798,7 +2798,7 @@ const DICT_HOME = {
     ru: 'Я прочитал(а) и согласен(на) — беру ответственность на себя',
     en: 'I have read this and agree — I take responsibility' },
   'Davom etish': { ru: 'Продолжить', en: 'Continue' },
-  'Istoryalar': { ru: 'Истории', en: 'Stories' },
+  'Stories': { ru: 'Истории', en: 'Stories' },
   'Profilga qaytish': { ru: 'Вернуться в профиль', en: 'Back to profile' },
   'Faqat rasm yoki video tanlanadi.': { ru: 'Можно выбрать только фото или видео.', en: 'Only a photo or video can be selected.' },
   'Fayl 100 MB dan katta.': { ru: 'Файл больше 100 МБ.', en: 'The file is larger than 100 MB.' },
@@ -2837,7 +2837,7 @@ const DICT_HOME = {
   'Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.': {
     ru: 'Появляется кольцом вокруг фото профиля и исчезает через 24 часа. До 10 штук.',
     en: 'Shows as a ring around your profile photo and disappears after 24 hours. Up to 10.' },
-  'Istorya Gold, Premium va Ekskluziv NFC ID egalari hamda Premium obunachilar uchun.': {
+  'Story Gold, Premium va Ekskluziv NFC ID egalari hamda Premium obunachilar uchun.': {
     ru: 'Истории доступны владельцам NFC ID уровней Gold, Premium и Exclusive, а также подписчикам Premium.',
     en: 'Stories are for Gold, Premium and Exclusive NFC ID owners, and for Premium subscribers.' },
   'Qanday ochiladi?': { ru: 'Как открыть?', en: 'How to unlock?' },

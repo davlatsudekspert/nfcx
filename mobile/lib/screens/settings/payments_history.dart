@@ -189,14 +189,14 @@ class _Row extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(_kindLabel(entry.kind),
-                        style: T.cardTitle.copyWith(fontSize: 13.5)),
+                        style: T.cardTitle.copyWith(fontSize: 15)),
                     const SizedBox(height: 3),
                     Text(
                       [
                         if (entry.code.isNotEmpty) entry.code,
                         if (entry.createdAt.isNotEmpty) _date(entry.createdAt),
                       ].join(' · '),
-                      style: T.caption.copyWith(fontSize: 11.5),
+                      style: T.caption.copyWith(fontSize: 13),
                     ),
                   ],
                 ),
@@ -205,7 +205,7 @@ class _Row extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(som(entry.price), style: T.price.copyWith(fontSize: 13)),
+                  Text(som(entry.price), style: T.price.copyWith(fontSize: 14.5)),
                   const SizedBox(height: 4),
                   Text(
                     _statusLabel(entry.status),
@@ -233,7 +233,7 @@ class _Line extends StatelessWidget {
             Expanded(child: Text(label, style: T.caption)),
             Text(
               value,
-              style: T.cardTitle.copyWith(fontSize: 13, color: color ?? C.offWhite),
+              style: T.cardTitle.copyWith(fontSize: 14.5, color: color ?? C.offWhite),
             ),
           ],
         ),

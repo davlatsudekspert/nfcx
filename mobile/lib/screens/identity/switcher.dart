@@ -177,7 +177,7 @@ class _Row extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: S.x8),
-                        Text(code, style: T.code.copyWith(fontSize: 11, color: C.ash)),
+                        Text(code, style: T.code.copyWith(fontSize: 12.5, color: C.ash)),
                       ],
                     ),
                   ],

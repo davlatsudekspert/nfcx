@@ -203,7 +203,7 @@ class _IdTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text('${som(record.price)} so‘m', style: T.price.copyWith(fontSize: 12.5)),
+                Text('${som(record.price)} so‘m', style: T.price.copyWith(fontSize: 14)),
               ],
             ),
           ],

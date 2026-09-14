@@ -77,17 +77,17 @@ class ProductCard extends StatelessWidget {
           Text(product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: T.cardTitle.copyWith(fontSize: 12.5, height: 1.3)),
+              style: T.cardTitle.copyWith(fontSize: 14, height: 1.3)),
           const SizedBox(height: 3),
           Row(
             children: [
-              Text(som(product.effectivePrice), style: T.price.copyWith(fontSize: 12)),
+              Text(som(product.effectivePrice), style: T.price.copyWith(fontSize: 13.5)),
               if (product.salePrice != null) ...[
                 const SizedBox(width: 6),
                 Text(
                   som(product.price),
                   style: T.meta.copyWith(
-                    fontSize: 11,
+                    fontSize: 12.5,
                     color: C.muted,
                     decoration: TextDecoration.lineThrough,
                     decorationColor: C.muted,

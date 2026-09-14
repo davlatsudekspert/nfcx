@@ -32,7 +32,7 @@ class IdChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(code, style: T.code.copyWith(fontSize: 11.5)),
+            Text(code, style: T.code.copyWith(fontSize: 13)),
             const SizedBox(width: 6),
             const NIcon(Ico.chevronDown, size: 13, color: C.ash),
           ],

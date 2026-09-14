@@ -174,7 +174,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                     children: [
                       Text(tr('Summa'), style: T.caption),
                       const Spacer(),
-                      Text('${som(_order!.price)} so‘m', style: T.price.copyWith(fontSize: 15)),
+                      Text('${som(_order!.price)} so‘m', style: T.price.copyWith(fontSize: 16.5)),
                     ],
                   ),
                 ),
@@ -230,7 +230,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                                 : widget.record.name.toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: T.cardTitle.copyWith(fontSize: 15, letterSpacing: 1.2),
+                            style: T.cardTitle.copyWith(fontSize: 16.5, letterSpacing: 1.2),
                           ),
                           const SizedBox(height: 4),
                           Text(widget.record.code, style: T.nfcId(20)),
@@ -303,7 +303,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                       else
                         Text(
                           total == null ? '—' : '${som(total)} so‘m',
-                          style: T.price.copyWith(fontSize: 16),
+                          style: T.price.copyWith(fontSize: 17.5),
                         ),
                     ],
                   ),

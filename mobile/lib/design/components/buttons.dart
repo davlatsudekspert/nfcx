@@ -140,13 +140,34 @@ class _PrimaryButtonState extends State<PrimaryButton>
             ],
           );
 
+    // TUGMA KENGLIGI — `alignment` SHART.
+    //
+    // Bu yerda avval `Stack` turardi va u O'ZINING eng katta
+    // bolasiga qarab o'lchanardi, ya'ni tugma yozuvning atrofiga
+    // SIQILIB qolardi: "Tasdiqlash" va "Keyingisi" tugmalari
+    // ekranning chap chekkasida kichkina bo'lib chiqdi (egasi
+    // telefonda aynan shuni ko'rdi).
+    //
+    // `Container(alignment: ...)` esa OTASI bergan kenglikni to'liq
+    // egallaydi. Yorug'lik va aks endi `CustomPaint` orqali
+    // BOLANING ORQASIGA chiziladi — shuning uchun ular ham butun
+    // tugma bo'ylab yotadi, faqat yozuv atrofida emas.
+    final face = CustomPaint(
+      painter: _FacePainter(_sweep?.value ?? -1),
+      child: Container(
+        height: 52,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: S.x16),
+        child: content,
+      ),
+    );
+
     return Press(
       haptic: true,
       onTap: _enabled ? widget.onTap : null,
       child: Opacity(
         opacity: _enabled ? 1 : .5,
-        child: Container(
-          height: 52,
+        child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: C.metalFace,
             borderRadius: BorderRadius.circular(R.button),
@@ -159,36 +180,23 @@ class _PrimaryButtonState extends State<PrimaryButton>
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(R.button),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Tepadagi oq aks — metall yuzaning qavariqligi.
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0x66FFFFFF), Color(0x00FFFFFF)],
-                        stops: [0, .55],
-                      ),
+            child: _sweep == null
+                ? face
+                : AnimatedBuilder(
+                    animation: _sweep!,
+                    builder: (_, child) => CustomPaint(
+                      painter: _FacePainter(_sweep!.value),
+                      child: child,
+                    ),
+                    // Bola BIR MARTA quriladi va har kadrda qayta
+                    // ishlatiladi — faqat chizish qatlami yangilanadi.
+                    child: Container(
+                      height: 52,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: S.x16),
+                      child: content,
                     ),
                   ),
-                ),
-                if (_sweep != null)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: RepaintBoundary(
-                        child: AnimatedBuilder(
-                          animation: _sweep!,
-                          builder: (_, __) => CustomPaint(painter: _SweepPainter(_sweep!.value)),
-                        ),
-                      ),
-                    ),
-                  ),
-                content,
-              ],
-            ),
           ),
         ),
       ),
@@ -196,37 +204,51 @@ class _PrimaryButtonState extends State<PrimaryButton>
   }
 }
 
-/// Tugma ustidan o'tadigan yorug'lik chizig'i.
+/// Metall yuza: tepadagi oq aks + ustidan o'tadigan yorug'lik.
 ///
 /// `t` 0 dan 1 gacha — yorug'lik chap chetdan o'ng chetga o'tadi.
+/// `t < 0` — yorug'lik umuman chizilmaydi (o'chiq tugma).
 /// Pauza kontroller darajasida (u shunchaki to'xtab turadi), shuning
 /// uchun bu yerda vaqtni bo'lish shart emas.
-class _SweepPainter extends CustomPainter {
-  _SweepPainter(this.t);
+class _FacePainter extends CustomPainter {
+  _FacePainter(this.t);
   final double t;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p = t.clamp(0.0, 1.0);
-    final bandW = size.width * .34;
-    // Chapdagi kadr tashqarisidan o'ngdagi kadr tashqarisiga.
-    final x = -bandW + p * (size.width + bandW * 2);
-    final rect = Rect.fromLTWH(x, -size.height, bandW, size.height * 3);
-    canvas.save();
-    // Qiyalik — to'g'ri burchakli chiziq "qog'oz chetiga" o'xshardi.
-    canvas.transform(Matrix4.skewX(-0.32).storage);
+    final rect = Offset.zero & size;
+    // Tepadagi oq aks — metall yuzaning qavariqligi.
     canvas.drawRect(
       rect,
       Paint()
         ..shader = const LinearGradient(
-          colors: [Color(0x00FFFFFF), Color(0x73FFFFFF), Color(0x00FFFFFF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x66FFFFFF), Color(0x00FFFFFF)],
+          stops: [0, .55],
         ).createShader(rect),
+    );
+    if (t < 0) return;
+    final p = t.clamp(0.0, 1.0);
+    final bandW = size.width * .34;
+    // Chapdagi kadr tashqarisidan o'ngdagi kadr tashqarisiga.
+    final x = -bandW + p * (size.width + bandW * 2);
+    final band = Rect.fromLTWH(x, -size.height, bandW, size.height * 3);
+    canvas.save();
+    // Qiyalik — to'g'ri burchakli chiziq "qog'oz chetiga" o'xshardi.
+    canvas.transform(Matrix4.skewX(-0.32).storage);
+    canvas.drawRect(
+      band,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0x00FFFFFF), Color(0x73FFFFFF), Color(0x00FFFFFF)],
+        ).createShader(band),
     );
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_SweepPainter old) => old.t != t;
+  bool shouldRepaint(_FacePainter old) => old.t != t;
 }
 
 /// Ikkilamchi — bir xil o'lcham, to'q to'ldirma, iliq chegara.
@@ -304,7 +326,7 @@ class GhostButton extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: T.button.copyWith(fontSize: 13.5, color: color ?? C.offWhite),
+                style: T.button.copyWith(fontSize: 15, color: color ?? C.offWhite),
               ),
             ),
           ],

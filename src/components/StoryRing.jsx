@@ -28,7 +28,7 @@ export default function StoryRing({ stories = [], freshPost = false, title = '',
 
   return (
     <>
-      <button type="button" className="story-ring" onClick={() => setOpen(true)} aria-label={t('Istoryani ko‘rish')}>
+      <button type="button" className="story-ring" onClick={() => setOpen(true)} aria-label={t('Storyni ko‘rish')}>
         <span className="story-ring-glow" aria-hidden="true" />
         {children}
       </button>

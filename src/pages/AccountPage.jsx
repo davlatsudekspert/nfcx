@@ -2844,9 +2844,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
               mantiq). */}
           <button
             className="btn btn-outline-gold btn-sm min-h-11"
-            onClick={() => (allow('story') ? setStoryOpen(true) : setLocked(t('Istorya joylashtirish')))}
+            onClick={() => (allow('story') ? setStoryOpen(true) : setLocked(t('Story joylashtirish')))}
           >
-            <IconImage width={14} height={14} /> {t('Istorya')}{!allow('story') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
+            <IconImage width={14} height={14} /> {t('Stories')}{!allow('story') && <span className="ml-1 opacity-70"><IconLock width={12} height={12} /></span>}
           </button>
           <button
             className="btn btn-outline-gold btn-sm min-h-11"
@@ -3391,11 +3391,11 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // ── Yagona navigatsiya (sidebar lg / gorizontal tab qatori mobil) ──
   // Shaxsiy va biznes uchun ro'yxat `isBusiness` bilan tanlanadi; kabinet
   // qo'shimcha bo'limlari (extraSections) ikkalasiga ham qo'shiladi.
-  // "Istorya va post" — ATAYLAB Profil/Asosiy dan KEYIN, birinchi
+  // "Stories va post" — ATAYLAB Profil/Asosiy dan KEYIN, birinchi
   // o'rinda va OLTIN yaltiroq bilan ajratilgan (egasining so'rovi).
   // Sabab: ilgari istorya "Umumiy" ichida, post esa ro'yxatning eng
   // oxirida turardi — odam ularni umuman topmasdi.
-  const lentaNav = ['lenta', t('Istorya va post'), IconImage, 0, true];
+  const lentaNav = ['lenta', t('Stories va post'), IconImage, 0, true];
   const personalNav = [
     ['boshqaruv', t('Umumiy'), IconHome],
     ['profil', t('Profil'), IconUser],
@@ -3508,7 +3508,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         </Modal>
       )}
       {storyOpen && (
-        <Modal title={t('Istorya')} onClose={() => setStoryOpen(false)}>
+        <Modal title={t('Stories')} onClose={() => setStoryOpen(false)}>
           <StoriesManager code={card.code} />
         </Modal>
       )}
@@ -3654,9 +3654,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
         {wsTab === 'lenta' && (
           <div className="space-y-5">
             <div className="rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3 text-xs leading-relaxed text-base-content/70">
-              {t('Istorya va post — ikki alohida ish. Faqat istorya yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
+              {t('Story va post — ikki alohida ish. Faqat story yoki faqat post qo‘ysangiz ham bo‘ladi: har birining o‘z saqlash tugmasi bor.')}
             </div>
-            <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Istorya joylashtirish'))} t={t} />
+            <StorySection code={card.code} allowed={allow('story')} onLocked={() => setLocked(t('Story joylashtirish'))} t={t} />
             {/* Post bloki istorya bloki bilan BIR XIL ko'rinishda —
                 yig'iladigan panel emas: yig'ilgan holatda "Joylash"
                 tugmasi ko'rinmasdi va bo'lim boshqarilmaydigandek
@@ -3669,7 +3669,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                   {t('Rasm va izohlarni joylashtiring')}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-                  {t('Faqat post qo‘ysangiz ham bo‘ladi — istorya qo‘yish shart emas.')}
+                  {t('Faqat post qo‘ysangiz ham bo‘ladi — story qo‘yish shart emas.')}
                 </p>
               </div>
               <div className="mt-4">
@@ -3779,7 +3779,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
           {/* Yagona asosiy CTA — .btn-gold. Hech narsa o'zgarmagan bo'lsa o'chiq;
               mobil ekranda o'zgarish bo'lsa pastga yopishgan panel.
 
-              "Istorya va post" bo'limida bu panel UMUMAN chizilmaydi:
+              "Stories va post" bo'limida bu panel UMUMAN chizilmaydi:
               u PROFIL FORMASINI saqlaydi, istorya yoki postni emas.
               Ilgari u shu bo'limda ham pastga yopishib turardi va
               egasi uni "istoryani saqlash" tugmasi deb o'qigan —
@@ -3797,7 +3797,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
                 </button>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-base-content/45">
-                {t('Bu istorya va postga aloqador emas — ular yuqorida o‘z tugmalari bilan saqlanadi.')}
+                {t('Bu story va postga aloqador emas — ular yuqorida o‘z tugmalari bilan saqlanadi.')}
               </p>
             </div>
           )}
@@ -4337,7 +4337,7 @@ function StoriesManager({ code }) {
   return (
     <div className="space-y-4">
       <p className="text-xs leading-relaxed text-base-content/55">
-        {t('Istorya profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
+        {t('Story profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
       </p>
 
       {loading ? (
@@ -4359,11 +4359,11 @@ function StoriesManager({ code }) {
           ))}
         </div>
       ) : (
-        <p className="text-xs text-base-content/40">{t('Hozircha istorya yo‘q.')}</p>
+        <p className="text-xs text-base-content/40">{t('Hozircha story yo‘q.')}</p>
       )}
 
       <StoryUploader
-        label={t('Istorya qo‘shish')}
+        label={t('Story qo‘shish')}
         disabled={list.length >= 10}
         onSubmit={async (payload) => { await dbCreateStory(code, payload); load(); }}
       />
@@ -4451,12 +4451,12 @@ function StorySection({ code, allowed, onLocked, t }) {
               bir qarashda ko'rinsin (egasi ilgari ularni bitta,
               bir-biriga bog'liq forma deb o'ylagan). */}
           <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--vz-gold-2)]">{t('1-bo‘lim')}</span>
-          <h3 className="font-display text-lg font-semibold">{t('Istorya')}</h3>
+          <h3 className="font-display text-lg font-semibold">{t('Stories')}</h3>
           <p className="mt-0.5 text-xs leading-relaxed text-base-content/50">
             {t('Profil rasmingiz atrofida halqa bo‘lib chiqadi va 24 soatdan keyin o‘zi yo‘qoladi. 10 tagacha.')}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-base-content/40">
-            {t('Faqat istorya qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
+            {t('Faqat story qo‘ysangiz ham bo‘ladi — post to‘ldirish shart emas.')}
           </p>
         </div>
         {allowed && list.length > 0 && <span className="shrink-0 text-xs text-base-content/45">{list.length}/10</span>}
@@ -4465,7 +4465,7 @@ function StorySection({ code, allowed, onLocked, t }) {
       {!allowed ? (
         <div className="mt-4 rounded-2xl border border-dashed border-white/12 p-4 text-center">
           <p className="text-sm text-base-content/60">
-            {t('Istorya Gold, Premium va Ekskluziv NFC ID egalari hamda Premium obunachilar uchun.')}
+            {t('Story Gold, Premium va Ekskluziv NFC ID egalari hamda Premium obunachilar uchun.')}
           </p>
           <button type="button" className="btn btn-outline-gold btn-sm mt-3" onClick={onLocked}>
             {t('Qanday ochiladi?')}
@@ -4492,14 +4492,14 @@ function StorySection({ code, allowed, onLocked, t }) {
           )}
           <div className="mt-4">
             <StoryUploader
-              label={t('Istorya qo‘shish')}
+              label={t('Story qo‘shish')}
               disabled={list.length >= 10}
               confirm
-              saveLabel={t('Istoryani saqlash')}
-              hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Istoryani saqlash" ni bosasiz.')}
+              saveLabel={t('Storyni saqlash')}
+              hint={t('Rasm yoki video, 100 MB gacha. Tanlagandan keyin ko‘rib chiqib, "Storyni saqlash" ni bosasiz.')}
               onSubmit={async (payload) => {
                 await dbCreateStory(code, payload);
-                setMsg(t('Istorya joylandi.'));
+                setMsg(t('Story joylandi.'));
                 load();
               }}
             />

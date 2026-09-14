@@ -16,8 +16,14 @@ import '../../l10n/strings.dart';
 
 /// Post tafsiloti — to'liq media, tavsif, yoqtirish va ko'rish soni.
 class PostDetailScreen extends StatefulWidget {
-  const PostDetailScreen({super.key, required this.post});
+  const PostDetailScreen({super.key, required this.post, this.canDelete = false});
   final Post post;
+
+  /// O'chirish tugmasi ko'rsatiladimi. Tugma bosilganda ekran
+  /// `true` qaytarib yopiladi — O'CHIRISHNING O'ZI profil ekranida
+  /// bajariladi (tasdiqlash oynasi va API chaqiruvi o'sha yerda,
+  /// bir joyda).
+  final bool canDelete;
 
   @override
   State<PostDetailScreen> createState() => _PostDetailScreenState();
@@ -38,12 +44,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             TopBar(
               title: p.authorName.isEmpty ? tr('Post') : p.authorName,
               subtitle: p.createdAt == null ? null : _ago(p.createdAt!),
-              // SHIKOYAT — faqat BEGONA postda.
+              // BEGONA postda — SHIKOYAT, o'zinikida — O'CHIRISH.
               //
-              // O'z postiga shikoyat qilish ma'nosiz; uni o'chirish
-              // profil to'rida (katakni uzoq bosish) qilinadi.
+              // Ilgari o'z postini o'chirishning YAGONA yo'li profil
+              // to'ridagi katakni UZOQ BOSISH edi. Uni hech kim
+              // topmasdi: ko'rinmaydigan harakat — yo'q funksiya
+              // bilan barobar. Egasi aynan shu sababdan "rasmni
+              // o'chirsam o'chmadi" deb xabar bergan.
+              //
+              // Uzoq bosish qoldirildi (tez yo'l), lekin endi
+              // ko'rinadigan tugma ham bor.
               trailing: _isOwner(context, p)
-                  ? null
+                  ? (widget.canDelete
+                      ? Press(
+                          onTap: () => Navigator.of(context).pop(true),
+                          child: Padding(
+                            padding: const EdgeInsets.all(S.x8),
+                            child: NIcon(Ico.trash, size: 20, color: C.signal),
+                          ),
+                        )
+                      : null)
                   : Press(
                       onTap: () => _report(context, p),
                       child: const Padding(

@@ -584,25 +584,19 @@ export async function handle(request, env, url, H) {
     const mine = await env.DB.prepare(`SELECT COUNT(*) AS n FROM cards WHERE user_id = ?`).bind(user.id).first();
     if (Number(mine?.n || 0) <= 1) return H.json({ error: 'last_card' }, 409);
 
+    // TOZALASH — YAGONA YORDAMCHI ORQALI.
+    //
+    // Ilgari bu yerda o'chiriladigan jadvallarning QO'LDA YOZILGAN
+    // nusxasi turardi, `auth.js` va yuqoridagi qayta ro'yxatdan o'tish
+    // yo'li esa `cardContentCleanupStmts()` ni chaqirardi. Ikki
+    // ro'yxat vaqt o'tib bir-biridan uzoqlashdi va aynan shu yerda
+    // ISTORYALAR tushib qoldi.
+    //
+    // Endi manba bitta: yangi jadval yordamchiga qo'shilsa, uchala
+    // o'chirish yo'li ham darhol uni tozalaydi.
     const now = H.nowTs();
     const stmts = [
-      env.DB.prepare(`DELETE FROM post_likes WHERE post_id IN (SELECT id FROM posts WHERE code = ?)`).bind(code),
-      env.DB.prepare(`DELETE FROM posts WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM menu_items WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM menu_categories WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM products WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM product_categories WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM services WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM service_categories WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_gallery WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_files WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_videos WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_team WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_leads WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_events WHERE code = ?`).bind(code),
-      env.DB.prepare(`DELETE FROM card_likes WHERE code = ?`).bind(code),
-      env.DB.prepare(`UPDATE gift_offers SET status = 'cancelled', decided_at = ? WHERE code = ? AND status = 'pending'`).bind(now, code),
-      env.DB.prepare(`UPDATE physical_cards SET linked_code = NULL WHERE linked_code = ?`).bind(code),
+      ...cardContentCleanupStmts(env, '?', [code], now),
       env.DB.prepare(`DELETE FROM cards WHERE code = ? AND user_id = ?`).bind(code, user.id),
     ];
     if (card.isPrimary) {

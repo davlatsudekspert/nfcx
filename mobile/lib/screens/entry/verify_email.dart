@@ -352,7 +352,7 @@ class _Success extends StatelessWidget {
                     tr('Hisobingiz yaratildi. Agar davom etmasa, '
                         'kirish sahifasidan kiring.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(fontSize: 11),
+                    style: T.caption.copyWith(fontSize: 12.5),
                   ),
                 ],
                 const SizedBox(height: S.x32),

@@ -175,7 +175,7 @@ class _OrderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('#$id', style: T.code.copyWith(fontSize: 12, color: C.ash)),
+              Text('#$id', style: T.code.copyWith(fontSize: 13.5, color: C.ash)),
               const Spacer(),
               StatusChip(
                 switch (status) {
@@ -196,7 +196,7 @@ class _OrderCard extends StatelessWidget {
           const SizedBox(height: S.x12),
           Text(
             '${order['itemName'] ?? 'Mahsulot'} · $qty dona',
-            style: T.cardTitle.copyWith(fontSize: 13.5),
+            style: T.cardTitle.copyWith(fontSize: 15),
           ),
           const SizedBox(height: 3),
           Text(

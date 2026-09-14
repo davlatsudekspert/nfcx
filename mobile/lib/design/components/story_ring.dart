@@ -172,7 +172,7 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: T.caption.copyWith(
-                  fontSize: 10.5,
+                  fontSize: 12,
                   color: widget.seen ? C.muted : C.ash,
                 ),
               ),

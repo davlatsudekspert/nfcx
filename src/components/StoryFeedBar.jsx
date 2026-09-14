@@ -43,7 +43,7 @@ export default function StoryFeedBar() {
 
   return (
     <>
-      <div className="sf-bar" aria-label={t('Istoryalar')}>
+      <div className="sf-bar" aria-label={t('Stories')}>
         {feed.map((entry, i) => {
           const unseen = entry.stories.some((st) => !seen.has(st.id));
           return (

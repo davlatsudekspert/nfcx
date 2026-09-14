@@ -205,12 +205,12 @@ class _Option extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: T.code.copyWith(fontSize: 13.5)),
+                    Text(label, style: T.code.copyWith(fontSize: 15)),
                     const SizedBox(height: 2),
                     Text(sub,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: T.caption.copyWith(fontSize: 11)),
+                        style: T.caption.copyWith(fontSize: 12.5)),
                   ],
                 ),
               ),

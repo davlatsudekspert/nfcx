@@ -108,7 +108,7 @@ export default function CompanyCreatePage() {
         </div>
         {freeMode && (
           <p className="cc-free-note">
-            {t('Bepul hisob: dastlabki 30 kun barcha imkoniyatlar ochiq. Keyin katalogda 5 tagacha yozuv qoladi, istorya va post yopiladi. Istalgan vaqtda nom sotib olib, cheklovni butunlay olib tashlash mumkin.')}
+            {t('Bepul hisob: dastlabki 30 kun barcha imkoniyatlar ochiq. Keyin katalogda 5 tagacha yozuv qoladi, story va post yopiladi. Istalgan vaqtda nom sotib olib, cheklovni butunlay olib tashlash mumkin.')}
           </p>
         )}
         {!freeMode && <label className="cc-id-field"><span>{t('COMPANY ID')} *</span><div><small>nfcstore.uz/c/</small><input autoFocus value={form.companyId} onChange={(e) => setForm((old) => ({ ...old, companyId: normalizeCompanyId(e.target.value) }))} placeholder={t('KOMPANIYA')} spellCheck={false} autoCapitalize="characters" autoCorrect="off" /></div></label>}
