@@ -40,9 +40,33 @@ class T {
   static const screenSub = TextStyle(
     fontFamily: _sans, fontWeight: FontWeight.w500, fontSize: 12, color: C.ash,
   );
+  /// PROFIL NOMI — serif, katta, harflar orasi OCHIQ.
+  ///
+  /// Ilgari bu Manrope w800 21px, `letterSpacing: -0.42` edi —
+  /// ya'ni qalin va SIQILGAN. Saytdagi nom esa serif, 34px va
+  /// harflari ochiq; yonma-yon qo'yilganda ilovaniki "ilova
+  /// sarlavhasi", saytniki "brend" bo'lib ko'rinardi.
+  ///
+  /// Serif shriftga o'tish handoff qoidasiga zid emas:
+  /// InstrumentSerif "display sarlavha va hero matn" uchun
+  /// ajratilgan, brend nomi esa aynan shu.
   static const profileName = TextStyle(
-    fontFamily: _sans, fontWeight: FontWeight.w800, fontSize: 21, height: 1.2,
-    letterSpacing: -0.42, color: C.offWhite,
+    fontFamily: _serif, fontWeight: FontWeight.w400, fontSize: 30, height: 1.14,
+    letterSpacing: 0.6, color: C.offWhite,
+  );
+
+  /// Statistika raqami — serif, katta. Saytdagi `.qp-stats b`.
+  static const statValue = TextStyle(
+    fontFamily: _serif, fontWeight: FontWeight.w400, fontSize: 25, height: 1.05,
+    color: C.offWhite,
+  );
+
+  /// Statistika yorlig'i — KICHIK, katta harfda, oraliq keng.
+  /// Saytda aynan shu ishlov raqamlarni "ma'lumot" dan "ko'rsatkich"
+  /// ga aylantiradi.
+  static const statLabel = TextStyle(
+    fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 9.5, height: 1.2,
+    letterSpacing: 1.5, color: C.muted,
   );
   static const section = TextStyle(
     fontFamily: _sans, fontWeight: FontWeight.w700, fontSize: 16, height: 1,

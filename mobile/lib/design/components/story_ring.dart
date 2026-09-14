@@ -90,6 +90,10 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  /// Oltin halqa qalinligi. Kichik avatarda 4px halqa rasmni bo'g'ib
+  /// qo'yardi, kattasida esa 3px ko'rinmay qolardi.
+  double get _goldWidth => widget.size >= 70 ? 4 : 3;
+
   @override
   Widget build(BuildContext context) {
     // `RotationTransition` — `AnimatedBuilder` + `Transform.rotate`
@@ -123,20 +127,26 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                 alignment: Alignment.center,
                 children: [
                   ring,
-                  // Halqa bilan avatar orasida fon rangidagi bo'shliq.
-                  //
-                  // 5 -> 8: halqa QALINLASHDI (2.4 -> 3.4) va eski
-                  // bo'shliqda uning ichki yarmi avatar ostida
-                  // qolib ketardi. Profil sarlavhasida, muqova
-                  // rasmi ustida bu halqani oddiy chegaradan
-                  // ajratib bo'lmasdi.
+                  // Rangli halqa bilan oltin halqa orasidagi qora
+                  // bo'shliq — ikkalasi bir-biriga qo'shilib ketmasin.
                   Container(
-                    width: widget.size - 8, height: widget.size - 8,
+                    width: widget.size - 7, height: widget.size - 7,
                     decoration: BoxDecoration(color: C.obsidian, shape: BoxShape.circle),
+                  ),
+                  // OLTIN HALQA — saytdagi avatar gardishining aynan
+                  // o'zi. U to'ldirilgan metall doira sifatida
+                  // chiziladi, ustiga esa avatar qo'yiladi: ko'rinib
+                  // qoladigan chekkasi halqaga aylanadi. Flutter'da
+                  // `Border` gradient qabul qilmaydi, shuning uchun
+                  // usul shu.
+                  Container(
+                    width: widget.size - 11, height: widget.size - 11,
+                    decoration: BoxDecoration(gradient: C.metalCoin, shape: BoxShape.circle),
                   ),
                   if (widget.addButton)
                     Container(
-                      width: widget.size - 12, height: widget.size - 12,
+                      width: widget.size - 11 - _goldWidth * 2,
+                      height: widget.size - 11 - _goldWidth * 2,
                       decoration: BoxDecoration(color: C.graphite, shape: BoxShape.circle),
                       child: Center(
                         child: Text('+', style: TextStyle(
@@ -146,7 +156,11 @@ class _StoryRingState extends State<StoryRing> with SingleTickerProviderStateMix
                       ),
                     )
                   else
-                    Avatar(url: widget.avatarUrl, name: widget.name, size: widget.size - 12),
+                    Avatar(
+                      url: widget.avatarUrl,
+                      name: widget.name,
+                      size: widget.size - 11 - _goldWidth * 2,
+                    ),
                 ],
               ),
             ),
@@ -206,15 +220,27 @@ class _ConicRingPainter extends CustomPainter {
       // turgandek. Oldingi to'plamda uchta och ton yonma-yon edi va
       // harakat deyarli bilinmasdi. Endi to'q va och qism aniq
       // almashadi — dizayn manbasidagi "shimmer" shunday ishlaydi.
-      ..shader = SweepGradient(
+      // INSTAGRAM USLUBIDAGI RANGLI HALQA.
+      //
+      // Ilgari bu yerda faqat oltin tonlar bor edi. Muammo ikkita:
+      // (1) halqa avatarning oltin gardishidan farq qilmasdi va
+      // "istorya bor" degan belgi yo'qolardi; (2) bir xil oilaning
+      // ranglari aylanganda harakat deyarli bilinmasdi.
+      //
+      // Ranglar saytdagi `.story-ring-glow` konik gradientidan AYNAN
+      // olingan — ilova va sayt bir xil belgi ko'rsatishi kerak.
+      // Oltin nuqta boshida va oxirida: halqa avatarning oltin
+      // gardishiga ulanib, undan rangga o'sib chiqadi.
+      ..shader = const SweepGradient(
         colors: [
-          C.antiqueGold,
-          C.champagne,
-          Color(0xFFFFF4DC),
-          C.champagne,
-          C.antiqueGold,
+          Color(0xFFFFD76E),
+          Color(0xFFFF7A45),
+          Color(0xFFE04EA0),
+          Color(0xFF8B5CF6),
+          Color(0xFF3FA9FF),
+          Color(0xFFFFD76E),
         ],
-        stops: [0, .22, .38, .58, 1],
+        stops: [0, .2, .4, .6, .8, 1],
       ).createShader(rect);
     canvas.drawCircle(rect.center, size.width / 2 - 1.7, p);
   }
