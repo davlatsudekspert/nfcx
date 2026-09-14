@@ -2229,7 +2229,7 @@ export default function ProfilePage({ code, catalog, initialTab }) {
           biznes profildagi `.qp-bottom` bilan bir xil yechim. */}
       <div className="vz-savebar mx-auto max-w-[640px]">
         <div className="flex gap-2.5">
-          <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="vz-sweep flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Saqlash')}</button>
+          <button onClick={() => { track('contact_save'); downloadVcf(record); }} className="vz-sweep flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f0cf7a] to-[#b3860f] px-5 py-4 text-[19px] font-extrabold text-[#1a1206] shadow-[0_10px_28px_rgba(212,175,90,0.35)] transition hover:brightness-110"><IconDownload /> {t('Kontaktni saqlash')}</button>
           {!isOwner && MESSAGING_ENABLED && (
             <button onClick={startChat} className={`${pillBtn} flex flex-1 items-center justify-center gap-2`}>{'\u{1F4AC}'} {t('Xabar yozish')}</button>
           )}
