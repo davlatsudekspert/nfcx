@@ -72,8 +72,20 @@ class _StoryRingState extends State<StoryRing>
   }
 
   void _sync() {
-    final should =
-        !widget.seen && !widget.addButton && !reduceMotion(context);
+    // HALQA TIZIM SOZLAMASIDAN QAT'I NAZAR AYLANADI.
+    //
+    // Ilgari bu yerda `!reduceMotion(context)` ham bor edi va
+    // Android'da "Animator duration scale" o'chirilgan yoki batareya
+    // tejash yoqilgan qurilmada halqa QOTIB qolardi. Egasining
+    // qarori (2026-09): halqa brendning imzosi, u har doim
+    // aylanishi kerak — maketdagi `shimmerSpin 9s linear infinite`.
+    //
+    // ISTISNO FAQAT SHU YERDA. Yorug'lik chizig'i (`sweep.dart`),
+    // NFC to'lqini (`nfc_wave.dart`), skeleton va rasm paydo
+    // bo'lishi tizim sozlamasini AVVALGIDEK hurmat qiladi: ular
+    // kattaroq yuzada va uzluksiz harakatlanadi, ya'ni harakatga
+    // sezgir odam uchun asosiy yuk o'shalarda.
+    final should = !widget.seen && !widget.addButton;
     if (should == _spinning) return;
     _spinning = should;
     if (should) {

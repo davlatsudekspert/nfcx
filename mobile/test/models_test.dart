@@ -109,6 +109,35 @@ void main() {
     });
   });
 
+  group('Video istorya', () {
+    // NIMA UCHUN BU TEST BOR: qurilmada VIDEO istorya QORA EKRAN
+    // bo'lib ochilardi. Sabab modelda edi — server `videoUrl`
+    // qaytarardi, model esa uni umuman o'qimasdi, ya'ni ko'ruvchi
+    // ko'rsatadigan narsa topmasdi va ekran qora qolardi.
+    test('`videoUrl` o‘qiladi va to‘liq manzilga aylanadi', () {
+      final p = Post.fromJson({
+        'id': '1',
+        'videoUrl': '/uploads/story-1.mp4',
+      });
+      expect(p.videoUrl, 'https://nfcstore.uz/uploads/story-1.mp4');
+    });
+
+    test('`video_url` (pastki chiziqli) ham qabul qilinadi', () {
+      // Istorya va post endpointlari nomni ikki xil yozadi.
+      final p = Post.fromJson({
+        'id': '2',
+        'video_url': 'https://cdn.nfcstore.uz/a.mp4',
+      });
+      expect(p.videoUrl, 'https://cdn.nfcstore.uz/a.mp4');
+    });
+
+    test('video bo‘lmasa `null` — rasm yo‘li ishlaydi', () {
+      final p = Post.fromJson({'id': '3', 'imageUrl': '/uploads/a.jpg'});
+      expect(p.videoUrl, isNull);
+      expect(p.images, ['https://nfcstore.uz/uploads/a.jpg']);
+    });
+  });
+
   group('ApiError', () {
     test('401 — sessiya xatosi', () {
       expect(ApiError('unauthorized', status: 401).isAuth, isTrue);
