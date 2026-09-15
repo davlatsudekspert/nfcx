@@ -40,11 +40,12 @@ on:
         description: "apply uchun: aynan KO'CHIR deb yozing"
         required: false
         default: ''
-  push:
-    branches:
-      - claude/adoring-ritchie-whjcgs
-    paths:
-      - '.github/workflows/cf-domains.yml'
+  # Faqat QO'LDA. Ilgari bu yerda `push` ham bor edi — u ishlab turgan
+  # branchdan tekshirish uchun kerak bo'lgan, chunki `workflow_dispatch`
+  # tugmasi faqat `main` dagi fayldan paydo bo'ladi. Endi kerak emas va
+  # olib tashlandi: har push'da ishga tushib PR'ga ortiqcha tekshiruv
+  # belgisi qo'shardi, holbuki bu vosita kundalik emas — faqat domen
+  # bilan nosozlik bo'lganda ochiladi.
 
 permissions:
   contents: read
