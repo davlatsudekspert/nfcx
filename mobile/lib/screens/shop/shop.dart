@@ -20,6 +20,7 @@ import '../../state/app_state.dart';
 import '../nfc/code_search.dart';
 import '../nfc/gift_offers.dart';
 import '../nfc/id_catalog.dart';
+import '../business/create_company.dart';
 import '../nfc/order_card.dart';
 import '../orders/my_orders.dart';
 import '../settings/payments_history.dart';
@@ -190,6 +191,24 @@ class _ShopScreenState extends State<ShopScreen> with CodeSearch {
                   padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                   child: RowGroup(
                     children: [
+                      // BIZNES PROFIL — DO'KONDA HAM.
+                      //
+                      // EGASI: "kompaniyani ham qo'yish kerak, biznes
+                      // NFC ID larning savdosi ham bor-ku". To'g'ri:
+                      // biznes hisob ochish ILOVADA bor edi, lekin
+                      // faqat shaxs almashtirgichdagi kichik
+                      // tugmadan — ya'ni xarid qiladigan odam uni
+                      // topa olmasdi.
+                      ListRow(
+                        title: tr('Biznes profil'),
+                        subtitle: tr('Katalog, buyurtma va statistika. '
+                            'Bepul ID yoki o‘z nomingiz'),
+                        leading: const _RowIcon(Ico.building),
+                        onTap: () => push<void>(
+                          context,
+                          (_) => const CreateCompanyScreen(),
+                        ),
+                      ),
                       ListRow(
                         title: tr('NFC ID karta'),
                         subtitle: tr('Jismoniy karta — telefonga tegizilganda '

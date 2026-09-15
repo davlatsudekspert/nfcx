@@ -104,10 +104,8 @@ class PrimaryButton extends StatelessWidget {
                     const SizedBox(width: S.x8),
                   ],
                   Flexible(
-                    child: Text(
+                    child: _Label(
                       label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: _labelStyle(size).copyWith(
                         color: enabled ? C.onAccent : C.ink3,
                       ),
@@ -215,10 +213,8 @@ class SecondaryButton extends StatelessWidget {
                     const SizedBox(width: S.x8),
                   ],
                   Flexible(
-                    child: Text(
+                    child: _Label(
                       label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: _labelStyle(size).copyWith(
                         color: enabled ? C.ink : C.ink3,
                       ),
@@ -282,10 +278,8 @@ class GhostButton extends StatelessWidget {
               const SizedBox(width: S.x8),
             ],
             Flexible(
-              child: Text(
+              child: _Label(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: _labelStyle(size).copyWith(
                   color: enabled ? tint : C.ink3,
                 ),
@@ -346,10 +340,8 @@ class DangerButton extends StatelessWidget {
           widthFactor: expand ? null : 1,
           child: loading
               ? Spinner(size: 20, color: filled ? C.ink : C.fail)
-              : Text(
+              : _Label(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: _labelStyle(size).copyWith(
                     color: filled ? const Color(0xFF1A0A08) : C.fail,
                   ),
@@ -536,4 +528,36 @@ class _SpinnerPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SpinnerPainter old) =>
       old.t != t || old.color != color || old.stroke != stroke;
+}
+
+/// TUGMA YORLIG'I — KESILMAYDI, KERAK BO'LSA KICHRAYADI.
+///
+/// HAQIQIY XATO, EGASI IKKI MARTA KO'RSATDI: "Kamera" tugmasi
+/// kesilib turardi, "Story qo'shish" esa "Story qo's…" bo'lib
+/// qolgandi. Sababi bitta: ikkita tugma yonma-yon turganda
+/// o'zbekcha yorliq ingliz yoki rus tilidagidan uzunroq bo'ladi va
+/// joyga sig'maydi.
+///
+/// UCH NUQTA ENG YOMON YECHIM: odam tugmaning nima qilishini
+/// o'qiy olmaydi. Shuning uchun matn avval KICHRAYADI (eng ko'pi
+/// bilan bir oz), faqat shundan keyin kesiladi. `FittedBox` aynan
+/// shuni qiladi va faqat KERAK bo'lganda ishlaydi — joy yetsa matn
+/// o'z o'lchamida qoladi.
+class _Label extends StatelessWidget {
+  const _Label(this.label, {required this.style});
+
+  final String label;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        ),
+      );
 }

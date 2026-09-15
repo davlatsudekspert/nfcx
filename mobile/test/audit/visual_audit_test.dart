@@ -35,6 +35,7 @@ import 'package:nfcstore/screens/business/edit_gallery.dart';
 import 'package:nfcstore/screens/business/working_hours.dart';
 import 'package:nfcstore/screens/content/compose.dart';
 import 'package:nfcstore/screens/shop/shop.dart';
+import 'package:nfcstore/screens/identity/my_content.dart';
 import 'package:nfcstore/screens/entry/gift_card.dart';
 import 'package:nfcstore/screens/nfc/gift_offers.dart';
 import 'package:nfcstore/screens/nfc/nfc_center.dart';
@@ -603,6 +604,46 @@ void main() {
     final s = await ready(mode: AuditMode.newUser);
     await pumpScreen(t, const ShopScreen(), state: s);
     await golden(t, '58-dokon-yangi');
+  });
+
+  // EGASI SO'RADI: "bular ham qilinganmi, aniq tekshir".
+  //
+  // Uchta ekran dizaynda bor edi va kodda ham bor — lekin kadri
+  // yo'q edi, ya'ni ularni faqat qurilmada ko'rish mumkin edi.
+  // Endi har birining kadri bor.
+  testWidgets('59 mening kontentim', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const MyContentScreen(), state: s);
+    await golden(t, '59-mening-kontentim');
+  });
+
+  testWidgets('60 ilova qulfi — PIN, barmoq izi, Face ID', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const SettingsScreen(), state: s);
+    await t.scrollUntilVisible(
+      find.text(tr('PIN · barmoq izi · Face ID')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await settle(t);
+    await t.tap(find.text(tr('PIN · barmoq izi · Face ID')));
+    await settle(t);
+    await golden(t, '60-ilova-qulfi');
+  });
+
+  testWidgets('61 hisobni o‘chirish', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const SettingsScreen(), state: s);
+    await t.scrollUntilVisible(
+      find.text(tr('Hisobni o‘chirish')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 60,
+    );
+    await settle(t);
+    await t.tap(find.text(tr('Hisobni o‘chirish')).first);
+    await settle(t);
+    await golden(t, '61-hisobni-ochirish');
   });
 
   testWidgets('55 mahsulot qo‘shish', (t) async {

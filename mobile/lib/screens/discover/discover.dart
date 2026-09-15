@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' show RefreshIndicator;
-// `SliverGridLayout` va `SliverGridGeometry` — chizish qatlamida.
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
@@ -181,29 +179,42 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// Ikkalasi BIR RO'YXATDA, chunki odam "kim" yoki "qaysi
   /// kompaniya" deb izlaydi — ularni ikki joyga bo'lish qidiruvni
   /// qiyinlashtirardi. Biznes kartada bino belgisi turadi.
-  List<_Entry> get _profiles {
+  bool _hit(String a, String b, String c) {
     final q = _query.text.trim().toLowerCase();
-    bool hit(String a, String b, String c) =>
-        q.isEmpty ||
+    return q.isEmpty ||
         a.toLowerCase().contains(q) ||
         b.toLowerCase().contains(q) ||
         c.toLowerCase().contains(q);
+  }
 
+  /// SHAXSIY PROFILLAR — kompaniyalarsiz.
+  ///
+  /// EGASI: "bu yerda kompaniyalarni alohida, personallarni
+  /// alohida qilish kerak". Haq edi: ilgari kompaniyalar IKKI
+  /// marta chiqardi — tepadagi katta kartalar to'rida va shu
+  /// ro'yxatda yana bir marta.
+  List<_Entry> get _people {
+    if (_kind == 'business') return const [];
     return [
-      if (_kind != 'business')
-        for (final r in _catalog)
-          if (hit(r.code, r.name, r.role) &&
-              (_category.isEmpty || r.categorySlug == _category) &&
-              (_kind.isEmpty ||
-                  (_kind == 'expert' && r.role.trim().isNotEmpty) ||
-                  (_kind == 'personal' && !r.isBusiness)))
-            _Entry.person(r),
-      if (_kind.isEmpty || _kind == 'business')
-        for (final c in _companies)
-          // Kompaniyada toifa maydoni yo'q — toifa tanlangan
-          // bo'lsa ular ro'yxatga kirmaydi.
-          if (hit(c.id, c.name, c.city) && _category.isEmpty)
-            _Entry.business(c),
+      for (final r in _catalog)
+        if (_hit(r.code, r.name, r.role) &&
+            (_category.isEmpty || r.categorySlug == _category) &&
+            (_kind.isEmpty ||
+                (_kind == 'expert' && r.role.trim().isNotEmpty) ||
+                (_kind == 'personal' && !r.isBusiness)))
+          _Entry.person(r),
+    ];
+  }
+
+  /// KOMPANIYALAR — o'z bo'limida.
+  List<_Entry> get _businesses {
+    if (_kind == 'personal' || _kind == 'expert') return const [];
+    return [
+      for (final c in _companies)
+        // Kompaniyada toifa maydoni yo'q — toifa tanlangan
+        // bo'lsa ular ro'yxatga kirmaydi.
+        if (_hit(c.id, c.name, c.city) && _category.isEmpty)
+          _Entry.business(c),
     ];
   }
 
@@ -313,28 +324,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return [
       if (_foundPeople.isNotEmpty) ...[
         _header(tr('Odamlar')),
-        SliverList.separated(
-          itemCount: _foundPeople.length,
-          separatorBuilder: (_, __) => const SizedBox(height: S.x8),
-          itemBuilder: (context, i) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-            child: _PersonRow(record: _foundPeople[i]),
-          ),
-        ),
+        _cardList([for (final r in _foundPeople) _Entry.person(r)]),
       ],
       if (_foundCompanies.isNotEmpty) ...[
         _header(tr('Kompaniyalar')),
-        SliverList.separated(
-          itemCount: _foundCompanies.length,
-          separatorBuilder: (_, __) => const SizedBox(height: S.x8),
-          itemBuilder: (context, i) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-            child: _CompanyRow(company: _foundCompanies[i]),
-          ),
-        ),
+        _cardList([for (final c in _foundCompanies) _Entry.business(c)]),
       ],
     ];
   }
+
+  /// Bitta karta uslubi — qidiruvda ham, ro'yxatda ham.
+  ///
+  /// EGASI: "hammasi kichkina NFC ID ko'rinishida bo'lsin".
+  /// Ilgari uch xil karta bor edi: qidiruvda odam uchun bitta,
+  /// kompaniya uchun boshqasi, ro'yxatda yana uchinchisi — va
+  /// kompaniyalar buning ustiga katta rasmli to'rda turardi. Bitta
+  /// narsaning uch xil yuzi "aralashib ketgan" ko'rinish berardi.
+  Widget _cardList(List<_Entry> items) => SliverList.separated(
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(height: S.x8),
+        itemBuilder: (context, i) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: _ProfileCard(entry: items[i]),
+        ),
+      );
 
   // ── KO'RIB CHIQISH ──────────────────────────────────────────
 
@@ -345,11 +358,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(S.gutter, S.x20, S.gutter, 0),
             child: Column(
-              children: [
-                ...List.generate(3, (_) => const SkeletonRow()),
-                const SizedBox(height: S.x16),
-                const SkeletonGrid(count: 6),
-              ],
+              children: List.generate(6, (_) => const SkeletonRow()),
             ),
           ),
         ),
@@ -365,6 +374,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     final rating = _rating;
+    final people = _people;
+    final businesses = _businesses;
 
     return [
       if (rating.isNotEmpty) ...[
@@ -379,56 +390,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ],
 
-      if (_companies.isNotEmpty) ...[
+      // KOMPANIYALAR — SHAXSIY PROFILLARDAN ALOHIDA.
+      //
+      // Ilgari bu yerda 2 ustunli KATTA kartalar to'ri turardi:
+      // har biri muqova rasmi bilan, ekranning yarmini egallab.
+      // Egasi: "kompaniya profillari katta bo'lib xunuk bo'lib
+      // turibdi, hammasi kichkina NFC ID ko'rinishida bo'lsin".
+      //
+      // Endi ikkalasi bir xil ixcham kartada va HAR BIRI O'Z
+      // BO'LIMIDA — qidirayotgan odam qayerga qarashini biladi.
+      if (businesses.isNotEmpty) ...[
         _header(tr('Kompaniyalar')),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: _companies.length.clamp(0, 6),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: S.x12,
-                mainAxisSpacing: S.x12,
-                childAspectRatio: .92,
-              ),
-              itemBuilder: (context, i) =>
-                  _CompanyCard(company: _companies[i]),
-            ),
-          ),
-        ),
+        _cardList(businesses),
       ],
 
-      // PROFILLAR — SAYTDAGI KATALOG KABI.
-      //
-      // Bu yerda ilgari "Kashfiyot" turardi: post va istorya
-      // rasmlarining aralash to'ri. Egasi: "kashfiyot nima degan,
-      // olib tashlash kerak, bu yerda personal va biznes profillar
-      // turishi kerak, bosa profiliga kirsin".
-      //
-      // To'g'ri e'tiroz edi. Qidiruv tabining vazifasi — ODAM VA
-      // KOMPANIYA topish. Rasmlar to'ri esa Reels bilan bir xil
-      // ishni qilardi va bosilganda postga olib borardi, ya'ni
-      // qidirilayotgan narsaga emas.
-      //
-      // Endi saytdagi katalog bilan bir xil: kod, ism, tarif
-      // belgisi, ko'rishlar soni va toifa. Bosilsa — o'sha
-      // profilning o'zi ochiladi.
-      if (_profiles.isNotEmpty) ...[
-        _header(tr('Profillar')),
-        SliverList.separated(
-          itemCount: _profiles.length,
-          separatorBuilder: (_, __) => const SizedBox(height: S.x8),
-          itemBuilder: (context, i) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-            child: _ProfileCard(entry: _profiles[i]),
-          ),
-        ),
-      ] else if (_query.text.trim().isNotEmpty || _category.isNotEmpty)
+      if (people.isNotEmpty) ...[
+        _header(tr('Shaxsiy profillar')),
+        _cardList(people),
+      ],
+
+      if (businesses.isEmpty && people.isEmpty)
         SliverToBoxAdapter(
           child: EmptyState(
             tr('Boshqa so‘z yoki toifa bilan qidirib ko‘ring.'),
@@ -531,8 +512,12 @@ class _CategoryStrip extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(width: S.x8),
           itemBuilder: (context, i) {
             if (i == 0) {
+              // "Barcha sohalar" — TEPADAGI "Hammasi" BILAN
+              // ADASHMASIN. Ikkalasi bir xil so'z bo'lganda ekranda
+              // ikkita bir xil tugma turardi va qaysi biri nimani
+              // suzayotgani tushunarsiz edi.
               return FilterChip(
-                tr('Hammasi'),
+                tr('Barcha sohalar'),
                 active: active.isEmpty,
                 onTap: () => onSelect(''),
               );
@@ -551,131 +536,6 @@ class _CategoryStrip extends StatelessWidget {
 }
 
 /// Qidiruv natijasidagi qator.
-class _PersonRow extends StatelessWidget {
-  const _PersonRow({required this.record});
-
-  final Record record;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: const EdgeInsets.all(S.x12),
-        onTap: () => push<void>(
-          context,
-          (_) => ProfileScreen(code: record.code),
-        ),
-        child: Row(
-          children: [
-            Avatar(
-              url: record.avatarUrl,
-              name: record.name,
-              size: 48,
-              square: record.isBusiness,
-            ),
-            const SizedBox(width: S.x12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          record.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: T.cardTitle,
-                        ),
-                      ),
-                      if (record.verified) ...[
-                        const SizedBox(width: 5),
-                        const VerifiedBadge(size: 14),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    profileHandle(context, record.code,
-                        company: record.isBusiness),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.link,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: S.x8),
-            TierDot(record.tier, size: 14),
-          ],
-        ),
-      );
-}
-
-/// Kompaniya qatori — qidiruv natijasida.
-class _CompanyRow extends StatelessWidget {
-  const _CompanyRow({required this.company});
-
-  final Company company;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: const EdgeInsets.all(S.x12),
-        onTap: () => push<void>(
-          context,
-          (_) => ProfileScreen(companyId: company.id),
-        ),
-        child: Row(
-          children: [
-            Avatar(
-              url: company.logoUrl,
-              name: company.name,
-              size: 48,
-              square: true,
-            ),
-            const SizedBox(width: S.x12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          company.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: T.cardTitle,
-                        ),
-                      ),
-                      if (company.verified) ...[
-                        const SizedBox(width: 5),
-                        const VerifiedBadge(size: 14),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    profileHandle(context, company.id, company: true),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.link,
-                  ),
-                ],
-              ),
-            ),
-            if (company.isOpen != null) ...[
-              const SizedBox(width: S.x8),
-              StatusChip(
-                company.isOpen! ? tr('Ochiq') : tr('Yopiq'),
-                tone: company.isOpen! ? StatusTone.ok : StatusTone.neutral,
-              ),
-            ],
-          ],
-        ),
-      );
-}
-
 /// Qidiruv natijasidagi bitta yozuv — shaxsiy yoki biznes.
 class _Entry {
   const _Entry.person(this.record)
@@ -763,7 +623,17 @@ class _ProfileCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: S.x8),
-            Text(som(entry.views), style: T.meta),
+            // KO'RISHLAR — saytdagi katalog kartasida ham shunday:
+            // ko'z belgisi va son. Raqamning o'zi nimani
+            // bildirishini aytmasdi.
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NIcon(Ico.eye, size: 13, color: C.ink3),
+                const SizedBox(width: 4),
+                Text(som(entry.views), style: T.meta),
+              ],
+            ),
           ],
         ),
       );
@@ -834,137 +704,3 @@ class _RatingRow extends StatelessWidget {
 }
 
 /// Kompaniya kartasi — ikki ustunli grid uchun.
-class _CompanyCard extends StatelessWidget {
-  const _CompanyCard({required this.company});
-
-  final Company company;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: EdgeInsets.zero,
-        onTap: () => push<void>(
-          context,
-          (_) => ProfileScreen(companyId: company.id),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(R.card),
-              ),
-              child: AspectRatio(
-                aspectRatio: 16 / 10,
-                child: NetImage(
-                  company.coverUrl ?? company.logoUrl,
-                  radius: 0,
-                  slotIcon: Ico.building,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(S.x12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    company.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.cardTitle,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    [
-                      if (company.city.isNotEmpty) company.city,
-                      if (company.itemCount > 0)
-                        trf('{n} mahsulot', {'n': '${company.itemCount}'}),
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.caption.copyWith(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-
-/// Har uchinchi katakcha ikki barobar — "quilted" naqsh.
-///
-/// `SliverGridDelegate` ni qo'lda yozamiz: Flutter'da tayyor
-/// "quilted" delegat yo'q va qo'shimcha paket olib kelishga
-/// arzimaydi.
-class SliverQuiltedGridDelegate extends SliverGridDelegate {
-  const SliverQuiltedGridDelegate({this.spacing = 3});
-
-  final double spacing;
-
-  @override
-  SliverGridLayout getLayout(SliverConstraints constraints) {
-    final cell = (constraints.crossAxisExtent - spacing * 2) / 3;
-    return _QuiltedLayout(cell: cell, spacing: spacing);
-  }
-
-  @override
-  bool shouldRelayout(SliverQuiltedGridDelegate old) =>
-      old.spacing != spacing;
-}
-
-class _QuiltedLayout extends SliverGridLayout {
-  const _QuiltedLayout({required this.cell, required this.spacing});
-
-  final double cell;
-  final double spacing;
-
-  double get _step => cell + spacing;
-
-  /// Naqsh sakkiztalik blokdan iborat: bitta katta (2×2) va oltita
-  /// kichik. Blok ikki qatorni egallaydi.
-  static const _pattern = [
-    // (ustun, qator, kenglik, balandlik)
-    [0, 0, 2, 2],
-    [2, 0, 1, 1],
-    [2, 1, 1, 1],
-    [0, 2, 1, 1],
-    [1, 2, 1, 1],
-    [2, 2, 1, 1],
-  ];
-
-  static const _rowsPerBlock = 3;
-
-  @override
-  double computeMaxScrollOffset(int childCount) {
-    final blocks = (childCount / _pattern.length).ceil();
-    return blocks * _rowsPerBlock * _step;
-  }
-
-  @override
-  SliverGridGeometry getGeometryForChildIndex(int index) {
-    final block = index ~/ _pattern.length;
-    final p = _pattern[index % _pattern.length];
-    return SliverGridGeometry(
-      scrollOffset: (block * _rowsPerBlock + p[1]) * _step,
-      crossAxisOffset: p[0] * _step,
-      mainAxisExtent: p[3] * cell + (p[3] - 1) * spacing,
-      crossAxisExtent: p[2] * cell + (p[2] - 1) * spacing,
-    );
-  }
-
-  @override
-  int getMinChildIndexForScrollOffset(double scrollOffset) {
-    final block = (scrollOffset / (_rowsPerBlock * _step)).floor();
-    return (block * _pattern.length).clamp(0, 1 << 30);
-  }
-
-  @override
-  int getMaxChildIndexForScrollOffset(double scrollOffset) {
-    final block = (scrollOffset / (_rowsPerBlock * _step)).ceil();
-    return ((block + 1) * _pattern.length).clamp(0, 1 << 30);
-  }
-}
-

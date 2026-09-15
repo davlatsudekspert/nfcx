@@ -497,7 +497,7 @@ Future<void> _deleteAccount(BuildContext context, AppState state) async {
         Text(tr('Nimalar yo‘qoladi'), style: T.cardTitle),
         const SizedBox(height: S.x12),
         _Loss(tr('Ochiq profil va uning havolasi')),
-        _Loss(tr('Story, postlar va Reels')),
+        _Loss(tr('Story va postlar')),
         _Loss(tr('Obunachilar va statistika')),
         if (codes.isNotEmpty)
           _Loss(tr('Mening ID‘larim'), value: codes)

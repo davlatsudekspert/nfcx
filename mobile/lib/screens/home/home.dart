@@ -67,6 +67,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _ownStory = false;
   int _gifts = 0;
 
+  /// BIZNESNING MAHSULOTLARI — ALOHIDA SO'ROV BILAN.
+  ///
+  /// HAQIQIY XATO: `/api/companies/mine` (shaxslar ro'yxati)
+  /// kompaniyani katalogisiz qaytaradi — katalog faqat
+  /// `/api/companies/:id` da bo'ladi. Ya'ni `active.company.items`
+  /// HAR DOIM bo'sh edi va "Xizmatlar" qatori hech qachon
+  /// ko'rinmasdi, garchi kompaniyada mahsulot bo'lsa ham. Egasi
+  /// buni "bu yerda mahsulot yo xizmatlari ko'rinishi kerak
+  /// emasmi" deb ikki marta aytdi.
+  List<Product> _items = const [];
+
   bool _loading = true;
   bool _loadedOnce = false;
   String? _loadedFor;
@@ -175,10 +186,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         gifts = (await state.repo.giftOffers()).incoming.length;
       } catch (_) {}
 
+      // BIZNES KATALOGI — faqat biznes tanlangan bo'lsa.
+      List<Product> items = const [];
+      if (me != null && me.isBusiness) {
+        try {
+          items = await state.repo.companyCatalog(me.code);
+        } catch (_) {}
+      }
+
       if (!mounted) return;
       setState(() {
         _stories = stories;
         _ownStory = ownStory;
+        _items = items;
         _pending = pending;
         _gifts = gifts;
         _loading = false;
@@ -351,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // to'liq ro'yxat esa katalogda.
               if (active != null &&
                   active.isBusiness &&
-                  (active.company?.items.isNotEmpty ?? false)) ...[
+                  _items.isNotEmpty) ...[
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -368,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         (_) => EditCatalogScreen(company: active.company!),
                       ),
                       trailing: Text(
-                        som(active.company!.items.length),
+                        som(_items.length),
                         style: T.meta,
                       ),
                     ),
@@ -382,12 +402,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       padding: const EdgeInsets.symmetric(
                         horizontal: S.gutter,
                       ),
-                      itemCount: active.company!.items.length,
+                      itemCount: _items.length,
                       separatorBuilder: (_, __) => const SizedBox(width: S.x12),
                       itemBuilder: (context, i) => SizedBox(
                         width: 150,
                         child: ProductCard(
-                          product: active.company!.items[i],
+                          product: _items[i],
                           companyId: active.code,
                           companyName: active.name,
                         ),
@@ -528,7 +548,8 @@ class _Header extends StatelessWidget {
             StoryRing(
               avatarUrl: identity?.avatarUrl,
               name: identity?.name ?? '',
-              size: 104,
+              // Egasi: "avatarni sal kattaroq qilsak-da".
+              size: 124,
               seen: !hasStory,
               showLabel: false,
               onTap: onTap,
@@ -639,11 +660,32 @@ class _ActiveCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final record = identity.record;
-    return IdentityCard(
-      code: identity.code,
-      tier: record?.tier ?? Tier.free,
-      holder: identity.name,
-      url: identity.publicUrl.replaceFirst('https://', ''),
+    // BIZNES KARTASI HAM METALL BO'LADI.
+    //
+    // Ilgari bu yerda `record?.tier ?? Tier.free` turardi: biznes
+    // tanlanganda `record` bo'lmaydi, ya'ni karta HAR DOIM "free"
+    // — qop-qora va bo'sh — bo'lib chiqardi. Egasi buni surat
+    // bilan ko'rsatdi. Kompaniyaning o'z tarifi bor, karta ham
+    // o'sha materialda bo'lishi kerak.
+    final tier = identity.isBusiness
+        ? TierStyle.parse(identity.company?.tier ?? '')
+        : (record?.tier ?? Tier.free);
+    // KARTA SAL KICHRAYDI va markazda turadi.
+    //
+    // Egasi: "avatarni sal kattaroq qilsak-da, kartani
+    // kichraytirib". Nisbat (1.585 — haqiqiy plastik karta
+    // nisbati) O'ZGARMAYDI: faqat kengligi cheklanadi, aks holda
+    // karta "cho'zilgan" ko'rinardi.
+    return Center(
+      child: FractionallySizedBox(
+        widthFactor: .88,
+        child: IdentityCard(
+          code: identity.code,
+          tier: tier,
+          holder: identity.name,
+          url: identity.publicUrl.replaceFirst('https://', ''),
+        ),
+      ),
     );
   }
 }

@@ -195,6 +195,10 @@
     "Заполните все обязательные поля.",
     "Fill in all required fields."
   ],
+  "Barcha sohalar": [
+    "Все сферы",
+    "All fields"
+  ],
   "Barmoq izi yoki yuz": [
     "Отпечаток или лицо",
     "Fingerprint or face"
@@ -1574,6 +1578,10 @@
   "Katalog, buyurtma va statistika": [
     "Каталог, заказы и статистика",
     "Catalog, orders and statistics"
+  ],
+  "Katalog, buyurtma va statistika. Bepul ID yoki o‘z nomingiz": [
+    "Каталог, заказы и статистика. Бесплатный ID или своё имя",
+    "Catalog, orders and stats. A free ID or your own name"
   ],
   "Katalog, ish vaqti, galereya, buyurtmalar": [
     "Каталог, часы работы, галерея, заказы",
@@ -2999,6 +3007,10 @@
     "Личный профиль",
     "Personal profile"
   ],
+  "Shaxsiy profillar": [
+    "Личные профили",
+    "Personal profiles"
+  ],
   "Shaxsiy va biznes ID‘laringiz bir joyda. Sarlavhaga tegib, ": [
     "Личные и бизнес-ID в одном месте. Коснитесь заголовка, чтобы ",
     "Personal and business IDs in one place. Tap the header to "
@@ -3224,8 +3236,8 @@
     "Add a story"
   ],
   "Story va postlar": [
-    "Истории и посты",
-    "Stories and posts"
+    "Story и посты",
+    "Story and posts"
   ],
   "Story va uning layklari profilingizdan olib tashlanadi. Bu amalni qaytarib bo‘lmaydi.": [
     "Story и её лайки будут убраны из вашего профиля. Это действие нельзя отменить.",
@@ -3242,10 +3254,6 @@
   "Story, post va Reels bilan tirik profil. Ilova o‘rnatish shart emas — havola brauzerda ham ishlaydi.": [
     "Живой профиль со Story, постами и Reels. Устанавливать приложение не нужно — ссылка работает и в браузере.",
     "A living profile with Story, posts and Reels. No app install needed — the link works in a browser too."
-  ],
-  "Story, postlar va Reels": [
-    "Story, посты и Reels",
-    "Story, posts and Reels"
   ],
   "Storyni o‘chirasizmi?": [
     "Удалить Story?",
