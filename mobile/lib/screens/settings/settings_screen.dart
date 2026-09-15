@@ -19,6 +19,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../../state/app_lock.dart';
 import '../common/contact_actions.dart';
 import '../identity/edit_profile.dart';
 import '../lock/set_pin_screen.dart';
@@ -108,10 +109,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Ico.lock,
               title: tr('PIN kod'),
               subtitle: tr('Ilova ochilganda kod so‘raladi'),
-              value: lock.enabled,
+              value: lock.enabled && !lock.isPattern,
               onChanged: (on) async {
                 if (on) {
                   await push<bool>(context, (_) => SetPinScreen(lock: lock));
+                } else {
+                  await lock.disable();
+                }
+                setSheet(() {});
+              },
+            ),
+
+            const SizedBox(height: S.x16),
+
+            // GRAFIK KALIT — PIN NING MUQOBILI, QO'SHIMCHASI EMAS.
+            //
+            // Dizaynda (14a) ikkalasi alohida qator. Ikkalasi bir
+            // vaqtda yoqilgan bo'lsa, ilova ochilganda qaysi biri
+            // so'ralishi noaniq bo'lardi — shuning uchun bittasi
+            // yoqilganda ikkinchisi o'chadi va bu belgilardan
+            // ko'rinib turadi.
+            _LockLine(
+              icon: Ico.pattern,
+              title: tr('Grafik kalit'),
+              subtitle: trf('Kamida {n} ta nuqta',
+                  {'n': '${AppLock.patternMinDots}'}),
+              value: lock.enabled && lock.isPattern,
+              onChanged: (on) async {
+                if (on) {
+                  await push<bool>(
+                    context,
+                    (_) => SetPinScreen(lock: lock, pattern: true),
+                  );
                 } else {
                   await lock.disable();
                 }
@@ -138,10 +167,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: S.x20),
               SecondaryButton(
-                tr('Kodni o‘zgartirish'),
+                lock.isPattern
+                    ? tr('Naqshni o‘zgartirish')
+                    : tr('Kodni o‘zgartirish'),
                 size: BtnSize.m,
                 onTap: () async {
-                  await push<bool>(context, (_) => SetPinScreen(lock: lock));
+                  await push<bool>(
+                    context,
+                    (_) => SetPinScreen(lock: lock, pattern: lock.isPattern),
+                  );
                   setSheet(() {});
                 },
               ),
@@ -257,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               eyebrow: tr('Xavfsizlik'),
               rows: [
                 ListRow(
-                  title: tr('PIN · barmoq izi · Face ID'),
+                  title: tr('PIN · grafik kalit · barmoq izi'),
                   subtitle: tr('Ilova ochilganda kod so‘raladi'),
                   leading: NIcon(Ico.shield, size: 19, color: C.ink2),
                   // HOLAT FAQAT RANG BILAN EMAS: belgi va matn ham

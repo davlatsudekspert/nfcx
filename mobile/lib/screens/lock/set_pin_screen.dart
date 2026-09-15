@@ -10,6 +10,7 @@ import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_lock.dart';
 import 'lock_screen.dart';
+import 'pattern_pad.dart';
 
 /// PIN O'RNATISH — ikki qadam: kiriting, keyin tasdiqlang.
 ///
@@ -21,8 +22,14 @@ import 'lock_screen.dart';
 /// (`PinPad`, `PinDots`): kod o'rnatish va kod kiritish bir xil
 /// harakat bo'lishi kerak.
 class SetPinScreen extends StatefulWidget {
-  const SetPinScreen({super.key, required this.lock});
+  const SetPinScreen({super.key, required this.lock, this.pattern = false});
   final AppLock lock;
+
+  /// GRAFIK KALIT REJIMI. Bir xil ekran ATAYLAB: ikki qadam
+  /// (kiriting → takrorlang), bir xil xato matni va bir xil
+  /// tugash. Ikki alohida ekran yasalsa, biridagi tuzatish
+  /// ikkinchisida unutilib qolardi.
+  final bool pattern;
 
   @override
   State<SetPinScreen> createState() => _SetPinScreenState();
@@ -32,8 +39,43 @@ class _SetPinScreenState extends State<SetPinScreen> {
   String _first = '';
   String _pin = '';
   bool _error = false;
+  String? _hint;
 
   bool get _confirming => _first.isNotEmpty;
+
+  /// GRAFIK KALIT chizib bo'lingach.
+  Future<void> _drawn(String dots) async {
+    if (dots.length < AppLock.patternMinDots) {
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _error = true;
+        _hint = trf('Kamida {n} ta nuqta ulansin.',
+            {'n': '${AppLock.patternMinDots}'});
+        _first = '';
+      });
+      return;
+    }
+    if (!_confirming) {
+      setState(() {
+        _first = dots;
+        _error = false;
+        _hint = null;
+      });
+      return;
+    }
+    if (dots != _first) {
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _error = true;
+        _hint = null;
+        _first = '';
+      });
+      return;
+    }
+    await widget.lock.setPattern(dots);
+    successHaptic();
+    if (mounted) Navigator.of(context).pop(true);
+  }
 
   Future<void> _add(String d) async {
     if (_pin.length >= AppLock.pinLength) return;
@@ -83,15 +125,27 @@ class _SetPinScreenState extends State<SetPinScreen> {
               const SizedBox(height: S.x24),
               Text(
                 _confirming
-                    ? tr('Kodni takrorlang')
-                    : tr('Yangi PIN kod o‘ylab toping'),
+                    ? (widget.pattern
+                        ? tr('Naqshni takrorlang')
+                        : tr('Kodni takrorlang'))
+                    : (widget.pattern
+                        ? tr('Yangi grafik kalit chizing')
+                        : tr('Yangi PIN kod o‘ylab toping')),
                 textAlign: TextAlign.center,
                 style: T.titleSm,
               ),
               const SizedBox(height: S.x12),
-              if (_error)
+              if (_hint != null)
                 Text(
-                  tr('Kodlar mos kelmadi. Qaytadan boshlang.'),
+                  _hint!,
+                  textAlign: TextAlign.center,
+                  style: T.caption.copyWith(color: C.fail),
+                )
+              else if (_error)
+                Text(
+                  widget.pattern
+                      ? tr('Naqshlar mos kelmadi. Qaytadan boshlang.')
+                      : tr('Kodlar mos kelmadi. Qaytadan boshlang.'),
                   textAlign: TextAlign.center,
                   style: T.caption.copyWith(color: C.fail),
                 )
@@ -103,14 +157,23 @@ class _SetPinScreenState extends State<SetPinScreen> {
                 )
               else
                 Text(
-                  '${AppLock.pinLength} ${tr('xonali kod')}',
+                  widget.pattern
+                      ? trf('Kamida {n} ta nuqta',
+                          {'n': '${AppLock.patternMinDots}'})
+                      : '${AppLock.pinLength} ${tr('xonali kod')}',
                   textAlign: TextAlign.center,
                   style: T.caption.copyWith(color: C.ink3),
                 ),
               const SizedBox(height: S.x32),
-              PinDots(filled: _pin.length, error: _error),
-              const Spacer(),
-              PinPad(onDigit: _add, onBack: _back),
+              if (widget.pattern) ...[
+                const Spacer(),
+                Center(child: PatternPad(onDone: _drawn, error: _error)),
+                const Spacer(),
+              ] else ...[
+                PinDots(filled: _pin.length, error: _error),
+                const Spacer(),
+                PinPad(onDigit: _add, onBack: _back),
+              ],
               const SizedBox(height: S.x24),
             ],
           ),

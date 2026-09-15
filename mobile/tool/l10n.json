@@ -199,6 +199,10 @@
     "Все сферы",
     "All fields"
   ],
+  "Barmoq izi bilan ochish": [
+    "Открыть отпечатком",
+    "Unlock with fingerprint"
+  ],
   "Barmoq izi yoki yuz": [
     "Отпечаток или лицо",
     "Fingerprint or face"
@@ -919,6 +923,14 @@
     "В галерею помещается до {{n}} фото.",
     "The gallery holds up to {{n}} photos."
   ],
+  "Grafik kalit": [
+    "Графический ключ",
+    "Pattern lock"
+  ],
+  "Grafik kalitni chizing": [
+    "Нарисуйте графический ключ",
+    "Draw your pattern"
+  ],
   "HOLAT: KUTILMOQDA": [
     "СТАТУС: ОЖИДАНИЕ",
     "STATUS: PENDING"
@@ -1434,6 +1446,14 @@
   "Kamida 8 belgi": [
     "Минимум 8 символов",
     "At least 8 characters"
+  ],
+  "Kamida {n} ta nuqta": [
+    "Минимум {n} точки",
+    "At least {n} dots"
+  ],
+  "Kamida {n} ta nuqta ulansin.": [
+    "Соедините минимум {n} точки.",
+    "Connect at least {n} dots."
   ],
   "Karta": [
     "Карта",
@@ -2151,6 +2171,22 @@
     "Пример",
     "Sample"
   ],
+  "Naqsh xato. Qaytadan chizing.": [
+    "Неверный узор. Нарисуйте заново.",
+    "Wrong pattern. Draw again."
+  ],
+  "Naqshlar mos kelmadi. Qaytadan boshlang.": [
+    "Узоры не совпали. Начните заново.",
+    "The patterns did not match. Start again."
+  ],
+  "Naqshni o‘zgartirish": [
+    "Изменить узор",
+    "Change the pattern"
+  ],
+  "Naqshni takrorlang": [
+    "Повторите узор",
+    "Repeat the pattern"
+  ],
   "Narx": [
     "Цена",
     "Price"
@@ -2367,9 +2403,9 @@
     "Введите PIN-код",
     "Enter the PIN"
   ],
-  "PIN · barmoq izi · Face ID": [
-    "PIN · отпечаток пальца · Face ID",
-    "PIN · fingerprint · Face ID"
+  "PIN · grafik kalit · barmoq izi": [
+    "PIN · графический ключ · отпечаток",
+    "PIN · pattern · fingerprint"
   ],
   "POST MEDIA 4:5": [
     "POST MEDIA 4:5",
@@ -3790,6 +3826,10 @@
   "Yangi buyurtmani bajarilgan deb belgilang yoki bekor qiling.": [
     "Отметьте новый заказ выполненным или отмените его.",
     "Mark the new order as done, or cancel it."
+  ],
+  "Yangi grafik kalit chizing": [
+    "Нарисуйте новый графический ключ",
+    "Draw a new pattern"
   ],
   "Yangi kod": [
     "Новый код",

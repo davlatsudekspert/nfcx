@@ -123,6 +123,22 @@ void main() {
     await golden(t, '07-pin-ornatish');
   });
 
+  // GRAFIK KALIT — dizayndagi "Xavfsizlik" ekranida bor edi,
+  // ilovada esa yo'q edi. Ikki kadr: chizish va qulfni ochish.
+  testWidgets('62 grafik kalit — o‘rnatish', (t) async {
+    final lock = AppLock(storage: FakeStore());
+    await pumpScreen(t, SetPinScreen(lock: lock, pattern: true), lock: lock);
+    await golden(t, '62-grafik-kalit-ornatish');
+  });
+
+  testWidgets('63 grafik kalit — qulf ekrani', (t) async {
+    final lock = AppLock(storage: FakeStore());
+    await lock.setPattern('01245');
+    lock.lock();
+    await pumpScreen(t, LockScreen(lock: lock), lock: lock);
+    await golden(t, '63-grafik-kalit-qulf');
+  });
+
   // ── Asosiy tablar ──────────────────────────────────────────────────
   Future<AppState> ready({AuditMode mode = AuditMode.normal}) async {
     final s = auditState(mode: mode);
@@ -617,16 +633,16 @@ void main() {
     await golden(t, '59-mening-kontentim');
   });
 
-  testWidgets('60 ilova qulfi — PIN, barmoq izi, Face ID', (t) async {
+  testWidgets('60 ilova qulfi — PIN, grafik kalit, barmoq izi', (t) async {
     final s = await ready();
     await pumpScreen(t, const SettingsScreen(), state: s);
     await t.scrollUntilVisible(
-      find.text(tr('PIN · barmoq izi · Face ID')),
+      find.text(tr('PIN · grafik kalit · barmoq izi')),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await settle(t);
-    await t.tap(find.text(tr('PIN · barmoq izi · Face ID')));
+    await t.tap(find.text(tr('PIN · grafik kalit · barmoq izi')));
     await settle(t);
     await golden(t, '60-ilova-qulfi');
   });

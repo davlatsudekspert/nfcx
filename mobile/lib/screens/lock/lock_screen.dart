@@ -12,6 +12,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_lock.dart';
+import 'pattern_pad.dart';
 
 /// QULF EKRANI — PIN va barmoq izi / yuz.
 ///
@@ -85,6 +86,20 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  /// GRAFIK KALIT chizib bo'lingach — PIN bilan bir xil yo'l:
+  /// bir xil urinishlar hisobi, bir xil kutish vaqti.
+  Future<void> _drawn(String dots) async {
+    if (widget.lock.lockoutLeft > 0) return;
+    final ok = await widget.lock.verifyPattern(dots);
+    if (!mounted) return;
+    if (ok) {
+      widget.onUnlocked?.call();
+    } else {
+      HapticFeedback.heavyImpact();
+      setState(() => _error = true);
+    }
+  }
+
   void _back() {
     if (_pin.isEmpty) return;
     HapticFeedback.selectionClick();
@@ -108,7 +123,11 @@ class _LockScreenState extends State<LockScreen> {
             const BrandMark(size: 72, glow: true),
             const SizedBox(height: S.x24),
             Text(
-              wait > 0 ? tr('Biroz kuting') : tr('PIN kodni kiriting'),
+              wait > 0
+                  ? tr('Biroz kuting')
+                  : (widget.lock.isPattern
+                      ? tr('Grafik kalitni chizing')
+                      : tr('PIN kodni kiriting')),
               textAlign: TextAlign.center,
               style: T.titleSm,
             ),
@@ -125,7 +144,9 @@ class _LockScreenState extends State<LockScreen> {
               Text('$wait', style: T.statValue.copyWith(color: C.warn)),
             ] else if (_error) ...[
               Text(
-                tr('Kod xato. Qaytadan kiriting.'),
+                widget.lock.isPattern
+                    ? tr('Naqsh xato. Qaytadan chizing.')
+                    : tr('Kod xato. Qaytadan kiriting.'),
                 textAlign: TextAlign.center,
                 style: T.caption.copyWith(color: C.fail),
               ),
@@ -142,17 +163,41 @@ class _LockScreenState extends State<LockScreen> {
               ),
 
             const SizedBox(height: S.x32),
-            PinDots(filled: _pin.length, error: _error),
-            const Spacer(),
-            Opacity(
-              opacity: wait > 0 ? .35 : 1,
-              child: PinPad(
-                onDigit: _add,
-                onBack: _back,
-                onBiometric: widget.lock.biometricEnabled ? _biometric : null,
-                busy: _busy,
+            if (widget.lock.isPattern) ...[
+              const Spacer(),
+              Opacity(
+                opacity: wait > 0 ? .35 : 1,
+                child: Center(
+                  child: PatternPad(
+                    onDone: _drawn,
+                    error: _error,
+                    enabled: wait == 0,
+                  ),
+                ),
               ),
-            ),
+              const Spacer(),
+              // BARMOQ IZI GRAFIK KALITDA HAM: naqsh chizib
+              // bo'lmaydigan holat (qo'lda qo'lqop, ho'l ekran)
+              // uchun zaxira yo'l qolishi kerak.
+              if (widget.lock.biometricEnabled)
+                GhostButton(
+                  tr('Barmoq izi bilan ochish'),
+                  icon: Ico.fingerprint,
+                  onTap: _busy ? null : _biometric,
+                ),
+            ] else ...[
+              PinDots(filled: _pin.length, error: _error),
+              const Spacer(),
+              Opacity(
+                opacity: wait > 0 ? .35 : 1,
+                child: PinPad(
+                  onDigit: _add,
+                  onBack: _back,
+                  onBiometric: widget.lock.biometricEnabled ? _biometric : null,
+                  busy: _busy,
+                ),
+              ),
+            ],
             const SizedBox(height: S.x24),
           ],
         ),
