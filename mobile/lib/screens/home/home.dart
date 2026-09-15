@@ -14,6 +14,7 @@ import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
 import '../business/business_stats.dart';
 import '../business/edit_catalog.dart';
+import '../business/product_detail.dart';
 import '../orders/owner_orders.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
@@ -336,6 +337,66 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: _BusinessRow(identity: active),
                   ),
                 ),
+
+              // XIZMATLAR VA MAHSULOTLAR — BIZNES TANLANGANDA.
+              //
+              // Egasi: "bu yerda mahsulot yo xizmatlari ko'rinishi
+              // kerak emasmi". To'g'ri: biznes tanlangan bo'lsa
+              // Bosh sahifaning eng muhim mazmuni — o'sha
+              // biznesning taklifi. Ilgari u yer bo'sh qolardi va
+              // mahsulotlarni ko'rish uchun profilga kirib,
+              // katalogni ochish kerak edi.
+              //
+              // Gorizontal qator ATAYLAB: Bosh sahifa ro'yxat emas,
+              // boshqaruv paneli — mahsulotlar bu yerda ko'rinadi,
+              // to'liq ro'yxat esa katalogda.
+              if (active != null &&
+                  active.isBusiness &&
+                  (active.company?.items.isNotEmpty ?? false)) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      S.gutter,
+                      S.x24,
+                      S.gutter,
+                      S.x12,
+                    ),
+                    child: SectionHeader(
+                      tr('Xizmatlar'),
+                      actionLabel: tr('Katalog'),
+                      onAction: () => push<void>(
+                        context,
+                        (_) => EditCatalogScreen(company: active.company!),
+                      ),
+                      trailing: Text(
+                        som(active.company!.items.length),
+                        style: T.meta,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 186,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: S.gutter,
+                      ),
+                      itemCount: active.company!.items.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: S.x12),
+                      itemBuilder: (context, i) => SizedBox(
+                        width: 150,
+                        child: ProductCard(
+                          product: active.company!.items[i],
+                          companyId: active.code,
+                          companyName: active.name,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
 
               // OGOHLANTIRISHLAR — kutilayotgan to'lov va sovg'a.
               if (_pending.isNotEmpty || _gifts > 0)
