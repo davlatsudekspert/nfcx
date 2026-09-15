@@ -1,96 +1,95 @@
 # Deploy: sayt qanday chiqadi
 
-Bu hujjat 2026-09-15 da yozildi, chunki sayt ishdan chiqqanda sabab
-topishga ikki marta soatlab vaqt ketdi. Chalkashlikning ildizi bitta:
-**bitta domenni ikkita Worker bo'lishib xizmat qiladi** va buni hech
-qayerda yozilmagan edi.
+Bu hujjat 2026-09-15 da yozildi. O'sha kuni sayt ham, ilova ham
+ishlamay qoldi va sabab topishga soatlab vaqt ketdi. Ildizi bitta
+edi: **hisobda ikkita Worker bor va ular ikki xil yo'l bilan
+yangilanadi** — buni hech qayerda yozilmagan edi.
 
-## Ikkita Worker
+## Nima bo'lgan edi
 
-| Worker | Nimani beradi | Qanday biriktirilgan |
+| Worker | Kim yangilaydi | Holati |
 |---|---|---|
-| `nfcstore-uz` | `nfcstore.uz`, `www.nfcstore.uz` — saytning o'zi: HTML, CSS, JS, rasm | **Custom Domain** |
-| `nfcstore-api` | `nfcstore.uz/api/*`, `nfcstore.uz/uploads/*` | **Route** |
+| `nfcstore-uz` | Cloudflare Git integratsiyasi | domen SHU YERDA edi, ya'ni odamlar shuni ko'rardi |
+| `nfcstore-api` | GitHub Actions (`wrangler deploy`) | domen unga faqat `/api/*` va `/uploads/*` marshrutlari bilan ulangan edi |
 
-Marshrut (Route) domendan ko'ra aniqroq, shuning uchun `/api/*` va
-`/uploads/*` `nfcstore-api` ga tushadi, qolgan hamma narsa esa
-`nfcstore-uz` ga.
+**Nomlar chalkashtirgan joyi:** `wrangler.jsonc` dagi `name` faqat
+`wrangler deploy` uchun kuchga ega. Cloudflare Workers Builds esa
+skript nomini O'ZI biriktirilgan Worker'ga **majburan** o'zgartiradi
+va fayldagi nomni e'tiborga olmaydi. Shuning uchun fayldagi nomga
+qarab "deploy qayerga boradi" deb xulosa chiqarish **xato** — bu
+adashtirgan asosiy narsa bo'ldi.
 
-Ikkalasining o'z manzili ham bor va ular marshrutlarni chetlab o'tadi —
-nosozlikni ajratishda eng tez usul shu:
+Natijada GitHub Actions'ning 213 ta muvaffaqiyatli deploy'i hech kim
+ochmaydigan `nfcstore-api` ga tushardi. Git integratsiyasi build
+token bilan ishdan chiqqach `nfcstore-uz` qotib qoldi va:
 
-- https://nfcstore-uz.davlatsudekspert.workers.dev
-- https://nfcstore-api.davlatsudekspert.workers.dev
+- saytda `assets/index-*.css` uchun 404/500 chiqdi;
+- ilovada lenta "Topilmadi. `not_found` HTTP 404" berdi — chunki
+  `/api/*` marshrut orqali ESKI `nfcstore-api` ga tushardi va u
+  yerda `/api/feed` umuman yo'q edi.
 
-## Ikkita deploy yo'li
+Marshrut (Route) Custom Domain'dan **aniqroq**, shuning uchun domen
+to'g'ri Worker'da turganda ham `/api/*` eskisiga ketaverardi.
 
-1. **GitHub Actions** — `.github/workflows/deploy.yml`, `main` ga har
-   push'da. `npx wrangler deploy` ni chaqiradi.
-2. **Cloudflare Git integratsiyasi** — `nfcstore-uz` Worker'ining
-   Settings -> Build bo'limida sozlangan. U ham `npx wrangler deploy`
-   ni chaqiradi.
+## Hozirgi holat (tuzatilgandan keyin)
 
-## ⚠️ ASOSIY XATO (2026-09-15 da aniqlandi)
+- `nfcstore.uz` va `www.nfcstore.uz` → **`nfcstore-uz`** (Custom Domain)
+- `nfcstore-api` dagi eski Route'lar **o'chirildi**
+- `wrangler.jsonc` dagi `name` → **`nfcstore-uz`**, ya'ni GitHub
+  Actions ham endi ishlab turgan Worker'ni yangilaydi va sayt buzuq
+  Git integratsiyasiga bog'liq emas
 
-`wrangler.jsonc` da `"name": "nfcstore-api"` yozilgan va `wrangler`
-DOIM shu nomga deploy qiladi. Ya'ni **ikkala yo'l ham `nfcstore-api`
-ga chiqadi**, hech biri `nfcstore-uz` ga tegmaydi — garchi ikkinchi
-yo'l aynan `nfcstore-uz` Worker'i ostida sozlangan bo'lsa ham.
+Tekshirilgan:
 
-Natijada:
+```
+nfcstore.uz/                                200  haqiqiy sahifa
+nfcstore.uz/api/feed                        200  lenta ma'lumoti bilan
+nfcstore.uz/api/settings/payments-enabled   200  payme va click: true
+nfcstore.uz/uploads/....jpg                 200  haqiqiy JPEG
+```
 
-- yangi kod `nfcstore-api` da turadi va u to'liq ishlaydi (sayt ham,
-  API ham) — buni `nfcstore-api.davlatsudekspert.workers.dev` da
-  ochib tekshirish mumkin;
-- odamlar kiradigan `nfcstore.uz` esa `nfcstore-uz` ga boradi va u
-  ESKI nusxada qotib qolgan.
+## Qoidalar
 
-Belgisi: sahifa ochiladi, lekin `assets/index-*.css` uchun 404 yoki
-500 chiqadi — brauzerdagi HTML bir build'dan, serverdagi fayllar
-boshqasidan.
+**1. Fayldagi nomga ishonmang — so'rab ko'ring.** Qaysi Worker'da
+qanday kod turganini bilishning yagona ishonchli yo'li — ikkala
+manzilni yonma-yon so'roq qilish. Ular marshrutlarni chetlab o'tadi:
 
-Cloudflare buni build sahifasida sariq banner bilan aytadi:
+- https://nfcstore-uz.davlatsudekspert.workers.dev/api/feed
+- https://nfcstore-api.davlatsudekspert.workers.dev/api/feed
 
-> Update `wrangler.jsonc` in your repo to keep settings consistent
-> `"name": "nfcstore-uz"`
+**2. Secretlar deploy bilan KO'CHMAYDI.** Ular Worker'ga biriktirilgan
+va `wrangler.jsonc` da ataylab yozilmaydi. Worker almashtirilsa bular
+qo'lda ko'chirilishi shart, aks holda to'lov darhol to'xtaydi:
+`PAYME_MERCHANT_ID`, `PAYME_KEY`, `CLICK_SERVICE_ID`,
+`CLICK_SECRET_KEY`, `CLICK_MERCHANT_ID`, `GEMINI_API_KEY`.
+D1 va R2 esa `wrangler.jsonc` da yozilgan, ular o'zi o'rnatiladi.
 
-Banner **haqiqiy** nomuvofiqlikni ko'rsatadi, lekin uning taklifini
-qabul qilmang.
+**3. `/uploads/*` — R2.** Marshrut yoki Worker o'zgarsa rasmlarni
+ALOHIDA tekshiring: API 200 qaytaraverib, faqat rasmlar yo'qolishi
+mumkin va buni sezmay qolish oson.
 
-### To'g'ri tuzatish: domenni ko'chirish, nomni EMAS
+## Avtomatlashtirish
 
-Nomni `nfcstore-uz` ga o'zgartirish ishlaydi, lekin undan oldin
-BARCHA secretlarni qo'lda ko'chirish kerak. Secretlar Worker'ga
-biriktirilgan va `wrangler.jsonc` da ataylab yozilmaydi, ya'ni
-deploy bilan ko'chmaydi. Bittasi unutilsa to'lov darhol to'xtaydi:
+`.github/workflows/cf-domains.yml` — domenlarni ko'rish va ko'chirish
+(Cloudflare API orqali, `CLOUDFLARE_API_TOKEN` bilan). Standart rejim
+`read`: hech narsa o'zgarmaydi, faqat qaysi domen qaysi Worker'da
+ekani chiqariladi va uchala manzil so'roq qilinadi.
 
-- `PAYME_MERCHANT_ID`, `PAYME_KEY`
-- `CLICK_SERVICE_ID`, `CLICK_SECRET_KEY`, `CLICK_MERCHANT_ID`
-- `GEMINI_API_KEY` (AI yordamchi; bo'lmasa vidjet o'zini ko'rsatmaydi)
+`apply` uchun `confirm: KO'CHIR`, `target` (nishon Worker) va
+ixtiyoriy `drop_routes` kerak.
 
-Shuning uchun teskarisini qilamiz — kodga umuman tegmaymiz va
-domenni ISHLAB TURGAN Worker'ga ko'chiramiz. `nfcstore-api` da
-D1, R2 va barcha secretlar allaqachon bor va ishlayotgani
-tasdiqlangan.
-
-1. `nfcstore-uz` -> Domains -> `nfcstore.uz` va `www.nfcstore.uz`
-   ni "Custom Domains and Routes" jadvalidan olib tashlash.
-2. `nfcstore-api` -> Domains -> "+ Add Domain" -> o'sha ikkalasini
-   qo'shish.
-3. Ikki qadam orasida sayt ~1 daqiqa ochilmaydi — bu normal.
-4. Ishlayotganiga ishonch hosil qilgach: `nfcstore-api` dagi eski
-   4 ta Route'ni o'chirish (endi ortiqcha), `nfcstore-uz` dagi Git
-   integratsiyasini uzish va Worker'ning o'zini o'chirish.
-
-D1 va R2 bog'lanishlari `wrangler.jsonc` da yozilgan, shuning uchun
-ular deploy bilan o'zi o'rnatiladi.
+**Eslatma — bir marta zarar yetkazgan xato:** Cloudflare `DELETE`
+uchun `204 No Content` va BO'SH tana qaytaradi. Uni "xato" deb
+o'qigan skript amal bajarilgani holda "hech narsa o'zgarmadi" deb
+yozdi va domen bir muddat umuman uzilib qoldi. Skriptda bu tuzatilgan
+(bo'sh tana = muvaffaqiyat), lekin Cloudflare API bilan ishlaganda
+buni doim yodda tuting.
 
 ## Build token
 
-Cloudflare Git integratsiyasi alohida "build token" ga bog'liq. U
-o'chirilsa yoki almashtirilsa build muhiti umuman ishga tushmaydi va
-build ~1 soniyada yiqiladi, log'da esa hech qanday kod xatosi
-ko'rinmaydi:
+Git integratsiyasi alohida "build token" ga bog'liq. U o'chirilsa
+build muhiti ko'tarilmaydi va build ~1 soniyada yiqiladi, log'da esa
+kod xatosi ko'rinmaydi:
 
 ```
 Initializing build environment...
@@ -98,12 +97,11 @@ Failed: The build token selected for this build has been deleted or
 rolled and cannot be used for this build
 ```
 
-2026-09-15 da aynan shunday bo'ldi. Tuzatish: Workers & Pages ->
-`nfcstore-uz` -> Settings -> Build -> **Disconnect**, so'ng **Connect**
--> GitHub -> `davlatsudekspert/nfcx` -> branch `main`. Cloudflare yangi
-token'ni o'zi yaratadi, repoda hech narsa o'zgarmaydi.
+Tuzatish: Workers & Pages → `nfcstore-uz` → Settings → Build →
+**Disconnect**, so'ng **Connect** → GitHub → `davlatsudekspert/nfcx`
+→ branch `main`. Cloudflare yangi token'ni o'zi yaratadi.
 
-Qayta ulaganda build sozlamalari so'raladi:
+Qayta ulaganda build sozlamalari:
 
 | Maydon | Qiymat |
 |---|---|
@@ -113,17 +111,18 @@ Qayta ulaganda build sozlamalari so'raladi:
 | Root directory | `/` |
 | Production branch | `main` |
 
+Endi bu **zaxira yo'l**: asosiy deploy GitHub Actions orqali boradi.
+
 ## Nosozlikni qanday ajratish
 
 | Belgi | Qayerga qarash |
 |---|---|
-| Sahifa ochiladi, lekin CSS/JS uchun 404 yoki 500 | `nfcstore-uz` eski build'da qolgan |
-| Sahifa ochiladi, lekin ma'lumot kelmaydi ("Topilmadi.") | `nfcstore-api` — `/api/*` |
-| Rasm ko'rinmaydi | `nfcstore-api` — `/uploads/*` (R2) |
-| Ilovada kirish ishlamaydi | `nfcstore-api` — `/api/auth/*` |
+| Sahifa ochiladi, CSS/JS uchun 404 yoki 500 | Worker eski build'da qolgan |
+| "Topilmadi." / `not_found` | `/api/*` boshqa Worker'ga ketyapti — Route'larni tekshiring |
+| Rasm ko'rinmaydi | `/uploads/*` va R2 bog'lanishi |
+| Ilovada kirish ishlamaydi | `/api/auth/*` |
 
 Brauzerda eski fayl qolib ketishi ham mumkin: `index.html` service
-worker keshida turgan bo'lsa, u endi mavjud bo'lmagan `assets/*.css`
-ni so'raydi. Shuning uchun ikonka yoki qobiq o'zgarganda
-`public/sw.js` dagi `VERSION` va `index.html` dagi `?v=` BIRGA
-oshiriladi.
+worker keshida tursa, u endi mavjud bo'lmagan `assets/*.css` ni
+so'raydi. Shuning uchun ikonka yoki qobiq o'zgarganda `public/sw.js`
+dagi `VERSION` va `index.html` dagi `?v=` BIRGA oshiriladi.
