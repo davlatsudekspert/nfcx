@@ -136,6 +136,33 @@ class ScreenTitle extends StatelessWidget {
       );
 }
 
+/// TAB PANELI USTIMDA TURIBDIMI VA U QANCHA JOY EGALLAYDI.
+///
+/// HAQIQIY XATO, EGASI IKKI SURAT BILAN KO'RSATDI: "Sotib olish"
+/// va "Buyurtma berish" tugmalari ko'rinmay qolgan.
+///
+/// SABABI. Pastki tab paneli dizayn bo'yicha kontent USTIDA
+/// suzadi (Shell'dagi `Stack`). Tab ichidan ochilgan ekran ham
+/// o'sha stekda, ya'ni uning eng pastki qismi — aynan asosiy
+/// amal tugmasi turadigan joy — panel ostida qoladi.
+///
+/// Ilovada bu 12 ta ekranga tegishli edi va har birida alohida
+/// hisoblash qo'shish kerak bo'lardi. Shuning uchun o'lchov
+/// YUQORIDAN beriladi: qobiq "mening ustimda shuncha panel bor"
+/// deydi, `StickyBar` esa uni o'zi hisobga oladi.
+class ShellChrome extends InheritedWidget {
+  const ShellChrome({super.key, required this.bottom, required super.child});
+
+  /// Kontent ustida suzib turgan panelning balandligi.
+  final double bottom;
+
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ShellChrome>()?.bottom ?? 0;
+
+  @override
+  bool updateShouldNotify(ShellChrome old) => old.bottom != bottom;
+}
+
 /// Yopishgan pastki panel — "Kontaktni saqlash" kabi asosiy amal.
 ///
 /// Kontent panel ostida qolmasligi uchun ro'yxatga `bottomInset`
@@ -149,18 +176,27 @@ class StickyBar extends StatelessWidget {
 
   /// Ro'yxat oxiriga qo'shiladigan bo'sh joy.
   static double inset(BuildContext context) =>
-      MediaQuery.of(context).padding.bottom + 96;
+      MediaQuery.of(context).padding.bottom + 96 + ShellChrome.of(context);
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: padding ??
-            EdgeInsets.fromLTRB(
-              S.gutter,
-              S.x20,
-              S.gutter,
-              MediaQuery.of(context).padding.bottom + S.x16,
-            ),
-        decoration: BoxDecoration(gradient: C.bottomScrim),
-        child: child,
-      );
+  Widget build(BuildContext context) {
+    // Tizim paneli (jest chizig'i) VA tab paneli — ikkalasi ham
+    // hisobga olinadi. Tab ichida bo'lmasa ikkinchisi nol.
+    final safe = MediaQuery.of(context).padding.bottom;
+    final chrome = ShellChrome.of(context);
+    return Container(
+      padding: padding ??
+          EdgeInsets.fromLTRB(
+            S.gutter,
+            S.x20,
+            S.gutter,
+            // Tab paneli safe-area'ni O'ZI ichiga oladi, shuning
+            // uchun u bor bo'lganda pastdagi joy ikki marta
+            // qo'shilmaydi.
+            (chrome > 0 ? chrome : safe) + S.x16,
+          ),
+      decoration: BoxDecoration(gradient: C.bottomScrim),
+      child: child,
+    );
+  }
 }

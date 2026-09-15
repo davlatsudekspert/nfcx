@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import '../design/components/nav_bar.dart';
+import '../design/components/top_bar.dart';
 import '../design/route_watch.dart';
 import '../design/components/states.dart';
 import '../design/tokens.dart';
@@ -149,11 +150,23 @@ class _ShellState extends State<Shell> {
                         for (var i = 0; i < NavBar.tabs.length; i++)
                           TickerMode(
                             enabled: i == _tab,
-                            child: PrimaryScrollController(
-                              controller: _scrollers[i],
-                              child: _TabNavigator(
-                                navKey: _keys[i],
-                                child: _tabs[i],
+                            // PANEL KONTENT USTIDA SUZADI — TAB
+                            // ICHIDAGI EKRANLAR BUNI BILISHI KERAK.
+                            //
+                            // Aks holda ularning eng pastki qismi
+                            // (asosiy amal tugmasi) panel ostida
+                            // qolib ketadi. Egasi buni "Sotib
+                            // olish ko'rinmayapti", "Buyurtma
+                            // berish ko'rinmay qolgan" deb
+                            // ko'rsatdi.
+                            child: ShellChrome(
+                              bottom: NavBar.inset(context),
+                              child: PrimaryScrollController(
+                                controller: _scrollers[i],
+                                child: _TabNavigator(
+                                  navKey: _keys[i],
+                                  child: _tabs[i],
+                                ),
                               ),
                             ),
                           ),

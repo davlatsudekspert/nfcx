@@ -49,6 +49,7 @@ import 'package:nfcstore/screens/orders/owner_orders.dart';
 import 'package:nfcstore/screens/payment/payment_screen.dart';
 import 'package:nfcstore/screens/settings/settings_screen.dart';
 import 'package:nfcstore/screens/shell.dart';
+import 'package:nfcstore/design/components/nav_bar.dart';
 import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_state.dart';
 import '../settle.dart';
@@ -192,6 +193,35 @@ void main() {
   // KOD QIDIRUVI — saytdagi `/narxlar` kalkulyatoridek: daraja,
   // sabab, holat va narx. Egasi: "kerakli ID'ni qidirsa, tepadan
   // o'sha ID narxi chiqsin".
+  // TAB ICHIDA OCHILGAN EKRANNING ASOSIY TUGMASI KO'RINADIMI.
+  //
+  // Egasi ikki surat bilan ko'rsatdi: "Sotib olish" va "Buyurtma
+  // berish" tugmalari ko'rinmay qolgan — ular pastki tab paneli
+  // ostida qolib ketgan edi.
+  testWidgets('66 tab ichida — tugma panel ostida qolmaydi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const Shell(), state: s);
+    await settle(t);
+    // Do'kon tabi -> "NFC ID karta" -> buyurtma ekrani.
+    await t.tap(find.text(tr('Do‘kon')));
+    await settle(t);
+    await t.tap(find.text(tr('NFC ID karta')));
+    await settle(t);
+
+    final button = find.text(tr('Buyurtma berish'));
+    expect(button, findsWidgets, reason: 'tugma umuman chizilmagan');
+
+    // Tugma tab panelidan YUQORIDA bo'lishi kerak — aks holda uni
+    // bosib bo'lmaydi.
+    final box = t.getRect(button.first);
+    final barTop = t.getSize(find.byType(Shell)).height - NavBar.barHeight;
+    expect(
+      box.center.dy,
+      lessThan(barTop),
+      reason: 'tugma pastki panel ostida qolgan — bosib bo‘lmaydi',
+    );
+  });
+
   testWidgets('65 kod narxi — qidiruv natijasi', (t) async {
     final s = await ready();
     await pumpScreen(t, const IdCatalogScreen(), state: s);
@@ -468,6 +498,17 @@ void main() {
     final s = await ready(mode: AuditMode.newUser);
     await pumpScreen(t, const NfcCenterScreen(), state: s);
     await golden(t, '39-yangi-nfc');
+  });
+
+  // PROFIL TABI — EGASINING O'ZI KO'RADIGAN EKRAN.
+  //
+  // Shu paytgacha faqat "yangi foydalanuvchi" holati kadrga
+  // olinardi, ya'ni asosiy ko'rinish qo'riqlanmasdi. Egasi aynan
+  // shu ekrandan statistikani olib tashlashni so'radi.
+  testWidgets('67 profil tabi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const ProfileTab(), state: s);
+    await golden(t, '67-profil-tabi');
   });
 
   testWidgets('40 yangi foydalanuvchi — profil', (t) async {

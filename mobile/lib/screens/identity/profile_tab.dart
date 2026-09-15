@@ -4,7 +4,6 @@ import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
-import '../../design/components/chart.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/media.dart';
@@ -134,19 +133,6 @@ class _ProfileTabState extends State<ProfileTab> {
     if (done == true && mounted) await _load();
   }
 
-  /// 7 kunlik ko'rishlar — serverning `byDay` javobidan.
-  ///
-  /// Kengaytirilgan statistika faqat pullik tarifda keladi. Kelmasa
-  /// grafik umuman chizilmaydi: bo'sh yoki o'ylab topilgan grafik
-  /// ko'rsatishdan ko'ra ko'rsatmagan yaxshi.
-  List<int>? get _series {
-    final raw = _analytics?['byDay'];
-    if (raw is! List || raw.isEmpty) return null;
-    return [
-      for (final e in raw)
-        if (e is Map) (e['views'] as num?)?.round() ?? 0 else 0,
-    ];
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +192,6 @@ class _ProfileTabState extends State<ProfileTab> {
 
     final views = (_analytics?['totalViews'] as num?)?.round() ?? 0;
     final contacts = _contactCount();
-    final series = _series;
 
     return ScreenBackdrop(
       aura: Aura.profile,
@@ -372,53 +357,16 @@ class _ProfileTabState extends State<ProfileTab> {
                       ),
               ),
 
-              // 7 KUNLIK GRAFIK.
-              if (series != null && series.length > 1) ...[
-                const SizedBox(height: S.x12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                  // GRAFIK ATAYLAB KICHIK.
-                  //
-                  // Ilgari u ekranning eng katta bloki edi va
-                  // profilning o'zidan ko'proq joy egallardi. Egasi:
-                  // "ko'rishlar 7 kunini kichikroq qil". To'g'ri
-                  // e'tiroz: bu tabning asosiy vazifasi shaxsni
-                  // ko'rsatish, statistika esa ikkinchi darajali —
-                  // batafsili baribir bosilganda alohida ekranda
-                  // ochiladi.
-                  child: Surface(
-                    padding: const EdgeInsets.all(S.x12),
-                    onTap: () => push<void>(
-                      context,
-                      (_) => ProfileStatsScreen(
-                        code: active.code,
-                        name: active.name,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              tr('Ko‘rishlar · 7 kun'),
-                              style: T.cardTitle.copyWith(fontSize: 12.5),
-                            ),
-                            const Spacer(),
-                            _Delta(series: series),
-                          ],
-                        ),
-                        const SizedBox(height: S.x8),
-                        BarChart(
-                          values: series,
-                          labels: [tr('Dush'), tr('Yak')],
-                          height: 54,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+              // 7 KUNLIK GRAFIK OLIB TASHLANDI.
+              //
+              // EGASI: "statistikani olib tashla". Profil tabining
+              // vazifasi — shaxsni ko'rsatish va boshqarish.
+              // Statistika baribir alohida ekranda bor (menyudagi
+              // "Statistika"), u yerda to'liq va ma'noliroq.
+              //
+              // Bu yerda esa u ko'pincha BO'SH turardi: yangi
+              // profilda ko'rishlar yo'q, ya'ni ekranning yarmini
+              // egallagan bo'sh to'rtburchak qolardi.
 
               // KONTENT QO'SHISH — IKKI ALOHIDA TUGMA.
               const SizedBox(height: S.x24),
@@ -849,25 +797,3 @@ class _IdStrip extends StatelessWidget {
       );
 }
 
-/// O'sish foizi — oxirgi kun oldingi kunlarning o'rtachasiga
-/// nisbatan.
-class _Delta extends StatelessWidget {
-  const _Delta({required this.series});
-
-  final List<int> series;
-
-  @override
-  Widget build(BuildContext context) {
-    if (series.length < 2) return const SizedBox.shrink();
-    final last = series.last;
-    final rest = series.sublist(0, series.length - 1);
-    final avg = rest.reduce((a, b) => a + b) / rest.length;
-    if (avg == 0) return const SizedBox.shrink();
-    final delta = ((last - avg) / avg * 100).round();
-    final up = delta >= 0;
-    return StatusChip(
-      '${up ? '+' : ''}$delta%',
-      tone: up ? StatusTone.ok : StatusTone.neutral,
-    );
-  }
-}
