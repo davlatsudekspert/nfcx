@@ -273,6 +273,7 @@ export async function initDb() {
       price      INTEGER NOT NULL,
       payload    JSONB NOT NULL,
       status     VARCHAR(20) NOT NULL DEFAULT 'pending',
+      payment_provider VARCHAR(16) NOT NULL DEFAULT 'payme',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
@@ -295,6 +296,22 @@ export async function initDb() {
     if (!wc.has('payme_transaction_id')) {
       await pool.query(`ALTER TABLE web_orders ADD COLUMN payme_transaction_id TEXT UNIQUE`);
       console.log('[db] web_orders.payme_transaction_id ustuni qo\u2019shildi.');
+    }
+    if (!wc.has('payment_provider')) {
+      await pool.query(`ALTER TABLE web_orders ADD COLUMN payment_provider VARCHAR(16) NOT NULL DEFAULT 'payme'`);
+      console.log('[db] web_orders.payment_provider ustuni qo\u2019shildi.');
+    }
+    if (!wc.has('click_prepare_id')) {
+      await pool.query(`ALTER TABLE web_orders ADD COLUMN click_prepare_id INTEGER UNIQUE`);
+      console.log('[db] web_orders.click_prepare_id ustuni qo\u2019shildi.');
+    }
+    if (!wc.has('click_transaction_id')) {
+      await pool.query(`ALTER TABLE web_orders ADD COLUMN click_transaction_id TEXT UNIQUE`);
+      console.log('[db] web_orders.click_transaction_id ustuni qo\u2019shildi.');
+    }
+    if (!wc.has('click_paydoc_id')) {
+      await pool.query(`ALTER TABLE web_orders ADD COLUMN click_paydoc_id TEXT`);
+      console.log('[db] web_orders.click_paydoc_id ustuni qo\u2019shildi.');
     }
   }
   await pool.query(`CREATE INDEX IF NOT EXISTS web_orders_user_idx ON web_orders (user_id)`);
@@ -3674,14 +3691,20 @@ export async function listActiveBotOrderCodes() {
 // ---------- Sayt buyurtmalari (to'lov tasdiqlangach karta yaratiladi) ----------
 
 const WEB_ORDER_FIELDS = `
-  id, user_id AS "userId", code, kind, price, payload, status, created_at AS "createdAt"
+  id, user_id AS "userId", code, kind, price, payload, status,
+  payment_provider AS "paymentProvider",
+  click_prepare_id AS "clickPrepareId",
+  click_transaction_id AS "clickTransactionId",
+  click_paydoc_id AS "clickPaydocId",
+  created_at AS "createdAt"
 `;
 
-export async function createWebOrder({ userId, code, price, payload, kind = 'card_purchase' }) {
+export async function createWebOrder({ userId, code, price, payload, kind = 'card_purchase', paymentProvider = 'payme' }) {
+  const provider = paymentProvider === 'click' ? 'click' : 'payme';
   const { rows } = await pool.query(
-    `INSERT INTO web_orders (user_id, code, kind, price, payload)
-     VALUES ($1,$2,$3,$4,$5::jsonb) RETURNING ${WEB_ORDER_FIELDS}`,
-    [userId, code, kind, price, JSON.stringify(payload || {})]
+    `INSERT INTO web_orders (user_id, code, kind, price, payload, payment_provider)
+     VALUES ($1,$2,$3,$4,$5::jsonb,$6) RETURNING ${WEB_ORDER_FIELDS}`,
+    [userId, code, kind, price, JSON.stringify(payload || {}), provider]
   );
   return rows[0] || null;
 }
@@ -3743,6 +3766,37 @@ export async function getWebOrderByPaymeId(paymeTransactionId) {
 
 export async function setWebOrderPaymeId(id, paymeTransactionId) {
   await pool.query(`UPDATE web_orders SET payme_transaction_id = $2 WHERE id = $1`, [id, paymeTransactionId]);
+}
+
+// ---------- Click Shop API integratsiyasi uchun ----------
+
+export async function getWebOrderByClickPrepareId(clickPrepareId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE click_prepare_id = $1`,
+    [clickPrepareId]
+  );
+  return rows[0] || null;
+}
+
+export async function getWebOrderByClickTransactionId(clickTransactionId) {
+  const { rows } = await pool.query(
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE click_transaction_id = $1`,
+    [clickTransactionId]
+  );
+  return rows[0] || null;
+}
+
+export async function setWebOrderClickPrepared(id, { clickPrepareId, clickTransactionId, clickPaydocId }) {
+  const { rows } = await pool.query(
+    `UPDATE web_orders
+       SET click_prepare_id = COALESCE(click_prepare_id, $2),
+           click_transaction_id = COALESCE(click_transaction_id, $3),
+           click_paydoc_id = COALESCE(click_paydoc_id, $4)
+     WHERE id = $1 AND payment_provider = 'click'
+     RETURNING ${WEB_ORDER_FIELDS}`,
+    [id, clickPrepareId, clickTransactionId, clickPaydocId || null]
+  );
+  return rows[0] || null;
 }
 
 // Buyurtma turi (kind)ga qarab to'g'ri "finalize" mantig'ini bajaradi —
@@ -4789,7 +4843,7 @@ export async function setPhysicalCardBlocked(id, ownerUserId, blocked) {
 // E-wallet yo'q — pul darhol yechilmaydi, foydalanuvchi Payme checkout'iga
 // yo'naltiriladi, is_premium faqat to'lov webhook orqali TASDIQLANGANDA
 // TRUE bo'ladi (finalizePremiumUpgrade() orqali).
-export async function requestPremium(userId, amount) {
+export async function requestPremium(userId, amount, paymentProvider = 'payme') {
   const { rows: uRows } = await pool.query(
     `SELECT is_premium AS "isPremium" FROM users WHERE id = $1`, [userId]
   );
@@ -4797,13 +4851,16 @@ export async function requestPremium(userId, amount) {
   if (uRows[0].isPremium) return { error: 'ALREADY_PREMIUM' };
 
   const { rows: pending } = await pool.query(
-    `SELECT id FROM web_orders WHERE user_id = $1 AND kind = 'premium_upgrade' AND status = 'pending'`,
+    `SELECT ${WEB_ORDER_FIELDS} FROM web_orders WHERE user_id = $1 AND kind = 'premium_upgrade' AND status = 'pending'`,
     [userId]
   );
-  if (pending[0]) return { error: 'ALREADY_PENDING' };
+  if (pending[0]) return { ok: true, order: pending[0], alreadyPending: true };
 
-  const order = await createWebOrder({ userId, code: 'PREMIUM', kind: 'premium_upgrade', price: amount, payload: {} });
-  return { ok: true, orderId: order.id };
+  const order = await createWebOrder({
+    userId, code: 'PREMIUM', kind: 'premium_upgrade', price: amount,
+    payload: {}, paymentProvider,
+  });
+  return { ok: true, order, alreadyPending: false };
 }
 
 // To'lov tasdiqlangach webhook shu funksiyani chaqiradi.

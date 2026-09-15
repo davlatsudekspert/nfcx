@@ -90,7 +90,7 @@ export async function handlePaymeRequest(body) {
       case 'CheckPerformTransaction': {
         if (!orderId) return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
         const order = await getWebOrder(orderId);
-        if (!order || order.status !== 'pending') return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi yoki allaqachon yopilgan");
+        if (!order || order.paymentProvider !== 'payme' || order.status !== 'pending') return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi yoki allaqachon yopilgan");
         const expected = Math.round(Number(order.price) * 100);
         if (Number(params.amount) !== expected) return rpcError(id, ERR.INVALID_AMOUNT, "Summa mos emas");
         return rpcResult(id, { allow: true });
@@ -99,7 +99,7 @@ export async function handlePaymeRequest(body) {
       case 'CreateTransaction': {
         if (!orderId) return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
         const order = await getWebOrder(orderId);
-        if (!order) return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
+        if (!order || order.paymentProvider !== 'payme') return rpcError(id, ERR.ACCOUNT_NOT_FOUND, "Buyurtma topilmadi");
 
         // Idempotentlik: bu Payme tranzaksiyasi bilan avval yaratilgan bo'lsa — o'sha javobni qaytaramiz.
         const existing = await getWebOrderByPaymeId(params.id);

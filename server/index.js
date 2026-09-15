@@ -72,6 +72,7 @@ import { startBot, notifyOrderPaidAuto, sendTelegramOtp, notifyAdminSupportMessa
 import { AUCTION_DEMAND_THRESHOLD } from '../src/lib/auctionDemand.js';
 import { paynetEnabled, paynetLink, verifyPaynetAuth, parsePaynetCallback } from './paynet.js';
 import { paymeEnabled, paymeCheckoutLink, verifyPaymeAuth, handlePaymeRequest } from './payme.js';
+import { clickEnabled, clickCheckoutLink, handleClickPrepare, handleClickComplete } from './click.js';
 import { adminRouter } from './admin.js';
 import { askAssistant, assistantEnabled } from './assistant.js';
 import { UPLOAD_DIR, UPLOADS_PERSISTENT } from './paths.js';
@@ -80,11 +81,25 @@ const AUCTION_COMMISSION_PCT = Number(process.env.AUCTION_COMMISSION_PCT || 5);
 const AUCTION_MAX_HOURS = 72;
 const PHYSICAL_CARD_FEE = 200_000;  // Jismoniy karta narxi
 const PREMIUM_UPGRADE_FEE = PROFILE_PREMIUM_FEE;  // Profile Premium narxi — src/lib/pricing.js
-// To'lovlar production uchun alohida feature flag bilan yoqiladi. Faqat Payme
-// credentiallari mavjudligi to'lov oqimini tasodifan faollashtirmasligi kerak.
+// To'lovlar production uchun alohida feature flag bilan yoqiladi.
 const PAYMENTS_ENABLED = process.env.PAYMENTS_ENABLED === 'true';
-function paymentsEnabled() {
-  return PAYMENTS_ENABLED && paymeEnabled();
+function paymentsEnabled(provider = 'payme') {
+  if (!PAYMENTS_ENABLED) return false;
+  return provider === 'click' ? clickEnabled() : paymeEnabled();
+}
+function requestedProvider(value) {
+  return value === 'click' ? 'click' : 'payme';
+}
+function checkoutLinks(order, provider) {
+  const link = provider === 'click'
+    ? clickCheckoutLink(order.id, Number(order.price))
+    : paymeCheckoutLink(order.id, Number(order.price));
+  return link ? { [provider]: link } : {};
+}
+function orderForClient(order) {
+  const provider = requestedProvider(order.paymentProvider);
+  const payLinks = order.status === 'pending' ? checkoutLinks(order, provider) : {};
+  return { ...order, payLink: payLinks.payme, payLinks };
 }
 // Diqqat: obuna (follow) bepul — quyidagi ikkita o'zgaruvchi endi
 // ishlatilmaydi, lekin kelajakda kerak bo'lib qolsa deb saqlab qo'yildi.
@@ -123,6 +138,7 @@ app.set('trust proxy', 1);
 // fayli ~8MB) ga mos qilib shu yerda belgilanishi kerak, aks holda
 // pastdagi marshrutlarning o'z limiti hech qachon qo'llanilmaydi.
 app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: false, limit: '64kb' }));
 
 // Oddiy xavfsizlik headerlari.
 app.use((req, res, next) => {
@@ -520,16 +536,31 @@ app.post('/api/premium/request', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  if (!paymentsEnabled()) return res.status(503).json({ error: 'payments_disabled' });
+  const paymentProvider = requestedProvider(req.body?.paymentProvider);
+  if (!paymentsEnabled(paymentProvider)) return res.status(503).json({ error: 'payments_disabled' });
   try {
-    const result = await requestPremium(user.id, PREMIUM_UPGRADE_FEE);
+    const result = await requestPremium(user.id, PREMIUM_UPGRADE_FEE, paymentProvider);
     if (result.error) return res.status(409).json(result);
-    const payLink = paymeCheckoutLink(result.orderId, PREMIUM_UPGRADE_FEE);
-    res.status(201).json({ orderId: result.orderId, amount: PREMIUM_UPGRADE_FEE, payLink });
+    const order = result.order;
+    const payLinks = checkoutLinks(order, requestedProvider(order.paymentProvider));
+    res.status(result.alreadyPending ? 202 : 201).json({
+      orderId: order.id, amount: Number(order.price), payLink: payLinks.payme,
+      payLinks, paymentProvider: order.paymentProvider, alreadyPending: result.alreadyPending,
+    });
   } catch (err) {
     console.error('[api] requestPremium:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
   }
+});
+
+app.get('/api/settings/payments-enabled', (_req, res) => {
+  const payme = paymentsEnabled('payme');
+  const click = paymentsEnabled('click');
+  res.json({
+    enabled: payme || click,
+    sandbox: process.env.PAYMENTS_SANDBOX === 'true',
+    providers: { payme: { enabled: payme }, click: { enabled: click } },
+  });
 });
 
 // ---------- Obuna (follow) ----------
@@ -870,6 +901,29 @@ app.post('/api/pay/payme', async (req, res) => {
   }
   const result = await handlePaymeRequest(req.body);
   res.json(result);
+});
+
+app.post('/api/pay/click/prepare', async (req, res) => {
+  try {
+    if (!paymentsEnabled('click')) {
+      return res.json({ click_trans_id: String(req.body?.click_trans_id || ''), merchant_trans_id: String(req.body?.merchant_trans_id || ''), error: -8, error_note: 'Click o‘chirilgan' });
+    }
+    res.json(await handleClickPrepare(req.body));
+  } catch (err) {
+    console.error('[click] prepare:', err.message);
+    res.json({ click_trans_id: String(req.body?.click_trans_id || ''), merchant_trans_id: String(req.body?.merchant_trans_id || ''), error: -7, error_note: 'Tizim xatoligi' });
+  }
+});
+app.post('/api/pay/click/complete', async (req, res) => {
+  try {
+    if (!paymentsEnabled('click')) {
+      return res.json({ click_trans_id: String(req.body?.click_trans_id || ''), merchant_trans_id: String(req.body?.merchant_trans_id || ''), error: -8, error_note: 'Click o‘chirilgan' });
+    }
+    res.json(await handleClickComplete(req.body));
+  } catch (err) {
+    console.error('[click] complete:', err.message);
+    res.json({ click_trans_id: String(req.body?.click_trans_id || ''), merchant_trans_id: String(req.body?.merchant_trans_id || ''), error: -7, error_note: 'Tizim xatoligi' });
+  }
 });
 
 // ---------- Hamyon: OLIB TASHLANDI (E-WALLET: YO'Q qarori bo'yicha) ----------
@@ -1401,15 +1455,17 @@ app.post('/api/companies/:companyId/submit', async (req,res) => {
 app.post('/api/companies/:companyId/payment', async (req,res) => {
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error:'unauthorized' });
-  if (!paymentsEnabled()) return res.status(503).json({ error:'payments_disabled' });
+  const paymentProvider = requestedProvider(req.body?.paymentProvider);
+  if (!paymentsEnabled(paymentProvider)) return res.status(503).json({ error:'payments_disabled' });
   const id = normalizeCompanyIdV2(req.params.companyId);
   const company = await getCompanyV2(id,user.id,true);
   if (!company || company.ownerUserId !== user.id) return res.status(403).json({ error:'forbidden' });
   if (!['approved','payment_pending'].includes(company.status)) return res.status(409).json({ error:'not_approved' });
   let order = await getPendingCompanyPaymentOrder(id,user.id);
-  if (!order) order = await createWebOrder({ userId:user.id,code:id,kind:'company_purchase',price:company.price,payload:{ companyId:id } });
+  if (!order) order = await createWebOrder({ userId:user.id,code:id,kind:'company_purchase',price:company.price,payload:{ companyId:id },paymentProvider });
   if (company.status === 'approved') await setCompanyStatusV2(id,'payment_pending',`user:${user.id}`,'Payme boshlandi');
-  res.status(202).json({ orderId:order.id,amount:Number(order.price),payLink:paymeCheckoutLink(order.id,Number(order.price)) });
+  const payLinks = checkoutLinks(order, requestedProvider(order.paymentProvider));
+  res.status(202).json({ orderId:order.id,amount:Number(order.price),payLink:payLinks.payme,payLinks,paymentProvider:order.paymentProvider });
 });
 
 app.post('/api/companies/:companyId/catalog', async (req,res) => {
@@ -1603,7 +1659,8 @@ app.post('/api/records/:code', async (req, res) => {
 
     // Band qilish oqimi to'lov tizimi tayyor bo'lmaguncha butunlay yopiq —
     // tekin (0 so'm) nomlar ham band qilinmaydi.
-    if (!paymentsEnabled()) {
+    const paymentProvider = requestedProvider(req.body?.paymentProvider);
+    if (!paymentsEnabled(paymentProvider)) {
       return res.status(503).json({ error: 'payments_disabled' });
     }
 
@@ -1626,14 +1683,16 @@ app.post('/api/records/:code', async (req, res) => {
     const order = await createWebOrder({
       userId: user.id, code, price,
       payload: { ...record, physicalCard: wantsPhysicalCard, ...shipping },
+      paymentProvider,
     });
     // Chegirma ishlatilgan bo'lsa, buyurtma yaratilishi bilanoq
     // "sarflangan" deb belgilanadi (to'lov bekor qilinsa ham qayta
     // tiklanmaydi — soddalik uchun shunday).
     if (discountApplied > 0) await consumeDiscount(user.id);
-    const payLink = paymeCheckoutLink(order.id, price);
+    const payLinks = checkoutLinks(order, paymentProvider);
+    const payLink = payLinks.payme;
     console.log(`[api] To'lov kutilmoqda: ${code} — buyurtma #${order.id} (${price} so'm${wantsPhysicalCard ? ', jismoniy karta bilan' : ''}${discountApplied > 0 ? `, ${discountApplied} so'm chegirma qo'llandi` : ''})`);
-    res.status(202).json({ pending: true, orderId: order.id, code, price, payLink, discountApplied });
+    res.status(202).json({ pending: true, orderId: order.id, code, price, payLink, payLinks, paymentProvider, discountApplied });
   } catch (err) {
     console.error('[api] createRecord:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
@@ -1651,7 +1710,7 @@ app.get('/api/orders/:id', async (req, res) => {
   try {
     const order = await getWebOrder(id);
     if (!order || order.userId !== user.id) return res.status(404).json({ error: 'not_found' });
-    res.json({ id: order.id, code: order.code, status: order.status, price: order.price });
+    res.json(orderForClient(order));
   } catch (err) {
     console.error('[api] getOrder:', err.message);
     res.status(503).json({ error: 'db_unavailable' });
@@ -1665,7 +1724,8 @@ app.get('/api/orders', async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.json({ orders: [] });
   try {
-    res.json({ orders: await listWebOrdersByUser(user.id) });
+    const orders = await listWebOrdersByUser(user.id);
+    res.json({ orders: orders.map(orderForClient) });
   } catch (err) {
     console.error('[api] listOrders:', err.message);
     res.json({ orders: [] });
@@ -1868,7 +1928,8 @@ app.post('/api/records/:code/set-primary', async (req, res) => {
 app.post('/api/records/:code/order-physical-card', async (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   if (!isDbReady()) return res.status(503).json({ error: 'db_unavailable' });
-  if (!paymentsEnabled()) return res.status(503).json({ error: 'payments_disabled' });
+  const paymentProvider = requestedProvider(req.body?.paymentProvider);
+  if (!paymentsEnabled(paymentProvider)) return res.status(503).json({ error: 'payments_disabled' });
   const user = await currentUser(req);
   if (!user) return res.status(401).json({ error: 'unauthorized' });
 
@@ -1889,9 +1950,10 @@ app.post('/api/records/:code/order-physical-card', async (req, res) => {
   const order = await createWebOrder({
     userId: user.id, code, kind: 'physical_card_order', price: PHYSICAL_CARD_FEE,
     payload: { shippingName, shippingPhone, shippingAddress },
+    paymentProvider,
   });
-  const payLink = paymeCheckoutLink(order.id, PHYSICAL_CARD_FEE);
-  res.status(202).json({ orderId: order.id, amount: PHYSICAL_CARD_FEE, payLink });
+  const payLinks = checkoutLinks(order, paymentProvider);
+  res.status(202).json({ orderId: order.id, amount: PHYSICAL_CARD_FEE, payLink: payLinks.payme, payLinks, paymentProvider });
 });
 
 // ---------- Sovg'a qilish (pulsiz egalik o'tkazish) ----------
