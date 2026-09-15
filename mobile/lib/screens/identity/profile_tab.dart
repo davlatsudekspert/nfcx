@@ -86,17 +86,25 @@ class _ProfileTabState extends State<ProfileTab> {
     FollowStats? follow;
     List<Post> posts = const [];
 
-    if (!active.isBusiness) {
-      try {
-        analytics = await state.repo.analytics(active.code, days: 7);
-      } catch (_) {}
-    }
+    // BIZNESNING O'Z MANBALARI BOR — ULAR CHAQIRILMASDI.
+    //
+    // Ilgari bu yerda biznes shaxsida statistika umuman
+    // so'ralmasdi, postlar esa `const []` qilib qaytarilardi.
+    // Natijada egasining biznes profili "0 ko'rish, 0 kontakt,
+    // 0 post, hali post yo'q" bo'lib turardi — holbuki
+    // `companyStats()` ham, `companyPosts()` ham repoda BOR edi
+    // va saytda o'sha ma'lumot ko'rinib turardi.
+    try {
+      analytics = active.isBusiness
+          ? await state.repo.companyStats(active.code)
+          : await state.repo.analytics(active.code, days: 7);
+    } catch (_) {}
     try {
       follow = await state.repo.followStats(active.code);
     } catch (_) {}
     try {
       posts = active.isBusiness
-          ? const []
+          ? await state.repo.companyPosts(active.code)
           : await state.repo.recordPosts(active.code);
     } catch (_) {}
 
