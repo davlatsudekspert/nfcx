@@ -367,6 +367,10 @@
     "Попробуйте другое слово или поиск по коду ID.",
     "Try another word, or search by ID code."
   ],
+  "Boshqa so‘z yoki toifa bilan qidirib ko‘ring.": [
+    "Попробуйте другое слово или категорию.",
+    "Try another word or category."
+  ],
   "Boshqalar qanday ko‘rishini tekshiring": [
     "Проверьте, как вас видят другие",
     "Check how others see you"
@@ -2578,6 +2582,10 @@
   "Profilingiz uchun kengaytirilgan imkoniyatlar": [
     "Расширенные возможности для вашего профиля",
     "Extended features for your profile"
+  ],
+  "Profillar": [
+    "Профили",
+    "Profiles"
   ],
   "Profilni ko‘rish": [
     "Посмотреть профиль",

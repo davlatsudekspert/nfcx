@@ -12,7 +12,6 @@ import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
 import '../../design/components/media.dart';
 import '../../design/components/nav_bar.dart';
-import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
@@ -24,8 +23,6 @@ import '../../design/refresh.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/share.dart';
-import '../content/post_detail.dart';
-import '../content/story_viewer.dart';
 import '../identity/profile_screen.dart';
 import '../nfc/id_catalog.dart';
 
@@ -53,7 +50,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   List<Record> _catalog = const [];
   List<Company> _companies = const [];
-  List<FeedEntry> _feed = const [];
   List<Map<String, dynamic>> _categories = const [];
 
   List<Record> _foundPeople = const [];
@@ -100,10 +96,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         companies = await repo.companies();
       } catch (_) {}
 
-      List<FeedEntry> feed = const [];
-      try {
-        feed = (await repo.feed(page: 1)).items;
-      } catch (_) {}
+      // Lenta so'rovi olib tashlandi: u faqat "Kashfiyot" to'ri
+      // uchun kerak edi va u bo'lim endi yo'q. Ya'ni Qidiruv
+      // ochilishi uchun bitta tarmoq so'rovi kam.
 
       List<Map<String, dynamic>> categories = const [];
       try {
@@ -114,7 +109,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       setState(() {
         _catalog = catalog;
         _companies = companies;
-        _feed = feed;
         _categories = categories;
         _loading = false;
       });
@@ -167,23 +161,42 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   /// Ko'rishlar bo'yicha eng yuqori uchtalik.
+  /// QIDIRUV NATIJASI — shaxsiy va biznes profillar birga.
+  ///
+  /// Saytdagi katalog bilan bir xil mantiq: yozilgan so'z kod,
+  /// ism yoki kompaniya nomiga to'g'ri kelsa chiqadi; toifa
+  /// tanlansa shu bo'yicha suziladi.
+  ///
+  /// Ikkalasi BIR RO'YXATDA, chunki odam "kim" yoki "qaysi
+  /// kompaniya" deb izlaydi — ularni ikki joyga bo'lish qidiruvni
+  /// qiyinlashtirardi. Biznes kartada bino belgisi turadi.
+  List<_Entry> get _profiles {
+    final q = _query.text.trim().toLowerCase();
+    bool hit(String a, String b, String c) =>
+        q.isEmpty ||
+        a.toLowerCase().contains(q) ||
+        b.toLowerCase().contains(q) ||
+        c.toLowerCase().contains(q);
+
+    return [
+      for (final r in _catalog)
+        if (hit(r.code, r.name, r.role) &&
+            (_category.isEmpty || r.categorySlug == _category))
+          _Entry.person(r),
+      for (final c in _companies)
+        // Kompaniyada toifa maydoni yo'q — toifa tanlangan
+        // bo'lsa ular ro'yxatga kirmaydi.
+        if (hit(c.id, c.name, c.city) && _category.isEmpty)
+          _Entry.business(c),
+    ];
+  }
+
   List<Record> get _rating {
     final list = [..._catalog.where((r) => r.views > 0)]
       ..sort((a, b) => b.views.compareTo(a.views));
     return list.take(3).toList();
   }
 
-  List<FeedEntry> get _grid {
-    if (_category.isEmpty) return _feed;
-    // Kategoriya tanlangan bo'lsa lentani shu toifadagi
-    // mualliflarga qisqartiramiz. Serverda lentani toifa bo'yicha
-    // filtrlash yo'q, shuning uchun bu mijozda bajariladi.
-    final codes = _catalog
-        .where((r) => r.categorySlug == _category)
-        .map((r) => r.code)
-        .toSet();
-    return _feed.where((e) => codes.contains(e.code)).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +339,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     final rating = _rating;
-    final grid = _grid;
 
     return [
       if (rating.isNotEmpty) ...[
@@ -365,40 +377,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ],
 
-      if (grid.isNotEmpty) ...[
-        _header(tr('Kashfiyot')),
-        SliverToBoxAdapter(
-          child: _MixedGrid(
-            items: grid,
-            onOpen: (e) => push<void>(
-              context,
-              (_) => e.isStory
-                  ? StoryViewerScreen(code: e.code)
-                  : PostDetailScreen(
-                      post: Post(
-                        id: '${e.id}',
-                        caption: e.caption,
-                        images: [
-                          if ((e.imageUrl ?? '').isNotEmpty) e.imageUrl!,
-                        ],
-                        videoUrl: e.videoUrl,
-                        createdAt: e.createdAt,
-                        likes: e.likeCount,
-                        liked: e.liked,
-                        authorName: e.name,
-                        authorAvatar: e.avatarUrl,
-                        authorCode: e.code,
-                      ),
-                    ),
-            ),
+      // PROFILLAR — SAYTDAGI KATALOG KABI.
+      //
+      // Bu yerda ilgari "Kashfiyot" turardi: post va istorya
+      // rasmlarining aralash to'ri. Egasi: "kashfiyot nima degan,
+      // olib tashlash kerak, bu yerda personal va biznes profillar
+      // turishi kerak, bosa profiliga kirsin".
+      //
+      // To'g'ri e'tiroz edi. Qidiruv tabining vazifasi — ODAM VA
+      // KOMPANIYA topish. Rasmlar to'ri esa Reels bilan bir xil
+      // ishni qilardi va bosilganda postga olib borardi, ya'ni
+      // qidirilayotgan narsaga emas.
+      //
+      // Endi saytdagi katalog bilan bir xil: kod, ism, tarif
+      // belgisi, ko'rishlar soni va toifa. Bosilsa — o'sha
+      // profilning o'zi ochiladi.
+      if (_profiles.isNotEmpty) ...[
+        _header(tr('Profillar')),
+        SliverList.separated(
+          itemCount: _profiles.length,
+          separatorBuilder: (_, __) => const SizedBox(height: S.x8),
+          itemBuilder: (context, i) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: _ProfileCard(entry: _profiles[i]),
           ),
         ),
-      ] else if (_category.isNotEmpty)
+      ] else if (_query.text.trim().isNotEmpty || _category.isNotEmpty)
         SliverToBoxAdapter(
           child: EmptyState(
-            tr('Bu toifada hozircha kontent yo‘q.'),
-            title: tr('Bo‘sh'),
-            icon: Ico.grid,
+            tr('Boshqa so‘z yoki toifa bilan qidirib ko‘ring.'),
+            title: tr('Topilmadi'),
+            icon: Ico.search,
             compact: true,
           ),
         ),
@@ -586,6 +595,99 @@ class _CompanyRow extends StatelessWidget {
       );
 }
 
+/// Qidiruv natijasidagi bitta yozuv — shaxsiy yoki biznes.
+class _Entry {
+  const _Entry.person(this.record)
+      : company = null,
+        isBusiness = false;
+  const _Entry.business(this.company)
+      : record = null,
+        isBusiness = true;
+
+  final Record? record;
+  final Company? company;
+  final bool isBusiness;
+
+  String get code => isBusiness ? company!.id : record!.code;
+  String get name => isBusiness ? company!.name : record!.name;
+  String? get avatarUrl => isBusiness ? company!.logoUrl : record!.avatarUrl;
+  bool get verified => isBusiness ? company!.verified : record!.verified;
+  int get views => isBusiness ? company!.views : record!.views;
+  String get note => isBusiness ? company!.city : record!.role;
+  Tier get tier => isBusiness
+      ? TierStyle.parse(company!.tier)
+      : TierStyle.parse(record!.serverTier);
+}
+
+/// PROFIL KARTASI — saytdagi katalogdagi kabi.
+///
+/// Chapda avatar, o'rtada KOD (mono, katta) va ism, o'ngda
+/// ko'rishlar soni. Tarif belgisi kodning yonida — saytda ham
+/// shunday.
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({required this.entry});
+
+  final _Entry entry;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        padding: const EdgeInsets.all(S.x12),
+        onTap: () => push<void>(
+          context,
+          (_) => entry.isBusiness
+              ? ProfileScreen(companyId: entry.code)
+              : ProfileScreen(code: entry.code),
+        ),
+        child: Row(
+          children: [
+            Avatar(
+              url: entry.avatarUrl,
+              name: entry.name,
+              size: 46,
+              square: entry.isBusiness,
+            ),
+            const SizedBox(width: S.x12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          entry.code.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: T.code(14, color: C.ink),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      TierDot(entry.tier, size: 10),
+                      if (entry.verified) ...[
+                        const SizedBox(width: 5),
+                        const VerifiedBadge(size: 13),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    [entry.name, if (entry.note.isNotEmpty) entry.note]
+                        .join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.caption.copyWith(color: C.ink2),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: S.x8),
+            Text(som(entry.views), style: T.meta),
+          ],
+        ),
+      );
+}
+
 /// Reyting qatori — o'rin raqami mono bilan.
 class _RatingRow extends StatelessWidget {
   const _RatingRow({required this.rank, required this.record});
@@ -710,32 +812,6 @@ class _CompanyCard extends StatelessWidget {
       );
 }
 
-/// KASHFIYOT GRIDI — 3 ustun, 3 dp oraliq.
-///
-/// Reels katakchalari IKKI BARAVAR katta (2×2) va yashil belgi
-/// bilan: lenta bir xil kvadratlardan iborat bo'lsa, ko'z hech
-/// nimaga ilashmaydi.
-class _MixedGrid extends StatelessWidget {
-  const _MixedGrid({required this.items, required this.onOpen});
-
-  final List<FeedEntry> items;
-  final ValueChanged<FeedEntry> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      itemCount: items.length,
-      gridDelegate: const SliverQuiltedGridDelegate(),
-      itemBuilder: (context, i) => _GridTile(
-        item: items[i],
-        onTap: () => onOpen(items[i]),
-      ),
-    );
-  }
-}
 
 /// Har uchinchi katakcha ikki barobar — "quilted" naqsh.
 ///
@@ -811,75 +887,3 @@ class _QuiltedLayout extends SliverGridLayout {
   }
 }
 
-class _GridTile extends StatelessWidget {
-  const _GridTile({required this.item, required this.onTap});
-
-  final FeedEntry item;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        minSize: 0,
-        scale: .98,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            NetImage(item.imageUrl, radius: 2, slotIcon: Ico.image),
-            if ((item.videoUrl ?? '').isNotEmpty)
-              Positioned(
-                left: 6,
-                top: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0x8A000000),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: C.ok,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'REELS',
-                        style: T.meta.copyWith(
-                          fontSize: 8.5,
-                          color: C.ink,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (item.likeCount > 0)
-              Positioned(
-                left: 6,
-                bottom: 6,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    NIcon(Ico.heart, size: 11, color: C.accent, filled: true),
-                    const SizedBox(width: 4),
-                    Text(
-                      som(item.likeCount),
-                      style: T.meta.copyWith(fontSize: 10, color: C.ink),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      );
-}
