@@ -2,6 +2,7 @@ import 'package:flutter/services.dart' show TextInputAction;
 import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
+import '../../design/keyboard.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
@@ -231,7 +232,11 @@ class _Done extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: T.caption,
                 ),
-              ],
+                // Klaviatura ostida maydon qolmasin.
+              SliverToBoxAdapter(
+                child: SizedBox(height: keyboardInset(context)),
+              ),
+            ],
             ),
           ),
           const SizedBox(height: S.x24),

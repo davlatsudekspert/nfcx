@@ -338,9 +338,43 @@ class Repo {
           .map(Record.fromJson)
           .toList();
 
+  /// KOMPANIYA QIDIRUVI.
+  ///
+  /// HAQIQIY XATO: server javobni `{results: [...]}` shaklida beradi,
+  /// bu yerda esa `companies` kaliti o'qilardi — ya'ni natija HAR
+  /// DOIM bo'sh edi. Egasi buni surat bilan ko'rsatdi: "nfcstore"
+  /// deb qidirilganda kompaniyalar umuman chiqmasdi.
+  ///
+  /// Ikkala kalit ham o'qiladi: eski server `companies`, yangisi
+  /// `results` beradi.
   Future<List<Company>> searchCompanies(String q) async {
     final r = await api.get('/api/companies/search', query: {'q': q});
-    return _rows(r, 'companies').map(Company.fromJson).toList();
+    final rows = r is Map && r['results'] is List
+        ? _rows(r, 'results')
+        : _rows(r, 'companies');
+    return rows.map(Company.fromJson).toList();
+  }
+
+  /// KOD BANDMI VA NARXI QANCHA.
+  ///
+  /// `searchRecords()` dan FARQI: u faqat MAVJUD profillarni topadi,
+  /// bu esa hali hech kim olmagan kodning ham tarifi va narxini
+  /// aytadi — saytdagi kabi. Narx SERVERDAN.
+  Future<Map<String, dynamic>> checkCode(String code) async =>
+      _map(await api.get('/api/records/check', query: {'code': code}));
+
+  /// TARIF NARXLARI — katalog uchun.
+  ///
+  /// Katalogda o'sha tarifdan bo'sh kod qolmagan bo'lsa ham narx
+  /// ko'rinishi kerak.
+  Future<Map<String, int>> idPricing() async {
+    final r = _map(await api.get('/api/settings/id-pricing'));
+    final p = r['pricing'];
+    if (p is! Map) return const {};
+    return {
+      for (final e in p.entries)
+        if (e.value is num) '${e.key}': (e.value as num).round(),
+    };
   }
 
   /// Katalog — barcha ochiq profillar va sotuvdagi ID'lar.

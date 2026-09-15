@@ -51,6 +51,18 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
   Object? _error;
   bool _loading = true;
 
+  /// TARIF NARXLARI — SERVERDAN.
+  ///
+  /// HAQIQIY XATO, EGASI SURAT BILAN KO'RSATDI: Bronza, Silver va
+  /// Ekslyuziv qatorlarida narx o'rniga "Yo'q · hozircha" turardi.
+  /// Sababi narx KATALOGDAGI eng arzon bo'sh koddan olinardi —
+  /// o'sha tarifdan bo'sh kod qolmagan bo'lsa, ko'rsatadigan narx
+  /// ham yo'q edi. Ya'ni odam Bronza qanchaligini bila olmasdi.
+  ///
+  /// Endi narx `/api/settings/id-pricing` dan keladi: tarifning
+  /// O'Z narxi, katalogda kod bor-yo'qligidan qat'i nazar.
+  Map<String, int> _pricing = const {};
+
   @override
   void initState() {
     super.initState();
@@ -63,10 +75,17 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
       _error = null;
     });
     try {
-      final list = await AppScope.read(context).repo.catalog(force: force);
+      final repo = AppScope.read(context).repo;
+      final list = await repo.catalog(force: force);
+      // Narx jadvali ixtiyoriy: kelmasa katalogdagi narxlar qoladi.
+      Map<String, int> pricing = const {};
+      try {
+        pricing = await repo.idPricing();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _all = list;
+        _pricing = pricing;
         _loading = false;
       });
     } catch (e) {
@@ -93,6 +112,16 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
           r,
     ]..sort((a, b) => a.price.compareTo(b.price));
   }
+
+  /// Server jadvalidagi kalit — ilovadagi tarif nomiga mos.
+  String _pricingKey(Tier tier) => switch (tier) {
+        Tier.bronze => 'bronze',
+        Tier.silver => 'silver',
+        Tier.gold => 'gold',
+        Tier.premium => 'premium',
+        Tier.exclusive => 'exclusiveFrom',
+        Tier.free => 'free',
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +206,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
                     child: _TierRow(
                       tier: tier,
                       codes: _available(tier),
+                      basePrice: _pricing[_pricingKey(tier)] ?? 0,
                       onTap: () => push<void>(
                         context,
                         (_) => _TierCodesScreen(
@@ -275,18 +305,24 @@ class _TierRow extends StatelessWidget {
   const _TierRow({
     required this.tier,
     required this.codes,
+    required this.basePrice,
     required this.onTap,
   });
 
   final Tier tier;
   final List<Record> codes;
+
+  /// Tarifning O'Z narxi (serverdan) — katalogda bo'sh kod
+  /// qolmagan bo'lsa ham ko'rsatiladi.
+  final int basePrice;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final style = TierStyle.of(tier);
     final available = codes.isNotEmpty;
-    final from = available ? codes.first.price : 0;
+    // Katalogda bo'sh kod bo'lsa — eng arzoni, bo'lmasa tarif narxi.
+    final from = available ? codes.first.price : basePrice;
 
     Widget swatch = Container(
       width: 56,
@@ -363,17 +399,28 @@ class _TierRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (available)
-                Text(som(from), style: T.amount.copyWith(fontSize: 17))
+              if (from > 0)
+                Text(
+                  som(from),
+                  style: T.amount.copyWith(
+                    fontSize: 17,
+                    // Bo'sh kod qolmagan tarif narxi so'nib turadi:
+                    // narx bor, lekin hozir tanlaydigan kod yo'q.
+                    color: available ? C.ink : C.ink2,
+                  ),
+                )
               else
                 Text(tr('Yo‘q'), style: T.amount.copyWith(color: C.ink3)),
               const SizedBox(height: 2),
               Text(
-                available
-                    ? (tier == Tier.exclusive
-                        ? tr('so‘mdan')
-                        : tr('so‘m'))
-                    : tr('hozircha'),
+                from <= 0
+                    ? tr('hozircha')
+                    : (available
+                        ? (tier == Tier.exclusive
+                            ? tr('so‘mdan')
+                            : tr('so‘m'))
+                        // Narx bor, kod yo'q — buni aniq aytamiz.
+                        : tr('kod tugagan')),
                 style: T.meta.copyWith(fontSize: 10),
               ),
             ],

@@ -523,6 +523,10 @@
     "Это не карта NFCSTORE либо она ещё не активирована.",
     "This is not an NFCSTORE card, or it is not activated yet."
   ],
+  "Bu kod allaqachon egasi bor.": [
+    "У этого кода уже есть владелец.",
+    "This code already has an owner."
+  ],
   "Bu nom band qilingan ro‘yxatda.": [
     "Это имя в списке зарезервированных.",
     "This name is on the reserved list."
@@ -4030,6 +4034,10 @@
   "keyin siz bilan kelishiladi.": [
     "затем с вами согласуют.",
     "then it is agreed with you."
+  ],
+  "kod tugagan": [
+    "коды закончились",
+    "out of codes"
   ],
   "kodini yuboramiz.": [
     "код мы отправим.",

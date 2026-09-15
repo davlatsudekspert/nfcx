@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/keyboard.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
@@ -199,7 +200,9 @@ class _GiftIdScreenState extends State<GiftIdScreen> {
             const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.only(bottom: S.x24),
+                padding: EdgeInsets.only(
+                  bottom: S.x24 + keyboardInset(context),
+                ),
                 children: [
                   ScreenTitle(
                     tr('Sovg‘a qilish'),

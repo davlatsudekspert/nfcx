@@ -157,10 +157,34 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       try {
         companies = await repo.searchCompanies(q);
       } catch (_) {}
+
+      // KOMPANIYALAR YUKLANGAN RO'YXATDAN HAM QIDIRILADI.
+      //
+      // HAQIQIY XATO, EGASI SURAT BILAN KO'RSATDI: "nfcstore" deb
+      // qidirilganda kompaniyalar umuman chiqmasdi. Ikki sabab bor
+      // edi: javob kaliti mos emasdi (`repo.searchCompanies`
+      // izohiga qarang) va serverdagi qidiruv `companies`
+      // jadvalini emas, biznes turidagi KARTALARNI qidiradi —
+      // ya'ni haqiqiy kompaniya profillari (masalan
+      // nfcstore.uz/c/nfcstoreuz) u yerda yo'q.
+      //
+      // Bu yerda esa ular allaqachon yuklangan (`_companies`), ya'ni
+      // qo'shimcha so'rovsiz va serverga tegmasdan topiladi.
+      final lower = q.toLowerCase();
+      final seen = {for (final c in companies) c.id.toUpperCase()};
+      final local = [
+        for (final c in _companies)
+          if (!seen.contains(c.id.toUpperCase()) &&
+              (c.id.toLowerCase().contains(lower) ||
+                  c.name.toLowerCase().contains(lower) ||
+                  c.city.toLowerCase().contains(lower)))
+            c,
+      ];
+
       if (!mounted) return;
       setState(() {
         _foundPeople = people;
-        _foundCompanies = companies;
+        _foundCompanies = [...companies, ...local];
         _searching = false;
       });
     } catch (_) {

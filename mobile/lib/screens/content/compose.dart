@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../data/api_client.dart';
+import '../../design/keyboard.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/icons.dart';
@@ -302,7 +303,12 @@ class _ComposeScreenState extends State<ComposeScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+              padding: EdgeInsets.fromLTRB(
+                S.gutter,
+                0,
+                S.gutter,
+                S.x32 + keyboardInset(context),
+              ),
               children: [
                 // RASM O'RNI — nisbat turiga mos: post 4:5, istorya 9:16.
                 AspectRatio(

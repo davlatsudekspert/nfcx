@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/keyboard.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
@@ -341,6 +342,9 @@ class _SupportScreenState extends State<SupportScreen> {
                 ),
 
               const SliverToBoxAdapter(child: SizedBox(height: S.x32)),
+              SliverToBoxAdapter(
+                child: SizedBox(height: keyboardInset(context)),
+              ),
             ],
           ),
         ),

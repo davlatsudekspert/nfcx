@@ -908,6 +908,30 @@ async function publicContentApi(request, env, url) {
     return json(row ? { active: !!row.active && !row.blocked_by_owner, linkedCode: row.linked_code || null } : { active: true });
   }
 
+  // ---- TARIF NARXLARI (2026-09) ----------------------------------------
+  //
+  // NIMA UCHUN QO'SHILDI. Ilovadagi ID katalogi har tarif uchun
+  // KATALOGDAGI eng arzon kod narxini ko'rsatardi. Katalogda o'sha
+  // tarifdan bo'sh kod qolmagan bo'lsa — narx o'rniga "yo'q hozircha"
+  // chiqardi, ya'ni odam Bronza qanchaligini bila olmasdi. Egasi buni
+  // surat bilan ko'rsatdi: "hammasining o'z narxi yozilsin".
+  //
+  // Narx MIJOZGA KO'CHIRILMAYDI — u shu yerdan, bitta manbadan
+  // (`PERSONAL_TIER_PRICE`) o'qiladi.
+  if (path === '/api/settings/id-pricing' && request.method === 'GET') {
+    return json({
+      // Ilovadagi nomlar bilan: "free" ichki nom, ko'rinishi "Bronza".
+      pricing: {
+        bronze: PERSONAL_TIER_PRICE.free,
+        silver: PERSONAL_TIER_PRICE.silver,
+        gold: PERSONAL_TIER_PRICE.gold,
+        premium: PERSONAL_TIER_PRICE.premium,
+        // Ekslyuziv — darajaga qarab o'zgaradi, bu eng pasti.
+        exclusiveFrom: PERSONAL_TIER_PRICE.exclusive,
+      },
+    });
+  }
+
   if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
     const defaultTiers = [
       { minQty: 1, maxQty: 9, pricePerUnit: 120000 },
@@ -5362,6 +5386,48 @@ async function recordsApi(request, env, url) {
     return json({ records });
   }
 
+  // ---- KOD BANDMI VA NARXI QANCHA (2026-09) ----------------------------
+  //
+  // NIMA UCHUN QO'SHILDI. `/api/records/search` FAQAT mavjud profillarni
+  // qidiradi: ya'ni hali hech kim olmagan kod (masalan III777) uchun u
+  // bo'sh javob beradi va ilova "bunday kod topilmadi" deb ko'rsatardi.
+  // Saytda esa aksincha — bo'sh kod yozilganda uning TARIFI va NARXI
+  // darhol chiqadi (`src/lib/pricing.js` priceForCode, mijozda
+  // hisoblanadi).
+  //
+  // Ilovada narxni mijozda hisoblab bo'lmaydi: narx jadvali faqat
+  // serverda (qoida: narx hech qachon mijozga ko'chirilmaydi). Shuning
+  // uchun bu yerda O'SHA mantiq ochiladi — yangi qoida emas, mavjud
+  // `personalPurchaseQuote()` ning o'qish uchun ochilgan yuzi.
+  //
+  // FAQAT O'QIYDI: hech narsa yozmaydi, buyurtma yaratmaydi, pul
+  // yo'liga tegmaydi. Band qilish avvalgidek `POST /api/records/:code`
+  // orqali va o'sha yerda narx qaytadan hisoblanadi.
+  if (path === '/api/records/check' && request.method === 'GET') {
+    const raw = String(url.searchParams.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const valid = raw.length === 6 && STD_CODE_RE.test(raw);
+    if (!valid) {
+      return json({ code: raw, valid: false, available: false, purchasable: false, reason: 'bad_code' });
+    }
+    const quote = personalPurchaseQuote(raw);
+    const [taken, pending] = await Promise.all([
+      getRecord(env, raw),
+      activeWebOrderByCodeD1(env, raw),
+    ]);
+    return json({
+      code: raw,
+      valid: true,
+      // Band — kimdir olgan yoki to'lovi kutilayotgan kod.
+      available: !taken && !pending,
+      taken: !!taken,
+      pendingPayment: !!pending && !taken,
+      purchasable: !!quote.purchasable,
+      reason: quote.purchasable ? null : (quote.reason || 'not_purchasable'),
+      tier: quote.tier || null,
+      price: quote.purchasable ? quote.amount : null,
+    });
+  }
+
   // ---- /api/records/:code/{view,like,posts} — server/index.js bilan bir xil
   // kontrakt (frontend src/lib/db.js o'zgarishsiz ishlaydi). Avval bu
   // yo'llar Worker'da yo'q edi → legacy proxy → 405.
@@ -9258,6 +9324,7 @@ async function handleRequest(request, env, url) {
     if (url.pathname === '/api/companies/search' || url.pathname === '/api/categories'
       || url.pathname === '/api/news' || url.pathname.startsWith('/api/tap/')
       || url.pathname === '/api/settings/physical-nfc-pricing'
+      || url.pathname === '/api/settings/id-pricing'
       || url.pathname === '/api/settings/payments-enabled') {
       try {
         const res = await publicContentApi(request, env, url);

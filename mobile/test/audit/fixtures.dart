@@ -146,6 +146,21 @@ Future<http.Response> _normalResponse(http.Request req) async {
         // qolgan edi.
         final code = p.split('/').last.toUpperCase();
         body = {..._card, 'code': code, if (code != 'VIP001') 'name': 'Jasur Tolipov'};
+      } else if (p == '/api/settings/id-pricing') {
+        // TARIF NARXLARI — serverdan (ilovada narx jadvali yo'q).
+        body = {
+          'pricing': {
+            'bronze': 49000, 'silver': 99000, 'gold': 149000,
+            'premium': 199000, 'exclusiveFrom': 490000,
+          },
+        };
+      } else if (p == '/api/records/check') {
+        // BO'SH KOD — bandmi va narxi qancha.
+        body = {
+          'code': req.url.queryParameters['code'] ?? '',
+          'valid': true, 'available': true, 'purchasable': true,
+          'tier': 'gold', 'price': 149000,
+        };
       } else if (p == '/api/companies/check') {
         // PULLIK BIZNES NOMI — narx SERVERDAN keladi.
         body = {

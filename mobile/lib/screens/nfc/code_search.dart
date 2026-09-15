@@ -6,6 +6,7 @@ import '../../data/models.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
+import '../../design/components/buttons.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
@@ -38,6 +39,18 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
   List<Record>? found;
   bool searching = false;
 
+  /// BO'SH KOD — SERVER AYTGAN NARX BILAN.
+  ///
+  /// HAQIQIY XATO, EGASI SURAT BILAN KO'RSATDI: do'konda "III777"
+  /// deb yozilganda "bunday kod topilmadi" chiqardi. Sababi
+  /// `/api/records/search` FAQAT mavjud profillarni qidiradi —
+  /// hali hech kim olmagan kod u yerda yo'q. Holbuki saytda aynan
+  /// bo'sh kod yozilganda uning narxi chiqadi va sotib olinadi.
+  ///
+  /// Endi natija bo'sh bo'lsa server `/api/records/check` dan
+  /// so'raladi: bandmi, qaysi tarif va narxi qancha.
+  Map<String, dynamic>? freeCode;
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -51,6 +64,7 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
     if (q.length < 2) {
       setState(() {
         found = null;
+        freeCode = null;
         searching = false;
       });
       return;
@@ -59,16 +73,26 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
     _debounce = Timer(const Duration(milliseconds: 350), () async {
       if (!mounted) return;
       setState(() => searching = true);
+      final repo = AppScope.read(context).repo;
       List<Record> res = const [];
       try {
-        res = await AppScope.read(context).repo.searchRecords(q);
+        res = await repo.searchRecords(q);
       } catch (_) {
         // Qidiruv yiqilsa ekran ishlashda davom etadi: odam
         // tariflardan tanlashi mumkin.
       }
+      // Mavjud profil topilmasa — kod bo'sh bo'lishi mumkin.
+      Map<String, dynamic>? free;
+      if (res.isEmpty) {
+        try {
+          final r = await repo.checkCode(q);
+          if (r['valid'] == true) free = r;
+        } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
         found = res;
+        freeCode = free;
         searching = false;
       });
     });
@@ -84,6 +108,30 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
         Padding(
           padding: EdgeInsets.symmetric(horizontal: S.gutter),
           child: Skeleton(height: 72, radius: R.tile),
+        ),
+      ];
+    }
+    final free = freeCode;
+    if (free != null) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: FreeCodeCard(
+            info: free,
+            onTap: free['available'] == true && free['purchasable'] == true
+                ? () => push<void>(
+                      context,
+                      (_) => IdDetailScreen(
+                        record: Record(
+                          code: '${free['code']}',
+                          name: '',
+                          price: (free['price'] as num?)?.round() ?? 0,
+                          serverTier: '${free['tier'] ?? ''}',
+                        ),
+                      ),
+                    )
+                : null,
+          ),
         ),
       ];
     }
@@ -159,6 +207,84 @@ class CodeRow extends StatelessWidget {
             Text(som(record.price), style: T.amount.copyWith(fontSize: 15))
           else
             Text(tr('Band'), style: T.caption.copyWith(color: C.ink3)),
+        ],
+      ),
+    );
+  }
+}
+
+/// BO'SH KOD KARTASI — tarif, narx va sotib olish yo'li.
+///
+/// Saytda bo'sh kod yozilganda aynan shu ma'lumot chiqadi: kod,
+/// tarifi va narxi. Band bo'lsa narx ko'rsatilmaydi — bu aldov
+/// bo'lardi.
+class FreeCodeCard extends StatelessWidget {
+  const FreeCodeCard({super.key, required this.info, this.onTap});
+
+  final Map<String, dynamic> info;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final code = '${info['code'] ?? ''}';
+    final tier = TierStyle.parse('${info['tier'] ?? ''}');
+    final style = TierStyle.of(tier);
+    final price = (info['price'] as num?)?.round() ?? 0;
+    final free = info['available'] == true && info['purchasable'] == true;
+    final pending = info['pendingPayment'] == true;
+
+    return Surface(
+      padding: const EdgeInsets.all(S.x16),
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 34,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(R.status),
+                  gradient: style.swatch,
+                ),
+              ),
+              const SizedBox(width: S.x12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(code, style: T.code(17, color: C.ink)),
+                    const SizedBox(height: 3),
+                    Text(style.label,
+                        style: T.caption.copyWith(color: C.ink3)),
+                  ],
+                ),
+              ),
+              if (free)
+                Text(som(price), style: T.amount.copyWith(fontSize: 16))
+              else
+                StatusChip(
+                  pending ? tr('To‘lov kutilmoqda') : tr('Band'),
+                  tone: StatusTone.neutral,
+                ),
+            ],
+          ),
+          if (free) ...[
+            const SizedBox(height: S.x12),
+            PrimaryButton(
+              tr('Sotib olish'),
+              size: BtnSize.m,
+              onTap: onTap,
+            ),
+          ] else if (!pending) ...[
+            const SizedBox(height: S.x8),
+            Text(
+              tr('Bu kod allaqachon egasi bor.'),
+              style: T.caption.copyWith(fontSize: 12.5),
+            ),
+          ],
         ],
       ),
     );

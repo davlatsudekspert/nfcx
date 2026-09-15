@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/keyboard.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
@@ -264,7 +265,11 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
             const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.only(bottom: S.x24),
+                // Klaviatura ostida maydon qolmasin — izohi
+                // `design/keyboard.dart` da.
+                padding: EdgeInsets.only(
+                  bottom: S.x24 + keyboardInset(context),
+                ),
                 children: [
                   ScreenTitle(tr('NFC karta buyurtmasi')),
 
@@ -404,7 +409,11 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
               ),
             ),
 
-            StickyBar(
+            // Pastki panel ham klaviatura ustida qoladi — aks holda
+            // "Buyurtma berish" tugmasi klaviatura ostida ko'rinmasdi.
+            Padding(
+              padding: EdgeInsets.only(bottom: keyboardInset(context)),
+              child: StickyBar(
               child: Row(
                 children: [
                   Column(
@@ -434,6 +443,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           ],
         ),
