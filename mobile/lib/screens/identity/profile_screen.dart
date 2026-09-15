@@ -8,6 +8,7 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/logo.dart';
 import '../../design/components/media.dart';
 import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
@@ -472,42 +473,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   List<Widget> _companyBody() {
     final c = _company!;
+    final cover = (c.coverUrl ?? '').isNotEmpty
+        ? c.coverUrl!
+        : (c.gallery.isNotEmpty ? c.gallery.first : '');
 
     return [
       // MUQOVA — SAYTDAGI BIZNES PROFILDAGIDEK.
       //
       // Egasi: "biznes profillar premium ko'rinishi kerak".
       // Saytdagi `/c/:id` bilan solishtirganda eng katta farq shu
-      // edi: u yerda tepada katta muqova rasmi turadi va pastga
-      // qarab to'liq so'nadi, ilovada esa umuman chizilmasdi —
+      // edi: u yerda tepada katta muqova turadi va pastga qarab
+      // to'liq so'nadi, ilovada esa umuman chizilmasdi —
       // `coverUrl` modelda BOR edi, lekin hech qayerda
       // ishlatilmagan.
+      //
+      // MUQOVA HAR DOIM BO'LADI. Saytda ham shunday: rasm
+      // yuklanmagan bo'lsa `fallbackCover` chiziladi, ya'ni
+      // sarlavha hech qachon "yalang'och" turmaydi. Ilovaga tayyor
+      // surat solinmadi (u har biznesga yolg'on muhit yasardi va
+      // paketni og'irlashtirardi) — o'rniga brend gradiyenti
+      // chiziladi.
       //
       // Rasm ATAYLAB so'nadi (`ShaderMask`): tagida matn turadi va
       // to'q rasm ustida oq yozuv o'qilmay qolardi. Saytda ham
       // xuddi shu usul — `mask-image: linear-gradient(...)`.
-      if ((c.coverUrl ?? '').isNotEmpty)
-        SizedBox(
-          height: 190,
-          width: double.infinity,
-          child: ShaderMask(
-            shaderCallback: (r) => const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xE6000000),
-                Color(0x8C000000),
-                Color(0x2E000000),
-                Color(0x00000000),
-              ],
-              stops: [0, .38, .68, 1],
-            ).createShader(r),
-            blendMode: BlendMode.dstIn,
-            child: NetImage(c.coverUrl!, fit: BoxFit.cover),
-          ),
+      SizedBox(
+        height: 190,
+        width: double.infinity,
+        child: ShaderMask(
+          shaderCallback: (r) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xE6000000),
+              Color(0x8C000000),
+              Color(0x2E000000),
+              Color(0x00000000),
+            ],
+            stops: [0, .38, .68, 1],
+          ).createShader(r),
+          blendMode: BlendMode.dstIn,
+          // MUQOVA MANBAI — UCH BOSQICH. Saytdagi tartib bilan
+          // bir xil: o'z muqovasi, bo'lmasa galereyaning birinchi
+          // surati (saytda ham galereya `coverUrl` ga qaytadi),
+          // ikkalasi ham bo'lmasa brend gradiyenti.
+          child: cover.isNotEmpty
+              ? NetImage(cover, fit: BoxFit.cover)
+              : const _BrandCover(),
         ),
-
-      SizedBox(height: (c.coverUrl ?? '').isEmpty ? S.x8 : 0),
+      ),
 
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -530,7 +544,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // kontent bir-biriga yopishmagan ikki blok bo'lib
             // ko'rinardi.
             Transform.translate(
-              offset: Offset(0, (c.coverUrl ?? '').isEmpty ? 0 : -34),
+              offset: const Offset(0, -34),
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
@@ -549,7 +563,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            SizedBox(height: (c.coverUrl ?? '').isEmpty ? S.x16 : 0),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1094,6 +1107,58 @@ class _ProfileSkeleton extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      );
+}
+
+/// MUQOVA RASMI YO'Q BO'LGANDA — BREND GRADIYENTI.
+///
+/// Saytda bunday holatda tayyor surat (`fallbackCover`)
+/// chiziladi. Ilovaga surat solinmadi: u har bir biznesga
+/// begona muhit yasardi (qurilish suratlari barberga ham
+/// tushardi) va paketni og'irlashtirardi.
+///
+/// O'rniga brendning o'z yorug'ligi: issiq gradiyent, burchakdan
+/// nur va xira medalyon. Ustidan baribir so'nish niqobi tushadi,
+/// shuning uchun bu qatlam ORQA FON bo'lib qoladi va matnni
+/// hech qachon bosmaydi.
+class _BrandCover extends StatelessWidget {
+  const _BrandCover();
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF241D11), Color(0xFF13100A), Color(0xFF0B0907)],
+            stops: [0, .55, 1],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(.5, -.7),
+                  radius: 1.0,
+                  colors: [
+                    C.accent.withValues(alpha: .3),
+                    C.accent.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              right: -14,
+              top: -6,
+              child: Opacity(
+                opacity: .18,
+                child: BrandMark(size: 150, ring: false),
+              ),
+            ),
+          ],
         ),
       );
 }
