@@ -214,7 +214,18 @@ class _Tab extends StatelessWidget {
   }
 }
 
-/// Markaziy tugma — brend medalyoni.
+/// MARKAZIY TUGMA — TO'LDIRILGAN OLTIN DOIRA.
+///
+/// EGASI: "pastdagi NFC logoni qara, o'shani bizga ol — chiroyli
+/// ko'rinar ekan".
+///
+/// Ilgari bu yerda quyuq doira va uning ichida medalyon rasmi
+/// turardi: qora fon qora panel ustida "o'yiq" bo'lib ko'rinardi
+/// va tugma panelning o'zidan ajralib turmasdi.
+///
+/// Endi doiraning O'ZI oltin yuza (tugmalardagi bilan bir xil
+/// gradiyent), belgi esa quyuq rangda — ya'ni u ilovadagi asosiy
+/// amal tugmasi bilan bir tilda gapiradi va uzoqdan ko'rinadi.
 class _NfcTab extends StatelessWidget {
   const _NfcTab({required this.active, required this.onTap});
 
@@ -230,24 +241,25 @@ class _NfcTab extends StatelessWidget {
         child: AnimatedContainer(
           duration: M.fade,
           curve: M.curve,
-          padding: const EdgeInsets.all(3),
+          width: 62,
+          height: 62,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            // Faol holatda halqa qalinlashadi va nur kuchayadi.
-            color: C.bg,
-            border: Border.all(
-              color: C.accent.withValues(alpha: active ? .95 : .5),
-              width: active ? 2 : 1.4,
-            ),
+            gradient: C.actionFace,
+            // Panel bilan tutashmasin — quyuq halqa doirani
+            // panelning o'zidan ajratadi.
+            border: Border.all(color: C.bg, width: 3),
+            // Faol holatda nur kuchayadi.
             boxShadow: [
               BoxShadow(
-                color: C.accent.withValues(alpha: active ? .55 : .3),
-                blurRadius: active ? 26 : 18,
-                spreadRadius: active ? -4 : -6,
+                color: C.accent.withValues(alpha: active ? .5 : .3),
+                blurRadius: active ? 28 : 20,
+                spreadRadius: active ? -2 : -6,
               ),
             ],
           ),
-          child: const BrandMark(size: 56, ring: false),
+          child: LogoMark(size: 32, color: C.onAccent),
         ),
       );
 }

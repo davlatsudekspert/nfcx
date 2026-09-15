@@ -93,11 +93,11 @@ void main() {
       expect(find.text('Profil'), findsOneWidget);
       expect(find.text('Activity'), findsNothing);
 
-      // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
+      // MARKAZIY TAB YORLIQSIZ: u brend belgisi bilan
       // ko‘rsatiladi va "NFC" so‘zi ekranga chizilmaydi. Tabning
       // ma‘nosi `NavBar.tabs` da saqlanadi.
       expect(find.text('NFC'), findsNothing);
-      expect(find.byType(BrandMark), findsOneWidget);
+      expect(find.byType(LogoMark), findsOneWidget);
     });
 
     testWidgets('NFC markazda turadi', (tester) async {
@@ -108,9 +108,9 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: NavBar(active: NavBar.nfcIndex, onSelect: (_) {})),
       ));
-      // Markazda — brend medalyoni, boshqa tablarda bunday
+      // Markazda — brend belgisi, boshqa tablarda bunday
       // element yo‘q.
-      expect(find.byType(BrandMark), findsOneWidget);
+      expect(find.byType(LogoMark), findsOneWidget);
     });
 
     testWidgets('bosilganda indeks uzatiladi', (tester) async {
@@ -118,7 +118,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: NavBar(active: 0, onSelect: (i) => picked = i)),
       ));
-      await tester.tap(find.byType(BrandMark));
+      await tester.tap(find.byType(LogoMark));
       expect(picked, 2);
     });
   });

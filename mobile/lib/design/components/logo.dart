@@ -89,26 +89,39 @@ class BrandMark extends StatelessWidget {
 /// disk ko'rinib qoladi. Bu yerda esa faqat oltin belgi — foni
 /// butunlay shaffof.
 class LogoMark extends StatelessWidget {
-  const LogoMark({super.key, this.size = 44, this.opacity = 1});
+  const LogoMark({super.key, this.size = 44, this.opacity = 1, this.color});
 
   final double size;
   final double opacity;
+
+  /// BELGINI BOSHQA RANGGA BO'YASH.
+  ///
+  /// Manba fayl oltin rangda va shaffof fonli. Oltin YUZA ustiga
+  /// qo'yilsa (masalan to'ldirilgan tugma) u ko'rinmay qoladi —
+  /// shuning uchun belgi quyuq rangga bo'yaladi. `srcIn` faqat
+  /// belgining o'ziga tegadi, shaffof joy shaffofligicha qoladi.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 3;
     final cache = math.min(1024, (size * dpr).round());
-    return Opacity(
-      opacity: opacity,
-      child: Image.asset(
-        'assets/img/logo_mark.png',
-        width: size,
-        height: size,
-        cacheWidth: cache,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-      ),
+    Widget mark = Image.asset(
+      'assets/img/logo_mark.png',
+      width: size,
+      height: size,
+      cacheWidth: cache,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
     );
+    final tint = color;
+    if (tint != null) {
+      mark = ColorFiltered(
+        colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
+        child: mark,
+      );
+    }
+    return Opacity(opacity: opacity, child: mark);
   }
 }
 

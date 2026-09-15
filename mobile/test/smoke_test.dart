@@ -70,10 +70,10 @@ void main() {
     await boot(tester);
     for (var i = 0; i < NavBar.tabs.length; i++) {
       final label = NavBar.tabs[i].label;
-      // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
+      // MARKAZIY TAB YORLIQSIZ: u brend belgisi bilan
       // ko‘rsatiladi, ya‘ni matn bo‘yicha topib bo‘lmaydi.
       await tester.tap(
-        i == NavBar.nfcIndex ? find.byType(BrandMark) : find.text(label),
+        i == NavBar.nfcIndex ? find.byType(LogoMark) : find.text(label),
       );
       await settle(tester);
       expect(tester.takeException(), isNull, reason: label);
