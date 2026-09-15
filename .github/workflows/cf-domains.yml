@@ -25,6 +25,17 @@ on:
         default: read
         type: choice
         options: [read, apply]
+      target:
+        description: "Domen qaysi Worker'ga ulansin"
+        required: true
+        default: nfcstore-uz
+        type: choice
+        options: [nfcstore-uz, nfcstore-api]
+      drop_routes:
+        description: "nfcstore-api dagi eski /api/* marshrutlarini o'chirish"
+        required: false
+        default: false
+        type: boolean
       confirm:
         description: "apply uchun: aynan KO'CHIR deb yozing"
         required: false
@@ -88,6 +99,8 @@ jobs:
 
       - name: Domenni ko'chirish
         if: ${{ inputs.mode == 'apply' }}
+        env:
+          TARGET: ${{ inputs.target }}
         run: |
           if [ "$CONFIRM" != "KO'CHIR" ]; then
             echo "::error::Tasdiq so'zi noto'g'ri. `confirm` maydoniga aynan: KO'CHIR"
@@ -99,7 +112,18 @@ jobs:
           TOKEN = os.environ['CF_API_TOKEN']
           ACC = os.environ['CF_ACCOUNT']
           BASE = f'https://api.cloudflare.com/client/v4/accounts/{ACC}/workers/domains'
-          TARGET = 'nfcstore-api'          # deploy HAQIQATAN shu yerga chiqadi
+          # QAYSI WORKER'DA YANGI KOD BOR — TEKSHIRIB ANIQLANDI.
+          #
+          # Avval `wrangler.jsonc` dagi nomga qarab `nfcstore-api` deb
+          # xulosa qilingan edi. Bu NOTO'G'RI bo'lib chiqdi: Cloudflare
+          # Workers Builds skript nomini o'zi biriktirilgan Worker'ga
+          # majburan o'zgartiradi, ya'ni Git integratsiyasi aslida
+          # `nfcstore-uz` ni yangilab turgan. Uchala manzil yonma-yon
+          # so'roq qilinganda aniq ko'rindi:
+          #   nfcstore-uz  /api/feed -> 200 {"feed":[...]}   YANGI
+          #   nfcstore-api /api/feed -> 404 not_found        ESKI
+          # Shuning uchun nishon endi taxmin emas, kirish maydonidan.
+          TARGET = os.environ.get('TARGET') or 'nfcstore-uz'
           HOSTS = ['nfcstore.uz', 'www.nfcstore.uz']
 
           # BO'SH JAVOB = MUVAFFAQIYAT, XATO EMAS.
@@ -215,6 +239,57 @@ jobs:
           r = api('GET', BASE)
           for x in (r.get('result') or []):
               print('%-26s -> %s' % (x.get('hostname'), x.get('service')))
+          PY
+
+      # ESKI MARSHRUTLARNI OLIB TASHLASH.
+      #
+      # `nfcstore-api` da `nfcstore.uz/api/*` va `/uploads/*` uchun
+      # Route'lar bor. Route Custom Domain'dan ANIQROQ, shuning uchun
+      # domen qayerga ulangan bo'lsa ham `/api/*` o'sha eski Worker'ga
+      # tushardi. Ilovadagi "Topilmadi. not_found 404" ning sababi
+      # aynan shu edi: sayt yangi Worker'dan, API esa eskisidan
+      # kelardi. Domenni to'g'rilashning O'ZI yetmaydi — bu marshrutlar
+      # turganda API baribir eski koddan javob beradi.
+      - name: Eski /api/* marshrutlarini o'chirish
+        if: ${{ inputs.mode == 'apply' && inputs.drop_routes }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          TOKEN = os.environ['CF_API_TOKEN']
+
+          def api(method, url, body=None):
+              cmd = ['curl', '-sS', '-X', method, '-H', f'Authorization: Bearer {TOKEN}',
+                     '-H', 'Content-Type: application/json', url]
+              if body is not None:
+                  cmd += ['--data', json.dumps(body)]
+              out = subprocess.run(cmd, capture_output=True, text=True).stdout
+              if not out.strip():
+                  return {'success': True, 'result': None, 'errors': []}
+              try:
+                  return json.loads(out)
+              except Exception:
+                  return {'success': False, 'errors': [{'message': out[:400]}]}
+
+          z = api('GET', 'https://api.cloudflare.com/client/v4/zones?name=nfcstore.uz')
+          res = z.get('result') or []
+          if not res:
+              print('Zona topilmadi.')
+              raise SystemExit(0)
+          zid = res[0]['id']
+          base = f'https://api.cloudflare.com/client/v4/zones/{zid}/workers/routes'
+
+          routes = api('GET', base).get('result') or []
+          if not routes:
+              print('Marshrut yo\'q.')
+          for rt in routes:
+              print('%-34s -> %s' % (rt.get('pattern'), rt.get('script')))
+              d = api('DELETE', f"{base}/{rt['id']}")
+              print('   o\'chirildi' if d.get('success')
+                    else '   RAD ETILDI: ' + json.dumps(d.get('errors'), ensure_ascii=False))
+
+          print('\n=== Qolgan marshrutlar ===')
+          for rt in (api('GET', base).get('result') or []):
+              print('%-34s -> %s' % (rt.get('pattern'), rt.get('script')))
           PY
 
       # NIMA QAYERDAN KELAYOTGANINI AJRATISH.
