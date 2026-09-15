@@ -147,6 +147,55 @@ function withAdminCookie(init = {}) {
 }
 
 // =====================================================================
+// YANGI, FAQAT O'QIYDIGAN ENDPOINTLAR (2026-09)
+//
+// Ilova bu ikkisiga tayanadi: kod bandmi/narxi qancha va tarif
+// narxlari jadvali. Ular yiqilsa ilovada narx ko'rinmay qoladi va
+// bo'sh kod yana "topilmadi" bo'lib chiqadi — shuning uchun bu
+// yerda o'lchab tekshiriladi.
+// =====================================================================
+{
+  const res = await worker.fetch(req('/api/settings/id-pricing'), env);
+  const body = await res.json().catch(() => ({}));
+  checkTrue(
+    'GET /api/settings/id-pricing -> 200, tarif narxlari',
+    res.status === 200 && body?.pricing?.gold === 149000 && body?.pricing?.bronze === 49000,
+  );
+}
+
+{
+  // Bo'sh kod — band emas, sotib olinadi, narxi bor.
+  const res = await worker.fetch(req('/api/records/check?code=III777'), env);
+  const body = await res.json().catch(() => ({}));
+  checkTrue(
+    'GET /api/records/check -> bo\'sh kod narxi bilan',
+    res.status === 200 && body.valid === true && body.available === true
+      && body.purchasable === true && typeof body.price === 'number' && body.price > 0,
+  );
+}
+
+{
+  // Band kod — narx qaytarilmaydi.
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts) VALUES ('ZZZ123', 'Band', 0, 1)`).run();
+  const res = await worker.fetch(req('/api/records/check?code=ZZZ123'), env);
+  const body = await res.json().catch(() => ({}));
+  checkTrue(
+    'GET /api/records/check -> band kod "available:false"',
+    res.status === 200 && body.valid === true && body.available === false && body.taken === true,
+  );
+}
+
+{
+  // Noto'g'ri shakl — xato emas, "valid:false".
+  const res = await worker.fetch(req('/api/records/check?code=12'), env);
+  const body = await res.json().catch(() => ({}));
+  checkTrue(
+    'GET /api/records/check -> yaroqsiz kod "valid:false"',
+    res.status === 200 && body.valid === false,
+  );
+}
+
+// =====================================================================
 // R2 uploads
 // =====================================================================
 
