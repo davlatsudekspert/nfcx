@@ -356,13 +356,22 @@ class _ComposeScreenState extends State<ComposeScreen> {
                   ),
                 ),
                 const SizedBox(height: S.x12),
+                // UCHTA TUGMA UCHTA TENG USTUNDA.
+                //
+                // `BtnSize.m` da uchinchisining yozuvi sig'masdi va
+                // "Kamera" o'rniga "Kam..." chiqardi — uchdan bir
+                // kenglikka ikonka, ichki hoshiya va olti harf
+                // birga joylashmasdi. Kichikroq o'lcham tanlandi:
+                // bular ikkilamchi harakat, ularni kattalashtirish
+                // uchun sabab yo'q, kesilgan yozuv esa sifatsiz
+                // ko'rinadi.
                 Row(
                   children: [
                     Expanded(
                       child: SecondaryButton(
                         tr('Rasm'),
                         icon: Ico.image,
-                        size: BtnSize.m,
+                        size: BtnSize.s,
                         onTap: _busy ? null : () => _pick(ImageSource.gallery),
                       ),
                     ),
@@ -371,7 +380,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       child: SecondaryButton(
                         tr('Video'),
                         icon: Ico.play,
-                        size: BtnSize.m,
+                        size: BtnSize.s,
                         onTap: _busy ? null : () => _pickVideo(ImageSource.gallery),
                       ),
                     ),
@@ -380,7 +389,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
                       child: SecondaryButton(
                         tr('Kamera'),
                         icon: Ico.camera,
-                        size: BtnSize.m,
+                        size: BtnSize.s,
                         onTap: _busy ? null : () => _pick(ImageSource.camera),
                       ),
                     ),

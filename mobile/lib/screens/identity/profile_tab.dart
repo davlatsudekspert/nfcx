@@ -216,13 +216,40 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 child: Row(
                   children: [
-                    Avatar(
-                      url: active.avatarUrl,
-                      name: active.name,
-                      size: 56,
-                      square: active.isBusiness,
+                    // AVATAR — SHU EKRANNING BOSH ELEMENTI.
+                    //
+                    // Ilgari u 56 px edi va yonidagi ism bilan bir
+                    // xil og'irlikda turardi, ya'ni ko'z hech
+                    // qayerda to'xtamasdi. Egasi: "avatarni chiroyli
+                    // ko'rinishga keltir, kattaroq qilib".
+                    //
+                    // Endi 76 px va atrofida nozik oltin halqa —
+                    // xuddi jismoniy kartaning gardishi kabi.
+                    // Halqa `Avatar` ning O'ZIGA qo'shilmadi: u
+                    // ro'yxatlarda va izohlarda ham ishlatiladi,
+                    // u yerda halqa ortiqcha shovqin bo'lardi.
+                    Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        shape: active.isBusiness
+                            ? BoxShape.rectangle
+                            : BoxShape.circle,
+                        borderRadius: active.isBusiness
+                            ? BorderRadius.circular(R.tile + 3)
+                            : null,
+                        border: Border.all(
+                          color: C.accent.withValues(alpha: .55),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Avatar(
+                        url: active.avatarUrl,
+                        name: active.name,
+                        size: 76,
+                        square: active.isBusiness,
+                      ),
                     ),
-                    const SizedBox(width: S.x12),
+                    const SizedBox(width: S.x16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,11 +296,24 @@ class _ProfileTabState extends State<ProfileTab> {
 
               // ID ALMASHTIRGICH.
               const SizedBox(height: S.x20),
+              // BIZNES PROFILLAR HAM SHU QATORDA.
+              //
+              // Ilgari bu yerga faqat `state.cards` berilardi, ya'ni
+              // shaxsiy ID'lar. Biznes profillar (`state.companies`)
+              // ro'yxatga UMUMAN tushmasdi va ularga o'tishning
+              // ko'rinadigan yo'li yo'q edi — egasi buni "mening
+              // biznes profillarim ko'rinmayapti" deb xabar qildi.
+              //
+              // Tartib ataylab shunday: avval shaxsiy ID'lar, keyin
+              // biznes. Ikkalasi bitta qatorda, chunki bu "faol
+              // shaxsni tanlash" — odam uchun ular bir xil narsa.
               _IdStrip(
-                cards: state.cards,
+                items: [
+                  for (final r in state.cards) Identity.personal(r),
+                  for (final c in state.companies) Identity.business(c),
+                ],
                 activeCode: active.code,
-                onSelect: (r) =>
-                    state.switchIdentity(Identity.personal(r)),
+                onSelect: state.switchIdentity,
                 onAdd: () =>
                     push<void>(context, (_) => const IdCatalogScreen()),
               ),
@@ -322,8 +362,17 @@ class _ProfileTabState extends State<ProfileTab> {
                 const SizedBox(height: S.x12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                  // GRAFIK ATAYLAB KICHIK.
+                  //
+                  // Ilgari u ekranning eng katta bloki edi va
+                  // profilning o'zidan ko'proq joy egallardi. Egasi:
+                  // "ko'rishlar 7 kunini kichikroq qil". To'g'ri
+                  // e'tiroz: bu tabning asosiy vazifasi shaxsni
+                  // ko'rsatish, statistika esa ikkinchi darajali —
+                  // batafsili baribir bosilganda alohida ekranda
+                  // ochiladi.
                   child: Surface(
-                    padding: const EdgeInsets.all(S.x16),
+                    padding: const EdgeInsets.all(S.x12),
                     onTap: () => push<void>(
                       context,
                       (_) => ProfileStatsScreen(
@@ -338,16 +387,17 @@ class _ProfileTabState extends State<ProfileTab> {
                           children: [
                             Text(
                               tr('Ko‘rishlar · 7 kun'),
-                              style: T.cardTitle.copyWith(fontSize: 14),
+                              style: T.cardTitle.copyWith(fontSize: 12.5),
                             ),
                             const Spacer(),
                             _Delta(series: series),
                           ],
                         ),
-                        const SizedBox(height: S.x16),
+                        const SizedBox(height: S.x8),
                         BarChart(
                           values: series,
                           labels: [tr('Dush'), tr('Yak')],
+                          height: 54,
                         ),
                       ],
                     ),
@@ -543,18 +593,24 @@ class _ProfileTabState extends State<ProfileTab> {
 
 // ─────────────────────────────────────────────────────────────
 
-/// ID chiplari qatori — faol ID oltin halqa bilan.
+/// SHAXS ALMASHTIRGICH — shaxsiy ID va biznes profillar bitta
+/// qatorda, faol bo'lgani oltin halqa bilan.
+///
+/// Ilgari bu yerga faqat shaxsiy ID'lar (`Record`) berilardi va
+/// biznes profillar ro'yxatga umuman tushmasdi. Endi qator
+/// `Identity` bilan ishlaydi — u ikkalasini ham bir xil ko'rsata
+/// oladi, ya'ni yangi tur qo'shilsa ham bu widget o'zgarmaydi.
 class _IdStrip extends StatelessWidget {
   const _IdStrip({
-    required this.cards,
+    required this.items,
     required this.activeCode,
     required this.onSelect,
     required this.onAdd,
   });
 
-  final List<Record> cards;
+  final List<Identity> items;
   final String activeCode;
-  final ValueChanged<Record> onSelect;
+  final ValueChanged<Identity> onSelect;
   final VoidCallback onAdd;
 
   @override
@@ -563,10 +619,10 @@ class _IdStrip extends StatelessWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          itemCount: cards.length + 1,
+          itemCount: items.length + 1,
           separatorBuilder: (_, __) => const SizedBox(width: S.x8),
           itemBuilder: (context, i) {
-            if (i == cards.length) {
+            if (i == items.length) {
               return Press(
                 onTap: onAdd,
                 minSize: 0,
@@ -594,10 +650,10 @@ class _IdStrip extends StatelessWidget {
               );
             }
 
-            final card = cards[i];
-            final active = card.code == activeCode;
+            final item = items[i];
+            final active = item.code == activeCode;
             return Press(
-              onTap: active ? null : () => onSelect(card),
+              onTap: active ? null : () => onSelect(item),
               minSize: 0,
               scale: .95,
               child: Container(
@@ -615,10 +671,17 @@ class _IdStrip extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TierDot(card.tier, size: 12),
+                    // Biznesda tarif nuqtasi yo'q — uning o'rniga
+                    // belgi turadi, aks holda ikki tur bir xil
+                    // ko'rinib, qaysi biri kompaniya ekani
+                    // bilinmasdi.
+                    if (item.isBusiness)
+                      NIcon(Ico.building, size: 12, color: C.accent)
+                    else
+                      TierDot(item.record!.tier, size: 12),
                     const SizedBox(width: 7),
                     Text(
-                      card.code,
+                      item.isBusiness ? item.name : item.code,
                       style: T.code(
                         13,
                         color: active ? C.ink : C.ink2,
