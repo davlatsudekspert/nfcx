@@ -318,6 +318,41 @@ jobs:
             probe "$base/api/settings/payments-enabled"
           done
 
+          # ILOVA CHAQIRADIGAN HAR BIR YO'L JAVOB BERADIMI.
+          #
+          # Yuqoridagi ikki so'rov qaysi Worker ishlayotganini
+          # ajratadi, bu esa boshqa savolga javob beradi: ilovaning
+          # QAYSI qismi ishlamayapti.
+          #
+          # MUHIM: kirishsiz so'ralganda 401 — KUTILGAN javob, u yo'l
+          # BOR degani. Xato belgisi 404 (`not_found`): u yo'l
+          # serverda umuman yo'q, ya'ni eski nusxa ishlayapti.
+          # Ilovadagi "Topilmadi" aynan shu edi.
+          echo "=========== Ilova yo'llari (jonli sayt)"
+          bad=0
+          want() {
+            code=$(curl -sS -o b.txt -w '%{http_code}' --max-time 25 "https://nfcstore.uz$1" 2>/dev/null || echo 000)
+            if [ "$code" = "$2" ]; then
+              printf '  OK   %-36s %s\n' "$1" "$code"
+            else
+              printf '  XATO %-36s kutilgan %s, keldi %s | %s\n' \
+                "$1" "$2" "$code" "$(head -c 80 b.txt | tr '\n' ' ')"
+              bad=$((bad+1))
+            fi
+          }
+          want /api/feed                          200
+          want /api/stories/feed                  200
+          want /api/records                       200
+          want /api/categories                    200
+          want /api/companies                     200
+          want /api/settings/payments-enabled     200
+          want /api/settings/physical-nfc-pricing 200
+          want /api/auth/me                       401
+          want /api/companies/mine                401
+          want /api/orders                        401
+          want /api/blocks                        401
+          echo "  --- kutilganday javob bermaganlar: $bad"
+
           # RASMLAR HAM TEKSHIRILADI.
           #
           # `/uploads/*` marshruti ham o'chirildi, ya'ni rasmlar endi
