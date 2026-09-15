@@ -6,6 +6,20 @@ on:
   push:
     branches:
       - main
+  # QO'LDA QAYTA DEPLOY — "Run workflow" tugmasi.
+  #
+  # Nima uchun kerak bo'ldi: sayt ishdan chiqqanda yagona chora
+  # `main` ga yangi commit push qilish edi — ya'ni tuzatadigan
+  # o'zgarish bo'lmasa ham, faqat deploy'ni qayta yurgizish uchun.
+  # Cloudflare'ning o'z Git integratsiyasi esa alohida "build token"
+  # ga bog'liq va u buzilganda umuman ishga tushmaydi (2026-09-15 da
+  # aynan shunday bo'ldi).
+  #
+  # Bu tugma HECH NARSANI o'zgartirmaydi: o'sha `main` dagi kodni
+  # qaytadan chiqaradi, ya'ni ishlab turgan holatga qaytarish uchun
+  # eng qisqa yo'l. Actions -> "Deploy to Cloudflare (nfcstore.uz)"
+  # -> Run workflow.
+  workflow_dispatch:
 
 # Ikkita push ketma-ket kelsa, oldingi deploy tugamasdan yangisi
 # boshlanmaydi (production'ga bir vaqtda ikkita deploy yugurmasin uchun).
