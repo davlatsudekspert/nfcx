@@ -1,0 +1,167 @@
+# PLAY STORE'GA YUBORISH
+#
+# NIMA QILADI: "Android APK" workflow'i allaqachon qurgan va
+# testdan o'tkazgan `.aab` faylini Play Console'ga yuboradi.
+#
+# NIMA UCHUN QAYTA QURMAYDI: do'konga tushadigan fayl aynan
+# tekshirilgan fayl bo'lishi kerak. Qayta qurilsa — bu boshqa
+# bayt, boshqa `versionCode`, va "sinab ko'rgan versiyam shumi?"
+# degan savolga javob yo'q bo'lardi.
+#
+# BIRINCHI MARTA QO'LDA: Play API hali do'konda bo'lmagan ilovaga
+# yuklay olmaydi. Birinchi `.aab` ni Play Console orqali o'zingiz
+# yuklaysiz, keyingi hamma yangilanish shu yerdan ketadi.
+#
+# SOZLASH: `PLAY_SERVICE_ACCOUNT_JSON` secret'i kerak — qanday
+# olinishi `PLAY.md` ning 4-bo'limida.
+name: Play Store'ga yuborish
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Qaysi 'Android APK' qurilishi (bo'sh — main'dagi oxirgi muvaffaqiyatlisi)"
+        required: false
+        default: ''
+      track:
+        description: 'Qaysi trek'
+        required: true
+        default: internal
+        type: choice
+        options: [internal, alpha, beta, production]
+      rollout:
+        description: "Foydalanuvchilar ulushi (1.0 — hammaga, 0.1 — 10%)"
+        required: true
+        default: '1.0'
+
+permissions:
+  contents: read
+  # Boshqa ishga tushishdan artifact yuklab olish uchun.
+  actions: read
+
+concurrency:
+  group: play-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # SECRET YO'Q BO'LSA — DARHOL VA TUSHUNARLI TO'XTASH.
+      # Aks holda yuborish qadami "invalid credentials" deb
+      # yiqilardi va sababi noaniq qolardi.
+      - name: Sozlamani tekshirish
+        env:
+          SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON secret'i yo'q. PLAY.md, 4-bo'lim."
+            exit 1
+          fi
+          # ATAYLAB QAT'IY: "1" ni ham qabul qilsak, u "1.0" bilan
+          # bir xil emas deb hisoblanib, qisman chiqarish rejimiga
+          # tushib ketardi va Play uni rad etardi.
+          case "${{ inputs.rollout }}" in
+            1.0) ;;
+            0.[0-9]|0.[0-9][0-9]) ;;
+            *) echo "::error::rollout — '1.0' yoki '0.NN' ko'rinishida bo'lsin."; exit 1;;
+          esac
+
+      # QAYSI QURILISH. Bo'sh qoldirilsa — `main` dagi oxirgi
+      # muvaffaqiyatli "Android APK" ishga tushishi.
+      - name: Qurilishni tanlash
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          GIVEN: ${{ inputs.run_id }}
+        run: |
+          if [ -n "$GIVEN" ]; then
+            RUN="$GIVEN"
+          else
+            RUN=$(gh api "repos/$REPO/actions/workflows/android-apk.yml/runs?branch=main&status=success&per_page=1" \
+              --jq '.workflow_runs[0].id')
+          fi
+          if [ -z "$RUN" ] || [ "$RUN" = "null" ]; then
+            echo "::error::Mos qurilish topilmadi. Avval 'Android APK' ni ishga tushiring."
+            exit 1
+          fi
+          BRANCH=$(gh api "repos/$REPO/actions/runs/$RUN" --jq '.head_branch')
+          SHA=$(gh api "repos/$REPO/actions/runs/$RUN" --jq '.head_sha')
+          CONC=$(gh api "repos/$REPO/actions/runs/$RUN" --jq '.conclusion')
+          if [ "$CONC" != "success" ]; then
+            echo "::error::$RUN qurilishi muvaffaqiyatli tugamagan ($CONC)."
+            exit 1
+          fi
+          # PRODUCTION FAQAT `main` DAN. Sinov shoxidan qurilgan
+          # fayl do'konga tushib ketishi — qaytarib bo'lmaydigan
+          # xato: uni faqat yangi reliz bilan almashtirish mumkin.
+          if [ "${{ inputs.track }}" = "production" ] && [ "$BRANCH" != "main" ]; then
+            echo "::error::Production faqat 'main' dan. Bu qurilish: $BRANCH."
+            exit 1
+          fi
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Qurilish $RUN — $BRANCH ($SHA)"
+
+      - name: Faylni olish
+        id: file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh run download "${{ steps.pick.outputs.run }}" \
+            --repo "$REPO" --name nfcstore-apk --dir dist
+          AAB=$(find dist -name '*.aab' | head -1)
+          if [ -z "$AAB" ]; then
+            echo "::error::Artifact ichida .aab yo'q (30 kundan oshgan bo'lishi mumkin)."
+            exit 1
+          fi
+          echo "path=$AAB" >> "$GITHUB_OUTPUT"
+          ls -la "$AAB"
+          sha256sum "$AAB"
+
+      # RELIZ IZOHI — bo'lsa yuboriladi, bo'lmasa Play Console'da
+      # qo'lda yoziladi. Fayl nomi til kodi bilan:
+      # mobile/distribution/whatsnew/whatsnew-uz-UZ
+      - name: Reliz izohi bormi
+        id: notes
+        run: |
+          DIR=mobile/distribution/whatsnew
+          if [ -d "$DIR" ] && [ -n "$(ls -A "$DIR" 2>/dev/null)" ]; then
+            echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=" >> "$GITHUB_OUTPUT"
+            echo "Reliz izohi yo'q — Play Console'da qo'lda yoziladi."
+          fi
+
+      - name: Play Console'ga yuborish
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: uz.nfcstore.app
+          releaseFiles: ${{ steps.file.outputs.path }}
+          track: ${{ inputs.track }}
+          # To'liq chiqarishda "completed", qisman chiqarishda
+          # "inProgress" — Play aynan shunday kutadi.
+          status: ${{ inputs.rollout == '1.0' && 'completed' || 'inProgress' }}
+          userFraction: ${{ inputs.rollout != '1.0' && inputs.rollout || '' }}
+          whatsNewDirectory: ${{ steps.notes.outputs.dir }}
+
+      - name: Xulosa
+        run: |
+          {
+            echo "## Play Store'ga yuborildi"
+            echo ""
+            echo "- Trek: **${{ inputs.track }}**"
+            echo "- Ulush: **${{ inputs.rollout }}**"
+            echo "- Qurilish: \`${{ steps.pick.outputs.run }}\` (${{ steps.pick.outputs.branch }})"
+            echo "- Commit: \`${{ steps.pick.outputs.sha }}\`"
+            echo ""
+            echo "Keyingi qadam: Play Console'da review holatini kuzating."
+            echo "Qisman chiqarish bo'lsa — crash ko'rinmasa ulushni oshiring."
+          } >> "$GITHUB_STEP_SUMMARY"

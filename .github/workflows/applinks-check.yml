@@ -119,7 +119,7 @@ jobs:
           if [ "$FAIL" = "1" ]; then
             echo ""
             echo "TUZATISH: barmoq izini Cloudflare secret'iga yozing —"
-            echo "  npx wrangler secret put ANDROID_APP_FINGERPRINTS --name nfcstore-api"
+            echo "  npx wrangler secret put ANDROID_APP_FINGERPRINTS --name nfcstore-uz"
             echo "Bir nechta kalit bo'lsa (masalan Play App Signing) vergul bilan."
             exit 1
           fi
