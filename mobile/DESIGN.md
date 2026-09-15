@@ -77,8 +77,15 @@ ScreenBackdrop(
 `surfaceHigh` · `glass` · `ink` (asosiy matn) · `ink2` (tana matni) ·
 `ink3` (meta) · `onAccent` (oltin ustidagi matn) · `line` ·
 `lineStrong` · `lineCool` · `accent` · `accentHigh` · `accentDeep` ·
-`accentSecondary` · `platinum` · `ok` · `fail` · `warn` ·
+`accentSecondary` · `platinum` (neytral metall `#C9CCD2`) ·
+`cool` (sovuq ko'k `#9CC1EE`) · `ok` · `fail` · `warn` ·
 `payme` · `click` · `telegram` · `whatsapp`
+
+`platinum` va `cool` ALMASHTIRILMAYDI: platina kulrang metall
+(NFC tabi, texnik urg'u), `cool` esa aniq ko'k — sovuq ekranlarning
+ambient nuri va oltin ustunga TEGISHLI BO'LMAGAN izohlar uchun.
+To'q fonda 10% shaffoflikda platina kulrang bo'lib yo'qoladi,
+`cool` esa ko'k bo'lib qoladi.
 
 **Gradient** — `C.screenBase` · `screenBaseCool` · `raisedSurface` ·
 `glassSurface` · `actionFace` · `accentText` · `medallion` ·
@@ -159,7 +166,7 @@ Spinner({size: 18, color, stroke: 2})
 ### Yuzalar — `components/surface.dart`
 ```dart
 Surface({child, padding, radius, gradient, color, border, shadow, glow, onTap})
-GlassPanel({child, radius, blur, padding, border, tint})
+GlassPanel({child, radius, blur, padding, border, borderColor, tint})
 Eyebrow(text, {color})
 SectionHeader(title, {actionLabel, onAction, trailing})
 FilterChip(label, {active, onTap})

@@ -660,6 +660,17 @@ class _ActiveCard extends StatelessWidget {
 // TEZKOR AMALLAR
 // ─────────────────────────────────────────────────────────────
 
+/// TEZKOR AMALLAR — BITTA SHISHA PANEL, uch bo'lim.
+///
+/// Dizayn 2a da bu uchta alohida karta EMAS: karta ostida bitta
+/// past, shaffof panel turadi va u ingichka chiziqlar bilan uchga
+/// bo'linadi. Sabab tartibda — ekranning qahramoni metall karta,
+/// uning tagida darhol uchta ko'tarilgan karta tursa, ikkita
+/// "asosiy" qatlam yonma-yon kelib qoladi va karta o'z og'irligini
+/// yo'qotadi.
+///
+/// Panel shisha: u kartaning issiq nurini o'tkazadi va fondan
+/// ajralmaydi.
 class _QuickActions extends StatelessWidget {
   const _QuickActions({this.identity});
 
@@ -668,44 +679,62 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final record = identity?.record;
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionTile(
-            icon: Ico.scan,
-            label: tr('Skanerlash'),
-            onTap: () => push<void>(context, (_) => const NfcScanScreen()),
-          ),
-        ),
-        const SizedBox(width: S.x8),
-        Expanded(
-          child: _ActionTile(
-            icon: Ico.qr,
-            label: tr('QR ulashish'),
-            onTap: identity == null
-                ? null
-                : () => push<void>(
-                      context,
-                      (_) => QrShareScreen(identity: identity!),
-                    ),
-          ),
-        ),
-        const SizedBox(width: S.x8),
-        Expanded(
-          child: _ActionTile(
-            icon: Ico.card,
-            label: tr('Karta'),
-            onTap: () => push<void>(
-              context,
-              (_) => record != null
-                  ? OrderCardScreen(record: record)
-                  : const IdCatalogScreen(),
+    return GlassPanel(
+      radius: R.card,
+      borderColor: C.accent.withValues(alpha: .15),
+      padding: const EdgeInsets.symmetric(vertical: S.x12, horizontal: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ActionTile(
+              icon: Ico.scan,
+              label: tr('Skanerlash'),
+              onTap: () => push<void>(context, (_) => const NfcScanScreen()),
             ),
           ),
-        ),
-      ],
+          const _ActionDivider(),
+          Expanded(
+            child: _ActionTile(
+              icon: Ico.qr,
+              label: tr('QR ulashish'),
+              onTap: identity == null
+                  ? null
+                  : () => push<void>(
+                        context,
+                        (_) => QrShareScreen(identity: identity!),
+                      ),
+            ),
+          ),
+          const _ActionDivider(),
+          Expanded(
+            child: _ActionTile(
+              icon: Ico.card,
+              label: tr('Karta'),
+              onTap: () => push<void>(
+                context,
+                (_) => record != null
+                    ? OrderCardScreen(record: record)
+                    : const IdCatalogScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+/// Bo'limlar orasidagi ingichka oltin chiziq — 34 dp, panelning
+/// to'liq balandligida emas.
+class _ActionDivider extends StatelessWidget {
+  const _ActionDivider();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 34,
+        color: C.accent.withValues(alpha: .16),
+      );
 }
 
 class _ActionTile extends StatelessWidget {
@@ -718,29 +747,24 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Press(
         onTap: onTap,
-        minSize: 0,
-        scale: .96,
-        child: Container(
-          height: 76,
-          padding: const EdgeInsets.symmetric(horizontal: S.x8),
-          decoration: BoxDecoration(
-            gradient: C.raisedSurface,
-            borderRadius: BorderRadius.circular(R.tile),
-            border: Border.all(color: C.line),
-            boxShadow: C.e1,
-          ),
+        // Panel ichida bo'lgani uchun o'z yuzasi yo'q — bosish
+        // maydoni esa baribir 48 dp dan kam bo'lmasligi kerak.
+        minSize: S.tap,
+        scale: .94,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.x4),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              NIcon(icon, size: 21, color: onTap == null ? C.ink3 : C.accent),
-              const SizedBox(height: 8),
+              NIcon(icon, size: 19, color: onTap == null ? C.ink3 : C.accent),
+              const SizedBox(height: 7),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: T.buttonSm.copyWith(
-                  fontSize: 12.5,
+                  fontSize: 11.5,
                   color: onTap == null ? C.ink3 : C.ink,
                 ),
               ),

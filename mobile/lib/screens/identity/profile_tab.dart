@@ -13,6 +13,7 @@ import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
+import '../../design/components/story_ring.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
@@ -21,6 +22,7 @@ import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/share.dart';
 import '../content/compose.dart';
+import '../content/story_viewer.dart';
 import '../nfc/id_catalog.dart';
 import '../settings/settings_screen.dart';
 import 'edit_profile.dart';
@@ -53,6 +55,15 @@ class _ProfileTabState extends State<ProfileTab> {
   Map<String, dynamic>? _analytics;
   FollowStats? _follow;
   List<Post> _posts = const [];
+
+  /// Faol story bormi — avatar halqasi shunga qarab yonadi.
+  ///
+  /// Dizayn 5a da egasining avatari oltin halqa ichida turadi.
+  /// Halqa SHARTLI: story yo'q bo'lsa halqa ham chizilmaydi, aks
+  /// holda u ma'nosini yo'qotadi — butun ilovada halqa "ko'rilmagan
+  /// story bor" degani.
+  bool _hasStories = false;
+
   bool _loading = true;
   String? _loadedFor;
 
@@ -75,12 +86,13 @@ class _ProfileTabState extends State<ProfileTab> {
     }
     setState(() => _loading = true);
 
-    // UCHALASI IXTIYORIY. Statistika tarifga bog'liq va server uni
+    // HAMMASI IXTIYORIY. Statistika tarifga bog'liq va server uni
     // rad etishi mumkin — bu butun ekranni bo'sh qoldirmasligi
     // kerak.
     Map<String, dynamic>? analytics;
     FollowStats? follow;
     List<Post> posts = const [];
+    var hasStories = false;
 
     if (!active.isBusiness) {
       try {
@@ -95,12 +107,19 @@ class _ProfileTabState extends State<ProfileTab> {
           ? const []
           : await state.repo.recordPosts(active.code);
     } catch (_) {}
+    try {
+      hasStories = (active.isBusiness
+              ? await state.repo.companyStories(active.code)
+              : await state.repo.recordStories(active.code))
+          .isNotEmpty;
+    } catch (_) {}
 
     if (!mounted) return;
     setState(() {
       _analytics = analytics;
       _follow = follow;
       _posts = posts;
+      _hasStories = hasStories;
       _loading = false;
     });
   }
@@ -183,12 +202,34 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 child: Row(
                   children: [
-                    Avatar(
-                      url: active.avatarUrl,
-                      name: active.name,
-                      size: 56,
-                      square: active.isBusiness,
-                    ),
+                    // Faol story bo'lsa — halqa, bosilganda o'z
+                    // story'si ochiladi (ko'ruvchilar va "o'chirish"
+                    // bilan). Biznes logotipi kvadrat bo'lgani uchun
+                    // halqaga kirmaydi.
+                    if (_hasStories && !active.isBusiness)
+                      StoryRing(
+                        avatarUrl: active.avatarUrl,
+                        name: active.name,
+                        size: 60,
+                        showLabel: false,
+                        onTap: () async {
+                          await push<void>(
+                            context,
+                            (_) => StoryViewerScreen(
+                              code: active.code,
+                              owned: true,
+                            ),
+                          );
+                          if (mounted) await _load();
+                        },
+                      )
+                    else
+                      Avatar(
+                        url: active.avatarUrl,
+                        name: active.name,
+                        size: 56,
+                        square: active.isBusiness,
+                      ),
                     const SizedBox(width: S.x12),
                     Expanded(
                       child: Column(

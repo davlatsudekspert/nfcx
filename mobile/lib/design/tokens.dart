@@ -179,8 +179,12 @@ class C {
   /// `background.cool` — sovuq asos (NFC markazi, Qidiruv).
   /// Bu ekranlarning o'z yorug'lik manbai bor va ular Home'dan
   /// ATAYLAB farq qiladi.
-  static const Color bgCool = Color(0xFF07080B);
-  static const Color bgCoolTop = Color(0xFF0C0D12);
+  ///
+  /// Qiymatlar token lavhasidan (7a `background.cool`) va NFC
+  /// markazining asos gradientidan (2b) olingan: tepada ko'kimtir
+  /// `#0E1017`, pastda deyarli qora `#080A0E`.
+  static const Color bgCool = Color(0xFF080A0E);
+  static const Color bgCoolTop = Color(0xFF0E1017);
 
   /// Modal orqa fon — sheet ostidagi xiralik.
   static const Color backdrop = Color(0xFF050508);
@@ -236,6 +240,18 @@ class C {
 
   /// Sovuq platina — NFC tabi va texnik urg'ular.
   static const Color platinum = Color(0xFFC9CCD2);
+
+  /// SOVUQ KO'K YORUG'LIK — `#9CC1EE`.
+  ///
+  /// Platinadan FARQ QILADI: platina deyarli neytral (kulrang
+  /// metall), bu esa aniq ko'k. Shuning uchun u to'q fonda past
+  /// shaffoflikda ham ko'k bo'lib ko'rinadi, platina esa kulrang
+  /// bo'lib qoladi.
+  ///
+  /// QAYERDA: sovuq ekranlarning ambient nuri (NFC markazi pastdan,
+  /// Qidiruv tepadan) va tarifga TEGISHLI BO'LMAGAN izohlar — sovuq
+  /// tus ularni oltin ustundan ajratadi.
+  static const Color cool = Color(0xFF9CC1EE);
 
   // ── Holat ───────────────────────────────────────────────────
 

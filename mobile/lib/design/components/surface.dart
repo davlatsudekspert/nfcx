@@ -93,6 +93,7 @@ class GlassPanel extends StatelessWidget {
     this.blur = C.blurPanel,
     this.padding = EdgeInsets.zero,
     this.border = true,
+    this.borderColor,
     this.tint,
   });
 
@@ -101,6 +102,14 @@ class GlassPanel extends StatelessWidget {
   final double blur;
   final EdgeInsetsGeometry padding;
   final bool border;
+
+  /// Chegara rangi. Standart — neytral `C.lineCool`, chunki shisha
+  /// odatda SOVUQ yuzalarda (sheet, top bar) turadi.
+  ///
+  /// Iliq ekranda (Bosh sahifadagi tezkor amallar paneli) qirra
+  /// oltin bo'ladi: neytral oq chiziq u yerda kulrang bo'lib
+  /// ajralib qoladi.
+  final Color? borderColor;
 
   /// Qo'shimcha rang (masalan xato holatida qizg'ish).
   final Color? tint;
@@ -116,7 +125,9 @@ class GlassPanel extends StatelessWidget {
             gradient: tint == null ? C.glassSurface : null,
             color: tint,
             borderRadius: BorderRadius.circular(radius),
-            border: border ? Border.all(color: C.lineCool, width: 1) : null,
+            border: border
+                ? Border.all(color: borderColor ?? C.lineCool, width: 1)
+                : null,
           ),
           child: Padding(padding: padding, child: child),
         ),

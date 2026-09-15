@@ -168,19 +168,34 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                  // IZOH — SOVUQ KO'K TUSDA.
+                  //
+                  // Tepadagi oltin qatorlar "sotib olinadigan"
+                  // narsalar. Bu izoh esa ularga TEGISHLI EMAS:
+                  // Profil Premium va jismoniy karta tarifni
+                  // o'zgartirmaydi. Sovuq tus shu farqni ko'rsatadi
+                  // — izoh oltin ustunning davomi bo'lib
+                  // ko'rinmaydi.
                   child: Surface(
                     padding: const EdgeInsets.all(S.x16),
+                    radius: R.tile,
+                    color: C.cool.withValues(alpha: .10),
+                    border: Border.all(color: C.cool.withValues(alpha: .28)),
+                    shadow: const [],
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        NIcon(Ico.info, size: 17, color: C.ink3),
+                        NIcon(Ico.info, size: 17, color: C.cool),
                         const SizedBox(width: S.x12),
                         Expanded(
                           child: Text(
                             tr('Profil Premium va jismoniy NFC karta — '
                                 'alohida xizmatlar. Ular tarifni '
                                 'o‘zgartirmaydi.'),
-                            style: T.caption.copyWith(fontSize: 12.5),
+                            style: T.caption.copyWith(
+                              fontSize: 12.5,
+                              color: C.ink.withValues(alpha: .75),
+                            ),
                           ),
                         ),
                       ],
@@ -272,9 +287,29 @@ class _TierRow extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: style.swatch,
         borderRadius: BorderRadius.circular(R.status),
-        border: Border.all(color: style.light.withValues(alpha: .4)),
+        border: Border.all(
+          color: style.light.withValues(alpha: style.doubleEdge ? .55 : .4),
+          width: style.doubleEdge ? 1.5 : 1,
+        ),
         boxShadow: C.e1,
       ),
+      // EKSLYUZIV — IKKI QAVATLI QIRRA.
+      //
+      // Katta kartada bu allaqachon bor (`identity_card.dart`).
+      // Katalogda ham bo'lishi kerak: aynan shu qirra Ekslyuzivni
+      // Gold'dan bir qarashda ajratadi, chunki ikkalasi ham oltin.
+      child: style.doubleEdge
+          ? Container(
+              margin: const EdgeInsets.all(1.5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(R.status - 1.5),
+                border: Border.all(
+                  color: style.dark.withValues(alpha: .6),
+                  width: 1.5,
+                ),
+              ),
+            )
+          : null,
     );
 
     // Gold — eng mashhur tarif: namunasidan yorug'lik o'tadi.
@@ -282,13 +317,36 @@ class _TierRow extends StatelessWidget {
       swatch = LightSweep(radius: R.status, opacity: .5, child: swatch);
     }
 
+    // QATOR O'Z MATERIALINING TUSIDA.
+    //
+    // Dizayn 3a da beshta qator beshta boshqa rangda: har birining
+    // foni va qirrasi o'z metalidan olingan. Bu bezak emas —
+    // taqqoslash ustuni shu bilan ishlaydi: odam ro'yxatni pastga
+    // aylantirganda darajalar ketma-ketligini RANGDAN ko'radi,
+    // yozuvni o'qimasdan ham.
+    //
+    // Tus JUDA PAST (16–22%): yuza baribir `raised` bo'lib qoladi,
+    // faqat unga metallning rangi qorishtiriladi. Kuchli tus
+    // matnning kontrastini tushirardi.
+    final tint = style.base;
     return Surface(
       padding: const EdgeInsets.all(S.x16),
       glow: tier == Tier.gold,
+      gradient: LinearGradient(
+        begin: const Alignment(-.2, -1),
+        end: const Alignment(.2, 1),
+        colors: [
+          Color.alphaBlend(
+            tint.withValues(alpha: tier == Tier.gold ? .20 : .16),
+            C.surfaceHigh,
+          ),
+          Color.alphaBlend(tint.withValues(alpha: .03), C.surface),
+        ],
+      ),
       border: Border.all(
         color: tier == Tier.gold
-            ? C.accent.withValues(alpha: .35)
-            : C.line,
+            ? C.accent.withValues(alpha: .5)
+            : tint.withValues(alpha: .42),
       ),
       onTap: available ? onTap : null,
       child: Row(

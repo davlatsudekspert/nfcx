@@ -119,7 +119,7 @@ class Aura {
           ),
           AuraLayer(
             center: const Alignment(0, 1.08),
-            color: const Color(0xFF9CC1EE),
+            color: C.cool,
             radius: .95,
             opacity: .16,
             falloff: .55,
@@ -133,7 +133,7 @@ class Aura {
         [
           AuraLayer(
             center: const Alignment(-.5, -1.1),
-            color: const Color(0xFF9CC1EE),
+            color: C.cool,
             radius: 1.1,
             opacity: .10,
             falloff: .5,
@@ -151,7 +151,7 @@ class Aura {
   static Aura get coolRight => Aura([
         AuraLayer(
           center: const Alignment(1.05, -.35),
-          color: const Color(0xFF9CC1EE),
+          color: C.cool,
           radius: 1.0,
           opacity: .18,
           falloff: .48,
