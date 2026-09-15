@@ -1,0 +1,163 @@
+# CLOUDFLARE DOMENLARINI KO'RISH VA KO'CHIRISH.
+#
+# NIMA UCHUN BU FAYL BOR. 2026-09-15 da sayt ham, ilova ham ishlamay
+# qoldi. Sabab kodda emas edi: `nfcstore.uz` domeni `nfcstore-uz`
+# Worker'iga ulangan, deploy esa (ikkala yo'l ham) `nfcstore-api` ga
+# chiqadi — chunki `wrangler.jsonc` da shu nom yozilgan. Ya'ni yangi
+# kod bir Worker'ga, foydalanuvchilar esa boshqasiga tushardi.
+#
+# Tuzatish Cloudflare panelida bir necha bosish, lekin panelga kirish
+# har kimda ham yo'q. Shu workflow o'sha ishni API orqali qiladi —
+# repoda allaqachon mavjud `CLOUDFLARE_API_TOKEN` bilan.
+#
+# XAVFSIZLIK: standart rejim — FAQAT O'QISH. Hech narsa
+# o'zgartirilmaydi, shunchaki qaysi domen qaysi Worker'da ekani
+# chiqariladi. O'zgartirish uchun `mode: apply` ni QO'LDA tanlash
+# kerak va u tasdiq so'zini ham talab qiladi.
+name: Cloudflare domenlari
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "read = faqat ko'rish (xavfsiz). apply = domenni ko'chirish."
+        required: true
+        default: read
+        type: choice
+        options: [read, apply]
+      confirm:
+        description: "apply uchun: aynan KO'CHIR deb yozing"
+        required: false
+        default: ''
+  push:
+    branches:
+      - claude/adoring-ritchie-whjcgs
+    paths:
+      - '.github/workflows/cf-domains.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  domains:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Dashboard havolasidan olingan (dash.cloudflare.com/<account_id>/...).
+      CF_ACCOUNT: 31c4b3d8ece4b65de515debc4552334a
+      MODE: ${{ inputs.mode || 'read' }}
+      CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - name: Token bormi
+        run: |
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret yo'q."
+            exit 1
+          fi
+          echo "Token bor (uzunligi: ${#CF_API_TOKEN})."
+
+      # Token qanday huquqlarga ega ekanini AVVAL bilib olamiz — aks
+      # holda o'zgartirish yarim yo'lda to'xtab, sayt umuman ochilmay
+      # qolishi mumkin edi.
+      - name: Token tekshiruvi
+        run: |
+          curl -sS -H "Authorization: Bearer $CF_API_TOKEN" \
+            https://api.cloudflare.com/client/v4/user/tokens/verify \
+            | python3 -m json.tool
+
+      - name: Worker domenlari (faqat o'qish)
+        run: |
+          echo "=== Hisobdagi barcha Worker Custom Domain'lari ==="
+          curl -sS -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/domains" \
+            > domains.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('domains.json'))
+          if not d.get('success'):
+              print('SO\'ROV RAD ETILDI:', json.dumps(d.get('errors'), ensure_ascii=False))
+              raise SystemExit(0)
+          rows = d.get('result') or []
+          if not rows:
+              print('Custom Domain topilmadi.')
+          for r in rows:
+              print('%-26s -> %-16s (zone: %s, id: %s)' % (
+                  r.get('hostname'), r.get('service'), r.get('zone_name'), r.get('id')))
+          json.dump(rows, open('rows.json', 'w'))
+          PY
+
+      - name: Domenni ko'chirish
+        if: ${{ inputs.mode == 'apply' }}
+        run: |
+          if [ "$CONFIRM" != "KO'CHIR" ]; then
+            echo "::error::Tasdiq so'zi noto'g'ri. `confirm` maydoniga aynan: KO'CHIR"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+
+          TOKEN = os.environ['CF_API_TOKEN']
+          ACC = os.environ['CF_ACCOUNT']
+          BASE = f'https://api.cloudflare.com/client/v4/accounts/{ACC}/workers/domains'
+          TARGET = 'nfcstore-api'          # deploy HAQIQATAN shu yerga chiqadi
+          HOSTS = ['nfcstore.uz', 'www.nfcstore.uz']
+
+          def api(method, url, body=None):
+              cmd = ['curl', '-sS', '-X', method, '-H', f'Authorization: Bearer {TOKEN}',
+                     '-H', 'Content-Type: application/json', url]
+              if body is not None:
+                  cmd += ['--data', json.dumps(body)]
+              out = subprocess.run(cmd, capture_output=True, text=True).stdout
+              try:
+                  return json.loads(out)
+              except Exception:
+                  return {'success': False, 'errors': [{'message': out[:400]}]}
+
+          rows = json.load(open('rows.json'))
+          by_host = {r.get('hostname'): r for r in rows}
+
+          for host in HOSTS:
+              cur = by_host.get(host)
+              if cur is None:
+                  print(f'{host}: Custom Domain yo\'q — o\'tkazib yuborildi.')
+                  continue
+              if cur.get('service') == TARGET:
+                  print(f'{host}: allaqachon {TARGET} da — tegilmadi.')
+                  continue
+
+              zone_id = cur.get('zone_id')
+              print(f'{host}: {cur.get("service")} -> {TARGET}')
+
+              # 1) Eskisini olib tashlash. Bitta host bir vaqtda faqat
+              #    BITTA Worker'ning Custom Domain'i bo'la oladi, shuning
+              #    uchun avval bo'shatiladi.
+              r = api('DELETE', f'{BASE}/{cur["id"]}')
+              if not r.get('success'):
+                  print('  O\'CHIRISH RAD ETILDI:', json.dumps(r.get('errors'), ensure_ascii=False))
+                  sys.exit(1)
+              print('  eski bog\'lanish olindi')
+
+              # 2) Yangisini qo'shish.
+              r = api('PUT', BASE, {'environment': 'production', 'hostname': host,
+                                    'service': TARGET, 'zone_id': zone_id})
+              if not r.get('success'):
+                  print('  QO\'SHISH RAD ETILDI:', json.dumps(r.get('errors'), ensure_ascii=False))
+                  print('  DIQQAT: domen hozir hech qaysi Worker\'da emas — panelda qo\'lda qo\'shing.')
+                  sys.exit(1)
+              print(f'  {TARGET} ga ulandi')
+
+          print('\n=== Yakuniy holat ===')
+          r = api('GET', BASE)
+          for x in (r.get('result') or []):
+              print('%-26s -> %s' % (x.get('hostname'), x.get('service')))
+          PY
+
+      - name: Sayt ochiladimi
+        if: ${{ inputs.mode == 'apply' }}
+        run: |
+          echo "Bir necha soniya kutamiz (DNS/marshrut yangilanishi uchun)."
+          sleep 20
+          for u in https://nfcstore.uz/ https://nfcstore.uz/api/feed; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 "$u" || echo 000)
+            echo "$u -> HTTP $code"
+          done
