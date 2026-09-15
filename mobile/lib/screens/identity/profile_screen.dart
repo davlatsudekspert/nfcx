@@ -474,7 +474,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final c = _company!;
 
     return [
-      const SizedBox(height: S.x8),
+      // MUQOVA — SAYTDAGI BIZNES PROFILDAGIDEK.
+      //
+      // Egasi: "biznes profillar premium ko'rinishi kerak".
+      // Saytdagi `/c/:id` bilan solishtirganda eng katta farq shu
+      // edi: u yerda tepada katta muqova rasmi turadi va pastga
+      // qarab to'liq so'nadi, ilovada esa umuman chizilmasdi —
+      // `coverUrl` modelda BOR edi, lekin hech qayerda
+      // ishlatilmagan.
+      //
+      // Rasm ATAYLAB so'nadi (`ShaderMask`): tagida matn turadi va
+      // to'q rasm ustida oq yozuv o'qilmay qolardi. Saytda ham
+      // xuddi shu usul — `mask-image: linear-gradient(...)`.
+      if ((c.coverUrl ?? '').isNotEmpty)
+        SizedBox(
+          height: 190,
+          width: double.infinity,
+          child: ShaderMask(
+            shaderCallback: (r) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xE6000000),
+                Color(0x8C000000),
+                Color(0x2E000000),
+                Color(0x00000000),
+              ],
+              stops: [0, .38, .68, 1],
+            ).createShader(r),
+            blendMode: BlendMode.dstIn,
+            child: NetImage(c.coverUrl!, fit: BoxFit.cover),
+          ),
+        ),
+
+      SizedBox(height: (c.coverUrl ?? '').isEmpty ? S.x8 : 0),
 
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -483,8 +516,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             // LOGOTIP KVADRAT — shaxsiy profildagi dumaloq
             // avatardan ATAYLAB farq qiladi.
-            Avatar(url: c.logoUrl, name: c.name, size: 84, square: true),
-            const SizedBox(height: S.x16),
+            //
+            // Muqova bo'lsa logotip unga QISMAN CHIQIB turadi va
+            // atrofida oltin hoshiya bo'ladi — saytdagi kabi.
+            // Bu ikki qatlamni bog'laydi: aks holda rasm va
+            // kontent bir-biriga yopishmagan ikki blok bo'lib
+            // ko'rinardi.
+            Transform.translate(
+              offset: Offset(0, (c.coverUrl ?? '').isEmpty ? 0 : -34),
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(R.tile + 4),
+                  border: Border.all(
+                    color: C.accent.withValues(alpha: .5),
+                    width: 1.2,
+                  ),
+                  color: C.bg,
+                ),
+                child: Avatar(
+                  url: c.logoUrl,
+                  name: c.name,
+                  size: 84,
+                  square: true,
+                ),
+              ),
+            ),
+            SizedBox(height: (c.coverUrl ?? '').isEmpty ? S.x16 : 0),
             Row(
               children: [
                 Flexible(child: Text(c.name, style: T.profileName)),

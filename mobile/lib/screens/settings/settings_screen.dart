@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show showLicensePage;
 import 'package:flutter/widgets.dart';
 
+import '../business/edit_business.dart';
 import '../../app.dart';
 import '../../app_version.dart';
 import '../../data/api_client.dart' show absUrl;
@@ -184,11 +185,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListRow(
                   title: tr('Profilni tahrirlash'),
                   leading: NIcon(Ico.user, size: 19, color: C.ink2),
-                  onTap: active?.record == null
+                  // BIZNESDA HAM ISHLASHI KERAK.
+                  //
+                  // Ilgari shart `active?.record == null` edi va
+                  // biznes shaxsida `record` doim `null` — ya'ni
+                  // qator o'chiq turardi va bosilmasdi. Bu xato
+                  // profil menyusida ham bor edi: biznesning o'z
+                  // tahrir ekrani bo'lsa ham, unga yo'l yopiq edi.
+                  onTap: active == null
                       ? null
                       : () => push(
                             context,
-                            (_) => EditProfileScreen(record: active!.record!),
+                            (_) => active.isBusiness && active.company != null
+                                ? EditBusinessScreen(company: active.company!)
+                                : EditProfileScreen(record: active.record!),
                           ),
                 ),
                 ListRow(
