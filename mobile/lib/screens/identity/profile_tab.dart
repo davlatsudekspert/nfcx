@@ -23,6 +23,9 @@ import '../../state/app_state.dart';
 import '../common/share.dart';
 import '../content/compose.dart';
 import '../business/business_stats.dart';
+import '../business/edit_catalog.dart';
+import '../business/edit_gallery.dart';
+import '../business/working_hours.dart';
 import '../business/edit_business.dart';
 import '../nfc/id_catalog.dart';
 import '../orders/owner_orders.dart';
@@ -446,6 +449,85 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
 
               // POSTLAR.
+              // BIZNES BO'LIMLARI — FAQAT BIZNES SHAXSIDA.
+              //
+              // Egasi: "qani biznes profil, premium deganingiz",
+              // "orada ko'p joy qolib ketyapti". Ikkalasi bitta
+              // narsaning ikki tomoni edi: biznes shaxsida bu tab
+              // shaxsiy profildan farq qilmasdi — statistika,
+              // kontent tugmalari va postlar, tamom. Biznesning
+              // O'ZIGA XOS narsalari (katalog, galereya, ish
+              // vaqti, buyurtmalar) esa faqat "..." menyusi ortida
+              // yashiringan edi va ekranning yarmi bo'sh qolardi.
+              //
+              // Endi ular ko'rinadigan qatorlar: bo'sh joy foydali
+              // kontent bilan to'ladi va biznes profil shaxsiydan
+              // FARQ QILADI — "premium" degani shu.
+              if (active.isBusiness && active.company != null) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    S.gutter,
+                    S.x32,
+                    S.gutter,
+                    S.x12,
+                  ),
+                  child: SectionHeader(tr('Biznes')),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                  child: Column(
+                    children: [
+                      ListRow(
+                        title: tr('Katalog'),
+                        subtitle: trf('{n} ta mahsulot', {
+                          'n': som(active.company!.itemCount),
+                        }),
+                        leading: NIcon(Ico.bag, size: 19, color: C.ink2),
+                        onTap: () => _openBusiness(
+                          (_) => EditCatalogScreen(company: active.company!),
+                        ),
+                      ),
+                      ListRow(
+                        title: tr('Galereya'),
+                        subtitle: trf('{n} ta rasm', {
+                          'n': som(active.company!.gallery.length),
+                        }),
+                        leading: NIcon(Ico.image, size: 19, color: C.ink2),
+                        onTap: () => _openBusiness(
+                          (_) => EditGalleryScreen(company: active.company!),
+                        ),
+                      ),
+                      ListRow(
+                        title: tr('Ish vaqti'),
+                        leading: NIcon(Ico.clock, size: 19, color: C.ink2),
+                        onTap: () => _openBusiness(
+                          (_) => WorkingHoursScreen(company: active.company!),
+                        ),
+                      ),
+                      ListRow(
+                        title: tr('Kelgan buyurtmalar'),
+                        leading: NIcon(Ico.doc, size: 19, color: C.ink2),
+                        onTap: () => push<void>(
+                          context,
+                          (_) => OwnerOrdersScreen(
+                            companyId: active.code,
+                            companyName: active.name,
+                          ),
+                        ),
+                      ),
+                      ListRow(
+                        title: tr('Biznes statistikasi'),
+                        leading: NIcon(Ico.chart, size: 19, color: C.ink2),
+                        onTap: () => push<void>(
+                          context,
+                          (_) => BusinessStatsScreen(companyId: active.code),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   S.gutter,
@@ -531,6 +613,17 @@ class _ProfileTabState extends State<ProfileTab> {
       if (v is num) return v.round();
     }
     return 0;
+  }
+
+  /// Biznes bo'limini ochadi va qaytgach ro'yxatni yangilaydi.
+  ///
+  /// Katalog, galereya va ish vaqti KOMPANIYANI o'zgartiradi:
+  /// qaytib kelganda eski sonlar turib qolmasligi kerak.
+  Future<void> _openBusiness(WidgetBuilder page) async {
+    await push<void>(context, page);
+    if (!mounted) return;
+    await AppScope.read(context).refreshIdentities();
+    if (mounted) await _load();
   }
 
   Future<void> _menu(Identity active) async {
