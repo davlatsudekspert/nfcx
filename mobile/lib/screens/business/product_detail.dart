@@ -61,10 +61,25 @@ class ProductCard extends StatelessWidget {
                   Positioned.fill(
                     child: Hero(
                       tag: 'product-${product.id}',
+                      // MAHSULOT RASMI QIRQILMASIN.
+                      //
+                      // Standart `BoxFit.cover` rasmni ramkani
+                      // TO'LDIRISH uchun kattalashtiradi va
+                      // ortiqchasini kesadi. Mahsulot rasmlari esa
+                      // ko'pincha KENG banner: kvadrat uyachada
+                      // ularning ikki cheti — ya'ni yozuv va
+                      // mahsulotning o'zi — qirqilib ketardi.
+                      // Egasi buni suratda ko'rsatdi: "NFCSTORE.UZ"
+                      // yozuvining ikki tomoni yo'q edi.
+                      //
+                      // `contain` rasmni BUTUNLIGICHA ko'rsatadi.
+                      // Reels'da xuddi shu xato tuzatilgan edi,
+                      // mahsulot rasmlarida qolib ketibdi.
                       child: NetImage(
                         product.imageUrl,
                         radius: R.tile,
                         cacheWidth: 300,
+                        fit: BoxFit.contain,
                         slotIcon: Ico.bag,
                       ),
                     ),
@@ -175,6 +190,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             final img = NetImage(
                               images[i].isEmpty ? null : images[i],
                               radius: R.hero,
+                              // Kvadrat ramkada keng rasmning ikki
+                              // cheti qirqilardi — yuqoridagi
+                              // izohga qarang.
+                              fit: BoxFit.contain,
                               slotIcon: Ico.bag,
                             );
                             // Faqat BIRINCHI rasm Hero: qolganlari

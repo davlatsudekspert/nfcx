@@ -33,6 +33,47 @@ class _ShellState extends State<Shell> {
   final _keys =
       List.generate(NavBar.tabs.length, (_) => GlobalKey<NavigatorState>());
 
+  /// HAR TABNING O'Z SURISH BOSHQARUVCHISI.
+  ///
+  /// NIMA UCHUN KERAK BO'LDI. Faol tabni qayta bosganda ilova
+  /// faqat o'sha tabning `Navigator`ini ildizga qaytarardi. Agar
+  /// odam ALLAQACHON ildizda bo'lsa (masalan bosh sahifada) va
+  /// lentani uzoq surgan bo'lsa — bosishdan HECH NARSA
+  /// o'zgarmasdi. Egasi buni to'rt marta xabar qildi: "tepaga
+  /// qaytmayapti".
+  ///
+  /// Endi ildizda turgan tabni qayta bosish ro'yxatni tepaga
+  /// qaytaradi — bu ilovalarda standart xulq va uzun lentadan
+  /// chiqishning yagona tez yo'li.
+  ///
+  /// `PrimaryScrollController` — Flutter'ning shu maqsaddagi
+  /// mexanizmi: ekranlar o'z ro'yxatiga boshqaruvchi bermaydi,
+  /// vertikal `ScrollView` esa o'zi shu boshqaruvchiga ulanadi.
+  /// Ya'ni har bir ekranni alohida o'zgartirish shart emas.
+  final _scrollers =
+      List.generate(NavBar.tabs.length, (_) => ScrollController());
+
+  @override
+  void dispose() {
+    for (final c in _scrollers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Faol tab bosildi: avval ichki ekranlar yopiladi, ildizda
+  /// bo'lsa ro'yxat tepaga qaytadi.
+  void _onSameTab(int i) {
+    final nav = _keys[i].currentState;
+    if (nav != null && nav.canPop()) {
+      nav.popUntil((r) => r.isFirst);
+      return;
+    }
+    final c = _scrollers[i];
+    if (!c.hasClients || c.position.pixels <= 0) return;
+    c.animateTo(0, duration: M.push, curve: M.curve);
+  }
+
   /// Tab ekranlari — tartibi `NavBar.tabs` bilan bir xil.
   static const _tabs = <Widget>[
     HomeScreen(),
@@ -120,9 +161,12 @@ class _ShellState extends State<Shell> {
                         for (var i = 0; i < NavBar.tabs.length; i++)
                           TickerMode(
                             enabled: i == _tab,
-                            child: _TabNavigator(
-                              navKey: _keys[i],
-                              child: _tabs[i],
+                            child: PrimaryScrollController(
+                              controller: _scrollers[i],
+                              child: _TabNavigator(
+                                navKey: _keys[i],
+                                child: _tabs[i],
+                              ),
                             ),
                           ),
                       ],
@@ -141,7 +185,7 @@ class _ShellState extends State<Shell> {
                   // Faol tabga qayta bosish — o'sha tabning ildiziga
                   // qaytaradi.
                   if (i == _tab) {
-                    _keys[i].currentState?.popUntil((r) => r.isFirst);
+                    _onSameTab(i);
                   } else {
                     setState(() => _tab = i);
                   }
