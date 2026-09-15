@@ -12,6 +12,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../identity/profile_screen.dart';
 import 'id_detail.dart';
 
 /// KOD QIDIRUVI — DO'KONDA VA KATALOGDA BIR XIL.
@@ -26,9 +27,17 @@ import 'id_detail.dart';
 /// natija matni va boshqaruvchini tozalash uch joyda uch xil
 /// bo'lib ketardi. Bittasi unutilsa xotira oqardi.
 ///
-/// NARX VA BANDLIK SERVERDAN (`/api/records/search`): mijozda narx
-/// jadvali yo'q, shuning uchun serverda narx o'zgarsa ilova ham
-/// darhol to'g'ri ko'rsatadi.
+/// NARX VA BANDLIK SERVERDAN: mijozda narx jadvali yo'q, shuning
+/// uchun serverda narx o'zgarsa ilova ham darhol to'g'ri ko'rsatadi.
+///
+/// IKKI SO'ROV, BITTA NATIJA. `/api/records/search` faqat BAZADA BOR
+/// kartalarni topadi. Hali hech kim olmagan kod (masalan III777)
+/// bazada yo'q — va u aynan sotib olinadigan kod. Ilgari shunday kod
+/// yozilsa "Bunday kod topilmadi" chiqardi (egasi shuni ko'rsatdi).
+/// Endi kod to'liq shaklda yozilgan bo'lsa (AAA000 yoki faqat
+/// harflar) `/api/records/:code/quote` ham so'raladi: server kodni
+/// xarid oqimidagi funksiya bilan baholaydi va tarif hamda narxni
+/// aytadi. Natija ro'yxatda BIRINCHI turadi.
 mixin CodeSearch<T extends StatefulWidget> on State<T> {
   final TextEditingController codeQuery = TextEditingController();
   Timer? _debounce;
@@ -37,6 +46,20 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
   /// Bo'sh ro'yxat — qidirildi, lekin topilmadi.
   List<Record>? found;
   bool searching = false;
+
+  /// Server aytgan "sotilmaydi" sababi — bo'sh natija matni uchun.
+  String quoteReason = '';
+
+  /// To'liq kod shakli: AAA000 yoki faqat harflar (ekslyuziv).
+  /// Faqat shunday so'rov uchun baho so'raladi — "AA" kabi yarim
+  /// yozuvga server baribir "sotilmaydi" derdi.
+  static final _fullCode = RegExp(r'^(?:[A-Z]{3}[0-9]{3}|[A-Z]{3,12})$');
+
+  /// Kod ko'rinishiga keltirish: katta harf, faqat harf-raqam.
+  static String normalizeCode(String raw) =>
+      raw.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+
+  static bool isFullCode(String raw) => _fullCode.hasMatch(normalizeCode(raw));
 
   @override
   void dispose() {
@@ -59,16 +82,34 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
     _debounce = Timer(const Duration(milliseconds: 350), () async {
       if (!mounted) return;
       setState(() => searching = true);
-      List<Record> res = const [];
-      try {
-        res = await AppScope.read(context).repo.searchRecords(q);
-      } catch (_) {
-        // Qidiruv yiqilsa ekran ishlashda davom etadi: odam
-        // tariflardan tanlashi mumkin.
-      }
+      final repo = AppScope.read(context).repo;
+      final code = normalizeCode(q);
+      final wantQuote = isFullCode(q);
+
+      // Ikkalasi BIR VAQTDA: ketma-ket so'ralsa odam ikki barobar
+      // kutardi.
+      final results = await Future.wait<dynamic>([
+        repo.searchRecords(q).catchError((_) => const <Record>[]),
+        if (wantQuote)
+          repo.quote(code).then<CodeQuote?>((q) => q).catchError((_) => null),
+      ]);
       if (!mounted) return;
+
+      final list = <Record>[...(results[0] as List<Record>)];
+      final quote = wantQuote ? results[1] as CodeQuote? : null;
+      var reason = '';
+      if (quote != null) {
+        final known = list.any((r) => r.code.toUpperCase() == quote.code);
+        if (!known && (quote.available || quote.exists)) {
+          // Bo'sh kod — narxi bilan ro'yxat boshida; band kod —
+          // "Band" deb (profilga olib boradi).
+          list.insert(0, quote.toRecord());
+        }
+        if (!quote.available && !quote.exists) reason = quote.reason;
+      }
       setState(() {
-        found = res;
+        found = list;
+        quoteReason = reason;
         searching = false;
       });
     });
@@ -90,12 +131,19 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
     final list = found;
     if (list == null) return const [];
     if (list.isEmpty) {
+      // Server "sotilmaydi" degan bo'lsa — sababi aytiladi: bloklangan
+      // kod, 8 xonali bepul shakl va h.k. Shunchaki "topilmadi" odamni
+      // yana urinib ko'rishga majbur qilardi.
+      final blocked = quoteReason.isNotEmpty;
       return [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
           child: EmptyState(
-            tr('Boshqa kod yozib ko‘ring yoki tariflardan tanlang.'),
-            title: tr('Bunday kod topilmadi'),
+            blocked
+                ? tr('Bu kod sotuvga chiqmaydi — AAA000 shaklini yoki faqat '
+                    'harflardan iborat kodni yozing.')
+                : tr('Boshqa kod yozib ko‘ring yoki tariflardan tanlang.'),
+            title: blocked ? tr('Bu kod sotilmaydi') : tr('Bunday kod topilmadi'),
             icon: Ico.search,
           ),
         ),
@@ -107,7 +155,14 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
           padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x8),
           child: CodeRow(
             record: r,
-            onTap: () => push<void>(context, (_) => IdDetailScreen(record: r)),
+            // Bo'sh kod — xaridga; band kod — egasining profiliga.
+            // Band kodni xarid ekraniga olib borish aldov bo'lardi.
+            onTap: () => push<void>(
+              context,
+              (_) => r.price > 0
+                  ? IdDetailScreen(record: r)
+                  : ProfileScreen(code: r.code),
+            ),
           ),
         ),
     ];

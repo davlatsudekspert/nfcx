@@ -333,6 +333,50 @@ class Repo {
 
   // ── Discover ───────────────────────────────────────────────────────
 
+  /// KOD BAHOSI — bazada bo'lmagan kod uchun ham.
+  ///
+  /// `searchRecords` faqat mavjud kartalarni topadi; hali hech kim
+  /// olmagan kod esa aynan sotib olinadigan kod. Uning tarifi va
+  /// narxini server aytadi.
+  Future<CodeQuote> quote(String code) async => CodeQuote.fromJson(
+        _map(await api.get('/api/records/${code.toUpperCase()}/quote')),
+      );
+
+  /// TARIF NARXLARI — `/api/pricing`.
+  ///
+  /// Mijozda narx jadvali yo'q. Ilgari tarif narxi katalogdagi eng
+  /// arzon bo'sh koddan olinardi va bo'sh kod bo'lmagan tarifda
+  /// narx umuman ko'rinmasdi. Endi narx kodlarga bog'liq emas.
+  ///
+  /// Kesh — narx kuniga bir marta o'zgarsa ham ko'p; har ekran
+  /// ochilganda so'rash ortiqcha.
+  Future<Map<String, int>> pricing() async {
+    final cached = _pricingCache;
+    final at = _pricingAt;
+    if (cached != null && at != null &&
+        DateTime.now().difference(at) < const Duration(minutes: 10)) {
+      return cached;
+    }
+    final r = _map(await api.get('/api/pricing'));
+    final tiers = r['tiers'];
+    final out = <String, int>{};
+    if (tiers is Map) {
+      for (final e in tiers.entries) {
+        final v = e.value;
+        if (v is num && v > 0) out['${e.key}'] = v.round();
+      }
+    }
+    // Bo'sh javob keshlanmaydi — keyingi urinishda yana so'raladi.
+    if (out.isNotEmpty) {
+      _pricingCache = out;
+      _pricingAt = DateTime.now();
+    }
+    return out;
+  }
+
+  Map<String, int>? _pricingCache;
+  DateTime? _pricingAt;
+
   Future<List<Record>> searchRecords(String q) async =>
       _rows(await api.get('/api/records/search', query: {'q': q}), 'records')
           .map(Record.fromJson)

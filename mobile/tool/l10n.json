@@ -4238,5 +4238,17 @@
   "“{q}” topilmadi": [
     "«{q}» не найдено",
     "\"{q}\" not found"
+  ],
+  "Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring": [
+    "Свободных кодов пока нет — введите код",
+    "No free codes yet — type a code"
+  ],
+  "Bu kod sotuvga chiqmaydi — AAA000 shaklini yoki faqat harflardan iborat kodni yozing.": [
+    "Этот код не продаётся — введите код вида AAA000 или только из букв.",
+    "This code is not for sale — enter a code like AAA000 or letters only."
+  ],
+  "Bu kod sotilmaydi": [
+    "Этот код не продаётся",
+    "This code is not for sale"
   ]
 }

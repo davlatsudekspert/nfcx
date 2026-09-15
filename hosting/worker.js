@@ -908,6 +908,37 @@ async function publicContentApi(request, env, url) {
     return json(row ? { active: !!row.active && !row.blocked_by_owner, linkedCode: row.linked_code || null } : { active: true });
   }
 
+  // ─── TARIF NARXLARI (ochiq) ────────────────────────────────────────
+  //
+  // NIMA UCHUN KERAK. Ilovada narx jadvali YO'Q (qoida: narx serverdan)
+  // va u tarif narxini katalogdagi ENG ARZON BO'SH KODDAN olardi. Bo'sh
+  // kod bo'lmagan tarifda esa narx o'rniga "Yo'q / hozircha" turardi —
+  // egasi: "bronzalar ham ishlamayaptiku, hammasini o'zini narxi
+  // yozilsin". Bu endpoint narxni kodlarga bog'lamasdan beradi.
+  //
+  // MANBA — PERSONAL_TIER_PRICE, ya'ni xarid summasi hisoblanadigan
+  // jadvalning O'ZI (personalPurchaseQuote shundan oladi). Ikkinchi
+  // nusxa yozilmadi: narx o'zgarsa ikkalasi birga o'zgaradi.
+  //
+  // Kalit nomi `bronze` — ilova va sayt shu tarifni "Bronza" deb
+  // ataydi; jadvalda esa u tarixan `free` (bepul 8 xonali ID emas!).
+  if (path === '/api/pricing' && request.method === 'GET') {
+    return json({
+      tiers: {
+        bronze: PERSONAL_TIER_PRICE.free,
+        silver: PERSONAL_TIER_PRICE.silver,
+        gold: PERSONAL_TIER_PRICE.gold,
+        premium: PERSONAL_TIER_PRICE.premium,
+        // Ekslyuziv — "...dan boshlanadi": aniq narx kodga qarab
+        // (exclusiveLevel), bu yerda eng pasti.
+        exclusive: PERSONAL_TIER_PRICE.exclusive,
+      },
+      exclusiveFrom: PERSONAL_TIER_PRICE.exclusive,
+      physicalCardFee: apiAccount.PHYSICAL_CARD_FEE,
+      profilePremiumFee: apiAccount.PROFILE_PREMIUM_FEE,
+    });
+  }
+
   if (path === '/api/settings/physical-nfc-pricing' && request.method === 'GET') {
     const defaultTiers = [
       { minQty: 1, maxQty: 9, pricePerUnit: 120000 },
@@ -5365,11 +5396,53 @@ async function recordsApi(request, env, url) {
   // ---- /api/records/:code/{view,like,posts} — server/index.js bilan bir xil
   // kontrakt (frontend src/lib/db.js o'zgarishsiz ishlaydi). Avval bu
   // yo'llar Worker'da yo'q edi → legacy proxy → 405.
-  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|like-list|posts|stories)$/);
+  const subMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/(view|like|like-list|posts|stories|quote)$/);
   if (subMatch) {
     const code = subMatch[1].toUpperCase();
     const action = subMatch[2];
     if (!validCode(code)) return json({ error: 'bad_code' }, 400);
+
+    // ─── KOD HAQIDA MA'LUMOT — bandligi, tarifi, narxi ────────────────
+    //
+    // EGASI: "saytga o'xshab nom yozsa narxi chiqishi". Saytdagi
+    // katalog buni qila oladi, ilova esa faqat `/api/records/search`
+    // ni chaqirardi — u BAZADA BOR kartalarni topadi. Hali hech kim
+    // olmagan kod (masalan III777) bazada yo'q va ilova "Bunday kod
+    // topilmadi" derdi — holbuki aynan shunday kod sotib olinadi.
+    //
+    // Bu endpoint kodni bazadan QIDIRMAYDI, balki BAHOLAYDI:
+    //   • bazada bor va egasi/nomi bor  -> band (available:false);
+    //   • bazada bor, lekin bo'sh joy-karta -> uning narxi;
+    //   • bazada yo'q -> personalPurchaseQuote() — xarid oqimi
+    //     summani hisoblaydigan AYNAN o'sha funksiya. Ya'ni bu yerda
+    //     ko'rsatilgan narx bilan to'lovdagi summa hech qachon farq
+    //     qilmaydi.
+    //
+    // Ochiq (login shart emas) — saytdagi katalog ham ochiq. Hech narsa
+    // yozilmaydi, band qilinmaydi.
+    if (action === 'quote' && request.method === 'GET') {
+      // Tarif nomi: 6 belgili oddiy kod jadvalda `free` — bu "Bronza"
+      // (49 000), bepul 8 xonali ID emas. Ilovaga aniq nom ketadi.
+      const tierName = (t) => (t === 'free' && STD_CODE_RE.test(code) ? 'bronze' : t);
+      const rec = await getRecord(env, code);
+      if (rec) {
+        const owner = await getRecordOwner(env, code);
+        const finals = await auctionFinalPricesD1(env);
+        const card = catalogCard(rec, finals.get(code) ?? null);
+        const taken = !!owner || String(rec.name || '').trim() !== ''
+          || card.isGift || card.notForSale || !(Number(card.price) > 0);
+        return json({
+          code, exists: true, available: !taken,
+          tier: tierName(personalIdTierD1(rec)),
+          price: taken ? 0 : Number(card.price),
+        });
+      }
+      const quote = personalPurchaseQuote(code);
+      if (!quote.purchasable) {
+        return json({ code, exists: false, available: false, reason: quote.reason || 'not_purchasable' });
+      }
+      return json({ code, exists: false, available: true, tier: tierName(quote.tier), price: Number(quote.amount) });
+    }
 
     // Ko'rishlar hisoblagichi — fire-and-forget (public profildan keladi).
     if (action === 'view' && request.method === 'POST') {
@@ -9258,6 +9331,7 @@ async function handleRequest(request, env, url) {
     if (url.pathname === '/api/companies/search' || url.pathname === '/api/categories'
       || url.pathname === '/api/news' || url.pathname.startsWith('/api/tap/')
       || url.pathname === '/api/settings/physical-nfc-pricing'
+      || url.pathname === '/api/pricing'
       || url.pathname === '/api/settings/payments-enabled') {
       try {
         const res = await publicContentApi(request, env, url);

@@ -54,6 +54,9 @@ class ShopScreen extends StatefulWidget {
 
 class _ShopScreenState extends State<ShopScreen> with CodeSearch {
   List<Record>? _catalog;
+
+  /// Tarif -> narx (`/api/pricing`, kalit `Tier.name`).
+  Map<String, int> _prices = const {};
   bool _loading = true;
 
   @override
@@ -65,10 +68,15 @@ class _ShopScreenState extends State<ShopScreen> with CodeSearch {
   Future<void> _load({bool force = false}) async {
     if (mounted) setState(() => _loading = true);
     try {
-      final list = await AppScope.read(context).repo.catalog(force: force);
+      final repo = AppScope.read(context).repo;
+      final results = await Future.wait<dynamic>([
+        repo.catalog(force: force),
+        repo.pricing().catchError((_) => const <String, int>{}),
+      ]);
       if (!mounted) return;
       setState(() {
-        _catalog = list;
+        _catalog = results[0] as List<Record>;
+        _prices = results[1] as Map<String, int>;
         _loading = false;
       });
     } catch (_) {
@@ -79,10 +87,15 @@ class _ShopScreenState extends State<ShopScreen> with CodeSearch {
     }
   }
 
-  /// Tarif uchun ENG ARZON mavjud kod narxi — "shundan boshlanadi".
+  /// Tarif narxi — "shundan boshlanadi".
   ///
-  /// Narx serverdan: mijozda narx jadvali yo'q.
+  /// Narx serverdan: mijozda narx jadvali yo'q. Avval `/api/pricing`
+  /// dagi tarif narxi; u kelmagan bo'lsa — katalogdagi ENG ARZON
+  /// bo'sh kod. Ilgari faqat ikkinchisi bor edi va bo'sh kodi yo'q
+  /// tarif narxsiz ("Katalogda") turardi.
   int _from(Tier tier) {
+    final listed = _prices[tier.name] ?? 0;
+    if (listed > 0) return listed;
     var best = 0;
     for (final r in _catalog ?? const <Record>[]) {
       if (r.tier != tier || r.price <= 0 || r.notForSale) continue;

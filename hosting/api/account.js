@@ -19,7 +19,8 @@ import { cardContentCleanupStmts } from './card-cleanup.js';
 // hosting/ ni dist/server/ ga ko'chiradi, shuning uchun '../../src/...' yo'li
 // deploy bundle'da topilmaydi. Qiymat src/lib/pricing.js PROFILE_PREMIUM_FEE
 // bilan BIR XIL bo'lishi shart (scripts/test-account.mjs shuni tekshiradi).
-const PROFILE_PREMIUM_FEE = 20000;
+// `export` — /api/pricing (ilova tariflar narxini shu yerdan o'qiydi).
+export const PROFILE_PREMIUM_FEE = 20000;
 
 const PHONE_RE = /^\+?\d{9,15}$/;                 // server/index.js PHONE_RE
 // Jismoniy karta narxi. EKSPORT QILINADI: `/api/settings/

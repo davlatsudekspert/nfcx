@@ -259,7 +259,19 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
       aura: Aura.spotlight,
       child: SafeArea(
         bottom: false,
-        child: Column(
+        // KLAVIATURA OSTIDA HECH NARSA QOLMAYDI.
+        //
+        // Bu ekranda `Scaffold` yo'q, ya'ni klaviatura ochilganda
+        // hech narsa o'zi surilmaydi: pastdagi "Manzil" va "Aloqa
+        // raqami" maydonlari klaviatura ostida qolardi va ularga
+        // yetib bo'lmasdi — egasi "boshqa inputlar ishlamayapti"
+        // dedi. Ro'yxat klaviatura balandligicha ko'tariladi (kirish
+        // ekranidagi bilan bir xil usul).
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Column(
           children: [
             const TopBar(),
             Expanded(
@@ -436,6 +448,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

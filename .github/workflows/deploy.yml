@@ -126,6 +126,16 @@ jobs:
       - name: Story va post mustaqilligi
         run: node scripts/test-story-post-separate.mjs
 
+      # TARIF NARXLARI VA KOD BAHOSI (ilova uchun).
+      #
+      # /api/pricing — tarif narxlari kodlarga bog'liq emas (ilgari
+      # bo'sh kodi yo'q tarif narxsiz turardi); /api/records/:code/quote
+      # — bazada yo'q kodning ham tarifi va narxi, xarid oqimidagi
+      # funksiyadan. Test ikkalasining shakli va narx tengligini
+      # qo'riqlaydi; POST/yozuv yo'qligini ham.
+      - name: Tarif narxlari va kod bahosi
+        run: node scripts/test-pricing-quote.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 

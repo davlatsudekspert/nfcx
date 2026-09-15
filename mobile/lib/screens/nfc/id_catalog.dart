@@ -27,10 +27,12 @@ import 'id_detail.dart';
 /// darajani ko'radi va farqni MATERIALDAN tushunadi — bu
 /// mahsulotning asosiy g'oyasi.
 ///
-/// NARX SERVERDAN. Mijozda narx jadvali YO'Q: har tarif uchun
-/// katalogdagi eng arzon mavjud kod narxi ko'rsatiladi. Shuning
-/// uchun serverda narx o'zgarsa ilova ham darhol to'g'ri
-/// ko'rsatadi.
+/// NARX SERVERDAN (`/api/pricing`). Mijozda narx jadvali YO'Q.
+/// Ilgari narx katalogdagi ENG ARZON BO'SH KODDAN olinardi va bo'sh
+/// kod bo'lmagan tarifda narx o'rniga "Yo'q / hozircha" turardi —
+/// egasi: "bronzalar ham ishlamayaptiku, hammasini o'zini narxi
+/// yozilsin". Endi narx kodlarga bog'liq emas; bo'sh kod yo'qligi
+/// alohida izoh bo'lib qoladi.
 ///
 /// BEPUL 8 XONALI KOD alohida turadi: uning materiali yo'q va u
 /// sotilmaydi — ro'yxatdan o'tganda beriladi. Shuning uchun qatori
@@ -44,6 +46,10 @@ class IdCatalogScreen extends StatefulWidget {
 
 class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
   List<Record>? _all;
+
+  /// Tarif -> narx (kalit: `Tier.name`). Bo'sh bo'lsa narx katalogdan
+  /// (eng arzon bo'sh kod) olinadi — zaxira yo'l.
+  Map<String, int> _prices = const {};
 
   // KOD QIDIRISH — SAYTDAGIDEK, `CodeSearch` mixinida. Xuddi shu
   // qidiruv do'kon ekranida ham ishlaydi, shuning uchun u bitta
@@ -63,10 +69,17 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
       _error = null;
     });
     try {
-      final list = await AppScope.read(context).repo.catalog(force: force);
+      final repo = AppScope.read(context).repo;
+      // Narx jadvali katalog bilan BIR VAQTDA so'raladi; u kelmasa
+      // ham katalog ko'rinadi (narx zaxira yo'ldan).
+      final results = await Future.wait<dynamic>([
+        repo.catalog(force: force),
+        repo.pricing().catchError((_) => const <String, int>{}),
+      ]);
       if (!mounted) return;
       setState(() {
-        _all = list;
+        _all = results[0] as List<Record>;
+        _prices = results[1] as Map<String, int>;
         _loading = false;
       });
     } catch (e) {
@@ -80,13 +93,17 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
 
   /// SOTIB OLISH MUMKIN BO'LGAN KODLAR.
   ///
-  /// Narxi bo'lmagan (bepul, sovg'a, sotuvda emas) va allaqachon
-  /// o'zimizga tegishli kodlar chiqarib tashlanadi.
+  /// Narxi bo'lmagan (bepul, sovg'a, sotuvda emas), EGASI BOR (ismi
+  /// yozilgan — katalogda bu birovning profili) va allaqachon
+  /// o'zimizga tegishli kodlar chiqarib tashlanadi. Ism tekshiruvi
+  /// avval yo'q edi: narxi bor har qanday profil "bo'sh kod" deb
+  /// ro'yxatga tushar va xarid ekraniga olib borardi.
   List<Record> _available(Tier tier) {
     final state = AppScope.read(context);
     return [
       for (final r in _all ?? const <Record>[])
         if (r.tier == tier &&
+            r.name.trim().isEmpty &&
             r.price > 0 &&
             !r.notForSale &&
             !state.ownsRecord(r.code))
@@ -177,6 +194,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
                     child: _TierRow(
                       tier: tier,
                       codes: _available(tier),
+                      price: _prices[tier.name] ?? 0,
                       onTap: () => push<void>(
                         context,
                         (_) => _TierCodesScreen(
@@ -276,17 +294,25 @@ class _TierRow extends StatelessWidget {
     required this.tier,
     required this.codes,
     required this.onTap,
+    this.price = 0,
   });
 
   final Tier tier;
   final List<Record> codes;
   final VoidCallback onTap;
 
+  /// Tarifning o'z narxi (serverdan). 0 — kelmagan.
+  final int price;
+
   @override
   Widget build(BuildContext context) {
     final style = TierStyle.of(tier);
     final available = codes.isNotEmpty;
-    final from = available ? codes.first.price : 0;
+    // NARX HAR DOIM: avval tarifning o'z narxi, u kelmagan bo'lsa
+    // katalogdagi eng arzon bo'sh kod. Ikkalasi ham yo'q bo'lsagina
+    // "Yo'q".
+    final from = price > 0 ? price : (available ? codes.first.price : 0);
+    final priced = from > 0;
 
     Widget swatch = Container(
       width: 56,
@@ -312,7 +338,7 @@ class _TierRow extends StatelessWidget {
             ? C.accent.withValues(alpha: .35)
             : C.line,
       ),
-      onTap: available ? onTap : null,
+      onTap: onTap,
       child: Row(
         children: [
           swatch,
@@ -355,6 +381,18 @@ class _TierRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: T.caption.copyWith(fontSize: 12),
                 ),
+                // Bo'sh kod yo'qligi — narxning o'rnida emas, alohida
+                // satrda: odam kod yozib o'ziga kerakli kodni baholata
+                // oladi (tepadagi qidiruv).
+                if (!available) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    tr('Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.caption.copyWith(fontSize: 11.5, color: C.ink3),
+                  ),
+                ],
               ],
             ),
           ),
@@ -363,13 +401,13 @@ class _TierRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (available)
+              if (priced)
                 Text(som(from), style: T.amount.copyWith(fontSize: 17))
               else
                 Text(tr('Yo‘q'), style: T.amount.copyWith(color: C.ink3)),
               const SizedBox(height: 2),
               Text(
-                available
+                priced
                     ? (tier == Tier.exclusive
                         ? tr('so‘mdan')
                         : tr('so‘m'))

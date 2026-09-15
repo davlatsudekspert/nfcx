@@ -167,6 +167,53 @@ class Record {
       );
 }
 
+/// KOD BAHOSI — `/api/records/:code/quote`.
+///
+/// Bazada bo'lmagan kod uchun ham keladi: server uni xarid oqimidagi
+/// funksiya bilan baholaydi. Shuning uchun bu yerdagi narx to'lovdagi
+/// summa bilan har doim bir xil.
+class CodeQuote {
+  const CodeQuote({
+    required this.code,
+    required this.exists,
+    required this.available,
+    this.tier = '',
+    this.price = 0,
+    this.reason = '',
+  });
+
+  final String code;
+
+  /// Bazada bor (kimdir olgan yoki bo'sh joy-karta).
+  final bool exists;
+
+  /// Sotib olish mumkin.
+  final bool available;
+  final String tier;
+  final int price;
+
+  /// Sotilmaslik sababi (`not_purchasable` va h.k.).
+  final String reason;
+
+  factory CodeQuote.fromJson(Map<String, dynamic> j) => CodeQuote(
+        code: _s(j['code']).toUpperCase(),
+        exists: _b(j['exists']),
+        available: _b(j['available']),
+        tier: _s(j['tier']),
+        price: _i(j['price']),
+        reason: _s(j['reason']),
+      );
+
+  /// Qidiruv ro'yxati uchun yozuv. Bo'sh kod — narxi bilan; band
+  /// kod — narxsiz (ro'yxatda "Band" bo'lib chiqadi).
+  Record toRecord() => Record(
+        code: code,
+        name: '',
+        price: available ? price : 0,
+        serverTier: tier,
+      );
+}
+
 /// Biznes profil (`companies` jadvali).
 class Company {
   Company({

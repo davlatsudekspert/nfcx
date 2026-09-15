@@ -118,6 +118,20 @@ Future<http.Response> _normalResponse(http.Request req) async {
         };
       } else if (p == '/api/records/search') {
         body = {'records': [_card, _expert, _freeId]};
+      } else if (p == '/api/pricing') {
+        // Tarif narxlari — serverdagi PERSONAL_TIER_PRICE bilan bir xil.
+        body = {
+          'tiers': {'bronze': 49000, 'silver': 99000, 'gold': 149000,
+                    'premium': 199000, 'exclusive': 490000},
+          'exclusiveFrom': 490000,
+          'physicalCardFee': 200000,
+          'profilePremiumFee': 20000,
+        };
+      } else if (p.startsWith('/api/records/') && p.endsWith('/quote')) {
+        // Bazada yo'q kod — bo'sh va sotib olinadi.
+        final code = p.split('/')[3].toUpperCase();
+        body = {'code': code, 'exists': false, 'available': true,
+                'tier': 'gold', 'price': 149000};
       } else if (p == '/api/companies/search') {
         body = {'companies': [_company]};
       } else if (p.startsWith('/api/records/') && p.endsWith('/posts')) {
