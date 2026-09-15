@@ -242,8 +242,31 @@ class AutoImage extends StatefulWidget {
   State<AutoImage> createState() => _AutoImageState();
 }
 
+/// BIR MARTA O'LCHANGAN NISBAT — URL bo'yicha eslab qolinadi.
+///
+/// LENTA TEPAGA SURILGANDA "DIRILLARDI". Sabab shu yerda edi:
+/// `_aspect` HAR SAFAR `fallback` (4/5) dan boshlanardi va rasm
+/// o'lchami aniqlangach o'zgarardi.
+///
+/// Pastga surganda bu sezilmaydi — yangi kartalar ko'z ostida
+/// paydo bo'ladi va ularning balandligi o'zgarishi ko'rilayotgan
+/// joyni qimirlatmaydi. TEPAGA surganda esa ro'yxatdan chiqib
+/// ketgan kartalar qaytadan quriladi: har biri avval 4/5 bo'lib,
+/// keyin o'z nisbatiga sakraydi. Ya'ni ko'z oldidagi kontentdan
+/// YUQORIDAGI balandlik o'zgarib turadi va ro'yxat surilgan joyni
+/// o'ziga tortadi — egasi buni "tepaga tortsam dirillab tortilmayapti"
+/// deb aytdi.
+///
+/// Endi bir marta o'lchangan nisbat shu yerda qoladi va karta
+/// qaytadan qurilganda DARHOL to'g'ri balandlikda chiziladi.
+/// Xotira uchun arzon: URL va bitta son.
+final Map<String, double> _aspectMemo = <String, double>{};
+
 class _AutoImageState extends State<AutoImage> {
-  late double _aspect = widget.fallback;
+  late double _aspect = _remembered ?? widget.fallback;
+
+  /// Shu URL uchun nisbat allaqachon o'lchanganmi.
+  double? get _remembered => _aspectMemo[(widget.url ?? '').trim()];
 
   ImageStream? _stream;
   ImageStreamListener? _listener;
@@ -259,7 +282,9 @@ class _AutoImageState extends State<AutoImage> {
     super.didUpdateWidget(old);
     if (old.url != widget.url) {
       _drop();
-      _aspect = widget.fallback;
+      // Yangi URL uchun ham avval xotiraga qaraymiz: shu rasm
+      // ilgari ko'rilgan bo'lsa sakrash umuman bo'lmaydi.
+      _aspect = _remembered ?? widget.fallback;
       _resolve();
     }
   }
@@ -273,6 +298,8 @@ class _AutoImageState extends State<AutoImage> {
       final h = info.image.height.toDouble();
       if (w <= 0 || h <= 0) return;
       final next = (w / h).clamp(widget.minAspect, widget.maxAspect);
+      // Keyingi safar shu karta qaytadan qurilganda sakramasin.
+      _aspectMemo[url] = next;
       if ((next - _aspect).abs() < .001) return;
       setState(() => _aspect = next);
     });
