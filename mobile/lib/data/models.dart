@@ -427,6 +427,7 @@ class Order {
     this.kind = '',
     this.createdAt,
     this.payLink,
+    this.payLinks = const {},
     this.expiresAtMs,
   });
 
@@ -438,8 +439,27 @@ class Order {
   final DateTime? createdAt;
 
   /// Kutilayotgan buyurtmani DAVOM ETTIRISH havolasi (Payme).
+  ///
+  /// ESKI MAYDON — joyida qoldi: eski serverda faqat shu bor.
   final String? payLink;
+
+  /// HAR BIR TO'LOV TIZIMI UCHUN ALOHIDA HAVOLA: `payme`, `click`.
+  ///
+  /// Server qaysi tizim yoqilgan bo'lsa, o'shanikini qo'yadi. Tizim
+  /// o'chiq bo'lsa kaliti umuman bo'lmaydi — interfeys tugmani
+  /// o'chiq ko'rsatadi va odam "nega ishlamadi" degan holatga
+  /// tushmaydi.
+  final Map<String, String> payLinks;
+
   final int? expiresAtMs;
+
+  /// Tanlangan tizim uchun havola. Yangi maydonda bo'lmasa, Payme
+  /// uchun eski `payLink` ishlatiladi.
+  String? linkFor(String provider) {
+    final v = payLinks[provider];
+    if (v != null && v.isNotEmpty) return v;
+    return provider == 'payme' ? payLink : null;
+  }
 
   bool get isPending => status == 'pending';
   bool get isPaid => status == 'paid';
@@ -452,6 +472,16 @@ class Order {
         kind: _s(j['kind']),
         createdAt: DateTime.tryParse(_s(j['createdAt'])),
         payLink: _s(j['payLink']).isEmpty ? null : _s(j['payLink']),
+        payLinks: () {
+          final raw = j['payLinks'];
+          if (raw is! Map) return const <String, String>{};
+          final out = <String, String>{};
+          raw.forEach((k, v) {
+            final link = _s(v);
+            if (link.isNotEmpty) out['$k'] = link;
+          });
+          return out;
+        }(),
         expiresAtMs: j['expiresAtMs'] == null ? null : _i(j['expiresAtMs']),
       );
 }
@@ -520,15 +550,24 @@ class StoryFeedEntry {
     required this.code,
     required this.name,
     this.avatarUrl,
-    this.count = 0,
+    this.ids = const [],
   });
 
   final String code;
   final String name;
   final String? avatarUrl;
 
-  /// Shu odamdagi ko'rilmagan istoryalar soni — halqa segmentlari.
-  final int count;
+  /// SHU ODAMNING FAOL ISTORYA ID'LARI.
+  ///
+  /// Ilgari bu yerda faqat SONI saqlanardi. Son bilan "bu odamning
+  /// istoryasini ko'rganmisiz" degan savolga javob berib bo'lmaydi:
+  /// bittasini ko'rib, keyin u yana bitta qo'ysa, son ham 1 bo'lib
+  /// qolaveradi. ID'lar esa aniq: qaysi biri ko'rilgani yozib
+  /// boriladi (`SeenStories`) va halqa shunga qarab so'nadi.
+  final List<int> ids;
+
+  /// Halqa segmentlari va "nechta yangi" hisobi uchun.
+  int get count => ids.length;
 
   factory StoryFeedEntry.fromJson(Map<String, dynamic> j) {
     final stories = j['stories'];
@@ -536,7 +575,13 @@ class StoryFeedEntry {
       code: _s(j['code']).toUpperCase(),
       name: _s(j['name']),
       avatarUrl: absUrl(_s(j['avatarUrl'])),
-      count: stories is List ? stories.length : 0,
+      ids: stories is List
+          ? stories
+              .whereType<Map>()
+              .map((e) => _i(e['id']))
+              .where((id) => id > 0)
+              .toList()
+          : const [],
     );
   }
 }

@@ -145,12 +145,12 @@ class _MediaPickFieldState extends State<MediaPickField> {
           )
         // Yozuvsiz: sarlavha allaqachon tepada turadi va katakda
         // takrorlansa, ikkita bir xil so'z yonma-yon chiqardi.
-        : NetImage(widget.url, radius: 0, slotLabel: '');
+        : NetImage(widget.url, radius: 0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label.toUpperCase(), style: T.eyebrow),
+        Text(widget.label.toUpperCase(), style: T.label),
         const SizedBox(height: S.x8),
         Row(
           children: [
@@ -167,7 +167,7 @@ class _MediaPickFieldState extends State<MediaPickField> {
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: C.placeholder,
-                          border: Border.all(color: C.warmHairline),
+                          border: Border.all(color: C.line),
                           borderRadius: BorderRadius.circular(radius),
                         ),
                         child: image,
@@ -193,9 +193,11 @@ class _MediaPickFieldState extends State<MediaPickField> {
                   SizedBox(
                     width: 170,
                     child: SecondaryButton(
-                      widget.url == null && preview == null ? tr('Tanlash') : tr('Almashtirish'),
-                      height: 42,
-                      icon: NIcon(Ico.image, size: 16, color: C.platinum),
+                      widget.url == null && preview == null
+                          ? tr('Tanlash')
+                          : tr('Almashtirish'),
+                      size: BtnSize.m,
+                      icon: Ico.image,
                       onTap: _busy ? null : _pick,
                     ),
                   ),
@@ -205,7 +207,7 @@ class _MediaPickFieldState extends State<MediaPickField> {
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 6),
-                    Text(_error!, style: T.caption.copyWith(fontSize: 12.5, color: C.signal)),
+                    Text(_error!, style: T.caption.copyWith(fontSize: 12.5, color: C.fail)),
                   ],
                 ],
               ),

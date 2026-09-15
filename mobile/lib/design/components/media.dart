@@ -1,172 +1,332 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
+
 import '../tokens.dart';
 import '../type.dart';
+import 'icons.dart';
+import 'skeleton.dart';
 
-/// Rasm o'rni — rasm hali kelmaganda ko'rinadigan yuza.
+/// MEDIA — rasm har doim yumshoq paydo bo'ladi.
 ///
-/// Ilgari bu yerda qiya sariq-qora yo'llar bor edi. Ular "bu yerda
-/// rasm bo'ladi" deb turardi, lekin assotsiatsiyasi noto'g'ri: qurilish
-/// ogohlantirish lentasi. Saytda ham xuddi shu naqsh bor edi va olib
-/// tashlandi — mahsulot kartochkasi uchun eng yaroqsiz fon.
+/// TEZLIK QOIDASI (dizayn 11c): kesh → skeleton → 240 ms xiralik.
+/// Hech qayerda bo'sh oq ekran yoki joy sakrashi yo'q. Shu sababli:
 ///
-/// O'rniga tinch oltin nur: yuza baribir "bo'sh emas" deb turadi,
-/// lekin diqqatni o'ziga tortmaydi.
-class MediaSlot extends StatelessWidget {
-  const MediaSlot({super.key, this.label, this.radius = R.card});
-
-  final String? label;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: CustomPaint(
-          painter: _SlotPainter(
-            C.placeholder,
-            C.placeholderAlt,
-            C.champagne.withValues(alpha: .10),
-          ),
-          child: Center(
-            child: label == null
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.all(S.x8),
-                    child: Text(
-                      label!.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: T.eyebrow.copyWith(color: C.placeholderInk),
-                    ),
-                  ),
-          ),
-        ),
-      );
-}
-
-class _SlotPainter extends CustomPainter {
-  _SlotPainter(this.base, this.deep, this.glow);
-
-  /// Ranglar MAVZUGA bog'liq, shuning uchun ular tashqaridan
-  /// beriladi: `shouldRepaint` ularni solishtirib, mavzu almashganda
-  /// yuzani qayta chizadi. Painter ichida `C.…` o'qilsa, eski kadr
-  /// keshda qolib ketardi.
-  final Color base;
-  final Color deep;
-  final Color glow;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    // 1) Asos — yuqoridan pastga sal quyuqlashadigan yuza.
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: const Alignment(-0.7, -1),
-          end: const Alignment(0.7, 1),
-          colors: [base, deep],
-        ).createShader(rect),
-    );
-    // 2) Yuqori-o'rtadan tushadigan yumshoq nur.
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0, -0.24),
-          radius: .95,
-          colors: [glow, const Color(0x00000000)],
-          stops: const [0, .72],
-        ).createShader(rect),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_SlotPainter old) =>
-      old.base != base || old.deep != deep || old.glow != glow;
-}
-
-/// Keshlanadigan rasm.
-///
-/// UCHTA TALAB bir joyda bajariladi:
-///   1) disk + xotira keshi (takroriy tarmoq so'rovi bo'lmasin);
-///   2) skeletondan 240ms yumshoq o'tish — "pop" ham, "scale" ham yo'q;
-///   3) xato bo'lsa rasm o'rni ko'rinadi, qizil belgi emas.
-///
-/// `memCacheWidth` — MUHIM: 1000px rasmni 80px avatarga qo'yish xotirani
-/// behuda yeydi va ro'yxat aylanishini sekinlashtiradi.
+/// • rasm kelmaguncha o'sha o'lchamdagi skeleton turadi;
+/// • rasm kelganda 240 ms ichida ochiladi, darhol "otilib" chiqmaydi;
+/// • `cacheWidth` HAR DOIM beriladi — aks holda 4000 px li rasm
+///   to'liq dekodlanib, xotirani yeydi va lenta sakraydi.
 class NetImage extends StatelessWidget {
   const NetImage(
     this.url, {
     super.key,
     this.radius = R.card,
     this.fit = BoxFit.cover,
-    this.slotLabel,
+    this.width,
+    this.height,
     this.cacheWidth,
+    this.slotIcon,
   });
 
   final String? url;
   final double radius;
   final BoxFit fit;
-  final String? slotLabel;
+  final double? width;
+  final double? height;
+
+  /// Dekodlash kengligi (piksel). Berilmasa widget kengligidan
+  /// hisoblanadi.
   final int? cacheWidth;
+
+  /// Rasm yo'q bo'lganda ko'rinadigan belgi.
+  final Ico? slotIcon;
 
   @override
   Widget build(BuildContext context) {
-    final u = (url ?? '').trim();
-    if (u.isEmpty) return MediaSlot(label: slotLabel, radius: radius);
-    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
-    // XOTIRA CHEGARASI — HAR DOIM.
-    //
-    // Foydalanuvchi yuklagan rasm 3000px bo'lishi mumkin. Uni xom
-    // holda dekodlash ~36 MB xotira oladi va ro'yxat aylanganda
-    // kadrlar tushib ketadi. `cacheWidth` berilmagan joylarda ham
-    // ekran enidan kattaroq dekodlash MA'NOSIZ, shuning uchun
-    // chegara qo'yiladi: rasm ekranga sig'adigan o'lchamda
-    // dekodlanadi.
-    final logicalCap = cacheWidth ?? MediaQuery.sizeOf(context).width.round();
+    final u = url?.trim() ?? '';
+    if (u.isEmpty) {
+      return MediaSlot(radius: radius, icon: slotIcon, width: width, height: height);
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: CachedNetworkImage(
-        imageUrl: u,
-        fit: fit,
-        fadeInDuration: M.image,
-        fadeOutDuration: Duration.zero,
-        memCacheWidth: (logicalCap * dpr).round(),
-        placeholder: (_, __) => ColoredBox(color: C.placeholder),
-        errorWidget: (_, __, ___) => MediaSlot(label: slotLabel, radius: 0),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 3;
+          final logical = box.hasBoundedWidth ? box.maxWidth : (width ?? 400);
+          final decode = cacheWidth ?? (logical * dpr).round().clamp(64, 2048);
+
+          return CachedNetworkImage(
+            imageUrl: u,
+            width: width ?? double.infinity,
+            height: height,
+            fit: fit,
+            memCacheWidth: decode,
+            fadeInDuration: M.image,
+            fadeOutDuration: M.fade,
+            placeholder: (context, _) => Skeleton(
+              width: double.infinity,
+              height: height ?? double.infinity,
+              radius: radius,
+            ),
+            errorWidget: (context, _, __) => MediaSlot(
+              radius: radius,
+              icon: slotIcon ?? Ico.image,
+              width: width,
+              height: height,
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-/// Avatar — doira, chegarali. Bo'sh bo'lsa ism bosh harfi.
+/// Rasm o'rni — media yo'q yoki kelmadi.
+///
+/// Bo'sh kulrang to'rtburchak emas: yuzada nozik gradient va
+/// markazida belgi bor, shunda u "buzilgan" emas, "bo'sh"
+/// ko'rinadi.
+class MediaSlot extends StatelessWidget {
+  const MediaSlot({
+    super.key,
+    this.radius = R.card,
+    this.icon,
+    this.label,
+    this.width,
+    this.height,
+  });
+
+  final double radius;
+  final Ico? icon;
+  final String? label;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: width ?? double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          gradient: C.raisedSurface,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: C.line),
+        ),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null)
+              NIcon(icon!, size: 22, color: C.ink3.withValues(alpha: .7)),
+            if (label != null) ...[
+              const SizedBox(height: 6),
+              Text(label!, style: T.meta),
+            ],
+          ],
+        ),
+      );
+}
+
+/// AVATAR — 5 o'lcham: 28 / 36 / 44 / 56 / 72.
+///
+/// Rasm bo'lmasa ismning bosh harflari ko'rsatiladi. Bu bo'sh
+/// doiradan yaxshiroq: foydalanuvchi kimligini baribir taniydi.
 class Avatar extends StatelessWidget {
-  const Avatar({super.key, this.url, this.name = '', this.size = 44});
+  const Avatar({
+    super.key,
+    this.url,
+    this.name = '',
+    this.size = 44,
+    this.square = false,
+  });
 
   final String? url;
   final String name;
   final double size;
 
+  /// Biznes profilida logotip KVADRAT (radius 24) — shaxsiy
+  /// profildagi dumaloq avatardan farqlanishi uchun. Bu dizaynning
+  /// aniq qoidasi.
+  final bool square;
+
+  String get _initials {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    if (parts.isEmpty) return '';
+    if (parts.length == 1) {
+      return parts.first.characters.take(1).toString().toUpperCase();
+    }
+    return parts
+        .take(2)
+        .map((p) => p.characters.take(1).toString())
+        .join()
+        .toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final u = (url ?? '').trim();
-    final letter = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+    final radius = square ? size * .3 : size / 2;
+    final u = url?.trim() ?? '';
+
     return Container(
-      width: size, height: size,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: C.graphite,
-        border: Border.all(color: C.hairline),
+        gradient: C.raisedSurface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: C.line),
       ),
       clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
       child: u.isEmpty
-          ? Center(
-              child: Text(
-                letter,
-                style: T.cardTitle.copyWith(fontSize: size * .38, color: C.antiqueGold),
+          ? Text(
+              _initials,
+              style: TextStyle(
+                fontFamily: 'InstrumentSerif',
+                fontSize: size * .40,
+                height: 1,
+                color: C.accent.withValues(alpha: .85),
               ),
             )
-          : NetImage(u, radius: size, cacheWidth: size.round()),
+          : NetImage(u, radius: radius, width: size, height: size),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// RASM O'Z NISBATIDA
+// ─────────────────────────────────────────────────────────────
+
+/// RASMNI QIRQMASDAN KO'RSATADI.
+///
+/// MUAMMO: lentadagi rasm qat'iy 4:3 ramkaga solinardi va `cover`
+/// bilan qirqilardi. Odamlarning rasmi esa ko'pincha TIK (telefon
+/// kamerasi 3:4 yoki 9:16 beradi) — natijada boshi ham, pastki
+/// yozuvi ham kadrdan chiqib ketardi. Egasining bahosi: "razmer
+/// ekranga mos bo'lib ko'rinsin".
+///
+/// YECHIM: ramka RASMGA moslashadi, rasm ramkaga emas. Rasmning
+/// haqiqiy o'lchami tarmoqdan kelganda o'qiladi va ramka yumshoq
+/// (240ms) shunga o'tadi.
+///
+/// CHEGARA BOR: juda cho'zilgan rasm (masalan 1:4 skrinshot) butun
+/// ekranni egallab, lentani to'sib qo'yardi. Shuning uchun nisbat
+/// [minAspect] va [maxAspect] orasida ushlab turiladi — bunday
+/// kamdan-kam rasm chetidan ozgina qirqiladi, qolgan hammasi
+/// butunligicha ko'rinadi.
+///
+/// SAKRASH YO'Q: rasm kelguncha ramka [fallback] nisbatida turadi
+/// va o'zgarish animatsiya bilan bo'ladi, ya'ni lenta "sakramaydi".
+class AutoImage extends StatefulWidget {
+  const AutoImage(
+    this.url, {
+    super.key,
+    this.radius = R.tile,
+    this.fallback = 4 / 5,
+    this.minAspect = .62,
+    this.maxAspect = 1.78,
+    this.slotIcon,
+  });
+
+  final String? url;
+  final double radius;
+
+  /// O'lcham ma'lum bo'lmaguncha ishlatiladigan nisbat.
+  final double fallback;
+
+  /// Eng tik va eng yotiq ruxsat etilgan nisbat.
+  final double minAspect;
+  final double maxAspect;
+
+  final Ico? slotIcon;
+
+  @override
+  State<AutoImage> createState() => _AutoImageState();
+}
+
+class _AutoImageState extends State<AutoImage> {
+  late double _aspect = widget.fallback;
+
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(AutoImage old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url) {
+      _drop();
+      _aspect = widget.fallback;
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final url = (widget.url ?? '').trim();
+    if (url.isEmpty) return;
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      final w = info.image.width.toDouble();
+      final h = info.image.height.toDouble();
+      if (w <= 0 || h <= 0) return;
+      final next = (w / h).clamp(widget.minAspect, widget.maxAspect);
+      if ((next - _aspect).abs() < .001) return;
+      setState(() => _aspect = next);
+    });
+    // `CachedNetworkImageProvider` — `NetImage` bilan BIR XIL manba,
+    // ya'ni rasm ikki marta yuklanmaydi: o'lcham keshdan o'qiladi.
+    final stream = CachedNetworkImageProvider(url).resolve(
+      ImageConfiguration.empty,
+    );
+    stream.addListener(listener);
+    _stream = stream;
+    _listener = listener;
+  }
+
+  void _drop() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _drop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = NetImage(
+      widget.url,
+      radius: widget.radius,
+      slotIcon: widget.slotIcon,
+    );
+
+    if (reduceMotion(context)) {
+      return AspectRatio(aspectRatio: _aspect, child: image);
+    }
+
+    // NISBATNING O'ZI ANIMATSIYA QILINADI.
+    //
+    // `AnimatedContainer` bu yerda yordam bermaydi: u o'lchamni emas,
+    // O'Z bezagini animatsiya qiladi, ichidagi `AspectRatio` esa
+    // bir kadrda sakrab o'zgarardi. `TweenAnimationBuilder` qiymatni
+    // silliq suradi va ramka yumshoq ochiladi.
+    return TweenAnimationBuilder<double>(
+      // `begin` — faqat BIRINCHI qurishda ishlatiladi; keyin
+      // `end` o'zgarganda joriy qiymatdan yangisiga suriladi.
+      tween: Tween<double>(begin: widget.fallback, end: _aspect),
+      duration: M.fade,
+      curve: M.curve,
+      builder: (context, value, child) =>
+          AspectRatio(aspectRatio: value, child: child),
+      child: image,
     );
   }
 }

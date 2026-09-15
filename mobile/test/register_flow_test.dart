@@ -10,6 +10,7 @@ import 'package:nfcstore/screens/entry/verify_email.dart';
 import 'package:nfcstore/state/app_state.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'widget_test.dart' show FakeStore;
+import 'settle.dart';
 
 /// JAVOB QAYTARMAYDIGAN XAVFSIZ XOTIRA.
 ///
@@ -92,7 +93,7 @@ void main() {
       ),
     ));
     await tester.tap(find.text('ILDIZ'));
-    await tester.pumpAndSettle();
+    await settle(tester);
   }
 
   testWidgets('tasdiqlangach ekran yopiladi va ildizga qaytadi', (tester) async {
@@ -104,7 +105,7 @@ void main() {
     await tester.pump();
     // Muvaffaqiyat ekrani 900ms ko'rsatiladi, keyin sessiya ochiladi.
     await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     // ENG MUHIMI: tasdiqlash ekrani stekda QOLMASLIGI kerak.
     expect(find.byType(VerifyEmailScreen), findsNothing);
@@ -131,7 +132,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     // Saqlash muddati (6s) tugashini kutamiz.
     await tester.pump(const Duration(seconds: 8));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(find.byType(VerifyEmailScreen), findsNothing,
         reason: 'Tasdiqlash ekrani yopilishi kerak edi');
@@ -157,7 +158,7 @@ void main() {
     await tester.enterText(find.byType(EditableText).first, '123456');
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     // Ekran hali turibdi, lekin XATO bilan va davom etish tugmasi
     // bilan — abadiy aylanuvchi belgi bilan emas.

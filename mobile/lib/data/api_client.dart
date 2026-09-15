@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show SocketException;
+import 'dart:io' show HandshakeException, IOException, SocketException;
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 
@@ -14,13 +14,71 @@ class ApiError implements Exception {
 
   final String key;
   final int status;
+
+  /// TEXNIK TAFSILOT — odamga emas, TUZATUVCHIGA.
+  ///
+  /// Server `detail` yuborsa o'sha; yubormasa javobning boshi
+  /// (masalan Cloudflare bloklaganda HTML sarlavhasi) yoki
+  /// istisnoning matni. Ekranda kichik kulrang qatorda ko'rsatiladi:
+  /// usiz har xatoda taxmin qilishga to'g'ri kelardi.
   final String? detail;
 
   bool get isAuth => status == 401 || key == 'unauthorized';
   bool get isOffline => key == 'offline';
 
+  /// Bir qatorli texnik tavsif — ekranda va logda bir xil ko'rinadi.
+  String get technical => [
+        key,
+        if (status > 0) 'HTTP $status',
+        if ((detail ?? '').isNotEmpty) detail,
+      ].join(' · ');
+
   @override
   String toString() => key;
+}
+
+/// SERVER JAVOBI — tanasi bilan birga sarlavhasi ham.
+///
+/// Odatda faqat tana kerak. Sessiya ochadigan so'rovlarda esa
+/// `Set-Cookie` ham kerak bo'ladi: ba'zi server versiyalari tokenni
+/// javob tanasiga qo'ymaydi va uni faqat cookie orqali beradi.
+class ApiResponse {
+  const ApiResponse({
+    required this.status,
+    required this.body,
+    required this.headers,
+    required this.raw,
+  });
+
+  final int status;
+  final dynamic body;
+  final Map<String, String> headers;
+
+  /// Javobning boshi — xato tafsiloti uchun (JSON bo'lmasa ham).
+  final String raw;
+
+  Map<String, dynamic> get map =>
+      body is Map ? (body as Map).cast<String, dynamic>() : <String, dynamic>{};
+
+  /// `Set-Cookie` ichidagi sessiya tokeni. Topilmasa `null`.
+  ///
+  /// Sarlavha shakli: `nfc_session=<token>; Path=/; HttpOnly; ...`
+  /// Bir nechta cookie bitta qatorda vergul bilan kelishi mumkin,
+  /// shuning uchun nomga qarab qidiriladi.
+  String? get sessionCookie {
+    final raw = headers['set-cookie'] ?? headers['Set-Cookie'];
+    if (raw == null || raw.isEmpty) return null;
+    for (final part in raw.split(RegExp(r'[,;]\s*'))) {
+      final eq = part.indexOf('=');
+      if (eq <= 0) continue;
+      final name = part.substring(0, eq).trim().toLowerCase();
+      if (!name.contains('session')) continue;
+      final value = part.substring(eq + 1).trim();
+      if (value.isEmpty || value == 'deleted') continue;
+      return value;
+    }
+    return null;
+  }
 }
 
 /// NFCSTORE backend klienti.
@@ -98,6 +156,24 @@ class Api {
         ),
       );
 
+  /// SESSIYA OCHADIGAN SO'ROV — javob TANASI ham, SARLAVHASI ham kerak.
+  ///
+  /// Kirish va ro'yxatdan o'tishda token ikki yo'l bilan kelishi
+  /// mumkin: javob tanasida (`{"token": "..."}`) yoki `Set-Cookie`
+  /// sarlavhasida. Ikkalasi ham BIR XIL token — server uni bir xil
+  /// SHA-256 bilan saqlaydi va `Authorization: Bearer` orqali ham
+  /// qabul qiladi.
+  ///
+  /// Oddiy `post()` faqat tanani qaytaradi, ya'ni cookie'dagi token
+  /// yo'qolardi. Shuning uchun bu yerda javob to'liq beriladi.
+  Future<ApiResponse> postAuth(String path, [Object? body]) => _sendFull(
+        () => _http.post(
+          _uri(path),
+          headers: _headers(json: true),
+          body: jsonEncode(body ?? const {}),
+        ),
+      );
+
   Future<dynamic> put(String path, [Object? body]) => _send(
         () => _http.put(
           _uri(path),
@@ -149,6 +225,12 @@ class Api {
   Future<dynamic> _send(
     Future<http.Response> Function() run, {
     Duration? timeout,
+  }) async =>
+      (await _sendFull(run, timeout: timeout)).body;
+
+  Future<ApiResponse> _sendFull(
+    Future<http.Response> Function() run, {
+    Duration? timeout,
   }) async {
     http.Response res;
     try {
@@ -159,24 +241,59 @@ class Api {
     } on TimeoutException {
       online.value = false;
       throw ApiError('timeout');
-    } on SocketException {
+    } on SocketException catch (e) {
       online.value = false;
-      throw ApiError('offline');
-    } on http.ClientException {
+      throw ApiError('offline', detail: e.message);
+    } on HandshakeException catch (e) {
+      // XAVFSIZ ULANISH O'RNATILMADI — bu "internet yo'q" EMAS.
+      //
+      // Eng ko'p uchraydigan sababi: telefondagi ildiz sertifikatlar
+      // ro'yxati eskirgan (Android 7 va undan pastlarda) yoki
+      // qurilmadagi sana-vaqt noto'g'ri. Brauzer o'z ro'yxati bilan
+      // ishlagani uchun sayt ochiladi, ilova esa tizimnikini
+      // ishlatadi va aynan shu yerda to'xtaydi.
+      //
+      // Ilgari bu istisno hech qayerda tutilmasdi va ekranda
+      // "Nimadir noto'g'ri ketdi" chiqardi — ya'ni eng aniq
+      // belgi yo'qolardi.
       online.value = false;
-      throw ApiError('offline');
+      throw ApiError('tls', detail: e.message);
+    } on http.ClientException catch (e) {
+      online.value = false;
+      throw ApiError('offline', detail: e.message);
+    } on IOException catch (e) {
+      // Qolgan barcha kiritish-chiqarish xatolari ham tarmoqniki:
+      // ular ushlanmasa yuqoriga xom holda chiqib ketardi.
+      online.value = false;
+      throw ApiError('offline', detail: '$e');
     }
 
     dynamic body;
+    String? raw;
     if (res.body.isNotEmpty) {
       try {
         body = jsonDecode(utf8.decode(res.bodyBytes));
       } catch (_) {
         body = null;
+        // JSON EMAS — DEMAK JAVOB SERVERDAN EMAS, ORADAN keldi.
+        //
+        // Bunday javob odatda himoya qatlamining HTML sahifasi
+        // ("Attention Required! | Cloudflare") yoki operator
+        // portalining yo'naltirishi bo'ladi. Uni yo'qotib yuborsak,
+        // ekranda faqat "HTTP 403" qolardi va sabab noma'lum
+        // bo'lardi. Shuning uchun boshini saqlaymiz.
+        raw = _snippet(res.body);
       }
     }
 
-    if (res.statusCode >= 200 && res.statusCode < 300) return body;
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return ApiResponse(
+        status: res.statusCode,
+        body: body,
+        headers: res.headers,
+        raw: raw ?? _snippet(res.body),
+      );
+    }
 
     final key = body is Map && body['error'] is String
         ? body['error'] as String
@@ -184,8 +301,17 @@ class Api {
     throw ApiError(
       key,
       status: res.statusCode,
-      detail: body is Map && body['detail'] is String ? body['detail'] as String : null,
+      detail: body is Map && body['detail'] is String
+          ? body['detail'] as String
+          : raw,
     );
+  }
+
+  /// Javobning boshini bir qatorga siqadi — logda ham, ekranda ham
+  /// o'qish mumkin bo'lsin.
+  static String _snippet(String body) {
+    final one = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return one.length <= 120 ? one : '${one.substring(0, 117)}...';
   }
 
   void close() {

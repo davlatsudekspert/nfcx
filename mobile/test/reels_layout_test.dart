@@ -17,6 +17,7 @@ import 'package:nfcstore/design/components/media.dart';
 import 'package:nfcstore/screens/content/reels.dart';
 import 'package:nfcstore/state/app_state.dart';
 import 'audit/harness.dart';
+import 'settle.dart';
 
 void main() {
   setUpAll(loadAuditFonts);
@@ -30,7 +31,7 @@ void main() {
   testWidgets('rasm qirqilmaydi — contain, orqa fon cover', (t) async {
     final s = await ready();
     await pumpScreen(t, const ReelsScreen(), state: s);
-    await t.pumpAndSettle();
+    await settle(t);
 
     final images = t.widgetList<NetImage>(find.byType(NetImage)).toList();
     expect(images, isNotEmpty, reason: 'kadrda rasm bo‘lishi kerak');
@@ -52,10 +53,13 @@ void main() {
   testWidgets('qaytish tugmasi bor', (t) async {
     final s = await ready();
     await pumpScreen(t, const ReelsScreen(), state: s);
-    await t.pumpAndSettle();
+    await settle(t);
 
+    // `Ico.back` va `Ico.chevronLeft` bir xil chiziladi (qarang:
+    // `icons.dart`), shuning uchun test ikkalasini ham qabul
+    // qiladi — muhimi, chiqish yo'li KO'RINIB tursin.
     final back = find.byWidgetPredicate(
-      (w) => w is NIcon && w.icon == Ico.chevronLeft,
+      (w) => w is NIcon && (w.icon == Ico.back || w.icon == Ico.chevronLeft),
     );
     expect(back, findsOneWidget);
   });

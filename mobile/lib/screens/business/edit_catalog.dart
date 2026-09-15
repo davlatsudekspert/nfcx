@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart' show RefreshIndicator;
-import 'package:flutter/services.dart' show TextInputAction;
+import 'package:flutter/services.dart' show TextInputAction, TextInputType;
 import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/media.dart';
 import '../../design/components/media_picker.dart';
-import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../common/top_bar.dart';
 
 /// KATALOG BOSHQARUVI — mahsulot qo'shish, tahrirlash, o'chirish.
 ///
@@ -29,12 +29,17 @@ import '../common/top_bar.dart';
 /// Ularni ro'yxat ichida ochish har qatorni akkordeonga aylantirardi
 /// va o'ndan ortiq mahsulotda ekran boshqarib bo'lmas holga kelardi.
 ///
+/// O'CHIRISH MAHSULOT SHAKLIDA: ro'yxatdagi qator bitta ish qiladi —
+/// ochadi. Yonma-yon turgan "ochish" va "o'chirish" nishonlari
+/// barmoq ostida adashadi, o'chirishni esa qaytarib bo'lmaydi.
+///
 /// CHEGIRMA NARXI SERVERDA TEKSHIRILADI (`bad_promotion_price`):
 /// u asosiy narxdan KICHIK bo'lishi shart. Ilova ham tekshiradi,
 /// lekin faqat odam xatosini erta ko'rsatish uchun — haqiqat
 /// serverda.
 class EditCatalogScreen extends StatefulWidget {
   const EditCatalogScreen({super.key, required this.company});
+
   final Company company;
 
   @override
@@ -82,54 +87,34 @@ class _EditCatalogScreenState extends State<EditCatalogScreen> {
     if (saved == true) await _load();
   }
 
-  Future<void> _delete(Product p) async {
-    final sure = await showSheet<bool>(
-      context,
-      title: p.name,
-      subtitle: tr('Mahsulot katalogdan o‘chiriladi. Buni qaytarib '
-          'bo‘lmaydi.'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: Column(
-          children: [
-            GhostButton(tr('Ha, o‘chirilsin'),
-                color: C.signal, onTap: () => Navigator.of(context).pop(true)),
-            const SizedBox(height: S.x8),
-            SecondaryButton(tr('Bekor qilish'),
-                onTap: () => Navigator.of(context).pop(false)),
-          ],
-        ),
-      ),
-    );
-    if (sure != true || !mounted) return;
-
-    try {
-      await AppScope.read(context).repo.deleteProduct(widget.company.id, p.id);
-      successHaptic();
-      await _load();
-    } catch (e) {
-      errorHaptic();
-      if (mounted) setState(() => _error = e);
-    }
-  }
-
   @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: C.obsidian,
+  Widget build(BuildContext context) => ScreenBackdrop(
+        aura: Aura.none,
         child: SafeArea(
+          bottom: false,
           child: Column(
             children: [
-              TopBar(title: tr('Katalog'), subtitle: widget.company.name),
+              const TopBar(),
+              ScreenTitle(
+                tr('Katalog'),
+                eyebrow: widget.company.name,
+                subtitle: tr('Mahsulot qatoriga tegib, uni tahrirlaysiz.'),
+              ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _load,
-                  color: C.champagne,
-                  backgroundColor: C.slate,
+                  color: C.accent,
+                  backgroundColor: C.surface,
                   child: AsyncView<List<Product>>(
                     loading: _loading,
                     error: _error,
                     data: _items,
                     onRetry: _load,
+                    isEmpty: (d) => d.isEmpty,
+                    emptyTitle: tr('Katalog bo‘sh'),
+                    emptyIcon: Ico.bag,
+                    emptyMessage: tr('Birinchi mahsulotni qo‘shing — mijoz uni '
+                        'profilingizdan ko‘radi va buyurtma beradi.'),
                     skeleton: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                       children: const [
@@ -138,38 +123,29 @@ class _EditCatalogScreenState extends State<EditCatalogScreen> {
                         SkeletonCard(aspect: 5),
                       ],
                     ),
-                    builder: (data) => ListView(
+                    builder: (data) => ListView.separated(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding:
-                          const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
-                      children: [
-                        // QO'SHISH TEPADA: ro'yxat uzun bo'lsa, pastdagi
-                        // tugmagacha aylantirish kerak bo'lardi.
-                        SecondaryButton(
-                          tr('Mahsulot qo‘shish'),
-                          icon: NIcon(Ico.plus, size: 17, color: C.champagne),
-                          onTap: () => _edit(),
-                        ),
-                        const SizedBox(height: S.x16),
-                        if (data.isEmpty)
-                          EmptyState(
-                            tr('Birinchi mahsulotni qo‘shing — mijoz uni '
-                                'profilingizdan ko‘radi va buyurtma beradi.'),
-                            title: tr('Katalog bo‘sh'),
-                            icon: Ico.bag,
-                          )
-                        else
-                          for (final p in data) ...[
-                            _ProductRow(
-                              product: p,
-                              onEdit: () => _edit(p),
-                              onDelete: () => _delete(p),
-                            ),
-                            const SizedBox(height: S.x8),
-                          ],
-                      ],
+                      padding: EdgeInsets.fromLTRB(
+                        S.gutter,
+                        0,
+                        S.gutter,
+                        StickyBar.inset(context),
+                      ),
+                      itemCount: data.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: S.x8),
+                      itemBuilder: (_, i) => _ProductRow(
+                        product: data[i],
+                        onTap: () => _edit(data[i]),
+                      ),
                     ),
                   ),
+                ),
+              ),
+              StickyBar(
+                child: PrimaryButton(
+                  tr('Mahsulot qo‘shish'),
+                  icon: Ico.plus,
+                  onTap: () => _edit(),
                 ),
               ),
             ],
@@ -179,78 +155,83 @@ class _EditCatalogScreenState extends State<EditCatalogScreen> {
 }
 
 class _ProductRow extends StatelessWidget {
-  const _ProductRow({
-    required this.product,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _ProductRow({required this.product, required this.onTap});
 
   final Product product;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Press(
-        haptic: true,
-        onTap: onEdit,
-        child: Surface(
-          padding: const EdgeInsets.all(S.x12),
-          shadow: E.e1,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 52,
-                height: 52,
-                // Rasm 52px — undan kattaroq dekodlash xotirani
-                // behuda yeydi.
-                child: NetImage(product.imageUrl, radius: R.tile, cacheWidth: 110),
-              ),
-              const SizedBox(width: S.x12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final off = product.discountPct;
+
+    return Surface(
+      padding: const EdgeInsets.all(S.x12),
+      onTap: onTap,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 52,
+            height: 52,
+            // Rasm 52px — undan kattaroq dekodlash xotirani
+            // behuda yeydi.
+            child: NetImage(
+              product.imageUrl,
+              radius: R.tile,
+              cacheWidth: 110,
+              slotIcon: Ico.bag,
+            ),
+          ),
+          const SizedBox(width: S.x12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.cardTitle,
+                ),
+                const SizedBox(height: 4),
+                // CHEGIRMA RO'YXATDA HAM KO'RINSIN: egasi qaysi
+                // mahsulotda aksiya turganini ochmasdan bilsin.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(product.name,
+                    Flexible(
+                      child: Text(
+                        som(product.effectivePrice),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: T.cardTitle.copyWith(fontSize: 15)),
-                    const SizedBox(height: 3),
-                    // CHEGIRMA RO'YXATDA HAM KO'RINSIN: egasi qaysi
-                    // mahsulotda aksiya turganini ochmasdan bilsin.
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(som(product.effectivePrice),
-                            style: T.price.copyWith(fontSize: 14)),
-                        if (product.salePrice != null) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            som(product.price),
-                            style: T.meta.copyWith(
-                              fontSize: 12.5,
-                              color: C.muted,
-                              decoration: TextDecoration.lineThrough,
-                              decorationColor: C.muted,
-                            ),
-                          ),
-                        ],
-                      ],
+                        style: T.amount,
+                      ),
                     ),
+                    if (product.salePrice != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        som(product.price),
+                        style: T.meta.copyWith(
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: C.ink3,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-              Press(
-                haptic: true,
-                onTap: onDelete,
-                child: Padding(
-                  padding: const EdgeInsets.all(S.x8),
-                  child: NIcon(Ico.close, size: 16, color: C.signal),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+          if (off != null) ...[
+            const SizedBox(width: S.x8),
+            StatusChip('-$off%', tone: StatusTone.accent),
+          ],
+          const SizedBox(width: S.x8),
+          NIcon(Ico.chevronRight, size: 18, color: C.ink3),
+        ],
+      ),
+    );
+  }
 }
 
 /// BITTA MAHSULOT — qo'shish yoki tahrirlash.
@@ -258,6 +239,7 @@ class _ProductRow extends StatelessWidget {
 /// `product` `null` bo'lsa — yangi qo'shiladi.
 class _ProductScreen extends StatefulWidget {
   const _ProductScreen({required this.companyId, this.product});
+
   final String companyId;
   final Product? product;
 
@@ -269,7 +251,8 @@ class _ProductScreenState extends State<_ProductScreen> {
   late final _name = TextEditingController(text: widget.product?.name ?? '');
   late final _category =
       TextEditingController(text: widget.product?.categoryName ?? '');
-  late final _about = TextEditingController(text: widget.product?.description ?? '');
+  late final _about =
+      TextEditingController(text: widget.product?.description ?? '');
   late final _price = TextEditingController(
       text: widget.product == null ? '' : '${widget.product!.price}');
   late final _promo = TextEditingController(
@@ -353,20 +336,60 @@ class _ProductScreenState extends State<_ProductScreen> {
     }
   }
 
+  /// O'CHIRISH — oqibati aniq yozilgan tasdiqdan keyin.
+  ///
+  /// Serverda "chiqindi qutisi" yo'q: qaytarish imkoni bo'lmagani
+  /// uchun "Bekor" tugmali toast ham ko'rsatilmaydi — u yolg'on
+  /// va'da bo'lardi.
+  Future<void> _delete() async {
+    final p = widget.product;
+    if (p == null) return;
+
+    final sure = await confirmSheet(
+      context,
+      title: p.name,
+      message: tr('Mahsulot katalogdan o‘chiriladi. Buni qaytarib '
+          'bo‘lmaydi.'),
+      confirmLabel: tr('Ha, o‘chirilsin'),
+    );
+    if (!sure || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AppScope.read(context).repo.deleteProduct(widget.companyId, p.id);
+      successHaptic();
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      errorHaptic();
+      if (mounted) setState(() => _error = humanError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = AppScope.of(context).repo;
 
-    return ColoredBox(
-      color: C.obsidian,
+    return ScreenBackdrop(
+      aura: Aura.none,
       child: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            TopBar(title: _isNew ? tr('Yangi mahsulot') : tr('Mahsulot')),
+            const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
                 children: [
+                  ScreenTitle(
+                    _isNew ? tr('Yangi mahsulot') : tr('Mahsulot'),
+                    subtitle: tr('Rasm, nom va narx — mijoz shu uchtasini '
+                        'ko‘radi.'),
+                  ),
                   MediaPickField(
                     label: tr('Rasm'),
                     repo: repo,
@@ -389,6 +412,7 @@ class _ProductScreenState extends State<_ProductScreen> {
                     label: tr('Turkum'),
                     controller: _category,
                     hint: tr('Masalan: Ichimliklar'),
+                    helper: tr('Katalogda mahsulotlarni guruhlaydi.'),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: S.x16),
@@ -411,15 +435,33 @@ class _ProductScreenState extends State<_ProductScreen> {
                     label: tr('Chegirma narxi'),
                     controller: _promo,
                     hint: tr('Aksiya bo‘lsa'),
+                    helper: tr('Asosiy narxdan kichik bo‘lsin.'),
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _save(),
                     error: _error,
                   ),
-                  const SizedBox(height: S.x24),
-                  PrimaryButton(tr('Saqlash'),
-                      loading: _busy, onTap: _busy ? null : _save),
+                  if (!_isNew) ...[
+                    const SizedBox(height: S.x24),
+                    DangerButton(
+                      tr('O‘chirish'),
+                      onTap: _busy ? null : _delete,
+                    ),
+                  ],
+                  SizedBox(height: StickyBar.inset(context)),
                 ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: StickyBar(
+                child: PrimaryButton(
+                  tr('Saqlash'),
+                  loading: _busy,
+                  onTap: _busy ? null : _save,
+                ),
               ),
             ),
           ],

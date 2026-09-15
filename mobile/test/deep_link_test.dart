@@ -11,6 +11,7 @@ import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_state.dart';
 
 import 'widget_test.dart' show FakeStore;
+import 'settle.dart';
 
 /// TASHQI HAVOLA (APP LINK) OQIMI.
 ///
@@ -70,7 +71,7 @@ void main() {
       lock: lock,
       links: DeepLinks(initial: Future.value(Uri.parse('https://nfcstore.uz/vip001'))),
     ));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     // Statistika SERVERDA hisoblanadi: ilova `/api/tap/...` ni
     // chaqirishi shart, o'zi sanamasligi kerak.
@@ -94,7 +95,7 @@ void main() {
       lock: lock,
       links: DeepLinks(initial: Future.value(Uri.parse('https://nfcstore.uz/vip001'))),
     ));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     // Hisobga kirilgan VA qulf yopiq — profil ochilmasligi shart.
     expect(state.phase, AuthPhase.signedIn);
@@ -104,7 +105,7 @@ void main() {
     // Qulf ochilishi bilan kutib turgan havola ochiladi — havola
     // yo'qolmasligi kerak, aks holda karta "ishlamadi" bo'lardi.
     await lock.verifyPin('1234');
-    await tester.pumpAndSettle();
+    await settle(tester);
     expect(hits.where((h) => h.contains('/api/tap/VIP001')), isNotEmpty);
   });
 

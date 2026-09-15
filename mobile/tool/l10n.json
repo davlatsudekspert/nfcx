@@ -1,4 +1,32 @@
 {
+  "\"Kontaktni saqlash\" telefon kitobiga yozadi. NFC ishlamasa QR yoki havola bilan ulashiladi.": [
+    "«Сохранить контакт» записывает данные в телефонную книгу. Если NFC не работает, профиль передаётся по QR или ссылке.",
+    "\"Save contact\" writes the details into the phone book. If NFC does not work, the profile is shared by QR or link."
+  ],
+  "+ ID qo‘shish": [
+    "+ Добавить ID",
+    "+ Add ID"
+  ],
+  "24 SOAT": [
+    "24 ЧАСА",
+    "24 HOURS"
+  ],
+  "6 xonali kod yubordik:": [
+    "Мы отправили 6-значный код:",
+    "We sent a 6-digit code:"
+  ],
+  "8 XONA": [
+    "8 ЗНАКОВ",
+    "8 DIGITS"
+  ],
+  "@ belgisisiz.": [
+    "Без символа @.",
+    "Without the @ sign."
+  ],
+  "Admin": [
+    "Админ",
+    "Admin"
+  ],
   "Agar bu hisob mavjud bo‘lsa, unga 6 xonali kod ": [
     "Если такой аккаунт существует, на него отправлен 6-значный код ",
     "If this account exists, a 6-digit code has been sent to it "
@@ -26,6 +54,10 @@
   "Akkauntingiz tayyor. Endi NFC ID tanlab, profilingizni ": [
     "Аккаунт готов. Теперь выберите NFC ID и ",
     "Your account is ready. Now pick an NFC ID and "
+  ],
+  "Akkauntingiz tayyor. Endi NFC ID tanlab, profilingizni to‘ldirishingiz mumkin.": [
+    "Аккаунт готов. Теперь выберите NFC ID и заполните профиль.",
+    "Your account is ready. Now pick an NFC ID and fill in your profile."
   ],
   "Akkauntingiz yo‘qmi? ": [
     "Нет аккаунта? ",
@@ -55,6 +87,18 @@
     "Контакты",
     "Contact"
   ],
+  "Aloqa raqami": [
+    "Контактный номер",
+    "Contact number"
+  ],
+  "Aloqa raqamini to‘liq kiriting.": [
+    "Введите контактный номер полностью.",
+    "Enter the full contact number."
+  ],
+  "Amal": [
+    "Действия",
+    "Actions"
+  ],
   "Amalga oshmadi": [
     "Не выполнено",
     "Did not go through"
@@ -75,6 +119,18 @@
     "Сделать основным ID",
     "Make primary ID"
   ],
+  "Asosiy narxdan kichik bo‘lsin.": [
+    "Должна быть меньше основной цены.",
+    "Must be lower than the base price."
+  ],
+  "Asosiy tugma": [
+    "Основная кнопка",
+    "Primary button"
+  ],
+  "Assalom": [
+    "Здравствуйте",
+    "Hello"
+  ],
   "Assalomu alaykum": [
     "Здравствуйте",
     "Welcome"
@@ -91,6 +147,14 @@
     "Сначала выберите причину.",
     "Choose a reason first."
   ],
+  "BEKOR QILISH": [
+    "ОТМЕНИТЬ",
+    "CANCEL"
+  ],
+  "BUYURTMA": [
+    "ЗАКАЗ",
+    "ORDER"
+  ],
   "Bajarildi": [
     "Выполнено",
     "Done"
@@ -106,6 +170,10 @@
   "Band qilish muddati tugasa ID qaytadan sotuvga chiqadi": [
     "Если срок брони истечёт, ID снова поступит в продажу",
     "If the hold expires, the ID goes back on sale"
+  ],
+  "Band qilish tugashi: {vaqt}": [
+    "Бронь заканчивается: {vaqt}",
+    "Hold ends: {vaqt}"
   ],
   "Bankdan javob olinmoqda…": [
     "Ожидаем ответ банка…",
@@ -135,6 +203,10 @@
     "Отмена",
     "Cancel"
   ],
+  "Bekor qilindi": [
+    "Отменён",
+    "Cancelled"
+  ],
   "Bekor qilingan": [
     "Отменённые",
     "Cancelled"
@@ -142,6 +214,10 @@
   "Bekor qilish": [
     "Отменить",
     "Cancel"
+  ],
+  "Bepul": [
+    "Бесплатно",
+    "Free"
   ],
   "Bepul ID": [
     "Бесплатный ID",
@@ -163,6 +239,10 @@
     "О себе",
     "Bio"
   ],
+  "Bir marta to‘lov": [
+    "Разовый платёж",
+    "One-time payment"
+  ],
   "Bir odam bir necha marta kirsa ham bitta hisoblanadi": [
     "Один человек считается один раз, сколько бы раз ни заходил",
     "One person counts once, however many times they visit"
@@ -170,6 +250,14 @@
   "Birinchi mahsulotni qo‘shing — mijoz uni profilingizdan ko‘radi va buyurtma beradi.": [
     "Добавьте первый товар — клиент увидит его в вашем профиле и сделает заказ.",
     "Add your first product — customers will see it on your profile and order it."
+  ],
+  "Birinchi postingiz ochiq profilingizda ko‘rinadi.": [
+    "Ваш первый пост появится в открытом профиле.",
+    "Your first post will appear on your public profile."
+  ],
+  "Birinchi postingiz shu yerda ko‘rinadi.": [
+    "Ваш первый пост появится здесь.",
+    "Your first post will appear here."
   ],
   "Birinchisini joylang — profilingiz shu bilan jonlanadi.": [
     "Опубликуйте первый — профиль сразу оживёт.",
@@ -186,6 +274,10 @@
   "Bitta teginish —\\nbarcha kontaktlaringiz": [
     "Одно касание —\\nвсе ваши контакты",
     "One tap —\\nall your contacts"
+  ],
+  "Bitta tegish — ": [
+    "Одно касание — ",
+    "One tap — "
   ],
   "Biznes": [
     "Бизнес",
@@ -223,6 +315,14 @@
     "Заблокировать",
     "Block"
   ],
+  "Bog‘lanish · Telegram bot, admin": [
+    "Связь · Telegram-бот, админ",
+    "Contact · Telegram bot, admin"
+  ],
+  "Bosh sahifa": [
+    "Главная",
+    "Home"
+  ],
   "Boshlash": [
     "Начать",
     "Get started"
@@ -235,13 +335,29 @@
     "Другое",
     "Other"
   ],
+  "Boshqa odamning kontenti": [
+    "Чужой контент",
+    "Someone else's content"
+  ],
   "Boshqa sabab": [
     "Другая причина",
     "Another reason"
   ],
+  "Boshqa so‘z bilan qidirib ko‘ring.": [
+    "Попробуйте другое слово.",
+    "Try a different word."
+  ],
   "Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.": [
     "Попробуйте другое слово или поиск по коду ID.",
     "Try another word, or search by ID code."
+  ],
+  "Boshqalar qanday ko‘rishini tekshiring": [
+    "Проверьте, как вас видят другие",
+    "Check how others see you"
+  ],
+  "Boshqarish": [
+    "Управление",
+    "Manage"
   ],
   "Boshqasi": [
     "Другое",
@@ -250,6 +366,10 @@
   "Bo‘limlar": [
     "Разделы",
     "Sections"
+  ],
+  "Bo‘sh": [
+    "Пусто",
+    "Empty"
   ],
   "Bo‘sh ID‘lardan tanlang": [
     "Выберите из свободных ID",
@@ -262,6 +382,14 @@
   "Bo‘sh kartaga o‘z ID havolangizni yozing": [
     "Запишите ссылку на свой ID на пустую карту",
     "Write your ID link onto a blank card"
+  ],
+  "Bo‘sh kod yo‘q": [
+    "Свободных кодов нет",
+    "No free codes"
+  ],
+  "Bo‘sh kodlar": [
+    "Свободные коды",
+    "Free codes"
   ],
   "Bo‘sh — bepul": [
     "Свободно — бесплатно",
@@ -311,6 +439,10 @@
     "Нет прав на это действие.",
     "You do not have permission for this."
   ],
+  "Bu amalni ilovadan qaytarib bo‘lmaydi.": [
+    "Это действие нельзя отменить из приложения.",
+    "This cannot be undone from the app."
+  ],
   "Bu amalni qaytarib bo‘lmaydi.": [
     "Это действие нельзя отменить.",
     "This action cannot be undone."
@@ -351,6 +483,14 @@
     "Этот аккаунт удалён.",
     "This account has been deleted."
   ],
+  "Bu jismoniy karta buyurtmasi. ID tarifi va Profil Premium bundan alohida — ular o‘zgarmaydi.": [
+    "Это заказ физической карты. Тариф ID и Профиль Premium — отдельные услуги, они не меняются.",
+    "This is an order for a physical card. The ID tier and Profile Premium are separate — they do not change."
+  ],
+  "Bu karta NFCSTORE ID‘siga ulanmagan yoki tegizish uzilgan.": [
+    "Эта карта не привязана к NFCSTORE ID либо касание прервалось.",
+    "This card is not linked to an NFCSTORE ID, or the tap was interrupted."
+  ],
   "Bu karta NFCSTORE kartasi emas yoki hali faollashtirilmagan.": [
     "Это не карта NFCSTORE либо она ещё не активирована.",
     "This is not an NFCSTORE card, or it is not activated yet."
@@ -371,9 +511,17 @@
     "В этом профиле ещё нет постов.",
     "This profile has no posts yet."
   ],
+  "Bu profilda hali post yo‘q.": [
+    "В этом профиле пока нет постов.",
+    "This profile has no posts yet."
+  ],
   "Bu profilning postlari va storylari sizning lentangizda ko‘rinmaydi.": [
     "Посты и истории этого профиля не будут показываться в вашей ленте.",
     "This profile’s posts and stories will no longer appear in your feed."
+  ],
+  "Bu qurilmada NFC moduli yo‘q. Profilni QR yoki havola bilan ulashing.": [
+    "На этом устройстве нет модуля NFC. Делитесь профилем по QR или ссылке.",
+    "This device has no NFC module. Share your profile by QR or link."
   ],
   "Bu qurilmada NFC yo‘q": [
     "На этом устройстве нет NFC",
@@ -387,13 +535,29 @@
     "Список пуст.",
     "This list is empty."
   ],
+  "Bu sizning kontentingiz": [
+    "Это ваш контент",
+    "This is your content"
+  ],
   "Bu sizning raqamli vizitkangiz. Kartani telefonga tegizsangiz, profilingiz darhol ochiladi — ilova o‘rnatish shart emas.": [
     "Это ваша цифровая визитка. Приложите карту к телефону — профиль откроется сразу, приложение устанавливать не нужно.",
     "It is your digital business card. Tap the card to a phone and your profile opens right away — no app install needed."
   ],
+  "Bu sizning yagona ID‘ingiz. Avval yangisini oling.": [
+    "Это ваш единственный ID. Сначала получите новый.",
+    "This is your only ID. Get a new one first."
+  ],
   "Bu tarifda hozir bo‘sh ID yo‘q.": [
     "На этом тарифе сейчас нет свободных ID.",
     "No available IDs on this tier right now."
+  ],
+  "Bu tarifda hozircha bo‘sh kod yo‘q. Boshqa tarifni ko‘ring.": [
+    "На этом тарифе пока нет свободных кодов. Посмотрите другой тариф.",
+    "This tier has no free codes right now. Look at another tier."
+  ],
+  "Bu toifada hozircha kontent yo‘q.": [
+    "В этой категории пока нет контента.",
+    "There is no content in this category yet."
   ],
   "Bu video formati qo‘llab-quvvatlanmaydi.": [
     "Этот формат видео не поддерживается.",
@@ -411,6 +575,10 @@
     "Такой ID не найден. Проверьте код.",
     "No such ID. Check the code."
   ],
+  "Bunday manzil topilmadi.": [
+    "Такой адрес не найден.",
+    "That address was not found."
+  ],
   "Bunday sovg‘a kartasi topilmadi yoki ": [
     "Такая подарочная карта не найдена или ",
     "No such gift card was found, or "
@@ -423,6 +591,10 @@
     "Заказ",
     "Order"
   ],
+  "Buyurtma bekor qilinadi va mijoz uni tayyor deb kutib qolmaydi. Holatni ilovadan qaytarib bo‘lmaydi.": [
+    "Заказ будет отменён, и клиент перестанет ждать его готовым. Вернуть статус из приложения нельзя.",
+    "The order will be cancelled and the customer will stop waiting for it. The status cannot be undone from the app."
+  ],
   "Buyurtma berish": [
     "Заказать",
     "Place order"
@@ -430,6 +602,14 @@
   "Buyurtma raqami": [
     "Номер заказа",
     "Order number"
+  ],
+  "Buyurtma va to‘lov": [
+    "Заказ и оплата",
+    "Order and payment"
+  ],
+  "Buyurtma yaratildi": [
+    "Заказ создан",
+    "Order created"
   ],
   "Buyurtma\\nyaratildi": [
     "Заказ\\nсоздан",
@@ -491,6 +671,14 @@
     "Через приложение Click",
     "Via the Click app"
   ],
+  "Click ilovasiga o‘tiladi": [
+    "Перейдёте в приложение Click",
+    "You will be taken to the Click app"
+  ],
+  "Click orqali": [
+    "Через Click",
+    "Via Click"
+  ],
   "Company ID": [
     "Company ID",
     "Company ID"
@@ -515,9 +703,17 @@
     "Религиозная пропаганда",
     "Religious propaganda"
   ],
+  "Diniy targ‘ibot va aqidaga daxl": [
+    "Религиозная пропаганда и посягательство на вероучение",
+    "Religious propaganda and attacks on faith"
+  ],
   "Diniy targ‘ibot yoki ekstremistik mazmun": [
     "Религиозная пропаганда или экстремистские материалы",
     "Religious propaganda or extremist material"
+  ],
+  "Direktor": [
+    "Директор",
+    "Director"
   ],
   "Discover": [
     "Поиск",
@@ -534,6 +730,10 @@
   "Do‘kon · Toshkent": [
     "Магазин · Ташкент",
     "Shop · Tashkent"
+  ],
+  "Dush": [
+    "Пн",
+    "Mon"
   ],
   "Dushanba": [
     "Понедельник",
@@ -559,9 +759,17 @@
     "Введите корректный email.",
     "Enter a valid email address."
   ],
+  "Email ochilmasa, profilingizga ulangan telefon raqamini kiriting — kod Telegram botga keladi. Bot Sozlamalarda bir marta ulanadi.": [
+    "Если почта не открывается, введите номер телефона, привязанный к профилю — код придёт в Telegram-бот. Бот подключается в Настройках один раз.",
+    "If you cannot open your email, enter the phone number linked to your profile — the code arrives in the Telegram bot. The bot is connected once in Settings."
+  ],
   "Email yoki telefon": [
     "Email или телефон",
     "Email or phone"
+  ],
+  "Email yoki telefon raqami": [
+    "Эл. почта или номер телефона",
+    "Email or phone number"
   ],
   "Email yoki telefon raqamingiz va parolingiz bilan kiring.": [
     "Войдите по email или номеру телефона и паролю.",
@@ -607,9 +815,17 @@
     "Изменить email",
     "Change email"
   ],
+  "Emailni\\ntasdiqlang": [
+    "Подтвердите\\nemail",
+    "Verify your\\nemail"
+  ],
   "Emerald Luxury": [
     "Emerald Luxury",
     "Emerald Luxury"
+  ],
+  "Endi bu kartani tegizgan odam {url} profilini ko‘radi.": [
+    "Теперь тот, кто приложит эту карту, увидит профиль {url}.",
+    "Now anyone who taps this card sees the {url} profile."
   ],
   "Endi yangi parol bilan kirasiz. Boshqa ": [
     "Теперь вы входите с новым паролем. Другие ",
@@ -623,6 +839,10 @@
     "Чаще всего нажимают",
     "Most tapped"
   ],
+  "Eng ko‘p ko‘rilgan": [
+    "Самые просматриваемые",
+    "Most viewed"
+  ],
   "Failed host lookup": [
     "Failed host lookup",
     "Failed host lookup"
@@ -635,6 +855,14 @@
     "Активный ID",
     "Active ID"
   ],
+  "Faol shaxs yo‘q": [
+    "Нет активной личности",
+    "No active identity"
+  ],
+  "Faol storylarim": [
+    "Мои активные истории",
+    "My active stories"
+  ],
   "Faollashtirish": [
     "Активировать",
     "Activate"
@@ -642,6 +870,10 @@
   "Fayl juda katta (100 MB dan ortiq).": [
     "Файл слишком большой (больше 100 МБ).",
     "The file is too large (over 100 MB)."
+  ],
+  "Foydalanish shartlari": [
+    "Условия использования",
+    "Terms of use"
   ],
   "Galereya": [
     "Галерея",
@@ -659,7 +891,19 @@
     "В галерею помещается до {{n}} фото.",
     "The gallery holds up to {{n}} photos."
   ],
+  "HOLAT: KUTILMOQDA": [
+    "СТАТУС: ОЖИДАНИЕ",
+    "STATUS: PENDING"
+  ],
+  "Ha, bekor qilinsin": [
+    "Да, отменить",
+    "Yes, cancel it"
+  ],
   "Ha, o‘chirilsin": [
+    "Да, удалить",
+    "Yes, delete"
+  ],
+  "Ha, o‘chirish": [
     "Да, удалить",
     "Yes, delete"
   ],
@@ -670,6 +914,10 @@
   "Haftasiga {n} kun": [
     "{{n}} дн. в неделю",
     "{{n}} days a week"
+  ],
+  "Hali ID yo‘q": [
+    "ID пока нет",
+    "No ID yet"
   ],
   "Hali ID‘ingiz yo‘q. NFC bo‘limidan ID tanlashingiz mumkin.": [
     "У вас ещё нет ID. Выбрать его можно в разделе NFC.",
@@ -699,6 +947,10 @@
     "Пока нет постов",
     "No posts yet"
   ],
+  "Hali profil yo‘q": [
+    "Профиля пока нет",
+    "No profile yet"
+  ],
   "Hali story yo‘q": [
     "Пока нет историй",
     "No stories yet"
@@ -723,9 +975,25 @@
     "Оскорбления, брань, дискриминация",
     "Insults, abusive language, discrimination"
   ],
+  "Har kun uchun ochilish va yopilish vaqti.": [
+    "Время открытия и закрытия для каждого дня.",
+    "Opening and closing time for each day."
+  ],
+  "Havola": [
+    "Ссылка",
+    "Link"
+  ],
+  "Havola \"t.me/\" bilan boshlanishi kerak": [
+    "Ссылка должна начинаться с \"t.me/\"",
+    "The link must start with \"t.me/\""
+  ],
   "Havola bosildi": [
     "Переходы по ссылке",
     "Link taps"
+  ],
+  "Havola nusxalandi": [
+    "Ссылка скопирована",
+    "Link copied"
   ],
   "Havolani nusxalash": [
     "Скопировать ссылку",
@@ -734,6 +1002,10 @@
   "Hech narsa topilmadi": [
     "Ничего не найдено",
     "Nothing found"
+  ],
+  "Hisob": [
+    "Аккаунт",
+    "Account"
   ],
   "Hisob darhol ochiladi va admin ko‘rigidan o‘tadi.": [
     "Аккаунт откроется сразу и пройдёт проверку администратора.",
@@ -751,17 +1023,37 @@
     "Создать аккаунт",
     "Create account"
   ],
+  "Hisobingiz o‘chiriladi va siz undan chiqasiz. Profillaringiz, postlaringiz va storylaringiz saytda ham, ilovada ham ko‘rinmay qoladi. To‘lov va buyurtma yozuvlari hisobot uchun saqlanadi. Qaytarish kerak bo‘lsa — yordam xizmatiga murojaat qiling.": [
+    "Ваш аккаунт будет удалён, и вы выйдете из него. Ваши профили, посты и сторис перестанут показываться и на сайте, и в приложении. Записи о платежах и заказах сохраняются для отчётности. Если нужно восстановить — обратитесь в поддержку.",
+    "Your account will be deleted and you will be signed out. Your profiles, posts and stories stop showing on the site and in the app. Payment and order records are kept for reporting. To restore it, contact support."
+  ],
   "Hisobingiz yaratildi. Agar davom etmasa, kirish sahifasidan kiring.": [
     "Аккаунт создан. Если не продолжается, войдите со страницы входа.",
     "Your account was created. If it does not continue, sign in from the login page."
+  ],
+  "Hisobingizga kiring yoki yangi ochingiz": [
+    "Войдите в аккаунт или создайте новый",
+    "Sign in to your account or create a new one"
+  ],
+  "Hisobni o‘chirish": [
+    "Удалить аккаунт",
+    "Delete account"
   ],
   "Holat": [
     "Статус",
     "Status"
   ],
+  "Holat faqat server javobidan olinadi. Provayder ilovasidan qaytish o‘zi to‘lov tasdig‘i emas.": [
+    "Статус берётся только из ответа сервера. Возврат из приложения провайдера сам по себе не подтверждает оплату.",
+    "The status comes only from the server response. Returning from the provider app is not a payment confirmation by itself."
+  ],
   "Holatni tekshirish": [
     "Проверить статус",
     "Check status"
+  ],
+  "Holatni yangilash": [
+    "Обновить статус",
+    "Refresh status"
   ],
   "Home": [
     "Главная",
@@ -783,17 +1075,69 @@
     "Сейчас недоступно",
     "Not available right now"
   ],
+  "Hozir ochiq": [
+    "Сейчас открыто",
+    "Open now"
+  ],
+  "Hozir ochiq · {time}": [
+    "Сейчас открыто · {time}",
+    "Open now · {time}"
+  ],
+  "Hozir o‘chirilgan": [
+    "Сейчас отключено",
+    "Switched off right now"
+  ],
   "Hozir vaqtincha o‘chirilgan": [
     "Сейчас временно отключено",
     "Temporarily switched off"
+  ],
+  "Hozir yopiq": [
+    "Сейчас закрыто",
+    "Closed now"
+  ],
+  "Hozircha ilovada mavjud emas": [
+    "Пока недоступно в приложении",
+    "Not available in the app yet"
+  ],
+  "Hujjatlar": [
+    "Документы",
+    "Documents"
+  ],
+  "Huquqi sizga tegishli bo‘lmagan rasm, video, musiqa": [
+    "Изображения, видео и музыка, права на которые вам не принадлежат",
+    "Images, video and music you do not own the rights to"
+  ],
+  "ID faqat qabul qilinganda o‘tadi.": [
+    "ID переходит только после принятия.",
+    "The ID moves only once it is accepted."
+  ],
+  "ID katalogi": [
+    "Каталог ID",
+    "ID catalogue"
+  ],
+  "ID katalogini ochish": [
+    "Открыть каталог ID",
+    "Open the ID catalogue"
   ],
   "ID kodi": [
     "Код ID",
     "ID code"
   ],
+  "ID kodi — masalan AAA904": [
+    "Код ID — например AAA904",
+    "ID code — for example AAA904"
+  ],
   "ID o‘tgandan keyin unga bog‘langan profil, postlar va ": [
     "После передачи ID связанный профиль, посты и ",
     "Once the ID moves, the linked profile, posts and "
+  ],
+  "ID qo‘shish": [
+    "Добавить ID",
+    "Add ID"
+  ],
+  "ID sizniki": [
+    "ID ваш",
+    "The ID is yours"
   ],
   "ID tanlaganingizdan keyin profil shu yerda ochiladi.": [
     "После выбора ID профиль откроется здесь.",
@@ -819,6 +1163,10 @@
     "Можно ли передать ID другому человеку?",
     "Can I transfer an ID to someone else?"
   ],
+  "ID‘ni kartaga yuklash": [
+    "Записать ID на карту",
+    "Write the ID to a card"
+  ],
   "ID‘ni o‘chirish": [
     "Удалить ID",
     "Delete ID"
@@ -830,6 +1178,14 @@
   "Ilova ochilganda kod so‘raladi": [
     "Код запрашивается при открытии приложения",
     "The code is asked when the app opens"
+  ],
+  "Ilova qulfi": [
+    "Блокировка приложения",
+    "App lock"
+  ],
+  "Ilova shu ID bilan ochiladi": [
+    "Приложение открывается с этим ID",
+    "The app opens with this ID"
   ],
   "Instagram bosildi": [
     "Переходы в Instagram",
@@ -863,6 +1219,18 @@
     "Имя не должно быть пустым.",
     "Name cannot be empty."
   ],
+  "Ism va familiya": [
+    "Имя и фамилия",
+    "First and last name"
+  ],
+  "Ism va lavozim profilingizdan olinadi — kartani buyurtma qilishdan oldin profilni tekshiring.": [
+    "Имя и должность берутся из профиля — проверьте его перед заказом карты.",
+    "The name and job title come from your profile — check it before ordering the card."
+  ],
+  "Ism va telefon qoldiring — sotuvchi o‘zi bog‘lanadi.": [
+    "Оставьте имя и телефон — продавец свяжется сам.",
+    "Leave your name and phone — the seller will contact you."
+  ],
   "Ism va telefon raqami kerak.": [
     "Нужны имя и номер телефона.",
     "Name and phone number are required."
@@ -870,6 +1238,14 @@
   "Ism va telefon raqamini to‘liq kiriting.": [
     "Заполните имя и номер телефона.",
     "Fill in the name and phone number."
+  ],
+  "Ism yoki ID bo‘yicha qidirish": [
+    "Поиск по имени или ID",
+    "Search by name or ID"
+  ],
+  "Ism, kompaniya yoki ID kodi": [
+    "Имя, компания или код ID",
+    "Name, company or ID code"
   ],
   "Ismingiz": [
     "Ваше имя",
@@ -883,6 +1259,10 @@
     "Необязательно",
     "Optional"
   ],
+  "Ixtiyoriy. Parolni tiklashda kerak bo‘ladi.": [
+    "Необязательно. Понадобится при восстановлении пароля.",
+    "Optional. Needed when resetting your password."
+  ],
   "Izoh": [
     "Подпись",
     "Caption"
@@ -891,6 +1271,10 @@
     "Подпись · необязательно",
     "Caption · optional"
   ],
+  "Izohsiz post": [
+    "Пост без подписи",
+    "Post without a caption"
+  ],
   "Jami": [
     "Итого",
     "Total"
@@ -898,6 +1282,10 @@
   "Jamoa ID‘lari": [
     "ID команды",
     "Team IDs"
+  ],
+  "Javob kechikmoqda": [
+    "Ответ задерживается",
+    "The response is delayed"
   ],
   "Javob kutilmoqda": [
     "Ожидается ответ",
@@ -926,6 +1314,10 @@
   "Joriy parol noto‘g‘ri.": [
     "Текущий пароль неверен.",
     "Current password is incorrect."
+  ],
+  "Joriy parol so‘raladi — hisobni himoyalaydigan yagona to‘siq shu.": [
+    "Потребуется текущий пароль — это единственная защита аккаунта.",
+    "Your current password is required — it is the only barrier protecting the account."
   ],
   "Joriy parolni kiriting.": [
     "Введите текущий пароль.",
@@ -963,6 +1355,10 @@
     "Пятница",
     "Friday"
   ],
+  "KOD SHU MANZILGA": [
+    "КОД НА ЭТОТ АДРЕС",
+    "CODE TO THIS ADDRESS"
+  ],
   "Kafe": [
     "Кафе",
     "Cafe"
@@ -974,6 +1370,10 @@
   "Kamida 20 ta belgi": [
     "Минимум 20 символов",
     "At least 20 characters"
+  ],
+  "Kamida 3 ta belgi — harf va raqam.": [
+    "Не менее 3 символов — буквы и цифры.",
+    "At least 3 characters — letters and digits."
   ],
   "Kamida 6 belgi": [
     "Минимум 6 символов",
@@ -991,6 +1391,10 @@
     "Карта",
     "Card"
   ],
+  "Karta bilan kelgan maxfiy kodni kiriting.": [
+    "Введите секретный код, пришедший вместе с картой.",
+    "Enter the secret code that came with the card."
+  ],
   "Karta bilan kelgan maxfiy kodni kiriting. Uni boshqalarga ": [
     "Введите секретный код, пришедший с картой. Никому его ",
     "Enter the secret code that came with the card. Do not share "
@@ -1003,6 +1407,10 @@
     "Цена карты",
     "Card price"
   ],
+  "Karta o‘qilmadi": [
+    "Карта не прочитана",
+    "Card was not read"
+  ],
   "Karta sezilmadi": [
     "Карта не обнаружена",
     "No card detected"
@@ -1010,6 +1418,18 @@
   "Karta tanilmadi": [
     "Карта не распознана",
     "Card not recognised"
+  ],
+  "Karta tayyor": [
+    "Карта готова",
+    "Card is ready"
+  ],
+  "Karta yozish paytida uzoqlashdi yoki himoyalangan. Karta o‘zgarmadi.": [
+    "Карту убрали во время записи, либо она защищена. Карта не изменилась.",
+    "The card moved away during writing, or it is protected. The card did not change."
+  ],
+  "Kartada chop etiladi": [
+    "Печатается на карте",
+    "Printed on the card"
   ],
   "Kartada yoziladigan ism": [
     "Имя, которое будет на карте",
@@ -1027,13 +1447,29 @@
     "Записать на карту",
     "Write to card"
   ],
+  "Kartani bosing — orqa tomoni ochiladi": [
+    "Нажмите на карту — откроется обратная сторона",
+    "Tap the card — the back side opens"
+  ],
   "Kartani o‘qish": [
     "Прочитать карту",
     "Read a card"
   ],
+  "Kartani o‘qish uchun qurilma sozlamalarida NFC‘ni yoqing.": [
+    "Чтобы прочитать карту, включите NFC в настройках устройства.",
+    "To read the card, turn on NFC in the device settings."
+  ],
   "Kartani qanday faollashtiraman?": [
     "Как активировать карту?",
     "How do I activate the card?"
+  ],
+  "Kartani telefon orqasiga tegizing — profil ochiladi yoki yangi ID yoziladi.": [
+    "Приложите карту к задней стороне телефона — откроется профиль или запишется новый ID.",
+    "Tap the card to the back of the phone — the profile opens or a new ID is written."
+  ],
+  "Kartani telefon orqasiga tegizing — profil ochiladi.": [
+    "Приложите карту к задней стороне телефона — откроется профиль.",
+    "Tap the card to the back of the phone — the profile opens."
   ],
   "Kartani telefon orqasining yuqori qismiga yaqinlashtiring ": [
     "Поднесите карту к верхней части задней панели телефона ",
@@ -1051,12 +1487,24 @@
     "Приложите карту к телефону",
     "Tap the card to your phone"
   ],
+  "Kartani ushlab turing": [
+    "Держите карту",
+    "Hold the card still"
+  ],
+  "Kartaning orqasidagi ID kodini kiriting.": [
+    "Введите код ID с обратной стороны карты.",
+    "Enter the ID code from the back of the card."
+  ],
   "Kasb · kompaniya": [
     "Профессия · компания",
     "Role · company"
   ],
   "Kashf qilish": [
     "Поиск",
+    "Discover"
+  ],
+  "Kashfiyot": [
+    "Обзор",
     "Discover"
   ],
   "Katalog": [
@@ -1079,9 +1527,21 @@
     "Каталог, заказы и статистика",
     "Catalog, orders and statistics"
   ],
+  "Katalogda mahsulotlarni guruhlaydi.": [
+    "Группирует товары в каталоге.",
+    "Groups products in the catalogue."
+  ],
+  "Katalogdan bo‘sh ID tanlash": [
+    "Выбрать свободный ID из каталога",
+    "Pick a free ID from the catalogue"
+  ],
   "Katalogdan buyurtma qabul qilish": [
     "Принимать заказы из каталога",
     "Accept orders from the catalog"
+  ],
+  "Kelgan": [
+    "Входящие",
+    "Incoming"
   ],
   "Keng rasm — profil tepasida ko‘rinadi.": [
     "Широкое изображение — показывается вверху профиля.",
@@ -1098,6 +1558,14 @@
   "Kimdir sizga ID sovg‘a qilsa, u shu yerda ": [
     "Если вам подарят ID, он появится здесь и ",
     "If someone gifts you an ID, it waits here for "
+  ],
+  "Kimdir sizga ID sovg‘a qilsa, u shu yerda tasdiqlashni kutib turadi.": [
+    "Если кто-то подарит вам ID, он будет ждать подтверждения здесь.",
+    "If someone gifts you an ID, it waits here for your confirmation."
+  ],
+  "Kimga": [
+    "Кому",
+    "To"
   ],
   "Kirish": [
     "Войти",
@@ -1119,9 +1587,21 @@
     "Код",
     "Code"
   ],
+  "Kod 10 daqiqa amal qiladi. Yangi kod so‘rang:": [
+    "Код действует 10 минут. Запросите новый код:",
+    "The code is valid for 10 minutes. Request a new code:"
+  ],
   "Kod bo‘yicha qidirish": [
     "Поиск по коду",
     "Search by code"
+  ],
+  "Kod faqat harflardan iborat. Bunday kodlar eng kam uchraydi va {tier} darajasiga kiradi.": [
+    "Код состоит только из букв. Такие коды встречаются реже всего и относятся к уровню {tier}.",
+    "The code is letters only. Such codes are the rarest and belong to the {tier} tier."
+  ],
+  "Kod kelmadimi?": [
+    "Код не пришёл?",
+    "Code did not arrive?"
   ],
   "Kod muddati tugadi. Yangi kod so‘rang.": [
     "Срок действия кода истёк. Запросите новый.",
@@ -1131,9 +1611,17 @@
     "Срок кода\\nистёк",
     "Code has\\nexpired"
   ],
+  "Kod olish": [
+    "Получить код",
+    "Get the code"
+  ],
   "Kod o‘rniga tezroq ochish": [
     "Открывать быстрее, чем кодом",
     "Faster than typing the code"
+  ],
+  "Kod uch harf va uch raqamdan iborat. Naqsh {tier} tarifiga mos.": [
+    "Код состоит из трёх букв и трёх цифр. Шаблон соответствует тарифу {tier}.",
+    "The code is three letters and three digits. The pattern matches the {tier} tier."
   ],
   "Kod xato yoki muddati tugagan.": [
     "Код неверен или просрочен.",
@@ -1147,13 +1635,25 @@
     "Неверный код. Проверьте и введите ещё раз.",
     "Wrong code. Check it and enter again."
   ],
+  "Kod yuborildi": [
+    "Код отправлен",
+    "Code sent"
+  ],
   "Kod yuborish": [
     "Отправить код",
     "Send code"
   ],
+  "Kodlar AAA000 naqshida (uch harf + uch raqam). Tarif naqshdan kelib chiqadi va profilda material bo‘lib ko‘rinadi.": [
+    "Коды имеют вид AAA000 (три буквы + три цифры). Тариф зависит от шаблона и показывается в профиле как материал.",
+    "Codes follow the AAA000 pattern (three letters + three digits). The tier comes from the pattern and shows as a material on the profile."
+  ],
   "Kodlar mos kelmadi. Qaytadan boshlang.": [
     "Коды не совпали. Начните заново.",
     "The codes did not match. Start over."
+  ],
+  "Kodni emailga yuborish": [
+    "Отправить код на email",
+    "Send the code to email"
   ],
   "Kodni kiriting": [
     "Введите код",
@@ -1167,17 +1667,53 @@
     "Повторите код",
     "Repeat the code"
   ],
+  "Kodni tekshirib ko‘ring yoki katalogdan tanlang.": [
+    "Проверьте код или выберите его из каталога.",
+    "Check the code, or pick one from the catalogue."
+  ],
   "Kodni to‘liq kiriting.": [
     "Введите код полностью.",
     "Enter the full code."
+  ],
+  "Kodni yuborish": [
+    "Отправить код",
+    "Send the code"
   ],
   "Kodni\\nkiriting": [
     "Введите\\nкод",
     "Enter the\\ncode"
   ],
+  "Kompaniyalar": [
+    "Компании",
+    "Companies"
+  ],
+  "Kontakt": [
+    "Контакт",
+    "Contact"
+  ],
+  "Kontakt ": [
+    "Контакт ",
+    "Contact "
+  ],
   "Kontakt saqlandi": [
     "Контакт сохранён",
     "Contact saved"
+  ],
+  "Kontaktni saqlash": [
+    "Сохранить контакт",
+    "Save contact"
+  ],
+  "Kontaktni saqlash faqat NFC kartani tegizganda yoki QR skanerlaganda ochiladi — shunda karta egasi ulashishni tasdiqlagan bo‘ladi.": [
+    "Сохранить контакт можно только после касания NFC-карты или сканирования QR — так владелец карты подтверждает, что делится данными.",
+    "Saving a contact opens only after tapping the NFC card or scanning the QR — that is how the card owner confirms sharing."
+  ],
+  "Kontent joylash uchun avval shaxs tanlang.": [
+    "Чтобы публиковать контент, сначала выберите личность.",
+    "Pick an identity first to post content."
+  ],
+  "Kontent men tomonimdan tayyorlangan va qoidalarga mos": [
+    "Контент подготовлен мной и соответствует правилам",
+    "This content is mine and follows the rules"
   ],
   "Kontent qoidalari": [
     "Правила контента",
@@ -1195,6 +1731,10 @@
     "Улица, дом",
     "Street, building"
   ],
+  "Ko‘cha, uy, mo‘ljal": [
+    "Улица, дом, ориентир",
+    "Street, building, landmark"
+  ],
   "Ko‘proq post va story": [
     "Больше постов и историй",
     "More posts and stories"
@@ -1203,9 +1743,33 @@
     "Оформление",
     "Appearance"
   ],
+  "Ko‘rish": [
+    "Посмотреть",
+    "View"
+  ],
+  "Ko‘rishlar": [
+    "Просмотры",
+    "Views"
+  ],
+  "Ko‘rishlar · 7 kun": [
+    "Просмотры · 7 дней",
+    "Views · 7 days"
+  ],
+  "Kuchli naqsh — masalan AAA000": [
+    "Сильный шаблон — например AAA000",
+    "Strong pattern — for example AAA000"
+  ],
   "Kunlik grafik va manbalar.": [
     "Дневной график и источники.",
     "Daily chart and sources."
+  ],
+  "Kunlik ko‘rish": [
+    "Просмотры по дням",
+    "Daily views"
+  ],
+  "Kutilmagan xato: {code}": [
+    "Неожиданная ошибка: {code}",
+    "Unexpected error: {code}"
   ],
   "Kutilmoqda": [
     "В ожидании",
@@ -1215,9 +1779,25 @@
     "Лучше всего смотрится квадратное изображение.",
     "A square image looks best."
   ],
+  "Lavozim": [
+    "Должность",
+    "Job title"
+  ],
+  "Lenta": [
+    "Лента",
+    "Feed"
+  ],
   "Lenta bo‘sh": [
     "Лента пуста",
     "Feed is empty"
+  ],
+  "Lenta hozircha bo‘sh": [
+    "Лента пока пуста",
+    "The feed is empty for now"
+  ],
+  "Litsenziyalar": [
+    "Лицензии",
+    "Licences"
   ],
   "Login yoki parol noto‘g‘ri.": [
     "Неверный логин или пароль.",
@@ -1230,6 +1810,10 @@
   "MAHSULOT 1:1": [
     "ТОВАР 1:1",
     "PRODUCT 1:1"
+  ],
+  "MASHHUR": [
+    "ПОПУЛЯРНОЕ",
+    "POPULAR"
   ],
   "Mahsulot": [
     "Товар",
@@ -1246,6 +1830,10 @@
   "Mahsulot nomini kiriting.": [
     "Введите название товара.",
     "Enter the product name."
+  ],
+  "Mahsulot qatoriga tegib, uni tahrirlaysiz.": [
+    "Нажмите на строку товара, чтобы отредактировать её.",
+    "Tap a product row to edit it."
   ],
   "Mahsulot qo‘shish": [
     "Добавить товар",
@@ -1271,6 +1859,10 @@
     "Адрес, часы работы и контакты ещё не заполнены.",
     "Address, hours and contact details are not filled in yet."
   ],
+  "Manzil, vaqt yoki o‘lcham — sotuvchi shuni o‘qiydi.": [
+    "Адрес, время или размер — продавец читает именно это.",
+    "Address, time or size — this is what the seller reads."
+  ],
   "Market": [
     "Маркет",
     "Market"
@@ -1290,6 +1882,30 @@
   "Mashhur profillar": [
     "Популярные профили",
     "Popular profiles"
+  ],
+  "Material": [
+    "Материал",
+    "Material"
+  ],
+  "Material profilda va jismoniy kartada bir xil ko‘rinadi.": [
+    "Материал выглядит одинаково в профиле и на физической карте.",
+    "The material looks the same on the profile and on the physical card."
+  ],
+  "Mavzu": [
+    "Тема",
+    "Theme"
+  ],
+  "Mavzu urg‘u oilasi va fon yorug‘ligini almashtiradi. Tarif materiallari o‘zgarmaydi.": [
+    "Тема меняет семейство акцентов и яркость фона. Материалы тарифа не меняются.",
+    "The theme switches the accent family and the background brightness. Tier materials do not change."
+  ],
+  "Maxfiylik siyosati": [
+    "Политика конфиденциальности",
+    "Privacy policy"
+  ],
+  "Maxfiylik siyosati · Oferta": [
+    "Политика конфиденциальности · Оферта",
+    "Privacy policy · Terms"
   ],
   "Ma‘lumot to‘planmagan": [
     "Данных пока нет",
@@ -1311,9 +1927,33 @@
     "Мои ID",
     "My IDs"
   ],
+  "Mening ID’larim": [
+    "Мои ID",
+    "My IDs"
+  ],
+  "Mening kontentim": [
+    "Мой контент",
+    "My content"
+  ],
+  "Mijoz": [
+    "Клиент",
+    "Customer"
+  ],
   "Mijoz kartani o‘qiydi va to‘g‘ridan-to‘g‘ri buyurtma beradi.": [
     "Клиент считывает карту и делает заказ напрямую.",
     "The customer taps the card and orders directly."
+  ],
+  "Mijoz profilingizda ko‘radigan hamma narsa shu yerdan sozlanadi.": [
+    "Всё, что клиент видит в вашем профиле, настраивается здесь.",
+    "Everything a customer sees on your profile is set up here."
+  ],
+  "Mijoz sizni shu manzildan topadi.": [
+    "По этому адресу клиент вас найдёт.",
+    "This is the address where customers find you."
+  ],
+  "Miqdor": [
+    "Количество",
+    "Quantity"
   ],
   "Moderator tekshiradi. Rahmat.": [
     "Модератор проверит. Спасибо.",
@@ -1355,6 +1995,10 @@
     "NFC ID",
     "NFC ID"
   ],
+  "NFC ID karta buyurtma berish": [
+    "Заказать NFC ID-карту",
+    "Order an NFC ID card"
+  ],
   "NFC ID nima?": [
     "Что такое NFC ID?",
     "What is an NFC ID?"
@@ -1363,9 +2007,41 @@
     "NFC ID — это ваша цифровая визитка: одно ",
     "An NFC ID is your digital business card: one "
   ],
+  "NFC TEGIZISHDAN": [
+    "ОТ КАСАНИЙ NFC",
+    "FROM NFC TAPS"
+  ],
+  "NFC ishlamasa ham ishlaydi": [
+    "Работает, даже если NFC не работает",
+    "Works even when NFC does not"
+  ],
+  "NFC karta buyurtma berish": [
+    "Заказать NFC-карту",
+    "Order an NFC card"
+  ],
+  "NFC karta buyurtmasi": [
+    "Заказ NFC-карты",
+    "NFC card order"
+  ],
+  "NFC kartani telefonga tegizing: ism, lavozim, aloqa va havolalar darhol ochiladi.": [
+    "Приложите NFC-карту к телефону: имя, должность, контакты и ссылки откроются сразу.",
+    "Tap the NFC card to a phone: name, job title, contacts and links open at once."
+  ],
+  "NFC markazi": [
+    "Центр NFC",
+    "NFC hub"
+  ],
+  "NFC o‘chirilgan": [
+    "NFC выключен",
+    "NFC is off"
+  ],
   "NFC o‘chirilgan yoki qurilma uni qo‘llab-quvvatlamaydi. ": [
     "NFC выключен или устройство его не поддерживает. ",
     "NFC is off, or the device does not support it. "
+  ],
+  "NFC qo‘llanmaydi": [
+    "NFC не поддерживается",
+    "NFC is not supported"
   ],
   "NFCSTORE ni ochish uchun": [
     "Чтобы открыть NFCSTORE",
@@ -1387,6 +2063,14 @@
     "Пример",
     "Sample"
   ],
+  "Narx": [
+    "Цена",
+    "Price"
+  ],
+  "Narx to‘lov so‘ralganda serverdan olinadi.": [
+    "Цена берётся с сервера в момент запроса оплаты.",
+    "The price is taken from the server when payment is requested."
+  ],
   "Narxi": [
     "Цена",
     "Price"
@@ -1394,6 +2078,10 @@
   "Narxi harflar soniga qarab belgilanadi.": [
     "Цена зависит от количества букв.",
     "The price depends on the number of letters."
+  ],
+  "Narxni server aytadi": [
+    "Цену называет сервер",
+    "The server sets the price"
   ],
   "Nima bilan shug‘ullanasiz": [
     "Чем вы занимаетесь",
@@ -1415,6 +2103,10 @@
     "Что входит",
     "What is included"
   ],
+  "Nimalar yo‘qoladi": [
+    "Что будет потеряно",
+    "What you lose"
+  ],
   "Nom, shahar, telefon va kamida 20 belgilik tavsif to‘ldirilsin.": [
     "Заполните название, город, телефон и описание от 20 символов.",
     "Fill in the name, city, phone and a description of at least 20 characters."
@@ -1435,9 +2127,25 @@
     "Название не должно быть пустым.",
     "The name cannot be empty."
   ],
+  "Noyob": [
+    "Уникальные",
+    "Unique"
+  ],
   "Noyob tashrifchi": [
     "Уникальные посетители",
     "Unique visitors"
+  ],
+  "Obuna": [
+    "Подписка",
+    "Subscription"
+  ],
+  "Obuna bo‘lgan odamlaringiz post qo‘shsa, shu yerda ko‘rinadi.": [
+    "Когда люди, на которых вы подписаны, добавят пост, он появится здесь.",
+    "When people you follow add a post, it shows up here."
+  ],
+  "Obuna bo‘lgan odamlaringiz video qo‘shsa, shu yerda ko‘rinadi.": [
+    "Когда люди, на которых вы подписаны, добавят видео, оно появится здесь.",
+    "When people you follow add a video, it shows up here."
   ],
   "Obuna bo‘lingan": [
     "Вы подписаны",
@@ -1447,13 +2155,41 @@
     "Подписаться",
     "Follow"
   ],
+  "Obunachi": [
+    "Подписчик",
+    "Follower"
+  ],
   "Obunachilar": [
     "Подписчики",
     "Followers"
   ],
+  "Obunachilar va statistika": [
+    "Подписчики и статистика",
+    "Followers and statistics"
+  ],
+  "Obunalar": [
+    "Подписки",
+    "Following"
+  ],
+  "Obunani bekor qilish": [
+    "Отписаться",
+    "Unfollow"
+  ],
+  "Ochilish": [
+    "Открытие",
+    "Opening"
+  ],
   "Ochiq": [
     "Открыто",
     "Open"
+  ],
+  "Ochiq profil va uning havolasi": [
+    "Открытый профиль и его ссылка",
+    "Public profile and its link"
+  ],
+  "Ochiq profilni ko‘rish": [
+    "Посмотреть открытый профиль",
+    "View public profile"
   ],
   "Odamlar": [
     "Люди",
@@ -1463,9 +2199,37 @@
     "Люди, бизнесы, товары",
     "People, businesses, products"
   ],
+  "Odamlarni topish": [
+    "Найти людей",
+    "Find people"
+  ],
+  "Oddiy AAA000 naqsh": [
+    "Обычный шаблон AAA000",
+    "Plain AAA000 pattern"
+  ],
   "Orqaga": [
     "Назад",
     "Back"
+  ],
+  "Oxirgi qadam — hisobingizni oching.": [
+    "Последний шаг — создайте аккаунт.",
+    "Last step — open your account."
+  ],
+  "Oyna yoki qo‘shni juftlik": [
+    "Зеркало или соседняя пара",
+    "Mirror or adjacent pair"
+  ],
+  "O‘CHIRISH": [
+    "УДАЛИТЬ",
+    "DELETE"
+  ],
+  "O‘QILMOQDA": [
+    "ЧТЕНИЕ",
+    "READING"
+  ],
+  "O‘chiq": [
+    "Выключено",
+    "Off"
   ],
   "O‘chirilsa mahsulotlar ko‘rinadi, lekin ": [
     "Если выключить, товары видны, но ",
@@ -1474,6 +2238,10 @@
   "O‘chirish": [
     "Удалить",
     "Delete"
+  ],
+  "O‘tkazib yuborish": [
+    "Пропустить",
+    "Skip"
   ],
   "O‘tkazish": [
     "Передать",
@@ -1491,6 +2259,10 @@
     "Узбекский",
     "Uzbek"
   ],
+  "O‘zgartirish": [
+    "Изменить",
+    "Change"
+  ],
   "O‘zingiz haqingizda qisqacha": [
     "Коротко о себе",
     "A short line about you"
@@ -1502,6 +2274,14 @@
   "PIN kod": [
     "PIN-код",
     "PIN code"
+  ],
+  "PIN kodni kiriting": [
+    "Введите PIN-код",
+    "Enter the PIN"
+  ],
+  "PIN · barmoq izi · Face ID": [
+    "PIN · отпечаток пальца · Face ID",
+    "PIN · fingerprint · Face ID"
   ],
   "POST MEDIA 4:5": [
     "POST MEDIA 4:5",
@@ -1539,9 +2319,17 @@
     "Я забыл пароль",
     "I forgot my password"
   ],
+  "Parollar bir xil emas. Qaytadan kiriting.": [
+    "Пароли не совпадают. Введите ещё раз.",
+    "The passwords do not match. Enter them again."
+  ],
   "Parolni o‘zgartirish": [
     "Изменить пароль",
     "Change password"
+  ],
+  "Parolni takrorlang": [
+    "Повторите пароль",
+    "Repeat password"
   ],
   "Parolni tiklash": [
     "Восстановить пароль",
@@ -1559,9 +2347,21 @@
     "Забыли\\nпароль",
     "Forgot your\\npassword"
   ],
+  "Payme bilan to‘lash": [
+    "Оплатить через Payme",
+    "Pay with Payme"
+  ],
   "Payme ilovasi orqali": [
     "Через приложение Payme",
     "Via the Payme app"
+  ],
+  "Payme ilovasiga o‘tiladi": [
+    "Откроется приложение Payme",
+    "You will be taken to the Payme app"
+  ],
+  "Payme orqali": [
+    "Через Payme",
+    "Via Payme"
   ],
   "Payme yoki Click orqali to‘lov": [
     "Оплата через Payme или Click",
@@ -1575,6 +2375,10 @@
     "Четверг",
     "Thursday"
   ],
+  "Pochtangizni tekshiring. Kod bir marta ishlaydi.": [
+    "Проверьте почту. Код срабатывает один раз.",
+    "Check your email. The code works once."
+  ],
   "Pornografik yoki jinsiy xarakterdagi": [
     "Порнография или материалы сексуального характера",
     "Pornographic or sexually explicit"
@@ -1582,6 +2386,10 @@
   "Pornografiya": [
     "Порнография",
     "Pornography"
+  ],
+  "Pornografiya va erotik kontent": [
+    "Порнография и эротический контент",
+    "Pornography and erotic content"
   ],
   "Post": [
     "Пост",
@@ -1591,9 +2399,25 @@
     "Вы достигли лимита постов.",
     "You have reached the post limit."
   ],
+  "Post o‘chirildi": [
+    "Пост удалён",
+    "Post deleted"
+  ],
+  "Post profilingizda doimiy qoladi": [
+    "Пост останется в профиле навсегда",
+    "The post stays on your profile permanently"
+  ],
   "Post qo‘shish": [
     "Добавить пост",
     "Add a post"
+  ],
+  "Post va uning layklari profilingizdan olib tashlanadi. Bu amalni qaytarib bo‘lmaydi.": [
+    "Пост и его лайки будут убраны из вашего профиля. Это действие нельзя отменить.",
+    "The post and its likes are removed from your profile. This cannot be undone."
+  ],
+  "Post yo‘q": [
+    "Нет постов",
+    "No posts"
   ],
   "Post yuqoriroq tarifda ochiladi.": [
     "Посты доступны на более высоком тарифе.",
@@ -1603,17 +2427,33 @@
     "Посты",
     "Posts"
   ],
+  "Postlarim": [
+    "Мои посты",
+    "My posts"
+  ],
   "Postni joylash": [
     "Опубликовать пост",
     "Publish post"
+  ],
+  "Postni o‘chirasizmi?": [
+    "Удалить пост?",
+    "Delete the post?"
   ],
   "Postni o‘chirish": [
     "Удалить пост",
     "Delete post"
   ],
+  "Postni saqlash": [
+    "Сохранить пост",
+    "Save post"
+  ],
   "Premium faol": [
     "Premium активен",
     "Premium is active"
+  ],
+  "Premium holatini faqat server tasdiqlaydi. Provayder ilovasidan qaytish o‘zi tasdiq emas.": [
+    "Статус Premium подтверждает только сервер. Возврат из приложения провайдера сам по себе не подтверждение.",
+    "Only the server confirms Premium status. Returning from the provider app is not a confirmation by itself."
   ],
   "Premium obuna": [
     "Premium-подписка",
@@ -1627,6 +2467,18 @@
     "Профиль",
     "Profile"
   ],
+  "Profil ": [
+    "Профиль ",
+    "Profile "
+  ],
+  "Profil Premium": [
+    "Профиль Premium",
+    "Profile Premium"
+  ],
+  "Profil Premium va jismoniy NFC karta — alohida xizmatlar. Ular tarifni o‘zgartirmaydi.": [
+    "Профиль Premium и физическая NFC-карта — отдельные услуги. Они не меняют тариф.",
+    "Profile Premium and the physical NFC card are separate services. They do not change the tier."
+  ],
   "Profil ko‘rildi": [
     "Просмотры профиля",
     "Profile views"
@@ -1634,6 +2486,10 @@
   "Profil ko‘rishlari": [
     "Просмотры профиля",
     "Profile views"
+  ],
+  "Profil manzili": [
+    "Адрес профиля",
+    "Profile address"
   ],
   "Profil nomingiz yonida ko‘rinadi.": [
     "Показывается рядом с именем профиля.",
@@ -1655,6 +2511,10 @@
     "Профиль, посты и статистика будут полностью удалены. ",
     "The profile, posts and statistics are gone for good. "
   ],
+  "Profil, postlar va statistika butunlay yo‘qoladi. Buni qaytarib bo‘lmaydi.": [
+    "Профиль, посты и статистика будут потеряны полностью. Это нельзя отменить.",
+    "The profile, posts and statistics are lost completely. This cannot be undone."
+  ],
   "Profile": [
     "Профиль",
     "Profile"
@@ -1663,9 +2523,29 @@
     "Открытия профиля и касания вашей карты видны ",
     "Profile opens and card taps show up "
   ],
+  "Profilingiz ochilgani va kartangiz tegizilgani shu yerda ko‘rinadi.": [
+    "Здесь видно, как открывали ваш профиль и прикладывали вашу карту.",
+    "Here you see when your profile was opened and your card was tapped."
+  ],
+  "Profilingiz uchun kengaytirilgan imkoniyatlar": [
+    "Расширенные возможности для вашего профиля",
+    "Extended features for your profile"
+  ],
+  "Profilni ko‘rish": [
+    "Посмотреть профиль",
+    "View profile"
+  ],
+  "Profilni ochish": [
+    "Открыть профиль",
+    "Open profile"
+  ],
   "Profilni sozlash": [
     "Настроить профиль",
     "Set up profile"
+  ],
+  "Profilni tahrirlash": [
+    "Редактировать профиль",
+    "Edit profile"
   ],
   "Profilni tasdiqlang": [
     "Подтвердите профиль",
@@ -1679,6 +2559,46 @@
     "Подтверждение профиля — позже",
     "Profile verification — later"
   ],
+  "Provayderni tanlang. To‘lov muvaffaqiyatini faqat server tasdiqlaydi.": [
+    "Выберите провайдера. Успешность платежа подтверждает только сервер.",
+    "Choose a provider. Only the server confirms that the payment succeeded."
+  ],
+  "Pul yechilmadi. Xohlasangiz qaytadan urinib ko‘rishingiz mumkin.": [
+    "Деньги не списаны. При желании попробуйте ещё раз.",
+    "No money was taken. You can try again if you like."
+  ],
+  "QAYTA YUBORISH": [
+    "ОТПРАВИТЬ СНОВА",
+    "RESEND"
+  ],
+  "QIDIRUVDAN": [
+    "ИЗ ПОИСКА",
+    "FROM SEARCH"
+  ],
+  "QR": [
+    "QR",
+    "QR"
+  ],
+  "QR bilan ulashish": [
+    "Поделиться по QR",
+    "Share by QR"
+  ],
+  "QR kod bilan to‘lash": [
+    "Оплатить по QR-коду",
+    "Pay with a QR code"
+  ],
+  "QR kodni ko‘rsatish": [
+    "Показать QR-код",
+    "Show the QR code"
+  ],
+  "QR kodni yashirish": [
+    "Скрыть QR-код",
+    "Hide the QR code"
+  ],
+  "QR ulashish": [
+    "Поделиться QR",
+    "Share QR"
+  ],
   "Qabul qilish": [
     "Принять",
     "Accept"
@@ -1687,9 +2607,17 @@
     "Пока вы не примете, ID к вам не перейдёт",
     "The ID does not move to you until you accept"
   ],
+  "Qabul qilmaguningizcha ID sizga o‘tmaydi.": [
+    "Пока вы не примете, ID к вам не перейдёт.",
+    "The ID does not move to you until you accept."
+  ],
   "Qabul qiluvchi tasdiqlagandan keyin ID unga o‘tadi.": [
     "ID перейдёт получателю после его подтверждения.",
     "The ID moves to the recipient once they accept."
+  ],
+  "Qabul qiluvchi tasdiqlamaguncha ID o‘tmaydi.": [
+    "Пока получатель не подтвердит, ID не перейдёт.",
+    "The ID does not move until the recipient confirms."
   ],
   "Qabul qiluvchining ID kodi": [
     "Код ID получателя",
@@ -1698,6 +2626,10 @@
   "Qabul qiluvchining ID kodini kiriting.": [
     "Введите код ID получателя.",
     "Enter the recipient’s ID code."
+  ],
+  "Qabul qiluvchining ID kodini yozing.": [
+    "Введите код ID получателя.",
+    "Enter the recipient's ID code."
   ],
   "Qaysi ID yozilsin": [
     "Какой ID записать",
@@ -1710,6 +2642,14 @@
   "Qayta tekshirish": [
     "Проверить снова",
     "Check again"
+  ],
+  "Qayta to‘lash talab qilinmaydi": [
+    "Повторная оплата не требуется",
+    "No repeat payment required"
+  ],
+  "Qayta urinib ko‘rishdan oldin kuting": [
+    "Подождите перед повторной попыткой",
+    "Wait before trying again"
   ],
   "Qayta urinish": [
     "Повторить",
@@ -1727,9 +2667,21 @@
     "Идёт поиск…",
     "Searching…"
   ],
+  "Qidiruv": [
+    "Поиск",
+    "Search"
+  ],
   "Qisqacha tavsif — ixtiyoriy": [
     "Краткое описание — необязательно",
     "Short description — optional"
+  ],
+  "Qoidaga zid kontent o‘chiriladi. Takrorlansa hisob cheklanadi. Har postda \"⋯\" → Shikoyat qilish mavjud.": [
+    "Контент, нарушающий правила, удаляется. При повторе аккаунт ограничивается. В каждом посте есть «⋯» → Пожаловаться.",
+    "Content that breaks the rules is removed. Repeat cases limit the account. Every post has \"⋯\" → Report."
+  ],
+  "Qolgan urinish": [
+    "Осталось попыток",
+    "Attempts left"
   ],
   "Qonunga zid": [
     "Противозаконное",
@@ -1751,6 +2703,10 @@
     "Не настроено на устройстве",
     "Not set up on this device"
   ],
+  "Quyidagi maydonga O‘CHIRISH so‘zini kiriting.": [
+    "Введите в поле ниже слово УДАЛИТЬ.",
+    "Type the word DELETE in the field below."
+  ],
   "RAQAMLI PROFIL VA NFC KARTA": [
     "ЦИФРОВОЙ ПРОФИЛЬ И NFC-КАРТА",
     "DIGITAL PROFILE AND NFC CARD"
@@ -1762,6 +2718,14 @@
   "Rang mavzusi": [
     "Цветовая тема",
     "Colour theme"
+  ],
+  "Raqamli tashrif qog‘ozi": [
+    "Цифровая визитка",
+    "Digital business card"
+  ],
+  "Raqamni keyin Sozlamalarda Telegram botga ulaysiz — parolni tiklashda kerak bo‘ladi": [
+    "Номер позже подключите к Telegram-боту в Настройках — он понадобится при восстановлении пароля",
+    "You will link the number to the Telegram bot in Settings later — it is needed when resetting your password"
   ],
   "Rasm": [
     "Фото",
@@ -1775,6 +2739,10 @@
     "Добавить фото",
     "Add photo"
   ],
+  "Rasm ro‘yxatdan olindi": [
+    "Изображение убрано из списка",
+    "Image removed from the list"
+  ],
   "Rasm tanlash": [
     "Выбрать изображение",
     "Pick an image"
@@ -1783,9 +2751,45 @@
     "Выбрать фото или видео",
     "Choose a photo or video"
   ],
+  "Rasm, nom va narx — mijoz shu uchtasini ko‘radi.": [
+    "Фото, название и цена — клиент видит именно эти три вещи.",
+    "Photo, name and price — those three are what the customer sees."
+  ],
+  "Rasmni o‘zgartirish": [
+    "Изменить фото",
+    "Change photo"
+  ],
+  "Reels hozircha bo‘sh": [
+    "Reels пока пусты",
+    "Reels are empty for now"
+  ],
   "Restoran": [
     "Ресторан",
     "Restaurant"
+  ],
+  "Reyting": [
+    "Рейтинг",
+    "Rating"
+  ],
+  "Roziman, davom etish": [
+    "Согласен, продолжить",
+    "I agree, continue"
+  ],
+  "Ro‘yxatdan o‘tganda 8 xonali kod": [
+    "При регистрации — 8-значный код",
+    "An 8-digit code at sign-up"
+  ],
+  "Ro‘yxatdan o‘tganda bepul 8 xonali ID beriladi": [
+    "При регистрации выдаётся бесплатный 8-значный ID",
+    "A free 8-digit ID is issued at sign-up"
+  ],
+  "Ro‘yxatdan o‘tganda bepul 8 xonali ID beriladi.": [
+    "При регистрации выдаётся бесплатный 8-значный ID.",
+    "A free 8-digit ID is issued at sign-up."
+  ],
+  "Ro‘yxatdan o‘tganda bepul 8 xonali ID beriladi. Katalogdan chiroyliroq kod tanlashingiz mumkin.": [
+    "При регистрации выдаётся бесплатный 8-значный ID. Более красивый код можно выбрать в каталоге.",
+    "A free 8-digit ID is issued at sign-up. You can pick a nicer code from the catalogue."
   ],
   "Ro‘yxatdan o‘tish": [
     "Регистрация",
@@ -1794,6 +2798,10 @@
   "Ro‘yxatdan o‘tish orqali shartlarga rozilik bildirasiz": [
     "Регистрируясь, вы принимаете условия",
     "By signing up you accept the terms"
+  ],
+  "SIZNING PROFILINGIZ": [
+    "ВАШ ПРОФИЛЬ",
+    "YOUR PROFILE"
   ],
   "STORY MEDIA 9:16": [
     "STORY MEDIA 9:16",
@@ -1815,6 +2823,10 @@
     "Сохранить и перейти",
     "Save and continue"
   ],
+  "Saqlandi": [
+    "Сохранено",
+    "Saved"
+  ],
   "Saqlanmagan o‘zgarishlar": [
     "Несохранённые изменения",
     "Unsaved changes"
@@ -1823,17 +2835,41 @@
     "Сохранить",
     "Save"
   ],
+  "Sayt": [
+    "Сайт",
+    "Website"
+  ],
   "Sayt bosildi": [
     "Переходы на сайт",
     "Website taps"
+  ],
+  "Server hali javob bermadi. To‘lov o‘tgan bo‘lishi ham mumkin — holatni tekshiring.": [
+    "Сервер пока не ответил. Платёж мог и пройти — проверьте статус.",
+    "The server has not answered yet. The payment may have gone through — check the status."
   ],
   "Server javob bermadi. Qayta urinib ko‘ring.": [
     "Сервер не ответил. Попробуйте ещё раз.",
     "The server did not respond. Please try again."
   ],
+  "Server sessiya ochmadi. Ilova yangilanishi kerak bo‘lishi mumkin.": [
+    "Сервер не открыл сессию. Возможно, приложение нужно обновить.",
+    "The server did not open a session. The app may need an update."
+  ],
+  "Server to‘lovni tasdiqladi. {code} profilingizga ulandi.": [
+    "Сервер подтвердил оплату. {code} подключён к вашему профилю.",
+    "The server confirmed the payment. {code} is linked to your profile."
+  ],
+  "Serverda xatolik. Birozdan so‘ng qayta urining.": [
+    "Ошибка на сервере. Повторите чуть позже.",
+    "Server error. Try again shortly."
+  ],
   "Seshanba": [
     "Вторник",
     "Tuesday"
+  ],
+  "Sessiya tugagan. Qaytadan kiring.": [
+    "Сессия истекла. Войдите заново.",
+    "Your session expired. Sign in again."
   ],
   "Shahar": [
     "Город",
@@ -1867,6 +2903,10 @@
     "Сменить личность",
     "Switch identity"
   ],
+  "Shaxsni tanlash": [
+    "Выбор личности",
+    "Choose identity"
+  ],
   "Shikoyat qilish": [
     "Пожаловаться",
     "Report"
@@ -1874,6 +2914,10 @@
   "Shikoyat yuborildi": [
     "Жалоба отправлена",
     "Report sent"
+  ],
+  "Shikoyat yuborildi. Moderator tekshiradi.": [
+    "Жалоба отправлена. Модератор проверит.",
+    "Report sent. A moderator will review it."
   ],
   "Shikoyatni yuborish": [
     "Отправить жалобу",
@@ -1886,6 +2930,10 @@
   "Siyosiy targ‘ibot": [
     "Политическая пропаганда",
     "Political propaganda"
+  ],
+  "Siyosiy targ‘ibot va chaqiriqlar": [
+    "Политическая пропаганда и призывы",
+    "Political propaganda and calls to action"
   ],
   "Siz": [
     "Вы",
@@ -1915,6 +2963,14 @@
     "Вам дарят",
     "Being gifted to you"
   ],
+  "Skanerlagan odam shu profilni ochadi. Yoki telefonni kartaga tegizsin.": [
+    "Тот, кто отсканирует, откроет этот профиль. Либо пусть приложит телефон к карте.",
+    "Whoever scans it opens this profile. Or they can tap their phone to the card."
+  ],
+  "Skanerlash": [
+    "Сканировать",
+    "Scan"
+  ],
   "SocketException": [
     "SocketException",
     "SocketException"
@@ -1926,6 +2982,10 @@
   "Sonni tekshiring.": [
     "Проверьте количество.",
     "Check the quantity."
+  ],
+  "Sotib olish": [
+    "Купить",
+    "Buy"
   ],
   "Sotuvchi": [
     "Продавец",
@@ -1943,6 +3003,14 @@
     "Подарочная карта",
     "Gift card"
   ],
+  "Sovg‘a kartasi bilan": [
+    "Подарочной картой",
+    "With a gift card"
+  ],
+  "Sovg‘a qilingandan keyin {kod} sizning profilingizdan uziladi va qabul qilinganda unga o‘tadi.": [
+    "После отправки подарка {kod} отвязывается от вашего профиля и переходит получателю, когда тот примет его.",
+    "Once gifted, {kod} is detached from your profile and moves to the recipient when they accept."
+  ],
   "Sovg‘a qilish": [
     "Подарить",
     "Gift"
@@ -1959,9 +3027,17 @@
     "Предложения подарка",
     "Gift offers"
   ],
+  "Sovg‘a yuborildi": [
+    "Подарок отправлен",
+    "Gift sent"
+  ],
   "Sovg‘a\\nyuborildi": [
     "Подарок\\nотправлен",
     "Gift\\nsent"
+  ],
+  "Sovg‘ani yuborish": [
+    "Отправить подарок",
+    "Send the gift"
   ],
   "Sozlamalar": [
     "Настройки",
@@ -1971,9 +3047,21 @@
     "Включите NFC в настройках и проверьте снова.",
     "Turn NFC on in settings, then check again."
   ],
+  "Sozlamalarni ochish": [
+    "Открыть настройки",
+    "Open settings"
+  ],
+  "So‘rov rad etildi. Tarmoq yoki himoya qatlami to‘sgan bo‘lishi mumkin.": [
+    "Запрос отклонён. Возможно, его заблокировала сеть или защитный слой.",
+    "The request was rejected. Your network or a protection layer may have blocked it."
+  ],
   "Spam": [
     "Спам",
     "Spam"
+  ],
+  "Spam papkasini ham tekshiring.": [
+    "Проверьте также папку «Спам».",
+    "Check the spam folder too."
   ],
   "Spam yoki aldov": [
     "Спам или обман",
@@ -1991,6 +3079,10 @@
     "Истории",
     "Stories"
   ],
+  "Story": [
+    "Story",
+    "Story"
+  ],
   "Story 24 soat turadi va keyin o‘zi o‘chadi.": [
     "История живёт 24 часа и затем исчезает.",
     "A story lasts 24 hours, then disappears."
@@ -1998,6 +3090,14 @@
   "Story 24 soat turadi. Hozir bu yerda hech narsa yo‘q.": [
     "История живёт 24 часа. Сейчас здесь ничего нет.",
     "A story lasts 24 hours. There is nothing here right now."
+  ],
+  "Story 24 soatdan keyin o‘chadi · post alohida saqlanadi": [
+    "Story исчезнет через 24 часа · пост сохраняется отдельно",
+    "Story disappears after 24 hours · the post is kept separately"
+  ],
+  "Story 24 soatdan keyin o‘chadi. Birinchisini hozir joylang.": [
+    "История исчезает через 24 часа. Опубликуйте первую прямо сейчас.",
+    "A story disappears after 24 hours. Post your first one now."
   ],
   "Story 24 soatdan keyin o‘zi o‘chadi.": [
     "История исчезнет сама через 24 часа.",
@@ -2007,6 +3107,10 @@
     "Опубликовать историю",
     "Post story"
   ],
+  "Story o‘chirildi": [
+    "Story удалена",
+    "Story deleted"
+  ],
   "Story qo‘shish": [
     "Добавить историю",
     "Add a story"
@@ -2014,6 +3118,10 @@
   "Story va postlar": [
     "Истории и посты",
     "Stories and posts"
+  ],
+  "Story va uning layklari profilingizdan olib tashlanadi. Bu amalni qaytarib bo‘lmaydi.": [
+    "Story и её лайки будут убраны из вашего профиля. Это действие нельзя отменить.",
+    "The Story and its likes are removed from your profile. This cannot be undone."
   ],
   "Story yo‘q": [
     "Нет историй",
@@ -2023,17 +3131,49 @@
     "Истории доступны на более высоком тарифе.",
     "Stories unlock on a higher tier."
   ],
+  "Story, post va Reels bilan tirik profil. Ilova o‘rnatish shart emas — havola brauzerda ham ishlaydi.": [
+    "Живой профиль со Story, постами и Reels. Устанавливать приложение не нужно — ссылка работает и в браузере.",
+    "A living profile with Story, posts and Reels. No app install needed — the link works in a browser too."
+  ],
+  "Story, postlar va Reels": [
+    "Story, посты и Reels",
+    "Story, posts and Reels"
+  ],
+  "Storyni o‘chirasizmi?": [
+    "Удалить Story?",
+    "Delete the Story?"
+  ],
   "Storyni o‘chirish": [
     "Удалить историю",
     "Delete story"
+  ],
+  "Storyni saqlash": [
+    "Сохранить Story",
+    "Save Story"
   ],
   "Summa": [
     "Сумма",
     "Amount"
   ],
+  "Summa server javobidan olindi.": [
+    "Сумма получена из ответа сервера.",
+    "The amount came from the server response."
+  ],
+  "TAQIQLANADI": [
+    "ЗАПРЕЩЕНО",
+    "NOT ALLOWED"
+  ],
+  "TAYYOR · TEGIZING": [
+    "ГОТОВО · ПРИЛОЖИТЕ",
+    "READY · TAP"
+  ],
   "Tahrirlash": [
     "Редактировать",
     "Edit"
+  ],
+  "Takrorlanuvchi harf yoki raqam": [
+    "Повторяющаяся буква или цифра",
+    "Repeating letter or digit"
   ],
   "Tanlangan nom to‘lovdan keyin faollashadi.": [
     "Выбранное имя активируется после оплаты.",
@@ -2051,9 +3191,21 @@
     "Выбор сразу применяется ко всему приложению и сохраняется на устройстве.",
     "The choice applies across the app immediately and is saved on this device."
   ],
+  "Tarif": [
+    "Тариф",
+    "Tier"
+  ],
   "Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.": [
     "Как только придёт подтверждение, экран обновится сам.",
     "This screen updates itself as soon as confirmation arrives."
+  ],
+  "Tasdiq so‘zi": [
+    "Слово подтверждения",
+    "Confirmation word"
+  ],
+  "Tasdiqlandi": [
+    "Подтверждён",
+    "Confirmed"
   ],
   "Tasdiqlangan": [
     "Подтверждён",
@@ -2063,6 +3215,10 @@
     "Значок подтверждения",
     "Verified badge"
   ],
+  "Tasdiqlanmoqda": [
+    "Подтверждается",
+    "Confirming"
+  ],
   "Tasdiqlash": [
     "Подтвердить",
     "Verify"
@@ -2071,9 +3227,17 @@
     "Статус подтверждения хранится на сервере NFCSTORE",
     "Verification status is kept on the NFCSTORE server"
   ],
+  "Tasdiqlash kodi emailga yuboriladi. Telefon raqami profil aloqasi uchun saqlanadi.": [
+    "Код подтверждения отправим на email. Номер телефона сохраняется для связи в профиле.",
+    "The confirmation code is sent to your email. The phone number is kept as profile contact."
+  ],
   "Tasdiqlash kutilmoqda.": [
     "Ожидается подтверждение.",
     "Waiting for confirmation."
+  ],
+  "Tasdiqlash uchun yozing": [
+    "Напишите для подтверждения",
+    "Type to confirm"
   ],
   "Tasodifiy kod beriladi. To‘lov talab qilinmaydi.": [
     "Выдаётся случайный код. Оплата не требуется.",
@@ -2103,6 +3267,10 @@
     "Не удалось проверить. Проверьте соединение.",
     "Could not check. Check your connection."
   ],
+  "Tekshirib ko‘rish": [
+    "Проверить",
+    "Check"
+  ],
   "Tekshirilmoqda…": [
     "Проверяем…",
     "Checking…"
@@ -2119,9 +3287,21 @@
     "Нажатия на телефон",
     "Phone taps"
   ],
+  "Telefon orqali davom etish": [
+    "Продолжить по телефону",
+    "Continue by phone"
+  ],
+  "Telefon orqali tiklash": [
+    "Восстановить по телефону",
+    "Reset by phone"
+  ],
   "Telefon raqam": [
     "Номер телефона",
     "Phone number"
+  ],
+  "Telefon raqamini tasdiqlash": [
+    "Подтверждение номера телефона",
+    "Confirm phone number"
   ],
   "Telefon raqamini to‘liq kiriting.": [
     "Введите номер телефона полностью.",
@@ -2135,6 +3315,10 @@
     "Нажатия на Telegram",
     "Telegram taps"
   ],
+  "Telegram bot": [
+    "Telegram-бот",
+    "Telegram bot"
+  ],
   "Telegram bot hozir sozlanmagan.": [
     "Telegram-бот сейчас не настроен.",
     "The Telegram bot is not configured right now."
@@ -2142,6 +3326,10 @@
   "Telegram bot orqali profilingizni tasdiqlab, tasdiqlangan ": [
     "Подтвердите профиль через Telegram-бот и получите ",
     "Verify your profile through the Telegram bot and get the "
+  ],
+  "Telegram bot orqali profilingizni tasdiqlab, tasdiqlangan nishonga ega bo‘lasiz.": [
+    "Подтвердите профиль через Telegram-бот и получите значок подтверждения.",
+    "Verify your profile through the Telegram bot and get the verified badge."
   ],
   "Telegram bot orqali profilingizni tasdiqlang. Tasdiqlangan ": [
     "Подтвердите профиль через Telegram-бот. Значок ",
@@ -2163,6 +3351,10 @@
     "Частые вопросы",
     "Quick answers"
   ],
+  "Tiklash kodi email manzilingizga yuboriladi. Email ochilmasa — telefon raqamingiz orqali Telegram botdan kod olasiz.": [
+    "Код восстановления отправим на ваш email. Если почта не открывается — получите код в Telegram-боте по номеру телефона.",
+    "The reset code is sent to your email address. If you cannot open your email, get the code from the Telegram bot using your phone number."
+  ],
   "Til": [
     "Язык",
     "Language"
@@ -2170,6 +3362,14 @@
   "Top mahsulotlar": [
     "Топ товаров",
     "Top products"
+  ],
+  "Topildi": [
+    "Найдено",
+    "Found"
+  ],
+  "Topilmadi": [
+    "Не найдено",
+    "Not found"
   ],
   "Topilmadi.": [
     "Не найдено.",
@@ -2195,6 +3395,18 @@
     "Оплата через Payme. Цена показывается на экране оплаты.",
     "Payment via Payme. The price is shown on the payment page."
   ],
+  "To‘lov Payme’da bajarildi. Server javobi kutilmoqda — ilovani yopmang.": [
+    "Платёж выполнен в Payme. Ожидаем ответ сервера — не закрывайте приложение.",
+    "The payment was made in Payme. Waiting for the server response — do not close the app."
+  ],
+  "To‘lov bekor qilindi": [
+    "Платёж отменён",
+    "Payment cancelled"
+  ],
+  "To‘lov holati va tugallanmagan buyurtmalar.": [
+    "Статус оплаты и незавершённые заказы.",
+    "Payment status and unfinished orders."
+  ],
   "To‘lov hozir ishlamayapti": [
     "Оплата сейчас не работает",
     "Payment is not working right now"
@@ -2218,6 +3430,14 @@
   "To‘lov sahifasini qayta ochish": [
     "Открыть страницу оплаты снова",
     "Reopen the payment page"
+  ],
+  "To‘lov tasdiqlandi · server": [
+    "Платёж подтверждён · сервер",
+    "Payment confirmed · server"
+  ],
+  "To‘lov tizimi": [
+    "Платёжная система",
+    "Payment system"
   ],
   "To‘lov tizimi hozir o‘chirilgan.": [
     "Платёжная система сейчас отключена.",
@@ -2243,6 +3463,10 @@
     "Платёж защищён системой {tizim}",
     "Payment secured by {tizim}"
   ],
+  "To‘lov {tizim}da bajarildi. Server javobi kutilmoqda — ilovani yopmang.": [
+    "Оплата выполнена в {tizim}. Ожидается ответ сервера — не закрывайте приложение.",
+    "The payment was made in {tizim}. Waiting for the server's reply — keep the app open."
+  ],
   "To‘lov\\namalga oshmadi": [
     "Платёж\\nне прошёл",
     "Payment\\nfailed"
@@ -2255,9 +3479,17 @@
     "Платёж\\nпринят",
     "Payment\\nreceived"
   ],
+  "To‘lovdan qaytganingizdan keyin ID darhol berilmaydi — server javobi kutiladi.": [
+    "После возврата с оплаты ID выдаётся не сразу — ожидается ответ сервера.",
+    "The ID is not issued immediately after you return from payment — the server response is awaited."
+  ],
   "To‘lovlar": [
     "Платежи",
     "Payments"
+  ],
+  "To‘lovlar tarixi": [
+    "История платежей",
+    "Payment history"
   ],
   "To‘lovlaringiz shu yerda saqlanadi.": [
     "Здесь хранятся все ваши платежи.",
@@ -2270,6 +3502,10 @@
   "To‘lovni davom ettirish": [
     "Продолжить оплату",
     "Continue payment"
+  ],
+  "To‘lovni yakunlang — shundan keyin karta chop etishga ketadi.": [
+    "Завершите оплату — после этого карта уходит в печать.",
+    "Finish the payment — the card then goes to print."
   ],
   "To‘lovni yakunlang — shundan keyin karta chop etishga ketadi. Yetkazish {kun} kun.": [
     "Завершите оплату — после этого карта уходит в печать. Доставка {kun} дней.",
@@ -2291,6 +3527,10 @@
     "Категория",
     "Category"
   ],
+  "Tushundim: hisobim va ID‘larim o‘chiriladi": [
+    "Понимаю: мой аккаунт и мои ID будут удалены",
+    "I understand: my account and my IDs will be deleted"
+  ],
   "Ulashildi": [
     "Поделились",
     "Shared"
@@ -2299,9 +3539,17 @@
     "Поделиться",
     "Share"
   ],
+  "Urg‘u, holat va fon yorug‘ligi": [
+    "Акцент, статусы и яркость фона",
+    "Accent, states and background brightness"
+  ],
   "Usul": [
     "Способ",
     "Method"
+  ],
+  "VIP · BOSS · faqat harflar": [
+    "VIP · BOSS · только буквы",
+    "VIP · BOSS · letters only"
   ],
   "Veb-sayt": [
     "Веб-сайт",
@@ -2347,6 +3595,10 @@
     "Ещё раз, чтобы не ошибиться",
     "Once more, to be sure"
   ],
+  "Xavfsiz ulanish o‘rnatilmadi. Telefondagi sana-vaqtni va tarmoqni tekshiring.": [
+    "Защищённое соединение не установлено. Проверьте дату и время на телефоне и сеть.",
+    "Could not establish a secure connection. Check the date and time on your phone and your network."
+  ],
   "Xavfsizlik": [
     "Безопасность",
     "Security"
@@ -2355,9 +3607,25 @@
     "Услуги",
     "Services"
   ],
+  "Xush kelibsiz": [
+    "Добро пожаловать",
+    "Welcome"
+  ],
   "Xush\\nkelibsiz": [
     "Добро\\nпожаловать",
     "Welcome\\nback"
+  ],
+  "YOKI": [
+    "ИЛИ",
+    "OR"
+  ],
+  "YUKLANMOQDA": [
+    "ЗАГРУЗКА",
+    "LOADING"
+  ],
+  "Yak": [
+    "Вс",
+    "Sun"
   ],
   "Yakshanba": [
     "Воскресенье",
@@ -2383,9 +3651,17 @@
     "Получить новый NFC ID",
     "Get a new NFC ID"
   ],
+  "Yangi PIN kod o‘ylab toping": [
+    "Придумайте новый PIN-код",
+    "Think up a new PIN"
+  ],
   "Yangi buyurtma yo‘q.": [
     "Новых заказов нет.",
     "No new orders."
+  ],
+  "Yangi buyurtmani bajarilgan deb belgilang yoki bekor qiling.": [
+    "Отметьте новый заказ выполненным или отмените его.",
+    "Mark the new order as done, or cancel it."
   ],
   "Yangi kod": [
     "Новый код",
@@ -2435,9 +3711,17 @@
     "Адрес доставки или дополнительная просьба",
     "Delivery address or an extra request"
   ],
+  "Yetkazish {kun} kun": [
+    "Доставка {kun} дней",
+    "Delivery {kun} days"
+  ],
   "Yoki telefonni kartaga tegizing": [
     "Или приложите телефон к карте",
     "Or tap your phone to the card"
+  ],
+  "Yopilish": [
+    "Закрытие",
+    "Closing"
   ],
   "Yopiq": [
     "Закрыто",
@@ -2447,9 +3731,17 @@
     "Закрыть",
     "Close"
   ],
+  "Yoqilgan": [
+    "Включено",
+    "On"
+  ],
   "Yordam": [
     "Помощь",
     "Help"
+  ],
+  "Yordam va huquq": [
+    "Помощь и право",
+    "Help and legal"
   ],
   "Yozib bo‘lmadi — karta himoyalangan yoki juda tez olindi.": [
     "Записать не удалось — карта защищена или её убрали слишком быстро.",
@@ -2463,9 +3755,21 @@
     "Запись полностью заменит старую ссылку на карте. ",
     "Writing fully replaces the old link on the card. "
   ],
+  "Yozish kartadagi eski havolani butunlay almashtiradi. NFCSTORE‘dan kelgan karta allaqachon yozilgan — uni qayta yozish shart emas.": [
+    "Запись полностью заменит старую ссылку на карте. Карта из NFCSTORE уже записана — перезаписывать её не нужно.",
+    "Writing completely replaces the old link on the card. A card from NFCSTORE is already written — there is no need to rewrite it."
+  ],
   "Yozish uchun ID‘ingiz yo‘q.": [
     "У вас нет ID для записи.",
     "You have no ID to write."
+  ],
+  "Yozish uzildi": [
+    "Запись прервана",
+    "Writing interrupted"
+  ],
+  "Yo‘q": [
+    "Нет",
+    "No"
   ],
   "Yuborilgan": [
     "Отправлено",
@@ -2474,6 +3778,10 @@
   "Yuborish": [
     "Отправить",
     "Send"
+  ],
+  "Yuklashdan oldin o‘qib chiqing": [
+    "Прочитайте перед загрузкой",
+    "Read this before uploading"
   ],
   "Yuklashdan oldin o‘qing.": [
     "Прочитайте перед загрузкой.",
@@ -2487,21 +3795,61 @@
     "Насилие или жестокость",
     "Violence or cruelty"
   ],
+  "Zo‘ravonlik, haqorat, kamsitish": [
+    "Насилие, оскорбления, унижение",
+    "Violence, insults, humiliation"
+  ],
   "bermang — kod bilan ID faollashtiriladi.": [
     "не сообщайте — этим кодом активируется ID.",
     "it — the code activates the ID."
+  ],
+  "bir bosishda": [
+    "в одно нажатие",
+    "in one tap"
   ],
   "bo‘sh kod tanlab boshlang.": [
     "свободный код в каталоге и начните.",
     "a free code from the catalog to start."
   ],
+  "butun profil": [
+    "весь профиль",
+    "your whole profile"
+  ],
   "buyurtma tugmasi bo‘lmaydi.": [
     "кнопки заказа не будет.",
     "there is no order button."
   ],
+  "daqiqa": [
+    "мин",
+    "min"
+  ],
+  "daqiqa qoldi": [
+    "мин осталось",
+    "min left"
+  ],
+  "darhol": [
+    "мгновенно",
+    "instantly"
+  ],
   "faol shaxsni bir tegishda almashtirasiz.": [
     "одним касанием смените активную личность.",
     "switch the active identity in one tap."
+  ],
+  "faqat harflar": [
+    "только буквы",
+    "letters only"
+  ],
+  "faqat raqamlar": [
+    "только цифры",
+    "digits only"
+  ],
+  "hozir": [
+    "сейчас",
+    "now"
+  ],
+  "hozircha": [
+    "пока",
+    "for now"
   ],
   "keyin siz bilan kelishiladi.": [
     "затем с вами согласуют.",
@@ -2519,6 +3867,10 @@
     "просмотров",
     "views"
   ],
+  "kun": [
+    "дн",
+    "d"
+  ],
   "mahsulot": [
     "товар",
     "products"
@@ -2526,6 +3878,10 @@
   "ma‘lumotlaringizni bitta raqamli profilda jamlang va NFC karta ": [
     "данные соберите в одном цифровом профиле и делитесь ",
     "details in one digital profile and share it with an NFC "
+  ],
+  "naqsh": [
+    "шаблон",
+    "pattern"
   ],
   "nishon profilingizda ko‘rinadi.": [
     "значок появится в вашем профиле.",
@@ -2559,6 +3915,26 @@
     "сессии на других устройствах остаются как есть.",
     "sessions on other devices stay as they are."
   ],
+  "shu hisobga biriktiriladi.": [
+    "будет привязан к этому аккаунту.",
+    "will be linked to this account."
+  ],
+  "soat": [
+    "ч",
+    "h"
+  ],
+  "soat qoldi": [
+    "ч осталось",
+    "h left"
+  ],
+  "so‘m": [
+    "сум",
+    "soum"
+  ],
+  "so‘mdan": [
+    "сум и выше",
+    "soum and up"
+  ],
   "statistika yangi egasiga o‘tadi.": [
     "статистика перейдёт новому владельцу.",
     "statistics move to the new owner."
@@ -2579,6 +3955,10 @@
     "собираются здесь.",
     "here."
   ],
+  "tugadi": [
+    "истекло",
+    "expired"
+  ],
   "tuting va bir necha soniya ushlab turing.": [
     "телефона и подержите несколько секунд.",
     "phone and hold for a few seconds."
@@ -2591,13 +3971,41 @@
     "подтверждаю, что он не нарушает права других.",
     "confirm it does not violate anyone’s rights."
   ],
+  "uchun": [
+    "(получатель)",
+    "(recipient)"
+  ],
   "va bir necha soniya ushlab turing.": [
     "и подержите несколько секунд.",
     "and hold for a few seconds."
   ],
+  "xonali kod": [
+    "значный код",
+    "digit code"
+  ],
   "yuborildi. Kod 10 daqiqa amal qiladi.": [
     "отправлен. Код действует 10 минут.",
     "was sent. The code is valid for 10 minutes."
+  ],
+  "{code} kodi band qilingan. To‘lov tasdiqlanmasa, kod boshqa odamga o‘tadi.": [
+    "Код {code} забронирован. Если оплата не подтвердится, код перейдёт другому человеку.",
+    "Code {code} is on hold. If the payment is not confirmed, the code goes to someone else."
+  ],
+  "{code} o‘chirilsinmi?": [
+    "Удалить {code}?",
+    "Delete {code}?"
+  ],
+  "{kimga} egasi tasdiqlagandan keyin {kod} unga o‘tadi. Unga qadar ID sizda qoladi.": [
+    "После подтверждения владельцем {kimga} {kod} перейдёт к нему. До этого ID остаётся у вас.",
+    "Once the owner of {kimga} confirms, {kod} moves to them. Until then the ID stays with you."
+  ],
+  "{kod} endi sizniki": [
+    "{kod} теперь ваш",
+    "{kod} is yours now"
+  ],
+  "{kod} kartaga yozilmoqda. Telefonni olmang.": [
+    "{kod} записывается на карту. Не убирайте телефон.",
+    "{kod} is being written to the card. Do not move the phone."
   ],
   "{kod} sizga biriktirildi. Endi profilingizni to‘ldirib, kartani ulashishingiz mumkin.": [
     "{kod} закреплён за вами. Теперь заполните профиль и делитесь картой.",
@@ -2607,6 +4015,14 @@
     "{{n}} / {{max}} фото.",
     "{{n}} / {{max}} photos."
   ],
+  "{n} mahsulot": [
+    "{n} товаров",
+    "{n} products"
+  ],
+  "{n} ta kod tanlash uchun ochiq.": [
+    "{n} кодов доступно для выбора.",
+    "{n} codes are available to pick."
+  ],
   "{n} ta mahsulot": [
     "{{n}} товаров",
     "{{n}} products"
@@ -2615,32 +4031,32 @@
     "{{n}} фото",
     "{{n}} photos"
   ],
+  "{son} kun": [
+    "{son} дней",
+    "{son} days"
+  ],
+  "{son} so‘m": [
+    "{son} сум",
+    "{son} soum"
+  ],
   "{sotuvchi} siz bilan bog‘lanadi. Buyurtma holatini shu yerdan kuzatasiz.": [
     "{sotuvchi} свяжется с вами. Статус заказа отслеживайте здесь.",
     "{sotuvchi} will contact you. Track the order status here."
   ],
-  "Hujjatlar": [
-    "Документы",
-    "Documents"
+  "{tizim} orqali to‘lov havolasi kelmadi. Boshqa usulni tanlang yoki birozdan so‘ng urinib ko‘ring.": [
+    "Ссылка на оплату через {tizim} не пришла. Выберите другой способ или попробуйте чуть позже.",
+    "No {tizim} payment link came back. Choose another method or try again shortly."
   ],
-  "Maxfiylik siyosati": [
-    "Политика конфиденциальности",
-    "Privacy policy"
+  "{url} hammaga ko‘rinadi": [
+    "{url} виден всем",
+    "{url} is visible to everyone"
   ],
-  "Foydalanish shartlari": [
-    "Условия использования",
-    "Terms of use"
+  "“Sotib olish” → to‘lov usulini tanlash ekrani ochiladi": [
+    "«Купить» → откроется экран выбора способа оплаты",
+    "\"Buy\" → the payment method screen opens"
   ],
-  "Hisobni o‘chirish": [
-    "Удалить аккаунт",
-    "Delete account"
-  ],
-  "Bu amalni ilovadan qaytarib bo‘lmaydi.": [
-    "Это действие нельзя отменить из приложения.",
-    "This cannot be undone from the app."
-  ],
-  "Hisobingiz o‘chiriladi va siz undan chiqasiz. Profillaringiz, postlaringiz va storylaringiz saytda ham, ilovada ham ko‘rinmay qoladi. To‘lov va buyurtma yozuvlari hisobot uchun saqlanadi. Qaytarish kerak bo‘lsa — yordam xizmatiga murojaat qiling.": [
-    "Ваш аккаунт будет удалён, и вы выйдете из него. Ваши профили, посты и сторис перестанут показываться и на сайте, и в приложении. Записи о платежах и заказах сохраняются для отчётности. Если нужно восстановить — обратитесь в поддержку.",
-    "Your account will be deleted and you will be signed out. Your profiles, posts and stories stop showing on the site and in the app. Payment and order records are kept for reporting. To restore it, contact support."
+  "“{q}” topilmadi": [
+    "«{q}» не найдено",
+    "\"{q}\" not found"
   ]
 }

@@ -12,10 +12,16 @@ import 'package:nfcstore/design/tokens.dart';
 ///
 /// Sabab ANIMATSIYA XULQIDA edi: Android'da "Animator duration
 /// scale" o'chirilgan yoki batareya tejash yoqilgan bo'lsa, tizim
-/// ilovaga "animatsiyalarni o'chir" deb aytadi va Flutter buni
-/// hurmat qiladi. Halqa esa bezak emas — u "bu profilda yangi
-/// istorya bor" degan MA'NONI tashiydi, shuning uchun
-/// `AnimationBehavior.preserve` bilan saqlanishi kerak.
+/// ilovaga "animatsiyalarni o'chir" deb aytadi.
+///
+/// QAROR O'ZGARDI. Ilgari halqa bu holatda ham aylanardi, chunki u
+/// "yangi istorya bor" MA'NOSINI tashiydi deb hisoblangandi.
+/// Aslida ma'noni halqaning RANGI tashiydi: oltin — ko'rilmagan,
+/// kulrang — ko'rilgan. Aylanish esa faqat bezak.
+///
+/// Yangi dizayn qoidasi: "Harakatni kamaytirish holatida sokin
+/// muqobilni ko'rsat." Shuning uchun halqa endi qotib turadi,
+/// rangi esa qoladi — ma'no yo'qolmaydi, harakat esa yo'qoladi.
 void main() {
   /// Halqaning joriy burilishi. `RotationTransition` ni topamiz va
   /// uni boshqarayotgan animatsiyaning qiymatini o'qiymiz.
@@ -48,14 +54,15 @@ void main() {
     await tester.pumpWidget(wrap(const SizedBox()));
   });
 
-  testWidgets('TIZIMDA ANIMATSIYA O‘CHIRILGAN BO‘LSA HAM aylanadi',
+  testWidgets('TIZIMDA ANIMATSIYA O‘CHIRILGAN BO‘LSA halqa qotadi',
       (tester) async {
-    // Qurilmadagi holatning aynan o'zi: foydalanuvchi Android
-    // sozlamalarida animatsiyalarni o'chirgan yoki batareya tejash
-    // rejimini yoqqan.
+    // Foydalanuvchi Android sozlamalarida animatsiyalarni o'chirgan
+    // yoki batareya tejash rejimini yoqqan.
     tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    addTearDown(
+      tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
+    );
 
     await tester.pumpWidget(wrap(
       const StoryRing(name: 'Test', size: 72, showLabel: false),
@@ -65,11 +72,11 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     final later = turns(tester);
 
-    expect((later - start).abs(), greaterThan(0.2),
-        reason: 'Tizim animatsiyalarni o‘chirganda halqa qotib qoldi — '
-            'AnimationBehavior.preserve kerak');
+    expect(later, start,
+        reason: 'Harakatni kamaytirish rejimida halqa aylanmasligi kerak');
 
-    await tester.pumpWidget(wrap(const SizedBox()));
+    // HALQA O'ZI QOLADI: ma'no rangda, harakatda emas.
+    expect(find.byType(RotationTransition), findsOneWidget);
   });
 
   testWidgets('ko‘rilgan istoryada halqa aylanmaydi', (tester) async {
@@ -84,6 +91,6 @@ void main() {
 
   test('aylanish davri dizayn manbasidagidek — 9 soniya', () {
     // Manba: `shimmerSpin 9s linear infinite`.
-    expect(M.storyRing, const Duration(seconds: 9));
+    expect(M.ring, const Duration(seconds: 9));
   });
 }

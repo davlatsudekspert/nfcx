@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nfcstore/data/api_client.dart';
 import 'package:nfcstore/data/models.dart';
+import 'package:nfcstore/design/components/buttons.dart';
 import 'package:nfcstore/design/components/input.dart';
+import 'package:nfcstore/design/components/logo.dart';
 import 'package:nfcstore/design/components/nav_bar.dart';
 import 'package:nfcstore/design/components/states.dart';
 import 'package:nfcstore/design/theme.dart';
@@ -14,6 +16,7 @@ import 'package:nfcstore/design/tokens.dart';
 import 'package:nfcstore/screens/entry/login.dart';
 import 'package:nfcstore/screens/identity/switcher.dart';
 import 'package:nfcstore/state/app_state.dart';
+import 'settle.dart';
 
 /// Xotiradagi soxta saqlagich — testda haqiqiy Keystore yo'q.
 class FakeStore extends FlutterSecureStorage {
@@ -82,12 +85,21 @@ void main() {
         home: Scaffold(body: NavBar(active: 0, onSelect: (_) {})),
       ));
       expect(NavBar.tabs.length, 5);
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Discover'), findsOneWidget);
-      expect(find.text('NFC'), findsOneWidget);
+      // YORLIQLAR O‘ZBEKCHA: interfeys tili o‘zbekcha, shuning
+      // uchun tab nomlari ham tarjima qilinadi. "Reels" tarjima
+      // qilinmaydi — u mahsulot atamasi va uch tilda ham shunday
+      // yoziladi.
+      expect(find.text('Bosh sahifa'), findsOneWidget);
+      expect(find.text('Qidiruv'), findsOneWidget);
       expect(find.text('Reels'), findsOneWidget);
-      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Profil'), findsOneWidget);
       expect(find.text('Activity'), findsNothing);
+
+      // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
+      // ko‘rsatiladi va "NFC" so‘zi ekranga chizilmaydi. Tabning
+      // ma‘nosi `NavBar.tabs` da saqlanadi.
+      expect(find.text('NFC'), findsNothing);
+      expect(find.byType(BrandMark), findsOneWidget);
     });
 
     testWidgets('NFC markazda turadi', (tester) async {
@@ -98,7 +110,9 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: NavBar(active: NavBar.nfcIndex, onSelect: (_) {})),
       ));
-      expect(find.text('NFC'), findsOneWidget);
+      // Markazda — brend medalyoni, boshqa tablarda bunday
+      // element yo‘q.
+      expect(find.byType(BrandMark), findsOneWidget);
     });
 
     testWidgets('bosilganda indeks uzatiladi', (tester) async {
@@ -106,7 +120,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: NavBar(active: 0, onSelect: (i) => picked = i)),
       ));
-      await tester.tap(find.text('NFC'));
+      await tester.tap(find.byType(BrandMark));
       expect(picked, 2);
     });
   });
@@ -123,8 +137,14 @@ void main() {
       await tester.pump();
 
       expect(find.textContaining('SMS'), findsNothing);
+      // Yorliq "Email", izohda esa telefon ham ishlashi aytiladi —
+      // server ikkalasini ham qabul qiladi.
       expect(find.textContaining('Email yoki telefon'), findsWidgets);
-      expect(find.text('Kirish'), findsOneWidget);
+      // "Kirish" ekranda IKKI MARTA uchraydi va bu to‘g‘ri: biri —
+      // yuqoridagi almashtirgichning faol bo‘limi, ikkinchisi —
+      // formani yuboradigan tugma. Shuning uchun tugmaning o‘zi
+      // qidiriladi, matn emas.
+      expect(find.widgetWithText(PrimaryButton, 'Kirish'), findsOneWidget);
     });
 
     testWidgets('bo‘sh maydonda server chaqirilmaydi', (tester) async {
@@ -137,7 +157,7 @@ void main() {
         storage: FakeStore(),
       );
       await tester.pumpWidget(wrap(const LoginScreen(), state));
-      await tester.tap(find.text('Kirish'));
+      await tester.tap(find.widgetWithText(PrimaryButton, 'Kirish'));
       await tester.pump();
 
       expect(calls, 0);
@@ -258,7 +278,7 @@ void main() {
         state,
       ));
       await tester.tap(find.text('och'));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('Haqiqiy foydalanuvchi'), findsOneWidget);
       expect(find.text('Haqiqiy biznes'), findsOneWidget);
@@ -277,10 +297,24 @@ void main() {
       expect(humanError(ApiError('offline')), contains('Internet'));
     });
 
-    test('noma‘lum kalit xom holda chiqmaydi', () {
+    test('NOMA‘LUM KALIT ENDI YASHIRILMAYDI', () {
+      // QAROR O‘ZGARDI. Ilgari tanilmagan kalit yashirilardi va
+      // ekranda "Nimadir noto‘g‘ri ketdi" turardi. Qurilmada kirish
+      // ishlamaganda aynan shu jumla chiqdi va u HECH NARSA
+      // aytmadi: sertifikat xatosimi, himoya qatlami bloklaganmi,
+      // server tokensiz javob berganmi — hammasi bir xil ko‘rindi.
+      //
+      // Egasining talabi: "umumiy xato o‘rniga ANIQ sababni
+      // ko‘rsating". Kalit — mashina nomi, unda shaxsiy ma‘lumot
+      // yo‘q; uning o‘rniga taxmin qilish ancha qimmatga tushadi.
       final msg = humanError(ApiError('qandaydir_yangi_kalit'));
-      expect(msg, isNot(contains('qandaydir_yangi_kalit')));
-      expect(msg, contains('Nimadir'));
+      expect(msg, contains('qandaydir_yangi_kalit'));
+
+      // Tanilgan kalitlar avvalgidek odam tilida qoladi.
+      expect(
+        humanError(ApiError('bad_credentials', status: 401)),
+        'Login yoki parol noto‘g‘ri.',
+      );
     });
   });
 
@@ -290,17 +324,30 @@ void main() {
     test('ranglar handoff bilan bir xil', () {
       // Bu qiymatlar dizayn hujjatidan. O‘zgartirilsa — ataylab
       // o‘zgartirilsin, tasodifan emas.
-      expect(C.obsidian, const Color(0xFF0A0805));
-      expect(C.champagne, const Color(0xFFE8CFA0));
+      expect(C.bg, const Color(0xFF0A0805));
+      expect(C.accent, const Color(0xFFE8CFA0));
       expect(C.platinum, const Color(0xFFC9CCD2));
-      expect(C.verdant, const Color(0xFF63D694));
-      expect(C.signal, const Color(0xFFE2685F));
+      expect(C.ok, const Color(0xFF63D694));
+      expect(C.fail, const Color(0xFFE2685F));
     });
 
-    test('harakat byudjeti: hech narsa 400ms dan oshmaydi', () {
-      for (final d in [M.press, M.fade, M.image, M.push, M.sheet, M.shared]) {
+    test('harakat byudjeti: EKRAN O‘TISHLARI 400ms dan oshmaydi', () {
+      // Foydalanuvchi KUTADIGAN harakatlar: bosish javobi, xiralik,
+      // ekran o‘tishi, oyna ochilishi. Ular 400 ms dan oshsa ilova
+      // sekin his qilinadi.
+      for (final d in [M.press, M.fade, M.image, M.push, M.sheet]) {
         expect(d.inMilliseconds, lessThanOrEqualTo(400));
       }
+    });
+
+    test('dekorativ harakatlar dizayn qiymatlarida', () {
+      // Bular kutish emas, KO‘RINISH: mavzu almashishi, kartaning
+      // o‘girilishi, layk sakrashi. Qiymatlar dizayn hujjatidan.
+      expect(M.theme, const Duration(milliseconds: 420));
+      expect(M.flip, const Duration(milliseconds: 720));
+      expect(M.like, const Duration(milliseconds: 220));
+      expect(M.sweep, const Duration(milliseconds: 4200));
+      expect(M.ring, const Duration(seconds: 9));
     });
   });
 }

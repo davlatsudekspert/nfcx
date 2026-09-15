@@ -1,22 +1,21 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Scaffold;
-import 'package:flutter/services.dart' show TextInputAction;
+import 'package:flutter/services.dart' show TextInputAction, TextInputType;
 import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
-import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
-import '../../state/app_state.dart';
-import '../common/top_bar.dart';
 import '../../l10n/strings.dart';
+import '../../state/app_state.dart';
 
 /// BIZNES HISOB OCHISH.
 ///
@@ -43,17 +42,17 @@ class CreateCompanyScreen extends StatefulWidget {
 /// nomlar esa tarjima qilinadi va til almashganda qayta
 /// hisoblanishi kerak.
 Map<String, String> _categories() => <String, String>{
-  'restaurant': tr('Restoran'),
-  'cafe': tr('Kafe'),
-  'market': tr('Market'),
-  'shop': tr('Do‘kon'),
-  'services': tr('Xizmatlar'),
-  'construction': tr('Qurilish'),
-  'clinic': tr('Klinika'),
-  'pharmacy': tr('Dorixona'),
-  'education': tr('Ta‘lim'),
-  'other': tr('Boshqa'),
-};
+      'restaurant': tr('Restoran'),
+      'cafe': tr('Kafe'),
+      'market': tr('Market'),
+      'shop': tr('Do‘kon'),
+      'services': tr('Xizmatlar'),
+      'construction': tr('Qurilish'),
+      'clinic': tr('Klinika'),
+      'pharmacy': tr('Dorixona'),
+      'education': tr('Ta‘lim'),
+      'other': tr('Boshqa'),
+    };
 
 class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
   final _id = TextEditingController();
@@ -138,7 +137,8 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
       return;
     }
     if (!_auto && _id.text.trim().length < 3) {
-      setState(() => _error = tr('Company ID kamida 3 ta belgidan iborat bo‘lsin.'));
+      setState(
+          () => _error = tr('Company ID kamida 3 ta belgidan iborat bo‘lsin.'));
       return;
     }
 
@@ -168,11 +168,13 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         setState(() => _error = switch (e.key) {
               'company_id_taken' => tr('Bu Company ID band.'),
               'company_id_reserved' => tr('Bu nom band qilingan ro‘yxatda.'),
-              'bad_company_id' => tr('Company ID faqat harf va raqamdan iborat bo‘lsin.'),
+              'bad_company_id' =>
+                tr('Company ID faqat harf va raqamdan iborat bo‘lsin.'),
               'name_not_allowed' => tr('Bu nomni ishlatib bo‘lmaydi.'),
               'required_fields' =>
                 tr('Nom, shahar, telefon va tavsif to‘liq to‘ldirilsin.'),
-              'auto_id_failed' => tr('Hozir bepul ID berib bo‘lmadi. Qayta urining.'),
+              'auto_id_failed' =>
+                tr('Hozir bepul ID berib bo‘lmadi. Qayta urining.'),
               _ => humanError(e),
             });
       }
@@ -190,21 +192,23 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
     final available = check?['available'] == true;
     final price = (check?['price'] as num?)?.round() ?? 0;
 
-    return Scaffold(
-      backgroundColor: C.obsidian,
-      body: SafeArea(
+    return ScreenBackdrop(
+      aura: Aura.none,
+      child: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            TopBar(
-              title: tr('Biznes hisob'),
-              subtitle: tr('Katalog, buyurtma va statistika'),
-            ),
+            const TopBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, 0),
                 children: [
+                  ScreenTitle(
+                    tr('Biznes hisob'),
+                    subtitle: tr('Katalog, buyurtma va statistika'),
+                  ),
                   Eyebrow(tr('Company ID')),
-                  const SizedBox(height: S.x8),
+                  const SizedBox(height: S.x12),
                   _Choice(
                     title: tr('Bepul ID'),
                     hint: tr('Tasodifiy kod beriladi. To‘lov talab qilinmaydi.'),
@@ -224,10 +228,11 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                       label: tr('Company ID'),
                       controller: _id,
                       hint: 'MASALAN',
+                      helper: tr('Kamida 3 ta belgi — harf va raqam.'),
                       onChanged: _onId,
                       textInputAction: TextInputAction.next,
                     ),
-                    const SizedBox(height: S.x8),
+                    const SizedBox(height: S.x12),
                     _CheckLine(
                       checking: _checking,
                       failed: _checkFailed,
@@ -236,9 +241,9 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                       price: price,
                     ),
                   ],
-                  const SizedBox(height: S.x24),
-                  Eyebrow(tr('Biznes haqida')),
-                  const SizedBox(height: S.x12),
+                  const SizedBox(height: S.x32),
+                  SectionHeader(tr('Biznes haqida')),
+                  const SizedBox(height: S.x16),
                   Field(
                     label: tr('Nomi'),
                     controller: _name,
@@ -252,18 +257,19 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                     hint: tr('Kamida 20 ta belgi'),
                     maxLines: 4,
                   ),
-                  const SizedBox(height: S.x16),
+                  const SizedBox(height: S.x20),
                   Eyebrow(tr('Turkum')),
-                  const SizedBox(height: S.x8),
+                  const SizedBox(height: S.x12),
                   Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: S.x8,
+                    runSpacing: S.x8,
                     children: [
                       for (final e in _categories().entries)
-                        Chip(
+                        FilterChip(
                           e.value,
                           active: _category == e.key,
-                          onTap: _busy ? null : () => setState(() => _category = e.key),
+                          onTap:
+                              _busy ? null : () => setState(() => _category = e.key),
                         ),
                     ],
                   ),
@@ -283,21 +289,27 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                     textInputAction: TextInputAction.done,
                     error: _error,
                   ),
-                  const SizedBox(height: S.x24),
-                  PrimaryButton(
-                    _auto || price == 0 ? tr('Biznes ochish') : tr('Davom etish'),
-                    loading: _busy,
-                    onTap: _busy ? null : _submit,
-                  ),
-                  const SizedBox(height: S.x12),
+                  const SizedBox(height: S.x16),
                   Text(
                     _auto
                         ? tr('Hisob darhol ochiladi va admin ko‘rigidan o‘tadi.')
                         : tr('Tanlangan nom to‘lovdan keyin faollashadi.'),
-                    textAlign: TextAlign.center,
-                    style: T.caption.copyWith(fontSize: 12.5),
+                    style: T.caption,
                   ),
+                  SizedBox(height: StickyBar.inset(context)),
                 ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: StickyBar(
+                child: PrimaryButton(
+                  _auto || price == 0 ? tr('Biznes ochish') : tr('Davom etish'),
+                  loading: _busy,
+                  onTap: _busy ? null : _submit,
+                ),
               ),
             ),
           ],
@@ -308,6 +320,9 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 }
 
 /// Bandlik va narx qatori — SERVER javobidan.
+///
+/// Narx ham, bandlik ham shu yerda HISOBLANMAYDI: ikkalasi ham
+/// `checkCompanyId` javobidan ko'chiriladi.
 class _CheckLine extends StatelessWidget {
   const _CheckLine({
     required this.checking,
@@ -332,26 +347,32 @@ class _CheckLine extends StatelessWidget {
         children: [
           const Spinner(size: 14),
           const SizedBox(width: S.x8),
-          Text(tr('Tekshirilmoqda…'), style: T.caption.copyWith(fontSize: 13)),
+          Text(tr('Tekshirilmoqda…'), style: T.caption),
         ],
       );
     }
     if (failed) {
-      return Text(tr('Tekshirib bo‘lmadi. Ulanishni tekshiring.'),
-          style: T.caption.copyWith(fontSize: 13, color: C.muted));
+      return Text(
+        tr('Tekshirib bo‘lmadi. Ulanishni tekshiring.'),
+        style: T.caption,
+      );
     }
     if (check == null) return const SizedBox.shrink();
     if (!available) {
-      return Text(tr('Bu Company ID band.'),
-          style: T.caption.copyWith(fontSize: 13, color: C.signal));
+      return StatusChip(tr('Bu Company ID band.'), tone: StatusTone.fail);
     }
-    return Text(
+    return StatusChip(
       price == 0 ? tr('Bo‘sh — bepul') : 'Bo‘sh — ${som(price)}',
-      style: T.caption.copyWith(fontSize: 13, color: C.verdant),
+      tone: StatusTone.ok,
     );
   }
 }
 
+/// IKKI YO'LDAN BIRI.
+///
+/// Tanlangani faqat RANG bilan emas, halqa ichidagi BELGI bilan
+/// ham ko'rsatiladi — rang ko'rmaydigan odam ham qaysi yo'l
+/// tanlanganini biladi.
 class _Choice extends StatelessWidget {
   const _Choice({
     required this.title,
@@ -366,27 +387,54 @@ class _Choice extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Press(
-        haptic: true,
+  Widget build(BuildContext context) => Surface(
         onTap: onTap,
-        child: Surface(
-          padding: const EdgeInsets.all(S.x12),
-          border: selected ? C.champagne.withValues(alpha: .35) : null,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: T.cardTitle.copyWith(fontSize: 15)),
-                    const SizedBox(height: 2),
-                    Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
-                  ],
-                ),
+        border: Border.all(
+          color: selected ? C.lineStrong : C.line,
+          width: selected ? 1.4 : 1,
+        ),
+        child: Row(
+          children: [
+            _Radio(selected: selected),
+            const SizedBox(width: S.x12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: T.cardTitle),
+                  const SizedBox(height: 3),
+                  Text(hint, style: T.caption),
+                ],
               ),
-              if (selected) NIcon(Ico.check, size: 16, color: C.champagne),
-            ],
+            ),
+          ],
+        ),
+      );
+}
+
+class _Radio extends StatelessWidget {
+  const _Radio({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) => AnimatedContainer(
+        duration: M.press,
+        curve: M.curve,
+        width: 24,
+        height: 24,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: selected ? C.actionFace : null,
+          color: selected ? null : C.surfaceHigh,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? const Color(0x00000000) : C.line,
           ),
         ),
+        child: selected
+            ? NIcon(Ico.check, size: 14, color: C.onAccent)
+            : null,
       );
 }

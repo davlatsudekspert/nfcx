@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore/app.dart';
 import 'package:nfcstore/data/deep_link.dart';
+import 'package:nfcstore/design/components/logo.dart';
 import 'package:nfcstore/design/components/nav_bar.dart';
 import 'package:nfcstore/l10n/strings.dart';
 import 'package:nfcstore/screens/shell.dart';
@@ -8,6 +9,7 @@ import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_prefs.dart';
 import 'audit/harness.dart' show auditSize, auditState, loadAuditFonts, mockImageCacheDir;
 import 'widget_test.dart' show FakeStore;
+import 'settle.dart';
 
 /// RELIZDAN OLDINGI DUD SINOVI.
 ///
@@ -29,17 +31,6 @@ void main() {
   // bo'ladi. Standart 800x600 oynasi ham telefon emas.
   setUpAll(loadAuditFonts);
   setUp(mockImageCacheDir);
-
-  /// `pumpAndSettle` ISHLAMAYDI va bu kutilgan: ilovada TO'XTOVSIZ
-  /// animatsiyalar bor (yuklanish aylanasi, skelet yaltirashi).
-  /// Ular hech qachon "tinchimaydi", shuning uchun vaqt qo'lda
-  /// suriladi — vizual audit ham aynan shunday qiladi.
-  Future<void> settle(WidgetTester tester) async {
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(const Duration(seconds: 2));
-  }
 
   /// Haqiqiy ilova — soxta server bilan.
   ///
@@ -79,7 +70,11 @@ void main() {
     await boot(tester);
     for (var i = 0; i < NavBar.tabs.length; i++) {
       final label = NavBar.tabs[i].label;
-      await tester.tap(find.text(label));
+      // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
+      // ko‘rsatiladi, ya‘ni matn bo‘yicha topib bo‘lmaydi.
+      await tester.tap(
+        i == NavBar.nfcIndex ? find.byType(BrandMark) : find.text(label),
+      );
       await settle(tester);
       expect(tester.takeException(), isNull, reason: label);
     }

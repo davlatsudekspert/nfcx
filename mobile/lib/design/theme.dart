@@ -1,58 +1,77 @@
-import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'tokens.dart';
 import 'type.dart';
 
-/// Material mavzusi — asosan Flutter'ning o'z komponentlarini (klaviatura
-/// ustidagi panel, matn tanlash menyusi, scrollbar) ilova ranglariga
-/// moslash uchun. Ilovaning o'z komponentlari `design/components/` da
-/// va ular ThemeData'ga BOG'LIQ EMAS — dizayn tokenlaridan to'g'ridan
-/// to'g'ri o'qiydi, shuning uchun tasodifan Material ranglariga
-/// "sirg'alib" ketmaydi.
+/// FLUTTER WIDGETLARI UCHUN MAVZU — ilovaning o'z dizayni EMAS.
+///
+/// Ilova komponentlari `C` va `T` ni bevosita o'qiydi; `ThemeData`
+/// faqat Flutter o'zi chizadigan narsalar uchun kerak: klaviatura
+/// ustidagi panel, matn tanlash menyusi, skrollbar, kursor rangi.
+/// Ular `ThemeData` siz tizim ko'k rangida chiqib, dizayndan
+/// ajralib turadi.
 ThemeData buildTheme() {
   final scheme = ColorScheme.dark(
-    primary: C.champagne,
-    onPrimary: C.ink,
-    secondary: C.platinum,
-    surface: C.graphite,
-    onSurface: C.offWhite,
-    error: C.signal,
+    primary: C.accent,
+    onPrimary: C.onAccent,
+    secondary: C.accentSecondary,
+    onSecondary: C.onAccent,
+    surface: C.surface,
+    onSurface: C.ink,
+    error: C.fail,
+    onError: C.ink,
+    outline: C.line,
   );
 
   return ThemeData(
     useMaterial3: true,
+    brightness: Brightness.dark,
     colorScheme: scheme,
-    scaffoldBackgroundColor: C.obsidian,
-    canvasColor: C.obsidian,
+    scaffoldBackgroundColor: C.bg,
+    canvasColor: C.bg,
     fontFamily: 'Manrope',
+
+    // Material'ning to'lqin effekti bu dizaynda begona: bosish
+    // `Press` orqali masshtab bilan ko'rsatiladi.
     splashFactory: NoSplash.splashFactory,
-    highlightColor: const Color(0x00000000),
     splashColor: const Color(0x00000000),
+    highlightColor: const Color(0x00000000),
+    hoverColor: const Color(0x00000000),
+
     textSelectionTheme: TextSelectionThemeData(
-      cursorColor: C.champagne,
-      selectionColor: Color(0x33E8CFA0),
-      selectionHandleColor: C.champagne,
+      cursorColor: C.accent,
+      selectionColor: C.accent.withValues(alpha: .26),
+      selectionHandleColor: C.accent,
     ),
-    pageTransitionsTheme: const PageTransitionsTheme(builders: {
-      TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-    }),
-    textTheme: const TextTheme(
+
+    // Ekran o'tishlari `SlidePage` orqali boradi; bu esa Flutter
+    // o'zi ochadigan marshrutlar uchun zaxira. Har ikki platformada
+    // ham xiralik: ilova Android uchun quriladi va o'tish tili
+    // butun ilovada bitta bo'lishi kerak.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: FadeForwardsPageTransitionsBuilder(),
+      },
+    ),
+
+    textTheme: TextTheme(
       bodyMedium: T.body,
-      bodyLarge: T.body,
+      bodyLarge: T.bodyStrong,
       titleMedium: T.cardTitle,
+      labelLarge: T.button,
     ),
   );
 }
 
-/// Tizim panellari — status bar shaffof, ikonkalari oq (fon qorong'i).
-/// Tizim paneli uslubi. MAVZUGA BOG'LIQ (pastki panel rangi), shuning
-/// uchun `const` emas — funksiya.
+/// TIZIM PANELLARI — status bar shaffof, pastki navigatsiya foni
+/// ekran foniga qo'shilib ketadi.
 SystemUiOverlayStyle get systemOverlay => SystemUiOverlayStyle(
       statusBarColor: const Color(0x00000000),
       statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: C.obsidian,
+      systemNavigationBarColor: C.bg,
       systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarDividerColor: const Color(0x00000000),
     );

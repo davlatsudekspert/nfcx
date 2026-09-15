@@ -6,6 +6,7 @@ import 'data/deep_link.dart';
 import 'data/nfc.dart';
 import 'design/nav.dart';
 import 'design/theme.dart';
+import 'design/components/toast.dart';
 import 'design/route_watch.dart';
 import 'design/tokens.dart';
 import 'design/type.dart';
@@ -210,13 +211,19 @@ class _NfcstoreAppState extends State<NfcstoreApp> with WidgetsBindingObserver {
             child: RouteWatchScope(
               observer: rootRouteObserver,
               child: Material(
-              type: MaterialType.canvas,
-              color: C.obsidian,
-              // Standart matn uslubi ham shu yerdan — uslubsiz
-              // qolgan `Text` ilovaning o'z shriftini oladi.
-              textStyle: T.body.copyWith(color: C.offWhite),
-              child: child ?? const SizedBox(),
-            ),
+                type: MaterialType.canvas,
+                color: C.bg,
+                // Standart matn uslubi ham shu yerdan — uslubsiz
+                // qolgan `Text` ilovaning o'z shriftini oladi.
+                textStyle: T.body.copyWith(color: C.ink),
+                // TOAST QATLAMI — butun ilova uchun bitta.
+                //
+                // Ilova `Scaffold` ishlatmaydi, ya'ni Material'ning
+                // `SnackBar` i mavjud emas. Toast esa har joyda
+                // kerak: "Kontakt saqlandi", "Post o'chirildi"
+                // (5 soniyalik "Bekor" tugmasi bilan).
+                child: ToastHost(child: child ?? const SizedBox()),
+              ),
             ),
           ),
         ),

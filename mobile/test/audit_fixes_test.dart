@@ -11,6 +11,7 @@ import 'package:nfcstore/screens/nfc/gift_offers.dart';
 import 'package:nfcstore/state/app_state.dart';
 
 import 'widget_test.dart' show FakeStore, wrap;
+import 'settle.dart';
 
 /// AUDIT TOPGAN KAMCHILIKLAR UCHUN TESTLAR.
 ///
@@ -125,11 +126,11 @@ void main() {
       );
 
       await tester.pumpWidget(wrap(const GiftOffersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('VIP001'), findsOneWidget);
       await tester.tap(find.text('Qabul qilish'));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(hits, contains('POST /api/gift-offers/7/accept'));
       // Qabul qilingandan keyin ID ro'yxati qayta so'ralishi SHART:
@@ -146,7 +147,7 @@ void main() {
       );
 
       await tester.pumpWidget(wrap(const GiftOffersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('Sovg‘a taklifi yo‘q'), findsOneWidget);
     });
   });

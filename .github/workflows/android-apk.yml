@@ -280,18 +280,36 @@ jobs:
       # to'g'ridan-to'g'ri bosib o'rnatiladi va havola O'ZGARMAYDI:
       # har qurilishda shu yerdagi fayl yangilanadi.
       #
-      # `apk-latest` — oxirgi qurilish. Bu RELIZ EMAS (prerelease),
-      # ya'ni versiya tarixini ifloslantirmaydi.
+      # IKKITA TEG, ATAYLAB AJRATILGAN:
+      #
+      #   apk-latest — `main` dagi kod, ya'ni ishlab turgan versiya.
+      #   apk-test   — hali qo'shilmagan branchdan qo'lda qurilgani.
+      #
+      # Nima uchun ajratildi: sinov uchun qurilgan APK `apk-latest` ga
+      # tushsa, o'sha havolani ishonch bilan bergan odam qo'shilmagan
+      # kodni o'rnatib qo'yardi va buni bilmasdi ham — havola bitta,
+      # nomi esa "oxirgi qurilish". Endi ikkalasining o'z havolasi bor
+      # va `apk-latest` faqat `main` dan yangilanadi.
+      #
+      # Ikkalasi ham RELIZ EMAS (prerelease) — versiya tarixi toza qoladi.
       - name: Release'ga biriktirish
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           COMMIT: ${{ github.sha }}
           REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
           VERSION: ${{ steps.ver.outputs.name }}+${{ steps.ver.outputs.code }}
           FINGERPRINT: ${{ steps.sign.outputs.fingerprint }}
           RELEASE_KEY: ${{ steps.sign.outputs.release }}
         run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            TAG=apk-latest
+            TITLE="NFCSTORE — oxirgi qurilish"
+          else
+            TAG=apk-test
+            TITLE="NFCSTORE — sinov qurilishi"
+          fi
+
           OUT=build/app/outputs
           # AAB boshqa papkada yotadi — bitta joyga yig'ib yuboriladi.
           cp "$OUT"/bundle/release/*.aab "$OUT"/flutter-apk/ || true
@@ -321,15 +339,22 @@ jobs:
             echo "\`$FINGERPRINT\`" >> notes.md
           fi
           echo "" >> notes.md
+          if [ "$TAG" = "apk-test" ]; then
+            echo "⚠️ **Bu SINOV qurilishi** — \`$BRANCH\` branchidan, hali" >> notes.md
+            echo "\`main\` ga qo'shilmagan. Ishlab turgan versiya:" >> notes.md
+            echo "https://github.com/$REPO/releases/tag/apk-latest" >> notes.md
+            echo "" >> notes.md
+          fi
+          echo "Branch: \`$BRANCH\`" >> notes.md
           echo "Commit: $COMMIT" >> notes.md
 
-          if gh release view apk-latest >/dev/null 2>&1; then
-            gh release upload apk-latest ./*.apk ./*.aab --clobber
-            gh release edit apk-latest --notes-file notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" ./*.apk ./*.aab --clobber
+            gh release edit "$TAG" --notes-file notes.md --title "$TITLE"
           else
-            gh release create apk-latest ./*.apk ./*.aab \
+            gh release create "$TAG" ./*.apk ./*.aab \
               --prerelease \
-              --title "NFCSTORE — oxirgi qurilish" \
+              --title "$TITLE" \
               --notes-file notes.md
           fi
-          echo "Havola: https://github.com/$REPO/releases/tag/apk-latest"
+          echo "Havola: https://github.com/$REPO/releases/tag/$TAG"

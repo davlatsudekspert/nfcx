@@ -3,19 +3,21 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
-import '../common/top_bar.dart';
 
 /// QO'LLAB-QUVVATLASH.
 ///
@@ -42,6 +44,8 @@ class SupportScreen extends StatefulWidget {
 /// Bu ro'yxat SERVERDAN kelmaydi va kelishi ham shart emas: savollar
 /// ilovaning o'z xulqi haqida va ilova bilan birga o'zgaradi.
 /// Backend uchun alohida endpoint yasash faqat ortiqcha ish bo'lardi.
+/// FUNKSIYA, `static final` emas — aks holda til almashganda
+/// ro'yxat muzlab qolardi.
 List<({String q, String a})> _faq() => [
       (
         q: tr('NFC ID nima?'),
@@ -152,183 +156,315 @@ class _SupportScreenState extends State<SupportScreen> {
   Widget build(BuildContext context) {
     final messages = _messages;
     final bot = _bot;
+    final faq = _faq();
 
-    return ColoredBox(
-      color: C.obsidian,
+    return ScreenBackdrop(
+      aura: Aura.none,
       child: SafeArea(
-        child: Column(
-          children: [
-            TopBar(title: tr('Yordam')),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _load,
-                color: C.champagne,
-                backgroundColor: C.slate,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x32),
-                  children: [
-                    // 1) TEZ SAVOLLAR — javob kutmasdan.
-                    Eyebrow(tr('Tez savollar')),
-                    const SizedBox(height: S.x12),
-                    Surface(
-                      padding: EdgeInsets.zero,
-                      shadow: E.e1,
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: C.accent,
+          backgroundColor: C.surface,
+          displacement: 28,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              const SliverToBoxAdapter(child: TopBar()),
+              SliverToBoxAdapter(child: ScreenTitle(tr('Yordam'))),
+
+              // 1) TELEGRAM — faqat bot sozlangan bo'lsa.
+              if (bot != null)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                    child: Surface(
+                      padding: const EdgeInsets.all(S.x16),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (var i = 0; i < _faq().length; i++)
-                            _FaqRow(
-                              item: _faq()[i],
-                              open: _openFaq == i,
-                              last: i == _faq().length - 1,
-                              onTap: () => setState(
-                                  () => _openFaq = _openFaq == i ? null : i),
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: C.telegram.withValues(alpha: .13),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: C.telegram.withValues(alpha: .38),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: NIcon(
+                                  Ico.telegram,
+                                  size: 19,
+                                  color: C.telegram,
+                                ),
+                              ),
+                              const SizedBox(width: S.x12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tr('Jonli yordam'),
+                                      style: T.cardTitle,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '@$bot',
+                                      style: T.code(12.5, color: C.ink2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: S.x16),
+                          SecondaryButton(
+                            tr('Telegram orqali yozish'),
+                            size: BtnSize.m,
+                            icon: Ico.telegram,
+                            onTap: () =>
+                                openExternal(Uri.parse('https://t.me/$bot')),
+                          ),
                         ],
                       ),
                     ),
+                  ),
+                ),
 
-                    // 2) TELEGRAM — faqat bot sozlangan bo'lsa.
-                    if (bot != null) ...[
-                      const SizedBox(height: S.x24),
-                      Eyebrow(tr('Jonli yordam')),
+              // 2) TEZ SAVOLLAR — javob kutmasdan.
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    S.gutter,
+                    S.x24,
+                    S.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Eyebrow(tr('Tez savollar')),
                       const SizedBox(height: S.x12),
-                      SecondaryButton(
-                        tr('Telegram orqali yozish'),
-                        icon: const NIcon(Ico.telegram, size: 18, color: C.telegram),
-                        onTap: () => openExternal(Uri.parse('https://t.me/$bot')),
+                      Surface(
+                        padding: EdgeInsets.zero,
+                        shadow: C.e1,
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < faq.length; i++) ...[
+                              if (i > 0) const RowDivider(),
+                              _FaqRow(
+                                item: faq[i],
+                                open: _openFaq == i,
+                                onTap: () => setState(
+                                  () => _openFaq = _openFaq == i ? null : i,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
-
-                    // 3) XABAR YUBORISH.
-                    const SizedBox(height: S.x24),
-                    Eyebrow(tr('Xabar yuborish')),
-                    const SizedBox(height: S.x12),
-                    Field(
-                      label: tr('Muammo yoki taklif'),
-                      controller: _message,
-                      hint: tr('Nima bo‘ldi va qaysi ekranda?'),
-                      maxLines: 5,
-                      error: _error,
-                    ),
-                    const SizedBox(height: S.x12),
-                    PrimaryButton(tr('Yuborish'),
-                        loading: _busy, onTap: _busy ? null : _send),
-                    if (_sent) ...[
-                      const SizedBox(height: S.x12),
-                      Text(
-                        tr('Murojaat yuborildi. Javob shu yerda ko‘rinadi.'),
-                        textAlign: TextAlign.center,
-                        style: T.caption.copyWith(color: C.verdant),
-                      ),
-                    ],
-
-                    // MUROJAATLAR TARIXI — javob bilan.
-                    if (messages != null && messages.isNotEmpty) ...[
-                      const SizedBox(height: S.x24),
-                      Eyebrow(tr('Murojaatlarim')),
-                      const SizedBox(height: S.x12),
-                      for (final m in messages) ...[
-                        _MessageCard(m),
-                        const SizedBox(height: S.x8),
-                      ],
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+
+              // 3) XABAR YUBORISH.
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    S.gutter,
+                    S.x24,
+                    S.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Eyebrow(tr('Xabar yuborish')),
+                      const SizedBox(height: S.x12),
+                      Field(
+                        label: tr('Muammo yoki taklif'),
+                        controller: _message,
+                        hint: tr('Nima bo‘ldi va qaysi ekranda?'),
+                        keyboardType: TextInputType.multiline,
+                        maxLines: 5,
+                        error: _error,
+                      ),
+                      const SizedBox(height: S.x12),
+                      PrimaryButton(
+                        tr('Yuborish'),
+                        loading: _busy,
+                        onTap: _busy ? null : _send,
+                      ),
+                      if (_sent) ...[
+                        const SizedBox(height: S.x12),
+                        Text(
+                          tr('Murojaat yuborildi. Javob shu yerda ko‘rinadi.'),
+                          textAlign: TextAlign.center,
+                          style: T.caption.copyWith(color: C.ok),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // MUROJAATLAR TARIXI — javob bilan.
+              if (messages != null && messages.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      S.gutter,
+                      S.x24,
+                      S.gutter,
+                      0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Eyebrow(tr('Murojaatlarim')),
+                        const SizedBox(height: S.x12),
+                        for (final m in messages) ...[
+                          _MessageCard(m),
+                          if (m != messages.last)
+                            const SizedBox(height: S.x8),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: S.x32)),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+/// Tez savol — ochiladigan qator.
 class _FaqRow extends StatelessWidget {
   const _FaqRow({
     required this.item,
     required this.open,
-    required this.last,
     required this.onTap,
   });
 
   final ({String q, String a}) item;
   final bool open;
-  final bool last;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Press(
         haptic: true,
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(S.x16),
-          decoration: BoxDecoration(
-            border: last ? null : Border(bottom: BorderSide(color: C.hairline)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(item.q, style: T.cardTitle.copyWith(fontSize: 15)),
-                  ),
-                  const SizedBox(width: S.x8),
-                  // Strelka ochilganda buriladi — bu yagona
-                  // ko'rsatkich, shuning uchun animatsiya qilinadi.
-                  AnimatedRotation(
-                    turns: open ? .5 : 0,
-                    duration: M.fade,
-                    curve: M.curve,
-                    child: NIcon(Ico.chevronDown, size: 16, color: C.ash),
-                  ),
-                ],
-              ),
-              AnimatedCrossFade(
-                duration: M.fade,
-                sizeCurve: M.curve,
-                crossFadeState:
-                    open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                firstChild: const SizedBox(width: double.infinity),
-                secondChild: Padding(
-                  padding: const EdgeInsets.only(top: S.x8),
-                  child: Text(item.a, style: T.caption),
+        minSize: 0,
+        scale: .99,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: S.x16,
+              vertical: S.x12,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(item.q, style: T.cardTitle)),
+                    const SizedBox(width: S.x8),
+                    // Strelka ochilganda buriladi — bu holatning
+                    // ikkinchi ko'rsatkichi, rang emas.
+                    AnimatedRotation(
+                      turns: open ? .5 : 0,
+                      duration: M.fade,
+                      curve: M.curve,
+                      child: NIcon(
+                        Ico.chevronDown,
+                        size: 16,
+                        color: open ? C.accent : C.ink3,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                AnimatedCrossFade(
+                  duration: M.fade,
+                  sizeCurve: M.curve,
+                  crossFadeState: open
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  firstChild: const SizedBox(width: double.infinity),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: S.x8),
+                    child: Text(item.a, style: T.body),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
 }
 
+/// MUROJAAT VA JAVOB.
+///
+/// Javob ALOHIDA yuzada va "ADMIN" yozuvi bilan: odam o'z matnini
+/// operator javobidan bir qarashda ajratishi kerak.
 class _MessageCard extends StatelessWidget {
   const _MessageCard(this.m);
   final SupportMessage m;
 
+  String get _when {
+    final d = DateTime.tryParse(m.createdAt.replaceFirst(' ', 'T'));
+    return d == null ? m.createdAt : dateTime(d);
+  }
+
   @override
   Widget build(BuildContext context) => Surface(
         padding: const EdgeInsets.all(S.x16),
-        shadow: E.e1,
+        shadow: C.e1,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(m.message, style: T.body),
+            Row(
+              children: [
+                if (m.createdAt.isNotEmpty)
+                  Expanded(child: Text(_when, style: T.meta)),
+                if (m.createdAt.isEmpty) const Spacer(),
+                if (!m.answered)
+                  StatusChip(
+                    tr('Javob kutilmoqda'),
+                    tone: StatusTone.pending,
+                  ),
+              ],
+            ),
             const SizedBox(height: S.x12),
+            Text(m.message, style: T.body),
             if (m.answered) ...[
-              Container(height: 1, color: C.hairline),
               const SizedBox(height: S.x12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  NIcon(Ico.check, size: 15, color: C.verdant),
-                  const SizedBox(width: S.x8),
-                  Expanded(child: Text(m.reply, style: T.caption)),
-                ],
+              Surface(
+                padding: const EdgeInsets.all(S.x12),
+                radius: R.tile,
+                color: C.surfaceHigh,
+                shadow: const [],
+                border: Border.all(color: C.lineStrong),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Eyebrow(tr('Admin')),
+                    const SizedBox(height: 6),
+                    Text(m.reply, style: T.body),
+                  ],
+                ),
               ),
-            ] else
-              Text(tr('Javob kutilmoqda'),
-                  style: T.statusLabel.copyWith(color: C.champagne)),
+            ],
           ],
         ),
       );

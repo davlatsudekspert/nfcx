@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NFCReaderUsageDescription</key>
+	<string>NFC kartani o‘qish va unga profil havolasini yozish uchun.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Post va story uchun rasmga olish, QR kodni skanerlash uchun.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Profil rasmi, post va story uchun galereyadan rasm tanlash uchun.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Ilovani ochishda shaxsni tasdiqlash uchun (Face ID / Touch ID).</string>
 </dict>
 </plist>

@@ -1,22 +1,28 @@
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'
+    show FilteringTextInputFormatter, TextInputAction;
 import 'package:flutter/widgets.dart';
+
 import '../../data/api_client.dart';
-import '../../design/components/icons.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/input.dart';
 import '../../design/components/states.dart';
+import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import 'verify_email.dart';
-import '../../l10n/strings.dart';
 
-/// Ro'yxatdan o'tish — ism, email, telefon, parol.
+/// RO'YXATDAN O'TISH — ism, email, telefon, parol.
 ///
 /// Maydonlar backend'dagi HAQIQIY maydonlar. Telefon KONTAKT
 /// ma'lumoti sifatida olinadi, tasdiqlash uchun emas: hisob EMAIL
-/// orqali tasdiqlanadi.
+/// orqali tasdiqlanadi. Shuning uchun email maydonining ostida
+/// "KOD SHU MANZILGA" deb yozilgan — odam kodni qayerdan
+/// kutishini FORMANI TO'LDIRAYOTGANDA biladi, keyingi ekranda
+/// emas.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -29,6 +35,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
+
+  /// PAROLNI TAKRORLASH.
+  ///
+  /// Parol yopiq yoziladi va odam nima yozganini KO'RMAYDI. Bitta
+  /// maydon bo'lsa, xato bosilgan bitta harf keyin faqat kirish
+  /// paytida — parolni tiklash orqali — aniqlanardi. Ikkinchi
+  /// maydon shu xatoni yozilayotgan paytida ushlaydi.
+  final _password2 = TextEditingController();
   bool _busy = false;
   String? _error;
 
@@ -38,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _email.dispose();
     _phone.dispose();
     _password.dispose();
+    _password2.dispose();
     super.dispose();
   }
 
@@ -56,6 +71,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     if (_password.text.length < 8) {
       setState(() => _error = tr('Parol kamida 8 belgi bo‘lsin.'));
+      return;
+    }
+    if (_password2.text != _password.text) {
+      setState(() => _error = tr('Parollar bir xil emas. Qaytadan kiriting.'));
       return;
     }
     setState(() {
@@ -94,82 +113,114 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: C.obsidian,
+  Widget build(BuildContext context) => ScreenBackdrop(
+        aura: Aura.none,
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _BackBar(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, S.x32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(tr('Akkaunt\nyaratish'), style: T.display),
-                      const SizedBox(height: S.x12),
-                      Text(tr('Emailingizga tasdiqlash kodi yuboriladi.'), style: T.body),
-                      const SizedBox(height: S.x24),
-                      Field(label: tr('Ism'), controller: _name, hint: tr('Ismingiz'),
-                          textInputAction: TextInputAction.next),
-                      const SizedBox(height: S.x16),
-                      Field(
-                        label: tr('Email'), controller: _email, hint: 'ism@gmail.com',
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                      ),
-                      const SizedBox(height: S.x16),
-                      Field(
-                        label: tr('Telefon raqam'), controller: _phone, hint: '90 123 45 67',
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        prefix: Text('+998', style: T.meta.copyWith(color: C.ash, fontSize: 15.5)),
-                      ),
-                      const SizedBox(height: S.x16),
-                      Field(
-                        label: tr('Parol'), controller: _password, hint: '••••••••',
-                        obscure: true, helper: tr('Kamida 8 belgi'),
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _submit(),
-                        error: _error,
-                      ),
-                      const SizedBox(height: S.x24),
-                      PrimaryButton(tr('Ro‘yxatdan o‘tish'), loading: _busy, onTap: _busy ? null : _submit),
-                      const SizedBox(height: S.x12),
-                      Center(
-                        child: Text(
-                          tr('Ro‘yxatdan o‘tish orqali shartlarga rozilik bildirasiz'),
-                          textAlign: TextAlign.center,
-                          style: T.caption.copyWith(color: C.muted, fontSize: 12.5),
+          child: Padding(
+            // Asosiy tugma klaviatura ostida qolmasligi uchun.
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const TopBar(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ScreenTitle(
+                          tr('Ro‘yxatdan o‘tish'),
+                          subtitle: tr('Tasdiqlash kodi emailga yuboriladi. '
+                              'Telefon raqami profil aloqasi uchun saqlanadi.'),
                         ),
-                      ),
-                    ],
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            S.gutter,
+                            S.x8,
+                            S.gutter,
+                            S.x32,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Field(
+                                label: tr('Ism va familiya'),
+                                controller: _name,
+                                hint: tr('Ismingiz'),
+                                keyboardType: TextInputType.name,
+                                textInputAction: TextInputAction.next,
+                              ),
+                              const SizedBox(height: S.x16),
+                              Field(
+                                label: tr('Email'),
+                                controller: _email,
+                                hint: 'ism@gmail.com',
+                                helper: tr('KOD SHU MANZILGA'),
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                              ),
+                              const SizedBox(height: S.x16),
+                              Field(
+                                label: tr('Telefon'),
+                                controller: _phone,
+                                hint: '90 123 45 67',
+                                prefix: '+998',
+                                helper: tr('Raqamni keyin Sozlamalarda Telegram '
+                                    'botga ulaysiz — parolni tiklashda kerak '
+                                    'bo‘ladi'),
+                                keyboardType: TextInputType.phone,
+                                textInputAction: TextInputAction.next,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                              ),
+                              const SizedBox(height: S.x16),
+                              Field(
+                                label: tr('Parol'),
+                                controller: _password,
+                                hint: '••••••••',
+                                obscure: true,
+                                helper: tr('Kamida 8 belgi'),
+                                keyboardType: TextInputType.visiblePassword,
+                                textInputAction: TextInputAction.next,
+                              ),
+                              const SizedBox(height: S.x16),
+                              Field(
+                                label: tr('Parolni takrorlang'),
+                                controller: _password2,
+                                hint: '••••••••',
+                                obscure: true,
+                                keyboardType: TextInputType.visiblePassword,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => _submit(),
+                                // XATO SHU YERDA CHIQADI: oxirgi maydon
+                                // — tugmaga eng yaqin joy, ya'ni odam
+                                // uni ko'rmasdan bosib yuborolmaydi.
+                                error: _error,
+                              ),
+                              const SizedBox(height: S.x24),
+                              PrimaryButton(
+                                tr('Kodni emailga yuborish'),
+                                loading: _busy,
+                                onTap: _busy ? null : _submit,
+                              ),
+                              const SizedBox(height: S.x16),
+                              Text(
+                                tr('Ro‘yxatdan o‘tganda bepul 8 xonali ID beriladi'),
+                                textAlign: TextAlign.center,
+                                style: T.caption
+                                    .copyWith(color: C.ink3, fontSize: 12.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-/// Orqaga qaytish qatori — Entry oqimidagi barcha ekranlarda bir xil.
-class _BackBar extends StatelessWidget {
-  const _BackBar();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(S.x12, S.x8, S.gutter, S.x8),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.of(context).maybePop(),
-            child: const Padding(
-              padding: EdgeInsets.all(S.x8),
-              child: NIcon(Ico.chevronLeft, size: 22, color: C.offWhite),
+              ],
             ),
           ),
         ),

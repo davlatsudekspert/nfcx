@@ -8,6 +8,7 @@ import 'package:nfcstore/design/theme.dart';
 import 'package:nfcstore/screens/orders/my_orders.dart';
 import 'package:nfcstore/state/app_state.dart';
 import 'widget_test.dart' show FakeStore;
+import 'settle.dart';
 
 Widget host(Widget child, AppState state) => AppScope(
       state: state,
@@ -38,11 +39,14 @@ void main() {
       ]));
 
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('GLD100'), findsOneWidget);
-      // `StatusChip` yozuvni KATTA HARFGA o‘giradi (dizayn qoidasi).
-      expect(find.text('KUTILMOQDA'), findsOneWidget);
+      // HOLAT CHIPI ODDIY HARFDA. Dizaynda katta harf faqat mono
+      // holat yozuvida ("HOLAT: KUTILMOQDA" — to‘lov ekrani), chip
+      // esa gap boshidagidek yoziladi: u ro‘yxatdagi o‘nlab
+      // qatorda takrorlanadi va baqirmasligi kerak.
+      expect(find.text('Kutilmoqda'), findsOneWidget);
       expect(find.text('To‘lovni davom ettirish'), findsOneWidget);
       // Qolgan vaqt ko‘rsatiladi.
       expect(find.textContaining('Band qilish tugashi'), findsOneWidget);
@@ -54,9 +58,9 @@ void main() {
         {'id': 7, 'code': 'VIP001', 'price': 490000, 'status': 'paid', 'kind': 'card_purchase'},
       ]));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
-      expect(find.text('TO‘LANGAN'), findsOneWidget);
+      expect(find.text('To‘langan'), findsOneWidget);
       expect(find.text('To‘lovni davom ettirish'), findsNothing);
       expect(find.textContaining('Band qilish'), findsNothing);
     });
@@ -75,7 +79,7 @@ void main() {
         },
       ]));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('To‘lov yakunlanmagan.'), findsOneWidget);
       expect(find.text('To‘lovni davom ettirish'), findsOneWidget);
@@ -92,7 +96,7 @@ void main() {
         },
       ]));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.textContaining('Band qilish tugashi'), findsNothing);
       expect(find.text('To‘lov yakunlanmagan.'), findsOneWidget);
@@ -104,7 +108,7 @@ void main() {
         {'id': 2, 'code': 'PREMIUM', 'price': 99000, 'status': 'paid', 'kind': 'premium_upgrade'},
       ]));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('Jismoniy karta'), findsOneWidget);
       expect(find.text('Premium obuna'), findsOneWidget);
@@ -113,18 +117,31 @@ void main() {
     testWidgets('bo‘sh ro‘yxatda tushunarli yozuv', (tester) async {
       final state = stateWith(ordersReturning([]));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('Hali buyurtmangiz yo‘q.'), findsOneWidget);
     });
 
-    testWidgets('xatoda kod emas, jumla chiqadi', (tester) async {
+    testWidgets('xatoda ASOSIY XABAR jumla, texnik qator esa alohida',
+        (tester) async {
+      // QAROR ANIQLASHTIRILDI. Avval bu test "kod umuman ko'rinmasin"
+      // deb turardi. Qurilmada esa buning narxi ko'rindi: ekranda
+      // faqat umumiy jumla qolardi va nima yiqilgani — qaysi manzil,
+      // qaysi kod — bilib bo'lmasdi.
+      //
+      // Endi ikkalasi ham bor va ular ARALASHMAYDI: odamga
+      // mo'ljallangan jumla katta yozuvda, texnik qator esa ostida,
+      // kichik va kulrang. Suratga olib yuborish kifoya.
       final state = stateWith(MockClient((_) async => http.Response('{"error":"boom"}', 500)));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(find.text('Qayta urinish'), findsOneWidget);
-      expect(find.textContaining('boom'), findsNothing);
-      expect(find.textContaining('500'), findsNothing);
+      // Asosiy xabar — odam tilida, xom kalitsiz.
+      expect(find.text('Serverda xatolik. Birozdan so‘ng qayta urining.'),
+          findsOneWidget);
+      // Texnik qator — kalit va holat bilan.
+      expect(find.textContaining('boom'), findsOneWidget);
+      expect(find.textContaining('HTTP 500'), findsOneWidget);
     });
   });
 }
