@@ -189,32 +189,63 @@ class _Panel extends StatelessWidget {
   final _Slide slide;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: S.x16),
-            SizedBox(height: 250, child: Center(child: slide.art)),
-            const SizedBox(height: S.x32),
-            // SARLAVHA — bitta so'z KURSIV va OLTIN.
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: slide.lead),
-                  TextSpan(
-                    text: slide.accent,
-                    style: T.displayItalic.copyWith(color: C.accent),
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) {
+          // ILLYUSTRATSIYA EKRANGA QARAB O'LCHANADI.
+          //
+          // Maketda (8b–8d) u ekranning qariyb yarmini oladi: 844 dp
+          // da 380 dp. Qat'iy 250 dp qo'yilganda u 390×844 telefonda
+          // kichrayib qolardi va tana matni bilan ko'rsatkich orasida
+          // katta bo'sh maydon ochilardi — ekran tugallanmagan
+          // ko'rinardi.
+          //
+          // NIMA UCHUN ULUSH, QAT'IY SON EMAS: matn 200% ga
+          // kattalashtirilganda yoki ekran past bo'lganda birinchi
+          // bo'lib RASM qisqarsin, sarlavha va tugma emas. Quyi
+          // chegara 180 dp — undan kichigida illyustratsiya tanilmay
+          // qoladi; yuqorigisi 380 dp — maketdagi o'lcham.
+          final art = (box.maxHeight * .55).clamp(180.0, 380.0);
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: S.x16),
+                // `FittedBox` — illyustratsiyalar o'z tabiiy
+                // o'lchamida chizilgan (300×250). Uni qo'lda qayta
+                // o'lchash o'rniga butun kompozitsiya BIR XIL
+                // nisbatda kattalashadi: kartaning burchagi, yoylar
+                // va telefon bir-biriga nisbatan joyida qoladi.
+                SizedBox(
+                  height: art,
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: slide.art,
                   ),
-                ],
-              ),
-              style: T.display,
+                ),
+                const SizedBox(height: S.x32),
+                // SARLAVHA — bitta so'z KURSIV va OLTIN.
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: slide.lead),
+                      TextSpan(
+                        text: slide.accent,
+                        style: T.displayItalic.copyWith(color: C.accent),
+                      ),
+                    ],
+                  ),
+                  style: T.display,
+                ),
+                const SizedBox(height: S.x16),
+                Text(slide.body, style: T.body),
+                const SizedBox(height: S.x24),
+              ],
             ),
-            const SizedBox(height: S.x16),
-            Text(slide.body, style: T.body),
-            const SizedBox(height: S.x24),
-          ],
-        ),
+          );
+        },
       );
 }
 

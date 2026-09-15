@@ -138,6 +138,48 @@ void main() {
       }
     });
 
+    test('SERVER TAYYOR JUMLA YUBORSA — o‘shani ko‘rsatamiz', () async {
+      // `worker.js` parol uzunligini tekshirganda kalit emas, TAYYOR
+      // o'zbekcha jumla yuboradi. Uni kalit deb hisoblab
+      // "Kutilmagan xato: Parol kamida 6 belgi..." deb yozish aniq
+      // javobni buzib ko'rsatish bo'lardi.
+      // `Response.bytes` — chunki jumla o'zbekcha va `http.Response`
+      // satrni latin1 deb o'qiydi. Server ham UTF-8 bayt yuboradi va
+      // `Api` uni `utf8.decode` bilan ochadi, ya'ni bu test haqiqiy
+      // yo'lni takrorlaydi.
+      final repo = repoWith(MockClient((_) async => http.Response.bytes(
+            utf8.encode(jsonEncode({
+              'error': 'Parol kamida 6 belgidan iborat bo‘lishi kerak.',
+            })),
+            422,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          )));
+
+      try {
+        await repo.login(login: 'a@b.uz', password: 'xxxxxxxx');
+        fail('422 xato bo‘lishi kerak');
+      } catch (e) {
+        expect(humanError(e), 'Parol kamida 6 belgidan iborat bo‘lishi kerak.');
+        expect(humanError(e), isNot(contains('Kutilmagan')));
+      }
+    });
+
+    test('server 503 — baza yo‘qligi "serverda xatolik"dan ajratiladi',
+        () async {
+      // `server/index.js` bazaga ulana olmasa 503 + `db_unavailable`
+      // qaytaradi. Status bo'yicha bu "Serverda xatolik" bo'lib
+      // ketardi; kalit aniqroq sababni aytadi.
+      final repo = repoWith(MockClient((_) async =>
+          http.Response(jsonEncode({'error': 'db_unavailable'}), 503)));
+
+      try {
+        await repo.login(login: 'a@b.uz', password: 'xxxxxxxx');
+        fail('503 xato bo‘lishi kerak');
+      } catch (e) {
+        expect(humanError(e), contains('ma’lumotlar bazasiga'));
+      }
+    });
+
     test('tanilmagan kalit YASHIRILMAYDI', () async {
       final repo = repoWith(MockClient((_) async =>
           http.Response(jsonEncode({'error': 'zang_zung'}), 418)));

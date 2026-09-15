@@ -2091,10 +2091,6 @@
     "Что произошло и на каком экране?",
     "What happened, and on which screen?"
   ],
-  "Nimadir noto‘g‘ri ketdi. Qayta urinib ko‘ring.": [
-    "Что-то пошло не так. Попробуйте ещё раз.",
-    "Something went wrong. Please try again."
-  ],
   "Nimalar bosildi": [
     "Что нажимали",
     "What was tapped"
@@ -4058,5 +4054,17 @@
   "“{q}” topilmadi": [
     "«{q}» не найдено",
     "\"{q}\" not found"
+  ],
+  "Telefon raqamini kiriting.": [
+    "Введите номер телефона.",
+    "Enter your phone number."
+  ],
+  "Bu telefon raqami allaqachon band.": [
+    "Этот номер телефона уже занят.",
+    "This phone number is already taken."
+  ],
+  "Server ma’lumotlar bazasiga ulana olmadi. Birozdan so‘ng qayta urining.": [
+    "Сервер не смог подключиться к базе данных. Повторите чуть позже.",
+    "The server could not reach its database. Please try again shortly."
   ]
 }

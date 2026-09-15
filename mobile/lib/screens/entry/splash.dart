@@ -78,7 +78,19 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const BrandMark(size: 104, glow: true),
+                      // MEDALYON VA HALQALAR (maket 8a).
+                      //
+                      // Ikki halqa — 180 va 136 dp — logotipni fonga
+                      // bog'laydi: usiz medalyon qorong'ida "osilib"
+                      // turadi. Ular NFC markazidagi to'lqin bilan
+                      // bir oilada, lekin STATIK: splash 1.2 s
+                      // turadi va bu yerda harakat kutishni
+                      // uzaytirgandek tuyulardi.
+                      const _Halo(
+                        size: 180,
+                        rings: [180, 136],
+                        child: BrandMark(size: 104, glow: true),
+                      ),
                       const SizedBox(height: S.x24),
                       const Wordmark(size: 15),
                       const SizedBox(height: S.x12),
@@ -119,6 +131,55 @@ class _SplashScreenState extends State<SplashScreen>
               ],
             ),
           ),
+        ),
+      );
+}
+
+/// Markazdagi belgini o'rab turgan konsentrik halqalar.
+///
+/// Halqalar TASHQARIDAN ICHKARIGA quyuqlashadi: eng kattasi eng
+/// zaif (12%), ichkarisi kuchliroq (20%). Teskarisi bo'lsa ko'z
+/// markazdan chetga tortilardi — bu yerda esa e'tibor logotipga
+/// yig'ilishi kerak.
+class _Halo extends StatelessWidget {
+  const _Halo({
+    required this.size,
+    required this.rings,
+    required this.child,
+  });
+
+  /// Tashqi o'lcham — eng katta halqa shunga teng.
+  final double size;
+
+  /// Halqalar diametri, kattadan kichikka.
+  final List<double> rings;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            for (var i = 0; i < rings.length; i++)
+              SizedBox(
+                width: rings[i],
+                height: rings[i],
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: C.accent.withValues(
+                        alpha: .12 + i * .08,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            child,
+          ],
         ),
       );
 }

@@ -291,6 +291,19 @@ String humanError(Object? e) {
     'bad_email_code': tr('Kod xato. Tekshirib, qaytadan kiriting.'),
     'email_send_failed':
         tr('Emailga kod yuborib bo‘lmadi. Birozdan so‘ng qayta urining.'),
+    'phone_required': tr('Telefon raqamini kiriting.'),
+    'phone_taken': tr('Bu telefon raqami allaqachon band.'),
+    // `bad_code` — server email kodi uchun ham, sovg'a/aktivatsiya
+    // kodi uchun ham shu kalitni ishlatadi.
+    'bad_code': tr('Kod xato. Tekshirib, qaytadan kiriting.'),
+    'code_required': tr('Emailga kelgan kodni kiriting.'),
+    // SESSIYA TUGAGAN. 401 bo'yicha ham shu jumla chiqadi, lekin
+    // kalit boshqa status bilan ham kelishi mumkin.
+    'unauthorized': tr('Sessiya tugagan. Qaytadan kiring.'),
+    // BAZA YO'Q (`server/index.js`, 503). Bu "serverda xatolik"dan
+    // farq qiladi: server ishlayapti, bazasiga ulana olmayapti.
+    'db_unavailable': tr('Server ma’lumotlar bazasiga ulana olmadi. '
+        'Birozdan so‘ng qayta urining.'),
     'not_found': tr('Topilmadi.'),
     'forbidden': tr('Bu amal uchun ruxsat yo‘q.'),
     'orders_disabled': tr('Bu biznes hozir buyurtma qabul qilmayapti.'),
@@ -329,15 +342,47 @@ String humanError(Object? e) {
     }
   }
 
+  final key = e is ApiError ? e.key : s.split('\n').first;
+
+  // SERVER TAYYOR JUMLA YUBORGAN BO'LSA — O'SHANI KO'RSATAMIZ.
+  //
+  // `error` maydoni har doim ham mashina kaliti emas: worker va
+  // Express ba'zi tekshiruvlarda to'g'ridan-to'g'ri o'zbekcha jumla
+  // yuboradi ("Parol kamida 6 belgidan iborat bo'lishi kerak.").
+  // Uni kalit deb hisoblab "Kutilmagan xato: Parol kamida 6 belgi..."
+  // deb yozish — tayyor, aniq javobni buzib ko'rsatish bo'lardi.
+  //
+  // FARQNI SHAKL HAL QILADI: kalit — qisqa, `snake_case`, probelsiz.
+  // Jumlada probel bor va u odatda katta harf bilan boshlanadi.
+  if (_looksLikeSentence(key)) return key;
+
   // ENG OXIRGI HOLAT — AMMO KO'R HOLAT EMAS.
   //
   // Ilgari bu yerda faqat "Nimadir noto'g'ri ketdi" turardi va u
   // HAQIQIY SABABNI YASHIRARDI: qurilmada xato ko'rgan odam ham,
   // tuzatuvchi ham nima bo'lganini bilmasdi. Endi tanilmagan
   // kalitning o'zi qavs ichida yoziladi — u qisqa, lekin aniq.
-  final key = e is ApiError ? e.key : s.split('\n').first;
   final short = key.length <= 40 ? key : '${key.substring(0, 37)}...';
   return trf('Kutilmagan xato: {code}', {'code': short});
+}
+
+/// Server yuborgan `error` — mashina kalitimi yoki tayyor jumlami?
+///
+/// Kalit: `bad_credentials`, `too_many_requests` — qisqa, probelsiz,
+/// faqat kichik harf va pastki chiziq.
+/// Jumla: "Parol kamida 6 belgidan iborat bo'lishi kerak." — probelli
+/// va nuqta bilan tugaydi.
+///
+/// Chegara ATAYLAB qat'iy: shubhali holat kalit deb hisoblanadi va
+/// "Kutilmagan xato: ..." bo'lib chiqadi. Teskarisi xavfliroq bo'lardi
+/// — ichki kalit odamga jumla sifatida ko'rsatilib qolardi.
+bool _looksLikeSentence(String v) {
+  final t = v.trim();
+  if (t.length < 8 || t.length > 160) return false;
+  if (!t.contains(' ')) return false;
+  // Bitta so'zli kalitlar probel tutmaydi; `snake_case` da esa probel
+  // umuman bo'lmaydi. Demak probel bor bo'lsa — bu matn.
+  return !RegExp(r'^[a-z0-9_]+$').hasMatch(t);
 }
 
 /// XATONING TEXNIK QATORI — ekranda kichik kulrang yozuv uchun.
