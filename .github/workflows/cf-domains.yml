@@ -347,9 +347,15 @@ jobs:
           want /api/companies                     200
           want /api/settings/payments-enabled     200
           want /api/settings/physical-nfc-pricing 200
-          want /api/auth/me                       401
+          # Bu ikkisi kirishsiz ham 200 beradi, lekin BO'SH shakl
+          # bilan: `{"user":null,"cards":[]}` va `{"orders":[]}`.
+          # Ilova aynan shunga tayanadi — mehmon uchun alohida yo'l
+          # yo'q, shunchaki bo'sh ro'yxat ko'rsatiladi. Avval bu
+          # yerda 401 kutilgan edi va tekshiruv YOLG'ON xato berdi.
+          want /api/auth/me                       200
+          want /api/orders                        200
+          # Bu ikkisi esa haqiqatan kirish talab qiladi.
           want /api/companies/mine                401
-          want /api/orders                        401
           want /api/blocks                        401
           echo "  --- kutilganday javob bermaganlar: $bad"
 
