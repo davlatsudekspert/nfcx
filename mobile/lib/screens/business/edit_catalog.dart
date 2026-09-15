@@ -19,6 +19,7 @@ import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../design/refresh.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 
@@ -102,7 +103,7 @@ class _EditCatalogScreenState extends State<EditCatalogScreen> {
               ),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: _load,
+                  onRefresh: () => pullRefresh(_load),
                   color: C.accent,
                   backgroundColor: C.surface,
                   child: AsyncView<List<Product>>(

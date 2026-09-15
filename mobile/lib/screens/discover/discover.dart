@@ -20,6 +20,7 @@ import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../design/refresh.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/share.dart';
@@ -193,7 +194,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () => _load(force: true),
+          onRefresh: () => pullRefresh(() => _load(force: true)),
           color: C.accent,
           backgroundColor: C.surface,
           displacement: 28,

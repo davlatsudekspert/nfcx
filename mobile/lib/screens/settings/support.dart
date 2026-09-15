@@ -14,6 +14,7 @@ import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../design/refresh.dart';
 import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
@@ -163,7 +164,7 @@ class _SupportScreenState extends State<SupportScreen> {
       child: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: () => pullRefresh(_load),
           color: C.accent,
           backgroundColor: C.surface,
           displacement: 28,

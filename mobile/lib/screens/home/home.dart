@@ -15,6 +15,7 @@ import '../../design/components/states.dart';
 import '../../design/components/story_ring.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
+import '../../design/refresh.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/dates.dart';
@@ -283,7 +284,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () => _load(force: true),
+          // Belgi ro'yxatni uzoq ushlab turmasin — sababi va
+          // o'lchovi `design/refresh.dart` da.
+          onRefresh: () => pullRefresh(() => _load(force: true)),
           color: C.accent,
           backgroundColor: C.surface,
           displacement: 28,
@@ -540,10 +543,16 @@ class _Header extends StatelessWidget {
                     width: 1.2,
                   ),
                 ),
+                // AVATAR — 36 px JUDA KICHIK EDI.
+                //
+                // Egasi: "avatar juda ham kichkina, kattaroq qiling".
+                // U sarlavhadagi yagona shaxsiy element va ayni
+                // paytda shaxs almashtirgichning tugmasi ham —
+                // ya'ni bosiladigan joy ham bo'lishi kerak.
                 child: Avatar(
                   url: identity?.avatarUrl,
                   name: identity?.name ?? '',
-                  size: 36,
+                  size: 48,
                 ),
               ),
             ),
@@ -561,12 +570,12 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (name.isEmpty) {
-      return Text(tr('Assalom'), style: T.title);
+      return Text(tr('Assalomu alaykum'), style: T.title);
     }
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: '${tr('Assalom')}, ', style: T.title),
+          TextSpan(text: '${tr('Assalomu alaykum')}, ', style: T.title),
           TextSpan(
             text: name,
             style: T.title.copyWith(
