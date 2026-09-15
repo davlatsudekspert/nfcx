@@ -662,6 +662,18 @@ void main() {
     await golden(t, '61-hisobni-ochirish');
   });
 
+  // PULLIK BIZNES NOMI — narx va "saytda sotib olish".
+  testWidgets('64 biznes nomi narxi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const CreateCompanyScreen(), state: s);
+    await t.tap(find.text(tr('O‘z nomim')));
+    await settle(t);
+    await t.enterText(find.byType(EditableText).first, 'NFCSTOREUZ');
+    await t.pump(const Duration(milliseconds: 600));
+    await settle(t);
+    await golden(t, '64-biznes-nomi-narxi');
+  });
+
   testWidgets('55 mahsulot qo‘shish', (t) async {
     final s = await ready();
     await pumpScreen(t, EditCatalogScreen(company: s.companies.first), state: s);

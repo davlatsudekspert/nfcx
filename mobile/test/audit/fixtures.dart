@@ -146,6 +146,15 @@ Future<http.Response> _normalResponse(http.Request req) async {
         // qolgan edi.
         final code = p.split('/').last.toUpperCase();
         body = {..._card, 'code': code, if (code != 'VIP001') 'name': 'Jasur Tolipov'};
+      } else if (p == '/api/companies/check') {
+        // PULLIK BIZNES NOMI — narx SERVERDAN keladi.
+        body = {
+          'companyId': req.url.queryParameters['id'] ?? '',
+          'valid': true,
+          'available': true,
+          'tier': 'premium',
+          'price': 4990000,
+        };
       } else if (p.startsWith('/api/companies/') && p.endsWith('/catalog')) {
         body = {'items': _products};
       } else if (p.startsWith('/api/companies/') && p.endsWith('/orders')) {

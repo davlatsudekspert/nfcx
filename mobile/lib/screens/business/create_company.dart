@@ -16,6 +16,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../common/contact_actions.dart' show openExternal;
 
 /// BIZNES HISOB OCHISH.
 ///
@@ -191,6 +192,8 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
     final check = _check;
     final available = check?['available'] == true;
     final price = (check?['price'] as num?)?.round() ?? 0;
+    // Pullik nom tanlandimi — bo'sh va narxi bor.
+    final paidName = !_auto && available && price > 0;
 
     return ScreenBackdrop(
       aura: Aura.none,
@@ -291,9 +294,10 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                   ),
                   const SizedBox(height: S.x16),
                   Text(
-                    _auto
+                    _auto || price == 0
                         ? tr('Hisob darhol ochiladi va admin ko‘rigidan o‘tadi.')
-                        : tr('Tanlangan nom to‘lovdan keyin faollashadi.'),
+                        : tr('Pullik nom saytda sotib olinadi. To‘lovdan keyin '
+                            'u shu hisobga biriktiriladi.'),
                     style: T.caption,
                   ),
                   SizedBox(height: StickyBar.inset(context)),
@@ -305,11 +309,32 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                 bottom: MediaQuery.viewInsetsOf(context).bottom,
               ),
               child: StickyBar(
-                child: PrimaryButton(
-                  _auto || price == 0 ? tr('Biznes ochish') : tr('Davom etish'),
-                  loading: _busy,
-                  onTap: _busy ? null : _submit,
-                ),
+                // PULLIK NOM TANLANGANDA ASOSIY TUGMA SAYTGA OLIB
+                // BORADI, HISOB OCHMAYDI.
+                //
+                // Ilgari u hisob ochardi va hisob "to'lov kutilmoqda"
+                // holatida qolib ketardi: ilovada to'lash yo'li yo'q
+                // (server so'rovni rad etadi), ya'ni odam tugmani
+                // bosib, hech narsa bo'lmaganini ko'rardi.
+                child: paidName
+                    ? PrimaryButton(
+                        tr('Saytda sotib olish'),
+                        icon: Ico.globe,
+                        // MANZIL API MIJOZIDAN: ilova va sayt bitta
+                        // manbadan o'qiydi, shuning uchun manzil
+                        // ikkinchi marta yozilmaydi.
+                        onTap: () => openExternal(
+                          Uri.parse(
+                            '${AppScope.read(context).api.baseUrl}'
+                            '/company/create',
+                          ),
+                        ),
+                      )
+                    : PrimaryButton(
+                        tr('Biznes ochish'),
+                        loading: _busy,
+                        onTap: _busy ? null : _submit,
+                      ),
               ),
             ),
           ],
@@ -361,9 +386,46 @@ class _CheckLine extends StatelessWidget {
     if (!available) {
       return StatusChip(tr('Bu Company ID band.'), tone: StatusTone.fail);
     }
-    return StatusChip(
-      price == 0 ? tr('Bo‘sh — bepul') : 'Bo‘sh — ${som(price)}',
-      tone: StatusTone.ok,
+    if (price == 0) {
+      return StatusChip(tr('Bo‘sh — bepul'), tone: StatusTone.ok);
+    }
+
+    // NARX KO'RINSIN, SOTIB OLISH ESA SAYTDA.
+    //
+    // EGASI: "narxini ko'rsatsin qanchaligini, sotib olish uchun
+    // saytga kiring deb qo'y".
+    //
+    // Nima uchun aynan shunday: shaxsiy ID ni ilovaning o'zida
+    // Payme yoki Click bilan olish mumkin, biznes nomi uchun esa
+    // serverda to'lov oqimi hali ochilmagan — so'rov "kompaniya
+    // tarifi belgilanmagan" deb rad etiladi. Ilovada "Sotib olish"
+    // tugmasi turgani bilan u ishlamasdi va odam nima
+    // bo'layotganini tushunmasdi.
+    //
+    // Endi ekran rostini aytadi: nom bo'sh, narxi shuncha, xarid
+    // saytda. Narx SERVERDAN keladi — mijozda narx jadvali yo'q.
+    return Surface(
+      padding: const EdgeInsets.all(S.x16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              StatusChip(tr('Bo‘sh'), tone: StatusTone.ok),
+              const Spacer(),
+              Text(som(price), style: T.amount),
+              const SizedBox(width: 4),
+              Text(tr('so‘m'), style: T.meta),
+            ],
+          ),
+          const SizedBox(height: S.x12),
+          Text(
+            tr('Bu nomni sotib olish saytda amalga oshiriladi. '
+                'Ilovada bepul ID bilan davom etishingiz mumkin.'),
+            style: T.caption.copyWith(fontSize: 12.5),
+          ),
+        ],
+      ),
     );
   }
 }

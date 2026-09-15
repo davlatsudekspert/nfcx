@@ -531,6 +531,10 @@
     "Это имя использовать нельзя.",
     "This name cannot be used."
   ],
+  "Bu nomni sotib olish saytda amalga oshiriladi. Ilovada bepul ID bilan davom etishingiz mumkin.": [
+    "Покупка этого имени выполняется на сайте. В приложении можно продолжить с бесплатным ID.",
+    "Buying this name is done on the website. In the app you can continue with a free ID."
+  ],
   "Bu profil bilan nima qilamiz?": [
     "Что сделать с этим профилем?",
     "What would you like to do with this profile?"
@@ -2703,6 +2707,10 @@
     "Деньги не списаны. При желании попробуйте ещё раз.",
     "No money was taken. You can try again if you like."
   ],
+  "Pullik nom saytda sotib olinadi. To‘lovdan keyin u shu hisobga biriktiriladi.": [
+    "Платное имя покупается на сайте. После оплаты оно привязывается к этому аккаунту.",
+    "A paid name is bought on the website. After payment it is attached to this account."
+  ],
   "QAYTA YUBORISH": [
     "ОТПРАВИТЬ СНОВА",
     "RESEND"
@@ -2986,6 +2994,10 @@
   "Sayt bosildi": [
     "Переходы на сайт",
     "Website taps"
+  ],
+  "Saytda sotib olish": [
+    "Купить на сайте",
+    "Buy on the website"
   ],
   "Server hali javob bermadi. To‘lov o‘tgan bo‘lishi ham mumkin — holatni tekshiring.": [
     "Сервер пока не ответил. Платёж мог и пройти — проверьте статус.",
@@ -3326,10 +3338,6 @@
   "Takrorlanuvchi harf yoki raqam": [
     "Повторяющаяся буква или цифра",
     "Repeating letter or digit"
-  ],
-  "Tanlangan nom to‘lovdan keyin faollashadi.": [
-    "Выбранное имя активируется после оплаты.",
-    "The chosen name activates after payment."
   ],
   "Tanlangan shaxs butun ilova uchun faol bo‘ladi.": [
     "Выбранная личность станет активной во всём приложении.",
