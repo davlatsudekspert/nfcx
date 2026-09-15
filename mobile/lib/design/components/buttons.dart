@@ -174,6 +174,7 @@ class SecondaryButton extends StatelessWidget {
     this.size = BtnSize.l,
     this.expand = true,
     this.loading = false,
+    this.color,
   });
 
   final String label;
@@ -183,9 +184,20 @@ class SecondaryButton extends StatelessWidget {
   final bool expand;
   final bool loading;
 
+  /// Qirra, ikonka va matn rangi. Standart — neytral (oq matn,
+  /// oltin qirra).
+  ///
+  /// Boshqa rang FAQAT amal boshqa OILAGA tegishli bo'lganda
+  /// beriladi: masalan parolni tiklashdagi "Telefon orqali davom
+  /// etish" — u oltin yo'lning davomi emas, MUQOBIL yo'l, va
+  /// maketda (8h) sovuq ko'k bilan chizilgan.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null && !loading;
+    final tint = color;
+    final fg = enabled ? (tint ?? C.ink) : C.ink3;
     final button = Press(
       onTap: enabled ? onTap : null,
       minSize: S.tap,
@@ -196,13 +208,17 @@ class SecondaryButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: C.raisedSurface,
           borderRadius: BorderRadius.circular(R.button),
-          border: Border.all(color: enabled ? C.line : C.lineCool),
+          border: Border.all(
+            color: enabled
+                ? (tint?.withValues(alpha: .42) ?? C.line)
+                : C.lineCool,
+          ),
         ),
         child: Align(
           alignment: Alignment.center,
           widthFactor: expand ? null : 1,
           child: loading
-            ? Spinner(size: size == BtnSize.l ? 20 : 16, color: C.ink)
+            ? Spinner(size: size == BtnSize.l ? 20 : 16, color: fg)
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -210,7 +226,7 @@ class SecondaryButton extends StatelessWidget {
                     NIcon(
                       icon!,
                       size: size == BtnSize.l ? 19 : 16,
-                      color: enabled ? C.ink : C.ink3,
+                      color: fg,
                     ),
                     const SizedBox(width: S.x8),
                   ],
@@ -219,9 +235,7 @@ class SecondaryButton extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: _labelStyle(size).copyWith(
-                        color: enabled ? C.ink : C.ink3,
-                      ),
+                      style: _labelStyle(size).copyWith(color: fg),
                     ),
                   ),
                 ],

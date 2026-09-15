@@ -326,7 +326,15 @@ class _PhonePath extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  // KARTA SOVUQ KO'K TUSDA (maket 8h).
+  //
+  // Bu yo'l oltin yo'lning DAVOMI EMAS — u muqobil: email
+  // ochilmaganda ishlatiladi. Oltin qirra bilan chizilsa, u asosiy
+  // amalning bir qismidek ko'rinardi va odam ikkalasini ketma-ket
+  // bajarishi kerakdek tuyulardi.
   Widget build(BuildContext context) => Surface(
+        color: C.cool.withValues(alpha: .07),
+        border: Border.all(color: C.cool.withValues(alpha: .26)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -336,7 +344,7 @@ class _PhonePath extends StatelessWidget {
                   child: Text(tr('Telefon orqali tiklash'), style: T.cardTitle),
                 ),
                 const SizedBox(width: S.x8),
-                StatusChip(tr('Telegram bot'), tone: StatusTone.neutral),
+                _CoolBadge(tr('Telegram bot')),
               ],
             ),
             const SizedBox(height: S.x8),
@@ -351,9 +359,33 @@ class _PhonePath extends StatelessWidget {
               tr('Telefon orqali davom etish'),
               icon: Ico.telegram,
               size: BtnSize.m,
+              color: C.cool,
               onTap: onTap,
             ),
           ],
+        ),
+      );
+}
+
+/// Sovuq ko'k yorliq — "Telegram bot".
+///
+/// `StatusChip` EMAS: u HOLATNI bildiradi (ok/pending/fail) va o'z
+/// belgisini qo'yadi. Bu yerda holat yo'q — bu shunchaki kanal nomi.
+class _CoolBadge extends StatelessWidget {
+  const _CoolBadge(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: S.x8, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: C.cool.withValues(alpha: .45)),
+        ),
+        child: Text(
+          label,
+          style: T.buttonSm.copyWith(fontSize: 10, color: C.cool),
         ),
       );
 }

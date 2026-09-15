@@ -5,6 +5,7 @@ import 'package:nfcstore/design/tokens.dart';
 import 'package:nfcstore/screens/business/business_stats.dart';
 import 'package:nfcstore/screens/business/product_detail.dart';
 import 'package:nfcstore/screens/discover/discover.dart';
+import 'package:nfcstore/screens/entry/forgot_password.dart';
 import 'package:nfcstore/screens/entry/login.dart';
 import 'package:nfcstore/screens/entry/onboarding.dart';
 import 'package:nfcstore/screens/entry/register.dart';
@@ -97,6 +98,17 @@ void main() {
   testWidgets('04 register', (t) async {
     await pumpScreen(t, const RegisterScreen());
     await golden(t, '04-register');
+  });
+
+  // PAROLNI TIKLASH (maket 8h) — ilgari auditda umuman yo'q edi.
+  //
+  // Ikki yo'lli ekran: email havolasi va Telegram bot. Aynan shu
+  // ekran "email yo'qolgan" holatni hal qiladi — u buzilsa odam
+  // hisobiga umuman qayta kira olmaydi, ya'ni uning ko'rinishi
+  // qolganlaridan kam ahamiyatli emas.
+  testWidgets('59 parolni tiklash', (t) async {
+    await pumpScreen(t, const ForgotPasswordScreen(login: 'ali@gmail.com'));
+    await golden(t, '59-parolni-tiklash');
   });
 
   testWidgets('05 email tasdiqlash', (t) async {
