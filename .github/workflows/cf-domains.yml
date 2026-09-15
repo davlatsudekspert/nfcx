@@ -314,6 +314,34 @@ jobs:
                       https://nfcstore-uz.davlatsudekspert.workers.dev; do
             echo "=========== $base"
             probe "$base/api/feed"
-            probe "$base/api/catalog"
             probe "$base/api/settings/payments-enabled"
           done
+
+          # RASMLAR HAM TEKSHIRILADI.
+          #
+          # `/uploads/*` marshruti ham o'chirildi, ya'ni rasmlar endi
+          # boshqa Worker'dan keladi. Agar o'sha Worker'da R2
+          # bog'lanishi (`UPLOADS`) bo'lmasa, saytdagi va ilovadagi
+          # BARCHA rasm yo'qoladi — buni sezmay qolish oson, chunki
+          # API javoblari baribir 200 qaytaraveradi.
+          echo "=========== Sahifa va rasmlar"
+          probe "https://nfcstore.uz/"
+          curl -sS --max-time 25 https://nfcstore.uz/api/feed > feed.json 2>/dev/null || true
+          up=$(python3 -c "
+          import json
+          try:
+              d = json.load(open('feed.json'))
+          except Exception:
+              print(''); raise SystemExit
+          for it in (d.get('feed') or []):
+              for k in ('avatarUrl', 'mediaUrl', 'imageUrl'):
+                  v = it.get(k) or ''
+                  if v.startswith('/uploads/'):
+                      print(v); raise SystemExit
+          print('')
+          ")
+          if [ -n "$up" ]; then
+            probe "https://nfcstore.uz$up"
+          else
+            echo "--- lentada /uploads havolasi topilmadi"
+          fi
