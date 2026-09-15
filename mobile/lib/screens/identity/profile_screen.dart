@@ -511,8 +511,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        // MARKAZGA — SAYTDAGI BIZNES PROFIL KABI.
+        //
+        // Egasi saytdagi `/c/:id` sahifasining suratini yubordi:
+        // u yerda logotip, nom, tavsif va belgilar MARKAZDA
+        // turadi. Ilovada esa hammasi chapga tekislangan edi va
+        // ikkisi bir mahsulotning ikki xil yuzi bo'lib
+        // ko'rinardi.
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // LOGOTIP KVADRAT — shaxsiy profildagi dumaloq
             // avatardan ATAYLAB farq qiladi.
@@ -544,8 +551,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             SizedBox(height: (c.coverUrl ?? '').isEmpty ? S.x16 : 0),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Flexible(child: Text(c.name, style: T.profileName)),
+                Flexible(
+                  child: Text(
+                    c.name,
+                    textAlign: TextAlign.center,
+                    style: T.profileName,
+                  ),
+                ),
                 if (c.verified) ...[
                   const SizedBox(width: 6),
                   const VerifiedBadge(size: 17),
@@ -559,6 +573,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (c.city.isNotEmpty) c.city,
               ].take(2).join(' · '),
               maxLines: 2,
+              textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: T.caption.copyWith(color: C.ink2),
             ),
@@ -567,6 +582,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Wrap(
               spacing: S.x8,
               runSpacing: S.x8,
+              alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 if (c.isOpen != null)

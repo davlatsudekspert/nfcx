@@ -10,6 +10,7 @@ import '../../design/components/backdrop.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
+import '../../design/components/press.dart';
 import '../../design/components/media.dart';
 import '../../design/components/nav_bar.dart';
 import '../../design/components/skeleton.dart';
@@ -56,6 +57,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<Company> _foundCompanies = const [];
 
   String _category = '';
+
+  /// TUR BO'YICHA SUZGICH — saytdagi katalogdagi kabi.
+  ///
+  /// Saytda `/katalog` da to'rtta tugma bor: Hammasi, Shaxsiy,
+  /// Ekspert, Biznes. Ilovada faqat faoliyat sohasi bo'yicha
+  /// suzish bor edi, ya'ni "menga kompaniyalar kerak" deb
+  /// ajratib bo'lmasdi.
+  ///
+  /// '' — hammasi.
+  String _kind = '';
   bool _loading = true;
   bool _searching = false;
   Object? _error;
@@ -179,15 +190,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         c.toLowerCase().contains(q);
 
     return [
-      for (final r in _catalog)
-        if (hit(r.code, r.name, r.role) &&
-            (_category.isEmpty || r.categorySlug == _category))
-          _Entry.person(r),
-      for (final c in _companies)
-        // Kompaniyada toifa maydoni yo'q — toifa tanlangan
-        // bo'lsa ular ro'yxatga kirmaydi.
-        if (hit(c.id, c.name, c.city) && _category.isEmpty)
-          _Entry.business(c),
+      if (_kind != 'business')
+        for (final r in _catalog)
+          if (hit(r.code, r.name, r.role) &&
+              (_category.isEmpty || r.categorySlug == _category) &&
+              (_kind.isEmpty ||
+                  (_kind == 'expert' && r.role.trim().isNotEmpty) ||
+                  (_kind == 'personal' && !r.isBusiness)))
+            _Entry.person(r),
+      if (_kind.isEmpty || _kind == 'business')
+        for (final c in _companies)
+          // Kompaniyada toifa maydoni yo'q — toifa tanlangan
+          // bo'lsa ular ro'yxatga kirmaydi.
+          if (hit(c.id, c.name, c.city) && _category.isEmpty)
+            _Entry.business(c),
     ];
   }
 
@@ -231,6 +247,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(top: S.x16),
+                  child: _KindStrip(
+                    active: _kind,
+                    onSelect: (k) => setState(() => _kind = k),
+                  ),
+                ),
+              ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: S.x8),
                   child: _CategoryStrip(
                     categories: _categories,
                     active: _category,
@@ -428,6 +454,61 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
+
+/// TUR SUZGICHI — Hammasi / Shaxsiy / Ekspert / Biznes.
+///
+/// Saytdagi katalogdagi to'rtta tugmaning aynan o'zi.
+class _KindStrip extends StatelessWidget {
+  const _KindStrip({required this.active, required this.onSelect});
+
+  final String active;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <(String, String)>[
+      ('', tr('Hammasi')),
+      ('personal', tr('Shaxsiy')),
+      ('expert', tr('Ekspert')),
+      ('business', tr('Biznes')),
+    ];
+
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: S.x8),
+        itemBuilder: (context, i) {
+          final (slug, label) = items[i];
+          final on = slug == active;
+          return Press(
+            onTap: on ? null : () => onSelect(slug),
+            minSize: 0,
+            scale: .95,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: S.x16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: on ? C.raisedSurface : null,
+                borderRadius: BorderRadius.circular(R.chip),
+                border: Border.all(
+                  color: on ? C.accent.withValues(alpha: .7) : C.line,
+                  width: on ? 1.4 : 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: T.buttonSm.copyWith(color: on ? C.ink : C.ink2),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class _CategoryStrip extends StatelessWidget {
   const _CategoryStrip({
