@@ -190,3 +190,143 @@ class Avatar extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// RASM O'Z NISBATIDA
+// ─────────────────────────────────────────────────────────────
+
+/// RASMNI QIRQMASDAN KO'RSATADI.
+///
+/// MUAMMO: lentadagi rasm qat'iy 4:3 ramkaga solinardi va `cover`
+/// bilan qirqilardi. Odamlarning rasmi esa ko'pincha TIK (telefon
+/// kamerasi 3:4 yoki 9:16 beradi) — natijada boshi ham, pastki
+/// yozuvi ham kadrdan chiqib ketardi. Egasining bahosi: "razmer
+/// ekranga mos bo'lib ko'rinsin".
+///
+/// YECHIM: ramka RASMGA moslashadi, rasm ramkaga emas. Rasmning
+/// haqiqiy o'lchami tarmoqdan kelganda o'qiladi va ramka yumshoq
+/// (240ms) shunga o'tadi.
+///
+/// CHEGARA BOR: juda cho'zilgan rasm (masalan 1:4 skrinshot) butun
+/// ekranni egallab, lentani to'sib qo'yardi. Shuning uchun nisbat
+/// [minAspect] va [maxAspect] orasida ushlab turiladi — bunday
+/// kamdan-kam rasm chetidan ozgina qirqiladi, qolgan hammasi
+/// butunligicha ko'rinadi.
+///
+/// SAKRASH YO'Q: rasm kelguncha ramka [fallback] nisbatida turadi
+/// va o'zgarish animatsiya bilan bo'ladi, ya'ni lenta "sakramaydi".
+class AutoImage extends StatefulWidget {
+  const AutoImage(
+    this.url, {
+    super.key,
+    this.radius = R.tile,
+    this.fallback = 4 / 5,
+    this.minAspect = .62,
+    this.maxAspect = 1.78,
+    this.slotIcon,
+  });
+
+  final String? url;
+  final double radius;
+
+  /// O'lcham ma'lum bo'lmaguncha ishlatiladigan nisbat.
+  final double fallback;
+
+  /// Eng tik va eng yotiq ruxsat etilgan nisbat.
+  final double minAspect;
+  final double maxAspect;
+
+  final Ico? slotIcon;
+
+  @override
+  State<AutoImage> createState() => _AutoImageState();
+}
+
+class _AutoImageState extends State<AutoImage> {
+  late double _aspect = widget.fallback;
+
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(AutoImage old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url) {
+      _drop();
+      _aspect = widget.fallback;
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final url = (widget.url ?? '').trim();
+    if (url.isEmpty) return;
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      final w = info.image.width.toDouble();
+      final h = info.image.height.toDouble();
+      if (w <= 0 || h <= 0) return;
+      final next = (w / h).clamp(widget.minAspect, widget.maxAspect);
+      if ((next - _aspect).abs() < .001) return;
+      setState(() => _aspect = next);
+    });
+    // `CachedNetworkImageProvider` — `NetImage` bilan BIR XIL manba,
+    // ya'ni rasm ikki marta yuklanmaydi: o'lcham keshdan o'qiladi.
+    final stream = CachedNetworkImageProvider(url).resolve(
+      ImageConfiguration.empty,
+    );
+    stream.addListener(listener);
+    _stream = stream;
+    _listener = listener;
+  }
+
+  void _drop() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _drop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = NetImage(
+      widget.url,
+      radius: widget.radius,
+      slotIcon: widget.slotIcon,
+    );
+
+    if (reduceMotion(context)) {
+      return AspectRatio(aspectRatio: _aspect, child: image);
+    }
+
+    // NISBATNING O'ZI ANIMATSIYA QILINADI.
+    //
+    // `AnimatedContainer` bu yerda yordam bermaydi: u o'lchamni emas,
+    // O'Z bezagini animatsiya qiladi, ichidagi `AspectRatio` esa
+    // bir kadrda sakrab o'zgarardi. `TweenAnimationBuilder` qiymatni
+    // silliq suradi va ramka yumshoq ochiladi.
+    return TweenAnimationBuilder<double>(
+      // `begin` — faqat BIRINCHI qurishda ishlatiladi; keyin
+      // `end` o'zgarganda joriy qiymatdan yangisiga suriladi.
+      tween: Tween<double>(begin: widget.fallback, end: _aspect),
+      duration: M.fade,
+      curve: M.curve,
+      builder: (context, value, child) =>
+          AspectRatio(aspectRatio: value, child: child),
+      child: image,
+    );
+  }
+}

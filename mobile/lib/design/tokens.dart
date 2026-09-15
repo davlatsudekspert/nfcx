@@ -367,11 +367,20 @@ class C {
   static LinearGradient get bottomScrim => LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
+        // TO'RT TO'XTAM — IKKITA EMAS.
+        //
+        // Ikki to'xtamda shaffoflik TEKIS o'sadi va ko'z uning
+        // boshlanish chizig'ini ilg'aydi: rasm ustida yupqa "chegara"
+        // bo'lib ko'rinadi. Yumshoq egri (sekin boshlanib, o'rtada
+        // tezlashib, oxirida yana sekinlashadi) bunday chiziq
+        // qoldirmaydi — o'tish sezilmaydi, matn esa baribir o'qiladi.
         colors: [
           _p.baseBottom.withValues(alpha: 0),
+          _p.baseBottom.withValues(alpha: .18),
+          _p.baseBottom.withValues(alpha: .62),
           _p.baseBottom.withValues(alpha: .94),
         ],
-        stops: const [0, .4],
+        stops: const [0, .16, .34, .52],
       );
 
   /// TAB BAR foni — pastga qarab quyuqlashadi.

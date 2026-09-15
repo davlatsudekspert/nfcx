@@ -23,6 +23,7 @@ import '../../state/app_state.dart';
 import '../../state/seen_stories.dart';
 import '../content/compose.dart';
 import '../content/post_detail.dart';
+import '../content/report_sheet.dart';
 import '../content/story_viewer.dart';
 import '../identity/profile_screen.dart';
 import '../identity/switcher.dart';
@@ -173,6 +174,35 @@ class _HomeScreenState extends State<HomeScreen> {
     // Ochilish paytida belgilansa, odam adashib bosib darhol
     // chiqqanida ham halqa so'nardi.
     await _seen.markSeen(e.ids);
+  }
+
+  /// LENTADAGI "⋯" MENYUSI.
+  ///
+  /// Reels va post ekranidagi bilan bir xil: o'zining kontenti
+  /// bo'lsa "O'chirish", begonasida "Shikoyat qilish" va
+  /// "Obunani bekor qilish". O'chirilgan yozuv lentadan darhol
+  /// ketadi — qayta yuklash kutilmaydi.
+  Future<void> _menu(FeedEntry item) async {
+    final state = AppScope.read(context);
+    final mine = item.isCompany
+        ? state.ownsCompany(item.code)
+        : state.ownsRecord(item.code);
+
+    await showContentMenu(
+      context,
+      targetKind: item.isStory
+          ? (item.isCompany ? 'company_story' : 'story')
+          : (item.isCompany ? 'company_post' : 'post'),
+      targetId: '${item.id}',
+      ownerCode: item.code,
+      owned: mine,
+      onDeleted: () {
+        if (!mounted) return;
+        setState(() => _feed = [..._feed]..removeWhere(
+              (e) => e.id == item.id && e.kind == item.kind,
+            ));
+      },
+    );
   }
 
   Future<void> _toggleLike(FeedEntry item) async {
@@ -398,6 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: FeedCard(
                       item: _feed[i],
                       onLike: () => _toggleLike(_feed[i]),
+                      onMenu: () => _menu(_feed[i]),
                       onAuthor: () => push<void>(
                         context,
                         (_) => _feed[i].isCompany
@@ -774,12 +805,18 @@ class FeedCard extends StatelessWidget {
     required this.onLike,
     required this.onAuthor,
     required this.onOpen,
+    this.onMenu,
   });
 
   final FeedEntry item;
   final VoidCallback onLike;
   final VoidCallback onAuthor;
   final VoidCallback onOpen;
+
+  /// "⋯" — o'z kontentini o'chirish, begonasiga shikoyat qilish,
+  /// obunani bekor qilish. Lentada bu yo'l BO'LISHI SHART: odam
+  /// ko'rgan joyida chora ko'ra olsin.
+  final VoidCallback? onMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -839,16 +876,26 @@ class FeedCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onMenu != null)
+                  Press(
+                    onTap: onMenu,
+                    minSize: S.tap,
+                    scale: .9,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: NIcon(Ico.more, size: 18, color: C.ink3),
+                    ),
+                  ),
               ],
             ),
           ),
           if (media)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: S.x12),
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: NetImage(item.imageUrl, radius: R.tile),
-              ),
+              // RASM QIRQILMAYDI: ramka rasmning o'z nisbatiga
+              // moslashadi. Ilgari bu yerda qat'iy 4:3 turardi va
+              // telefonda olingan tik rasmning yarmi kesilardi.
+              child: AutoImage(item.imageUrl, radius: R.tile),
             ),
           if (item.caption.trim().isNotEmpty)
             Padding(
