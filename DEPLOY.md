@@ -30,40 +30,59 @@ nosozlikni ajratishda eng tez usul shu:
    Settings -> Build bo'limida sozlangan. U ham `npx wrangler deploy`
    ni chaqiradi.
 
-## ⚠️ Nomuvofiqlik — buni bilib turing
+## ⚠️ ASOSIY XATO (2026-09-15 da aniqlandi)
 
 `wrangler.jsonc` da `"name": "nfcstore-api"` yozilgan va `wrangler`
 DOIM shu nomga deploy qiladi. Ya'ni **ikkala yo'l ham `nfcstore-api`
 ga chiqadi**, hech biri `nfcstore-uz` ga tegmaydi — garchi ikkinchi
 yo'l aynan `nfcstore-uz` Worker'i ostida sozlangan bo'lsa ham.
 
+Natijada:
+
+- yangi kod `nfcstore-api` da turadi va u to'liq ishlaydi (sayt ham,
+  API ham) — buni `nfcstore-api.davlatsudekspert.workers.dev` da
+  ochib tekshirish mumkin;
+- odamlar kiradigan `nfcstore.uz` esa `nfcstore-uz` ga boradi va u
+  ESKI nusxada qotib qolgan.
+
+Belgisi: sahifa ochiladi, lekin `assets/index-*.css` uchun 404 yoki
+500 chiqadi — brauzerdagi HTML bir build'dan, serverdagi fayllar
+boshqasidan.
+
 Cloudflare buni build sahifasida sariq banner bilan aytadi:
 
 > Update `wrangler.jsonc` in your repo to keep settings consistent
 > `"name": "nfcstore-uz"`
 
-Banner **haqiqiy** nomuvofiqlikni ko'rsatadi. Lekin uni ko'r-ko'rona
-qabul qilib bo'lmaydi: nom `nfcstore-uz` ga o'zgartirilsa,
-`nfcstore-api` ga deploy to'xtaydi va `/api/*` eski kodda qotib
-qoladi. To'g'ri tuzatish ikki qadam va ular SHU TARTIBDA bo'lishi
-kerak:
+Banner **haqiqiy** nomuvofiqlikni ko'rsatadi, lekin uning taklifini
+qabul qilmang.
 
-1. `wrangler.jsonc` da nomni `nfcstore-uz` ga o'zgartirib deploy qilish
-   — sayt yangilanadi, `/api/*` esa hamon eski `nfcstore-api` dan
-   ishlab turaveradi, ya'ni hech narsa buzilmaydi.
-2. Keyin `nfcstore-api` dagi 4 ta Route'ni o'chirish, shunda `/api/*`
-   ham `nfcstore-uz` ga o'tadi.
+### To'g'ri tuzatish: domenni ko'chirish, nomni EMAS
 
-**2-qadamdan oldin SECRETLARNI ko'chirish shart.** Secretlar Worker'ga
-biriktirilgan va `wrangler.jsonc` da yozilmaydi (ataylab), ya'ni ular
-deploy bilan ko'chmaydi. `nfcstore-uz` da bular bo'lmasa to'lov darhol
-ishdan chiqadi:
+Nomni `nfcstore-uz` ga o'zgartirish ishlaydi, lekin undan oldin
+BARCHA secretlarni qo'lda ko'chirish kerak. Secretlar Worker'ga
+biriktirilgan va `wrangler.jsonc` da ataylab yozilmaydi, ya'ni
+deploy bilan ko'chmaydi. Bittasi unutilsa to'lov darhol to'xtaydi:
 
 - `PAYME_MERCHANT_ID`, `PAYME_KEY`
 - `CLICK_SERVICE_ID`, `CLICK_SECRET_KEY`, `CLICK_MERCHANT_ID`
 - `GEMINI_API_KEY` (AI yordamchi; bo'lmasa vidjet o'zini ko'rsatmaydi)
 
-D1 va R2 bog'lanishlari esa `wrangler.jsonc` da yozilgan, shuning uchun
+Shuning uchun teskarisini qilamiz — kodga umuman tegmaymiz va
+domenni ISHLAB TURGAN Worker'ga ko'chiramiz. `nfcstore-api` da
+D1, R2 va barcha secretlar allaqachon bor va ishlayotgani
+tasdiqlangan.
+
+1. `nfcstore-uz` -> Domains -> `nfcstore.uz` va `www.nfcstore.uz`
+   ni "Custom Domains and Routes" jadvalidan olib tashlash.
+2. `nfcstore-api` -> Domains -> "+ Add Domain" -> o'sha ikkalasini
+   qo'shish.
+3. Ikki qadam orasida sayt ~1 daqiqa ochilmaydi — bu normal.
+4. Ishlayotganiga ishonch hosil qilgach: `nfcstore-api` dagi eski
+   4 ta Route'ni o'chirish (endi ortiqcha), `nfcstore-uz` dagi Git
+   integratsiyasini uzish va Worker'ning o'zini o'chirish.
+
+D1 va R2 bog'lanishlari `wrangler.jsonc` da yozilgan, shuning uchun
 ular deploy bilan o'zi o'rnatiladi.
 
 ## Build token
