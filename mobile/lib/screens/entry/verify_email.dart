@@ -15,6 +15,9 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../../design/components/sheet.dart';
+import '../../design/nav.dart';
+import '../business/create_company.dart';
 
 /// HISOB TASDIQLASH — EMAIL.
 ///
@@ -158,6 +161,45 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       // Ildizgacha: tagda `_Root` turibdi va u endi `Shell` ni
       // chizadi.
       nav.popUntil((r) => r.isFirst);
+
+      // SHAXSIY YOKI BIZNES — DARHOL SO'RALADI.
+      //
+      // Egasi: "biznes profilmi yo shaxsiy profil ochishini
+      // boshidan bilishi kerak". Ilgari bunday savol umuman yo'q
+      // edi: hamma shaxsiy profil bilan boshlanardi va biznes
+      // profil ochish yo'li faqat shaxs almashtirgich ichida
+      // yashiringan edi — yangi odam uni topmasdi.
+      //
+      // Hisob turi O'ZGARMAYDI va o'zgartirib ham bo'lmaydi:
+      // serverda biznes profil hisobga BIRIKTIRILADI, ya'ni avval
+      // hisob, keyin kompaniya. Shuning uchun bu savol hisob
+      // turini emas, KEYINGI QADAMNI hal qiladi — soxta tanlov
+      // ko'rsatmaymiz.
+      if (!mounted) return;
+      final wantsBusiness = await showSheet<bool>(
+        context,
+        title: tr('Qanday profil ochasiz?'),
+        subtitle: tr('Keyin ikkalasini ham qo‘shishingiz mumkin.'),
+        child: Column(
+          children: [
+            SheetAction(
+              label: tr('Shaxsiy profil'),
+              icon: Ico.user,
+              subtitle: tr('Ism, kontaktlar, havolalar'),
+              onTap: () => Navigator.of(context).pop(false),
+            ),
+            SheetAction(
+              label: tr('Biznes profil'),
+              icon: Ico.building,
+              subtitle: tr('Katalog, ish vaqti, galereya, buyurtmalar'),
+              onTap: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        ),
+      );
+      if (wantsBusiness == true && mounted) {
+        await push<void>(context, (_) => const CreateCompanyScreen());
+      }
     } catch (e) {
       // XATO KO'RINISHI SHART. Ilgari u `_error` ga yozilardi,
       // lekin muvaffaqiyat ekrani uni umuman ko'rsatmasdi — natijada

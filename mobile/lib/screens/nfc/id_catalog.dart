@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart' show RefreshIndicator;
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
@@ -7,6 +9,7 @@ import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
+import '../../design/components/input.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/sweep.dart';
 import '../../design/components/top_bar.dart';
@@ -42,6 +45,48 @@ class IdCatalogScreen extends StatefulWidget {
 
 class _IdCatalogScreenState extends State<IdCatalogScreen> {
   List<Record>? _all;
+
+  // KOD QIDIRISH — SAYTDAGIDEK.
+  //
+  // Egasi: "nom qidirishi, saytga o'xshab nom yozsa narxi
+  // chiqishi". Saytda kompaniya ochishda aynan shunday: kod
+  // yozasan, bandmi-yo'qmi va narxi darhol ko'rinadi. Katalogda esa
+  // faqat tariflar ro'yxati bor edi — kerakli kodni qidirish uchun
+  // ro'yxatni ko'z bilan titish kerak edi.
+  //
+  // Qidiruv SERVERDAN (`/api/records/search`): narx va bandlik
+  // faqat o'sha yerda ma'lum. Mijozdagi ro'yxat esa tariflar
+  // bo'yicha eng arzon kodlarnigina biladi.
+  final _query = TextEditingController();
+  Timer? _debounce;
+  List<Record>? _found;
+  bool _searching = false;
+
+  void _onQuery(String raw) {
+    final q = raw.trim();
+    _debounce?.cancel();
+    if (q.length < 2) {
+      setState(() {
+        _found = null;
+        _searching = false;
+      });
+      return;
+    }
+    // Har harfga so'rov yubormaymiz — yozish tugashini kutamiz.
+    _debounce = Timer(const Duration(milliseconds: 350), () async {
+      if (!mounted) return;
+      setState(() => _searching = true);
+      List<Record> res = const [];
+      try {
+        res = await AppScope.read(context).repo.searchRecords(q);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _found = res;
+        _searching = false;
+      });
+    });
+  }
   Object? _error;
   bool _loading = true;
 
@@ -112,6 +157,53 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                     'Tarif naqshdan kelib chiqadi va profilda material '
                     'bo‘lib ko‘rinadi.'),
               ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x8),
+                child: SearchField(
+                  controller: _query,
+                  hint: tr('Kod yozing — masalan AAA000'),
+                  onChanged: _onQuery,
+                ),
+              ),
+
+              // QIDIRUV NATIJASI TARIFLAR RO'YXATINI ALMASHTIRADI.
+              //
+              // Ikkalasini birga ko'rsatsak, odam qaysi biri
+              // qidiruv natijasi ekanini bilmay qoladi.
+              if (_searching)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: S.gutter),
+                  child: Skeleton(height: 72, radius: R.tile),
+                )
+              else if (_found != null) ...[
+                if (_found!.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                    child: EmptyState(
+                      tr('Boshqa kod yozib ko‘ring yoki tariflardan tanlang.'),
+                      title: tr('Bunday kod topilmadi'),
+                      icon: Ico.search,
+                    ),
+                  )
+                else
+                  for (final r in _found!)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        S.gutter,
+                        0,
+                        S.gutter,
+                        S.x8,
+                      ),
+                      child: _FoundRow(
+                        record: r,
+                        onTap: () => push<void>(
+                          context,
+                          (_) => IdDetailScreen(record: r),
+                        ),
+                      ),
+                    ),
+              ] else ...[
 
               if (_loading && _all == null)
                 Padding(
@@ -189,6 +281,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                   ),
                 ),
               ],
+              ],
             ],
           ),
         ),
@@ -200,6 +293,59 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
 // ─────────────────────────────────────────────────────────────
 
 /// Bepul 8 xonali kod — punktir chegara bilan.
+/// QIDIRUV NATIJASI — bitta topilgan kod.
+///
+/// Tarif namunasi, kodning o'zi va narxi. Narx SERVERDAN keladi —
+/// mijozda narx jadvali yo'q, shuning uchun serverda o'zgarsa
+/// ilova ham darhol to'g'ri ko'rsatadi.
+class _FoundRow extends StatelessWidget {
+  const _FoundRow({required this.record, required this.onTap});
+
+  final Record record;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TierStyle.of(record.tier);
+    // Sotuvda bo'lmagan kod ham chiqishi mumkin (kimningdir
+    // profili). Uni "sotib olish" deb ko'rsatish aldov bo'lardi.
+    final forSale = record.price > 0;
+
+    return Surface(
+      padding: const EdgeInsets.all(S.x12),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 30,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(R.status),
+              gradient: style.swatch,
+            ),
+          ),
+          const SizedBox(width: S.x12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(record.code, style: T.code(15, color: C.ink)),
+                const SizedBox(height: 3),
+                Text(style.label, style: T.caption.copyWith(color: C.ink3)),
+              ],
+            ),
+          ),
+          if (forSale)
+            Text(som(record.price), style: T.amount.copyWith(fontSize: 15))
+          else
+            Text(tr('Band'), style: T.caption.copyWith(color: C.ink3)),
+        ],
+      ),
+    );
+  }
+}
+
 class _FreeRow extends StatelessWidget {
   const _FreeRow();
 

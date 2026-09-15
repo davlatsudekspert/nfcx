@@ -167,6 +167,10 @@
     "Не выполнено",
     "Could not complete"
   ],
+  "Band": [
+    "Занят",
+    "Taken"
+  ],
   "Band qilish muddati tugasa ID qaytadan sotuvga chiqadi": [
     "Если срок брони истечёт, ID снова поступит в продажу",
     "If the hold expires, the ID goes back on sale"
@@ -299,6 +303,10 @@
     "Открыть бизнес",
     "Create business"
   ],
+  "Biznes profil": [
+    "Бизнес-профиль",
+    "Business profile"
+  ],
   "Biznes statistikasi": [
     "Статистика бизнеса",
     "Business statistics"
@@ -338,6 +346,10 @@
   "Boshqa": [
     "Другое",
     "Other"
+  ],
+  "Boshqa kod yozib ko‘ring yoki tariflardan tanlang.": [
+    "Попробуйте другой код или выберите из тарифов.",
+    "Try another code or pick one from the tiers."
   ],
   "Boshqa odamning kontenti": [
     "Чужой контент",
@@ -578,6 +590,10 @@
   "Bunday ID topilmadi. Kodni tekshiring.": [
     "Такой ID не найден. Проверьте код.",
     "No such ID. Check the code."
+  ],
+  "Bunday kod topilmadi": [
+    "Такой код не найден",
+    "No such code found"
   ],
   "Bunday manzil topilmadi.": [
     "Такой адрес не найден.",
@@ -1255,6 +1271,10 @@
     "Имя, компания или код ID",
     "Name, company or ID code"
   ],
+  "Ism, kontaktlar, havolalar": [
+    "Имя, контакты, ссылки",
+    "Name, contacts, links"
+  ],
   "Ismingiz": [
     "Ваше имя",
     "Your name"
@@ -1535,6 +1555,10 @@
     "Каталог, заказы и статистика",
     "Catalog, orders and statistics"
   ],
+  "Katalog, ish vaqti, galereya, buyurtmalar": [
+    "Каталог, часы работы, галерея, заказы",
+    "Catalog, opening hours, gallery, orders"
+  ],
   "Katalogda mahsulotlarni guruhlaydi.": [
     "Группирует товары в каталоге.",
     "Groups products in the catalogue."
@@ -1558,6 +1582,10 @@
   "Keng rasm — profil tepasida ko‘rinadi.": [
     "Широкое изображение — показывается вверху профиля.",
     "A wide image — it shows at the top of the profile."
+  ],
+  "Keyin ikkalasini ham qo‘shishingiz mumkin.": [
+    "Позже можно добавить оба.",
+    "You can add both later."
   ],
   "Keyingisi": [
     "Далее",
@@ -1646,6 +1674,10 @@
   "Kod xato. Tekshirib, qaytadan kiriting.": [
     "Неверный код. Проверьте и введите ещё раз.",
     "Wrong code. Check it and enter again."
+  ],
+  "Kod yozing — masalan AAA000": [
+    "Введите код — например AAA000",
+    "Type a code — for example AAA000"
   ],
   "Kod yuborildi": [
     "Код отправлен",
@@ -2646,6 +2678,10 @@
   "Qabul qiluvchining ID kodini yozing.": [
     "Введите код ID получателя.",
     "Enter the recipient's ID code."
+  ],
+  "Qanday profil ochasiz?": [
+    "Какой профиль открываете?",
+    "Which profile are you opening?"
   ],
   "Qaysi ID yozilsin": [
     "Какой ID записать",
