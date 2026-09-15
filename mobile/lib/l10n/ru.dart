@@ -113,6 +113,7 @@ const ruStrings = <String, String>{
   'Bo‘sh ID‘lardan tanlang': 'Выберите из свободных ID',
   'Bo‘sh NFC ID‘lar': 'Свободные NFC ID',
   'Bo‘sh kartaga o‘z ID havolangizni yozing': 'Запишите ссылку на свой ID на пустую карту',
+  'Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring': 'Свободных кодов пока нет — введите код',
   'Bo‘sh kod yo‘q': 'Свободных кодов нет',
   'Bo‘sh kodlar': 'Свободные коды',
   'Bo‘sh — bepul': 'Свободно — бесплатно',

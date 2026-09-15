@@ -3354,6 +3354,19 @@ function catalogPriceD1(record, auctionFinal) {
   return Number.isFinite(stored) && stored > 0 ? stored : 0;
 }
 
+// Katalogdagi kodning tarifi — ro'yxat javoblari uchun.
+//
+// 6 belgili standart kod (AAA000) bo'lmasa — bepul: ro'yxatdan
+// o'tganda beriladigan 8 xonali ID aynan shunday va uning naqsh
+// tarifi yo'q.
+function catalogTierD1(record) {
+  const c = String(record?.code || '').toUpperCase();
+  const override = String(record?.tierOverride || '').trim().toLowerCase();
+  if (override) return override;
+  if (c.length !== 6 || !STD_CODE_RE.test(c)) return 'free';
+  return personalPriceForCode(c).tier || 'free';
+}
+
 function catalogCard(record, auctionFinal = null) {
   return {
     code: record.code, name: record.name, role: record.role, avatarUrl: record.avatarUrl, tg: record.tg,
@@ -3364,6 +3377,18 @@ function catalogCard(record, auctionFinal = null) {
     ts: record.ts, views: record.views,
     profileType: record.profileType, city: record.city, categorySlug: record.categorySlug,
     verified: record.verified, tierOverride: record.tierOverride || '',
+    // TARIF — RO'YXATDA HAM YUBORILADI (2026-09).
+    //
+    // NIMA UCHUN QO'SHILDI. Bu javobda tarif yo'q edi va mijoz uni
+    // NARXDAN taxmin qilishga majbur edi. Egasi bor kodning katalogdagi
+    // narxi esa 0 bo'ladi (u sotuvda emas) — natijada ilovada VIP001
+    // kabi ekslyuziv ID "Bepul" deb ko'rsatilardi. Egasi buni surat
+    // bilan ko'rsatdi.
+    //
+    // Tarif shu yerda, narx bilan BIR XIL manbadan hisoblanadi
+    // (`personalPriceForCode` -> qo'lda belgilangan override, bo'lmasa
+    // naqsh qoidasi), ya'ni sayt va ilova bir xil javobni ko'radi.
+    tier: catalogTierD1(record),
     // 2026-09: katalogda admin sovg'a qilgan kartani "0 so'm" emas,
     // "Sovg'a" deb ko'rsatish uchun. MUHIM: bu bayroq narxdan EMAS,
     // `nfc_gifts` jadvalidagi HAQIQIY sovg'a yozuvidan olinadi

@@ -195,6 +195,34 @@ function withAdminCookie(init = {}) {
   );
 }
 
+{
+  // TARIF RO'YXATDA HAM BO'LSIN. Egasi bor kodning narxi 0 bo'ladi —
+  // ilova tarifni narxdan taxmin qilsa, VIP001 "Bepul" bo'lib
+  // ko'rinardi (egasi surat bilan ko'rsatdi).
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts) VALUES ('VIP001', 'Egasi bor', 0, 2)`).run();
+  const res = await worker.fetch(req('/api/records/search?q=vip001'), env);
+  const body = await res.json().catch(() => ({}));
+  const row = (body.records || [])[0];
+  checkTrue(
+    'GET /api/records/search -> tarif yuboriladi (VIP001 ekslyuziv)',
+    res.status === 200 && row?.code === 'VIP001' && row?.tier === 'exclusive',
+  );
+}
+
+{
+  // RO'YXATDAN O'TGANDA BERILADIGAN 8 XONALI ID KATALOGDA
+  // KO'RINMAYDI — bu eski qoida va u tarif qo'shilgandan keyin ham
+  // shunday qolishi kerak (aks holda odamlarning shaxsiy ID'lari
+  // ommaviy ro'yxatga tushib ketardi).
+  await env.DB.prepare(`INSERT INTO cards (code, name, price, ts) VALUES ('12345678', 'Bepul ID', 0, 3)`).run();
+  const res = await worker.fetch(req('/api/records/search?q=12345678'), env);
+  const body = await res.json().catch(() => ({}));
+  checkTrue(
+    'GET /api/records/search -> 8 xonali avtomatik ID chiqmaydi',
+    res.status === 200 && (body.records || []).length === 0,
+  );
+}
+
 // =====================================================================
 // R2 uploads
 // =====================================================================

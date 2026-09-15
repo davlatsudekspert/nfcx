@@ -391,6 +391,21 @@ class _TierRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: T.caption.copyWith(fontSize: 12),
                 ),
+                // KOD TUGAGAN BO'LSA — NIMA QILISH KERAKLIGI.
+                //
+                // Narx ko'rinadi, lekin tanlash uchun tayyor ro'yxat
+                // yo'q. O'shanda odam nima qilishini bilishi kerak:
+                // kodni O'ZI yozib ko'radi — qidiruv har qanday bo'sh
+                // kodning bandligini va narxini aytadi.
+                if (!available && basePrice > 0) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    tr('Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.meta.copyWith(fontSize: 11, color: C.ink3),
+                  ),
+                ],
               ],
             ),
           ),

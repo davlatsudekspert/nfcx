@@ -411,6 +411,10 @@
     "Запишите ссылку на свой ID на пустую карту",
     "Write your ID link onto a blank card"
   ],
+  "Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring": [
+    "Свободных кодов пока нет — введите код",
+    "No free codes yet — type a code"
+  ],
   "Bo‘sh kod yo‘q": [
     "Свободных кодов нет",
     "No free codes"

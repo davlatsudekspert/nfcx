@@ -113,6 +113,7 @@ const enStrings = <String, String>{
   'Bo‘sh ID‘lardan tanlang': 'Choose from available IDs',
   'Bo‘sh NFC ID‘lar': 'Available NFC IDs',
   'Bo‘sh kartaga o‘z ID havolangizni yozing': 'Write your ID link onto a blank card',
+  'Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring': 'No free codes yet — type a code',
   'Bo‘sh kod yo‘q': 'No free codes',
   'Bo‘sh kodlar': 'Free codes',
   'Bo‘sh — bepul': 'Available — free',
