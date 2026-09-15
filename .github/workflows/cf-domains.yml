@@ -102,25 +102,61 @@ jobs:
           TARGET = 'nfcstore-api'          # deploy HAQIQATAN shu yerga chiqadi
           HOSTS = ['nfcstore.uz', 'www.nfcstore.uz']
 
+          # BO'SH JAVOB = MUVAFFAQIYAT, XATO EMAS.
+          #
+          # Bu yerda haqiqiy zarar yetkazgan xato bor edi. Cloudflare
+          # DELETE uchun `204 No Content` va BO'SH tana qaytaradi.
+          # Ilgari bu funksiya bo'sh tanani JSON deb o'qiy olmay
+          # `success: False` derdi. Natijada skript "o'chirish rad
+          # etildi, hech narsa o'zgarmadi" deb yozdi — HOLBUKI
+          # `nfcstore.uz` bog'lanishi O'CHIB KETGAN edi va qayta
+          # qo'shilmadi. Domen umuman yo'qoldi ("Could not resolve
+          # host"). Endi bo'sh tana muvaffaqiyat deb qaraladi.
           def api(method, url, body=None):
               cmd = ['curl', '-sS', '-X', method, '-H', f'Authorization: Bearer {TOKEN}',
                      '-H', 'Content-Type: application/json', url]
               if body is not None:
                   cmd += ['--data', json.dumps(body)]
               out = subprocess.run(cmd, capture_output=True, text=True).stdout
+              if not out.strip():
+                  return {'success': True, 'result': None, 'errors': []}
               try:
                   return json.loads(out)
               except Exception:
                   return {'success': False, 'errors': [{'message': out[:400]}]}
+
+          def zone_of(host):
+              """Hostning zonasi. Bog'lanish umuman yo'q bo'lsa ham kerak."""
+              apex = '.'.join(host.split('.')[-2:])
+              r = api('GET', f'https://api.cloudflare.com/client/v4/zones?name={apex}')
+              res = r.get('result') or []
+              return res[0]['id'] if res else None
 
           rows = json.load(open('rows.json'))
           by_host = {r.get('hostname'): r for r in rows}
 
           for host in HOSTS:
               cur = by_host.get(host)
+
+              # BOG'LANISH YO'Q BO'LSA — O'TKAZIB YUBORMAYMIZ, QO'SHAMIZ.
+              # Ilgari bu yerda `continue` turardi va aynan shu sabab
+              # o'chib ketgan `nfcstore.uz` tiklanmadi: skript uni
+              # "yo'q ekan" deb tinchgina tashlab ketdi.
               if cur is None:
-                  print(f'{host}: Custom Domain yo\'q — o\'tkazib yuborildi.')
+                  zid = zone_of(host)
+                  if not zid:
+                      print(f'{host}: zona topilmadi — qo\'lda qo\'shish kerak.')
+                      sys.exit(1)
+                  print(f'{host}: bog\'lanish YO\'Q — yangidan qo\'shilyapti')
+                  r = api('PUT', BASE, {'environment': 'production', 'hostname': host,
+                                        'service': TARGET, 'zone_id': zid,
+                                        'override_existing_origin': True})
+                  if not r.get('success'):
+                      print('  QO\'SHISH RAD ETILDI:', json.dumps(r.get('errors'), ensure_ascii=False))
+                      sys.exit(1)
+                  print(f'  {TARGET} ga ulandi')
                   continue
+
               if cur.get('service') == TARGET:
                   print(f'{host}: allaqachon {TARGET} da — tegilmadi.')
                   continue
