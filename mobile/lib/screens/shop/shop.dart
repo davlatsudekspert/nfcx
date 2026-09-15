@@ -54,6 +54,10 @@ class ShopScreen extends StatefulWidget {
 
 class _ShopScreenState extends State<ShopScreen> with CodeSearch {
   List<Record>? _catalog;
+
+  /// Tarif -> narx (`/api/settings/id-pricing`, katalog bilan bir
+  /// xil manba). Kalitlar: bronze/silver/gold/premium/exclusiveFrom.
+  Map<String, int> _pricing = const {};
   bool _loading = true;
 
   @override
@@ -65,10 +69,18 @@ class _ShopScreenState extends State<ShopScreen> with CodeSearch {
   Future<void> _load({bool force = false}) async {
     if (mounted) setState(() => _loading = true);
     try {
-      final list = await AppScope.read(context).repo.catalog(force: force);
+      final repo = AppScope.read(context).repo;
+      final list = await repo.catalog(force: force);
+      // Narx jadvali ixtiyoriy: kelmasa katalogdagi narxlar qoladi
+      // (ID katalogi bilan bir xil tartib).
+      Map<String, int> pricing = const {};
+      try {
+        pricing = await repo.idPricing();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _catalog = list;
+        _pricing = pricing;
         _loading = false;
       });
     } catch (_) {
@@ -79,10 +91,17 @@ class _ShopScreenState extends State<ShopScreen> with CodeSearch {
     }
   }
 
-  /// Tarif uchun ENG ARZON mavjud kod narxi — "shundan boshlanadi".
+  /// Tarif narxi — "shundan boshlanadi".
   ///
-  /// Narx serverdan: mijozda narx jadvali yo'q.
+  /// Narx serverdan: mijozda narx jadvali yo'q. Avval tarifning O'Z
+  /// narxi (`idPricing`), u kelmagan bo'lsa — katalogdagi ENG ARZON
+  /// bo'sh kod. Ilgari faqat ikkinchisi bor edi: bo'sh kodi yo'q
+  /// tarif do'konda narxsiz ("Katalogda") turardi — ID katalogida
+  /// esa narxi bor edi, ikki ekran bir-biriga zid edi.
   int _from(Tier tier) {
+    final key = tier == Tier.exclusive ? 'exclusiveFrom' : tier.name;
+    final base = _pricing[key] ?? 0;
+    if (base > 0) return base;
     var best = 0;
     for (final r in _catalog ?? const <Record>[]) {
       if (r.tier != tier || r.price <= 0 || r.notForSale) continue;

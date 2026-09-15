@@ -211,34 +211,78 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         c.toLowerCase().contains(q);
   }
 
-  /// SHAXSIY PROFILLAR — kompaniyalarsiz.
+  /// TUR SUZGICHI shu yozuvga mos keladimi.
+  ///
+  /// "Shaxsiy" — biznes bo'lmagan hamma (ekspert ham shaxs);
+  /// "Ekspert" — kasbi yozilgan; "Biznes" — faqat biznes.
+  bool _kindOk(Record r) => switch (_kind) {
+        'business' => r.isBusiness,
+        'personal' => !r.isBusiness,
+        'expert' => !r.isBusiness && r.role.trim().isNotEmpty,
+        _ => true,
+      };
+
+  bool _categoryOk(Record r) =>
+      _category.isEmpty || r.categorySlug == _category;
+
+  /// SHAXSIY PROFILLAR — kompaniyalarsiz VA biznes turidagi
+  /// kartalarsiz.
   ///
   /// EGASI: "bu yerda kompaniyalarni alohida, personallarni
-  /// alohida qilish kerak". Haq edi: ilgari kompaniyalar IKKI
-  /// marta chiqardi — tepadagi katta kartalar to'rida va shu
-  /// ro'yxatda yana bir marta.
-  List<_Entry> get _people {
-    if (_kind == 'business') return const [];
-    return [
-      for (final r in _catalog)
-        if (_hit(r.code, r.name, r.role) &&
-            (_category.isEmpty || r.categorySlug == _category) &&
-            (_kind.isEmpty ||
-                (_kind == 'expert' && r.role.trim().isNotEmpty) ||
-                (_kind == 'personal' && !r.isBusiness)))
-          _Entry.person(r),
-    ];
-  }
+  /// alohida qilish kerak". Ilgari biznes turidagi karta (masalan
+  /// "NFC Restaurant") ham shu ro'yxatga tushardi — qidiruvda
+  /// "Odamlar" sarlavhasi ostida restoran turardi.
+  ///
+  /// MANBA TASHQARIDAN: ko'rib chiqishda katalog, qidiruvda esa
+  /// katalog + server natijasi. Suzgichlar ikkala holatda ham BIR
+  /// XIL ishlaydi — ilgari qidiruv paytida chiplar umuman
+  /// e'tiborga olinmasdi (egasi: "qidiruv ishlamayapti").
+  List<_Entry> _peopleFrom(Iterable<Record> source) => [
+        for (final r in source)
+          if (!r.isBusiness &&
+              _hit(r.code, r.name, r.role) &&
+              _kindOk(r) &&
+              _categoryOk(r))
+            _Entry.person(r),
+      ];
 
-  /// KOMPANIYALAR — o'z bo'limida.
-  List<_Entry> get _businesses {
+  /// KOMPANIYALAR — o'z bo'limida: kompaniya profillari ham,
+  /// biznes turidagi kartalar ham.
+  List<_Entry> _businessesFrom(
+    Iterable<Record> records,
+    Iterable<Company> companies,
+  ) {
     if (_kind == 'personal' || _kind == 'expert') return const [];
     return [
-      for (final c in _companies)
+      for (final r in records)
+        if (r.isBusiness && _hit(r.code, r.name, r.role) && _categoryOk(r))
+          _Entry.person(r),
+      for (final c in companies)
         // Kompaniyada toifa maydoni yo'q — toifa tanlangan
         // bo'lsa ular ro'yxatga kirmaydi.
         if (_hit(c.id, c.name, c.city) && _category.isEmpty)
           _Entry.business(c),
+    ];
+  }
+
+  /// QIDIRUV MANBASI — katalog + server natijasi, takrorsiz.
+  ///
+  /// Server (`/api/records/search`) email, telefon va hashtag
+  /// bo'yicha ham topadi; katalog esa allaqachon qo'lda va tezkor.
+  /// Ikkalasi qo'shiladi, bitta kod ikki marta chiqmaydi.
+  List<Record> get _searchRecords {
+    final seen = <String>{};
+    return [
+      for (final r in [..._foundPeople, ..._catalog])
+        if (seen.add(r.code.toUpperCase())) r,
+    ];
+  }
+
+  List<Company> get _searchCompanies {
+    final seen = <String>{};
+    return [
+      for (final c in [..._foundCompanies, ..._companies])
+        if (seen.add(c.id.toUpperCase())) c,
     ];
   }
 
@@ -331,7 +375,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ];
     }
 
-    if (_foundPeople.isEmpty && _foundCompanies.isEmpty) {
+    // SUZGICHLAR QIDIRUVDA HAM ISHLAYDI: "Biznes" tanlansa faqat
+    // kompaniyalar, toifa tanlansa faqat shu toifa. Bo'limlar ko'rib
+    // chiqishdagi bilan bir xil nomlanadi.
+    final businesses = _businessesFrom(_searchRecords, _searchCompanies);
+    final people = _peopleFrom(_searchRecords);
+
+    if (businesses.isEmpty && people.isEmpty) {
       return [
         SliverToBoxAdapter(
           child: EmptyState(
@@ -346,13 +396,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     return [
-      if (_foundPeople.isNotEmpty) ...[
-        _header(tr('Odamlar')),
-        _cardList([for (final r in _foundPeople) _Entry.person(r)]),
-      ],
-      if (_foundCompanies.isNotEmpty) ...[
+      if (businesses.isNotEmpty) ...[
         _header(tr('Kompaniyalar')),
-        _cardList([for (final c in _foundCompanies) _Entry.business(c)]),
+        _cardList(businesses),
+      ],
+      if (people.isNotEmpty) ...[
+        _header(tr('Shaxsiy profillar')),
+        _cardList(people),
       ],
     ];
   }
@@ -398,8 +448,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     final rating = _rating;
-    final people = _people;
-    final businesses = _businesses;
+    final people = _peopleFrom(_catalog);
+    final businesses = _businessesFrom(_catalog, _companies);
 
     return [
       if (rating.isNotEmpty) ...[
