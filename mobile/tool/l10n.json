@@ -299,6 +299,10 @@
     "Открыть бизнес",
     "Create business"
   ],
+  "Biznes statistikasi": [
+    "Статистика бизнеса",
+    "Business statistics"
+  ],
   "Biznesingiz —\\nmobil do‘kon": [
     "Ваш бизнес —\\nмобильный магазин",
     "Your business —\\na mobile store"
@@ -1547,6 +1551,10 @@
     "Входящие",
     "Incoming"
   ],
+  "Kelgan buyurtmalar": [
+    "Полученные заказы",
+    "Received orders"
+  ],
   "Keng rasm — profil tepasida ko‘rinadi.": [
     "Широкое изображение — показывается вверху профиля.",
     "A wide image — it shows at the top of the profile."
@@ -1758,6 +1766,10 @@
   "Ko‘rishlar · 7 kun": [
     "Просмотры · 7 дней",
     "Views · 7 days"
+  ],
+  "Ko‘rishlar, kontaktlar, mahsulotlar": [
+    "Просмотры, контакты, товары",
+    "Views, contacts, products"
   ],
   "Kuchli naqsh — masalan AAA000": [
     "Сильный шаблон — например AAA000",

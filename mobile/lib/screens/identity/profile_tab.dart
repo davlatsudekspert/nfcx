@@ -21,7 +21,10 @@ import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/share.dart';
 import '../content/compose.dart';
+import '../business/business_stats.dart';
+import '../business/edit_business.dart';
 import '../nfc/id_catalog.dart';
+import '../orders/owner_orders.dart';
 import '../settings/settings_screen.dart';
 import 'edit_profile.dart';
 import 'follow_list.dart';
@@ -548,6 +551,27 @@ class _ProfileTabState extends State<ProfileTab> {
             icon: Ico.grid,
             onTap: () => Navigator.of(context).pop('content'),
           ),
+
+          // BIZNES BO'LIMLARI — FAQAT BIZNES SHAXSIDA.
+          //
+          // Bu uch ekran kodda bor edi, lekin ILOVADA ULARNI
+          // OCHADIGAN HECH NARSA YO'Q EDI: fayllar yozilgan, hech
+          // qayerdan chaqirilmagan. Egasi buni "sozlamalar,
+          // to'lovlar, yana bir qancha sahifalar bor edi" deb
+          // xabar qildi va haq edi — ular yetim qolgan edi.
+          if (active.isBusiness) ...[
+            SheetAction(
+              label: tr('Biznes statistikasi'),
+              icon: Ico.chart,
+              subtitle: tr('Ko‘rishlar, kontaktlar, mahsulotlar'),
+              onTap: () => Navigator.of(context).pop('bstats'),
+            ),
+            SheetAction(
+              label: tr('Kelgan buyurtmalar'),
+              icon: Ico.bag,
+              onTap: () => Navigator.of(context).pop('borders'),
+            ),
+          ],
           SheetAction(
             label: tr('Shaxsni almashtirish'),
             icon: Ico.refresh,
@@ -573,13 +597,40 @@ class _ProfileTabState extends State<ProfileTab> {
               : ProfileScreen(code: active.code),
         );
       case 'edit':
-        if (active.record != null) {
+        // BIZNESNING O'Z TAHRIR EKRANI BOR.
+        //
+        // Ilgari bu yerda faqat `active.record != null` tekshirilardi
+        // va biznes shaxsida tugma JIMGINA hech narsa qilmasdi —
+        // bosasan, oyna yopiladi, tamom.
+        if (active.isBusiness && active.company != null) {
+          final saved = await push<bool>(
+            context,
+            (_) => EditBusinessScreen(company: active.company!),
+          );
+          if (saved == true && mounted) {
+            await AppScope.read(context).refreshIdentities();
+            if (mounted) await _load();
+          }
+        } else if (active.record != null) {
           final saved = await push<bool>(
             context,
             (_) => EditProfileScreen(record: active.record!),
           );
           if (saved == true && mounted) await _load();
         }
+      case 'bstats':
+        await push<void>(
+          context,
+          (_) => BusinessStatsScreen(companyId: active.code),
+        );
+      case 'borders':
+        await push<void>(
+          context,
+          (_) => OwnerOrdersScreen(
+            companyId: active.code,
+            companyName: active.name,
+          ),
+        );
       case 'content':
         await push<void>(context, (_) => const MyContentScreen());
         if (mounted) await _load();
