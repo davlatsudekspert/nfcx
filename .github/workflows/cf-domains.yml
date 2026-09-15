@@ -127,22 +127,40 @@ jobs:
 
               zone_id = cur.get('zone_id')
               print(f'{host}: {cur.get("service")} -> {TARGET}')
+              body = {'environment': 'production', 'hostname': host,
+                      'service': TARGET, 'zone_id': zone_id}
 
-              # 1) Eskisini olib tashlash. Bitta host bir vaqtda faqat
-              #    BITTA Worker'ning Custom Domain'i bo'la oladi, shuning
-              #    uchun avval bo'shatiladi.
+              # AVVAL BUZMAYDIGAN YO'L. Ilgari bu yerda "eskisini
+              # o'chirib, keyin yangisini qo'shish" tartibi edi. U
+              # xavfli: agar o'chirish o'tib, qo'shish rad etilsa
+              # (token huquqi yetmasa) domen HECH QAYSI Worker'da
+              # qolmaydi va sayt umuman ochilmaydi. Shuning uchun
+              # avval to'g'ridan-to'g'ri qayta biriktirib ko'ramiz —
+              # o'tsa, uzilish umuman bo'lmaydi.
+              r = api('PUT', BASE, body)
+              if r.get('success'):
+                  print(f'  {TARGET} ga ulandi (uzilishsiz)')
+                  continue
+
+              print('  to\'g\'ridan-to\'g\'ri ulanmadi:',
+                    json.dumps(r.get('errors'), ensure_ascii=False))
+
+              # Zaxira yo'l: bitta host bir vaqtda faqat BITTA
+              # Worker'ning Custom Domain'i bo'la oladi, shuning uchun
+              # eskisini bo'shatib qayta urinamiz. Shu paytdan
+              # boshlab qisqa uzilish bo'lishi mumkin.
               r = api('DELETE', f'{BASE}/{cur["id"]}')
               if not r.get('success'):
-                  print('  O\'CHIRISH RAD ETILDI:', json.dumps(r.get('errors'), ensure_ascii=False))
+                  print('  O\'CHIRISH HAM RAD ETILDI:', json.dumps(r.get('errors'), ensure_ascii=False))
+                  print('  Hech narsa o\'zgarmadi — sayt avvalgidek ishlaydi.')
                   sys.exit(1)
               print('  eski bog\'lanish olindi')
 
-              # 2) Yangisini qo'shish.
-              r = api('PUT', BASE, {'environment': 'production', 'hostname': host,
-                                    'service': TARGET, 'zone_id': zone_id})
+              r = api('PUT', BASE, body)
               if not r.get('success'):
                   print('  QO\'SHISH RAD ETILDI:', json.dumps(r.get('errors'), ensure_ascii=False))
-                  print('  DIQQAT: domen hozir hech qaysi Worker\'da emas — panelda qo\'lda qo\'shing.')
+                  print('  DIQQAT: domen hozir hech qaysi Worker\'da emas.')
+                  print('  Panelda qo\'lda qo\'shing: nfcstore-api -> Domains -> Add Domain')
                   sys.exit(1)
               print(f'  {TARGET} ga ulandi')
 
