@@ -12,6 +12,9 @@ import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
+import '../business/business_stats.dart';
+import '../business/edit_catalog.dart';
+import '../orders/owner_orders.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
 import '../../design/refresh.dart';
@@ -55,6 +58,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<StoryFeedEntry> _stories = const [];
   List<Order> _pending = const [];
+
+  /// Egasining FAOL istoryasi bormi.
+  ///
+  /// Sarlavhadagi halqa shunga qarab aylanadi: bor bo'lsa oltin va
+  /// harakatda, yo'q bo'lsa so'ngan. Bu ilovadagi umumiy qoida —
+  /// halqa bezak emas, holat.
+  bool _ownStory = false;
   int _gifts = 0;
 
   bool _loading = true;
@@ -138,6 +148,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         stories = await state.repo.storyFeed();
       } catch (_) {}
 
+      // EGASINING O'Z ISTORYASI — sarlavhadagi halqa uchun.
+      var ownStory = false;
+      final me = state.active;
+      if (me != null) {
+        try {
+          final mine = me.isBusiness
+              ? await state.repo.companyStories(me.code)
+              : await state.repo.recordStories(me.code);
+          ownStory = mine.isNotEmpty;
+        } catch (_) {}
+      }
+
       // TUGALLANMAGAN TO'LOV vaqtga bog'liq: kod 24 soat band
       // bo'lib turadi va shu muddatda to'lanmasa bekor qilinadi.
       // Shuning uchun u Bosh sahifada ko'rinadi.
@@ -156,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _stories = stories;
+        _ownStory = ownStory;
         _pending = pending;
         _gifts = gifts;
         _loading = false;
@@ -218,14 +241,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(child: _Header(identity: active)),
+              SliverToBoxAdapter(
+                child: _Header(
+                  identity: active,
+                  hasStory: _ownStory,
+                  onTap: () => showIdentitySwitcher(context),
+                ),
+              ),
 
               // SALOMLASHUV.
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, 0),
+                  // MARKAZGA — avatar o'rtada bo'lgach, chapga
+                  // tekislangan matn undan "qochib" ketardi va
+                  // ekran muvozanatini buzardi.
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Eyebrow(
                         [
@@ -281,6 +313,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: _QuickActions(identity: active),
                 ),
               ),
+
+              // BIZNES XIZMATLARI — BIZNES TANLANGANDA.
+              //
+              // Egasi: "shu yerda tanlansa biznes profili, u
+              // ochilib bo'limlari, menyu, xizmatlari bo'lsa".
+              //
+              // Ya'ni avatarni bosib biznesga o'tgach, Bosh sahifa
+              // ham BIZNESNIKI bo'lishi kerak — shaxsiy profildagi
+              // bilan bir xil qolmasligi kerak. Endi shunday:
+              // biznes tanlansa bu qator chiqadi va uning
+              // bo'limlariga bevosita olib boradi.
+              if (active != null && active.isBusiness)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      S.gutter,
+                      S.x12,
+                      S.gutter,
+                      0,
+                    ),
+                    child: _BusinessRow(identity: active),
+                  ),
+                ),
 
               // OGOHLANTIRISHLAR — kutilayotgan to'lov va sovg'a.
               if (_pending.isNotEmpty || _gifts > 0)
@@ -366,53 +421,62 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 // ─────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  const _Header({this.identity});
+  const _Header({this.identity, this.hasStory = false, this.onTap});
 
   final Identity? identity;
+
+  /// Egasining FAOL istoryasi bormi — halqa shunga qarab aylanadi.
+  final bool hasStory;
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
-        child: Row(
+        child: Column(
           children: [
-            const BrandMark(size: 42),
-            const SizedBox(width: S.x12),
+            // BRAND — endi yolg'iz, o'rtada.
+            //
+            // Ilgari bu qatorda IKKI CHETDA ikkita dumaloq turardi:
+            // chapda brend belgisi, o'ngda kichkina avatar. Egasi:
+            // "ikki tomonda tepada dumaloq bo'p qolyapti, avatar
+            // o'rtada bo'lsin, chiroyli". Haq edi — ikkita teng
+            // og'irlikdagi dumaloq bir-biri bilan raqobatlashardi
+            // va ko'z hech qaysisida to'xtamasdi.
+            // BREND — FAQAT YOZUV, medalyonsiz.
+            //
+            // Avval bu yerda brend medalyoni ham turardi. Lekin
+            // pastda endi katta avatar bor va ikkita doira yana
+            // bir-biri bilan raqobatlashardi — egasi aynan shundan
+            // shikoyat qilgan edi. Yozuvning o'zi brendni
+            // ko'rsatishga yetarli, yagona doira esa avatar
+            // bo'lib qoladi va ko'z to'g'ri joyda to'xtaydi.
             const Wordmark(),
-            const Spacer(),
-            // SHAXS ALMASHTIRGICH — bir nechta ID egasi uchun eng
-            // tez yo'l. Bitta ID bo'lsa ham bosiladi: ichida
-            // "ID qo'shish" turadi.
-            Press(
-              onTap: () => showIdentitySwitcher(context),
-              minSize: S.tap,
-              scale: .92,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: C.accent.withValues(alpha: .45),
-                    width: 1.2,
-                  ),
-                ),
-                // AVATAR — 36 px JUDA KICHIK EDI.
-                //
-                // Egasi: "avatar juda ham kichkina, kattaroq qiling".
-                // U sarlavhadagi yagona shaxsiy element va ayni
-                // paytda shaxs almashtirgichning tugmasi ham —
-                // ya'ni bosiladigan joy ham bo'lishi kerak.
-                child: Avatar(
-                  url: identity?.avatarUrl,
-                  name: identity?.name ?? '',
-                  size: 48,
-                ),
-              ),
+
+            const SizedBox(height: S.x20),
+
+            // AVATAR — EKRANNING MARKAZI.
+            //
+            // Katta, o'rtada va atrofida istorya halqasi. Halqa
+            // ma'no tashiydi: egasining faol istoryasi bo'lsa oltin
+            // va AYLANADI, bo'lmasa so'ngan. Bu qoida butun ilovada
+            // bir xil (`StoryRing`), shuning uchun bu yerda qayta
+            // chizilmadi.
+            //
+            // Bosilsa shaxs tanlanadi: bir nechta ID va biznes
+            // profil egasi uchun eng tez yo'l shu.
+            StoryRing(
+              avatarUrl: identity?.avatarUrl,
+              name: identity?.name ?? '',
+              size: 104,
+              seen: !hasStory,
+              showLabel: false,
+              onTap: onTap,
             ),
           ],
         ),
       );
 }
-
 /// "Assalom, *Dilshod*" — kursiv urg'u so'zi oltin rangda.
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.name});
@@ -422,8 +486,14 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (name.isEmpty) {
-      return Text(tr('Assalomu alaykum'), style: T.title);
+      return Text(
+        tr('Assalomu alaykum'),
+        style: T.title,
+        textAlign: TextAlign.center,
+      );
     }
+    // Avatar markazda bo'lgani uchun matn ham markazda —
+    // aks holda ekran bir tomonga og'ib ko'rinardi.
     return Text.rich(
       TextSpan(
         children: [
@@ -439,6 +509,7 @@ class _Greeting extends StatelessWidget {
       ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
     );
   }
 }
@@ -520,6 +591,78 @@ class _ActiveCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 // TEZKOR AMALLAR
 // ─────────────────────────────────────────────────────────────
+
+/// BIZNES XIZMATLARI — Bosh sahifadagi ixcham qator.
+///
+/// Profil tabidagi to'liq ro'yxatning QISQARTIRILGANI: bu yerda
+/// eng ko'p kerak bo'ladigan uchtasi. To'liq ro'yxat va sozlamalar
+/// Profil tabida qoladi — ikkalasini bir xil qilsak, Bosh sahifa
+/// yana uzayib ketardi.
+class _BusinessRow extends StatelessWidget {
+  const _BusinessRow({required this.identity});
+
+  final Identity identity;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = identity.company;
+    if (c == null) return const SizedBox.shrink();
+
+    Widget tile(String label, Ico icon, VoidCallback onTap) => Expanded(
+          child: Surface(
+            padding: const EdgeInsets.symmetric(
+              horizontal: S.x8,
+              vertical: S.x12,
+            ),
+            onTap: onTap,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NIcon(icon, size: 19, color: C.accent),
+                const SizedBox(height: 7),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.buttonSm.copyWith(color: C.ink2),
+                ),
+              ],
+            ),
+          ),
+        );
+
+    return Row(
+      children: [
+        tile(
+          tr('Katalog'),
+          Ico.bag,
+          () => push<void>(context, (_) => EditCatalogScreen(company: c)),
+        ),
+        const SizedBox(width: S.x8),
+        tile(
+          tr('Buyurtmalar'),
+          Ico.doc,
+          () => push<void>(
+            context,
+            (_) => OwnerOrdersScreen(
+              companyId: identity.code,
+              companyName: identity.name,
+            ),
+          ),
+        ),
+        const SizedBox(width: S.x8),
+        tile(
+          tr('Statistika'),
+          Ico.chart,
+          () => push<void>(
+            context,
+            (_) => BusinessStatsScreen(companyId: identity.code),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _QuickActions extends StatelessWidget {
   const _QuickActions({this.identity});
