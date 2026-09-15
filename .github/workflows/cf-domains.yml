@@ -217,12 +217,28 @@ jobs:
               print('%-26s -> %s' % (x.get('hostname'), x.get('service')))
           PY
 
-      - name: Sayt ochiladimi
-        if: ${{ inputs.mode == 'apply' }}
+      # NIMA QAYERDAN KELAYOTGANINI AJRATISH.
+      #
+      # Faqat HTTP kodiga qarash yetmaydi: `/api/feed` uchun 404
+      # ikki xil sababdan chiqishi mumkin va ular butunlay boshqa
+      # narsa:
+      #   - Worker ishladi va `{"error":"not_found"}` qaytardi —
+      #     demak marshrut deploy qilingan koda yo'q;
+      #   - Worker umuman ishlamadi va statik xizmat javob berdi —
+      #     demak so'rov Worker'ga yetib bormayapti.
+      # Shuning uchun javobning BOSHI ham chiqariladi.
+      - name: Qaysi Worker nima javob beradi
         run: |
-          echo "Bir necha soniya kutamiz (DNS/marshrut yangilanishi uchun)."
-          sleep 20
-          for u in https://nfcstore.uz/ https://nfcstore.uz/api/feed; do
-            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 "$u" || echo 000)
-            echo "$u -> HTTP $code"
+          probe() {
+            echo "--- $1"
+            code=$(curl -sS -o body.txt -w '%{http_code}' --max-time 25 "$1" 2>/dev/null || echo 000)
+            echo "    HTTP $code | $(head -c 120 body.txt | tr '\n' ' ')"
+          }
+          for base in https://nfcstore.uz \
+                      https://nfcstore-api.davlatsudekspert.workers.dev \
+                      https://nfcstore-uz.davlatsudekspert.workers.dev; do
+            echo "=========== $base"
+            probe "$base/api/feed"
+            probe "$base/api/catalog"
+            probe "$base/api/settings/payments-enabled"
           done
