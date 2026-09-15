@@ -254,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const TopBar(),
               Expanded(
                 child: Center(
-                  child: ErrorState(humanError(_error), onRetry: _load),
+                  child: ErrorState(humanError(_error), detail: errorDetail(_error), onRetry: _load),
                 ),
               ),
             ],

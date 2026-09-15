@@ -206,7 +206,7 @@ class _MyContentScreenState extends State<MyContentScreen> {
               )
             else if (_error != null && _stories.isEmpty && _posts.isEmpty)
               SliverToBoxAdapter(
-                child: ErrorState(humanError(_error!), onRetry: _load),
+                child: ErrorState(humanError(_error!), detail: errorDetail(_error), onRetry: _load),
               )
             else ...[
               // ── STORY ────────────────────────────────────────

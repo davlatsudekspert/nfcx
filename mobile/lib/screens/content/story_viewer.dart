@@ -316,7 +316,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         child: SafeArea(
           child: Center(
             child: _error != null
-                ? ErrorState(humanError(_error), onRetry: _load)
+                ? ErrorState(humanError(_error), detail: errorDetail(_error), onRetry: _load)
                 : EmptyState(
                     tr('Story 24 soat turadi va keyin o‘zi o‘chadi.'),
                     title: tr('Story yo‘q'),

@@ -121,14 +121,27 @@ void main() {
       expect(find.text('Hali buyurtmangiz yo‘q.'), findsOneWidget);
     });
 
-    testWidgets('xatoda kod emas, jumla chiqadi', (tester) async {
+    testWidgets('xatoda ASOSIY XABAR jumla, texnik qator esa alohida',
+        (tester) async {
+      // QAROR ANIQLASHTIRILDI. Avval bu test "kod umuman ko'rinmasin"
+      // deb turardi. Qurilmada esa buning narxi ko'rindi: ekranda
+      // faqat umumiy jumla qolardi va nima yiqilgani — qaysi manzil,
+      // qaysi kod — bilib bo'lmasdi.
+      //
+      // Endi ikkalasi ham bor va ular ARALASHMAYDI: odamga
+      // mo'ljallangan jumla katta yozuvda, texnik qator esa ostida,
+      // kichik va kulrang. Suratga olib yuborish kifoya.
       final state = stateWith(MockClient((_) async => http.Response('{"error":"boom"}', 500)));
       await tester.pumpWidget(host(const MyOrdersScreen(), state));
       await settle(tester);
 
       expect(find.text('Qayta urinish'), findsOneWidget);
-      expect(find.textContaining('boom'), findsNothing);
-      expect(find.textContaining('500'), findsNothing);
+      // Asosiy xabar — odam tilida, xom kalitsiz.
+      expect(find.text('Serverda xatolik. Birozdan so‘ng qayta urining.'),
+          findsOneWidget);
+      // Texnik qator — kalit va holat bilan.
+      expect(find.textContaining('boom'), findsOneWidget);
+      expect(find.textContaining('HTTP 500'), findsOneWidget);
     });
   });
 }

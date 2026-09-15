@@ -107,7 +107,7 @@ class _GiftOffersScreenState extends State<GiftOffersScreen> {
             const TopBar(),
             Expanded(
               child: incoming == null && _error != null
-                  ? ErrorState(humanError(_error!), onRetry: _load)
+                  ? ErrorState(humanError(_error!), detail: errorDetail(_error), onRetry: _load)
                   : incoming == null
                       ? ListView(
                           padding: const EdgeInsets.symmetric(

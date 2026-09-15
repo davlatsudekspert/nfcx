@@ -430,7 +430,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 )
               else if (_error != null && _feed.isEmpty)
                 SliverToBoxAdapter(
-                  child: ErrorState(humanError(_error), onRetry: _load),
+                  child: ErrorState(
+                    humanError(_error),
+                    detail: errorDetail(_error),
+                    onRetry: _load,
+                  ),
                 )
               else if (_feed.isEmpty)
                 SliverToBoxAdapter(

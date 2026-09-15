@@ -126,14 +126,18 @@ void main() {
       expect(find.textContaining('shu yerda'), findsOneWidget);
     });
 
-    testWidgets('xatoda kod emas, jumla va Qayta urinish', (tester) async {
+    testWidgets('xatoda jumla, Qayta urinish va texnik qator',
+        (tester) async {
+      // `my_orders_test.dart` dagi bilan bir xil qoida: asosiy xabar
+      // odam tilida, texnik tafsilot esa ostida alohida qatorda.
       final state = stateWith(MockClient((_) async => http.Response('{"error":"boom"}', 500)));
       await tester.pumpWidget(host(const BusinessStatsScreen(companyId: 'X'), state));
       await settle(tester);
 
       expect(find.text('Qayta urinish'), findsOneWidget);
-      expect(find.textContaining('500'), findsNothing);
-      expect(find.textContaining('boom'), findsNothing);
+      expect(find.text('Serverda xatolik. Birozdan so‘ng qayta urining.'),
+          findsOneWidget);
+      expect(find.textContaining('HTTP 500'), findsOneWidget);
     });
   });
 

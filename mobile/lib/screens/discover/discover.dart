@@ -319,7 +319,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (_error != null && _catalog.isEmpty) {
       return [
         SliverToBoxAdapter(
-          child: ErrorState(humanError(_error), onRetry: _load),
+          child: ErrorState(humanError(_error), detail: errorDetail(_error), onRetry: _load),
         ),
       ];
     }

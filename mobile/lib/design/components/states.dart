@@ -119,11 +119,19 @@ class _Glyph extends StatelessWidget {
 /// Ekranga HECH QACHON xato kodi chiqarilmaydi ("500", "http_400"):
 /// odam u bilan nima qilishini bilmaydi.
 class ErrorState extends StatelessWidget {
-  const ErrorState(this.message, {super.key, this.onRetry, this.icon});
+  const ErrorState(this.message, {super.key, this.onRetry, this.icon, this.detail});
 
   final String message;
   final VoidCallback? onRetry;
   final Ico? icon;
+
+  /// TEXNIK QATOR — kalit, HTTP holati va javob boshi.
+  ///
+  /// Kirish ekranida bu allaqachon bor edi va aynan u kirish
+  /// muammosini bir suratda hal qildi. Qolgan ekranlarda esa xato
+  /// "Topilmadi." dan nariga o'tmasdi: qaysi manzil, qaysi kod —
+  /// bilib bo'lmasdi.
+  final String? detail;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -141,6 +149,14 @@ class ErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: T.bodyStrong.copyWith(fontSize: 14.5),
             ),
+            if (detail != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                detail!,
+                textAlign: TextAlign.center,
+                style: T.meta.copyWith(fontSize: 10.5, color: C.ink3),
+              ),
+            ],
             if (onRetry != null) ...[
               const SizedBox(height: S.x20),
               GhostButton(
@@ -232,7 +248,11 @@ class AsyncView<Tv> extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading && data == null) return skeleton;
     if (error != null && data == null) {
-      return ErrorState(humanError(error), onRetry: onRetry);
+      return ErrorState(
+        humanError(error),
+        detail: errorDetail(error),
+        onRetry: onRetry,
+      );
     }
     final d = data;
     if (d == null) return skeleton;

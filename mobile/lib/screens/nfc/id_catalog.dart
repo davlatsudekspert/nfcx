@@ -126,7 +126,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                   ),
                 )
               else if (_error != null && _all == null)
-                ErrorState(humanError(_error), onRetry: _load)
+                ErrorState(humanError(_error), detail: errorDetail(_error), onRetry: _load)
               else ...[
                 // BEPUL — material yo'q, sotilmaydi.
                 Padding(

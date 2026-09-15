@@ -178,7 +178,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
       return ScreenBackdrop(
         aura: Aura.reels,
         child: SafeArea(
-          child: Center(child: ErrorState(humanError(_error), onRetry: _load)),
+          child: Center(child: ErrorState(humanError(_error), detail: errorDetail(_error), onRetry: _load)),
         ),
       );
     }
