@@ -75,19 +75,45 @@ class Palette {
   final Color raised;
   final Color raisedHigh;
 
+  // ASL PALITRA — SAYTDAGI BIZNES PROFILDAN OLINGAN.
+  //
+  // Egasi: "yumshoqlik, mayinlik, boylik ko'rinmayapti, ranglar
+  // ham — nfcstore.uz/c/nfcstoreuz ranglariga e'tibor ber".
+  //
+  // Solishtirganda farq aniq bo'ldi va u ikki joyda edi:
+  //
+  //   1. OLTIN OQARIB KETGAN. Ilovada `#E8CFA0` — bu deyarli bej,
+  //      to'yinganligi past. Saytda esa `#E6C36A`: iliqroq va
+  //      to'yingan, ya'ni metall kabi ko'rinadi. Oqargan oltin
+  //      "arzon plastik", to'yingani "tanga" bo'lib ko'rinadi —
+  //      egasi aytgan "boylik" farqi aynan shu.
+  //
+  //   2. FON LOYQA JIGARRANG EDI. `baseTop: #191208` — bu quyuq
+  //      emas, KIR jigarrang. Saytda tepa `#0b0907`, ya'ni deyarli
+  //      qora, iliqlik esa ustidagi oltin nurdan keladi
+  //      (`rgba(201,161,74,.10)`). Shuning uchun u chuqur ko'rinadi:
+  //      qorong'ilik chuqurlik beradi, nur esa iliqlik.
+  //
+  // Qiymatlar `src/company-system.css` dagi `.qp-page` blokidan
+  // AYNAN ko'chirildi (--gold-1..3 va qobiq gradienti), taxmin
+  // qilinmadi. Ikkovi bir manbadan bo'lgani uchun sayt va ilova
+  // endi bir xil metalldan ko'rinadi.
   static const original = Palette(
     id: 'original',
     label: 'Asl',
-    accent: Color(0xFFE8CFA0),
-    accentHigh: Color(0xFFF7E7C4),
-    accentDeep: Color(0xFFB99A5E),
+    accent: Color(0xFFE6C36A), // --gold-2
+    accentHigh: Color(0xFFFBEEC2), // --gold-1
+    accentDeep: Color(0xFFC39A33), // --gold-3
     accentSecondary: Color(0xFFFF9F43),
-    aura: Color(0xFFF8D68A),
-    baseTop: Color(0xFF191208),
-    baseMid: Color(0xFF0C0906),
-    baseBottom: Color(0xFF0A0805),
-    raised: Color(0xFF141009),
-    raisedHigh: Color(0xFF2A241C),
+    aura: Color(0xFFC9A14A), // qobiq nuri: rgba(201,161,74,…)
+    baseTop: Color(0xFF0B0907),
+    baseMid: Color(0xFF080706),
+    baseBottom: Color(0xFF060504),
+    // Karta yuzasi: saytdagi
+    // linear-gradient(160deg,rgba(40,33,18,.9),rgba(18,15,9,.9))
+    // quyuq fon ustida shu ikki rangga tushadi.
+    raised: Color(0xFF131009),
+    raisedHigh: Color(0xFF241D11),
   );
 
   static const gold = Palette(
@@ -200,14 +226,21 @@ class C {
 
   // ── Matn ────────────────────────────────────────────────────
 
+  // MATN RANGLARI HAM SAYTDAN. Ilgari ular SOVUQ kulrang edi
+  // (`#98918A`, `#5F5A55`) va oltin fon ustida begona ko'rinardi —
+  // ko'z buni "ranglar bir-biriga yopishmayapti" deb o'qiydi.
+  // Saytda esa matn ham iliq tomonda: `#f2ece0`, `#8f887c`,
+  // `#777166`. Farq kichik, lekin butun ekranning "mayin"ligi
+  // aynan shundan.
+
   /// `text.primary` — sarlavha va asosiy matn.
-  static const Color ink = Color(0xFFFAF7F0);
+  static const Color ink = Color(0xFFF2ECE0);
 
   /// `text.secondary` — tana matni, izoh.
-  static const Color ink2 = Color(0xFF98918A);
+  static const Color ink2 = Color(0xFF8F887C);
 
   /// `text.muted` — meta, eyebrow, o'chiq holat.
-  static const Color ink3 = Color(0xFF5F5A55);
+  static const Color ink3 = Color(0xFF777166);
 
   /// Oltin yuzada turadigan matn (tugma ichi).
   static const Color onAccent = Color(0xFF1A1206);

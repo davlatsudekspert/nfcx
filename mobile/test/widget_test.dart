@@ -321,11 +321,24 @@ void main() {
   fieldLineTests();
 
   group('Dizayn tokenlari', () {
-    test('ranglar handoff bilan bir xil', () {
-      // Bu qiymatlar dizayn hujjatidan. O‘zgartirilsa — ataylab
-      // o‘zgartirilsin, tasodifan emas.
-      expect(C.bg, const Color(0xFF0A0805));
-      expect(C.accent, const Color(0xFFE8CFA0));
+    test('ranglar SAYTDAGI biznes profil bilan bir xil', () {
+      // Bu qiymatlar endi dizayn hujjatidan EMAS, saytning o‘zidan:
+      // `src/company-system.css` dagi `.qp-page` bloki
+      // (nfcstore.uz/c/:id). Manba ataylab almashtirildi.
+      //
+      // NIMA UCHUN. Egasi: "yumshoqlik, mayinlik, boylik
+      // ko‘rinmayapti, ranglar ham — saytdagi ranglarga e’tibor
+      // ber". Solishtirganda ikkita farq chiqdi: ilovadagi oltin
+      // oqargan edi (`#E8CFA0` — deyarli bej), saytdagisi esa
+      // to‘yingan (`#E6C36A`); fon esa loyqa jigarrang edi
+      // (`#0A0805` va ustida 30% nur), saytda deyarli qora
+      // (`#060504`, nur atigi 10%).
+      //
+      // Ikkovi bir manbadan bo‘lgani uchun sayt va ilova endi bir
+      // xil metalldan ko‘rinadi. Bu qiymatlar o‘zgarsa — avval
+      // saytda o‘zgarsin, keyin shu yerda.
+      expect(C.bg, const Color(0xFF060504));
+      expect(C.accent, const Color(0xFFE6C36A));
       expect(C.platinum, const Color(0xFFC9CCD2));
       expect(C.ok, const Color(0xFF63D694));
       expect(C.fail, const Color(0xFFE2685F));

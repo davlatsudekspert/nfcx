@@ -72,6 +72,18 @@ class AuraLayer {
 ///
 /// Presetlar mavzuga bog'liq, shuning uchun ular funksiya — `const`
 /// qiymat mavzu almashganda muzlab qolardi.
+///
+/// NUR KUCHI — 2026-09-15 da PASAYTIRILDI.
+///
+/// Egasi: "yumshoqlik, mayinlik, boylik ko'rinmayapti". Saytdagi
+/// biznes profil bilan yonma-yon qo'yilganda sabab aniq bo'ldi:
+/// u yerda qobiq nuri `rgba(201,161,74,.10)` — atigi 10%. Ilovada
+/// esa bosh sahifada 30% edi, ya'ni uch baravar kuchli.
+///
+/// Kuchli nur "yorug'" qilmaydi — u fonni JIGARRANG PARDA bilan
+/// yopadi. Qorong'ilik chuqurlik beradi, nur esa faqat ishora
+/// bo'lishi kerak; ikkalasi almashib ketsa ekran loyqa ko'rinadi.
+/// Shuning uchun barcha qatlamlar 0.09–0.13 oralig'iga tushirildi.
 @immutable
 class Aura {
   const Aura(this.layers, {this.cool = false, this.grain = .75});
@@ -94,7 +106,7 @@ class Aura {
           center: const Alignment(0, -1.22),
           color: C.palette.aura,
           radius: 1.18,
-          opacity: .30,
+          opacity: .13,
           falloff: .46,
         ),
         AuraLayer(
@@ -114,14 +126,14 @@ class Aura {
             center: const Alignment(0, -.12),
             color: C.accent,
             radius: .92,
-            opacity: .22,
+            opacity: .11,
             falloff: .5,
           ),
           AuraLayer(
             center: const Alignment(0, 1.08),
             color: const Color(0xFF9CC1EE),
             radius: .95,
-            opacity: .16,
+            opacity: .09,
             falloff: .55,
           ),
         ],
@@ -153,7 +165,7 @@ class Aura {
           center: const Alignment(1.05, -.35),
           color: const Color(0xFF9CC1EE),
           radius: 1.0,
-          opacity: .18,
+          opacity: .10,
           falloff: .48,
         ),
       ]);
@@ -165,7 +177,7 @@ class Aura {
             center: const Alignment(0, 1.15),
             color: C.accent,
             radius: 1.05,
-            opacity: .16,
+            opacity: .09,
             falloff: .5,
           ),
         ],
@@ -178,7 +190,7 @@ class Aura {
           center: Alignment.center,
           color: C.accent,
           radius: .95,
-          opacity: .20,
+          opacity: .10,
           falloff: .45,
         ),
       ]);
@@ -189,7 +201,7 @@ class Aura {
           center: const Alignment(0, -1.06),
           color: const Color(0xFFF0C419),
           radius: 1.14,
-          opacity: .26,
+          opacity: .12,
           falloff: .48,
         ),
       ]);
@@ -200,7 +212,7 @@ class Aura {
           center: const Alignment(0, -.78),
           color: C.palette.aura,
           radius: 1.0,
-          opacity: .22,
+          opacity: .11,
           falloff: .46,
         ),
       ]);
