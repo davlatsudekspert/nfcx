@@ -13,6 +13,7 @@ import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/tap_art.dart';
 import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
 import '../../design/nav.dart';
@@ -386,6 +387,43 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                     ),
                   ),
                 ),
+
+              // QANDAY ISHLAYDI — EKRANNING PASTI.
+              //
+              // Egasi: "NFC bo'limining pastlari bo'sh qolyapti,
+              // o'sha yerga biron vizual narsa qo'y — NFC kartani
+              // ulanishimi, shunaqa vizual".
+              //
+              // Bu shunchaki bezak emas: NFC bilan birinchi marta
+              // ishlaydigan odam kartani QAYERGA tegizishni va
+              // natijada NIMA bo'lishini shu rasmdan biladi.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x24,
+                  S.gutter,
+                  0,
+                ),
+                child: Surface(
+                  padding: const EdgeInsets.fromLTRB(S.x16, S.x16, S.x16, S.x8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionHeader(tr('Qanday ishlaydi')),
+                      const SizedBox(height: S.x8),
+                      const CardTapArt(),
+                      const SizedBox(height: S.x8),
+                      Text(
+                        tr('Kartani telefon orqasiga tegizing — profilingiz '
+                            'o‘sha zahoti ochiladi. Ilova ham, ro‘yxatdan '
+                            'o‘tish ham shart emas.'),
+                        style: T.caption.copyWith(fontSize: 12.5),
+                      ),
+                      const SizedBox(height: S.x12),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

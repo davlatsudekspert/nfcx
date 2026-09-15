@@ -1515,6 +1515,10 @@
     "Приложите карту к задней стороне телефона — откроется профиль.",
     "Tap the card to the back of the phone — the profile opens."
   ],
+  "Kartani telefon orqasiga tegizing — profilingiz o‘sha zahoti ochiladi. Ilova ham, ro‘yxatdan o‘tish ham shart emas.": [
+    "Поднесите карту к задней части телефона — ваш профиль откроется сразу. Ни приложение, ни регистрация не нужны.",
+    "Tap the card on the back of a phone — your profile opens straight away. No app, no sign-up needed."
+  ],
   "Kartani telefon orqasining yuqori qismiga yaqinlashtiring ": [
     "Поднесите карту к верхней части задней панели телефона ",
     "Hold the card near the top of the back of your phone "
@@ -2718,6 +2722,10 @@
   "Qabul qiluvchining ID kodini yozing.": [
     "Введите код ID получателя.",
     "Enter the recipient's ID code."
+  ],
+  "Qanday ishlaydi": [
+    "Как это работает",
+    "How it works"
   ],
   "Qanday profil ochasiz?": [
     "Какой профиль открываете?",

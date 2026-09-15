@@ -153,6 +153,19 @@ void main() {
     await golden(t, '11-nfc-center');
   });
 
+  // NFC MARKAZINING PASTKI QISMI.
+  //
+  // Egasi: "NFC bo‘limining pastlari bo‘sh qolyapti". Endi u yerda
+  // "Qanday ishlaydi" chizmasi turadi va bu kadr uni qo‘riqlaydi:
+  // pastki qism yana bo‘shab qolsa — golden o‘zgaradi.
+  testWidgets('11 NFC markazi — pastki qismi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const NfcCenterScreen(), state: s);
+    await t.drag(find.byType(ListView).first, const Offset(0, -900));
+    await settle(t);
+    await golden(t, '11-nfc-center-past');
+  });
+
   testWidgets('12 ID katalogi', (t) async {
     final s = await ready();
     await pumpScreen(t, const IdCatalogScreen(), state: s);
