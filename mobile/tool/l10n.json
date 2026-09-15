@@ -1179,6 +1179,10 @@
     "Код запрашивается при открытии приложения",
     "The code is asked when the app opens"
   ],
+  "Ilova ochilganda serverga ulanib bo‘lmadi, shuning uchun profillaringiz yuklanmadi.": [
+    "При запуске приложения не удалось связаться с сервером, поэтому ваши профили не загрузились.",
+    "The app could not reach the server at startup, so your profiles did not load."
+  ],
   "Ilova qulfi": [
     "Блокировка приложения",
     "App lock"
@@ -2866,6 +2870,10 @@
   "Seshanba": [
     "Вторник",
     "Tuesday"
+  ],
+  "Sessiya tekshirilmadi": [
+    "Сессия не проверена",
+    "Session not verified"
   ],
   "Sessiya tugagan. Qaytadan kiring.": [
     "Сессия истекла. Войдите заново.",

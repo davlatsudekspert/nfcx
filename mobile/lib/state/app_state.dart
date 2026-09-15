@@ -61,6 +61,26 @@ class AppState extends ChangeNotifier {
   List<Company> companies = const [];
   Identity? active;
 
+  /// SESSIYA TEKSHIRILMAY QOLDIMI.
+  ///
+  /// Ilova ochilganda token bor, lekin uni serverda tasdiqlab
+  /// bo'lmagan bo'lsa (internet yo'q, server javob bermadi) — biz
+  /// odamni chiqarib yubormaymiz. Lekin o'shanda `user`, `cards` va
+  /// `companies` BO'SH qoladi, ya'ni `active` ham `null` bo'ladi.
+  ///
+  /// NIMA UCHUN BU BAYROQ KERAK BO'LDI. Bunday holatda ilova
+  /// "kirgan, lekin profili yo'q" odamdan farq qilmasdi va butun
+  /// ilova jimgina qulflanardi: Profil tabida "Hali profil yo'q",
+  /// QR tugmasi o'chiq, o'z istoryasi yo'q, biznes va buyurtmalarga
+  /// yo'l yopiq. Chiqish yo'li ham yo'q edi — na "Kirish", na
+  /// "Qayta urinish": ilovani o'chirib qayta o'rnatishdan boshqa
+  /// chora qolmasdi. Egasi buni "hech narsa ishlamayapti" deb
+  /// xabar qildi va u haq edi.
+  ///
+  /// Endi bu holat ALOHIDA tanaladi va ekranlar "profil yo'q"
+  /// deyish o'rniga qayta urinish taklif qiladi.
+  bool sessionUnverified = false;
+
   /// Ilova ochilganda: saqlangan tokenni tiklaymiz va sessiyani
   /// tekshiramiz. Token eskirgan bo'lsa jimgina chiqib ketiladi.
   Future<void> boot() async {
@@ -78,13 +98,30 @@ class AppState extends ChangeNotifier {
       return;
     }
     api.token = token;
+    await verifyStoredSession();
+    notifyListeners();
+  }
+
+  /// SAQLANGAN TOKENNI SERVERDA TEKSHIRISH.
+  ///
+  /// `boot()` dan ajratilgan: u qurilma xotirasini o'qiydi va uni
+  /// testdan chaqirib bo'lmaydi (Keystore kerak). Qaror mantig'i
+  /// esa aynan shu yerda va u testdan tekshiriladi — chunki bu
+  /// yerdagi xato butun ilovani qulflab qo'ygan edi.
+  @visibleForTesting
+  Future<void> verifyStoredSession() async {
     try {
       await refreshIdentities();
       phase = user == null ? AuthPhase.signedOut : AuthPhase.signedIn;
+      sessionUnverified = false;
     } on ApiError catch (e) {
       // Offline bo'lsa sessiyani SAQLAB QOLAMIZ: internet yo'qligi
       // chiqib ketish uchun sabab emas.
       phase = e.isOffline || e.key == 'timeout' ? AuthPhase.signedIn : AuthPhase.signedOut;
+      // Sessiya TASDIQLANMADI — ro'yxatlar bo'sh qolgani "profil
+      // yo'q" degani emas. Belgilab qo'yamiz, aks holda ilova
+      // jimgina qulflanadi (yuqoridagi izohga qarang).
+      sessionUnverified = phase == AuthPhase.signedIn;
       if (phase == AuthPhase.signedOut) await _clearToken();
     } catch (_) {
       // HAR QANDAY BOSHQA XATO HAM TUTILADI.
@@ -101,7 +138,6 @@ class AppState extends ChangeNotifier {
       // bo'lardi. Kirish ekrani ochiladi va u qaytadan urinadi.
       phase = AuthPhase.signedOut;
     }
-    notifyListeners();
   }
 
   /// Tokenni qurilmada saqlash uchun eng ko'p kutish.
@@ -197,6 +233,35 @@ class AppState extends ChangeNotifier {
     // qo'yamiz (eski sessiyadan qolgan ro'yxat ko'rinib qolmasin).
     companies = user == null ? const [] : results[1] as List<Company>;
     _ensureActive();
+    notifyListeners();
+  }
+
+  /// SESSIYANI QAYTA TEKSHIRISH.
+  ///
+  /// `boot()` da sessiya tasdiqlanmay qolgan bo'lsa (internet yo'q
+  /// edi yoki server javob bermadi), ilova bo'sh ro'yxatlar bilan
+  /// ochiladi. Bu holatdan chiqish uchun ekranlarda "Qayta urinish"
+  /// tugmasi bor va u shu yerni chaqiradi.
+  ///
+  /// Muvaffaqiyatli bo'lsa bayroq tushadi va ilova odatdagidek
+  /// ishlay boshlaydi. Token haqiqatan eskirgan bo'lsa (server
+  /// `user: null` qaytarsa) odam kirish ekraniga chiqariladi —
+  /// abadiy bo'sh ekranda qoldirilmaydi.
+  Future<void> retrySession() async {
+    if (api.token == null) {
+      phase = AuthPhase.signedOut;
+      sessionUnverified = false;
+      notifyListeners();
+      return;
+    }
+    await refreshIdentities();
+    if (user == null) {
+      await _clearToken();
+      phase = AuthPhase.signedOut;
+    } else {
+      phase = AuthPhase.signedIn;
+    }
+    sessionUnverified = false;
     notifyListeners();
   }
 

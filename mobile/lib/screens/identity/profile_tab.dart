@@ -139,6 +139,39 @@ class _ProfileTabState extends State<ProfileTab> {
     final active = state.active;
 
     if (active == null) {
+      // IKKI XIL BO'SHLIKNI ARALASHTIRMASLIK KERAK.
+      //
+      // `active == null` ikki butunlay boshqa holatda yuz beradi:
+      //
+      //   1. Odamning haqiqatan profili yo'q — yangi foydalanuvchi.
+      //   2. Sessiya tekshirilmay qolgan — token bor, lekin ilova
+      //      ochilganda server javob bermagan va ro'yxatlar bo'sh
+      //      qolgan.
+      //
+      // Ilgari ikkalasiga ham "Hali profil yo'q" chiqardi. Ikkinchi
+      // holatda bu YOLG'ON edi va undan chiqish yo'li ham yo'q edi:
+      // odamning profili, biznesi va buyurtmalari bor, lekin ilova
+      // ularni ko'rmasdi va "sizda hech narsa yo'q" deb turardi.
+      // Egasi buni shunday xabar qildi: "profilda hech narsa yo'q,
+      // holbuki mening boshqa biznes va profillarim bor".
+      if (state.sessionUnverified) {
+        return ScreenBackdrop(
+          aura: Aura.profile,
+          child: SafeArea(
+            child: Center(
+              child: EmptyState(
+                tr('Ilova ochilganda serverga ulanib bo‘lmadi, '
+                    'shuning uchun profillaringiz yuklanmadi.'),
+                title: tr('Sessiya tekshirilmadi'),
+                icon: Ico.refresh,
+                actionLabel: tr('Qayta urinish'),
+                onAction: () => AppScope.read(context).retrySession(),
+              ),
+            ),
+          ),
+        );
+      }
+
       return ScreenBackdrop(
         aura: Aura.profile,
         child: SafeArea(
