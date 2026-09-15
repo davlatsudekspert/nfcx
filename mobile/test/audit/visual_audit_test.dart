@@ -34,7 +34,7 @@ import 'package:nfcstore/screens/business/edit_catalog.dart';
 import 'package:nfcstore/screens/business/edit_gallery.dart';
 import 'package:nfcstore/screens/business/working_hours.dart';
 import 'package:nfcstore/screens/content/compose.dart';
-import 'package:nfcstore/screens/content/reels.dart';
+import 'package:nfcstore/screens/shop/shop.dart';
 import 'package:nfcstore/screens/entry/gift_card.dart';
 import 'package:nfcstore/screens/nfc/gift_offers.dart';
 import 'package:nfcstore/screens/nfc/nfc_center.dart';
@@ -575,21 +575,21 @@ void main() {
     await golden(t, '56-haqida-galereya');
   });
 
-  // REELS — YANGI TAB.
+  // DO'KON — TO'RTINCHI TAB (Reels o'rniga).
   //
-  // Ikki kadr: to'la oqim va bo'sh holat. Bo'sh holat alohida
-  // tekshiriladi, chunki yangi foydalanuvchi ilovani aynan
-  // o'shandan boshlaydi.
-  testWidgets('57 reels', (t) async {
+  // Ikki kadr: katalog kelgan holat va yangi foydalanuvchi. Yangi
+  // foydalanuvchida ID yo'q — "NFC karta" qatori uni katalogga
+  // olib boradi, ya'ni ekran bo'sh ko'rinmasligi kerak.
+  testWidgets('57 do‘kon', (t) async {
     final s = await ready();
-    await pumpScreen(t, const ReelsScreen(), state: s);
-    await golden(t, '57-reels');
+    await pumpScreen(t, const ShopScreen(), state: s);
+    await golden(t, '57-dokon');
   });
 
-  testWidgets('58 reels — bo‘sh', (t) async {
+  testWidgets('58 do‘kon — yangi foydalanuvchi', (t) async {
     final s = await ready(mode: AuditMode.newUser);
-    await pumpScreen(t, const ReelsScreen(), state: s);
-    await golden(t, '58-reels-bosh');
+    await pumpScreen(t, const ShopScreen(), state: s);
+    await golden(t, '58-dokon-yangi');
   });
 
   testWidgets('55 mahsulot qo‘shish', (t) async {

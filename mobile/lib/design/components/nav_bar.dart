@@ -9,9 +9,14 @@ import 'press.dart';
 
 /// TAB BAR — 5 tab, NFC markazda va ko'tarilgan.
 ///
-/// Beshta tabning ma'nosi o'zgarmaydi: Bosh sahifa · Qidiruv · NFC ·
-/// Reels · Profil. NFC markazda va BOSHQACHA ko'rinadi — u
-/// mahsulotning o'zagi, qolgan to'rttasi esa uning atrofi.
+/// Beshta tab: Bosh sahifa · Qidiruv · NFC · Do'kon · Profil. NFC
+/// markazda va BOSHQACHA ko'rinadi — u mahsulotning o'zagi, qolgan
+/// to'rttasi esa uning atrofi.
+///
+/// TO'RTINCHI TABDA "REELS" TURARDI. Egasi uni olib tashlashni
+/// so'radi: ilova ijtimoiy lenta emas. O'rniga DO'KON — ID kod,
+/// NFC karta, Premium va to'lovlar. Ya'ni tab endi mahsulotning
+/// o'zi haqida, boshqalarning postlari haqida emas.
 ///
 /// MARKAZIY TUGMA — brend medalyoni 62 dp, panel ustiga 24 dp
 /// ko'tarilgan. Ikonka emas, LOGOTIP: bu ilovaning imzosi va
@@ -53,7 +58,7 @@ class NavBar extends StatelessWidget {
         (icon: Ico.home, label: tr('Bosh sahifa')),
         (icon: Ico.search, label: tr('Qidiruv')),
         (icon: Ico.nfc, label: 'NFC'),
-        (icon: Ico.play, label: 'Reels'),
+        (icon: Ico.bag, label: tr('Do‘kon')),
         (icon: Ico.user, label: tr('Profil')),
       ];
 

@@ -6,9 +6,9 @@ import '../design/tokens.dart';
 import '../state/app_state.dart';
 import 'discover/discover.dart';
 import 'home/home.dart';
-import 'content/reels.dart';
 import 'identity/profile_tab.dart';
 import 'nfc/nfc_center.dart';
+import 'shop/shop.dart';
 
 /// To'rt tabli qobiq.
 ///
@@ -79,7 +79,7 @@ class _ShellState extends State<Shell> {
     HomeScreen(),
     DiscoverScreen(),
     NfcCenterScreen(),
-    ReelsScreen(),
+    ShopScreen(),
     ProfileTab(),
   ];
 
@@ -97,21 +97,9 @@ class _ShellState extends State<Shell> {
     return true;
   }
 
-  /// Bosh sahifaga qaytaradi — Reels'dagi qaytish tugmasi shuni
-  /// chaqiradi. Android'ning "orqaga" tugmasi bilan BIR XIL yo'l:
-  /// ikki xil xulq bo'lsa, odam qaysi biri nima qilishini
-  /// bilmasdi.
-  void _goHome() {
-    final nav = _keys[_tab].currentState;
-    if (nav != null && nav.canPop()) nav.popUntil((r) => r.isFirst);
-    if (_tab != 0) setState(() => _tab = 0);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ShellScope(
-      goHome: _goHome,
-      child: PopScope(
+    return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
@@ -151,10 +139,10 @@ class _ShellState extends State<Shell> {
                     //
                     // `IndexedStack` tanlanmagan tabni daraxtda
                     // QOLDIRADI (holati saqlanishi uchun) va u
-                    // ishlashda davom etardi. Reels'da bu quloqqa
-                    // eshitilardi: boshqa tabga o'tilsa ham video
-                    // ovozi kelaverardi. `TickerMode` — Flutter'ning
-                    // shu maqsaddagi standart belgisi.
+                    // ishlashda davom etardi. Video bilan bu quloqqa
+                    // eshitilardi: boshqa tabga o'tilsa ham ovoz
+                    // kelaverardi. `TickerMode` — Flutter'ning shu
+                    // maqsaddagi standart belgisi.
                     child: IndexedStack(
                       index: _tab,
                       children: [
@@ -195,27 +183,8 @@ class _ShellState extends State<Shell> {
           ],
         ),
       ),
-      ),
     );
   }
-}
-
-/// QOBIQQA MUROJAAT — ekranlar uchun.
-///
-/// Hozircha bitta amal bor: bosh sahifaga qaytish. U Reels'ga
-/// kerak bo'ldi — Reels ILDIZ ekran, ya'ni `Navigator.pop` qiladigan
-/// narsasi yo'q va oddiy "orqaga" tugmasi u yerda ishlamasdi.
-/// Egasi shuni so'radi: "reelsda qaytish tugmasi bo'lsin".
-class ShellScope extends InheritedWidget {
-  const ShellScope({super.key, required this.goHome, required super.child});
-
-  final VoidCallback goHome;
-
-  static ShellScope? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<ShellScope>();
-
-  @override
-  bool updateShouldNotify(ShellScope old) => old.goHome != goHome;
 }
 
 /// Tarmoq signalini kuzatib, uzilganda chiziqni ochadi.

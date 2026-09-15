@@ -74,11 +74,11 @@ void main() {
   group('NavBar', () {
     testWidgets('besh tab: Activity YO‘Q', (tester) async {
       // ACTIVITY HALI HAM YO‘Q va bu qoida o‘zgarmadi: uning ortida
-      // real backend feed bo‘lmaguncha soxta tab yasalmaydi.
+      // real backend bo‘lmaguncha soxta tab yasalmaydi.
       //
-      // REELS esa qo‘shildi, chunki uning ortida HAQIQIY manba bor —
-      // `GET /api/feed` (postlar va faol istoryalar). Ya‘ni tab soni
-      // 4 dan 5 ga chiqqani "handoffga qaytish" emas: har bir tab
+      // TO‘RTINCHI TABDA REELS turardi va u OLIB TASHLANDI: ilova
+      // ijtimoiy lenta emas. O‘rniga DO‘KON — ID kod, NFC karta,
+      // Premium va to‘lovlar, ya‘ni mahsulotning o‘zi. Har bir tab
       // faqat ishlaydigan ma‘lumot ustiga qo‘yiladi.
       await tester.pumpWidget(MaterialApp(
         theme: buildTheme(),
@@ -86,12 +86,10 @@ void main() {
       ));
       expect(NavBar.tabs.length, 5);
       // YORLIQLAR O‘ZBEKCHA: interfeys tili o‘zbekcha, shuning
-      // uchun tab nomlari ham tarjima qilinadi. "Reels" tarjima
-      // qilinmaydi — u mahsulot atamasi va uch tilda ham shunday
-      // yoziladi.
+      // uchun tab nomlari ham tarjima qilinadi.
       expect(find.text('Bosh sahifa'), findsOneWidget);
       expect(find.text('Qidiruv'), findsOneWidget);
-      expect(find.text('Reels'), findsOneWidget);
+      expect(find.text('Do‘kon'), findsOneWidget);
       expect(find.text('Profil'), findsOneWidget);
       expect(find.text('Activity'), findsNothing);
 

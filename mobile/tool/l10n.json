@@ -1071,6 +1071,10 @@
     "Статус берётся только из ответа сервера. Возврат из приложения провайдера сам по себе не подтверждает оплату.",
     "The status comes only from the server response. Returning from the provider app is not a payment confirmation by itself."
   ],
+  "Holati va yetkazib berish": [
+    "Статус и доставка",
+    "Status and delivery"
+  ],
   "Holatni tekshirish": [
     "Проверить статус",
     "Check status"
@@ -1142,6 +1146,10 @@
   "ID katalogini ochish": [
     "Открыть каталог ID",
     "Open the ID catalogue"
+  ],
+  "ID kod, jismoniy NFC karta va Premium. To‘lov — Payme yoki Click.": [
+    "ID-код, физическая NFC-карта и Premium. Оплата — Payme или Click.",
+    "An ID code, a physical NFC card and Premium. Pay with Payme or Click."
   ],
   "ID kodi": [
     "Код ID",
@@ -1334,6 +1342,10 @@
   "Jismoniy karta dizayni": [
     "Дизайн физической карты",
     "Physical card design"
+  ],
+  "Jismoniy karta — telefonga tegizilganda profilingiz ochiladi": [
+    "Физическая карта — при касании телефона открывается ваш профиль",
+    "A physical card — tapping a phone opens your profile"
   ],
   "Jonli yordam": [
     "Живая поддержка",
@@ -1563,6 +1575,10 @@
     "Каталог, часы работы, галерея, заказы",
     "Catalog, opening hours, gallery, orders"
   ],
+  "Katalogda": [
+    "В каталоге",
+    "In the catalog"
+  ],
   "Katalogda mahsulotlarni guruhlaydi.": [
     "Группирует товары в каталоге.",
     "Groups products in the catalogue."
@@ -1586,6 +1602,10 @@
   "Keng rasm — profil tepasida ko‘rinadi.": [
     "Широкое изображение — показывается вверху профиля.",
     "A wide image — it shows at the top of the profile."
+  ],
+  "Kengaytirilgan imkoniyatlar va belgi": [
+    "Расширенные возможности и знак",
+    "Extended features and a badge"
   ],
   "Keyin ikkalasini ham qo‘shishingiz mumkin.": [
     "Позже можно добавить оба.",
@@ -2047,6 +2067,10 @@
     "NFC ID",
     "NFC ID"
   ],
+  "NFC ID karta": [
+    "NFC ID-карта",
+    "NFC ID card"
+  ],
   "NFC ID karta buyurtma berish": [
     "Заказать NFC ID-карту",
     "Order an NFC ID card"
@@ -2415,6 +2439,10 @@
     "Через Payme",
     "Via Payme"
   ],
+  "Payme va Click orqali to‘lovlar": [
+    "Платежи через Payme и Click",
+    "Payments via Payme and Click"
+  ],
   "Payme yoki Click orqali to‘lov": [
     "Оплата через Payme или Click",
     "Pay with Payme or Click"
@@ -2514,6 +2542,10 @@
   "Premium olish": [
     "Получить Premium",
     "Get Premium"
+  ],
+  "Premium profil": [
+    "Premium-профиль",
+    "Premium profile"
   ],
   "Profil": [
     "Профиль",
@@ -3027,6 +3059,10 @@
     "Вам дарят",
     "Being gifted to you"
   ],
+  "Sizga yuborilgan ID‘lar": [
+    "ID, отправленные вам",
+    "IDs sent to you"
+  ],
   "Skanerlagan odam shu profilni ochadi. Yoki telefonni kartaga tegizsin.": [
     "Тот, кто отсканирует, откроет этот профиль. Либо пусть приложит телефон к карте.",
     "Whoever scans it opens this profile. Or they can tap their phone to the card."
@@ -3259,6 +3295,10 @@
     "Тариф",
     "Tier"
   ],
+  "Tariflar": [
+    "Тарифы",
+    "Tiers"
+  ],
   "Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.": [
     "Как только придёт подтверждение, экран обновится сам.",
     "This screen updates itself as soon as confirmation arrives."
@@ -3459,6 +3499,10 @@
     "Оплата через Payme. Цена показывается на экране оплаты.",
     "Payment via Payme. The price is shown on the payment page."
   ],
+  "To‘lov Payme yoki Click orqali amalga oshiriladi. To‘lov tasdiqlangach ID darhol profilingizga biriktiriladi.": [
+    "Оплата производится через Payme или Click. После подтверждения оплаты ID сразу привязывается к вашему профилю.",
+    "Payment goes through Payme or Click. Once the payment is confirmed the ID is attached to your profile immediately."
+  ],
   "To‘lov Payme’da bajarildi. Server javobi kutilmoqda — ilovani yopmang.": [
     "Платёж выполнен в Payme. Ожидаем ответ сервера — не закрывайте приложение.",
     "The payment was made in Payme. Waiting for the server response — do not close the app."
@@ -3654,6 +3698,10 @@
   "Xabar yuborish": [
     "Отправить сообщение",
     "Send a message"
+  ],
+  "Xaridlarim": [
+    "Мои покупки",
+    "My purchases"
   ],
   "Xato bo‘lmasligi uchun yana bir marta": [
     "Ещё раз, чтобы не ошибиться",
@@ -4094,6 +4142,10 @@
   "{n} ta rasm": [
     "{{n}} фото",
     "{{n}} photos"
+  ],
+  "{p} dan": [
+    "от {p}",
+    "from {p}"
   ],
   "{son} kun": [
     "{son} дней",

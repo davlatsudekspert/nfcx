@@ -175,35 +175,6 @@ class Repo {
   Future<List<Post>> recordStories(String code) async =>
       _rows(await api.get('/api/records/$code/stories'), 'stories').map(Post.fromJson).toList();
 
-  /// HAQIQIY STORY LENTASI — obuna bo'lingan odamlarniki.
-  ///
-  /// Bosh ekrandagi dumaloqchalar ilgari FOYDALANUVCHINING O'Z
-  /// ID'larini ko'rsatardi: ya'ni har bir halqa "yangi kontent bor"
-  /// deb yonib turardi, lekin ortida hech narsa yo'q edi. Server bu
-  /// lentani allaqachon beradi.
-  ///
-  /// Xato bo'lsa BO'SH ro'yxat: lenta yiqilgani uchun butun bosh
-  /// ekranni xato holatiga o'tkazish noto'g'ri bo'lardi.
-  /// UMUMIY LENTA — hamma joylagan post va istorya.
-  ///
-  /// `storyFeed()` dan FARQI: u faqat obuna bo'lganlaringizni
-  /// beradi (yangi foydalanuvchida doim bo'sh), bu esa butun
-  /// platformani. Ikkalasi ham kerak: biri tanishlaringiz, biri
-  /// kashf qilish uchun.
-  Future<({List<FeedEntry> items, bool hasMore})> feed({int page = 1}) async {
-    final res = _map(await api.get('/api/feed', query: {'page': page}));
-    final rows = res['feed'];
-    return (
-      items: rows is List
-          ? rows
-              .whereType<Map>()
-              .map((e) => FeedEntry.fromJson(e.cast<String, dynamic>()))
-              .toList()
-          : const <FeedEntry>[],
-      hasMore: res['hasMore'] == true,
-    );
-  }
-
   /// Postni yoqtirish — server holatni TESKARISIGA o'giradi va
   /// yangi sonni qaytaradi. Mijoz o'zi sanamaydi: ikkita qurilmadan
   /// bosilganda raqamlar ajralib ketardi.
@@ -235,6 +206,15 @@ class Repo {
     return n is num ? n.round() : 0;
   }
 
+  /// HAQIQIY STORY LENTASI — obuna bo'lingan odamlarniki.
+  ///
+  /// Bosh ekrandagi dumaloqchalar ilgari FOYDALANUVCHINING O'Z
+  /// ID'larini ko'rsatardi: ya'ni har bir halqa "yangi kontent bor"
+  /// deb yonib turardi, lekin ortida hech narsa yo'q edi. Server bu
+  /// lentani allaqachon beradi.
+  ///
+  /// Xato bo'lsa BO'SH ro'yxat: lenta yiqilgani uchun butun bosh
+  /// ekranni xato holatiga o'tkazish noto'g'ri bo'lardi.
   Future<List<StoryFeedEntry>> storyFeed() async {
     try {
       return _rows(await api.get('/api/stories/feed'), 'feed')
