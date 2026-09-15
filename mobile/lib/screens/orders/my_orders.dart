@@ -192,7 +192,7 @@ class _OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final st = _status;
     final left = _left;
-    final link = order.payLink;
+    final link = order.linkFor('payme') ?? order.linkFor('click');
     final created = order.createdAt;
 
     // MONO META — kod va sana bitta qatorda. Sana bo'lmasa qator

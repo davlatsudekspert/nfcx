@@ -45,15 +45,32 @@ class PremiumScreen extends StatefulWidget {
 class _PremiumScreenState extends State<PremiumScreen> {
   Order? _order;
   bool _busy = false;
+  bool _clickEnabled = false;
   String? _error;
 
-  Future<void> _request() async {
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentMethods();
+  }
+
+  Future<void> _loadPaymentMethods() async {
+    try {
+      final methods = await AppScope.read(context).repo.paymentsEnabled();
+      final providers = methods['providers'];
+      if (mounted && providers is Map && providers['click'] is Map) {
+        setState(() => _clickEnabled = (providers['click'] as Map)['enabled'] == true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _request([String provider = 'payme']) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final order = await AppScope.read(context).repo.requestPremium();
+      final order = await AppScope.read(context).repo.requestPremium(provider: provider);
       successHaptic();
       if (!mounted) return;
       setState(() => _order = order);
@@ -61,7 +78,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
       // serverdan kelgan havola tashqi ilovada ochiladi. Buyurtma
       // «Buyurtmalarim» da ham turadi, ya'ni odam uni istalgan
       // paytda davom ettira oladi.
-      final link = order.payLink;
+      final link = order.linkFor(provider) ?? order.payLink;
       if (link != null) await openExternal(Uri.parse(link));
     } on ApiError catch (e) {
       errorHaptic();
@@ -214,13 +231,23 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         const SizedBox(height: S.x12),
                       ],
                       PrimaryButton(
-                        tr('Premium olish'),
+                        tr('Payme bilan Premium olish'),
                         loading: _busy,
-                        onTap: _busy ? null : _request,
+                        onTap: _busy ? null : () => _request('payme'),
                       ),
+                      if (_clickEnabled) ...[
+                        const SizedBox(height: S.x8),
+                        SecondaryButton(
+                          tr('Click bilan Premium olish'),
+                          loading: _busy,
+                          onTap: _busy ? null : () => _request('click'),
+                        ),
+                      ],
                       const SizedBox(height: S.x12),
                       Text(
-                        tr('To‘lov Payme orqali. Narx to‘lov ekranida '
+                        tr(_clickEnabled
+                            ? 'Payme yoki Click tanlang. Narx to‘lov ekranida ko‘rsatiladi.'
+                            : 'To‘lov Payme orqali. Narx to‘lov ekranida '
                             'ko‘rsatiladi.'),
                         textAlign: TextAlign.center,
                         style: T.caption.copyWith(fontSize: 12.5),

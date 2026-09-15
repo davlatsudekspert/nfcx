@@ -409,8 +409,15 @@ class Repo {
   Future<Map<String, dynamic>> physicalPricing() async =>
       _map(await api.get('/api/settings/physical-nfc-pricing'));
 
-  Future<Map<String, dynamic>> orderPhysicalCard(String code, Map<String, dynamic> body) async =>
-      _map(await api.post('/api/records/$code/order-physical-card', body));
+  Future<Map<String, dynamic>> orderPhysicalCard(
+    String code,
+    Map<String, dynamic> body, {
+    String provider = 'payme',
+  }) async =>
+      _map(await api.post('/api/records/$code/order-physical-card', {
+        ...body,
+        'paymentProvider': provider,
+      }));
 
   /// ID'ni sovg'a qilish. Qabul qiluvchi tasdiqlagach o'tadi.
   /// Parolni o'zgartirish — joriy parolni bilgan holda.
@@ -673,16 +680,18 @@ class Repo {
   /// KUTAYOTGAN BUYURTMA XATO EMAS: server o'sha buyurtmaning
   /// havolasini qaytaradi, yangisini yaratmaydi — ya'ni ikki marta
   /// pul yechilishi mumkin emas.
-  Future<Order> requestPremium() async {
-    final r = _map(await api.post('/api/premium/request'));
-    return Order(
-      id: (r['orderId'] as num?)?.round() ?? 0,
-      code: 'PREMIUM',
-      price: (r['amount'] as num?)?.round() ?? 0,
-      status: 'pending',
-      kind: 'premium_upgrade',
-      payLink: '${r['payLink'] ?? ''}'.isEmpty ? null : '${r['payLink']}',
-    );
+  Future<Order> requestPremium({String provider = 'payme'}) async {
+    final r = _map(await api.post('/api/premium/request', {
+      'paymentProvider': provider,
+    }));
+    return Order.fromJson({
+      ...r,
+      'id': r['orderId'] ?? r['id'],
+      'code': 'PREMIUM',
+      'price': r['amount'] ?? r['price'],
+      'status': 'pending',
+      'kind': 'premium_upgrade',
+    });
   }
 
   // ── Jismoniy sovg'a karta ──────────────────────────────────────────
@@ -754,19 +763,19 @@ class Repo {
   /// NARXNI SERVER hisoblaydi (`personalPurchaseQuote`), mijoz
   /// yuborgan summa e'tiborga olinmaydi. Javob: `{orderId, price,
   /// payLink}` — `payLink` Payme checkout manzili.
-  Future<Order> reserveRecord(String code, {String name = '', String phone = ''}) async {
+  Future<Order> reserveRecord(String code, {String name = '', String phone = '', String provider = 'payme'}) async {
     final r = _map(await api.post('/api/records/$code', {
       'name': name,
       'phone': phone,
+      'paymentProvider': provider,
     }));
-    return Order(
-      id: r['orderId'] is num ? (r['orderId'] as num).round() : 0,
-      code: '${r['code'] ?? code}'.toUpperCase(),
-      price: r['price'] is num ? (r['price'] as num).round() : 0,
-      status: 'pending',
-      kind: 'card_purchase',
-      payLink: '${r['payLink'] ?? ''}'.isEmpty ? null : '${r['payLink']}',
-    );
+    return Order.fromJson({
+      ...r,
+      'id': r['orderId'] ?? r['id'],
+      'code': r['code'] ?? code,
+      'status': 'pending',
+      'kind': 'card_purchase',
+    });
   }
 
   /// Bitta buyurtma holati — to'lovdan keyin shu so'raladi.

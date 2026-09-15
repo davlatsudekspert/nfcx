@@ -135,7 +135,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
     final repo = AppScope.read(context).repo;
     try {
-      final order = await repo.reserveRecord(widget.record.code);
+      final order = await repo.reserveRecord(widget.record.code, provider: _provider);
       if (!mounted) return;
       setState(() {
         _order = order;

@@ -344,7 +344,7 @@ export async function handle(request, env, url, H) {
     return H.json({ messages: rows.results || [] });
   }
 
-  // ---------- Premium profil (Payme buyurtmasi) ----------
+  // ---------- Premium profil (Payme / Click buyurtmasi) ----------
   if (path === '/api/premium/request' && method === 'POST') {
     const user = await H.getCurrentUser(request, env);
     if (!user) return H.json({ error: 'unauthorized' }, 401);
@@ -379,10 +379,12 @@ export async function handle(request, env, url, H) {
         await env.DB.prepare(`UPDATE web_orders SET price = ? WHERE id = ?`)
           .bind(PROFILE_PREMIUM_FEE, pending.id).run();
       }
+      const payLinks = H.checkoutLinksD1(env, pending.id, PROFILE_PREMIUM_FEE);
       return H.json({
         orderId: pending.id,
         amount: PROFILE_PREMIUM_FEE,
-        payLink: H.paymeCheckoutLinkD1(env, pending.id, PROFILE_PREMIUM_FEE),
+        payLink: payLinks.payme || null,
+        payLinks,
         reused: true,
       }, 200);
     }
@@ -391,8 +393,8 @@ export async function handle(request, env, url, H) {
       `INSERT INTO web_orders (user_id, code, kind, price, payload, status, created_at)
        VALUES (?, 'PREMIUM', 'premium_upgrade', ?, '{}', 'pending', ?) RETURNING id`
     ).bind(user.id, PROFILE_PREMIUM_FEE, H.nowTs()).first();
-    const payLink = H.paymeCheckoutLinkD1(env, order.id, PROFILE_PREMIUM_FEE);
-    return H.json({ orderId: order.id, amount: PROFILE_PREMIUM_FEE, payLink }, 201);
+    const payLinks = H.checkoutLinksD1(env, order.id, PROFILE_PREMIUM_FEE);
+    return H.json({ orderId: order.id, amount: PROFILE_PREMIUM_FEE, payLink: payLinks.payme || null, payLinks }, 201);
   }
 
   // ---------- To'lovlar ----------
@@ -542,8 +544,8 @@ export async function handle(request, env, url, H) {
         // eski buyurtmalar qaysi o'lchamda ekani ma'lum bo'ladi.
         printSpec: designFrontUrl ? 'CR80 85.6x54mm · 600 DPI · 2022x1276 PNG' : '',
       }), H.nowTs()).first();
-      const payLink = H.paymeCheckoutLinkD1(env, order.id, amount);
-      return H.json({ orderId: order.id, amount, quantity, payLink }, 202);
+      const payLinks = H.checkoutLinksD1(env, order.id, amount);
+      return H.json({ orderId: order.id, amount, quantity, payLink: payLinks.payme || null, payLinks }, 202);
     }
 
     if (action === 'gift') {

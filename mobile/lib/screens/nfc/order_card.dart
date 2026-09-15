@@ -155,19 +155,19 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _order = Order(
-          id: (res['orderId'] as num?)?.round() ?? 0,
-          code: widget.record.code,
-          price: (res['amount'] as num?)?.round() ?? 0,
-          status: 'pending',
-          kind: 'physical_card_order',
-          payLink: '${res['payLink'] ?? ''}'.isEmpty ? null : '${res['payLink']}',
-        );
+        _order = Order.fromJson({
+          ...res,
+          'id': res['orderId'] ?? res['id'],
+          'code': widget.record.code,
+          'price': res['amount'] ?? res['price'],
+          'status': 'pending',
+          'kind': 'physical_card_order',
+        });
       });
       // Buyurtma serverda yaratildi — to'lovga o'tishdan oldin
       // tasdiq sezilsin.
       successHaptic();
-      final link = _order?.payLink;
+      final link = _order?.linkFor('payme') ?? _order?.linkFor('click');
       if (link != null) await openExternal(Uri.parse(link));
     } on ApiError catch (e) {
       if (mounted) setState(() => _error = _cardError(e));
@@ -230,10 +230,13 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                 ),
               ),
               const Spacer(),
-              if (order.payLink != null)
+              if (order.linkFor('payme') != null || order.linkFor('click') != null)
                 PrimaryButton(
                   tr('To‘lov sahifasini ochish'),
-                  onTap: () => openExternal(Uri.parse(order.payLink!)),
+                  onTap: () {
+                    final link = order.linkFor('payme') ?? order.linkFor('click');
+                    if (link != null) openExternal(Uri.parse(link));
+                  },
                 ),
               const SizedBox(height: S.x12),
               SecondaryButton(
