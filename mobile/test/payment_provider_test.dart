@@ -90,4 +90,31 @@ void main() {
       expect(o.linkFor('payme'), isNull);
     });
   });
+
+  group('To‘lov tarixi', () {
+    test('Click tranzaksiyasi Click deb saqlanadi', () {
+      final entry = PaymentEntry.fromJson({
+        'id': 12,
+        'kind': 'card_purchase',
+        'code': 'GLD100',
+        'price': 149000,
+        'status': 'paid',
+        'paymentProvider': 'CLICK',
+      });
+
+      expect(entry.paymentProvider, 'click');
+    });
+
+    test('hali to‘lanmagan buyurtmaga provayder taxmin qilinmaydi', () {
+      final entry = PaymentEntry.fromJson({
+        'id': 13,
+        'kind': 'premium_upgrade',
+        'code': 'PREMIUM',
+        'price': 20000,
+        'status': 'pending',
+      });
+
+      expect(entry.paymentProvider, isEmpty);
+    });
+  });
 }

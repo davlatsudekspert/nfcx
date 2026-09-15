@@ -404,19 +404,36 @@ export async function handle(request, env, url, H) {
     if (!user) return H.json({ error: 'unauthorized' }, 401);
     const order = await H.getWebOrderD1(env, Number(paymentMatch[1]));
     if (!order || String(order.userId) !== String(user.id)) return H.json({ error: 'not_found' }, 404);
-    return H.json({ id: order.id, kind: order.kind, status: order.status, price: order.price });
+    return H.json({
+      id: order.id,
+      kind: order.kind,
+      status: order.status,
+      price: order.price,
+      // Pending buyurtma hali Payme ham, Click ham bo'lishi mumkin.
+      // To'langan buyurtmada esa biriktirilgan tranzaksiya provayderni
+      // aniq belgilaydi.
+      paymentProvider: order.clickTransactionId ? 'click' : (order.paymeTransactionId ? 'payme' : null),
+    });
   }
 
   if (path === '/api/payments' && method === 'GET') {
     const user = await H.getCurrentUser(request, env);
     if (!user) return H.json({ error: 'unauthorized' }, 401);
     const rows = await env.DB.prepare(
-      `SELECT id, kind, code, price, status, created_at AS createdAt
+      `SELECT id, kind, code, price, status, created_at AS createdAt,
+              payme_transaction_id AS paymeTransactionId,
+              click_transaction_id AS clickTransactionId
        FROM web_orders WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 50`
     ).bind(user.id).all();
     const payout = await env.DB.prepare(`SELECT pending_payout AS pendingPayout FROM users WHERE id = ?`).bind(user.id).first();
     const payments = (rows.results || []).map((r) => ({
-      id: r.id, kind: r.kind, code: r.code, price: Number(r.price), status: r.status, createdAt: r.createdAt,
+      id: r.id,
+      kind: r.kind,
+      code: r.code,
+      price: Number(r.price),
+      status: r.status,
+      createdAt: r.createdAt,
+      paymentProvider: r.clickTransactionId ? 'click' : (r.paymeTransactionId ? 'payme' : null),
     }));
     return H.json({ payments, pendingPayout: payout ? Number(payout.pendingPayout || 0) : 0 });
   }

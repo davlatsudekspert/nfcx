@@ -714,6 +714,7 @@ class PaymentEntry {
     required this.price,
     required this.status,
     this.createdAt = '',
+    this.paymentProvider = '',
   });
 
   final int id;
@@ -722,6 +723,11 @@ class PaymentEntry {
   final int price;
   final String status;
   final String createdAt;
+
+  /// To'langan bo'lsa server tranzaksiyadan aniqlaydi. Pending buyurtma
+  /// hali ikkala checkout usulidan biri bilan yakunlanishi mumkinligi
+  /// uchun bo'sh qoladi.
+  final String paymentProvider;
 
   bool get isPaid => status == 'paid';
   bool get isPending => status == 'pending';
@@ -734,6 +740,7 @@ class PaymentEntry {
         price: _i(j['price']),
         status: _s(j['status']),
         createdAt: _s(j['createdAt']),
+        paymentProvider: _s(j['paymentProvider']).toLowerCase(),
       );
 }
 

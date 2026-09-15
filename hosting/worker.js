@@ -3828,6 +3828,7 @@ export {
 // nothing does this automatically).
 const WEB_ORDER_SELECT = `id, user_id AS userId, code, kind, price, payload, status,
   created_at AS createdAt, payme_transaction_id AS paymeTransactionId,
+  click_transaction_id AS clickTransactionId,
   perform_time AS performTime, cancel_time AS cancelTime, cancel_reason AS cancelReason,
   payme_create_time AS paymeCreateTime`;
 
@@ -3838,7 +3839,9 @@ function parseWebOrderRow(row) {
   return {
     id: row.id, userId: row.userId, code: row.code, kind: row.kind,
     price: Number(row.price), payload, status: row.status,
-    createdAt: row.createdAt, paymeTransactionId: row.paymeTransactionId ?? null,
+    createdAt: row.createdAt,
+    paymeTransactionId: row.paymeTransactionId ?? null,
+    clickTransactionId: row.clickTransactionId ?? null,
     // perform_time/cancel_time: REAL stored timestamps of when the order
     // actually transitioned to paid/cancelled (set once, via COALESCE —
     // see setWebOrderStatusD1/stampWebOrderCancelD1) — never recomputed

@@ -204,15 +204,15 @@ StatusTone _statusTone(String status) => switch (status) {
 
 /// TO'LOV TIZIMI.
 ///
-/// DIQQAT: `GET /api/payments` javobida provayder maydoni YO'Q
-/// (`PaymentEntry` da ham). Ilovadan ochiladigan to'lov havolasini
-/// server Payme uchun quradi, shuning uchun qator PAYME deb
-/// belgilanadi. Server provayderni qaytara boshlasa, shu yagona
-/// funksiya o'zgaradi — qolgan kod tegilmaydi.
-String _provider(PaymentEntry e) => 'payme';
+/// To'lov qaysi tizimda yakunlanganini server tranzaksiya yozuvidan
+/// qaytaradi. Pending buyurtmada hali tanlov yakuniy emas, shu sabab
+/// uni Payme deb taxmin qilmaymiz.
+String _provider(PaymentEntry e) => e.paymentProvider;
 
 String _providerLabel(PaymentEntry e) => switch (_provider(e)) {
       'click' => 'CLICK',
+      'payme' => 'PAYME',
+      _ => tr('Tanlanmagan'),
       _ => 'PAYME',
     };
 
@@ -221,8 +221,16 @@ class _ProviderBadge extends StatelessWidget {
   const _ProviderBadge(this.provider);
   final String provider;
 
-  Color get _color => provider == 'click' ? C.click : C.payme;
-  String get _label => provider == 'click' ? 'CLICK' : 'PAYME';
+  Color get _color => switch (provider) {
+        'click' => C.click,
+        'payme' => C.payme,
+        _ => C.ink3,
+      };
+  String get _label => switch (provider) {
+        'click' => 'CLICK',
+        'payme' => 'PAYME',
+        _ => '—',
+      };
 
   @override
   Widget build(BuildContext context) => Container(
