@@ -1,9 +1,37 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Mavjud production Worker nomi (Cloudflare Dashboard'da shunday
-  // ko'rinadi) — bu maydon Worker'ning IDENTITY'sini belgilaydi, D1/R2
-  // bog'lanish nomlariga bog'liq emas.
-  "name": "nfcstore-api",
+  // PRODUCTION WORKER NOMI — bu maydon Worker'ning IDENTITY'sini
+  // belgilaydi (D1/R2 bog'lanish nomlariga bog'liq emas).
+  //
+  // 2026-09-15: `nfcstore-api` -> `nfcstore-uz`. NIMA UCHUN:
+  //
+  // Hisobda ikkita Worker bor edi va ular ikki xil yo'l bilan
+  // yangilanardi:
+  //   nfcstore-uz  — Cloudflare Git integratsiyasi yangilaydi.
+  //                  Workers Builds skript nomini O'ZI biriktirilgan
+  //                  Worker'ga majburan o'zgartiradi, ya'ni bu
+  //                  fayldagi nom u yerda e'tiborga olinmaydi.
+  //   nfcstore-api — `wrangler deploy` (GitHub Actions) yangilaydi,
+  //                  aynan shu maydondagi nom bo'yicha.
+  //
+  // `nfcstore.uz` domeni esa `nfcstore-uz` da edi. Natijada odamlar
+  // Git integratsiyasi chiqargan nusxani ko'rardi, GitHub Actions'ning
+  // 213 ta muvaffaqiyatli deploy'i esa hech kim ochmaydigan
+  // `nfcstore-api` ga tushardi. Git integratsiyasi build token bilan
+  // ishdan chiqqach sayt qotib qoldi va ilovada `/api/feed` 404 bera
+  // boshladi (eski nusxada bu marshrut yo'q edi).
+  //
+  // Endi nom haqiqiy, ishlab turgan Worker'ni ko'rsatadi: `wrangler
+  // deploy` o'sha yerga chiqadi va sayt buzuq Git integratsiyasiga
+  // umuman bog'liq bo'lmay qoladi. Cloudflare panelidagi "Update
+  // wrangler.jsonc to keep settings consistent" ogohlantirishi aynan
+  // shuni aytayotgan edi.
+  //
+  // XAVFSIZ: secretlar (PAYME_*, CLICK_*, GEMINI_API_KEY) Worker'ga
+  // biriktirilgan va `wrangler deploy` ularga tegmaydi. `nfcstore-uz`
+  // da ular ALLAQACHON bor — u hozir to'lovni ham, rasmlarni ham,
+  // AI yordamchini ham xizmat qilyapti (tekshirildi).
+  "name": "nfcstore-uz",
   // Worker skripti — `npm run build` (scripts/prepare-sites-build.mjs)
   // hosting/worker.js'ni shu yerga nusxalaydi. Avval bu maydon yo'q edi,
   // shu sabab `wrangler deploy` faqat statik fayllarni joylardi —
