@@ -11,7 +11,6 @@ import '../../design/components/media.dart';
 import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
-import '../../design/components/states.dart';
 import '../../design/components/story_ring.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
@@ -23,10 +22,7 @@ import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../../state/seen_stories.dart';
 import '../content/compose.dart';
-import '../content/post_detail.dart';
-import '../content/report_sheet.dart';
 import '../content/story_viewer.dart';
-import '../identity/profile_screen.dart';
 import '../identity/switcher.dart';
 import '../nfc/gift_offers.dart';
 import '../nfc/id_catalog.dart';
@@ -58,11 +54,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final SeenStories _seen = SeenStories();
 
   List<StoryFeedEntry> _stories = const [];
-  List<FeedEntry> _feed = const [];
   List<Order> _pending = const [];
   int _gifts = 0;
 
-  Object? _error;
   bool _loading = true;
   bool _loadedOnce = false;
   String? _loadedFor;
@@ -128,17 +122,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final state = AppScope.read(context);
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       if (force) state.repo.invalidateCatalog();
 
-      // LENTA — asosiy kontent, xatosi ekranni yiqitadi.
-      final feed = await state.repo.feed(page: 1);
-
-      // QOLGANLARI IXTIYORIY. Ularning har biri o'z sababi bilan
+      // HAMMASI IXTIYORIY. Ularning har biri o'z sababi bilan
       // yiqilishi mumkin (tarif, ruxsat, tarmoq) va bu butun Bosh
       // sahifani bo'sh qoldirmasligi kerak.
+      //
+      // Lenta so'rovi ham OLIB TASHLANDI: boshqalarning postlari
+      // endi Reels tabida ko'rsatiladi, ya'ni Bosh sahifa ochilishi
+      // uchun bitta so'rov kam — ekran tezroq chiqadi.
       List<StoryFeedEntry> stories = const [];
       try {
         stories = await state.repo.storyFeed();
@@ -161,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (!mounted) return;
       setState(() {
-        _feed = feed.items;
         _stories = stories;
         _pending = pending;
         _gifts = gifts;
@@ -171,7 +164,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e;
         _loading = false;
       });
     }
@@ -204,74 +196,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _seen.markSeen(e.ids);
   }
 
-  /// LENTADAGI "⋯" MENYUSI.
-  ///
-  /// Reels va post ekranidagi bilan bir xil: o'zining kontenti
-  /// bo'lsa "O'chirish", begonasida "Shikoyat qilish" va
-  /// "Obunani bekor qilish". O'chirilgan yozuv lentadan darhol
-  /// ketadi — qayta yuklash kutilmaydi.
-  Future<void> _menu(FeedEntry item) async {
-    final state = AppScope.read(context);
-    final mine = item.isCompany
-        ? state.ownsCompany(item.code)
-        : state.ownsRecord(item.code);
 
-    await showContentMenu(
-      context,
-      targetKind: item.isStory
-          ? (item.isCompany ? 'company_story' : 'story')
-          : (item.isCompany ? 'company_post' : 'post'),
-      targetId: '${item.id}',
-      ownerCode: item.code,
-      owned: mine,
-      onDeleted: () {
-        if (!mounted) return;
-        setState(() => _feed = [..._feed]..removeWhere(
-              (e) => e.id == item.id && e.kind == item.kind,
-            ));
-      },
-    );
-  }
-
-  Future<void> _toggleLike(FeedEntry item) async {
-    final repo = AppScope.read(context).repo;
-    // OPTIMISTIK: yurak darhol to'ladi, so'rov fonda ketadi.
-    // Server rad etsa holat qaytariladi.
-    final before = item;
-    setState(() {
-      _feed = [
-        for (final e in _feed)
-          e.id == item.id && e.kind == item.kind
-              ? e.copyWith(
-                  liked: !e.liked,
-                  likeCount: e.likeCount + (e.liked ? -1 : 1),
-                )
-              : e,
-      ];
-    });
-    try {
-      final r = item.isStory
-          ? await repo.likeStory(item.id)
-          : await repo.likePost(item.id);
-      if (!mounted) return;
-      setState(() {
-        _feed = [
-          for (final e in _feed)
-            e.id == item.id && e.kind == item.kind
-                ? e.copyWith(liked: r.liked, likeCount: r.count)
-                : e,
-        ];
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _feed = [
-          for (final e in _feed)
-            e.id == item.id && e.kind == item.kind ? before : e,
-        ];
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -409,95 +334,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
 
-              // LENTA.
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    S.gutter,
-                    S.x32,
-                    S.gutter,
-                    S.x12,
-                  ),
-                  child: SectionHeader(tr('Lenta')),
-                ),
-              ),
-
-              if (_loading && _feed.isEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                    child: Column(
-                      children: List.generate(3, (_) => const SkeletonRow()),
-                    ),
-                  ),
-                )
-              else if (_error != null && _feed.isEmpty)
-                SliverToBoxAdapter(
-                  child: ErrorState(
-                    humanError(_error),
-                    detail: errorDetail(_error),
-                    onRetry: _load,
-                  ),
-                )
-              else if (_feed.isEmpty)
-                SliverToBoxAdapter(
-                  child: EmptyState(
-                    tr('Obuna bo‘lgan odamlaringiz post qo‘shsa, shu yerda '
-                        'ko‘rinadi.'),
-                    title: tr('Lenta hozircha bo‘sh'),
-                    icon: Ico.image,
-                    actionLabel: tr('Odamlarni topish'),
-                    onAction: () => push<void>(
-                      context,
-                      (_) => const IdCatalogScreen(),
-                    ),
-                  ),
-                )
-              else
-                SliverList.separated(
-                  itemCount: _feed.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: S.x12),
-                  itemBuilder: (context, i) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                    child: FeedCard(
-                      item: _feed[i],
-                      onLike: () => _toggleLike(_feed[i]),
-                      onMenu: () => _menu(_feed[i]),
-                      onAuthor: () => push<void>(
-                        context,
-                        (_) => _feed[i].isCompany
-                            ? ProfileScreen(companyId: _feed[i].code)
-                            : ProfileScreen(code: _feed[i].code),
-                      ),
-                      onOpen: _feed[i].isStory
-                          ? () => push<void>(
-                                context,
-                                (_) => StoryViewerScreen(code: _feed[i].code),
-                              )
-                          : () => push<void>(
-                                context,
-                                (_) => PostDetailScreen(
-                                  post: Post(
-                                    id: '${_feed[i].id}',
-                                    caption: _feed[i].caption,
-                                    images: [
-                                      if ((_feed[i].imageUrl ?? '').isNotEmpty)
-                                        _feed[i].imageUrl!,
-                                    ],
-                                    videoUrl: _feed[i].videoUrl,
-                                    createdAt: _feed[i].createdAt,
-                                    likes: _feed[i].likeCount,
-                                    liked: _feed[i].liked,
-                                    authorName: _feed[i].name,
-                                    authorAvatar: _feed[i].avatarUrl,
-                                    authorCode: _feed[i].code,
-                                  ),
-                                ),
-                              ),
-                    ),
-                  ),
-                ),
-
+              // BOSHQALARNING POSTLARI BU YERDA EMAS.
+              //
+              // Egasi: "nega kerak bosh sahifaga boshqalarning
+              // postlari, unga alohida Reels bor-ku". To'g'ri
+              // e'tiroz: bir xil kontent ikki joyda ko'rsatilardi
+              // va Bosh sahifa Reels'ning qisqartirilgan nusxasiga
+              // aylanib qolgandi.
+              //
+              // Endi Bosh sahifa — EGASINING joyi: o'z kartasi, tez
+              // amallar, kutilayotgan to'lov va sovg'a, obuna
+              // bo'lganlarning istoryalari. Boshqalarning postlari
+              // esa Reels tabida, o'z ekranida, to'liq kattalikda.
+              //
+              // Yoqtirish, menyu va o'chirish mantig'i ham shu
+              // bilan birga olib tashlandi — Reels o'zinikini
+              // ishlatadi. O'lik kod qoldirilmadi.
               SliverToBoxAdapter(
                 child: SizedBox(height: NavBar.inset(context)),
               ),
