@@ -320,9 +320,10 @@ class _TierRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = TierStyle.of(tier);
-    final available = codes.isNotEmpty;
-    // Katalogda bo'sh kod bo'lsa — eng arzoni, bo'lmasa tarif narxi.
-    final from = available ? codes.first.price : basePrice;
+    // NARX: tarifning o'z narxi (serverdan). Katalogdagi ro'yxat
+    // undan arzonroq kod taklif qilsa — o'shanisi.
+    final listed = codes.isNotEmpty ? codes.first.price : 0;
+    final from = listed > 0 && listed < basePrice ? listed : basePrice;
 
     Widget swatch = Container(
       width: 56,
@@ -348,7 +349,7 @@ class _TierRow extends StatelessWidget {
             ? C.accent.withValues(alpha: .35)
             : C.line,
       ),
-      onTap: available ? onTap : null,
+      onTap: onTap,
       child: Row(
         children: [
           swatch,
@@ -386,26 +387,12 @@ class _TierRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _hint(tier),
+                  tierReason(tier),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: T.caption.copyWith(fontSize: 12),
                 ),
-                // KOD TUGAGAN BO'LSA — NIMA QILISH KERAKLIGI.
-                //
-                // Narx ko'rinadi, lekin tanlash uchun tayyor ro'yxat
-                // yo'q. O'shanda odam nima qilishini bilishi kerak:
-                // kodni O'ZI yozib ko'radi — qidiruv har qanday bo'sh
-                // kodning bandligini va narxini aytadi.
-                if (!available && basePrice > 0) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    tr('Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.meta.copyWith(fontSize: 11, color: C.ink3),
-                  ),
-                ],
+
               ],
             ),
           ),
@@ -414,28 +401,21 @@ class _TierRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (from > 0)
-                Text(
-                  som(from),
-                  style: T.amount.copyWith(
-                    fontSize: 17,
-                    // Bo'sh kod qolmagan tarif narxi so'nib turadi:
-                    // narx bor, lekin hozir tanlaydigan kod yo'q.
-                    color: available ? C.ink : C.ink2,
-                  ),
-                )
-              else
-                Text(tr('Yo‘q'), style: T.amount.copyWith(color: C.ink3)),
+              // NARX HAR DOIM KO'RINADI.
+              //
+              // EGASI: "kodlar juda ko'p-ku, hamma kod bor deb
+              // tursin; keyin o'ziga kerakli ID'ni qidirsa, tepadan
+              // o'sha ID narxi chiqsin".
+              //
+              // To'g'ri edi: AAA000 naqshidagi har qanday kod
+              // sotuvda — faqat egasi bor kodlar band. Ilgari bu
+              // yerda KATALOGGA QO'SHILGAN bo'sh kodlar sanalardi
+              // va ro'yxat bo'sh bo'lsa "kod tugagan" deb
+              // ko'rsatilardi, holbuki kod tugamagan.
+              Text(som(from), style: T.amount.copyWith(fontSize: 17)),
               const SizedBox(height: 2),
               Text(
-                from <= 0
-                    ? tr('hozircha')
-                    : (available
-                        ? (tier == Tier.exclusive
-                            ? tr('so‘mdan')
-                            : tr('so‘m'))
-                        // Narx bor, kod yo'q — buni aniq aytamiz.
-                        : tr('kod tugagan')),
+                tier == Tier.exclusive ? tr('so‘mdan') : tr('so‘m'),
                 style: T.meta.copyWith(fontSize: 10),
               ),
             ],
@@ -445,14 +425,6 @@ class _TierRow extends StatelessWidget {
     );
   }
 
-  /// Naqsh qoidasi — tarif nimadan kelib chiqishini aytadi.
-  String _hint(Tier tier) => switch (tier) {
-        Tier.exclusive => tr('VIP · BOSS · faqat harflar'),
-        Tier.premium => tr('Kuchli naqsh — masalan AAA000'),
-        Tier.gold => tr('Takrorlanuvchi harf yoki raqam'),
-        Tier.silver => tr('Oyna yoki qo‘shni juftlik'),
-        _ => tr('Oddiy AAA000 naqsh'),
-      };
 }
 
 /// PUNKTIR CHEGARA.
@@ -526,10 +498,11 @@ class _TierCodesScreen extends StatelessWidget {
             ),
             if (codes.isEmpty)
               EmptyState(
-                tr('Bu tarifda hozircha bo‘sh kod yo‘q. Boshqa tarifni '
-                    'ko‘ring.'),
-                title: tr('Bo‘sh kod yo‘q'),
-                icon: Ico.card,
+                tr('Bu tarifdagi har qanday kod sotuvda — kerakligini '
+                    'qidiruvga yozing, narxi va bandligi darhol '
+                    'chiqadi.'),
+                title: tr('Tayyor ro‘yxat yo‘q'),
+                icon: Ico.search,
               )
             else
               Padding(

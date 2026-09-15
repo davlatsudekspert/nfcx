@@ -120,6 +120,13 @@ Future<http.Response> _normalResponse(http.Request req) async {
         body = {'records': [_card, _expert, _freeId]};
       } else if (p == '/api/companies/search') {
         body = {'companies': [_company]};
+      } else if (p == '/api/records/check') {
+        // BO'SH KOD — bandmi va narxi qancha.
+        body = {
+          'code': req.url.queryParameters['code'] ?? '',
+          'valid': true, 'available': true, 'purchasable': true,
+          'tier': 'gold', 'price': 149000,
+        };
       } else if (p.startsWith('/api/records/') && p.endsWith('/posts')) {
         body = {'posts': _posts};
       } else if (p.startsWith('/api/records/') && p.endsWith('/stories')) {
@@ -153,13 +160,6 @@ Future<http.Response> _normalResponse(http.Request req) async {
             'bronze': 49000, 'silver': 99000, 'gold': 149000,
             'premium': 199000, 'exclusiveFrom': 490000,
           },
-        };
-      } else if (p == '/api/records/check') {
-        // BO'SH KOD — bandmi va narxi qancha.
-        body = {
-          'code': req.url.queryParameters['code'] ?? '',
-          'valid': true, 'available': true, 'purchasable': true,
-          'tier': 'gold', 'price': 149000,
         };
       } else if (p == '/api/companies/check') {
         // PULLIK BIZNES NOMI — narx SERVERDAN keladi.

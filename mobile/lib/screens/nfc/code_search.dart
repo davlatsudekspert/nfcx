@@ -30,6 +30,9 @@ import 'id_detail.dart';
 /// NARX VA BANDLIK SERVERDAN (`/api/records/search`): mijozda narx
 /// jadvali yo'q, shuning uchun serverda narx o'zgarsa ilova ham
 /// darhol to'g'ri ko'rsatadi.
+/// To'liq kod shakli — uch harf va uch raqam (AAA000).
+final RegExp _codePattern = RegExp(r'^[A-Za-z]{3}[0-9]{3}$');
+
 mixin CodeSearch<T extends StatefulWidget> on State<T> {
   final TextEditingController codeQuery = TextEditingController();
   Timer? _debounce;
@@ -81,9 +84,18 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
         // Qidiruv yiqilsa ekran ishlashda davom etadi: odam
         // tariflardan tanlashi mumkin.
       }
-      // Mavjud profil topilmasa — kod bo'sh bo'lishi mumkin.
+
+      // TO'LIQ KOD YOZILSA — NARX HAR DOIM TEPADA.
+      //
+      // EGASI: "o'ziga kerakli ID'ni qidirsa, tepadan o'sha ID
+      // narxi chiqsin". Saytdagi `/narxlar` kalkulyatori aynan
+      // shunday ishlaydi: kod yoziladi, darajasi, bandligi va
+      // narxi chiqadi.
+      //
+      // Ilgari bu so'rov faqat profil TOPILMAGANDA yuborilardi,
+      // ya'ni band kodda narx ham, daraja ham ko'rinmasdi.
       Map<String, dynamic>? free;
-      if (res.isEmpty) {
+      if (_codePattern.hasMatch(q)) {
         try {
           final r = await repo.checkCode(q);
           if (r['valid'] == true) free = r;
@@ -112,32 +124,34 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
       ];
     }
     final free = freeCode;
-    if (free != null) {
-      return [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: FreeCodeCard(
-            info: free,
-            onTap: free['available'] == true && free['purchasable'] == true
-                ? () => push<void>(
-                      context,
-                      (_) => IdDetailScreen(
-                        record: Record(
-                          code: '${free['code']}',
-                          name: '',
-                          price: (free['price'] as num?)?.round() ?? 0,
-                          serverTier: '${free['tier'] ?? ''}',
-                        ),
-                      ),
-                    )
-                : null,
-          ),
-        ),
-      ];
-    }
     final list = found;
-    if (list == null) return const [];
+    final priceCard = free == null
+        ? const <Widget>[]
+        : [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x12),
+              child: FreeCodeCard(
+                info: free,
+                onTap: free['available'] == true && free['purchasable'] == true
+                    ? () => push<void>(
+                          context,
+                          (_) => IdDetailScreen(
+                            record: Record(
+                              code: '${free['code']}',
+                              name: '',
+                              price: (free['price'] as num?)?.round() ?? 0,
+                              serverTier: '${free['tier'] ?? ''}',
+                            ),
+                          ),
+                        )
+                    : null,
+              ),
+            ),
+          ];
+
+    if (list == null) return priceCard;
     if (list.isEmpty) {
+      if (priceCard.isNotEmpty) return priceCard;
       return [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -150,6 +164,8 @@ mixin CodeSearch<T extends StatefulWidget> on State<T> {
       ];
     }
     return [
+      // Narx kartasi TEPADA — qidirilayotgan narsa shu.
+      ...priceCard,
       for (final r in list)
         Padding(
           padding: const EdgeInsets.fromLTRB(S.gutter, 0, S.gutter, S.x8),
@@ -213,11 +229,16 @@ class CodeRow extends StatelessWidget {
   }
 }
 
-/// BO'SH KOD KARTASI — tarif, narx va sotib olish yo'li.
+/// KOD KARTASI — DARAJA, SABAB, HOLAT VA NARX.
 ///
-/// Saytda bo'sh kod yozilganda aynan shu ma'lumot chiqadi: kod,
-/// tarifi va narxi. Band bo'lsa narx ko'rsatilmaydi — bu aldov
-/// bo'lardi.
+/// Saytdagi `/narxlar` kalkulyatorining aynan o'zi: kod yozilganda
+/// uning darajasi, nima uchun shu daraja ekani, bandmi-yo'qmi va
+/// narxi ko'rinadi. Egasi shu sahifani ko'rsatib so'radi.
+///
+/// NARX VA DARAJA — SERVERDAN. Mijozda naqsh qoidalari ham, narx
+/// jadvali ham yo'q: ikkalasi `/api/records/check` javobidan
+/// ko'chiriladi, ya'ni saytda o'zgarsa ilovada ham darhol
+/// o'zgaradi.
 class FreeCodeCard extends StatelessWidget {
   const FreeCodeCard({super.key, required this.info, this.onTap});
 
@@ -232,6 +253,17 @@ class FreeCodeCard extends StatelessWidget {
     final price = (info['price'] as num?)?.round() ?? 0;
     final free = info['available'] == true && info['purchasable'] == true;
     final pending = info['pendingPayment'] == true;
+
+    Widget line(String label, Widget value) => Padding(
+          padding: const EdgeInsets.only(top: S.x8),
+          child: Row(
+            children: [
+              Text(label, style: T.caption.copyWith(color: C.ink3)),
+              const Spacer(),
+              value,
+            ],
+          ),
+        );
 
     return Surface(
       padding: const EdgeInsets.all(S.x16),
@@ -250,38 +282,57 @@ class FreeCodeCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: S.x12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(code, style: T.code(17, color: C.ink)),
-                    const SizedBox(height: 3),
-                    Text(style.label,
-                        style: T.caption.copyWith(color: C.ink3)),
-                  ],
-                ),
+              Expanded(child: Text(code, style: T.code(19, color: C.ink))),
+              StatusChip(
+                pending
+                    ? tr('To‘lov kutilmoqda')
+                    : (free ? tr('Bo‘sh') : tr('Band')),
+                tone: free ? StatusTone.ok : StatusTone.neutral,
               ),
-              if (free)
-                Text(som(price), style: T.amount.copyWith(fontSize: 16))
-              else
-                StatusChip(
-                  pending ? tr('To‘lov kutilmoqda') : tr('Band'),
-                  tone: StatusTone.neutral,
-                ),
             ],
           ),
-          if (free) ...[
-            const SizedBox(height: S.x12),
-            PrimaryButton(
-              tr('Sotib olish'),
-              size: BtnSize.m,
-              onTap: onTap,
+
+          const SizedBox(height: S.x12),
+          const RowDivider(indent: 0),
+
+          line(tr('Daraja'),
+              Text(style.label, style: T.cardTitle.copyWith(fontSize: 14))),
+          line(
+            tr('Sabab'),
+            Flexible(
+              child: Text(
+                tierReason(tier),
+                textAlign: TextAlign.right,
+                // Sabab KESILMASIN: u narx nima uchun shunday
+                // ekanini tushuntiradi — yarmi ko'rinsa ma'nosi
+                // yo'qoladi.
+                maxLines: 2,
+                style: T.caption.copyWith(fontSize: 12.5),
+              ),
             ),
-          ] else if (!pending) ...[
-            const SizedBox(height: S.x8),
+          ),
+          if (price > 0)
+            line(
+              tr('Narxi'),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(som(price), style: T.amount.copyWith(fontSize: 17)),
+                  const SizedBox(width: 4),
+                  Text(tr('so‘m'), style: T.meta),
+                ],
+              ),
+            ),
+
+          if (free) ...[
+            const SizedBox(height: S.x16),
+            PrimaryButton(tr('Sotib olish'), size: BtnSize.m, onTap: onTap),
+          ] else ...[
+            const SizedBox(height: S.x12),
             Text(
-              tr('Bu kod allaqachon egasi bor.'),
+              pending
+                  ? tr('Bu kod band qilingan — to‘lov kutilmoqda.')
+                  : tr('Bu kodning egasi bor. Boshqa kod yozib ko‘ring.'),
               style: T.caption.copyWith(fontSize: 12.5),
             ),
           ],
@@ -290,3 +341,16 @@ class FreeCodeCard extends StatelessWidget {
     );
   }
 }
+
+/// NIMA UCHUN SHU DARAJA — saytdagi `/narxlar` dagi "Sabab".
+///
+/// Bitta joyda: katalogdagi tarif qatori ham shu matnni ishlatadi,
+/// aks holda ikki ekranda ikki xil tushuntirish bo'lardi.
+String tierReason(Tier tier) => switch (tier) {
+      Tier.exclusive => tr('VIP · BOSS · faqat harflar'),
+      Tier.premium => tr('Kuchli naqsh — masalan AAA000'),
+      Tier.gold => tr('Takrorlanuvchi harf yoki raqam'),
+      Tier.silver => tr('Oyna yoki qo‘shni juftlik'),
+      Tier.bronze => tr('Oddiy AAA000 naqsh'),
+      Tier.free => tr('Ro‘yxatdan o‘tganda 8 xonali kod'),
+    };

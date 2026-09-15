@@ -411,14 +411,6 @@
     "Запишите ссылку на свой ID на пустую карту",
     "Write your ID link onto a blank card"
   ],
-  "Bo‘sh kod hozircha yo‘q — kod yozib ko‘ring": [
-    "Свободных кодов пока нет — введите код",
-    "No free codes yet — type a code"
-  ],
-  "Bo‘sh kod yo‘q": [
-    "Свободных кодов нет",
-    "No free codes"
-  ],
   "Bo‘sh kodlar": [
     "Свободные коды",
     "Free codes"
@@ -531,6 +523,14 @@
     "У этого кода уже есть владелец.",
     "This code already has an owner."
   ],
+  "Bu kod band qilingan — to‘lov kutilmoqda.": [
+    "Этот код забронирован — ожидается оплата.",
+    "This code is reserved — payment pending."
+  ],
+  "Bu kodning egasi bor. Boshqa kod yozib ko‘ring.": [
+    "У этого кода есть владелец. Попробуйте другой код.",
+    "This code has an owner. Try another code."
+  ],
   "Bu nom band qilingan ro‘yxatda.": [
     "Это имя в списке зарезервированных.",
     "This name is on the reserved list."
@@ -591,9 +591,9 @@
     "На этом тарифе сейчас нет свободных ID.",
     "No available IDs on this tier right now."
   ],
-  "Bu tarifda hozircha bo‘sh kod yo‘q. Boshqa tarifni ko‘ring.": [
-    "На этом тарифе пока нет свободных кодов. Посмотрите другой тариф.",
-    "This tier has no free codes right now. Look at another tier."
+  "Bu tarifdagi har qanday kod sotuvda — kerakligini qidiruvga yozing, narxi va bandligi darhol chiqadi.": [
+    "Любой код этого тарифа в продаже — введите нужный в поиск, цена и занятость появятся сразу.",
+    "Any code in this tier is on sale — type the one you want into search and its price and availability appear at once."
   ],
   "Bu toifada hozircha kontent yo‘q.": [
     "В этой категории пока нет контента.",
@@ -738,6 +738,10 @@
   "Dam olish": [
     "Выходной",
     "Day off"
+  ],
+  "Daraja": [
+    "Уровень",
+    "Tier"
   ],
   "Davom etish": [
     "Продолжить",
@@ -2967,6 +2971,10 @@
     "STORY MEDIA 9:16",
     "STORY MEDIA 9:16"
   ],
+  "Sabab": [
+    "Причина",
+    "Reason"
+  ],
   "Sabab tanlang. Shikoyat moderatorga yuboriladi va kontent tekshiriladi.": [
     "Выберите причину. Жалоба будет отправлена модератору, и контент проверят.",
     "Choose a reason. The report goes to a moderator and the content will be reviewed."
@@ -3426,6 +3434,10 @@
   "Tayyor": [
     "Готово",
     "Done"
+  ],
+  "Tayyor ro‘yxat yo‘q": [
+    "Готового списка нет",
+    "No ready-made list"
   ],
   "Ta‘lim": [
     "Образование",
@@ -3951,10 +3963,6 @@
     "Запись прервана",
     "Writing interrupted"
   ],
-  "Yo‘q": [
-    "Нет",
-    "No"
-  ],
   "Yuborilgan": [
     "Отправлено",
     "Sent"
@@ -4038,10 +4046,6 @@
   "keyin siz bilan kelishiladi.": [
     "затем с вами согласуют.",
     "then it is agreed with you."
-  ],
-  "kod tugagan": [
-    "коды закончились",
-    "out of codes"
   ],
   "kodini yuboramiz.": [
     "код мы отправим.",

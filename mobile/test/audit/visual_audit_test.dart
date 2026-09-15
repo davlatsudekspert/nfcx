@@ -189,6 +189,18 @@ void main() {
     await golden(t, '12-id-katalogi');
   });
 
+  // KOD QIDIRUVI — saytdagi `/narxlar` kalkulyatoridek: daraja,
+  // sabab, holat va narx. Egasi: "kerakli ID'ni qidirsa, tepadan
+  // o'sha ID narxi chiqsin".
+  testWidgets('65 kod narxi — qidiruv natijasi', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const IdCatalogScreen(), state: s);
+    await t.enterText(find.byType(EditableText).first, 'III777');
+    await t.pump(const Duration(milliseconds: 600));
+    await settle(t);
+    await golden(t, '65-kod-narxi');
+  });
+
   testWidgets('13 ID tafsiloti', (t) async {
     final s = await ready();
     await pumpScreen(t, IdDetailScreen(
