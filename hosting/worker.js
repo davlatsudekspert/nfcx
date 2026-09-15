@@ -951,7 +951,9 @@ async function publicContentApi(request, env, url) {
       sandbox: paymeSandboxD1(env),
       providers: {
         payme: { enabled: paymeEnabledD1(env), sandbox: paymeSandboxD1(env) },
-        click: { enabled: clickEnabledD1(env), sandbox: false },
+        // Interfeysga "to'lay olamizmi" deyiladi — "imzoni tekshira
+        // olamizmi" emas (`clickCheckoutReadyD1` izohiga qarang).
+        click: { enabled: clickCheckoutReadyD1(env), sandbox: false },
       },
     });
   }
@@ -4309,6 +4311,25 @@ function clickEnabledD1(env) {
   return env.PAYMENTS_ENABLED === 'true' && !!(env.CLICK_SERVICE_ID && env.CLICK_SECRET_KEY);
 }
 
+// CHECKOUT HAVOLASINI YARATA OLAMIZMI — bu `clickEnabledD1()` DAN
+// KENGROQ shart.
+//
+// `clickEnabledD1()` imzo tekshiruvi uchun yetarli narsani so'raydi:
+// `CLICK_SERVICE_ID` va `CLICK_SECRET_KEY`. Checkout havolasi uchun esa
+// `CLICK_MERCHANT_ID` HAM kerak (`clickCheckoutLinkD1()` ga qarang).
+//
+// Farqi muhim: uchtadan ikkitasi qo'yilsa, interfeys Click'ni "faol"
+// deb ko'rsatardi, lekin "To'lash" bosilganda havola BO'SH bo'lib
+// hech narsa ochilmasdi — mijoz uchun bu "ilova buzuq" degani.
+// Shuning uchun INTERFEYSGA aynan shu, kengroq shart aytiladi.
+//
+// Webhook (prepare/complete) esa avvalgidek `clickEnabledD1()` ga
+// tayanadi: boshlangan to'lov, sozlama keyinroq o'zgarsa ham,
+// oxirigacha yopilishi kerak.
+function clickCheckoutReadyD1(env) {
+  return clickEnabledD1(env) && !!String(env.CLICK_MERCHANT_ID || '').trim();
+}
+
 // Payme test/sandbox rejimi — FAQAT oshkora (maxfiy bo'lmagan) sozlamadan
 // aniqlanadi: `PAYME_SANDBOX="true"` yoki test checkout domeni. Merchant
 // kalitining o'zi HECH QACHON o'qilmaydi/tekshirilmaydi.
@@ -4976,7 +4997,7 @@ async function handlePaymeRequestD1(env, body) {
 // Node'dagi test (scripts/payme-order-flow-test.mjs) uchun nomlangan
 // export — Workers runtime faqat `export default { fetch }`ni ishlatadi.
 export {
-  clickEnabledD1, clickCheckoutLinkD1, clickSignD1, handleClickRequestD1,
+  clickEnabledD1, clickCheckoutReadyD1, clickCheckoutLinkD1, clickSignD1, handleClickRequestD1,
   emailEnabledD1, sendEmailD1, emailShellD1,
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
   setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,

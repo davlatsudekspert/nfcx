@@ -4043,6 +4043,10 @@
     "{sotuvchi} свяжется с вами. Статус заказа отслеживайте здесь.",
     "{sotuvchi} will contact you. Track the order status here."
   ],
+  "{tizim} orqali to‘lov havolasi kelmadi. Boshqa usulni tanlang yoki birozdan so‘ng urinib ko‘ring.": [
+    "Ссылка на оплату через {tizim} не пришла. Выберите другой способ или попробуйте чуть позже.",
+    "No {tizim} payment link came back. Choose another method or try again shortly."
+  ],
   "{url} hammaga ko‘rinadi": [
     "{url} виден всем",
     "{url} is visible to everyone"

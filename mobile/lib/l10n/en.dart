@@ -1021,6 +1021,7 @@ const enStrings = <String, String>{
   '{son} kun': '{son} days',
   '{son} so‘m': '{son} soum',
   '{sotuvchi} siz bilan bog‘lanadi. Buyurtma holatini shu yerdan kuzatasiz.': '{sotuvchi} will contact you. Track the order status here.',
+  '{tizim} orqali to‘lov havolasi kelmadi. Boshqa usulni tanlang yoki birozdan so‘ng urinib ko‘ring.': 'No {tizim} payment link came back. Choose another method or try again shortly.',
   '{url} hammaga ko‘rinadi': '{url} is visible to everyone',
   '“Sotib olish” → to‘lov usulini tanlash ekrani ochiladi': '"Buy" → the payment method screen opens',
   '“{q}” topilmadi': '"{q}" not found',

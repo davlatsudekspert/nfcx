@@ -1021,6 +1021,7 @@ const ruStrings = <String, String>{
   '{son} kun': '{son} дней',
   '{son} so‘m': '{son} сум',
   '{sotuvchi} siz bilan bog‘lanadi. Buyurtma holatini shu yerdan kuzatasiz.': '{sotuvchi} свяжется с вами. Статус заказа отслеживайте здесь.',
+  '{tizim} orqali to‘lov havolasi kelmadi. Boshqa usulni tanlang yoki birozdan so‘ng urinib ko‘ring.': 'Ссылка на оплату через {tizim} не пришла. Выберите другой способ или попробуйте чуть позже.',
   '{url} hammaga ko‘rinadi': '{url} виден всем',
   '“Sotib olish” → to‘lov usulini tanlash ekrani ochiladi': '«Купить» → откроется экран выбора способа оплаты',
   '“{q}” topilmadi': '«{q}» не найдено',

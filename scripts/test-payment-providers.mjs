@@ -8,7 +8,7 @@
 //      ID ham ro'yxatda ko'rinadi. Bu eng muhim tekshiruv: mezon faqat
 //      `payme_transaction_id` ga bog'langan bo'lsa, Click ulangan kuni
 //      sotuvlar jimgina ko'rinmay qolardi.
-import worker, { paymeCheckoutLinkD1, checkoutLinksD1 } from '../hosting/worker.js';
+import worker, { paymeCheckoutLinkD1, checkoutLinksD1, clickCheckoutReadyD1 } from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { env } = makeEnv();
@@ -35,8 +35,19 @@ const j = async (pathname, e = env) => {
     [only.body?.providers?.payme?.enabled, only.body?.providers?.click?.enabled], [true, false]);
   check('umumiy `enabled` — bittasi yetarli', only.body?.enabled, true);
 
-  // (c) faqat Click
-  const e2 = { ...env, PAYMENTS_ENABLED: 'true', CLICK_SERVICE_ID: 's', CLICK_SECRET_KEY: 'sk' };
+  // (c) faqat Click — UCHALA kalit bilan.
+  //
+  // DIQQAT (2026-09): `CLICK_MERCHANT_ID` ham SHART. Usiz imzoni
+  // tekshirib bo'ladi, lekin checkout havolasini yasab bo'lmaydi va
+  // interfeys Click'ni "faol" deb ko'rsatsa, "To'lash" bosilganda
+  // hech narsa ochilmasdi. Quyidagi 5-bo'limga qarang.
+  const e2 = {
+    ...env,
+    PAYMENTS_ENABLED: 'true',
+    CLICK_SERVICE_ID: 's',
+    CLICK_SECRET_KEY: 'sk',
+    CLICK_MERCHANT_ID: 'mid',
+  };
   const clk = await j('/api/settings/payments-enabled', e2);
   check('faqat Click yoqilgan',
     [clk.body?.providers?.payme?.enabled, clk.body?.providers?.click?.enabled], [false, true]);
@@ -147,6 +158,36 @@ const j = async (pathname, e = env) => {
   // umumiy rubilnik ikkala tizimni ham to'xtatadi.
   const off = checkoutLinksD1({ ...both, PAYMENTS_ENABLED: 'false' }, 7, 149000);
   checkTrue('to\'lov o\'chirilganda Click havolasi yo\'q', off.click === undefined);
+}
+
+
+// ═══ 5. YARIM SOZLANGAN CLICK "FAOL" DEB KO'RSATILMAYDI ═══
+//
+// Uch kalitdan ikkitasi qo'yilsa (SERVICE_ID + SECRET_KEY, lekin
+// MERCHANT_ID yo'q) — imzo tekshirish MUMKIN, checkout havolasini
+// yasash esa MUMKIN EMAS. Interfeys bunda Click'ni "faol" deb
+// ko'rsatsa, mijoz "To'lash" ni bosadi va HECH NARSA ochilmaydi.
+{
+  const half = {
+    PAYMENTS_ENABLED: 'true',
+    CLICK_SERVICE_ID: '111',
+    CLICK_SECRET_KEY: 'sec',
+    PAYME_MERCHANT_ID: 'M1',
+  };
+  const full = { ...half, CLICK_MERCHANT_ID: '222' };
+
+  checkTrue('merchant ID siz — Click interfeysda FAOL emas', clickCheckoutReadyD1(half) === false);
+  checkTrue('uchala kalit bilan — Click faol', clickCheckoutReadyD1(full) === true);
+
+  // Eng muhimi: e'lon qilingan holat va haqiqiy havola BIR-BIRIGA MOS.
+  checkTrue('faol emas -> havola ham yo\'q', checkoutLinksD1(half, 7, 149000).click === undefined);
+  checkTrue('faol -> havola bor', !!checkoutLinksD1(full, 7, 149000).click);
+
+  // `/api/settings/payments-enabled` ham shu javobni beradi.
+  const r = await j('/api/settings/payments-enabled', { ...env, ...half });
+  check('yarim sozlangan Click — endpoint ham `false` deydi', r.body?.providers?.click?.enabled, false);
+  const r2 = await j('/api/settings/payments-enabled', { ...env, ...full });
+  check('to\'liq sozlangan Click — endpoint `true` deydi', r2.body?.providers?.click?.enabled, true);
 }
 
 done();

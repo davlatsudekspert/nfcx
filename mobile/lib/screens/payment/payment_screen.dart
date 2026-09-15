@@ -147,9 +147,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
       // serverda faqat `payLink` (Payme) bo'ladi va `linkFor()`
       // o'shanga qaytadi.
       final link = order.linkFor(_provider);
-      if (link != null && link.isNotEmpty) {
-        await openExternal(Uri.parse(link));
+      if (link == null || link.isEmpty) {
+        // HAVOLA KELMADI — JIM QOLMAYMIZ.
+        //
+        // Buyurtma ochildi, lekin tanlangan tizim uchun checkout
+        // havolasi yo'q (masalan Click kalitlari to'liq emas).
+        // Ilgari ekran shu holatda ham "kutilmoqda" ga o'tardi va
+        // odam nimani kutayotganini bilmasdi. Endi sabab aytiladi
+        // va buyurtma o'z holicha qoladi — uni "Buyurtmalarim" dan
+        // boshqa tizim bilan davom ettirish mumkin.
+        setState(() {
+          _phase = _Phase.choose;
+          _error = trf('{tizim} orqali to‘lov havolasi kelmadi. Boshqa '
+              'usulni tanlang yoki birozdan so‘ng urinib ko‘ring.', {
+            'tizim': _provider == 'click' ? 'Click' : 'Payme',
+          });
+        });
+        return;
       }
+      await openExternal(Uri.parse(link));
       _startPolling();
     } on ApiError catch (e) {
       if (mounted) setState(() => _error = _payError(e));
