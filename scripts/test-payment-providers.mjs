@@ -8,7 +8,7 @@
 //      ID ham ro'yxatda ko'rinadi. Bu eng muhim tekshiruv: mezon faqat
 //      `payme_transaction_id` ga bog'langan bo'lsa, Click ulangan kuni
 //      sotuvlar jimgina ko'rinmay qolardi.
-import worker, { paymeCheckoutLinkD1 } from '../hosting/worker.js';
+import worker, { paymeCheckoutLinkD1, checkoutLinksD1 } from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
 
 const { env } = makeEnv();
@@ -105,6 +105,48 @@ const j = async (pathname, e = env) => {
   // Merchant ID yo'q bo'lsa havola YARATILMAYDI (bo'sh satr) — noto'g'ri
   // havola bilan mijozni Payme ga yubormaslik uchun.
   check('merchant ID siz havola yaratilmaydi', paymeCheckoutLinkD1({}, 7, 149000), '');
+}
+
+
+// ═══ 4. IKKALA CHECKOUT HAVOLASI (2026-09) ═══
+//
+// NIMA UCHUN: interfeysda "Payme / Click" tanlagichi bor edi, lekin
+// buyurtma javobi faqat Payme havolasini qaytarardi — tanlov faqat
+// BELGINI almashtirardi va Click bosilganda ham Payme ochilardi.
+// `clickCheckoutLinkD1()` yozilgan, ammo hech qayerdan chaqirilmasdi.
+//
+// Endi javobda `payLinks` bor. `payLink` (Payme) O'ZGARMAYDI — eski
+// mijozlar uchun hech narsa buzilmasin.
+{
+  const paymeOnly = { PAYME_MERCHANT_ID: 'M1', PAYME_CHECKOUT_DOMAIN: 'checkout.paycom.uz' };
+  const both = {
+    ...paymeOnly,
+    PAYMENTS_ENABLED: 'true',
+    CLICK_SERVICE_ID: '111',
+    CLICK_SECRET_KEY: 'sec',
+    CLICK_MERCHANT_ID: '222',
+  };
+
+  const only = checkoutLinksD1(paymeOnly, 7, 149000);
+  checkTrue('Click kalitisiz — faqat Payme havolasi', !!only.payme && only.click === undefined);
+
+  const pair = checkoutLinksD1(both, 7, 149000);
+  checkTrue('Click yoqilganda — ikkala havola ham bor', !!pair.payme && !!pair.click);
+  checkTrue('Payme havolasi checkout.paycom.uz ga ketadi', pair.payme.includes('checkout.paycom.uz'));
+  checkTrue('Click havolasi my.click.uz ga ketadi', pair.click.startsWith('https://my.click.uz/services/pay?'));
+
+  // Click SO'MDA ishlaydi (Payme tiyinda) va buyurtma id'sini
+  // `transaction_param` da kutadi — prepare/complete aynan shu bo'yicha
+  // buyurtmani topadi.
+  const q = new URL(pair.click).searchParams;
+  check('Click summasi so\'mda', q.get('amount'), '149000');
+  check('Click buyurtma id yuboradi', q.get('transaction_param'), '7');
+  check('Click service_id', q.get('service_id'), '111');
+
+  // PAYMENTS_ENABLED o'chiq bo'lsa Click ham chiqmaydi — bitta
+  // umumiy rubilnik ikkala tizimni ham to'xtatadi.
+  const off = checkoutLinksD1({ ...both, PAYMENTS_ENABLED: 'false' }, 7, 149000);
+  checkTrue('to\'lov o\'chirilganda Click havolasi yo\'q', off.click === undefined);
 }
 
 done();

@@ -38,10 +38,49 @@ void main() {
       }
     });
 
-    test('SERVER TOKEN BERMASA — bu alohida holat', () async {
-      // Server 200 qaytardi, lekin tanada token yo'q. Ilova esa
-      // faqat token bilan ishlaydi (cookie emas) — ya'ni kirish
-      // amalda bo'lmadi. Ilgari bu "Nimadir noto'g'ri ketdi" edi.
+    test('TANA TOKENSIZ BO‘LSA — COOKIE\'DAN OLINADI', () async {
+      // QURILMADA AYNAN SHU BO‘LDI: server 200 qaytardi, tanada esa
+      // token yo‘q edi va kirish "Server sessiya ochmadi" bilan
+      // to‘xtardi. Holbuki `Set-Cookie` da o‘sha tokenning O‘ZI
+      // turadi — server uni bitta jadvalda saqlaydi va
+      // `Authorization: Bearer` orqali ham qabul qiladi.
+      final repo = repoWith(MockClient((_) async => http.Response(
+            jsonEncode({
+              'user': {'id': 1, 'email': 'a***@gmail.com'},
+            }),
+            200,
+            headers: {
+              'content-type': 'application/json',
+              'set-cookie':
+                  'nfc_session=cookie-token-123; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000',
+            },
+          )));
+
+      expect(
+        await repo.login(login: 'a@b.uz', password: 'xxxxxxxx'),
+        'cookie-token-123',
+      );
+    });
+
+    test('TANADAGI TOKEN USTUN — cookie bo‘lsa ham', () async {
+      final repo = repoWith(MockClient((_) async => http.Response(
+            jsonEncode({'token': 'body-token'}),
+            200,
+            headers: {
+              'content-type': 'application/json',
+              'set-cookie': 'nfc_session=cookie-token; Path=/',
+            },
+          )));
+
+      expect(
+        await repo.login(login: 'a@b.uz', password: 'xxxxxxxx'),
+        'body-token',
+      );
+    });
+
+    test('IKKALASI HAM BO‘LMASA — javob boshi xabarda ko‘rinadi', () async {
+      // Na tanada, na cookie'da token bor — bu haqiqatan xato holat.
+      // Muhimi: xabar KO'R bo'lmasin, javobning boshi ko'rinsin.
       final repo = repoWith(MockClient((_) async => http.Response(
             jsonEncode({
               'user': {'id': 1, 'email': 'a***@gmail.com'},
@@ -55,6 +94,8 @@ void main() {
       } catch (e) {
         expect('$e', 'no_token');
         expect(humanError(e), contains('sessiya ochmadi'));
+        expect(errorDetail(e), contains('HTTP 200'));
+        expect(errorDetail(e), contains('user'));
       }
     });
 
@@ -135,10 +176,11 @@ void main() {
       expect(token, 't0ken');
       expect(sent!.url.toString(), 'https://nfcstore.uz/api/auth/login');
       expect(sent!.method, 'POST');
-      // `X-Client` BO'LISHI SHART: server aynan shu sarlavhaga
-      // qarab tokenni javob TANASIDA yuboradi (worker.js,
-      // `MOBILE_CLIENTS_D1` = mobile | android | ios). Usiz token
-      // faqat cookie'da ketadi va ilova sessiya ocha olmaydi.
+      // `X-Client` — server aynan shu sarlavhaga qarab tokenni javob
+      // TANASIDA yuboradi (worker.js, `MOBILE_CLIENTS_D1` =
+      // mobile | android | ios). Sarlavha yo'qolsa ham kirish
+      // ishlaydi — token `Set-Cookie` dan olinadi (yuqoridagi test) —
+      // lekin bu ZAXIRA yo'l, asosiysi shu sarlavha.
       expect(sent!.headers['x-client'], 'android');
       expect(
         jsonDecode(sent!.body),

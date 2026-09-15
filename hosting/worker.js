@@ -4496,6 +4496,40 @@ function clickCheckoutLinkD1(env, orderId, amountSom) {
   return `https://my.click.uz/services/pay?${q.toString()}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// TO'LOV HAVOLALARI — IKKALA PROVAYDER UCHUN BIRGA
+//
+// MUAMMO: buyurtma javobi faqat `payLink` (Payme) qaytarardi.
+// Interfeysda esa "Payme / Click" tanlagichi bor edi — lekin u faqat
+// BELGINI almashtirardi: bosilganda baribir Payme checkout'i ochilardi.
+// `clickCheckoutLinkD1()` yozilgan bo'lsa ham hech qayerdan
+// chaqirilmasdi, ya'ni Click amalda ishlamasdi.
+//
+// YECHIM — QO'SHIMCHA MAYDON, o'zgartirish emas. `payLink` joyida
+// qoladi va avvalgidek Payme'ni beradi (eski mijozlar uchun hech narsa
+// o'zgarmaydi), yoniga `payLinks: { payme, click }` qo'shiladi. Mijoz
+// qaysi birini ochishni O'ZI tanlaydi.
+//
+// NIMA UCHUN PROVAYDER OLDINDAN SAQLANMAYDI: buyurtma qaysi provayder
+// bilan to'lanishini oldindan bilishi SHART EMAS. Payme tranzaksiyani
+// o'z id'si bo'yicha, Click esa buyurtma id'si bo'yicha topadi va
+// ikkalasi ham buyurtma `pending` ekanini tekshiradi — biri to'lagach
+// ikkinchisi rad etiladi. Shuning uchun jadvalga ustun qo'shilmadi va
+// migratsiya qilinmadi.
+//
+// Click kaliti qo'yilmagan bo'lsa `click` maydoni umuman bo'lmaydi —
+// interfeys uni o'chiq ko'rsatadi (hozirgi xulq o'zgarmaydi).
+function checkoutLinksD1(env, orderId, amountSom) {
+  const links = {};
+  const payme = paymeCheckoutLinkD1(env, orderId, amountSom);
+  if (payme) links.payme = payme;
+  if (clickEnabledD1(env)) {
+    const click = clickCheckoutLinkD1(env, orderId, amountSom);
+    if (click) links.click = click;
+  }
+  return links;
+}
+
 // Click so'rovi form-encoded keladi; ba'zi sinov vositalari JSON yuboradi —
 // ikkalasi ham qabul qilinadi.
 async function clickParamsD1(request) {
@@ -4947,7 +4981,7 @@ export {
   createWebOrderD1, createPendingWebOrderD1, getWebOrderD1, getWebOrderByPaymeIdD1, setWebOrderPaymeIdD1,
   setWebOrderStatusD1, activeWebOrderByCodeD1, createRecordD1, attachCardToUserD1,
   finalizePaidWebOrderD1, handlePaymeRequestD1, verifyPaymeAuthD1, paymeAuthReasonD1, paymentsEnabledD1,
-  paymeCheckoutLinkD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
+  paymeCheckoutLinkD1, checkoutLinksD1, getRecord, getRecordOwner, PAYME_ERR, ensureCoreSchema,
   validateRecordBody, updateRecord, parseMusicUrls,
   // scripts/test-company-id.mjs — src/lib/company.js bilan parite.
   companyId, normalizeCompanyIdD1, companyIdLettersD1, companyPricing,
@@ -5600,7 +5634,8 @@ async function recordsApi(request, env, url) {
         return json({ error: 'reserved_pending_payment' }, 409);
       }
       const payLink = paymeCheckoutLinkD1(env, order.id, quote.amount);
-      return json({ pending: true, orderId: order.id, code, price: quote.amount, payLink }, 202);
+      const payLinks = checkoutLinksD1(env, order.id, quote.amount);
+      return json({ pending: true, orderId: order.id, code, price: quote.amount, payLink, payLinks }, 202);
     }
 
     return null;
@@ -5654,6 +5689,7 @@ async function ordersApi(request, env, url) {
         price: Number(r.price),
         expiresAtMs: r.status === 'pending' && r.expiresAtMs != null ? Number(r.expiresAtMs) : null,
         payLink: r.status === 'pending' ? paymeCheckoutLinkD1(env, r.id, Number(r.price)) : null,
+        payLinks: r.status === 'pending' ? checkoutLinksD1(env, r.id, Number(r.price)) : null,
       })),
     });
   }

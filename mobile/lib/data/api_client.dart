@@ -37,6 +37,50 @@ class ApiError implements Exception {
   String toString() => key;
 }
 
+/// SERVER JAVOBI — tanasi bilan birga sarlavhasi ham.
+///
+/// Odatda faqat tana kerak. Sessiya ochadigan so'rovlarda esa
+/// `Set-Cookie` ham kerak bo'ladi: ba'zi server versiyalari tokenni
+/// javob tanasiga qo'ymaydi va uni faqat cookie orqali beradi.
+class ApiResponse {
+  const ApiResponse({
+    required this.status,
+    required this.body,
+    required this.headers,
+    required this.raw,
+  });
+
+  final int status;
+  final dynamic body;
+  final Map<String, String> headers;
+
+  /// Javobning boshi — xato tafsiloti uchun (JSON bo'lmasa ham).
+  final String raw;
+
+  Map<String, dynamic> get map =>
+      body is Map ? (body as Map).cast<String, dynamic>() : <String, dynamic>{};
+
+  /// `Set-Cookie` ichidagi sessiya tokeni. Topilmasa `null`.
+  ///
+  /// Sarlavha shakli: `nfc_session=<token>; Path=/; HttpOnly; ...`
+  /// Bir nechta cookie bitta qatorda vergul bilan kelishi mumkin,
+  /// shuning uchun nomga qarab qidiriladi.
+  String? get sessionCookie {
+    final raw = headers['set-cookie'] ?? headers['Set-Cookie'];
+    if (raw == null || raw.isEmpty) return null;
+    for (final part in raw.split(RegExp(r'[,;]\s*'))) {
+      final eq = part.indexOf('=');
+      if (eq <= 0) continue;
+      final name = part.substring(0, eq).trim().toLowerCase();
+      if (!name.contains('session')) continue;
+      final value = part.substring(eq + 1).trim();
+      if (value.isEmpty || value == 'deleted') continue;
+      return value;
+    }
+    return null;
+  }
+}
+
 /// NFCSTORE backend klienti.
 ///
 /// MUHIM QARORLAR:
@@ -112,6 +156,24 @@ class Api {
         ),
       );
 
+  /// SESSIYA OCHADIGAN SO'ROV — javob TANASI ham, SARLAVHASI ham kerak.
+  ///
+  /// Kirish va ro'yxatdan o'tishda token ikki yo'l bilan kelishi
+  /// mumkin: javob tanasida (`{"token": "..."}`) yoki `Set-Cookie`
+  /// sarlavhasida. Ikkalasi ham BIR XIL token — server uni bir xil
+  /// SHA-256 bilan saqlaydi va `Authorization: Bearer` orqali ham
+  /// qabul qiladi.
+  ///
+  /// Oddiy `post()` faqat tanani qaytaradi, ya'ni cookie'dagi token
+  /// yo'qolardi. Shuning uchun bu yerda javob to'liq beriladi.
+  Future<ApiResponse> postAuth(String path, [Object? body]) => _sendFull(
+        () => _http.post(
+          _uri(path),
+          headers: _headers(json: true),
+          body: jsonEncode(body ?? const {}),
+        ),
+      );
+
   Future<dynamic> put(String path, [Object? body]) => _send(
         () => _http.put(
           _uri(path),
@@ -161,6 +223,12 @@ class Api {
   /// Barcha so'rovlar shu yerdan o'tadi — xato tarjimasi ham, offline
   /// aniqlash ham bitta joyda.
   Future<dynamic> _send(
+    Future<http.Response> Function() run, {
+    Duration? timeout,
+  }) async =>
+      (await _sendFull(run, timeout: timeout)).body;
+
+  Future<ApiResponse> _sendFull(
     Future<http.Response> Function() run, {
     Duration? timeout,
   }) async {
@@ -218,7 +286,14 @@ class Api {
       }
     }
 
-    if (res.statusCode >= 200 && res.statusCode < 300) return body;
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return ApiResponse(
+        status: res.statusCode,
+        body: body,
+        headers: res.headers,
+        raw: raw ?? _snippet(res.body),
+      );
+    }
 
     final key = body is Map && body['error'] is String
         ? body['error'] as String

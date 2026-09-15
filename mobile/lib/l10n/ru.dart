@@ -178,6 +178,7 @@ const ruStrings = <String, String>{
   'Chiqish': 'Выйти',
   'Chorshanba': 'Среда',
   'Click ilovasi orqali': 'Через приложение Click',
+  'Click ilovasiga o‘tiladi': 'Перейдёте в приложение Click',
   'Click orqali': 'Через Click',
   'Company ID': 'Company ID',
   'Company ID faqat harf va raqamdan iborat bo‘lsin.': 'Company ID должен состоять только из букв и цифр.',

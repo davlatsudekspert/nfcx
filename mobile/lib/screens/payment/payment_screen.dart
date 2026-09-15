@@ -55,6 +55,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
   /// Payme yoqilganmi — SERVER aytadi. `null` — hali so'ralmagan.
   bool? _paymeOn;
 
+  /// Click yoqilganmi — SERVER aytadi.
+  ///
+  /// Kalitlar (`CLICK_SERVICE_ID`, `CLICK_SECRET_KEY`) qo'yilmagan
+  /// bo'lsa server `false` deydi va tugma o'chiq turadi. Ilova
+  /// hech narsani o'zi taxmin qilmaydi.
+  bool? _clickOn;
+
+  /// Odam tanlagan to'lov tizimi.
+  String _provider = 'payme';
+
   /// So'rov 5 daqiqa davomida javob bermadi.
   ///
   /// Ilgari bu holatda taymer jimgina to'xtardi va ekranda
@@ -72,7 +82,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       final e = await AppScope.read(context).repo.paymentsEnabled();
       if (mounted) {
-        setState(() => _paymeOn = _providerOn(e, 'payme'));
+        setState(() {
+          _paymeOn = _providerOn(e, 'payme');
+          _clickOn = _providerOn(e, 'click');
+          // Payme o'chiq, Click yoqiq bo'lsa — tanlov o'zi Click'ka
+          // o'tadi, aks holda odam o'chiq tugmaga qarab turardi.
+          if (_paymeOn == false && _clickOn == true) _provider = 'click';
+        });
       }
     } catch (_) {
       // Jimgina: to'lov usullari ro'yxati kelmasa ham tugma
@@ -115,7 +131,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _order = order;
         _phase = _Phase.waiting;
       });
-      final link = order.payLink;
+      // TANLANGAN TIZIM HAVOLASI.
+      //
+      // Server javobida `payLinks: {payme, click}` keladi; eski
+      // serverda faqat `payLink` (Payme) bo'ladi va `linkFor()`
+      // o'shanga qaytadi.
+      final link = order.linkFor(_provider);
       if (link != null && link.isNotEmpty) {
         await openExternal(Uri.parse(link));
       }
@@ -244,6 +265,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // `null` — hali so'ralmagan: tugma bloklanmaydi, aks holda
     // sekin tarmoqda ekran ishlamaydigandek ko'rinardi.
     final paymeOn = _paymeOn ?? true;
+    // Click uchun standart — O'CHIQ. Sabab: Payme'ni eski server ham
+    // qo'llaydi, Click esa faqat kalitlar qo'yilgach ishlaydi va
+    // ishonch hosil qilmasdan uni yoqib ko'rsatish odamni bo'sh
+    // urinishga olib borardi.
+    final clickOn = _clickOn ?? false;
     final record = widget.record;
 
     return Column(
@@ -318,19 +344,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       note: paymeOn
                           ? tr('Payme ilovasiga o‘tiladi')
                           : tr('Hozir o‘chirilgan'),
-                      selected: paymeOn,
+                      selected: paymeOn && _provider == 'payme',
                       enabled: paymeOn,
-                      onTap: null,
+                      onTap: paymeOn
+                          ? () => setState(() => _provider = 'payme')
+                          : null,
                     ),
                     const SizedBox(height: S.x8),
                     _Provider(
                       name: 'Click',
                       color: C.click,
                       title: tr('Click orqali'),
-                      note: tr('Hozircha ilovada mavjud emas'),
-                      selected: false,
-                      enabled: false,
-                      onTap: null,
+                      note: clickOn
+                          ? tr('Click ilovasiga o‘tiladi')
+                          : tr('Hozir o‘chirilgan'),
+                      selected: clickOn && _provider == 'click',
+                      enabled: clickOn,
+                      onTap: clickOn
+                          ? () => setState(() => _provider = 'click')
+                          : null,
                     ),
                   ],
                 ),

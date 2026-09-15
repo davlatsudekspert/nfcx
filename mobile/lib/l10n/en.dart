@@ -178,6 +178,7 @@ const enStrings = <String, String>{
   'Chiqish': 'Sign out',
   'Chorshanba': 'Wednesday',
   'Click ilovasi orqali': 'Via the Click app',
+  'Click ilovasiga o‘tiladi': 'You will be taken to the Click app',
   'Click orqali': 'Via Click',
   'Company ID': 'Company ID',
   'Company ID faqat harf va raqamdan iborat bo‘lsin.': 'Company ID must contain only letters and digits.',

@@ -47,13 +47,43 @@ class Repo {
 
   // ── Auth ───────────────────────────────────────────────────────────
 
-  /// Kirish. `X-Client` mobil bo'lgani uchun token javob tanasida keladi.
+  /// Kirish.
+  ///
+  /// TOKEN IKKI YO'LDAN BIRI BILAN KELADI:
+  ///   1) javob tanasida — server `X-Client` sarlavhasini mobil deb
+  ///      tanigan bo'lsa (`worker.js`: mobile | android | ios);
+  ///   2) `Set-Cookie` sarlavhasida — u HAR DOIM yuboriladi.
+  ///
+  /// IKKALASI BIR XIL TOKEN: server uni bitta jadvalda, bitta SHA-256
+  /// bilan saqlaydi va `Authorization: Bearer` orqali ham qabul
+  /// qiladi. Ilgari faqat birinchi yo'l o'qilardi va tana tokensiz
+  /// kelganda kirish "Server sessiya ochmadi" bilan to'xtardi —
+  /// qurilmada aynan shunday bo'ldi.
+  ///
+  /// Cookie'ning o'zi ishlatilmaydi: ilova sessiyani Keystore'da
+  /// saqlaydi va har so'rovga Bearer qo'yadi. Bu yerdan faqat
+  /// QIYMAT olinadi.
   Future<String> login({required String login, required String password}) async {
-    final r = _map(await api.post('/api/auth/login', {'login': login, 'password': password}));
-    final token = '${r['token'] ?? ''}';
-    if (token.isEmpty) throw ApiError('no_token');
+    final res = await api.postAuth(
+      '/api/auth/login',
+      {'login': login, 'password': password},
+    );
+    final token = _sessionToken(res);
+    if (token.isEmpty) {
+      // Nima kelganini AYTAMIZ: tana JSON bo'lmagan bo'lishi ham
+      // mumkin (masalan himoya qatlamining HTML sahifasi) — bunda
+      // sabab faqat shu tafsilotdan bilinadi.
+      throw ApiError('no_token', status: res.status, detail: res.raw);
+    }
     api.token = token;
     return token;
+  }
+
+  /// Javobdan sessiya tokenini oladi: avval tanadan, keyin cookie'dan.
+  String _sessionToken(ApiResponse res) {
+    final fromBody = '${res.map['token'] ?? ''}'.trim();
+    if (fromBody.isNotEmpty) return fromBody;
+    return (res.sessionCookie ?? '').trim();
   }
 
   /// Emailga tasdiqlash kodini yuborish.
@@ -76,14 +106,15 @@ class Repo {
     required String emailCode,
     required bool tosAccepted,
   }) async {
-    final r = _map(await api.post('/api/auth/register', {
+    final res = await api.postAuth('/api/auth/register', {
       'email': email,
       'password': password,
       'phone': phone,
       'emailCode': emailCode,
       'tosAccepted': tosAccepted,
-    }));
-    final token = '${r['token'] ?? ''}';
+    });
+    // Kirishdagi kabi: tana bo'lmasa cookie'dan olinadi.
+    final token = _sessionToken(res);
     if (token.isNotEmpty) api.token = token;
     return token;
   }
