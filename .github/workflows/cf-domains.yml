@@ -137,7 +137,18 @@ jobs:
               # qolmaydi va sayt umuman ochilmaydi. Shuning uchun
               # avval to'g'ridan-to'g'ri qayta biriktirib ko'ramiz —
               # o'tsa, uzilish umuman bo'lmaydi.
-              r = api('PUT', BASE, body)
+              #
+              # `override_existing_origin` — AYNAN SHU HOLAT UCHUN.
+              # Birinchi urinishda Cloudflare shunday javob berdi:
+              #   100116: Hostname 'nfcstore.uz' already in use by
+              #   other custom domain. Either delete it, try a
+              #   different hostname, or use the option
+              #   'override_existing_origin' to override.
+              # Ya'ni host band bo'lgani XATO emas — buni bildirib
+              # qo'yish kerak ekan. Shu bayroq bilan almashtirish
+              # JOYIDA bo'ladi: eski bog'lanishni o'chirish shart
+              # emas, demak domen bir lahza ham bo'sh qolmaydi.
+              r = api('PUT', BASE, dict(body, override_existing_origin=True))
               if r.get('success'):
                   print(f'  {TARGET} ga ulandi (uzilishsiz)')
                   continue
