@@ -1,0 +1,211 @@
+/* ═══════════════════════════════════════════════════════════════
+   KOMPONENTLAR — ekranlar shu qismlardan yig'iladi.
+   Har biri Flutter'dagi bitta widget'ga to'g'ri keladi.
+   ═══════════════════════════════════════════════════════════════ */
+
+body{margin:0;background:#050403;font-family:'Manrope',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+/* ── TELEFON RAMKASI ──────────────────────────────────────── */
+.phone{position:relative;width:390px;height:844px;overflow:hidden;
+  background:var(--bg-base);color:var(--ink);isolation:isolate}
+
+/* Ekran yorug'ligi — har ekranda boshqa joydan tushadi.
+   Chuqurlik shundan keladi, oq fondan emas. */
+.aura{position:absolute;inset:0;pointer-events:none;z-index:0}
+.aura::before{content:'';position:absolute;left:-10%;top:-22%;width:120%;height:58%;
+  background:radial-gradient(60% 70% at 50% 35%,rgba(226,196,128,.16),rgba(226,196,128,.05) 45%,transparent 72%);
+  filter:blur(8px)}
+.aura::after{content:'';position:absolute;right:-30%;top:8%;width:80%;height:46%;
+  background:radial-gradient(50% 60% at 50% 50%,rgba(201,164,85,.11),transparent 70%)}
+.aura--nfc::before{top:12%;background:radial-gradient(55% 60% at 50% 45%,rgba(226,196,128,.19),transparent 70%)}
+.aura--low::before{top:auto;bottom:-18%;height:52%}
+
+/* Mayin "plyonka" donasi — tekis gradientni jonlantiradi */
+.grain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay}
+
+.scr{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
+.scroll{flex:1;overflow:hidden;padding-bottom:var(--s4)}
+
+/* ── STATUS QATORI ────────────────────────────────────────── */
+.status{display:flex;align-items:center;justify-content:space-between;
+  padding:14px var(--gut) 2px;font-size:15px;font-weight:600;letter-spacing:.2px;flex:none}
+.status .r{display:flex;align-items:center;gap:6px}
+
+/* ── YUQORI PANEL ─────────────────────────────────────────── */
+.appbar{display:flex;align-items:center;justify-content:space-between;
+  gap:var(--s3);padding:8px var(--gut) 4px;flex:none;min-height:42px}
+.appbar .mid{flex:1;text-align:center;font-size:16px;font-weight:700;letter-spacing:.1px}
+.brand{display:flex;align-items:center;gap:9px}
+.brand img{width:26px;height:26px;object-fit:contain}
+.brand span{font-size:14.5px;font-weight:700;letter-spacing:2.1px;
+  background:var(--grad-gold);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* Dumaloq ikonka tugmasi */
+.iconbtn{width:38px;height:38px;flex:none;border-radius:var(--r-full);display:grid;place-items:center;
+  background:rgba(255,255,255,.045);border:1px solid var(--line-soft);position:relative}
+.iconbtn svg{width:19px;height:19px;stroke:var(--ink);stroke-width:1.7;fill:none}
+.iconbtn .dot{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 0 2px var(--bg-base)}
+
+/* ── SARLAVHA ─────────────────────────────────────────────── */
+.eyebrow{font-size:10.5px;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--ink-3)}
+.display{font-family:'Instrument Serif',Georgia,serif;font-weight:400;
+  font-size:38px;line-height:1.04;letter-spacing:-.4px;color:var(--ink)}
+.display.sm{font-size:26px}
+.display em{font-style:italic}
+.sub{font-size:14px;line-height:1.4;color:var(--ink-2);margin-top:6px}
+
+/* Bo'lim sarlavhasi + "Barchasi ›" */
+.sec{display:flex;align-items:baseline;justify-content:space-between;
+  padding:0 var(--gut);margin:13px 0 9px}
+.sec h3{margin:0;font-size:18.5px;font-weight:700;letter-spacing:-.2px}
+.sec a{font-size:13px;color:var(--ink-2);text-decoration:none;display:flex;align-items:center;gap:3px}
+.sec a::after{content:'›';font-size:16px;line-height:1;color:var(--ink-3)}
+
+/* ── OLTIN NFC KARTA — ekranning qahramoni ────────────────── */
+.card{position:relative;border-radius:var(--r-lg);overflow:hidden;
+  aspect-ratio:2;box-shadow:var(--sh-lift);isolation:isolate}
+.card.gold{background:var(--grad-gold)}
+.card.silver{background:var(--grad-silver)}
+.card.bronze{background:var(--grad-bronze)}
+.card.noir{background:var(--grad-noir)}
+
+/* Cho'tka izi — metallning "jonli" bo'lishi shundan */
+.card::before{content:'';position:absolute;inset:0;z-index:1;mix-blend-mode:overlay;opacity:.85;
+  background:repeating-linear-gradient(97deg,
+    rgba(255,255,255,.13) 0 1px, rgba(0,0,0,.05) 1px 2px,
+    rgba(255,255,255,.06) 2px 3px, rgba(0,0,0,.025) 3px 5px)}
+/* Diagonal yorug'lik yo'li */
+.card::after{content:'';position:absolute;inset:-30%;z-index:2;pointer-events:none;
+  background:linear-gradient(104deg,transparent 36%,rgba(255,255,255,.30) 45%,
+    rgba(255,255,255,.04) 50%,transparent 58%)}
+.card.noir::after{background:linear-gradient(102deg,transparent 34%,rgba(255,255,255,.1) 48%,transparent 62%)}
+
+/* NFC to'lqin yoylari — o'ng chekkadan chiqadi */
+.card .arcs{position:absolute;right:-118px;bottom:-96px;width:300px;height:300px;z-index:3;opacity:.42}
+.card.noir .arcs{opacity:.22}
+.card .arcs circle{fill:none;stroke:rgba(70,48,12,.34);stroke-width:2.6}
+.card.noir .arcs circle{stroke:rgba(255,255,255,.55)}
+
+.card .face{position:absolute;inset:0;z-index:4;padding:15px 17px;
+  display:flex;flex-direction:column;justify-content:space-between;color:var(--ink-on-gold)}
+.card.noir .face{color:#F0E6D2}
+.card .top{display:flex;align-items:center;justify-content:space-between}
+.card .top .b{display:flex;align-items:center;gap:8px}
+.card .top img{width:22px;height:22px;object-fit:contain;filter:brightness(.34) saturate(.5)}
+.card.noir .top img{filter:none}
+.card .top b{font-size:12.5px;font-weight:800;letter-spacing:2.2px}
+.card .top svg{width:25px;height:25px;flex:none;stroke:currentColor;stroke-width:2.1;fill:none;opacity:.72}
+.card .code{font-family:'Plex Mono',monospace;font-weight:600;font-size:27px;letter-spacing:1.4px;margin-bottom:4px}
+.card .who{font-size:11.5px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;opacity:.82}
+.card .tier{font-size:9.5px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;opacity:.6;margin-top:3px}
+.card.mini{aspect-ratio:1.586;width:96px;border-radius:9px}
+.card.mini .face{padding:8px 9px}
+.card.mini .top b{font-size:6px;letter-spacing:1px}
+.card.mini .top img{width:11px;height:11px}
+.card.mini .code{font-size:11px;margin:0}
+
+/* ── TUGMALAR ─────────────────────────────────────────────── */
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;
+  min-height:52px;border-radius:var(--r);font-size:15.5px;font-weight:700;
+  letter-spacing:.1px;border:0;width:100%;position:relative;overflow:hidden}
+.btn svg{width:19px;height:19px;stroke-width:1.9;fill:none}
+.btn.gold{background:var(--grad-gold-btn);color:var(--ink-on-gold);box-shadow:var(--sh-gold)}
+.btn.gold svg{stroke:var(--ink-on-gold)}
+/* Tugma ustidagi metall nuri */
+.btn.gold::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(101deg,transparent 34%,rgba(255,255,255,.42) 48%,transparent 60%)}
+.btn.gold > *{position:relative;z-index:1}
+.btn.ghost{background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--ink)}
+.btn.ghost svg{stroke:var(--ink)}
+.btn.outline{background:transparent;border:1px solid var(--line-gold);color:var(--ink-gold)}
+.btn.outline svg{stroke:var(--ink-gold)}
+.btn.sm{min-height:44px;font-size:14px}
+
+/* ── YUZA / TILE ──────────────────────────────────────────── */
+.surf{background:var(--bg-raise);border:1px solid var(--line-soft);
+  border-radius:var(--r);box-shadow:var(--sh-card)}
+.pad{padding:var(--s4)}
+.gut{padding-left:var(--gut);padding-right:var(--gut)}
+
+/* Ro'yxat qatori: ikonka + matn + chevron */
+.row{display:flex;align-items:center;gap:13px;min-height:var(--tap);padding:13px var(--s4)}
+.row .ic{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:rgba(226,196,128,.09);border:1px solid var(--line)}
+.row .ic svg{width:19px;height:19px;stroke:var(--gold);stroke-width:1.7;fill:none}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.05px}
+.row .tx span{display:block;font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.row .end{font-size:13px;color:var(--ink-2);flex:none}
+.row .chev{color:var(--ink-3);font-size:19px;line-height:1;flex:none}
+.row + .row{border-top:1px solid var(--line-soft)}
+
+/* ── CHIP / FILTR ─────────────────────────────────────────── */
+.chips{display:flex;gap:8px;padding:0 var(--gut);overflow:hidden}
+.chip{flex:none;padding:9px 16px;border-radius:var(--r-full);font-size:13.5px;font-weight:600;
+  background:rgba(255,255,255,.045);border:1px solid var(--line-soft);color:var(--ink-2)}
+.chip.on{background:var(--grad-gold-btn);color:var(--ink-on-gold);border-color:transparent;box-shadow:var(--sh-gold)}
+
+/* Holat belgisi — rang YOLG'IZ ishlamaydi, nuqta+matn birga */
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.badge i{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.badge.warn i{background:var(--warn)}
+
+/* ── STORY HALQASI ────────────────────────────────────────── */
+.stories{display:flex;gap:14px;padding:12px var(--gut) 2px;overflow:hidden}
+.story{width:55px;flex:none;text-align:center}
+.story .ring{width:55px;height:55px;border-radius:50%;padding:2.2px;background:var(--grad-gold);
+  box-shadow:0 3px 12px -4px rgba(201,164,85,.5)}
+.story.seen .ring{background:rgba(255,255,255,.14);box-shadow:none}
+.story .ring > div{width:100%;height:100%;border-radius:50%;padding:2.2px;background:var(--bg-base)}
+.story img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.story .add{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;
+  background:rgba(255,255,255,.05);border:1px dashed var(--line-gold);color:var(--gold);font-size:23px;font-weight:300}
+.story b{display:block;font-size:11.5px;font-weight:600;color:var(--ink-2);margin-top:6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── PASTKI NAVIGATSIYA ───────────────────────────────────── */
+.nav{position:absolute;left:0;right:0;bottom:0;z-index:20;flex:none;
+  padding:9px var(--s2) 0;background:linear-gradient(180deg,rgba(10,9,8,.72),var(--bg-sunken) 42%);
+  backdrop-filter:blur(18px);border-top:1px solid var(--line-soft);
+  display:flex;align-items:flex-start;justify-content:space-around;height:78px}
+.nav .it{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:5px}
+.nav .it svg{width:22px;height:22px;stroke:var(--ink-3);stroke-width:1.7;fill:none}
+.nav .it b{font-size:10px;font-weight:600;color:var(--ink-3);letter-spacing:.1px}
+.nav .it.on svg{stroke:var(--gold)}
+.nav .it.on b{color:var(--gold)}
+/* Markazdagi suzuvchi NFC tugmasi */
+.nav .fab{flex:none;width:60px;margin-top:-24px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav .fab .d{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;
+  background:var(--grad-gold-btn);box-shadow:0 8px 22px -6px rgba(201,164,85,.6),
+    0 0 0 5px var(--bg-sunken),0 1px 0 rgba(255,255,255,.45) inset;position:relative;overflow:hidden}
+.nav .fab img{width:31px;height:31px;object-fit:contain;filter:brightness(.3) saturate(.4);position:relative;z-index:1}
+.nav .fab b{font-size:10px;font-weight:600;color:var(--ink-2)}
+/* iPhone pastki chizig'i */
+.homebar{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;z-index:21;
+  width:136px;height:5px;border-radius:99px;background:rgba(255,255,255,.34)}
+
+/* ── FOTO ─────────────────────────────────────────────────── */
+.ph{position:relative;overflow:hidden;background:var(--bg-raise-2)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+/* Foto ustidagi matn har doim o'qilishi uchun pastdan qoraytirish */
+.ph .veil{position:absolute;inset:0;background:linear-gradient(180deg,transparent 34%,rgba(6,5,4,.86) 100%)}
+
+.avatar{border-radius:50%;object-fit:cover;flex:none}
+.ring-g{padding:2px;background:var(--grad-gold);border-radius:50%;display:inline-flex}
+.ring-g img{border-radius:50%;display:block;border:2px solid var(--bg-base)}
+
+/* ── STATISTIKA QATORI ────────────────────────────────────── */
+.stats{display:flex;align-items:center}
+.stats > div{flex:1;text-align:center}
+.stats b{display:block;font-size:19px;font-weight:700;letter-spacing:-.3px}
+.stats span{display:block;font-size:11.5px;color:var(--ink-2);margin-top:3px}
+.stats i{width:1px;height:26px;background:var(--line-soft);flex:none}
+
+/* Tasdiqlangan belgisi */
+.verif{width:17px;height:17px;flex:none;border-radius:50%;background:var(--grad-gold);
+  display:inline-grid;place-items:center;vertical-align:-3px}
+.verif svg{width:10px;height:10px;stroke:var(--ink-on-gold);stroke-width:3;fill:none}

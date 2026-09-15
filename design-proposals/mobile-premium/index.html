@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="uz"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NFCSTORE — Premium mobil dizayn</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .canvas{display:flex;flex-wrap:wrap;gap:34px;padding:34px;background:#050403;align-items:flex-start}
+  .slot{width:390px}
+  .slot .cap{font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;letter-spacing:2.4px;
+    text-transform:uppercase;color:#6B645B;margin-bottom:11px;padding-left:2px}
+  .phone{border-radius:30px;border:1px solid rgba(255,255,255,.07);box-shadow:0 30px 70px -30px #000}
+  body.solo{background:#050403}
+  body.solo .canvas{padding:0;gap:0}
+  body.solo .cap{display:none}
+  body.solo .phone{border-radius:0;border:0;box-shadow:none}
+</style>
+</head><body>
+<div class="canvas" id="canvas"></div>
+<script type="module">
+  import { S } from './screens.js';
+  const p = new URLSearchParams(location.search);
+  const only = p.get('screen');
+  const list = only ? [only] : Object.keys(S);
+  if (only) document.body.classList.add('solo');
+  document.getElementById('canvas').innerHTML = list.map(k =>
+    `<div class="slot"><div class="cap">${k}</div><div class="phone">${S[k] ? S[k]() : ''}</div></div>`
+  ).join('');
+  document.body.dataset.ready = '1';
+</script>
+</body></html>

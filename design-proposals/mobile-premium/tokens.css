@@ -1,0 +1,93 @@
+/* ═══════════════════════════════════════════════════════════════
+   NFCSTORE — PREMIUM MOBILE DIZAYN TIZIMI
+   "Qora tun, issiq metall"
+
+   Bu fayl — ranglarning YAGONA manbasi. Ekran ichida hech qachon
+   xom rang (#hex) yozilmaydi, faqat var(--...) ishlatiladi.
+   Flutter'ga ko'chirishda shu tokenlar `lib/design/tokens.dart`
+   ga 1:1 tushadi.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Shriftlar: loyihaning o'z fayllari (mobile/assets/fonts) ── */
+@font-face{font-family:'Instrument Serif';src:url('../../mobile/assets/fonts/InstrumentSerif-400.ttf') format('truetype');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Instrument Serif';src:url('../../mobile/assets/fonts/InstrumentSerif-400Italic.ttf') format('truetype');font-weight:400;font-style:italic;font-display:block}
+@font-face{font-family:'Manrope';src:url('../../mobile/assets/fonts/Manrope-400.ttf') format('truetype');font-weight:400;font-display:block}
+@font-face{font-family:'Manrope';src:url('../../mobile/assets/fonts/Manrope-500.ttf') format('truetype');font-weight:500;font-display:block}
+@font-face{font-family:'Manrope';src:url('../../mobile/assets/fonts/Manrope-600.ttf') format('truetype');font-weight:600;font-display:block}
+@font-face{font-family:'Manrope';src:url('../../mobile/assets/fonts/Manrope-700.ttf') format('truetype');font-weight:700;font-display:block}
+@font-face{font-family:'Manrope';src:url('../../mobile/assets/fonts/Manrope-800.ttf') format('truetype');font-weight:800;font-display:block}
+@font-face{font-family:'Plex Mono';src:url('../../mobile/assets/fonts/IBMPlexMono-500.ttf') format('truetype');font-weight:500;font-display:block}
+@font-face{font-family:'Plex Mono';src:url('../../mobile/assets/fonts/IBMPlexMono-600.ttf') format('truetype');font-weight:600;font-display:block}
+
+:root{
+  /* ── FON: chuqurlik yorqinlikdan emas, qatlamlardan ───────── */
+  --bg-base:      #0A0908;   /* eng tub qatlam */
+  --bg-raise:     #131110;   /* karta, tile */
+  --bg-raise-2:   #1B1815;   /* karta ustidagi element */
+  --bg-sunken:    #060505;   /* input ichi, pastki nav */
+
+  /* ── METALL: tarif emas, MATERIAL. Mavzu almashsa ham qoladi ─ */
+  --gold-lit:     #F9EEC4;   /* gradientning eng yorug' uchi */
+  --gold-high:    #EBD293;
+  --gold:         #DCBA72;   /* asosiy urg'u */
+  --gold-mid:     #C9A455;
+  --gold-deep:    #A8823B;   /* gradientning quyuq uchi */
+  --gold-shadow:  #6E5426;   /* bosilgan holat, chekka */
+
+  --silver-high:  #E8E8EA;
+  --silver:       #B9BAC0;
+  --silver-deep:  #7C7E86;
+  --bronze-high:  #E0A878;
+  --bronze:       #BC7F4E;
+  --bronze-deep:  #8A5730;
+
+  /* ── MATN: uch daraja, undan ortiq emas ──────────────────── */
+  --ink:          #F7F4EE;   /* sarlavha, asosiy */
+  --ink-2:        #A29A8E;   /* izoh, ikkilamchi */
+  --ink-3:        #6B645B;   /* eng past — faqat meta */
+  --ink-gold:     #E2C480;   /* urg'uli matn */
+  --ink-on-gold:  #2A1F0C;   /* oltin ustidagi matn */
+
+  /* ── QIRRA: soch tolasidek ingichka ──────────────────────── */
+  --line:         rgba(226,196,128,.13);
+  --line-soft:    rgba(255,255,255,.06);
+  --line-gold:    rgba(226,196,128,.34);
+
+  /* ── HOLAT ───────────────────────────────────────────────── */
+  --ok:           #5BD08A;
+  --warn:         #E8B45C;
+  --danger:       #EF6B6B;
+
+  /* ── O'LCHAM: 4px panjara ────────────────────────────────── */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px;
+  --s6:24px; --s8:32px; --s10:40px; --s12:48px;
+
+  --r-sm:10px; --r:14px; --r-lg:18px; --r-xl:24px; --r-full:999px;
+
+  --gut:20px;                /* ekran chekka bo'shlig'i */
+  --tap:44px;                /* minimal bosish maydoni */
+
+  /* ── SOYA: oltin issiq soya beradi, qora emas ────────────── */
+  --sh-card:  0 1px 0 rgba(255,255,255,.04) inset, 0 12px 28px -12px rgba(0,0,0,.9);
+  --sh-gold:  0 6px 20px -6px rgba(201,164,85,.45), 0 1px 0 rgba(255,255,255,.35) inset;
+  --sh-lift:  0 18px 40px -18px rgba(0,0,0,.95);
+}
+
+/* ── GRADIENTLAR: takrorlanadigan metall retseptlari ───────── */
+:root{
+  --grad-gold: linear-gradient(123deg,
+      #E7D093 0%, #D9BD76 11%, #C9A75C 24%, #EFDCA6 36%,
+      #D3B368 47%, #BE9A4E 62%, #CDAA5C 76%, #A8823B 89%, #8C6B2E 100%);
+  --grad-gold-btn: linear-gradient(180deg,
+      #F4E0AB 0%, #E7CB88 38%, var(--gold-mid) 100%);
+  --grad-silver: linear-gradient(118deg,
+      #FFFFFF 0%, var(--silver-high) 16%, var(--silver) 40%,
+      #9A9CA4 60%, var(--silver) 80%, var(--silver-deep) 100%);
+  --grad-bronze: linear-gradient(118deg,
+      #F5CBA4 0%, var(--bronze-high) 18%, var(--bronze) 45%,
+      #A26A3E 68%, var(--bronze) 84%, var(--bronze-deep) 100%);
+  --grad-noir: linear-gradient(118deg,
+      #3A3632 0%, #232120 22%, #161513 48%, #201E1C 72%, #100F0E 100%);
+}
+
+*,*::before,*::after{box-sizing:border-box}
