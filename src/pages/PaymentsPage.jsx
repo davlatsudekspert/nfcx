@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { navigate } from '../lib/router.js';
 import { fmt, dateTime } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
-import { usePaymentsInfo } from '../lib/paymentsEnabled.jsx';
+import { usePaymentsInfo, usePaymentProviders } from '../lib/paymentsEnabled.jsx';
 import PaymentUnavailableNotice from '../components/PaymentUnavailableNotice.jsx';
 import PayQr from '../components/PayQr.jsx';
 import BackToCabinet from '../components/BackToCabinet.jsx';
@@ -25,10 +25,20 @@ const STATUS_LABEL = {
   failed_code_taken: { text: 'Xatolik', cls: 'badge-error' },
 };
 
+// To'lov tizimlari — firma rangi bilan. Ro'yxat BITTA joyda turadi:
+// yangi tizim qo'shilsa faqat shu yer o'zgaradi.
+const PAY_BRANDS = [
+  { id: 'payme', label: 'Payme', color: '#33c8b6' },
+  { id: 'click', label: 'Click', color: '#0d6efd' },
+];
+
 export default function PaymentsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { enabled: PAYMENTS_ENABLED, sandbox: paymentsSandbox } = usePaymentsInfo();
+  // Qaysi tizim ulangani — backend aytadi, sahifa taxmin qilmaydi.
+  const providers = usePaymentProviders();
+  const activeBrands = PAY_BRANDS.filter((b) => providers[b.id]?.enabled).map((b) => b.label);
   const [data, setData] = useState(null);       // null = yuklanmoqda
   const [dataErr, setDataErr] = useState(false);
   const [orders, setOrders] = useState([]);
@@ -84,16 +94,38 @@ export default function PaymentsPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-base-content/45">{t("To'lov usuli")}</h2>
         {PAYMENTS_ENABLED ? (
           <div className={card}>
-            <div className="flex items-center gap-2.5">
-              <span className="rounded-lg bg-[#33c8b6] px-2.5 py-1 text-sm font-extrabold text-white">Payme</span>
-              <span className="vz-badge vz-badge--ok">{t('Faol')}</span>
+            {/* HAR BIR TIZIM ALOHIDA — "Payme" QATTIQ YOZILMAYDI.
+                Ilgari bu yerda faqat Payme turardi va u Click ulangan
+                kuni ham o'zgarmasdi: mijoz Click bilan to'lay olishini
+                bu sahifadan bilmasdi. Endi ro'yxat backend'dagi yagona
+                manbadan (/api/settings/payments-enabled) keladi. */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {PAY_BRANDS.filter((b) => providers[b.id]?.enabled).map((b) => (
+                <span key={b.id} className="flex items-center gap-1.5">
+                  <span className="rounded-lg px-2.5 py-1 text-sm font-extrabold text-white" style={{ background: b.color }}>{b.label}</span>
+                  <span className="vz-badge vz-badge--ok">{t('Faol')}</span>
+                </span>
+              ))}
               {/* 2026-09: "Sinov (sandbox)" avval QATTIQ YOZILGAN edi va
                   Payme real rejimga o'tgach ham qolib ketardi. Endi u ham
                   backend'dagi yagona manbadan (/api/settings/payments-enabled
                   -> sandbox) keladi. */}
               {paymentsSandbox && <span className="vz-badge vz-badge--muted">{t('Sinov (sandbox)')}</span>}
             </div>
-            <p className="mt-2 text-sm text-base-content/55">{t("To'lovlar Payme orqali xavfsiz amalga oshiriladi.")}</p>
+            <p className="mt-2 text-sm text-base-content/55">
+              {activeBrands.length > 1
+                ? t("To'lovlar {list} orqali xavfsiz amalga oshiriladi.", { list: activeBrands.join(' va ') })
+                : t("To'lovlar Payme orqali xavfsiz amalga oshiriladi.")}
+            </p>
+            {/* HALI ULANMAGAN TIZIM HAM AYTILADI — mijoz "nega Click
+                yo'q" deb o'ylab qolmasin. */}
+            {PAY_BRANDS.some((b) => !providers[b.id]?.enabled) && (
+              <p className="mt-1 text-xs text-base-content/40">
+                {t('{list} hozircha ulanmagan.', {
+                  list: PAY_BRANDS.filter((b) => !providers[b.id]?.enabled).map((b) => b.label).join(', '),
+                })}
+              </p>
+            )}
           </div>
         ) : (
           <PaymentUnavailableNotice />

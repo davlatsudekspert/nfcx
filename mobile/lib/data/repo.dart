@@ -24,7 +24,14 @@ class Repo {
   //      qaytariladi (ikkinchi so'rov umuman ketmaydi);
   //   2) natija qisqa muddat saqlanadi — tab almashganda qayta
   //      yuklanmaydi, lekin ma'lumot ham eskirib qolmaydi.
-  static const _catalogTtl = Duration(seconds: 90);
+  /// 30 SONIYA — 90 EMAS.
+  ///
+  /// Sayt va ilova bitta bazadan o'qiydi: saytda ID sotilsa yoki yangi
+  /// profil ochilsa, ilova buni TEZ ko'rishi kerak. 90 soniya uzun edi —
+  /// odam ilovada eskirgan katalogni ko'rib turardi. 30 soniya ikkala
+  /// tomonni ham qondiradi: tab almashganda so'rov takrorlanmaydi,
+  /// lekin ma'lumot ham eskirmaydi.
+  static const _catalogTtl = Duration(seconds: 30);
   Future<List<Record>>? _catalogInFlight;
   List<Record>? _catalogCache;
   DateTime? _catalogAt;

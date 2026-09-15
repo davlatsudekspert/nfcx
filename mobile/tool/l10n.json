@@ -2583,9 +2583,17 @@
     "Поделиться по QR",
     "Share by QR"
   ],
+  "QR kod bilan to‘lash": [
+    "Оплатить по QR-коду",
+    "Pay with a QR code"
+  ],
   "QR kodni ko‘rsatish": [
     "Показать QR-код",
     "Show the QR code"
+  ],
+  "QR kodni yashirish": [
+    "Скрыть QR-код",
+    "Hide the QR code"
   ],
   "QR ulashish": [
     "Поделиться QR",
@@ -3454,6 +3462,10 @@
   "To‘lov {tizim} tomonidan himoyalangan": [
     "Платёж защищён системой {tizim}",
     "Payment secured by {tizim}"
+  ],
+  "To‘lov {tizim}da bajarildi. Server javobi kutilmoqda — ilovani yopmang.": [
+    "Оплата выполнена в {tizim}. Ожидается ответ сервера — не закрывайте приложение.",
+    "The payment was made in {tizim}. Waiting for the server's reply — keep the app open."
   ],
   "To‘lov\\namalga oshmadi": [
     "Платёж\\nне прошёл",

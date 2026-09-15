@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../data/api_client.dart';
@@ -64,6 +65,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   /// Odam tanlagan to'lov tizimi.
   String _provider = 'payme';
+
+  /// QR ko'rsatilyaptimi.
+  bool _qr = false;
+
+  /// Joriy buyurtmaning tanlangan tizim uchun havolasi.
+  String? get _payLink {
+    final link = _order?.linkFor(_provider);
+    return (link == null || link.isEmpty) ? null : link;
+  }
 
   /// So'rov 5 daqiqa davomida javob bermadi.
   ///
@@ -445,8 +455,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _stalled
                           ? tr('Server hali javob bermadi. To‘lov o‘tgan '
                               'bo‘lishi ham mumkin — holatni tekshiring.')
-                          : tr('To‘lov Payme’da bajarildi. Server javobi '
-                              'kutilmoqda — ilovani yopmang.'),
+                          : trf('To‘lov {tizim}da bajarildi. Server javobi '
+                              'kutilmoqda — ilovani yopmang.', {
+                              'tizim': _provider == 'click' ? 'Click' : 'Payme',
+                            }),
                       textAlign: TextAlign.center,
                       style: T.body,
                     ),
@@ -479,6 +491,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       tr('Qayta to‘lash talab qilinmaydi'),
                       style: T.meta,
                     ),
+
+                    // QR — ZAXIRA YO'L.
+                    //
+                    // To'lov ilovasi (Payme/Click) shu telefonda
+                    // o'rnatilmagan bo'lsa, havola brauzerda ochiladi va
+                    // bu ba'zan noqulay. QR esa boshqa telefondan yoki
+                    // karta ilovasidan skanerlab to'lash imkonini beradi
+                    // — saytdagi "QR kod bilan to'lash" bilan bir xil.
+                    if (_payLink != null) ...[
+                      const SizedBox(height: S.x24),
+                      GhostButton(
+                        _qr ? tr('QR kodni yashirish') : tr('QR kod bilan to‘lash'),
+                        icon: Ico.qr,
+                        color: C.ink2,
+                        onTap: () => setState(() => _qr = !_qr),
+                      ),
+                      if (_qr) ...[
+                        const SizedBox(height: S.x12),
+                        Container(
+                          padding: const EdgeInsets.all(S.x12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFFFF),
+                            borderRadius: BorderRadius.circular(R.card),
+                          ),
+                          child: QrImageView(
+                            data: _payLink!,
+                            size: 188,
+                            padding: EdgeInsets.zero,
+                            backgroundColor: const Color(0xFFFFFFFF),
+                          ),
+                        ),
+                      ],
+                    ],
                     if (_error != null) ...[
                       const SizedBox(height: S.x16),
                       _ErrorNote(_error!),

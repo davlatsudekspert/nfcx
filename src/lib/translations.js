@@ -360,6 +360,8 @@ const DICT_BASE = {
     { ru: 'Способ оплаты, ожидающие платежи и вся история транзакций.', en: 'Payment method, pending payments and full transaction history.' },
   "To'lov usuli": { ru: 'Способ оплаты', en: 'Payment method' },
   "To'lovlar Payme orqali xavfsiz amalga oshiriladi.": { ru: 'Платежи безопасно проходят через Payme.', en: 'Payments are processed securely via Payme.' },
+  "To'lovlar {list} orqali xavfsiz amalga oshiriladi.": { ru: 'Платежи безопасно проходят через {list}.', en: 'Payments are processed securely via {list}.' },
+  '{list} hozircha ulanmagan.': { ru: '{list} пока не подключён.', en: '{list} is not connected yet.' },
   "Jami to'langan": { ru: 'Всего оплачено', en: 'Total paid' },
   'Kutilayotgan': { ru: 'Ожидают', en: 'Pending' },
   "Sizga to'lanadi": { ru: 'Вам причитается', en: 'Owed to you' },

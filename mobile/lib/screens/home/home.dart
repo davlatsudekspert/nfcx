@@ -51,7 +51,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Qaysi istorya ko'rilgani — QURILMADA saqlanadi (serverda
   /// bunday jadval yo'q). Halqaning rangi shunga qarab belgilanadi.
   late final SeenStories _seen = SeenStories();
@@ -66,11 +66,36 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loadedOnce = false;
   String? _loadedFor;
 
+  /// Oxirgi marta qachon yuklangan — fondan qaytganda qaytadan
+  /// so'rash kerakmi, shundan bilinadi.
+  DateTime? _loadedAt;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _seen.addListener(_onSeenChanged);
     _seen.load();
+  }
+
+  /// FONDAN QAYTGANDA LENTA YANGILANADI.
+  ///
+  /// Sayt va ilova bitta bazadan o'qiydi. Odam saytda post yoki story
+  /// joylab, ilovaga qaytsa — eski lentani ko'rib turardi va uni
+  /// qo'lda tortib yangilashi kerak edi.
+  ///
+  /// HAR QAYTISHDA EMAS: ilovani bir daqiqada o'n marta ochib-yopish
+  /// odatiy hol va har safar so'rov yuborish tarmoqni ham, batareyani
+  /// ham bekorga sarflardi. Bir daqiqadan eski bo'lsa — yangilanadi.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state != AppLifecycleState.resumed) return;
+    final at = _loadedAt;
+    if (at != null && DateTime.now().difference(at) < const Duration(minutes: 1)) {
+      return;
+    }
+    _load(force: true);
   }
 
   void _onSeenChanged() {
@@ -79,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _seen.removeListener(_onSeenChanged);
     _seen.dispose();
     super.dispose();
@@ -139,6 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _pending = pending;
         _gifts = gifts;
         _loading = false;
+        _loadedAt = DateTime.now();
       });
     } catch (e) {
       if (!mounted) return;
