@@ -46,10 +46,6 @@ class BrandMark extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF0D0B08),
-        border: ring
-            ? Border.all(color: C.accent.withValues(alpha: .55), width: 1.2)
-            : null,
         boxShadow: glow
             ? [
                 BoxShadow(
@@ -60,19 +56,57 @@ class BrandMark extends StatelessWidget {
               ]
             : null,
       ),
-      child: ClipOval(
-        child: OverflowBox(
-          maxWidth: size * 1.34,
-          maxHeight: size * 1.34,
-          child: Image.asset(
-            'assets/img/logo.png',
-            width: size * 1.34,
-            height: size * 1.34,
-            cacheWidth: cache,
-            fit: BoxFit.cover,
-            filterQuality: FilterQuality.medium,
-          ),
-        ),
+      // MEDALYON — SAYTDAGI BILAN AYNAN BIR XIL FAYL.
+      //
+      // Ilgari ilova doirani, gardishni va fonni O'ZI chizardi,
+      // ustiga esa logotipning kvadrat rasmini qo'yardi: to'lqin
+      // uchlari gardishga tegib turardi va rang saytdagidan bir oz
+      // farq qilardi.
+      //
+      // Endi `logo_medallion.png` — saytning `public/logo-512.png`
+      // faylining o'zi: oltin gardish, quyuq yuza va belgi atrofidagi
+      // nafas allaqachon rasmda. Demak ilovada ham, saytda ham,
+      // ikonkada ham BITTA ko'rinish.
+      //
+      // `ring` endi bezak chizmaydi (gardish rasmda), lekin parametr
+      // saqlandi: chaqiruv joylari o'zgarmasin.
+      child: Image.asset(
+        'assets/img/logo_medallion.png',
+        width: size,
+        height: size,
+        cacheWidth: cache,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+      ),
+    );
+  }
+}
+
+/// BELGINING O'ZI — DOIRASIZ, FONSIZ.
+///
+/// Medalyon quyuq yuzaga ega va uni suv belgisi (watermark) yoki
+/// yorug' fon ustida ishlatib bo'lmaydi: shaffoflik berilsa qora
+/// disk ko'rinib qoladi. Bu yerda esa faqat oltin belgi — foni
+/// butunlay shaffof.
+class LogoMark extends StatelessWidget {
+  const LogoMark({super.key, this.size = 44, this.opacity = 1});
+
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 3;
+    final cache = math.min(1024, (size * dpr).round());
+    return Opacity(
+      opacity: opacity,
+      child: Image.asset(
+        'assets/img/logo_mark.png',
+        width: size,
+        height: size,
+        cacheWidth: cache,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
       ),
     );
   }

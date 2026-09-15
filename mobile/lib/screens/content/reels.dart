@@ -326,12 +326,10 @@ class _Reel extends StatelessWidget {
         ],
 
         // SUV BELGISI — markazda 10% shaffof brend.
-        Center(
-          child: Opacity(
-            opacity: .10,
-            child: BrandMark(size: 150, ring: false),
-          ),
-        ),
+        //
+        // Medalyon EMAS, faqat BELGI: medalyonning quyuq yuzasi
+        // shaffoflikda rasm ustida iflos dog' bo'lib ko'rinardi.
+        const Center(child: LogoMark(size: 150, opacity: .10)),
 
         // PASTKI SCRIM — matn har qanday rasmda o'qilsin.
         Positioned(
