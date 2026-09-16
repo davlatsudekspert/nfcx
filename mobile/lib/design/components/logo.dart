@@ -133,3 +133,53 @@ class Wordmark extends StatelessWidget {
         ),
       );
 }
+
+/// BREND YORLIG'I — punktir chegarali "[LOGO]" (prototip: `.logo`).
+///
+/// Punktir ATAYLAB: bu yorliq bosiladigan tugma emas, u BRENDNI
+/// bildiradi. To'liq chiziq uni tugmaga o'xshatib qo'yardi va
+/// yonidagi haqiqiy tugmalar bilan chalkashardi.
+class BrandTag extends StatelessWidget {
+  const BrandTag({super.key, this.color});
+
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        painter: _DashedTag(color ?? C.lineStrong),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          child: Wordmark(size: 11, color: color ?? C.ink2),
+        ),
+      );
+}
+
+class _DashedTag extends CustomPainter {
+  _DashedTag(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = color;
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Offset.zero & size,
+        const Radius.circular(10),
+      ));
+    for (final m in path.computeMetrics()) {
+      var start = 0.0;
+      while (start < m.length) {
+        final end = start + 5 < m.length ? start + 5 : m.length;
+        canvas.drawPath(m.extractPath(start, end), paint);
+        start = end + 4;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedTag old) => old.color != color;
+}

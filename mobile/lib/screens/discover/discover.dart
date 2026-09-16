@@ -227,14 +227,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: C.lineStrong, width: 1.5),
-                        ),
-                        child: Wordmark(size: 11, color: C.ink2),
-                      ),
+                      const BrandTag(),
                       const Spacer(),
                       RoundButton(
                         Ico.scan,
