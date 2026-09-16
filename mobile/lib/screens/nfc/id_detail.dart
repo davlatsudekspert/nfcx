@@ -2,8 +2,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
-import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/press.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/top_bar.dart';
@@ -59,48 +59,62 @@ class IdDetailScreen extends StatelessWidget {
                       url: handle,
                     ),
                   ),
-                  const SizedBox(height: S.x12),
-                  Center(
-                    child: Text(
-                      tr('Kartani bosing — orqa tomoni ochiladi'),
-                      style: T.meta,
-                    ),
-                  ),
-                  const SizedBox(height: S.x24),
+                  const SizedBox(height: S.x20),
 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${style.label} · ${_pattern(record.code)}',
-                          style: T.titleSm,
-                        ),
-                        const SizedBox(height: S.x12),
-                        Text(_explain(record.code, style.label), style: T.body),
-                        const SizedBox(height: S.x20),
-
-                        RowGroup(
+                        // TARIF VA NAQSH — mayda, katta harfda
+                        // (prototip: `.eyebrow`), yonida holat
+                        // belgisi.
+                        Row(
                           children: [
-                            _MetaRow(
-                              label: tr('Tarif'),
-                              value: style.label.toUpperCase(),
-                              accent: true,
+                            Expanded(
+                              child: Text(
+                                '${style.label} · ${_pattern(record.code)}'.toUpperCase(),
+                                style: T.eyebrow,
+                              ),
                             ),
-                            _MetaRow(
-                              label: tr('Material'),
-                              value: _hex(style.base),
-                              swatch: record.tier,
-                            ),
-                            _MetaRow(
-                              label: tr('Profil manzili'),
-                              value: '/${record.code.toLowerCase()}',
+                            StatusChip(tr('Bo‘sh'), tone: StatusTone.ok),
+                          ],
+                        ),
+                        const SizedBox(height: S.x8),
+
+                        // NARX — EKRANNING ENG KATTA RAQAMI
+                        // (prototip: `.price-big`, Playfair 44).
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(som(record.price), style: T.price.copyWith(fontSize: 44)),
+                            const SizedBox(width: 6),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(tr('so‘m'), style: T.caption.copyWith(fontSize: 14)),
                             ),
                           ],
                         ),
 
+                        // NIMA BERADI — yashil belgili ro'yxat
+                        // (prototip: `.perks`).
                         const SizedBox(height: S.x16),
+                        for (final perk in _perks(record.tier))
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: S.x8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                NIcon(Ico.check, size: 18, color: C.ok),
+                                const SizedBox(width: S.x12),
+                                Expanded(
+                                  child: Text(perk, style: T.body.copyWith(fontSize: 13.5)),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        const SizedBox(height: S.x12),
                         Surface(
                           padding: const EdgeInsets.all(S.x12),
                           child: Row(
@@ -125,56 +139,48 @@ class IdDetailScreen extends StatelessWidget {
               ),
             ),
 
-            // YOPISHGAN NARX VA HARAKAT.
+            // YOPISHGAN TO'LOV USULI (prototip: `.paybtns`).
+            //
+            // Prototipda to'lov usuli AYNAN SHU EKRANDA tanlanadi:
+            // odam narxni ko'rib turib, bir bosishda to'lovga
+            // o'tadi. Oraliq "to'lov usulini tanlash" ekrani
+            // qadamni ikkiga bo'lardi.
             StickyBar(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(tr('To‘lov usuli'), style: T.cardTitle),
+                  const SizedBox(height: S.x12),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Eyebrow(tr('Narx')),
-                          const SizedBox(height: 4),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(som(record.price), style: T.price),
-                              const SizedBox(width: 6),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Text(tr('so‘m'), style: T.meta),
-                              ),
-                            ],
+                      Expanded(
+                        child: _PayBrandButton(
+                          label: 'Payme',
+                          color: C.payme,
+                          onTap: () => push<void>(
+                            context,
+                            (_) => PaymentScreen(record: record, provider: 'payme'),
                           ),
-                        ],
+                        ),
                       ),
-                      const Spacer(),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(tr('Bir marta to‘lov'), style: T.meta),
+                      const SizedBox(width: S.x12),
+                      Expanded(
+                        child: _PayBrandButton(
+                          label: 'Click',
+                          color: C.click,
+                          onTap: () => push<void>(
+                            context,
+                            (_) => PaymentScreen(record: record, provider: 'click'),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: S.x16),
-                  PrimaryButton(
-                    tr('Sotib olish'),
-                    onTap: () => push<void>(
-                      context,
-                      (_) => PaymentScreen(record: record),
-                    ),
-                  ),
                   const SizedBox(height: S.x8),
-                  Center(
-                    child: Text(
-                      tr('“Sotib olish” → to‘lov usulini tanlash ekrani '
-                          'ochiladi'),
-                      textAlign: TextAlign.center,
-                      style: T.meta.copyWith(fontSize: 10.5),
-                    ),
+                  Text(
+                    tr('To‘lov Payme yoki Click sahifasida o‘tadi. '
+                        'Muvaffaqiyatni faqat server tasdiqlaydi.'),
+                    style: T.meta.copyWith(fontSize: 10.5),
                   ),
                 ],
               ),
@@ -185,6 +191,42 @@ class IdDetailScreen extends StatelessWidget {
     );
   }
 
+  /// TARIF NIMA BERADI — prototipdagi ro'yxat.
+  ///
+  /// Har tarif o'zidan pastdagilarning hammasini o'z ichiga oladi,
+  /// shuning uchun ro'yxat yuqoriga qarab o'sib boradi.
+  List<String> _perks(Tier tier) => switch (tier) {
+        Tier.exclusive => [
+            tr('Titanium Gold material, ikki qavatli qirra'),
+            tr('Story, post, Reels, video vizitka'),
+            tr('Reytingda alohida belgi'),
+            // PROTOTIPDA "va auksion huquqi" ham yozilgan, lekin
+            // AUKSION ILOVADA YO'Q (saytdan olib tashlangan va
+            // `rules_test` uni qaytarishni taqiqlaydi). Bo'lmagan
+            // imkoniyatni va'da qilgandan ko'ra, bori aytiladi.
+            tr('Sovg‘a qilish huquqi'),
+          ],
+        Tier.premium => [
+            tr('Premium Gold material'),
+            tr('Story, post, Reels, video vizitka'),
+            tr('Reytingda alohida belgi'),
+          ],
+        Tier.gold => [
+            tr('Pure Gold material'),
+            tr('Story, post va Reels'),
+            tr('Kengaytirilgan statistika'),
+          ],
+        Tier.silver => [
+            tr('Chrome Silver material'),
+            tr('Story ochiladi'),
+          ],
+        Tier.bronze => [
+            tr('Bronza material'),
+            tr('Shaxsiy profil va aloqa tugmalari'),
+          ],
+        Tier.free => [tr('Shaxsiy profil va aloqa tugmalari')],
+      };
+
   /// Kod naqshi — "AAA000" yoki "faqat harflar".
   String _pattern(String code) {
     final c = code.toUpperCase();
@@ -192,69 +234,72 @@ class IdDetailScreen extends StatelessWidget {
     if (RegExp(r'^[0-9]+$').hasMatch(c)) return tr('faqat raqamlar');
     return 'AAA000 ${tr('naqsh')}';
   }
-
-  String _explain(String code, String tier) {
-    final c = code.toUpperCase();
-    if (RegExp(r'^[A-Z]+$').hasMatch(c)) {
-      return trf(
-        'Kod faqat harflardan iborat. Bunday kodlar eng kam uchraydi va '
-        '{tier} darajasiga kiradi.',
-        {'tier': tier},
-      );
-    }
-    return trf(
-      'Kod uch harf va uch raqamdan iborat. Naqsh {tier} tarifiga mos.',
-      {'tier': tier},
-    );
-  }
-
-  /// Rangni `#RRGGBB` ko'rinishida yozadi.
-  ///
-  /// Bu NARX emas, dizayn tokeni: material qaysi rang ekanini
-  /// ko'rsatadi va dizayn jadvalidagi qiymat bilan bir xil bo'ladi.
-  String _hex(Color color) {
-    final v = color.toARGB32() & 0xFFFFFF;
-    return '#${v.toRadixString(16).toUpperCase().padLeft(6, '0')}';
-  }
 }
 
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({
+/// TO'LOV TIZIMI TUGMASI (prototip: `.paybtn.payme` / `.click`).
+///
+/// BRENDGA MOS RANG — dizayndagi "bitta urg'u" qoidasidan ATAYLAB
+/// chiqarilgan yagona joy: odam pul to'layotganda qaysi tizimga
+/// o'tayotganini bir qarashda tanishi kerak, aks holda ishonch
+/// yo'qoladi.
+class _PayBrandButton extends StatelessWidget {
+  const _PayBrandButton({
     required this.label,
-    required this.value,
-    this.accent = false,
-    this.swatch,
+    required this.color,
+    required this.onTap,
   });
 
   final String label;
-  final String value;
-  final bool accent;
-  final Tier? swatch;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: S.x16,
-          vertical: S.x16,
-        ),
-        child: Row(
-          children: [
-            Expanded(child: Text(label, style: T.bodyStrong.copyWith(
-              fontSize: 14,
-              color: C.ink2,
-            ))),
-            if (swatch != null) ...[
-              TierDot(swatch!, size: 14),
-              const SizedBox(width: S.x8),
-            ],
-            Text(
-              value,
-              style: T.amount.copyWith(
-                fontSize: 13.5,
-                color: accent ? C.accent : C.ink,
-              ),
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        minSize: 0,
+        scale: .97,
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(R.button),
+            gradient: LinearGradient(
+              begin: const Alignment(-.7, -1),
+              end: const Alignment(.7, 1),
+              colors: [color, Color.lerp(color, const Color(0xFF000000), .32)!],
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: .34),
+                blurRadius: 20,
+                spreadRadius: -8,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: const Color(0x38FFFFFF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  label[0],
+                  style: T.code(12, color: const Color(0xFFFFFFFF), weight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: S.x8),
+              Text(
+                label,
+                style: T.button.copyWith(color: const Color(0xFFFFFFFF), fontSize: 16),
+              ),
+            ],
+          ),
         ),
       );
 }

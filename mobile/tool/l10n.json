@@ -419,6 +419,10 @@
     "Свободно — бесплатно",
     "Available — free"
   ],
+  "Bronza material": [
+    "Материал «Бронза»",
+    "Bronze material"
+  ],
   "Bronze‘dan Exclusive‘gacha": [
     "От Bronze до Exclusive",
     "From Bronze to Exclusive"
@@ -710,6 +714,10 @@
   "Chorshanba": [
     "Среда",
     "Wednesday"
+  ],
+  "Chrome Silver material": [
+    "Материал Chrome Silver",
+    "Chrome Silver material"
   ],
   "Chrome Silver material, story ochiladi.": [
     "Материал Chrome Silver, открываются истории.",
@@ -1683,6 +1691,10 @@
     "Широкое изображение — показывается вверху профиля.",
     "A wide image — it shows at the top of the profile."
   ],
+  "Kengaytirilgan statistika": [
+    "Расширенная статистика",
+    "Extended statistics"
+  ],
   "Keyingisi": [
     "Далее",
     "Next"
@@ -2615,6 +2627,10 @@
     "Сохранить пост",
     "Save post"
   ],
+  "Premium Gold material": [
+    "Материал Premium Gold",
+    "Premium Gold material"
+  ],
   "Premium faol": [
     "Premium активен",
     "Premium is active"
@@ -2746,6 +2762,10 @@
   "Pul yechilmadi. Xohlasangiz qaytadan urinib ko‘rishingiz mumkin.": [
     "Деньги не списаны. При желании попробуйте ещё раз.",
     "No money was taken. You can try again if you like."
+  ],
+  "Pure Gold material": [
+    "Материал Pure Gold",
+    "Pure Gold material"
   ],
   "QAYTA YUBORISH": [
     "ОТПРАВИТЬ СНОВА",
@@ -2955,6 +2975,10 @@
     "Рейтинг",
     "Rating"
   ],
+  "Reytingda alohida belgi": [
+    "Отдельный знак в рейтинге",
+    "A distinct mark in the ranking"
+  ],
   "Roziman, davom etish": [
     "Согласен, продолжить",
     "I agree, continue"
@@ -3086,6 +3110,10 @@
   "Shaxsiy profil": [
     "Личный профиль",
     "Personal profile"
+  ],
+  "Shaxsiy profil va aloqa tugmalari": [
+    "Личный профиль и кнопки связи",
+    "Personal profile and contact buttons"
   ],
   "Shaxsiy va biznes ID‘laringiz bir joyda. Sarlavhaga tegib, ": [
     "Личные и бизнес-ID в одном месте. Коснитесь заголовка, чтобы ",
@@ -3223,6 +3251,10 @@
     "Подарить",
     "Gift"
   ],
+  "Sovg‘a qilish huquqi": [
+    "Право дарить",
+    "Gifting rights"
+  ],
   "Sovg‘a qilishni yuborish": [
     "Отправить подарок",
     "Send the gift"
@@ -3315,6 +3347,10 @@
     "Опубликовать историю",
     "Post story"
   ],
+  "Story ochiladi": [
+    "Открываются истории",
+    "Stories unlocked"
+  ],
   "Story o‘chirildi": [
     "Story удалена",
     "Story deleted"
@@ -3339,9 +3375,17 @@
     "Истории доступны на более высоком тарифе.",
     "Stories unlock on a higher tier."
   ],
+  "Story, post va Reels": [
+    "Истории, посты и Reels",
+    "Stories, posts and Reels"
+  ],
   "Story, post va Reels bilan tirik profil. Ilova o‘rnatish shart emas — havola brauzerda ham ishlaydi.": [
     "Живой профиль со Story, постами и Reels. Устанавливать приложение не нужно — ссылка работает и в браузере.",
     "A living profile with Story, posts and Reels. No app install needed — the link works in a browser too."
+  ],
+  "Story, post, Reels, video vizitka": [
+    "Истории, посты, Reels, видеовизитка",
+    "Stories, posts, Reels, video card"
   ],
   "Story, postlar va Reels": [
     "Story, посты и Reels",
@@ -3583,6 +3627,10 @@
     "Язык",
     "Language"
   ],
+  "Titanium Gold material, ikki qavatli qirra": [
+    "Материал Titanium Gold, двойная кромка",
+    "Titanium Gold material, double edge"
+  ],
   "Top mahsulotlar": [
     "Топ товаров",
     "Top products"
@@ -3618,6 +3666,10 @@
   "To‘lov Payme orqali. Narx to‘lov ekranida ko‘rsatiladi.": [
     "Оплата через Payme. Цена показывается на экране оплаты.",
     "Payment via Payme. The price is shown on the payment page."
+  ],
+  "To‘lov Payme yoki Click sahifasida o‘tadi. Muvaffaqiyatni faqat server tasdiqlaydi.": [
+    "Оплата проходит на странице Payme или Click. Успех подтверждает только сервер.",
+    "Payment happens on the Payme or Click page. Only the server confirms success."
   ],
   "To‘lov Payme’da bajarildi. Server javobi kutilmoqda — ilovani yopmang.": [
     "Платёж выполнен в Payme. Ожидаем ответ сервера — не закрывайте приложение.",
@@ -4132,12 +4184,16 @@
     "following"
   ],
   "obunachi": [
-    "подписчик",
+    "подписчиков",
     "followers"
   ],
   "orqali ulashing.": [
     "через карту.",
     "card."
+  ],
+  "post": [
+    "постов",
+    "posts"
   ],
   "qayta yozish shart emas.": [
     "перезаписывать не нужно.",

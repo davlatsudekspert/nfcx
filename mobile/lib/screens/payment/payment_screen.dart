@@ -36,9 +36,14 @@ import '../nfc/order_card.dart';
 /// chiqadi. Provayderdan qaytishning o'zi hech narsani bildirmaydi
 /// va dizayn buni alohida ta'kidlaydi.
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key, required this.record});
+  const PaymentScreen({super.key, required this.record, this.provider});
 
   final Record record;
+
+  /// ID tafsilotidan tanlangan to'lov usuli (prototip: kartaning
+  /// o'zida Payme va Click tugmalari turadi). Berilmasa — shu
+  /// ekranda tanlanadi.
+  final String? provider;
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -64,7 +69,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool? _clickOn;
 
   /// Odam tanlagan to'lov tizimi.
-  String _provider = 'payme';
+  late String _provider = widget.provider ?? 'payme';
 
   /// QR ko'rsatilyaptimi.
   bool _qr = false;
@@ -97,7 +102,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           _clickOn = _providerOn(e, 'click');
           // Payme o'chiq, Click yoqiq bo'lsa — tanlov o'zi Click'ka
           // o'tadi, aks holda odam o'chiq tugmaga qarab turardi.
-          if (_paymeOn == false && _clickOn == true) _provider = 'click';
+          // Tanlangan usul o'chiq bo'lsa — ishlaydiganiga o'tamiz.
+          if (_provider == 'payme' && _paymeOn == false && _clickOn == true) {
+            _provider = 'click';
+          }
+          if (_provider == 'click' && _clickOn == false && _paymeOn == true) {
+            _provider = 'payme';
+          }
         });
       }
     } catch (_) {

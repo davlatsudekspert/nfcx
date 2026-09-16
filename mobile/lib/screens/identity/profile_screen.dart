@@ -355,117 +355,161 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final r = _record!;
     final style = TierStyle.of(r.tier);
 
+    // PROTOTIP MAKETI (`.cover` → `.idhead` → `.pname` → `.acts4`):
+    //
+    // Markazga tekislangan ustun o'rniga — COVER RASMI va uning
+    // ustiga chiqib turgan avatar, hamma matn CHAPDA. Sabab oddiy:
+    // markazlashgan profil "anketa" bo'lib ko'rinadi, chapga
+    // tekislangani esa o'qiladigan sahifa — ism, kasb, havola
+    // birin-ketin tushadi va ko'z bitta chiziqdan yuradi.
     return [
-      const SizedBox(height: S.x8),
-
-      // AVATAR — story bo'lsa halqa bilan.
-      Center(
-        child: StoryRing(
-          avatarUrl: r.avatarUrl,
-          name: r.name,
-          size: 104,
-          showLabel: false,
-          seen: _stories.isEmpty,
-          onTap: _stories.isEmpty
-              ? null
-              : () => push<void>(
-                    context,
-                    (_) => StoryViewerScreen(code: _code),
-                  ),
-        ),
-      ),
-      const SizedBox(height: S.x20),
-
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        child: Column(
+      // COVER — 230 dp. Rasm bo'lmasa, tarif materialining yumshoq
+      // gradienti: bo'sh kulrang maydon o'rniga profil baribir
+      // "kiyingan" ko'rinadi.
+      SizedBox(
+        height: 230,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: Text(
-                    r.name,
-                    textAlign: TextAlign.center,
-                    style: T.profileName,
+            if ((r.bgUrl ?? '').isNotEmpty)
+              NetImage(r.bgUrl, radius: 0)
+            else
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: style.hasMaterial
+                      ? style.surface
+                      : LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [C.surfaceHigh, C.surface],
+                        ),
+                ),
+              ),
+            // Pastga qarab fonga singiydi — avatar va ism rasm
+            // ustida emas, sahifaning o'zida turgandek bo'ladi.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      C.bg.withValues(alpha: .25),
+                      C.bg.withValues(alpha: 0),
+                      C.bg,
+                    ],
+                    stops: const [0, .35, 1],
                   ),
                 ),
-                if (r.verified) ...[
-                  const SizedBox(width: 6),
-                  const VerifiedBadge(size: 17),
-                ],
-              ],
+              ),
             ),
-            if (r.role.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                r.role,
-                textAlign: TextAlign.center,
-                style: T.caption.copyWith(color: C.ink2),
-              ),
-            ],
-            const SizedBox(height: S.x12),
-
-            // TARIF — material nomi bilan.
-            _TierBadge(tier: r.tier, label: style.label, code: r.code),
-
-            const SizedBox(height: S.x20),
-            StatRow(
-              tiles: [
-                StatTile(value: som(r.views), label: tr('Ko‘rish')),
-                StatTile(
-                  value: som(_posts.length),
-                  label: tr('Post'),
-                ),
-                StatTile(
-                  value: som(_follow?.followers ?? 0),
-                  label: tr('Obunachi'),
-                  onTap: () => push<void>(
-                    context,
-                    (_) => FollowListScreen(
-                      code: _code,
-                      title: tr('Obunachilar'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: S.x20),
-            ContactRow(
-              phone: r.phone,
-              telegram: r.tg,
-              instagram: r.instagram,
-              website: r.website,
-              address: r.address,
-            ),
-
-            if (widget.entry == ProfileEntry.search && !_owned) ...[
-              const SizedBox(height: S.x16),
-              _Note(
-                tr('Kontaktni saqlash faqat NFC kartani tegizganda yoki QR '
-                    'skanerlaganda ochiladi — shunda karta egasi '
-                    'ulashishni tasdiqlagan bo‘ladi.'),
-              ),
-            ],
-
-            if (r.about.isNotEmpty) ...[
-              const SizedBox(height: S.x24),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Eyebrow(tr('Haqida')),
-              ),
-              const SizedBox(height: S.x8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(r.about, style: T.body),
-              ),
-            ],
           ],
         ),
       ),
 
-      ..._postsSection(),
+      // AVATAR VA TARIF — cover ustiga chiqadi (prototip: -58 dp).
+      Transform.translate(
+        offset: const Offset(0, -58),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StoryRing(
+                    avatarUrl: r.avatarUrl,
+                    name: r.name,
+                    size: 96,
+                    showLabel: false,
+                    seen: _stories.isEmpty,
+                    onTap: _stories.isEmpty
+                        ? null
+                        : () => push<void>(
+                              context,
+                              (_) => StoryViewerScreen(code: _code),
+                            ),
+                  ),
+                  const Spacer(),
+                  _TierBadge(tier: r.tier, label: style.label, code: r.code),
+                ],
+              ),
+              const SizedBox(height: S.x12),
+              Row(
+                children: [
+                  Flexible(child: Text(r.name, style: T.profileName)),
+                  if (r.verified) ...[
+                    const SizedBox(width: 6),
+                    const VerifiedBadge(size: 17),
+                  ],
+                ],
+              ),
+              if (r.role.isNotEmpty || (r.city).isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  [r.role, r.city].where((v) => v.isNotEmpty).join(' · '),
+                  style: T.body.copyWith(fontSize: 14, color: C.ink2),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                'nfcstore.uz/${r.code.toLowerCase()}',
+                style: T.link.copyWith(color: C.accent, fontSize: 12),
+              ),
+
+              // ALOQA — to'rtta dumaloq tugma (prototip: `.acts4`).
+              const SizedBox(height: S.x16),
+              ContactRow(
+                phone: r.phone,
+                telegram: r.tg,
+                instagram: r.instagram,
+                website: r.website,
+                address: r.address,
+              ),
+
+              // STATISTIKA — bitta qatorda, raqam serif bilan
+              // (prototip: `.stats`).
+              const SizedBox(height: S.x16),
+              _InlineStats(
+                items: [
+                  (value: som(r.views), label: tr('ko‘rish'), onTap: null),
+                  (
+                    value: som(_follow?.followers ?? 0),
+                    label: tr('obunachi'),
+                    onTap: () => push<void>(
+                      context,
+                      (_) => FollowListScreen(code: _code, title: tr('Obunachilar')),
+                    ),
+                  ),
+                  (value: som(_posts.length), label: tr('post'), onTap: null),
+                ],
+              ),
+
+              if (widget.entry == ProfileEntry.search && !_owned) ...[
+                const SizedBox(height: S.x16),
+                _Note(
+                  tr('Kontaktni saqlash faqat NFC kartani tegizganda yoki QR '
+                      'skanerlaganda ochiladi — shunda karta egasi '
+                      'ulashishni tasdiqlagan bo‘ladi.'),
+                ),
+              ],
+
+              if (r.about.isNotEmpty) ...[
+                const SizedBox(height: S.x20),
+                Text(r.about, style: T.body),
+              ],
+            ],
+          ),
+        ),
+      ),
+
+      // Cover ustiga chiqqan blok tepadan 58 dp "o'g'irlagani" uchun
+      // pastdagi kontent ham shuncha yuqoriga suriladi.
+      Transform.translate(
+        offset: const Offset(0, -58),
+        child: Column(children: _postsSection()),
+      ),
     ];
   }
 
@@ -852,6 +896,50 @@ class _EntryChip extends StatelessWidget {
 }
 
 /// Tarif belgisi — kod + material nomi.
+/// BITTA QATORDAGI STATISTIKA (prototip: `.stats`).
+///
+/// Raqam serif va katta, yozuv kichik va kulrang — ko'z avval
+/// raqamni ko'radi. Uchta alohida karta o'rniga bitta qator:
+/// prototipda profil "hisobot" emas, tashrif qog'ozi.
+class _InlineStats extends StatelessWidget {
+  const _InlineStats({required this.items});
+
+  final List<({String value, String label, VoidCallback? onTap})> items;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        // WRAP, ROW EMAS: uzun raqamlar (12 480 · 1 843 · 9) va
+        // uzunroq tilda ("подписчиков") qator eniga sig'may
+        // qolardi. Wrap ularni keyingi qatorga tushiradi — matn
+        // qirqilmaydi.
+        spacing: S.x20,
+        runSpacing: S.x8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final it in items)
+            Press(
+              onTap: it.onTap,
+              minSize: 0,
+              scale: .96,
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: it.value,
+                      style: T.section.copyWith(fontSize: 19, color: C.ink),
+                    ),
+                    TextSpan(
+                      text: ' ${it.label}',
+                      style: T.caption.copyWith(fontSize: 12.5),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+}
+
 class _TierBadge extends StatelessWidget {
   const _TierBadge({
     required this.tier,
