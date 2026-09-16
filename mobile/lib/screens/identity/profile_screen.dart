@@ -474,27 +474,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final c = _company!;
 
     return [
-      const SizedBox(height: S.x8),
-
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        child: _BusinessCover(company: c),
-      ),
-      const SizedBox(height: S.x16),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        child: _BusinessMetaLayer(
-          company: c,
-          followers: _follow?.followers ?? c.followers,
-          onFollowers: () => push<void>(
-            context,
-            (_) => FollowListScreen(
-              code: _code,
-              title: tr('Obunachilar'),
-              isCompany: true,
-            ),
-          ),
-        ),
+      _BusinessCinematicHeader(
+        company: c,
+        followers: _follow?.followers ?? c.followers,
+        onFollowers: () => push<void>(context, (_) => FollowListScreen(
+          code: _code, title: tr('Obunachilar'), isCompany: true,
+        )),
       ),
 
       // KATALOG — biznes profilida ustun bo'lim.
@@ -764,6 +749,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 // ─────────────────────────────────────────────────────────────
 
 /// Biznes uchun API'dagi cover/logo birga ko'rinadigan vitrina.
+class _BusinessCinematicHeader extends StatelessWidget {
+  const _BusinessCinematicHeader({required this.company, required this.followers, required this.onFollowers});
+  final Company company; final int followers; final VoidCallback onFollowers;
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    SizedBox(
+      height: 420,
+      child: Stack(fit: StackFit.expand, children: [
+        BusinessHero(imageUrl: company.coverUrl ?? company.logoUrl),
+        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter,end: Alignment.bottomCenter,colors:[Color(0x11000000),Color(0x05000000),Color(0xF5000000)],stops:[0,.36,1]))),
+        Positioned(left:S.gutter,right:S.gutter,bottom:S.x24,child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[Avatar(url:company.logoUrl,name:company.name,size:56,square:true),const SizedBox(width:S.x12),Expanded(child:Text(company.name,maxLines:2,overflow:TextOverflow.ellipsis,style:T.profileName.copyWith(color:C.ink,fontSize:34))),if(company.verified) const VerifiedBadge(size:19)]),
+          const SizedBox(height:S.x12),
+          Wrap(spacing:S.x8,runSpacing:S.x8,children:[if(company.city.isNotEmpty) _InfoPill(icon:Ico.pin,text:company.city),if(company.isOpen!=null) _InfoPill(icon:Ico.clock,text:company.isOpen!?tr('Ochiq'):tr('Yopiq'),accent:company.isOpen!),]),
+        ]) )
+      ]),
+    ),
+    Transform.translate(offset:const Offset(0,-S.x20),child:Padding(padding:const EdgeInsets.symmetric(horizontal:S.gutter),child:GlassPanel(radius:30,padding:const EdgeInsets.all(S.x16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      if(company.about.isNotEmpty) Text(company.about,maxLines:2,overflow:TextOverflow.ellipsis,style:T.body.copyWith(color:C.ink2)),
+      if(company.about.isNotEmpty) const SizedBox(height:S.x16),
+      Row(children:[Text('${som(company.itemCount)} ${tr('mahsulot')}',style:T.buttonSm),const Spacer(),Text('${som(company.views)} ${tr('ko‘rish')}',style:T.buttonSm),const SizedBox(width:S.x16),Press(onTap:onFollowers,minSize:S.tap,child:Text('${som(followers)} ${tr('obunachi')}',style:T.buttonSm.copyWith(color:C.accent)))]),
+      const SizedBox(height:S.x16),ContactRow(phone:company.phone,telegram:company.tg,instagram:company.instagram,website:company.website,address:company.address,compactRail:true),
+    ]))),
+  ]);
+}
+
 ///
 /// Cover bo'lmasa `NetImage` mavjud media slotini ko'rsatadi; shuning
 /// uchun backend hali rasm bermagan kompaniya ham buzilgan ko'rinmaydi.
