@@ -775,7 +775,7 @@ class _BusinessCinematicHeader extends StatelessWidget {
       if(company.about.isNotEmpty) const SizedBox(height:S.x16),
       Row(children:[Text('${som(company.itemCount)} ${tr('mahsulot')}',style:T.buttonSm),const Spacer(),Text('${som(company.views)} ${tr('ko‘rish')}',style:T.buttonSm),const SizedBox(width:S.x16),Press(onTap:onFollowers,minSize:S.tap,child:Text('${som(followers)} ${tr('obunachi')}',style:T.buttonSm.copyWith(color:C.accent)))]),
       const SizedBox(height:S.x16),ContactRow(phone:company.phone,telegram:company.tg,instagram:company.instagram,website:company.website,address:company.address,compactRail:true),
-    ]))),
+    ])))),
   ]);
 }
 
