@@ -1221,12 +1221,14 @@ class CommentButton extends StatelessWidget {
     required this.onTap,
     this.size = 20,
     this.color,
+    this.onMedia = false,
   });
 
   final int count;
   final VoidCallback onTap;
   final double size;
   final Color? color;
+  final bool onMedia;
 
   @override
   Widget build(BuildContext context) {
@@ -1239,7 +1241,7 @@ class CommentButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          NIcon(Ico.comment, size: size, color: tint),
+          NIcon(Ico.comment, size: size, color: tint, onMedia: onMedia),
           const SizedBox(width: 7),
           Text(
             '$count',
@@ -1247,6 +1249,7 @@ class CommentButton extends StatelessWidget {
               color: tint,
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
+              shadows: onMedia ? C.mediaText : null,
             ),
           ),
         ],
@@ -1267,6 +1270,7 @@ class LikeButton extends StatefulWidget {
     required this.onTap,
     this.size = 20,
     this.color,
+    this.onMedia = false,
   });
 
   final bool liked;
@@ -1274,6 +1278,7 @@ class LikeButton extends StatefulWidget {
   final VoidCallback onTap;
   final double size;
   final Color? color;
+  final bool onMedia;
 
   @override
   State<LikeButton> createState() => _LikeButtonState();
@@ -1327,6 +1332,7 @@ class _LikeButtonState extends State<LikeButton>
               size: widget.size,
               color: tint,
               filled: widget.liked,
+              onMedia: widget.onMedia,
             ),
           ),
           const SizedBox(width: 7),
@@ -1336,6 +1342,7 @@ class _LikeButtonState extends State<LikeButton>
               color: tint,
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
+              shadows: widget.onMedia ? C.mediaText : null,
             ),
           ),
         ],

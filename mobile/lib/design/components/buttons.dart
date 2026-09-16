@@ -401,15 +401,27 @@ class RoundButton extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         gradient: accent ? C.actionFace : (glass ? null : C.raisedSurface),
-        color: glass ? const Color(0x3D000000) : null,
+        color: glass ? const Color(0x59000000) : null,
         shape: BoxShape.circle,
-        border: Border.all(color: accent ? const Color(0x00000000) : C.line),
+        border: Border.all(
+          color: accent
+              ? const Color(0x00000000)
+              : glass
+                  ? C.onMedia3
+                  : C.line,
+        ),
       ),
       alignment: Alignment.center,
+      // SHISHA TUGMA HAR DOIM OQ BELGILI.
+      //
+      // U faqat rasm yoki video ustida ishlatiladi va ostidagi
+      // kadr qanday rangda bo'lishi noma'lum. `C.ink` yorug'
+      // mavzuda qora bo'lib, quyuq shisha yuzada ko'rinmay
+      // qolardi.
       child: NIcon(
         icon,
         size: iconSize,
-        color: color ?? (accent ? C.onAccent : C.ink),
+        color: color ?? (accent ? C.onAccent : (glass ? C.onMedia : C.ink)),
       ),
     );
 

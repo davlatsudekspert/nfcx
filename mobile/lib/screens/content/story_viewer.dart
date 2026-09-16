@@ -387,15 +387,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               ),
             ),
             // Yuqori gradient — progress va muallif qatori uchun.
-            const Positioned(
+            //
+            // MAVZU BILAN BIRGA O'ZGARADI. Qattiq qora gradient
+            // yorug' mavzuda qora matn ostida turib qolardi va
+            // muallif ismini o'qib bo'lmasdi.
+            Positioned(
               top: 0, left: 0, right: 0, height: 160,
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Color(0xB3000000), Color(0x00000000)],
-                  ),
-                ),
+                decoration: BoxDecoration(gradient: C.topScrim),
               ),
             ),
             SafeArea(

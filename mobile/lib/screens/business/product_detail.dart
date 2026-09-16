@@ -87,10 +87,10 @@ class ProductCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xB8000000),
                         shape: BoxShape.circle,
-                        border: Border.all(color: C.lineStrong),
+                        border: Border.all(color: C.onMedia3),
                       ),
                       alignment: Alignment.center,
-                      child: NIcon(Ico.bag, size: 14, color: C.accent),
+                      child: NIcon(Ico.bag, size: 14, color: C.onMediaAccent),
                     ),
                   ),
                 ],

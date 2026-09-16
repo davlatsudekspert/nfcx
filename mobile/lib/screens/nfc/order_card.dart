@@ -558,11 +558,20 @@ class _OrderHero extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('NFCSTORE Black Edition', style: T.section),
+                  Text(
+                    'NFCSTORE Black Edition',
+                    style: T.section.copyWith(
+                      color: C.onMedia,
+                      shadows: C.mediaText,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     '${record.code} · metall karta · NFC ulanish',
-                    style: T.caption.copyWith(color: C.ink2),
+                    style: T.caption.copyWith(
+                      color: C.onMedia2,
+                      shadows: C.mediaText,
+                    ),
                   ),
                 ],
               ),

@@ -799,7 +799,12 @@ class _FeaturedCompany extends StatelessWidget {
                               company.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: T.section.copyWith(fontSize: 26),
+                              // OQ — ostidagi gradient quyuq.
+                              style: T.section.copyWith(
+                                fontSize: 26,
+                                color: C.onMedia,
+                                shadows: C.mediaText,
+                              ),
                             ),
                           ),
                           if (company.verified) ...[
@@ -813,12 +818,12 @@ class _FeaturedCompany extends StatelessWidget {
                         children: [
                           if (company.city.isNotEmpty)
                             Flexible(
-                              child: Text(company.city, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.caption.copyWith(color: C.ink2)),
+                              child: Text(company.city, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.caption.copyWith(color: C.onMedia2, shadows: C.mediaText)),
                             ),
                           if (company.city.isNotEmpty && company.itemCount > 0)
-                            Text(' · ', style: T.caption.copyWith(color: C.ink3)),
+                            Text(' · ', style: T.caption.copyWith(color: C.onMedia3)),
                           if (company.itemCount > 0)
-                            Text(trf('{n} mahsulot', {'n': '${company.itemCount}'}), style: T.caption.copyWith(color: C.accent)),
+                            Text(trf('{n} mahsulot', {'n': '${company.itemCount}'}), style: T.caption.copyWith(color: C.onMediaAccent, shadows: C.mediaText)),
                         ],
                       ),
                     ],
@@ -882,12 +887,12 @@ class _CompanyCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xB8000000),
                           borderRadius: BorderRadius.circular(R.status),
-                          border: Border.all(color: C.lineStrong),
+                          border: Border.all(color: C.onMedia3),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            NIcon(Ico.building, size: 12, color: C.accent),
+                            NIcon(Ico.building, size: 12, color: C.onMediaAccent),
                             const SizedBox(width: 5),
                             Text(
                               company.isOpen == null
@@ -896,7 +901,7 @@ class _CompanyCard extends StatelessWidget {
                                       ? tr('Ochiq')
                                       : tr('Yopiq'),
                               style: T.meta.copyWith(
-                                color: C.ink,
+                                color: C.onMedia,
                                 fontSize: 9,
                                 letterSpacing: .8,
                               ),
@@ -916,7 +921,10 @@ class _CompanyCard extends StatelessWidget {
                               company.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: T.cardTitle.copyWith(color: C.ink),
+                              style: T.cardTitle.copyWith(
+                                color: C.onMedia,
+                                shadows: C.mediaText,
+                              ),
                             ),
                           ),
                           if (company.verified) ...[
@@ -1093,18 +1101,18 @@ class _GridTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xB8000000),
                     borderRadius: BorderRadius.circular(5),
-                    border: Border.all(color: C.lineStrong),
+                    border: Border.all(color: C.onMedia3),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      NIcon(Ico.play, size: 9, color: C.accent, filled: true),
+                      NIcon(Ico.play, size: 9, color: C.onMediaAccent, filled: true),
                       const SizedBox(width: 4),
                       Text(
                         'VIDEO',
                         style: T.meta.copyWith(
                           fontSize: 8.5,
-                          color: C.ink,
+                          color: C.onMedia,
                           letterSpacing: 1,
                         ),
                       ),

@@ -252,7 +252,7 @@ class _ProductCard extends StatelessWidget {
                   Positioned(
                     right: 6,
                     bottom: 6,
-                    child: NIcon(Ico.bag, size: 14, color: C.accent),
+                    child: NIcon(Ico.bag, size: 14, color: C.onMediaAccent),
                   ),
                 ],
               ),

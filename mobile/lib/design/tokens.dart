@@ -453,6 +453,47 @@ class C {
         transform: const GradientRotation(.44),
       );
 
+  /// RASM USTIDAGI MATN RANGLARI.
+  ///
+  /// Kartaning rasmi ustiga QUYUQ gradient tushadi (rasm qanday
+  /// bo'lishini oldindan bilib bo'lmaydi), shuning uchun u yerdagi
+  /// matn HAR DOIM oq — mavzuga qaramay. `C.ink` bu joyda yorug'
+  /// mavzuda qora bo'lib qolardi va qora gradient ustida
+  /// ko'rinmasdi.
+  static const Color onMedia = Color(0xFFFFFFFF);
+  static const Color onMedia2 = Color(0xC7FFFFFF);
+  static const Color onMedia3 = Color(0x8FFFFFFF);
+
+  /// Quyuq gradient ustidagi urg'u rangi. Asosiy `accent` (to'q
+  /// ko'k) qora fonda deyarli o'qilmaydi — bu esa o'sha rangning
+  /// yorug'lashtirilgani.
+  static const Color onMediaAccent = Color(0xFFA8C0FF);
+
+  /// TEPA SCRIM — media ustidagi sarlavha va tugmalar uchun.
+  ///
+  /// Reels kadri butun ekranni egallaydi: sarlavha to'g'ridan-to'g'ri
+  /// video ustida turadi. Yupqa gradient uni har qanday kadrda
+  /// o'qiladigan qiladi va chegara chizig'i qoldirmaydi.
+  static LinearGradient get topScrim => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          _p.baseTop.withValues(alpha: .92),
+          _p.baseTop.withValues(alpha: .55),
+          _p.baseTop.withValues(alpha: 0),
+        ],
+        stops: const [0, .5, 1],
+      );
+
+  /// MEDIA USTIDAGI MATN SOYASI.
+  ///
+  /// Reels kadri har xil rangda bo'ladi — oq devor ham, qora
+  /// ko'ylak ham. Soyasiz oq matn yorug' kadrda ko'rinmay
+  /// qolardi. Soya matnni har qanday fonda ushlab turadi.
+  static const List<Shadow> mediaText = [
+    Shadow(color: Color(0x99000000), blurRadius: 6, offset: Offset(0, 1)),
+  ];
+
   /// PASTKI SCRIM — yopishgan tugma ostidagi kontentni yumshoq
   /// yashiradi. Keskin chegara bo'lmasligi uchun 40% da to'yinadi.
   static LinearGradient get bottomScrim => LinearGradient(

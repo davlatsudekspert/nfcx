@@ -253,6 +253,20 @@ class _ReelsScreenState extends State<ReelsScreen> {
             ),
           ),
 
+          // TEPA SCRIM — sarlavha video ustida turadi, gradientsiz
+          // u yorug' kadrda ko'rinmay qolardi.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 160,
+                decoration: BoxDecoration(gradient: C.topScrim),
+              ),
+            ),
+          ),
+
           // TEPA QATOR — orqaga, brend, menyu. Media ustida
           // turgani uchun shisha tugmalar.
           Positioned(
@@ -380,7 +394,10 @@ class _Reel extends StatelessWidget {
                 count: item.likeCount,
                 onTap: onLike,
                 size: 28,
-                color: C.ink,
+                // OQ — kadr ustida. `C.ink` yorug' mavzuda deyarli
+                // qora bo'ladi va to'q videoda yo'qolardi.
+                color: item.liked ? C.accent : const Color(0xFFFFFFFF),
+                onMedia: true,
               ),
               const SizedBox(height: S.x20),
               // IZOH — yurak bilan ulashish orasida, xuddi boshqa
@@ -389,7 +406,8 @@ class _Reel extends StatelessWidget {
                 count: item.commentCount,
                 onTap: onComment,
                 size: 28,
-                color: C.ink,
+                color: const Color(0xFFFFFFFF),
+                onMedia: true,
               ),
               const SizedBox(height: S.x20),
               RoundButton(

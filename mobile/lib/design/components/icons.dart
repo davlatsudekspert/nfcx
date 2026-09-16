@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/widgets.dart';
 
 import '../tokens.dart';
@@ -38,6 +40,7 @@ class NIcon extends StatelessWidget {
     this.size = 24,
     this.color,
     this.filled = false,
+    this.onMedia = false,
   });
 
   final Ico icon;
@@ -50,12 +53,40 @@ class NIcon extends StatelessWidget {
   final Color? color;
   final bool filled;
 
+  /// RASM YOKI VIDEO USTIDA turgan ikonka.
+  ///
+  /// Media qanday rangda bo'lishini oldindan bilib bo'lmaydi:
+  /// bir kadr oq devor, keyingisi qora ko'ylak. Shuning uchun
+  /// ikonka ostiga yumshoq qora soya chiziladi — u yorug' kadrda
+  /// ham, to'q kadrda ham chegara berib turadi. Soyasiz oq ikonka
+  /// oq devorda butunlay yo'qolardi.
+  final bool onMedia;
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: size,
-        height: size,
-        child: CustomPaint(painter: _IconPainter(icon, color ?? C.ink, filled)),
-      );
+  Widget build(BuildContext context) {
+    final glyph = SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _IconPainter(icon, color ?? C.ink, filled)),
+    );
+    if (!onMedia) return glyph;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 2.4, sigmaY: 2.4),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: CustomPaint(
+              painter: _IconPainter(icon, const Color(0x8C000000), filled),
+            ),
+          ),
+        ),
+        glyph,
+      ],
+    );
+  }
 }
 
 class _IconPainter extends CustomPainter {
