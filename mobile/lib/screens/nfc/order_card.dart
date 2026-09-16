@@ -7,7 +7,6 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
-import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
@@ -271,17 +270,12 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                 children: [
                   ScreenTitle(tr('NFC karta buyurtmasi')),
 
-                  // KARTA KO'RINISHI — o'girilmaydi: bu buyurtma
-                  // qilinayotgan mahsulotning ko'rinishi, o'yinchoq
-                  // emas.
+                  // MAHSULOT HERO — buyurtma sahifasida metall karta
+                  // faqat forma ustidagi preview emas, mahsulotning o'zi.
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                    child: IdentityCard(
-                      code: widget.record.code,
-                      tier: widget.record.tier,
-                      holder: widget.record.name,
-                      url: 'nfcstore.uz/${widget.record.code.toLowerCase()}',
-                      flippable: false,
+                    child: _OrderHero(
+                      record: widget.record,
                     ),
                   ),
 
@@ -443,6 +437,61 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
       ),
     );
   }
+}
+
+/// Qora NFC karta uchun fotografik mahsulot vitrinası. Pastdagi
+/// ma'lumotlar va to'lov formasi o'z holicha qoladi — bu qism faqat
+/// mahsulotni ko'rsatish uchun.
+class _OrderHero extends StatelessWidget {
+  const _OrderHero({required this.record});
+
+  final Record record;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 286,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(R.card),
+          border: Border.all(color: C.accent.withValues(alpha: .32)),
+          boxShadow: C.e2,
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/img/premium_contact_sheet.png',
+              fit: BoxFit.cover,
+              alignment: const Alignment(1, 1),
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x18000000), Color(0xE8000000)],
+                ),
+              ),
+            ),
+            Positioned(
+              left: S.x16,
+              right: S.x16,
+              bottom: S.x16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('NFCSTORE Black Edition', style: T.section),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${record.code} · metall karta · NFC ulanish',
+                    style: T.caption.copyWith(color: C.ink2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 /// Son tanlagich — bosish maydoni `RoundButton` ichida 48 dp.
