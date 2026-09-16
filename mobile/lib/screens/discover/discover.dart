@@ -453,7 +453,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: S.x12,
                 mainAxisSpacing: S.x12,
-                childAspectRatio: .82,
+                // RASM 16:10 + ostidagi ikki qator matn. Balandroq
+                // nisbat kartaning ostida bo'sh joy qoldirardi.
+                childAspectRatio: .98,
               ),
               itemBuilder: (context, i) => _CompanyCard(company: companies[i]),
             ),

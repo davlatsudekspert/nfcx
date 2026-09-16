@@ -515,11 +515,21 @@ class _ProfileCover extends StatelessWidget {
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
-                          identity.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: T.title,
+                        // UZUN ISM QIRQILMAYDI, KICHRAYADI.
+                        //
+                        // "Muhammad Yusufxo'jayev" kabi ism
+                        // `ellipsis` bilan "Muhammad Yu..." bo'lib
+                        // qolardi — odam o'z ismini to'liq
+                        // ko'rmasdi. Endi shrift ikki qatorgacha
+                        // kichrayadi va ism butun chiqadi.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            identity.name,
+                            maxLines: 1,
+                            style: T.title,
+                          ),
                         ),
                       ),
                       if (identity.verified) ...[

@@ -19,6 +19,10 @@
     "Мы отправили 6-значный код:",
     "We sent a 6-digit code:"
   ],
+  "7 kun": [
+    "7 дней",
+    "7 days"
+  ],
   "8 XONA": [
     "8 ЗНАКОВ",
     "8 DIGITS"
@@ -215,6 +219,10 @@
     "Отпечаток или лицо",
     "Fingerprint or face"
   ],
+  "Batafsil": [
+    "Подробнее",
+    "Details"
+  ],
   "Begona kartani tegizib, profilini oching": [
     "Приложите чужую карту и откройте профиль",
     "Tap someone’s card to open their profile"
@@ -311,6 +319,10 @@
     "Одно касание — ",
     "One tap — "
   ],
+  "Biz haqimizda": [
+    "О нас",
+    "About us"
+  ],
   "Biznes": [
     "Бизнес",
     "Business"
@@ -374,6 +386,10 @@
   "Boshqa sabab": [
     "Другая причина",
     "Another reason"
+  ],
+  "Boshqa soha yoki turni tanlab ko‘ring.": [
+    "Попробуйте выбрать другую сферу или тип.",
+    "Try another field or type."
   ],
   "Boshqa so‘z bilan qidirib ko‘ring.": [
     "Попробуйте другое слово.",
@@ -503,6 +519,10 @@
     "Этот раздел сохраняется отдельно. Сохранить изменения формы перед переходом?",
     "This section is saved separately. Save the form changes before you go?"
   ],
+  "Bu bo‘limda hozircha mahsulot yo‘q.": [
+    "В этом разделе пока нет товаров.",
+    "No products in this section yet."
+  ],
   "Bu email allaqachon ro‘yxatdan o‘tgan.": [
     "Этот email уже зарегистрирован.",
     "This email is already registered."
@@ -518,6 +538,10 @@
   "Bu fayl rasm yoki video emas.": [
     "Этот файл не фото и не видео.",
     "This file is not a photo or a video."
+  ],
+  "Bu filtrda hech kim yo‘q": [
+    "По этому фильтру никого нет",
+    "Nobody matches this filter"
   ],
   "Bu hisob o‘chirilgan.": [
     "Этот аккаунт удалён.",
@@ -587,6 +611,10 @@
     "Список пуст.",
     "This list is empty."
   ],
+  "Bu ro‘yxat faqat shu telefonda saqlanadi va butunlay o‘chadi.": [
+    "Список хранится только на этом телефоне и будет удалён полностью.",
+    "This list is stored only on this phone and will be deleted completely."
+  ],
   "Bu sizning kontentingiz": [
     "Это ваш контент",
     "This is your content"
@@ -618,6 +646,10 @@
   "Bu yagona ID‘ingiz — uni o‘chirib bo‘lmaydi.": [
     "Это ваш единственный ID — его нельзя удалить.",
     "This is your only ID — it cannot be deleted."
+  ],
+  "Bugun {n} kishi kartangizga tegdi": [
+    "Сегодня к вашей карте приложились {n} раз",
+    "{n} people tapped your card today"
   ],
   "Bunday ID topilmadi.": [
     "Такой ID не найден.",
@@ -1035,6 +1067,10 @@
     "Пока ни на кого не подписан.",
     "Not following anyone yet."
   ],
+  "Hali hech narsa tegizilmagan": [
+    "Пока ничего не было приложено",
+    "Nothing tapped yet"
+  ],
   "Hali izoh yo‘q": [
     "Комментариев пока нет",
     "No comments yet"
@@ -1383,6 +1419,10 @@
     "Введите ваше имя.",
     "Enter your name."
   ],
+  "Ismingizni yozing.": [
+    "Укажите ваше имя.",
+    "Enter your name."
+  ],
   "Ixtiyoriy": [
     "Необязательно",
     "Optional"
@@ -1647,6 +1687,10 @@
     "Приложите карту к задней стороне телефона — откроется профиль.",
     "Tap the card to the back of the phone — the profile opens."
   ],
+  "Kartani telefon orqasiga tegizsangiz, u shu yerda qoladi.": [
+    "Приложите карту к задней части телефона — она появится здесь.",
+    "Tap a card to the back of your phone and it will show up here."
+  ],
   "Kartani telefon orqasining yuqori qismiga yaqinlashtiring ": [
     "Поднесите карту к верхней части задней панели телефона ",
     "Hold the card near the top of the back of your phone "
@@ -1883,9 +1927,17 @@
     "Контакт ",
     "Contact "
   ],
+  "Kontakt qoldirish": [
+    "Оставить контакт",
+    "Leave a contact"
+  ],
   "Kontakt saqlandi": [
     "Контакт сохранён",
     "Contact saved"
+  ],
+  "Kontaktingiz yuborildi": [
+    "Контакт отправлен",
+    "Contact sent"
   ],
   "Kontaktni saqlash": [
     "Сохранить контакт",
@@ -1894,6 +1946,10 @@
   "Kontaktni saqlash faqat NFC kartani tegizganda yoki QR skanerlaganda ochiladi — shunda karta egasi ulashishni tasdiqlagan bo‘ladi.": [
     "Сохранить контакт можно только после касания NFC-карты или сканирования QR — так владелец карты подтверждает, что делится данными.",
     "Saving a contact opens only after tapping the NFC card or scanning the QR — that is how the card owner confirms sharing."
+  ],
+  "Kontent": [
+    "Контент",
+    "Content"
   ],
   "Kontent joylash uchun avval shaxs tanlang.": [
     "Чтобы публиковать контент, сначала выберите личность.",
@@ -1930,6 +1986,10 @@
   "Ko‘rinish": [
     "Оформление",
     "Appearance"
+  ],
+  "Ko‘rinish namunasi": [
+    "Образец оформления",
+    "Appearance preview"
   ],
   "Ko‘rish": [
     "Посмотреть",
@@ -2063,6 +2123,10 @@
     "Например: AAA904",
     "For example: AAA904"
   ],
+  "Masalan: Dilshod Karimov": [
+    "Например: Дильшод Каримов",
+    "For example: Dilshod Karimov"
+  ],
   "Masalan: Founder · NFC Studio": [
     "Например: Founder · NFC Studio",
     "For example: Founder · NFC Studio"
@@ -2106,6 +2170,10 @@
   "Ma‘lumot yo‘q": [
     "Нет данных",
     "No information"
+  ],
+  "Ma’lumotingiz karta egasiga boradi — u sizga o‘zi bog‘lanadi.": [
+    "Ваши данные получит владелец карты — он сам свяжется с вами.",
+    "The card owner receives your details and will contact you."
   ],
   "Men qoidalarni o‘qidim va roziman": [
     "Я прочитал(а) правила и согласен(на)",
@@ -2255,6 +2323,14 @@
     "NFC включён. Начните сканирование и поднесите карту.",
     "NFC is on. Start scanning and bring the card closer."
   ],
+  "NFCSTORE kartasi": [
+    "Карта NFCSTORE",
+    "NFCSTORE card"
+  ],
+  "NFCSTORE kartasi emas": [
+    "Не карта NFCSTORE",
+    "Not an NFCSTORE card"
+  ],
   "NFCSTORE ni ochish uchun": [
     "Чтобы открыть NFCSTORE",
     "To open NFCSTORE"
@@ -2307,6 +2383,10 @@
     "Что произошло и на каком экране?",
     "What happened, and on which screen?"
   ],
+  "Nima haqida gaplashmoqchisiz?": [
+    "О чём хотите поговорить?",
+    "What would you like to discuss?"
+  ],
   "Nimadir noto‘g‘ri ketdi. Qayta urinib ko‘ring.": [
     "Что-то пошло не так. Попробуйте ещё раз.",
     "Something went wrong. Please try again."
@@ -2334,6 +2414,10 @@
   "Nom, shahar, telefon va tavsif to‘liq to‘ldirilsin.": [
     "Заполните название, город, телефон и описание полностью.",
     "Fill in the name, city, phone and description completely."
+  ],
+  "Noma’lum teg": [
+    "Неизвестная метка",
+    "Unknown tag"
   ],
   "Nomi": [
     "Название",
@@ -2391,6 +2475,10 @@
     "Подписчики и статистика",
     "Followers and statistics"
   ],
+  "Obunada": [
+    "Вы подписаны",
+    "Following"
+  ],
   "Obunalar": [
     "Подписки",
     "Following"
@@ -2442,6 +2530,10 @@
   "Oxirgi qadam — hisobingizni oching.": [
     "Последний шаг — создайте аккаунт.",
     "Last step — open your account."
+  ],
+  "Oxirgi skanerlar": [
+    "Последние сканирования",
+    "Recent scans"
   ],
   "Oyna yoki qo‘shni juftlik": [
     "Зеркало или соседняя пара",
@@ -2735,6 +2827,10 @@
     "Адрес профиля",
     "Profile address"
   ],
+  "Profil musiqasi": [
+    "Музыка профиля",
+    "Profile music"
+  ],
   "Profil nomingiz yonida ko‘rinadi.": [
     "Показывается рядом с именем профиля.",
     "Shows next to your profile name."
@@ -2810,6 +2906,10 @@
   "Profilni tasdiqlash — keyinroq": [
     "Подтверждение профиля — позже",
     "Profile verification — later"
+  ],
+  "Promokodim": [
+    "Мой промокод",
+    "My promo code"
   ],
   "Provayderni tanlang. To‘lov muvaffaqiyatini faqat server tasdiqlaydi.": [
     "Выберите провайдера. Успешность платежа подтверждает только сервер.",
@@ -3191,6 +3291,10 @@
     "Личный профиль и кнопки связи",
     "Personal profile and contact buttons"
   ],
+  "Shaxsiy profillar": [
+    "Личные профили",
+    "Personal profiles"
+  ],
   "Shaxsiy va biznes ID‘laringiz bir joyda. Sarlavhaga tegib, ": [
     "Личные и бизнес-ID в одном месте. Коснитесь заголовка, чтобы ",
     "Personal and business IDs in one place. Tap the header to "
@@ -3531,6 +3635,10 @@
     "Тарифы",
     "Tiers"
   ],
+  "Tarixni tozalash": [
+    "Очистить историю",
+    "Clear history"
+  ],
   "Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.": [
     "Как только придёт подтверждение, экран обновится сам.",
     "This screen updates itself as soon as confirmation arrives."
@@ -3627,6 +3735,10 @@
     "Приложите",
     "Hold it close"
   ],
+  "Tegizishlar tarixi": [
+    "История касаний",
+    "Tap history"
+  ],
   "Tekshirib bo‘lmadi. Ulanishni tekshiring.": [
     "Не удалось проверить. Проверьте соединение.",
     "Could not check. Check your connection."
@@ -3671,9 +3783,17 @@
     "Введите номер телефона полностью.",
     "Enter the full phone number."
   ],
+  "Telefon yoki Telegram — kamida bittasi.": [
+    "Телефон или Telegram — хотя бы одно.",
+    "Phone or Telegram — at least one."
+  ],
   "Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ": [
     "Телефон, соцсети, сайт и другие важные ",
     "Phone, social links, website and other key "
+  ],
+  "Telegram": [
+    "Telegram",
+    "Telegram"
   ],
   "Telegram bosildi": [
     "Нажатия на Telegram",
@@ -3750,6 +3870,10 @@
   "Toshkent": [
     "Ташкент",
     "Tashkent"
+  ],
+  "Tozalash": [
+    "Очистить",
+    "Clear"
   ],
   "To‘langan": [
     "Оплачено",
@@ -4207,6 +4331,10 @@
     "байт",
     "bytes"
   ],
+  "begona teg": [
+    "чужая метка",
+    "foreign tag"
+  ],
   "bermang — kod bilan ID faollashtiriladi.": [
     "не сообщайте — этим кодом активируется ID.",
     "it — the code activates the ID."
@@ -4214,6 +4342,10 @@
   "bir bosishda": [
     "в одно нажатие",
     "in one tap"
+  ],
+  "bo‘sh": [
+    "пустая",
+    "empty"
   ],
   "bo‘sh kod tanlab boshlang.": [
     "свободный код в каталоге и начните.",
@@ -4267,6 +4399,10 @@
     "код мы отправим.",
     "code will be sent."
   ],
+  "kompaniya": [
+    "компания",
+    "company"
+  ],
   "ko‘rinadi.": [
     "будет видно.",
     "will show."
@@ -4314,6 +4450,10 @@
   "post": [
     "постов",
     "posts"
+  ],
+  "profil ochildi": [
+    "профиль открыт",
+    "profile opened"
   ],
   "qayta yozish shart emas.": [
     "перезаписывать не нужно.",

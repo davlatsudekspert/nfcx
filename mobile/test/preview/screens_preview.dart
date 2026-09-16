@@ -170,6 +170,17 @@ void main() {
   // ustida oq matn, o'ng ustunda layk, izoh va ulashish.
   testWidgets('reels', (t) => screen(t, const ReelsScreen(), 'reels'));
 
+  // BIZNES PROFIL — Katalog / Galereya / Lenta / Biz haqimizda
+  // tablari shu kadrda ko'rinadi.
+  testWidgets(
+    'biznes profil',
+    (t) => screen(
+      t,
+      const ProfileScreen(companyId: 'DDD333'),
+      'business',
+    ),
+  );
+
   testWidgets('mavzular', (t) async {
     mockImageCacheDir();
     // To'rt mavzu bir kadrda — urg'u oilasi almashishini ko'rish

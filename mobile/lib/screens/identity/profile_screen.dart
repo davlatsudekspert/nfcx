@@ -1038,10 +1038,11 @@ class _BusinessCinematicHeader extends StatelessWidget {
                   ],
                 ),
 
-                if (company.about.isNotEmpty) ...[
-                  const SizedBox(height: S.x16),
-                  Text(company.about, style: T.body),
-                ],
+                // TAVSIF SARLAVHADA EMAS — "Biz haqimizda" tabida.
+                //
+                // Ilgari u shu yerda ham, tabda ham chiqib, bir
+                // matn ikki marta ko'rinardi va tablargacha
+                // bo'lgan yo'l uzayib ketardi.
               ],
             ),
           ),
