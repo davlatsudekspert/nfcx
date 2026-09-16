@@ -664,6 +664,7 @@ class _CompanyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Surface(
         padding: EdgeInsets.zero,
+        glow: company.verified,
         onTap: () => push<void>(
           context,
           (_) => ProfileScreen(companyId: company.id),
@@ -677,36 +678,100 @@ class _CompanyCard extends StatelessWidget {
               ),
               child: AspectRatio(
                 aspectRatio: 16 / 10,
-                child: NetImage(
-                  company.coverUrl ?? company.logoUrl,
-                  radius: 0,
-                  slotIcon: Ico.building,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    NetImage(
+                      company.coverUrl ?? company.logoUrl,
+                      radius: 0,
+                      slotIcon: Ico.building,
+                    ),
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0x08000000), Color(0xC9000000)],
+                          stops: [.2, 1],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: S.x10,
+                      top: S.x10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: S.x8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xB8000000),
+                          borderRadius: BorderRadius.circular(R.pill),
+                          border: Border.all(color: C.lineStrong),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            NIcon(Ico.building, size: 12, color: C.accent),
+                            const SizedBox(width: 5),
+                            Text(
+                              company.isOpen == null
+                                  ? tr('Biznes')
+                                  : company.isOpen!
+                                      ? tr('Ochiq')
+                                      : tr('Yopiq'),
+                              style: T.meta.copyWith(
+                                color: C.ink,
+                                fontSize: 9,
+                                letterSpacing: .8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: S.x12,
+                      right: S.x12,
+                      bottom: S.x10,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              company.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: T.cardTitle.copyWith(color: C.ink),
+                            ),
+                          ),
+                          if (company.verified) ...[
+                            const SizedBox(width: 5),
+                            const VerifiedBadge(size: 14),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(S.x12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+              padding: const EdgeInsets.fromLTRB(S.x12, S.x10, S.x12, S.x12),
+              child: Row(
                 children: [
-                  Text(
-                    company.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.cardTitle,
+                  Expanded(
+                    child: Text(
+                      [
+                        if (company.city.isNotEmpty) company.city,
+                        if (company.itemCount > 0)
+                          trf('{n} mahsulot', {'n': '${company.itemCount}'}),
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.caption.copyWith(fontSize: 12),
+                    ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    [
-                      if (company.city.isNotEmpty) company.city,
-                      if (company.itemCount > 0)
-                        trf('{n} mahsulot', {'n': '${company.itemCount}'}),
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.caption.copyWith(fontSize: 12),
-                  ),
+                  NIcon(Ico.chevronRight, size: 15, color: C.accent),
                 ],
               ),
             ),
@@ -715,7 +780,7 @@ class _CompanyCard extends StatelessWidget {
       );
 }
 
-/// KASHFIYOT GRIDI — 3 ustun, 3 dp oraliq.
+/// MEDIA GRIDI — 3 ustun, 3 dp oraliq.
 ///
 /// Reels katakchalari IKKI BARAVAR katta (2×2) va yashil belgi
 /// bilan: lenta bir xil kvadratlardan iborat bo'lsa, ko'z hech
@@ -831,6 +896,16 @@ class _GridTile extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             NetImage(item.imageUrl, radius: 2, slotIcon: Ico.image),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x05000000), Color(0x9E000000)],
+                  stops: [.35, 1],
+                ),
+              ),
+            ),
             if ((item.videoUrl ?? '').isNotEmpty)
               Positioned(
                 left: 6,
@@ -841,23 +916,17 @@ class _GridTile extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0x8A000000),
+                    color: const Color(0xB8000000),
                     borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: C.lineStrong),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: C.ok,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      NIcon(Ico.play, size: 9, color: C.accent, filled: true),
                       const SizedBox(width: 4),
                       Text(
-                        'REELS',
+                        'VIDEO',
                         style: T.meta.copyWith(
                           fontSize: 8.5,
                           color: C.ink,
@@ -868,13 +937,13 @@ class _GridTile extends StatelessWidget {
                   ),
                 ),
               ),
-            if (item.likeCount > 0)
-              Positioned(
-                left: 6,
-                bottom: 6,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+            Positioned(
+              left: 6,
+              right: 6,
+              bottom: 6,
+              child: Row(
+                children: [
+                  if (item.likeCount > 0) ...[
                     NIcon(Ico.heart, size: 11, color: C.accent, filled: true),
                     const SizedBox(width: 4),
                     Text(
@@ -882,8 +951,23 @@ class _GridTile extends StatelessWidget {
                       style: T.meta.copyWith(fontSize: 10, color: C.ink),
                     ),
                   ],
-                ),
+                  const Spacer(),
+                  if (item.name.trim().isNotEmpty)
+                    Flexible(
+                      child: Text(
+                        item.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: T.meta.copyWith(
+                          fontSize: 9,
+                          color: C.ink.withValues(alpha: .88),
+                        ),
+                      ),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
       );
