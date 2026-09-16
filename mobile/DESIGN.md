@@ -83,7 +83,18 @@ ScreenBackdrop(
 
 **Gradient** — `C.screenBase` · `screenBaseCool` · `raisedSurface` ·
 `glassSurface` · `actionFace` · `accentText` · `medallion` ·
-`storyRing` · `reelsRing` · `bottomScrim` · `navBar` · `sweep`
+`storyRing` · `reelsRing` · `bottomScrim` · `topScrim` · `navBar` ·
+`sweep`
+
+**Rasm ustidagi matn** — `C.onMedia` · `onMedia2` · `onMedia3` ·
+`onMediaAccent` va `C.mediaText` soyasi.
+
+QOIDA: rasm yoki video USTIDA turgan matn HECH QACHON `C.ink`
+ishlatmaydi. `ink` mavzu bilan o'zgaradi (Opal'da deyarli qora),
+ostidagi kadr esa qanday rangda bo'lishi noma'lum — shuning uchun
+u yerda faqat `onMedia*` ranglari va `C.mediaText` soyasi. Shisha
+`RoundButton` (`glass: true`) buni o'zi qiladi. Ikonka uchun
+`NIcon(onMedia: true)`.
 
 **Soya** — `C.e1` · `e2` · `e3` · `sheetShadow` · `metalShadow` ·
 `actionGlow` · `rimGlow`
