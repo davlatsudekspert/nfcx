@@ -272,10 +272,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         bottom: false,
         child: Column(
           children: [
-            TopBar(
-              center: _EntryChip(entry: widget.entry, owned: _owned),
-              trailing: RoundButton(Ico.more, onTap: _menu),
-            ),
+            if (!_isCompany)
+              TopBar(
+                center: _EntryChip(entry: widget.entry, owned: _owned),
+                trailing: RoundButton(Ico.more, onTap: _menu),
+              ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
@@ -480,6 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onFollowers: () => push<void>(context, (_) => FollowListScreen(
           code: _code, title: tr('Obunachilar'), isCompany: true,
         )),
+        onMenu: _menu,
       ),
 
       // KATALOG — biznes profilida ustun bo'lim.
@@ -750,16 +752,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 /// Biznes uchun API'dagi cover/logo birga ko'rinadigan vitrina.
 class _BusinessCinematicHeader extends StatelessWidget {
-  const _BusinessCinematicHeader({required this.company, required this.followers, required this.onFollowers});
-  final Company company; final int followers; final VoidCallback onFollowers;
+  const _BusinessCinematicHeader({required this.company, required this.followers, required this.onFollowers, required this.onMenu});
+  final Company company; final int followers; final VoidCallback onFollowers; final VoidCallback onMenu;
   @override
   Widget build(BuildContext context) => Column(children: [
     SizedBox(
-      height: 420,
+      height: 510,
       child: Stack(fit: StackFit.expand, children: [
         BusinessHero(imageUrl: company.coverUrl ?? company.logoUrl),
+        Positioned(top:S.x16,left:S.gutter,child:RoundButton(Ico.back,onTap:()=>Navigator.of(context).maybePop())),
+        Positioned(top:S.x16,right:S.gutter,child:RoundButton(Ico.more,onTap:onMenu)),
         const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter,end: Alignment.bottomCenter,colors:[Color(0x11000000),Color(0x05000000),Color(0xF5000000)],stops:[0,.36,1]))),
-        Positioned(left:S.gutter,right:S.gutter,bottom:S.x24,child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Positioned(left:S.gutter,right:S.gutter,bottom:S.x32,child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Row(children:[Avatar(url:company.logoUrl,name:company.name,size:56,square:true),const SizedBox(width:S.x12),Expanded(child:Text(company.name,maxLines:2,overflow:TextOverflow.ellipsis,style:T.profileName.copyWith(color:C.ink,fontSize:34))),if(company.verified) const VerifiedBadge(size:19)]),
           const SizedBox(height:S.x12),
           Wrap(spacing:S.x8,runSpacing:S.x8,children:[if(company.city.isNotEmpty) _InfoPill(icon:Ico.pin,text:company.city),if(company.isOpen!=null) _InfoPill(icon:Ico.clock,text:company.isOpen!?tr('Ochiq'):tr('Yopiq'),accent:company.isOpen!),]),
