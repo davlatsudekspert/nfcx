@@ -576,22 +576,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            itemCount: c.items.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: S.x12,
-              mainAxisSpacing: S.x12,
-              childAspectRatio: .78,
-            ),
-            itemBuilder: (context, i) => ProductCard(
-              product: c.items[i],
-              companyId: c.id,
-              companyName: c.name,
-            ),
+          child: Column(
+            children: [
+              // Birinchi mahsulot biznes vitrinasining davomidir: u
+              // katalogni darhol ko'rinadigan mahsulot sahifasiga
+              // aylantiradi. Qolgan mahsulotlar yashirilmaydi.
+              SizedBox(
+                height: 278,
+                width: double.infinity,
+                child: ProductCard(
+                  product: c.items.first,
+                  companyId: c.id,
+                  companyName: c.name,
+                ),
+              ),
+              if (c.items.length > 1) ...[
+                const SizedBox(height: S.x12),
+                GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  itemCount: c.items.length - 1,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: S.x12,
+                    mainAxisSpacing: S.x12,
+                    childAspectRatio: .78,
+                  ),
+                  itemBuilder: (context, i) => ProductCard(
+                    product: c.items[i + 1],
+                    companyId: c.id,
+                    companyName: c.name,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],
