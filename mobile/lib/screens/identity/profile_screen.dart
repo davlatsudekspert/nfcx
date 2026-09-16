@@ -820,7 +820,9 @@ class _BusinessCover extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(R.card),
           child: AspectRatio(
-            aspectRatio: 16 / 9,
+            // Business ochilganda katalogdan avval joyning o'zi
+            // sezilishi kerak. Keng banner emas, editorial hero.
+            aspectRatio: 5 / 4,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -837,6 +839,39 @@ class _BusinessCover extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (company.isOpen != null)
+                  Positioned(
+                    top: S.x12,
+                    right: S.x12,
+                    child: GlassPanel(
+                      radius: R.status,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: S.x12,
+                        vertical: S.x8,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: company.isOpen! ? C.ok : C.ink3,
+                              boxShadow: company.isOpen!
+                                  ? [BoxShadow(color: C.ok.withValues(alpha: .55), blurRadius: 8)]
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            company.isOpen! ? tr('Ochiq') : tr('Yopiq'),
+                            style: T.meta.copyWith(color: C.ink, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 Positioned(
                   left: S.x12,
                   bottom: S.x12,
