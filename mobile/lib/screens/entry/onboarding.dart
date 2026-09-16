@@ -6,6 +6,7 @@ import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
+import '../../design/components/logo.dart';
 import '../../design/components/media.dart';
 import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
@@ -248,10 +249,11 @@ class _TapArt extends StatelessWidget {
                 child: const SizedBox(
                   width: 232,
                   child: IdentityCard(
-                    code: 'GLD777',
+                    // Tanishtiruv maketi hech qaysi odamning ID sini
+                    // ko'rsatmaydi. Bu kartaning o'zi va NFC harakatini
+                    // tushuntiradigan abstrakt brend namunasi.
+                    code: 'NFC',
                     tier: Tier.gold,
-                    holder: 'Aziz Karimov',
-                    url: 'nfcstore.uz/gld777',
                     flippable: false,
                   ),
                 ),
@@ -380,7 +382,7 @@ class _ProfileArt extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Avatar(name: 'Aziz Karimov', size: 46),
+                        const BrandMark(size: 46),
                         const SizedBox(width: S.x12),
                         Expanded(
                           child: Column(
@@ -390,7 +392,7 @@ class _ProfileArt extends StatelessWidget {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      'Aziz Karimov',
+                                    'NFCSTORE',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: T.cardTitle,
@@ -401,7 +403,7 @@ class _ProfileArt extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 3),
-                              Text(tr('Direktor'), style: T.caption),
+                              Text(tr('Profil'), style: T.caption),
                             ],
                           ),
                         ),
@@ -416,7 +418,7 @@ class _ProfileArt extends StatelessWidget {
                         const SizedBox(width: 7),
                         Expanded(
                           child: Text(
-                            'nfcstore.uz/gld777',
+                            'nfcstore.uz',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: T.link,
@@ -449,22 +451,22 @@ class _ContactArt extends StatelessWidget {
           children: [
             Surface(
               glow: true,
-              child: Row(
-                children: [
-                  const Avatar(name: 'Aziz Karimov', size: 44),
+                child: Row(
+                  children: [
+                    const BrandMark(size: 44),
                   const SizedBox(width: S.x12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Aziz Karimov',
+                          'NFCSTORE',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: T.cardTitle,
                         ),
                         const SizedBox(height: 3),
-                        Text('+998 90 123 45 67', style: T.meta),
+                        Text(tr('Aloqa'), style: T.meta),
                       ],
                     ),
                   ),
