@@ -1,0 +1,57 @@
+name: Mobile golden rasmlarini yangilash
+
+# Bu workflow oddiy build emas. U faqat dizayn ataylab o'zgarganda,
+# tasdiqlangan Flutter renderidan test etalonlarini qayta yozish uchun
+# qo'lda ishga tushiriladi. Har safar avtomatik ishlashi mumkin emas:
+# aks holda tasodifiy vizual regressiya ham etalon bo'lib qolardi.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Aniq tasdiq so''zi: YANGILA'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: ${{ inputs.confirm == 'YANGILA' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      - name: Tasdiqlangan ekran rasmlarini yaratish
+        run: flutter test --update-goldens test/audit
+
+      - name: O'zgargan ekranlarni ko'rsatish
+        run: git diff --stat -- test/audit/goldens
+
+      - name: Etalonlarni saqlash
+        working-directory: .
+        run: |
+          if git diff --quiet -- mobile/test/audit/goldens; then
+            echo 'Golden rasmlarda farq yoq.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mobile/test/audit/goldens
+          git commit -m "Premium mobil ekranlarining vizual etalonini yangilash"
+          git push origin HEAD:main
