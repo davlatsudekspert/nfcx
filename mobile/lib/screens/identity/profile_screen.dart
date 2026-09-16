@@ -6,7 +6,6 @@ import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
-import '../../design/components/business_hero.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
@@ -793,64 +792,178 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
-
-/// Biznes uchun API'dagi cover/logo birga ko'rinadigan vitrina.
+/// BIZNES PROFIL SARLAVHASI — prototip maketi.
+///
+/// Cover rasmi, uning ustiga chiqqan KVADRAT logotip (kompaniya
+/// belgisi dumaloq emas — u brend, odam emas), o'ngda tasdiq
+/// nishoni. Pastda nom, bir qatorlik meta (soha · reyting · shahar)
+/// va ochiq/yopiq holati.
+///
+/// ILGARI BU YERDA "kinematik" qatlam turardi: to'q gradient,
+/// rasm ustidagi oq matn va o'zaro ustma-ust tushgan bloklar.
+/// Yorug' mavzuda u o'qilmas bo'lib qoldi — matn oq fonda oq
+/// chiqardi. Prototipda esa cover RASM, matn esa uning OSTIDA.
 class _BusinessCinematicHeader extends StatelessWidget {
-  const _BusinessCinematicHeader({required this.company, required this.followers, required this.onFollowers, required this.onMenu});
-  final Company company; final int followers; final VoidCallback onFollowers; final VoidCallback onMenu;
-  @override
-  Widget build(BuildContext context) => Column(children: [
-    SizedBox(
-      height: 510,
-      child: Stack(fit: StackFit.expand, children: [
-        BusinessHero(imageUrl: company.coverUrl ?? company.logoUrl),
-        Positioned(top:S.x16,left:S.gutter,child:RoundButton(Ico.back,onTap:()=>Navigator.of(context).maybePop())),
-        Positioned(top:S.x16,right:S.gutter,child:RoundButton(Ico.more,onTap:onMenu)),
-        const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter,end: Alignment.bottomCenter,colors:[Color(0x11000000),Color(0x05000000),Color(0xF5000000)],stops:[0,.36,1]))),
-        Positioned(left:S.gutter,right:S.gutter,bottom:S.x32,child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Row(children:[Avatar(url:company.logoUrl,name:company.name,size:56,square:true),const SizedBox(width:S.x12),Expanded(child:Text(company.name,maxLines:2,overflow:TextOverflow.ellipsis,style:T.profileName.copyWith(color:C.ink,fontSize:34))),if(company.verified) const VerifiedBadge(size:19)]),
-          const SizedBox(height:S.x12),
-          Wrap(spacing:S.x8,runSpacing:S.x8,children:[if(company.city.isNotEmpty) _InfoPill(icon:Ico.pin,text:company.city),if(company.isOpen!=null) _InfoPill(icon:Ico.clock,text:company.isOpen!?tr('Ochiq'):tr('Yopiq'),accent:company.isOpen!),]),
-        ]) )
-      ]),
-    ),
-    Transform.translate(offset:const Offset(0,-S.x20),child:Padding(padding:const EdgeInsets.symmetric(horizontal:S.gutter),child:GlassPanel(radius:30,padding:const EdgeInsets.all(S.x16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      if(company.about.isNotEmpty) Text(company.about,maxLines:2,overflow:TextOverflow.ellipsis,style:T.body.copyWith(color:C.ink2)),
-      if(company.about.isNotEmpty) const SizedBox(height:S.x16),
-      Row(children:[Text('${som(company.itemCount)} ${tr('mahsulot')}',style:T.buttonSm),const Spacer(),Text('${som(company.views)} ${tr('ko‘rish')}',style:T.buttonSm),const SizedBox(width:S.x16),Press(onTap:onFollowers,minSize:S.tap,child:Text('${som(followers)} ${tr('obunachi')}',style:T.buttonSm.copyWith(color:C.accent)))]),
-      const SizedBox(height:S.x16),ContactRow(phone:company.phone,telegram:company.tg,instagram:company.instagram,website:company.website,address:company.address,compactRail:true),
-    ])))),
-  ]);
-}
+  const _BusinessCinematicHeader({
+    required this.company,
+    required this.followers,
+    required this.onFollowers,
+    required this.onMenu,
+  });
 
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({required this.icon, required this.text, this.accent = false});
-
-  final Ico icon;
-  final String text;
-  final bool accent;
+  final Company company;
+  final int followers;
+  final VoidCallback onFollowers;
+  final VoidCallback onMenu;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: S.x12, vertical: S.x8),
-        decoration: BoxDecoration(
-          color: accent ? C.accent.withValues(alpha: .12) : C.glass,
-          borderRadius: BorderRadius.circular(R.status),
-          border: Border.all(color: accent ? C.accent.withValues(alpha: .35) : C.line),
+  Widget build(BuildContext context) {
+    final meta = [
+      if (company.category.isNotEmpty) company.category,
+      if (company.city.isNotEmpty) company.city,
+      if (company.address.isNotEmpty) company.address,
+    ].join(' · ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 230,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              NetImage(company.coverUrl ?? company.logoUrl, radius: 0),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        C.bg.withValues(alpha: .25),
+                        C.bg.withValues(alpha: 0),
+                        C.bg,
+                      ],
+                      stops: const [0, .4, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            NIcon(icon, size: 14, color: accent ? C.accent : C.ink2),
-            const SizedBox(width: 6),
-            Text(text, style: T.meta.copyWith(color: accent ? C.accent : C.ink2)),
-          ],
+        Transform.translate(
+          offset: const Offset(0, -46),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // KVADRAT LOGOTIP — kompaniya belgisi dumaloq
+                    // emas (prototip): dumaloq ramka odamning
+                    // avatariga tegishli, brend esa kvadratda.
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(R.card),
+                        border: Border.all(color: C.bg, width: 3),
+                        boxShadow: C.e1,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(R.card - 3),
+                        child: Avatar(
+                          url: company.logoUrl,
+                          name: company.name,
+                          size: 78,
+                          square: true,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    if (company.verified)
+                      StatusChip(
+                        tr('Admin tasdiqlagan'),
+                        tone: StatusTone.ok,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: S.x12),
+                Text(company.name, style: T.profileName),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.body.copyWith(fontSize: 13.5, color: C.ink2),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'nfcstore.uz/c/${company.id.toLowerCase()}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.link.copyWith(color: C.accent, fontSize: 12),
+                      ),
+                    ),
+                    if (company.hoursLabel.isNotEmpty) ...[
+                      const SizedBox(width: S.x8),
+                      Text(
+                        '· ${company.hoursLabel}',
+                        style: T.meta.copyWith(
+                          color: (company.isOpen ?? false) ? C.ok : C.ink3,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                // ALOQA — dumaloq tugmalar qatori.
+                const SizedBox(height: S.x16),
+                ContactRow(
+                  phone: company.phone,
+                  telegram: company.tg,
+                  instagram: company.instagram,
+                  website: company.website,
+                  address: company.address,
+                ),
+
+                const SizedBox(height: S.x16),
+                _InlineStats(
+                  items: [
+                    (
+                      value: som(company.itemCount),
+                      label: tr('mahsulot'),
+                      onTap: null,
+                    ),
+                    (value: som(company.views), label: tr('ko‘rish'), onTap: null),
+                    (
+                      value: som(followers),
+                      label: tr('obunachi'),
+                      onTap: onFollowers,
+                    ),
+                  ],
+                ),
+
+                if (company.about.isNotEmpty) ...[
+                  const SizedBox(height: S.x16),
+                  Text(company.about, style: T.body),
+                ],
+              ],
+            ),
+          ),
         ),
-      );
+      ],
+    );
+  }
 }
-
-
-/// Qanday kirilgani — tepadagi kichik chip.
 class _EntryChip extends StatelessWidget {
   const _EntryChip({required this.entry, required this.owned});
 

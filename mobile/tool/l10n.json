@@ -1287,6 +1287,10 @@
     "Приложение открывается с этим ID",
     "The app opens with this ID"
   ],
+  "Ilovani yopmang. Server to‘lovni tasdiqlashi bilan kartangiz faollashadi.": [
+    "Не закрывайте приложение. Как только сервер подтвердит оплату, карта активируется.",
+    "Keep the app open. Your card activates as soon as the server confirms the payment."
+  ],
   "Instagram bosildi": [
     "Переходы в Instagram",
     "Instagram taps"
@@ -2094,6 +2098,10 @@
   "Mening kontentim": [
     "Мой контент",
     "My content"
+  ],
+  "Mening profilim": [
+    "Мой профиль",
+    "My profile"
   ],
   "Mijoz": [
     "Клиент",
@@ -3695,6 +3703,10 @@
     "Оплата прошла, но ID не выдан",
     "I paid, but got no ID"
   ],
+  "To‘lov qabul qilindi": [
+    "Оплата принята",
+    "Payment accepted"
+  ],
   "To‘lov sahifasi ochildi. Yakunlangach premium o‘zi faollashadi.": [
     "Страница оплаты открыта. После завершения premium включится сам.",
     "The payment page is open. Premium turns on by itself once it completes."
@@ -3710,6 +3722,10 @@
   "To‘lov tasdiqlandi · server": [
     "Платёж подтверждён · сервер",
     "Payment confirmed · server"
+  ],
+  "To‘lov tekshirilmoqda": [
+    "Оплата проверяется",
+    "Checking payment"
   ],
   "To‘lov tizimi": [
     "Платёжная система",
@@ -4160,7 +4176,7 @@
     "d"
   ],
   "mahsulot": [
-    "товар",
+    "товаров",
     "products"
   ],
   "ma‘lumotlaringizni bitta raqamli profilda jamlang va NFC karta ": [
@@ -4302,6 +4318,10 @@
   "{code} kodi band qilingan. To‘lov tasdiqlanmasa, kod boshqa odamga o‘tadi.": [
     "Код {code} забронирован. Если оплата не подтвердится, код перейдёт другому человеку.",
     "Code {code} is on hold. If the payment is not confirmed, the code goes to someone else."
+  ],
+  "{code} kodi endi sizniki. Profilni sozlang va kartaga yozing.": [
+    "Код {code} теперь ваш. Настройте профиль и запишите на карту.",
+    "The code {code} is yours now. Set up your profile and write it to the card."
   ],
   "{code} o‘chirilsinmi?": [
     "Удалить {code}?",

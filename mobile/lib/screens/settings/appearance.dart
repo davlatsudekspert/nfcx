@@ -5,6 +5,7 @@ import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/logo.dart';
+import '../../design/components/press.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
@@ -63,17 +64,29 @@ class AppearanceScreen extends StatelessWidget {
                   children: [
                     Eyebrow(tr('Mavzu')),
                     const SizedBox(height: S.x12),
-                    for (final p in Palette.all) ...[
-                      _PaletteRow(
-                        palette: p,
-                        selected: p.id == prefs.palette.id,
-                        onTap: () {
-                          successHaptic();
-                          prefs.setPalette(p);
-                        },
-                      ),
-                      if (p != Palette.all.last) const SizedBox(height: S.x8),
-                    ],
+                    // UCHTA KARTA YONMA-YON (prototip: `.palettes`).
+                    //
+                    // Ro'yxat emas, NAMUNA: har karta o'z mavzusining
+                    // FONI bilan chiziladi va tanlov ranglarni ko'rib
+                    // qilinadi. Bir xil fondagi uch qator esa faqat
+                    // nomni ko'rsatardi.
+                    Row(
+                      children: [
+                        for (final p in Palette.all) ...[
+                          Expanded(
+                            child: _PaletteCard(
+                              palette: p,
+                              selected: p.id == prefs.palette.id,
+                              onTap: () {
+                                successHaptic();
+                                prefs.setPalette(p);
+                              },
+                            ),
+                          ),
+                          if (p != Palette.all.last) const SizedBox(width: S.x8),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -206,13 +219,12 @@ class AppearanceScreen extends StatelessWidget {
     );
   }
 }
-
-/// Mavzu qatori — namuna, nom, HEX va tanlov halqasi.
+/// PALITRA NAMUNASI — prototipdagi `.palettes button`.
 ///
-/// TANLOV FAQAT RANG BILAN BILDIRILMAYDI: qirra kuchayadi VA
-/// o'ngda belgi paydo bo'ladi.
-class _PaletteRow extends StatelessWidget {
-  const _PaletteRow({
+/// Karta o'z mavzusining foni bilan chiziladi, ostida esa urg'u
+/// rangining chizig'i. Tanlangani urg'u rangli chegara oladi.
+class _PaletteCard extends StatelessWidget {
+  const _PaletteCard({
     required this.palette,
     required this.selected,
     required this.onTap,
@@ -222,62 +234,56 @@ class _PaletteRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Namuna — mavzuning O'Z ranglaridan, joriy mavzuniki emas.
-  /// Aks holda hamma qator bir xil ko'rinardi. Gradient
-  /// `C.actionFace` bilan bir xil naqsh: yorug' → to'yingan →
-  /// quyuq.
-  LinearGradient get _face => LinearGradient(
-        begin: const Alignment(-.7, -1),
-        end: const Alignment(.7, 1),
-        colors: [palette.accentHigh, palette.accent, palette.accentDeep],
-        stops: const [0, .4, 1],
-      );
-
-  String get _hex {
-    final v = palette.accent.toARGB32() & 0xFFFFFF;
-    return '#${v.toRadixString(16).toUpperCase().padLeft(6, '0')}';
-  }
-
   @override
-  Widget build(BuildContext context) => Surface(
+  Widget build(BuildContext context) => Press(
         onTap: onTap,
-        padding: const EdgeInsets.all(S.x12),
-        border: Border.all(
-          color: selected ? C.lineStrong : C.line,
-          width: selected ? 1.4 : 1,
-        ),
-        shadow: C.e1,
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: _face,
-                shape: BoxShape.circle,
-                border: Border.all(color: C.lineCool),
-              ),
+        minSize: 0,
+        scale: .97,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(R.tile),
+            border: Border.all(
+              color: selected ? C.accent : C.line,
+              width: selected ? 2 : 1,
             ),
-            const SizedBox(width: S.x12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(palette.label, style: T.cardTitle),
-                  const SizedBox(height: 3),
-                  Text(_hex, style: T.code(12, color: C.ink3)),
-                ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Namuna — mavzuning O'Z ranglaridan, joriy
+              // mavzuniki emas: aks holda uchala karta bir xil
+              // ko'rinardi.
+              Container(
+                height: 70,
+                color: palette.baseBottom,
+                padding: const EdgeInsets.all(8),
+                alignment: Alignment.bottomLeft,
+                child: Container(
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: palette.accent,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
               ),
-            ),
-            if (selected) ...[
-              const SizedBox(width: S.x12),
-              _Check(size: 24),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                child: Text(
+                  palette.label,
+                  maxLines: 2,
+                  style: T.caption.copyWith(
+                    fontSize: 12,
+                    color: selected ? C.accent : C.ink,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
-          ],
+          ),
         ),
       );
 }
-
 /// Tanlangan qatordagi belgi.
 class _Check extends StatelessWidget {
   const _Check({required this.size});

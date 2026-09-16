@@ -183,6 +183,7 @@ class Company {
     this.website = '',
     this.status = '',
     this.tier = '',
+    this.category = '',
     this.verified = false,
     this.ordersEnabled = false,
     this.isOpen,
@@ -209,6 +210,12 @@ class Company {
   final String website;
   final String status;
   final String tier;
+
+  /// Soha — serverdagi `subcategory` (bo'lmasa `category`).
+  /// Biznes profilining meta qatorida birinchi turadi: odam avval
+  /// "bu nima?" degan savolga javob oladi.
+  final String category;
+
   final bool verified;
   final bool ordersEnabled;
 
@@ -247,6 +254,11 @@ class Company {
       website: _s(j['website']),
       status: _s(j['status']),
       tier: _s(j['tier']),
+      // Soha: aniqrog'i (`subcategory`) bo'lsa o'sha, bo'lmasa
+      // umumiy toifa.
+      category: _s(j['subcategory']).isNotEmpty
+          ? _s(j['subcategory'])
+          : _s(j['category']),
       verified: _b(j['verified']),
       ordersEnabled: _b(j['ordersEnabled']),
       isOpen: j['isOpen'] is bool ? j['isOpen'] as bool : null,

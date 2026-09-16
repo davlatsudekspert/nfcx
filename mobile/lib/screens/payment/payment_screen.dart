@@ -20,7 +20,7 @@ import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/contact_actions.dart';
 import '../identity/profile_screen.dart';
-import '../nfc/order_card.dart';
+import '../nfc/nfc_write.dart';
 
 /// TO'LOV.
 ///
@@ -473,7 +473,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     Text(
                       _stalled
                           ? tr('Javob kechikmoqda')
-                          : tr('Tasdiqlanmoqda'),
+                          : tr('To‘lov tekshirilmoqda'),
                       textAlign: TextAlign.center,
                       style: T.title,
                     ),
@@ -482,16 +482,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       _stalled
                           ? tr('Server hali javob bermadi. To‘lov o‘tgan '
                               'bo‘lishi ham mumkin — holatni tekshiring.')
-                          : trf('To‘lov {tizim}da bajarildi. Server javobi '
-                              'kutilmoqda — ilovani yopmang.', {
-                              'tizim': _provider == 'click' ? 'Click' : 'Payme',
-                            }),
+                          : tr('Ilovani yopmang. Server to‘lovni tasdiqlashi '
+                              'bilan kartangiz faollashadi.'),
                       textAlign: TextAlign.center,
                       style: T.body,
                     ),
                     const SizedBox(height: S.x20),
+                    // PROTOTIPDAGI CHIP: tizim · kod · summa. Odam
+                    // nima uchun to'layotganini kutish paytida ham
+                    // ko'rib turadi.
                     StatusChip(
-                      tr('HOLAT: KUTILMOQDA'),
+                      '${_provider == 'click' ? 'Click' : 'Payme'} · '
+                      '${widget.record.code} · ${som(widget.record.price)} ${tr('so‘m')}',
                       tone: StatusTone.pending,
                     ),
                     const SizedBox(height: S.x32),
@@ -581,12 +583,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       flippable: false,
                     ),
                     const SizedBox(height: S.x32),
-                    Text(tr('ID sizniki'), style: T.title),
+                    Text(tr('To‘lov qabul qilindi'), style: T.title),
                     const SizedBox(height: S.x12),
                     Text(
                       trf(
-                        'Server to‘lovni tasdiqladi. {code} profilingizga '
-                        'ulandi.',
+                        '{code} kodi endi sizniki. Profilni sozlang va '
+                        'kartaga yozing.',
                         {'code': widget.record.code},
                       ),
                       textAlign: TextAlign.center,
@@ -598,20 +600,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       tone: StatusTone.ok,
                     ),
                     const SizedBox(height: S.x32),
-                    PrimaryButton(
-                      tr('Profilni ko‘rish'),
-                      onTap: () => push<void>(
-                        context,
-                        (_) => ProfileScreen(code: widget.record.code),
-                      ),
-                    ),
-                    const SizedBox(height: S.x8),
-                    SecondaryButton(
-                      tr('NFC karta buyurtma berish'),
-                      onTap: () => push<void>(
-                        context,
-                        (_) => OrderCardScreen(record: widget.record),
-                      ),
+                    // PROTOTIPDAGI IKKI TUGMA: keyingi qadam
+                    // ikkita va ikkalasi ham kerak — profilni
+                    // to'ldirish va kartaga yozish.
+                    Row(
+                      children: [
+                        Expanded(
+                          child: PrimaryButton(
+                            tr('Profilni sozlash'),
+                            onTap: () => push<void>(
+                              context,
+                              (_) => ProfileScreen(code: widget.record.code),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: S.x8),
+                        Expanded(
+                          child: SecondaryButton(
+                            tr('Kartaga yozish'),
+                            onTap: () => push<void>(
+                              context,
+                              (_) => const NfcWriteScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
