@@ -972,4 +972,3 @@ class _GridTile extends StatelessWidget {
         ),
       );
 }
-

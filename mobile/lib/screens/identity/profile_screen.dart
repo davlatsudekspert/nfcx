@@ -1092,4 +1092,3 @@ class _ProfileSkeleton extends StatelessWidget {
         ),
       );
 }
-
