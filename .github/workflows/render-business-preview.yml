@@ -25,7 +25,7 @@ jobs:
       - name: Dependencies
         run: flutter pub get --enforce-lockfile
       - name: Render current business profile preview
-        run: flutter test --update-goldens test/audit/profile_screens_test.dart
+        run: flutter test --update-goldens test/audit/visual_audit_test.dart
       - name: Upload rendered screenshots
         uses: actions/upload-artifact@v4
         with:
