@@ -102,6 +102,7 @@ const enStrings = <String, String>{
   'Biznesni tahrirlash': 'Edit business',
   'Bloklash': 'Block',
   'Bog‘lanish · Telegram bot, admin': 'Contact · Telegram bot, admin',
+  'Bosh karta: yozilgan': 'Main card: written',
   'Bosh sahifa': 'Home',
   'Boshlash': 'Get started',
   'Boshlaymizmi?': 'Shall we start?',

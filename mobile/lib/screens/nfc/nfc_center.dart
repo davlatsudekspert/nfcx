@@ -29,6 +29,7 @@ import 'nfc_write.dart';
 import 'order_card.dart';
 import '../identity/profile_stats.dart';
 import 'qr_share.dart';
+import '../../state/scan_history.dart';
 import 'scan_history_screen.dart';
 import 'tag_info.dart';
 
@@ -53,8 +54,29 @@ class NfcCenterScreen extends StatefulWidget {
 }
 
 class _NfcCenterScreenState extends State<NfcCenterScreen> {
+  /// Tegizishlar tarixi — "Bosh karta: yozilgan" chipi shundan
+  /// o'qiydi.
+  final _history = ScanHistory();
 
   int _gifts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _history.addListener(_onHistory);
+    _history.load();
+  }
+
+  @override
+  void dispose() {
+    _history.removeListener(_onHistory);
+    _history.dispose();
+    super.dispose();
+  }
+
+  void _onHistory() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void didChangeDependencies() {
@@ -250,6 +272,19 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                             context,
                             (_) => QrShareScreen(identity: active),
                           ),
+                  // BOSH KARTA YOZILGANMI (prototip: yashil chip).
+                  //
+                  // Belgi SHU TELEFONDA saqlanadi: teg fizik narsa
+                  // va uni kim yozganini serverdan bilib bo'lmaydi.
+                  // Yozilmagan bo'lsa chip umuman ko'rsatilmaydi —
+                  // "yozilmagan" degan qizil yozuv yangi
+                  // foydalanuvchini bekorga qo'rqitardi.
+                  trailing: active != null && _history.wroteCode(active.code)
+                      ? StatusChip(
+                          tr('Bosh karta: yozilgan'),
+                          tone: StatusTone.ok,
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(height: S.x12),

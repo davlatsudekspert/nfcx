@@ -102,6 +102,7 @@ const ruStrings = <String, String>{
   'Biznesni tahrirlash': 'Редактировать бизнес',
   'Bloklash': 'Заблокировать',
   'Bog‘lanish · Telegram bot, admin': 'Связь · Telegram-бот, админ',
+  'Bosh karta: yozilgan': 'Основная карта: записана',
   'Bosh sahifa': 'Главная',
   'Boshlash': 'Начать',
   'Boshlaymizmi?': 'Начнём?',

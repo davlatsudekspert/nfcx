@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ISHGA TUSHISH FONI — ILOVANING FONI BILAN BIR XIL.
+     Ilgari bu yerda ilovaning eski quyuq foni (#0A0805) turardi.
+     Dizayn yorug' "Opal" ga o'tgach, ilova ochilganda avval QORA
+     ekran chaqnab, keyin oq ilovaga o'tardi. Endi ikkalasi ham oq —
+     o'tish sezilmaydi.
+
+     Ilova belgisining foni (`ic_launcher_background`) esa QORA
+     bo'lib qoladi: oltin belgi aynan quyuq fonda ko'rinadi. -->
+<resources>
+    <color name="splash_background">#FFFFFF</color>
+</resources>

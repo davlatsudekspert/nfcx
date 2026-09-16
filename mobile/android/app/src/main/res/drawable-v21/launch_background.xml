@@ -4,7 +4,7 @@
      keyin qora dizaynga o'tardi. Fon ilovaning o'z foniga (Obsidian)
      tenglashtirildi — ochilish silliq ko'rinadi. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/ic_launcher_background" />
+    <item android:drawable="@color/splash_background" />
     <!-- BRENDLANGAN BIRINCHI KADR.
          Ilgari bu yerda faqat rang turardi: ilova ochilganda bir-ikki
          soniya BO'M-BO'SH qora ekran ko'rinardi va odam "ochilmadi"

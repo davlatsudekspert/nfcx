@@ -65,6 +65,14 @@ class ScanHistory extends ChangeNotifier {
     await _save();
   }
 
+  /// Shu kod jismoniy tegga YOZILGANMI (shu telefonda).
+  bool wroteCode(String code) {
+    final key = code.toUpperCase();
+    return _items.any(
+      (e) => e.outcome == kWrittenOutcome && e.code.toUpperCase() == key,
+    );
+  }
+
   Future<void> clear() async {
     _items = const [];
     notifyListeners();
@@ -83,6 +91,13 @@ class ScanHistory extends ChangeNotifier {
     }
   }
 }
+
+/// "Kartaga yozildi" belgisi — `ScanEntry.outcome` qiymati.
+///
+/// Matn sifatida saqlanadi (tarix JSON'da), shuning uchun u bitta
+/// joyda turadi: ikki faylda ikki xil yozilsa, NFC markazidagi
+/// chip jimgina o'chib qolardi.
+const kWrittenOutcome = 'yozildi';
 
 /// Bitta tegizish.
 class ScanEntry {

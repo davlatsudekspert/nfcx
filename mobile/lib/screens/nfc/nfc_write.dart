@@ -13,6 +13,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../../state/scan_history.dart';
 import 'nfc_scan.dart';
 import 'qr_share.dart';
 
@@ -81,6 +82,21 @@ class _NfcWriteScreenState extends State<NfcWriteScreen> {
 
     HapticFeedback.mediumImpact();
     setState(() => _phase = ok ? _Phase.done : _Phase.failed);
+
+    // KARTA YOZILGANI ESLAB QOLINADI (qurilmada).
+    //
+    // NFC markazidagi "Bosh karta: yozilgan" chipi shunga qarab
+    // yonadi. Serverda bunday belgi yo'q va bo'lishi ham mumkin
+    // emas: teg fizik narsa, uni kim, qaysi telefonda yozganini
+    // faqat o'sha telefon biladi.
+    if (ok) {
+      ScanHistory().add(ScanEntry(
+        at: DateTime.now(),
+        code: code,
+        isCompany: _company,
+        outcome: kWrittenOutcome,
+      ));
+    }
   }
 
   /// Bekor qilish — sessiyani yopamiz va javobni e'tiborsiz
