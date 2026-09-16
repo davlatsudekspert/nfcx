@@ -4070,5 +4070,17 @@
   "Tanlanmagan": [
     "Не выбрано",
     "Not selected"
+  ],
+  "Buyurtma tarkibi": [
+    "Состав заказа",
+    "Order summary"
+  ],
+  "Sizga xos raqam": [
+    "Особый номер для вас",
+    "A number just for you"
+  ],
+  "Profilingiz uchun o‘ziga xos NFC ID tanlang.": [
+    "Выберите особый NFC ID для своего профиля.",
+    "Choose a distinctive NFC ID for your profile."
   ]
 }
