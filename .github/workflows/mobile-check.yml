@@ -1,0 +1,35 @@
+name: Mobile check
+
+# Premium UI o'zgarganda APK chiqarmasdan Flutter kodini tekshirish.
+# Faqat qo'lda ishlaydi: yarim tayyor dizayn hech qachon releasega
+# aylanmaydi.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        run: flutter pub get --enforce-lockfile
+
+      - name: Kod tekshiruvi
+        run: flutter analyze --no-fatal-infos
+
+      - name: Testlar
+        run: flutter test
