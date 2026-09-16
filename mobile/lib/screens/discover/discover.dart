@@ -365,7 +365,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ],
 
       if (grid.isNotEmpty) ...[
-        _header(tr('Kashfiyot')),
+        _header(tr('Qidiruv')),
         SliverToBoxAdapter(
           child: _MixedGrid(
             items: grid,

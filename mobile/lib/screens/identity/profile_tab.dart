@@ -173,65 +173,16 @@ class _ProfileTabState extends State<ProfileTab> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(bottom: NavBar.inset(context)),
             children: [
-              // SARLAVHA — avatar, ism, manzil, menyu.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  S.gutter,
-                  S.x12,
-                  S.gutter,
-                  0,
+              // FOTO COVER — profil oddiy sozlama sahifasi emas,
+              // shaxsning premium vitrinasiga o'xshab ochiladi.
+              _ProfileCover(
+                identity: active,
+                handle: profileHandle(
+                  context,
+                  active.code,
+                  company: active.isBusiness,
                 ),
-                child: Row(
-                  children: [
-                    Avatar(
-                      url: active.avatarUrl,
-                      name: active.name,
-                      size: 56,
-                      square: active.isBusiness,
-                    ),
-                    const SizedBox(width: S.x12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  active.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: T.h2,
-                                ),
-                              ),
-                              if (active.verified) ...[
-                                const SizedBox(width: 5),
-                                const VerifiedBadge(size: 15),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            profileHandle(
-                              context,
-                              active.code,
-                              company: active.isBusiness,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: T.link,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: S.x8),
-                    RoundButton(
-                      Ico.more,
-                      onTap: () => _menu(active),
-                    ),
-                  ],
-                ),
+                onMenu: () => _menu(active),
               ),
 
               // ID ALMASHTIRGICH.
@@ -509,6 +460,102 @@ class _ProfileTabState extends State<ProfileTab> {
 }
 
 // ─────────────────────────────────────────────────────────────
+
+/// Profilning ochilish qismi: premium surat fonida haqiqiy egasi
+/// ma'lumotlari chiqadi. Bu profilni oddiy sozlamalar ro'yxatidan
+/// ajratib, tashrif buyuruvchi ko'radigan sahifa ohangiga olib keladi.
+class _ProfileCover extends StatelessWidget {
+  const _ProfileCover({
+    required this.identity,
+    required this.handle,
+    required this.onMenu,
+  });
+
+  final Identity identity;
+  final String handle;
+  final VoidCallback onMenu;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
+        child: Container(
+          height: 244,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(R.card),
+            border: Border.all(color: C.line),
+            boxShadow: C.e2,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                'assets/img/premium_contact_sheet.png',
+                fit: BoxFit.cover,
+                alignment: const Alignment(1, -1),
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x08000000), Color(0xE8000000)],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: S.x12,
+                right: S.x12,
+                child: RoundButton(Ico.more, onTap: onMenu),
+              ),
+              Positioned(
+                left: S.x16,
+                right: S.x16,
+                bottom: S.x16,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Avatar(
+                      url: identity.avatarUrl,
+                      name: identity.name,
+                      size: 58,
+                      square: identity.isBusiness,
+                    ),
+                    const SizedBox(width: S.x12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  identity.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: T.profileName,
+                                ),
+                              ),
+                              if (identity.verified) ...[
+                                const SizedBox(width: 5),
+                                const VerifiedBadge(size: 16),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(handle, style: T.caption.copyWith(color: C.ink2)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
 
 /// ID chiplari qatori — faol ID oltin halqa bilan.
 class _IdStrip extends StatelessWidget {
