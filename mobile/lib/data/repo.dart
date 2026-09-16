@@ -225,6 +225,45 @@ class Repo {
     return (liked: r['liked'] == true, count: n is num ? n.round() : 0);
   }
 
+  /// IZOHLAR — ro'yxat.
+  ///
+  /// `kind` — `FeedEntry.commentTarget` (post / company_post /
+  /// story / company_story). Mehmon ham o'qiy oladi: izohlar
+  /// kontentning bir qismi, kirish faqat YOZISH uchun kerak.
+  Future<({List<Comment> items, bool hasMore, int total})> comments(
+    String kind,
+    int id, {
+    int page = 1,
+  }) async {
+    final r = _map(await api.get('/api/comments/$kind/$id', query: {'page': page}));
+    final rows = r['comments'];
+    return (
+      items: rows is List
+          ? rows.whereType<Map>().map((e) => Comment.fromJson(e.cast<String, dynamic>())).toList()
+          : const <Comment>[],
+      hasMore: r['hasMore'] == true,
+      total: r['total'] is num ? (r['total'] as num).round() : 0,
+    );
+  }
+
+  /// IZOH YOZISH. Qaytadi: yangi izoh va YANGILANGAN JAMI SON —
+  /// ekrandagi hisob mijozda sanalmaydi, aks holda ikki qurilmada
+  /// raqamlar ajralib ketardi (yoqtirish bilan bir xil qoida).
+  Future<({Comment comment, int total})> addComment(String kind, int id, String body) async {
+    final r = _map(await api.post('/api/comments/$kind/$id', {'body': body}));
+    final c = r['comment'];
+    return (
+      comment: Comment.fromJson((c is Map ? c : const {}).cast<String, dynamic>()),
+      total: r['total'] is num ? (r['total'] as num).round() : 0,
+    );
+  }
+
+  /// IZOHNI O'CHIRISH — muallif yoki kontent egasi.
+  Future<int> deleteComment(int commentId) async {
+    final r = _map(await api.delete('/api/comments/$commentId'));
+    return r['total'] is num ? (r['total'] as num).round() : 0;
+  }
+
   /// Istorya OCHILGANI — egasi "nechta odam ko'rdi" ni bilishi uchun.
   ///
   /// Natijasi kutilmaydi va xatosi yutiladi: hisob yozilmagani

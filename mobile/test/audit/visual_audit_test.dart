@@ -592,6 +592,20 @@ void main() {
     await golden(t, '58-reels-bosh');
   });
 
+  // IZOHLAR VARAQASI — Reels kadridan ochiladi.
+  //
+  // Alohida kadr kerak: varaqada uchta holat bir vaqtda ko'rinadi —
+  // BEGONA izoh (o'chirish tugmasisiz), MENIKI (tugma bilan) va
+  // yozish maydoni. Ular bir-biriga juda o'xshash, ya'ni maket
+  // buzilsa faqat suratda sezilardi.
+  testWidgets('59 izohlar', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const ReelsScreen(), state: s);
+    await t.tap(find.byType(CommentButton).first);
+    await settle(t);
+    await golden(t, '59-izohlar');
+  });
+
   testWidgets('55 mahsulot qo‘shish', (t) async {
     final s = await ready();
     await pumpScreen(t, EditCatalogScreen(company: s.companies.first), state: s);

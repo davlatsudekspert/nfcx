@@ -135,6 +135,10 @@
     "Здравствуйте",
     "Welcome"
   ],
+  "Avval izoh yozing.": [
+    "Сначала напишите комментарий.",
+    "Write a comment first."
+  ],
   "Avval rasm tanlang.": [
     "Сначала выберите изображение.",
     "Pick an image first."
@@ -246,6 +250,10 @@
   "Bir odam bir necha marta kirsa ham bitta hisoblanadi": [
     "Один человек считается один раз, сколько бы раз ни заходил",
     "One person counts once, however many times they visit"
+  ],
+  "Birinchi bo‘lib fikr bildiring.": [
+    "Будьте первым, кто оставит отзыв.",
+    "Be the first to comment."
   ],
   "Birinchi mahsulotni qo‘shing — mijoz uni profilingizdan ko‘radi va buyurtma beradi.": [
     "Добавьте первый товар — клиент увидит его в вашем профиле и сделает заказ.",
@@ -603,6 +611,10 @@
     "Номер заказа",
     "Order number"
   ],
+  "Buyurtma tarkibi": [
+    "Состав заказа",
+    "Order summary"
+  ],
   "Buyurtma va to‘lov": [
     "Заказ и оплата",
     "Order and payment"
@@ -666,6 +678,10 @@
   "Chorshanba": [
     "Среда",
     "Wednesday"
+  ],
+  "Click bilan Premium olish": [
+    "Оформить Premium через Click",
+    "Get Premium with Click"
   ],
   "Click ilovasi orqali": [
     "Через приложение Click",
@@ -871,6 +887,10 @@
     "Файл слишком большой (больше 100 МБ).",
     "The file is too large (over 100 MB)."
   ],
+  "Fikringizni yozing": [
+    "Напишите своё мнение",
+    "Share your thoughts"
+  ],
   "Foydalanish shartlari": [
     "Условия использования",
     "Terms of use"
@@ -938,6 +958,10 @@
   "Hali hech kimga obuna emas.": [
     "Пока ни на кого не подписан.",
     "Not following anyone yet."
+  ],
+  "Hali izoh yo‘q": [
+    "Комментариев пока нет",
+    "No comments yet"
   ],
   "Hali obunachi yo‘q.": [
     "Пока нет подписчиков.",
@@ -1026,6 +1050,10 @@
   "Hisobingiz o‘chiriladi va siz undan chiqasiz. Profillaringiz, postlaringiz va storylaringiz saytda ham, ilovada ham ko‘rinmay qoladi. To‘lov va buyurtma yozuvlari hisobot uchun saqlanadi. Qaytarish kerak bo‘lsa — yordam xizmatiga murojaat qiling.": [
     "Ваш аккаунт будет удалён, и вы выйдете из него. Ваши профили, посты и сторис перестанут показываться и на сайте, и в приложении. Записи о платежах и заказах сохраняются для отчётности. Если нужно восстановить — обратитесь в поддержку.",
     "Your account will be deleted and you will be signed out. Your profiles, posts and stories stop showing on the site and in the app. Payment and order records are kept for reporting. To restore it, contact support."
+  ],
+  "Hisobingiz vaqtincha cheklangan.": [
+    "Ваш аккаунт временно ограничен.",
+    "Your account is temporarily restricted."
   ],
   "Hisobingiz yaratildi. Agar davom etmasa, kirish sahifasidan kiring.": [
     "Аккаунт создан. Если не продолжается, войдите со страницы входа.",
@@ -1175,6 +1203,10 @@
     "Подарить\\nID",
     "Gift\\nthis ID"
   ],
+  "IZOH": [
+    "КОММЕНТАРИЙ",
+    "COMMENT"
+  ],
   "Ilova ochilganda kod so‘raladi": [
     "Код запрашивается при открытии приложения",
     "The code is asked when the app opens"
@@ -1267,9 +1299,25 @@
     "Подпись",
     "Caption"
   ],
+  "Izoh butunlay o‘chadi. Buni qaytarib bo‘lmaydi.": [
+    "Комментарий будет удалён навсегда. Это действие необратимо.",
+    "The comment will be deleted permanently. This cannot be undone."
+  ],
+  "Izoh yozish uchun hisobingizga kiring.": [
+    "Войдите в аккаунт, чтобы оставить комментарий.",
+    "Sign in to leave a comment."
+  ],
   "Izoh · ixtiyoriy": [
     "Подпись · необязательно",
     "Caption · optional"
+  ],
+  "Izohlar": [
+    "Комментарии",
+    "Comments"
+  ],
+  "Izohni o‘chirish": [
+    "Удалить комментарий",
+    "Delete comment"
   ],
   "Izohsiz post": [
     "Пост без подписи",
@@ -1350,6 +1398,10 @@
   "Juda ko‘p urinish. Birozdan so‘ng qayta urining.": [
     "Слишком много попыток. Повторите чуть позже.",
     "Too many attempts. Try again shortly."
+  ],
+  "Juda tez yozyapsiz. Bir daqiqadan so‘ng urining.": [
+    "Вы пишете слишком часто. Попробуйте через минуту.",
+    "You are commenting too fast. Try again in a minute."
   ],
   "Juma": [
     "Пятница",
@@ -2347,6 +2399,10 @@
     "Забыли\\nпароль",
     "Forgot your\\npassword"
   ],
+  "Payme bilan Premium olish": [
+    "Оформить Premium через Payme",
+    "Get Premium with Payme"
+  ],
   "Payme bilan to‘lash": [
     "Оплатить через Payme",
     "Pay with Payme"
@@ -2530,6 +2586,10 @@
   "Profilingiz uchun kengaytirilgan imkoniyatlar": [
     "Расширенные возможности для вашего профиля",
     "Extended features for your profile"
+  ],
+  "Profilingiz uchun o‘ziga xos NFC ID tanlang.": [
+    "Выберите особый NFC ID для своего профиля.",
+    "Choose a distinctive NFC ID for your profile."
   ],
   "Profilni ko‘rish": [
     "Посмотреть профиль",
@@ -2963,6 +3023,14 @@
     "Вам дарят",
     "Being gifted to you"
   ],
+  "Sizga tavsiya": [
+    "Рекомендуем вам",
+    "Recommended for you"
+  ],
+  "Sizga xos raqam": [
+    "Особый номер для вас",
+    "A number just for you"
+  ],
   "Skanerlagan odam shu profilni ochadi. Yoki telefonni kartaga tegizsin.": [
     "Тот, кто отсканирует, откроет этот профиль. Либо пусть приложит телефон к карте.",
     "Whoever scans it opens this profile. Or they can tap their phone to the card."
@@ -3182,6 +3250,10 @@
   "Tanlangan shaxs butun ilova uchun faol bo‘ladi.": [
     "Выбранная личность станет активной во всём приложении.",
     "The chosen identity becomes active across the app."
+  ],
+  "Tanlanmagan": [
+    "Не выбрано",
+    "Not selected"
   ],
   "Tanlash": [
     "Выбрать",
@@ -3939,6 +4011,10 @@
     "статистика перейдёт новому владельцу.",
     "statistics move to the new owner."
   ],
+  "ta izoh": [
+    "комментариев",
+    "comments"
+  ],
   "tasdiqlashni kutib turadi.": [
     "будет ждать подтверждения.",
     "your confirmation."
@@ -4058,29 +4134,5 @@
   "“{q}” topilmadi": [
     "«{q}» не найдено",
     "\"{q}\" not found"
-  ],
-  "Payme bilan Premium olish": [
-    "Оформить Premium через Payme",
-    "Get Premium with Payme"
-  ],
-  "Click bilan Premium olish": [
-    "Оформить Premium через Click",
-    "Get Premium with Click"
-  ],
-  "Tanlanmagan": [
-    "Не выбрано",
-    "Not selected"
-  ],
-  "Buyurtma tarkibi": [
-    "Состав заказа",
-    "Order summary"
-  ],
-  "Sizga xos raqam": [
-    "Особый номер для вас",
-    "A number just for you"
-  ],
-  "Profilingiz uchun o‘ziga xos NFC ID tanlang.": [
-    "Выберите особый NFC ID для своего профиля.",
-    "Choose a distinctive NFC ID for your profile."
   ]
 }

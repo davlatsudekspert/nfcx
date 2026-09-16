@@ -607,6 +607,8 @@ class FeedEntry {
     this.likeCount = 0,
     this.liked = false,
     this.likeable = false,
+    this.commentKind = '',
+    this.commentCount = 0,
   });
 
   /// `post` yoki `story`.
@@ -631,6 +633,23 @@ class FeedEntry {
   /// yoqtirish jadvali yo'q — bunda tugma umuman ko'rsatilmaydi.
   final bool likeable;
 
+  /// IZOH JADVALIDAGI TUR: `post`, `company_post`, `story`,
+  /// `company_story`. Server beradi, chunki lentadagi id'lar
+  /// manbalar bo'yicha takrorlanadi (5-post va 5-istorya — ikki xil
+  /// narsa) va ularni faqat tur bilan birga ajratish mumkin.
+  ///
+  /// Eski serverdan bo'sh kelsa — turdan o'zimiz yig'amiz, ya'ni
+  /// ilova yangilanmagan server bilan ham ishlayveradi.
+  final String commentKind;
+  final int commentCount;
+
+  /// Izoh so'rovlari uchun tur — server bermasa ham to'g'ri qiymat.
+  String get commentTarget {
+    if (commentKind.isNotEmpty) return commentKind;
+    if (isStory) return isCompany ? 'company_story' : 'story';
+    return isCompany ? 'company_post' : 'post';
+  }
+
   bool get isStory => kind == 'story';
   bool get isCompany => authorKind == 'company';
 
@@ -648,9 +667,11 @@ class FeedEntry {
         likeCount: _i(j['likeCount']),
         liked: _b(j['liked']),
         likeable: _b(j['likeable']),
+        commentKind: _s(j['commentKind']),
+        commentCount: _i(j['commentCount']),
       );
 
-  FeedEntry copyWith({int? likeCount, bool? liked}) => FeedEntry(
+  FeedEntry copyWith({int? likeCount, bool? liked, int? commentCount}) => FeedEntry(
         kind: kind,
         id: id,
         code: code,
@@ -664,6 +685,51 @@ class FeedEntry {
         likeCount: likeCount ?? this.likeCount,
         liked: liked ?? this.liked,
         likeable: likeable,
+        commentKind: commentKind,
+        commentCount: commentCount ?? this.commentCount,
+      );
+}
+
+/// IZOH.
+///
+/// Lentadagi va Reels'dagi kontent ostida turadigan yozuv. Muallif
+/// nomi va rasmi SERVERDAN keladi (izoh yozilgandan keyin odam
+/// ismini o'zgartirsa, eski ism qolib ketmasin).
+class Comment {
+  const Comment({
+    required this.id,
+    required this.body,
+    required this.name,
+    this.code = '',
+    this.avatarUrl,
+    this.createdAt,
+    this.mine = false,
+  });
+
+  final int id;
+  final String body;
+
+  /// Muallifning ko'rsatiladigan nomi.
+  final String name;
+
+  /// Muallif profili kodi — bosilganda o'sha profil ochiladi.
+  /// Bo'sh bo'lishi mumkin: hali kartasi yo'q foydalanuvchi.
+  final String code;
+  final String? avatarUrl;
+  final DateTime? createdAt;
+
+  /// O'chirish tugmasi shu bayroqqa qarab ko'rsatiladi. Huquqni
+  /// BARIBIR server tekshiradi — bu faqat ko'rinish uchun.
+  final bool mine;
+
+  factory Comment.fromJson(Map<String, dynamic> j) => Comment(
+        id: _i(j['id']),
+        body: _s(j['body']),
+        name: _s(j['name']),
+        code: _s(j['code']).toUpperCase(),
+        avatarUrl: absUrl(_s(j['avatarUrl'])),
+        createdAt: _ts(j['createdAt']),
+        mine: _b(j['mine']),
       );
 }
 

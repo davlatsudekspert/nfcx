@@ -14,7 +14,8 @@ import '../../design/type.dart';
 import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../home/home.dart' show LikeButton;
+import '../home/home.dart' show CommentButton, LikeButton;
+import 'comments_sheet.dart';
 import 'report_sheet.dart';
 
 /// POST TAFSILOTI (dizayn 5d).
@@ -23,14 +24,25 @@ import 'report_sheet.dart';
 /// ekranning markazi, shuning uchun u ustida hech qanday boshqaruv
 /// turmaydi: "⋯" tepa panelda, yurak esa pastda.
 ///
-/// IZOH TIZIMI YO'Q. Serverda izoh jadvali ham, endpointi ham yo'q —
-/// shuning uchun bu yerda izoh soni ham, "izoh yozish" ham
-/// ko'rsatilmaydi. Bo'sh raqam ko'rsatish ilovani yolg'onchi
-/// qilardi.
+/// IZOHLAR — yurakning yonida. Server `/api/comments/:kind/:id`
+/// beradi; soni SHU EKRAN OCHILGANDA olinadi (postning o'zi bilan
+/// kelmaydi, chunki post ro'yxatlari izohlarni sanamaydi). Kelguncha
+/// tugma soni "0" bo'lib turadi va bosilsa baribir ochiladi — bo'sh
+/// raqam odamni to'xtatib qo'ymasligi kerak.
 class PostDetailScreen extends StatefulWidget {
-  const PostDetailScreen({super.key, required this.post, this.canDelete = false});
+  const PostDetailScreen({
+    super.key,
+    required this.post,
+    this.canDelete = false,
+    this.commentKind = 'post',
+  });
 
   final Post post;
+
+  /// Izoh jadvalidagi tur: shaxsiy post uchun `post`, kompaniya
+  /// posti uchun `company_post`. Ikkalasining id'lari bir-biriga
+  /// bog'liq emas, shuning uchun turni chaqiruvchi beradi.
+  final String commentKind;
 
   /// Postni OCHGAN ekran uni "meniki" deb biladimi (o'z profilidagi
   /// to'rdan ochilgan). Shu bayroq "⋯" menyusiga `owned` bo'lib
@@ -45,6 +57,44 @@ class PostDetailScreen extends StatefulWidget {
 class _PostDetailScreenState extends State<PostDetailScreen> {
   late bool _liked = widget.post.liked;
   late int _likes = widget.post.likes;
+  int _comments = 0;
+  bool _countLoaded = false;
+
+  int get _postId => int.tryParse(widget.post.id) ?? 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_countLoaded) return;
+    _countLoaded = true;
+    _loadCommentCount();
+  }
+
+  /// IZOHLAR SONI — faqat ko'rsatish uchun.
+  ///
+  /// Xatosi YUTILADI: izohlar sanalmagani uchun postni ko'rsatmaslik
+  /// mantiqsiz bo'lardi. Bunday holatda tugma "0" bilan turadi va
+  /// bosilganda ro'yxat baribir ochiladi.
+  Future<void> _loadCommentCount() async {
+    try {
+      final r = await AppScope.read(context).repo.comments(widget.commentKind, _postId);
+      if (!mounted) return;
+      setState(() => _comments = r.total);
+    } catch (_) {
+      // Jim: yuqoridagi izohga qarang.
+    }
+  }
+
+  Future<void> _openComments() async {
+    final total = await showCommentsSheet(
+      context,
+      targetKind: widget.commentKind,
+      targetId: _postId,
+      initialCount: _comments,
+    );
+    if (!mounted || total == null) return;
+    setState(() => _comments = total);
+  }
 
   /// YURAK — OPTIMISTIK.
   ///
@@ -61,7 +111,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       _likes = wasLikes + (wasLiked ? -1 : 1);
     });
     try {
-      final r = await repo.likePost(int.tryParse(widget.post.id) ?? 0);
+      final r = await repo.likePost(_postId);
       if (!mounted) return;
       setState(() {
         _liked = r.liked;
@@ -135,6 +185,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         count: _likes,
                         onTap: _toggleLike,
                       ),
+                      const SizedBox(width: S.x20),
+                      CommentButton(count: _comments, onTap: _openComments),
                       const SizedBox(width: S.x20),
                       NIcon(Ico.eye, size: 17, color: C.ink2),
                       const SizedBox(width: 7),

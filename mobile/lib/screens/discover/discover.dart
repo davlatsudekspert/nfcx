@@ -404,6 +404,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         authorAvatar: e.avatarUrl,
                         authorCode: e.code,
                       ),
+                      commentKind: e.commentTarget,
                     ),
             ),
           ),

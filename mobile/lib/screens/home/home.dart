@@ -23,6 +23,7 @@ import '../../state/app_state.dart';
 import '../../state/seen_stories.dart';
 import '../content/compose.dart';
 import '../content/post_detail.dart';
+import '../content/comments_sheet.dart';
 import '../content/report_sheet.dart';
 import '../content/story_viewer.dart';
 import '../identity/profile_screen.dart';
@@ -230,6 +231,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ));
       },
     );
+  }
+
+  /// IZOHLAR VARAQASI — lentadagi kadr uchun.
+  ///
+  /// Varaqa yopilganda server bergan jami son bilan lentadagi hisob
+  /// yangilanadi: odam izoh yozib qaytgach, eski raqamni ko'rmasin.
+  Future<void> _openComments(FeedEntry item) async {
+    final total = await showCommentsSheet(
+      context,
+      targetKind: item.commentTarget,
+      targetId: item.id,
+      initialCount: item.commentCount,
+    );
+    if (!mounted || total == null) return;
+    setState(() {
+      _feed = [
+        for (final e in _feed)
+          e.id == item.id && e.kind == item.kind ? e.copyWith(commentCount: total) : e,
+      ];
+    });
   }
 
   Future<void> _toggleLike(FeedEntry item) async {
@@ -459,6 +480,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: FeedCard(
                       item: _feed[i],
                       onLike: () => _toggleLike(_feed[i]),
+                      onComment: () => _openComments(_feed[i]),
                       onMenu: () => _menu(_feed[i]),
                       onAuthor: () => push<void>(
                         context,
@@ -489,6 +511,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     authorAvatar: _feed[i].avatarUrl,
                                     authorCode: _feed[i].code,
                                   ),
+                                  commentKind: _feed[i].commentTarget,
                                 ),
                               ),
                     ),
@@ -834,6 +857,7 @@ class FeedCard extends StatelessWidget {
     super.key,
     required this.item,
     required this.onLike,
+    required this.onComment,
     required this.onAuthor,
     required this.onOpen,
     this.onMenu,
@@ -841,6 +865,10 @@ class FeedCard extends StatelessWidget {
 
   final FeedEntry item;
   final VoidCallback onLike;
+
+  /// Izohlar varaqasini ochadi. Yoqtirishdan farqli o'laroq HAMMA
+  /// kontent turida ishlaydi — kompaniya postida ham.
+  final VoidCallback onComment;
   final VoidCallback onAuthor;
   final VoidCallback onOpen;
 
@@ -956,9 +984,60 @@ class FeedCard extends StatelessWidget {
                       Text('${item.likeCount}', style: T.meta),
                     ],
                   ),
+                const SizedBox(width: S.x20),
+                CommentButton(count: item.commentCount, onTap: onComment),
                 const Spacer(),
                 NIcon(Ico.chevronRight, size: 16, color: C.ink3),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// IZOH TUGMASI — yurakning yonida turadigan pufak va son.
+///
+/// NIMA UCHUN ALOHIDA WIDGET: lenta, Reels va post ekrani — uchala
+/// joyda bir xil ko'rinishi kerak. Nusxa ko'chirilsa, biri
+/// o'zgarganda qolgani ortda qolardi.
+///
+/// SONI NOL BO'LSA HAM KO'RINADI: "0" — bu taklif ("birinchi bo'l"),
+/// yashirilgan tugma esa imkoniyat borligini umuman bildirmasdi.
+class CommentButton extends StatelessWidget {
+  const CommentButton({
+    super.key,
+    required this.count,
+    required this.onTap,
+    this.size = 20,
+    this.color,
+  });
+
+  final int count;
+  final VoidCallback onTap;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = color ?? C.ink2;
+    return Press(
+      onTap: onTap,
+      haptic: true,
+      minSize: S.tap,
+      scale: .9,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          NIcon(Ico.comment, size: size, color: tint),
+          const SizedBox(width: 7),
+          Text(
+            '$count',
+            style: T.meta.copyWith(
+              color: tint,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

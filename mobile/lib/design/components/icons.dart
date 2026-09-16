@@ -22,7 +22,7 @@ enum Ico {
   // NFC va ID
   qr, scan, write, card, wallet, gift, key,
   // Kontent
-  heart, eye, image, video, camera, music, text, sticker, mic,
+  heart, comment, eye, image, video, camera, music, text, sticker, mic,
   // Aloqa
   phone, mail, telegram, instagram, whatsapp, globe, pin, truck,
   // Holat va tizim
@@ -521,6 +521,25 @@ class _IconPainter extends CustomPainter {
         p.cubicTo(9.8, 5.2, 11.4, 6.6, 12, 8);
         p.cubicTo(12.6, 6.6, 14.2, 5.2, 16.6, 6.4);
         p.cubicTo(20.6, 8.4, 20.6, 14.4, 12, 19.6);
+        p.close();
+        canvas.drawPath(p, body());
+        return;
+
+      // IZOH — gap pufagi.
+      //
+      // `reply` (strelka) IZOH uchun ishlatilmaydi: strelka
+      // "javob berish" degani va lentada u yoqtirish yuragining
+      // yonida chalkashtiradi. Pufak esa hamma ilovada bir xil
+      // ma'noni bildiradi — "bu yerda yozishmalar bor".
+      case Ico.comment:
+        p.moveTo(4.4, 9.2);
+        p.cubicTo(4.4, 6.1, 6.6, 4.4, 12, 4.4);
+        p.cubicTo(17.4, 4.4, 19.6, 6.1, 19.6, 9.2);
+        p.cubicTo(19.6, 12.3, 17.4, 14.6, 12, 14.6);
+        p.lineTo(8.8, 14.6);
+        p.lineTo(5.6, 18.4);
+        p.lineTo(5.6, 14.1);
+        p.cubicTo(4.8, 13.2, 4.4, 11.4, 4.4, 9.2);
         p.close();
         canvas.drawPath(p, body());
         return;

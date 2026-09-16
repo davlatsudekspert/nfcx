@@ -78,7 +78,7 @@ Future<http.Response> _normalResponse(http.Request req) async {
               'imageUrl': '/uploads/p1.jpg',
               'caption': 'Yangi karta keldi — qora metall.',
               'createdAt': 1757800000000, 'likeCount': 24, 'liked': true,
-              'likeable': true,
+              'likeable': true, 'commentKind': 'post', 'commentCount': 2,
             },
             {
               'kind': 'story', 'id': 77, 'code': 'DDD333', 'authorKind': 'company',
@@ -86,14 +86,14 @@ Future<http.Response> _normalResponse(http.Request req) async {
               'imageUrl': '/uploads/s1.jpg',
               'caption': 'Bugun ustaxonada.',
               'createdAt': 1757799000000, 'likeCount': 0, 'liked': false,
-              'likeable': false,
+              'likeable': false, 'commentKind': 'company_story', 'commentCount': 0,
             },
             {
               'kind': 'post', 'id': 502, 'code': 'BBB222', 'authorKind': 'company',
               'name': 'Ali Market', 'avatarUrl': '',
               'imageUrl': '/uploads/p2.jpg', 'caption': '',
               'createdAt': 1757798000000, 'likeCount': 0, 'liked': false,
-              'likeable': false,
+              'likeable': false, 'commentKind': 'company_post', 'commentCount': 5,
             },
           ],
           'hasMore': false,
@@ -201,6 +201,49 @@ Future<http.Response> _normalResponse(http.Request req) async {
         body = {'username': 'nfcstore_bot'};
       } else if (p == '/api/categories') {
         body = {'categories': []};
+      } else if (p.startsWith('/api/comments/')) {
+        // IZOHLAR — uch amal bitta shartda.
+        //
+        // GET: ikkita izoh (biri MENIKI, ya'ni o'chirish tugmasi
+        // bilan — audit ikkala holatni ham ko'rsatishi kerak).
+        // POST: yangi izoh va yangilangan jami son.
+        // DELETE: faqat yangi son.
+        if (req.method == 'POST') {
+          body = {
+            'comment': {
+              'id': 903,
+              'targetKind': 'post',
+              'targetId': 501,
+              'code': 'VIP001',
+              'name': 'Muhammad Yusuf',
+              'avatarUrl': '/uploads/a1.jpg',
+              'body': jsonDecode(req.body)['body'],
+              'createdAt': 1757801000000,
+              'mine': true,
+            },
+            'total': 3,
+          };
+        } else if (req.method == 'DELETE') {
+          body = {'ok': true, 'total': 1};
+        } else {
+          body = {
+            'comments': [
+              {
+                'id': 901, 'code': 'AAA512', 'name': 'Jasur Tolipov',
+                'avatarUrl': '/uploads/a1.jpg',
+                'body': 'Zo‘r ish bo‘libdi, tabriklayman!',
+                'createdAt': 1757800500000, 'mine': false,
+              },
+              {
+                'id': 902, 'code': 'VIP001', 'name': 'Muhammad Yusuf',
+                'avatarUrl': '', 'body': 'Rahmat! Yangi partiya keyingi hafta.',
+                'createdAt': 1757800300000, 'mine': true,
+              },
+            ],
+            'hasMore': false,
+            'total': 2,
+          };
+        }
       } else {
         body = {'ok': true};
       }

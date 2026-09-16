@@ -17,7 +17,8 @@ import '../../design/type.dart';
 import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../home/home.dart' show LikeButton;
+import '../home/home.dart' show CommentButton, LikeButton;
+import 'comments_sheet.dart';
 import '../common/share.dart';
 import '../identity/profile_screen.dart';
 import '../shell.dart';
@@ -137,6 +138,29 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
+  /// IZOHLAR VARAQASI.
+  ///
+  /// Varaqa yopilganda server bergan JAMI SON qaytadi va kadrdagi
+  /// hisob shu bilan yangilanadi — odam izoh yozib, varaqani yopgach
+  /// eski raqamni ko'rib qolmasligi kerak.
+  Future<void> _openComments(int i) async {
+    final item = _items[i];
+    final total = await showCommentsSheet(
+      context,
+      targetKind: item.commentTarget,
+      targetId: item.id,
+      initialCount: item.commentCount,
+    );
+    if (!mounted || total == null) return;
+    setState(() {
+      // Ro'yxat orada o'zgargan bo'lishi mumkin (keyingi sahifa
+      // yuklangan) — shuning uchun indeks emas, AYNAN o'sha kadr
+      // qaytadan topiladi.
+      final at = _items.indexWhere((x) => x.kind == item.kind && x.id == item.id);
+      if (at >= 0) _items = [..._items]..[at] = _items[at].copyWith(commentCount: total);
+    });
+  }
+
   Future<void> _menu(FeedEntry item) async {
     final state = AppScope.read(context);
     final mine = item.isCompany
@@ -218,6 +242,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
               // videoning ovozi birdan eshitilardi.
               active: i == _index,
               onLike: () => _toggleLike(i),
+              onComment: () => _openComments(i),
               onMenu: () => _menu(_items[i]),
               onAuthor: () => push<void>(
                 context,
@@ -277,6 +302,7 @@ class _Reel extends StatelessWidget {
     required this.item,
     required this.active,
     required this.onLike,
+    required this.onComment,
     required this.onMenu,
     required this.onAuthor,
   });
@@ -284,6 +310,7 @@ class _Reel extends StatelessWidget {
   final FeedEntry item;
   final bool active;
   final VoidCallback onLike;
+  final VoidCallback onComment;
   final VoidCallback onMenu;
   final VoidCallback onAuthor;
 
@@ -352,6 +379,15 @@ class _Reel extends StatelessWidget {
                 liked: item.liked,
                 count: item.likeCount,
                 onTap: onLike,
+                size: 28,
+                color: C.ink,
+              ),
+              const SizedBox(height: S.x20),
+              // IZOH — yurak bilan ulashish orasida, xuddi boshqa
+              // ilovalardagi tartibda: odam uni qidirmasdan topadi.
+              CommentButton(
+                count: item.commentCount,
+                onTap: onComment,
                 size: 28,
                 color: C.ink,
               ),

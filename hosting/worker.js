@@ -14,6 +14,7 @@ import * as apiAdminFinance from './api/admin-finance.js';
 import * as apiTelegram from './api/telegram.js';
 import * as apiAssistant from './api/assistant.js';
 import * as apiModeration from './api/moderation.js';
+import * as apiComments from './api/comments.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -8817,6 +8818,19 @@ async function storiesApi(request, env, url) {
 // `story_likes`), kompaniya postida esa jadval YO'Q — shuning uchun
 // u yerda nol qaytariladi va ilova tugmani ko'rsatmaydi. Soxta
 // raqam chiqarishdan ko'ra, yo'qligini aytish to'g'ri.
+/// Lenta qatori uchun izoh "kalitini" beradi.
+///
+/// Lenta to'rt manbadan keladi va ularning id'lari BIR-BIRIGA
+/// BOG'LIQ EMAS: 5-raqamli shaxsiy post va 5-raqamli kompaniya
+/// posti ikki xil narsa. Shuning uchun izoh jadvalidagi kalit
+/// `kind` bilan birga bo'ladi.
+const commentTargetKind = (r) => {
+  const company = String(r.author_kind) === 'company';
+  return String(r.kind) === 'story'
+    ? (company ? 'company_story' : 'story')
+    : (company ? 'company_post' : 'post');
+};
+
 async function feedApi(request, env, url) {
   if (url.pathname !== '/api/feed' || request.method !== 'GET') return null;
 
@@ -8887,7 +8901,20 @@ async function feedApi(request, env, url) {
   const all = (rows.results || []).filter(
     (r) => !blocked.has(`${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`),
   );
-  const feed = all.slice(0, limit).map((r) => {
+
+  // IZOHLAR SONI — BITTA so'rov bilan.
+  //
+  // Har bir kadr ostida "izohlar: 12" turadi. Har biriga alohida
+  // so'rov yuborilsa, bitta sahifa uchun 15 ta qo'shimcha so'rov
+  // bo'lardi; shuning uchun sahifa yig'ilgach bitta guruhlangan
+  // so'rov qilinadi.
+  const page1 = all.slice(0, limit);
+  const commentCounts = await apiComments.countsFor(
+    env,
+    page1.map((r) => ({ kind: commentTargetKind(r), id: Number(r.id) })),
+  ).catch(() => new Map());
+
+  const feed = page1.map((r) => {
     const d = parseDbDate(r.created_at);
     return {
       kind: String(r.kind),
@@ -8905,6 +8932,11 @@ async function feedApi(request, env, url) {
       // Kompaniya postida yoqtirish jadvali yo'q — ilova tugmani
       // umuman ko'rsatmasligi uchun aniq bayroq.
       likeable: String(r.author_kind) === 'card',
+      // IZOH — yoqtirishdan farqli o'laroq, HAMMA kontent turida
+      // ishlaydi (kompaniya posti ham): jadval umumiy va egasi
+      // `target_kind` bilan ajratiladi.
+      commentKind: commentTargetKind(r),
+      commentCount: commentCounts.get(`${commentTargetKind(r)}:${Number(r.id)}`) || 0,
     };
   });
 
@@ -9140,7 +9172,7 @@ const H = {
   usersHaveTrialColumnsD1, trialEndsAtD1, premiumExtendD1,
   signupSourceD1, usersHaveSignupSourceD1, isMobileClientD1,
 };
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

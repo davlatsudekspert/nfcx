@@ -72,8 +72,16 @@ void main() {
       final label = NavBar.tabs[i].label;
       // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
       // ko‘rsatiladi, ya‘ni matn bo‘yicha topib bo‘lmaydi.
+      //
+      // MEDALYON EKRANDA BITTA EMAS: bosh sahifaning sarlavhasida
+      // ham, kartada ham o‘sha belgi turadi. Shuning uchun qidiruv
+      // NAVIGATSIYA PANELI ICHI bilan cheklanadi — aks holda test
+      // tasodifan kontentdagi belgini bosib, tabni umuman
+      // almashtirmasdan "o‘tdi" deb qolardi.
       await tester.tap(
-        i == NavBar.nfcIndex ? find.byType(BrandMark) : find.text(label),
+        i == NavBar.nfcIndex
+            ? find.descendant(of: find.byType(NavBar), matching: find.byType(BrandMark))
+            : find.text(label),
       );
       await settle(tester);
       expect(tester.takeException(), isNull, reason: label);
