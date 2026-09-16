@@ -354,21 +354,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
 
-              // PREMIUM VITRINA — asosiy ekranning birinchi oynasidayoq
-              // mahsulotning hissi sezilsin. Serverdagi lenta bo'sh bo'lsa
-              // ham ekran yassi va "demo" bo'lib qolmaydi.
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    S.gutter,
-                    S.x28,
-                    S.gutter,
-                    0,
-                  ),
-                  child: const _PremiumRecommendation(),
-                ),
-              ),
-
               // OGOHLANTIRISHLAR — kutilayotgan to'lov va sovg'a.
               if (_pending.isNotEmpty || _gifts > 0)
                 SliverToBoxAdapter(
@@ -762,112 +747,6 @@ class _ActionTile extends StatelessWidget {
             ],
           ),
         ),
-      );
-}
-
-/// "Siz uchun" — premium uslubni aniq beradigan, API javobidan mustaqil
-/// editorial karta. Bu reklama emas: foydalanuvchiga platformadagi tanishuv
-/// va ulashish g'oyasini ko'rsatadigan ochilish nuqtasi.
-class _PremiumRecommendation extends StatelessWidget {
-  const _PremiumRecommendation();
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('Siz uchun', style: T.section),
-              const Spacer(),
-              Text('Barchasi', style: T.caption.copyWith(color: C.ink2)),
-              const SizedBox(width: 6),
-              const NIcon(Ico.chevronRight, size: 16, color: C.accent),
-            ],
-          ),
-          const SizedBox(height: S.x12),
-          Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: C.surface,
-              borderRadius: BorderRadius.circular(R.card),
-              border: Border.all(color: C.line),
-              boxShadow: C.e1,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: 188,
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(
-                        'assets/img/premium_contact_sheet.png',
-                        fit: BoxFit.cover,
-                        alignment: const Alignment(-1, -1),
-                      ),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0x00000000), Color(0xB8000000)],
-                          ),
-                        ),
-                      ),
-                      const Positioned(
-                        left: S.x16,
-                        bottom: S.x14,
-                        child: Text(
-                          'Yangi tanishuvlar',
-                          style: T.section,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(S.x16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: C.accent, width: 1.2),
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/img/premium_contact_sheet.png',
-                            fit: BoxFit.cover,
-                            alignment: const Alignment(1, -1),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: S.x12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('NFCSTORE tanlovi', style: T.cardTitle),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Yangi g‘oyalar. Yangi aloqalar.',
-                              style: T.caption,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const NIcon(Ico.bookmark, size: 22, color: C.accent),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       );
 }
 

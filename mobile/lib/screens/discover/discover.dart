@@ -230,8 +230,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               ),
 
-              if (!hasQuery)
-                const SliverToBoxAdapter(child: _SearchEditorialHero()),
 
               if (hasQuery)
                 ..._searchSlivers()
@@ -421,51 +419,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             S.x12,
           ),
           child: SectionHeader(title),
-        ),
-      );
-}
-
-// ─────────────────────────────────────────────────────────────
-
-class _SearchEditorialHero extends StatelessWidget {
-  const _SearchEditorialHero();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(S.gutter, S.x20, S.gutter, 0),
-        child: Container(
-          height: 166,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(R.card),
-            border: Border.all(color: C.line),
-            boxShadow: C.e1,
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                'assets/img/premium_contact_sheet.png',
-                fit: BoxFit.cover,
-                alignment: const Alignment(-1, -1),
-              ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x08000000), Color(0xD8000000)],
-                  ),
-                ),
-              ),
-              const Positioned(
-                left: S.x16,
-                right: S.x16,
-                bottom: S.x14,
-                child: Text('Toshkentdan yangi ilhom', style: T.section),
-              ),
-            ],
-          ),
         ),
       );
 }

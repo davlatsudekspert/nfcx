@@ -90,6 +90,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final goldCodes = _available(Tier.gold);
     return ScreenBackdrop(
       aura: Aura.spotlight,
       child: SafeArea(
@@ -114,23 +115,25 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
               // KATALOG VITRINASI — odam avval tayyor premium kartani
               // ko'radi, keyin tariflar ichiga tushadi. Bu narxlar ro'yxati
               // emas, mahsulot tanlash hissini beradi.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  S.gutter,
-                  S.x4,
-                  S.gutter,
-                  S.x20,
-                ),
-                child: _CatalogHero(
-                  onTap: () => push<void>(
-                    context,
-                    (_) => _TierCodesScreen(
-                      tier: Tier.gold,
-                      codes: _available(Tier.gold),
+              if (goldCodes.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    S.gutter,
+                    S.x4,
+                    S.gutter,
+                    S.x20,
+                  ),
+                  child: _CatalogHero(
+                    record: goldCodes.first,
+                    onTap: () => push<void>(
+                      context,
+                      (_) => _TierCodesScreen(
+                        tier: Tier.gold,
+                        codes: goldCodes,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               if (_loading && _all == null)
                 Padding(
@@ -219,23 +222,24 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
 // ─────────────────────────────────────────────────────────────
 
 class _CatalogHero extends StatelessWidget {
-  const _CatalogHero({required this.onTap});
+  const _CatalogHero({required this.record, required this.onTap});
 
+  final Record record;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Gold tanlov', style: T.section),
+          Text('Gold ID', style: T.section),
           const SizedBox(height: S.x12),
           Press(
             onTap: onTap,
             minSize: 0,
             child: IdentityCard(
-              code: 'GLD 777',
+              code: record.code,
               tier: Tier.gold,
-              holder: 'NFCSTORE MEMBER',
+              holder: record.name,
               flippable: false,
               sweep: true,
             ),
@@ -243,9 +247,12 @@ class _CatalogHero extends StatelessWidget {
           const SizedBox(height: S.x10),
           Row(
             children: [
-              Text('Gold ID', style: T.cardTitle),
+              Text(record.code, style: T.cardTitle),
               const Spacer(),
-              Text('149 000 so‘m', style: T.amount.copyWith(color: C.accent)),
+              Text(
+                '${som(record.price)} so‘m',
+                style: T.amount.copyWith(color: C.accent),
+              ),
               const SizedBox(width: S.x8),
               const NIcon(Ico.chevronRight, size: 18, color: C.accent),
             ],
