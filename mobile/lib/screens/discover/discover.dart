@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
+import '../../design/components/business_hero.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
@@ -681,10 +682,9 @@ class _CompanyCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    NetImage(
-                      company.coverUrl ?? company.logoUrl,
-                      radius: 0,
-                      slotIcon: Ico.building,
+                    BusinessHero(
+                      imageUrl: company.coverUrl ?? company.logoUrl,
+                      compact: true,
                     ),
                     const DecoratedBox(
                       decoration: BoxDecoration(
@@ -972,3 +972,4 @@ class _GridTile extends StatelessWidget {
         ),
       );
 }
+

@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
+import '../../design/components/business_hero.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
@@ -823,10 +824,8 @@ class _BusinessCover extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                NetImage(
-                  company.coverUrl ?? company.logoUrl,
-                  radius: 0,
-                  slotIcon: Ico.building,
+                BusinessHero(
+                  imageUrl: company.coverUrl ?? company.logoUrl,
                 ),
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -1093,3 +1092,4 @@ class _ProfileSkeleton extends StatelessWidget {
         ),
       );
 }
+
