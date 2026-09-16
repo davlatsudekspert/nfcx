@@ -21,6 +21,32 @@ APK yo'li: `build/app/outputs/flutter-apk/app-release.apk`
 Android SDK `dl.google.com` dan keladi — u yopiq tarmoqda bloklangan
 bo'lsa, APK qurib bo'lmaydi (kod va testlar baribir ishlaydi).
 
+## Lokal server bilan sinash
+
+Ilovani jonli `nfcstore.uz` ga ulamasdan, production'dagi AYNAN
+o'sha worker kodiga qarshi ishlatish mumkin:
+
+```bash
+node ../scripts/dev-api-server.mjs        # http://127.0.0.1:8787
+flutter run --dart-define=API_BASE=http://10.0.2.2:8787   # emulyator
+```
+
+Server `hosting/worker.js` ni Node ostida ko'taradi (D1 o'rniga
+xotiradagi SQLite, haqiqiy sxema bilan) va demo ma'lumot bilan
+to'ldiradi: `dilshod@nfcstore.uz` / `demo1234`, profillar VIP001,
+ABC123, DDD333 va `LATTE` kompaniyasi.
+
+**Uchma-uch test** — ilovaning `Api` + `Repo` qatlami haqiqiy HTTP
+orqali o'sha server bilan gaplashadi:
+
+```bash
+node ../scripts/test-live-app.mjs
+```
+
+Bu testlar soxta javoblarga TAYANMAYDI, ya'ni server javobining
+shakli o'zgarsa darhol qizaradi. `API_BASE` berilmasa
+`test/live_api_test.dart` o'tkazib yuboriladi.
+
 ## Tuzilishi
 
 ```
