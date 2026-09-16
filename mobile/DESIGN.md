@@ -1,6 +1,7 @@
 # NFCSTORE — dizayn tizimi (kodga qo'llanma)
 
-Yo'nalish: **"Yorug' metall, jonli chuqurlik"**. Bu hujjat
+Yo'nalish: **NFCSTORE V2 prototipi** — oq qog'oz, indigo urg'u,
+metall kartalar. Bu hujjat
 `lib/design/` dagi tizimning API'si. Ekran yozayotganda shu yerdagi
 komponentlardan foydalaning — yangi rang, o'lcham yoki animatsiya
 qiymatini ekran ichida yozmang.
@@ -104,30 +105,58 @@ ScreenBackdrop(
 yuza) · `swatch` (kichik namuna) · `edge` · `doubleEdge` ·
 `hasMaterial`. `TierStyle.parse(serverTier)`.
 
+### Mavzular
+
+Uchta palitra, ikkitasi YORUG' (`design/tokens.dart`):
+
+| id | Nom | Fon | Urg'u |
+|---|---|---|---|
+| `opal` | Opal Light (standart) | `#FFFFFF` | `#3A62CC` |
+| `midnight` | Midnight Silk | `#080A0E` | `#87A9EB` |
+| `dune` | Dune | `#E7D7C1` | `#8C5F32` |
+
+Matn, chegara, shisha va holat ranglari PALITRA ichida: yorug'
+fonda oq matn ko'rinmaydi, shuning uchun ular `const` bo'la
+olmaydi. Soya ham mavzuga bog'liq — yorug'da yoyiq va kuchsiz,
+aks holda karta ostida kulrang plita paydo bo'ladi.
+
+Tarif materiallari (metall) mavzudan MUSTAQIL: Gold har mavzuda
+Gold bo'lib qoladi.
+
 ---
 
 ## 4. Tipografika
 
 `design/type.dart` — `T.`
 
+**Uch shrift, uch vazifa** (prototipdagilar): **Playfair Display** —
+sarlavha va narx; **Plus Jakarta Sans** — butun funksional matn;
+**Space Mono** — ID kodi, raqam, meta.
+
+Jakarta va Space Mono'da KIRILL YO'Q, shuning uchun har uslubda
+`fontFamilyFallback` bor (`ManropeCyr`, `PlexMonoCyr`). Zaxira faqat
+o'z belgisi bo'lmagan harfga ishlaydi — lotin matnga tegmaydi.
+Yangi uslub yozsangiz zaxirani ham qo'ying, aks holda ruscha matn
+bo'sh kvadrat bo'lib chiqadi.
+
 | Uslub | Shrift | Qayerda |
 |---|---|---|
-| `display` 46 | Serif | onboarding, hero |
-| `title` 34 | Serif | ekran sarlavhasi |
-| `titleSm` 27 | Serif | forma sarlavhasi |
-| `section` 22 | Serif | bo'lim sarlavhasi |
-| `profileName` 30 | Serif | profil ismi |
-| `price` 42 | Serif | katta narx |
-| `h1` 26 / `h2` 21 | Manrope 800 | sheet sarlavhasi |
-| `cardTitle` 15.5 | Manrope 700 | karta va qator sarlavhasi |
-| `body` 15/1.55 | Manrope 400 | tana matni |
-| `bodyStrong` 15 | Manrope 500 | asosiy qiymat |
-| `caption` 13 | Manrope 400 | izoh |
-| `label` 11 | Manrope 700 | forma yorlig'i (KATTA HARF) |
-| `button` 16.5 / `buttonSm` 13.5 | Manrope 700 | tugma |
-| `navLabel` 10.5 | Manrope 600 | tab yorlig'i |
+| `display` 46 | Playfair | onboarding, hero |
+| `title` 34 | Playfair | ekran sarlavhasi |
+| `titleSm` 27 | Playfair | forma sarlavhasi |
+| `section` 22 | Playfair | bo'lim sarlavhasi |
+| `profileName` 30 | Playfair | profil ismi |
+| `price` 42 | Playfair | katta narx |
+| `h1` 26 / `h2` 21 | Jakarta 800 | sheet sarlavhasi |
+| `cardTitle` 15.5 | Jakarta 700 | karta va qator sarlavhasi |
+| `body` 15/1.55 | Jakarta 400 | tana matni |
+| `bodyStrong` 15 | Jakarta 500 | asosiy qiymat |
+| `caption` 13 | Jakarta 400 | izoh |
+| `label` 11 | Jakarta 700 | forma yorlig'i (KATTA HARF) |
+| `button` 16.5 / `buttonSm` 13.5 | Jakarta 700 | tugma |
+| `navLabel` 10.5 | Jakarta 600 | tab yorlig'i |
 | `statValue` 21 | Mono 600 | statistika soni |
-| `statLabel` 10.5 | Manrope 600 | statistika yorlig'i |
+| `statLabel` 10.5 | Jakarta 600 | statistika yorlig'i |
 | `meta` 11.5 | Mono 500 | sana, holat |
 | `amount` 15 | Mono 600 | summa |
 | `statusLabel` 11 | Mono 600 | "TAYYOR · TEGIZING" |
