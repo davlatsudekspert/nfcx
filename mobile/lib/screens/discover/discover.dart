@@ -348,7 +348,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ],
 
       if (_companies.isNotEmpty) ...[
-        _header(tr('Kompaniyalar')),
+        _header(tr('Sizga tavsiya')),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: _FeaturedCompany(company: _companies.first),
+          ),
+        ),
+        if (_companies.length > 1) ...[
+          _header(tr('Kompaniyalar')),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -356,7 +364,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               padding: EdgeInsets.zero,
-              itemCount: _companies.length.clamp(0, 6),
+              itemCount: (_companies.length - 1).clamp(0, 5),
               gridDelegate:
                   const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -365,10 +373,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 childAspectRatio: .92,
               ),
               itemBuilder: (context, i) =>
-                  _CompanyCard(company: _companies[i]),
+                  _CompanyCard(company: _companies[i + 1]),
             ),
           ),
         ),
+        ],
       ],
 
       if (grid.isNotEmpty) ...[
@@ -652,6 +661,104 @@ class _RatingRow extends StatelessWidget {
             const SizedBox(width: S.x8),
             Text(som(record.views), style: T.amount.copyWith(fontSize: 13)),
           ],
+        ),
+      );
+}
+
+/// Qidiruv lentasining katta vitrinası. Birinchi kompaniya rasm, nom,
+/// holat va joylashuvni bitta editorial kompozitsiyada beradi; qolgan
+/// kompaniyalar pastdagi gridda qoladi. Shu sababli API katalogi
+/// qisqarmaydi, faqat uning vizual ierarxiyasi o'zgaradi.
+class _FeaturedCompany extends StatelessWidget {
+  const _FeaturedCompany({required this.company});
+
+  final Company company;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        padding: EdgeInsets.zero,
+        radius: R.card,
+        glow: company.verified,
+        onTap: () => push<void>(
+          context,
+          (_) => ProfileScreen(companyId: company.id),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(R.card),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                BusinessHero(imageUrl: company.coverUrl ?? company.logoUrl),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0xE9000000)],
+                      stops: [.26, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: S.x12,
+                  left: S.x12,
+                  child: GlassPanel(
+                    radius: R.status,
+                    padding: const EdgeInsets.symmetric(horizontal: S.x8, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Avatar(url: company.logoUrl, name: company.name, size: 20, square: true),
+                        const SizedBox(width: 6),
+                        Text(tr('Biznes'), style: T.meta.copyWith(color: C.ink, fontSize: 9)),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: S.x16,
+                  right: S.x16,
+                  bottom: S.x16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              company.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: T.section.copyWith(fontSize: 26),
+                            ),
+                          ),
+                          if (company.verified) ...[
+                            const SizedBox(width: 7),
+                            const VerifiedBadge(size: 17),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          if (company.city.isNotEmpty)
+                            Flexible(
+                              child: Text(company.city, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.caption.copyWith(color: C.ink2)),
+                            ),
+                          if (company.city.isNotEmpty && company.itemCount > 0)
+                            Text(' · ', style: T.caption.copyWith(color: C.ink3)),
+                          if (company.itemCount > 0)
+                            Text(trf('{n} mahsulot', {'n': '${company.itemCount}'}), style: T.caption.copyWith(color: C.accent)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }
