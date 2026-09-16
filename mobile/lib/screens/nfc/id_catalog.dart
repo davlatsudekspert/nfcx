@@ -254,7 +254,7 @@ class _CatalogHero extends StatelessWidget {
                 style: T.amount.copyWith(color: C.accent),
               ),
               const SizedBox(width: S.x8),
-              const NIcon(Ico.chevronRight, size: 18, color: C.accent),
+              NIcon(Ico.chevronRight, size: 18, color: C.accent),
             ],
           ),
         ],
