@@ -21,24 +21,27 @@ const previewSize = Size(390, 844);
 
 Future<void> loadFonts() async {
   const fonts = {
-    'InstrumentSerif': [
-      'assets/fonts/InstrumentSerif-400.ttf',
-      'assets/fonts/InstrumentSerif-400Italic.ttf',
+    'PlayfairDisplay': [
+      'assets/fonts/PlayfairDisplay-400.ttf',
+      'assets/fonts/PlayfairDisplay-400Italic.ttf',
+      'assets/fonts/PlayfairDisplay-500.ttf',
+      'assets/fonts/PlayfairDisplay-500Italic.ttf',
+      'assets/fonts/PlayfairDisplay-600.ttf',
+      'assets/fonts/PlayfairDisplay-700.ttf',
     ],
-    'Manrope': [
-      'assets/fonts/Manrope-400.ttf',
-      'assets/fonts/Manrope-500.ttf',
-      'assets/fonts/Manrope-600.ttf',
-      'assets/fonts/Manrope-700.ttf',
-      'assets/fonts/Manrope-800.ttf',
+    'PlusJakartaSans': [
+      'assets/fonts/PlusJakartaSans-400.ttf',
+      'assets/fonts/PlusJakartaSans-500.ttf',
+      'assets/fonts/PlusJakartaSans-600.ttf',
+      'assets/fonts/PlusJakartaSans-700.ttf',
+      'assets/fonts/PlusJakartaSans-800.ttf',
     ],
-    'IBMPlexMono': [
-      'assets/fonts/IBMPlexMono-400.ttf',
-      'assets/fonts/IBMPlexMono-500.ttf',
-      'assets/fonts/IBMPlexMono-600.ttf',
-      'assets/fonts/IBMPlexMono-700.ttf',
+    'SpaceMono': [
+      'assets/fonts/SpaceMono-400.ttf',
+      'assets/fonts/SpaceMono-700.ttf',
     ],
   };
+
   for (final e in fonts.entries) {
     final loader = FontLoader(e.key);
     for (final path in e.value) {

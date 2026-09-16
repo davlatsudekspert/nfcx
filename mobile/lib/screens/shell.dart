@@ -6,7 +6,7 @@ import '../design/tokens.dart';
 import '../state/app_state.dart';
 import 'discover/discover.dart';
 import 'home/home.dart';
-import 'content/reels.dart';
+import 'nfc/id_catalog.dart';
 import 'identity/profile_tab.dart';
 import 'nfc/nfc_center.dart';
 
@@ -38,7 +38,8 @@ class _ShellState extends State<Shell> {
     HomeScreen(),
     DiscoverScreen(),
     NfcCenterScreen(),
-    ReelsScreen(),
+    // TO'RTINCHI TAB — DO'KON (prototip). Reels lentadan ochiladi.
+    IdCatalogScreen(),
     ProfileTab(),
   ];
 
@@ -60,16 +61,24 @@ class _ShellState extends State<Shell> {
   /// chaqiradi. Android'ning "orqaga" tugmasi bilan BIR XIL yo'l:
   /// ikki xil xulq bo'lsa, odam qaysi biri nima qilishini
   /// bilmasdi.
-  void _goHome() {
+  void _goHome() => _goTab(0);
+
+  /// EKRAN ICHIDAN TABGA O'TISH.
+  ///
+  /// Bosh sahifadagi qidiruv tugmasi YANGI EKRAN OCHMAYDI — u
+  /// Qidiruv tabiga o'tadi. Aks holda ilovada ikkita qidiruv
+  /// ko'rinishi paydo bo'lardi: biri tabda, biri uning ustida.
+  void _goTab(int index) {
     final nav = _keys[_tab].currentState;
     if (nav != null && nav.canPop()) nav.popUntil((r) => r.isFirst);
-    if (_tab != 0) setState(() => _tab = 0);
+    if (_tab != index) setState(() => _tab = index);
   }
 
   @override
   Widget build(BuildContext context) {
     return ShellScope(
       goHome: _goHome,
+      goTab: _goTab,
       child: PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -163,15 +172,24 @@ class _ShellState extends State<Shell> {
 /// narsasi yo'q va oddiy "orqaga" tugmasi u yerda ishlamasdi.
 /// Egasi shuni so'radi: "reelsda qaytish tugmasi bo'lsin".
 class ShellScope extends InheritedWidget {
-  const ShellScope({super.key, required this.goHome, required super.child});
+  const ShellScope({
+    super.key,
+    required this.goHome,
+    required this.goTab,
+    required super.child,
+  });
 
   final VoidCallback goHome;
+
+  /// Tab indeksi bo'yicha o'tish (`NavBar.tabs` tartibi).
+  final ValueChanged<int> goTab;
 
   static ShellScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<ShellScope>();
 
   @override
-  bool updateShouldNotify(ShellScope old) => old.goHome != goHome;
+  bool updateShouldNotify(ShellScope old) =>
+      old.goHome != goHome || old.goTab != goTab;
 }
 
 /// Tarmoq signalini kuzatib, uzilganda chiziqni ochadi.

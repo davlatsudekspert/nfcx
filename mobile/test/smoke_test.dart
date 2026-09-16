@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore/app.dart';
 import 'package:nfcstore/data/deep_link.dart';
-import 'package:nfcstore/design/components/logo.dart';
 import 'package:nfcstore/design/components/nav_bar.dart';
 import 'package:nfcstore/l10n/strings.dart';
 import 'package:nfcstore/screens/shell.dart';
@@ -70,18 +69,15 @@ void main() {
     await boot(tester);
     for (var i = 0; i < NavBar.tabs.length; i++) {
       final label = NavBar.tabs[i].label;
-      // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
-      // ko‘rsatiladi, ya‘ni matn bo‘yicha topib bo‘lmaydi.
+      // HAMMA TAB YORLIQLI (prototip V2): markaziy NFC orbi ham
+      // ostida "NFC" yozuvi bilan turadi.
       //
-      // MEDALYON EKRANDA BITTA EMAS: bosh sahifaning sarlavhasida
-      // ham, kartada ham o‘sha belgi turadi. Shuning uchun qidiruv
-      // NAVIGATSIYA PANELI ICHI bilan cheklanadi — aks holda test
-      // tasodifan kontentdagi belgini bosib, tabni umuman
-      // almashtirmasdan "o‘tdi" deb qolardi.
+      // QIDIRUV NAVIGATSIYA PANELI BILAN CHEKLANADI: "NFC" va
+      // "Do'kon" so'zlari ekran kontentida ham uchraydi va test
+      // tasodifan o'shani bosib, tabni almashtirmasdan "o'tdi" deb
+      // qolardi.
       await tester.tap(
-        i == NavBar.nfcIndex
-            ? find.descendant(of: find.byType(NavBar), matching: find.byType(BrandMark))
-            : find.text(label),
+        find.descendant(of: find.byType(NavBar), matching: find.text(label)),
       );
       await settle(tester);
       expect(tester.takeException(), isNull, reason: label);

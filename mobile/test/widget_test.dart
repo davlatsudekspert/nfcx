@@ -86,20 +86,23 @@ void main() {
       ));
       expect(NavBar.tabs.length, 5);
       // YORLIQLAR O‘ZBEKCHA: interfeys tili o‘zbekcha, shuning
-      // uchun tab nomlari ham tarjima qilinadi. "Reels" tarjima
-      // qilinmaydi — u mahsulot atamasi va uch tilda ham shunday
-      // yoziladi.
+      // uchun tab nomlari ham tarjima qilinadi.
+      //
+      // TO'RTINCHI TAB — DO'KON (prototip V2). Reels ilovada
+      // qoladi, lekin u KONTENT KO'RINISHI va lentadan ochiladi;
+      // ID sotib olish esa asosiy savdo yo'li va bitta bosishda
+      // turishi kerak.
       expect(find.text('Bosh sahifa'), findsOneWidget);
       expect(find.text('Qidiruv'), findsOneWidget);
-      expect(find.text('Reels'), findsOneWidget);
+      expect(find.text('Do‘kon'), findsOneWidget);
       expect(find.text('Profil'), findsOneWidget);
       expect(find.text('Activity'), findsNothing);
 
-      // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
-      // ko‘rsatiladi va "NFC" so‘zi ekranga chizilmaydi. Tabning
-      // ma‘nosi `NavBar.tabs` da saqlanadi.
-      expect(find.text('NFC'), findsNothing);
-      expect(find.byType(BrandMark), findsOneWidget);
+      // MARKAZIY TAB — NFC ORBI, yorlig'i bilan (prototip).
+      // Ilgari u brend medalyoni edi va yorliqsiz turardi; endi
+      // tugma AMALNI bildiradi, logotip esa sarlavha qatorida.
+      expect(find.text('NFC'), findsOneWidget);
+      expect(find.byType(BrandMark), findsNothing);
     });
 
     testWidgets('NFC markazda turadi', (tester) async {
@@ -110,9 +113,9 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: NavBar(active: NavBar.nfcIndex, onSelect: (_) {})),
       ));
-      // Markazda — brend medalyoni, boshqa tablarda bunday
-      // element yo‘q.
-      expect(find.byType(BrandMark), findsOneWidget);
+      // Markazda — urg'u rangli NFC orbi: u yagona to'ldirilgan
+      // doira va boshqa tablarda bunday element yo'q.
+      expect(find.text('NFC'), findsOneWidget);
     });
 
     testWidgets('bosilganda indeks uzatiladi', (tester) async {
@@ -120,7 +123,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: NavBar(active: 0, onSelect: (i) => picked = i)),
       ));
-      await tester.tap(find.byType(BrandMark));
+      await tester.tap(find.text('NFC'));
       expect(picked, 2);
     });
   });
@@ -321,14 +324,49 @@ void main() {
   fieldLineTests();
 
   group('Dizayn tokenlari', () {
-    test('ranglar handoff bilan bir xil', () {
-      // Bu qiymatlar dizayn hujjatidan. O‘zgartirilsa — ataylab
-      // o‘zgartirilsin, tasodifan emas.
-      expect(C.bg, const Color(0xFF0A0805));
-      expect(C.accent, const Color(0xFFE8CFA0));
-      expect(C.platinum, const Color(0xFFC9CCD2));
-      expect(C.ok, const Color(0xFF63D694));
-      expect(C.fail, const Color(0xFFE2685F));
+    test('ranglar prototip (V2) qiymatlarida', () {
+      // Qiymatlar PROTOTIPNING CSS o'zgaruvchilaridan. O'zgartirilsa
+      // — ataylab o'zgartirilsin, tasodifan emas.
+      //
+      // Standart mavzu — A "Opal Light": oq qog'oz, indigo urg'u.
+      C.apply(Palette.opal);
+      expect(C.bg, const Color(0xFFFFFFFF)); // --bg0
+      expect(C.surface, const Color(0xFFF2F4F7)); // --bg1
+      expect(C.accent, const Color(0xFF3A62CC)); // --acc
+      expect(C.ink, const Color(0xFF0D1117)); // --t1
+      expect(C.ink2, const Color(0xFF596372)); // --t2
+      expect(C.line, const Color(0xFFDDE1E8)); // --line
+      expect(C.ok, const Color(0xFF2E9E6B));
+      expect(C.warn, const Color(0xFFD98A2B));
+      expect(C.fail, const Color(0xFFD9534F));
+
+      // B "Midnight Silk" — to'q mavzu.
+      C.apply(Palette.midnight);
+      expect(C.bg, const Color(0xFF080A0E));
+      expect(C.accent, const Color(0xFF87A9EB));
+      expect(C.ink, const Color(0xFFF2F4F7));
+
+      // C "Dune" — iliq qum, mis urg'u.
+      C.apply(Palette.dune);
+      expect(C.bg, const Color(0xFFE7D7C1));
+      expect(C.accent, const Color(0xFF8C5F32));
+      expect(C.ink, const Color(0xFF332E27));
+
+      C.apply(Palette.opal);
+    });
+
+    test('matn fon bilan qarama-qarshi — har mavzuda', () {
+      // Yorug' mavzu qo'shilgandan keyin bu SHART: qiymat
+      // qotirilgan bo'lsa, oq fonda oq matn chiqardi.
+      double lum(Color c) => c.computeLuminance();
+      for (final p in Palette.all) {
+        C.apply(p);
+        final contrast = (lum(C.ink) > lum(C.bg))
+            ? (lum(C.ink) + .05) / (lum(C.bg) + .05)
+            : (lum(C.bg) + .05) / (lum(C.ink) + .05);
+        expect(contrast, greaterThan(4.5), reason: 'mavzu: ${p.id}');
+      }
+      C.apply(Palette.opal);
     });
 
     test('harakat byudjeti: EKRAN O‘TISHLARI 400ms dan oshmaydi', () {

@@ -27,19 +27,24 @@ const auditSize = Size(390, 844);
 /// yuklanadi.
 Future<void> loadAuditFonts() async {
   const fonts = {
-    'InstrumentSerif': ['assets/fonts/InstrumentSerif-400.ttf'],
-    'Manrope': [
-      'assets/fonts/Manrope-400.ttf',
-      'assets/fonts/Manrope-500.ttf',
-      'assets/fonts/Manrope-600.ttf',
-      'assets/fonts/Manrope-700.ttf',
-      'assets/fonts/Manrope-800.ttf',
+    'PlayfairDisplay': [
+      'assets/fonts/PlayfairDisplay-400.ttf',
+      'assets/fonts/PlayfairDisplay-400Italic.ttf',
+      'assets/fonts/PlayfairDisplay-500.ttf',
+      'assets/fonts/PlayfairDisplay-500Italic.ttf',
+      'assets/fonts/PlayfairDisplay-600.ttf',
+      'assets/fonts/PlayfairDisplay-700.ttf',
     ],
-    'IBMPlexMono': [
-      'assets/fonts/IBMPlexMono-400.ttf',
-      'assets/fonts/IBMPlexMono-500.ttf',
-      'assets/fonts/IBMPlexMono-600.ttf',
-      'assets/fonts/IBMPlexMono-700.ttf',
+    'PlusJakartaSans': [
+      'assets/fonts/PlusJakartaSans-400.ttf',
+      'assets/fonts/PlusJakartaSans-500.ttf',
+      'assets/fonts/PlusJakartaSans-600.ttf',
+      'assets/fonts/PlusJakartaSans-700.ttf',
+      'assets/fonts/PlusJakartaSans-800.ttf',
+    ],
+    'SpaceMono': [
+      'assets/fonts/SpaceMono-400.ttf',
+      'assets/fonts/SpaceMono-700.ttf',
     ],
   };
   for (final e in fonts.entries) {

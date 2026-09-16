@@ -203,8 +203,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: ScreenTitle(
-                  tr('Qidiruv'),
-                  subtitle: 'Yaxshi joylar. Yangi odamlar. Katta imkoniyatlar.',
+                  tr('Kimni'),
+                  accent: tr('topamiz?'),
                 ),
               ),
 

@@ -27,6 +27,7 @@ import 'id_catalog.dart';
 import 'nfc_scan.dart';
 import 'nfc_write.dart';
 import 'order_card.dart';
+import '../identity/profile_stats.dart';
 import 'qr_share.dart';
 
 /// NFC MARKAZI — mahsulotning o'zagi.
@@ -50,7 +51,7 @@ class NfcCenterScreen extends StatefulWidget {
 }
 
 class _NfcCenterScreenState extends State<NfcCenterScreen> {
-  bool _refreshing = false;
+
   int _gifts = 0;
 
   @override
@@ -71,12 +72,11 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _refreshing = true);
     try {
       await AppScope.read(context).refreshIdentities();
       await _loadGifts();
     } finally {
-      if (mounted) setState(() => _refreshing = false);
+      if (mounted) setState(() {});
     }
   }
 
@@ -203,9 +203,9 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
             padding: EdgeInsets.only(bottom: NavBar.inset(context)),
             children: [
               ScreenTitle(
-                tr('NFC markazi'),
-                subtitle: tr('Kartani telefon orqasiga tegizing — profil '
-                    'ochiladi yoki yangi ID yoziladi.'),
+                tr('Kartani o‘qing,'),
+                accent: tr('yozing, boshqaring'),
+                eyebrow: tr('NFC markazi'),
                 trailing: _gifts > 0
                     ? RoundButton(
                         Ico.gift,
@@ -221,90 +221,45 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                     : null,
               ),
 
-              // FOTO HERO — karta va telefonning jismoniy hissi NFC
-              // bo'limni ikonka-to'plam emas, premium mahsulotga aylantiradi.
+              // SKANERLASH QUTISI (prototip: `.scanbox`).
+              //
+              // Markazda — SIZNING kartangizning kichik nusxasi:
+              // odam telefonga qaysi kartani tegizishini ko'rib
+              // turadi. Ortida urg'u rangli yumshoq nur va
+              // skanerlash paytida tarqaladigan to'lqinlar.
               Padding(
-                padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
-                child: _NfcHero(active: !_refreshing),
+                padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
+                child: _ScanBox(
+                  identity: active,
+                  onScan: () => push<void>(context, (_) => const NfcScanScreen()),
+                ),
               ),
               const SizedBox(height: S.x24),
 
-              // IKKI ASOSIY AMAL.
+              // NFC TOOLS — uchtadan ikki qator (prototip: `.tools`).
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _BigAction(
-                        icon: Ico.scan,
-                        title: tr('Skanerlash'),
-                        subtitle: tr('Kartani o‘qish'),
-                        highlighted: true,
-                        onTap: () =>
-                            push<void>(context, (_) => const NfcScanScreen()),
-                      ),
-                    ),
-                    const SizedBox(width: S.x12),
-                    Expanded(
-                      child: _BigAction(
-                        icon: Ico.write,
-                        title: tr('Kartaga yozish'),
-                        subtitle: tr('ID‘ni kartaga yuklash'),
-                        onTap: () =>
-                            push<void>(context, (_) => const NfcWriteScreen()),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: S.x12),
-
-              // QR — NFC ishlamaganda ham ishlaydigan yo'l.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                child: Surface(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: S.x16,
-                    vertical: S.x12,
-                  ),
-                  onTap: active == null
+                child: SectionHeader(
+                  tr('NFC Tools'),
+                  actionLabel: tr('QR bilan ulashish'),
+                  onAction: active == null
                       ? null
                       : () => push<void>(
                             context,
                             (_) => QrShareScreen(identity: active),
                           ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: C.platinum.withValues(alpha: .12),
-                          borderRadius: BorderRadius.circular(R.status),
-                        ),
-                        alignment: Alignment.center,
-                        child: NIcon(Ico.qr, size: 19, color: C.platinum),
-                      ),
-                      const SizedBox(width: S.x12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(tr('QR bilan ulashish'), style: T.cardTitle),
-                            const SizedBox(height: 2),
-                            Text(
-                              tr('NFC ishlamasa ham ishlaydi'),
-                              style: T.caption.copyWith(fontSize: 12.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                      NIcon(Ico.chevronRight, size: 18, color: C.ink3),
-                    ],
-                  ),
                 ),
               ),
+              const SizedBox(height: S.x12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                child: _Tools(
+                  identity: active,
+                  onScan: () => push<void>(context, (_) => const NfcScanScreen()),
+                  onWrite: () => push<void>(context, (_) => const NfcWriteScreen()),
+                ),
+              ),
+              const SizedBox(height: S.x8),
 
               // MENING ID'LARIM.
               Padding(
@@ -387,153 +342,211 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
+/// SKANERLASH QUTISI (prototip: `.scanbox`).
+///
+/// Ortidagi nur — urg'u rangining yumshoq radial gradienti. Kartaning
+/// kichik nusxasi biroz burilgan: u "qo'lda ushlab turilgan" hisni
+/// beradi va tekis turgan to'rtburchakdan ko'ra jonliroq.
+class _ScanBox extends StatelessWidget {
+  const _ScanBox({required this.identity, required this.onScan});
 
-/// NFC markazining premium hero qismi. Rasm ostidagi jonli halqalar
-/// foydalanuvchiga kartani qayerga tutishni ko'rsatadi.
-class _NfcHero extends StatelessWidget {
-  const _NfcHero({required this.active});
-
-  final bool active;
+  final Identity? identity;
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 248,
-        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.fromLTRB(S.x20, S.x24, S.x20, S.x20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(R.card),
-          border: Border.all(color: C.accent.withValues(alpha: .32)),
-          boxShadow: C.e2,
+          border: Border.all(color: C.line),
+          gradient: RadialGradient(
+            center: const Alignment(0, -1),
+            radius: 1.2,
+            colors: [
+              C.accent.withValues(alpha: C.palette.light ? .16 : .26),
+              C.surface,
+            ],
+            stops: const [0, .62],
+          ),
         ),
-        child: Stack(
-          fit: StackFit.expand,
+        child: Column(
           children: [
-            Image.asset(
-              'assets/img/premium_contact_sheet.png',
-              fit: BoxFit.cover,
-              alignment: const Alignment(1, 1),
-            ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0x12000000), Color(0xE8000000)],
-                ),
-              ),
-            ),
-            Align(
-              alignment: const Alignment(0, -.05),
-              child: Transform.scale(
-                scale: .72,
-                child: NfcWave(active: active),
-              ),
-            ),
-            Positioned(
-              left: S.x20,
-              right: S.x20,
-              bottom: S.x16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Kartani telefon tepasiga\nyaqinlashtiring', style: T.section),
-                  const SizedBox(height: 4),
-                  Text(
-                    'NFC yoqilgan bo‘lishi kerak',
-                    style: T.caption.copyWith(color: C.ink2),
+            if (identity != null)
+              Transform.rotate(
+                angle: -.14,
+                child: SizedBox(
+                  width: 156,
+                  child: IdentityCard(
+                    code: identity!.code,
+                    tier: identity!.record?.tier ?? Tier.free,
+                    holder: identity!.name,
+                    url: identity!.publicUrl.replaceFirst('https://', ''),
+                    flippable: false,
                   ),
-                ],
-              ),
+                ),
+              )
+            else
+              NfcWave(size: 96, active: true),
+            const SizedBox(height: S.x20),
+            Text(
+              tr('Kartani telefon orqasiga tegizing'),
+              textAlign: TextAlign.center,
+              style: T.section,
             ),
+            const SizedBox(height: 6),
+            Text(
+              tr('NFC yoqilgan. Skanerlashni boshlang va kartani '
+                  'yaqinlashtiring.'),
+              textAlign: TextAlign.center,
+              style: T.caption.copyWith(fontSize: 12.5),
+            ),
+            const SizedBox(height: S.x16),
+            PrimaryButton(tr('Skanerlashni boshlash'), onTap: onScan),
           ],
         ),
       );
 }
 
-// ─────────────────────────────────────────────────────────────
+/// NFC TOOLS — uchtadan ikki qator shisha plita (prototip: `.tools`).
+class _Tools extends StatelessWidget {
+  const _Tools({
+    required this.identity,
+    required this.onScan,
+    required this.onWrite,
+  });
 
-/// Katta amal kartasi — skanerlash va yozish.
-class _BigAction extends StatelessWidget {
-  const _BigAction({
+  final Identity? identity;
+  final VoidCallback onScan;
+  final VoidCallback onWrite;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <({Ico icon, String title, String sub, VoidCallback? tap})>[
+      (icon: Ico.scan, title: tr('Skanerlash'), sub: tr('Kartani o‘qish'), tap: onScan),
+      (icon: Ico.write, title: tr('Kartaga yozish'), sub: tr('Profil havolasi'), tap: onWrite),
+      (
+        icon: Ico.shield,
+        title: tr('Kartani tekshirish'),
+        sub: tr('Haqiqiylik'),
+        tap: onScan,
+      ),
+      (
+        icon: Ico.qr,
+        title: 'QR',
+        sub: tr('Yaratish · skanerlash'),
+        tap: identity == null
+            ? null
+            : () => push<void>(context, (_) => QrShareScreen(identity: identity!)),
+      ),
+      (
+        icon: Ico.info,
+        title: tr('Teg ma’lumoti'),
+        sub: tr('Turi, hajmi, qulf'),
+        tap: onScan,
+      ),
+      (
+        icon: Ico.chart,
+        title: tr('Tegish statistikasi'),
+        sub: tr('Kun · hafta · oy'),
+        tap: identity == null
+            ? null
+            : () => push<void>(
+                  context,
+                  (_) => ProfileStatsScreen(
+                    code: identity!.code,
+                    name: identity!.name,
+                  ),
+                ),
+      ),
+    ];
+
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: S.x8,
+      crossAxisSpacing: S.x8,
+      childAspectRatio: .92,
+      children: [
+        for (final it in items)
+          _ToolTile(icon: it.icon, title: it.title, sub: it.sub, onTap: it.tap),
+      ],
+    );
+  }
+}
+
+class _ToolTile extends StatelessWidget {
+  const _ToolTile({
     required this.icon,
     required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.highlighted = false,
+    required this.sub,
+    this.onTap,
   });
 
   final Ico icon;
   final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  /// Asosiy amal — oltin qirra bilan ajralib turadi.
-  final bool highlighted;
+  final String sub;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        minSize: 0,
-        scale: .97,
-        child: Container(
-          height: 128,
-          padding: const EdgeInsets.all(S.x16),
-          decoration: BoxDecoration(
-            // YUZA SHAFFOF EMAS — QORISHTIRILGAN.
-            //
-            // Ilgari bu yerda shaffof oltin gradient turardi
-            // (`accent` 10% → 2%). Ostidagi `rimGlow` esa
-            // kartaning ORTIDA to'liq to'rtburchak bo'lib
-            // chiziladi — shaffof yuza uni o'tkazib yuborardi va
-            // karta butunlay sarg'ish-loyqa bo'lib ketardi,
-            // yozuvlari esa xiralashardi.
-            //
-            // Endi oltin tus `raised` yuzaga OLDINDAN qorishtiriladi:
-            // natija bir xil ko'rinadi, lekin yuza qattiq — nur
-            // faqat chetdan taraladi.
-            gradient: highlighted
-                ? LinearGradient(
-                    begin: const Alignment(-.8, -1),
-                    end: const Alignment(.8, 1),
-                    colors: [
-                      Color.alphaBlend(
-                        C.accent.withValues(alpha: .10),
-                        C.surfaceHigh,
-                      ),
-                      Color.alphaBlend(
-                        C.accent.withValues(alpha: .03),
-                        C.surface,
-                      ),
-                    ],
-                  )
-                : C.raisedSurface,
-            borderRadius: BorderRadius.circular(R.card),
-            border: Border.all(
-              color: highlighted ? C.accent.withValues(alpha: .4) : C.line,
-            ),
-            boxShadow: highlighted ? C.rimGlow : C.e1,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              NIcon(
-                icon,
-                size: 24,
-                color: highlighted ? C.accent : C.platinum,
-              ),
-              const Spacer(),
-              Text(title, style: T.cardTitle),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: T.caption.copyWith(fontSize: 12),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    final on = onTap != null;
+    return Press(
+      onTap: onTap,
+      minSize: 0,
+      scale: .96,
+      child: Container(
+        padding: const EdgeInsets.all(S.x12),
+        decoration: BoxDecoration(
+          color: C.glass,
+          borderRadius: BorderRadius.circular(R.tile),
+          border: Border.all(color: C.lineCool),
         ),
-      );
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: (on ? C.accent : C.ink3).withValues(alpha: .14),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: NIcon(icon, size: 18, color: on ? C.accent : C.ink3),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.cardTitle.copyWith(
+                    fontSize: 12.5,
+                    color: on ? C.ink : C.ink3,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sub,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: T.caption.copyWith(fontSize: 10.5, height: 1.25),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+
 
 /// "+" katakchasi — yangi ID olish.
 class _AddIdTile extends StatelessWidget {

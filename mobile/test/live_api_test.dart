@@ -42,7 +42,7 @@ void main() {
   /// Yuklangan rasm havolasi — post va istorya testlari uchun.
   /// Server tashqi manzilni qabul qilmaydi (SSRF yo'li), shuning
   /// uchun avval haqiqiy yuklash bo'lishi kerak.
-  String? _uploadedImage;
+  String? uploadedImage;
 
   setUpAll(() async {
     api = Api(baseUrl: base);
@@ -251,7 +251,7 @@ void main() {
       'avatarUrl': url,
     });
     expect(updated.avatarUrl, contains(url));
-    _uploadedImage = url;
+    uploadedImage = url;
   });
 
   test('post — joylanadi, ro‘yxatda chiqadi, o‘chiriladi', () async {
@@ -259,7 +259,7 @@ void main() {
     // lenta faqat matndan iborat yozuvlarni qabul qilmaydi.
     final post = await repo.addPost(
       'VIP001',
-      imageUrl: _uploadedImage,
+      imageUrl: uploadedImage,
       caption: 'Sinov posti',
       agreed: true,
     );
@@ -278,7 +278,7 @@ void main() {
     // rozilik faqat ekranda bo'lsa, uni so'rovni to'g'ridan-to'g'ri
     // yuborib chetlab o'tish mumkin edi.
     await expectLater(
-      repo.addPost('VIP001', imageUrl: _uploadedImage, caption: 'Rozilik yo‘q', agreed: false),
+      repo.addPost('VIP001', imageUrl: uploadedImage, caption: 'Rozilik yo‘q', agreed: false),
       throwsA(isA<ApiError>()),
     );
   });
@@ -286,7 +286,7 @@ void main() {
   test('istorya — joylanadi va lentaga tushadi', () async {
     await repo.addStory(
       'VIP001',
-      imageUrl: _uploadedImage,
+      imageUrl: uploadedImage,
       caption: 'Sinov istoryasi',
       agreed: true,
     );
@@ -297,7 +297,7 @@ void main() {
   test('begona profilga post yozib bo‘lmaydi', () async {
     // ABC123 — Malikaniki. Egalik SERVERDA tekshiriladi.
     await expectLater(
-      repo.addPost('ABC123', imageUrl: _uploadedImage, caption: 'begona', agreed: true),
+      repo.addPost('ABC123', imageUrl: uploadedImage, caption: 'begona', agreed: true),
       throwsA(isA<ApiError>()),
     );
   });

@@ -10,10 +10,12 @@ import '../../design/components/logo.dart';
 import '../../design/components/media.dart';
 import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
+import '../../design/components/sheet.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/story_ring.dart';
 import '../../design/components/surface.dart';
+import '../../design/components/toast.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
@@ -29,11 +31,12 @@ import '../content/story_viewer.dart';
 import '../identity/profile_screen.dart';
 import '../identity/switcher.dart';
 import '../nfc/gift_offers.dart';
+import '../nfc/gift_id.dart';
+import '../orders/my_orders.dart';
+import '../shell.dart';
 import '../nfc/id_catalog.dart';
 import '../nfc/nfc_scan.dart';
-import '../nfc/order_card.dart';
 import '../nfc/qr_share.dart';
-import '../orders/my_orders.dart';
 
 /// BOSH SAHIFA — "men kimman va nima bo'lyapti".
 ///
@@ -61,6 +64,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<FeedEntry> _feed = const [];
   List<Order> _pending = const [];
   int _gifts = 0;
+
+  /// Haftaning kompaniyasi — sana bo'yicha tanlanadi.
+  Company? _featured;
 
   Object? _error;
   bool _loading = true;
@@ -159,12 +165,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         gifts = (await state.repo.giftOffers()).incoming.length;
       } catch (_) {}
 
+      // HAFTANING KOMPANIYASI (prototip: "Haftaning kompaniyasi").
+      //
+      // TASODIFIY EMAS, SANA BO'YICHA: kun davomida hamma bitta
+      // kompaniyani ko'radi. Tasodifiy tanlov har ochilganda
+      // boshqasini ko'rsatib, ro'yxatni "qaltis" qilib qo'yardi va
+      // kompaniyaning o'zi "men qachon chiqdim?" degan savolga
+      // javob ololmasdi.
+      Company? featured;
+      try {
+        final all = (await state.repo.companies())
+            .where((c) => c.status == 'active')
+            .toList();
+        if (all.isNotEmpty) {
+          final day = DateTime.now().difference(DateTime(2026)).inDays;
+          featured = all[day % all.length];
+        }
+      } catch (_) {}
+
       if (!mounted) return;
       setState(() {
         _feed = feed.items;
         _stories = stories;
         _pending = pending;
         _gifts = gifts;
+        _featured = featured;
         _loading = false;
         _loadedAt = DateTime.now();
       });
@@ -175,6 +200,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _loading = false;
       });
     }
+  }
+
+  /// BILDIRISHNOMALAR — qo'ng'iroq ostidagi varaqa.
+  ///
+  /// Prototipda bosh sahifada ogohlantirish kartalari YO'Q, lekin
+  /// tepada nuqtali qo'ng'iroq bor. Ikkala muhim xabar — tugallanmagan
+  /// to'lov va kutilayotgan sovg'a — shu yerga ko'chdi: ular bir
+  /// bosishda qoladi, ekranni esa egallamaydi.
+  Future<void> _openNotifications() async {
+    if (_pending.isEmpty && _gifts == 0) {
+      showToast(context, tr('Yangi bildirishnoma yo‘q'));
+      return;
+    }
+    await showSheet<void>(
+      context,
+      title: tr('Bildirishnomalar'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_pending.isNotEmpty)
+            _Notice(
+              icon: Ico.clock,
+              tone: StatusTone.pending,
+              title: tr('To‘lov tugallanmagan'),
+              message: trf(
+                '{code} kodi band qilingan. To‘lov tasdiqlanmasa, '
+                'kod boshqa odamga o‘tadi.',
+                {'code': _pending.first.code},
+              ),
+              actionLabel: tr('Davom etish'),
+              onAction: () {
+                Navigator.of(context).pop();
+                push<void>(context, (_) => const MyOrdersScreen());
+              },
+            ),
+          if (_pending.isNotEmpty && _gifts > 0) const SizedBox(height: S.x8),
+          if (_gifts > 0)
+            _Notice(
+              icon: Ico.gift,
+              tone: StatusTone.accent,
+              title: tr('Sizga ID sovg‘a qilindi'),
+              message: tr('Qabul qilmaguningizcha ID sizga o‘tmaydi.'),
+              actionLabel: tr('Ko‘rish'),
+              onAction: () {
+                Navigator.of(context).pop();
+                push<void>(context, (_) => const GiftOffersScreen())
+                    .then((_) => mounted ? _load(force: true) : null);
+              },
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _addStory(String code) async {
@@ -311,7 +388,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(child: _Header(identity: active)),
+              SliverToBoxAdapter(
+                child: _Header(
+                  identity: active,
+                  unread: _gifts + _pending.length,
+                  onSearch: () => ShellScope.maybeOf(context)?.goTab(1),
+                  onBell: _openNotifications,
+                ),
+              ),
 
               // SALOMLASHUV.
               SliverToBoxAdapter(
@@ -320,15 +404,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Eyebrow(
-                        [
-                          if ((active?.record?.city ?? '').isNotEmpty)
-                            active!.record!.city,
-                          monthDay(DateTime.now()),
-                        ].join(' · '),
-                      ),
-                      const SizedBox(height: 6),
+                      // PROTOTIPDA SHAHAR VA SANA YO'Q: ular hech
+                      // qanday savolga javob bermaydi (sanani odam
+                      // telefonining tepasida ko'rib turibdi).
+                      // O'rniga — bitta JONLI qator.
                       _Greeting(name: firstName),
+                      if ((active?.record?.views ?? 0) > 0) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          trf('Profilingiz {n} marta ko‘rilgan', {
+                            'n': som(active!.record!.views),
+                          }),
+                          style: T.body.copyWith(fontSize: 13.5, color: C.ink2),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -375,53 +464,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
 
-              // OGOHLANTIRISHLAR — kutilayotgan to'lov va sovg'a.
-              if (_pending.isNotEmpty || _gifts > 0)
+              // HAFTANING KOMPANIYASI — katta rasmli karta.
+              //
+              // TUGALLANMAGAN TO'LOV VA SOVG'A KARTALARI BU YERDAN
+              // OLIB TASHLANDI (prototipda ular yo'q). Ma'lumot
+              // yo'qolmadi: ikkalasi ham sarlavhadagi qo'ng'iroq
+              // ostida, nuqta bilan belgilanadi — ya'ni ular hali
+              // ham BIR BOSISHDA, lekin bosh sahifani egallamaydi.
+              if (_featured != null)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      S.gutter,
-                      S.x16,
-                      S.gutter,
-                      0,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(S.gutter, S.x32, S.gutter, 0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (_pending.isNotEmpty)
-                          _Notice(
-                            icon: Ico.clock,
-                            tone: StatusTone.pending,
-                            title: tr('To‘lov tugallanmagan'),
-                            message: trf(
-                              '{code} kodi band qilingan. To‘lov tasdiqlanmasa, '
-                              'kod boshqa odamga o‘tadi.',
-                              {'code': _pending.first.code},
-                            ),
-                            actionLabel: tr('Davom etish'),
-                            onAction: () => push<void>(
-                              context,
-                              (_) => const MyOrdersScreen(),
-                            ),
-                          ),
-                        if (_pending.isNotEmpty && _gifts > 0)
-                          const SizedBox(height: S.x8),
-                        if (_gifts > 0)
-                          _Notice(
-                            icon: Ico.gift,
-                            tone: StatusTone.accent,
-                            title: tr('Sizga ID sovg‘a qilindi'),
-                            message: tr(
-                              'Qabul qilmaguningizcha ID sizga o‘tmaydi.',
-                            ),
-                            actionLabel: tr('Ko‘rish'),
-                            onAction: () async {
-                              await push<void>(
-                                context,
-                                (_) => const GiftOffersScreen(),
-                              );
-                              if (mounted) await _load(force: true);
-                            },
-                          ),
+                        SectionHeader(
+                          tr('Haftaning kompaniyasi'),
+                          actionLabel: tr('Hammasi'),
+                          onAction: () => ShellScope.maybeOf(context)?.goTab(1),
+                        ),
+                        const SizedBox(height: S.x12),
+                        _FeaturedCompany(company: _featured!),
                       ],
                     ),
                   ),
@@ -534,48 +597,95 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 // ─────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  const _Header({this.identity});
+  const _Header({this.identity, this.unread = 0, this.onSearch, this.onBell});
 
   final Identity? identity;
+
+  /// Bildirishnoma nuqtasi — sovg'a taklifi va tugallanmagan to'lov.
+  final int unread;
+  final VoidCallback? onSearch;
+  final VoidCallback? onBell;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
         child: Row(
           children: [
-            const BrandMark(size: 42),
-            const SizedBox(width: S.x12),
-            const Wordmark(),
-            const Spacer(),
-            // SHAXS ALMASHTIRGICH — bir nechta ID egasi uchun eng
-            // tez yo'l. Bitta ID bo'lsa ham bosiladi: ichida
-            // "ID qo'shish" turadi.
+            // BREND — PUNKTIR CHEGARALI YORLIQ (prototip: `.logo`).
+            //
+            // Medalyon bu yerdan olib tashlandi: markaziy tab endi
+            // NFC orbi va ekranda ikkita "brend nishoni" bir-biriga
+            // xalaqit berardi.
             Press(
               onTap: () => showIdentitySwitcher(context),
               minSize: S.tap,
-              scale: .92,
+              scale: .96,
               child: Container(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: C.accent.withValues(alpha: .45),
-                    width: 1.2,
-                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: C.lineStrong, width: 1.5),
                 ),
-                child: Avatar(
-                  url: identity?.avatarUrl,
-                  name: identity?.name ?? '',
-                  size: 36,
-                ),
+                child: Wordmark(size: 11, color: C.ink2),
               ),
             ),
+            const Spacer(),
+            _IconButton(icon: Ico.search, onTap: onSearch),
+            const SizedBox(width: S.x8),
+            _IconButton(icon: Ico.bell, onTap: onBell, dot: unread > 0),
           ],
         ),
       );
 }
 
-/// "Assalom, *Dilshod*" — kursiv urg'u so'zi oltin rangda.
+/// Sarlavha qatoridagi dumaloq tugma (prototip: `.icobtn`).
+class _IconButton extends StatelessWidget {
+  const _IconButton({required this.icon, this.onTap, this.dot = false});
+
+  final Ico icon;
+  final VoidCallback? onTap;
+  final bool dot;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        minSize: S.tap,
+        scale: .92,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: C.surface,
+                border: Border.all(color: C.line),
+              ),
+              alignment: Alignment.center,
+              child: NIcon(icon, size: 18, color: C.ink),
+            ),
+            if (dot)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: C.fail,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: C.surface, width: 2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+}
+
+/// "Salom, *Dilshod*" — kursiv urg'u so'zi urg'u rangida
+/// (prototip: `h1.hero` va uning ichidagi `em`).
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.name});
 
@@ -584,12 +694,12 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (name.isEmpty) {
-      return Text(tr('Assalom'), style: T.title);
+      return Text(tr('Salom'), style: T.title);
     }
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: '${tr('Assalom')}, ', style: T.title),
+          TextSpan(text: '${tr('Salom')}, ', style: T.title),
           TextSpan(
             text: name,
             style: T.title.copyWith(
@@ -716,14 +826,19 @@ class _QuickActions extends StatelessWidget {
         const SizedBox(width: S.x8),
         Expanded(
           child: _ActionTile(
-            icon: Ico.card,
-            label: tr('Karta'),
-            onTap: () => push<void>(
-              context,
-              (_) => record != null
-                  ? OrderCardScreen(record: record)
-                  : const IdCatalogScreen(),
-            ),
+            icon: Ico.bag,
+            label: tr('Do‘kon'),
+            onTap: () => push<void>(context, (_) => const IdCatalogScreen()),
+          ),
+        ),
+        const SizedBox(width: S.x8),
+        Expanded(
+          child: _ActionTile(
+            icon: Ico.gift,
+            label: tr('Sovg‘a'),
+            onTap: record == null
+                ? null
+                : () => push<void>(context, (_) => GiftIdScreen(record: record)),
           ),
         ),
       ],
@@ -744,18 +859,29 @@ class _ActionTile extends StatelessWidget {
         minSize: 0,
         scale: .96,
         child: Container(
-          height: 76,
-          padding: const EdgeInsets.symmetric(horizontal: S.x8),
+          height: 92,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            gradient: C.raisedSurface,
+            color: C.surface,
             borderRadius: BorderRadius.circular(R.tile),
             border: Border.all(color: C.line),
-            boxShadow: C.e1,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              NIcon(icon, size: 21, color: onTap == null ? C.ink3 : C.accent),
+              // IKONKA YUMALOQ KVADRAT ICHIDA (prototip:
+              // `.quick button .ic`) — plita ichida ikkinchi daraja
+              // hosil qiladi va yorliq bilan chalkashmaydi.
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: (onTap == null ? C.ink3 : C.accent).withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: NIcon(icon, size: 20, color: onTap == null ? C.ink3 : C.accent),
+              ),
               const SizedBox(height: 8),
               Text(
                 label,
@@ -768,6 +894,96 @@ class _ActionTile extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      );
+}
+
+/// HAFTANING KOMPANIYASI — 4:3 rasmli karta (prototip: `.feat`).
+///
+/// Rasm ustidagi matn har doim o'qilishi kerak, shuning uchun
+/// pastdan yuqoriga qorayadigan scrim qo'yiladi: rasm yorug' bo'lsa
+/// ham oq yozuv yo'qolmaydi.
+class _FeaturedCompany extends StatelessWidget {
+  const _FeaturedCompany({required this.company});
+
+  final Company company;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: () => push<void>(
+          context,
+          (_) => ProfileScreen(companyId: company.id),
+        ),
+        minSize: 0,
+        scale: .98,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(R.card),
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                NetImage(company.coverUrl ?? company.logoUrl, radius: 0),
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x00000000), Color(0xCC000000)],
+                        stops: [.35, 1],
+                      ),
+                    ),
+                  ),
+                ),
+                if (company.verified)
+                  Positioned(
+                    left: S.x12,
+                    top: S.x12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0x2EFFFFFF),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0x40FFFFFF)),
+                      ),
+                      child: Text(
+                        '${tr('Admin tasdiqlagan')} ✓',
+                        style: T.caption.copyWith(color: const Color(0xFFFFFFFF)),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  left: S.x16,
+                  right: S.x16,
+                  bottom: S.x12,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (company.city.isNotEmpty) ...[
+                        Text(
+                          company.city.toUpperCase(),
+                          style: T.statLabel.copyWith(color: const Color(0xD9FFFFFF)),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      Text(
+                        company.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.section.copyWith(color: const Color(0xFFFFFFFF)),
+                      ),
+                      Text(
+                        company.id,
+                        style: T.meta.copyWith(color: const Color(0xB3FFFFFF)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

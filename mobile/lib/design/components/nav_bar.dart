@@ -3,19 +3,31 @@ import 'package:flutter/widgets.dart';
 import '../../l10n/strings.dart';
 import '../tokens.dart';
 import '../type.dart';
-import 'icons.dart';
-import 'logo.dart';
-import 'press.dart';
+import 'dart:ui' show ImageFilter;
 
-/// TAB BAR — 5 tab, NFC markazda va ko'tarilgan.
+import 'icons.dart';
+import 'press.dart';
+import 'sweep.dart';
+
+/// TAB BAR — 5 tab, NFC markazda va ko'tarilgan (prototip: V2).
 ///
-/// Beshta tabning ma'nosi o'zgarmaydi: Bosh sahifa · Qidiruv · NFC ·
-/// Reels · Profil. NFC markazda va BOSHQACHA ko'rinadi — u
-/// mahsulotning o'zagi, qolgan to'rttasi esa uning atrofi.
+/// Beshta tab: Bosh sahifa · Qidiruv · **NFC** · Do'kon · Profil.
+/// NFC markazda va BOSHQACHA ko'rinadi — u mahsulotning o'zagi,
+/// qolgan to'rttasi esa uning atrofi.
 ///
-/// MARKAZIY TUGMA — brend medalyoni 62 dp, panel ustiga 24 dp
-/// ko'tarilgan. Ikonka emas, LOGOTIP: bu ilovaning imzosi va
-/// foydalanuvchi uni uzoqdan taniydi.
+/// DO'KON — TO'RTINCHI TAB. Prototipda shunday: ID sotib olish
+/// ilovaning asosiy savdo yo'li va u bitta bosishda turishi kerak.
+/// Reels esa lentadan ochiladi (bosh sahifadagi "Lenta" sarlavhasi
+/// yonidagi tugma) — u kontent ko'rinishi, alohida bo'lim emas.
+///
+/// MARKAZIY TUGMA — 56 dp li urg'u rangli doira, panel ustiga 16 dp
+/// ko'tarilgan, ichida NFC to'lqini va ustidan o'tuvchi yorug'lik
+/// chizig'i. Atrofida 6 dp fon halqasi: panelning chizig'i doirani
+/// kesib o'tmasligi kerak.
+///
+/// PANEL — SHISHA: prototipdagi `backdrop-filter: blur(24px)` va
+/// `--glass` to'ldirishi. Ostidan o'tayotgan kontent sezilib
+/// turadi, lekin matn baribir o'qiladi.
 ///
 /// TILGA E'TIBOR: `tabs` — GETTER, `static final` EMAS. `static
 /// final` bir marta hisoblanadi va til almashganda eski tilda
@@ -53,7 +65,7 @@ class NavBar extends StatelessWidget {
         (icon: Ico.home, label: tr('Bosh sahifa')),
         (icon: Ico.search, label: tr('Qidiruv')),
         (icon: Ico.nfc, label: 'NFC'),
-        (icon: Ico.play, label: 'Reels'),
+        (icon: Ico.bag, label: tr('Do‘kon')),
         (icon: Ico.user, label: tr('Profil')),
       ];
 
@@ -101,11 +113,14 @@ class NavBar extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            child: Container(
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: C.blurSheet, sigmaY: C.blurSheet),
+                child: Container(
               height: 68 + bottom,
               decoration: BoxDecoration(
-                gradient: C.navBar,
-                border: Border(top: BorderSide(color: C.line)),
+                color: C.glass,
+                border: Border(top: BorderSide(color: C.lineCool)),
               ),
               padding: EdgeInsets.only(bottom: bottom),
               child: Row(
@@ -125,6 +140,8 @@ class NavBar extends StatelessWidget {
                             ),
                     ),
                 ],
+              ),
+                ),
               ),
             ),
           ),
@@ -209,7 +226,12 @@ class _Tab extends StatelessWidget {
   }
 }
 
-/// Markaziy tugma — brend medalyoni.
+/// Markaziy tugma — NFC orbi (prototip: `.nav .nfc-fab .orb`).
+///
+/// NIMA UCHUN LOGOTIP EMAS: markaziy tugma AMALNI bildiradi —
+/// "kartani o'qish". Logotip esa brendni bildiradi va u tepada,
+/// sarlavha qatorida turadi. Ikkalasi bir joyda bo'lsa, tugma
+/// bosiladigan narsaga o'xshamay qoladi.
 class _NfcTab extends StatelessWidget {
   const _NfcTab({required this.active, required this.onTap});
 
@@ -222,27 +244,57 @@ class _NfcTab extends StatelessWidget {
         haptic: true,
         minSize: 0,
         scale: .93,
-        child: AnimatedContainer(
-          duration: M.fade,
-          curve: M.curve,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            // Faol holatda halqa qalinlashadi va nur kuchayadi.
-            color: C.bg,
-            border: Border.all(
-              color: C.accent.withValues(alpha: active ? .95 : .5),
-              width: active ? 2 : 1.4,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: C.accent.withValues(alpha: active ? .55 : .3),
-                blurRadius: active ? 26 : 18,
-                spreadRadius: active ? -4 : -6,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: M.fade,
+              curve: M.curve,
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: const Alignment(-.7, -1),
+                  end: const Alignment(.7, 1),
+                  colors: [C.accentHigh, C.accent],
+                ),
+                // FON HALQASI — panelning chizig'i doirani kesib
+                // o'tmasin (prototipda `0 0 0 6px var(--bg0)`).
+                border: Border.all(color: C.bg, width: 0),
+                boxShadow: [
+                  BoxShadow(
+                    color: C.accent.withValues(alpha: active ? .55 : .42),
+                    blurRadius: active ? 30 : 26,
+                    spreadRadius: -8,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: const BrandMark(size: 56, ring: false),
+              alignment: Alignment.center,
+              child: ClipOval(
+                child: LightSweep(
+                  // Yorug'lik chizig'i — karta va asosiy tugmadagi
+                  // bilan bir xil ritm.
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Center(
+                      child: NIcon(Ico.nfc, size: 26, color: C.onAccent),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'NFC',
+              style: T.navLabel.copyWith(
+                color: active ? C.accent : C.ink2,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       );
 }

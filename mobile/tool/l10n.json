@@ -11,6 +11,10 @@
     "24 ЧАСА",
     "24 HOURS"
   ],
+  "3 harf + 3 raqam. Oddiy, ishonchli.": [
+    "3 буквы + 3 цифры. Просто и надёжно.",
+    "3 letters + 3 digits. Simple, dependable."
+  ],
   "6 xonali kod yubordik:": [
     "Мы отправили 6-значный код:",
     "We sent a 6-digit code:"
@@ -26,6 +30,10 @@
   "Admin": [
     "Админ",
     "Admin"
+  ],
+  "Admin tasdiqlagan": [
+    "Подтверждено админом",
+    "Admin verified"
   ],
   "Agar bu hisob mavjud bo‘lsa, unga 6 xonali kod ": [
     "Если такой аккаунт существует, на него отправлен 6-значный код ",
@@ -171,6 +179,10 @@
     "Не выполнено",
     "Could not complete"
   ],
+  "Band": [
+    "Занят",
+    "Taken"
+  ],
   "Band qilish muddati tugasa ID qaytadan sotuvga chiqadi": [
     "Если срок брони истечёт, ID снова поступит в продажу",
     "If the hold expires, the ID goes back on sale"
@@ -238,6 +250,10 @@
   "Bepul tarifdagi mahsulot chegarasiga yetdingiz.": [
     "Достигнут лимит товаров на бесплатном тарифе.",
     "You have reached the product limit of the free plan."
+  ],
+  "Bildirishnomalar": [
+    "Уведомления",
+    "Notifications"
   ],
   "Bio": [
     "О себе",
@@ -376,8 +392,8 @@
     "Sections"
   ],
   "Bo‘sh": [
-    "Пусто",
-    "Empty"
+    "Свободен",
+    "Available"
   ],
   "Bo‘sh ID‘lardan tanlang": [
     "Выберите из свободных ID",
@@ -502,6 +518,18 @@
   "Bu karta NFCSTORE kartasi emas yoki hali faollashtirilmagan.": [
     "Это не карта NFCSTORE либо она ещё не активирована.",
     "This is not an NFCSTORE card, or it is not activated yet."
+  ],
+  "Bu kod allaqachon sizda.": [
+    "Этот код уже у вас.",
+    "You already own this code."
+  ],
+  "Bu kod allaqachon sotilgan": [
+    "Этот код уже продан",
+    "This code is already sold"
+  ],
+  "Bu kod sotuvda yo‘q. Boshqa kodni sinab ko‘ring.": [
+    "Этого кода нет в продаже. Попробуйте другой.",
+    "This code is not for sale. Try another one."
   ],
   "Bu nom band qilingan ro‘yxatda.": [
     "Это имя в списке зарезервированных.",
@@ -675,9 +703,17 @@
     "Выйти",
     "Sign out"
   ],
+  "Chiroyli kodlar. Pure Gold.": [
+    "Красивые коды. Pure Gold.",
+    "Beautiful codes. Pure Gold."
+  ],
   "Chorshanba": [
     "Среда",
     "Wednesday"
+  ],
+  "Chrome Silver material, story ochiladi.": [
+    "Материал Chrome Silver, открываются истории.",
+    "Chrome Silver material, stories unlocked."
   ],
   "Click bilan Premium olish": [
     "Оформить Premium через Click",
@@ -734,6 +770,10 @@
   "Discover": [
     "Поиск",
     "Discover"
+  ],
+  "Dizayn + yetkazish": [
+    "Дизайн + доставка",
+    "Design + delivery"
   ],
   "Dorixona": [
     "Аптека",
@@ -883,6 +923,10 @@
     "Активировать",
     "Activate"
   ],
+  "Faqat harflar. Titanium Gold, ichki nur.": [
+    "Только буквы. Titanium Gold, внутреннее свечение.",
+    "Letters only. Titanium Gold with inner glow."
+  ],
   "Fayl juda katta (100 MB dan ortiq).": [
     "Файл слишком большой (больше 100 МБ).",
     "The file is too large (over 100 MB)."
@@ -890,6 +934,10 @@
   "Fikringizni yozing": [
     "Напишите своё мнение",
     "Share your thoughts"
+  ],
+  "Fon rasmi, video vizitka, musiqa, ko‘proq havola": [
+    "Фон, видеовизитка, музыка, больше ссылок",
+    "Background, video card, music, more links"
   ],
   "Foydalanish shartlari": [
     "Условия использования",
@@ -930,6 +978,10 @@
   "Ha. NFC bo‘limida ID‘ni tanlab «Sovg‘a» ni bosing. ID qabul qiluvchi tasdiqlagandan keyin unga o‘tadi.": [
     "Да. В разделе NFC выберите ID и нажмите «Подарок». ID перейдёт получателю после подтверждения.",
     "Yes. In the NFC section pick the ID and tap Gift. It moves to the recipient once they accept."
+  ],
+  "Haftaning kompaniyasi": [
+    "Компания недели",
+    "Company of the week"
   ],
   "Haftasiga {n} kun": [
     "{{n}} дн. в неделю",
@@ -990,6 +1042,10 @@
   "Haqida": [
     "О нас",
     "About"
+  ],
+  "Haqiqiylik": [
+    "Подлинность",
+    "Authenticity"
   ],
   "Haqorat": [
     "Оскорбление",
@@ -1122,6 +1178,10 @@
   "Hozir yopiq": [
     "Сейчас закрыто",
     "Closed now"
+  ],
+  "Hozircha bo‘sh kod yo‘q": [
+    "Свободных кодов пока нет",
+    "No free codes right now"
   ],
   "Hozircha ilovada mavjud emas": [
     "Пока недоступно в приложении",
@@ -1339,6 +1399,10 @@
     "Ожидается ответ",
     "Awaiting reply"
   ],
+  "Jismoniy NFC karta": [
+    "Физическая NFC-карта",
+    "Physical NFC card"
+  ],
   "Jismoniy karta": [
     "Физическая карта",
     "Physical card"
@@ -1379,6 +1443,10 @@
     "Я беру на себя ответственность за публикуемый контент и ",
     "I take responsibility for the content I post and "
   ],
+  "Juda chiroyli kodlar. Premium Gold.": [
+    "Очень красивые коды. Premium Gold.",
+    "Very beautiful codes. Premium Gold."
+  ],
   "Juda ko‘p murojaat. Birozdan keyin qayta urining.": [
     "Слишком много обращений. Повторите чуть позже.",
     "Too many requests. Try again shortly."
@@ -1406,6 +1474,10 @@
   "Juma": [
     "Пятница",
     "Friday"
+  ],
+  "KOD": [
+    "КОД",
+    "CODE"
   ],
   "KOD SHU MANZILGA": [
     "КОД НА ЭТОТ АДРЕС",
@@ -1503,6 +1575,10 @@
     "Нажмите на карту — откроется обратная сторона",
     "Tap the card — the back side opens"
   ],
+  "Kartani o‘qing,": [
+    "Читайте карту,",
+    "Read your card,"
+  ],
   "Kartani o‘qish": [
     "Прочитать карту",
     "Read a card"
@@ -1514,6 +1590,14 @@
   "Kartani qanday faollashtiraman?": [
     "Как активировать карту?",
     "How do I activate the card?"
+  ],
+  "Kartani tekshirish": [
+    "Проверить карту",
+    "Verify card"
+  ],
+  "Kartani telefon orqasiga tegizing": [
+    "Приложите карту к задней части телефона",
+    "Hold the card to the back of your phone"
   ],
   "Kartani telefon orqasiga tegizing — profil ochiladi yoki yangi ID yoziladi.": [
     "Приложите карту к задней стороне телефона — откроется профиль или запишется новый ID.",
@@ -1619,6 +1703,10 @@
     "Кому",
     "To"
   ],
+  "Kimni": [
+    "Кого",
+    "Who"
+  ],
   "Kirish": [
     "Войти",
     "Sign in"
@@ -1650,6 +1738,10 @@
   "Kod faqat harflardan iborat. Bunday kodlar eng kam uchraydi va {tier} darajasiga kiradi.": [
     "Код состоит только из букв. Такие коды встречаются реже всего и относятся к уровню {tier}.",
     "The code is letters only. Such codes are the rarest and belong to the {tier} tier."
+  ],
+  "Kod kamida 3 belgidan iborat bo‘ladi.": [
+    "Код состоит минимум из 3 символов.",
+    "A code has at least 3 characters."
   ],
   "Kod kelmadimi?": [
     "Код не пришёл?",
@@ -1810,6 +1902,10 @@
   "Kuchli naqsh — masalan AAA000": [
     "Сильный шаблон — например AAA000",
     "Strong pattern — for example AAA000"
+  ],
+  "Kun · hafta · oy": [
+    "День · неделя · месяц",
+    "Day · week · month"
   ],
   "Kunlik grafik va manbalar.": [
     "Дневной график и источники.",
@@ -2063,6 +2159,10 @@
     "ОТ КАСАНИЙ NFC",
     "FROM NFC TAPS"
   ],
+  "NFC Tools": [
+    "NFC Tools",
+    "NFC Tools"
+  ],
   "NFC ishlamasa ham ishlaydi": [
     "Работает, даже если NFC не работает",
     "Works even when NFC does not"
@@ -2094,6 +2194,10 @@
   "NFC qo‘llanmaydi": [
     "NFC не поддерживается",
     "NFC is not supported"
+  ],
+  "NFC yoqilgan. Skanerlashni boshlang va kartani yaqinlashtiring.": [
+    "NFC включён. Начните сканирование и поднесите карту.",
+    "NFC is on. Start scanning and bring the card closer."
   ],
   "NFCSTORE ni ochish uchun": [
     "Чтобы открыть NFCSTORE",
@@ -2130,6 +2234,10 @@
   "Narxi harflar soniga qarab belgilanadi.": [
     "Цена зависит от количества букв.",
     "The price depends on the number of letters."
+  ],
+  "Narxlar serverdan olinadi.": [
+    "Цены берутся с сервера.",
+    "Prices come from the server."
   ],
   "Narxni server aytadi": [
     "Цену называет сервер",
@@ -2298,6 +2406,10 @@
   "O‘tkazish": [
     "Передать",
     "Transfer"
+  ],
+  "O‘z kodingizni": [
+    "Свой код",
+    "Pick your"
   ],
   "O‘z maketingiz bilan buyurtma.": [
     "Заказ по вашему макету.",
@@ -2535,6 +2647,10 @@
     "Профиль Premium и физическая NFC-карта — отдельные услуги. Они не меняют тариф.",
     "Profile Premium and the physical NFC card are separate services. They do not change the tier."
   ],
+  "Profil havolasi": [
+    "Ссылка на профиль",
+    "Profile link"
+  ],
   "Profil ko‘rildi": [
     "Просмотры профиля",
     "Profile views"
@@ -2590,6 +2706,10 @@
   "Profilingiz uchun o‘ziga xos NFC ID tanlang.": [
     "Выберите особый NFC ID для своего профиля.",
     "Choose a distinctive NFC ID for your profile."
+  ],
+  "Profilingiz {n} marta ko‘rilgan": [
+    "Ваш профиль просмотрели {n} раз",
+    "Your profile was viewed {n} times"
   ],
   "Profilni ko‘rish": [
     "Посмотреть профиль",
@@ -2755,6 +2875,10 @@
     "Позвонить",
     "Call"
   ],
+  "Qo‘shimcha": [
+    "Дополнительно",
+    "Extras"
+  ],
   "Qurilish": [
     "Строительство",
     "Construction"
@@ -2851,6 +2975,10 @@
     "При регистрации выдаётся бесплатный 8-значный ID. Более красивый код можно выбрать в каталоге.",
     "A free 8-digit ID is issued at sign-up. You can pick a nicer code from the catalogue."
   ],
+  "Ro‘yxatdan o‘tganda beriladi.": [
+    "Выдаётся при регистрации.",
+    "Given at sign-up."
+  ],
   "Ro‘yxatdan o‘tish": [
     "Регистрация",
     "Sign up"
@@ -2870,6 +2998,10 @@
   "Sabab tanlang. Shikoyat moderatorga yuboriladi va kontent tekshiriladi.": [
     "Выберите причину. Жалоба будет отправлена модератору, и контент проверят.",
     "Choose a reason. The report goes to a moderator and the content will be reviewed."
+  ],
+  "Salom": [
+    "Привет",
+    "Hello"
   ],
   "Sana": [
     "Дата",
@@ -3031,6 +3163,10 @@
     "Особый номер для вас",
     "A number just for you"
   ],
+  "Sizniki": [
+    "Ваш",
+    "Yours"
+  ],
   "Skanerlagan odam shu profilni ochadi. Yoki telefonni kartaga tegizsin.": [
     "Тот, кто отсканирует, откроет этот профиль. Либо пусть приложит телефон к карте.",
     "Whoever scans it opens this profile. Or they can tap their phone to the card."
@@ -3038,6 +3174,10 @@
   "Skanerlash": [
     "Сканировать",
     "Scan"
+  ],
+  "Skanerlashni boshlash": [
+    "Начать сканирование",
+    "Start scanning"
   ],
   "SocketException": [
     "SocketException",
@@ -3267,6 +3407,10 @@
     "Тариф",
     "Tier"
   ],
+  "Tariflar": [
+    "Тарифы",
+    "Tiers"
+  ],
   "Tasdiq kelishi bilan shu ekran o‘zi yangilanadi.": [
     "Как только придёт подтверждение, экран обновится сам.",
     "This screen updates itself as soon as confirmation arrives."
@@ -3330,6 +3474,14 @@
   "Ta‘lim": [
     "Образование",
     "Education"
+  ],
+  "Teg ma’lumoti": [
+    "Данные метки",
+    "Tag details"
+  ],
+  "Tegish statistikasi": [
+    "Статистика касаний",
+    "Tap statistics"
   ],
   "Tegishlar": [
     "Касания",
@@ -3595,6 +3747,10 @@
     "Время после полуночи тоже поддерживается: 18:00–02:00 считается верно.",
     "Hours running past midnight are supported: 18:00–02:00 is counted correctly."
   ],
+  "Turi, hajmi, qulf": [
+    "Тип, объём, блокировка",
+    "Type, size, lock"
+  ],
   "Turkum": [
     "Категория",
     "Category"
@@ -3727,6 +3883,10 @@
     "Придумайте новый PIN-код",
     "Think up a new PIN"
   ],
+  "Yangi bildirishnoma yo‘q": [
+    "Новых уведомлений нет",
+    "No new notifications"
+  ],
   "Yangi buyurtma yo‘q.": [
     "Новых заказов нет.",
     "No new orders."
@@ -3774,6 +3934,10 @@
   "Yangi story": [
     "Новая история",
     "New story"
+  ],
+  "Yaratish · skanerlash": [
+    "Создать · сканировать",
+    "Create · scan"
   ],
   "Yetkazish manzili": [
     "Адрес доставки",
@@ -4003,6 +4167,10 @@
     "сум",
     "soum"
   ],
+  "so‘m dan": [
+    "от",
+    "from"
+  ],
   "so‘mdan": [
     "сум и выше",
     "soum and up"
@@ -4015,6 +4183,10 @@
     "комментариев",
     "comments"
   ],
+  "tanlang": [
+    "выберите",
+    "own code"
+  ],
   "tasdiqlashni kutib turadi.": [
     "будет ждать подтверждения.",
     "your confirmation."
@@ -4022,6 +4194,10 @@
   "tegizish bilan ulashiladi.": [
     "касание — и она у собеседника.",
     "tap shares it."
+  ],
+  "topamiz?": [
+    "найдём?",
+    "are we finding?"
   ],
   "to‘ldirishingiz mumkin.": [
     "можете заполнить.",
@@ -4058,6 +4234,10 @@
   "xonali kod": [
     "значный код",
     "digit code"
+  ],
+  "yozing, boshqaring": [
+    "пишите, управляйте",
+    "write, manage"
   ],
   "yuborildi. Kod 10 daqiqa amal qiladi.": [
     "отправлен. Код действует 10 минут.",

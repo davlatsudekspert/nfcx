@@ -30,7 +30,9 @@ ThemeData buildTheme() {
     colorScheme: scheme,
     scaffoldBackgroundColor: C.bg,
     canvasColor: C.bg,
-    fontFamily: 'Manrope',
+    fontFamily: 'PlusJakartaSans',
+    // Kirill zaxirasi — izohi `type.dart` da.
+    fontFamilyFallback: const ['ManropeCyr'],
 
     // Material'ning to'lqin effekti bu dizaynda begona: bosish
     // `Press` orqali masshtab bilan ko'rsatiladi.

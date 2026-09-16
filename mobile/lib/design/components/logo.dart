@@ -123,7 +123,7 @@ class Wordmark extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         'NFCSTORE',
         style: TextStyle(
-          fontFamily: 'IBMPlexMono',
+          fontFamily: 'SpaceMono',
           fontWeight: FontWeight.w600,
           fontSize: size,
           height: 1.2,

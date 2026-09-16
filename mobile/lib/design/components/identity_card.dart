@@ -220,9 +220,19 @@ class _CardShell extends StatelessWidget {
           ),
 
         // 4 — kontent.
-        Padding(
-          padding: const EdgeInsets.all(S.x20),
-          child: child,
+        //
+        // KICHIK KARTA — KICHIK ICHKI MASOFA. Prototipda mini karta
+        // (`.mcard.sm`) uchun alohida o'lchamlar berilgan: 20 dp
+        // padding 132 dp enlikdagi kartada kontentga joy
+        // qoldirmaydi va u toshib ketardi.
+        LayoutBuilder(
+          builder: (context, c) {
+            final k = (c.maxWidth / 340).clamp(.34, 1.0);
+            return Padding(
+              padding: EdgeInsets.all(S.x20 * k),
+              child: child,
+            );
+          },
         ),
 
         // 5 — tepadagi metall kesimi.
@@ -344,7 +354,14 @@ class _FrontFace extends StatelessWidget {
       style.hasMaterial ? const Color(0xCC17110A) : C.ink2;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, c) => _build(context, (c.maxWidth / 300).clamp(.34, 1.0)),
+      );
+
+  Widget _build(BuildContext context, double k) {
+    // `k` — kartaning to'liq o'lchamga nisbati. Hamma o'lcham shunga
+    // ko'paytiriladi, ya'ni mini karta kattasining aniq nusxasi
+    // bo'ladi (prototipdagi `.mcard` va `.mcard.sm` munosabati).
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -360,21 +377,21 @@ class _FrontFace extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: T.meta.copyWith(
                   color: _inkSoft,
-                  letterSpacing: 1.5,
-                  fontSize: 10.5,
+                  letterSpacing: 1.5 * k,
+                  fontSize: 10.5 * k,
                 ),
               ),
             ),
             // NFC belgisi — jismoniy kartadagi chip o'rni.
             Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: const Color(0x2E000000),
+              width: 30 * k,
+              height: 30 * k,
+              decoration: const BoxDecoration(
+                color: Color(0x2E000000),
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: NIcon(Ico.nfc, size: 17, color: _ink),
+              child: NIcon(Ico.nfc, size: 17 * k, color: _ink),
             ),
           ],
         ),
@@ -384,11 +401,11 @@ class _FrontFace extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(
             code.toUpperCase(),
-            style: T.code(30, color: _ink, weight: FontWeight.w600),
+            style: T.code(30 * k, color: _ink, weight: FontWeight.w600),
           ),
         ),
         if (holder.isNotEmpty || (url ?? '').isNotEmpty) ...[
-          const SizedBox(height: 5),
+          SizedBox(height: 5 * k),
           Row(
             children: [
               if (holder.isNotEmpty)
@@ -397,18 +414,18 @@ class _FrontFace extends StatelessWidget {
                     holder,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: T.cardTitle.copyWith(color: _ink, fontSize: 14),
+                    style: T.cardTitle.copyWith(color: _ink, fontSize: 14 * k),
                   ),
                 ),
               if (holder.isNotEmpty && (url ?? '').isNotEmpty)
-                Text('  ·  ', style: T.meta.copyWith(color: _inkSoft)),
+                Text('  ·  ', style: T.meta.copyWith(color: _inkSoft, fontSize: 11 * k)),
               if ((url ?? '').isNotEmpty)
                 Flexible(
                   child: Text(
                     url!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: T.link.copyWith(color: _inkSoft, fontSize: 11),
+                    style: T.link.copyWith(color: _inkSoft, fontSize: 11 * k),
                   ),
                 ),
             ],

@@ -6,17 +6,20 @@ import 'tokens.dart';
 ///
 /// UCH SHRIFT, UCH VAZIFA. Aralashtirilmaydi:
 ///
-/// • **Instrument Serif** — display va bo'lim sarlavhalari. Bu
+/// • **Playfair Display** — display va bo'lim sarlavhalari. Bu
 ///   ilovaning "ovozi": katta, nafis, kursiv urg'u bilan. Faqat
 ///   sarlavha va raqamli urg'u (narx). Tugma yoki forma matnida
 ///   ISHLATILMAYDI.
-/// • **Manrope** — butun funksional matn: tugma, tana matni,
-///   yorliq, navigatsiya. O'zbek lotin belgilarini (o', g', sh,
-///   ch) to'liq qamraydi.
-/// • **IBM Plex Mono** — ID kodlari, narx raqamlari, meta va
-///   holat yozuvlari. Mono tanlanishining sababi: `GLD777` va
-///   `149 000` kabi qiymatlar ustma-ust turganda tekis
-///   ko'rinsin va raqamlar sakramasin.
+/// • **Plus Jakarta Sans** — butun funksional matn: tugma, tana
+///   matni, yorliq, navigatsiya. O'zbek lotin belgilarini (o', g',
+///   sh, ch) to'liq qamraydi.
+/// • **Space Mono** — ID kodlari, narx raqamlari, meta va holat
+///   yozuvlari. Mono tanlanishining sababi: `GLD777` va `149 000`
+///   kabi qiymatlar ustma-ust turganda tekis ko'rinsin va raqamlar
+///   sakramasin.
+///
+/// Uchalasi ham PROTOTIPDAN: maketda aynan shu uchligi ishlatilgan
+/// va o'lchamlar shularning metrikasiga qarab tanlangan.
 ///
 /// SARLAVHA BILAN TANA MATNI ORASIDA KESKIN FARQ BO'LSIN — bu
 /// dizaynning asosiy qoidasi. Oraliq o'lchamlar shkalada yo'q.
@@ -26,14 +29,27 @@ import 'tokens.dart';
 class T {
   const T._();
 
-  static const _serif = 'InstrumentSerif';
-  static const _sans = 'Manrope';
-  static const _mono = 'IBMPlexMono';
+  static const _serif = 'PlayfairDisplay';
+  static const _sans = 'PlusJakartaSans';
+  static const _mono = 'SpaceMono';
+
+  /// KIRILL ZAXIRASI.
+  ///
+  /// Plus Jakarta Sans va Space Mono'da kirill YO'Q — ruscha matn
+  /// ularda bo'sh kvadratlar bo'lib chiqardi (ilova uch tilda
+  /// ishlaydi, ya'ni bu jim emas, ko'rinadigan nosozlik). Shrift
+  /// ALMASHTIRILMADI: prototip aynan shu ikkisini belgilaydi.
+  /// O'rniga zaxira oila beriladi va u FAQAT o'z belgisi bo'lmagan
+  /// harflarga ishlaydi — lotin matnga tegmaydi.
+  static const _sansFallback = ['ManropeCyr'];
+  static const _monoFallback = ['PlexMonoCyr'];
+  static const _serifFallback = ['ManropeCyr'];
 
   // ── Display · Instrument Serif ──────────────────────────────
 
   /// Onboarding va hero sarlavhalari. 46/1.02.
-  static const TextStyle display = TextStyle(
+  static TextStyle get display => TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 46,
     height: 1.02,
@@ -42,7 +58,8 @@ class T {
   );
 
   /// Ekran sarlavhasi — "NFC markazi", "Qidiruv", "ID katalogi".
-  static const TextStyle title = TextStyle(
+  static TextStyle get title => TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 34,
     height: 1.04,
@@ -51,7 +68,8 @@ class T {
   );
 
   /// Ixcham ekran sarlavhasi (forma va sozlamalar ekranlari).
-  static const TextStyle titleSm = TextStyle(
+  static TextStyle get titleSm => TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 27,
     height: 1.06,
@@ -60,7 +78,8 @@ class T {
   );
 
   /// Bo'lim sarlavhasi — "Lenta", "Katalog", "Postlarim".
-  static const TextStyle section = TextStyle(
+  static TextStyle get section => TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 22,
     height: 1.1,
@@ -68,7 +87,8 @@ class T {
   );
 
   /// Profil ismi.
-  static const TextStyle profileName = TextStyle(
+  static TextStyle get profileName => TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 30,
     height: 1.08,
@@ -78,7 +98,8 @@ class T {
 
   /// Kursiv urg'u so'zi — "Assalom, *Dilshod*".
   /// Rang chaqiruv joyida beriladi (odatda `C.accent`).
-  static const TextStyle displayItalic = TextStyle(
+  static TextStyle get displayItalic => const TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 46,
     height: 1.02,
@@ -87,7 +108,8 @@ class T {
   );
 
   /// Katta narx — "149 000".
-  static const TextStyle price = TextStyle(
+  static TextStyle get price => TextStyle(
+    fontFamilyFallback: _serifFallback,
     fontFamily: _serif,
     fontSize: 42,
     height: 1,
@@ -95,10 +117,11 @@ class T {
     color: C.ink,
   );
 
-  // ── Funksional · Manrope ────────────────────────────────────
+  // ── Funksional · Plus Jakarta Sans ──────────────────────────
 
   /// Kuchli sarlavha — sheet va dialog ustida.
-  static const TextStyle h1 = TextStyle(
+  static TextStyle get h1 => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w800,
     fontSize: 26,
@@ -107,7 +130,8 @@ class T {
     color: C.ink,
   );
 
-  static const TextStyle h2 = TextStyle(
+  static TextStyle get h2 => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w800,
     fontSize: 21,
@@ -117,7 +141,8 @@ class T {
   );
 
   /// Karta va qator sarlavhasi.
-  static const TextStyle cardTitle = TextStyle(
+  static TextStyle get cardTitle => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w700,
     fontSize: 15.5,
@@ -128,7 +153,8 @@ class T {
 
   /// Tana matni. Qator balandligi 1.55 — uzun o'zbekcha jumlalar
   /// siqilib qolmasin.
-  static const TextStyle body = TextStyle(
+  static TextStyle get body => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w400,
     fontSize: 15,
@@ -137,7 +163,8 @@ class T {
   );
 
   /// Kuchliroq tana matni — asosiy qiymat, javob matni.
-  static const TextStyle bodyStrong = TextStyle(
+  static TextStyle get bodyStrong => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w500,
     fontSize: 15,
@@ -146,7 +173,8 @@ class T {
   );
 
   /// Izoh va ikkilamchi tushuntirish.
-  static const TextStyle caption = TextStyle(
+  static TextStyle get caption => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w400,
     fontSize: 13,
@@ -155,7 +183,8 @@ class T {
   );
 
   /// Forma yorliqlari — KATTA HARFDA yoziladi.
-  static const TextStyle label = TextStyle(
+  static TextStyle get label => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w700,
     fontSize: 11,
@@ -165,7 +194,8 @@ class T {
   );
 
   /// Asosiy tugma matni.
-  static const TextStyle button = TextStyle(
+  static TextStyle get button => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w700,
     fontSize: 16.5,
@@ -175,7 +205,8 @@ class T {
   );
 
   /// Kichik tugma va chip matni.
-  static const TextStyle buttonSm = TextStyle(
+  static TextStyle get buttonSm => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w700,
     fontSize: 13.5,
@@ -184,7 +215,8 @@ class T {
   );
 
   /// Tab yorlig'i.
-  static const TextStyle navLabel = TextStyle(
+  static TextStyle get navLabel => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w600,
     fontSize: 10.5,
@@ -194,7 +226,8 @@ class T {
   );
 
   /// Statistika yorlig'i — "Ko'rish", "Kontakt", "Obunachi".
-  static const TextStyle statLabel = TextStyle(
+  static TextStyle get statLabel => TextStyle(
+    fontFamilyFallback: _sansFallback,
     fontFamily: _sans,
     fontWeight: FontWeight.w600,
     fontSize: 10.5,
@@ -206,7 +239,8 @@ class T {
   // ── Mono · IBM Plex Mono ────────────────────────────────────
 
   /// Statistika qiymati — "4 812".
-  static const TextStyle statValue = TextStyle(
+  static TextStyle get statValue => TextStyle(
+    fontFamilyFallback: _monoFallback,
     fontFamily: _mono,
     fontWeight: FontWeight.w600,
     fontSize: 21,
@@ -216,7 +250,8 @@ class T {
   );
 
   /// Meta yozuvi — sana, vaqt, holat.
-  static const TextStyle meta = TextStyle(
+  static TextStyle get meta => TextStyle(
+    fontFamilyFallback: _monoFallback,
     fontFamily: _mono,
     fontWeight: FontWeight.w500,
     fontSize: 11.5,
@@ -227,7 +262,8 @@ class T {
 
   /// Mono summa — to'lov tarixidagi raqamlar ustma-ust tekis
   /// turishi uchun.
-  static const TextStyle amount = TextStyle(
+  static TextStyle get amount => TextStyle(
+    fontFamilyFallback: _monoFallback,
     fontFamily: _mono,
     fontWeight: FontWeight.w600,
     fontSize: 15,
@@ -237,7 +273,8 @@ class T {
   );
 
   /// Holat yorlig'i — "TAYYOR · TEGIZING", "HOLAT: KUTILMOQDA".
-  static const TextStyle statusLabel = TextStyle(
+  static TextStyle get statusLabel => TextStyle(
+    fontFamilyFallback: _monoFallback,
     fontFamily: _mono,
     fontWeight: FontWeight.w600,
     fontSize: 11,
@@ -249,6 +286,7 @@ class T {
   /// EYEBROW — bo'lim ustidagi kichik oltin yozuv.
   /// Mavzuga bog'liq, shuning uchun getter.
   static TextStyle get eyebrow => TextStyle(
+    fontFamilyFallback: _monoFallback,
         fontFamily: _mono,
         fontWeight: FontWeight.w500,
         fontSize: 10.5,
@@ -259,6 +297,7 @@ class T {
 
   /// Wordmark — "N F C S T O R E".
   static TextStyle get wordmark => TextStyle(
+    fontFamilyFallback: _monoFallback,
         fontFamily: _mono,
         fontWeight: FontWeight.w600,
         fontSize: 11,
@@ -282,6 +321,7 @@ class T {
 
   /// Profil havolasi — `nfcstore.uz/gld777`.
   static TextStyle get link => TextStyle(
+    fontFamilyFallback: _monoFallback,
         fontFamily: _mono,
         fontWeight: FontWeight.w400,
         fontSize: 12,

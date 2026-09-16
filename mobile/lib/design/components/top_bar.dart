@@ -70,15 +70,24 @@ class TopBar extends StatelessWidget {
                   ? Center(child: center!)
                   : (title ?? '').isEmpty
                       ? const SizedBox.shrink()
+                      // ICHKI EKRAN SARLAVHASI — MONO, KATTA HARF,
+                      // MARKAZDA (prototip: `.topbar` ustidagi
+                      // "ID TAFSILOTI", "TEG MA'LUMOTI", ...).
+                      //
+                      // Katta serif sarlavha faqat TAB ILDIZLARIDA
+                      // qoladi: ichki ekranda u qaytish tugmasi bilan
+                      // bir qatorda turolmaydi va ikki qatorga
+                      // tushib ketardi.
                       : Padding(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: S.x12,
+                            horizontal: S.x8,
                           ),
                           child: Text(
-                            title!,
+                            title!.toUpperCase(),
                             maxLines: 1,
+                            textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
-                            style: T.titleSm.copyWith(fontSize: 24),
+                            style: T.eyebrow.copyWith(color: C.ink2),
                           ),
                         ),
             ),
@@ -95,12 +104,16 @@ class ScreenTitle extends StatelessWidget {
   const ScreenTitle(
     this.title, {
     super.key,
+    this.accent,
     this.subtitle,
     this.eyebrow,
     this.trailing,
   });
 
   final String title;
+
+  /// Sarlavhaning kursiv, urg'u rangidagi ikkinchi qismi.
+  final String? accent;
   final String? subtitle;
   final String? eyebrow;
   final Widget? trailing;
@@ -119,7 +132,28 @@ class ScreenTitle extends StatelessWidget {
                     Text(eyebrow!.toUpperCase(), style: T.eyebrow),
                     const SizedBox(height: 6),
                   ],
-                  Text(title, style: T.title),
+                  // HERO SARLAVHA — ikkinchi qismi KURSIV va URG'U
+                  // RANGIDA (prototip: `h1.hero em`). Matn "Kimni
+                  // topamiz?" kabi ikki qismdan iborat bo'lsa, urg'u
+                  // ikkinchisiga tushadi.
+                  if (accent != null && accent!.isNotEmpty)
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: '$title ', style: T.title),
+                          TextSpan(
+                            text: accent,
+                            style: T.title.copyWith(
+                              color: C.accent,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(title, style: T.title),
                   if ((subtitle ?? '').isNotEmpty) ...[
                     const SizedBox(height: S.x8),
                     Text(subtitle!, style: T.caption),
