@@ -697,8 +697,8 @@ class _CompanyCard extends StatelessWidget {
                       ),
                     ),
                     Positioned(
-                      left: S.x10,
-                      top: S.x10,
+                      left: S.x8,
+                      top: S.x8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: S.x8,
@@ -706,7 +706,7 @@ class _CompanyCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xB8000000),
-                          borderRadius: BorderRadius.circular(R.pill),
+                          borderRadius: BorderRadius.circular(R.status),
                           border: Border.all(color: C.lineStrong),
                         ),
                         child: Row(
@@ -733,7 +733,7 @@ class _CompanyCard extends StatelessWidget {
                     Positioned(
                       left: S.x12,
                       right: S.x12,
-                      bottom: S.x10,
+                      bottom: S.x8,
                       child: Row(
                         children: [
                           Expanded(
@@ -756,7 +756,7 @@ class _CompanyCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(S.x12, S.x10, S.x12, S.x12),
+              padding: const EdgeInsets.fromLTRB(S.x12, S.x8, S.x12, S.x12),
               child: Row(
                 children: [
                   Expanded(

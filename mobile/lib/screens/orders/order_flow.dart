@@ -223,7 +223,7 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Surface(
-        padding: const EdgeInsets.all(S.x10),
+        padding: const EdgeInsets.all(S.x8),
         glow: product.discountPct != null,
         child: Row(
           children: [

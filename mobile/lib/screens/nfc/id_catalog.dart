@@ -244,7 +244,7 @@ class _CatalogHero extends StatelessWidget {
               sweep: true,
             ),
           ),
-          const SizedBox(height: S.x10),
+          const SizedBox(height: S.x8),
           Row(
             children: [
               Text(record.code, style: T.cardTitle),
@@ -449,7 +449,7 @@ class _DashedBorderPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = RRect.fromRectAndRadius(
       Offset.zero & size,
-      const Radius.circular(R.card),
+      Radius.circular(R.card),
     );
     final path = Path()..addRRect(rect);
     final paint = Paint()

@@ -5,7 +5,6 @@ import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
-import '../../design/components/press.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
@@ -98,7 +97,7 @@ class ProductCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(S.x10, S.x10, S.x10, S.x12),
+              padding: const EdgeInsets.fromLTRB(S.x8, S.x8, S.x8, S.x12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

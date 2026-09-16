@@ -7,6 +7,7 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';

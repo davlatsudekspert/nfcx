@@ -850,7 +850,7 @@ class _BusinessCover extends StatelessWidget {
                         size: 58,
                         square: true,
                       ),
-                      const SizedBox(width: S.x10),
+                      const SizedBox(width: S.x8),
                       Expanded(
                         child: Row(
                           children: [
