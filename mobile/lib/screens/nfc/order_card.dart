@@ -9,6 +9,7 @@ import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
+import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/top_bar.dart';
@@ -89,6 +90,20 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
     super.dispose();
   }
 
+  /// KARTA YUZASI — mijoz tanlaydigan material (prototip:
+  /// "Karta dizayni" qatoridagi Qora mat · Xrom · Oltin · Titan).
+  ///
+  /// Kalitlar SERVERDAGI ro'yxat bilan bir xil
+  /// (`hosting/api/account.js: FINISHES`) — ular buyurtma ichida
+  /// saqlanadi va bosmaxonaga shu bilan boradi.
+  static const _finishes = <({String key, String label, List<Color> colors})>[
+    (key: 'matte_black', label: 'Qora mat', colors: [Color(0xFF2A2E36), Color(0xFF16181D)]),
+    (key: 'chrome', label: 'Xrom', colors: [Color(0xFFB9C1CA), Color(0xFF6E7680)]),
+    (key: 'gold', label: 'Oltin', colors: [Color(0xFFF0C419), Color(0xFF9C7A0E)]),
+    (key: 'titanium', label: 'Titan', colors: [Color(0xFFD4AF37), Color(0xFF6B5411)]),
+  ];
+  String _finish = 'matte_black';
+
   Future<void> _loadPricing() async {
     try {
       final p = await AppScope.read(context).repo.physicalPricing();
@@ -151,6 +166,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
           'shippingPhone': _phone.text.trim(),
           'shippingAddress': address,
           'quantity': _qty,
+          'finish': _finish,
         },
       );
       if (!mounted) return;
@@ -324,7 +340,68 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: S.x32),
+                        const SizedBox(height: S.x24),
+
+                        // ── KARTA DIZAYNI ─────────────────────
+                        //
+                        // To'rtta yuza — prototipdagi tartibda.
+                        // Namuna rangi materialning o'zi: yozuvdan
+                        // ko'ra rang tezroq tanitadi.
+                        Eyebrow(tr('Karta dizayni')),
+                        const SizedBox(height: S.x12),
+                        Row(
+                          children: [
+                            for (final f in _finishes) ...[
+                              Expanded(
+                                child: Press(
+                                  onTap: () => setState(() => _finish = f.key),
+                                  minSize: 0,
+                                  scale: .96,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: S.x8),
+                                    decoration: BoxDecoration(
+                                      color: C.surface,
+                                      borderRadius: BorderRadius.circular(R.tile),
+                                      border: Border.all(
+                                        color: _finish == f.key ? C.accent : C.line,
+                                        width: _finish == f.key ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          width: 34,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(6),
+                                            gradient: LinearGradient(
+                                              begin: const Alignment(-.9, -1),
+                                              end: const Alignment(.9, 1),
+                                              colors: f.colors,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          tr(f.label),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: T.caption.copyWith(
+                                            fontSize: 11,
+                                            color: _finish == f.key ? C.accent : C.ink2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (f != _finishes.last) const SizedBox(width: 6),
+                            ],
+                          ],
+                        ),
+
+                        const SizedBox(height: S.x24),
 
                         // ── SONI ──────────────────────────────
                         Row(

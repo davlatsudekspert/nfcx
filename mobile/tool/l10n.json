@@ -1535,6 +1535,10 @@
     "Введите секретный код, пришедший с картой. Никому его ",
     "Enter the secret code that came with the card. Do not share "
   ],
+  "Karta dizayni": [
+    "Дизайн карты",
+    "Card design"
+  ],
   "Karta maketi (ism va logotip joylashuvi) buyurtmadan ": [
     "Макет карты (расположение имени и логотипа) согласуется после ",
     "The card layout (name and logo placement) is agreed after "
@@ -2387,6 +2391,10 @@
     "Обычный шаблон AAA000",
     "Plain AAA000 pattern"
   ],
+  "Oltin": [
+    "Золото",
+    "Gold"
+  ],
   "Orqaga": [
     "Назад",
     "Back"
@@ -2898,6 +2906,10 @@
   "Qonunga zid boshqa material": [
     "Иные материалы, противоречащие закону",
     "Other unlawful material"
+  ],
+  "Qora mat": [
+    "Чёрный мат",
+    "Matte black"
   ],
   "Qo‘ng‘iroq": [
     "Позвонить",
@@ -3635,6 +3647,10 @@
     "Язык",
     "Language"
   ],
+  "Titan": [
+    "Титан",
+    "Titanium"
+  ],
   "Titanium Gold material, ikki qavatli qirra": [
     "Материал Titanium Gold, двойная кромка",
     "Titanium Gold material, double edge"
@@ -3902,6 +3918,10 @@
   "Xizmatlar": [
     "Услуги",
     "Services"
+  ],
+  "Xrom": [
+    "Хром",
+    "Chrome"
   ],
   "Xush kelibsiz": [
     "Добро пожаловать",

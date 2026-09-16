@@ -255,6 +255,30 @@ let premiumOrderId;
     // 202 — "qabul qilindi, to'lov kutilmoqda" (buyurtma yaratildi,
     // lekin hali to'lanmagan).
     check('manzilsiz buyurtma qabul qilinadi -> 202', r.status, 202);
+    {
+      // KARTA YUZASI buyurtma ichida saqlanadi: mijoz tanlagan
+      // material bosmaxonaga yetib borishi kerak.
+      const row = sqlite.prepare(`SELECT payload FROM web_orders WHERE id = ?`).get(r.body.orderId);
+      check('standart yuza saqlanadi', JSON.parse(row.payload).finish, 'matte_black');
+    }
+    const gold = await callPay('/api/records/VIP001/order-physical-card', {
+      method: 'POST', cookie: cookie.user,
+      json: { shippingName: 'Ali', shippingPhone: '+998901234567', finish: 'gold' },
+    });
+    {
+      const row = sqlite.prepare(`SELECT payload FROM web_orders WHERE id = ?`).get(gold.body.orderId);
+      check('tanlangan yuza saqlanadi', JSON.parse(row.payload).finish, 'gold');
+    }
+    const bad = await callPay('/api/records/VIP001/order-physical-card', {
+      method: 'POST', cookie: cookie.user,
+      json: { shippingName: 'Ali', shippingPhone: '+998901234567', finish: 'olmos' },
+    });
+    {
+      // Noma'lum qiymat rad etilmaydi — standartga tushadi: eski
+      // ilova bu maydonni umuman yubormaydi.
+      const row = sqlite.prepare(`SELECT payload FROM web_orders WHERE id = ?`).get(bad.body.orderId);
+      check('noma\u2018lum yuza standartga tushadi', JSON.parse(row.payload).finish, 'matte_black');
+    }
     check('buyurtma raqami qaytadi', typeof r.body?.orderId, 'number');
     check('summa qaytadi', r.body?.amount, 200000);
     checkTrue('Payme havolasi qaytadi', String(r.body?.payLink || '').startsWith('https://checkout.paycom.uz/'));
@@ -281,7 +305,7 @@ let premiumOrderId;
   // to'ldirilgan holat scripts/test-card-print-order.mjs da tekshiriladi.
   check('web_orders physical row', { ...row, payload: JSON.parse(row.payload) }, {
     user_id: 1, code: 'VIP001', kind: 'physical_card_order', price: 200000, status: 'pending',
-    payload: { ...shipping, shippingCarrier: '', quantity: 1, designFrontUrl: '', designBackUrl: '', printSpec: '' },
+    payload: { ...shipping, shippingCarrier: '', quantity: 1, finish: 'matte_black', designFrontUrl: '', designBackUrl: '', printSpec: '' },
   });
   // free-tier kod uchun feature_locked (physicalCardDesigner min silver)
   sqlite.prepare(`INSERT INTO cards (code, name, price, ts, user_id) VALUES ('12345678', 'Free', 0, 2000, 1)`).run();
