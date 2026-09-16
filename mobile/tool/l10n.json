@@ -4058,5 +4058,17 @@
   "“{q}” topilmadi": [
     "«{q}» не найдено",
     "\"{q}\" not found"
+  ],
+  "Payme bilan Premium olish": [
+    "Оформить Premium через Payme",
+    "Get Premium with Payme"
+  ],
+  "Click bilan Premium olish": [
+    "Оформить Premium через Click",
+    "Get Premium with Click"
+  ],
+  "Tanlanmagan": [
+    "Не выбрано",
+    "Not selected"
   ]
 }
