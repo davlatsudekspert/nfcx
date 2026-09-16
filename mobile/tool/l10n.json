@@ -215,6 +215,10 @@
     "Приложите чужую карту и откройте профиль",
     "Tap someone’s card to open their profile"
   ],
+  "Begona teg": [
+    "Посторонняя метка",
+    "Foreign tag"
+  ],
   "Bekor": [
     "Отмена",
     "Cancel"
@@ -374,6 +378,10 @@
   "Boshqa so‘z bilan yoki ID kodi bo‘yicha qidirib ko‘ring.": [
     "Попробуйте другое слово или поиск по коду ID.",
     "Try another word, or search by ID code."
+  ],
+  "Boshqa tegni o‘qish": [
+    "Прочитать другую метку",
+    "Read another tag"
   ],
   "Boshqalar qanday ko‘rishini tekshiring": [
     "Проверьте, как вас видят другие",
@@ -995,6 +1003,10 @@
     "{{n}} дн. в неделю",
     "{{n}} days a week"
   ],
+  "Hajmi": [
+    "Объём",
+    "Capacity"
+  ],
   "Hali ID yo‘q": [
     "ID пока нет",
     "No ID yet"
@@ -1050,6 +1062,10 @@
   "Haqida": [
     "О нас",
     "About"
+  ],
+  "Haqiqiy NFCSTORE kartasi": [
+    "Подлинная карта NFCSTORE",
+    "Genuine NFCSTORE card"
   ],
   "Haqiqiylik": [
     "Подлинность",
@@ -1274,6 +1290,10 @@
   "IZOH": [
     "КОММЕНТАРИЙ",
     "COMMENT"
+  ],
+  "Ichidagi yozuv": [
+    "Записанные данные",
+    "Stored record"
   ],
   "Ilova ochilganda kod so‘raladi": [
     "Код запрашивается при открытии приложения",
@@ -2147,6 +2167,14 @@
     "Опишите проблему чуть подробнее.",
     "Describe the problem in a bit more detail."
   ],
+  "Mumkin": [
+    "Возможна",
+    "Allowed"
+  ],
+  "Mumkin emas": [
+    "Невозможна",
+    "Not allowed"
+  ],
   "Muqova": [
     "Обложка",
     "Cover"
@@ -2319,6 +2347,14 @@
     "Уникальные посетители",
     "Unique visitors"
   ],
+  "Nusxalandi": [
+    "Скопировано",
+    "Copied"
+  ],
+  "Nusxalash": [
+    "Копировать",
+    "Copy"
+  ],
   "Obuna": [
     "Подписка",
     "Subscription"
@@ -2364,7 +2400,7 @@
     "Opening"
   ],
   "Ochiq": [
-    "Открыто",
+    "Открыт",
     "Open"
   ],
   "Ochiq profil va uning havolasi": [
@@ -2871,6 +2907,10 @@
     "Повторить",
     "Try again"
   ],
+  "Qayta yozish": [
+    "Перезаписать",
+    "Rewrite"
+  ],
   "Qayta yuborish": [
     "Отправить снова",
     "Resend"
@@ -2918,6 +2958,14 @@
   "Qo‘shimcha": [
     "Дополнительно",
     "Extras"
+  ],
+  "Qulf": [
+    "Блокировка",
+    "Lock"
+  ],
+  "Qulflangan": [
+    "Заблокирована",
+    "Locked"
   ],
   "Qurilish": [
     "Строительство",
@@ -3078,6 +3126,10 @@
   "Sayt bosildi": [
     "Переходы на сайт",
     "Website taps"
+  ],
+  "Seriya raqami": [
+    "Серийный номер",
+    "Serial number"
   ],
   "Server hali javob bermadi. To‘lov o‘tgan bo‘lishi ham mumkin — holatni tekshiring.": [
     "Сервер пока не ответил. Платёж мог и пройти — проверьте статус.",
@@ -3543,6 +3595,22 @@
     "Данные метки",
     "Tag details"
   ],
+  "Teg o‘qilgach, uning turi va hajmi shu yerda chiqadi.": [
+    "После чтения здесь появятся тип и объём метки.",
+    "Once read, the tag type and capacity appear here."
+  ],
+  "Teg o‘qilmadi": [
+    "Метка не прочитана",
+    "Tag not read"
+  ],
+  "Teg topilmadi. Kartani telefon orqasiga tegizib, qayta urinib ko‘ring.": [
+    "Метка не найдена. Приложите карту к задней части телефона и повторите.",
+    "No tag found. Hold the card to the back of your phone and try again."
+  ],
+  "Teg turi": [
+    "Тип метки",
+    "Tag type"
+  ],
   "Tegish statistikasi": [
     "Статистика касаний",
     "Tap statistics"
@@ -3550,6 +3618,10 @@
   "Tegishlar": [
     "Касания",
     "Taps"
+  ],
+  "Tegizing": [
+    "Приложите",
+    "Hold it close"
   ],
   "Tekshirib bo‘lmadi. Ulanishni tekshiring.": [
     "Не удалось проверить. Проверьте соединение.",
@@ -4075,6 +4147,10 @@
     "Записано. Проверьте карту.",
     "Written. Give the card a try."
   ],
+  "Yozish": [
+    "Запись",
+    "Writing"
+  ],
   "Yozish kartadagi eski havolani butunlay almashtiradi. ": [
     "Запись полностью заменит старую ссылку на карте. ",
     "Writing fully replaces the old link on the card. "
@@ -4122,6 +4198,10 @@
   "Zo‘ravonlik, haqorat, kamsitish": [
     "Насилие, оскорбления, унижение",
     "Violence, insults, humiliation"
+  ],
+  "bayt": [
+    "байт",
+    "bytes"
   ],
   "bermang — kod bilan ID faollashtiriladi.": [
     "не сообщайте — этим кодом активируется ID.",

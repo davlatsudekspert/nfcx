@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/platform_tags.dart';
 
 /// NFC — O'QISH VA YOZISH.
 ///
@@ -82,6 +84,106 @@ class Nfc {
 
     return completer.future;
   }
+
+  /// TEG MA'LUMOTI — texnik tafsilotlar.
+  ///
+  /// Prototipdagi "Teg ma'lumoti" ekrani uchun: turi, hajmi, yozish
+  /// mumkinmi, qulflanganmi, ichidagi yozuv va seriya raqami.
+  ///
+  /// NIMA UCHUN KERAK: karta ishlamaganda sabab shu yerda ko'rinadi
+  /// — teg qulflangan, hajmi yetmaydi yoki umuman boshqa turdagi
+  /// teg. Busiz odam "nega yozilmayapti?" degan savol bilan qolardi.
+  ///
+  /// Hech qanday qiymat TO'QILMAYDI: mavjud bo'lmagan maydon `null`
+  /// bo'lib qaytadi va ekranda "—" chiziladi.
+  static Future<TagInfo?> readTagInfo({
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final completer = Completer<TagInfo?>();
+    Timer? timer;
+
+    Future<void> stop() async {
+      timer?.cancel();
+      try {
+        await NfcManager.instance.stopSession();
+      } catch (_) {}
+    }
+
+    try {
+      await NfcManager.instance.startSession(
+        pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
+        onDiscovered: (tag) async {
+          if (!completer.isCompleted) completer.complete(_infoFromTag(tag));
+          await stop();
+        },
+      );
+    } catch (_) {
+      return null;
+    }
+
+    timer = Timer(timeout, () async {
+      if (!completer.isCompleted) completer.complete(null);
+      await stop();
+    });
+
+    return completer.future;
+  }
+
+  static TagInfo _infoFromTag(NfcTag tag) {
+    String? kind;
+    int? maxSize;
+    bool? writable;
+    String? serial;
+    String? payload;
+
+    try {
+      final ndef = Ndef.from(tag);
+      if (ndef != null) {
+        maxSize = ndef.maxSize;
+        writable = ndef.isWritable;
+        final msg = ndef.cachedMessage;
+        if (msg != null && msg.records.isNotEmpty) {
+          payload = _uriOf(msg.records.first);
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final mifare = MifareUltralight.from(tag);
+      if (mifare != null) {
+        // NTAG213/215/216 — turi Ultralight oilasida `type` bilan
+        // emas, HAJM bilan ajratiladi: ular bir xil texnologiya.
+        final size = maxSize ?? 0;
+        kind = size >= 800
+            ? 'NTAG216'
+            : size >= 480
+                ? 'NTAG215'
+                : size >= 130
+                    ? 'NTAG213'
+                    : 'MIFARE Ultralight';
+        serial = _hexId(mifare.identifier);
+      }
+    } catch (_) {}
+
+    if (serial == null) {
+      try {
+        final a = NfcA.from(tag);
+        if (a != null) serial = _hexId(a.identifier);
+      } catch (_) {}
+    }
+
+    return TagInfo(
+      kind: kind,
+      maxSize: maxSize,
+      writable: writable,
+      serial: serial,
+      payload: payload,
+    );
+  }
+
+  static String _hexId(Uint8List bytes) => bytes
+      .map((b) => b.toRadixString(16).toUpperCase().padLeft(2, '0'))
+      .join(':');
 
   /// Kartaga profil havolasini yozish (faollashtirish).
   ///
@@ -177,6 +279,39 @@ class Nfc {
     } catch (_) {}
     return null;
   }
+}
+
+/// TEG HAQIDAGI TEXNIK MA'LUMOT.
+///
+/// Har maydon `null` bo'lishi mumkin: teg turi yoki platforma buni
+/// bermasligi mumkin, va bunda ekranda "—" chiziladi. To'qilgan
+/// qiymat foydalanuvchini noto'g'ri yo'lga boshlardi.
+class TagInfo {
+  const TagInfo({
+    this.kind,
+    this.maxSize,
+    this.writable,
+    this.serial,
+    this.payload,
+  });
+
+  /// `NTAG215` kabi nom.
+  final String? kind;
+
+  /// NDEF uchun ajratilgan joy, bayt.
+  final int? maxSize;
+
+  /// Yozish mumkinmi (qulflanmaganmi).
+  final bool? writable;
+
+  /// Seriya raqami — `04:A3:2F:...`.
+  final String? serial;
+
+  /// Ichidagi yozuv (havola).
+  final String? payload;
+
+  /// NFCSTORE kartasimi — ichidagi havola shu domenga tegishlimi.
+  bool get isOurs => NfcLink.parse(payload ?? '') != null;
 }
 
 /// NFCSTORE havolasidan olingan natija.

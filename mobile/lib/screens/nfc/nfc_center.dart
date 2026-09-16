@@ -29,6 +29,7 @@ import 'nfc_write.dart';
 import 'order_card.dart';
 import '../identity/profile_stats.dart';
 import 'qr_share.dart';
+import 'tag_info.dart';
 
 /// NFC MARKAZI — mahsulotning o'zagi.
 ///
@@ -428,7 +429,9 @@ class _Tools extends StatelessWidget {
         icon: Ico.shield,
         title: tr('Kartani tekshirish'),
         sub: tr('Haqiqiylik'),
-        tap: onScan,
+        // Haqiqiylik ham teg ma'lumotidan ko'rinadi: ichidagi
+        // yozuv NFCSTORE havolasimi yoki yo'q.
+        tap: () => push<void>(context, (_) => const TagInfoScreen()),
       ),
       (
         icon: Ico.qr,
@@ -442,7 +445,7 @@ class _Tools extends StatelessWidget {
         icon: Ico.info,
         title: tr('Teg ma’lumoti'),
         sub: tr('Turi, hajmi, qulf'),
-        tap: onScan,
+        tap: () => push<void>(context, (_) => const TagInfoScreen()),
       ),
       (
         icon: Ico.chart,

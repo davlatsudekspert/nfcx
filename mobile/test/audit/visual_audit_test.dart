@@ -42,6 +42,7 @@ import 'package:nfcstore/screens/nfc/nfc_scan.dart';
 import 'package:nfcstore/screens/nfc/nfc_write.dart';
 import 'package:nfcstore/screens/nfc/order_card.dart';
 import 'package:nfcstore/screens/nfc/qr_share.dart';
+import 'package:nfcstore/screens/nfc/tag_info.dart';
 import 'package:nfcstore/screens/identity/profile_tab.dart';
 import 'package:nfcstore/screens/orders/my_orders.dart';
 import 'package:nfcstore/screens/orders/owner_orders.dart';
@@ -598,6 +599,16 @@ void main() {
   // BEGONA izoh (o'chirish tugmasisiz), MENIKI (tugma bilan) va
   // yozish maydoni. Ular bir-biriga juda o'xshash, ya'ni maket
   // buzilsa faqat suratda sezilardi.
+  // TEG MA'LUMOTI — prototipdagi alohida ekran.
+  //
+  // Test muhitida NFC yo'q, ya'ni kadr KUTISH holatini ko'rsatadi:
+  // aynan shu holat foydalanuvchining birinchi ko'radigani.
+  testWidgets('60 teg ma\u2019lumoti', (t) async {
+    final s = await ready();
+    await pumpScreen(t, const TagInfoScreen(), state: s);
+    await golden(t, '60-teg-malumoti');
+  });
+
   testWidgets('59 izohlar', (t) async {
     final s = await ready();
     await pumpScreen(t, const ReelsScreen(), state: s);
