@@ -35,37 +35,41 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final off = product.discountPct;
 
-    return Press(
-      onTap: () => push(
-        context,
-        (_) => ProductDetailScreen(
-          product: product,
-          companyId: companyId,
-          companyName: companyName,
+    return RepaintBoundary(
+      child: Surface(
+        padding: EdgeInsets.zero,
+        glow: off != null,
+        onTap: () => push(
+          context,
+          (_) => ProductDetailScreen(
+            product: product,
+            companyId: companyId,
+            companyName: companyName,
+          ),
         ),
-      ),
-      minSize: 0,
-      // `RepaintBoundary` — to'r aylanganda har kartochka o'z
-      // qatlamida qayta chiziladi va qo'shnilarini majburlamaydi.
-      child: RepaintBoundary(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // HERO — rasm ro'yxatdan tafsilotga "o'tib" boradi.
-                  // Teg mahsulot ID si bo'yicha: bir ekranda bir
-                  // nechta mahsulot bor, ular aralashib ketmasligi
-                  // kerak.
-                  Positioned.fill(
-                    child: Hero(
-                      tag: 'product-${product.id}',
-                      child: NetImage(
-                        product.imageUrl,
-                        radius: R.tile,
-                        cacheWidth: 300,
-                        slotIcon: Ico.bag,
+                  Hero(
+                    tag: 'product-${product.id}',
+                    child: NetImage(
+                      product.imageUrl,
+                      radius: R.card,
+                      cacheWidth: 300,
+                      slotIcon: Ico.bag,
+                    ),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x00000000), Color(0x92000000)],
+                        stops: [.48, 1],
                       ),
                     ),
                   ),
@@ -75,18 +79,40 @@ class ProductCard extends StatelessWidget {
                       top: S.x8,
                       child: StatusChip('-$off%', tone: StatusTone.accent),
                     ),
+                  Positioned(
+                    right: S.x8,
+                    bottom: S.x8,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: const Color(0xB8000000),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: C.lineStrong),
+                      ),
+                      alignment: Alignment.center,
+                      child: NIcon(Ico.bag, size: 14, color: C.accent),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: S.x8),
-            Text(
-              product.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: T.cardTitle,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(S.x10, S.x10, S.x10, S.x12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.cardTitle,
+                  ),
+                  const SizedBox(height: 5),
+                  _Price(product: product),
+                ],
+              ),
             ),
-            const SizedBox(height: 3),
-            _Price(product: product),
           ],
         ),
       ),
