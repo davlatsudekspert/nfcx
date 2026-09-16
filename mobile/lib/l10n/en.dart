@@ -62,6 +62,7 @@ const enStrings = <String, String>{
   'Bankdan tasdiq hali kelmadi. To‘lovni qilgan bo‘lsangiz, u biroz kechikishi mumkin — quyidagi tugma bilan tekshiring.': 'The bank has not confirmed yet. If you have paid, it may be slightly delayed — check with the button below.',
   'Barcha imkoniyatlar ochiq. Rahmat!': 'Everything is unlocked. Thank you!',
   'Barcha majburiy maydonlarni to‘ldiring.': 'Fill in all required fields.',
+  'Barcha sohalar': 'All industries',
   'Barmoq izi yoki yuz': 'Fingerprint or face',
   'Begona kartani tegizib, profilini oching': 'Tap someone’s card to open their profile',
   'Begona teg': 'Foreign tag',

@@ -528,8 +528,11 @@ class _CategoryStrip extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(width: S.x8),
           itemBuilder: (context, i) {
             if (i == 0) {
+              // "HAMMASI" EMAS, "BARCHA SOHALAR": tepadagi qatorda
+              // ham "Hammasi" bor (profil turi) va ikkita bir xil
+              // yozuv qaysi biri nimani filtrlashini yashirardi.
               return FilterChip(
-                tr('Hammasi'),
+                tr('Barcha sohalar'),
                 active: active.isEmpty,
                 onTap: () => onSelect(''),
               );

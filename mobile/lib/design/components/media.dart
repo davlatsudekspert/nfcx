@@ -181,6 +181,7 @@ class Avatar extends StatelessWidget {
               _initials,
               style: TextStyle(
                 fontFamily: 'PlayfairDisplay',
+                fontFamilyFallback: const ['ManropeCyr'],
                 fontSize: size * .40,
                 height: 1,
                 color: C.accent.withValues(alpha: .85),

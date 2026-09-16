@@ -312,6 +312,7 @@ class T {
   static TextStyle code(double size, {Color? color, FontWeight? weight}) =>
       TextStyle(
         fontFamily: _mono,
+        fontFamilyFallback: _monoFallback,
         fontWeight: weight ?? FontWeight.w600,
         fontSize: size,
         height: 1.05,

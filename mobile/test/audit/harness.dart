@@ -46,6 +46,21 @@ Future<void> loadAuditFonts() async {
       'assets/fonts/SpaceMono-400.ttf',
       'assets/fonts/SpaceMono-700.ttf',
     ],
+    // KIRILL ZAXIRASI — ilovada pubspec orqali yuklanadi.
+    // Bu yerda ham bo'lishi SHART: aks holda vizual kadrlarda
+    // ruscha matn bo'sh kvadratlar bo'lib chiqadi va etalon
+    // ilovadan farq qiladi.
+    'ManropeCyr': [
+      'assets/fonts/ManropeCyr-400.ttf',
+      'assets/fonts/ManropeCyr-500.ttf',
+      'assets/fonts/ManropeCyr-600.ttf',
+      'assets/fonts/ManropeCyr-700.ttf',
+      'assets/fonts/ManropeCyr-800.ttf',
+    ],
+    'PlexMonoCyr': [
+      'assets/fonts/PlexMonoCyr-400.ttf',
+      'assets/fonts/PlexMonoCyr-700.ttf',
+    ],
   };
   for (final e in fonts.entries) {
     final loader = FontLoader(e.key);

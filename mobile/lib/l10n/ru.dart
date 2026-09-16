@@ -62,6 +62,7 @@ const ruStrings = <String, String>{
   'Bankdan tasdiq hali kelmadi. To‘lovni qilgan bo‘lsangiz, u biroz kechikishi mumkin — quyidagi tugma bilan tekshiring.': 'Подтверждение от банка пока не пришло. Если вы оплатили, оно может немного задержаться — проверьте кнопкой ниже.',
   'Barcha imkoniyatlar ochiq. Rahmat!': 'Все возможности открыты. Спасибо!',
   'Barcha majburiy maydonlarni to‘ldiring.': 'Заполните все обязательные поля.',
+  'Barcha sohalar': 'Все сферы',
   'Barmoq izi yoki yuz': 'Отпечаток или лицо',
   'Begona kartani tegizib, profilini oching': 'Приложите чужую карту и откройте профиль',
   'Begona teg': 'Посторонняя метка',

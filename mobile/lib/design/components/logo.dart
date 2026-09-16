@@ -124,6 +124,7 @@ class Wordmark extends StatelessWidget {
         'NFCSTORE',
         style: TextStyle(
           fontFamily: 'SpaceMono',
+          fontFamilyFallback: const ['PlexMonoCyr'],
           fontWeight: FontWeight.w600,
           fontSize: size,
           height: 1.2,
