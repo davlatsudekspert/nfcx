@@ -97,8 +97,9 @@ class _BusinessHeroFallback extends StatelessWidget {
                         colors: [C.accent.withValues(alpha: .12), const Color(0x00000000)],
                       ),
                       border: Border.all(color: C.accent.withValues(alpha: .10)),
-                    ),
                   ),
+                ),
+                ),
                 Container(
                   width: compact ? 44 : 70,
                   height: compact ? 44 : 70,
