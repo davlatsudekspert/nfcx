@@ -61,6 +61,12 @@ export async function seedDemo(env) {
   await run(
     `INSERT INTO sessions (token, user_id, expires_at) VALUES ('dev-token-dilshod', 1, '2999-01-01T00:00:00.000Z')`,
   );
+  // Ikkinchi sessiya — PREMIUM BO'LMAGAN foydalanuvchi. Premium
+  // sotib olish oqimini sinash uchun kerak: Dilshod allaqachon
+  // premium va u yerda server "ALREADY_PREMIUM" deydi.
+  await run(
+    `INSERT INTO sessions (token, user_id, expires_at) VALUES ('dev-token-malika', 2, '2999-01-01T00:00:00.000Z')`,
+  );
 
   // ── Kategoriyalar (katalog va qidiruv filtrlari) ────────────────
   //
@@ -145,13 +151,13 @@ export async function seedDemo(env) {
   await run(
     `INSERT INTO companies (company_id, owner_user_id, owner_email, display_name, category, subcategory,
                             city, address, description, phone, telegram, website, logo_url, cover_url,
-                            gallery_json, source_card_code, tier, price, status, created_at, updated_at,
-                            approved_at, paid_at, activated_at)
+                            gallery_json, source_card_code, tier, price, status, orders_enabled,
+                            created_at, updated_at, approved_at, paid_at, activated_at)
      VALUES ('LATTE', '3', 'latte@nfcstore.uz', 'Latte Coffee', 'food', 'food-cafe',
              'Toshkent', 'Chilonzor 9-mavze, 24-uy',
              'Mualliflik qahva, shirinliklar, jonli musiqa. Har kuni 09:00–23:00.',
              '+998907778899', 'lattecoffee', 'https://nfcstore.uz/ddd333', '/demo/cafe.jpg', '/demo/coffee.jpg',
-             ?, 'DDD333', 'premium', 199000, 'active', ?, ?, ?, ?, ?)`,
+             ?, 'DDD333', 'premium', 199000, 'active', 1, ?, ?, ?, ?, ?)`,
     JSON.stringify(['/demo/cafe.jpg', '/demo/coffee.jpg', '/demo/dessert.jpg']),
     iso(30 * DAY), iso(2 * DAY), iso(29 * DAY), iso(29 * DAY), iso(29 * DAY),
   );

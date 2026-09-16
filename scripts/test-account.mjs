@@ -178,11 +178,12 @@ let premiumOrderId;
   check('GET /api/payments no cookie -> 401', r.status, 401);
   const r2 = await call('/api/payments', { cookie: cookie.user });
   check('GET /api/payments -> {payments, pendingPayout}', [r2.status, r2.body.payments.length, r2.body.pendingPayout, Object.keys(r2.body.payments[0]).sort()],
-    [200, 1, 0, ['code', 'createdAt', 'id', 'kind', 'price', 'status']]);
+    [200, 1, 0, ['code', 'createdAt', 'id', 'kind', 'paymentProvider', 'price', 'status']]);
   sqlite.prepare(`UPDATE users SET pending_payout = 15000 WHERE id = 1`).run();
   check('pendingPayout reflected', (await call('/api/payments', { cookie: cookie.user })).body.pendingPayout, 15000);
   const one = await call(`/api/payments/${premiumOrderId}`, { cookie: cookie.user });
-  check('GET /api/payments/:id -> {id, kind, status, price}', [one.status, one.body], [200, { id: premiumOrderId, kind: 'premium_upgrade', status: 'pending', price: 20000 }]);
+  check('GET /api/payments/:id -> {id, kind, status, price, paymentProvider}', [one.status, one.body],
+    [200, { id: premiumOrderId, kind: 'premium_upgrade', status: 'pending', price: 20000, paymentProvider: null }]);
   const notMine = await call(`/api/payments/${premiumOrderId}`, { cookie: cookie.other });
   check('GET /api/payments/:id other user -> 404', [notMine.status, notMine.body], [404, { error: 'not_found' }]);
   check('GET /api/payments/:id no cookie -> 401', (await call(`/api/payments/${premiumOrderId}`)).status, 401);
@@ -245,9 +246,19 @@ let premiumOrderId;
       method: 'POST', cookie: cookie.user,
       json: { shippingName: 'Ali', shippingPhone: '+998901234567' },
     });
-    // Manzil yo'qligi uchun RAD ETILMAYDI (boshqa sababga tushishi
-    // mumkin — masalan takroriy buyurtma — lekin shipping_required emas).
-    check('manzilsiz buyurtma qabul qilinadi', r.body?.error === 'shipping_required', false);
+    // BU YERDA TO'LIQ JAVOB TEKSHIRILADI.
+    //
+    // Ilgari faqat "xato `shipping_required` emasmi" deb qaralardi.
+    // Bunday shart 503 uchun ham ROST bo'ladi — va aynan shu sabab
+    // `H.checkoutLinksD1` ro'yxatdan tushib qolgani sezilmadi:
+    // buyurtma oqimi ishlamay turgan holda test yashil edi.
+    // 202 — "qabul qilindi, to'lov kutilmoqda" (buyurtma yaratildi,
+    // lekin hali to'lanmagan).
+    check('manzilsiz buyurtma qabul qilinadi -> 202', r.status, 202);
+    check('buyurtma raqami qaytadi', typeof r.body?.orderId, 'number');
+    check('summa qaytadi', r.body?.amount, 200000);
+    checkTrue('Payme havolasi qaytadi', String(r.body?.payLink || '').startsWith('https://checkout.paycom.uz/'));
+    checkTrue('payLinks ichida payme bor', !!r.body?.payLinks?.payme);
   }
   {
     const r = await callPay('/api/records/VIP001/order-physical-card', {

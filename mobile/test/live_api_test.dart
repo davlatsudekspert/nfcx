@@ -39,6 +39,11 @@ void main() {
   late Api api;
   late Repo repo;
 
+  /// Yuklangan rasm havolasi — post va istorya testlari uchun.
+  /// Server tashqi manzilni qabul qilmaydi (SSRF yo'li), shuning
+  /// uchun avval haqiqiy yuklash bo'lishi kerak.
+  String? _uploadedImage;
+
   setUpAll(() async {
     api = Api(baseUrl: base);
     repo = Repo(api);
@@ -212,6 +217,136 @@ void main() {
   test('jismoniy karta narxlari keladi', () async {
     final pricing = await repo.physicalPricing();
     expect(pricing['tiers'], isNotEmpty);
+  });
+
+  // ── YOZISH OQIMLARI ─────────────────────────────────────────────
+  //
+  // Bu yergacha hammasi O'QISH edi. Yozish yo'llari boshqacha
+  // yiqiladi: ular huquq, rozilik va to'lov bilan bog'langan va
+  // aynan shu yerda ilova bilan server bir-birini tushunmay
+  // qolishi mumkin.
+
+  test('media yuklash — havola qaytadi va u profilga yoziladi', () async {
+    // Eng kichik haqiqiy PNG (1×1). Server MIME va hajmni
+    // tekshiradi, shuning uchun "shunchaki baytlar" yaramaydi.
+    final png = <int>[
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+      0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+      0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+      0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    ];
+    final url = await repo.uploadMedia(png, contentType: 'image/png');
+    expect(url, startsWith('/uploads/'));
+
+    // Yuklangan rasm PROFILGA yozilishi kerak — aks holda "yukladim,
+    // lekin hech qayerda ko'rinmadi" bo'lardi. `PUT /api/records/:code`
+    // TO'LIQ yozuvni kutadi (ilova ham shunday yuboradi), shuning
+    // uchun ism ham bo'lishi shart.
+    final me = await repo.record('VIP001');
+    final updated = await repo.updateRecord('VIP001', {
+      'name': me.name,
+      'role': me.role,
+      'avatarUrl': url,
+    });
+    expect(updated.avatarUrl, contains(url));
+    _uploadedImage = url;
+  });
+
+  test('post — joylanadi, ro‘yxatda chiqadi, o‘chiriladi', () async {
+    // POST MEDIASIZ BO'LMAYDI (server `bad_image` qaytaradi) —
+    // lenta faqat matndan iborat yozuvlarni qabul qilmaydi.
+    final post = await repo.addPost(
+      'VIP001',
+      imageUrl: _uploadedImage,
+      caption: 'Sinov posti',
+      agreed: true,
+    );
+    expect(post.id, isNotEmpty);
+
+    final mine = await repo.recordPosts('VIP001');
+    expect(mine.map((p) => p.caption), contains('Sinov posti'));
+
+    await repo.deletePost(int.parse(post.id));
+    final after = await repo.recordPosts('VIP001');
+    expect(after.map((p) => p.caption), isNot(contains('Sinov posti')));
+  });
+
+  test('kontent qoidalariga rozilik SERVERDA tekshiriladi', () async {
+    // `agreed: false` bilan yuborilgan so'rov rad etilishi SHART:
+    // rozilik faqat ekranda bo'lsa, uni so'rovni to'g'ridan-to'g'ri
+    // yuborib chetlab o'tish mumkin edi.
+    await expectLater(
+      repo.addPost('VIP001', imageUrl: _uploadedImage, caption: 'Rozilik yo‘q', agreed: false),
+      throwsA(isA<ApiError>()),
+    );
+  });
+
+  test('istorya — joylanadi va lentaga tushadi', () async {
+    await repo.addStory(
+      'VIP001',
+      imageUrl: _uploadedImage,
+      caption: 'Sinov istoryasi',
+      agreed: true,
+    );
+    final feed = await repo.storyFeed();
+    expect(feed, isNotEmpty);
+  });
+
+  test('begona profilga post yozib bo‘lmaydi', () async {
+    // ABC123 — Malikaniki. Egalik SERVERDA tekshiriladi.
+    await expectLater(
+      repo.addPost('ABC123', imageUrl: _uploadedImage, caption: 'begona', agreed: true),
+      throwsA(isA<ApiError>()),
+    );
+  });
+
+  test('biznesga buyurtma — mijoz tomonidan yuboriladi', () async {
+    final company = await repo.company('LATTE');
+    await repo.placeCompanyOrder(
+      'LATTE',
+      name: 'Dilshod',
+      phone: '+998901234567',
+      itemId: company.items.first.id,
+      qty: 2,
+      note: 'Shakarsiz',
+    );
+    // Buyurtma EGASIGA ko'rinadi; begona odam ro'yxatni ko'ra
+    // olmasligi kerak.
+    await expectLater(repo.companyOrders('LATTE'), throwsA(isA<ApiError>()));
+  });
+
+  test('jismoniy karta buyurtmasi — to‘lov havolasi bilan qaytadi', () async {
+    // Maydon nomlari ilovadagi buyurtma ekrani bilan AYNAN bir xil
+    // (`order_card.dart`) — shu sabab bu test ikkalasini bog'lab
+    // turadi: server nomni o'zgartirsa, bu yerda darhol qizaradi.
+    final r = await repo.orderPhysicalCard('VIP001', {
+      'shippingName': 'Dilshod Karimov',
+      'shippingPhone': '+998901234567',
+      'shippingAddress': 'Toshkent, Chilonzor 1',
+      'quantity': 1,
+    });
+    // Ilova shu javobdan to'lov ekraniga o'tadi: buyurtma raqami va
+    // summa bo'lishi shart.
+    expect(r['orderId'] ?? r['id'], isNotNull);
+    expect(r['amount'] ?? r['price'], isNotNull);
+  });
+
+  test('Premium so‘rovi — to‘lov havolasi bilan qaytadi', () async {
+    // Dilshod allaqachon premium, shuning uchun premium bo'lmagan
+    // ikkinchi hisob (Malika) ishlatiladi.
+    final other = Repo(Api(baseUrl: base));
+    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final order = await other.requestPremium();
+    expect(order.id, greaterThan(0));
+    expect(order.price, greaterThan(0));
+  });
+
+  test('yordam xabari yuboriladi', () async {
+    await repo.sendSupport('Sinov: ilova ishlayaptimi?');
+    final msgs = await repo.supportMessages();
+    expect(msgs, isNotEmpty);
   });
 
   test('to‘lov yoqilganligi holati keladi', () async {

@@ -9163,6 +9163,17 @@ const H = {
   nowTs, parseDbDate, newToken, sha256Hex, hashPassword, verifyPassword,
   reqIp, logAdminActivity, logAdminLoginEvent, sendTelegramMessage, sendTelegramTo,
   personalIdTierD1, effectiveAccessD1, featureAllowedD1, paymentsEnabledD1, paymeCheckoutLinkD1,
+  // `checkoutLinksD1` — Payme VA Click havolalarini birga beradi.
+  //
+  // NIMA UCHUN QO'SHILDI: `hosting/api/account.js` uni uch joyda
+  // chaqiradi (Premium so'rovi ikki marta, jismoniy karta
+  // buyurtmasi bir marta), lekin bu ro'yxatda faqat
+  // `paymeCheckoutLinkD1` bor edi. Natijada har ikkala oqim ham
+  // `TypeError: H.checkoutLinksD1 is not a function` bilan yiqilib,
+  // foydalanuvchiga 503 `api_unavailable` qaytarardi — ya'ni
+  // Premium ham, jismoniy karta ham UMUMAN sotib olinmasdi.
+  // Modul testlari bu yo'llarni bosib o'tmagani uchun xato jim edi.
+  checkoutLinksD1,
   createPendingWebOrderD1, getWebOrderD1, createWebOrderD1, setWebOrderStatusD1, ensureCoreSchema,
   finalizePaidWebOrderD1, attachCardToUserD1, createRecordD1, activeWebOrderByCodeD1, getWebOrderByPaymeIdD1,
   sessionCookieHeader, jsonWithCookie, isSecure, SESSION_TTL_S, newsVisitorHash, createUserSession, parseCookies,
