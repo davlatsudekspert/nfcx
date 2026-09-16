@@ -1,0 +1,35 @@
+name: Business profile visual preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+      - name: Dependencies
+        run: flutter pub get --enforce-lockfile
+      - name: Render current business profile preview
+        run: flutter test --update-goldens test/audit/profile_screens_test.dart
+      - name: Upload rendered screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: business-profile-preview
+          path: mobile/test/audit/goldens/17-biznes-ommaviy.png
+          if-no-files-found: error
+          retention-days: 3
