@@ -36,6 +36,7 @@ class ContactRow extends StatelessWidget {
     this.website = '',
     this.address = '',
     this.onShare,
+    this.compactRail = false,
   });
 
   final String phone;
@@ -52,6 +53,10 @@ class ContactRow extends StatelessWidget {
   /// Ulashish — MAVJUD amal, shunchaki shu qatorda turadi. Yangi
   /// funksiya EMAS: bir xil `onShare` chaqiriladi.
   final VoidCallback? onShare;
+
+  /// Profilning premium hero ostida kontaktlar dumaloq ikonkalarga
+  /// bo'linmaydi: bir yuzali, gorizontal action rail bo'lib chiqadi.
+  final bool compactRail;
 
   /// Saytga sxema qo'shish. `sayt.uz` → `https://sayt.uz`.
   static Uri? _siteUri(String raw) {
@@ -146,6 +151,8 @@ class ContactRow extends StatelessWidget {
 
     if (items.isEmpty) return const SizedBox.shrink();
 
+    if (compactRail) return _ContactRail(items: items);
+
     // SIG'SA MARKAZDA, SIG'MASA SURILADI.
     //
     // `Row(mainAxisAlignment: center)` ni to'g'ridan-to'g'ri
@@ -177,6 +184,47 @@ class ContactRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ContactRail extends StatelessWidget {
+  const _ContactRail({required this.items});
+
+  final List<({Ico icon, String label, Color color, VoidCallback? onTap})> items;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        child: Row(
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(width: S.x8),
+              Press(
+                onTap: items[i].onTap,
+                minSize: S.tap,
+                scale: .97,
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: S.x16),
+                  decoration: BoxDecoration(
+                    color: C.glassHigh,
+                    borderRadius: BorderRadius.circular(R.status),
+                    border: Border.all(color: C.line),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      NIcon(items[i].icon, size: 17, color: C.accent),
+                      const SizedBox(width: 8),
+                      Text(items[i].label, style: T.buttonSm.copyWith(color: C.ink)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
 }
 
 /// Bitta dumaloq yuza + ostidagi yozuv.

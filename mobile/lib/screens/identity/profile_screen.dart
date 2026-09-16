@@ -483,77 +483,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SizedBox(height: S.x16),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              [
-                if (c.about.isNotEmpty) c.about.split('\n').first,
-                if (c.city.isNotEmpty) c.city,
-              ].take(2).join(' · '),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: T.caption.copyWith(color: C.ink2),
+        child: _BusinessMetaLayer(
+          company: c,
+          followers: _follow?.followers ?? c.followers,
+          onFollowers: () => push<void>(
+            context,
+            (_) => FollowListScreen(
+              code: _code,
+              title: tr('Obunachilar'),
+              isCompany: true,
             ),
-
-            const SizedBox(height: S.x12),
-            Wrap(
-              spacing: S.x8,
-              runSpacing: S.x8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (c.isOpen != null)
-                  StatusChip(
-                    c.isOpen!
-                        ? (c.hoursLabel.isEmpty
-                            ? tr('Hozir ochiq')
-                            : trf('Hozir ochiq · {time}', {
-                                'time': c.hoursLabel,
-                              }))
-                        : tr('Hozir yopiq'),
-                    tone: c.isOpen! ? StatusTone.ok : StatusTone.neutral,
-                  ),
-                if (c.tier.isNotEmpty)
-                  _TierBadge(
-                    tier: TierStyle.parse(c.tier),
-                    label: TierStyle.of(TierStyle.parse(c.tier)).label,
-                    code: c.id,
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: S.x20),
-            StatRow(
-              tiles: [
-                StatTile(
-                  value: som(c.itemCount),
-                  label: tr('Mahsulot'),
-                ),
-                StatTile(value: som(c.views), label: tr('Ko‘rish')),
-                StatTile(
-                  value: som(_follow?.followers ?? c.followers),
-                  label: tr('Obunachi'),
-                  onTap: () => push<void>(
-                    context,
-                    (_) => FollowListScreen(
-                      code: _code,
-                      title: tr('Obunachilar'),
-                      isCompany: true,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: S.x20),
-            ContactRow(
-              phone: c.phone,
-              telegram: c.tg,
-              instagram: c.instagram,
-              website: c.website,
-              address: c.address,
-            ),
-          ],
+          ),
         ),
       ),
 
@@ -931,6 +871,115 @@ class _BusinessCover extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      );
+}
+
+/// Hero tagidagi ma'lumotlar bloklari alohida qora kartalar emas. Ular
+/// bitta shaffof, yumshoq layer ichida biznes vitrinasi bilan bog'lanadi.
+class _BusinessMetaLayer extends StatelessWidget {
+  const _BusinessMetaLayer({
+    required this.company,
+    required this.followers,
+    required this.onFollowers,
+  });
+
+  final Company company;
+  final int followers;
+  final VoidCallback onFollowers;
+
+  @override
+  Widget build(BuildContext context) => GlassPanel(
+        radius: 28,
+        padding: const EdgeInsets.all(S.x20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (company.about.isNotEmpty)
+              Text(
+                company.about,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: T.body.copyWith(color: C.ink2, height: 1.45),
+              ),
+            if (company.about.isNotEmpty) const SizedBox(height: S.x16),
+            Wrap(
+              spacing: S.x8,
+              runSpacing: S.x8,
+              children: [
+                if (company.city.isNotEmpty)
+                  _InfoPill(icon: Ico.pin, text: company.city),
+                if (company.hoursLabel.isNotEmpty)
+                  _InfoPill(icon: Ico.clock, text: company.hoursLabel),
+                if (company.tier.isNotEmpty)
+                  _InfoPill(
+                    icon: Ico.star,
+                    text: TierStyle.of(TierStyle.parse(company.tier)).label,
+                    accent: true,
+                  ),
+              ],
+            ),
+            const SizedBox(height: S.x20),
+            Row(
+              children: [
+                Text(som(company.itemCount), style: T.amount.copyWith(fontSize: 22)),
+                const SizedBox(width: 5),
+                Text(tr('mahsulot'), style: T.caption),
+                const Spacer(),
+                Text(som(company.views), style: T.amount.copyWith(fontSize: 22)),
+                const SizedBox(width: 5),
+                Text(tr('ko‘rish'), style: T.caption),
+                const SizedBox(width: S.x16),
+                Press(
+                  onTap: onFollowers,
+                  minSize: S.tap,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(som(followers), style: T.amount.copyWith(fontSize: 22)),
+                      const SizedBox(width: 5),
+                      Text(tr('obunachi'), style: T.caption),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: S.x20),
+            ContactRow(
+              phone: company.phone,
+              telegram: company.tg,
+              instagram: company.instagram,
+              website: company.website,
+              address: company.address,
+              compactRail: true,
+            ),
+          ],
+        ),
+      );
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.icon, required this.text, this.accent = false});
+
+  final Ico icon;
+  final String text;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: S.x12, vertical: S.x8),
+        decoration: BoxDecoration(
+          color: accent ? C.accent.withValues(alpha: .12) : C.glass,
+          borderRadius: BorderRadius.circular(R.status),
+          border: Border.all(color: accent ? C.accent.withValues(alpha: .35) : C.line),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NIcon(icon, size: 14, color: accent ? C.accent : C.ink2),
+            const SizedBox(width: 6),
+            Text(text, style: T.meta.copyWith(color: accent ? C.accent : C.ink2)),
+          ],
         ),
       );
 }

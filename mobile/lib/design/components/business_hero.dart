@@ -40,38 +40,6 @@ class _BusinessHeroFallback extends StatelessWidget {
         builder: (context, box) {
           final width = box.hasBoundedWidth ? box.maxWidth : 280.0;
           final height = box.hasBoundedHeight ? box.maxHeight : width * .62;
-          final scale = compact ? .72 : 1.0;
-          final cardWidth = width * (compact ? .61 : .58);
-          final cardHeight = height * (compact ? .54 : .58);
-
-          Widget card({required double turns, required double opacity}) => Transform.rotate(
-                angle: turns,
-                child: Container(
-                  width: cardWidth,
-                  height: cardHeight,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(compact ? 12 : 18),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        C.surfaceHigh.withValues(alpha: opacity),
-                        C.surface.withValues(alpha: opacity),
-                        const Color(0xFF060606).withValues(alpha: opacity),
-                      ],
-                    ),
-                    border: Border.all(color: C.accent.withValues(alpha: .16 + opacity * .22)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF000000).withValues(alpha: .42),
-                        blurRadius: 24 * scale,
-                        offset: Offset(0, 12 * scale),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-
           return DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -102,13 +70,35 @@ class _BusinessHeroFallback extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  top: height * .10,
-                  child: Opacity(opacity: .42, child: card(turns: -.22, opacity: .38)),
+                  left: -width * .22,
+                  bottom: -height * .48,
+                  child: Container(
+                    width: width * 1.14,
+                    height: width * 1.14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: C.accent.withValues(alpha: .12), width: 1.2),
+                    ),
+                  ),
                 ),
                 Positioned(
+                  left: width * .10,
                   top: height * .16,
-                  child: Opacity(opacity: .82, child: card(turns: .11, opacity: .76)),
-                ),
+                  child: Container(
+                    width: width * .80,
+                    height: height * .72,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(width * .42),
+                        topRight: Radius.circular(width * .42),
+                      ),
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -.4),
+                        colors: [C.accent.withValues(alpha: .12), const Color(0x00000000)],
+                      ),
+                      border: Border.all(color: C.accent.withValues(alpha: .10)),
+                    ),
+                  ),
                 Container(
                   width: compact ? 44 : 70,
                   height: compact ? 44 : 70,
