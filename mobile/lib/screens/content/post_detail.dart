@@ -400,11 +400,11 @@ class _Counter extends StatelessWidget {
         decoration: BoxDecoration(
           color: C.backdrop.withValues(alpha: .55),
           borderRadius: BorderRadius.circular(R.status),
-          border: Border.all(color: C.lineCool),
+          border: Border.all(color: C.onMedia3),
         ),
         child: Text(
           '${page + 1} / $total',
-          style: T.statusLabel.copyWith(color: C.ink),
+          style: T.statusLabel.copyWith(color: C.onMedia),
         ),
       );
 }

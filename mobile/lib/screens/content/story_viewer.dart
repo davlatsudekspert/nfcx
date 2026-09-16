@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import '../../data/models.dart';
+import '../../design/components/backdrop.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/surface.dart';
 import '../home/home.dart' show LikeButton;
@@ -304,15 +305,20 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   @override
   Widget build(BuildContext context) {
+    // HALI MEDIA YO'Q — oddiy ekran foni.
+    //
+    // `C.backdrop` doim quyuq: u rasm ostidagi "kino pardasi"
+    // uchun. Xato va bo'sh holat matni esa mavzu rangida yoziladi
+    // va quyuq fonda o'qilmasdi.
     if (_loading) {
-      return ColoredBox(
-        color: C.backdrop,
+      return ScreenBackdrop(
+        aura: Aura.reels,
         child: const Center(child: Spinner()),
       );
     }
     if (_error != null || _stories.isEmpty) {
-      return ColoredBox(
-        color: C.backdrop,
+      return ScreenBackdrop(
+        aura: Aura.reels,
         child: SafeArea(
           child: Center(
             child: _error != null

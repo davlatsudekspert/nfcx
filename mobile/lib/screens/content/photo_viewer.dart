@@ -97,13 +97,16 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           if (total > 1)
                             Text(
                               '${_page + 1} / $total',
-                              style: T.statusLabel.copyWith(color: C.ink),
+                              // Fon HAR DOIM quyuq (`C.backdrop`) —
+                              // rasm o'z rangida ko'rinsin uchun.
+                              // Demak matn ham har doim oq.
+                              style: T.statusLabel.copyWith(color: C.onMedia),
                             ),
                           if (widget.title.trim().isNotEmpty) ...[
                             const SizedBox(height: 3),
                             Text(
                               widget.title,
-                              style: T.caption,
+                              style: T.caption.copyWith(color: C.onMedia2),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

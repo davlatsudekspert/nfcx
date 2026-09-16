@@ -301,7 +301,8 @@ class _VideoViewState extends State<VideoView>
                   child: Text(
                     _reason ?? tr('Videoni ochib bo‘lmadi.'),
                     textAlign: TextAlign.center,
-                    style: T.caption.copyWith(color: C.ink),
+                    // Quyuq quti ustida — mavzudan qat'i nazar oq.
+                    style: T.caption.copyWith(color: C.onMedia),
                   ),
                 ),
               ),
