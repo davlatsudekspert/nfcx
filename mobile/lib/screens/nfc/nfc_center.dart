@@ -221,18 +221,11 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
                     : null,
               ),
 
-              // TO'LQIN — ekranning markazi va yorug'lik manbai.
+              // FOTO HERO — karta va telefonning jismoniy hissi NFC
+              // bo'limni ikonka-to'plam emas, premium mahsulotga aylantiradi.
               Padding(
-                padding: const EdgeInsets.only(top: S.x8, bottom: S.x12),
-                child: Center(
-                  child: NfcWave(active: !_refreshing),
-                ),
-              ),
-              Center(
-                child: Text(
-                  tr('TAYYOR · TEGIZING'),
-                  style: T.statusLabel.copyWith(color: C.accent),
-                ),
+                padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
+                child: _NfcHero(active: !_refreshing),
               ),
               const SizedBox(height: S.x24),
 
@@ -391,6 +384,69 @@ class _NfcCenterScreenState extends State<NfcCenterScreen> {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+
+/// NFC markazining premium hero qismi. Rasm ostidagi jonli halqalar
+/// foydalanuvchiga kartani qayerga tutishni ko'rsatadi.
+class _NfcHero extends StatelessWidget {
+  const _NfcHero({required this.active});
+
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 248,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(R.card),
+          border: Border.all(color: C.accent.withValues(alpha: .32)),
+          boxShadow: C.e2,
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/img/premium_contact_sheet.png',
+              fit: BoxFit.cover,
+              alignment: const Alignment(1, 1),
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x12000000), Color(0xE8000000)],
+                ),
+              ),
+            ),
+            Align(
+              alignment: const Alignment(0, -.05),
+              child: Transform.scale(
+                scale: .72,
+                child: NfcWave(active: active),
+              ),
+            ),
+            Positioned(
+              left: S.x20,
+              right: S.x20,
+              bottom: S.x16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Kartani telefon tepasiga\nyaqinlashtiring', style: T.section),
+                  const SizedBox(height: 4),
+                  Text(
+                    'NFC yoqilgan bo‘lishi kerak',
+                    style: T.caption.copyWith(color: C.ink2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────
