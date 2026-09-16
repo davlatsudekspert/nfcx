@@ -211,7 +211,7 @@ const enStrings = <String, String>{
   'Do‘kon · Toshkent': 'Shop · Tashkent',
   'Dush': 'Mon',
   'Dushanba': 'Monday',
-  'Ekspert': 'Expert',
+  'Ekspert': 'Experts',
   'Email': 'Email',
   'Email kiriting.': 'Enter your email.',
   'Email manzilini tekshiring.': 'Check the email address.',

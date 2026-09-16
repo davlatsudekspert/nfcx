@@ -9,6 +9,9 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/business_hero.dart';
 import '../../design/components/icons.dart';
+import '../shell.dart';
+import '../../design/components/logo.dart';
+import '../../design/components/buttons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/input.dart';
 import '../../design/components/media.dart';
@@ -167,8 +170,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   /// Ko'rishlar bo'yicha eng yuqori uchtalik.
+  /// PROFIL TURI FILTRI (prototip: Hammasi · Shaxsiy · Ekspert ·
+  /// Biznes). Kalitlar `Record.profileType` bilan bir xil.
+  static const _kinds = <({String key, String label})>[
+    (key: '', label: 'Hammasi'),
+    (key: 'personal', label: 'Shaxsiy'),
+    (key: 'expert', label: 'Ekspert'),
+    (key: 'business', label: 'Biznes'),
+  ];
+  String _kind = '';
+
   List<Record> get _rating {
-    final list = [..._catalog.where((r) => r.views > 0)]
+    final list = [
+      ..._catalog.where(
+        (r) => r.views > 0 && (_kind.isEmpty || r.profileType == _kind),
+      ),
+    ]
       ..sort((a, b) => b.views.compareTo(a.views));
     return list.take(3).toList();
   }
@@ -201,6 +218,34 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
+              // SARLAVHA QATORI — brend yorlig'i va skanerlash
+              // (prototip: `.topbar`). Qidiruvdan NFC'ga o'tish eng
+              // tez yo'l: kod yozgandan ko'ra kartani tegizish
+              // qulayroq.
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: C.lineStrong, width: 1.5),
+                        ),
+                        child: Wordmark(size: 11, color: C.ink2),
+                      ),
+                      const Spacer(),
+                      RoundButton(
+                        Ico.scan,
+                        size: 38,
+                        iconSize: 18,
+                        onTap: () => ShellScope.maybeOf(context)?.goTab(2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               SliverToBoxAdapter(
                 child: ScreenTitle(
                   tr('Kimni'),
@@ -215,6 +260,32 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     controller: _query,
                     hint: tr('Ism, kompaniya yoki ID kodi'),
                     onChanged: _onQuery,
+                  ),
+                ),
+              ),
+
+              // PROFIL TURI — prototipdagi birinchi chiplar qatori.
+              //
+              // Kategoriya (soha) bilan aralashtirilmaydi: bu ikki
+              // xil savol — "kim?" va "qaysi sohada?".
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: S.x16),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                    child: Row(
+                      children: [
+                        for (final kind in _kinds) ...[
+                          FilterChip(
+                            tr(kind.label),
+                            active: _kind == kind.key,
+                            onTap: () => setState(() => _kind = kind.key),
+                          ),
+                          if (kind != _kinds.last) const SizedBox(width: S.x8),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
