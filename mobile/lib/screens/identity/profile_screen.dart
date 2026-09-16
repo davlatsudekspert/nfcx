@@ -477,23 +477,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        child: _BusinessCover(company: c),
+      ),
+      const SizedBox(height: S.x16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // LOGOTIP KVADRAT — shaxsiy profildagi dumaloq
-            // avatardan ATAYLAB farq qiladi.
-            Avatar(url: c.logoUrl, name: c.name, size: 84, square: true),
-            const SizedBox(height: S.x16),
-            Row(
-              children: [
-                Flexible(child: Text(c.name, style: T.profileName)),
-                if (c.verified) ...[
-                  const SizedBox(width: 6),
-                  const VerifiedBadge(size: 17),
-                ],
-              ],
-            ),
-            const SizedBox(height: 4),
             Text(
               [
                 if (c.about.isNotEmpty) c.about.split('\n').first,
@@ -811,6 +802,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
+
+/// Biznes uchun API'dagi cover/logo birga ko'rinadigan vitrina.
+///
+/// Cover bo'lmasa `NetImage` mavjud media slotini ko'rsatadi; shuning
+/// uchun backend hali rasm bermagan kompaniya ham buzilgan ko'rinmaydi.
+class _BusinessCover extends StatelessWidget {
+  const _BusinessCover({required this.company});
+
+  final Company company;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        padding: EdgeInsets.zero,
+        glow: company.verified,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(R.card),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                NetImage(
+                  company.coverUrl ?? company.logoUrl,
+                  radius: 0,
+                  slotIcon: Ico.building,
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x12000000), Color(0xE6000000)],
+                      stops: [.12, 1],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: S.x12,
+                  bottom: S.x12,
+                  right: S.x12,
+                  child: Row(
+                    children: [
+                      Avatar(
+                        url: company.logoUrl,
+                        name: company.name,
+                        size: 58,
+                        square: true,
+                      ),
+                      const SizedBox(width: S.x10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                company.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: T.profileName.copyWith(
+                                  color: C.ink,
+                                  fontSize: 25,
+                                ),
+                              ),
+                            ),
+                            if (company.verified) ...[
+                              const SizedBox(width: 6),
+                              const VerifiedBadge(size: 17),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
 
 /// Qanday kirilgani — tepadagi kichik chip.
 class _EntryChip extends StatelessWidget {
