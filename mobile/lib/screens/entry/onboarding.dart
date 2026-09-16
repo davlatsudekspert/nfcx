@@ -7,7 +7,6 @@ import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/logo.dart';
-import '../../design/components/media.dart';
 import '../../design/components/surface.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
