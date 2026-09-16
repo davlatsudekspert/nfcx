@@ -131,6 +131,49 @@ export async function seedDemo(env) {
     address: 'Chilonzor 9-mavze, 24-uy', lat: 41.2756, lng: 69.2039,
   });
 
+  // ── KOMPANIYA (biznes profil) ───────────────────────────────────
+  //
+  // MUHIM FARQ: `cards.profile_type = 'business'` va `companies`
+  // jadvali — IKKI XIL NARSA. Ilovaning biznes ekranlari
+  // (`/api/companies/:id`, katalog, postlar, buyurtmalar) aynan
+  // `companies` dan o'qiydi. Faqat karta yaratilsa, biznes profil
+  // ilovada "topilmadi" bo'lib chiqardi.
+  //
+  // KOMPANIYA ID'SI FAQAT HARFLARDAN iborat bo'ladi (`companyId()`
+  // raqamli qiymatni rad etadi) — shuning uchun bu yerda 'LATTE',
+  // 'DDD333' esa uning MANBA KARTASI bo'lib qoladi.
+  await run(
+    `INSERT INTO companies (company_id, owner_user_id, owner_email, display_name, category, subcategory,
+                            city, address, description, phone, telegram, website, logo_url, cover_url,
+                            gallery_json, source_card_code, tier, price, status, created_at, updated_at,
+                            approved_at, paid_at, activated_at)
+     VALUES ('LATTE', '3', 'latte@nfcstore.uz', 'Latte Coffee', 'food', 'food-cafe',
+             'Toshkent', 'Chilonzor 9-mavze, 24-uy',
+             'Mualliflik qahva, shirinliklar, jonli musiqa. Har kuni 09:00–23:00.',
+             '+998907778899', 'lattecoffee', 'https://nfcstore.uz/ddd333', '/demo/cafe.jpg', '/demo/coffee.jpg',
+             ?, 'DDD333', 'premium', 199000, 'active', ?, ?, ?, ?, ?)`,
+    JSON.stringify(['/demo/cafe.jpg', '/demo/coffee.jpg', '/demo/dessert.jpg']),
+    iso(30 * DAY), iso(2 * DAY), iso(29 * DAY), iso(29 * DAY), iso(29 * DAY),
+  );
+
+  const catalogItem = (id, name, price, promo, desc, img, sort) => run(
+    `INSERT INTO company_catalog_items (id, company_id, name, category, description, price, promotion_price,
+                                        image_url, available, sort_order, created_at, updated_at)
+     VALUES (?, 'LATTE', ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    id, name, sort < 2 ? 'Qahva' : 'Shirinliklar', desc, price, promo, img ?? null, sort,
+    iso(10 * DAY), iso(DAY),
+  );
+  await catalogItem('cat-1', 'Kapuchino', 45000, 35000, 'Ikki porsiya espresso, mayin sut ko‘pigi', '/demo/coffee.jpg', 0);
+  await catalogItem('cat-2', 'Raf', 52000, null, 'Qaymoqli, vanilli', null, 1);
+  await catalogItem('cat-3', 'Chizkeyk', 38000, null, 'Klassik Nyu-York', '/demo/dessert.jpg', 2);
+  await catalogItem('cat-4', 'Tiramisu', 42000, null, 'Mascarpone, savoyardi', null, 3);
+
+  await run(
+    `INSERT INTO company_posts (id, company_id, image_url, video_url, caption, created_at)
+     VALUES (1, 'LATTE', '/demo/cafe.jpg', NULL, ?, ?)`,
+    'Yangi mavsum menyusi tayyor. Kelib ko‘ring!', iso(8 * HOUR),
+  );
+
   // ── Obunalar ────────────────────────────────────────────────────
   // `followee_id` — KARTA KODI emas, EGASINING user id'si (sxema shunday:
   // obuna odamga bo'ladi, uning har bir kartasiga alohida emas).

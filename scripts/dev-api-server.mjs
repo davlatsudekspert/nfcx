@@ -97,6 +97,6 @@ server.listen(PORT, HOST, () => {
   console.log(`\nnfcstore lokal API  →  http://127.0.0.1:${PORT}`);
   console.log(`  demo login:  ${DEMO.email} / ${DEMO.password}`);
   console.log('  demo token:  dev-token-dilshod   (Authorization: Bearer ...)');
-  console.log('  profillar:   VIP001 (Dilshod), ABC123 (Malika), DDD333 (Latte Coffee)');
+  console.log('  profillar:   VIP001 (Dilshod), ABC123 (Malika), DDD333 / LATTE (Latte Coffee)');
   console.log('  emulyator:   http://10.0.2.2:' + PORT + '\n');
 });
