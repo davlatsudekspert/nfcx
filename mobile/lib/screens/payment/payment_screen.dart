@@ -110,6 +110,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _provider = 'payme';
           }
         });
+
+        // USUL OLDINDAN TANLANGAN BO'LSA — QADAM TAKRORLANMAYDI.
+        //
+        // ID tafsilotida odam Payme yoki Click tugmasini bosgan.
+        // Shu ekranda yana "usulni tanlang" ko'rsatish o'sha
+        // tanlovni ikkinchi marta so'rash bo'lardi.
+        if (widget.provider != null &&
+            _phase == _Phase.choose &&
+            !_busy &&
+            ((_provider == 'payme' && _paymeOn == true) ||
+                (_provider == 'click' && _clickOn == true))) {
+          _start();
+        }
       }
     } catch (_) {
       // Jimgina: to'lov usullari ro'yxati kelmasa ham tugma
