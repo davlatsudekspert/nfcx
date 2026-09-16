@@ -16,13 +16,6 @@ name: Android APK
 on:
   # Qo'lda ishga tushirish — Actions sahifasidagi "Run workflow" tugmasi.
   workflow_dispatch:
-  push:
-    branches: [main]
-    # Faqat ilova o'zgarganda. Saytdagi o'zgarish uchun APK qayta
-    # qurilmaydi — bu bekorga 5-6 daqiqa vaqt olardi.
-    paths:
-      - 'mobile/**'
-      - '.github/workflows/android-apk.yml'
 
 concurrency:
   group: android-apk-${{ github.ref }}
