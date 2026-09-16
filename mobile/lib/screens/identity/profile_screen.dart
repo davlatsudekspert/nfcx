@@ -920,27 +920,16 @@ class _BusinessMetaLayer extends StatelessWidget {
               ],
             ),
             const SizedBox(height: S.x20),
-            Row(
+            Wrap(
+              spacing: S.x16,
+              runSpacing: S.x8,
               children: [
-                Text(som(company.itemCount), style: T.amount.copyWith(fontSize: 22)),
-                const SizedBox(width: 5),
-                Text(tr('mahsulot'), style: T.caption),
-                const Spacer(),
-                Text(som(company.views), style: T.amount.copyWith(fontSize: 22)),
-                const SizedBox(width: 5),
-                Text(tr('ko‘rish'), style: T.caption),
-                const SizedBox(width: S.x16),
+                _InlineMetric(value: som(company.itemCount), label: tr('mahsulot')),
+                _InlineMetric(value: som(company.views), label: tr('ko‘rish')),
                 Press(
                   onTap: onFollowers,
                   minSize: S.tap,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(som(followers), style: T.amount.copyWith(fontSize: 22)),
-                      const SizedBox(width: 5),
-                      Text(tr('obunachi'), style: T.caption),
-                    ],
-                  ),
+                  child: _InlineMetric(value: som(followers), label: tr('obunachi')),
                 ),
               ],
             ),
@@ -981,6 +970,23 @@ class _InfoPill extends StatelessWidget {
             Text(text, style: T.meta.copyWith(color: accent ? C.accent : C.ink2)),
           ],
         ),
+      );
+}
+
+class _InlineMetric extends StatelessWidget {
+  const _InlineMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value, style: T.amount.copyWith(fontSize: 22)),
+          const SizedBox(width: 5),
+          Text(label, style: T.caption),
+        ],
       );
 }
 
