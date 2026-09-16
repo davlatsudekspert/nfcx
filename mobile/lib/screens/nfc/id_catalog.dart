@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
+import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
@@ -106,10 +107,29 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
             children: [
               const TopBar(),
               ScreenTitle(
-                tr('ID katalogi'),
-                subtitle: tr('Kodlar AAA000 naqshida (uch harf + uch raqam). '
-                    'Tarif naqshdan kelib chiqadi va profilda material '
-                    'bo‘lib ko‘rinadi.'),
+                tr('Sizga xos raqam'),
+                subtitle: tr('Profilingiz uchun o‘ziga xos NFC ID tanlang.'),
+              ),
+
+              // KATALOG VITRINASI — odam avval tayyor premium kartani
+              // ko'radi, keyin tariflar ichiga tushadi. Bu narxlar ro'yxati
+              // emas, mahsulot tanlash hissini beradi.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x4,
+                  S.gutter,
+                  S.x20,
+                ),
+                child: _CatalogHero(
+                  onTap: () => push<void>(
+                    context,
+                    (_) => _TierCodesScreen(
+                      tier: Tier.gold,
+                      codes: _available(Tier.gold),
+                    ),
+                  ),
+                ),
               ),
 
               if (_loading && _all == null)
@@ -197,6 +217,42 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
+
+class _CatalogHero extends StatelessWidget {
+  const _CatalogHero({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Gold tanlov', style: T.section),
+          const SizedBox(height: S.x12),
+          Press(
+            onTap: onTap,
+            minSize: 0,
+            child: IdentityCard(
+              code: 'GLD 777',
+              tier: Tier.gold,
+              holder: 'NFCSTORE MEMBER',
+              flippable: false,
+              sweep: true,
+            ),
+          ),
+          const SizedBox(height: S.x10),
+          Row(
+            children: [
+              Text('Gold ID', style: T.cardTitle),
+              const Spacer(),
+              Text('149 000 so‘m', style: T.amount.copyWith(color: C.accent)),
+              const SizedBox(width: S.x8),
+              const NIcon(Ico.chevronRight, size: 18, color: C.accent),
+            ],
+          ),
+        ],
+      );
+}
 
 /// Bepul 8 xonali kod — punktir chegara bilan.
 class _FreeRow extends StatelessWidget {
