@@ -68,6 +68,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Haftaning kompaniyasi — sana bo'yicha tanlanadi.
   Company? _featured;
 
+  /// Faol kartaning statistikasi — sarlavha ostidagi qator uchun.
+  CardStats? _stats;
+
   Object? _error;
   bool _loading = true;
   bool _loadedOnce = false;
@@ -172,6 +175,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // boshqasini ko'rsatib, ro'yxatni "qaltis" qilib qo'yardi va
       // kompaniyaning o'zi "men qachon chiqdim?" degan savolga
       // javob ololmasdi.
+      // BUGUNGI TEGISHLAR (prototip: "Bugun 14 kishi kartangizga
+      // tegdi"). Jami ko'rish emas, AYNAN BUGUNGI son: odam
+      // ilovani ochganda "bugun nima bo'ldi?" degan savolga javob
+      // oladi. Jami son esa profil ichida, statistika bo'limida.
+      CardStats? stats;
+      final activeCode = state.active?.code;
+      if (activeCode != null && activeCode.isNotEmpty) {
+        try {
+          stats = await state.repo.cardStats(activeCode, days: 7);
+        } catch (_) {}
+      }
+
       Company? featured;
       try {
         final all = (await state.repo.companies())
@@ -190,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _pending = pending;
         _gifts = gifts;
         _featured = featured;
+        _stats = stats;
         _loading = false;
         _loadedAt = DateTime.now();
       });
@@ -200,6 +216,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _loading = false;
       });
     }
+  }
+
+  /// SARLAVHA OSTIDAGI QATOR.
+  ///
+  /// Prototipda: "Bugun 14 kishi kartangizga tegdi". Bugun hech kim
+  /// tegmagan bo'lsa bu qator YOLG'ON bo'lib qolmasin deb, jami
+  /// ko'rishga o'tadi. Ikkalasi ham bo'lmasa — umuman
+  /// ko'rsatilmaydi: "Bugun 0 kishi tegdi" degan yozuv yangi
+  /// foydalanuvchini bekorga xafa qiladi.
+  String? _subtitle(Identity? active) {
+    final today = _stats?.today ?? 0;
+    if (today > 0) {
+      return trf('Bugun {n} kishi kartangizga tegdi', {'n': som(today)});
+    }
+    final views = active?.record?.views ?? 0;
+    if (views > 0) {
+      return trf('Profilingiz {n} marta ko‘rilgan', {'n': som(views)});
+    }
+    return null;
   }
 
   /// BILDIRISHNOMALAR — qo'ng'iroq ostidagi varaqa.
@@ -409,12 +444,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       // telefonining tepasida ko'rib turibdi).
                       // O'rniga — bitta JONLI qator.
                       _Greeting(name: firstName),
-                      if ((active?.record?.views ?? 0) > 0) ...[
+                      if (_subtitle(active) != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          trf('Profilingiz {n} marta ko‘rilgan', {
-                            'n': som(active!.record!.views),
-                          }),
+                          _subtitle(active)!,
                           style: T.body.copyWith(fontSize: 13.5, color: C.ink2),
                         ),
                       ],
@@ -1222,6 +1255,7 @@ class CommentButton extends StatelessWidget {
     this.size = 20,
     this.color,
     this.onMedia = false,
+    this.vertical = false,
   });
 
   final int count;
@@ -1230,30 +1264,36 @@ class CommentButton extends StatelessWidget {
   final Color? color;
   final bool onMedia;
 
+  /// Reels ustunida belgi TEPADA, son PASTDA turadi (prototip).
+  final bool vertical;
+
   @override
   Widget build(BuildContext context) {
     final tint = color ?? C.ink2;
+    final icon = NIcon(Ico.comment, size: size, color: tint, onMedia: onMedia);
+    final label = Text(
+      '$count',
+      style: T.meta.copyWith(
+        color: tint,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+        shadows: onMedia ? C.mediaText : null,
+      ),
+    );
     return Press(
       onTap: onTap,
       haptic: true,
       minSize: S.tap,
       scale: .9,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          NIcon(Ico.comment, size: size, color: tint, onMedia: onMedia),
-          const SizedBox(width: 7),
-          Text(
-            '$count',
-            style: T.meta.copyWith(
-              color: tint,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              shadows: onMedia ? C.mediaText : null,
+      child: vertical
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [icon, const SizedBox(height: 5), label],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [icon, const SizedBox(width: 7), label],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1271,6 +1311,7 @@ class LikeButton extends StatefulWidget {
     this.size = 20,
     this.color,
     this.onMedia = false,
+    this.vertical = false,
   });
 
   final bool liked;
@@ -1279,6 +1320,9 @@ class LikeButton extends StatefulWidget {
   final double size;
   final Color? color;
   final bool onMedia;
+
+  /// Reels ustunida belgi TEPADA, son PASTDA turadi (prototip).
+  final bool vertical;
 
   @override
   State<LikeButton> createState() => _LikeButtonState();
@@ -1308,15 +1352,7 @@ class _LikeButtonState extends State<LikeButton>
   @override
   Widget build(BuildContext context) {
     final tint = widget.liked ? C.accent : (widget.color ?? C.ink2);
-    return Press(
-      onTap: widget.onTap,
-      haptic: true,
-      minSize: S.tap,
-      scale: .9,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedBuilder(
+    final icon = AnimatedBuilder(
             animation: _c,
             builder: (context, child) {
               // 1 → 1.25 → 1: birinchi yarmida kattayadi, keyin
@@ -1327,26 +1363,39 @@ class _LikeButtonState extends State<LikeButton>
                   : 1 + .25 * (t < .5 ? t * 2 : (1 - t) * 2);
               return Transform.scale(scale: scale, child: child);
             },
-            child: NIcon(
-              Ico.heart,
-              size: widget.size,
-              color: tint,
-              filled: widget.liked,
-              onMedia: widget.onMedia,
-            ),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            '${widget.count}',
-            style: T.meta.copyWith(
-              color: tint,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              shadows: widget.onMedia ? C.mediaText : null,
-            ),
-          ),
-        ],
+      child: NIcon(
+        Ico.heart,
+        size: widget.size,
+        color: tint,
+        filled: widget.liked,
+        onMedia: widget.onMedia,
       ),
+    );
+
+    final label = Text(
+      '${widget.count}',
+      style: T.meta.copyWith(
+        color: tint,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+        shadows: widget.onMedia ? C.mediaText : null,
+      ),
+    );
+
+    return Press(
+      onTap: widget.onTap,
+      haptic: true,
+      minSize: S.tap,
+      scale: .9,
+      child: widget.vertical
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [icon, const SizedBox(height: 5), label],
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [icon, const SizedBox(width: 7), label],
+            ),
     );
   }
 }

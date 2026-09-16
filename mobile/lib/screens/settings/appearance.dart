@@ -5,7 +5,7 @@ import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/logo.dart';
-import '../../design/components/press.dart';
+import '../../design/components/palette_card.dart';
 import '../../design/components/surface.dart';
 import '../../design/components/top_bar.dart';
 import '../../design/feedback.dart';
@@ -74,7 +74,7 @@ class AppearanceScreen extends StatelessWidget {
                       children: [
                         for (final p in Palette.all) ...[
                           Expanded(
-                            child: _PaletteCard(
+                            child: PaletteCard(
                               palette: p,
                               selected: p.id == prefs.palette.id,
                               onTap: () {
@@ -223,68 +223,7 @@ class AppearanceScreen extends StatelessWidget {
 ///
 /// Karta o'z mavzusining foni bilan chiziladi, ostida esa urg'u
 /// rangining chizig'i. Tanlangani urg'u rangli chegara oladi.
-class _PaletteCard extends StatelessWidget {
-  const _PaletteCard({
-    required this.palette,
-    required this.selected,
-    required this.onTap,
-  });
 
-  final Palette palette;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Press(
-        onTap: onTap,
-        minSize: 0,
-        scale: .97,
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(R.tile),
-            border: Border.all(
-              color: selected ? C.accent : C.line,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Namuna — mavzuning O'Z ranglaridan, joriy
-              // mavzuniki emas: aks holda uchala karta bir xil
-              // ko'rinardi.
-              Container(
-                height: 70,
-                color: palette.baseBottom,
-                padding: const EdgeInsets.all(8),
-                alignment: Alignment.bottomLeft,
-                child: Container(
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: palette.accent,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: Text(
-                  palette.label,
-                  maxLines: 2,
-                  style: T.caption.copyWith(
-                    fontSize: 12,
-                    color: selected ? C.accent : C.ink,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-/// Tanlangan qatordagi belgi.
 class _Check extends StatelessWidget {
   const _Check({required this.size});
   final double size;

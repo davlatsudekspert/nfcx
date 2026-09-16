@@ -40,11 +40,34 @@ class NetImage extends StatelessWidget {
   /// Rasm yo'q bo'lganda ko'rinadigan belgi.
   final Ico? slotIcon;
 
+  /// FAQAT VIZUAL PREVIEW UCHUN — ilovada HAR DOIM `null`.
+  ///
+  /// Testda tarmoq yo'q, shuning uchun har bir rasm bo'sh o'rin
+  /// bo'lib chiqadi va kadrdan "ilova qanday ko'rinadi?" degan
+  /// savolga javob olib bo'lmaydi. Preview qobig'i shu maydonga
+  /// mahalliy chizg'ich qo'yadi va kadr haqiqiy ilovaga o'xshaydi.
+  ///
+  /// Auditda ATAYLAB qo'yilmaydi: u yerda aynan "rasm kelmadi"
+  /// holati ham baholanadi.
+  static Widget Function(String url, BoxFit fit)? debugImageBuilder;
+
   @override
   Widget build(BuildContext context) {
     final u = url?.trim() ?? '';
     if (u.isEmpty) {
       return MediaSlot(radius: radius, icon: slotIcon, width: width, height: height);
+    }
+
+    final stub = debugImageBuilder;
+    if (stub != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: SizedBox(
+          width: width ?? double.infinity,
+          height: height,
+          child: stub(u, fit),
+        ),
+      );
     }
 
     return ClipRRect(

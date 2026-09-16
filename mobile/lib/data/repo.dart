@@ -112,6 +112,7 @@ class Repo {
     required String phone,
     required String emailCode,
     required bool tosAccepted,
+    String promoCode = '',
   }) async {
     final res = await api.postAuth('/api/auth/register', {
       'email': email,
@@ -119,6 +120,11 @@ class Repo {
       'phone': phone,
       'emailCode': emailCode,
       'tosAccepted': tosAccepted,
+      // TAKLIF KODI — ixtiyoriy. Kod egasiga 10% chegirma yoziladi
+      // (`pending_discount_pct`), yangi foydalanuvchiga esa hech
+      // narsa: shuning uchun bu maydon "chegirma olaman" emas,
+      // "meni kim chaqirdi" degan savol.
+      if (promoCode.trim().isNotEmpty) 'promoCode': promoCode.trim(),
     });
     // Kirishdagi kabi: tana bo'lmasa cookie'dan olinadi.
     final token = _sessionToken(res);
@@ -304,6 +310,13 @@ class Repo {
   Future<Map<String, dynamic>> analytics(String code, {int days = 30}) async =>
       _map(await api.get('/api/records/$code/analytics', query: {'days': days}));
 
+  /// Statistika — modelga o'girilgan holda.
+  ///
+  /// Bosh sahifadagi "bugun nechta odam tegdi" va profil egasidagi
+  /// chiziqli grafik AYNAN shu metoddan o'qiydi.
+  Future<CardStats> cardStats(String code, {int days = 30}) async =>
+      CardStats.fromJson(await analytics(code, days: days));
+
   // ── Obuna ──────────────────────────────────────────────────────────
 
   Future<FollowStats> followStats(String code) async =>
@@ -319,6 +332,36 @@ class Repo {
         await api.get('/api/follow-list/$code', query: {if (following) 'dir': 'following'}),
         'list',
       ).map(FollowEntry.fromJson).toList();
+
+  /// KONTAKT QOLDIRISH — profil ochgan odam o'zini qoldiradi.
+  ///
+  /// Ism SHART, va telefon/telegram/e-pochtadan KAMIDA BITTASI —
+  /// serverning o'zi ham shuni talab qiladi (422). Aks holda karta
+  /// egasiga bog'lanib bo'lmaydigan yozuv tushardi.
+  Future<void> sendLead(
+    String code, {
+    required String name,
+    String phone = '',
+    String telegram = '',
+    String email = '',
+    String note = '',
+  }) =>
+      api.post('/api/records/$code/lead', {
+        'name': name,
+        if (phone.isNotEmpty) 'phone': phone,
+        if (telegram.isNotEmpty) 'telegram': telegram,
+        if (email.isNotEmpty) 'email': email,
+        if (note.isNotEmpty) 'note': note,
+      });
+
+  /// Egasi uchun — qoldirilgan kontaktlar ro'yxati.
+  Future<List<Lead>> leads(String code) async =>
+      _rows(await api.get('/api/records/$code/leads'), 'leads')
+          .map(Lead.fromJson)
+          .toList();
+
+  Future<void> deleteLead(String code, int id) =>
+      api.delete('/api/records/$code/leads/$id');
 
   Future<void> follow(String code) => api.post('/api/follow/$code');
 

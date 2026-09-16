@@ -14,6 +14,7 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../../state/scan_history.dart';
 import '../common/contact_actions.dart' show openExternal;
 import '../identity/profile_screen.dart';
 import 'qr_share.dart';
@@ -82,6 +83,15 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
 
     final link = res.link;
     if (link == null) {
+      // BEGONA TEG HAM TARIXGA TUSHADI: odam "men nimaga tegdim?"
+      // degan savolga javob topa olsin. Faqat teg haqiqatan
+      // sezilgan bo'lsa — havoda o'tgan urinish hodisa emas.
+      if (res.tagSeen) {
+        ScanHistory().add(ScanEntry(
+          at: DateTime.now(),
+          outcome: tr('NFCSTORE kartasi emas'),
+        ));
+      }
       // Karta TEGIZILDIMI — shunga qarab boshqa xabar: "bizniki
       // emas" va "umuman sezilmadi" ikki xil muammo.
       setState(() => _phase = res.tagSeen ? _Phase.unknown : _Phase.error);
@@ -94,6 +104,17 @@ class _NfcScanScreenState extends State<NfcScanScreen> {
 
   void _open(NfcLink link) {
     final state = AppScope.read(context);
+
+    // TEGIZISHLAR TARIXI — qurilmada. Server bilan bog'liq emas:
+    // u faqat "menga kim tegdi" ni biladi, bu esa "men nimaga
+    // tegdim".
+    ScanHistory().add(ScanEntry(
+      at: DateTime.now(),
+      code: link.code,
+      isCompany: link.company,
+      outcome: link.company ? tr('kompaniya') : tr('profil ochildi'),
+    ));
+
     // Statistika serverda: natijani kutmaymiz, xatosi profilni yopmaydi.
     if (!link.company) {
       state.repo.tap(link.code).catchError((_) {});

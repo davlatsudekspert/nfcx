@@ -185,9 +185,9 @@ class _ProfileTabState extends State<ProfileTab> {
                 onMenu: () => _menu(active),
               ),
 
-              // ID ALMASHTIRGICH.
+              // KARTALAR — karusel (prototip).
               const SizedBox(height: S.x20),
-              _IdStrip(
+              _CardCarousel(
                 cards: state.cards,
                 activeCode: active.code,
                 onSelect: (r) =>
@@ -196,85 +196,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     push<void>(context, (_) => const IdCatalogScreen()),
               ),
 
-              // STATISTIKA.
-              const SizedBox(height: S.x24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                child: _loading && _analytics == null && _follow == null
-                    ? const Skeleton(height: 72, radius: R.tile)
-                    : StatRow(
-                        tiles: [
-                          StatTile(
-                            value: som(views),
-                            label: tr('Ko‘rish'),
-                            onTap: () => push<void>(
-                              context,
-                              (_) => ProfileStatsScreen(
-                                code: active.code,
-                                name: active.name,
-                              ),
-                            ),
-                          ),
-                          StatTile(
-                            value: som(contacts),
-                            label: tr('Kontakt'),
-                          ),
-                          StatTile(
-                            value: som(_follow?.followers ?? 0),
-                            label: tr('Obunachi'),
-                            onTap: () => push<void>(
-                              context,
-                              (_) => FollowListScreen(
-                                code: active.code,
-                                title: tr('Obunachilar'),
-                                isCompany: active.isBusiness,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-
-              // 7 KUNLIK GRAFIK.
-              if (series != null && series.length > 1) ...[
-                const SizedBox(height: S.x12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-                  child: Surface(
-                    padding: const EdgeInsets.all(S.x16),
-                    onTap: () => push<void>(
-                      context,
-                      (_) => ProfileStatsScreen(
-                        code: active.code,
-                        name: active.name,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              tr('Ko‘rishlar · 7 kun'),
-                              style: T.cardTitle.copyWith(fontSize: 14),
-                            ),
-                            const Spacer(),
-                            _Delta(series: series),
-                          ],
-                        ),
-                        const SizedBox(height: S.x16),
-                        BarChart(
-                          values: series,
-                          labels: [tr('Dush'), tr('Yak')],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-
-              // KONTENT QO'SHISH — IKKI ALOHIDA TUGMA.
-              const SizedBox(height: S.x24),
+              // KONTENT QO'SHISH — IKKI ALOHIDA TUGMA
+              // (prototip: kartalardan keyin darhol).
+              const SizedBox(height: S.x20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: S.gutter),
                 child: Row(
@@ -300,6 +224,104 @@ class _ProfileTabState extends State<ProfileTab> {
                   ],
                 ),
               ),
+
+              // STATISTIKA — sarlavha, "7 kun" chipi va chiziqli
+              // grafik (prototip).
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x32,
+                  S.gutter,
+                  S.x12,
+                ),
+                child: SectionHeader(
+                  tr('Statistika'),
+                  actionLabel: tr('Batafsil'),
+                  onAction: () => push<void>(
+                    context,
+                    (_) => ProfileStatsScreen(
+                      code: active.code,
+                      name: active.name,
+                    ),
+                  ),
+                  trailing: const StatusChip('7 kun'),
+                ),
+              ),
+
+              if (_loading && _analytics == null)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: S.gutter),
+                  child: Skeleton(height: 160, radius: R.card),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                  child: Surface(
+                    padding: const EdgeInsets.all(S.x16),
+                    onTap: () => push<void>(
+                      context,
+                      (_) => ProfileStatsScreen(
+                        code: active.code,
+                        name: active.name,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (series != null && series.length > 1) ...[
+                          Row(
+                            children: [
+                              Text(
+                                tr('Ko‘rishlar'),
+                                style: T.cardTitle.copyWith(fontSize: 14),
+                              ),
+                              const Spacer(),
+                              _Delta(series: series),
+                            ],
+                          ),
+                          const SizedBox(height: S.x12),
+                          LineChart(values: series),
+                          const SizedBox(height: S.x16),
+                        ],
+
+                        // RAQAMLAR — grafik ostida bitta qatorda
+                        // (prototip: "96 saqlash · 14 tegish ·
+                        // 412 obunachi · 284 ko'rish").
+                        StatRow(
+                          tiles: [
+                            StatTile(
+                              value: som(views),
+                              label: tr('Ko‘rish'),
+                              onTap: () => push<void>(
+                                context,
+                                (_) => ProfileStatsScreen(
+                                  code: active.code,
+                                  name: active.name,
+                                ),
+                              ),
+                            ),
+                            StatTile(
+                              value: som(contacts),
+                              label: tr('Kontakt'),
+                            ),
+                            StatTile(
+                              value: som(_follow?.followers ?? 0),
+                              label: tr('Obunachi'),
+                              onTap: () => push<void>(
+                                context,
+                                (_) => FollowListScreen(
+                                  code: active.code,
+                                  title: tr('Obunachilar'),
+                                  isCompany: active.isBusiness,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
               // POSTLAR.
               Padding(
@@ -523,8 +545,17 @@ class _ProfileCover extends StatelessWidget {
 
 
 /// ID chiplari qatori — faol ID oltin halqa bilan.
-class _IdStrip extends StatelessWidget {
-  const _IdStrip({
+/// KARTA KARUSELI (prototip: profil egasida kartalar yonma-yon).
+///
+/// NIMA UCHUN CHIP EMAS: karta — bu mahsulotning O'ZI. Uni kichkina
+/// matnli chipga aylantirish "VIP001" degan qatorni qoldirardi va
+/// odam o'zi sotib olgan oltin kartani ilovada umuman ko'rmasdi.
+/// Bu yerda kartalar haqiqiy ko'rinishida, suriladigan qatorda.
+///
+/// Oxirgi katak — "ID qo'shish": ro'yxat tugagan joyda yangi karta
+/// olish yo'li ochiq tursin.
+class _CardCarousel extends StatelessWidget {
+  const _CardCarousel({
     required this.cards,
     required this.activeCode,
     required this.onSelect,
@@ -538,31 +569,30 @@ class _IdStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 44,
+        height: 208,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
           itemCount: cards.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(width: S.x8),
+          separatorBuilder: (_, __) => const SizedBox(width: S.x12),
           itemBuilder: (context, i) {
             if (i == cards.length) {
               return Press(
                 onTap: onAdd,
                 minSize: 0,
-                scale: .95,
+                scale: .97,
                 child: Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: S.x16),
+                  width: 150,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(R.chip),
+                    borderRadius: BorderRadius.circular(R.metalCard),
                     border: Border.all(color: C.line),
                   ),
                   alignment: Alignment.center,
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      NIcon(Ico.plus, size: 14, color: C.accent),
-                      const SizedBox(width: 6),
+                      NIcon(Ico.plus, size: 22, color: C.accent),
+                      const SizedBox(height: S.x8),
                       Text(
                         tr('ID qo‘shish'),
                         style: T.buttonSm.copyWith(color: C.ink2),
@@ -578,32 +608,21 @@ class _IdStrip extends StatelessWidget {
             return Press(
               onTap: active ? null : () => onSelect(card),
               minSize: 0,
-              scale: .95,
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: S.x12),
-                decoration: BoxDecoration(
-                  gradient: active ? C.raisedSurface : null,
-                  borderRadius: BorderRadius.circular(R.chip),
-                  border: Border.all(
-                    color: active ? C.accent.withValues(alpha: .7) : C.line,
-                    width: active ? 1.4 : 1,
+              scale: .97,
+              child: Opacity(
+                // FAOL BO'LMAGANI SO'NADI: bosh sahifada va NFC da
+                // aynan shu karta ishlatiladi, shuning uchun qaysi
+                // biri tanlangani bir qarashda ko'rinsin.
+                opacity: active ? 1 : .55,
+                child: SizedBox(
+                  width: 300,
+                  child: IdentityCard(
+                    code: card.code,
+                    tier: card.tier,
+                    holder: card.name,
+                    url: 'nfcstore.uz/${card.code.toLowerCase()}',
+                    sweep: active,
                   ),
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TierDot(card.tier, size: 12),
-                    const SizedBox(width: 7),
-                    Text(
-                      card.code,
-                      style: T.code(
-                        13,
-                        color: active ? C.ink : C.ink2,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             );

@@ -180,14 +180,27 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   ];
   String _kind = '';
 
-  List<Record> get _rating {
-    final list = [
-      ..._catalog.where(
-        (r) => r.views > 0 && (_kind.isEmpty || r.profileType == _kind),
-      ),
-    ]
+  /// KO'RINADIGAN KOMPANIYALAR — tur va soha filtri bilan.
+  List<Company> get _shownCompanies {
+    if (_kind.isNotEmpty && _kind != 'business') return const [];
+    if (_category.isEmpty) return _companies;
+    return _companies
+        .where((c) => c.category.toLowerCase() == _category.toLowerCase())
+        .toList();
+  }
+
+  /// KO'RINADIGAN SHAXSIY PROFILLAR.
+  ///
+  /// Ko'rish soni bo'yicha saralanadi: ro'yxat tepasida faol
+  /// profillar tursin, yangi ochilgan bo'sh profillar emas.
+  List<Record> get _shownPeople {
+    if (_kind == 'business') return const [];
+    final list = _catalog
+        .where((r) => _kind.isEmpty || r.profileType == _kind)
+        .where((r) => _category.isEmpty || r.categorySlug == _category)
+        .toList()
       ..sort((a, b) => b.views.compareTo(a.views));
-    return list.take(3).toList();
+    return list;
   }
 
   List<FeedEntry> get _grid {
@@ -395,32 +408,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ];
     }
 
-    final rating = _rating;
+    final companies = _shownCompanies;
+    final people = _shownPeople;
     final grid = _grid;
 
-    return [
-      if (rating.isNotEmpty) ...[
-        _header(tr('Reyting')),
-        SliverList.separated(
-          itemCount: rating.length,
-          separatorBuilder: (_, __) => const SizedBox(height: S.x8),
-          itemBuilder: (context, i) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-            child: _RatingRow(rank: i + 1, record: rating[i]),
-          ),
-        ),
-      ],
-
-      if (_companies.isNotEmpty) ...[
-        _header(tr('Sizga tavsiya')),
+    if (companies.isEmpty && people.isEmpty) {
+      return [
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-            child: _FeaturedCompany(company: _companies.first),
+          child: EmptyState(
+            tr('Boshqa soha yoki turni tanlab ko‘ring.'),
+            title: tr('Bu filtrda hech kim yo‘q'),
+            icon: Ico.search,
+            compact: true,
           ),
         ),
-        if (_companies.length > 1) ...[
-          _header(tr('Kompaniyalar')),
+      ];
+    }
+
+    return [
+      // KOMPANIYALAR — ikki ustunli kartalar (prototip).
+      //
+      // Ro'yxat emas, KARTA: kompaniyani odam avval RASMIDAN
+      // taniydi. Bir qatorli ro'yxatda esa hammasi bir xil
+      // ko'rinardi va tanlash uchun har birini ochish kerak edi.
+      if (companies.isNotEmpty) ...[
+        _header(
+          tr('Kompaniyalar'),
+          trailing: companies.length > 6 ? tr('Hammasi') : null,
+          onTrailing: companies.length > 6
+              ? () => setState(() => _kind = 'business')
+              : null,
+        ),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -428,24 +446,40 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               padding: EdgeInsets.zero,
-              itemCount: (_companies.length - 1).clamp(0, 5),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+              itemCount: _kind == 'business'
+                  ? companies.length
+                  : companies.length.clamp(0, 6),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: S.x12,
                 mainAxisSpacing: S.x12,
-                childAspectRatio: .92,
+                childAspectRatio: .82,
               ),
-              itemBuilder: (context, i) =>
-                  _CompanyCard(company: _companies[i + 1]),
+              itemBuilder: (context, i) => _CompanyCard(company: companies[i]),
             ),
           ),
         ),
-        ],
       ],
 
-      if (grid.isNotEmpty) ...[
-        _header(tr('Qidiruv')),
+      // SHAXSIY PROFILLAR — qatorlar (prototip).
+      if (people.isNotEmpty) ...[
+        _header(tr('Shaxsiy profillar')),
+        SliverList.separated(
+          itemCount: _kind.isEmpty ? people.length.clamp(0, 8) : people.length,
+          separatorBuilder: (_, __) => const SizedBox(height: S.x8),
+          itemBuilder: (context, i) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: _PersonRow(record: people[i]),
+          ),
+        ),
+      ],
+
+      // SOHA TANLANGANDA — o'sha sohadagi kontent.
+      //
+      // Standart ko'rinishda bu blok YO'Q (prototipda ham): u
+      // yerda odam "kimni topamiz?" deb qidiryapti, lenta emas.
+      if (_category.isNotEmpty && grid.isNotEmpty) ...[
+        _header(tr('Kontent')),
         SliverToBoxAdapter(
           child: _MixedGrid(
             items: grid,
@@ -473,19 +507,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
           ),
         ),
-      ] else if (_category.isNotEmpty)
-        SliverToBoxAdapter(
-          child: EmptyState(
-            tr('Bu toifada hozircha kontent yo‘q.'),
-            title: tr('Bo‘sh'),
-            icon: Ico.grid,
-            compact: true,
-          ),
-        ),
+      ],
     ];
   }
 
-  Widget _header(String title) => SliverToBoxAdapter(
+  Widget _header(String title, {String? trailing, VoidCallback? onTrailing}) =>
+      SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             S.gutter,
@@ -493,7 +520,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             S.gutter,
             S.x12,
           ),
-          child: SectionHeader(title),
+          child: SectionHeader(
+            title,
+            actionLabel: trailing,
+            onAction: onTrailing,
+          ),
         ),
       );
 }
@@ -669,173 +700,6 @@ class _CompanyRow extends StatelessWidget {
       );
 }
 
-/// Reyting qatori — o'rin raqami mono bilan.
-class _RatingRow extends StatelessWidget {
-  const _RatingRow({required this.rank, required this.record});
-
-  final int rank;
-  final Record record;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: const EdgeInsets.all(S.x12),
-        onTap: () => push<void>(
-          context,
-          (_) => ProfileScreen(code: record.code),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 22,
-              child: Text(
-                '$rank',
-                textAlign: TextAlign.center,
-                style: T.statValue.copyWith(
-                  fontSize: 17,
-                  color: rank == 1 ? C.accent : C.ink3,
-                ),
-              ),
-            ),
-            const SizedBox(width: S.x8),
-            Avatar(
-              url: record.avatarUrl,
-              name: record.name,
-              size: 40,
-              square: record.isBusiness,
-            ),
-            const SizedBox(width: S.x12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    record.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.cardTitle,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    profileHandle(context, record.code,
-                        company: record.isBusiness),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.link,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: S.x8),
-            Text(som(record.views), style: T.amount.copyWith(fontSize: 13)),
-          ],
-        ),
-      );
-}
-
-/// Qidiruv lentasining katta vitrinası. Birinchi kompaniya rasm, nom,
-/// holat va joylashuvni bitta editorial kompozitsiyada beradi; qolgan
-/// kompaniyalar pastdagi gridda qoladi. Shu sababli API katalogi
-/// qisqarmaydi, faqat uning vizual ierarxiyasi o'zgaradi.
-class _FeaturedCompany extends StatelessWidget {
-  const _FeaturedCompany({required this.company});
-
-  final Company company;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: EdgeInsets.zero,
-        radius: R.card,
-        glow: company.verified,
-        onTap: () => push<void>(
-          context,
-          (_) => ProfileScreen(companyId: company.id),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(R.card),
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                BusinessHero(imageUrl: company.coverUrl ?? company.logoUrl),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0x00000000), Color(0xE9000000)],
-                      stops: [.26, 1],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: S.x12,
-                  left: S.x12,
-                  child: GlassPanel(
-                    radius: R.status,
-                    padding: const EdgeInsets.symmetric(horizontal: S.x8, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Avatar(url: company.logoUrl, name: company.name, size: 20, square: true),
-                        const SizedBox(width: 6),
-                        Text(tr('Biznes'), style: T.meta.copyWith(color: C.ink, fontSize: 9)),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: S.x16,
-                  right: S.x16,
-                  bottom: S.x16,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              company.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              // OQ — ostidagi gradient quyuq.
-                              style: T.section.copyWith(
-                                fontSize: 26,
-                                color: C.onMedia,
-                                shadows: C.mediaText,
-                              ),
-                            ),
-                          ),
-                          if (company.verified) ...[
-                            const SizedBox(width: 7),
-                            const VerifiedBadge(size: 17),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          if (company.city.isNotEmpty)
-                            Flexible(
-                              child: Text(company.city, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.caption.copyWith(color: C.onMedia2, shadows: C.mediaText)),
-                            ),
-                          if (company.city.isNotEmpty && company.itemCount > 0)
-                            Text(' · ', style: T.caption.copyWith(color: C.onMedia3)),
-                          if (company.itemCount > 0)
-                            Text(trf('{n} mahsulot', {'n': '${company.itemCount}'}), style: T.caption.copyWith(color: C.onMediaAccent, shadows: C.mediaText)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
 /// Kompaniya kartasi — ikki ustunli grid uchun.
 class _CompanyCard extends StatelessWidget {
   const _CompanyCard({required this.company});
@@ -944,10 +808,16 @@ class _CompanyCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
+                      // PROTOTIPDA: "DDD333 · 4.9 ★ · Chilonzor".
+                      //
+                      // REYTING YO'Q: serverda baho jadvali umuman
+                      // yo'q va "4.9 ★" ni o'ylab yozib qo'yish eng
+                      // yomon yo'l edi — odam bunga ishonib tanlardi.
+                      // Shuning uchun kod, soha va shahar.
                       [
+                        company.id,
+                        if (company.category.isNotEmpty) company.category,
                         if (company.city.isNotEmpty) company.city,
-                        if (company.itemCount > 0)
-                          trf('{n} mahsulot', {'n': '${company.itemCount}'}),
                       ].join(' · '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

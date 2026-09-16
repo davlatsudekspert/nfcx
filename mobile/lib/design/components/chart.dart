@@ -206,3 +206,127 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RingPainter old) => old.fraction != fraction;
 }
+
+/// CHIZIQLI GRAFIK — prototipdagi "Statistika".
+///
+/// NIMA UCHUN USTUN EMAS: ustunlar kunlarni SOLISHTIRISH uchun
+/// yaxshi ("qaysi kun ko'proq?"), chiziq esa YO'NALISH uchun
+/// ("o'syaptimi?"). Profil egasiga aynan ikkinchisi kerak: u har
+/// kunni alohida emas, umumiy o'sishni ko'rmoqchi.
+///
+/// Ostida yumshoq to'ldirish bor — chiziqning o'zi yupqa va oq
+/// fonda yo'qolib ketardi.
+class LineChart extends StatelessWidget {
+  const LineChart({
+    super.key,
+    required this.values,
+    this.height = 132,
+  });
+
+  final List<int> values;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _LinePainter(
+            values: values,
+            line: C.accent,
+            fill: C.accent.withValues(alpha: .14),
+            grid: C.line,
+            dot: C.accent,
+          ),
+        ),
+      );
+}
+
+class _LinePainter extends CustomPainter {
+  _LinePainter({
+    required this.values,
+    required this.line,
+    required this.fill,
+    required this.grid,
+    required this.dot,
+  });
+
+  final List<int> values;
+  final Color line;
+  final Color fill;
+  final Color grid;
+  final Color dot;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+
+    const pad = 6.0;
+    final w = size.width;
+    final h = size.height;
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+
+    // HAMMASI 0 BO'LSA — chiziq pastda tekis turadi, "yo'q"
+    // degani ham ma'lumot.
+    final top = maxV <= 0 ? h - pad : pad;
+    double x(int i) => w * i / (values.length - 1);
+    double y(int i) => maxV <= 0
+        ? h - pad
+        : h - pad - (h - pad - top) * (values[i] / maxV);
+
+    // Yordamchi chiziqlar — uchta gorizontal.
+    final g = Paint()
+      ..color = grid
+      ..strokeWidth = 1;
+    for (var i = 0; i < 3; i++) {
+      final gy = pad + (h - pad * 2) * i / 2;
+      canvas.drawLine(Offset(0, gy), Offset(w, gy), g);
+    }
+
+    // SILLIQ EGRI — to'g'ri chiziqlar "sinuvchan" ko'rinadi.
+    final path = Path()..moveTo(x(0), y(0));
+    for (var i = 1; i < values.length; i++) {
+      final px = x(i - 1);
+      final py = y(i - 1);
+      final cx = x(i);
+      final cy = y(i);
+      final mid = (px + cx) / 2;
+      path.cubicTo(mid, py, mid, cy, cx, cy);
+    }
+
+    final area = Path.from(path)
+      ..lineTo(w, h)
+      ..lineTo(0, h)
+      ..close();
+    canvas.drawPath(area, Paint()..color = fill);
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = line
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    // OXIRGI NUQTA — "bugun" shu yerda.
+    final lx = x(values.length - 1);
+    final ly = y(values.length - 1);
+    canvas.drawCircle(Offset(lx, ly), 5.5, Paint()..color = fill);
+    canvas.drawCircle(Offset(lx, ly), 3.5, Paint()..color = dot);
+  }
+
+  @override
+  bool shouldRepaint(_LinePainter old) =>
+      old.values.length != values.length ||
+      old.line != line ||
+      !_same(old.values, values);
+
+  static bool _same(List<int> a, List<int> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+}

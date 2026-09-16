@@ -19,7 +19,9 @@ import 'package:nfcstore/screens/settings/settings_screen.dart';
 import 'package:nfcstore/screens/shell.dart';
 
 import '../audit/harness.dart';
-import 'preview.dart' show loadFonts, previewSize, shot;
+import 'package:nfcstore/screens/content/reels.dart';
+
+import 'preview.dart' show installImageStub, loadFonts, previewSize, shot;
 
 /// EKRAN PREVIEWLARI — dizayn maketiga solishtirish uchun.
 ///
@@ -31,6 +33,7 @@ void main() {
 
   Future<void> screen(WidgetTester t, Widget child, String name) async {
     mockImageCacheDir();
+    installImageStub();
     t.view.physicalSize = previewSize * 3;
     t.view.devicePixelRatio = 3;
     addTearDown(t.view.reset);
@@ -133,6 +136,7 @@ void main() {
 
   testWidgets('home lentasi — pastga', (t) async {
     mockImageCacheDir();
+    installImageStub();
     t.view.physicalSize = previewSize * 3;
     t.view.devicePixelRatio = 3;
     addTearDown(t.view.reset);
@@ -158,6 +162,13 @@ void main() {
       matchesGoldenFile('out/home-feed.png'),
     );
   });
+
+  // REELS — to'liq ekran video lentasi.
+  //
+  // Preview qobig'i rasm o'rniga mahalliy chizg'ich qo'yadi, shuning
+  // uchun bu yerda kadr HAQIQIY ilovadagidek ko'rinadi: quyuq media
+  // ustida oq matn, o'ng ustunda layk, izoh va ulashish.
+  testWidgets('reels', (t) => screen(t, const ReelsScreen(), 'reels'));
 
   testWidgets('mavzular', (t) async {
     mockImageCacheDir();

@@ -9,6 +9,7 @@ import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/media.dart';
+import '../../design/components/music_bar.dart';
 import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/skeleton.dart';
@@ -31,6 +32,7 @@ import '../content/post_detail.dart';
 import '../content/report_sheet.dart';
 import '../content/story_viewer.dart';
 import 'follow_list.dart';
+import 'lead_sheet.dart';
 
 /// PROFILGA QANDAY KIRILDI.
 ///
@@ -67,6 +69,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  /// Biznes profilidagi faol bo'lim.
+  String _tab = 'catalog';
+
+  /// Katalogdagi faol soha chipi (bo'sh — "Asosiy", hammasi).
+  String _catalogCat = '';
+
   Record? _record;
   Company? _company;
   List<Post> _posts = const [];
@@ -298,23 +306,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (!_owned)
               StickyBar(
                 child: viaTap
-                    ? Row(
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: PrimaryButton(
-                              tr('Kontaktni saqlash'),
-                              onTap: _saveContact,
+                          // KONTAKT QOLDIRISH — teskari yo'nalish.
+                          //
+                          // "Kontaktni saqlash" karta egasining
+                          // ma'lumotini OLADI; bu tugma esa
+                          // ochgan odam O'ZINI qoldirishi uchun.
+                          // Faqat egasi buni yoqqan bo'lsa
+                          // (serverda tarifga bog'liq).
+                          if (_record?.leadCapture ?? false) ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SecondaryButton(
+                                    tr('Kontakt qoldirish'),
+                                    icon: Ico.reply,
+                                    onTap: _leaveContact,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: S.x8),
-                          RoundButton(
-                            Ico.share,
-                            size: 54,
-                            iconSize: 20,
-                            onTap: () => shareText(
-                              context,
-                              profileUrl(context, _code, company: _isCompany),
-                            ),
+                            const SizedBox(height: S.x8),
+                          ],
+                          Row(
+                            children: [
+                              Expanded(
+                                child: PrimaryButton(
+                                  tr('Kontaktni saqlash'),
+                                  onTap: _saveContact,
+                                ),
+                              ),
+                              const SizedBox(width: S.x8),
+                              RoundButton(
+                                Ico.share,
+                                size: 54,
+                                iconSize: 20,
+                                onTap: () => shareText(
+                                  context,
+                                  profileUrl(context, _code,
+                                      company: _isCompany),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       )
@@ -349,6 +384,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── SHAXSIY PROFIL ──────────────────────────────────────────
+
+  /// Kontakt qoldirish varaqasi.
+  Future<void> _leaveContact() async {
+    final sent = await showLeadSheet(context, _code);
+    if (!mounted || !sent) return;
+    leadSentToast(context);
+  }
 
   List<Widget> _personBody() {
     final r = _record!;
@@ -494,6 +536,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
 
+              // PROFIL MUSIQASI (prototip: "Yulduzlar ostida ·
+              // Profil musiqasi · 1/3"). Faqat egasi qo'shiq
+              // qo'ygan bo'lsa ko'rinadi.
+              if (r.musicUrls.isNotEmpty) ...[
+                const SizedBox(height: S.x16),
+                MusicBar(urls: r.musicUrls, title: r.name),
+              ],
+
               if (r.about.isNotEmpty) ...[
                 const SizedBox(height: S.x20),
                 Text(r.about, style: T.body),
@@ -514,8 +564,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── BIZNES PROFIL ───────────────────────────────────────────
 
+  /// Biznes profilidagi bo'limlar (prototip: Katalog · Galereya ·
+  /// Lenta · Biz haqimizda).
+  ///
+  /// NIMA UCHUN TAB: biznesning katalogi, rasmlari, yangiliklari va
+  /// ma'lumoti — TO'RT XIL savol. Bitta uzun ro'yxatda odam
+  /// katalogni ko'rish uchun galereyani aylantirib o'tishi kerak
+  /// edi. Bo'sh bo'lim UMUMAN ko'rsatilmaydi: bosilganda "hech narsa
+  /// yo'q" chiqadigan tab — bekorga umid.
   List<Widget> _companyBody() {
     final c = _company!;
+
+    final tabs = <({String key, String label})>[
+      if (c.items.isNotEmpty) (key: 'catalog', label: tr('Katalog')),
+      if (c.gallery.isNotEmpty) (key: 'gallery', label: tr('Galereya')),
+      if (_posts.isNotEmpty || _loading) (key: 'feed', label: tr('Lenta')),
+      (key: 'about', label: tr('Biz haqimizda')),
+    ];
+    final active = tabs.any((t) => t.key == _tab) ? _tab : tabs.first.key;
 
     return [
       _BusinessCinematicHeader(
@@ -527,148 +593,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onMenu: _menu,
       ),
 
-      // KATALOG — biznes profilida ustun bo'lim.
-      if (c.items.isNotEmpty) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            S.gutter,
-            S.x32,
-            S.gutter,
-            S.x12,
-          ),
-          child: SectionHeader(
-            tr('Katalog'),
-            trailing: Text(
-              trf('{n} mahsulot', {'n': '${c.items.length}'}),
-              style: T.meta,
-            ),
+      const SizedBox(height: S.x20),
+      _ProfileTabs(
+        tabs: tabs,
+        active: active,
+        onSelect: (k) => setState(() => _tab = k),
+      ),
+
+      if (active == 'catalog') ..._catalogTab(c),
+      if (active == 'gallery') ..._galleryTab(c),
+      if (active == 'feed') ..._postsSection(),
+      if (active == 'about') ..._aboutTab(c),
+    ];
+  }
+
+  /// KATALOG — soha chiplari va mahsulot gridi.
+  List<Widget> _catalogTab(Company c) {
+    // Chiplar mahsulotlarning O'Z bo'limlaridan yig'iladi: qo'lda
+    // yozilgan ro'yxat biznes bo'lim qo'shganda eskirib qolardi.
+    final cats = <String>[];
+    for (final p in c.items) {
+      final n = p.categoryName.trim();
+      if (n.isNotEmpty && !cats.contains(n)) cats.add(n);
+    }
+
+    final shown = _catalogCat.isEmpty
+        ? c.items
+        : c.items.where((p) => p.categoryName.trim() == _catalogCat).toList();
+
+    return [
+      if (cats.length > 1) ...[
+        const SizedBox(height: S.x16),
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            itemCount: cats.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(width: S.x8),
+            itemBuilder: (context, i) {
+              if (i == 0) {
+                return FilterChip(
+                  tr('Asosiy'),
+                  active: _catalogCat.isEmpty,
+                  onTap: () => setState(() => _catalogCat = ''),
+                );
+              }
+              final name = cats[i - 1];
+              return FilterChip(
+                name,
+                active: _catalogCat == name,
+                onTap: () => setState(() => _catalogCat = name),
+              );
+            },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: Column(
-            children: [
-              // Birinchi mahsulot biznes vitrinasining davomidir: u
-              // katalogni darhol ko'rinadigan mahsulot sahifasiga
-              // aylantiradi. Qolgan mahsulotlar yashirilmaydi.
-              SizedBox(
-                height: 278,
-                width: double.infinity,
-                child: ProductCard(
-                  product: c.items.first,
+      ],
+      const SizedBox(height: S.x16),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+        child: shown.isEmpty
+            ? EmptyState(
+                tr('Bu bo‘limda hozircha mahsulot yo‘q.'),
+                title: tr('Bo‘sh'),
+                icon: Ico.bag,
+                compact: true,
+              )
+            : GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: shown.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: S.x12,
+                  mainAxisSpacing: S.x12,
+                  childAspectRatio: .78,
+                ),
+                itemBuilder: (context, i) => ProductCard(
+                  product: shown[i],
                   companyId: c.id,
                   companyName: c.name,
                 ),
               ),
-              if (c.items.length > 1) ...[
-                const SizedBox(height: S.x12),
-                GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: c.items.length - 1,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: S.x12,
-                    mainAxisSpacing: S.x12,
-                    childAspectRatio: .78,
-                  ),
-                  itemBuilder: (context, i) => ProductCard(
-                    product: c.items[i + 1],
-                    companyId: c.id,
-                    companyName: c.name,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
+      ),
+    ];
+  }
 
-      // ISH VAQTI.
-      if (c.hours.isNotEmpty) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            S.gutter,
-            S.x32,
-            S.gutter,
-            S.x12,
-          ),
-          child: SectionHeader(tr('Ish vaqti')),
-        ),
+  /// GALEREYA — uch ustunli grid (gorizontal lenta emas: rasmni
+  /// qidirib surish o'rniga hammasi bir ko'rinishda tursin).
+  List<Widget> _galleryTab(Company c) => [
+        const SizedBox(height: S.x16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: _Hours(hours: c.hours),
-        ),
-      ],
-
-      // MANZIL.
-      if (c.address.isNotEmpty) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            S.gutter,
-            S.x32,
-            S.gutter,
-            S.x12,
-          ),
-          child: SectionHeader(tr('Manzil')),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          child: Surface(
-            padding: const EdgeInsets.all(S.x16),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: C.accent.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(R.status),
-                  ),
-                  alignment: Alignment.center,
-                  child: NIcon(Ico.pin, size: 19, color: C.accent),
-                ),
-                const SizedBox(width: S.x12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(c.address, style: T.cardTitle.copyWith(
-                        fontSize: 14,
-                      )),
-                      if (c.city.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(c.city, style: T.caption.copyWith(fontSize: 12)),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-
-      // GALEREYA.
-      if (c.gallery.isNotEmpty) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            S.gutter,
-            S.x32,
-            S.gutter,
-            S.x12,
-          ),
-          child: SectionHeader(tr('Galereya')),
-        ),
-        SizedBox(
-          height: 120,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
             itemCount: c.gallery.length,
-            separatorBuilder: (_, __) => const SizedBox(width: S.x8),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 4,
+            ),
             itemBuilder: (context, i) => Press(
               onTap: () => push<void>(
                 context,
@@ -680,18 +707,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               minSize: 0,
               scale: .97,
-              child: SizedBox(
-                width: 120,
-                child: NetImage(c.gallery[i], radius: R.tile),
-              ),
+              child: NetImage(c.gallery[i], radius: R.tile),
             ),
           ),
         ),
-      ],
+      ];
 
-      ..._postsSection(),
-    ];
-  }
+  /// BIZ HAQIMIZDA — tavsif, ish vaqti va manzil.
+  List<Widget> _aboutTab(Company c) => [
+        if (c.about.trim().isNotEmpty) ...[
+          const SizedBox(height: S.x20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: Text(c.about, style: T.body),
+          ),
+        ],
+
+        if (c.hours.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(S.gutter, S.x32, S.gutter, S.x12),
+            child: SectionHeader(tr('Ish vaqti')),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: _Hours(hours: c.hours),
+          ),
+        ],
+
+        if (c.address.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(S.gutter, S.x32, S.gutter, S.x12),
+            child: SectionHeader(tr('Manzil')),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+            child: Surface(
+              padding: const EdgeInsets.all(S.x16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: C.accent.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(R.status),
+                    ),
+                    alignment: Alignment.center,
+                    child: NIcon(Ico.pin, size: 19, color: C.accent),
+                  ),
+                  const SizedBox(width: S.x12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          c.address,
+                          style: T.cardTitle.copyWith(fontSize: 14),
+                        ),
+                        if (c.city.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(c.city, style: T.caption.copyWith(fontSize: 12)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ];
 
   // ── POSTLAR ─────────────────────────────────────────────────
 
@@ -1214,6 +1300,67 @@ class _ProfileSkeleton extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      );
+}
+
+/// PROFIL BO'LIMLARI — Katalog · Galereya · Lenta · Biz haqimizda.
+///
+/// Material `TabBar` EMAS: u o'z mavzusi, o'z indikatori va o'z
+/// balandligi bilan keladi va bu dizaynda begona ko'rinadi. Bu
+/// yerda faol bo'lim ostida ingichka urg'u chizig'i turadi —
+/// prototipdagidek.
+class _ProfileTabs extends StatelessWidget {
+  const _ProfileTabs({
+    required this.tabs,
+    required this.active,
+    required this.onSelect,
+  });
+
+  final List<({String key, String label})> tabs;
+  final String active;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+          itemCount: tabs.length,
+          separatorBuilder: (_, __) => const SizedBox(width: S.x20),
+          itemBuilder: (context, i) {
+            final t = tabs[i];
+            final on = t.key == active;
+            return Press(
+              onTap: () => onSelect(t.key),
+              minSize: 0,
+              scale: .97,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    t.label,
+                    style: T.cardTitle.copyWith(
+                      fontSize: 15,
+                      color: on ? C.accent : C.ink2,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  AnimatedContainer(
+                    duration: M.fade,
+                    height: 2.5,
+                    width: on ? 26 : 0,
+                    decoration: BoxDecoration(
+                      color: C.accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       );
 }

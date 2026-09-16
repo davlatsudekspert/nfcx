@@ -14,8 +14,12 @@ import '../../design/feedback.dart';
 import '../../design/nav.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
+import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
+import '../../state/scan_history.dart';
+import '../identity/profile_screen.dart';
 import 'nfc_write.dart';
+import 'scan_history_screen.dart';
 
 /// TEG MA'LUMOTI (prototip: "Teg ma'lumoti").
 ///
@@ -35,6 +39,8 @@ class TagInfoScreen extends StatefulWidget {
 }
 
 class _TagInfoScreenState extends State<TagInfoScreen> {
+  final _history = ScanHistory();
+
   TagInfo? _info;
   bool _scanning = false;
   bool _done = false;
@@ -42,11 +48,19 @@ class _TagInfoScreenState extends State<TagInfoScreen> {
   @override
   void initState() {
     super.initState();
+    _history.addListener(_onHistory);
+    _history.load();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scan());
+  }
+
+  void _onHistory() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _history.removeListener(_onHistory);
+    _history.dispose();
     Nfc.stop();
     super.dispose();
   }
@@ -63,7 +77,17 @@ class _TagInfoScreenState extends State<TagInfoScreen> {
       _scanning = false;
       _done = true;
     });
-    if (info != null) successHaptic();
+    if (info != null) {
+      successHaptic();
+      // Teg ma'lumoti ham tegizish — tarixga tushadi.
+      await _history.add(ScanEntry(
+        at: DateTime.now(),
+        kind: info.kind ?? '',
+        outcome: info.isOurs
+            ? tr('NFCSTORE kartasi')
+            : ((info.payload ?? '').isEmpty ? tr('bo‘sh') : tr('begona teg')),
+      ));
+    }
   }
 
   @override
@@ -199,6 +223,29 @@ class _TagInfoScreenState extends State<TagInfoScreen> {
                       ),
                     ),
                   ],
+
+                  // TEGIZISHLAR TARIXI (prototip: shu ekranning
+                  // oxirida). Oxirgi uchtasi — qolganini alohida
+                  // ekranda ko'rish mumkin.
+                  if (_history.items.isNotEmpty) ...[
+                    const SizedBox(height: S.x32),
+                    SectionHeader(
+                      tr('Tegizishlar tarixi'),
+                      actionLabel:
+                          _history.items.length > 3 ? tr('Hammasi') : null,
+                      onAction: _history.items.length > 3
+                          ? () => push<void>(
+                                context,
+                                (_) => const ScanHistoryScreen(),
+                              )
+                          : null,
+                    ),
+                    const SizedBox(height: S.x12),
+                    for (final e in _history.items.take(3)) ...[
+                      _HistoryRow(entry: e),
+                      const SizedBox(height: S.x8),
+                    ],
+                  ],
                 ],
               ),
             ),
@@ -266,6 +313,64 @@ class _Field extends StatelessWidget {
               maxLines: wide ? 2 : 1,
               overflow: TextOverflow.ellipsis,
               style: T.code(13, color: C.ink),
+            ),
+          ],
+        ),
+      );
+}
+
+/// Tarixdagi bitta qator — ixcham ko'rinish (to'lig'i
+/// `ScanHistoryScreen` da).
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.entry});
+
+  final ScanEntry entry;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+        padding: const EdgeInsets.all(S.x12),
+        onTap: entry.known
+            ? () => push<void>(
+                  context,
+                  (_) => entry.isCompany
+                      ? ProfileScreen(companyId: entry.code)
+                      : ProfileScreen(code: entry.code),
+                )
+            : null,
+        child: Row(
+          children: [
+            NIcon(
+              entry.known ? Ico.nfc : Ico.info,
+              size: 17,
+              color: entry.known ? C.accent : C.ink3,
+            ),
+            const SizedBox(width: S.x12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    entry.known
+                        ? '${entry.code}${entry.name.isEmpty ? '' : ' · ${entry.name}'}'
+                        : tr('Noma’lum teg'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.cardTitle.copyWith(fontSize: 13.5),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      ago(entry.at),
+                      if (entry.kind.isNotEmpty) entry.kind,
+                      if (entry.outcome.isNotEmpty) entry.outcome,
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.caption.copyWith(fontSize: 11.5),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -27,18 +27,36 @@ List<Map<String, dynamic>> _list(dynamic v) => v is List
 
 /// Hisob egasi.
 class AppUser {
-  AppUser({required this.id, required this.email, this.phone = '', this.isPremium = false});
+  AppUser({
+    required this.id,
+    required this.email,
+    this.phone = '',
+    this.isPremium = false,
+    this.promoCode = '',
+    this.discountPct = 0,
+  });
 
   final int id;
   final String email;
   final String phone;
   final bool isPremium;
 
+  /// FOYDALANUVCHINING O'Z TAKLIF KODI.
+  ///
+  /// Ro'yxatdan o'tishda server bir marta beradi. Kimdir shu kod
+  /// bilan ro'yxatdan o'tsa, EGASIGA 10% chegirma yoziladi.
+  final String promoCode;
+
+  /// To'plangan chegirma foizi (`pending_discount_pct`).
+  final int discountPct;
+
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         id: _i(j['id']),
         email: _s(j['email']),
         phone: _s(j['phone']),
         isPremium: _b(j['isPremium']),
+        promoCode: _s(j['promoCode']),
+        discountPct: _i(j['pendingDiscountPct']),
       );
 
   /// Emailni niqoblash: `aziz@gmail.com` -> `a***@gmail.com`.
@@ -78,6 +96,8 @@ class Record {
     this.isGift = false,
     this.notForSale = false,
     this.extraLinks = const [],
+    this.musicUrls = const [],
+    this.leadCapture = false,
   });
 
   final String code;
@@ -108,6 +128,17 @@ class Record {
   final bool isGift;
   final bool notForSale;
   final List<Map<String, dynamic>> extraLinks;
+
+  /// PROFIL MUSIQASI — ko'pi bilan 5 ta havola.
+  ///
+  /// Server `musicUrls` (ro'yxat) yoki eski `musicUrl` (bitta)
+  /// shaklida beradi; ikkalasi ham qabul qilinadi.
+  final List<String> musicUrls;
+
+  /// "Kontakt qoldirish" yoqilganmi. Serverda tarifga bog'liq
+  /// (Silver — kuniga 5 ta, Gold+ — 100 ta, Free — yopiq), shuning
+  /// uchun tugma faqat shu bayroq bo'yicha ko'rsatiladi.
+  final bool leadCapture;
 
   bool get isBusiness => profileType == 'business';
   bool get isExpert => profileType == 'expert';
@@ -164,6 +195,11 @@ class Record {
         isGift: _b(j['isGift']),
         notForSale: _b(j['notForSale']),
         extraLinks: _list(j['extraLinks']),
+        musicUrls: [
+          ...?(j['musicUrls'] as List?)?.map((e) => absUrl('$e') ?? ''),
+          if (_s(j['musicUrl']).isNotEmpty) absUrl(_s(j['musicUrl'])) ?? '',
+        ].where((u) => u.isNotEmpty).toSet().toList(),
+        leadCapture: _b(j['leadCapture']),
       );
 }
 
@@ -881,5 +917,117 @@ class DayHours {
         closed: closed ?? this.closed,
         open: open ?? this.open,
         close: close ?? this.close,
+      );
+}
+
+/// KARTA STATISTIKASI — `/api/records/:code/analytics` javobi.
+///
+/// NIMA UCHUN ALOHIDA MODEL: bosh sahifadagi "bugun nechta odam
+/// tegdi" ham, profil egasidagi chiziqli grafik ham AYNAN shu
+/// javobdan o'qiydi. Ikki joyda ikki xil `Map` kavlash — ikki xil
+/// xatolikka olib kelardi.
+class CardStats {
+  const CardStats({
+    this.totalViews = 0,
+    this.uniqueVisitors = 0,
+    this.contactSaves = 0,
+    this.taps = 0,
+    this.byDay = const [],
+    this.advanced = false,
+  });
+
+  final int totalViews;
+  final int uniqueVisitors;
+  final int contactSaves;
+
+  /// Jami hodisa — ko'rish, bosish, saqlash birgalikda.
+  final int taps;
+
+  /// Kun bo'yicha ko'rishlar, eskidan yangiga: `[(sana, son)]`.
+  /// Faqat Gold+ tarifda to'ladi (`advanced`).
+  final List<DayCount> byDay;
+  final bool advanced;
+
+  /// BUGUNGI KO'RISHLAR — bosh sahifadagi qator uchun.
+  ///
+  /// Server sanani `YYYY-MM-DD` ko'rinishida UTC da beradi va
+  /// solishtirish ham shu ko'rinishda bo'ladi: mahalliy sanaga
+  /// o'girish kechqurun "bugun 0" degan yolg'on javob berardi.
+  int get today {
+    if (byDay.isEmpty) return 0;
+    final now = DateTime.now().toUtc();
+    final key = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    for (final d in byDay) {
+      if (d.day == key) return d.count;
+    }
+    return 0;
+  }
+
+  factory CardStats.fromJson(Map<String, dynamic> j) {
+    final byType = j['byType'];
+    var saves = 0;
+    var events = 0;
+    if (byType is Map) {
+      for (final e in byType.entries) {
+        final n = _i(e.value);
+        events += n;
+        if (e.key == 'contact_save') saves = n;
+      }
+    }
+    return CardStats(
+      totalViews: _i(j['totalViews'] ?? j['views']),
+      uniqueVisitors: _i(j['uniqueVisitors'] ?? j['unique']),
+      contactSaves: saves,
+      taps: events,
+      byDay: _list(j['byDay'])
+          .map((e) => DayCount(day: _s(e['day']), count: _i(e['n'] ?? e['count'])))
+          .toList(),
+      advanced: _b(j['advanced']),
+    );
+  }
+}
+
+/// Bir kunlik son — grafik nuqtasi.
+class DayCount {
+  const DayCount({required this.day, required this.count});
+
+  /// `YYYY-MM-DD`.
+  final String day;
+  final int count;
+}
+
+/// QOLDIRILGAN KONTAKT (`card_leads`).
+class Lead {
+  const Lead({
+    required this.id,
+    required this.name,
+    this.phone = '',
+    this.telegram = '',
+    this.email = '',
+    this.company = '',
+    this.note = '',
+    this.createdAt,
+  });
+
+  final int id;
+  final String name;
+  final String phone;
+  final String telegram;
+  final String email;
+  final String company;
+  final String note;
+  final DateTime? createdAt;
+
+  factory Lead.fromJson(Map<String, dynamic> j) => Lead(
+        id: _i(j['id']),
+        name: _s(j['name']),
+        phone: _s(j['phone']),
+        telegram: _s(j['telegram']),
+        email: _s(j['email']),
+        company: _s(j['company']),
+        note: _s(j['note']),
+        createdAt: _ts(j['createdAt'] ?? j['created_at']),
       );
 }

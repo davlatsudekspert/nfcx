@@ -55,6 +55,14 @@ class _ReelsScreenState extends State<ReelsScreen> {
   int _index = 0;
   bool _loadedOnce = false;
 
+  /// OBUNA HOLATI — kod bo'yicha, bir marta so'raladi.
+  ///
+  /// Lenta javobida bu maydon yo'q, shuning uchun ko'rinib turgan
+  /// kadr muallifi uchun alohida so'raladi va keshlanadi: bitta
+  /// muallifning o'nta videosi uchun o'nta so'rov ketmasin.
+  final Map<String, bool> _follows = {};
+  final Set<String> _followBusy = {};
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -84,6 +92,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         _page = 1;
         _loading = false;
       });
+      if (r.items.isNotEmpty) _loadFollow(r.items.first.code);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -161,6 +170,38 @@ class _ReelsScreenState extends State<ReelsScreen> {
     });
   }
 
+  /// Obuna holatini bir marta so'rab, keshga qo'yadi.
+  Future<void> _loadFollow(String code) async {
+    final key = code.toUpperCase();
+    if (key.isEmpty || _follows.containsKey(key)) return;
+    _follows[key] = false; // qayta so'ralmasin
+    try {
+      final st = await AppScope.read(context).repo.followStats(code);
+      if (!mounted) return;
+      setState(() => _follows[key] = st.isFollowing);
+    } catch (_) {
+      // Holat noma'lum bo'lsa tugma "Obuna" bo'lib turaveradi —
+      // bosilganda server baribir haqiqatni aytadi.
+    }
+  }
+
+  Future<void> _toggleFollow(String code) async {
+    final key = code.toUpperCase();
+    if (_followBusy.contains(key)) return;
+    _followBusy.add(key);
+
+    final was = _follows[key] ?? false;
+    setState(() => _follows[key] = !was);
+    try {
+      final repo = AppScope.read(context).repo;
+      was ? await repo.unfollow(code) : await repo.follow(code);
+    } catch (_) {
+      if (mounted) setState(() => _follows[key] = was);
+    } finally {
+      _followBusy.remove(key);
+    }
+  }
+
   Future<void> _menu(FeedEntry item) async {
     final state = AppScope.read(context);
     final mine = item.isCompany
@@ -182,6 +223,13 @@ class _ReelsScreenState extends State<ReelsScreen> {
             ));
       },
     );
+  }
+
+  bool _ownsItem(FeedEntry item) {
+    final state = AppScope.read(context);
+    return item.isCompany
+        ? state.ownsCompany(item.code)
+        : state.ownsRecord(item.code);
   }
 
   @override
@@ -234,6 +282,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
             onPageChanged: (i) {
               setState(() => _index = i);
               if (i >= _items.length - 2) _loadMore();
+              _loadFollow(_items[i].code);
             },
             itemBuilder: (context, i) => _Reel(
               item: _items[i],
@@ -244,6 +293,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
               onLike: () => _toggleLike(i),
               onComment: () => _openComments(i),
               onMenu: () => _menu(_items[i]),
+              following: _follows[_items[i].code.toUpperCase()] ?? false,
+              // O'Z KONTENTINGA OBUNA BO'LIB BO'LMAYDI — tugma
+              // umuman ko'rsatilmaydi.
+              onFollow: _ownsItem(_items[i])
+                  ? null
+                  : () => _toggleFollow(_items[i].code),
               onAuthor: () => push<void>(
                 context,
                 (_) => _items[i].isCompany
@@ -319,6 +374,8 @@ class _Reel extends StatelessWidget {
     required this.onComment,
     required this.onMenu,
     required this.onAuthor,
+    required this.following,
+    required this.onFollow,
   });
 
   final FeedEntry item;
@@ -327,6 +384,10 @@ class _Reel extends StatelessWidget {
   final VoidCallback onComment;
   final VoidCallback onMenu;
   final VoidCallback onAuthor;
+  final bool following;
+
+  /// `null` — o'z kontenti, obuna tugmasi ko'rsatilmaydi.
+  final VoidCallback? onFollow;
 
   @override
   Widget build(BuildContext context) {
@@ -383,10 +444,11 @@ class _Reel extends StatelessWidget {
           ),
         ),
 
-        // O'NG USTUN — layk va ulashish.
+        // O'NG USTUN — layk, izoh, ulashish va menyu (prototip:
+        // belgi tepada, yozuv pastda).
         Positioned(
           right: S.x12,
-          bottom: bottom + 96,
+          bottom: bottom + 104,
           child: Column(
             children: [
               LikeButton(
@@ -396,8 +458,9 @@ class _Reel extends StatelessWidget {
                 size: 28,
                 // OQ — kadr ustida. `C.ink` yorug' mavzuda deyarli
                 // qora bo'ladi va to'q videoda yo'qolardi.
-                color: item.liked ? C.accent : const Color(0xFFFFFFFF),
+                color: item.liked ? C.accent : C.onMedia,
                 onMedia: true,
+                vertical: true,
               ),
               const SizedBox(height: S.x20),
               // IZOH — yurak bilan ulashish orasida, xuddi boshqa
@@ -406,20 +469,24 @@ class _Reel extends StatelessWidget {
                 count: item.commentCount,
                 onTap: onComment,
                 size: 28,
-                color: const Color(0xFFFFFFFF),
+                color: C.onMedia,
                 onMedia: true,
+                vertical: true,
               ),
               const SizedBox(height: S.x20),
-              RoundButton(
-                Ico.share,
-                size: 46,
-                iconSize: 20,
-                glass: true,
+              _RailAction(
+                icon: Ico.share,
+                label: tr('Ulashish'),
                 onTap: () => shareText(
                   context,
                   profileUrl(context, item.code, company: item.isCompany),
                 ),
               ),
+              const SizedBox(height: S.x20),
+              // "•••" — shikoyat va o'chirish shu yerda. Prototipda
+              // u aynan ustunning oxirida turadi: odam kontentni
+              // ko'rib turib, tepaga qaytmasdan chora ko'ra oladi.
+              _RailAction(icon: Ico.more, onTap: onMenu),
             ],
           ),
         ),
@@ -442,40 +509,58 @@ class _Reel extends StatelessWidget {
                 ),
                 const SizedBox(height: S.x12),
               ],
-              Press(
-                onTap: onAuthor,
-                minSize: 0,
-                scale: .97,
-                child: Row(
-                  children: [
-                    Avatar(
-                      url: item.avatarUrl,
-                      name: item.name,
-                      size: 40,
-                      square: item.isCompany,
-                    ),
-                    const SizedBox(width: S.x12),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+              Row(
+                children: [
+                  Expanded(
+                    child: Press(
+                      onTap: onAuthor,
+                      minSize: 0,
+                      scale: .97,
+                      child: Row(
                         children: [
-                          Text(
-                            item.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: T.cardTitle,
+                          Avatar(
+                            url: item.avatarUrl,
+                            name: item.name,
+                            size: 40,
+                            square: item.isCompany,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            ago(item.createdAt).toUpperCase(),
-                            style: T.meta.copyWith(fontSize: 10),
+                          const SizedBox(width: S.x12),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: T.cardTitle,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${item.code} · ${ago(item.createdAt)}'
+                                      .toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: T.meta.copyWith(fontSize: 10),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
+                  ),
+                  // OBUNA — kadrni tark etmasdan.
+                  //
+                  // Prototipda u aynan shu yerda: odam videoni
+                  // ko'rib yoqtirsa, profilga o'tib, orqaga qaytib
+                  // yurmasligi kerak. O'z kontentida ko'rinmaydi.
+                  if (onFollow != null) ...[
+                    const SizedBox(width: S.x8),
+                    _FollowPill(following: following, onTap: onFollow!),
                   ],
-                ),
+                ],
               ),
             ],
           ),
@@ -486,3 +571,79 @@ class _Reel extends StatelessWidget {
 }
 
 
+
+/// O'NG USTUNDAGI AMAL — belgi tepada, yozuv pastda.
+///
+/// Prototipda "Ulashish" va "•••" aynan shu ko'rinishda. Belgi
+/// media ustida turgani uchun oq va soyali.
+class _RailAction extends StatelessWidget {
+  const _RailAction({required this.icon, required this.onTap, this.label});
+
+  final Ico icon;
+  final String? label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        haptic: true,
+        minSize: S.tap,
+        scale: .9,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NIcon(icon, size: 28, color: C.onMedia, onMedia: true),
+            if (label != null) ...[
+              const SizedBox(height: 5),
+              Text(
+                label!,
+                style: T.meta.copyWith(
+                  color: C.onMedia,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  shadows: C.mediaText,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+}
+
+/// OBUNA TUGMASI — muallif qatorida.
+///
+/// Obuna bo'lgach "Obunada" bo'lib, quyuq to'ldirishdan shaffof
+/// konturga o'tadi: bosilgani ko'rinib tursin, lekin diqqatni
+/// o'ziga tortmasin.
+class _FollowPill extends StatelessWidget {
+  const _FollowPill({required this.following, required this.onTap});
+
+  final bool following;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        haptic: true,
+        minSize: 0,
+        scale: .95,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: following ? const Color(0x33FFFFFF) : C.accent,
+            borderRadius: BorderRadius.circular(R.status),
+            border: Border.all(
+              color: following ? C.onMedia3 : const Color(0x00000000),
+            ),
+          ),
+          child: Text(
+            following ? tr('Obunada') : tr('Obuna'),
+            style: T.meta.copyWith(
+              color: following ? C.onMedia : C.onAccent,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+}

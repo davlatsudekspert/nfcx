@@ -29,6 +29,7 @@ import 'nfc_write.dart';
 import 'order_card.dart';
 import '../identity/profile_stats.dart';
 import 'qr_share.dart';
+import 'scan_history_screen.dart';
 import 'tag_info.dart';
 
 /// NFC MARKAZI — mahsulotning o'zagi.
@@ -446,6 +447,17 @@ class _Tools extends StatelessWidget {
         title: tr('Teg ma’lumoti'),
         sub: tr('Turi, hajmi, qulf'),
         tap: () => push<void>(context, (_) => const TagInfoScreen()),
+      ),
+      (
+        // PROTOTIPDA OLTINCHI KATAK — "Tegizishlar tarixi".
+        //
+        // Bu SHU TELEFON nimalarga tekkani: begona teg ham, bo'sh
+        // teg ham shu yerda. O'z kartangizga kim tekkani esa
+        // profil statistikasida ("Ko'rish") — ikki xil savol.
+        icon: Ico.clock,
+        title: tr('Tegizishlar tarixi'),
+        sub: tr('Oxirgi skanerlar'),
+        tap: () => push<void>(context, (_) => const ScanHistoryScreen()),
       ),
       (
         icon: Ico.chart,

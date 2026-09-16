@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' show showLicensePage;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
 
 import '../../app.dart';
@@ -8,6 +9,9 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
+import '../../design/components/palette_card.dart';
+import '../../design/components/toast.dart';
+import '../../design/feedback.dart';
 import '../../design/components/input.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/states.dart';
@@ -177,6 +181,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
+            // ── KO'RINISH ─────────────────────────────────────
+            //
+            // PROTOTIPDA PALITRA AYNAN SHU YERDA, ENG TEPADA va
+            // ichida: mavzu — eng ko'p o'zgartiriladigan sozlama
+            // va uni alohida sahifaga yashirish odamni ikki
+            // bosishga majbur qilardi. Kartalar o'z ranglarida
+            // chiziladi, tanlov darhol butun ilovaga tushadi.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  S.gutter,
+                  S.x24,
+                  S.gutter,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Eyebrow(tr('Ko‘rinish')),
+                    const SizedBox(height: S.x12),
+                    Row(
+                      children: [
+                        for (final p in Palette.all) ...[
+                          Expanded(
+                            child: PaletteCard(
+                              palette: p,
+                              selected: p.id == prefs.palette.id,
+                              onTap: () {
+                                successHaptic();
+                                prefs.setPalette(p);
+                              },
+                            ),
+                          ),
+                          if (p != Palette.all.last)
+                            const SizedBox(width: S.x8),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // ── PROFIL ────────────────────────────────────────
             _Group(
               eyebrow: tr('Profil'),
@@ -192,7 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                 ),
                 ListRow(
-                  title: tr('Ko‘rinish'),
+                  title: tr('Ko‘rinish namunasi'),
                   subtitle: prefs.palette.label,
                   leading: NIcon(Ico.palette, size: 19, color: C.ink2),
                   onTap: () => push(context, (_) => const AppearanceScreen()),
@@ -232,6 +279,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: StatusChip(tr('Telegram bot')),
                   onTap: _busyTg ? null : _startTelegram,
                 ),
+                // PROMOKODIM (prototip: "Promokodim · DILSHOD10").
+                //
+                // Bu KOD EGASINIKI: kimdir shu kod bilan ro'yxatdan
+                // o'tsa, EGASIGA 10% chegirma yoziladi. Shuning
+                // uchun uni ulashish mumkin bo'lishi kerak — bosilsa
+                // nusxalanadi.
+                if ((state.user?.promoCode ?? '').isNotEmpty)
+                  ListRow(
+                    title: tr('Promokodim'),
+                    subtitle: state.user!.promoCode,
+                    leading: NIcon(Ico.gift, size: 19, color: C.ink2),
+                    trailing: (state.user?.discountPct ?? 0) > 0
+                        ? StatusChip(
+                            '−${state.user!.discountPct}%',
+                            tone: StatusTone.ok,
+                          )
+                        : NIcon(Ico.copy, size: 17, color: C.ink3),
+                    onTap: () {
+                      Clipboard.setData(
+                        ClipboardData(text: state.user!.promoCode),
+                      );
+                      showToast(context, tr('Nusxalandi'));
+                    },
+                  ),
                 ListRow(
                   title: tr('Parolni o‘zgartirish'),
                   leading: NIcon(Ico.key, size: 19, color: C.ink2),

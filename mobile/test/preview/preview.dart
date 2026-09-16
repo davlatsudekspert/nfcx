@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show FontLoader, MethodChannel, rootBundle;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore/design/components/media.dart';
 import 'package:nfcstore/design/theme.dart';
 import 'package:nfcstore/design/tokens.dart';
 import 'package:nfcstore/design/type.dart';
@@ -128,4 +129,74 @@ Future<void> shot(
     find.byType(MaterialApp),
     matchesGoldenFile('out/$name.png'),
   );
+}
+
+/// TARMOQSIZ MUHITDA "HAQIQIY" RASM.
+///
+/// NIMA UCHUN: vizual kadrlar tarmoqsiz olinadi va har bir rasm
+/// bo'sh o'rin bo'lib chiqadi. Natijada kadrga qarab "lenta qanday
+/// ko'rinadi?" degan savolga javob berib bo'lmaydi — post kartasi
+/// ham, Reels ham kulrang to'rtburchak.
+///
+/// BU YERDA HECH NARSA SOXTALASHTIRILMAYDI: bu FAQAT preview
+/// qobig'i, ilovaga kirmaydi (`NetImage.debugImageBuilder` ilovada
+/// har doim `null`). Auditda ham ATAYLAB qo'yilmaydi — u yerda
+/// "rasm kelmadi" holati alohida baholanadi.
+void installImageStub() {
+  NetImage.debugImageBuilder = (url, fit) => CustomPaint(
+        painter: _StubPhoto(url.hashCode),
+        child: const SizedBox.expand(),
+      );
+  addTearDown(() => NetImage.debugImageBuilder = null);
+}
+
+/// Manzildan kelib chiqib chiziladigan "surat".
+///
+/// Bir xil manzil — HAR DOIM bir xil rasm: kadrlar barqaror
+/// bo'lishi uchun tasodif ishlatilmaydi.
+class _StubPhoto extends CustomPainter {
+  _StubPhoto(this.seed);
+
+  final int seed;
+
+  static const _tones = [
+    [Color(0xFF6B4A2F), Color(0xFFC79A63)],
+    [Color(0xFF1E2A44), Color(0xFF5A79B8)],
+    [Color(0xFF3A2438), Color(0xFF9A6B8C)],
+    [Color(0xFF204034), Color(0xFF6FA88A)],
+    [Color(0xFF4A2A22), Color(0xFFB97A55)],
+    [Color(0xFF232733), Color(0xFF7E8798)],
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pair = _tones[seed.abs() % _tones.length];
+    final rect = Offset.zero & size;
+
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: pair,
+        ).createShader(rect),
+    );
+
+    // Yumshoq yorug'lik dog'i — tekis to'rtburchak "rasm"ga
+    // o'xshamaydi, shu sababli bitta nur qo'shiladi.
+    canvas.drawCircle(
+      Offset(size.width * .72, size.height * .26),
+      size.shortestSide * .42,
+      Paint()..color = const Color(0x26FFFFFF),
+    );
+    canvas.drawCircle(
+      Offset(size.width * .18, size.height * .82),
+      size.shortestSide * .30,
+      Paint()..color = const Color(0x1A000000),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_StubPhoto old) => old.seed != seed;
 }
