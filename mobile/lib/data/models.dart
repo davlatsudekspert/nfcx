@@ -1031,3 +1031,44 @@ class Lead {
         createdAt: _ts(j['createdAt'] ?? j['created_at']),
       );
 }
+
+/// KOD NARXI — `/api/records/:code/quote`.
+///
+/// Do'konda "bu kod bormi, qanchaga?" degan savolga javob.
+class CodeQuote {
+  const CodeQuote({
+    required this.code,
+    this.taken = false,
+    this.purchasable = false,
+    this.tier = '',
+    this.amount = 0,
+    this.reason = '',
+  });
+
+  final String code;
+
+  /// Kod allaqachon kimdadir.
+  final bool taken;
+
+  /// Sotib olsa bo'ladimi.
+  final bool purchasable;
+
+  /// Tarif (`gold`, `premium`, `exclusive` ...).
+  final String tier;
+
+  /// Narx — so'mda. Faqat `purchasable` bo'lganda mazmunli.
+  final int amount;
+
+  /// Nega sotib bo'lmaydi: `already_taken`, `not_purchasable`,
+  /// `reserved_pending_payment`.
+  final String reason;
+
+  factory CodeQuote.fromJson(Map<String, dynamic> j) => CodeQuote(
+        code: _s(j['code']).toUpperCase(),
+        taken: _b(j['taken']),
+        purchasable: _b(j['purchasable']),
+        tier: _s(j['tier']),
+        amount: _i(j['amount']),
+        reason: _s(j['reason']),
+      );
+}

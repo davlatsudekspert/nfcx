@@ -5318,6 +5318,44 @@ async function defaultFollowCompanyD1(env, userId) {
 async function recordsApi(request, env, url) {
   const path = url.pathname;
 
+  // KOD NARXI — sotib olishdan OLDIN.
+  //
+  // NIMA UCHUN KERAK: do'konda odam kod yozib "bormi?" deb
+  // tekshiradi. Kod hali hech kimda bo'lmasa, `GET /api/records/:code`
+  // 404 qaytaradi va interfeys "topilmadi" deyishga majbur bo'ladi —
+  // holbuki aynan o'sha kodni SOTIB OLSA bo'ladi. Narxni bilishning
+  // yagona yo'li buyurtma yaratish edi, ya'ni "narxini ko'ray" degan
+  // odam pending order qoldirib ketardi va kod 24 soatga band
+  // bo'lib turardi.
+  //
+  // FAQAT O'QIYDI: hech narsa yaratmaydi, hech narsani band
+  // qilmaydi. Narx `personalPurchaseQuote` dan — xarid oqimidagi
+  // AYNAN o'sha manba, shuning uchun ko'rsatilgan summa bilan
+  // to'lanadigan summa hech qachon farq qilmaydi.
+  const quoteMatch = path.match(/^\/api\/records\/([A-Za-z0-9]+)\/quote$/);
+  if (quoteMatch && request.method === 'GET') {
+    const code = String(quoteMatch[1] || '').toUpperCase();
+    const taken = await getRecord(env, code);
+    if (taken) {
+      return json({ code, taken: true, purchasable: false, reason: 'already_taken' });
+    }
+    const quote = personalPurchaseQuote(code);
+    if (!quote.purchasable) {
+      return json({ code, taken: false, purchasable: false, reason: quote.reason || 'not_purchasable' });
+    }
+    // Band qilinib, hali to'lanmagan kod ham sotuvda emas.
+    const pending = await activeWebOrderByCodeD1(env, code);
+    return json({
+      code,
+      taken: false,
+      purchasable: !pending,
+      reason: pending ? 'reserved_pending_payment' : undefined,
+      tier: quote.tier,
+      amount: quote.amount,
+      ...(quote.level ? { level: quote.level } : {}),
+    });
+  }
+
   if (path === '/api/records' && request.method === 'GET') {
     return edgeCached(request, url, async () => {
     // is_gift — admin sovg'asi belgisi (catalogCard izohiga qarang).

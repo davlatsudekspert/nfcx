@@ -51,6 +51,7 @@ class OrderCardScreen extends StatefulWidget {
 }
 
 class _OrderCardScreenState extends State<OrderCardScreen> {
+  final _receiver = TextEditingController();
   final _city = TextEditingController();
   final _address = TextEditingController();
   final _phone = TextEditingController();
@@ -74,6 +75,11 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
   @override
   void initState() {
     super.initState();
+    // QABUL QILUVCHI — profil ismidan oldindan to'ldiriladi,
+    // lekin O'ZGARTIRILADI: kartani boshqa odamga yubortirish
+    // mumkin va ilgari bunga yo'l yo'q edi (ism jimgina profildan
+    // olinardi).
+    _receiver.text = widget.record.name.trim();
     final state = AppScope.read(context);
     _city.text = widget.record.city;
     _phone.text = widget.record.phone.isNotEmpty
@@ -84,6 +90,7 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
 
   @override
   void dispose() {
+    _receiver.dispose();
     _city.dispose();
     _address.dispose();
     _phone.dispose();
@@ -148,12 +155,16 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
       _error = null;
     });
     try {
-      // `shippingName` SERVERDA MAJBURIY, lekin u bosma ism emas —
-      // pochta uchun qabul qiluvchi nomi. Uni profildan olamiz,
-      // shuning uchun ekranda alohida maydon yo'q.
-      final receiver = widget.record.name.trim().isEmpty
-          ? widget.record.code
-          : widget.record.name.trim();
+      // `shippingName` — pochta uchun QABUL QILUVCHI nomi, bosma
+      // ism emas. Maydon bo'sh qolsa profil ismiga, u ham bo'sh
+      // bo'lsa kodga tushadi: server bu maydonni majburiy
+      // qiladi.
+      final typed = _receiver.text.trim();
+      final receiver = typed.isNotEmpty
+          ? typed
+          : (widget.record.name.trim().isEmpty
+              ? widget.record.code
+              : widget.record.name.trim());
       final address = [
         _city.text.trim(),
         _address.text.trim(),
@@ -420,6 +431,14 @@ class _OrderCardScreenState extends State<OrderCardScreen> {
                         // ── YETKAZISH MANZILI ─────────────────
                         Eyebrow(tr('Yetkazish manzili')),
                         const SizedBox(height: S.x12),
+                        Field(
+                          label: tr('Ism familiya'),
+                          controller: _receiver,
+                          hint: tr('Kartani kim qabul qiladi'),
+                          textInputAction: TextInputAction.next,
+                          maxLength: 100,
+                        ),
+                        const SizedBox(height: S.x16),
                         Field(
                           label: tr('Shahar'),
                           controller: _city,

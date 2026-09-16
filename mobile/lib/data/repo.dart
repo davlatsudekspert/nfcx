@@ -445,6 +445,15 @@ class Repo {
     return _rows(r, 'companies').map(Company.fromJson).toList();
   }
 
+  /// KOD NARXI — sotib olishdan oldin.
+  ///
+  /// Hech narsa yaratmaydi va kodni band qilmaydi. Javob:
+  /// `{taken, purchasable, tier, amount, reason}`. Narx xarid
+  /// oqimidagi AYNAN o'sha manbadan hisoblanadi, shuning uchun
+  /// ekrandagi summa to'lanadigan summa bilan bir xil.
+  Future<CodeQuote> codeQuote(String code) async =>
+      CodeQuote.fromJson(_map(await api.get('/api/records/$code/quote')));
+
   /// Katalog — barcha ochiq profillar va sotuvdagi ID'lar.
   ///
   /// `force: true` — keshni chetlab o'tadi (tortib yangilash).

@@ -355,4 +355,163 @@ void main() {
     // "vaqtincha o'chirilgan" xabarini chiqaradi.
     expect(settings.containsKey('enabled'), isTrue);
   });
+
+  // ── ID QIDIRUVI: BOR-YO'QLIGI VA NARXI ────────────────────────
+  //
+  // "Qidiruvda ID lar yozilsa bor-yo'qligi, yo'q bo'lsa narxi,
+  // uni band qilaman desa..." — do'kondagi to'liq yo'l.
+
+  test('BO‘SH kod — narxi va tarifi bilan qaytadi', () async {
+    // Hech kimda bo'lmagan standart kod. Narx SERVERDA kodning
+    // shaklidan hisoblanadi (`personalPurchaseQuote`).
+    final q = await repo.codeQuote('QQW345');
+    expect(q.taken, isFalse);
+    expect(q.purchasable, isTrue, reason: 'bo‘sh kod sotuvda bo‘lishi kerak');
+    expect(q.amount, greaterThan(0), reason: 'narx ko‘rsatilishi shart');
+    expect(q.tier, isNotEmpty);
+  });
+
+  test('BAND kod — sotib bo‘lmaydi, sababi aytiladi', () async {
+    final q = await repo.codeQuote('VIP001');
+    expect(q.taken, isTrue);
+    expect(q.purchasable, isFalse);
+    expect(q.reason, 'already_taken');
+
+    // Profili esa ochiladi — ilova "Band" deb ko'rsatib, profilga
+    // o'tish tugmasini beradi.
+    final rec = await repo.record('VIP001');
+    expect(rec.name, isNotEmpty);
+  });
+
+  test('narx so‘rash kodni BAND QILMAYDI', () async {
+    // Narxni ko'rgan odam pending buyurtma qoldirib ketmasligi
+    // kerak: aks holda kod 24 soatga yopilib qolardi.
+    final first = await repo.codeQuote('QQW345');
+    final again = await repo.codeQuote('QQW345');
+    expect(first.purchasable, isTrue);
+    expect(again.purchasable, isTrue);
+  });
+
+  test('bo‘sh kodni band qilish — summa NARX BILAN BIR XIL', () async {
+    const code = 'QQW346';
+    final q = await repo.codeQuote(code);
+    expect(q.purchasable, isTrue);
+
+    // NARXNI SERVER hisoblaydi: mijoz yuborgan summa e'tiborga
+    // olinmaydi (aks holda ID ni 1 so'mga olish mumkin bo'lardi).
+    final order = await repo.reserveRecord(
+      code,
+      name: 'Sinov',
+      phone: '+998901112233',
+      provider: 'payme',
+    );
+    expect(order.id, greaterThan(0));
+    expect(order.price, q.amount,
+        reason: 'to‘lanadigan summa ko‘rsatilgan narx bilan bir xil bo‘lsin');
+
+    // TO'LOV HAVOLASI — ilova shu manzilni ochadi. Payme har doim
+    // bo'lishi kerak; Click faqat kaliti sozlangan bo'lsa.
+    expect(order.linkFor('payme'), isNotNull,
+        reason: 'Payme havolasi kelishi shart');
+
+    // Band qilingandan keyin o'sha kod endi sotuvda emas.
+    final after = await repo.codeQuote(code);
+    expect(after.purchasable, isFalse);
+    expect(after.reason, 'reserved_pending_payment');
+  });
+
+  test('CLICK bilan ham band qilinadi', () async {
+    const code = 'QQW347';
+    final order = await repo.reserveRecord(
+      code,
+      name: 'Sinov',
+      phone: '+998901112233',
+      provider: 'click',
+    );
+    expect(order.id, greaterThan(0));
+    expect(order.price, greaterThan(0));
+
+    // CLICK kaliti sozlangan bo'lsa havola ham keladi. Sozlanmagan
+    // bo'lsa ilova tugmani o'chiq ko'rsatadi — bu YOLG'ON emas:
+    // "Click bor" deb ko'rsatib, bosilganda Payme ochilishi eng
+    // yomon variant edi (avval aynan shunday bo'lgan).
+    final click = order.linkFor('click');
+    if (click != null) expect(click, contains('http'));
+  });
+
+  // ── REELS: QO'YISH VA O'CHIRISH ───────────────────────────────
+
+  test('Reels — video post joylanadi, lentaga tushadi va o‘chadi', () async {
+    // 1×1 piksel "video" o'rniga kichik fayl: bu yerda muhimi
+    // media havolasi post bilan birga saqlanishi va lentada
+    // qaytishi.
+    expect(uploadedImage, isNotEmpty,
+        reason: 'oldingi test media yuklagan bo‘lishi kerak');
+
+    final created = await repo.addPost(
+      'VIP001',
+      imageUrl: uploadedImage,
+      caption: 'Sinov reels',
+      agreed: true,
+    );
+    final id = created.id;
+    expect(id, isNotEmpty);
+
+    final feed = await repo.feed(page: 1);
+    final mine = feed.items.where((e) => '${e.id}' == id);
+    expect(mine, isNotEmpty, reason: 'yangi post lentada ko‘rinishi kerak');
+
+    // IZOH — Reels ichidagi varaqa shu metodlarni chaqiradi.
+    final postId = int.parse(id);
+    final added = await repo.addComment('post', postId, 'Zo‘r');
+    expect(added.comment.body, 'Zo‘r');
+    final list = await repo.comments('post', postId);
+    expect(list.items.map((e) => e.body), contains('Zo‘r'));
+    await repo.deleteComment(added.comment.id);
+
+    // O'CHIRISH — o'z kontentini egasi o'chira oladi.
+    await repo.deletePost(int.parse(id));
+    final after = await repo.feed(page: 1);
+    expect(after.items.any((e) => '${e.id}' == id), isFalse,
+        reason: 'o‘chirilgan post lentada qolmasligi kerak');
+  });
+
+  test('begona Reels o‘chirilmaydi', () async {
+    // Dilshod post joylaydi, Malika uni o'chirishga uriladi.
+    final mine = await repo.addPost(
+      'VIP001',
+      imageUrl: uploadedImage,
+      caption: 'Begona o‘chira olmasin',
+      agreed: true,
+    );
+
+    final other = Repo(Api(baseUrl: base));
+    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    await expectLater(
+      other.deletePost(int.parse(mine.id)),
+      throwsA(anything),
+      reason: 'begona odam o‘chira olmasligi kerak',
+    );
+
+    // Egasi esa o'chira oladi.
+    await repo.deletePost(int.parse(mine.id));
+  });
+
+  // ── KONTAKT QOLDIRISH ─────────────────────────────────────────
+
+  test('kontakt qoldirish — ism va aloqa SERVERDA tekshiriladi', () async {
+    final guest = Repo(Api(baseUrl: base));
+
+    // Ism yo'q — server rad etadi (mijozdagi tekshiruv bilan bir xil).
+    await expectLater(
+      guest.sendLead('VIP001', name: '', phone: '+998901112233'),
+      throwsA(anything),
+    );
+
+    // Aloqa kanali yo'q — u ham rad etiladi.
+    await expectLater(
+      guest.sendLead('VIP001', name: 'Sinov'),
+      throwsA(anything),
+    );
+  });
 }

@@ -187,6 +187,10 @@
     "Занят",
     "Taken"
   ],
+  "Band qilish": [
+    "Забронировать",
+    "Reserve"
+  ],
   "Band qilish muddati tugasa ID qaytadan sotuvga chiqadi": [
     "Если срок брони истечёт, ID снова поступит в продажу",
     "If the hold expires, the ID goes back on sale"
@@ -1383,6 +1387,10 @@
     "Имя не должно быть пустым.",
     "Name cannot be empty."
   ],
+  "Ism familiya": [
+    "Имя и фамилия",
+    "Full name"
+  ],
   "Ism va familiya": [
     "Имя и фамилия",
     "First and last name"
@@ -1655,6 +1663,10 @@
     "Нажмите на карту — откроется обратная сторона",
     "Tap the card — the back side opens"
   ],
+  "Kartani kim qabul qiladi": [
+    "Кто получит карту",
+    "Who will receive the card"
+  ],
   "Kartani o‘qing,": [
     "Читайте карту,",
     "Read your card,"
@@ -1778,6 +1790,10 @@
   "Keyinroq": [
     "Позже",
     "Later"
+  ],
+  "Kimdir band qildi. To‘lanmasa 24 soatda bo‘shaydi.": [
+    "Кто-то забронировал. Если не оплатят, освободится через 24 часа.",
+    "Someone reserved it. If unpaid, it frees up in 24 hours."
   ],
   "Kimdir sizga ID sovg‘a qilsa, u shu yerda ": [
     "Если вам подарят ID, он появится здесь и ",
@@ -4062,6 +4078,10 @@
   "VIP · BOSS · faqat harflar": [
     "VIP · BOSS · только буквы",
     "VIP · BOSS · letters only"
+  ],
+  "Vaqtincha band": [
+    "Временно занят",
+    "Temporarily reserved"
   ],
   "Veb-sayt": [
     "Веб-сайт",

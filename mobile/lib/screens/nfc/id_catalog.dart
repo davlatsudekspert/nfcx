@@ -57,6 +57,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
   /// KOD TEKSHIRISH (prototip: `.codecheck`).
   final _code = TextEditingController();
   Record? _found;
+  CodeQuote? _quote;
   bool _checked = false;
   bool _checking = false;
   String? _checkError;
@@ -88,29 +89,47 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
       _checking = true;
       _checkError = null;
     });
+    final repo = AppScope.read(context).repo;
+
+    // IKKI SAVOL, IKKI SO'ROV:
+    //   1) kod kimdadir bo'lsa — kimda? (`record`)
+    //   2) bo'sh bo'lsa — qanchaga? (`codeQuote`)
+    //
+    // Ilgari faqat birinchisi so'ralardi va bo'sh kod uchun
+    // "Topilmadi" chiqardi — holbuki aynan o'shani sotib olsa
+    // bo'lardi. Narx endi serverdan keladi (xarid oqimidagi o'sha
+    // manbadan), shuning uchun ko'rsatilgan summa to'lanadigan
+    // summa bilan bir xil.
+    Record? rec;
+    Object? recError;
     try {
-      final rec = await AppScope.read(context).repo.record(code);
-      if (!mounted) return;
-      setState(() {
-        _found = rec;
-        _checked = true;
-        _checking = false;
-      });
+      rec = await repo.record(code);
     } catch (e) {
-      if (!mounted) return;
-      // Topilmasa — katalogdagi bo'sh kodlar orasidan qidiramiz.
-      final free = (_all ?? const <Record>[])
-          .where((r) => r.code.toUpperCase() == code)
-          .toList();
-      setState(() {
-        _found = free.isEmpty ? null : free.first;
-        _checked = true;
-        _checking = false;
-        _checkError = free.isEmpty && !e.toString().contains('NOT_FOUND')
-            ? humanError(e)
-            : null;
-      });
+      recError = e;
     }
+
+    CodeQuote? quote;
+    if (rec == null) {
+      try {
+        quote = await repo.codeQuote(code);
+      } catch (_) {
+        // Narx kelmasa quyida oddiy "topilmadi" ko'rinadi.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _found = rec;
+      _quote = quote;
+      _checked = true;
+      _checking = false;
+      _checkError = rec == null &&
+              quote == null &&
+              recError != null &&
+              !recError.toString().contains('NOT_FOUND')
+          ? humanError(recError)
+          : null;
+    });
   }
 
   Future<void> _load({bool force = false}) async {
@@ -227,6 +246,7 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> {
                   child: _CheckResult(
                     code: _code.text.trim().toUpperCase(),
                     record: _found,
+                    quote: _quote,
                     owned: _found != null &&
                         AppScope.read(context).ownsRecord(_found!.code),
                   ),
@@ -491,16 +511,22 @@ class _CheckResult extends StatelessWidget {
   const _CheckResult({
     required this.code,
     required this.record,
+    required this.quote,
     required this.owned,
   });
 
   final String code;
   final Record? record;
+
+  /// Kod bo'sh bo'lsa — serverdan kelgan narx.
+  final CodeQuote? quote;
+
   final bool owned;
 
   @override
   Widget build(BuildContext context) {
     final rec = record;
+    final q = quote;
     final free = rec != null && rec.price > 0 && !rec.notForSale && !owned;
     final taken = rec != null && !free && !owned;
 
@@ -523,6 +549,30 @@ class _CheckResult extends StatelessWidget {
       sub = rec.name.isEmpty ? tr('Bu kod allaqachon sotilgan') : rec.name;
       action = tr('Profil');
       tap = () => push<void>(context, (_) => ProfileScreen(code: rec.code));
+    } else if (q != null && q.purchasable) {
+      // BO'SH KOD — narxi bilan. Aynan shu holat ilgari
+      // "Topilmadi" bo'lib chiqardi.
+      title = '${tr('Bo‘sh')} · ${TierStyle.of(TierStyle.parse(q.tier)).label}';
+      sub = '${tr('Narxi')}: ${som(q.amount)} ${tr('so‘m')}';
+      action = tr('Band qilish');
+      tap = () => push<void>(
+            context,
+            (_) => IdDetailScreen(
+              record: Record(
+                code: q.code,
+                name: '',
+                price: q.amount,
+                serverTier: q.tier,
+              ),
+            ),
+          );
+    } else if (q != null && q.reason == 'reserved_pending_payment') {
+      // Kimdir band qilgan, lekin hali to'lamagan — 24 soat
+      // ichida to'lanmasa yana bo'shaydi.
+      title = tr('Vaqtincha band');
+      sub = tr('Kimdir band qildi. To‘lanmasa 24 soatda bo‘shaydi.');
+      action = null;
+      tap = null;
     } else {
       title = tr('Topilmadi');
       sub = tr('Bu kod sotuvda yo‘q. Boshqa kodni sinab ko‘ring.');
@@ -535,7 +585,11 @@ class _CheckResult extends StatelessWidget {
       decoration: BoxDecoration(
         color: C.surface,
         borderRadius: BorderRadius.circular(R.card),
-        border: Border.all(color: free ? C.ok.withValues(alpha: .45) : C.line),
+        border: Border.all(
+          color: free || (q?.purchasable ?? false)
+              ? C.ok.withValues(alpha: .45)
+              : C.line,
+        ),
       ),
       child: Row(
         children: [
