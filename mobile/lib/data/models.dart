@@ -717,3 +717,82 @@ class DayHours {
         close: close ?? this.close,
       );
 }
+
+/// LENTA ELEMENTI — `/api/feed`.
+///
+/// NIMA UCHUN ALOHIDA MODEL: lenta `Post` emas. U ikki xil
+/// muallifni birlashtiradi (shaxsiy karta va kompaniya) va server
+/// shu sababli boshqa maydonlar qaytaradi: `authorKind`, `code`,
+/// `likeable`. Kompaniya postida yoqtirish jadvali yo'q, shuning
+/// uchun tugma umuman ko'rsatilmaydi — `likeable` aynan shuni
+/// aytadi va uni mijoz o'zi taxmin qilmaydi.
+class FeedItem {
+  const FeedItem({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.avatarUrl = '',
+    this.imageUrl = '',
+    this.videoUrl = '',
+    this.caption = '',
+    this.createdAt,
+    this.likes = 0,
+    this.liked = false,
+    this.likeable = false,
+    this.isCompany = false,
+  });
+
+  final int id;
+
+  /// Muallifning ochiq kodi — profilga o'tish uchun.
+  final String code;
+  final String name;
+  final String avatarUrl;
+  final String imageUrl;
+  final String videoUrl;
+  final String caption;
+  final DateTime? createdAt;
+  final int likes;
+  final bool liked;
+
+  /// Yoqtirish mumkinmi (kompaniya postida — yo'q).
+  final bool likeable;
+
+  /// Muallif kompaniyami: profilga o'tish yo'li boshqa.
+  final bool isCompany;
+
+  /// Ko'rsatiladigan media bormi.
+  bool get hasMedia => imageUrl.isNotEmpty || videoUrl.isNotEmpty;
+
+  static FeedItem fromJson(Map<String, dynamic> j) => FeedItem(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        code: (j['code'] ?? '').toString(),
+        name: (j['name'] ?? '').toString(),
+        avatarUrl: (j['avatarUrl'] ?? '').toString(),
+        imageUrl: (j['imageUrl'] ?? '').toString(),
+        videoUrl: (j['videoUrl'] ?? '').toString(),
+        caption: (j['caption'] ?? '').toString(),
+        createdAt: (j['createdAt'] is num)
+            ? DateTime.fromMillisecondsSinceEpoch((j['createdAt'] as num).toInt())
+            : null,
+        likes: (j['likeCount'] as num?)?.toInt() ?? 0,
+        liked: j['liked'] == true,
+        likeable: j['likeable'] == true,
+        isCompany: (j['authorKind'] ?? '').toString() == 'company',
+      );
+
+  FeedItem copyWith({int? likes, bool? liked}) => FeedItem(
+        id: id,
+        code: code,
+        name: name,
+        avatarUrl: avatarUrl,
+        imageUrl: imageUrl,
+        videoUrl: videoUrl,
+        caption: caption,
+        createdAt: createdAt,
+        likes: likes ?? this.likes,
+        liked: liked ?? this.liked,
+        likeable: likeable,
+        isCompany: isCompany,
+      );
+}

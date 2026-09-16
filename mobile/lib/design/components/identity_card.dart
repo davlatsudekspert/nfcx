@@ -272,16 +272,20 @@ class _CardShell extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(R.metalCard),
+        // SOYA PALITRADAN. Ilgari u shu yerda qotirilgan edi
+        // (qora, 44 blur, 26 dp pastga) va to'q fonda chuqurlik
+        // berardi. Yorug' fonda esa aynan o'sha qiymat kartaning
+        // ostida QORA PLITA bo'lib ko'rinardi — chekkasi aniq,
+        // rangi begona. Endi soya `C.metalShadow` dan keladi va u
+        // yorug'da yoyilib, siljishi kamayib, shaffoflashadi.
         boxShadow: [
-          const BoxShadow(
-            color: Color(0xD9000000),
-            blurRadius: 44,
-            spreadRadius: -20,
-            offset: Offset(0, 26),
-          ),
+          ...C.metalShadow,
+          // Tarif rangidagi nur — metall atrofiga tushgan aks.
+          // Yorug' fonda u ham kuchsizroq: aks holda karta atrofida
+          // rangli halqa paydo bo'ladi.
           if (style.hasMaterial)
             BoxShadow(
-              color: style.base.withValues(alpha: .38),
+              color: style.base.withValues(alpha: C.isLight ? .20 : .38),
               blurRadius: 30,
               spreadRadius: -10,
             ),

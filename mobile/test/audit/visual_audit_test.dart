@@ -203,7 +203,15 @@ void main() {
     await pumpScreen(t, const Shell(), state: s);
     await settle(t);
     // Do'kon tabi -> "NFC ID karta" -> buyurtma ekrani.
-    await t.tap(find.text(tr('Do‘kon')));
+    //
+    // AYNAN PASTKI PANELDAGISI. Bosh sahifada ham "Do'kon" degan
+    // tezkor amal bor (prototipdagi to'rt tugmadan biri), shuning
+    // uchun oddiy `find.text` ikkita element topadi va bosish
+    // muvaffaqiyatsiz tugaydi.
+    await t.tap(find.descendant(
+      of: find.byType(NavBar),
+      matching: find.text(tr('Do‘kon')),
+    ));
     await settle(t);
     await t.tap(find.text(tr('NFC ID karta')));
     await settle(t);
@@ -547,7 +555,7 @@ void main() {
   for (final p in Palette.all) {
     testWidgets('44 mavzu — ${p.id}', (t) async {
       C.apply(p);
-      addTearDown(() => C.apply(Palette.original));
+      addTearDown(() => C.apply(Palette.opal));
       final s = await ready();
       await pumpScreen(t, const NfcCenterScreen(), state: s);
       await golden(t, '44-mavzu-${p.id}');

@@ -129,7 +129,20 @@ class _FieldState extends State<Field> {
           ],
         ),
         const SizedBox(height: 7),
-        AnimatedContainer(
+        // BUTUN QUTI BOSILADI.
+        //
+        // `TextField` faqat matn qatorini egallaydi (~24 dp), quti esa
+        // 56 dp (ko'p qatorlida 104 dp). Ilgari qutining bo'sh qismiga
+        // bosilsa hech narsa bo'lmasdi — odam "input ishlamayapti" deb
+        // o'ylardi (jismoniy karta buyurtmasidagi "Manzil" va "Aloqa
+        // raqami" aynan shunday edi: klaviatura masalasi bilan birga).
+        // Endi qutining istalgan joyi fokus beradi; matnning o'zi
+        // bosilsa `TextField` avvalgidek o'zi ishlaydi (ichki widget
+        // arenada ustun).
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.enabled ? _focus.requestFocus : null,
+          child: AnimatedContainer(
           duration: M.fade,
           curve: M.curve,
           constraints: BoxConstraints(minHeight: multiline ? 104 : 56),
@@ -205,6 +218,7 @@ class _FieldState extends State<Field> {
                 widget.suffix!,
               ],
             ],
+          ),
           ),
         ),
         if (hasError) ...[
@@ -569,7 +583,11 @@ class Toggle extends StatelessWidget {
           width: 23,
           height: 23,
           decoration: BoxDecoration(
-            color: value ? const Color(0xFF17130A) : C.ink3,
+            // Yoqilgan holatda tugmacha URG'U YUZASIDA turadi,
+            // shuning uchun rangi `onAccent` — yorug' palitrada oq,
+            // to'qda quyuq. Qotirilgan qora yorug' palitrada ko'k
+            // yuzada "kuygan nuqta" bo'lib ko'rinardi.
+            color: value ? C.onAccent : C.ink3,
             shape: BoxShape.circle,
             boxShadow: C.e1,
           ),

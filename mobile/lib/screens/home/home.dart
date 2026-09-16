@@ -7,10 +7,12 @@ import '../../design/components/buttons.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/logo.dart';
+import '../../design/components/media.dart';
 import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/story_ring.dart';
+import '../shell.dart';
 import '../business/business_stats.dart';
 import '../business/edit_catalog.dart';
 import '../business/product_detail.dart';
@@ -26,13 +28,14 @@ import '../../state/app_state.dart';
 import '../../state/seen_stories.dart';
 import '../content/compose.dart';
 import '../content/story_viewer.dart';
+import '../content/report_sheet.dart';
+import '../identity/profile_screen.dart';
 import '../identity/switcher.dart';
+import '../nfc/gift_id.dart';
 import '../nfc/gift_offers.dart';
 import '../nfc/id_catalog.dart';
 import '../nfc/nfc_scan.dart';
-import '../nfc/order_card.dart';
 import '../nfc/qr_share.dart';
-import '../orders/my_orders.dart';
 
 /// BOSH SAHIFA — "men kimman va nima bo'lyapti".
 ///
@@ -57,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final SeenStories _seen = SeenStories();
 
   List<StoryFeedEntry> _stories = const [];
-  List<Order> _pending = const [];
 
   /// Egasining FAOL istoryasi bormi.
   ///
@@ -77,6 +79,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// buni "bu yerda mahsulot yo xizmatlari ko'rinishi kerak
   /// emasmi" deb ikki marta aytdi.
   List<Product> _items = const [];
+
+  /// LENTA — obuna bo'lingan profillarning postlari.
+  ///
+  /// PROTOTIPDA BOSH SAHIFANING PASTKI YARMI SHU. Ilgari bu yer
+  /// bo'sh edi: karta va tezkor amallardan keyin ekran tugardi va
+  /// qaytib kelish uchun sabab qolmasdi. Lenta — ilovani har kuni
+  /// ochadigan yagona narsa.
+  List<FeedItem> _feed = const [];
+
+  /// HAFTANING KOMPANIYASI — lentadan oldingi katta karta.
+  ///
+  /// Tasdiqlangan kompaniyalardan birinchisi. Kun bo'yi
+  /// o'zgarmasligi uchun sana bo'yicha tanlanadi: bir kunda bitta
+  /// kompaniya ko'rinadi va u tasodifan sakramaydi.
+  Company? _featured;
+
+  /// SALOMLASHUV OSTIDAGI QATOR — profil ko'rishlari.
+  ///
+  /// Prototipda bu yerda "bugun N kishi kartangizga tegdi" degan
+  /// jumla turibdi. Serverda KUNLIK tegishlar soni yo'q: faqat
+  /// profilning umumiy ko'rishlari bor (`Record.views`). Shuning
+  /// uchun raqam to'qilmadi — jumla borga moslandi. Nol bo'lsa
+  /// qator umuman chiqmaydi.
+  int _taps = 0;
 
   bool _loading = true;
   bool _loadedOnce = false;
@@ -151,9 +177,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       // yiqilishi mumkin (tarif, ruxsat, tarmoq) va bu butun Bosh
       // sahifani bo'sh qoldirmasligi kerak.
       //
-      // Lenta so'rovi ham OLIB TASHLANDI: boshqalarning postlari
-      // endi Reels tabida ko'rsatiladi, ya'ni Bosh sahifa ochilishi
-      // uchun bitta so'rov kam — ekran tezroq chiqadi.
       List<StoryFeedEntry> stories = const [];
       try {
         stories = await state.repo.storyFeed();
@@ -171,19 +194,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         } catch (_) {}
       }
 
-      // TUGALLANMAGAN TO'LOV vaqtga bog'liq: kod 24 soat band
-      // bo'lib turadi va shu muddatda to'lanmasa bekor qilinadi.
-      // Shuning uchun u Bosh sahifada ko'rinadi.
-      List<Order> pending = const [];
-      try {
-        pending = (await state.repo.orders()).where((o) => o.isPending).toList();
-      } catch (_) {}
 
       // KUTILAYOTGAN SOVG'A — tasdiqlanmasa ID o'tmaydi, ya'ni odam
       // o'ziga sovg'a qilingan ID borligini bilmay qoladi.
       var gifts = 0;
       try {
         gifts = (await state.repo.giftOffers()).incoming.length;
+      } catch (_) {}
+
+      // LENTA — prototipdagi Bosh sahifaning pastki yarmi.
+      //
+      // Birinchi sahifa yetarli: qolganini odam pastga surganda
+      // emas, Lentaning o'z ekranida ko'radi. Bosh sahifa —
+      // boshlanish nuqtasi, cheksiz ro'yxat emas.
+      List<FeedItem> feed = const [];
+      try {
+        feed = await state.repo.feed(limit: 6);
+      } catch (_) {}
+
+      // HAFTANING KOMPANIYASI.
+      //
+      // Tasodifiy emas, SANA bo'yicha: bir kun ichida bitta
+      // kompaniya ko'rinadi. Tasodifiy bo'lsa har yangilashda
+      // boshqa kompaniya chiqardi va ro'yxat "sakrab" turardi.
+      Company? featured;
+      try {
+        final all = (await state.repo.companies())
+            .where((c) => (c.coverUrl ?? '').isNotEmpty || (c.logoUrl ?? '').isNotEmpty)
+            .toList();
+        if (all.isNotEmpty) {
+          final day = DateTime.now();
+          final n = day.year * 1000 + day.month * 40 + day.day;
+          featured = all[n % all.length];
+        }
       } catch (_) {}
 
       // BIZNES KATALOGI — faqat biznes tanlangan bo'lsa.
@@ -197,9 +240,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         _stories = stories;
+        _taps = me?.record?.views ?? 0;
+        _feed = feed;
+        _featured = featured;
         _ownStory = ownStory;
         _items = items;
-        _pending = pending;
         _gifts = gifts;
         _loading = false;
         _loadedAt = DateTime.now();
@@ -209,6 +254,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  /// Lenta muallifining profilini ochish.
+  void _openFeedAuthor(FeedItem it) => push<void>(
+        context,
+        (_) => it.isCompany
+            ? ProfileScreen(companyId: it.code)
+            : ProfileScreen(code: it.code),
+      );
+
+  /// YURAK — DARHOL, SO'NG SERVER.
+  ///
+  /// Tugma bosilishi bilan holat o'zgaradi: tarmoqni kutish
+  /// "ishlamadi" degan taassurot qoldiradi. Server javobi kelgach
+  /// haqiqiy son ustiga yoziladi; xato bo'lsa holat qaytariladi.
+  Future<void> _likeFeed(int i) async {
+    final before = _feed[i];
+    setState(() {
+      _feed = [..._feed]..[i] = before.copyWith(
+          liked: !before.liked,
+          likes: before.likes + (before.liked ? -1 : 1),
+        );
+    });
+    try {
+      final r = await AppScope.read(context).repo.likePost(before.id);
+      if (!mounted) return;
+      setState(() {
+        _feed = [..._feed]..[i] =
+            _feed[i].copyWith(liked: r.liked, likes: r.count);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _feed = [..._feed]..[i] = before);
     }
   }
 
@@ -263,9 +342,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             slivers: [
               SliverToBoxAdapter(
                 child: _Header(
-                  identity: active,
-                  hasStory: _ownStory,
-                  onTap: () => showIdentitySwitcher(context),
+                  onSearch: () => Shell.goTab(context, 1),
+                  onBell: _gifts > 0
+                      ? () => push<void>(context, (_) => const GiftOffersScreen())
+                      : null,
+                  badge: _gifts,
                 ),
               ),
 
@@ -273,21 +354,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, 0),
-                  // MARKAZGA — avatar o'rtada bo'lgach, chapga
-                  // tekislangan matn undan "qochib" ketardi va
-                  // ekran muvozanatini buzardi.
+                  // CHAPGA — PROTOTIPDAGIDEK.
+                  //
+                  // Markazlashtirish katta avatar ostida mantiqli
+                  // edi. Avatar olingach, markazdagi matn ekranni
+                  // "afisha" qilib qo'yadi: o'qish chapdan
+                  // boshlanadi va sarlavha ham shu yerdan
+                  // boshlanishi kerak.
+                  // PROTOTIPDA: "Salom, <ism>" va ostida BITTA
+                  // jonli qator. Shahar va sana olib tashlandi —
+                  // ular hech qanday qaror qabul qilishga yordam
+                  // bermaydi, faqat joy egallaydi. O'rniga odam
+                  // uchun qimmatli yagona raqam: kartasiga necha
+                  // marta tegishgani.
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Eyebrow(
-                        [
-                          if ((active?.record?.city ?? '').isNotEmpty)
-                            active!.record!.city,
-                          monthDay(DateTime.now()),
-                        ].join(' · '),
-                      ),
-                      const SizedBox(height: 6),
                       _Greeting(name: firstName),
+                      if (_taps > 0) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          trf('Profilingiz {n} marta ko‘rildi', {'n': som(_taps)}),
+                          style: T.body.copyWith(fontSize: 13.5),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -303,6 +393,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     unseen: _seen.hasUnseen,
                     onAdd: active == null ? null : () => _addStory(active.code),
                     onOpen: _openStory,
+                    ownAvatarUrl: active?.avatarUrl,
+                    ownHasStory: _ownStory,
+                    onOwnLongPress: () => showIdentitySwitcher(context),
                   ),
                 ),
               ),
@@ -317,7 +410,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       S.gutter,
                       0,
                     ),
-                    child: _ActiveCard(identity: active),
+                    child: _ActiveCard(
+                      identity: active,
+                      onTap: () => showIdentitySwitcher(context),
+                    ),
                   ),
                 ),
 
@@ -417,74 +513,103 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ],
 
-              // OGOHLANTIRISHLAR — kutilayotgan to'lov va sovg'a.
-              if (_pending.isNotEmpty || _gifts > 0)
+              // OGOHLANTIRISHLAR BOSH SAHIFADA EMAS.
+              //
+              // Prototipda Bosh sahifa: sarlavha → story → karta →
+              // tezkor amallar → kompaniya → lenta. Boshqa hech
+              // narsa yo'q, va bu ataylab: har qo'shilgan karta
+              // ekranni "boshqaruv paneli" tomonga suradi.
+              //
+              // Ma'lumot YO'QOLMADI. Tugallanmagan to'lov —
+              // "Buyurtmalarim" da (u yerda holat va muddat ham
+              // bor), kelgan sovg'a esa tepadagi qo'ng'iroq
+              // belgisida sanoq bilan turibdi va bosilsa sovg'a
+              // takliflarini ochadi.
+
+              // ── HAFTANING KOMPANIYASI ────────────────────
+              //
+              // PROTOTIPDA BOSH SAHIFA SHU YERDAN BURILADI: tepasi
+              // egasi haqida, pastki yarmi boshqalar haqida. Katta
+              // rasm bu burilishni ko'z bilan ko'rsatadi va ekran
+              // "shaxsiy kabinet" bo'lib qolmaydi.
+              if (_featured != null) ...[
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       S.gutter,
-                      S.x16,
+                      S.x24,
                       S.gutter,
-                      0,
+                      S.x12,
                     ),
-                    child: Column(
-                      children: [
-                        if (_pending.isNotEmpty)
-                          _Notice(
-                            icon: Ico.clock,
-                            tone: StatusTone.pending,
-                            title: tr('To‘lov tugallanmagan'),
-                            message: trf(
-                              '{code} kodi band qilingan. To‘lov tasdiqlanmasa, '
-                              'kod boshqa odamga o‘tadi.',
-                              {'code': _pending.first.code},
-                            ),
-                            actionLabel: tr('Davom etish'),
-                            onAction: () => push<void>(
-                              context,
-                              (_) => const MyOrdersScreen(),
-                            ),
-                          ),
-                        if (_pending.isNotEmpty && _gifts > 0)
-                          const SizedBox(height: S.x8),
-                        if (_gifts > 0)
-                          _Notice(
-                            icon: Ico.gift,
-                            tone: StatusTone.accent,
-                            title: tr('Sizga ID sovg‘a qilindi'),
-                            message: tr(
-                              'Qabul qilmaguningizcha ID sizga o‘tmaydi.',
-                            ),
-                            actionLabel: tr('Ko‘rish'),
-                            onAction: () async {
-                              await push<void>(
-                                context,
-                                (_) => const GiftOffersScreen(),
-                              );
-                              if (mounted) await _load(force: true);
-                            },
-                          ),
-                      ],
+                    child: SectionHeader(
+                      tr('Haftaning kompaniyasi'),
+                      actionLabel: tr('Hammasi'),
+                      onAction: () => Shell.goTab(context, 1),
                     ),
                   ),
                 ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                    child: _FeaturedCompany(
+                      company: _featured!,
+                      onTap: () => push<void>(
+                        context,
+                        (_) => ProfileScreen(companyId: _featured!.id),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
 
-              // BOSHQALARNING POSTLARI BU YERDA EMAS.
+              // ── LENTA ────────────────────────────────────
               //
-              // Egasi: "nega kerak bosh sahifaga boshqalarning
-              // postlari, unga alohida Reels bor-ku". To'g'ri
-              // e'tiroz: bir xil kontent ikki joyda ko'rsatilardi
-              // va Bosh sahifa Reels'ning qisqartirilgan nusxasiga
-              // aylanib qolgandi.
-              //
-              // Endi Bosh sahifa — EGASINING joyi: o'z kartasi, tez
-              // amallar, kutilayotgan to'lov va sovg'a, obuna
-              // bo'lganlarning istoryalari. Boshqalarning postlari
-              // esa Reels tabida, o'z ekranida, to'liq kattalikda.
-              //
-              // Yoqtirish, menyu va o'chirish mantig'i ham shu
-              // bilan birga olib tashlandi — Reels o'zinikini
-              // ishlatadi. O'lik kod qoldirilmadi.
+              // Obuna bo'lingan profillarning postlari. Egasi
+              // ilgari "nega kerak bosh sahifaga boshqalarning
+              // postlari" degan edi va lenta olib tashlangandi —
+              // lekin o'shanda u REELS nusxasi edi. Prototipda esa
+              // lenta boshqa narsa: to'liq ekran video emas, rasmli
+              // KARTA, izohi va yuragi bilan. Ikkisi bir-birini
+              // takrorlamaydi.
+              if (_feed.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      S.gutter,
+                      S.x24,
+                      S.gutter,
+                      S.x12,
+                    ),
+                    child: SectionHeader(
+                      tr('Lenta'),
+                      actionLabel: tr('Hammasi'),
+                      onAction: () => Shell.goTab(context, 1),
+                    ),
+                  ),
+                ),
+                SliverList.separated(
+                  itemCount: _feed.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: S.x12),
+                  itemBuilder: (context, i) {
+                    final it = _feed[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                      child: _FeedCard(
+                        item: it,
+                        onOpen: () => _openFeedAuthor(it),
+                        onLike: it.likeable ? () => _likeFeed(i) : null,
+                        onMore: () => showReportSheet(
+                          context,
+                          targetKind: 'post',
+                          targetId: '${it.id}',
+                          ownerCode: it.code,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+
               SliverToBoxAdapter(
                 child: SizedBox(height: NavBar.inset(context)),
               ),
@@ -500,64 +625,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 // TEPA QATOR
 // ─────────────────────────────────────────────────────────────
 
+/// YUQORI PANEL — PROTOTIPDAGI IXCHAM QATOR.
+///
+/// NIMA UCHUN AVATAR OLIB TASHLANDI: ilgari bu yerda 124 dp li
+/// dumaloq avatar ekranning butun tepasini egallardi. Prototipda
+/// esa tepa BO'SH qoldiriladi va ekranning qahramoni pastdagi
+/// METALL KARTA bo'ladi — ikkita katta dumaloq/to'rtburchak
+/// bir-biri bilan raqobatlashmasin. Avatar yo'qolmadi: u story
+/// qatorining birinchi elementida ("Sizning story") turadi va
+/// bosilganda shaxs almashtirgichni ochadi.
+///
+/// Chapda brend, o'ngda ikkita amal: qidiruv va bildirishnoma.
 class _Header extends StatelessWidget {
-  const _Header({this.identity, this.hasStory = false, this.onTap});
+  const _Header({this.onSearch, this.onBell, this.badge = 0});
 
-  final Identity? identity;
+  final VoidCallback? onSearch;
+  final VoidCallback? onBell;
 
-  /// Egasining FAOL istoryasi bormi — halqa shunga qarab aylanadi.
-  final bool hasStory;
-
-  final VoidCallback? onTap;
+  /// O'qilmagan sovg'a takliflari soni — 0 bo'lsa belgi yo'q.
+  final int badge;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x12, S.gutter, 0),
-        child: Column(
+        child: Row(
           children: [
-            // BRAND — endi yolg'iz, o'rtada.
-            //
-            // Ilgari bu qatorda IKKI CHETDA ikkita dumaloq turardi:
-            // chapda brend belgisi, o'ngda kichkina avatar. Egasi:
-            // "ikki tomonda tepada dumaloq bo'p qolyapti, avatar
-            // o'rtada bo'lsin, chiroyli". Haq edi — ikkita teng
-            // og'irlikdagi dumaloq bir-biri bilan raqobatlashardi
-            // va ko'z hech qaysisida to'xtamasdi.
-            // BREND — FAQAT YOZUV, medalyonsiz.
-            //
-            // Avval bu yerda brend medalyoni ham turardi. Lekin
-            // pastda endi katta avatar bor va ikkita doira yana
-            // bir-biri bilan raqobatlashardi — egasi aynan shundan
-            // shikoyat qilgan edi. Yozuvning o'zi brendni
-            // ko'rsatishga yetarli, yagona doira esa avatar
-            // bo'lib qoladi va ko'z to'g'ri joyda to'xtaydi.
-            const Wordmark(),
-
-            const SizedBox(height: S.x20),
-
-            // AVATAR — EKRANNING MARKAZI.
-            //
-            // Katta, o'rtada va atrofida istorya halqasi. Halqa
-            // ma'no tashiydi: egasining faol istoryasi bo'lsa oltin
-            // va AYLANADI, bo'lmasa so'ngan. Bu qoida butun ilovada
-            // bir xil (`StoryRing`), shuning uchun bu yerda qayta
-            // chizilmadi.
-            //
-            // Bosilsa shaxs tanlanadi: bir nechta ID va biznes
-            // profil egasi uchun eng tez yo'l shu.
-            StoryRing(
-              avatarUrl: identity?.avatarUrl,
-              name: identity?.name ?? '',
-              // Egasi: "avatarni sal kattaroq qilsak-da".
-              size: 124,
-              seen: !hasStory,
-              showLabel: false,
-              onTap: onTap,
-            ),
+            const Wordmark(size: 12),
+            const Spacer(),
+            RoundButton(Ico.search, onTap: onSearch, size: 40),
+            const SizedBox(width: S.x8),
+            RoundButton(Ico.bell, onTap: onBell, size: 40, badge: badge),
           ],
         ),
       );
 }
+
 /// "Assalom, *Dilshod*" — kursiv urg'u so'zi oltin rangda.
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.name});
@@ -567,18 +669,12 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (name.isEmpty) {
-      return Text(
-        tr('Assalomu alaykum'),
-        style: T.title,
-        textAlign: TextAlign.center,
-      );
+      return Text(tr('Salom'), style: T.title);
     }
-    // Avatar markazda bo'lgani uchun matn ham markazda —
-    // aks holda ekran bir tomonga og'ib ko'rinardi.
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: '${tr('Assalomu alaykum')}, ', style: T.title),
+          TextSpan(text: '${tr('Salom')}, ', style: T.title),
           TextSpan(
             text: name,
             style: T.title.copyWith(
@@ -590,7 +686,6 @@ class _Greeting extends StatelessWidget {
       ),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
     );
   }
 }
@@ -606,6 +701,9 @@ class _StoryStrip extends StatelessWidget {
     required this.unseen,
     required this.onAdd,
     required this.onOpen,
+    this.ownAvatarUrl,
+    this.ownHasStory = false,
+    this.onOwnLongPress,
   });
 
   final List<StoryFeedEntry> entries;
@@ -617,6 +715,18 @@ class _StoryStrip extends StatelessWidget {
 
   final VoidCallback? onAdd;
   final ValueChanged<StoryFeedEntry> onOpen;
+
+  /// EGASINING O'ZI — qatorning birinchi elementi.
+  ///
+  /// Yuqoridagi katta avatar olib tashlangach, egasining surati
+  /// shu yerda qoldi: prototipdagi "Sizning story" elementi.
+  /// Halqasi ham ma'no tashiydi — faol istoryasi bo'lsa yonadi.
+  final String? ownAvatarUrl;
+  final bool ownHasStory;
+
+  /// Uzoq bosilsa shaxs almashtirgich ochiladi — bir nechta ID
+  /// egasi uchun eng qisqa yo'l.
+  final VoidCallback? onOwnLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -631,7 +741,13 @@ class _StoryStrip extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: S.x12),
         itemBuilder: (context, i) {
           if (i == 0) {
-            return StoryRing(addButton: true, onTap: onAdd);
+            return StoryRing(
+              avatarUrl: ownAvatarUrl,
+              addButton: true,
+              seen: !ownHasStory,
+              onTap: onAdd,
+              onLongPress: onOwnLongPress,
+            );
           }
           final e = entries[i - 1];
           return StoryRing(
@@ -653,9 +769,14 @@ class _StoryStrip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 
 class _ActiveCard extends StatelessWidget {
-  const _ActiveCard({required this.identity});
+  const _ActiveCard({required this.identity, this.onTap});
 
   final Identity identity;
+
+  /// Karta — ekranning qahramoni, shuning uchun u BOSILADI:
+  /// shaxs almashtirgichni ochadi. Ilgari bu amal faqat tepadagi
+  /// katta avatarda edi; avatar olingach, uni karta oldi.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -680,6 +801,7 @@ class _ActiveCard extends StatelessWidget {
       child: FractionallySizedBox(
         widthFactor: .88,
         child: IdentityCard(
+          onTap: onTap,
           code: identity.code,
           tier: tier,
           holder: identity.name,
@@ -799,12 +921,23 @@ class _QuickActions extends StatelessWidget {
         const SizedBox(width: S.x8),
         Expanded(
           child: _ActionTile(
-            icon: Ico.card,
-            label: tr('Karta'),
+            icon: Ico.bag,
+            label: tr('Do‘kon'),
+            // DO'KON TABIGA — yangi ekran ochilmaydi. Prototipdagi
+            // tezkor amal aynan tabga olib boradi: pastki panelda
+            // ham "Do'kon" tanlangan bo'lib turadi.
+            onTap: () => Shell.goTab(context, 3),
+          ),
+        ),
+        const SizedBox(width: S.x8),
+        Expanded(
+          child: _ActionTile(
+            icon: Ico.gift,
+            label: tr('Sovg‘a'),
             onTap: () => push<void>(
               context,
               (_) => record != null
-                  ? OrderCardScreen(record: record)
+                  ? GiftIdScreen(record: record)
                   : const IdCatalogScreen(),
             ),
           ),
@@ -827,8 +960,15 @@ class _ActionTile extends StatelessWidget {
         minSize: 0,
         scale: .96,
         child: Container(
-          height: 76,
-          padding: const EdgeInsets.symmetric(horizontal: S.x8),
+          // TO'RT USTUN — YOZUV IKKI QATORGA SIG'ADI.
+          //
+          // Prototipda tezkor amallar to'rtta va ustun tor. Bitta
+          // qatorda "Skanerlash" sig'maydi va "Skanerla…" bo'lib
+          // qisqaradi — qisqargan yozuv nima qilishini aytmaydi.
+          // Shuning uchun balandlik oshirildi va yozuv ikki
+          // qatorga chiqadi.
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
             gradient: C.raisedSurface,
             borderRadius: BorderRadius.circular(R.tile),
@@ -838,15 +978,16 @@ class _ActionTile extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              NIcon(icon, size: 21, color: onTap == null ? C.ink3 : C.accent),
-              const SizedBox(height: 8),
+              NIcon(icon, size: 20, color: onTap == null ? C.ink3 : C.accent),
+              const SizedBox(height: 7),
               Text(
                 label,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: T.buttonSm.copyWith(
-                  fontSize: 12.5,
+                  fontSize: 11.5,
+                  height: 1.2,
                   color: onTap == null ? C.ink3 : C.ink,
                 ),
               ),
@@ -860,77 +1001,6 @@ class _ActionTile extends StatelessWidget {
 // OGOHLANTIRISH KARTASI
 // ─────────────────────────────────────────────────────────────
 
-class _Notice extends StatelessWidget {
-  const _Notice({
-    required this.icon,
-    required this.tone,
-    required this.title,
-    required this.message,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  final Ico icon;
-  final StatusTone tone;
-  final String title;
-  final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  Color get _tint => switch (tone) {
-        StatusTone.pending => C.warn,
-        StatusTone.fail => C.fail,
-        StatusTone.ok => C.ok,
-        _ => C.accent,
-      };
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: const EdgeInsets.all(S.x16),
-        border: Border.all(color: _tint.withValues(alpha: .3)),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: _tint.withValues(alpha: .14),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: NIcon(icon, size: 17, color: _tint),
-            ),
-            const SizedBox(width: S.x12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: T.cardTitle),
-                  const SizedBox(height: 4),
-                  Text(
-                    message,
-                    style: T.caption.copyWith(fontSize: 12.5),
-                  ),
-                  const SizedBox(height: S.x12),
-                  GhostButton(
-                    actionLabel,
-                    size: BtnSize.s,
-                    color: _tint,
-                    onTap: onAction,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-/// LAYK TUGMASI — 220 ms spring bilan 1 → 1.25 → 1.
-///
-/// Dizayn shuni aniq belgilaydi. Kichik detal, lekin aynan shu
-/// harakat bosishni "sezilarli" qiladi.
 class LikeButton extends StatefulWidget {
   const LikeButton({
     super.key,
@@ -1014,4 +1084,256 @@ class _LikeButtonState extends State<LikeButton>
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// HAFTANING KOMPANIYASI
+// ─────────────────────────────────────────────────────────────
+
+/// KATTA MEDIA KARTA — prototipdagi "hero".
+///
+/// NIMA UCHUN KERAK: Bosh sahifaning yuqori yarmi o'z kartasi va
+/// amallar bilan band — hammasi EGASI haqida. Pastki yarmi esa
+/// boshqalar haqida bo'lishi kerak, aks holda ilova "shaxsiy
+/// kabinet" bo'lib qoladi va qaytib kelishga sabab qolmaydi.
+/// Katta rasm shu burilishni ko'z bilan ko'rsatadi.
+class _FeaturedCompany extends StatelessWidget {
+  const _FeaturedCompany({required this.company, this.onTap});
+
+  final Company company;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = (company.coverUrl ?? '').isNotEmpty
+        ? company.coverUrl!
+        : (company.logoUrl ?? '');
+    // META — shahar va holat. Kompaniya modelida soha nomi yo'q
+    // (server uni `/api/companies` da qaytarmaydi), shuning uchun
+    // taxmin qilinmaydi: bor narsa ko'rsatiladi.
+    final meta = [
+      if (company.city.isNotEmpty) company.city,
+      if (company.isOpen == true) tr('Ochiq'),
+    ].join(' · ');
+
+    return Press(
+      onTap: onTap,
+      minSize: 0,
+      scale: .985,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(R.hero),
+        child: AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (media.isNotEmpty)
+                NetImage(media, fit: BoxFit.cover)
+              else
+                DecoratedBox(decoration: BoxDecoration(gradient: C.raisedSurface)),
+
+              // MATN O'QILISHI UCHUN PASTDAN QORAYTIRISH.
+              // Rasm har xil bo'ladi — och rasm ustida oq yozuv
+              // yo'qoladi, shuning uchun scrim RASMGA emas,
+              // kartaga bog'langan va doim bor.
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x00000000),
+                      Color(0x33000000),
+                      Color(0xCC000000),
+                    ],
+                    stops: [.35, .6, 1],
+                  ),
+                ),
+              ),
+
+              if (company.verified)
+                Positioned(
+                  left: S.x12,
+                  top: S.x12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: S.x12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x38FFFFFF),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0x40FFFFFF)),
+                    ),
+                    child: Text(
+                      tr('Admin tasdiqlagan'),
+                      style: T.meta.copyWith(color: C.onDark, fontSize: 11.5),
+                    ),
+                  ),
+                ),
+
+              Positioned(
+                left: S.x16,
+                right: S.x16,
+                bottom: S.x16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (meta.isNotEmpty)
+                      Text(
+                        meta.toUpperCase(),
+                        style: T.meta.copyWith(
+                          color: C.onDark2,
+                          letterSpacing: 1.4,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      company.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.cardTitle.copyWith(
+                        fontFamily: 'PlayfairDisplay',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: C.onDark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        company.id.toUpperCase(),
+                        if (company.hoursLabel.isNotEmpty) company.hoursLabel,
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.caption.copyWith(color: C.onDark2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// LENTA KARTASI
+// ─────────────────────────────────────────────────────────────
+
+/// Bitta post — muallif, media, amallar, izoh.
+///
+/// MEDIA TO'LIQ KENGLIKDA: prototipda rasm kartaning ichida emas,
+/// KARTANING O'ZI. Chekkasidan joy qoldirilsa, lenta "jadval"
+/// bo'lib ko'rinadi va rasm kuchini yo'qotadi.
+class _FeedCard extends StatelessWidget {
+  const _FeedCard({required this.item, this.onOpen, this.onLike, this.onMore});
+
+  final FeedItem item;
+  final VoidCallback? onOpen;
+  final VoidCallback? onLike;
+  final VoidCallback? onMore;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          gradient: C.raisedSurface,
+          borderRadius: BorderRadius.circular(R.card),
+          border: Border.all(color: C.line),
+          boxShadow: C.e1,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(S.x12, S.x12, S.x8, S.x12),
+              child: Row(
+                children: [
+                  StoryRing(
+                    avatarUrl: item.avatarUrl.isEmpty ? null : item.avatarUrl,
+                    name: item.name,
+                    size: 36,
+                    seen: true,
+                    showLabel: false,
+                    onTap: onOpen,
+                  ),
+                  const SizedBox(width: S.x12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: T.cardTitle.copyWith(fontSize: 14),
+                        ),
+                        Text(
+                          [
+                            item.code,
+                            if (item.createdAt != null) ago(item.createdAt),
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: T.caption.copyWith(fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  RoundButton(Ico.more, onTap: onMore, size: 36, iconSize: 16),
+                ],
+              ),
+            ),
+            if (item.hasMedia)
+              Press(
+                onTap: onOpen,
+                minSize: 0,
+                scale: .995,
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: item.imageUrl.isNotEmpty
+                      ? NetImage(item.imageUrl, fit: BoxFit.cover)
+                      : DecoratedBox(
+                          decoration: BoxDecoration(gradient: C.raisedSurface),
+                          child: Center(
+                            child: NIcon(Ico.play, size: 34, color: C.ink2),
+                          ),
+                        ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(S.x12, S.x12, S.x12, S.x12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.likeable)
+                    Row(
+                      children: [
+                        LikeButton(
+                          liked: item.liked,
+                          count: item.likes,
+                          onTap: onLike ?? () {},
+                        ),
+                      ],
+                    ),
+                  if (item.caption.isNotEmpty) ...[
+                    if (item.likeable) const SizedBox(height: S.x8),
+                    Text(
+                      item.caption,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.body.copyWith(fontSize: 14, color: C.ink),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }

@@ -99,13 +99,17 @@ class _IdCatalogScreenState extends State<IdCatalogScreen> with CodeSearch {
 
   /// SOTIB OLISH MUMKIN BO'LGAN KODLAR.
   ///
-  /// Narxi bo'lmagan (bepul, sovg'a, sotuvda emas) va allaqachon
-  /// o'zimizga tegishli kodlar chiqarib tashlanadi.
+  /// Narxi bo'lmagan (bepul, sovg'a, sotuvda emas), EGASI BOR (ismi
+  /// yozilgan — katalogda bu birovning profili) va allaqachon
+  /// o'zimizga tegishli kodlar chiqarib tashlanadi. Ism tekshiruvi
+  /// avval yo'q edi: narxi bor har qanday profil "bo'sh kod" deb
+  /// ro'yxatga tushar va xarid ekraniga olib borardi.
   List<Record> _available(Tier tier) {
     final state = AppScope.read(context);
     return [
       for (final r in _all ?? const <Record>[])
         if (r.tier == tier &&
+            r.name.trim().isEmpty &&
             r.price > 0 &&
             !r.notForSale &&
             !state.ownsRecord(r.code))

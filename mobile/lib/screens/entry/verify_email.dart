@@ -38,12 +38,18 @@ class VerifyEmailScreen extends StatefulWidget {
     required this.phone,
     required this.password,
     required this.name,
+    this.wantsBusiness = false,
   });
 
   final String email;
   final String phone;
   final String password;
   final String name;
+
+  /// Ro'yxatdan o'tishning BIRINCHI qadamida "Kompaniya profili"
+  /// tanlanganmi. Server hisob turini bilmaydi — bu bayroq faqat
+  /// tasdiqlashdan keyingi yo'lni belgilaydi.
+  final bool wantsBusiness;
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
@@ -175,6 +181,17 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       // hisob, keyin kompaniya. Shuning uchun bu savol hisob
       // turini emas, KEYINGI QADAMNI hal qiladi — soxta tanlov
       // ko'rsatmaymiz.
+      // TUR ALLAQACHON TANLANGAN BO'LSA, QAYTA SO'RALMAYDI.
+      //
+      // Ro'yxatdan o'tish endi profil turidan boshlanadi (saytdagi
+      // tartib). Shu sababli bu yerda savol faqat tur noma'lum
+      // bo'lganda chiqadi — masalan sovg'a kartasi orqali kelgan
+      // oqimda.
+      if (widget.wantsBusiness) {
+        if (!mounted) return;
+        await push<void>(context, (_) => const CreateCompanyScreen());
+        return;
+      }
       if (!mounted) return;
       final wantsBusiness = await showSheet<bool>(
         context,

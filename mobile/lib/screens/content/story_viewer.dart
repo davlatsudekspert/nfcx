@@ -550,7 +550,7 @@ class _Segment extends StatelessWidget {
             const Positioned.fill(child: ColoredBox(color: Color(0x4DFFFFFF))),
             FractionallySizedBox(
               widthFactor: fill.clamp(0.0, 1.0),
-              child: const ColoredBox(color: C.ink),
+              child: ColoredBox(color: C.ink),
             ),
           ],
         ),

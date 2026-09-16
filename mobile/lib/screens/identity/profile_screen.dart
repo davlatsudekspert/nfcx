@@ -1127,12 +1127,21 @@ class _BrandCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: const BoxDecoration(
+        // MUQOVA PALITRADAN OLINADI. Ilgari bu yerda eski to'q
+        // jigarrang qiymatlar qotirilgan edi: yorug' palitrada
+        // ekranning tepasida begona quyuq blok bo'lib turardi.
+        // Endi u yuza ranglaridan quriladi va har palitrada
+        // "brend foni" bo'lib ko'rinadi.
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF241D11), Color(0xFF13100A), Color(0xFF0B0907)],
-            stops: [0, .55, 1],
+            colors: [
+              C.surfaceHigh,
+              Color.lerp(C.surfaceHigh, C.accent, C.isLight ? .10 : .06)!,
+              C.surface,
+            ],
+            stops: const [0, .55, 1],
           ),
         ),
         child: Stack(

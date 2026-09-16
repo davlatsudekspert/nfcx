@@ -249,13 +249,37 @@ class _PaletteRow extends StatelessWidget {
         shadow: C.e1,
         child: Row(
           children: [
+            // NAMUNA IKKI QISMDAN: FON + URG'U.
+            //
+            // Ilgari bu yerda faqat urg'u rangi turardi. Endi
+            // palitralarning YARMI yorug', yarmi to'q: faqat urg'uga
+            // qarab "Opal" (oq fon, ko'k urg'u) va "Tun" (to'q fon,
+            // och ko'k urg'u) deyarli bir xil ko'rinardi. Shuning
+            // uchun doira palitraning FON rangi bilan to'ldiriladi,
+            // ichida esa urg'u diski turadi — odam bosishdan oldin
+            // ekran qanday bo'lishini ko'radi.
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: _face,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [palette.baseTop, palette.baseBottom],
+                ),
                 shape: BoxShape.circle,
-                border: Border.all(color: C.lineCool),
+                border: Border.all(
+                  color: palette.ink.withValues(alpha: .18),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  gradient: _face,
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
             const SizedBox(width: S.x12),

@@ -319,27 +319,57 @@ void main() {
   fieldLineTests();
 
   group('Dizayn tokenlari', () {
-    test('ranglar SAYTDAGI biznes profil bilan bir xil', () {
-      // Bu qiymatlar endi dizayn hujjatidan EMAS, saytning o‘zidan:
-      // `src/company-system.css` dagi `.qp-page` bloki
-      // (nfcstore.uz/c/:id). Manba ataylab almashtirildi.
+    test('standart palitra — Opal, va u YORUG\'', () {
+      // DIZAYN V2: standart mavzu endi yorug\' (Opal). Ilgari bu
+      // yerda saytdagi to\'q-oltin qiymatlar tekshirilardi; egasi
+      // prototipni tanlagach, manba prototipga ko\'chdi.
       //
-      // NIMA UCHUN. Egasi: "yumshoqlik, mayinlik, boylik
-      // ko‘rinmayapti, ranglar ham — saytdagi ranglarga e’tibor
-      // ber". Solishtirganda ikkita farq chiqdi: ilovadagi oltin
-      // oqargan edi (`#E8CFA0` — deyarli bej), saytdagisi esa
-      // to‘yingan (`#E6C36A`); fon esa loyqa jigarrang edi
-      // (`#0A0805` va ustida 30% nur), saytda deyarli qora
-      // (`#060504`, nur atigi 10%).
-      //
-      // Ikkovi bir manbadan bo‘lgani uchun sayt va ilova endi bir
-      // xil metalldan ko‘rinadi. Bu qiymatlar o‘zgarsa — avval
-      // saytda o‘zgarsin, keyin shu yerda.
-      expect(C.bg, const Color(0xFF060504));
-      expect(C.accent, const Color(0xFFE6C36A));
-      expect(C.platinum, const Color(0xFFC9CCD2));
-      expect(C.ok, const Color(0xFF63D694));
-      expect(C.fail, const Color(0xFFE2685F));
+      // Bu test rang "chiroyli"ligini emas, TIZIM butunligini
+      // tekshiradi: yorug\' palitrada matn fondan quyuq bo\'lishi
+      // kerak. Bu shart buzilsa, ekranda oq ustiga oq yoziladi va
+      // uni faqat kadrni ko\'rib aniqlash mumkin bo\'lardi.
+      expect(C.palette.id, 'opal');
+      expect(C.isLight, isTrue);
+      expect(C.bg, const Color(0xFFF2F4F7));
+      expect(C.accent, const Color(0xFF3A62CC));
+
+      double lum(Color c) =>
+          .2126 * c.r + .7152 * c.g + .0722 * c.b;
+      expect(lum(C.ink), lessThan(lum(C.bg)),
+          reason: 'yorug\' palitrada asosiy matn fondan quyuq bo\'lsin');
+      expect(lum(C.ink2), lessThan(lum(C.bg)));
+    });
+
+    test('har palitrada matn fon bilan qarama-qarshi', () {
+      // TO\'RT PALITRA — IKKITASI YORUG\', IKKITASI TO\'Q. Yangi
+      // palitra qo\'shilganda eng oson yo\'qotiladigan narsa shu:
+      // matn rangini fon bilan birga almashtirishni unutish.
+      // Shuning uchun tekshiruv palitralar ro\'yxati bo\'yicha
+      // aylanadi va yangisi qo\'shilsa o\'zi qamrab oladi.
+      double lum(Color c) => .2126 * c.r + .7152 * c.g + .0722 * c.b;
+      for (final p in Palette.all) {
+        final bgL = lum(p.baseBottom);
+        final inkL = lum(p.ink);
+        if (p.light) {
+          expect(inkL, lessThan(bgL), reason: '${p.id}: matn quyuq bo\'lsin');
+        } else {
+          expect(inkL, greaterThan(bgL), reason: '${p.id}: matn yorug\' bo\'lsin');
+        }
+        // Urg\'u yuzasidagi matn ham qarama-qarshi bo\'lsin.
+        expect((lum(p.onAccent) - lum(p.accent)).abs(), greaterThan(.25),
+            reason: '${p.id}: urg\'u ustidagi matn o\'qilsin');
+      }
+    });
+
+    test('tarif materiallari MAVZUGA BOG\'LIQ EMAS', () {
+      // Tarif — mahsulot darajasi, bezak emas. Mavzu almashsa ham
+      // Gold Gold bo\'lib qolishi kerak.
+      final gold = TierStyle.of(Tier.gold).base;
+      C.apply(Palette.night);
+      expect(TierStyle.of(Tier.gold).base, gold);
+      C.apply(Palette.dune);
+      expect(TierStyle.of(Tier.gold).base, gold);
+      C.apply(Palette.opal);
     });
 
     test('harakat byudjeti: EKRAN O‘TISHLARI 400ms dan oshmaydi', () {

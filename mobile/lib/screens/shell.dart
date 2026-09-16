@@ -19,6 +19,18 @@ import 'shop/shop.dart';
 class Shell extends StatefulWidget {
   const Shell({super.key});
 
+  /// TABGA O'TISH — EKRAN ICHIDAN.
+  ///
+  /// Bosh sahifadagi qidiruv tugmasi Qidiruv TABIGA o'tishi kerak,
+  /// uning ustiga yangi ekran QO'YMASLIGI kerak: aks holda pastki
+  /// panelda "Bosh sahifa" tanlangan bo'lib turadi-yu, ekranda
+  /// qidiruv ochiladi — holat va ko'rinish bir-biriga zid bo'ladi.
+  ///
+  /// Topilmasa hech narsa qilmaydi (masalan ekran testda yakka
+  /// chizilgan bo'lsa) — bu xato emas.
+  static void goTab(BuildContext context, int index) =>
+      context.findAncestorStateOfType<_ShellState>()?.jumpTo(index);
+
   @override
   State<Shell> createState() => _ShellState();
 }
@@ -60,6 +72,13 @@ class _ShellState extends State<Shell> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// Boshqa tabga o'tish (`Shell.goTab`). Chegaradan tashqari
+  /// indeks e'tiborsiz qoldiriladi.
+  void jumpTo(int index) {
+    if (index < 0 || index >= NavBar.tabs.length || index == _tab) return;
+    setState(() => _tab = index);
   }
 
   /// Faol tab bosildi: avval ichki ekranlar yopiladi, ildizda

@@ -28,6 +28,7 @@ class StoryRing extends StatefulWidget {
     this.addButton = false,
     this.showLabel = true,
     this.onTap,
+    this.onLongPress,
   });
 
   final String? avatarUrl;
@@ -45,6 +46,10 @@ class StoryRing extends StatefulWidget {
 
   final bool showLabel;
   final VoidCallback? onTap;
+
+  /// Uzoq bosish — ikkinchi darajali amal (masalan shaxs
+  /// almashtirgich). Berilmasa halqa faqat bosiladi.
+  final VoidCallback? onLongPress;
 
   @override
   State<StoryRing> createState() => _StoryRingState();
@@ -153,7 +158,13 @@ class _StoryRingState extends State<StoryRing>
     }
 
     if (!widget.showLabel) {
-      return Press(onTap: widget.onTap, minSize: 0, scale: .93, child: ring);
+      return Press(
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        minSize: 0,
+        scale: .93,
+        child: ring,
+      );
     }
 
     return Press(

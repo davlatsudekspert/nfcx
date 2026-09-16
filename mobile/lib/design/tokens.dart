@@ -30,6 +30,7 @@ class Palette {
   const Palette({
     required this.id,
     required this.label,
+    required this.light,
     required this.accent,
     required this.accentHigh,
     required this.accentDeep,
@@ -40,6 +41,10 @@ class Palette {
     required this.baseBottom,
     required this.raised,
     required this.raisedHigh,
+    required this.ink,
+    required this.ink2,
+    required this.ink3,
+    required this.onAccent,
   });
 
   /// Saqlanadigan kalit (`app_theme`). Hech qachon o'zgarmasin —
@@ -49,11 +54,17 @@ class Palette {
   /// Sozlamalarda ko'rinadigan nom.
   final String label;
 
+  /// YORUG'MI YOKI TO'QMI. Bu bitta bayroq butun ilovaga ta'sir
+  /// qiladi: status bar ikonkalari, shisha to'ldirishi (yorug'da
+  /// qora, to'qda oq), pastki scrim yo'nalishi va soyalar kuchi.
+  /// Palitrani yorug' qilish uchun shuni `true` qilish yetadi —
+  /// ekranlar kodi o'zgarmaydi.
+  final bool light;
+
   /// `action.primary` va urg'u matn rangi.
   final Color accent;
 
-  /// Gradientning YORUG' uchi. Metall his shundan: yuqorida
-  /// yorug', pastda quyuq.
+  /// Gradientning YORUG' uchi.
   final Color accentHigh;
 
   /// Gradientning QUYUQ uchi va bosilgan holat.
@@ -75,99 +86,121 @@ class Palette {
   final Color raised;
   final Color raisedHigh;
 
-  // ASL PALITRA — SAYTDAGI BIZNES PROFILDAN OLINGAN.
+  /// Matnning uch darajasi. YORUG' PALITRADA BULAR QORA TOMONDA —
+  /// shuning uchun ular palitra ichida, `C` da qotirilgan emas.
+  final Color ink;
+  final Color ink2;
+  final Color ink3;
+
+  /// Urg'u yuzasida turadigan matn (tugma ichi).
+  final Color onAccent;
+
+  // ── A · OPAL ────────────────────────────────────────────────
   //
-  // Egasi: "yumshoqlik, mayinlik, boylik ko'rinmayapti, ranglar
-  // ham — nfcstore.uz/c/nfcstoreuz ranglariga e'tibor ber".
-  //
-  // Solishtirganda farq aniq bo'ldi va u ikki joyda edi:
-  //
-  //   1. OLTIN OQARIB KETGAN. Ilovada `#E8CFA0` — bu deyarli bej,
-  //      to'yinganligi past. Saytda esa `#E6C36A`: iliqroq va
-  //      to'yingan, ya'ni metall kabi ko'rinadi. Oqargan oltin
-  //      "arzon plastik", to'yingani "tanga" bo'lib ko'rinadi —
-  //      egasi aytgan "boylik" farqi aynan shu.
-  //
-  //   2. FON LOYQA JIGARRANG EDI. `baseTop: #191208` — bu quyuq
-  //      emas, KIR jigarrang. Saytda tepa `#0b0907`, ya'ni deyarli
-  //      qora, iliqlik esa ustidagi oltin nurdan keladi
-  //      (`rgba(201,161,74,.10)`). Shuning uchun u chuqur ko'rinadi:
-  //      qorong'ilik chuqurlik beradi, nur esa iliqlik.
-  //
-  // Qiymatlar `src/company-system.css` dagi `.qp-page` blokidan
-  // AYNAN ko'chirildi (--gold-1..3 va qobiq gradienti), taxmin
-  // qilinmadi. Ikkovi bir manbadan bo'lgani uchun sayt va ilova
-  // endi bir xil metalldan ko'rinadi.
-  static const original = Palette(
-    id: 'original',
-    label: 'Asl',
-    accent: Color(0xFFE6C36A), // --gold-2
-    accentHigh: Color(0xFFFBEEC2), // --gold-1
-    accentDeep: Color(0xFFC39A33), // --gold-3
-    accentSecondary: Color(0xFFFF9F43),
-    aura: Color(0xFFC9A14A), // qobiq nuri: rgba(201,161,74,…)
-    baseTop: Color(0xFF0B0907),
-    baseMid: Color(0xFF080706),
-    baseBottom: Color(0xFF060504),
-    // Karta yuzasi: saytdagi
-    // linear-gradient(160deg,rgba(40,33,18,.9),rgba(18,15,9,.9))
-    // quyuq fon ustida shu ikki rangga tushadi.
-    raised: Color(0xFF131009),
-    raisedHigh: Color(0xFF241D11),
+  // Asosiy yo'nalish: yorug', sof, hi-tech. Fon deyarli oq,
+  // chuqurlik qatlamlar va yumshoq soyalardan keladi, urg'u —
+  // to'yingan indigo-ko'k. Kunduzi ko'chada o'qish oson; metall
+  // kartalar oq fonda haqiqiy mahsulot fotosi kabi ko'rinadi.
+  static const opal = Palette(
+    id: 'opal',
+    label: 'Opal',
+    light: true,
+    accent: Color(0xFF3A62CC),
+    accentHigh: Color(0xFF6179D1),
+    accentDeep: Color(0xFF2C4CA6),
+    accentSecondary: Color(0xFFD98A2B),
+    aura: Color(0xFF9DB4E8),
+    baseTop: Color(0xFFFFFFFF),
+    baseMid: Color(0xFFF7F8FB),
+    baseBottom: Color(0xFFF2F4F7),
+    raised: Color(0xFFFFFFFF),
+    raisedHigh: Color(0xFFE8ECF3),
+    ink: Color(0xFF0D1117),
+    ink2: Color(0xFF596372),
+    ink3: Color(0xFF8C95A3),
+    onAccent: Color(0xFFFFFFFF),
   );
 
-  static const gold = Palette(
-    id: 'gold',
-    label: 'Champagne Gold',
-    accent: Color(0xFFF0D089),
-    accentHigh: Color(0xFFFFF0C2),
-    accentDeep: Color(0xFFC79B33),
-    accentSecondary: Color(0xFFFF9F43),
-    aura: Color(0xFFFFE8B4),
-    baseTop: Color(0xFF1F1910),
-    baseMid: Color(0xFF130E08),
-    baseBottom: Color(0xFF0E0B07),
-    raised: Color(0xFF181208),
-    raisedHigh: Color(0xFF32281A),
+  // ── B · TUN ─────────────────────────────────────────────────
+  //
+  // Kechki variant. Qora emas — ko'kimtir grafit, shuning uchun
+  // "o'lik" ko'rinmaydi. Urg'u — och ko'k, to'q fonda yumshoq
+  // yonadi.
+  static const night = Palette(
+    id: 'night',
+    label: 'Tun',
+    light: false,
+    accent: Color(0xFF87A9EB),
+    accentHigh: Color(0xFFBCD2F8),
+    accentDeep: Color(0xFF5C82C9),
+    accentSecondary: Color(0xFFE0A75A),
+    aura: Color(0xFF6E8FD6),
+    baseTop: Color(0xFF12151B),
+    baseMid: Color(0xFF0C0E13),
+    baseBottom: Color(0xFF080A0E),
+    raised: Color(0xFF12151B),
+    raisedHigh: Color(0xFF1D222B),
+    ink: Color(0xFFF2F4F7),
+    ink2: Color(0xFFA8B1C1),
+    ink3: Color(0xFF6D798C),
+    onAccent: Color(0xFF080A0E),
   );
 
-  static const emerald = Palette(
-    id: 'emerald',
-    label: 'Emerald Luxury',
-    accent: Color(0xFF7FD9AE),
-    accentHigh: Color(0xFFBDF0D6),
-    accentDeep: Color(0xFF3E9A6E),
-    accentSecondary: Color(0xFFE8CFA0),
-    aura: Color(0xFF63D694),
-    baseTop: Color(0xFF0A1A13),
-    baseMid: Color(0xFF07140E),
-    baseBottom: Color(0xFF05100B),
-    raised: Color(0xFF0B1B14),
-    raisedHigh: Color(0xFF163023),
+  // ── C · DUNA ────────────────────────────────────────────────
+  //
+  // Iliq qum va mis. Yorug', lekin oq emas — teri va tosh hissi.
+  // Bronza va oltin kartalar aynan shu fonda eng qimmat ko'rinadi.
+  static const dune = Palette(
+    id: 'dune',
+    label: 'Duna',
+    light: true,
+    accent: Color(0xFF8C5F32),
+    accentHigh: Color(0xFFB9936C),
+    accentDeep: Color(0xFF6B4623),
+    accentSecondary: Color(0xFF2F6B5E),
+    aura: Color(0xFFC9A87F),
+    baseTop: Color(0xFFF3E7D5),
+    baseMid: Color(0xFFEBDCC6),
+    baseBottom: Color(0xFFE7D7C1),
+    raised: Color(0xFFF7EEE1),
+    raisedHigh: Color(0xFFDDCDB6),
+    ink: Color(0xFF332E27),
+    ink2: Color(0xFF756C60),
+    ink3: Color(0xFF9F9589),
+    onAccent: Color(0xFFFFF7EA),
   );
 
-  static const sapphire = Palette(
-    id: 'sapphire',
-    label: 'Sapphire Royal',
-    accent: Color(0xFF9CC1EE),
-    accentHigh: Color(0xFFD4E5FA),
-    accentDeep: Color(0xFF5C87BC),
-    accentSecondary: Color(0xFFE8CFA0),
-    aura: Color(0xFF9CC1EE),
-    baseTop: Color(0xFF0B1222),
-    baseMid: Color(0xFF080D17),
-    baseBottom: Color(0xFF06080F),
-    raised: Color(0xFF0C1322),
-    raisedHigh: Color(0xFF1A2438),
+  // ── D · ZUMRAD ──────────────────────────────────────────────
+  //
+  // To'q zargarlik yashili. Tun bilan bir oilada emas: u ko'k,
+  // bu yashil-toshli. Reels va NFC ekranlarida chuqur ko'rinadi.
+  static const jade = Palette(
+    id: 'jade',
+    label: 'Zumrad',
+    light: false,
+    accent: Color(0xFF4FC79A),
+    accentHigh: Color(0xFF8FE3C2),
+    accentDeep: Color(0xFF2F8A68),
+    accentSecondary: Color(0xFFD9A441),
+    aura: Color(0xFF3FA57F),
+    baseTop: Color(0xFF0C1A16),
+    baseMid: Color(0xFF08130F),
+    baseBottom: Color(0xFF06100D),
+    raised: Color(0xFF0C1A16),
+    raisedHigh: Color(0xFF163027),
+    ink: Color(0xFFEAF4F0),
+    ink2: Color(0xFF9DB5AC),
+    ink3: Color(0xFF6B837B),
+    onAccent: Color(0xFF06100D),
   );
 
-  static const List<Palette> all = [original, gold, emerald, sapphire];
+  static const List<Palette> all = [opal, night, dune, jade];
 
   static Palette byId(String? id) {
     for (final p in all) {
       if (p.id == id) return p;
     }
-    return original;
+    return opal;
   }
 }
 
@@ -185,7 +218,7 @@ class Palette {
 class C {
   const C._();
 
-  static Palette _p = Palette.original;
+  static Palette _p = Palette.opal;
 
   /// Mavzuni qo'llash. `AppPrefs.load()` va `setPalette()` chaqiradi,
   /// keyin ildizda bitta `setState` butun daraxtni qayta quradi.
@@ -202,22 +235,46 @@ class C {
   static Color get bgTop => _p.baseTop;
   static Color get bgMid => _p.baseMid;
 
+  /// YORUG' PALITRAMI. Ekranlar shuni o'qib, faqat yorug'likka
+  /// bog'liq qarorlarni almashtiradi (masalan rasm ustidagi matn
+  /// uchun scrim yo'nalishi). Rang tanlash uchun emas.
+  static bool get isLight => _p.light;
+
   /// `background.cool` — sovuq asos (NFC markazi, Qidiruv).
   /// Bu ekranlarning o'z yorug'lik manbai bor va ular Home'dan
-  /// ATAYLAB farq qiladi.
-  static const Color bgCool = Color(0xFF07080B);
-  static const Color bgCoolTop = Color(0xFF0C0D12);
+  /// ATAYLAB farq qiladi: urg'u tomonga bir oz siljigan asos.
+  static Color get bgCool => Color.lerp(
+        _p.baseBottom,
+        _p.accent,
+        _p.light ? .05 : .04,
+      )!;
+  static Color get bgCoolTop => Color.lerp(
+        _p.baseTop,
+        _p.accent,
+        _p.light ? .09 : .07,
+      )!;
 
-  /// Modal orqa fon — sheet ostidagi xiralik.
-  static const Color backdrop = Color(0xFF050508);
+  /// Modal orqa fon — sheet ostidagi xiralik. Yorug' palitrada ham
+  /// xiralik QUYUQ bo'ladi: sheet oldinga chiqishi kerak.
+  static Color get backdrop =>
+      _p.light ? const Color(0xFF2A3038) : const Color(0xFF050508);
 
   /// `surface.raised` — kartalar va tile'lar.
   static Color get surface => _p.raised;
   static Color get surfaceHigh => _p.raisedHigh;
 
   /// `surface.glass` — shisha panel to'ldirishi (blur ustiga).
-  static const Color glass = Color(0x0FFFFFFF);
-  static const Color glassHigh = Color(0x12FFFFFF);
+  ///
+  /// YORUG' PALITRADA OQ EMAS. Oq fon ustidagi oq shaffoflik
+  /// ko'rinmaydi — panel fonga yopishib qoladi va qatlam hissi
+  /// yo'qoladi. Shuning uchun yorug'da to'ldirish oq, lekin
+  /// QUYUQROQ tomonga surilgan yuza rangidan olinadi.
+  static Color get glass => _p.light
+      ? const Color(0xE6FFFFFF)
+      : const Color(0x0FFFFFFF);
+  static Color get glassHigh => _p.light
+      ? const Color(0xF2FFFFFF)
+      : const Color(0x12FFFFFF);
 
   /// Shisha blur radiusi — dizayn spetsifikatsiyasi: 16 (panel),
   /// 22 (sheet).
@@ -234,27 +291,41 @@ class C {
   // aynan shundan.
 
   /// `text.primary` — sarlavha va asosiy matn.
-  static const Color ink = Color(0xFFF2ECE0);
+  static Color get ink => _p.ink;
 
   /// `text.secondary` — tana matni, izoh.
-  static const Color ink2 = Color(0xFF8F887C);
+  static Color get ink2 => _p.ink2;
 
   /// `text.muted` — meta, eyebrow, o'chiq holat.
-  static const Color ink3 = Color(0xFF777166);
+  static Color get ink3 => _p.ink3;
 
-  /// Oltin yuzada turadigan matn (tugma ichi).
-  static const Color onAccent = Color(0xFF1A1206);
+  /// Urg'u yuzada turadigan matn (tugma ichi).
+  static Color get onAccent => _p.onAccent;
+
+  /// TO'Q YUZADA turadigan matn — rasm, video va metall ustidagi
+  /// yozuvlar. Palitra yorug' bo'lsa ham bu oq qoladi: rasm
+  /// palitrani bilmaydi.
+  static const Color onDark = Color(0xFFF7F9FC);
+  static const Color onDark2 = Color(0xCCF7F9FC);
 
   // ── Chiziq ──────────────────────────────────────────────────
 
-  /// `border.subtle` — urg'u rangining 12% i.
-  static Color get line => _p.accent.withValues(alpha: .12);
+  /// `border.subtle` — yumshoq chegara.
+  ///
+  /// Yorug' palitrada urg'u rangining shaffofi oq fonda deyarli
+  /// ko'rinmaydi, shuning uchun u yerda chegara MATN tomonidan
+  /// olinadi — nozik, lekin aniq.
+  static Color get line => _p.light
+      ? _p.ink.withValues(alpha: .10)
+      : _p.accent.withValues(alpha: .12);
 
   /// Kuchliroq chegara — tanlangan holat, fokus halqasi.
-  static Color get lineStrong => _p.accent.withValues(alpha: .42);
+  static Color get lineStrong => _p.accent.withValues(alpha: _p.light ? .55 : .42);
 
   /// Neytral hairline — shisha va sovuq yuzalarda.
-  static const Color lineCool = Color(0x14FFFFFF);
+  static Color get lineCool => _p.light
+      ? const Color(0x14000000)
+      : const Color(0x14FFFFFF);
 
   // ── Urg'u ───────────────────────────────────────────────────
 
@@ -267,16 +338,29 @@ class C {
   /// gradient chekkasi.
   static Color get accentSecondary => _p.accentSecondary;
 
-  /// Sovuq platina — NFC tabi va texnik urg'ular.
-  static const Color platinum = Color(0xFFC9CCD2);
+  /// PLATINA — NFC tabi va texnik urg'ular.
+  ///
+  /// Bu "sovuq metall" urg'usi: asosiy urg'udan farq qilishi kerak,
+  /// aks holda ekranda ikkita bir xil rang bo'ladi. Lekin u
+  /// palitradan BUTUNLAY uzilib qolmasligi ham kerak: iliq qum
+  /// palitrada sof ko'kimtir kulrang begona ko'rinadi. Shuning
+  /// uchun u ikkilamchi matn rangidan olinadi va urg'u tomonga
+  /// 18% suriladi — neytral, lekin oilaga tegishli.
+  static Color get platinum => Color.lerp(_p.ink2, _p.accent, .18)!;
 
   // ── Holat ───────────────────────────────────────────────────
 
   /// `state.success` / `state.error`. HECH QACHON mavzuga bog'liq
   /// emas: yashil doim yashil, qizil doim qizil.
-  static const Color ok = Color(0xFF63D694);
-  static const Color fail = Color(0xFFE2685F);
-  static const Color warn = Color(0xFFE2B845);
+  /// Holat ranglari. Yorug' fonda ochiq yashil/sariq o'qilmaydi
+  /// (kontrast 4.5:1 dan past), shuning uchun yorug' palitrada
+  /// ularning quyuq varianti olinadi. Ma'no o'zgarmaydi.
+  static Color get ok =>
+      _p.light ? const Color(0xFF1E8F5E) : const Color(0xFF63D694);
+  static Color get fail =>
+      _p.light ? const Color(0xFFC0392B) : const Color(0xFFE2685F);
+  static Color get warn =>
+      _p.light ? const Color(0xFFA9711A) : const Color(0xFFE2B845);
 
   // ── Brend ranglari — o'zgarmaydi ────────────────────────────
 
@@ -307,11 +391,11 @@ class C {
       );
 
   /// EKRAN FONI — sovuq asos (NFC markazi, Qidiruv).
-  static const LinearGradient screenBaseCool = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [bgCoolTop, bgCool],
-  );
+  static LinearGradient get screenBaseCool => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [bgCoolTop, bgCool],
+      );
 
   /// KO'TARILGAN YUZA — karta va tile.
   ///
@@ -325,11 +409,20 @@ class C {
       );
 
   /// SHISHA PANEL — blur ustiga qo'yiladigan nozik yorug'lik.
-  static const LinearGradient glassSurface = LinearGradient(
-    begin: Alignment(-.5, -1),
-    end: Alignment(.5, 1),
-    colors: [Color(0x12FFFFFF), Color(0x05FFFFFF)],
-  );
+  ///
+  /// Yorug' palitrada panel deyarli xira oq bo'ladi: blur ostidagi
+  /// kontent sezilib turadi, lekin matn to'liq o'qiladi.
+  static LinearGradient get glassSurface => _p.light
+      ? const LinearGradient(
+          begin: Alignment(-.5, -1),
+          end: Alignment(.5, 1),
+          colors: [Color(0xF0FFFFFF), Color(0xE0FFFFFF)],
+        )
+      : const LinearGradient(
+          begin: Alignment(-.5, -1),
+          end: Alignment(.5, 1),
+          colors: [Color(0x12FFFFFF), Color(0x05FFFFFF)],
+        );
 
   /// ASOSIY TUGMA YUZASI — metall oltin.
   ///
@@ -427,7 +520,8 @@ class C {
         colors: [_p.baseMid, _p.baseBottom],
       );
 
-  /// YORUG'LIK CHIZIG'I — metall yuzadan o'tuvchi aks.
+  /// YORUG'LIK CHIZIG'I — metall yuzadan o'tuvchi aks. Bu HAR DOIM
+  /// oq: u metall yuzadan qaytayotgan yorug'lik, palitra emas.
   static const LinearGradient sweep = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
@@ -439,37 +533,74 @@ class C {
   // SOYALAR
   // ─────────────────────────────────────────────────────────
 
+  // SOYA PALITRAGA BOG'LIQ — FAQAT RANGI EMAS, SHAKLI HAM.
+  //
+  // To'q fonda soya quyuq va yig'ilgan bo'lishi kerak, aks holda
+  // ko'rinmaydi. Yorug' fonda esa AYNAN O'SHA soya kartaning
+  // ostidagi "kulrang plita" bo'lib chiqadi: siljishi katta,
+  // yoyilishi kichik — ko'z uning chetini ilg'aydi.
+  //
+  // Shuning uchun yorug'da uchta narsa birdan o'zgaradi:
+  //   • shaffoflik uch baravar kamayadi,
+  //   • yoyilish (blur) ikki baravar oshadi,
+  //   • siljish (offset) yarmiga tushadi.
+  // Natija: chekkasi yo'q, faqat yumshoq "havo" — karta suzib
+  // turgandek ko'rinadi.
+  static Color _sh(double darkAlpha, double lightAlpha) => _p.light
+      ? const Color(0xFF2B3440).withValues(alpha: lightAlpha)
+      : const Color(0xFF000000).withValues(alpha: darkAlpha);
+
+  static BoxShadow _lift({
+    required double darkAlpha,
+    required double lightAlpha,
+    required double blur,
+    required double dy,
+    double spread = 0,
+  }) =>
+      BoxShadow(
+        color: _sh(darkAlpha, lightAlpha),
+        blurRadius: _p.light ? blur * 2 : blur,
+        spreadRadius: _p.light ? spread - 2 : spread,
+        offset: Offset(0, _p.light ? dy * .5 : dy),
+      );
+
   /// e1 — tile, chip. Yengil ko'tarilish.
-  static const List<BoxShadow> e1 = [
-    BoxShadow(color: Color(0x40000000), blurRadius: 12, offset: Offset(0, 4)),
-  ];
+  static List<BoxShadow> get e1 =>
+      [_lift(darkAlpha: .25, lightAlpha: .05, blur: 12, dy: 4)];
 
   /// e2 — karta. Kontentni fondan ajratadi.
-  static const List<BoxShadow> e2 = [
-    BoxShadow(color: Color(0x59000000), blurRadius: 22, offset: Offset(0, 10)),
-  ];
+  static List<BoxShadow> get e2 =>
+      [_lift(darkAlpha: .35, lightAlpha: .07, blur: 22, dy: 10)];
 
   /// e3 — yopishgan panel, FAB.
-  static const List<BoxShadow> e3 = [
-    BoxShadow(color: Color(0x73000000), blurRadius: 34, offset: Offset(0, 16)),
-  ];
+  static List<BoxShadow> get e3 =>
+      [_lift(darkAlpha: .45, lightAlpha: .10, blur: 34, dy: 16)];
 
   /// Sheet — yuqoriga qaragan soya.
-  static const List<BoxShadow> sheetShadow = [
-    BoxShadow(color: Color(0x8C000000), blurRadius: 40, offset: Offset(0, -14)),
-  ];
+  static List<BoxShadow> get sheetShadow => [
+        BoxShadow(
+          color: _sh(.55, .12),
+          blurRadius: _p.light ? 60 : 40,
+          offset: Offset(0, _p.light ? -8 : -14),
+        ),
+      ];
 
   /// METALL KARTA SOYASI — issiq. Ostida qora soya, atrofida oltin
   /// nur. Ikkisi birga karta "yorug'lik sochayotgandek" ko'rinadi.
   static List<BoxShadow> get metalShadow => [
-        const BoxShadow(
-          color: Color(0xD9000000),
-          blurRadius: 44,
-          spreadRadius: -20,
-          offset: Offset(0, 26),
-        ),
+        // Karta OG'IR jism: soyasi boshqa yuzalarnikidan kuchliroq.
+        // Lekin yorug' fonda u ham yoyiladi — aks holda kartaning
+        // ostida quyuq plita ko'rinadi.
         BoxShadow(
-          color: _p.accent.withValues(alpha: .40),
+          color: _sh(.85, .20),
+          blurRadius: _p.light ? 72 : 44,
+          spreadRadius: _p.light ? -26 : -20,
+          offset: Offset(0, _p.light ? 16 : 26),
+        ),
+        // Atrofdagi nur — yorug' fonda kuchsizroq, aks holda karta
+        // atrofida rangli halqa bo'lib qoladi.
+        BoxShadow(
+          color: _p.accent.withValues(alpha: _p.light ? .18 : .40),
           blurRadius: 30,
           spreadRadius: -8,
         ),
@@ -478,7 +609,7 @@ class C {
   /// Asosiy tugma ostidagi issiq nur.
   static List<BoxShadow> get actionGlow => [
         BoxShadow(
-          color: _p.accent.withValues(alpha: .58),
+          color: _p.accent.withValues(alpha: _p.light ? .34 : .58),
           blurRadius: 24,
           spreadRadius: -10,
           offset: const Offset(0, 12),
