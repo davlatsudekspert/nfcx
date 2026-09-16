@@ -223,17 +223,38 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Surface(
-        padding: const EdgeInsets.all(S.x12),
+        padding: const EdgeInsets.all(S.x10),
+        glow: product.discountPct != null,
         child: Row(
           children: [
             SizedBox(
-              width: 72,
-              height: 72,
-              child: NetImage(
-                product.imageUrl,
-                radius: R.tile,
-                cacheWidth: 160,
-                slotIcon: Ico.bag,
+              width: 80,
+              height: 80,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  NetImage(
+                    product.imageUrl,
+                    radius: R.tile,
+                    cacheWidth: 160,
+                    slotIcon: Ico.bag,
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x00000000), Color(0x85000000)],
+                      ),
+                      borderRadius: BorderRadius.all(Radius.circular(R.tile)),
+                    ),
+                  ),
+                  Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: NIcon(Ico.bag, size: 14, color: C.accent),
+                  ),
+                ],
               ),
             ),
             const SizedBox(width: S.x12),
@@ -242,6 +263,8 @@ class _ProductCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Eyebrow(tr('Buyurtma tarkibi')),
+                  const SizedBox(height: 5),
                   Text(
                     product.name,
                     maxLines: 2,
