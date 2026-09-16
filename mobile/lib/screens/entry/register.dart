@@ -5,7 +5,10 @@ import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
+import '../../design/components/press.dart';
+import '../../design/components/surface.dart';
 import '../../design/components/states.dart';
 import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
@@ -15,7 +18,20 @@ import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import 'verify_email.dart';
 
-/// RO'YXATDAN O'TISH — ism, email, telefon, parol.
+/// RO'YXATDAN O'TISH — avval profil turi, keyin ism, email,
+/// telefon, parol.
+///
+/// PROFIL TURI BIRINCHI QADAMDA — SAYTDAGIDEK. Saytda odam
+/// "Men" yoki "Kompaniya profili" ni formani ochishdan OLDIN
+/// tanlaydi. Ilovada bu savol ilgari oxirida, tasdiqlashdan keyin
+/// chiqardi: odam formani to'ldirib bo'lgach "nima ochayotganini"
+/// bilib olardi. Endi tartib sayt bilan bir xil.
+///
+/// TANLOV NIMANI HAL QILADI: server `/api/auth/register` da profil
+/// turini QABUL QILMAYDI — u har doim shaxsiy 8 xonali bepul ID
+/// yaratadi. Shuning uchun tanlov faqat KEYINGI QADAMNI belgilaydi:
+/// kompaniya → Company ID ochish oqimi, shaxsiy → kabinet. Soxta
+/// tanlov ko'rsatilmaydi va bu matn ekranda ham yozilgan.
 ///
 /// Maydonlar backend'dagi HAQIQIY maydonlar. Telefon KONTAKT
 /// ma'lumoti sifatida olinadi, tasdiqlash uchun emas: hisob EMAIL
@@ -30,7 +46,14 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
+/// Profil turi — faqat ro'yxatdan o'tishdan keyingi yo'lni
+/// belgilaydi (server hisob turini bilmaydi).
+enum RegKind { personal, company }
+
 class _RegisterScreenState extends State<RegisterScreen> {
+  /// `null` — hali tanlanmagan: birinchi qadam ko'rinadi.
+  RegKind? _kind;
+
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
@@ -102,6 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             phone: '+998$phone',
             password: _password.text,
             name: _name.text.trim(),
+            wantsBusiness: _kind == RegKind.company,
           ));
     } on ApiError catch (e) {
       if (mounted) setState(() => _error = humanError(e));
@@ -111,6 +135,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  /// BIRINCHI QADAM — profil turi.
+  ///
+  /// Ikki karta, saytdagi matn bilan: "Men — Odam, mutaxassis" va
+  /// "Kompaniya profili — Biznes, do'kon, restoran". Ostida esa
+  /// tanlov NIMANI o'zgartirishi ochiq yozilgan: hisob bitta,
+  /// farq faqat keyingi qadamda. Bu yashirilsa, odam "kompaniya
+  /// hisobi" ochdim deb o'ylaydi va keyin kabinetni topa olmaydi.
+  Widget _kindStep() => Padding(
+        padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, S.x32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _KindCard(
+              icon: Ico.user,
+              title: tr('Men'),
+              subtitle: tr('Odam, mutaxassis'),
+              detail: tr('Ism, kasb, kontaktlar, havolalar, story va postlar. '
+                  'Bepul 8 xonali ID darhol beriladi.'),
+              onTap: () => setState(() => _kind = RegKind.personal),
+            ),
+            const SizedBox(height: S.x12),
+            _KindCard(
+              icon: Ico.building,
+              title: tr('Kompaniya profili'),
+              subtitle: tr('Biznes, do‘kon, restoran'),
+              detail: tr('Katalog, narxlar, galereya, ish vaqti, xarita va '
+                  'buyurtmalar. Avval hisob ochiladi, so‘ng Company ID.'),
+              onTap: () => setState(() => _kind = RegKind.company),
+            ),
+            const SizedBox(height: S.x20),
+            Text(
+              tr('Hisob bitta — shaxsiy va kompaniya profillarini keyin '
+                  'ikkalasini ham qo‘shsangiz bo‘ladi.'),
+              textAlign: TextAlign.center,
+              style: T.caption.copyWith(color: C.ink3, fontSize: 12.5),
+            ),
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) => ScreenBackdrop(
@@ -124,18 +188,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const TopBar(),
+                TopBar(
+                  // Forma ochilganda "orqaga" — turni qayta tanlashga
+                  // qaytaradi, ekrandan chiqib ketmaydi.
+                  onBack: _kind == null
+                      ? null
+                      : () => setState(() {
+                            _kind = null;
+                            _error = null;
+                          }),
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ScreenTitle(
-                          tr('Ro‘yxatdan o‘tish'),
-                          subtitle: tr('Tasdiqlash kodi emailga yuboriladi. '
-                              'Telefon raqami profil aloqasi uchun saqlanadi.'),
-                        ),
-                        Padding(
+                        if (_kind == null)
+                          ScreenTitle(
+                            tr('Qanday profil ochasiz?'),
+                            subtitle: tr('Keyin ikkalasini ham qo‘shishingiz '
+                                'mumkin — tanlov faqat birinchi qadamni '
+                                'belgilaydi.'),
+                          )
+                        else
+                          ScreenTitle(
+                            tr('Ro‘yxatdan o‘tish'),
+                            subtitle: tr('Tasdiqlash kodi emailga yuboriladi. '
+                                'Telefon raqami profil aloqasi uchun '
+                                'saqlanadi.'),
+                          ),
+                        if (_kind == null)
+                          _kindStep()
+                        else
+                          Padding(
                           padding: const EdgeInsets.fromLTRB(
                             S.gutter,
                             S.x8,
@@ -222,6 +307,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      );
+}
+
+/// PROFIL TURI KARTASI — birinchi qadamdagi ikki tanlovdan biri.
+///
+/// Ikonka + nom + bir qatorli izoh + tafsilot. Tafsilot bor, chunki
+/// "Men" va "Kompaniya" nomlarining o'zi nima ochilishini aytmaydi:
+/// odam nimani olishini KO'RIB tanlashi kerak.
+class _KindCard extends StatelessWidget {
+  const _KindCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.detail,
+    required this.onTap,
+  });
+
+  final Ico icon;
+  final String title;
+  final String subtitle;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        minSize: 0,
+        child: Surface(
+          padding: const EdgeInsets.all(S.x16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: C.accent.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(R.tile),
+                ),
+                alignment: Alignment.center,
+                child: NIcon(icon, size: 22, color: C.accent),
+              ),
+              const SizedBox(width: S.x12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: T.cardTitle),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: T.caption.copyWith(color: C.accent)),
+                    const SizedBox(height: S.x8),
+                    Text(detail, style: T.caption.copyWith(color: C.ink3)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: S.x8),
+              Padding(
+                padding: const EdgeInsets.only(top: S.x12),
+                child: NIcon(Ico.chevronRight, size: 18, color: C.ink3),
+              ),
+            ],
           ),
         ),
       );

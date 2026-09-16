@@ -12,7 +12,11 @@ import 'type.dart';
 /// Ular `ThemeData` siz tizim ko'k rangida chiqib, dizayndan
 /// ajralib turadi.
 ThemeData buildTheme() {
-  final scheme = ColorScheme.dark(
+  // YORUG' VA TO'Q PALITRA UCHUN IKKI XIL SXEMA. Flutter o'zi
+  // chizadigan narsalar (matn tanlash menyusi, klaviatura ustidagi
+  // panel, skrollbar) sxemadan rang oladi: to'q sxema yorug' fonda
+  // qora panel chizadi va dizayndan ajralib turadi.
+  final scheme = (C.isLight ? ColorScheme.light : ColorScheme.dark)(
     primary: C.accent,
     onPrimary: C.onAccent,
     secondary: C.accentSecondary,
@@ -20,17 +24,17 @@ ThemeData buildTheme() {
     surface: C.surface,
     onSurface: C.ink,
     error: C.fail,
-    onError: C.ink,
+    onError: C.isLight ? const Color(0xFFFFFFFF) : C.ink,
     outline: C.line,
   );
 
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: C.isLight ? Brightness.light : Brightness.dark,
     colorScheme: scheme,
     scaffoldBackgroundColor: C.bg,
     canvasColor: C.bg,
-    fontFamily: 'Manrope',
+    fontFamily: 'PlusJakartaSans',
 
     // Material'ning to'lqin effekti bu dizaynda begona: bosish
     // `Press` orqali masshtab bilan ko'rsatiladi.
@@ -69,9 +73,13 @@ ThemeData buildTheme() {
 /// ekran foniga qo'shilib ketadi.
 SystemUiOverlayStyle get systemOverlay => SystemUiOverlayStyle(
       statusBarColor: const Color(0x00000000),
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
+      // Status bar ikonkalari FON bilan qarama-qarshi bo'lishi
+      // kerak: yorug' fonda qora, to'q fonda oq.
+      statusBarIconBrightness:
+          C.isLight ? Brightness.dark : Brightness.light,
+      statusBarBrightness: C.isLight ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: C.bg,
-      systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarIconBrightness:
+          C.isLight ? Brightness.dark : Brightness.light,
       systemNavigationBarDividerColor: const Color(0x00000000),
     );

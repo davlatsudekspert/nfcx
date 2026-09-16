@@ -36,20 +36,23 @@ class NIcon extends StatelessWidget {
     this.icon, {
     super.key,
     this.size = 24,
-    this.color = C.ink,
+    // MAVZUGA BOG'LIQ STANDART. `C.ink` endi palitradan keladi,
+    // shuning uchun u `const` standart qiymat bo'la olmaydi.
+    // `null` = "matn rangini ol" degani va u `build` da yechiladi.
+    this.color,
     this.filled = false,
   });
 
   final Ico icon;
   final double size;
-  final Color color;
+  final Color? color;
   final bool filled;
 
   @override
   Widget build(BuildContext context) => SizedBox(
         width: size,
         height: size,
-        child: CustomPaint(painter: _IconPainter(icon, color, filled)),
+        child: CustomPaint(painter: _IconPainter(icon, color ?? C.ink, filled)),
       );
 }
 

@@ -180,7 +180,7 @@ class Avatar extends StatelessWidget {
           ? Text(
               _initials,
               style: TextStyle(
-                fontFamily: 'InstrumentSerif',
+                fontFamily: 'PlayfairDisplay',
                 fontSize: size * .40,
                 height: 1,
                 color: C.accent.withValues(alpha: .85),

@@ -583,7 +583,11 @@ class Toggle extends StatelessWidget {
           width: 23,
           height: 23,
           decoration: BoxDecoration(
-            color: value ? const Color(0xFF17130A) : C.ink3,
+            // Yoqilgan holatda tugmacha URG'U YUZASIDA turadi,
+            // shuning uchun rangi `onAccent` — yorug' palitrada oq,
+            // to'qda quyuq. Qotirilgan qora yorug' palitrada ko'k
+            // yuzada "kuygan nuqta" bo'lib ko'rinardi.
+            color: value ? C.onAccent : C.ink3,
             shape: BoxShape.circle,
             boxShadow: C.e1,
           ),

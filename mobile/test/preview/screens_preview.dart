@@ -172,7 +172,7 @@ void main() {
         size: const Size(390, 560),
       );
     }
-    C.apply(Palette.original);
+    C.apply(Palette.opal);
   });
 }
 

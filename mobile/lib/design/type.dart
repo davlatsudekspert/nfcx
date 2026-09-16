@@ -6,14 +6,15 @@ import 'tokens.dart';
 ///
 /// UCH SHRIFT, UCH VAZIFA. Aralashtirilmaydi:
 ///
-/// • **Instrument Serif** — display va bo'lim sarlavhalari. Bu
-///   ilovaning "ovozi": katta, nafis, kursiv urg'u bilan. Faqat
-///   sarlavha va raqamli urg'u (narx). Tugma yoki forma matnida
-///   ISHLATILMAYDI.
-/// • **Manrope** — butun funksional matn: tugma, tana matni,
-///   yorliq, navigatsiya. O'zbek lotin belgilarini (o', g', sh,
-///   ch) to'liq qamraydi.
-/// • **IBM Plex Mono** — ID kodlari, narx raqamlari, meta va
+/// • **Playfair Display** — display va bo'lim sarlavhalari. Bu
+///   ilovaning "ovozi": yuqori kontrastli didone, kursiv urg'u
+///   bilan. Faqat sarlavha va raqamli urg'u (narx). Tugma yoki
+///   forma matnida ISHLATILMAYDI — u yerda ingichka joylari
+///   yo'qoladi va matn ikkinchi darajali ko'rinadi.
+/// • **Plus Jakarta Sans** — butun funksional matn: tugma, tana
+///   matni, yorliq, navigatsiya. O'zbek lotin belgilarini (o', g',
+///   sh, ch) to'liq qamraydi.
+/// • **Space Mono** — ID kodlari, narx raqamlari, meta va
 ///   holat yozuvlari. Mono tanlanishining sababi: `GLD777` va
 ///   `149 000` kabi qiymatlar ustma-ust turganda tekis
 ///   ko'rinsin va raqamlar sakramasin.
@@ -26,55 +27,55 @@ import 'tokens.dart';
 class T {
   const T._();
 
-  static const _serif = 'InstrumentSerif';
-  static const _sans = 'Manrope';
-  static const _mono = 'IBMPlexMono';
+  static const _serif = 'PlayfairDisplay';
+  static const _sans = 'PlusJakartaSans';
+  static const _mono = 'SpaceMono';
 
   // ── Display · Instrument Serif ──────────────────────────────
 
   /// Onboarding va hero sarlavhalari. 46/1.02.
-  static const TextStyle display = TextStyle(
-    fontFamily: _serif,
-    fontSize: 46,
-    height: 1.02,
-    letterSpacing: -.4,
-    color: C.ink,
-  );
+  static TextStyle get display => TextStyle(
+        fontFamily: _serif,
+        fontSize: 46,
+        height: 1.02,
+        letterSpacing: -.4,
+        color: C.ink,
+      );
 
   /// Ekran sarlavhasi — "NFC markazi", "Qidiruv", "ID katalogi".
-  static const TextStyle title = TextStyle(
-    fontFamily: _serif,
-    fontSize: 34,
-    height: 1.04,
-    letterSpacing: -.3,
-    color: C.ink,
-  );
+  static TextStyle get title => TextStyle(
+        fontFamily: _serif,
+        fontSize: 34,
+        height: 1.04,
+        letterSpacing: -.3,
+        color: C.ink,
+      );
 
   /// Ixcham ekran sarlavhasi (forma va sozlamalar ekranlari).
-  static const TextStyle titleSm = TextStyle(
-    fontFamily: _serif,
-    fontSize: 27,
-    height: 1.06,
-    letterSpacing: -.2,
-    color: C.ink,
-  );
+  static TextStyle get titleSm => TextStyle(
+        fontFamily: _serif,
+        fontSize: 27,
+        height: 1.06,
+        letterSpacing: -.2,
+        color: C.ink,
+      );
 
   /// Bo'lim sarlavhasi — "Lenta", "Katalog", "Postlarim".
-  static const TextStyle section = TextStyle(
-    fontFamily: _serif,
-    fontSize: 22,
-    height: 1.1,
-    color: C.ink,
-  );
+  static TextStyle get section => TextStyle(
+        fontFamily: _serif,
+        fontSize: 22,
+        height: 1.1,
+        color: C.ink,
+      );
 
   /// Profil ismi.
-  static const TextStyle profileName = TextStyle(
-    fontFamily: _serif,
-    fontSize: 30,
-    height: 1.08,
-    letterSpacing: .2,
-    color: C.ink,
-  );
+  static TextStyle get profileName => TextStyle(
+        fontFamily: _serif,
+        fontSize: 30,
+        height: 1.08,
+        letterSpacing: .2,
+        color: C.ink,
+      );
 
   /// Kursiv urg'u so'zi — "Assalom, *Dilshod*".
   /// Rang chaqiruv joyida beriladi (odatda `C.accent`).
@@ -87,164 +88,164 @@ class T {
   );
 
   /// Katta narx — "149 000".
-  static const TextStyle price = TextStyle(
-    fontFamily: _serif,
-    fontSize: 42,
-    height: 1,
-    letterSpacing: -.5,
-    color: C.ink,
-  );
+  static TextStyle get price => TextStyle(
+        fontFamily: _serif,
+        fontSize: 42,
+        height: 1,
+        letterSpacing: -.5,
+        color: C.ink,
+      );
 
   // ── Funksional · Manrope ────────────────────────────────────
 
   /// Kuchli sarlavha — sheet va dialog ustida.
-  static const TextStyle h1 = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w800,
-    fontSize: 26,
-    height: 1.14,
-    letterSpacing: -.7,
-    color: C.ink,
-  );
+  static TextStyle get h1 => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w800,
+        fontSize: 26,
+        height: 1.14,
+        letterSpacing: -.7,
+        color: C.ink,
+      );
 
-  static const TextStyle h2 = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w800,
-    fontSize: 21,
-    height: 1.18,
-    letterSpacing: -.45,
-    color: C.ink,
-  );
+  static TextStyle get h2 => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w800,
+        fontSize: 21,
+        height: 1.18,
+        letterSpacing: -.45,
+        color: C.ink,
+      );
 
   /// Karta va qator sarlavhasi.
-  static const TextStyle cardTitle = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w700,
-    fontSize: 15.5,
-    height: 1.24,
-    letterSpacing: -.1,
-    color: C.ink,
-  );
+  static TextStyle get cardTitle => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w700,
+        fontSize: 15.5,
+        height: 1.24,
+        letterSpacing: -.1,
+        color: C.ink,
+      );
 
   /// Tana matni. Qator balandligi 1.55 — uzun o'zbekcha jumlalar
   /// siqilib qolmasin.
-  static const TextStyle body = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w400,
-    fontSize: 15,
-    height: 1.55,
-    color: C.ink2,
-  );
+  static TextStyle get body => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w400,
+        fontSize: 15,
+        height: 1.55,
+        color: C.ink2,
+      );
 
   /// Kuchliroq tana matni — asosiy qiymat, javob matni.
-  static const TextStyle bodyStrong = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w500,
-    fontSize: 15,
-    height: 1.45,
-    color: C.ink,
-  );
+  static TextStyle get bodyStrong => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w500,
+        fontSize: 15,
+        height: 1.45,
+        color: C.ink,
+      );
 
   /// Izoh va ikkilamchi tushuntirish.
-  static const TextStyle caption = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w400,
-    fontSize: 13,
-    height: 1.5,
-    color: C.ink2,
-  );
+  static TextStyle get caption => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w400,
+        fontSize: 13,
+        height: 1.5,
+        color: C.ink2,
+      );
 
   /// Forma yorliqlari — KATTA HARFDA yoziladi.
-  static const TextStyle label = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w700,
-    fontSize: 11,
-    height: 1.2,
-    letterSpacing: 1.3,
-    color: C.ink3,
-  );
+  static TextStyle get label => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w700,
+        fontSize: 11,
+        height: 1.2,
+        letterSpacing: 1.3,
+        color: C.ink3,
+      );
 
   /// Asosiy tugma matni.
-  static const TextStyle button = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w700,
-    fontSize: 16.5,
-    height: 1.1,
-    letterSpacing: -.1,
-    color: C.ink,
-  );
+  static TextStyle get button => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w700,
+        fontSize: 16.5,
+        height: 1.1,
+        letterSpacing: -.1,
+        color: C.ink,
+      );
 
   /// Kichik tugma va chip matni.
-  static const TextStyle buttonSm = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w700,
-    fontSize: 13.5,
-    height: 1.1,
-    color: C.ink,
-  );
+  static TextStyle get buttonSm => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w700,
+        fontSize: 13.5,
+        height: 1.1,
+        color: C.ink,
+      );
 
   /// Tab yorlig'i.
-  static const TextStyle navLabel = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w600,
-    fontSize: 10.5,
-    height: 1.1,
-    letterSpacing: .1,
-    color: C.ink3,
-  );
+  static TextStyle get navLabel => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w600,
+        fontSize: 10.5,
+        height: 1.1,
+        letterSpacing: .1,
+        color: C.ink3,
+      );
 
   /// Statistika yorlig'i — "Ko'rish", "Kontakt", "Obunachi".
-  static const TextStyle statLabel = TextStyle(
-    fontFamily: _sans,
-    fontWeight: FontWeight.w600,
-    fontSize: 10.5,
-    height: 1.2,
-    letterSpacing: .3,
-    color: C.ink3,
-  );
+  static TextStyle get statLabel => TextStyle(
+        fontFamily: _sans,
+        fontWeight: FontWeight.w600,
+        fontSize: 10.5,
+        height: 1.2,
+        letterSpacing: .3,
+        color: C.ink3,
+      );
 
   // ── Mono · IBM Plex Mono ────────────────────────────────────
 
   /// Statistika qiymati — "4 812".
-  static const TextStyle statValue = TextStyle(
-    fontFamily: _mono,
-    fontWeight: FontWeight.w600,
-    fontSize: 21,
-    height: 1.1,
-    letterSpacing: -.3,
-    color: C.ink,
-  );
+  static TextStyle get statValue => TextStyle(
+        fontFamily: _mono,
+        fontWeight: FontWeight.w600,
+        fontSize: 21,
+        height: 1.1,
+        letterSpacing: -.3,
+        color: C.ink,
+      );
 
   /// Meta yozuvi — sana, vaqt, holat.
-  static const TextStyle meta = TextStyle(
-    fontFamily: _mono,
-    fontWeight: FontWeight.w500,
-    fontSize: 11.5,
-    height: 1.3,
-    letterSpacing: .2,
-    color: C.ink3,
-  );
+  static TextStyle get meta => TextStyle(
+        fontFamily: _mono,
+        fontWeight: FontWeight.w500,
+        fontSize: 11.5,
+        height: 1.3,
+        letterSpacing: .2,
+        color: C.ink3,
+      );
 
   /// Mono summa — to'lov tarixidagi raqamlar ustma-ust tekis
   /// turishi uchun.
-  static const TextStyle amount = TextStyle(
-    fontFamily: _mono,
-    fontWeight: FontWeight.w600,
-    fontSize: 15,
-    height: 1.2,
-    letterSpacing: -.2,
-    color: C.ink,
-  );
+  static TextStyle get amount => TextStyle(
+        fontFamily: _mono,
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+        height: 1.2,
+        letterSpacing: -.2,
+        color: C.ink,
+      );
 
   /// Holat yorlig'i — "TAYYOR · TEGIZING", "HOLAT: KUTILMOQDA".
-  static const TextStyle statusLabel = TextStyle(
-    fontFamily: _mono,
-    fontWeight: FontWeight.w600,
-    fontSize: 11,
-    height: 1.2,
-    letterSpacing: 1.6,
-    color: C.ink2,
-  );
+  static TextStyle get statusLabel => TextStyle(
+        fontFamily: _mono,
+        fontWeight: FontWeight.w600,
+        fontSize: 11,
+        height: 1.2,
+        letterSpacing: 1.6,
+        color: C.ink2,
+      );
 
   /// EYEBROW — bo'lim ustidagi kichik oltin yozuv.
   /// Mavzuga bog'liq, shuning uchun getter.

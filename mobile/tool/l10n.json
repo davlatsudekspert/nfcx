@@ -4254,5 +4254,53 @@
   "“{q}” topilmadi": [
     "«{q}» не найдено",
     "\"{q}\" not found"
+  ],
+  "Salom": [
+    "Привет",
+    "Hello"
+  ],
+  "Profilingiz {n} marta ko‘rildi": [
+    "Профиль просмотрен {n} раз",
+    "Your profile was viewed {n} times"
+  ],
+  "Haftaning kompaniyasi": [
+    "Компания недели",
+    "Company of the week"
+  ],
+  "Admin tasdiqlagan": [
+    "Подтверждено админом",
+    "Verified by admin"
+  ],
+  "Men": [
+    "Я",
+    "Me"
+  ],
+  "Odam, mutaxassis": [
+    "Человек, специалист",
+    "A person, a professional"
+  ],
+  "Ism, kasb, kontaktlar, havolalar, story va postlar. Bepul 8 xonali ID darhol beriladi.": [
+    "Имя, профессия, контакты, ссылки, истории и посты. Бесплатный 8-значный ID выдаётся сразу.",
+    "Name, role, contacts, links, stories and posts. A free 8-digit ID is issued at once."
+  ],
+  "Kompaniya profili": [
+    "Профиль компании",
+    "Company profile"
+  ],
+  "Biznes, do‘kon, restoran": [
+    "Бизнес, магазин, ресторан",
+    "Business, shop, restaurant"
+  ],
+  "Katalog, narxlar, galereya, ish vaqti, xarita va buyurtmalar. Avval hisob ochiladi, so‘ng Company ID.": [
+    "Каталог, цены, галерея, часы работы, карта и заказы. Сначала аккаунт, затем Company ID.",
+    "Catalog, prices, gallery, hours, map and orders. The account comes first, then the Company ID."
+  ],
+  "Hisob bitta — shaxsiy va kompaniya profillarini keyin ikkalasini ham qo‘shsangiz bo‘ladi.": [
+    "Аккаунт один — личный и компанийский профили можно добавить оба позже.",
+    "One account — you can add both a personal and a company profile later."
+  ],
+  "Keyin ikkalasini ham qo‘shishingiz mumkin — tanlov faqat birinchi qadamni belgilaydi.": [
+    "Позже можно добавить оба — выбор задаёт только первый шаг.",
+    "You can add both later — the choice only sets the first step."
   ]
 }

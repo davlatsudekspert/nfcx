@@ -169,6 +169,15 @@ class Repo {
   Future<Record> record(String code) async =>
       Record.fromJson(_map(await api.get('/api/records/$code')));
 
+  /// LENTA — obuna bo'lingan shaxs va kompaniyalarning postlari.
+  ///
+  /// Bir sahifada 15 ta: ro'yxat rasmli va uzun, shuning uchun
+  /// birdan ko'pini yuklash trafikni bekorga sarflaydi.
+  Future<List<FeedItem>> feed({int page = 1, int limit = 15}) async =>
+      _rows(await api.get('/api/feed?page=$page&limit=$limit'), 'feed')
+          .map(FeedItem.fromJson)
+          .toList();
+
   Future<List<Post>> recordPosts(String code) async =>
       _rows(await api.get('/api/records/$code/posts'), 'posts').map(Post.fromJson).toList();
 

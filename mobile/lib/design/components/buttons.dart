@@ -339,11 +339,15 @@ class DangerButton extends StatelessWidget {
           alignment: Alignment.center,
           widthFactor: expand ? null : 1,
           child: loading
-              ? Spinner(size: 20, color: filled ? C.ink : C.fail)
+              ? Spinner(size: 20, color: filled ? C.onDark : C.fail)
               : _Label(
                   label,
                   style: _labelStyle(size).copyWith(
-                    color: filled ? const Color(0xFF1A0A08) : C.fail,
+                    // To'ldirilgan xavfli tugma QIZIL yuzada turadi
+                    // va matn undan ajralib turishi kerak. Ilgari
+                    // bu yerda deyarli qora rang edi: to'q qizil
+                    // ustida u o'qilmasdi.
+                    color: filled ? C.onDark : C.fail,
                   ),
                 ),
         ),

@@ -497,7 +497,7 @@ class _AgreedNote extends StatelessWidget {
           border: Border.all(color: C.ok.withValues(alpha: .3)),
           child: Row(
             children: [
-              const NIcon(Ico.check, size: 18, color: C.ok),
+              NIcon(Ico.check, size: 18, color: C.ok),
               const SizedBox(width: S.x12),
               Expanded(
                 child: Text(tr('Kontent qoidalariga rozilik berildi'),

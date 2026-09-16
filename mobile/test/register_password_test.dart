@@ -44,6 +44,12 @@ void main() {
     await tester.pumpWidget(host(const RegisterScreen(), state));
     await settle(tester);
 
+    // BIRINCHI QADAM — PROFIL TURI. Forma faqat shundan keyin
+    // ochiladi (saytdagi tartib), shuning uchun test ham avval
+    // turni tanlaydi.
+    await tester.tap(find.text('Men'));
+    await settle(tester);
+
     final fields = find.byType(Field);
     await tester.enterText(fields.at(0), 'Ali Valiyev');
     await tester.enterText(fields.at(1), 'ali@gmail.com');
@@ -67,6 +73,8 @@ void main() {
       storage: FakeStore(),
     );
     await tester.pumpWidget(host(const RegisterScreen(), state));
+    await settle(tester);
+    await tester.tap(find.text('Men'));
     await settle(tester);
 
     expect(find.text('PAROL'), findsOneWidget);

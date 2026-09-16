@@ -56,12 +56,20 @@ class AuraLayer {
   /// yig'ilgan nur, katta qiymat — yoyilgan.
   final double falloff;
 
+  /// YORUG' PALITRADA NUR KUCHSIZROQ.
+  ///
+  /// To'q fonda 13% li dog' zo'rg'a sezildi va fonni "tirik"
+  /// qiladi. Oq fonda esa o'sha 13% rangli DOG' bo'lib ko'rinadi —
+  /// fon kir yuvilgandek chiqadi. Shuning uchun yorug'da kuch
+  /// ikki baravar kamaytiriladi: nur bor, lekin sezilmaydi.
+  double get _k => C.isLight ? .45 : 1;
+
   RadialGradient get gradient => RadialGradient(
         center: center,
         radius: radius,
         colors: [
-          color.withValues(alpha: opacity),
-          color.withValues(alpha: opacity * .2),
+          color.withValues(alpha: opacity * _k),
+          color.withValues(alpha: opacity * _k * .2),
           color.withValues(alpha: 0),
         ],
         stops: [0, falloff, 1],

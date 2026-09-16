@@ -53,32 +53,45 @@ flutter:
   assets:
     - assets/img/
   fonts:
-    - family: InstrumentSerif
+    # DISPLAY — Playfair Display. Yuqori kontrastli didone: qalin
+    # vertikal, ingichka gorizontal chiziqlar. Katta o'lchamda
+    # (44–56) u sarlavhani "jurnal muqovasi" qiladi; kichik
+    # o'lchamda ishlatilmaydi — u yerda ingichka joylari yo'qoladi.
+    - family: PlayfairDisplay
       fonts:
-        - asset: assets/fonts/InstrumentSerif-400.ttf
+        - asset: assets/fonts/PlayfairDisplay-400.ttf
           weight: 400
-        - asset: assets/fonts/InstrumentSerif-400Italic.ttf
+        - asset: assets/fonts/PlayfairDisplay-500.ttf
+          weight: 500
+        - asset: assets/fonts/PlayfairDisplay-600.ttf
+          weight: 600
+        - asset: assets/fonts/PlayfairDisplay-700.ttf
+          weight: 700
+        - asset: assets/fonts/PlayfairDisplay-400Italic.ttf
           weight: 400
           style: italic
-    - family: Manrope
-      fonts:
-        - asset: assets/fonts/Manrope-400.ttf
-          weight: 400
-        - asset: assets/fonts/Manrope-500.ttf
+        - asset: assets/fonts/PlayfairDisplay-500Italic.ttf
           weight: 500
-        - asset: assets/fonts/Manrope-600.ttf
+          style: italic
+    # MATN — Plus Jakarta Sans. Geometrik, keng ochilgan; o'zbek
+    # lotin belgilarini (o', g', sh, ch) to'liq qamraydi.
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-400.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-500.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-600.ttf
           weight: 600
-        - asset: assets/fonts/Manrope-700.ttf
+        - asset: assets/fonts/PlusJakartaSans-700.ttf
           weight: 700
-        - asset: assets/fonts/Manrope-800.ttf
+        - asset: assets/fonts/PlusJakartaSans-800.ttf
           weight: 800
-    - family: IBMPlexMono
+    # MONO — Space Mono. ID kodlari va narxlar uchun: raqamlar bir
+    # xil kenglikda, shuning uchun ro'yxatda ustma-ust tekis turadi.
+    - family: SpaceMono
       fonts:
-        - asset: assets/fonts/IBMPlexMono-400.ttf
+        - asset: assets/fonts/SpaceMono-400.ttf
           weight: 400
-        - asset: assets/fonts/IBMPlexMono-500.ttf
-          weight: 500
-        - asset: assets/fonts/IBMPlexMono-600.ttf
-          weight: 600
-        - asset: assets/fonts/IBMPlexMono-700.ttf
+        - asset: assets/fonts/SpaceMono-700.ttf
           weight: 700
