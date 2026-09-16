@@ -213,7 +213,6 @@ String _providerLabel(PaymentEntry e) => switch (_provider(e)) {
       'click' => 'CLICK',
       'payme' => 'PAYME',
       _ => tr('Tanlanmagan'),
-      _ => 'PAYME',
     };
 
 /// PROVAYDER BELGISI — brend ranglari MAVZUGA BOG'LIQ EMAS.
