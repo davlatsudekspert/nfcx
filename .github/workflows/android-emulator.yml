@@ -107,7 +107,15 @@ jobs:
           working-directory: mobile
           script: |
             adb reverse tcp:8787 tcp:8787 || true
+            adb devices
+            # QURILMA ANIQ KO'RSATILADI (`-d`).
+            #
+            # Usiz `flutter test` faylni ham integratsiya, ham oddiy
+            # sinov deb hisoblaydi va "Integration tests and unit
+            # tests cannot be run in a single invocation" bilan
+            # to'xtaydi — emulyator ko'tarilgan bo'lsa ham.
             flutter test integration_test/app_test.dart \
+              -d emulator-5554 \
               --dart-define=API_BASE=http://10.0.2.2:8787 \
               --timeout 5m
 
