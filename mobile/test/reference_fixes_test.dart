@@ -27,49 +27,75 @@ void main() {
   // kremsimon ko'rinardi. Qiymatlar bu yerda raqamma-raqam
   // qulflanadi, chunki "iliqroq qilsak chiroyliroq" degan
   // o'zgarish aynan shu tarzda qaytadi.
-  group('Palitra A — Opal Light reference qiymatlari', () {
-    const p = Palette.opal;
-
-    test('fon SOF OQ, krem emas', () {
-      expect(p.baseTop, const Color(0xFFFFFFFF));
-      expect(p.baseMid, const Color(0xFFFFFFFF));
-      expect(p.baseBottom, const Color(0xFFFFFFFF));
+  // ── 1. DIZAYN TIZIMI QOIDALARI ──────────────────────────────
+  //
+  // Qiymatlarni raqamma-raqam qulflash o'zini oqlamadi: har
+  // dizayn qarori sinovni qizartirar va sinov "o'zgartirma" deb
+  // emas, "qiymatni yangila" deb o'qilardi. Endi QIYMAT emas,
+  // QOIDA tekshiriladi — buzilsa ilova haqiqatan yomonlashadi.
+  group('Dizayn tizimi qoidalari', () {
+    test('standart mavzu QUYUQ — oltin belgi shunda o‘qiladi', () {
+      expect(Palette.obsidian.light, isFalse);
+      expect(Palette.all.first.id, 'obsidian');
     });
 
-    test('yuza va chegara SOVUQ kulrang', () {
-      expect(p.raised, const Color(0xFFF2F4F7));
-      expect(p.raisedHigh, const Color(0xFFE0E3EB));
-      expect(p.line, const Color(0xFFDDE1E8));
-      expect(p.lineStrong, const Color(0xFFCCD1DD));
+    test('asos SOF QORA EMAS — chuqurlik qatlamlardan keladi', () {
+      // #000 da soya ko'rinmaydi, ya'ni ko'tarilgan yuza tekis
+      // qog'ozga aylanadi.
+      for (final c in [
+        Palette.obsidian.baseTop,
+        Palette.obsidian.baseMid,
+        Palette.obsidian.baseBottom,
+      ]) {
+        expect(c, isNot(const Color(0xFF000000)));
+      }
+      // Qatlamlar ko‘tarilib boradi: asos < karta < ko‘tarilgan.
+      double lum(Color c) => c.computeLuminance();
+      expect(lum(Palette.obsidian.raised),
+          greaterThan(lum(Palette.obsidian.baseMid)));
+      expect(lum(Palette.obsidian.raisedHigh),
+          greaterThan(lum(Palette.obsidian.raised)));
     });
 
-    test('urg‘u — indigo #3A62CC', () {
-      expect(p.accent, const Color(0xFF3A62CC));
-      expect(p.accentHigh, const Color(0xFF6179D1));
-      expect(p.onAccent, const Color(0xFFFFFFFF));
+    test('URG‘U MATNI FONDA O‘QILADI — har ikki mavzuda', () {
+      double ratio(Color a, Color b) {
+        final l1 = a.computeLuminance(), l2 = b.computeLuminance();
+        final hi = l1 > l2 ? l1 : l2, lo = l1 > l2 ? l2 : l1;
+        return (hi + .05) / (lo + .05);
+      }
+
+      for (final p in Palette.all) {
+        expect(ratio(p.accent, p.baseMid), greaterThan(4.5),
+            reason: '${p.label}: urg‘u fonda o‘qilishi kerak');
+        expect(ratio(p.ink, p.baseMid), greaterThan(7),
+            reason: '${p.label}: asosiy matn kuchli kontrastda');
+        expect(ratio(p.ink2, p.raised), greaterThan(4.5),
+            reason: '${p.label}: ikkinchi daraja matn ham o‘qilsin');
+        expect(ratio(p.onAccent, p.accent), greaterThan(4.5),
+            reason: '${p.label}: tugma ustidagi matn');
+      }
     });
 
-    test('matn darajalari reference bilan bir xil', () {
-      expect(p.ink, const Color(0xFF0D1117));
-      expect(p.ink2, const Color(0xFF596372));
-      expect(p.ink3, const Color(0xFF8C95A3));
-    });
-
-    test('B va C palitralar ham reference bilan bir xil qoladi', () {
-      expect(Palette.midnight.baseBottom, const Color(0xFF080A0E));
-      expect(Palette.midnight.accent, const Color(0xFF87A9EB));
-      expect(Palette.dune.baseTop, const Color(0xFFE7D7C1));
-      expect(Palette.dune.accent, const Color(0xFF8C5F32));
-    });
-
-    test('tarif metallari palitraga BOG‘LIQ EMAS', () {
-      // Reference'da oltin faqat karta materialida. Mavzu almashsa
-      // ham Gold Gold bo'lib qolishi kerak.
+    test('tarif metallari MAVZUGA BOG‘LIQ EMAS', () {
+      // Tarif — MATERIAL, rang mavzusi emas. Mavzu almashsa ham
+      // Gold Gold bo'lib qolishi kerak.
       final gold = TierStyle.map[Tier.gold]!.base;
-      C.apply(Palette.midnight);
-      expect(TierStyle.map[Tier.gold]!.base, gold);
-      C.apply(Palette.opal);
+      for (final p in Palette.all) {
+        C.apply(p);
+        expect(TierStyle.map[Tier.gold]!.base, gold);
+      }
+      C.apply(Palette.obsidian);
       expect(TierStyle.map[Tier.gold]!.base, const Color(0xFFF0C419));
+    });
+
+    test('ESKI V2 MAVZULARI QAYTMAYDI', () {
+      // Saqlangan eski tanlov ('opal', 'midnight', 'dune',
+      // 'royal') qurilmada qolgan bo'lsa ham, u yangi standartga
+      // qaytadi — eski ko'rinish tirilmasin.
+      for (final old in ['opal', 'midnight', 'dune', 'royal']) {
+        expect(Palette.byId(old).id, 'obsidian');
+      }
+      expect(Palette.all.map((p) => p.id), ['obsidian', 'porcelain']);
     });
   });
 

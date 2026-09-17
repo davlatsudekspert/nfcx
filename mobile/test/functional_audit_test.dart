@@ -19,6 +19,7 @@ import 'package:nfcstore/design/components/buttons.dart';
 import 'package:nfcstore/design/components/icons.dart';
 import 'package:nfcstore/screens/business/business_stats.dart';
 import 'package:nfcstore/screens/common/share.dart';
+import 'package:nfcstore/screens/content/reels.dart';
 import 'package:nfcstore/screens/discover/discover.dart';
 import 'package:nfcstore/screens/identity/profile_stats.dart';
 import 'package:nfcstore/screens/home/home.dart';
@@ -99,11 +100,14 @@ void main() {
       await pumpScreen(t, const Shell(), state: s);
 
       // Tab ekranlari `Shell._tabs` tartibida.
+      // DO'KON ENDI TAB EMAS — uning o'rnida Reels turadi.
+      // Do'kon Bosh sahifadagi "Do'kon" amali orqali ochiladi
+      // (quyidagi "BOSH SAHIFA" guruhida tekshiriladi).
       final wanted = <Type>[
         HomeScreen,
         DiscoverScreen,
         NfcCenterScreen,
-        IdCatalogScreen,
+        ReelsScreen,
         ProfileTab,
       ];
       for (final type in wanted) {

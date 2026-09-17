@@ -25,7 +25,7 @@ class AppPrefs extends ChangeNotifier {
   static const _themeKey = 'app_theme';
   static const _localeKey = 'app_locale';
 
-  Palette _palette = Palette.opal;
+  Palette _palette = Palette.obsidian;
   AppLocale _locale = AppLocale.uz;
   bool _loaded = false;
 
@@ -45,7 +45,7 @@ class AppPrefs extends ChangeNotifier {
       _palette = Palette.byId(theme);
       _locale = AppLocale.byCode(locale);
     } catch (_) {
-      _palette = Palette.opal;
+      _palette = Palette.obsidian;
       _locale = AppLocale.uz;
     }
     // TOKENLARGA DARHOL QO'LLANADI: `C` statik o'qiydi, ya'ni

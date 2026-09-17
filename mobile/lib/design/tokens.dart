@@ -117,116 +117,101 @@ class Palette {
   final Color warn;
   final Color fail;
 
-  // ── PROTOTIP PALITRALARI (NFCSTORE V2) ──────────────────────
+  // ── NFCSTORE DIZAYN TIZIMI ──────────────────────────────────
   //
-  // Qiymatlar prototipning CSS o'zgaruvchilaridan AYNAN ko'chirilgan
-  // (`--bg0`, `--t1`, `--acc`, ...). O'zgartirilmasin: ular birga
-  // tanlangan va kontrast shu juftliklarda tekshirilgan.
+  // Bu palitra V2 prototipdan MEROS EMAS. V2 oq qog'oz + indigo
+  // edi — u toza, lekin har uchinchi ilovaga o'xshardi va
+  // brendning o'zi (oltin N belgisi) unda begona turardi.
+  //
+  // YANGI YO'NALISH: premium fintech + digital identity + soft
+  // luxury. Uchta qaror butun tizimni belgilaydi:
+  //
+  // 1. QUYUQ ASOS. Oltin belgi faqat quyuq yuzada metall bo'lib
+  //    o'qiladi; yorug' fonda u sariq bo'yoqqa aylanadi. Kartalar
+  //    ham metall — ular ham quyuq fonda yashaydi.
+  // 2. SOF QORA EMAS. #000 ekranda "teshik" bo'lib ko'rinadi va
+  //    ustidagi soya yo'qoladi, ya'ni chuqurlik ham yo'qoladi.
+  //    Asos — sovuq-neytral siyoh (#0C0F14), uning ustida
+  //    qatlamlar ko'tariladi.
+  // 3. URG'U — SHAMPAN OLTIN, NEON EMAS. #D8B77A to'yingan sariq
+  //    emas: u metallning aksi, ya'ni ko'zni qichitmaydi va
+  //    matn sifatida ham o'qiladi (quyuq fonda 8:1 dan yuqori).
 
-  /// A — OPAL LIGHT. Standart mavzu.
-  ///
-  /// QIYMATLAR REFERENCE RASMLARDAN: oq qog'oz (#FFFFFF), sovuq
-  /// kulrang yuza (#F2F4F7) va indigo urg'u (#3A62CC). Ilgari bu
-  /// palitra "iliqlashtirilgan" edi (krem #FAF7F2, chuqur sapfir
-  /// #22403D) — aynan o'sha og'ish ilovani reference'dagi
-  /// ko'rinishdan uzoqlashtirgan va "kremsimon eski UI" tuyulgan.
-  /// Endi har bir qiymat reference bilan bir xil.
-  ///
-  /// OLTIN — FAQAT URG'U UCHUN, fon uchun emas: u tarif kartalari
-  /// va premium belgilarda ishlaydi.
-  static const opal = Palette(
-    id: 'opal',
-    label: 'Opal Light',
-    light: true,
-    accent: Color(0xFF3A62CC),
-    accentHigh: Color(0xFF6179D1),
-    accentDeep: Color(0xFF2B4BA3),
-    accentSecondary: Color(0xFFD98A2B),
-    onAccent: Color(0xFFFFFFFF),
-    aura: Color(0xFF6179D1),
-    baseTop: Color(0xFFFFFFFF),
-    baseMid: Color(0xFFFFFFFF),
-    baseBottom: Color(0xFFFFFFFF),
-    raised: Color(0xFFF2F4F7),
-    raisedHigh: Color(0xFFE0E3EB),
-    ink: Color(0xFF0D1117),
-    ink2: Color(0xFF596372),
-    ink3: Color(0xFF8C95A3),
-    line: Color(0xFFDDE1E8),
-    lineStrong: Color(0xFFCCD1DD),
-    glass: Color(0xB8FFFFFF),
-    glassLine: Color(0x140D1117),
-    ok: Color(0xFF2E9E6B),
-    warn: Color(0xFFD98A2B),
-    fail: Color(0xFFD9534F),
-  );
-
-  /// B — MIDNIGHT SILK. To'q mavzu.
-  static const midnight = Palette(
-    id: 'midnight',
-    label: 'Midnight Silk',
+  /// ASOSIY MAVZU — OBSIDIAN. Siyoh asos, shampan oltin urg'u.
+  static const obsidian = Palette(
+    id: 'obsidian',
+    label: 'Obsidian',
     light: false,
-    accent: Color(0xFF87A9EB),
-    accentHigh: Color(0xFF9CB4F3),
-    accentDeep: Color(0xFF5E82C4),
-    accentSecondary: Color(0xFFD98A2B),
-    onAccent: Color(0xFF080A0E),
-    aura: Color(0xFF87A9EB),
-    baseTop: Color(0xFF0B0E13),
-    baseMid: Color(0xFF090B10),
-    baseBottom: Color(0xFF080A0E),
-    raised: Color(0xFF12151B),
-    raisedHigh: Color(0xFF1D222B),
-    ink: Color(0xFFF2F4F7),
-    ink2: Color(0xFFA8B1C1),
-    ink3: Color(0xFF6D798C),
-    line: Color(0xFF1D222B),
-    lineStrong: Color(0xFF292F3B),
-    glass: Color(0xB812151B),
-    glassLine: Color(0x1AF2F4F7),
-    ok: Color(0xFF63D694),
-    warn: Color(0xFFE2B845),
-    fail: Color(0xFFE2685F),
+    accent: Color(0xFFD8B77A),
+    accentHigh: Color(0xFFEBD2A1),
+    accentDeep: Color(0xFFB2914F),
+    // Ikkilamchi — sovuq ko'k. Faqat holat va ma'lumot uchun:
+    // ekranda bitta urg'u rangi qoidasi buzilmasin.
+    accentSecondary: Color(0xFF7FA9E8),
+    // Oltin yuzadagi matn — siyoh. Oq matn oltinda 4.5:1 dan
+    // o'tmaydi.
+    onAccent: Color(0xFF14171D),
+    aura: Color(0xFFD8B77A),
+    baseTop: Color(0xFF101318),
+    baseMid: Color(0xFF0C0F14),
+    baseBottom: Color(0xFF090B0F),
+    raised: Color(0xFF171B22),
+    raisedHigh: Color(0xFF1F242D),
+    ink: Color(0xFFF4F6F8),
+    ink2: Color(0xFFA3ADBB),
+    ink3: Color(0xFF6C7684),
+    line: Color(0xFF222832),
+    lineStrong: Color(0xFF2E3541),
+    glass: Color(0xC2141820),
+    glassLine: Color(0x1FF4F6F8),
+    ok: Color(0xFF4FC08D),
+    warn: Color(0xFFE0B15C),
+    fail: Color(0xFFE06A61),
   );
 
-  /// C — DUNE. Iliq qum, mis urg'u.
-  static const dune = Palette(
-    id: 'dune',
-    label: 'Dune',
+  /// YORUG' HAMROH — PORCELAIN. Kunduzgi yorug'lik uchun.
+  ///
+  /// Oltin bu yerda URG'U MATNI BO'LA OLMAYDI (oq ustida
+  /// o'qilmaydi), shuning uchun urg'u chuqur bronza — o'sha
+  /// metall oilasida qoladi, lekin kontrastdan o'tadi. Kartalar
+  /// esa oltinligicha: ular material, mavzu emas.
+  static const porcelain = Palette(
+    id: 'porcelain',
+    label: 'Porcelain',
     light: true,
-    accent: Color(0xFF8C5F32),
-    accentHigh: Color(0xFFB9936C),
-    accentDeep: Color(0xFF6E4824),
-    accentSecondary: Color(0xFF8C5F32),
-    onAccent: Color(0xFFFFF7EA),
-    aura: Color(0xFFB9936C),
-    baseTop: Color(0xFFE7D7C1),
-    baseMid: Color(0xFFE2D1B9),
-    baseBottom: Color(0xFFE7D7C1),
-    raised: Color(0xFFD6C7B1),
-    raisedHigh: Color(0xFFC5B7A1),
-    ink: Color(0xFF332E27),
-    ink2: Color(0xFF756C60),
-    ink3: Color(0xFF9F9589),
-    line: Color(0xFFC5B7A1),
-    lineStrong: Color(0xFFB4A791),
-    glass: Color(0xB8E7D7C1),
-    glassLine: Color(0x1A332E27),
-    ok: Color(0xFF2E7D5B),
-    warn: Color(0xFFB4762A),
-    fail: Color(0xFFB8443F),
+    accent: Color(0xFF8A6B2F),
+    accentHigh: Color(0xFFA9874A),
+    accentDeep: Color(0xFF6B511F),
+    accentSecondary: Color(0xFF3F6CB5),
+    onAccent: Color(0xFFFFFDF7),
+    aura: Color(0xFFA9874A),
+    baseTop: Color(0xFFFCFBF8),
+    baseMid: Color(0xFFF8F7F3),
+    baseBottom: Color(0xFFF4F2ED),
+    raised: Color(0xFFFFFFFF),
+    raisedHigh: Color(0xFFF1EFE9),
+    ink: Color(0xFF15181C),
+    ink2: Color(0xFF5B6371),
+    ink3: Color(0xFF8D95A1),
+    line: Color(0xFFE6E3DC),
+    lineStrong: Color(0xFFD4D0C7),
+    glass: Color(0xC2FCFBF8),
+    glassLine: Color(0x1415181C),
+    ok: Color(0xFF2E8F66),
+    warn: Color(0xFFB07B22),
+    fail: Color(0xFFC04A44),
   );
 
-  /// V2 REFERENCE'DAGI UCHTA PALITRA — boshqasi yo'q.
-  /// Saqlangan tanlov ro'yxatda bo'lmasa `byId` A ga qaytaradi,
-  /// ya'ni olib tashlangan mavzu qurilmada qayta tirilmaydi.
-  static const List<Palette> all = [opal, midnight, dune];
+  /// IKKITA MAVZU, BITTA TIZIM. Uchinchisi qo'shilsa, u ham shu
+  /// ikkisining qoidasiga bo'ysunishi kerak: metall kartalar
+  /// o'zgarmaydi, urg'u bitta, chuqurlik qatlamlardan keladi.
+  static const List<Palette> all = [obsidian, porcelain];
 
   static Palette byId(String? id) {
     for (final p in all) {
       if (p.id == id) return p;
     }
-    return opal;
+    return obsidian;
   }
 }
 
@@ -244,7 +229,7 @@ class Palette {
 class C {
   const C._();
 
-  static Palette _p = Palette.opal;
+  static Palette _p = Palette.obsidian;
 
   /// Mavzuni qo'llash. `AppPrefs.load()` va `setPalette()` chaqiradi,
   /// keyin ildizda bitta `setState` butun daraxtni qayta quradi.
@@ -270,6 +255,19 @@ class C {
   /// fon oq bo'lib o'qiladi, lekin mutlaqo o'lik tekis ham emas.
   /// To'q palitrada hech narsa o'zgarmaydi.
   static double get auraScale => _p.light ? .2 : 1;
+
+  // ── MARKAZIY NFC ORBI ───────────────────────────────────────
+  //
+  // Orb ilovaning asosiy brend elementi: uning ichida RASMIY
+  // OLTIN LOGOTIP turadi. Shuning uchun yuzasi urg'u rangida
+  // emas, QUYUQ: oltin belgi ko'k yoki qumrang to'ldirishda
+  // yo'qolib ketardi. Quyuq yuza har uchala mavzuda ham bir xil
+  // ishlaydi va logotipning o'z rangini buzmaydi.
+  static Color get orbHigh => const Color(0xFF232A38);
+  static Color get orbDeep => const Color(0xFF0E131C);
+
+  /// Orb ostidagi mayin nur — oltin, urg'u emas.
+  static Color get orbGlow => const Color(0xFFD9AE5F);
 
   static Palette get palette => _p;
 

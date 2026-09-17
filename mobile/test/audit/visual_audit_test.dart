@@ -466,7 +466,7 @@ void main() {
   for (final p in Palette.all) {
     testWidgets('44 mavzu — ${p.id}', (t) async {
       C.apply(p);
-      addTearDown(() => C.apply(Palette.opal));
+      addTearDown(() => C.apply(Palette.obsidian));
       final s = await ready();
       await pumpScreen(t, const NfcCenterScreen(), state: s);
       await golden(t, '44-mavzu-${p.id}');

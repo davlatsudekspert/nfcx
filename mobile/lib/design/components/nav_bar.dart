@@ -6,8 +6,8 @@ import '../type.dart';
 import 'dart:ui' show ImageFilter;
 
 import 'icons.dart';
+import 'logo.dart';
 import 'press.dart';
-import 'sweep.dart';
 
 /// TAB BAR — 5 tab, NFC markazda va ko'tarilgan (prototip: V2).
 ///
@@ -65,7 +65,12 @@ class NavBar extends StatelessWidget {
         (icon: Ico.home, label: tr('Bosh sahifa')),
         (icon: Ico.search, label: tr('Qidiruv')),
         (icon: Ico.nfc, label: 'NFC'),
-        (icon: Ico.bag, label: tr('Do‘kon')),
+        // REELS — DO'KON O'RNIGA. Do'kon kunda bir marta
+        // ochiladigan joy; Reels esa har kuni qaytiladigan
+        // lenta. Pastki qator eng tez-tez ishlatiladigan
+        // beshta joy uchun. Do'kon Bosh sahifadagi tezkor
+        // amaldan va NFC markazidan ochiladi.
+        (icon: Ico.play, label: 'Reels'),
         (icon: Ico.user, label: tr('Profil')),
       ];
 
@@ -226,12 +231,16 @@ class _Tab extends StatelessWidget {
   }
 }
 
-/// Markaziy tugma — NFC orbi (prototip: `.nav .nfc-fab .orb`).
+/// Markaziy tugma — NFCSTORE orbi.
 ///
-/// NIMA UCHUN LOGOTIP EMAS: markaziy tugma AMALNI bildiradi —
-/// "kartani o'qish". Logotip esa brendni bildiradi va u tepada,
-/// sarlavha qatorida turadi. Ikkalasi bir joyda bo'lsa, tugma
-/// bosiladigan narsaga o'xshamay qoladi.
+/// BU YERDA RASMIY LOGOTIP TURADI, umumiy NFC ikonkasi emas.
+/// Markaziy tugma ilovaning eng ko'rinadigan elementi: u brendni
+/// ham, asosiy amalni ham bildiradi. Umumiy ikonka esa ilovani
+/// har qanday boshqa NFC ilovasiga o'xshatib qo'yardi.
+///
+/// LOGOTIP O'Z RANGIDA QOLADI (oltin) va CHO'ZILMAYDI:
+/// `BoxFit.contain` nisbatni saqlaydi, atrofida esa nafas uchun
+/// joy bor — belgi doiraning gardishiga tegmaydi.
 class _NfcTab extends StatelessWidget {
   const _NfcTab({required this.active, required this.onTap});
 
@@ -250,41 +259,37 @@ class _NfcTab extends StatelessWidget {
             AnimatedContainer(
               duration: M.fade,
               curve: M.curve,
-              width: 56,
-              height: 56,
+              width: 58,
+              height: 58,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                // QUYUQ DISK + OLTIN GARDISH. Disk logotip rasmi
+                // yuklanguncha ham tugmani ko'rsatib turadi —
+                // sekin tarmoqda yoki birinchi kadrda markaz
+                // bo'sh qolmasin.
                 gradient: LinearGradient(
                   begin: const Alignment(-.7, -1),
                   end: const Alignment(.7, 1),
-                  colors: [C.accentHigh, C.accent],
+                  colors: [C.orbHigh, C.orbDeep],
                 ),
-                // FON HALQASI — panelning chizig'i doirani kesib
-                // o'tmasin (prototipda `0 0 0 6px var(--bg0)`).
-                border: Border.all(color: C.bg, width: 0),
+                border: Border.all(
+                  color: C.orbGlow.withValues(alpha: active ? .9 : .55),
+                  width: 1.2,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: C.accent.withValues(alpha: active ? .55 : .42),
-                    blurRadius: active ? 30 : 26,
-                    spreadRadius: -8,
-                    offset: const Offset(0, 12),
+                    color: C.orbGlow.withValues(alpha: active ? .38 : .22),
+                    blurRadius: active ? 28 : 22,
+                    spreadRadius: -4,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
               alignment: Alignment.center,
-              child: ClipOval(
-                child: LightSweep(
-                  // Yorug'lik chizig'i — karta va asosiy tugmadagi
-                  // bilan bir xil ritm.
-                  child: SizedBox(
-                    width: 56,
-                    height: 56,
-                    child: Center(
-                      child: NIcon(Ico.nfc, size: 26, color: C.onAccent),
-                    ),
-                  ),
-                ),
-              ),
+              // RASMIY NFCSTORE BELGISI — o'z oltinida, kesilmasdan
+              // va cho'zilmasdan (`BoxFit.contain`). 58 dp disk
+              // ichida 30 dp belgi: atrofida nafas qoladi.
+              child: const LogoMark(size: 30),
             ),
             const SizedBox(height: 4),
             Text(

@@ -210,7 +210,7 @@ void main() {
         size: const Size(390, 560),
       );
     }
-    C.apply(Palette.opal);
+    C.apply(Palette.obsidian);
   });
 }
 

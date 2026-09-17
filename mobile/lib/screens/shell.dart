@@ -6,8 +6,8 @@ import '../design/tokens.dart';
 import '../state/app_state.dart';
 import 'discover/discover.dart';
 import 'home/home.dart';
-import 'nfc/id_catalog.dart';
 import 'identity/profile_tab.dart';
+import 'content/reels.dart';
 import 'nfc/nfc_center.dart';
 
 /// To'rt tabli qobiq.
@@ -38,8 +38,17 @@ class _ShellState extends State<Shell> {
     HomeScreen(),
     DiscoverScreen(),
     NfcCenterScreen(),
-    // TO'RTINCHI TAB — DO'KON (prototip). Reels lentadan ochiladi.
-    IdCatalogScreen(),
+    // TO'RTINCHI TAB — REELS.
+    //
+    // Ilgari bu yerda DO'KON turardi. Do'kon kunda bir marta, ID
+    // sotib olayotganda ochiladi; Reels esa har kuni qaytiladigan
+    // lenta. Pastki qator eng tez-tez ishlatiladigan beshta joy
+    // uchun — kamdan-kam ochiladigan ekran u yerda o'rin egallab
+    // turmasligi kerak.
+    //
+    // DO'KON YO'QOLMAYDI: Bosh sahifadagi "Do'kon" tezkor amali va
+    // NFC markazidagi havolalar orqali ochiladi.
+    ReelsScreen(isTab: true),
     ProfileTab(),
   ];
 

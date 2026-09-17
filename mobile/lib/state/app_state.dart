@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../data/api_client.dart';
 import '../data/models.dart';
+import '../design/tokens.dart';
 import '../data/repo.dart';
 
 /// FAOL SHAXS — ilovaning ildiz holati.
@@ -28,6 +29,15 @@ class Identity {
   String get name => isBusiness ? (company?.name ?? '') : (record?.name ?? '');
   String? get avatarUrl => isBusiness ? company?.logoUrl : record?.avatarUrl;
   bool get verified => isBusiness ? (company?.verified ?? false) : (record?.verified ?? false);
+
+  /// TARIF MATERIALI — karta yuzasi shunga qarab chiziladi.
+  ///
+  /// Shaxsiy ID'da u kodning o'zidan/narxidan kelib chiqadi, biznes
+  /// profilda esa kompaniyaning tarifidan. Ikkalasi bitta karusel
+  /// ichida chizilgani uchun bu yerda bir joyga yig'iladi.
+  Tier get tier => isBusiness
+      ? TierStyle.parse(company?.tier ?? '')
+      : (record?.tier ?? Tier.free);
 
   /// Ommaviy havola — ulashish va QR uchun.
   String get publicUrl => isBusiness

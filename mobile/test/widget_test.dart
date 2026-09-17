@@ -88,21 +88,15 @@ void main() {
       // YORLIQLAR O‘ZBEKCHA: interfeys tili o‘zbekcha, shuning
       // uchun tab nomlari ham tarjima qilinadi.
       //
-      // TO'RTINCHI TAB — DO'KON (prototip V2). Reels ilovada
-      // qoladi, lekin u KONTENT KO'RINISHI va lentadan ochiladi;
-      // ID sotib olish esa asosiy savdo yo'li va bitta bosishda
-      // turishi kerak.
-      expect(find.text('Bosh sahifa'), findsOneWidget);
-      expect(find.text('Qidiruv'), findsOneWidget);
-      expect(find.text('Do‘kon'), findsOneWidget);
-      expect(find.text('Profil'), findsOneWidget);
-      expect(find.text('Activity'), findsNothing);
-
-      // MARKAZIY TAB — NFC ORBI, yorlig'i bilan (prototip).
-      // Ilgari u brend medalyoni edi va yorliqsiz turardi; endi
-      // tugma AMALNI bildiradi, logotip esa sarlavha qatorida.
-      expect(find.text('NFC'), findsOneWidget);
-      expect(find.byType(BrandMark), findsNothing);
+      // TO'RTINCHI TAB — REELS. Do'kon bu yerdan olib
+      // tashlandi: u kunda bir marta, ID sotib olayotganda
+      // ochiladi va pastki qatorda o'rin egallab turishi shart
+      // emas. Do'konga yo'l Bosh sahifadagi tezkor amalda va
+      // NFC markazida qoldi.
+      expect(
+        NavBar.tabs.map((t) => t.label),
+        ['Bosh sahifa', 'Qidiruv', 'NFC', 'Reels', 'Profil'],
+      );
     });
 
     testWidgets('NFC markazda turadi', (tester) async {
@@ -330,41 +324,19 @@ void main() {
   fieldLineTests();
 
   group('Dizayn tokenlari', () {
-    test('ranglar prototip (V2) qiymatlarida', () {
-      // Qiymatlar PROTOTIPNING CSS o'zgaruvchilaridan. O'zgartirilsa
-      // — ataylab o'zgartirilsin, tasodifan emas.
-      //
-      // Standart mavzu — A "Opal Light".
-      //
-      // SOF OQ VA SOVUQ KULRANG — REFERENCE SHUNDAY. Bir vaqtlar bu
-      // palitra "iliqlashtirilgan" edi (fil suyagi fon, chuqur
-      // sapfir urg'u) — natijada qurilmadagi ilova reference'dagi
-      // ko'rinishga o'xshamay qoldi. Endi qiymatlar reference bilan
-      // raqamma-raqam bir xil.
-      C.apply(Palette.opal);
-      expect(C.bg, const Color(0xFFFFFFFF));
-      expect(C.surface, const Color(0xFFF2F4F7));
-      expect(C.accent, const Color(0xFF3A62CC));
-      expect(C.ink, const Color(0xFF0D1117));
-      expect(C.ink2, const Color(0xFF596372));
-      expect(C.line, const Color(0xFFDDE1E8));
-      expect(C.ok, const Color(0xFF2E9E6B));
-      expect(C.warn, const Color(0xFFD98A2B));
-      expect(C.fail, const Color(0xFFD9534F));
+    test('ranglar dizayn tizimi qoidalariga bo‘ysunadi', () {
+      // Aniq qiymatlar `reference_fixes_test.dart` da QOIDA
+      // sifatida tekshiriladi. Bu yerda esa eng muhimi: standart
+      // mavzu quyuq va eski V2 mavzulari qaytmaydi.
+      C.apply(Palette.obsidian);
+      expect(C.bg, Palette.obsidian.baseBottom);
+      expect(Palette.obsidian.light, isFalse);
+      expect(Palette.all.length, 2);
 
-      // B "Midnight Silk" — to'q mavzu.
-      C.apply(Palette.midnight);
-      expect(C.bg, const Color(0xFF080A0E));
-      expect(C.accent, const Color(0xFF87A9EB));
-      expect(C.ink, const Color(0xFFF2F4F7));
+      C.apply(Palette.porcelain);
+      expect(Palette.porcelain.light, isTrue);
 
-      // C "Dune" — iliq qum, mis urg'u.
-      C.apply(Palette.dune);
-      expect(C.bg, const Color(0xFFE7D7C1));
-      expect(C.accent, const Color(0xFF8C5F32));
-      expect(C.ink, const Color(0xFF332E27));
-
-      C.apply(Palette.opal);
+      C.apply(Palette.obsidian);
     });
 
     test('matn fon bilan qarama-qarshi — har mavzuda', () {
@@ -378,7 +350,7 @@ void main() {
             : (lum(C.bg) + .05) / (lum(C.ink) + .05);
         expect(contrast, greaterThan(4.5), reason: 'mavzu: ${p.id}');
       }
-      C.apply(Palette.opal);
+      C.apply(Palette.obsidian);
     });
 
     test('harakat byudjeti: EKRAN O‘TISHLARI 400ms dan oshmaydi', () {

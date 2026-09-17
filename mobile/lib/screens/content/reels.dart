@@ -21,7 +21,6 @@ import '../home/home.dart' show CommentButton, LikeButton;
 import 'comments_sheet.dart';
 import '../common/share.dart';
 import '../identity/profile_screen.dart';
-import '../shell.dart';
 import 'report_sheet.dart';
 
 /// REELS — to'liq ekran vertikal lenta.
@@ -78,7 +77,19 @@ List<FeedEntry> reelsMerge({
 
 /// orqaga tugmasi `ShellScope.goHome` ni chaqiradi.
 class ReelsScreen extends StatefulWidget {
-  const ReelsScreen({super.key, this.startKind, this.startId});
+  const ReelsScreen({
+    super.key,
+    this.startKind,
+    this.startId,
+    this.isTab = false,
+  });
+
+  /// Reels PASTKI QATORNING o'z tabi sifatida ochilganmi.
+  ///
+  /// Tab ildizida qaytadigan joy yo'q — orqaga tugmasi u yerda
+  /// nimaga bosilishini tushuntirib bera olmaydi. Lentadan
+  /// ochilganda esa (post bosilganda) tugma kerak.
+  final bool isTab;
 
   /// QAYSI KADRDAN BOSHLANSIN.
   ///
@@ -441,13 +452,16 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 padding: const EdgeInsets.fromLTRB(S.x16, S.x8, S.x16, 0),
                 child: Row(
                   children: [
-                    RoundButton(
-                      Ico.back,
-                      size: 42,
-                      iconSize: 17,
-                      glass: true,
-                      onTap: () => ShellScope.maybeOf(context)?.goHome(),
-                    ),
+                    if (widget.isTab)
+                      const SizedBox(width: 42)
+                    else
+                      RoundButton(
+                        Ico.back,
+                        size: 42,
+                        iconSize: 17,
+                        glass: true,
+                        onTap: () => Navigator.of(context).maybePop(),
+                      ),
                     const Spacer(),
                     const BrandMark(size: 34),
                     const SizedBox(width: S.x8),

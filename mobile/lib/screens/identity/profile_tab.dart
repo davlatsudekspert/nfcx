@@ -248,10 +248,12 @@ class _ProfileTabState extends State<ProfileTab> {
                 )
               else
                 _CardCarousel(
-                  cards: state.cards,
+                  items: [
+                    for (final c in state.cards) Identity.personal(c),
+                    for (final c in state.companies) Identity.business(c),
+                  ],
                   activeCode: active.code,
-                  onSelect: (r) =>
-                      state.switchIdentity(Identity.personal(r)),
+                  onSelect: state.switchIdentity,
                   onAdd: () =>
                       push<void>(context, (_) => const IdCatalogScreen()),
                 ),
@@ -665,15 +667,24 @@ class _ProfileCover extends StatelessWidget {
 /// olish yo'li ochiq tursin.
 class _CardCarousel extends StatelessWidget {
   const _CardCarousel({
-    required this.cards,
+    required this.items,
     required this.activeCode,
     required this.onSelect,
     required this.onAdd,
   });
 
-  final List<Record> cards;
+  /// SHAXSIY VA BIZNES ID'LAR BIR QATORDA.
+  ///
+  /// Ilgari bu yerda faqat `state.cards` — shaxsiy kartalar —
+  /// turardi. Kompaniyasi bor odam o'z profilida biznes
+  /// profillarini UMUMAN ko'rmasdi: ular faqat menyu ostidagi
+  /// varaqada bor edi va uni topish kerak edi. Egasining
+  /// shikoyati ham shu: "business profillar ko'rinmayapti"
+  /// (serverda ular joyida — `/api/companies/mine` uchtasini
+  /// qaytaradi).
+  final List<Identity> items;
   final String activeCode;
-  final ValueChanged<Record> onSelect;
+  final ValueChanged<Identity> onSelect;
   final VoidCallback onAdd;
 
   @override
@@ -682,10 +693,10 @@ class _CardCarousel extends StatelessWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
-          itemCount: cards.length + 1,
+          itemCount: items.length + 1,
           separatorBuilder: (_, __) => const SizedBox(width: S.x12),
           itemBuilder: (context, i) {
-            if (i == cards.length) {
+            if (i == items.length) {
               return Press(
                 onTap: onAdd,
                 minSize: 0,
@@ -712,10 +723,10 @@ class _CardCarousel extends StatelessWidget {
               );
             }
 
-            final card = cards[i];
-            final active = card.code == activeCode;
+            final id = items[i];
+            final active = id.code == activeCode;
             return Press(
-              onTap: active ? null : () => onSelect(card),
+              onTap: active ? null : () => onSelect(id),
               minSize: 0,
               scale: .97,
               child: Opacity(
@@ -726,10 +737,14 @@ class _CardCarousel extends StatelessWidget {
                 child: SizedBox(
                   width: 300,
                   child: IdentityCard(
-                    code: card.code,
-                    tier: card.tier,
-                    holder: card.name,
-                    url: 'nfcstore.uz/${card.code.toLowerCase()}',
+                    code: id.code,
+                    tier: id.tier,
+                    holder: id.name,
+                    url: profileHandle(
+                      context,
+                      id.code,
+                      company: id.isBusiness,
+                    ),
                     sweep: active,
                   ),
                 ),
