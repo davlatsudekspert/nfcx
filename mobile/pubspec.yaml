@@ -41,6 +41,18 @@ dependencies:
   video_player: ^2.14.0
 
 dev_dependencies:
+  # HAQIQIY QURILMADA SINOV.
+  #
+  # `test/` dagi 244 ta sinov widget'larni SOXTA muhitda chizadi:
+  # tarmoq yo'q, platforma plaginlari yo'q, ilovaning `main()` i
+  # umuman ishga tushmaydi. Ular maketni isbotlaydi, lekin
+  # "ilova telefonda ochiladimi, tugmalar ishlaydimi" degan
+  # savolga JAVOB BERMAYDI. Aynan shu bo'shliq sabab qurilmada
+  # ochilmaydigan build "tayyor" deb topshirilgan edi.
+  #
+  # `integration_test` ilovaning O'ZINI emulyatorda ishga tushiradi.
+  integration_test:
+    sdk: flutter
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0

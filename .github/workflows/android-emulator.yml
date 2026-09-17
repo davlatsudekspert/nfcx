@@ -1,0 +1,103 @@
+# ILOVANI HAQIQIY EMULYATORDA ISHGA TUSHIRISH
+#
+# NIMA UCHUN BU BOR: `mobile-check.yml` dagi 244 ta sinov widget'larni
+# SOXTA muhitda chizadi — tarmoq yo'q, platforma plaginlari yo'q,
+# ilovaning `main()` i umuman ishga tushmaydi. Ular maketni
+# isbotlaydi, lekin "ilova telefonda OCHILADIMI, tugmalar
+# ISHLAYDIMI" degan savolga JAVOB BERMAYDI.
+#
+# Aynan shu bo'shliq sabab qurilmada sinalmagan build "tayyor" deb
+# topshirilgan edi: analiz toza, 244 sinov yashil, APK qurilgan —
+# lekin ilova telefonda ochilganda nima bo'lishini HECH KIM
+# ko'rmagan.
+#
+# Bu ish oqimi ilovani haqiqiy Android emulyatorida, haqiqiy server
+# bilan ishga tushiradi va ekranma-ekran yuradi: ochilish → kirish
+# → ro'yxatdan o'tish → bosh sahifa → lenta → Reels → tablar.
+# Biror qadam ishlamasa, qurilish QIZARADI.
+#
+# SERVER: ishlab turgan `nfcstore.uz` EMAS. `scripts/dev-api-server.mjs`
+# haqiqiy Worker kodini lokal D1 bilan ko'taradi — sinov ma'lumotlari
+# hech qachon production bazasiga tushmaydi.
+name: Android emulyator sinovi
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'hosting/**'
+      - '.github/workflows/android-emulator.yml'
+
+jobs:
+  emulator:
+    # Emulyator uchun apparat tezlatish kerak; GitHub'ning Linux
+    # runnerlarida KVM mavjud (quyida ruxsat beriladi).
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # KVM — emulyatorsiz bu ish oqimi soatlab ishlardi.
+      - name: KVM ruxsati
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        working-directory: mobile
+        run: flutter pub get --enforce-lockfile
+
+      # LOKAL SERVER — haqiqiy Worker kodi, lokal D1 va demo
+      # ma'lumotlar bilan. Port faylga yoziladi.
+      - name: Lokal API serverni ko'tarish
+        run: |
+          node scripts/dev-api-server.mjs --port 8787 &
+          echo $! > /tmp/api.pid
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8787/api/records >/dev/null; then
+              echo "API tayyor"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Lokal API ko'tarilmadi"; exit 1
+
+      # EMULYATOR 10.0.2.2 orqali host'ning 127.0.0.1 iga chiqadi.
+      - name: Emulyatorda ilovani yurgizish
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: mobile
+          script: |
+            adb reverse tcp:8787 tcp:8787 || true
+            flutter test integration_test/app_test.dart \
+              --dart-define=API_BASE=http://10.0.2.2:8787 \
+              --timeout 5m
+
+      - name: Serverni to'xtatish
+        if: always()
+        run: kill "$(cat /tmp/api.pid)" 2>/dev/null || true
