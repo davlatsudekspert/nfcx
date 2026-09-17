@@ -1,0 +1,112 @@
+# ISHLAB TURGAN nfcstore.uz BILAN TEKSHIRUV
+#
+# NIMA UCHUN BU ALOHIDA: `android-emulator.yml` ilovani LOKAL
+# server bilan yurgizadi. U haqiqiy Worker kodi, lekin SERVERGA
+# nima yoyilganini bilmaydi. Telefondagi ilova esa aynan
+# nfcstore.uz ga boradi — ya'ni "lokalda ishladi" hali "odamning
+# telefonida ishlaydi" degani emas.
+#
+# IKKI QISM:
+#   1. Server yo'llari — hisobga umuman tegmasdan.
+#   2. Emulyatorda ilova, HAQIQIY sayt bilan. Hisob ma'lumoti
+#      Secret'dan keladi; berilmasa bu qism o'tkazib yuboriladi.
+name: Production tekshiruvi
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'scripts/check-production.mjs'
+      - '.github/workflows/production-check.yml'
+
+jobs:
+  # ── 1. SERVER YO'LLARI ────────────────────────────────────────
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: nfcstore.uz yo'llari
+        run: node scripts/check-production.mjs
+
+  # ── 2. ILOVA + HAQIQIY SAYT ───────────────────────────────────
+  #
+  # PAROL KODDA EMAS. U repozitoriy Secret'idan keladi va faqat
+  # ishga tushirish paytida `--dart-define` ga uzatiladi: git
+  # tarixiga ham, ish oqimi faylaga ham tushmaydi.
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hisob berilganmi
+        id: creds
+        env:
+          EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
+        run: |
+          if [ -n "$EMAIL" ]; then
+            echo "have=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::NFC_LOGIN_EMAIL / NFC_LOGIN_PASSWORD Secret'lari yo‘q — kirish qismi o‘tkazib yuborildi"
+          fi
+
+      - name: KVM ruxsati
+        if: steps.creds.outputs.have == 'yes'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v4
+        if: steps.creds.outputs.have == 'yes'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        if: steps.creds.outputs.have == 'yes'
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - name: Bog'liqliklar
+        if: steps.creds.outputs.have == 'yes'
+        working-directory: mobile
+        run: flutter pub get --enforce-lockfile
+
+      - name: Emulyatorda HAQIQIY sayt bilan yurish
+        if: steps.creds.outputs.have == 'yes'
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
+          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: mobile
+          # Har qator alohida `sh -c` — buyruq bitta qatorda.
+          script: |
+            flutter test integration_test/tour_test.dart -d emulator-5554 --dart-define=API_BASE=https://nfcstore.uz --dart-define=LOGIN_EMAIL="$NFC_LOGIN_EMAIL" --dart-define=LOGIN_PASSWORD="$NFC_LOGIN_PASSWORD" --timeout 12m >/tmp/tour.log 2>&1; echo $? >/tmp/tour.rc; sed -e "s|$NFC_LOGIN_PASSWORD|***|g" /tmp/tour.log; true
+            adb pull /sdcard/Android/data/uz.nfcstore.app/files/shots /tmp/shots || true
+            exit $(cat /tmp/tour.rc)
+
+      - name: Ekran rasmlarini yuklash
+        if: always() && steps.creds.outputs.have == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-ekranlari
+          path: /tmp/shots
+          if-no-files-found: warn

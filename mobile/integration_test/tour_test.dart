@@ -26,6 +26,19 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   const base = String.fromEnvironment('API_BASE');
+
+  /// HISOB — berilmasa demo hisob ishlatiladi.
+  ///
+  /// PAROL KODDA EMAS, GitHub Secret'da. Uni faylga yozish — uni
+  /// git tarixiga BIR UMRGA qoldirish degani: keyin o'chirilsa ham
+  /// eski commit'da qolaveradi. Shuning uchun u faqat ishga
+  /// tushirish paytida `--dart-define` orqali keladi va hech
+  /// qayerda saqlanmaydi.
+  const loginEmail =
+      String.fromEnvironment('LOGIN_EMAIL', defaultValue: 'dilshod@nfcstore.uz');
+  const loginPassword =
+      String.fromEnvironment('LOGIN_PASSWORD', defaultValue: 'demo1234');
+
   if (base.isEmpty) {
     testWidgets('API_BASE berilishi SHART', (_) async {
       fail('API_BASE berilmagan: sayohat --dart-define=API_BASE=... bilan '
@@ -124,8 +137,8 @@ void main() {
     await step('kirish', () async {
       final fields = find.byType(TextField);
       expect(fields, findsWidgets);
-      await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
-      await t.enterText(fields.at(1), 'demo1234');
+      await t.enterText(fields.at(0), loginEmail);
+      await t.enterText(fields.at(1), loginPassword);
       await t.pumpAndSettle();
       await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
       final ok = await waitFor(t, find.text('Bosh sahifa'));
