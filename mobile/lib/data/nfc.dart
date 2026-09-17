@@ -55,6 +55,7 @@ class Nfc {
 
     Future<void> stop([String? reason]) async {
       timer?.cancel();
+      if (identical(_pending, timer)) _pending = null;
       try {
         await NfcManager.instance.stopSession(alertMessage: reason);
       } catch (_) {}
@@ -75,7 +76,7 @@ class Nfc {
       return (link: null, tagSeen: false);
     }
 
-    timer = Timer(timeout, () async {
+    timer = _pending = Timer(timeout, () async {
       if (!completer.isCompleted) {
         completer.complete((link: null, tagSeen: false));
       }
@@ -121,7 +122,7 @@ class Nfc {
       return null;
     }
 
-    timer = Timer(timeout, () async {
+    timer = _pending = Timer(timeout, () async {
       if (!completer.isCompleted) completer.complete(null);
       await stop();
     });
@@ -231,7 +232,7 @@ class Nfc {
       return false;
     }
 
-    timer = Timer(timeout, () async {
+    timer = _pending = Timer(timeout, () async {
       if (!completer.isCompleted) completer.complete(false);
       await stop();
     });
@@ -240,7 +241,19 @@ class Nfc {
   }
 
   /// O'qishni to'xtatish — ekran yopilganda chaqiriladi.
+  /// FAOL KUTISH TAYMERI.
+  ///
+  /// Har bir `readLink` / `readTag` / `write` chaqiruvi o'z
+  /// `Timer` ini ochadi va uni FAQAT o'z ichidagi `stop()` bekor
+  /// qila olardi. Ekrandan chiqilganda esa `Nfc.stop()` chaqiriladi
+  /// — u sessiyani yopardi, lekin taymer 20 soniya yashab qolar va
+  /// keyin yana `stopSession()` chaqirardi. Ekranni ketma-ket
+  /// ochib-yopgan odamda bunday taymerlar yig'ilib borardi.
+  static Timer? _pending;
+
   static Future<void> stop() async {
+    _pending?.cancel();
+    _pending = null;
     try {
       await NfcManager.instance.stopSession();
     } catch (_) {}

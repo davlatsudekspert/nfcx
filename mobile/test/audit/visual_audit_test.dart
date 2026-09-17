@@ -175,6 +175,7 @@ void main() {
   });
 
   // ── Profillar ──────────────────────────────────────────────────────
+
   testWidgets('15 shaxsiy profil — ega', (t) async {
     final s = await ready();
     await pumpScreen(t, ProfileScreen(code: s.active!.code), state: s);

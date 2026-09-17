@@ -465,7 +465,7 @@ void main() {
     await r.updateCompany(id, {'description': before.about});
   });
 
-  test('NUQSON: katalogni O‘QIYDIGAN yo‘l serverda YO‘Q', () async {
+  test('katalogni o‘qish — server yo‘li bo‘lmasa ham egasi ko‘radi', () async {
     // AUDITDA TOPILDI VA HALI TUZATILMAGAN.
     //
     // `GET /api/companies/:id/catalog` EGASINING tokeni bilan ham
@@ -478,10 +478,23 @@ void main() {
     // ko'ra olmaydi. Ommaviy profildagi katalog esa ishlaydi: u
     // `company(id).items` dan keladi.
     //
-    // BU SINOV NUQSONNI QAYD ETADI. Server tuzatilgach u qizaradi
-    // — o'shanda bu yer o'chirilib, o'qish oddiy tekshiriladi.
+    // YECHIM MIJOZ TOMONIDA: `companyCatalog()` 404 ni ko'rib
+    // `GET /api/companies/:id` javobidagi `items` ga o'tadi — ya'ni
+    // egasining ekrani ishlaydi, serverga tegilmagan holda.
+    //
+    // BU SINOV ENDI YECHIMNI QULFLAYDI: jonli serverda o'qish
+    // yo'li bo'lmasa ham, egasi o'z mahsulotlarini KO'RADI.
+    // Server keyinchalik GET qo'shsa, shu yerda ham hech narsa
+    // o'zgarmaydi — birinchi urinish o'shani oladi.
     final r = await as('latte@nfcstore.uz');
-    await expectLater(r.companyCatalog('LATTE'), throwsA(isA<ApiError>()));
+    final items = await r.companyCatalog('LATTE');
+    expect(items, isNotEmpty,
+        reason: 'egasi katalogini ko‘ra olishi kerak');
+
+    // Ommaviy yo'l ham bir xil ro'yxatni beradi — ikki manba
+    // ajralib ketmasligi kerak.
+    final viaCompany = (await r.company('LATTE')).items;
+    expect(items.map((e) => e.id).toSet(), viaCompany.map((e) => e.id).toSet());
   });
 
   test('AUDIT begona odam kompaniyani tahrirlay olmaydi', () async {
