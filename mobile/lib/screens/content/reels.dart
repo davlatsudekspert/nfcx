@@ -35,6 +35,47 @@ import 'report_sheet.dart';
 /// bo'ladi.
 ///
 /// Reels TAB ILDIZI, ya'ni `Navigator.pop` qiladigan joyi yo'q —
+
+/// REELS RO'YXATINI YIG'ISH QOIDASI — sof funksiya.
+///
+/// Ekran holatidan ajratilgan, chunki aynan shu qoidada xato bor
+/// edi va uni ekranni qurmasdan sinab bo'lmasdi.
+///
+/// FAQAT VIDEOLAR: Reels — video lentasi; jim rasm postlari bu
+/// yerga tushsa, odam surib-surib qimirlamas rasmlarni ko'rardi.
+/// Video umuman bo'lmasa, lentaning o'zi ko'rsatiladi — "bo'sh"
+/// degan ekrandan ko'ra shu yaxshi.
+({List<FeedEntry> items, bool videoOnly}) reelsPick(List<FeedEntry> feed) {
+  final videos =
+      feed.where((e) => (e.videoUrl ?? '').trim().isNotEmpty).toList();
+  return videos.isEmpty
+      ? (items: feed, videoOnly: false)
+      : (items: videos, videoOnly: true);
+}
+
+/// KEYINGI SAHIFANI QO'SHISH QOIDASI — sof funksiya.
+///
+/// Ikki narsani ta'minlaydi:
+///   • ro'yxat "faqat video" bo'lsa, keyingi sahifadagi rasm
+///     postlari orasiga KIRMAYDI;
+///   • sahifalar chegarasida server bir kadrni ikki marta bersa
+///     (lentaga yangi post qo'shilsa siljish bo'ladi), u ikki
+///     marta surilmaydi.
+List<FeedEntry> reelsMerge({
+  required List<FeedEntry> current,
+  required List<FeedEntry> incoming,
+  required bool videoOnly,
+}) {
+  final seen = {for (final e in current) '${e.kind}:${e.id}'};
+  final fresh = <FeedEntry>[];
+  for (final e in incoming) {
+    if (videoOnly && (e.videoUrl ?? '').trim().isEmpty) continue;
+    if (!seen.add('${e.kind}:${e.id}')) continue;
+    fresh.add(e);
+  }
+  return fresh;
+}
+
 /// orqaga tugmasi `ShellScope.goHome` ni chaqiradi.
 class ReelsScreen extends StatefulWidget {
   const ReelsScreen({super.key, this.startKind, this.startId});
@@ -62,6 +103,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
   Object? _error;
   int _index = 0;
   bool _loadedOnce = false;
+
+  /// Lentada video BOR edi, ya'ni ro'yxat faqat videolardan
+  /// yig'ilyapti. Keyingi sahifalar ham SHU filtrdan o'tishi kerak
+  /// — aks holda ikkinchi sahifadan boshlab Reels orasiga jim
+  /// rasm postlari kirib qoladi.
+  bool _videoOnly = false;
 
   /// OBUNA HOLATI — kod bo'yicha, bir marta so'raladi.
   ///
@@ -95,13 +142,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
       final r = await AppScope.read(context).repo.feed(page: 1);
       if (!mounted) return;
 
-      // FAQAT VIDEOLAR. Reels — video lentasi; oddiy rasm postlari
-      // bu yerga tushsa, odam surib-surib jim rasmlarni ko'rardi.
-      // Video umuman bo'lmasa, lentaning o'zi ko'rsatiladi —
-      // "bo'sh" degan ekrandan ko'ra shu yaxshi.
-      final videos =
-          r.items.where((e) => (e.videoUrl ?? '').trim().isNotEmpty).toList();
-      final items = videos.isEmpty ? r.items : videos;
+      final picked = reelsPick(r.items);
+      final items = picked.items;
 
       // Bosilgan kadr birinchi bo'lib ochiladi.
       var start = 0;
@@ -114,7 +156,14 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
       setState(() {
         _items = items;
-        _hasMore = r.hasMore && videos.isEmpty;
+        // SAHIFALASH VIDEO BOR PAYTDA O'CHIB QOLGAN EDI:
+        // `r.hasMore && videos.isEmpty` — ya'ni aynan Reels'da
+        // video bo'lsa, `_hasMore` doim `false` bo'lardi va
+        // birinchi sahifadagi videolar tugagach tepaga silkish
+        // hech narsa keltirmasdi. Sahifalash endi FAQAT serverning
+        // javobiga qaraydi, filtrga emas.
+        _hasMore = r.hasMore;
+        _videoOnly = picked.videoOnly;
         _page = 1;
         _loading = false;
         _index = start;
@@ -140,12 +189,36 @@ class _ReelsScreenState extends State<ReelsScreen> {
     if (_loadingMore || !_hasMore) return;
     _loadingMore = true;
     try {
-      final r = await AppScope.read(context).repo.feed(page: _page + 1);
+      final repo = AppScope.read(context).repo;
+      var items = _items;
+      var page = _page;
+      var more = _hasMore;
+      var added = 0;
+
+      // BIR SAHIFA BUTUNLAY VIDEOSIZ BO'LISHI MUMKIN. Shunda bitta
+      // so'rov bilan to'xtasak, tepaga silkish "tugadi" bo'lib
+      // qolardi, holbuki lentada yana video bor. Shuning uchun
+      // kamida bitta yangi kadr topilguncha suriladi — lekin
+      // CHEKLANGAN qadamda: server uzun rasm lentasini qaytarsa
+      // ilova cheksiz so'rov yubormasin.
+      for (var hop = 0; hop < 3 && more && added == 0; hop++) {
+        final r = await repo.feed(page: page + 1);
+        page += 1;
+        more = r.hasMore;
+        final fresh = reelsMerge(
+          current: items,
+          incoming: r.items,
+          videoOnly: _videoOnly,
+        );
+        added += fresh.length;
+        items = [...items, ...fresh];
+      }
+
       if (!mounted) return;
       setState(() {
-        _items = [..._items, ...r.items];
-        _hasMore = r.hasMore;
-        _page += 1;
+        _items = items;
+        _hasMore = more;
+        _page = page;
       });
     } catch (_) {
       // Keyingi sahifa kelmasa joriy lenta ishlashda davom etadi.
@@ -188,6 +261,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
     final item = _items[i];
     final total = await showCommentsSheet(
       context,
+      // Kadr egasi o'z videosi ostidagi izohni o'chira oladi.
+      owned: _ownsItem(item),
       targetKind: item.commentTarget,
       targetId: item.id,
       initialCount: item.commentCount,

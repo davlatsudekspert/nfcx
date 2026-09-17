@@ -231,4 +231,64 @@ void main() {
     // O'QISH ISHLAYDI.
     expect(find.text('Zo‘r ish bo‘libdi, tabriklayman!'), findsOneWidget);
   });
+
+  // ── O'CHIRISH HUQUQI ────────────────────────────────────────
+  //
+  // SERVER ALLAQACHON IKKI KISHIGA RUXSAT BERADI:
+  // `DELETE /api/comments/:id` — izoh MUALLIFI yoki KONTENT
+  // EGASI. Ilova esa faqat muallifga ko'rsatardi, ya'ni odam o'z
+  // videosi ostidagi haqoratni olib tashlay olmasdi. Quyidagi
+  // ikki sinov shu farqni qulflaydi.
+
+  Finder trashIcons() => find.byWidgetPredicate(
+        (w) => w is NIcon && w.icon == Ico.trash,
+      );
+
+  testWidgets('BEGONA kontentda faqat O‘Z izohini o‘chirish mumkin',
+      (t) async {
+    final s = await ready();
+    late BuildContext ctx;
+    await pumpScreen(
+      t,
+      Builder(builder: (context) {
+        ctx = context;
+        return const SizedBox.shrink();
+      }),
+      state: s,
+    );
+    await settle(t);
+
+    unawaited(showCommentsSheet(ctx, targetKind: 'post', targetId: 501));
+    await settle(t);
+
+    // Fixture'da ikki izoh: 901 begona, 902 o'ziniki.
+    expect(trashIcons(), findsOneWidget,
+        reason: 'begona izohda o‘chirish tugmasi bo‘lmasligi kerak');
+  });
+
+  testWidgets('O‘Z KONTENTI ostida HAR QANDAY izohni o‘chira oladi',
+      (t) async {
+    final s = await ready();
+    late BuildContext ctx;
+    await pumpScreen(
+      t,
+      Builder(builder: (context) {
+        ctx = context;
+        return const SizedBox.shrink();
+      }),
+      state: s,
+    );
+    await settle(t);
+
+    unawaited(showCommentsSheet(
+      ctx,
+      targetKind: 'post',
+      targetId: 501,
+      owned: true,
+    ));
+    await settle(t);
+
+    expect(trashIcons(), findsNWidgets(2),
+        reason: 'kontent egasi begona izohni ham o‘chira olishi kerak');
+  });
 }

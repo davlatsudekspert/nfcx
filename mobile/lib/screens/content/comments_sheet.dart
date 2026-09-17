@@ -44,6 +44,7 @@ Future<int?> showCommentsSheet(
   required String targetKind,
   required int targetId,
   int initialCount = 0,
+  bool owned = false,
 }) =>
     showSheet<int>(
       context,
@@ -52,6 +53,7 @@ Future<int?> showCommentsSheet(
         targetKind: targetKind,
         targetId: targetId,
         initialCount: initialCount,
+        owned: owned,
       ),
     );
 
@@ -60,11 +62,17 @@ class _CommentsBody extends StatefulWidget {
     required this.targetKind,
     required this.targetId,
     required this.initialCount,
+    required this.owned,
   });
+
+  /// Bu kontent SHU foydalanuvchiniki. Server ham shu huquqni
+  /// beradi (`DELETE /api/comments/:id` — muallif YOKI kontent
+  /// egasi), bu yerdagi bayroq faqat tugmani ko'rsatish uchun.
 
   final String targetKind;
   final int targetId;
   final int initialCount;
+  final bool owned;
 
   @override
   State<_CommentsBody> createState() => _CommentsBodyState();
@@ -356,7 +364,13 @@ class _CommentsBodyState extends State<_CommentsBody> {
       separatorBuilder: (_, __) => const SizedBox(height: S.x16),
       itemBuilder: (context, i) => _CommentRow(
         comment: _items[i],
-        onDelete: _items[i].mine ? () => _delete(_items[i]) : null,
+        // O'CHIRISH HUQUQI IKKI KISHIDA: izoh muallifida va
+        // KONTENT EGASIDA. Ilgari faqat muallif ko'rsatilardi —
+        // ya'ni odam o'z posti ostidagi haqoratni olib tashlay
+        // olmasdi, garchi server buni allaqachon ruxsat bersa ham.
+        onDelete: (_items[i].mine || widget.owned)
+            ? () => _delete(_items[i])
+            : null,
       ),
     );
   }
