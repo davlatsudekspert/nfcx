@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/api_client.dart';
 import '../../data/models.dart';
@@ -18,7 +19,6 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
-import '../common/contact_actions.dart';
 import '../identity/profile_screen.dart';
 import '../nfc/nfc_write.dart';
 import '../settings/support.dart';
@@ -158,9 +158,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _busy = true;
       _error = null;
     });
-    final repo = AppScope.read(context).repo;
+    final app = AppScope.read(context);
+    final repo = app.repo;
+    final buyerName = (app.active?.name ?? '').trim();
+    final buyerPhone = (app.user?.phone ?? '').trim();
+    if (buyerName.isEmpty) {
+      setState(() {
+        _busy = false;
+        _error = tr('To‘lovni boshlash uchun profilingizdagi ismni kiriting.');
+      });
+      return;
+    }
     try {
-      final order = await repo.reserveRecord(widget.record.code, provider: _provider);
+      final order = await repo.reserveRecord(
+        widget.record.code,
+        name: buyerName,
+        phone: buyerPhone,
+        provider: _provider,
+      );
       if (!mounted) return;
       setState(() {
         _order = order;
@@ -190,7 +205,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
         });
         return;
       }
-      await openExternal(Uri.parse(link));
+      var opened = false;
+      try {
+        opened = await launchUrl(
+          Uri.parse(link),
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {
+        opened = false;
+      }
+      if (!opened) {
+        if (!mounted) return;
+        setState(() {
+          _phase = _Phase.choose;
+          _error = trf(
+            '{tizim} to‘lov sahifasini ochib bo‘lmadi. Qayta urinib ko‘ring.',
+            {'tizim': _provider == 'click' ? 'Click' : 'Payme'},
+          );
+        });
+        return;
+      }
       _startPolling();
     } on ApiError catch (e) {
       if (mounted) setState(() => _error = _payError(e));
@@ -459,9 +493,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(height: S.x12),
               PrimaryButton(
-                tr('Payme bilan to‘lash'),
+                _provider == 'click'
+                    ? tr('Click bilan to‘lash')
+                    : tr('Payme bilan to‘lash'),
                 loading: _busy,
-                onTap: (_busy || !paymeOn) ? null : _start,
+                onTap: (_busy || (_provider == 'click' ? !clickOn : !paymeOn))
+                    ? null
+                    : _start,
               ),
             ],
           ),

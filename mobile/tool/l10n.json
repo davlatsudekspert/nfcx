@@ -4758,5 +4758,17 @@
   "“{q}” topilmadi": [
     "«{q}» не найдено",
     "\"{q}\" not found"
+  ],
+  "To‘lovni boshlash uchun profilingizdagi ismni kiriting.": [
+    "Чтобы начать оплату, укажите имя в профиле.",
+    "Enter your profile name to start payment."
+  ],
+  "{tizim} to‘lov sahifasini ochib bo‘lmadi. Qayta urinib ko‘ring.": [
+    "Не удалось открыть страницу оплаты {tizim}. Попробуйте ещё раз.",
+    "Could not open the {tizim} payment page. Try again."
+  ],
+  "Click bilan to‘lash": [
+    "Оплатить через Click",
+    "Pay with Click"
   ]
 }

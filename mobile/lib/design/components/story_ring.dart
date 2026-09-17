@@ -98,9 +98,22 @@ class _StoryRingState extends State<StoryRing>
     if (widget.addButton) {
       ring = _AddRing(size: size);
     } else {
-      final gradient = widget.reels ? C.reelsRing : C.storyRing;
+      final gradient = widget.reels
+          ? C.reelsRing
+          : const SweepGradient(
+              colors: [
+                Color(0xFFC8874A),
+                Color(0xFFDDE1E6),
+                Color(0xFFF0C96B),
+                Color(0xFFA96C3F),
+                Color(0xFFE8D8B1),
+                Color(0xFFD8B77A),
+              ],
+              stops: [0, .18, .38, .58, .78, 1],
+              transform: GradientRotation(.35),
+            );
       final inner = Container(
-        margin: const EdgeInsets.all(2.4),
+        margin: const EdgeInsets.all(3.2),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           // Fon rangidagi ingichka halqa — gradient bilan avatar

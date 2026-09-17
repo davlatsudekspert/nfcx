@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final SeenStories _seen = SeenStories();
 
   List<StoryFeedEntry> _stories = const [];
+  bool _hasOwnStory = false;
   List<FeedEntry> _feed = const [];
   List<Order> _pending = const [];
   int _gifts = 0;
@@ -154,6 +155,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         stories = await state.repo.storyFeed();
       } catch (_) {}
 
+      var hasOwnStory = false;
+      final activeIdentity = state.active;
+      if (activeIdentity != null && activeIdentity.code.isNotEmpty) {
+        try {
+          final ownStories = activeIdentity.isBusiness
+              ? await state.repo.companyStories(activeIdentity.code)
+              : await state.repo.recordStories(activeIdentity.code);
+          hasOwnStory = ownStories.isNotEmpty;
+        } catch (_) {}
+      }
+
       // TUGALLANMAGAN TO'LOV vaqtga bog'liq: kod 24 soat band
       // bo'lib turadi va shu muddatda to'lanmasa bekor qilinadi.
       // Shuning uchun u Bosh sahifada ko'rinadi.
@@ -203,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _feed = feed.items;
         _stories = stories;
+        _hasOwnStory = hasOwnStory;
         _pending = pending;
         _gifts = gifts;
         _featured = featured;
@@ -295,14 +308,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Halqa shunga qarab yonadi va bosilganda nima ochilishini
   /// ham shu hal qiladi: bor bo'lsa — ko'rish, yo'q bo'lsa —
   /// yangisini qo'shish.
-  bool get _myStory {
-    final code = AppScope.of(context).active?.code;
-    if (code == null) return false;
-    return _stories.any((e) => e.code == code);
-  }
+  bool get _myStory => _hasOwnStory;
 
   Future<void> _openMyStory(String code) async {
     await push<void>(context, (_) => StoryViewerScreen(code: code));
+    if (mounted) await _load(force: true);
   }
 
   Future<void> _addStory(String code) async {
@@ -496,8 +506,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   padding: const EdgeInsets.only(top: S.x20),
                   child: _StoryStrip(
                     entries: _orderedStories,
-                    loading: _loading && _stories.isEmpty,
+                    loading: _loading && _stories.isEmpty && !_myStory,
                     unseen: _seen.hasUnseen,
+                    identity: active,
+                    hasOwnStory: _myStory,
+                    onOwnOpen: active == null ? null : () => _openMyStory(active.code),
                     onAdd: active == null ? null : () => _addStory(active.code),
                     onOpen: _openStory,
                   ),
@@ -747,15 +760,15 @@ class _IconButton extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: C.surface,
                 border: Border.all(color: C.line),
               ),
               alignment: Alignment.center,
-              child: NIcon(icon, size: 18, color: C.ink),
+              child: NIcon(icon, size: 20, color: C.ink),
             ),
             if (dot)
               Positioned(
@@ -817,6 +830,9 @@ class _StoryStrip extends StatelessWidget {
     required this.entries,
     required this.loading,
     required this.unseen,
+    required this.identity,
+    required this.hasOwnStory,
+    required this.onOwnOpen,
     required this.onAdd,
     required this.onOpen,
   });
@@ -828,6 +844,9 @@ class _StoryStrip extends StatelessWidget {
   /// yonadi yoki so'nadi.
   final bool Function(StoryFeedEntry) unseen;
 
+  final Identity? identity;
+  final bool hasOwnStory;
+  final VoidCallback? onOwnOpen;
   final VoidCallback? onAdd;
   final ValueChanged<StoryFeedEntry> onOpen;
 
@@ -836,7 +855,7 @@ class _StoryStrip extends StatelessWidget {
     if (loading) return const SkeletonStories();
 
     return SizedBox(
-      height: 88,
+      height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -844,12 +863,23 @@ class _StoryStrip extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: S.x12),
         itemBuilder: (context, i) {
           if (i == 0) {
-            return StoryRing(addButton: true, onTap: onAdd);
+            final me = identity;
+            if (hasOwnStory && me != null) {
+              return StoryRing(
+                avatarUrl: me.avatarUrl,
+                name: tr('Siz'),
+                size: 68,
+                seen: false,
+                onTap: onOwnOpen,
+              );
+            }
+            return StoryRing(size: 68, addButton: true, onTap: onAdd);
           }
           final e = entries[i - 1];
           return StoryRing(
             avatarUrl: e.avatarUrl,
             name: e.name,
+            size: 68,
             // KO'RILGAN BO'LSA HALQA SO'NADI va aylanishi to'xtaydi:
             // ma'no rangda, harakat esa faqat YANGI kontent uchun.
             seen: !unseen(e),
