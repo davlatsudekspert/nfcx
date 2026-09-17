@@ -160,7 +160,9 @@ void main() {
       t,
       find.byWidgetPredicate((w) =>
           w is Text &&
-          (w.data == 'O‘tkazib yuborish' || w.data == 'Xush kelibsiz')),
+          (w.data == 'O‘tkazib yuborish' ||
+              w.data == 'Xush kelibsiz' ||
+              w.data == 'Bosh sahifa')),
     );
     await settleFor(t);
     final skip = find.text('O‘tkazib yuborish');
@@ -169,12 +171,28 @@ void main() {
       await settleFor(t);
     }
 
-    final fields = find.byType(TextField);
-    await t.enterText(fields.at(0), email);
-    await t.enterText(fields.at(1), password);
-    var btn = find.widgetWithText(GestureDetector, 'Kirish');
-    if (btn.evaluate().isEmpty) btn = find.text('Kirish');
-    await t.tap(btn.last);
+    // ILOVA ALLAQACHON KIRGAN BO'LISHI MUMKIN.
+    //
+    // Oldingi sinov kirgan va sessiya QURILMADA saqlangan —
+    // ilova qayta ochilganda uni tiklaydi va to'g'ridan-to'g'ri
+    // qobiqni ko'rsatadi. Bu ilovaning nuqsoni emas, aksincha
+    // to'g'ri xatti-harakat; lekin bu yerda kirish ekrani
+    // kutilgani uchun sinov "maydon topilmadi" bilan yiqilardi.
+    //
+    // Shuning uchun avval HOLAT tekshiriladi: kirish kerakmi yoki
+    // yo'q.
+    if (find.text('Bosh sahifa').evaluate().isEmpty) {
+      final fields = find.byType(TextField);
+      expect(fields, findsWidgets, reason: 'LOGIN: maydonlar topilmadi');
+      await t.enterText(fields.at(0), email);
+      await t.enterText(fields.at(1), password);
+      var btn = find.widgetWithText(GestureDetector, 'Kirish');
+      if (btn.evaluate().isEmpty) btn = find.text('Kirish');
+      expect(btn, findsWidgets, reason: 'LOGIN: tugma topilmadi');
+      await t.tap(btn.last);
+    } else {
+      say('SESSIYA TIKLANDI — qaytadan kirish shart emas');
+    }
 
     // ── HOME ─────────────────────────────────────────────────
     final home = await waitFor(t, find.text('Bosh sahifa'));
