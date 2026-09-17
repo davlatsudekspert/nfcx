@@ -20,6 +20,7 @@ on:
     branches: ['claude/**']
     paths:
       - 'scripts/check-production.mjs'
+      - 'mobile/integration_test/**'
       - '.github/workflows/production-check.yml'
 
 jobs:

@@ -184,6 +184,42 @@ void main() {
     // PROFIL ichida biznes va sozlamalar bormi.
     await t.tap(find.text('Profil').last);
     await settleFor(t, const Duration(seconds: 2));
-    say('SOZLAMALAR YO‘LI: ${find.text('Sozlamalar').evaluate().isNotEmpty}');
+
+    // BIZNES — profil menyusida kompaniya bo'limi bormi.
+    say('BIZNES YO‘LI: '
+        '${find.textContaining('Biznes').evaluate().isNotEmpty}');
+
+    final settings = find.text('Sozlamalar');
+    say('SOZLAMALAR YO‘LI: ${settings.evaluate().isNotEmpty}');
+    if (settings.evaluate().isNotEmpty) {
+      await t.tap(settings.last);
+      await settleFor(t, const Duration(seconds: 2));
+      say('SOZLAMALAR OCHILDI: '
+          '${find.text('Xavfsizlik').evaluate().isNotEmpty || find.text('Hisob').evaluate().isNotEmpty}');
+
+      // CHIQISH — sozlamalarning eng pastida.
+      final out = find.text('Chiqish');
+      if (out.evaluate().isEmpty) {
+        await t.dragUntilVisible(
+          find.text('Chiqish'),
+          find.byType(Scrollable).first,
+          const Offset(0, -320),
+        );
+        await settleFor(t);
+      }
+      say('CHIQISH TUGMASI: ${find.text('Chiqish').evaluate().isNotEmpty}');
+      if (find.text('Chiqish').evaluate().isNotEmpty) {
+        await t.tap(find.text('Chiqish').last);
+        await settleFor(t, const Duration(seconds: 2));
+        // Tasdiqlash varaqasi chiqishi mumkin.
+        final confirm = find.text('Chiqish');
+        if (confirm.evaluate().isNotEmpty) {
+          await t.tap(confirm.last);
+          await settleFor(t, const Duration(seconds: 2));
+        }
+        final back = await waitFor(t, find.text('Xush kelibsiz'), steps: 40);
+        say('CHIQQANDAN KEYIN KIRISH EKRANI: $back');
+      }
+    }
   });
 }
