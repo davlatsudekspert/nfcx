@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:nfcstore/app.dart';
@@ -23,7 +25,10 @@ import 'package:nfcstore/state/app_state.dart';
 const _shotDir = '/sdcard/Android/data/uz.nfcstore.app/files/shots';
 
 void main() {
-  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  /// Butun ilova shu kalit ostida chiziladi — surat shundan olinadi.
+  final shotKey = GlobalKey();
 
   const base = String.fromEnvironment('API_BASE');
 
@@ -75,12 +80,38 @@ void main() {
     return false;
   }
 
-  /// Ekranni suratga oladi va faylga yozadi.
+  /// EKRANNI SURATGA OLADI — RENDER DARAXTIDAN.
+  ///
+  /// NIMA UCHUN `binding.takeScreenshot` EMAS: u `flutter drive`
+  /// drayveriga suratni UZATADI va javobini kutadi. `flutter test`
+  /// rejimida esa drayver yo'q — chaqiruv javobsiz osilib qoladi.
+  /// Aynan shu sabab birinchi sayohat 10 daqiqa kutib, bitta ham
+  /// `SHOT` satri chiqarmasdan yiqilgan edi.
+  ///
+  /// `RepaintBoundary.toImage()` esa Flutter'ning o'zida ishlaydi:
+  /// hech qanday tashqi vosita kerak emas va rasm QURILMADA
+  /// chizilgan haqiqiy kadr bo'ladi.
+  ///
+  /// CHEKLOV: platforma yuzalari (video) bo'sh chiqadi — ular
+  /// Flutter kadridan tashqarida chiziladi. Maket va matn esa
+  /// to'liq ko'rinadi.
   Future<void> capture(WidgetTester t, String name) async {
     shot++;
     final id = shot.toString().padLeft(2, '0');
     try {
-      final bytes = await binding.takeScreenshot('$id-$name');
+      final obj = shotKey.currentContext?.findRenderObject();
+      if (obj is! RenderRepaintBoundary) {
+        failures.add('$id-$name: chizish chegarasi topilmadi');
+        return;
+      }
+      final image = await obj.toImage(pixelRatio: 2);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      if (data == null) {
+        failures.add('$id-$name: rasm bo‘sh qaytdi');
+        return;
+      }
+      final bytes = data.buffer.asUint8List();
       final f = File('$_shotDir/$id-$name.png');
       f.parent.createSync(recursive: true);
       f.writeAsBytesSync(bytes);
@@ -103,11 +134,12 @@ void main() {
 
   testWidgets('butun ilova bo‘ylab yurish va har ekranni suratga olish',
       (t) async {
-    // Android'da surface'ni rasmga aylantirish SHART, aks holda
-    // `takeScreenshot` bo'sh qaytaradi.
-    await binding.convertFlutterSurfaceToImage();
-
-    await t.pumpWidget(NfcstoreApp(state: AppState(api: Api(baseUrl: base))));
+    await t.pumpWidget(
+      RepaintBoundary(
+        key: shotKey,
+        child: NfcstoreApp(state: AppState(api: Api(baseUrl: base))),
+      ),
+    );
     await waitFor(
       t,
       find.byWidgetPredicate((w) =>
