@@ -83,6 +83,24 @@ class _ProfileTabState extends State<ProfileTab> {
   /// `EditBusinessScreen` to'liq `Company` obyektini kutadi, faol
   /// shaxsda esa faqat kod va nom bor — shuning uchun avval
   /// serverdan olinadi.
+  /// TANLANGAN SHAXSNI TAHRIRLASH.
+  ///
+  /// Karuselda qaysi ID tanlangan bo'lsa, tugma AYNAN o'shani
+  /// ochadi: shaxsiy ID — profil tahriri, kompaniya — biznes
+  /// tahriri. Ilgari bu amal faqat menyu ostida edi va odam
+  /// karuseldan ID tanlagach uni tahrirlash yo'lini topa olmasdi.
+  Future<void> _edit(Identity active) async {
+    if (active.isBusiness) {
+      await _editBusiness(active);
+    } else if (active.record != null) {
+      final saved = await push<bool>(
+        context,
+        (_) => EditProfileScreen(record: active.record!),
+      );
+      if (saved == true && mounted) await _load();
+    }
+  }
+
   Future<void> _editBusiness(Identity active) async {
     final repo = AppScope.read(context).repo;
     Company? company;
@@ -239,6 +257,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   company: active.isBusiness,
                 ),
                 onMenu: () => _menu(active),
+                onEdit: () => _edit(active),
                 hasStory: _stories.isNotEmpty,
                 onStory: _stories.isEmpty
                     ? null
@@ -577,15 +596,7 @@ class _ProfileTabState extends State<ProfileTab> {
               : ProfileScreen(code: active.code),
         );
       case 'edit':
-        if (active.isBusiness) {
-          await _editBusiness(active);
-        } else if (active.record != null) {
-          final saved = await push<bool>(
-            context,
-            (_) => EditProfileScreen(record: active.record!),
-          );
-          if (saved == true && mounted) await _load();
-        }
+        await _edit(active);
       case 'orders':
         await push<void>(
           context,
@@ -623,6 +634,7 @@ class _ProfileCover extends StatelessWidget {
     required this.identity,
     required this.handle,
     required this.onMenu,
+    required this.onEdit,
     this.hasStory = false,
     this.onStory,
   });
@@ -630,6 +642,11 @@ class _ProfileCover extends StatelessWidget {
   final Identity identity;
   final String handle;
   final VoidCallback onMenu;
+
+  /// TANLANGAN shaxsni tahrirlash. Bu tab har doim EGASINIKI,
+  /// shuning uchun tugma doim ko'rinadi — begona profil bu yerda
+  /// umuman ochilmaydi (u `ProfileScreen` da ko'rsatiladi).
+  final VoidCallback onEdit;
 
   /// Shu shaxsda ko'rilmagan istorya bormi — oltin halqa shunga
   /// qarab chiziladi.
@@ -690,6 +707,16 @@ class _ProfileCover extends StatelessWidget {
             Text(
               handle,
               style: T.link.copyWith(color: C.accent, fontSize: 12),
+            ),
+
+            const SizedBox(height: S.x12),
+            SecondaryButton(
+              identity.isBusiness
+                  ? tr('Biznesni tahrirlash')
+                  : tr('Profilni tahrirlash'),
+              icon: Ico.edit,
+              size: BtnSize.m,
+              onTap: onEdit,
             ),
           ],
         ),

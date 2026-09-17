@@ -113,4 +113,35 @@ void main() {
     expect(s.active!.code, 'NFCSTOREUZ');
     expect(s.active!.name, 'NFCSTORE');
   });
+
+  testWidgets('TANLOV qurilmada saqlanadi — qayta ochilganda qoladi',
+      (t) async {
+    // Ilgari faol shaxs faqat xotirada turardi: ilova qayta
+    // ochilganda asosiy kartaga qaytardi va odam biznes profilini
+    // har safar qaytadan tanlashga majbur edi.
+    final store = FakeStore({'nfc_session_token': 'sinov'});
+
+    final first = realAccount();
+    // Bir xil xotira ikkala "ishga tushish" uchun.
+    final s1 = AppState(api: first.api, storage: store);
+    await s1.boot();
+    s1.switchIdentity(Identity.business(s1.companies.first));
+    expect(s1.active!.code, 'NFCSTOREUZ');
+    // Yozish asinxron — keyingi kadrda tugaydi.
+    await t.pump(const Duration(milliseconds: 50));
+
+    final s2 = AppState(api: realAccount().api, storage: store);
+    await s2.boot();
+    expect(s2.active!.code, 'NFCSTOREUZ',
+        reason: 'qayta ochilganda tanlangan shaxs qolishi kerak');
+    expect(s2.active!.isBusiness, isTrue);
+  });
+
+  testWidgets('PROFIL SARLAVHASIDA tahrirlash tugmasi bor', (t) async {
+    final s = realAccount();
+    await s.boot();
+    await pumpScreen(t, const ProfileTab(), state: s);
+    await settle(t);
+    expect(find.text('Profilni tahrirlash'), findsOneWidget);
+  });
 }

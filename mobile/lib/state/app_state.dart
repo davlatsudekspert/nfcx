@@ -79,6 +79,9 @@ class AppState extends ChangeNotifier {
   AppUser? user;
   List<Record> cards = const [];
   List<Company> companies = const [];
+
+  /// Qurilmada saqlangan oxirgi tanlov — `boot()` da o'qiladi.
+  String? _savedActive;
   Identity? active;
 
   /// Ilova ochilganda: saqlangan tokenni tiklaymiz va sessiyani
@@ -238,6 +241,11 @@ class AppState extends ChangeNotifier {
     // Kirmagan odamda kompaniya ro'yxati ma'nosiz — tozalab
     // qo'yamiz (eski sessiyadan qolgan ro'yxat ko'rinib qolmasin).
     companies = user == null ? const [] : results[1] as List<Company>;
+    try {
+      _savedActive = await _storage.read(key: _activeKey);
+    } catch (_) {
+      _savedActive = null;
+    }
     _ensureActive();
     notifyListeners();
   }
@@ -245,7 +253,8 @@ class AppState extends ChangeNotifier {
   /// Faol shaxs hali tanlanmagan yoki yo'qolgan bo'lsa — asosiysini
   /// (`isPrimary`) yoki birinchisini tanlaymiz.
   void _ensureActive() {
-    final code = active?.code;
+    // Xotiradagi tanlov bo'lmasa — qurilmada saqlangani.
+    final code = active?.code ?? _savedActive;
     if (code != null) {
       final r = cards.where((c) => c.code == code);
       if (r.isNotEmpty) {
@@ -268,10 +277,20 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// TANLOV QURILMADA ESLAB QOLINADI.
+  ///
+  /// Ilgari faol shaxs faqat xotirada turardi: ilova qayta
+  /// ochilganda u asosiy kartaga qaytardi va odam har safar
+  /// o'zining biznes profilini qaytadan tanlashga majbur edi.
   void switchIdentity(Identity id) {
     active = id;
+    unawaited(_storage.write(key: _activeKey, value: id.code)
+        .catchError((_) {}));
     notifyListeners();
   }
+
+  /// Saqlangan tanlov kaliti.
+  static const _activeKey = 'nfc_active_identity';
 
   /// Egalik tekshiruvi — ommaviy va o'z profil ko'rinishini ajratish uchun.
   ///
