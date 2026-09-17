@@ -37,12 +37,28 @@ async function main() {
       'Lenta (/api/feed)', `HTTP ${r.status}`);
   } catch (e) { add(false, 'Lenta (/api/feed)', String(e)); }
 
-  // ── NARXLAR ──────────────────────────────────────────────────
-  try {
-    const r = await req('/api/settings/id-pricing');
-    add(r.status === 200, 'Tarif narxlari (/api/settings/id-pricing)',
-      `HTTP ${r.status}`);
-  } catch (e) { add(false, 'Tarif narxlari', String(e)); }
+  // ── ILOVA CHAQIRADIGAN YO'LLAR ───────────────────────────────
+  //
+  // MANZILLAR `mobile/lib/data/repo.dart` DAN OLINGAN, prototip
+  // matnidan emas. Birinchi urinishda bu ro'yxat taxminan
+  // yozilgan edi (`/api/settings/id-pricing`) va u 404 berdi —
+  // ya'ni tekshiruv ILOVADA UMUMAN BO'LMAGAN yo'lni "buzuq" deb
+  // ko'rsatdi. Taxminiy manzil tekshiruvni foydasiz qiladi.
+  for (const [path, name] of [
+    ['/api/settings/payments-enabled', 'To‘lov yoqilganmi'],
+    ['/api/settings/physical-nfc-pricing', 'Jismoniy karta narxi'],
+    ['/api/records', 'Ommaviy katalog'],
+    ['/api/companies', 'Kompaniyalar'],
+    ['/api/categories', 'Sohalar'],
+    ['/api/stories/feed', 'Istoryalar lentasi'],
+  ]) {
+    try {
+      const r = await req(path);
+      // 401 — yo'l BOR, faqat kirish talab qiladi. Bu nosozlik emas.
+      add(r.status === 200 || r.status === 401, `${name} (${path})`,
+        `HTTP ${r.status}`);
+    } catch (e) { add(false, `${name} (${path})`, String(e)); }
+  }
 
   // ── KIRISH YO'LI TIRIKMI ─────────────────────────────────────
   // Format xatosi 422 `bad_login` beradi — bu yo'l ishlayotganining
@@ -74,9 +90,11 @@ async function main() {
   // qancha?" savoli ilovada javobsiz qoladi.
   try {
     const r = await req('/api/records/ZZQ8W41/quote');
-    add(r.status === 200 || r.status === 404 ? r.status === 200 : false,
+    add(r.status === 200,
       'Bo‘sh kod narxi (/api/records/:code/quote)',
-      r.status === 404 ? 'HTTP 404 — serverga hali yoyilmagan' : `HTTP ${r.status}`);
+      r.status === 404
+        ? 'HTTP 404 — SERVERGA HALI YOYILMAGAN: do‘konda "narxi qancha?" javobsiz qoladi'
+        : `HTTP ${r.status}`);
   } catch (e) { add(false, 'Bo‘sh kod narxi', String(e)); }
 
   const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
