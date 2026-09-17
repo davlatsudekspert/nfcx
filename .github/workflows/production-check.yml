@@ -15,16 +15,10 @@
 name: Production tekshiruvi
 
 on:
+  # Push da AVTOMATIK ishga tushmaydi: har push hisobga bitta
+  # kirish degani va limit (15 daqiqada 5 ta) tez tugaydi.
+  # Qo'lda ishga tushiriladi.
   workflow_dispatch:
-  push:
-    branches: ['claude/**']
-    paths:
-      - 'scripts/check-production.mjs'
-      - 'scripts/diagnose-business.mjs'
-      - 'scripts/diagnose-regressions.mjs'
-      - 'scripts/smoke-production.mjs'
-      - 'mobile/integration_test/**'
-      - '.github/workflows/production-check.yml'
 
 jobs:
   # ── 1. SERVER YO'LLARI ────────────────────────────────────────
@@ -39,6 +33,14 @@ jobs:
       - name: nfcstore.uz yo'llari
         run: node scripts/check-production.mjs
 
+      # BITTA KIRISH, BITTA SKRIPT.
+      #
+      # Serverda hisobga 15 daqiqada 5 ta kirish urinishi ruxsat
+      # etiladi. Ilgari bu ishda uchta skript ketma-ket kirardi va
+      # bir necha marta ishga tushirilganda hisob 429 bilan
+      # qulflanardi — ya'ni tekshiruvning o'zi tekshirishni
+      # buzardi. Endi faqat smoke kiradi; qolgan diagnostika
+      # kirishsiz ishlaydigan `check-production.mjs` da.
       # HAQIQIY HISOB BILAN TO'LIQ SMOKE — ilova chaqiradigan
       # yo'llarni, ilova yuboradigan shaklda. Yaratiladigan yagona
       # narsa sinov izohi, u darhol o'chiriladi.
@@ -51,34 +53,6 @@ jobs:
 
       # BIZNES PROFILI DIAGNOSTIKASI — faqat o'qiydi, hech narsa
       # o'zgartirmaydi. Yiqilsa ham qolgan natijani yashirmasin.
-      - name: Biznes profili diagnostikasi
-        if: always()
-        env:
-          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
-          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
-        run: node scripts/diagnose-business.mjs
-
-      # UCHTA SHIKOYATNI PRODUCTIONDA ANIQLASH: biznes profillar,
-      # ID qidiruv va izohlar. Qaysi biri ILOVA xatosi, qaysi biri
-      # SERVERGA yoyilmagan yo'l — buni faqat jonli sayt aytadi.
-      - name: Regressiya diagnostikasi
-        if: always()
-        env:
-          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
-          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
-        run: node scripts/diagnose-regressions.mjs
-
-  # ── 2. ILOVA + HAQIQIY SAYT ───────────────────────────────────
-  #
-  # PAROL KODDA EMAS. U repozitoriy Secret'idan keladi va faqat
-  # ishga tushirish paytida `--dart-define` ga uzatiladi: git
-  # tarixiga ham, ish oqimi faylaga ham tushmaydi.
-  app:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Hisob berilganmi
         id: creds
         env:
