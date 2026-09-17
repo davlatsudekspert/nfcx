@@ -202,7 +202,6 @@ const ruStrings = <String, String>{
   'Buyurtmani yuborish': 'Отправить заказ',
   'Buyurtmani\ntasdiqlash': 'Подтверждение\nзаказа',
   'COVER 16:7': 'COVER 16:7',
-  'Champagne Gold': 'Champagne Gold',
   'Chapga suring': 'Листайте влево',
   'Chegara kengayadi.': 'Лимит увеличивается.',
   'Chegirma narxi': 'Цена со скидкой',

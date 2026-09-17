@@ -202,7 +202,6 @@ const enStrings = <String, String>{
   'Buyurtmani yuborish': 'Send order',
   'Buyurtmani\ntasdiqlash': 'Confirm\norder',
   'COVER 16:7': 'COVER 16:7',
-  'Champagne Gold': 'Champagne Gold',
   'Chapga suring': 'Swipe left',
   'Chegara kengayadi.': 'The limit goes up.',
   'Chegirma narxi': 'Discount price',

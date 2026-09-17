@@ -217,50 +217,10 @@ class Palette {
     fail: Color(0xFFB8443F),
   );
 
-  /// D — ROYAL GOLD. To'q ko'k fon, OLTIN urg'u.
-  ///
-  /// NIMA UCHUN TO'RTINCHI: uchta palitrada ham urg'u ko'k yoki mis
-  /// edi, oltin esa faqat tarif kartalarida. Holbuki brendning o'zi
-  /// oltin — medalyon ham, belgisi ham. Bu palitra o'sha oltinni
-  /// butun ilovaga olib chiqadi.
-  ///
-  /// OLTIN FAQAT QUYUQ FONDA. Yorug' fonda oltin matn o'qilmaydi
-  /// (kontrast 4.5:1 dan past) — shuning uchun bu palitra QUYUQ,
-  /// `light: false`. Oltin yorug' palitra yasash "premium" emas,
-  /// o'qib bo'lmaydigan ilova bo'lardi.
-  ///
-  /// FON — Midnight'dagi neytral qora emas, TO'Q KO'K (#0A1020):
-  /// oltin sovuq ko'k ustida issiqroq va qimmatroq ko'rinadi.
-  static const royal = Palette(
-    id: 'royal',
-    label: 'Royal Gold',
-    light: false,
-    accent: Color(0xFFD9AE5F),
-    accentHigh: Color(0xFFEAC77E),
-    accentDeep: Color(0xFFB88C3E),
-    accentSecondary: Color(0xFF8FB0F0),
-    // Oltin tugma ustidagi matn — quyuq ko'k, oq emas: oq matn
-    // oltinda 4.5:1 dan o'tmaydi.
-    onAccent: Color(0xFF13182A),
-    aura: Color(0xFFD9AE5F),
-    baseTop: Color(0xFF0C1324),
-    baseMid: Color(0xFF0A1020),
-    baseBottom: Color(0xFF080C19),
-    raised: Color(0xFF131B30),
-    raisedHigh: Color(0xFF1E2842),
-    ink: Color(0xFFF4F1E8),
-    ink2: Color(0xFFB3AE9C),
-    ink3: Color(0xFF7C7B6E),
-    line: Color(0xFF1E2842),
-    lineStrong: Color(0xFF2C3855),
-    glass: Color(0xB8131B30),
-    glassLine: Color(0x1AF4F1E8),
-    ok: Color(0xFF5FCB90),
-    warn: Color(0xFFE0B04A),
-    fail: Color(0xFFE0665C),
-  );
-
-  static const List<Palette> all = [opal, midnight, dune, royal];
+  /// V2 REFERENCE'DAGI UCHTA PALITRA — boshqasi yo'q.
+  /// Saqlangan tanlov ro'yxatda bo'lmasa `byId` A ga qaytaradi,
+  /// ya'ni olib tashlangan mavzu qurilmada qayta tirilmaydi.
+  static const List<Palette> all = [opal, midnight, dune];
 
   static Palette byId(String? id) {
     for (final p in all) {
@@ -289,6 +249,13 @@ class C {
   /// Mavzuni qo'llash. `AppPrefs.load()` va `setPalette()` chaqiradi,
   /// keyin ildizda bitta `setState` butun daraxtni qayta quradi.
   static void apply(Palette p) => _p = p;
+
+  /// Joriy mavzu YORUG'MI. `buildTheme()` shu bayroqdan
+  /// `Brightness` ni oladi — ilgari u `dark` deb qotib
+  /// qolgan edi va yorug' mavzuda Material o'zi chizadigan
+  /// elementlar (kursor, matn tanlash, dialog, klaviatura)
+  /// eski to'q mavzuda qolardi.
+  static bool get isLight => _p.light;
 
   static Palette get palette => _p;
 

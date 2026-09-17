@@ -12,7 +12,13 @@ import 'type.dart';
 /// Ular `ThemeData` siz tizim ko'k rangida chiqib, dizayndan
 /// ajralib turadi.
 ThemeData buildTheme() {
-  final scheme = ColorScheme.dark(
+  // YORUG'LIK MAVZUDAN KELADI, QOTIB QOLMAYDI. Standart mavzu A
+  // (Opal Light) — YORUG'. Ilgari bu yerda `dark` yozilgan edi:
+  // Material o'zi chizadigan elementlar (kursor, matn tanlash,
+  // dialog foni, klaviatura) yorug' ilovada ham to'q mavzuda
+  // chiqardi.
+  final light = C.isLight;
+  final scheme = (light ? ColorScheme.light : ColorScheme.dark)(
     primary: C.accent,
     onPrimary: C.onAccent,
     secondary: C.accentSecondary,
@@ -26,7 +32,7 @@ ThemeData buildTheme() {
 
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: light ? Brightness.light : Brightness.dark,
     colorScheme: scheme,
     scaffoldBackgroundColor: C.bg,
     canvasColor: C.bg,
@@ -69,11 +75,22 @@ ThemeData buildTheme() {
 
 /// TIZIM PANELLARI — status bar shaffof, pastki navigatsiya foni
 /// ekran foniga qo'shilib ketadi.
-SystemUiOverlayStyle get systemOverlay => SystemUiOverlayStyle(
-      statusBarColor: const Color(0x00000000),
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: C.bg,
-      systemNavigationBarIconBrightness: Brightness.light,
-      systemNavigationBarDividerColor: const Color(0x00000000),
-    );
+///
+/// IKONKA RANGI MAVZUDAN KELADI. Ilgari u `light` (oq ikonka) deb
+/// qotib qolgan edi — to'q mavzudan qolgan standart. Standart mavzu
+/// A (Opal Light) oq fonli, ya'ni soat, batareya va navigatsiya
+/// ikonkalari oq fonda OQ bo'lib ko'rinmay qolardi.
+SystemUiOverlayStyle get systemOverlay {
+  final light = C.isLight;
+  return SystemUiOverlayStyle(
+    statusBarColor: const Color(0x00000000),
+    // Android: ikonka rangi. Yorug' fon → QORA ikonka.
+    statusBarIconBrightness: light ? Brightness.dark : Brightness.light,
+    // iOS: FON yorug'ligi — Android'dagining teskarisi.
+    statusBarBrightness: light ? Brightness.light : Brightness.dark,
+    systemNavigationBarColor: C.bg,
+    systemNavigationBarIconBrightness:
+        light ? Brightness.dark : Brightness.light,
+    systemNavigationBarDividerColor: const Color(0x00000000),
+  );
+}
