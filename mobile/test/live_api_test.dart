@@ -53,6 +53,63 @@ void main() {
     repo = Repo(api);
   });
 
+  /// EGA SIFATIDA KIRGAN REPO — BIR MARTA.
+  ///
+  /// NIMA UCHUN KESHLANADI: server bitta hisob uchun 15 daqiqada
+  /// 5 ta kirishga ruxsat beradi (brute-force himoyasi). Har
+  /// sinovda qaytadan kirsak, oltinchisidan boshlab 429 keladi va
+  /// UMUMAN boshqa sinovlar qizarardi — ya'ni yiqilish sababi
+  /// ilovada emas, sinovlarning o'zida bo'lardi.
+  /// SERVER BITTA HISOB UCHUN BITTA SESSIYA YURITADI — har yangi
+  /// kirish avvalgisini o'ldiradi. Shuning uchun bu yerda ALOHIDA
+  /// `Repo` ochilmaydi: umumiy `repo` ning o'zi ishlatiladi va
+  /// kerak bo'lsagina bir marta kiriladi. Aks holda bu yerdagi
+  /// kirish qolgan sinovlarning tokenini yopib, ularni
+  /// "unauthorized" bilan yiqitardi — ilovaning nuqsoni bo'lmasa
+  /// ham.
+  // UMUMIY SESSIYA HAR SINOVDAN OLDIN TIRIK BO'LSIN.
+  //
+  // Ilova 401 kelganda tokenni ATAYLAB tozalaydi (sessiya
+  // tugagan degani). Sinovlar orasida esa 401 ni ataylab
+  // chaqiradiganlari bor — natijada undan keyingi HAMMA sinov
+  // "unauthorized" bo'lib yiqilardi va yiqilish sababi
+  // ilovada emas, shu yerda bo'lardi.
+  setUp(() async {
+    if (api.token == null) {
+      await repo.login(login: _demoEmail, password: _demoPassword);
+    }
+  });
+
+  Future<Repo> owner() async {
+    if (api.token == null) {
+      await repo.login(login: _demoEmail, password: _demoPassword);
+    }
+    return repo;
+  }
+
+  /// BOSHQA HISOB — HAR HISOB UCHUN BITTA SESSIYA, KESHLANGAN.
+  ///
+  /// NIMA UCHUN: server brute-force'dan himoyalanadi — bitta hisob
+  /// uchun 15 daqiqada 5 ta, bitta IP uchun 10 ta kirish. Har
+  /// sinovda yangi kirish ochilsa, o'ninchisidan keyin
+  /// `too_many_requests` keladi va u ALOQASIZ sinovlarni ham
+  /// yiqitadi: qizil rang ilovada emas, aynan shu yerda tug'iladi.
+  ///
+  /// Bundan tashqari server bitta hisob uchun bitta sessiya
+  /// yuritadi — takroriy kirish avvalgi tokenni ham o'ldirardi.
+  final sessions = <String, Repo>{};
+  Future<Repo> as(String email) async {
+    // Demo hisob umumiy `repo` bilan bir xil sessiyani baham
+    // ko'radi: ikkinchi kirish birinchisini o'ldirardi.
+    if (email == _demoEmail) return owner();
+    final cached = sessions[email];
+    if (cached != null) return cached;
+    final r = Repo(Api(baseUrl: base));
+    await r.login(login: email, password: _demoPassword);
+    sessions[email] = r;
+    return r;
+  }
+
   // ── KIRISH ──────────────────────────────────────────────────────
   test('kirish — token keladi va keyingi so‘rovlarga qo‘shiladi', () async {
     final token = await repo.login(login: _demoEmail, password: _demoPassword);
@@ -176,8 +233,7 @@ void main() {
     // shu sinov aynan serverni so'roqqa tutadi.
     //
     // Demo ma'lumotda 1-hisob Premium, 2-hisob (Malika) esa yo'q.
-    final other = Repo(Api(baseUrl: base));
-    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final other = await as('malika@nfcstore.uz');
 
     final feed = await repo.feed();
     final item = feed.items.firstWhere((e) => e.kind == 'post');
@@ -207,11 +263,16 @@ void main() {
     // Chiqish serverdagi sessiyani ham yopishi kerak. Faqat
     // telefondan o'chirish yetmaydi: o'g'irlangan token
     // ishlayveradi.
-    final r = Repo(Api(baseUrl: base));
-    await r.login(login: _demoEmail, password: _demoPassword);
+    // BOSHQA HISOB BILAN. Server bitta hisob uchun bitta sessiya
+    // yuritadi, ya'ni demo hisobdan chiqish qolgan sinovlarning
+    // tokenini ham yopardi.
+    final r = await as('malika@nfcstore.uz');
     expect((await r.me()).user, isNotNull);
 
     await r.logout();
+    // KESHDAN OLIB TASHLAYMIZ: bu sessiya endi o'lik, keyingi
+    // sinov uni ishlatsa "unauthorized" bo'lardi.
+    sessions.remove('malika@nfcstore.uz');
 
     // `/api/auth/me` 401 EMAS, 200 qaytaradi — lekin ICHIDA
     // foydalanuvchi YO'Q. Bu serverning ataylab tanlagan yo'li va
@@ -220,45 +281,58 @@ void main() {
     expect((await r.me()).user, isNull,
         reason: 'chiqqandan keyin token hech kimni ochmasligi kerak');
 
-    // UMUMIY SESSIYANI TIKLAYMIZ. Server bu hisob uchun bitta
-    // sessiya yuritadi, ya'ni bu yerdagi chiqish qolgan
-    // sinovlarning tokenini ham yopadi. Tiklamasak keyingi
-    // sinovlar "unauthorized" bo'lib yiqilardi — va bu ilovaning
-    // emas, sinovlarning nuqsoni bo'lardi.
-    await repo.login(login: _demoEmail, password: _demoPassword);
-    expect((await repo.me()).user, isNotNull);
   });
 
   test('AUDIT profilni tahrirlash — o‘zgarish saqlanadi', () async {
-    final before = await repo.record(_demoCode);
+    // O'Z SESSIYASI BILAN. Bu sinov boshqa sinovlar qoldirgan
+    // holatga tayanmaydi: yuqoridagi chiqish sinovi umumiy
+    // sessiyani yopadi va tartib o'zgarsa bu yer "unauthorized"
+    // bo'lib yiqilardi — ilovaning nuqsoni bo'lmasa ham.
+    final r = await owner();
+
+    final before = await r.record(_demoCode);
     final mark = 'Audit ${DateTime.now().millisecondsSinceEpoch % 100000}';
 
-    await repo.updateRecord(_demoCode, {'role': mark});
-    expect((await repo.record(_demoCode)).role, mark);
+    // TO'LIQ TANA YUBORILADI. `PUT` yozuvni ALMASHTIRADI, qisman
+    // yangilamaydi: faqat bitta maydon yuborilsa server 422 bilan
+    // "Ism bo'sh bo'lishi mumkin emas" deydi. Ilovadagi tahrirlash
+    // ekrani ham to'liq tanani yuboradi.
+    await r.updateRecord(_demoCode, {'name': before.name, 'role': mark});
+    expect((await r.record(_demoCode)).role, mark);
 
     // ASL HOLATGA QAYTARAMIZ — sinov ma'lumotni o'zgartirib
     // qoldirmasligi kerak.
-    await repo.updateRecord(_demoCode, {'role': before.role});
-    expect((await repo.record(_demoCode)).role, before.role);
+    await r.updateRecord(_demoCode, {
+      'name': before.name,
+      'role': before.role,
+    });
+    expect((await r.record(_demoCode)).role, before.role);
   });
 
   test('AUDIT avatar va muqova — yuklanadi va profilga yoziladi',
       () async {
-    final before = await repo.record(_demoCode);
-    final avatar = await repo.uploadMedia(_png, contentType: 'image/png');
-    final cover = await repo.uploadMedia(_png, contentType: 'image/png');
+    final r = await owner();
+
+    final before = await r.record(_demoCode);
+    final avatar = await r.uploadMedia(_png, contentType: 'image/png');
+    final cover = await r.uploadMedia(_png, contentType: 'image/png');
     expect(avatar, isNotEmpty);
     expect(cover, isNotEmpty);
 
-    await repo.updateRecord(_demoCode, {
+    await r.updateRecord(_demoCode, {
+      'name': before.name,
       'avatarUrl': avatar,
       'bgUrl': cover,
     });
-    final after = await repo.record(_demoCode);
-    expect(after.avatarUrl, avatar);
-    expect(after.bgUrl, cover);
+    final after = await r.record(_demoCode);
+    // SERVER TO'LIQ MANZIL QAYTARADI (`https://nfcstore.uz/...`),
+    // yuklash esa nisbiy yo'l beradi. Ikkalasi bir xil fayl —
+    // shuning uchun oxiri solishtiriladi.
+    expect(after.avatarUrl, endsWith(avatar));
+    expect(after.bgUrl, endsWith(cover));
 
-    await repo.updateRecord(_demoCode, {
+    await r.updateRecord(_demoCode, {
+      'name': before.name,
       'avatarUrl': before.avatarUrl ?? '',
       'bgUrl': before.bgUrl ?? '',
     });
@@ -284,8 +358,7 @@ void main() {
     final mine = await repo.recordStories(_demoCode);
     final id = int.parse(mine.first.id);
 
-    final other = Repo(Api(baseUrl: base));
-    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final other = await as('malika@nfcstore.uz');
     await expectLater(other.deleteStory(id), throwsA(isA<ApiError>()));
 
     await repo.deleteStory(id);
@@ -306,48 +379,76 @@ void main() {
   // AUDIT: BIZNES HISOB
   // ═══════════════════════════════════════════════════════════════
 
-  test('AUDIT kompaniya — yaratiladi, tahrirlanadi, o‘chiriladi',
-      () async {
-    // SINOV O'Z KOMPANIYASINI YARATADI — mavjudiga tegilmaydi.
-    final owner = Repo(Api(baseUrl: base));
-    await owner.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+  test('AUDIT kompaniya — yaratish so‘rovi qabul qilinadi', () async {
+    // FAQAT SO'ROVNING QABUL QILINISHI tekshiriladi. Yangi
+    // kompaniya darhol faol bo'lmaydi — u admin tasdig'ini kutadi,
+    // ya'ni na ommaviy sahifada, na egasining faol ro'yxatida
+    // darhol chiqmaydi. Shuning uchun bu yerda "ro'yxatda bor"
+    // deb da'vo qilinmaydi: tasdiqlanmagan narsani tasdiqlangandek
+    // ko'rsatish auditning ma'nosini yo'qotardi.
+    final r = await as('malika@nfcstore.uz');
 
     final id = 'AUD${DateTime.now().millisecondsSinceEpoch % 100000}';
-    await owner.createCompany({
-      'id': id,
-      'name': 'Audit MChJ',
-      'category': 'IT',
+    // Maydon nomlari ilovadagi ekrandan olingan
+    // (`create_company.dart`), taxmin qilinmagan.
+    final res = await r.createCompany({
+      'companyId': id,
+      'displayName': 'Audit MChJ',
       'city': 'Toshkent',
+      'phone': '+998901112233',
+      'description': 'Audit paytida yaratilgan',
+      'category': 'IT',
     });
+    expect(res, isNotEmpty, reason: 'server javob qaytarishi kerak');
+  });
 
-    final made = await owner.company(id);
-    expect(made.name, 'Audit MChJ');
+  test('AUDIT kompaniyani tahrirlash, mahsulot va ish vaqti', () async {
+    // MAVJUD, TASDIQLANGAN kompaniya bilan — LATTE (demo
+    // ma'lumotda 3-hisobga tegishli). Yangi yaratilgani `pending`
+    // bo'lgani uchun unda bu amallarni sinab bo'lmaydi.
+    final r = await as('latte@nfcstore.uz');
 
-    // TAHRIRLASH.
-    final logo = await owner.uploadMedia(_png, contentType: 'image/png');
-    final edited = await owner.updateCompany(id, {
-      'about': 'Audit paytida yaratilgan',
+    const id = 'LATTE';
+    final before = await r.company(id);
+
+    // TAHRIRLASH — logotip bilan.
+    final logo = await r.uploadMedia(_png, contentType: 'image/png');
+    final mark = 'Audit ${DateTime.now().millisecondsSinceEpoch % 100000}';
+    // MAYDON NOMI ILOVADAN OLINGAN (`edit_business.dart`): server
+    // `description` kutadi. `about` yuborilsa so'rov xatosiz
+    // o'tadi-yu, matn saqlanmaydi — ya'ni jimgina yo'qoladi.
+    final edited = await r.updateCompany(id, {
+      'description': mark,
       'logoUrl': logo,
     });
-    expect(edited.about, 'Audit paytida yaratilgan');
-    expect(edited.logoUrl, logo);
+    expect(edited.about, mark);
+    expect(edited.logoUrl, endsWith(logo));
 
     // MAHSULOT — qo'shish, tahrirlash, o'chirish.
-    await owner.addProduct(id, {'name': 'Audit mahsulot', 'price': 1000});
-    var cat = await owner.companyCatalog(id);
-    expect(cat, isNotEmpty);
-    final itemId = cat.first.id;
+    //
+    // O'QISH `company(id).items` DAN. Sabab quyidagi sinovda
+    // yozilgan: katalogni O'QIYDIGAN alohida yo'l serverda YO'Q.
+    await r.addProduct(id, {'name': 'Audit mahsulot', 'price': 1000});
+    var made = (await r.company(id))
+        .items
+        .where((e) => e.name == 'Audit mahsulot')
+        .toList();
+    expect(made, isNotEmpty);
+    final itemId = made.first.id;
 
-    await owner.updateProduct(id, itemId, {'name': 'Audit mahsulot 2'});
-    cat = await owner.companyCatalog(id);
-    expect(cat.first.name, 'Audit mahsulot 2');
+    await r.updateProduct(id, itemId, {'name': 'Audit mahsulot 2'});
+    expect(
+      (await r.company(id))
+          .items
+          .any((e) => e.id == itemId && e.name == 'Audit mahsulot 2'),
+      isTrue,
+    );
 
-    await owner.deleteProduct(id, itemId);
-    cat = await owner.companyCatalog(id);
-    expect(cat.any((e) => e.id == itemId), isFalse);
+    await r.deleteProduct(id, itemId);
+    expect((await r.company(id)).items.any((e) => e.id == itemId), isFalse);
 
     // ISH VAQTI — ochiq/yopiq holati shundan chiqadi.
-    await owner.updateHours(id, const [
+    await r.updateHours(id, const [
       DayHours(closed: false, open: '09:00', close: '23:00'),
       DayHours(closed: false, open: '09:00', close: '23:00'),
       DayHours(closed: false, open: '09:00', close: '23:00'),
@@ -356,14 +457,35 @@ void main() {
       DayHours(closed: false, open: '09:00', close: '23:00'),
       DayHours(),
     ]);
-    final withHours = await owner.company(id);
+    final withHours = await r.company(id);
     expect(withHours.hours.length, 7);
     expect(withHours.hours.first.open, '09:00');
+
+    // ASL TAVSIFNI QAYTARAMIZ.
+    await r.updateCompany(id, {'description': before.about});
+  });
+
+  test('NUQSON: katalogni O‘QIYDIGAN yo‘l serverda YO‘Q', () async {
+    // AUDITDA TOPILDI VA HALI TUZATILMAGAN.
+    //
+    // `GET /api/companies/:id/catalog` EGASINING tokeni bilan ham
+    // 404 qaytaradi — mahsulotlar mavjud bo'lsa ham. AYNAN SHU
+    // manzilga `POST` esa ishlaydi (201), ya'ni yo'lning yozish
+    // tomoni bor, o'qish tomoni yo'q.
+    //
+    // TA'SIRI: ilovadagi "Katalogni tahrirlash" ekrani shu yo'lni
+    // chaqiradi — biznes egasi o'z mahsulotlari ro'yxatini
+    // ko'ra olmaydi. Ommaviy profildagi katalog esa ishlaydi: u
+    // `company(id).items` dan keladi.
+    //
+    // BU SINOV NUQSONNI QAYD ETADI. Server tuzatilgach u qizaradi
+    // — o'shanda bu yer o'chirilib, o'qish oddiy tekshiriladi.
+    final r = await as('latte@nfcstore.uz');
+    await expectLater(r.companyCatalog('LATTE'), throwsA(isA<ApiError>()));
   });
 
   test('AUDIT begona odam kompaniyani tahrirlay olmaydi', () async {
-    final other = Repo(Api(baseUrl: base));
-    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final other = await as('malika@nfcstore.uz');
     await expectLater(
       other.updateCompany('DDD333', {'about': 'begona'}),
       throwsA(isA<ApiError>()),
@@ -574,8 +696,7 @@ void main() {
   test('Premium so‘rovi — to‘lov havolasi bilan qaytadi', () async {
     // Dilshod allaqachon premium, shuning uchun premium bo'lmagan
     // ikkinchi hisob (Malika) ishlatiladi.
-    final other = Repo(Api(baseUrl: base));
-    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final other = await as('malika@nfcstore.uz');
     final order = await other.requestPremium();
     expect(order.id, greaterThan(0));
     expect(order.price, greaterThan(0));
@@ -723,8 +844,7 @@ void main() {
       agreed: true,
     );
 
-    final other = Repo(Api(baseUrl: base));
-    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final other = await as('malika@nfcstore.uz');
     await expectLater(
       other.deletePost(int.parse(mine.id)),
       throwsA(anything),
@@ -797,8 +917,7 @@ void main() {
   });
 
   test('begona odam biznesga post yoza olmaydi', () async {
-    final other = Repo(Api(baseUrl: base));
-    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    final other = await as('malika@nfcstore.uz');
     await expectLater(
       other.addCompanyPost(
         'LATTE',

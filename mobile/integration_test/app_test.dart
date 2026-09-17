@@ -34,6 +34,13 @@ void main() {
   // 1 skipped" bilan YASHIL tugagan — ya'ni "ilova qurilmada
   // ochiladi" degan xulosa hech narsaga asoslanmagan edi.
   const base = String.fromEnvironment('API_BASE');
+
+  /// Hisob — berilmasa demo. Parol KODDA EMAS, GitHub Secret'dan
+  /// `--dart-define` orqali keladi va hech qayerda saqlanmaydi.
+  const loginEmail =
+      String.fromEnvironment('LOGIN_EMAIL', defaultValue: 'dilshod@nfcstore.uz');
+  const loginPassword =
+      String.fromEnvironment('LOGIN_PASSWORD', defaultValue: 'demo1234');
   if (base.isEmpty) {
     // O'TKAZIB YUBORILMAYDI, YIQITILADI. Sinov o'zini jimgina
     // chetga olsa, ish oqimi yashil bo'ladi va hech kim ilova
@@ -119,8 +126,8 @@ void main() {
   Future<void> signIn(WidgetTester t) async {
     final fields = find.byType(TextField);
     expect(fields, findsWidgets, reason: 'kirish maydonlari bo‘lishi kerak');
-    await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
-    await t.enterText(fields.at(1), 'demo1234');
+    await t.enterText(fields.at(0), loginEmail);
+    await t.enterText(fields.at(1), loginPassword);
     await settleFor(t);
 
     await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
