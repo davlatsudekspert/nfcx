@@ -18,7 +18,6 @@ import 'package:http/testing.dart';
 import 'package:nfcstore/data/api_client.dart';
 import 'package:nfcstore/data/models.dart';
 import 'package:nfcstore/data/repo.dart';
-import 'package:nfcstore/design/components/buttons.dart';
 import 'package:nfcstore/design/components/icons.dart';
 import 'package:nfcstore/screens/content/comments_sheet.dart';
 import 'package:nfcstore/screens/content/reels.dart';
@@ -157,10 +156,9 @@ void main() {
 
     await t.enterText(find.byType(EditableText).first, 'Narxi qancha?');
     await settle(t);
-    // Yuborish — `Ico.send` belgili dumaloq tugma.
-    await t.tap(find.byWidgetPredicate(
-      (w) => w is RoundButton && w.icon == Ico.send,
-    ));
+    // YUBORISH — endi butun kenglikdagi tugma, dumaloq belgi
+    // emas: u varaqaning pastki chekkasida qirqilib qolmasin.
+    await t.tap(find.text('Yuborish'));
     await settle(t);
 
     expect(find.text('Narxi qancha?'), findsOneWidget);

@@ -5,7 +5,6 @@ import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/business_hero.dart';
 import '../../design/components/buttons.dart';
-import '../../design/components/chart.dart';
 import '../../design/components/icons.dart';
 import '../../design/components/identity_card.dart';
 import '../../design/components/media.dart';
@@ -313,7 +312,7 @@ class _ProfileTabState extends State<ProfileTab> {
               if (_loading && _analytics == null)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: S.gutter),
-                  child: Skeleton(height: 160, radius: R.card),
+                  child: Skeleton(height: 92, radius: R.card),
                 )
               else
                 Padding(
@@ -330,6 +329,15 @@ class _ProfileTabState extends State<ProfileTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // GRAFIK BU YERDA EMAS, "Batafsil" ortida.
+                        //
+                        // Tabda u ekranning eng katta bo'lagini
+                        // egallardi va ko'rishlar kam bo'lganda
+                        // deyarli BO'SH quti bo'lib turardi —
+                        // profil ochilganda ko'z birinchi shunga
+                        // tushardi. O'sish foizi esa raqamlar
+                        // yonida qoladi: u bitta satrda ham
+                        // ma'noni to'liq beradi.
                         if (series != null && series.length > 1) ...[
                           Row(
                             children: [
@@ -342,8 +350,6 @@ class _ProfileTabState extends State<ProfileTab> {
                             ],
                           ),
                           const SizedBox(height: S.x12),
-                          LineChart(values: series),
-                          const SizedBox(height: S.x16),
                         ],
 
                         // RAQAMLAR — grafik ostida bitta qatorda
@@ -689,7 +695,13 @@ class _CardCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 208,
+        // IXCHAMROQ, LEKIN MAYDA EMAS.
+        //
+        // 208 dp da karusel ekranning yarmini egallardi va uning
+        // ostidagi hech narsa birinchi qarashda ko'rinmasdi.
+        // 168 dp — karta hali ham o'qiladi (kod, ism, havola),
+        // lekin sahifa boshi nafas oladi.
+        height: 168,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: S.gutter),
@@ -735,7 +747,7 @@ class _CardCarousel extends StatelessWidget {
                 // biri tanlangani bir qarashda ko'rinsin.
                 opacity: active ? 1 : .55,
                 child: SizedBox(
-                  width: 300,
+                  width: 250,
                   child: IdentityCard(
                     code: id.code,
                     tier: id.tier,

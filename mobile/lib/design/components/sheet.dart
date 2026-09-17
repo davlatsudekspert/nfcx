@@ -26,6 +26,10 @@ Future<Tr?> showSheet<Tr>(
   required String title,
   String? subtitle,
   required Widget child,
+  /// YOPISHGAN PASTKI QISM — surilma ICHIDA emas, ostida.
+  /// Izoh maydoni va yuborish tugmasi shu yerga qo'yiladi:
+  /// ro'yxat uzun bo'lsa ham ular doim ko'rinib turadi.
+  Widget? footer,
   bool dismissible = true,
 }) =>
     showModalBottomSheet<Tr>(
@@ -45,6 +49,7 @@ Future<Tr?> showSheet<Tr>(
       builder: (context) => SheetBody(
         title: title,
         subtitle: subtitle,
+        footer: footer,
         child: child,
       ),
     );
@@ -143,12 +148,14 @@ class SheetBody extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.footer,
     required this.child,
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {

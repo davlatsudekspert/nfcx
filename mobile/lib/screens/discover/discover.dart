@@ -7,7 +7,6 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
-import '../../design/components/business_hero.dart';
 import '../../design/components/icons.dart';
 import '../shell.dart';
 import '../../design/components/logo.dart';
@@ -150,14 +149,49 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     _debounce = Timer(const Duration(milliseconds: 320), () => _search(q));
   }
 
+  /// So'ralgan matn ID KODIGA o'xshaydimi.
+  ///
+  /// Kod — harf va raqamlardan iborat, 3 dan 15 tagacha. Bo'shliq
+  /// yoki tinish belgisi bo'lsa, bu ism yoki kompaniya nomi.
+  static final _codeLike = RegExp(r'^[A-Za-z0-9]{3,15}$');
+
   Future<void> _search(String q) async {
     final repo = AppScope.read(context).repo;
     try {
-      final people = await repo.searchRecords(q);
+      var people = await repo.searchRecords(q);
       List<Company> companies = const [];
       try {
         companies = await repo.searchCompanies(q);
       } catch (_) {}
+
+      // KOD BO'YICHA QIDIRUV — ALOHIDA SO'ROV.
+      //
+      // `/api/records/search` ISM bo'yicha qidiradi. Odam esa
+      // ko'pincha aynan KODNI yozadi ("VIP001", "AAA729") va
+      // ro'yxat bo'sh qaytardi — qidiruv umuman ishlamayotgandek
+      // tuyulardi. Endi kodga o'xshash matn uchun yozuvning o'zi
+      // ham so'raladi; topilmasa do'kon katalogidan qidiriladi
+      // (o'sha kod sotuvda bo'lishi mumkin). Hech qanday kod
+      // qo'lda yozilmagan — ikkala manba ham serverdan.
+      final code = q.trim().toUpperCase();
+      if (people.isEmpty && _codeLike.hasMatch(code)) {
+        Record? exact;
+        try {
+          exact = await repo.record(code);
+        } catch (_) {
+          try {
+            final catalog = await repo.catalog();
+            for (final r in catalog) {
+              if (r.code.toUpperCase() == code) {
+                exact = r;
+                break;
+              }
+            }
+          } catch (_) {}
+        }
+        if (exact != null) people = [exact];
+      }
+
       if (!mounted) return;
       setState(() {
         _foundPeople = people;
@@ -450,15 +484,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               itemCount: _kind == 'business'
                   ? companies.length
                   : companies.length.clamp(0, 6),
+              // KOMPANIYALAR SHAXSIY PROFILLAR BILAN BIR OILADA.
+              //
+              // Ilgari bu yerda 16:10 rasm bilan ikki ustunli grid
+              // turardi — u ilovadagi boshqa hech bir ro'yxatga
+              // o'xshamas va qidiruv sahifasi ikki xil dizayn
+              // tilida chiqardi. Endi kompaniya ham, odam ham
+              // BIR XIL qator: bir xil yuza, radius, ichki bo'shliq
+              // va bosilish hissi. Farqni kvadrat logotip va
+              // "Biznes" belgisi ko'rsatadi, boshqa maket emas.
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: S.x12,
+                crossAxisCount: 1,
                 mainAxisSpacing: S.x12,
-                // RASM 16:10 + ostidagi ikki qator matn. Balandroq
-                // nisbat kartaning ostida bo'sh joy qoldirardi.
-                childAspectRatio: .98,
+                mainAxisExtent: 84,
               ),
-              itemBuilder: (context, i) => _CompanyCard(company: companies[i]),
+              itemBuilder: (context, i) => _CompanyRow(company: companies[i]),
             ),
           ),
         ),
@@ -660,7 +700,7 @@ class _CompanyRow extends StatelessWidget {
             Avatar(
               url: company.logoUrl,
               name: company.name,
-              size: 48,
+              size: 52,
               square: true,
             ),
             const SizedBox(width: S.x12),
@@ -708,143 +748,6 @@ class _CompanyRow extends StatelessWidget {
 }
 
 /// Kompaniya kartasi — ikki ustunli grid uchun.
-class _CompanyCard extends StatelessWidget {
-  const _CompanyCard({required this.company});
-
-  final Company company;
-
-  @override
-  Widget build(BuildContext context) => Surface(
-        padding: EdgeInsets.zero,
-        glow: company.verified,
-        onTap: () => push<void>(
-          context,
-          (_) => ProfileScreen(companyId: company.id),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(R.card),
-              ),
-              child: AspectRatio(
-                aspectRatio: 16 / 10,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    BusinessHero(
-                      imageUrl: company.coverUrl ?? company.logoUrl,
-                      compact: true,
-                    ),
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0x08000000), Color(0xC9000000)],
-                          stops: [.2, 1],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: S.x8,
-                      top: S.x8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: S.x8,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xB8000000),
-                          borderRadius: BorderRadius.circular(R.status),
-                          border: Border.all(color: C.onMedia3),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            NIcon(Ico.building, size: 12, color: C.onMediaAccent),
-                            const SizedBox(width: 5),
-                            Text(
-                              company.isOpen == null
-                                  ? tr('Biznes')
-                                  : company.isOpen!
-                                      ? tr('Ochiq')
-                                      : tr('Yopiq'),
-                              style: T.meta.copyWith(
-                                color: C.onMedia,
-                                fontSize: 9,
-                                letterSpacing: .8,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: S.x12,
-                      right: S.x12,
-                      bottom: S.x8,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              company.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: T.cardTitle.copyWith(
-                                color: C.onMedia,
-                                shadows: C.mediaText,
-                              ),
-                            ),
-                          ),
-                          if (company.verified) ...[
-                            const SizedBox(width: 5),
-                            const VerifiedBadge(size: 14),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(S.x12, S.x8, S.x12, S.x12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      // PROTOTIPDA: "DDD333 · 4.9 ★ · Chilonzor".
-                      //
-                      // REYTING YO'Q: serverda baho jadvali umuman
-                      // yo'q va "4.9 ★" ni o'ylab yozib qo'yish eng
-                      // yomon yo'l edi — odam bunga ishonib tanlardi.
-                      // Shuning uchun kod, soha va shahar.
-                      [
-                        company.id,
-                        if (company.category.isNotEmpty) company.category,
-                        if (company.city.isNotEmpty) company.city,
-                      ].join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: T.caption.copyWith(fontSize: 12),
-                    ),
-                  ),
-                  NIcon(Ico.chevronRight, size: 15, color: C.accent),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-/// MEDIA GRIDI — 3 ustun, 3 dp oraliq.
-///
-/// Reels katakchalari IKKI BARAVAR katta (2×2) va yashil belgi
-/// bilan: lenta bir xil kvadratlardan iborat bo'lsa, ko'z hech
-/// nimaga ilashmaydi.
 class _MixedGrid extends StatelessWidget {
   const _MixedGrid({required this.items, required this.onOpen});
 

@@ -250,7 +250,7 @@ class _CommentsBodyState extends State<_CommentsBody> {
         // egallab ketmasligi kerak, kontent orqada ko'rinib tursin.
         ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * .42,
+            maxHeight: MediaQuery.sizeOf(context).height * .34,
           ),
           child: _list(),
         ),
@@ -296,35 +296,34 @@ class _CommentsBodyState extends State<_CommentsBody> {
               ],
             ),
           )
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Field(
-                  label: tr('IZOH'),
-                  controller: _input,
-                  hint: tr('Fikringizni yozing'),
-                  maxLength: 1000,
-                  maxLines: 3,
-                  error: _inputError,
-                  enabled: !_sending,
-                  textInputAction: TextInputAction.newline,
-                ),
-              ),
-              const SizedBox(width: S.x8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: RoundButton(
-                  Ico.send,
-                  size: 52,
-                  iconSize: 20,
-                  accent: true,
-                  onTap: _sending ? null : _send,
-                ),
-              ),
-            ],
+        else ...[
+          // MAYDON VA TUGMA — USTMA-UST, YONMA-YON EMAS.
+          //
+          // Ilgari yuborish tugmasi maydonning O'NG YONIDA, 52 dp
+          // dumaloq belgi edi. Uch qatorli maydon bilan birga bu
+          // qator balandlashib ketardi va varaqaning pastki
+          // chekkasida tugma qirqilib qolardi — odam yozgan
+          // gapini yubora olmasdi. Endi tugma butun kenglikda,
+          // maydon ostida: u hech qachon ekrandan chiqib ketmaydi
+          // va nima qilishi yozib qo'yilgan.
+          Field(
+            label: tr('IZOH'),
+            controller: _input,
+            hint: tr('Fikringizni yozing'),
+            maxLength: 1000,
+            maxLines: 2,
+            error: _inputError,
+            enabled: !_sending,
+            textInputAction: TextInputAction.newline,
           ),
+          const SizedBox(height: S.x12),
+          PrimaryButton(
+            tr('Yuborish'),
+            icon: Ico.send,
+            loading: _sending,
+            onTap: _sending ? null : _send,
+          ),
+        ],
       ],
     );
   }
