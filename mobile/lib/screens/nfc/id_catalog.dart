@@ -568,7 +568,19 @@ class _CheckResult extends StatelessWidget {
     } else if (q != null && q.purchasable) {
       // BO'SH KOD — narxi bilan. Aynan shu holat ilgari
       // "Topilmadi" bo'lib chiqardi.
-      title = '${tr('Bo‘sh')} · ${TierStyle.of(TierStyle.parse(q.tier)).label}';
+      // TARIF YORLIG'I FAQAT SERVER UNI AYTGANDA.
+      //
+      // `parse()` tanimagan qiymatni `free` deb qaytaradi va
+      // ekranda "Bo'sh · Bepul" yozuvi 49 000 so'mlik narx yonida
+      // turib qolardi — yorliq bilan narx bir-biriga zid bo'lardi.
+      // Narxdan tarifni O'ZIMIZ hisoblab chiqarish esa mijozda
+      // narx jadvalini qattiq yozish degani (bu qoida
+      // `rules_test` da qulflangan). Shuning uchun nom kelmasa
+      // yorliq umuman yozilmaydi — narx o'zi gapiradi.
+      final qTier = TierStyle.parse(q.tier);
+      title = qTier == Tier.free
+          ? tr('Bo‘sh')
+          : '${tr('Bo‘sh')} · ${TierStyle.of(qTier).label}';
       sub = '${tr('Narxi')}: ${som(q.amount)} ${tr('so‘m')}';
       action = tr('Band qilish');
       tap = () => push<void>(

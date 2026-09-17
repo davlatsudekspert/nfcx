@@ -10,11 +10,13 @@ import '../../design/components/identity_card.dart';
 import '../../design/components/media.dart';
 import '../../design/components/nav_bar.dart';
 import '../../design/components/press.dart';
+import '../../design/components/story_ring.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
 import '../../design/components/surface.dart';
 import '../../design/nav.dart';
+import '../content/story_viewer.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
@@ -60,6 +62,9 @@ class _ProfileTabState extends State<ProfileTab> {
   Company? _company;
   FollowStats? _follow;
   List<Post> _posts = const [];
+  /// Faol shaxsning FAOL istoryalari — avatar atrofidagi
+  /// oltin halqa shundan chiziladi.
+  List<Post> _stories = const [];
   bool _loading = true;
   String? _loadedFor;
 
@@ -111,6 +116,7 @@ class _ProfileTabState extends State<ProfileTab> {
     Map<String, dynamic>? analytics;
     FollowStats? follow;
     List<Post> posts = const [];
+    List<Post> stories = const [];
     Company? company;
 
     if (!active.isBusiness) {
@@ -136,12 +142,18 @@ class _ProfileTabState extends State<ProfileTab> {
           ? await state.repo.companyPosts(active.code)
           : await state.repo.recordPosts(active.code);
     } catch (_) {}
+    try {
+      stories = active.isBusiness
+          ? await state.repo.companyStories(active.code)
+          : await state.repo.recordStories(active.code);
+    } catch (_) {}
 
     if (!mounted) return;
     setState(() {
       _analytics = analytics;
       _follow = follow;
       _posts = posts;
+      _stories = stories;
       _company = company;
       _loading = false;
     });
@@ -227,6 +239,16 @@ class _ProfileTabState extends State<ProfileTab> {
                   company: active.isBusiness,
                 ),
                 onMenu: () => _menu(active),
+                hasStory: _stories.isNotEmpty,
+                onStory: _stories.isEmpty
+                    ? null
+                    : () => push<void>(
+                          context,
+                          (_) => StoryViewerScreen(
+                            code: active.code,
+                            isCompany: active.isBusiness,
+                          ),
+                        ),
               ),
 
               // KARTALAR — karusel (prototip).
@@ -601,60 +623,74 @@ class _ProfileCover extends StatelessWidget {
     required this.identity,
     required this.handle,
     required this.onMenu,
+    this.hasStory = false,
+    this.onStory,
   });
 
   final Identity identity;
   final String handle;
   final VoidCallback onMenu;
 
+  /// Shu shaxsda ko'rilmagan istorya bormi — oltin halqa shunga
+  /// qarab chiziladi.
+  final bool hasStory;
+  final VoidCallback? onStory;
+
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(S.gutter, S.x8, S.gutter, 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(tr('Mening profilim').toUpperCase(), style: T.eyebrow),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Flexible(
-                        // UZUN ISM QIRQILMAYDI, KICHRAYADI.
-                        //
-                        // "Muhammad Yusufxo'jayev" kabi ism
-                        // `ellipsis` bilan "Muhammad Yu..." bo'lib
-                        // qolardi — odam o'z ismini to'liq
-                        // ko'rmasdi. Endi shrift ikki qatorgacha
-                        // kichrayadi va ism butun chiqadi.
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            identity.name,
-                            maxLines: 1,
-                            style: T.title,
-                          ),
-                        ),
-                      ),
-                      if (identity.verified) ...[
-                        const SizedBox(width: 6),
-                        const VerifiedBadge(size: 16),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    handle,
-                    style: T.link.copyWith(color: C.accent, fontSize: 12),
-                  ),
-                ],
-              ),
+            // TEPA QATOR — yorliq chapda, sozlama o'ngda.
+            Row(
+              children: [
+                Text(tr('Mening profilim').toUpperCase(), style: T.eyebrow),
+                const Spacer(),
+                RoundButton(Ico.settings, onTap: onMenu),
+              ],
             ),
-            const SizedBox(width: S.x12),
-            RoundButton(Ico.settings, onTap: onMenu),
+
+            // AVATAR — KATTA VA MARKAZDA.
+            //
+            // Ilgari profil sarlavhasi chapga tekislangan matn
+            // qatori edi va yuz umuman ko'rinmasdi: ekran
+            // ochilganda birinchi ko'zga kartalar tushardi.
+            // Profil esa avvalo ODAM. Istorya bo'lsa atrofida
+            // oltin halqa — xuddi lentadagidek, ya'ni bir belgi
+            // ilovaning hamma joyida bitta ma'noni bildiradi.
+            const SizedBox(height: S.x12),
+            StoryRing(
+              avatarUrl: identity.avatarUrl,
+              name: identity.name,
+              size: 104,
+              // Halqa YONADI faqat ko'rilmagan istorya bo'lsa.
+              seen: !hasStory,
+              showLabel: false,
+              onTap: hasStory ? onStory : null,
+            ),
+            const SizedBox(height: S.x12),
+
+            // ISM — markazda, uzun bo'lsa kichrayadi, qirqilmaydi.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(identity.name, maxLines: 1, style: T.title),
+                  ),
+                ),
+                if (identity.verified) ...[
+                  const SizedBox(width: 6),
+                  const VerifiedBadge(size: 16),
+                ],
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              handle,
+              style: T.link.copyWith(color: C.accent, fontSize: 12),
+            ),
           ],
         ),
       );

@@ -572,17 +572,27 @@ class _Reel extends StatelessWidget {
           bottom: bottom + 104,
           child: Column(
             children: [
-              LikeButton(
-                liked: item.liked,
-                count: item.likeCount,
-                onTap: onLike,
-                size: 28,
-                // OQ — kadr ustida. `C.ink` yorug' mavzuda deyarli
-                // qora bo'ladi va to'q videoda yo'qolardi.
-                color: item.liked ? C.accent : C.onMedia,
-                onMedia: true,
+              // YOQTIRISH — FAQAT YOQTIRIB BO'LADIGAN KADRDA.
+              //
+              // Server `likeable` ni faqat SHAXSIY karta
+              // postlariga beradi (`author_kind === 'card'`);
+              // kompaniya postini yoqtirib bo'lmaydi. Ilgari
+              // yurak baribir chizilardi va bosilganda HECH NARSA
+              // bo'lmasdi — odam "like ishlamayapti" deb
+              // o'ylardi. O'lik tugmadan ko'ra tugmaning yo'qligi
+              // halolroq.
+              if (item.likeable)
+                LikeButton(
+                  liked: item.liked,
+                  count: item.likeCount,
+                  onTap: onLike,
+                  size: 28,
+                  // OQ — kadr ustida. `C.ink` yorug' mavzuda deyarli
+                  // qora bo'ladi va to'q videoda yo'qolardi.
+                  color: item.liked ? C.accent : C.onMedia,
+                  onMedia: true,
                 vertical: true,
-              ),
+                ),
               const SizedBox(height: S.x20),
               // IZOH — yurak bilan ulashish orasida, xuddi boshqa
               // ilovalardagi tartibda: odam uni qidirmasdan topadi.
