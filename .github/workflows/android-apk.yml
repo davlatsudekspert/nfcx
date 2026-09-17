@@ -141,9 +141,18 @@ jobs:
           echo "code=$RUN" >> "$GITHUB_OUTPUT"
           echo "Versiya: $NAME ($RUN)"
 
+      # FAQAT HAQIQIY TELEFON PROTSESSORLARI.
+      #
+      # `--split-per-abi` standart holatda `x86_64` ni ham chiqaradi —
+      # u EMULYATOR uchun. Reliz sahifasida u boshqa fayllar qatorida
+      # turardi va eng kichigi bo'lgani uchun eng tez yuklanardi:
+      # odam o'shani olib, telefoniga o'rnata olmasdi yoki o'rnatib
+      # ochganda ilova yiqilardi. Shuning uchun ro'yxatdan butunlay
+      # chiqarildi — tanlov bo'lmasa, xato ham bo'lmaydi.
       - name: APK qurish
         run: |
           flutter build apk --release --split-per-abi \
+            --target-platform android-arm,android-arm64 \
             --build-name=${{ steps.ver.outputs.name }} \
             --build-number=${{ steps.ver.outputs.code }} \
             --dart-define=APP_VERSION=${{ steps.ver.outputs.name }}+${{ steps.ver.outputs.code }}

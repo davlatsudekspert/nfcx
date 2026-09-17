@@ -10,6 +10,7 @@ import '../../design/components/logo.dart';
 import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/nav.dart';
+import '../../app_version.dart';
 import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
@@ -205,6 +206,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     tr('Ro‘yxatdan o‘tganda bepul 8 xonali ID beriladi'),
                     textAlign: TextAlign.center,
                     style: T.caption.copyWith(color: C.ink3, fontSize: 12.5),
+                  ),
+
+                  // VERSIYA — KIRISHDAN OLDIN KO'RINADI.
+                  //
+                  // Ilgari u faqat Sozlamalarda edi, ya'ni ichkarida.
+                  // Biror narsa ishlamay qolsa, birinchi savol
+                  // "qaysi versiya o'rnatilgan?" bo'ladi — va unga
+                  // javob berish uchun avval ilovaga KIRISH kerak
+                  // edi. Endi javob birinchi ekranda turadi.
+                  const SizedBox(height: S.x8),
+                  Text(
+                    'NFCSTORE $appVersion',
+                    textAlign: TextAlign.center,
+                    style: T.meta.copyWith(color: C.ink3, fontSize: 11),
                   ),
                 ],
               ),
