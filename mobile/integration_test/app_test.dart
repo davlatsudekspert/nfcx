@@ -46,35 +46,78 @@ void main() {
     return;
   }
 
-  /// Ilovani HAQIQIY holicha ishga tushiradi.
+  /// Matn ekranda paydo bo'lguncha kutadi (yoki vaqt tugaguncha).
+  ///
+  /// `pumpAndSettle` bu yerda YETMAYDI: ilova tarmoqqa chiqadi va
+  /// animatsiyalar tinganda ham javob hali kelmagan bo'lishi mumkin.
+  Future<bool> waitFor(WidgetTester t, Finder f,
+      {int steps = 40}) async {
+    for (var i = 0; i < steps; i++) {
+      await t.pump(const Duration(milliseconds: 250));
+      if (f.evaluate().isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  /// Ilovani HAQIQIY holicha ishga tushiradi va KIRISH ekraniga
+  /// olib chiqadi.
   ///
   /// `main()` ning o'zi chaqirilmaydi: unda server manzili qat'iy
   /// `nfcstore.uz` bo'ladi. Qolgan hamma narsa — holat, qulf,
   /// sozlamalar, navigatsiya — ilovadagi bilan AYNAN bir xil.
+  ///
+  /// TOZA O'RNATISHDA BIRINCHI EKRAN — TANISHTIRUV, KIRISH EMAS.
+  /// Buni aynan qurilmadagi sinov ko'rsatdi: `_onboarded` yolg'on
+  /// bo'lgani uchun ilova `OnboardingScreen` ni ochadi va "Xush
+  /// kelibsiz" faqat undan keyin chiqadi. Sinov buni o'tkazib
+  /// yuborgan va "ilova ochilmadi" degan noto'g'ri xulosa bergan
+  /// edi. Endi tanishtiruv HAQIQIY foydalanuvchidek yopiladi —
+  /// "O'tkazib yuborish" tugmasi bosiladi.
   Future<void> launch(WidgetTester t) async {
     await t.pumpWidget(NfcstoreApp(state: AppState(api: Api(baseUrl: base))));
-    // Splash → boot() → kirish yoki qobiq. Tarmoq javobini kutamiz.
-    for (var i = 0; i < 40; i++) {
-      await t.pump(const Duration(milliseconds: 250));
-      if (find.text('Xush kelibsiz').evaluate().isNotEmpty ||
-          find.text('Bosh sahifa').evaluate().isNotEmpty) {
-        break;
-      }
-    }
+
+    // Splash → boot(). Tarmoq javobini kutamiz.
+    await waitFor(
+      t,
+      find.byWidgetPredicate((w) =>
+          w is Text &&
+          (w.data == 'O‘tkazib yuborish' ||
+              w.data == 'Xush kelibsiz' ||
+              w.data == 'Bosh sahifa')),
+    );
     await t.pumpAndSettle(const Duration(seconds: 2));
+
+    // SPLASHDA QOTIB QOLMAGANINI shu yerda tekshiramiz: agar
+    // yuqoridagi uch ekrandan biri ham chiqmagan bo'lsa, ekranda
+    // hamon yuklanish yozuvi turadi.
+    expect(find.text('YUKLANMOQDA'), findsNothing,
+        reason: 'ilova splash ekranida qotib qolmasligi kerak');
+
+    final skip = find.text('O‘tkazib yuborish');
+    if (skip.evaluate().isNotEmpty) {
+      await t.tap(skip);
+      await t.pumpAndSettle(const Duration(seconds: 2));
+    }
+  }
+
+  /// Demo hisob bilan kiradi va qobiq ochilishini kutadi.
+  Future<void> signIn(WidgetTester t) async {
+    final fields = find.byType(TextField);
+    expect(fields, findsWidgets, reason: 'kirish maydonlari bo‘lishi kerak');
+    await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
+    await t.enterText(fields.at(1), 'demo1234');
+    await t.pumpAndSettle();
+
+    await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
+    await waitFor(t, find.text('Bosh sahifa'));
+    await t.pumpAndSettle(const Duration(seconds: 3));
   }
 
   testWidgets('ilova ochiladi va kirish ekraniga chiqadi', (t) async {
     await launch(t);
 
-    // SPLASHDA OSILIB QOLMAYDI. Aynan shu holat — ilova ochiladi,
-    // logotip turadi va hech narsa bo'lmaydi — foydalanuvchi uchun
-    // "ilova ishlamayapti" degani.
-    expect(find.text('Yuklanmoqda'), findsNothing,
-        reason: 'ilova splash ekranida qotib qolmasligi kerak');
-
     expect(find.text('Xush kelibsiz'), findsOneWidget,
-        reason: 'kirish ekrani ochilishi kerak');
+        reason: 'tanishtiruvdan keyin kirish ekrani ochilishi kerak');
   });
 
   testWidgets('RO‘YXATDAN O‘TISH ochiladi va orqaga qaytadi', (t) async {
@@ -113,18 +156,7 @@ void main() {
 
     // Haqiqiy hisob bilan kirish (demo ma'lumotlari CI da seed
     // qilinadi).
-    final fields = find.byType(TextField);
-    expect(fields, findsWidgets, reason: 'kirish maydonlari bo‘lishi kerak');
-    await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
-    await t.enterText(fields.at(1), 'demo1234');
-    await t.pumpAndSettle();
-
-    await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
-    for (var i = 0; i < 40; i++) {
-      await t.pump(const Duration(milliseconds: 250));
-      if (find.text('Bosh sahifa').evaluate().isNotEmpty) break;
-    }
-    await t.pumpAndSettle(const Duration(seconds: 3));
+    await signIn(t);
 
     // QOBIQ OCHILDI: pastki navigatsiya joyida.
     expect(find.text('Bosh sahifa'), findsWidgets,
@@ -146,15 +178,7 @@ void main() {
   testWidgets('REELS ochiladi', (t) async {
     await launch(t);
 
-    final fields = find.byType(TextField);
-    await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
-    await t.enterText(fields.at(1), 'demo1234');
-    await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
-    for (var i = 0; i < 40; i++) {
-      await t.pump(const Duration(milliseconds: 250));
-      if (find.text('Bosh sahifa').evaluate().isNotEmpty) break;
-    }
-    await t.pumpAndSettle(const Duration(seconds: 3));
+    await signIn(t);
 
     // "Lenta" sarlavhasi yonidagi "Reels" havolasi.
     await t.dragUntilVisible(
@@ -175,15 +199,7 @@ void main() {
   testWidgets('pastki navigatsiya — hamma tab ochiladi', (t) async {
     await launch(t);
 
-    final fields = find.byType(TextField);
-    await t.enterText(fields.at(0), 'dilshod@nfcstore.uz');
-    await t.enterText(fields.at(1), 'demo1234');
-    await t.tap(find.widgetWithText(GestureDetector, 'Kirish').last);
-    for (var i = 0; i < 40; i++) {
-      await t.pump(const Duration(milliseconds: 250));
-      if (find.text('Bosh sahifa').evaluate().isNotEmpty) break;
-    }
-    await t.pumpAndSettle(const Duration(seconds: 3));
+    await signIn(t);
 
     // HAR BIR TAB HAQIQATAN OCHILADIMI.
     for (final tab in ['Qidiruv', 'Do‘kon', 'Profil', 'Bosh sahifa']) {
