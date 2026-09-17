@@ -141,18 +141,16 @@ jobs:
           echo "code=$RUN" >> "$GITHUB_OUTPUT"
           echo "Versiya: $NAME ($RUN)"
 
-      # FAQAT HAQIQIY TELEFON PROTSESSORLARI.
+      # UCHALA PROTSESSOR HAM KERAK — `x86_64` ni ham qo'shib.
       #
-      # `--split-per-abi` standart holatda `x86_64` ni ham chiqaradi —
-      # u EMULYATOR uchun. Reliz sahifasida u boshqa fayllar qatorida
-      # turardi va eng kichigi bo'lgani uchun eng tez yuklanardi:
-      # odam o'shani olib, telefoniga o'rnata olmasdi yoki o'rnatib
-      # ochganda ilova yiqilardi. Shuning uchun ro'yxatdan butunlay
-      # chiqarildi — tanlov bo'lmasa, xato ham bo'lmaydi.
+      # Bir muddat u ro'yxatdan olib tashlangandi ("telefonga
+      # yaramaydi" deb). Bu XATO edi: EMULYATOR aynan `x86_64` da
+      # ishlaydi va ilovani sinashning eng qulay yo'li — emulyator.
+      # Fayl kerak; kerak bo'lmagani — qaysi fayl kimga ekanini
+      # aytmaslik edi. Buni reliz izohida hal qilamiz.
       - name: APK qurish
         run: |
           flutter build apk --release --split-per-abi \
-            --target-platform android-arm,android-arm64 \
             --build-name=${{ steps.ver.outputs.name }} \
             --build-number=${{ steps.ver.outputs.code }} \
             --dart-define=APP_VERSION=${{ steps.ver.outputs.name }}+${{ steps.ver.outputs.code }}
@@ -321,10 +319,20 @@ jobs:
           cat > notes.md <<'NOTES'
           Avtomatik qurilgan fayllar. Har yangi qurilishda shu yerdagilar yangilanadi.
 
-          - `app-release.apk` — universal, har qanday telefonga.
-          - `app-arm64-v8a-release.apk` — zamonaviy telefonlar, kichikroq fayl.
+          **QAYSI FAYLNI OLISH KERAK:**
+
+          - **Telefonga** → `app-arm64-v8a-release.apk` (deyarli barcha
+            zamonaviy telefonlar). Juda eski telefon bo'lsa
+            `app-armeabi-v7a-release.apk`.
+          - **Emulyatorga** (Android Studio) → `app-x86_64-release.apk`.
+          - **Bilmasangiz** → `app-release.apk` (universal, hammasi
+            ichida, shuning uchun eng katta).
           - `app-release.aab` — **faqat Play Store uchun**. Telefonga
-            to'g'ridan-to'g'ri o'rnatilmaydi.
+            ham, emulyatorga ham o'rnatilmaydi.
+
+          Eski NFCSTORE o'rnatilgan bo'lsa — avval **o'chiring**: imzo
+          o'zgargan bo'lsa Android yangilanishni ustiga qo'ymaydi va
+          eskisi qolaveradi.
           NOTES
           echo "" >> notes.md
           echo "**Versiya:** $VERSION" >> notes.md
