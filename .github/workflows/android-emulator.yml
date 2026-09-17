@@ -121,10 +121,19 @@ jobs:
           # `test/` ni ham qo'shadi va "Integration tests and unit
           # tests cannot be run in a single invocation" deb to'xtaydi —
           # emulyator ko'tarilgan bo'lsa ham.
+          #
+          # BIRINCHI SINOV YIQILSA HAM SAYOHAT YURADI. Har qator
+          # alohida `sh -c` bo'lgani uchun `exit` qo'ysak, keyingi
+          # qatorlar umuman bajarilmaydi va rasmlar olinmay qoladi —
+          # aynan yiqilgan holatda esa ular eng kerak. Shuning uchun
+          # natijalar faylga yig'iladi va OXIRIDA bittada qaytariladi.
           script: |
             adb reverse tcp:8787 tcp:8787 || true
             adb devices
-            flutter test integration_test/app_test.dart -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8787 --timeout 5m >/tmp/it.log 2>&1; rc=$?; cat /tmp/it.log; exit $rc
+            flutter test integration_test/app_test.dart -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8787 --timeout 5m >/tmp/it.log 2>&1; echo $? >/tmp/it.rc; cat /tmp/it.log; true
+            flutter test integration_test/tour_test.dart -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8787 --timeout 12m >/tmp/tour.log 2>&1; echo $? >/tmp/tour.rc; cat /tmp/tour.log; true
+            adb pull /sdcard/Android/data/uz.nfcstore.app/files/shots /tmp/shots || true
+            exit $(( $(cat /tmp/it.rc) + $(cat /tmp/tour.rc) ))
 
       # SOXTA YASHILGA QARSHI QO'SHIMCHA QULF.
       #
@@ -146,7 +155,27 @@ jobs:
           if ! grep -q 'All tests passed' /tmp/it.log; then
             echo "::error::Sinovlar to'liq o'tmadi"; exit 1
           fi
+          if [ ! -s /tmp/tour.log ]; then
+            echo "::error::Sayohat umuman ishlamadi"; exit 1
+          fi
+          grep -E '^SHOT |^SAYOHAT|^NOSOZLIK' /tmp/tour.log || true
+          if ! grep -q 'All tests passed' /tmp/tour.log; then
+            echo "::error::Sayohatda nosozlik bor"; exit 1
+          fi
           grep -E 'tests? passed|All tests passed' /tmp/it.log | tail -3
+
+      # HAQIQIY QURILMA EKRANLARI — ko'rib tekshirish uchun.
+      #
+      # Bu rasmlar `test/` dagi golden'lardan BOSHQA: ular soxta
+      # muhitda chizilgan widget emas, ishlab turgan ilovaning
+      # Android ekrani.
+      - name: Ekran rasmlarini yuklash
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulyator-ekranlari
+          path: /tmp/shots
+          if-no-files-found: warn
 
       - name: Serverni to'xtatish
         if: always()
