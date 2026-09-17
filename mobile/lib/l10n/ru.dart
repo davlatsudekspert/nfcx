@@ -378,6 +378,8 @@ const ruStrings = <String, String>{
   'Ixtiyoriy. Parolni tiklashda kerak bo‘ladi.': 'Необязательно. Понадобится при восстановлении пароля.',
   'Izoh': 'Подпись',
   'Izoh butunlay o‘chadi. Buni qaytarib bo‘lmaydi.': 'Комментарий будет удалён навсегда. Это действие необратимо.',
+  'Izoh yozish Premium obunachilar uchun.': 'Комментарии — для подписчиков Premium.',
+  'Izoh yozish Premium obunachilar uchun. Premium oling — izoh, Reels va statistika ochiladi.': 'Комментарии — для подписчиков Premium. Оформите Premium: откроются комментарии, Reels и статистика.',
   'Izoh yozish uchun hisobingizga kiring.': 'Войдите в аккаунт, чтобы оставить комментарий.',
   'Izoh · ixtiyoriy': 'Подпись · необязательно',
   'Izohlar': 'Комментарии',

@@ -163,6 +163,38 @@ void main() {
     );
   });
 
+  test('PREMIUMSIZ hisob izoh YOZA OLMAYDI — qoida SERVERDA', () async {
+    // EGASINING QOIDASI: izoh yozish Premium obunachilarga.
+    //
+    // NIMA UCHUN AYNAN SHU YERDA SINALADI: ilovada maydonni
+    // yashirish — bu faqat KO'RINISH. So'rovni qo'lda yuborgan odam
+    // baribir izoh yozardi. Shuning uchun qoida serverda turibdi va
+    // shu sinov aynan serverni so'roqqa tutadi.
+    //
+    // Demo ma'lumotda 1-hisob Premium, 2-hisob (Malika) esa yo'q.
+    final other = Repo(Api(baseUrl: base));
+    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+
+    final feed = await repo.feed();
+    final item = feed.items.firstWhere((e) => e.kind == 'post');
+
+    // O'QISH OCHIQ.
+    final list = await other.comments(item.commentTarget, item.id);
+    expect(list.items, isA<List>());
+
+    // YOZISH — YO'Q.
+    await expectLater(
+      other.addComment(item.commentTarget, item.id, 'premiumsiz'),
+      throwsA(
+        isA<ApiError>().having(
+          (e) => e.toString(),
+          'sabab',
+          contains('premium_required'),
+        ),
+      ),
+    );
+  });
+
   // ── QIDIRUV VA KATALOG ──────────────────────────────────────────
   test('qidiruv — ism bo‘yicha topadi', () async {
     final found = await repo.searchRecords('Malika');

@@ -378,6 +378,8 @@ const enStrings = <String, String>{
   'Ixtiyoriy. Parolni tiklashda kerak bo‘ladi.': 'Optional. Needed when resetting your password.',
   'Izoh': 'Caption',
   'Izoh butunlay o‘chadi. Buni qaytarib bo‘lmaydi.': 'The comment will be deleted permanently. This cannot be undone.',
+  'Izoh yozish Premium obunachilar uchun.': 'Comments are for Premium subscribers.',
+  'Izoh yozish Premium obunachilar uchun. Premium oling — izoh, Reels va statistika ochiladi.': 'Comments are for Premium subscribers. Get Premium to unlock comments, Reels and statistics.',
   'Izoh yozish uchun hisobingizga kiring.': 'Sign in to leave a comment.',
   'Izoh · ixtiyoriy': 'Caption · optional',
   'Izohlar': 'Comments',

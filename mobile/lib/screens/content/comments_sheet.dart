@@ -10,6 +10,7 @@ import '../../design/components/press.dart';
 import '../../design/components/sheet.dart';
 import '../../design/components/skeleton.dart';
 import '../../design/components/states.dart';
+import '../../design/components/surface.dart';
 import '../../design/components/toast.dart';
 import '../../design/nav.dart';
 import '../../design/feedback.dart';
@@ -19,6 +20,7 @@ import '../../l10n/dates.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../identity/profile_screen.dart';
+import '../settings/premium.dart';
 
 /// IZOHLAR — lentadagi va Reels'dagi kontent ostidagi yozishmalar.
 ///
@@ -211,7 +213,18 @@ class _CommentsBodyState extends State<_CommentsBody> {
 
   @override
   Widget build(BuildContext context) {
-    final signedIn = AppScope.read(context).phase == AuthPhase.signedIn;
+    final app = AppScope.read(context);
+    final signedIn = app.phase == AuthPhase.signedIn;
+
+    // IZOH YOZISH — FAQAT PREMIUM OBUNACHILARGA (egasining qarori).
+    //
+    // O'QISH HAMMAGA OCHIQ: ro'yxat yuqorida turaveradi. Cheklov
+    // faqat yozishda — aks holda lentada gap ketayotgani
+    // bilinmasdi va Premium olishning ma'nosi ham ko'rinmasdi.
+    //
+    // ASOSIY QOIDA SERVERDA. Bu yer faqat odamni behuda yozib,
+    // "ruxsat yo'q" xatosini kutishdan saqlaydi.
+    final canWrite = signedIn && (app.user?.isPremium ?? false);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -241,6 +254,39 @@ class _CommentsBodyState extends State<_CommentsBody> {
           Text(
             tr('Izoh yozish uchun hisobingizga kiring.'),
             style: T.caption.copyWith(color: C.ink2),
+          )
+        else if (!canWrite)
+          // BOSHI BERK EMAS: nima yetishmayotgani va uni qayerdan
+          // olish aytiladi.
+          Surface(
+            padding: const EdgeInsets.all(S.x16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    NIcon(Ico.sparkle, size: 18, color: C.accentSecondary),
+                    const SizedBox(width: S.x8),
+                    Expanded(
+                      child: Text(
+                        tr('Izoh yozish Premium obunachilar uchun.'),
+                        style: T.cardTitle.copyWith(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: S.x12),
+                SecondaryButton(
+                  tr('Premium olish'),
+                  size: BtnSize.m,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    push<void>(context, (_) => const PremiumScreen());
+                  },
+                ),
+              ],
+            ),
           )
         else
           Row(

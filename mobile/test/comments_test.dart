@@ -193,4 +193,42 @@ void main() {
     // O'qish esa ishlaydi: ro'yxat baribir ko'rinadi.
     expect(find.text('Zo‘r ish bo‘libdi, tabriklayman!'), findsOneWidget);
   });
+
+  testWidgets('PREMIUMSIZ odam izoh YOZA OLMAYDI, lekin O‘QIY OLADI',
+      (t) async {
+    // EGASINING QOIDASI: izoh yozish — Premium obunachilarga.
+    //
+    // O'QISH OCHIQ QOLISHI SHART: aks holda lentada gap
+    // ketayotgani umuman bilinmasdi va Premium olishning ma'nosi
+    // ham ko'rinmasdi. Shuning uchun bu sinov ikkalasini bir
+    // vaqtda tekshiradi.
+    final s = auditState();
+    await s.boot();
+    // Hisob bor, lekin Premium yo'q.
+    s.user = AppUser(id: 1, email: 'oddiy@nfcstore.uz');
+
+    late BuildContext ctx;
+    await pumpScreen(
+      t,
+      Builder(builder: (context) {
+        ctx = context;
+        return const SizedBox.shrink();
+      }),
+      state: s,
+    );
+    await settle(t);
+
+    unawaited(showCommentsSheet(ctx, targetKind: 'post', targetId: 501));
+    await settle(t);
+
+    // YOZISH MAYDONI YO'Q — va sabab aytilgan.
+    expect(find.byType(EditableText), findsNothing);
+    expect(find.text('Izoh yozish Premium obunachilar uchun.'), findsOneWidget);
+
+    // BOSHI BERK EMAS: Premium olish yo'li ko'rsatilgan.
+    expect(find.text('Premium olish'), findsOneWidget);
+
+    // O'QISH ISHLAYDI.
+    expect(find.text('Zo‘r ish bo‘libdi, tabriklayman!'), findsOneWidget);
+  });
 }

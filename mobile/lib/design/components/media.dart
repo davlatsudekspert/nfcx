@@ -245,7 +245,13 @@ class AutoImage extends StatefulWidget {
     super.key,
     this.radius = R.tile,
     this.fallback = 4 / 5,
-    this.minAspect = .62,
+    // ENG TIK NISBAT — 4:5, Instagram'dagi chegara.
+    //
+    // Ilgari .62 edi, ya'ni balandligi enidan 1.6 barobar: bitta
+    // post telefon ekranini deyarli to'liq egallardi va lentani
+    // aylantirish og'irlashardi. Tik rasm baribir tik ko'rinadi,
+    // lekin endi u kadrga sig'adi.
+    this.minAspect = 4 / 5,
     this.maxAspect = 1.78,
     this.slotIcon,
   });

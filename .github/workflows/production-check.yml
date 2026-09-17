@@ -10,6 +10,8 @@
 #   1. Server yo'llari — hisobga umuman tegmasdan.
 #   2. Emulyatorda ilova, HAQIQIY sayt bilan. Hisob ma'lumoti
 #      Secret'dan keladi; berilmasa bu qism o'tkazib yuboriladi.
+# ESLATMA: hisob Secret'lari qo'shilgach bu ish oqimi ilovani
+# HAQIQIY hisob bilan emulyatorda yurgizadi.
 name: Production tekshiruvi
 
 on:

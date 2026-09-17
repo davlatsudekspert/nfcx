@@ -238,6 +238,17 @@ export async function handle(request, env, url, H) {
       return H.json({ error: 'banned' }, 403);
     }
 
+    // IZOH — FAQAT PREMIUM OBUNACHILARGA (egasining qarori).
+    //
+    // NIMA UCHUN SERVERDA, ILOVADA EMAS: ilovada maydonni yashirish
+    // — bu faqat KO'RINISH. So'rovni qo'lda yuborgan odam baribir
+    // izoh yozardi. Qoida shu yerda turmasa, u qoida emas.
+    //
+    // O'QISH OCHIQ QOLADI: izohlarni hamma ko'radi. Cheklov faqat
+    // YOZISHDA — aks holda lentada gap ketayotgani bilinmay qolardi
+    // va Premium olishning ma'nosi ham ko'rinmasdi.
+    if (!user.isPremium) return H.json({ error: 'premium_required' }, 403);
+
     const target = await targetOwner(env, kind, id);
     if (!target.ok) return H.json({ error: 'not_found' }, 404);
 

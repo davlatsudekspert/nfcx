@@ -58,7 +58,15 @@ Future<http.Response> _normalResponse(http.Request req) async {
 
       if (p == '/api/auth/me') {
         body = {
-          'user': {'id': 1, 'email': 'egasi@nfcstore.uz', 'phone': '+998901234567'},
+          // PREMIUM — izoh yozish endi shunga bog'liq (server
+          // qoidasi). Egasi hisobi Premium: audit ekranlarida
+          // izoh maydoni ko'rinishi kerak.
+          'user': {
+            'id': 1,
+            'email': 'egasi@nfcstore.uz',
+            'phone': '+998901234567',
+            'isPremium': true,
+          },
           'cards': [_card, _secondCard],
         };
       } else if (p == '/api/companies/mine' || p == '/api/companies') {

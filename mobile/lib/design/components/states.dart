@@ -293,6 +293,13 @@ String humanError(Object? e) {
         tr('Emailga kod yuborib bo‘lmadi. Birozdan so‘ng qayta urining.'),
     'not_found': tr('Topilmadi.'),
     'forbidden': tr('Bu amal uchun ruxsat yo‘q.'),
+    // IZOH — FAQAT PREMIUM OBUNACHILARGA. Xabar nima qilish
+    // kerakligini aytadi: "ruxsat yo'q" deyish odamni ekranda
+    // qoldirardi.
+    'premium_required':
+        tr('Izoh yozish Premium obunachilar uchun. Premium oling — '
+            'izoh, Reels va statistika ochiladi.'),
+    'banned': tr('Hisobingiz vaqtincha cheklangan.'),
     'orders_disabled': tr('Bu biznes hozir buyurtma qabul qilmayapti.'),
     'required_fields': tr('Barcha majburiy maydonlarni to‘ldiring.'),
     'offline': tr('Internet aloqasi yo‘q. Ulanishni tekshiring.'),
