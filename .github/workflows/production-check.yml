@@ -39,6 +39,16 @@ jobs:
       - name: nfcstore.uz yo'llari
         run: node scripts/check-production.mjs
 
+      # HAQIQIY HISOB BILAN TO'LIQ SMOKE — ilova chaqiradigan
+      # yo'llarni, ilova yuboradigan shaklda. Yaratiladigan yagona
+      # narsa sinov izohi, u darhol o'chiriladi.
+      - name: Real hisob smoke (production)
+        if: always()
+        env:
+          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
+          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
+        run: node scripts/smoke-production.mjs
+
       # BIZNES PROFILI DIAGNOSTIKASI — faqat o'qiydi, hech narsa
       # o'zgartirmaydi. Yiqilsa ham qolgan natijani yashirmasin.
       - name: Biznes profili diagnostikasi
@@ -51,16 +61,6 @@ jobs:
       # UCHTA SHIKOYATNI PRODUCTIONDA ANIQLASH: biznes profillar,
       # ID qidiruv va izohlar. Qaysi biri ILOVA xatosi, qaysi biri
       # SERVERGA yoyilmagan yo'l — buni faqat jonli sayt aytadi.
-      # HAQIQIY HISOB BILAN TO'LIQ SMOKE — ilova chaqiradigan
-      # yo'llarni, ilova yuboradigan shaklda. Yaratiladigan yagona
-      # narsa sinov izohi, u darhol o'chiriladi.
-      - name: Real hisob smoke (production)
-        if: always()
-        env:
-          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
-          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
-        run: node scripts/smoke-production.mjs
-
       - name: Regressiya diagnostikasi
         if: always()
         env:

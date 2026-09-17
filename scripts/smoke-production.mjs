@@ -57,8 +57,14 @@ async function main() {
     auth: false,
     body: { login: EMAIL, password: PASSWORD },
   });
-  token = login.body?.token || '';
-  mark('REAL LOGIN', 'kirish', login.status === 200 && !!token, `HTTP ${login.status}`);
+  // TOKEN MAYDONI — server versiyasiga qarab nomlanishi mumkin.
+  // Topilmasa, javobning KALITLARI chop etiladi (qiymatlari emas):
+  // shunda sabab keyingi safar taxmin qilinmaydi.
+  token = login.body?.token || login.body?.sessionToken ||
+          login.body?.data?.token || '';
+  mark('REAL LOGIN', 'kirish', login.status === 200 && !!token,
+    token ? `HTTP ${login.status}`
+          : `HTTP ${login.status}, javob kalitlari: ${Object.keys(login.body ?? {}).join(', ') || '—'}`);
   if (!token) { process.exitCode = 1; return; }
 
   // ── HISOB VA ID'LAR ─────────────────────────────────────────

@@ -41,7 +41,7 @@ async function main() {
 
   let token = '';
   if (EMAIL && PASSWORD) {
-    const r = await req('/api/login', {
+    const r = await req('/api/auth/login', {
       method: 'POST',
       body: { login: EMAIL, password: PASSWORD },
     });
