@@ -292,13 +292,22 @@ void main() {
     // "Sozlamalar" profil ro'yxatining PASTIDA turadi va ekranga
     // sig'maydi. Aylantirmasdan qidirish uni topmaydi — bu
     // ilovaning nuqsoni emas, ro'yxatning oddiy uzunligi.
+    //
+    // SURISH WIDGET BO'YICHA EMAS, EKRAN KOORDINATASI BO'YICHA.
+    //
+    // Profil sahifasida bir nechta aylanadigan qism bor va
+    // ularning biri — kartalar karuseli — GORIZONTAL. Uni vertikal
+    // surish hech narsa qilmaydi: bir marta aynan shu sabab
+    // ro'yxat joyidan qimirlamadi va "Sozlamalar topilmadi"
+    // deyildi. Ekranning o'rtasidan surish esa qaysi ro'yxat
+    // ustida turganimizga bog'liq emas.
     Future<void> scrollTo(Finder f) async {
       if (f.evaluate().isNotEmpty) return;
-      final lists = find.byType(Scrollable);
-      if (lists.evaluate().isEmpty) return;
-      for (var i = 0; i < 12 && f.evaluate().isEmpty; i++) {
-        await t.drag(lists.last, const Offset(0, -260));
-        await settleFor(t, const Duration(milliseconds: 400));
+      final size = t.view.physicalSize / t.view.devicePixelRatio;
+      final from = Offset(size.width / 2, size.height * .72);
+      for (var i = 0; i < 14 && f.evaluate().isEmpty; i++) {
+        await t.dragFrom(from, const Offset(0, -280));
+        await settleFor(t, const Duration(milliseconds: 450));
       }
     }
 
