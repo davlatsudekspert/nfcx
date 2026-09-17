@@ -34,6 +34,13 @@ Future<Tr?> showSheet<Tr>(
 }) =>
     showModalBottomSheet<Tr>(
       context: context,
+      // ILDIZ NAVIGATORDA OCHILADI.
+      //
+      // Aks holda varaqa QOBIQ navigatori ichida chiziladi va
+      // pastki panel (NFC orbi bilan) uning USTIGA tushadi:
+      // izoh maydoni ko'rinardi, YUBORISH tugmasi esa panel
+      // ostida qolib ketardi — odam yozgan gapini yubora olmasdi.
+      useRootNavigator: true,
       isScrollControlled: true,
       isDismissible: dismissible,
       enableDrag: dismissible,
@@ -227,7 +234,7 @@ class SheetBody extends StatelessWidget {
                         padding: EdgeInsets.only(
                           left: S.gutter,
                           right: S.gutter,
-                          bottom: S.x16 + media.padding.bottom * .2,
+                          bottom: S.x16 + media.padding.bottom,
                         ),
                         child: child,
                       ),

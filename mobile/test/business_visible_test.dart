@@ -144,4 +144,27 @@ void main() {
     await settle(t);
     expect(find.text('Profilni tahrirlash'), findsOneWidget);
   });
+
+  testWidgets('KARUSELDAN karta bosilsa shaxs ALMASHADI', (t) async {
+    // Bu aynan qurilmada ishlamagan holat: `IdentityCard` ning
+    // ichida o'z bosish ishlovchisi (aylantirish) bor edi va u
+    // tashqi `Press` ga hech narsa qoldirmasdi.
+    final s = realAccount();
+    await s.boot();
+    final before = s.active!.code;
+    await pumpScreen(t, const ProfileTab(), state: s);
+    await settle(t);
+
+    // Karuseldagi IKKINCHI karta — birinchisi allaqachon faol.
+    // Kodi bo'yicha topamiz: indeks qurilish tartibiga bog'liq.
+    final second = find.text('CRD002');
+    expect(second, findsWidgets, reason: 'ikkinchi karta karuselda');
+    await t.ensureVisible(second.first);
+    await settle(t);
+    await t.tap(second.first, warnIfMissed: false);
+    await settle(t);
+
+    expect(s.active!.code, isNot(before),
+        reason: 'kartani bosish shaxsni almashtirishi kerak');
+  });
 }

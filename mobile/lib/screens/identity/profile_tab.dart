@@ -258,6 +258,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
                 onMenu: () => _menu(active),
                 onEdit: () => _edit(active),
+                onSwitch: () => showIdentitySwitcher(context),
                 hasStory: _stories.isNotEmpty,
                 onStory: _stories.isEmpty
                     ? null
@@ -635,6 +636,7 @@ class _ProfileCover extends StatelessWidget {
     required this.handle,
     required this.onMenu,
     required this.onEdit,
+    required this.onSwitch,
     this.hasStory = false,
     this.onStory,
   });
@@ -647,6 +649,9 @@ class _ProfileCover extends StatelessWidget {
   /// shuning uchun tugma doim ko'rinadi — begona profil bu yerda
   /// umuman ochilmaydi (u `ProfileScreen` da ko'rsatiladi).
   final VoidCallback onEdit;
+
+  /// Ism bosilganda ochiladigan shaxs almashtirish varaqasi.
+  final VoidCallback onSwitch;
 
   /// Shu shaxsda ko'rilmagan istorya bormi — oltin halqa shunga
   /// qarab chiziladi.
@@ -679,7 +684,7 @@ class _ProfileCover extends StatelessWidget {
             StoryRing(
               avatarUrl: identity.avatarUrl,
               name: identity.name,
-              size: 104,
+              size: 128,
               // Halqa YONADI faqat ko'rilmagan istorya bo'lsa.
               seen: !hasStory,
               showLabel: false,
@@ -687,7 +692,18 @@ class _ProfileCover extends StatelessWidget {
             ),
             const SizedBox(height: S.x12),
 
-            // ISM — markazda, uzun bo'lsa kichrayadi, qirqilmaydi.
+            // ISM BOSILSA — SHAXS ALMASHTIRISH.
+            //
+            // Karusel allaqachon ishlaydi, lekin u pastda. Ism
+            // ekranning eng ko'zga tashlanadigan joyi: "men
+            // kimman?" degan savol shu yerda tug'iladi, javobi
+            // ham shu yerda bo'lsin.
+            Press(
+              onTap: onSwitch,
+              minSize: 0,
+              scale: .98,
+              child: Column(
+                children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -707,6 +723,9 @@ class _ProfileCover extends StatelessWidget {
             Text(
               handle,
               style: T.link.copyWith(color: C.accent, fontSize: 12),
+            ),
+                ],
+              ),
             ),
 
             const SizedBox(height: S.x12),
@@ -800,28 +819,34 @@ class _CardCarousel extends StatelessWidget {
 
             final id = items[i];
             final active = id.code == activeCode;
-            return Press(
-              onTap: active ? null : () => onSelect(id),
-              minSize: 0,
-              scale: .97,
-              child: Opacity(
-                // FAOL BO'LMAGANI SO'NADI: bosh sahifada va NFC da
-                // aynan shu karta ishlatiladi, shuning uchun qaysi
-                // biri tanlangani bir qarashda ko'rinsin.
-                opacity: active ? 1 : .55,
-                child: SizedBox(
-                  width: 250,
-                  child: IdentityCard(
-                    code: id.code,
-                    tier: id.tier,
-                    holder: id.name,
-                    url: profileHandle(
-                      context,
-                      id.code,
-                      company: id.isBusiness,
-                    ),
-                    sweep: active,
+            return Opacity(
+              // FAOL BO'LMAGANI SO'NADI: bosh sahifada va NFC da
+              // aynan shu karta ishlatiladi, shuning uchun qaysi
+              // biri tanlangani bir qarashda ko'rinsin.
+              opacity: active ? 1 : .55,
+              child: SizedBox(
+                width: 250,
+                // BOSISH KARTANING O'ZIGA BERILADI.
+                //
+                // `IdentityCard` ning ichida o'z bosish ishlovchisi
+                // bor (kartani aylantirish) va u tashqi `Press` ga
+                // hech narsa qoldirmasdi — shu sababli karuseldan
+                // boshqa ID ni tanlab bo'lmasdi. Endi tanlash
+                // kartaning o'z `onTap` iga uzatiladi, aylantirish
+                // esa faqat ALLAQACHON tanlangan kartada qoladi:
+                // bitta bosish ikki xil ish qilmasin.
+                child: IdentityCard(
+                  code: id.code,
+                  tier: id.tier,
+                  holder: id.name,
+                  url: profileHandle(
+                    context,
+                    id.code,
+                    company: id.isBusiness,
                   ),
+                  sweep: active,
+                  flippable: active,
+                  onTap: active ? null : () => onSelect(id),
                 ),
               ),
             );

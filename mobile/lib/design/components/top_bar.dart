@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 
 import '../tokens.dart';
 import '../type.dart';
+import '../../screens/shell.dart';
 import 'buttons.dart';
+import 'nav_bar.dart';
 import 'icons.dart';
 
 /// EKRAN TEPASI — orqaga tugmasi, sarlavha, o'ng amal.
@@ -188,9 +190,20 @@ class StickyBar extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
 
+  /// QOBIQNING PASTKI PANELI USTIGA TUSHMASLIK UCHUN QO'SHIMCHA.
+  ///
+  /// Tab ichidan ochilgan ekran QOBIQ navigatorida chiziladi va
+  /// pastki panel (NFC orbi bilan) uning USTIGA tushadi. Shu
+  /// sababli "To'lov usuli" dagi Payme/Click tugmalari panel
+  /// ostida qolib ketardi — ekranda ko'rinardi, lekin bosib
+  /// bo'lmasdi. Ildizdagi ekranlarda (kirish, splash) panel yo'q,
+  /// shuning uchun bu joy ham qo'shilmaydi.
+  static double _shellBar(BuildContext context) =>
+      ShellScope.maybeOf(context) == null ? 0 : NavBar.barHeight;
+
   /// Ro'yxat oxiriga qo'shiladigan bo'sh joy.
   static double inset(BuildContext context) =>
-      MediaQuery.of(context).padding.bottom + 96;
+      MediaQuery.of(context).padding.bottom + 96 + _shellBar(context);
 
   @override
   Widget build(BuildContext context) => Container(
@@ -199,7 +212,7 @@ class StickyBar extends StatelessWidget {
               S.gutter,
               S.x20,
               S.gutter,
-              MediaQuery.of(context).padding.bottom + S.x16,
+              MediaQuery.of(context).padding.bottom + S.x16 + _shellBar(context),
             ),
         decoration: BoxDecoration(gradient: C.bottomScrim),
         child: child,

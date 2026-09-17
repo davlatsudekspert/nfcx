@@ -290,6 +290,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Faol shaxsning O'Z istoryasi lentada bormi.
+  ///
+  /// Halqa shunga qarab yonadi va bosilganda nima ochilishini
+  /// ham shu hal qiladi: bor bo'lsa — ko'rish, yo'q bo'lsa —
+  /// yangisini qo'shish.
+  bool get _myStory {
+    final code = AppScope.of(context).active?.code;
+    if (code == null) return false;
+    return _stories.any((e) => e.code == code);
+  }
+
+  Future<void> _openMyStory(String code) async {
+    await push<void>(context, (_) => StoryViewerScreen(code: code));
+  }
+
   Future<void> _addStory(String code) async {
     final done = await push<bool>(
       context,
@@ -433,22 +448,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
 
-              // SALOMLASHUV.
+              // SALOMLASHUV — AVATAR MARKAZDA, MATN UNING OSTIDA.
+              //
+              // Ilgari bu blok chapga tekislangan matn edi va
+              // yuz umuman ko'rinmasdi: ekran ochilganda birinchi
+              // ko'zga katta oltin karta tushardi. Bosh sahifa esa
+              // avvalo "bu MEN" degan javobni berishi kerak.
+              //
+              // ISTORYA BO'LSA — ATROFIDA OLTIN HALQA, xuddi
+              // lentadagidek: bitta belgi ilovaning hamma joyida
+              // bitta ma'noni bildiradi. Halqa bosilsa istorya
+              // ochiladi, bo'lmasa yangisini qo'shish ochiladi.
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(S.gutter, S.x16, S.gutter, 0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // PROTOTIPDA SHAHAR VA SANA YO'Q: ular hech
-                      // qanday savolga javob bermaydi (sanani odam
-                      // telefonining tepasida ko'rib turibdi).
-                      // O'rniga — bitta JONLI qator.
+                      if (active != null)
+                        StoryRing(
+                          avatarUrl: active.avatarUrl,
+                          name: active.name,
+                          size: 128,
+                          seen: !_myStory,
+                          showLabel: false,
+                          onTap: _myStory
+                              ? () => _openMyStory(active.code)
+                              : () => _addStory(active.code),
+                        ),
+                      const SizedBox(height: S.x12),
                       _Greeting(name: firstName),
                       if (_subtitle(active) != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           _subtitle(active)!,
+                          textAlign: TextAlign.center,
                           style: T.body.copyWith(fontSize: 13.5, color: C.ink2),
                         ),
                       ],
@@ -481,7 +514,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       S.gutter,
                       0,
                     ),
-                    child: _ActiveCard(identity: active),
+                    // KARTA KICHRAYDI: ekran qahramoni endi
+                    // avatar. Karta hali ham to'liq o'qiladi
+                    // (kod, ism, havola), lekin ekranning yarmini
+                    // egallab turmaydi.
+                    child: FractionallySizedBox(
+                      widthFactor: .82,
+                      child: _ActiveCard(identity: active),
+                    ),
                   ),
                 ),
 
@@ -746,7 +786,7 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (name.isEmpty) {
-      return Text(tr('Salom'), style: T.title);
+      return Text(tr('Salom'), style: T.title, textAlign: TextAlign.center);
     }
     return Text.rich(
       TextSpan(
@@ -762,6 +802,7 @@ class _Greeting extends StatelessWidget {
         ],
       ),
       maxLines: 2,
+      textAlign: TextAlign.center,
       overflow: TextOverflow.ellipsis,
     );
   }
