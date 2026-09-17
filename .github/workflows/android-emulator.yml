@@ -105,6 +105,11 @@ jobs:
           disable-animations: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: mobile
+          # QOBIQ — `dash`, `bash` EMAS. `set -o pipefail` bu yerda
+          # "Illegal option" beradi va butun qadam yiqiladi. Shuning
+          # uchun quvur o'rniga fayl: natija `/tmp/it.log` ga yoziladi,
+          # ekranga ham chiqariladi, chiqish kodi esa saqlanadi.
+          #
           # BUYRUQ BITTA QATORDA BO'LISHI SHART.
           #
           # `android-emulator-runner` bu skriptni QATORMA-QATOR,
@@ -119,7 +124,7 @@ jobs:
           script: |
             adb reverse tcp:8787 tcp:8787 || true
             adb devices
-            set -o pipefail; flutter test integration_test/app_test.dart -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8787 --timeout 5m 2>&1 | tee /tmp/it.log
+            flutter test integration_test/app_test.dart -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8787 --timeout 5m >/tmp/it.log 2>&1; rc=$?; cat /tmp/it.log; exit $rc
 
       # SOXTA YASHILGA QARSHI QO'SHIMCHA QULF.
       #
