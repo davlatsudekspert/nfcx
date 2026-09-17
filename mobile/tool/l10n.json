@@ -7,6 +7,10 @@
     "+ Добавить ID",
     "+ Add ID"
   ],
+  "1 daqiqadan keyin": [
+    "Через 1 минуту",
+    "After 1 minute"
+  ],
   "24 SOAT": [
     "24 ЧАСА",
     "24 HOURS"
@@ -14,6 +18,14 @@
   "3 harf + 3 raqam. Oddiy, ishonchli.": [
     "3 буквы + 3 цифры. Просто и надёжно.",
     "3 letters + 3 digits. Simple, dependable."
+  ],
+  "30 soniyadan keyin": [
+    "Через 30 секунд",
+    "After 30 seconds"
+  ],
+  "5 daqiqadan keyin": [
+    "Через 5 минут",
+    "After 5 minutes"
   ],
   "6 xonali kod yubordik:": [
     "Мы отправили 6-значный код:",
@@ -146,6 +158,10 @@
   "Assalomu alaykum": [
     "Здравствуйте",
     "Welcome"
+  ],
+  "Avto-qulf": [
+    "Автоблокировка",
+    "Auto lock"
   ],
   "Avval izoh yozing.": [
     "Сначала напишите комментарий.",
@@ -823,6 +839,10 @@
     "Выходной",
     "Day off"
   ],
+  "Darhol": [
+    "Сразу",
+    "Immediately"
+  ],
   "Davom etish": [
     "Продолжить",
     "Continue"
@@ -1174,6 +1194,10 @@
   "Hech narsa topilmadi": [
     "Ничего не найдено",
     "Nothing found"
+  ],
+  "Hech qachon": [
+    "Никогда",
+    "Never"
   ],
   "Hisob": [
     "Аккаунт",
@@ -1538,6 +1562,14 @@
   "Jonli yordam": [
     "Живая поддержка",
     "Live support"
+  ],
+  "Joriy PIN kodni kiriting": [
+    "Введите текущий PIN-код",
+    "Enter your current PIN"
+  ],
+  "Joriy kod noto‘g‘ri.": [
+    "Текущий код неверный.",
+    "That PIN is not correct."
   ],
   "Joriy parol": [
     "Текущий пароль",
@@ -1938,6 +1970,10 @@
   "Kodlar mos kelmadi. Qaytadan boshlang.": [
     "Коды не совпали. Начните заново.",
     "The codes did not match. Start over."
+  ],
+  "Kodni almashtirish uchun avval eskisini kiriting": [
+    "Чтобы сменить код, сначала введите старый",
+    "To change the PIN, enter the old one first"
   ],
   "Kodni emailga yuborish": [
     "Отправить код на email",
