@@ -21,6 +21,7 @@ on:
     paths:
       - 'scripts/check-production.mjs'
       - 'scripts/diagnose-business.mjs'
+      - 'scripts/diagnose-regressions.mjs'
       - 'mobile/integration_test/**'
       - '.github/workflows/production-check.yml'
 
@@ -45,6 +46,16 @@ jobs:
           NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
           NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
         run: node scripts/diagnose-business.mjs
+
+      # UCHTA SHIKOYATNI PRODUCTIONDA ANIQLASH: biznes profillar,
+      # ID qidiruv va izohlar. Qaysi biri ILOVA xatosi, qaysi biri
+      # SERVERGA yoyilmagan yo'l — buni faqat jonli sayt aytadi.
+      - name: Regressiya diagnostikasi
+        if: always()
+        env:
+          NFC_LOGIN_EMAIL: ${{ secrets.NFC_LOGIN_EMAIL }}
+          NFC_LOGIN_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD }}
+        run: node scripts/diagnose-regressions.mjs
 
   # ── 2. ILOVA + HAQIQIY SAYT ───────────────────────────────────
   #
