@@ -28,6 +28,7 @@ import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
 import '../common/share.dart';
 import '../content/post_detail.dart';
+import '../content/reels.dart';
 import '../content/story_viewer.dart';
 import '../identity/profile_screen.dart';
 import '../nfc/id_catalog.dart';
@@ -489,7 +490,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               context,
               (_) => e.isStory
                   ? StoryViewerScreen(code: e.code)
-                  : PostDetailScreen(
+                  // VIDEO → REELS (grid'dagi yashil belgili
+                  // katakchalar aynan shular).
+                  : (e.videoUrl ?? '').trim().isNotEmpty
+                      ? ReelsScreen(startKind: e.kind, startId: e.id)
+                      : PostDetailScreen(
                       post: Post(
                         id: '${e.id}',
                         caption: e.caption,

@@ -37,7 +37,15 @@ import 'report_sheet.dart';
 /// Reels TAB ILDIZI, ya'ni `Navigator.pop` qiladigan joyi yo'q —
 /// orqaga tugmasi `ShellScope.goHome` ni chaqiradi.
 class ReelsScreen extends StatefulWidget {
-  const ReelsScreen({super.key});
+  const ReelsScreen({super.key, this.startKind, this.startId});
+
+  /// QAYSI KADRDAN BOSHLANSIN.
+  ///
+  /// Lentadan video bosilganda AYNAN o'sha kadr ochilishi kerak —
+  /// aks holda odam bosgan videosi o'rniga lentaning boshini
+  /// ko'rardi va uni qidirib surishga majbur bo'lardi.
+  final String? startKind;
+  final int? startId;
 
   @override
   State<ReelsScreen> createState() => _ReelsScreenState();
@@ -86,13 +94,37 @@ class _ReelsScreenState extends State<ReelsScreen> {
     try {
       final r = await AppScope.read(context).repo.feed(page: 1);
       if (!mounted) return;
+
+      // FAQAT VIDEOLAR. Reels — video lentasi; oddiy rasm postlari
+      // bu yerga tushsa, odam surib-surib jim rasmlarni ko'rardi.
+      // Video umuman bo'lmasa, lentaning o'zi ko'rsatiladi —
+      // "bo'sh" degan ekrandan ko'ra shu yaxshi.
+      final videos =
+          r.items.where((e) => (e.videoUrl ?? '').trim().isNotEmpty).toList();
+      final items = videos.isEmpty ? r.items : videos;
+
+      // Bosilgan kadr birinchi bo'lib ochiladi.
+      var start = 0;
+      final kind = widget.startKind;
+      final id = widget.startId;
+      if (kind != null && id != null) {
+        final at = items.indexWhere((e) => e.kind == kind && e.id == id);
+        if (at > 0) start = at;
+      }
+
       setState(() {
-        _items = r.items;
-        _hasMore = r.hasMore;
+        _items = items;
+        _hasMore = r.hasMore && videos.isEmpty;
         _page = 1;
         _loading = false;
+        _index = start;
       });
-      if (r.items.isNotEmpty) _loadFollow(r.items.first.code);
+      if (start > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pages.hasClients) _pages.jumpToPage(start);
+        });
+      }
+      if (items.isNotEmpty) _loadFollow(items[start].code);
     } catch (e) {
       if (!mounted) return;
       setState(() {

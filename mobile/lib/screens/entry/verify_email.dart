@@ -15,6 +15,8 @@ import '../../design/tokens.dart';
 import '../../design/type.dart';
 import '../../l10n/strings.dart';
 import '../../state/app_state.dart';
+import '../../design/nav.dart';
+import '../business/create_company.dart';
 
 /// HISOB TASDIQLASH — EMAIL.
 ///
@@ -35,12 +37,21 @@ class VerifyEmailScreen extends StatefulWidget {
     required this.phone,
     required this.password,
     required this.name,
+    this.company = false,
   });
 
   final String email;
   final String phone;
   final String password;
   final String name;
+
+  /// Ro'yxatdan o'tishda "Kompaniya profili" tanlanganmi.
+  ///
+  /// Hisob ikkalasida ham bir xil yaratiladi — bu bayroq faqat
+  /// OXIRIDA qayerga olib borishni hal qiladi: kompaniya bo'lsa
+  /// darhol Company ID ochish ekraniga (saytdagi `/company/create`
+  /// bilan bir xil yo'l).
+  final bool company;
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
@@ -158,6 +169,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       // Ildizgacha: tagda `_Root` turibdi va u endi `Shell` ni
       // chizadi.
       nav.popUntil((r) => r.isFirst);
+
+      // KOMPANIYA TANLAGAN ODAM darhol Company ID ochish ekraniga
+      // tushadi — saytdagi bilan bir xil. Aks holda u shaxsiy
+      // kabinetda qolib, biznes ochish yo'lini o'zi qidirardi.
+      if (widget.company && mounted) {
+        await push<void>(context, (_) => CreateCompanyScreen());
+      }
     } catch (e) {
       // XATO KO'RINISHI SHART. Ilgari u `_error` ga yozilardi,
       // lekin muvaffaqiyat ekrani uni umuman ko'rsatmasdi — natijada

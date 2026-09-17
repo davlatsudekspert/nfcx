@@ -26,6 +26,7 @@ import '../../state/seen_stories.dart';
 import '../content/compose.dart';
 import '../content/post_detail.dart';
 import '../content/comments_sheet.dart';
+import '../content/reels.dart';
 import '../content/report_sheet.dart';
 import '../content/story_viewer.dart';
 import '../identity/profile_screen.dart';
@@ -532,7 +533,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     S.gutter,
                     S.x12,
                   ),
-                  child: SectionHeader(tr('Lenta')),
+                  // LENTA SARLAVHASIDA — "Reels" YO'LI.
+                  //
+                  // Reels ekraniga boshqa yo'l yo'q edi: lentadagi
+                  // videoni bosish kerak, lekin lentada video
+                  // bo'lmasa odam uni umuman topolmasdi. Endi
+                  // sarlavhaning o'ng tomonidan ham ochiladi.
+                  child: SectionHeader(
+                    tr('Lenta'),
+                    actionLabel: tr('Reels'),
+                    onAction: () =>
+                        push<void>(context, (_) => const ReelsScreen()),
+                  ),
                 ),
               ),
 
@@ -589,7 +601,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 context,
                                 (_) => StoryViewerScreen(code: _feed[i].code),
                               )
-                          : () => push<void>(
+                          // VIDEO → REELS.
+                          //
+                          // Ilgari video ham oddiy post sahifasida
+                          // ochilardi va REELS EKRANIGA ILOVADA
+                          // UMUMAN YO'L YO'Q EDI: ekran yozilgan,
+                          // lekin hech qayerdan chaqirilmasdi.
+                          : (_feed[i].videoUrl ?? '').trim().isNotEmpty
+                              ? () => push<void>(
+                                    context,
+                                    (_) => ReelsScreen(
+                                      startKind: _feed[i].kind,
+                                      startId: _feed[i].id,
+                                    ),
+                                  )
+                              : () => push<void>(
                                 context,
                                 (_) => PostDetailScreen(
                                   post: Post(

@@ -347,6 +347,14 @@
     "Открыть бизнес",
     "Create business"
   ],
+  "Biznes statistikasi": [
+    "Статистика бизнеса",
+    "Business statistics"
+  ],
+  "Biznes, do‘kon, restoran": [
+    "Бизнес, магазин, ресторан",
+    "Business, shop, restaurant"
+  ],
   "Biznesingiz —\\nmobil do‘kon": [
     "Ваш бизнес —\\nмобильный магазин",
     "Your business —\\na mobile store"
@@ -1935,6 +1943,10 @@
     "Введите\\nкод",
     "Enter the\\ncode"
   ],
+  "Kompaniya profili": [
+    "Профиль компании",
+    "Company profile"
+  ],
   "Kompaniyalar": [
     "Компании",
     "Companies"
@@ -2078,6 +2090,10 @@
   "Logotip": [
     "Логотип",
     "Logo"
+  ],
+  "Logotip, muqova, ish vaqti, katalog": [
+    "Логотип, обложка, часы, каталог",
+    "Logo, cover, hours, catalog"
   ],
   "MAHSULOT 1:1": [
     "ТОВАР 1:1",
@@ -2234,6 +2250,10 @@
   "Mijoz sizni shu manzildan topadi.": [
     "По этому адресу клиент вас найдёт.",
     "This is the address where customers find you."
+  ],
+  "Mijozlardan kelgan buyurtmalar": [
+    "Заказы от клиентов",
+    "Orders from customers"
   ],
   "Miqdor": [
     "Количество",
@@ -2522,6 +2542,10 @@
   "Ochiq profilni ko‘rish": [
     "Посмотреть открытый профиль",
     "View public profile"
+  ],
+  "Odam, mutaxassis": [
+    "Человек, специалист",
+    "A person, a professional"
   ],
   "Odamlar": [
     "Люди",
@@ -3154,6 +3178,10 @@
   "Rasmni o‘zgartirish": [
     "Изменить фото",
     "Change photo"
+  ],
+  "Reels": [
+    "Reels",
+    "Reels"
   ],
   "Reels hozircha bo‘sh": [
     "Reels пока пусты",

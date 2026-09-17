@@ -497,6 +497,82 @@ void main() {
     await repo.deletePost(int.parse(mine.id));
   });
 
+  // ── BIZNES: POST VA ISTORYA ───────────────────────────────────
+  //
+  // "Biznes profil bizneslarga yoqishi kerak, post/istorya qo'ya
+  // olishi kerak" — shu yo'l boshdan-oxir tekshiriladi.
+
+  test('biznes POST joylaydi, o‘z ro‘yxatida va lentada ko‘rinadi',
+      () async {
+    // LATTE egasi — alohida hisob (demo ma'lumotlarida uchinchi
+    // foydalanuvchi). Ilovada u "biznes shaxs" bo'lib kiradi.
+    final owner = Repo(Api(baseUrl: base));
+    await owner.login(login: 'latte@nfcstore.uz', password: _demoPassword);
+    final media = await owner.uploadMedia(_png, contentType: 'image/png');
+
+    final before = await owner.companyPosts('LATTE');
+
+    await owner.addCompanyPost(
+      'LATTE',
+      imageUrl: media,
+      caption: 'Yangi menyu keldi',
+      agreed: true,
+    );
+
+    // 1) Egasi o'z postlarini KO'RADI (profil egasidagi "Postlarim"
+    //    aynan shu metodni chaqiradi).
+    final after = await owner.companyPosts('LATTE');
+    expect(after.length, before.length + 1);
+    expect(after.map((p) => p.caption), contains('Yangi menyu keldi'));
+
+    // 2) Post UMUMIY LENTAGA ham tushadi.
+    final feed = await repo.feed(page: 1);
+    expect(
+      feed.items.any((e) => e.caption == 'Yangi menyu keldi' && e.isCompany),
+      isTrue,
+      reason: 'biznes posti lentada ko‘rinishi kerak',
+    );
+
+    // 3) Egasi o'chira oladi.
+    final fresh = after.firstWhere((p) => p.caption == 'Yangi menyu keldi');
+    await owner.deleteCompanyPost('LATTE', int.parse(fresh.id));
+    final gone = await owner.companyPosts('LATTE');
+    expect(gone.map((p) => p.caption), isNot(contains('Yangi menyu keldi')));
+  });
+
+  test('biznes ISTORYA joylaydi', () async {
+    final owner = Repo(Api(baseUrl: base));
+    await owner.login(login: 'latte@nfcstore.uz', password: _demoPassword);
+    final media = await owner.uploadMedia(_png, contentType: 'image/png');
+    await owner.addCompanyStory(
+      'LATTE',
+      imageUrl: media,
+      caption: 'Bugun 20% chegirma',
+      agreed: true,
+    );
+    final feed = await repo.feed(page: 1);
+    expect(
+      feed.items.any((e) => e.caption == 'Bugun 20% chegirma'),
+      isTrue,
+      reason: 'biznes istoryasi lentada ko‘rinishi kerak',
+    );
+  });
+
+  test('begona odam biznesga post yoza olmaydi', () async {
+    final other = Repo(Api(baseUrl: base));
+    await other.login(login: 'malika@nfcstore.uz', password: _demoPassword);
+    await expectLater(
+      other.addCompanyPost(
+        'LATTE',
+        imageUrl: uploadedImage,
+        caption: 'Begona',
+        agreed: true,
+      ),
+      reason: 'faqat kompaniya egasi post yoza oladi',
+      throwsA(anything),
+    );
+  });
+
   // ── KONTAKT QOLDIRISH ─────────────────────────────────────────
 
   test('kontakt qoldirish — ism va aloqa SERVERDA tekshiriladi', () async {
@@ -515,3 +591,14 @@ void main() {
     );
   });
 }
+
+/// ENG KICHIK HAQIQIY PNG (1×1) — server MIME va hajmni tekshiradi,
+/// shuning uchun "shunchaki baytlar" yaramaydi.
+const _png = <int>[
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+];

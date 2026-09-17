@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../data/models.dart';
 import '../../design/components/backdrop.dart';
+import '../../design/components/business_hero.dart';
 import '../../design/components/buttons.dart';
 import '../../design/components/chart.dart';
 import '../../design/components/icons.dart';
@@ -23,6 +24,9 @@ import '../common/share.dart';
 import '../content/compose.dart';
 import '../nfc/id_catalog.dart';
 import '../settings/settings_screen.dart';
+import '../business/business_stats.dart';
+import '../business/edit_business.dart';
+import '../orders/owner_orders.dart';
 import 'edit_profile.dart';
 import 'follow_list.dart';
 import 'my_content.dart';
@@ -51,6 +55,10 @@ class ProfileTab extends StatefulWidget {
 
 class _ProfileTabState extends State<ProfileTab> {
   Map<String, dynamic>? _analytics;
+
+  /// Faol shaxs biznes bo'lsa — uning kompaniyasi. Sarlavha,
+  /// raqamlar va "Biznesni tahrirlash" shundan o'qiydi.
+  Company? _company;
   FollowStats? _follow;
   List<Post> _posts = const [];
   bool _loading = true;
@@ -64,6 +72,29 @@ class _ProfileTabState extends State<ProfileTab> {
       _loadedFor = code;
       _load();
     }
+  }
+
+  /// BIZNESNI TAHRIRLASH.
+  ///
+  /// `EditBusinessScreen` to'liq `Company` obyektini kutadi, faol
+  /// shaxsda esa faqat kod va nom bor — shuning uchun avval
+  /// serverdan olinadi.
+  Future<void> _editBusiness(Identity active) async {
+    final repo = AppScope.read(context).repo;
+    Company? company;
+    try {
+      company = await repo.company(active.code);
+    } catch (e) {
+      if (!mounted) return;
+      await showError(context, humanError(e));
+      return;
+    }
+    if (!mounted) return;
+    final saved = await push<bool>(
+      context,
+      (_) => EditBusinessScreen(company: company!),
+    );
+    if (saved == true && mounted) await _load();
   }
 
   Future<void> _load() async {
@@ -81,18 +112,29 @@ class _ProfileTabState extends State<ProfileTab> {
     Map<String, dynamic>? analytics;
     FollowStats? follow;
     List<Post> posts = const [];
+    Company? company;
 
     if (!active.isBusiness) {
       try {
         analytics = await state.repo.analytics(active.code, days: 7);
+      } catch (_) {}
+    } else {
+      // BIZNES SONLARI KOMPANIYADAN. Karta statistikasi
+      // (`/records/:code/analytics`) kompaniya kodini bilmaydi.
+      try {
+        company = await state.repo.company(active.code);
       } catch (_) {}
     }
     try {
       follow = await state.repo.followStats(active.code);
     } catch (_) {}
     try {
+      // BIZNES O'Z POSTLARINI KO'RADI. Ilgari bu yerda biznes
+      // uchun ataylab bo'sh ro'yxat qaytarilardi — egasi o'zi
+      // joylagan postni ilovada umuman ko'ra olmasdi va
+      // o'chira ham olmasdi.
       posts = active.isBusiness
-          ? const []
+          ? await state.repo.companyPosts(active.code)
           : await state.repo.recordPosts(active.code);
     } catch (_) {}
 
@@ -101,6 +143,7 @@ class _ProfileTabState extends State<ProfileTab> {
       _analytics = analytics;
       _follow = follow;
       _posts = posts;
+      _company = company;
       _loading = false;
     });
   }
@@ -156,7 +199,9 @@ class _ProfileTabState extends State<ProfileTab> {
       );
     }
 
-    final views = (_analytics?['totalViews'] as num?)?.round() ?? 0;
+    final views = active.isBusiness
+        ? (_company?.views ?? 0)
+        : ((_analytics?['totalViews'] as num?)?.round() ?? 0);
     final contacts = _contactCount();
     final series = _series;
 
@@ -186,15 +231,30 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
 
               // KARTALAR — karusel (prototip).
+              //
+              // BIZNESDA KARTA YO'Q: u yerda kompaniyaning o'zi
+              // ko'rsatiladi. Ilgari biznes egasi o'z profilida
+              // begona shaxsiy kartalarni ko'rardi.
               const SizedBox(height: S.x20),
-              _CardCarousel(
-                cards: state.cards,
-                activeCode: active.code,
-                onSelect: (r) =>
-                    state.switchIdentity(Identity.personal(r)),
-                onAdd: () =>
-                    push<void>(context, (_) => const IdCatalogScreen()),
-              ),
+              if (active.isBusiness)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: S.gutter),
+                  child: _BusinessCard(
+                    company: _company,
+                    code: active.code,
+                    name: active.name,
+                    onEdit: () => _editBusiness(active),
+                  ),
+                )
+              else
+                _CardCarousel(
+                  cards: state.cards,
+                  activeCode: active.code,
+                  onSelect: (r) =>
+                      state.switchIdentity(Identity.personal(r)),
+                  onAdd: () =>
+                      push<void>(context, (_) => const IdCatalogScreen()),
+                ),
 
               // KONTENT QO'SHISH — IKKI ALOHIDA TUGMA
               // (prototip: kartalardan keyin darhol).
@@ -429,10 +489,34 @@ class _ProfileTabState extends State<ProfileTab> {
             onTap: () => Navigator.of(context).pop('public'),
           ),
           SheetAction(
-            label: tr('Profilni tahrirlash'),
+            label: active.isBusiness
+                ? tr('Biznesni tahrirlash')
+                : tr('Profilni tahrirlash'),
             icon: Ico.edit,
+            subtitle: active.isBusiness
+                ? tr('Logotip, muqova, ish vaqti, katalog')
+                : null,
             onTap: () => Navigator.of(context).pop('edit'),
           ),
+
+          // BIZNES AMALLARI.
+          //
+          // Bu uchta ekran ILOVADA YOZILGAN, lekin hech qayerdan
+          // OCHILMASDI: biznes egasi kompaniya ochgandan keyin uni
+          // tahrirlay ham, buyurtmalarini ko'ra ham olmasdi.
+          if (active.isBusiness) ...[
+            SheetAction(
+              label: tr('Buyurtmalar'),
+              icon: Ico.bag,
+              subtitle: tr('Mijozlardan kelgan buyurtmalar'),
+              onTap: () => Navigator.of(context).pop('orders'),
+            ),
+            SheetAction(
+              label: tr('Biznes statistikasi'),
+              icon: Ico.chart,
+              onTap: () => Navigator.of(context).pop('bizstats'),
+            ),
+          ],
           SheetAction(
             label: tr('Mening kontentim'),
             icon: Ico.grid,
@@ -463,13 +547,28 @@ class _ProfileTabState extends State<ProfileTab> {
               : ProfileScreen(code: active.code),
         );
       case 'edit':
-        if (active.record != null) {
+        if (active.isBusiness) {
+          await _editBusiness(active);
+        } else if (active.record != null) {
           final saved = await push<bool>(
             context,
             (_) => EditProfileScreen(record: active.record!),
           );
           if (saved == true && mounted) await _load();
         }
+      case 'orders':
+        await push<void>(
+          context,
+          (_) => OwnerOrdersScreen(
+            companyId: active.code,
+            companyName: active.name,
+          ),
+        );
+      case 'bizstats':
+        await push<void>(
+          context,
+          (_) => BusinessStatsScreen(companyId: active.code),
+        );
       case 'content':
         await push<void>(context, (_) => const MyContentScreen());
         if (mounted) await _load();
@@ -660,6 +759,100 @@ class _Delta extends StatelessWidget {
     return StatusChip(
       '${up ? '+' : ''}$delta%',
       tone: up ? StatusTone.ok : StatusTone.neutral,
+    );
+  }
+}
+
+/// BIZNES KARTASI — profil egasidagi "mening biznesim".
+///
+/// Shaxsda o'rnida NFC kartalar karuseli turadi; biznesda esa
+/// karta yo'q — mahsulot o'sha kompaniyaning O'ZI. Shuning uchun
+/// bu yerda muqova, logotip, nom, kod va bitta amal:
+/// "Biznesni tahrirlash".
+class _BusinessCard extends StatelessWidget {
+  const _BusinessCard({
+    required this.company,
+    required this.code,
+    required this.name,
+    required this.onEdit,
+  });
+
+  final Company? company;
+  final String code;
+  final String name;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = company;
+
+    return Surface(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(R.card),
+            ),
+            child: AspectRatio(
+              aspectRatio: 16 / 7,
+              child: BusinessHero(imageUrl: c?.coverUrl ?? c?.logoUrl),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(S.x16),
+            child: Row(
+              children: [
+                Avatar(
+                  url: c?.logoUrl,
+                  name: c?.name ?? name,
+                  size: 46,
+                  square: true,
+                ),
+                const SizedBox(width: S.x12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              c?.name ?? name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: T.cardTitle,
+                            ),
+                          ),
+                          if (c?.verified ?? false) ...[
+                            const SizedBox(width: 6),
+                            const VerifiedBadge(size: 15),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          code,
+                          if ((c?.category ?? '').isNotEmpty) c!.category,
+                          if ((c?.city ?? '').isNotEmpty) c!.city,
+                        ].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: T.caption.copyWith(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: S.x8),
+                RoundButton(Ico.edit, size: 42, iconSize: 17, onTap: onEdit),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -5,7 +5,9 @@ import 'package:flutter/widgets.dart';
 import '../../data/api_client.dart';
 import '../../design/components/backdrop.dart';
 import '../../design/components/buttons.dart';
+import '../../design/components/icons.dart';
 import '../../design/components/input.dart';
+import '../../design/components/press.dart';
 import '../../design/components/states.dart';
 import '../../design/components/top_bar.dart';
 import '../../design/nav.dart';
@@ -43,6 +45,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// paytida — parolni tiklash orqali — aniqlanardi. Ikkinchi
   /// maydon shu xatoni yozilayotgan paytida ushlaydi.
   final _password2 = TextEditingController();
+
+  /// SHAXSIY PROFILMI YOKI KOMPANIYAMI.
+  ///
+  /// Saytdagi ro'yxatdan o'tish ham aynan shu savoldan boshlanadi
+  /// (`AuthPage`, `nfc_reg_profile_type`). Ilovada bu tanlov umuman
+  /// yo'q edi: biznes uchun kelgan odam ro'yxatdan o'tib, shaxsiy
+  /// kabinetga tushardi va kompaniya ochish yo'lini o'zi qidirishi
+  /// kerak edi.
+  ///
+  /// SERVERGA YUBORILMAYDI: hisob ikkalasida ham bir xil yaratiladi
+  /// (server `profileType` ni qabul qilmaydi). Tanlov faqat
+  /// RO'YXATDAN O'TGANDAN KEYIN qayerga olib borishni hal qiladi.
+  bool _companyKind = false;
+
   bool _busy = false;
   String? _error;
 
@@ -102,6 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             phone: '+998$phone',
             password: _password.text,
             name: _name.text.trim(),
+            company: _companyKind,
           ));
     } on ApiError catch (e) {
       if (mounted) setState(() => _error = humanError(e));
@@ -134,6 +151,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           tr('Ro‘yxatdan o‘tish'),
                           subtitle: tr('Tasdiqlash kodi emailga yuboriladi. '
                               'Telefon raqami profil aloqasi uchun saqlanadi.'),
+                        ),
+
+                        // KIM UCHUN — saytdagidek, eng boshida.
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            S.gutter,
+                            S.x8,
+                            S.gutter,
+                            0,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _KindCard(
+                                  icon: Ico.user,
+                                  title: tr('Shaxsiy profil'),
+                                  subtitle: tr('Odam, mutaxassis'),
+                                  selected: !_companyKind,
+                                  onTap: () =>
+                                      setState(() => _companyKind = false),
+                                ),
+                              ),
+                              const SizedBox(width: S.x8),
+                              Expanded(
+                                child: _KindCard(
+                                  icon: Ico.building,
+                                  title: tr('Kompaniya profili'),
+                                  subtitle: tr('Biznes, do‘kon, restoran'),
+                                  selected: _companyKind,
+                                  onTap: () =>
+                                      setState(() => _companyKind = true),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
@@ -222,6 +274,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      );
+}
+
+/// PROFIL TURI KARTASI — "Shaxsiy profil" yoki "Kompaniya profili".
+///
+/// Chip emas, KARTA: tanlov hisobning keyingi yo'lini belgilaydi
+/// (kompaniya tanlansa, ro'yxatdan o'tgach darhol Company ID
+/// ochish ekraniga tushadi). Bunday tanlov ikki so'zli chipda
+/// yo'qolib ketardi.
+class _KindCard extends StatelessWidget {
+  const _KindCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Ico icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Press(
+        onTap: onTap,
+        haptic: true,
+        minSize: 0,
+        scale: .97,
+        child: Container(
+          padding: const EdgeInsets.all(S.x12),
+          decoration: BoxDecoration(
+            gradient: selected ? C.raisedSurface : null,
+            borderRadius: BorderRadius.circular(R.card),
+            border: Border.all(
+              color: selected ? C.accent : C.line,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NIcon(
+                icon,
+                size: 20,
+                color: selected ? C.accent : C.ink3,
+              ),
+              const SizedBox(height: S.x8),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: T.cardTitle.copyWith(
+                  fontSize: 13.5,
+                  color: selected ? C.ink : C.ink2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: T.caption.copyWith(fontSize: 11.5),
+              ),
+            ],
           ),
         ),
       );
