@@ -106,7 +106,8 @@ async function main() {
     mark('PERSONAL PROFIL', `${primary.code}`, p.status === 200, `HTTP ${p.status}`);
     const pp = await api(`/api/records/${primary.code}/posts`);
     mark('PERSONAL PROFIL', 'postlari', pp.status === 200, `HTTP ${pp.status}`);
-    const st = await api(`/api/records/${primary.code}/stats`);
+    // ILOVANING HAQIQIY YO'LI: `repo.cardStats()` → `/analytics`.
+    const st = await api(`/api/records/${primary.code}/analytics?days=30`);
     mark('PERSONAL PROFIL', 'statistika', st.status === 200, `HTTP ${st.status}`);
   }
 
@@ -168,8 +169,12 @@ async function main() {
       `${all.find((x) => x.code === free)?.price ?? 0} so‘m (zaxira manba)`);
     void r;
   }
+  // MAVJUD EMAS: server 404 (topilmadi) yoki 400 (shakli
+  // noto'g'ri) qaytaradi — ikkalasi ham ilovada "topilmadi" bo'lib
+  // ko'rinadi. Muhimi: 200 QAYTMASLIGI.
   const mr = await api(`/api/records/${missing}`);
-  mark('SHOP/ID SEARCH', `MAVJUD EMAS ${missing}`, mr.status === 404, `HTTP ${mr.status}`);
+  mark('SHOP/ID SEARCH', `MAVJUD EMAS ${missing}`,
+    mr.status === 404 || mr.status === 400, `HTTP ${mr.status}`);
 
   const pay = await api('/api/settings/payments-enabled');
   mark('SHOP', 'to‘lov provayderlari', pay.status === 200, `HTTP ${pay.status}`);
@@ -228,7 +233,8 @@ async function main() {
   // ── FOLLOW / SHARE ──────────────────────────────────────────
   const other = all.find((r) => r.code && r.code !== primary?.code);
   if (other) {
-    const st = await api(`/api/records/${other.code}/follow-stats`);
+    // ILOVANING HAQIQIY YO'LI: `repo.followStats()`.
+    const st = await api(`/api/follow-stats/${other.code}`);
     mark('FOLLOW', 'obuna holati', st.status === 200, `HTTP ${st.status}`);
   }
   mark('SHARE', 'havola mijozda yig‘iladi', true, `${BASE}/<kod>`);
@@ -239,9 +245,12 @@ async function main() {
 
   const out = await api('/api/auth/logout', { method: 'POST' });
   mark('SETTINGS/SESSION', 'chiqish', out.status < 300, `HTTP ${out.status}`);
+  // SERVER 401 EMAS, `{user: null}` QAYTARADI — ilova aynan shuni
+  // "chiqilgan" deb o'qiydi (`AppState.boot`: `user == null`).
   const afterOut = await api('/api/auth/me');
-  mark('SETTINGS/SESSION', 'sessiya serverda yopildi', afterOut.status === 401,
-    `HTTP ${afterOut.status}`);
+  mark('SETTINGS/SESSION', 'sessiya serverda yopildi',
+    afterOut.status === 401 || afterOut.body?.user == null,
+    `HTTP ${afterOut.status}, user=${afterOut.body?.user == null ? 'null' : 'bor'}`);
 
   token = '';
   const again = await api('/api/auth/login', {
